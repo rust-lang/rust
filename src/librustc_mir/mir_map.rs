@@ -192,7 +192,7 @@ fn build_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
             mem::transmute::<Mir, Mir<'tcx>>(mir)
         };
 
-        mir_util::dump_mir(tcx, "mir_map", &0, src, &mir);
+        mir_util::dump_mir(tcx, 0, "mir_map", &0, src, &mir);
 
         tcx.alloc_mir(mir)
     })
@@ -251,7 +251,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 mem::transmute::<Mir, Mir<'tcx>>(mir)
             };
 
-            mir_util::dump_mir(tcx, "mir_map", &0, src, &mir);
+            mir_util::dump_mir(tcx, 0, "mir_map", &0, src, &mir);
 
             tcx.alloc_mir(mir)
         })

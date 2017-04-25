@@ -21,7 +21,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node4.SimplifyCfg.initial-after.mir
+// START rustc.node4.SimplifyCfg-initial.after.mir
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = const false;
@@ -48,4 +48,4 @@ fn main() {
 //         _2 = ();
 //         goto -> bb1;
 //     }
-// END rustc.node4.SimplifyCfg.initial-after.mir
+// END rustc.node4.SimplifyCfg-initial.after.mir

@@ -10,7 +10,7 @@
 
 //! Inlining pass for MIR functions
 
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::def_id::DefId;
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -18,7 +18,7 @@ use rustc_data_structures::graph;
 
 use rustc::dep_graph::DepNode;
 use rustc::mir::*;
-use rustc::mir::transform::{self, MirMapPass, MirPassHook, MirSource, Pass};
+use rustc::mir::transform::{MirSource, Pass};
 use rustc::mir::visit::*;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -42,12 +42,8 @@ const UNKNOWN_SIZE_COST: usize = 10;
 
 pub struct Inline;
 
-impl<'tcx> MirMapPass<'tcx> for Inline {
-    fn run_pass<'a>(
-        &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        hooks: &mut [Box<for<'s> MirPassHook<'s>>]) {
-
+impl Pass for Inline {
+    fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level < 2 { return; }
 
         let _ignore = tcx.dep_graph.in_ignore();
@@ -58,17 +54,11 @@ impl<'tcx> MirMapPass<'tcx> for Inline {
             tcx: tcx,
         };
 
-        transform::run_hooks(tcx, hooks, self, false);
-
         for scc in callgraph.scc_iter() {
             inliner.inline_scc(&callgraph, &scc);
         }
-
-        transform::run_hooks(tcx, hooks, self, true);
     }
 }
-
-impl<'tcx> Pass for Inline { }
 
 struct Inliner<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,

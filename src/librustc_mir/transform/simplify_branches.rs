@@ -12,21 +12,28 @@
 
 use rustc::ty::TyCtxt;
 use rustc::middle::const_val::ConstVal;
-use rustc::mir::transform::{MirPass, MirSource, Pass};
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::*;
 
-use std::fmt;
+use std::borrow::Cow;
 
-pub struct SimplifyBranches<'a> { label: &'a str }
+pub struct SimplifyBranches { label: String }
 
-impl<'a> SimplifyBranches<'a> {
-    pub fn new(label: &'a str) -> Self {
-        SimplifyBranches { label: label }
+impl SimplifyBranches {
+    pub fn new(label: &str) -> Self {
+        SimplifyBranches { label: format!("SimplifyBranches-{}", label) }
     }
 }
 
-impl<'l, 'tcx> MirPass<'tcx> for SimplifyBranches<'l> {
-    fn run_pass<'a>(&self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
+impl MirPass for SimplifyBranches {
+    fn name<'a>(&'a self) -> Cow<'a, str> {
+        Cow::Borrowed(&self.label)
+    }
+
+    fn run_pass<'a, 'tcx>(&self,
+                          _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          _src: MirSource,
+                          mir: &mut Mir<'tcx>) {
         for block in mir.basic_blocks_mut() {
             let terminator = block.terminator_mut();
             terminator.kind = match terminator.kind {
@@ -60,11 +67,3 @@ impl<'l, 'tcx> MirPass<'tcx> for SimplifyBranches<'l> {
     }
 }
 
-impl<'l> Pass for SimplifyBranches<'l> {
-    fn disambiguator<'a>(&'a self) -> Option<Box<fmt::Display+'a>> {
-        Some(Box::new(self.label))
-    }
-
-    // avoid calling `type_name` - it contains `<'static>`
-    fn name(&self) -> ::std::borrow::Cow<'static, str> { "SimplifyBranches".into() }
-}

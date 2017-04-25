@@ -27,7 +27,7 @@ use rustc::ty::cast::CastTy;
 use rustc::ty::maps::Providers;
 use rustc::mir::*;
 use rustc::mir::traversal::ReversePostorder;
-use rustc::mir::transform::{Pass, MirMapPass, MirPassHook, MirSource};
+use rustc::mir::transform::{Pass, MirSource};
 use rustc::mir::visit::{LvalueContext, Visitor};
 use rustc::middle::lang_items;
 use syntax::abi::Abi;
@@ -939,12 +939,9 @@ fn qualify_const_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub struct QualifyAndPromoteConstants;
 
-impl Pass for QualifyAndPromoteConstants {}
-
-impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
-    fn run_pass<'a>(&self,
-                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    hooks: &mut [Box<for<'s> MirPassHook<'s>>])
+impl Pass for QualifyAndPromoteConstants {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>)
     {
         for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
             let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
@@ -959,20 +956,15 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
             let mir = &mut tcx.mir(def_id).borrow_mut();
             tcx.dep_graph.write(DepNode::Mir(def_id));
 
-            for hook in &mut *hooks {
-                hook.on_mir_pass(tcx, src, mir, self, false);
-            }
             self.run_pass(tcx, src, mir);
-            for hook in &mut *hooks {
-                hook.on_mir_pass(tcx, src, mir, self, true);
-            }
         }
     }
 }
 
-impl<'tcx> QualifyAndPromoteConstants {
-    fn run_pass<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    src: MirSource, mir: &mut Mir<'tcx>) {
+impl<'a, 'tcx> QualifyAndPromoteConstants {
+    fn run_pass(&self,
+                tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                src: MirSource, mir: &mut Mir<'tcx>) {
         let id = src.item_id();
         let def_id = tcx.hir.local_def_id(id);
         let mode = match src {

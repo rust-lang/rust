@@ -1402,18 +1402,16 @@ actual:\n\
                 }
             }
             MirOpt => {
-                args.extend(["-Z",
-                             "dump-mir=all",
-                             "-Z",
-                             "mir-opt-level=3",
-                             "-Z"]
+                args.extend(["-Zdump-mir=all",
+                             "-Zmir-opt-level=3",
+                             "-Zdump-mir-exclude-pass-number"]
                             .iter()
                             .map(|s| s.to_string()));
 
 
                 let mir_dump_dir = self.get_mir_dump_dir();
                 create_dir_all(mir_dump_dir.as_path()).unwrap();
-                let mut dir_opt = "dump-mir-dir=".to_string();
+                let mut dir_opt = "-Zdump-mir-dir=".to_string();
                 dir_opt.push_str(mir_dump_dir.to_str().unwrap());
                 debug!("dir_opt: {:?}", dir_opt);
 

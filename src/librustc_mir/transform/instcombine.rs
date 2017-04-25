@@ -11,7 +11,7 @@
 //! Performs various peephole optimizations.
 
 use rustc::mir::{Location, Lvalue, Mir, Operand, ProjectionElem, Rvalue, Local};
-use rustc::mir::transform::{MirPass, MirSource, Pass};
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::{MutVisitor, Visitor};
 use rustc::ty::TyCtxt;
 use rustc::util::nodemap::FxHashSet;
@@ -20,13 +20,11 @@ use std::mem;
 
 pub struct InstCombine;
 
-impl Pass for InstCombine {}
-
-impl<'tcx> MirPass<'tcx> for InstCombine {
-    fn run_pass<'a>(&self,
-                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    _: MirSource,
-                    mir: &mut Mir<'tcx>) {
+impl MirPass for InstCombine {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          _: MirSource,
+                          mir: &mut Mir<'tcx>) {
         // We only run when optimizing MIR (at any level).
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return
