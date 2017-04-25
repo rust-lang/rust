@@ -85,8 +85,15 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         assert!(common::type_is_zero_size(ccx, ty));
         let llty = type_of::type_of(ccx, ty);
         let val = if common::type_is_imm_pair(ccx, ty) {
+            let layout = ccx.layout_of(ty);
+            let (ix0, ix1) = if let Layout::Univariant { ref variant, .. } = *layout {
+                (adt::struct_llfields_index(variant, 0),
+                adt::struct_llfields_index(variant, 1))
+            } else {
+                (0, 1)
+            };
             let fields = llty.field_types();
-            OperandValue::Pair(C_null(fields[0]), C_null(fields[1]))
+            OperandValue::Pair(C_null(fields[ix0]), C_null(fields[ix1]))
         } else {
             OperandValue::Immediate(C_null(llty))
         };
@@ -156,8 +163,16 @@ impl<'a, 'tcx> OperandRef<'tcx> {
             if common::type_is_imm_pair(bcx.ccx, self.ty) {
                 debug!("Operand::unpack_if_pair: unpacking {:?}", self);
 
-                let mut a = bcx.extract_value(llval, 0);
-                let mut b = bcx.extract_value(llval, 1);
+                let layout = bcx.ccx.layout_of(self.ty);
+                let (ix0, ix1) = if let Layout::Univariant { ref variant, .. } = *layout {
+                    (adt::struct_llfields_index(variant, 0),
+                    adt::struct_llfields_index(variant, 1))
+                } else {
+                    (0, 1)
+                };
+
+                let mut a = bcx.extract_value(llval, ix0);
+                let mut b = bcx.extract_value(llval, ix1);
 
                 let pair_fields = common::type_pair_fields(bcx.ccx, self.ty);
                 if let Some([a_ty, b_ty]) = pair_fields {
