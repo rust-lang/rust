@@ -254,7 +254,12 @@ pub fn debugger_scripts(build: &Build,
         install(&build.src.join("src/etc/").join(file), &dst, 0o644);
     };
     if host.contains("windows-msvc") {
-        // no debugger scripts
+        // windbg debugger scripts
+        install(&build.src.join("src/etc/rust-windbg.cmd"), &sysroot.join("bin"),
+            0o755);
+
+        cp_debugger_script("natvis/libcore.natvis");
+        cp_debugger_script("natvis/libcollections.natvis");
     } else {
         cp_debugger_script("debugger_pretty_printers_common.py");
 
