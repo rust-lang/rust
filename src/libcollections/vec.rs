@@ -275,7 +275,9 @@ use Bound::{Excluded, Included, Unbounded};
 /// removed data to be erased for security purposes. Even if you drop a `Vec`, its
 /// buffer may simply be reused by another `Vec`. Even if you zero a `Vec`'s memory
 /// first, that may not actually happen because the optimizer does not consider
-/// this a side-effect that must be preserved.
+/// this a side-effect that must be preserved. There is one case which we will
+/// not break, however: using `unsafe` code to write to the excess capacity,
+/// and then increasing the length to match, is always valid.
 ///
 /// `Vec` does not currently guarantee the order in which elements are dropped
 /// (the order has changed in the past, and may change again).
