@@ -181,6 +181,7 @@ impl<D: Clone + Debug> DepNode<D> {
             TransCrateItem,
             AssociatedItems,
             ItemSignature,
+            ItemVariances,
             IsForeignItem,
             AssociatedItemDefIds,
             InherentImpls,
