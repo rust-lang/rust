@@ -92,9 +92,17 @@ fn compile_test() {
         let mut unsupported = Vec::new();
         let mut unimplemented_intrinsic = Vec::new();
         let mut limits = Vec::new();
-        for file in std::fs::read_dir(path).unwrap() {
+        let mut files: Vec<_> = std::fs::read_dir(path).unwrap().collect();
+        while let Some(file) = files.pop() {
             let file = file.unwrap();
             let path = file.path();
+            if file.metadata().unwrap().is_dir() {
+                if !path.to_str().unwrap().ends_with("auxiliary") {
+                    // add subdirs recursively
+                    files.extend(std::fs::read_dir(path).unwrap());
+                }
+                continue;
+            }
             if !file.metadata().unwrap().is_file() || !path.to_str().unwrap().ends_with(".rs") {
                 continue;
             }
