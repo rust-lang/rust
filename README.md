@@ -138,12 +138,13 @@ the conversation has settled, the RFC will enter its *final comment period*
 (FCP). This is a final opportunity for the community to comment on the pull
 request and is a reminder for all members of the sub-team to be aware of the
 RFC.
-* The FCP lasts one week. It may be extended if consensus between sub-team
-members cannot be reached. At the end of the FCP,  the [sub-team] will either
-accept the RFC by merging the pull request, assigning the RFC a number
-(corresponding to the pull request number), at which point the RFC is 'active',
-or reject it by closing the pull request. How exactly the sub-team decide on an
-RFC is up to the sub-team.
+* The FCP lasts ten calendar days, so that it is open for at least 5 business
+days. It may be extended if consensus between sub-team members cannot be
+reached. At the end of the FCP,  the [sub-team] will either accept the RFC by
+merging the pull request, assigning the RFC a number (corresponding to the pull
+request number), at which point the RFC is 'active', or reject it by closing
+the pull request. How exactly the sub-team decide on an RFC is up to the
+sub-team.
 
 
 ## The role of the shepherd
