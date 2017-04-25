@@ -13,8 +13,8 @@
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-      html_root_url = "https://doc.rust-lang.org/nightly/")]
+       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
 #![feature(rustc_diagnostic_macros)]
@@ -30,7 +30,6 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::DeepVisitor;
-use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::lint;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
@@ -415,52 +414,32 @@ impl<'b, 'a, 'tcx> TypeVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// The privacy visitor, where privacy checks take place (violations reported)
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+/// Name privacy visitor, checks privacy and reports violations.
+/// Most of name privacy checks are performed during the main resolution phase,
+/// or later in type checking when field accesses and associated items are resolved.
+/// This pass performs remaining checks for fields in struct expressions and patterns.
+//////////////////////////////////////////////////////////////////////////////////////
 
-struct PrivacyVisitor<'a, 'tcx: 'a> {
+struct NamePrivacyVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    curitem: DefId,
-    in_foreign: bool,
     tables: &'a ty::TypeckTables<'tcx>,
+    current_item: DefId,
 }
 
-impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
-    fn item_is_accessible(&self, did: DefId) -> bool {
-        match self.tcx.hir.as_local_node_id(did) {
-            Some(node_id) =>
-                ty::Visibility::from_hir(&self.tcx.hir.expect_item(node_id).vis, node_id, self.tcx),
-            None => self.tcx.sess.cstore.visibility(did),
-        }.is_accessible_from(self.curitem, self.tcx)
-    }
-
-    // Checks that a field is in scope.
+impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
+    // Checks that a field is accessible.
     fn check_field(&mut self, span: Span, def: &'tcx ty::AdtDef, field: &'tcx ty::FieldDef) {
-        if !def.is_enum() && !field.vis.is_accessible_from(self.curitem, self.tcx) {
+        if !def.is_enum() && !field.vis.is_accessible_from(self.current_item, self.tcx) {
             struct_span_err!(self.tcx.sess, span, E0451, "field `{}` of {} `{}` is private",
-                      field.name, def.variant_descr(), self.tcx.item_path_str(def.did))
+                             field.name, def.variant_descr(), self.tcx.item_path_str(def.did))
                 .span_label(span, &format!("field `{}` is private", field.name))
                 .emit();
         }
     }
-
-    // Checks that a method is in scope.
-    fn check_method(&mut self, span: Span, method_def_id: DefId) {
-        match self.tcx.associated_item(method_def_id).container {
-            // Trait methods are always all public. The only controlling factor
-            // is whether the trait itself is accessible or not.
-            ty::TraitContainer(trait_def_id) if !self.item_is_accessible(trait_def_id) => {
-                let msg = format!("source trait `{}` is private",
-                                  self.tcx.item_path_str(trait_def_id));
-                self.tcx.sess.span_err(span, &msg);
-            }
-            _ => {}
-        }
-    }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for PrivacyVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
@@ -468,44 +447,36 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivacyVisitor<'a, 'tcx> {
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
-        let old_tables = self.tables;
-        self.tables = self.tcx.body_tables(body);
+        let orig_tables = replace(&mut self.tables, self.tcx.body_tables(body));
         let body = self.tcx.hir.body(body);
         self.visit_body(body);
-        self.tables = old_tables;
+        self.tables = orig_tables;
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        let orig_curitem = replace(&mut self.curitem, self.tcx.hir.local_def_id(item.id));
+        let orig_current_item = replace(&mut self.current_item, self.tcx.hir.local_def_id(item.id));
         intravisit::walk_item(self, item);
-        self.curitem = orig_curitem;
+        self.current_item = orig_current_item;
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
-            hir::ExprMethodCall(..) => {
-                let method_call = ty::MethodCall::expr(expr.id);
-                let method = self.tables.method_map[&method_call];
-                self.check_method(expr.span, method.def_id);
-            }
-            hir::ExprStruct(ref qpath, ref expr_fields, _) => {
+            hir::ExprStruct(ref qpath, ref fields, ref base) => {
                 let def = self.tables.qpath_def(qpath, expr.id);
                 let adt = self.tables.expr_ty(expr).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(def);
-                // RFC 736: ensure all unmentioned fields are visible.
-                // Rather than computing the set of unmentioned fields
-                // (i.e. `all_fields - fields`), just check them all,
-                // unless the ADT is a union, then unmentioned fields
-                // are not checked.
-                if adt.is_union() {
-                    for expr_field in expr_fields {
-                        self.check_field(expr.span, adt, variant.field_named(expr_field.name.node));
+                if let Some(ref base) = *base {
+                    // If the expression uses FRU we need to make sure all the unmentioned fields
+                    // are checked for privacy (RFC 736). Rather than computing the set of
+                    // unmentioned fields, just check them all.
+                    for variant_field in &variant.fields {
+                        let field = fields.iter().find(|f| f.name.node == variant_field.name);
+                        let span = if let Some(f) = field { f.span } else { base.span };
+                        self.check_field(span, adt, variant_field);
                     }
                 } else {
-                    for field in &variant.fields {
-                        let expr_field = expr_fields.iter().find(|f| f.name.node == field.name);
-                        let span = if let Some(f) = expr_field { f.span } else { expr.span };
-                        self.check_field(span, adt, field);
+                    for field in fields {
+                        self.check_field(field.span, adt, variant.field_named(field.name.node));
                     }
                 }
             }
@@ -515,47 +486,20 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivacyVisitor<'a, 'tcx> {
         intravisit::walk_expr(self, expr);
     }
 
-    fn visit_pat(&mut self, pattern: &'tcx hir::Pat) {
-        // Foreign functions do not have their patterns mapped in the def_map,
-        // and there's nothing really relevant there anyway, so don't bother
-        // checking privacy. If you can name the type then you can pass it to an
-        // external C function anyway.
-        if self.in_foreign { return }
-
-        match pattern.node {
+    fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
+        match pat.node {
             PatKind::Struct(ref qpath, ref fields, _) => {
-                let def = self.tables.qpath_def(qpath, pattern.id);
-                let adt = self.tables.pat_ty(pattern).ty_adt_def().unwrap();
+                let def = self.tables.qpath_def(qpath, pat.id);
+                let adt = self.tables.pat_ty(pat).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(def);
                 for field in fields {
                     self.check_field(field.span, adt, variant.field_named(field.node.name));
                 }
             }
-            PatKind::TupleStruct(_, ref fields, ddpos) => {
-                match self.tables.pat_ty(pattern).sty {
-                    // enum fields have no privacy at this time
-                    ty::TyAdt(def, _) if !def.is_enum() => {
-                        let expected_len = def.struct_variant().fields.len();
-                        for (i, field) in fields.iter().enumerate_and_adjust(expected_len, ddpos) {
-                            if let PatKind::Wild = field.node {
-                                continue
-                            }
-                            self.check_field(field.span, def, &def.struct_variant().fields[i]);
-                        }
-                    }
-                    _ => {}
-                }
-            }
             _ => {}
         }
 
-        intravisit::walk_pat(self, pattern);
-    }
-
-    fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem) {
-        self.in_foreign = true;
-        intravisit::walk_foreign_item(self, fi);
-        self.in_foreign = false;
+        intravisit::walk_pat(self, pat);
     }
 }
 
@@ -1233,16 +1177,13 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let krate = tcx.hir.krate();
 
-    // Use the parent map to check the privacy of everything
-    let mut visitor = PrivacyVisitor {
-        curitem: DefId::local(CRATE_DEF_INDEX),
-        in_foreign: false,
+    // Check privacy of names not checked in previous compilation stages.
+    let mut visitor = NamePrivacyVisitor {
         tcx: tcx,
         tables: &ty::TypeckTables::empty(),
+        current_item: DefId::local(CRATE_DEF_INDEX),
     };
     intravisit::walk_crate(&mut visitor, krate);
-
-    tcx.sess.abort_if_errors();
 
     // Build up a set of all exported items in the AST. This is a set of all
     // items which are reachable from external crates based on visibility.

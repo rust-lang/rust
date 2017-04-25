@@ -369,6 +369,24 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // CANDIDATE ASSEMBLY
 
+    fn push_inherent_candidate(&mut self, xform_self_ty: Ty<'tcx>, item: ty::AssociatedItem,
+                               kind: CandidateKind<'tcx>, import_id: Option<ast::NodeId>) {
+        if self.tcx.vis_is_accessible_from(item.vis, self.body_id) {
+            self.inherent_candidates.push(Candidate { xform_self_ty, item, kind, import_id });
+        } else if self.private_candidate.is_none() {
+            self.private_candidate = Some(item.def());
+        }
+    }
+
+    fn push_extension_candidate(&mut self, xform_self_ty: Ty<'tcx>, item: ty::AssociatedItem,
+                               kind: CandidateKind<'tcx>, import_id: Option<ast::NodeId>) {
+        if self.tcx.vis_is_accessible_from(item.vis, self.body_id) {
+            self.extension_candidates.push(Candidate { xform_self_ty, item, kind, import_id });
+        } else if self.private_candidate.is_none() {
+            self.private_candidate = Some(item.def());
+        }
+    }
+
     fn assemble_inherent_candidates(&mut self) {
         let steps = self.steps.clone();
         for step in steps.iter() {
@@ -499,11 +517,6 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 continue
             }
 
-            if !self.tcx.vis_is_accessible_from(item.vis, self.body_id) {
-                self.private_candidate = Some(item.def());
-                continue
-            }
-
             let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
             let impl_ty = impl_ty.subst(self.tcx, impl_substs);
 
@@ -519,12 +532,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             debug!("assemble_inherent_impl_probe: xform_self_ty = {:?}",
                    xform_self_ty);
 
-            self.inherent_candidates.push(Candidate {
-                xform_self_ty: xform_self_ty,
-                item: item,
-                kind: InherentImplCandidate(impl_substs, obligations),
-                import_id: None,
-            });
+            self.push_inherent_candidate(xform_self_ty, item,
+                                         InherentImplCandidate(impl_substs, obligations), None);
         }
     }
 
@@ -548,12 +557,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             let xform_self_ty =
                 this.xform_self_ty(&item, new_trait_ref.self_ty(), new_trait_ref.substs);
 
-            this.inherent_candidates.push(Candidate {
-                xform_self_ty: xform_self_ty,
-                item: item,
-                kind: ObjectCandidate,
-                import_id: None,
-            });
+            this.push_inherent_candidate(xform_self_ty, item, ObjectCandidate, None);
         });
     }
 
@@ -599,12 +603,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             // `WhereClausePick`.
             assert!(!trait_ref.substs.needs_infer());
 
-            this.inherent_candidates.push(Candidate {
-                xform_self_ty: xform_self_ty,
-                item: item,
-                kind: WhereClauseCandidate(poly_trait_ref),
-                import_id: None,
-            });
+            this.push_inherent_candidate(xform_self_ty, item,
+                                         WhereClauseCandidate(poly_trait_ref), None);
         });
     }
 
@@ -743,12 +743,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
             debug!("xform_self_ty={:?}", xform_self_ty);
 
-            self.extension_candidates.push(Candidate {
-                xform_self_ty: xform_self_ty,
-                item: item.clone(),
-                kind: ExtensionImplCandidate(impl_def_id, impl_substs, obligations),
-                import_id: import_id,
-            });
+            self.push_extension_candidate(xform_self_ty, item,
+                        ExtensionImplCandidate(impl_def_id, impl_substs, obligations), import_id);
         });
     }
 
@@ -833,12 +829,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             });
 
             let xform_self_ty = self.xform_self_ty(&item, step.self_ty, substs);
-            self.inherent_candidates.push(Candidate {
-                xform_self_ty: xform_self_ty,
-                item: item.clone(),
-                kind: TraitCandidate,
-                import_id: import_id,
-            });
+            self.push_inherent_candidate(xform_self_ty, item, TraitCandidate, import_id);
         }
 
         Ok(())
@@ -854,7 +845,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                trait_def_id,
                item);
 
-        for step in self.steps.iter() {
+        for step in Rc::clone(&self.steps).iter() {
             debug!("assemble_projection_candidates: step={:?}", step);
 
             let (def_id, substs) = match step.self_ty.sty {
@@ -889,12 +880,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                            bound,
                            xform_self_ty);
 
-                    self.extension_candidates.push(Candidate {
-                        xform_self_ty: xform_self_ty,
-                        item: item.clone(),
-                        kind: TraitCandidate,
-                        import_id: import_id,
-                    });
+                    self.push_extension_candidate(xform_self_ty, item, TraitCandidate, import_id);
                 }
             }
         }
@@ -918,12 +904,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                    bound,
                    xform_self_ty);
 
-            self.extension_candidates.push(Candidate {
-                xform_self_ty: xform_self_ty,
-                item: item.clone(),
-                kind: WhereClauseCandidate(poly_bound),
-                import_id: import_id,
-            });
+            self.push_extension_candidate(xform_self_ty, item,
+                                          WhereClauseCandidate(poly_bound), import_id);
         }
     }
 
