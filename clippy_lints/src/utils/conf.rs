@@ -177,6 +177,7 @@ define_Conf! {
         "TrueType",
         "iOS", "macOS",
         "TeX", "LaTeX", "BibTex", "BibLaTex",
+        "MinGW",
     ] => Vec<String>),
     /// Lint: TOO_MANY_ARGUMENTS. The maximum number of argument a function or method can have
     ("too-many-arguments-threshold", too_many_arguments_threshold, 7 => u64),
