@@ -28,7 +28,7 @@ const ALIGN: usize = 40;
 /// representation of the mir into:
 ///
 /// ```text
-/// rustc.node<node_id>.<pass_name>.<disambiguator>
+/// rustc.node<node_id>.<pass_num>.<pass_name>.<disambiguator>
 /// ```
 ///
 /// Output from this function is controlled by passing `-Z dump-mir=<filter>`,
@@ -39,15 +39,16 @@ const ALIGN: usize = 40;
 ///   that can appear in the pass-name or the `item_path_str` for the given
 ///   node-id. If any one of the substrings match, the data is dumped out.
 pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          pass_num: usize,
                           pass_name: &str,
                           disambiguator: &Display,
-                          src: MirSource,
+                          source: MirSource,
                           mir: &Mir<'tcx>) {
     let filters = match tcx.sess.opts.debugging_opts.dump_mir {
         None => return,
         Some(ref filters) => filters,
     };
-    let node_id = src.item_id();
+    let node_id = source.item_id();
     let node_path = tcx.item_path_str(tcx.hir.local_def_id(node_id));
     let is_matched =
         filters.split("&")
@@ -60,9 +61,30 @@ pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return;
     }
 
-    let promotion_id = match src {
+    dump_matched_mir_node(tcx, pass_num, pass_name, &node_path, disambiguator, source, mir);
+    for (index, promoted_mir) in mir.promoted.iter_enumerated() {
+        let promoted_source = MirSource::Promoted(source.item_id(), index);
+        dump_matched_mir_node(tcx, pass_num, pass_name, &node_path, disambiguator,
+                              promoted_source, promoted_mir);
+    }
+}
+
+fn dump_matched_mir_node<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   pass_num: usize,
+                                   pass_name: &str,
+                                   node_path: &str,
+                                   disambiguator: &Display,
+                                   source: MirSource,
+                                   mir: &Mir<'tcx>) {
+    let promotion_id = match source {
         MirSource::Promoted(_, id) => format!("-{:?}", id),
         _ => String::new()
+    };
+
+    let pass_num = if tcx.sess.opts.debugging_opts.dump_mir_exclude_pass_number {
+        format!("")
+    } else {
+        format!(".{:03}", pass_num)
     };
 
     let mut file_path = PathBuf::new();
@@ -70,16 +92,16 @@ pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let p = Path::new(file_dir);
         file_path.push(p);
     };
-    let file_name = format!("rustc.node{}{}.{}.{}.mir",
-                            node_id, promotion_id, pass_name, disambiguator);
+    let file_name = format!("rustc.node{}{}{}.{}.{}.mir",
+                            source.item_id(), promotion_id, pass_num, pass_name, disambiguator);
     file_path.push(&file_name);
     let _ = fs::File::create(&file_path).and_then(|mut file| {
         writeln!(file, "// MIR for `{}`", node_path)?;
-        writeln!(file, "// node_id = {}", node_id)?;
+        writeln!(file, "// source = {:?}", source)?;
         writeln!(file, "// pass_name = {}", pass_name)?;
         writeln!(file, "// disambiguator = {}", disambiguator)?;
         writeln!(file, "")?;
-        write_mir_fn(tcx, src, mir, &mut file)?;
+        write_mir_fn(tcx, source, mir, &mut file)?;
         Ok(())
     });
 }

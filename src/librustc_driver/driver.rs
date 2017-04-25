@@ -979,8 +979,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("initial"));
             passes.push_pass(box mir::transform::type_check::TypeckMir);
             passes.push_pass(box mir::transform::qualify_consts::QualifyAndPromoteConstants);
-            passes.push_pass(
-                box mir::transform::simplify_branches::SimplifyBranches::new("initial"));
+            passes.push_pass(box mir::transform::simplify_branches::SimplifyBranches::new("initial"));
             passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
             // And run everything.
             passes.run_passes(tcx);

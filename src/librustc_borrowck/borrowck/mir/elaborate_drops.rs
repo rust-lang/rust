@@ -16,7 +16,7 @@ use super::{drop_flag_effects_for_location, on_lookup_result_bits};
 use super::MoveDataParamEnv;
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
-use rustc::mir::transform::{Pass, MirPass, MirSource};
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc::middle::const_val::ConstVal;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -32,9 +32,11 @@ use std::u32;
 
 pub struct ElaborateDrops;
 
-impl<'tcx> MirPass<'tcx> for ElaborateDrops {
-    fn run_pass<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    src: MirSource, mir: &mut Mir<'tcx>)
+impl MirPass for ElaborateDrops {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          src: MirSource,
+                          mir: &mut Mir<'tcx>)
     {
         debug!("elaborate_drops({:?} @ {:?})", src, mir.span);
         match src {
@@ -73,8 +75,6 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
         elaborate_patch.apply(mir);
     }
 }
-
-impl Pass for ElaborateDrops {}
 
 /// Return the set of basic blocks whose unwind edges are known
 /// to not be reachable, because they are `drop` terminators

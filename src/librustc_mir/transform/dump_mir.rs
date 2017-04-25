@@ -10,69 +10,70 @@
 
 //! This pass just dumps MIR at a specified point.
 
+use std::borrow::Cow;
 use std::fmt;
 use std::fs::File;
 use std::io;
 
+use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::TyCtxt;
-use rustc::mir::*;
-use rustc::mir::transform::{Pass, MirPass, MirPassHook, MirSource};
+use rustc::mir::transform::{Pass, PassHook, MirSource};
 use util as mir_util;
 
-pub struct Marker<'a>(pub &'a str);
+pub struct Marker(pub &'static str);
 
-impl<'b, 'tcx> MirPass<'tcx> for Marker<'b> {
-    fn run_pass<'a>(&self, _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    _src: MirSource, _mir: &mut Mir<'tcx>)
-    {}
+impl Pass for Marker {
+    fn name<'a>(&'a self) -> Cow<'a, str> {
+        Cow::Borrowed(self.0)
+    }
+
+    fn run_pass<'a, 'tcx>(&self, _tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+        // no-op
+    }
 }
 
-impl<'b> Pass for Marker<'b> {
-    fn name(&self) -> ::std::borrow::Cow<'static, str> { String::from(self.0).into() }
-}
-
-pub struct Disambiguator<'a> {
-    pass: &'a Pass,
+pub struct Disambiguator {
     is_after: bool
 }
 
-impl<'a> fmt::Display for Disambiguator<'a> {
+impl fmt::Display for Disambiguator {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let title = if self.is_after { "after" } else { "before" };
-        if let Some(fmt) = self.pass.disambiguator() {
-            write!(formatter, "{}-{}", fmt, title)
-        } else {
-            write!(formatter, "{}", title)
-        }
+        write!(formatter, "{}", title)
     }
 }
 
 pub struct DumpMir;
 
-impl<'tcx> MirPassHook<'tcx> for DumpMir {
-    fn on_mir_pass<'a>(
+impl PassHook for DumpMir {
+    fn on_mir_pass<'a, 'tcx>(
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        src: MirSource,
-        mir: &Mir<'tcx>,
         pass: &Pass,
+        pass_num: usize,
         is_after: bool)
     {
-        mir_util::dump_mir(
-            tcx,
-            &*pass.name(),
-            &Disambiguator {
-                pass: pass,
-                is_after: is_after
-            },
-            src,
-            mir
-        );
+        // No dump filters enabled.
+        if tcx.sess.opts.debugging_opts.dump_mir.is_none() {
+            return;
+        }
+
+        for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
+            let id = tcx.hir.as_local_node_id(def_id).unwrap();
+            let source = MirSource::from_node(tcx, id);
+            let mir = tcx.item_mir(def_id);
+            mir_util::dump_mir(
+                tcx,
+                pass_num,
+                &*pass.name(),
+                &Disambiguator { is_after },
+                source,
+                &mir
+            );
+        }
     }
 }
-
-impl<'b> Pass for DumpMir {}
 
 pub fn emit_mir<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
