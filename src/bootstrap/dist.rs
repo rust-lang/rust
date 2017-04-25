@@ -480,7 +480,35 @@ pub fn rust_src(build: &Build) {
     let dst_src = dst.join("rust");
     t!(fs::create_dir_all(&dst_src));
 
-    cp_r(&plain_dst_src, &dst_src);
+    // This is the reduced set of paths which will become the rust-src component
+    // (essentially libstd and all of its path dependencies)
+    let std_src_dirs = [
+        "src/build_helper",
+        "src/liballoc",
+        "src/liballoc_jemalloc",
+        "src/liballoc_system",
+        "src/libcollections",
+        "src/libcompiler_builtins",
+        "src/libcore",
+        "src/liblibc",
+        "src/libpanic_abort",
+        "src/libpanic_unwind",
+        "src/librand",
+        "src/librustc_asan",
+        "src/librustc_lsan",
+        "src/librustc_msan",
+        "src/librustc_tsan",
+        "src/libstd",
+        "src/libstd_unicode",
+        "src/libunwind",
+        "src/rustc/libc_shim",
+    ];
+
+    for item in &std_src_dirs {
+        let dst = &dst_src.join(item);
+        t!(fs::create_dir_all(dst));
+        cp_r(&plain_dst_src.join(item), dst);
+    }
 
     // Create source tarball in rust-installer format
     let mut cmd = Command::new(SH_CMD);
