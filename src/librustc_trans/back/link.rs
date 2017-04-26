@@ -1122,6 +1122,19 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                               cnum: CrateNum) {
         let src = sess.cstore.used_crate_source(cnum);
         let cratepath = &src.rlib.unwrap().0;
+
+        if sess.target.target.options.is_like_osx {
+            // On Apple platforms, the sanitizer is always built as a dylib, and
+            // LLVM will link to `@rpath/*.dylib`, so we need to specify an
+            // rpath to the library as well (the rpath should be absolute, see
+            // PR #41352 for details).
+            //
+            // FIXME: Remove this logic into librustc_*san once Cargo supports it
+            let rpath = cratepath.parent().unwrap();
+            let rpath = rpath.to_str().expect("non-utf8 component in path");
+            cmd.args(&["-Wl,-rpath".into(), "-Xlinker".into(), rpath.into()]);
+        }
+
         let dst = tmpdir.join(cratepath.file_name().unwrap());
         let cfg = archive_config(sess, &dst, Some(cratepath));
         let mut archive = ArchiveBuilder::new(cfg);

@@ -73,6 +73,7 @@ pub struct TcpStream(net_imp::TcpStream);
 /// # Examples
 ///
 /// ```no_run
+/// # use std::io;
 /// use std::net::{TcpListener, TcpStream};
 ///
 /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
@@ -81,15 +82,13 @@ pub struct TcpStream(net_imp::TcpStream);
 ///     // ...
 /// }
 ///
+/// # fn process() -> io::Result<()> {
 /// // accept connections and process them serially
 /// for stream in listener.incoming() {
-///     match stream {
-///         Ok(stream) => {
-///             handle_client(stream);
-///         }
-///         Err(e) => { /* connection failed */ }
-///     }
+///     handle_client(stream?);
 /// }
+/// # Ok(())
+/// # }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TcpListener(net_imp::TcpListener);
