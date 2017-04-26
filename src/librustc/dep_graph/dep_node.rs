@@ -80,6 +80,7 @@ pub enum DepNode<D: Clone + Debug> {
     TransCrateItem(D),
     TransInlinedItem(D),
     TransWriteMetadata,
+    CrateVariances,
 
     // Nodes representing bits of computed IR in the tcx. Each shared
     // table in the tcx (or elsewhere) maps to one of these
@@ -88,6 +89,7 @@ pub enum DepNode<D: Clone + Debug> {
     // predicates for an item wind up in `ItemSignature`).
     AssociatedItems(D),
     ItemSignature(D),
+    ItemVariances(D),
     IsForeignItem(D),
     TypeParamPredicates((D, D)),
     SizedConstraint(D),
@@ -195,6 +197,7 @@ impl<D: Clone + Debug> DepNode<D> {
             TypeckBodiesKrate => Some(TypeckBodiesKrate),
             RegionResolveCrate => Some(RegionResolveCrate),
             Coherence => Some(Coherence),
+            CrateVariances => Some(CrateVariances),
             Resolve => Some(Resolve),
             Variance => Some(Variance),
             PrivacyAccessLevels(k) => Some(PrivacyAccessLevels(k)),
@@ -224,6 +227,7 @@ impl<D: Clone + Debug> DepNode<D> {
             TransInlinedItem(ref d) => op(d).map(TransInlinedItem),
             AssociatedItems(ref d) => op(d).map(AssociatedItems),
             ItemSignature(ref d) => op(d).map(ItemSignature),
+            ItemVariances(ref d) => op(d).map(ItemVariances),
             IsForeignItem(ref d) => op(d).map(IsForeignItem),
             TypeParamPredicates((ref item, ref param)) => {
                 Some(TypeParamPredicates((try_opt!(op(item)), try_opt!(op(param)))))

@@ -81,7 +81,7 @@ provide! { <'tcx> tcx, def_id, cdata
         let _ = cdata;
         tcx.calculate_dtor(def_id, &mut |_,_| Ok(()))
     }
-    variances => { Rc::new(cdata.get_item_variances(def_id.index)) }
+    item_variances => { Rc::new(cdata.get_item_variances(def_id.index)) }
     associated_item_def_ids => {
         let mut result = vec![];
         cdata.each_child_of_item(def_id.index, |child| result.push(child.def.def_id()));
