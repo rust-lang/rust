@@ -727,7 +727,7 @@ struct Inner {
 ///     thread::Builder::new()
 ///     .name(thread_name) // Now you can identify which thread panicked
 ///                        // thanks to the handle's name
-///     .spawn(|| {
+///     .spawn(move || {
 ///         if i == 3 {
 ///             panic!("I'm scared!!!");
 ///         }
