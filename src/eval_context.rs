@@ -1285,9 +1285,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyRef(_, ref tam) |
             ty::TyRawPtr(ref tam) if self.type_is_sized(tam.ty) => PrimValKind::Ptr,
 
-            ty::TyAdt(ref def, _) if def.is_box() => PrimValKind::Ptr,
+            ty::TyAdt(def, _) if def.is_box() => PrimValKind::Ptr,
 
-            ty::TyAdt(ref def, substs) => {
+            ty::TyAdt(def, substs) => {
                 use rustc::ty::layout::Layout::*;
                 match *self.type_layout(ty)? {
                     CEnum { discr, signed, .. } => {
@@ -1954,12 +1954,8 @@ pub fn needs_drop_glue<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, t: Ty<'tcx>) -> bo
             if !typ.needs_drop(tcx, &env) && type_is_sized(tcx, typ) {
                 tcx.infer_ctxt((), traits::Reveal::All).enter(|infcx| {
                     let layout = t.layout(&infcx).unwrap();
-                    if layout.size(&tcx.data_layout).bytes() == 0 {
-                        // `Box<ZeroSizeType>` does not allocate.
-                        false
-                    } else {
-                        true
-                    }
+                    // `Box<ZeroSizeType>` does not allocate.
+                    layout.size(&tcx.data_layout).bytes() != 0
                 })
             } else {
                 true

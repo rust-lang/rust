@@ -322,7 +322,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let pointee_type = match base_ty.sty {
                     ty::TyRawPtr(ref tam) |
                     ty::TyRef(_, ref tam) => tam.ty,
-                    ty::TyAdt(ref def, _) if def.is_box() => base_ty.boxed_ty(),
+                    ty::TyAdt(def, _) if def.is_box() => base_ty.boxed_ty(),
                     _ => bug!("can only deref pointer types"),
                 };
 

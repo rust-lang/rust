@@ -202,7 +202,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(Pointer::zst_ptr());
         }
-        assert!(align != 0);
+        assert_ne!(align, 0);
 
         if self.memory_size - self.memory_usage < size {
             return Err(EvalError::OutOfMemory {
