@@ -151,6 +151,11 @@ impl<'a, 'tcx> Lift<'tcx> for traits::SelectionError<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         match *self {
             super::Unimplemented => Some(super::Unimplemented),
+            super::ParameterCountMismatch(expected_found, ref ty, def_id) => {
+                tcx.lift(ty).map(|ty| {
+                    super::ParameterCountMismatch(expected_found, ty, def_id)
+                })
+            }
             super::OutputTypeParameterMismatch(a, b, ref err) => {
                 tcx.lift(&(a, b)).and_then(|(a, b)| {
                     tcx.lift(err).map(|err| {

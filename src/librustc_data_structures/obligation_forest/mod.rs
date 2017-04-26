@@ -261,7 +261,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// Convert all remaining obligations to the given error.
     ///
     /// This cannot be done during a snapshot.
-    pub fn to_errors<E: Clone>(&mut self, error: E) -> Vec<Error<O, E>> {
+    pub fn to_errors<E: Clone + Debug>(&mut self, error: E) -> Vec<Error<O, E>> {
         assert!(!self.in_snapshot());
         let mut errors = vec![];
         for index in 0..self.nodes.len() {

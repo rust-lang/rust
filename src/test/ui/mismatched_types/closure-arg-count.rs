@@ -8,8 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+fn foo() {}
+fn bar(x: &usize) {}
+fn qux(x: &usize, y: &usize) -> std::cmp::Ordering { panic!() }
+
 fn main() {
-    [1, 2, 3].sort_by(|| panic!());
-    [1, 2, 3].sort_by(|tuple| panic!());
-    [1, 2, 3].sort_by(|(tuple, tuple2)| panic!());
+    let mut vec = [1, 2, 3];
+    vec.sort_by(|| panic!());
+    vec.sort_by(|tuple| panic!());
+    vec.sort_by(|(tuple, tuple2)| panic!());
+    vec.sort_by(foo);
+    vec.sort_by(bar);
+    vec.sort_by(qux);
 }
