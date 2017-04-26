@@ -306,7 +306,7 @@ pub fn openssl(build: &Build, target: &str) {
     println!("Configuring openssl for {}", target);
     build.run_quiet(&mut configure);
     println!("Building openssl for {}", target);
-    build.run_quiet(Command::new("make").current_dir(&obj));
+    build.run_quiet(Command::new("make").arg("-j1").current_dir(&obj));
     println!("Installing openssl for {}", target);
     build.run_quiet(Command::new("make").arg("install").current_dir(&obj));
 
