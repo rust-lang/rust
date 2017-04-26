@@ -39,5 +39,7 @@ fn main() {
         println!("cargo:rustc-link-lib=static-nobundle=pthread");
     } else if target.contains("fuchsia") {
         println!("cargo:rustc-link-lib=unwind");
+    } else if target.contains("haiku") {
+        println!("cargo:rustc-link-lib=gcc_s");
     }
 }
