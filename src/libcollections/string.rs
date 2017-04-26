@@ -56,10 +56,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use alloc::str as alloc_str;
+
 use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
-use core::mem;
 use core::ops::{self, Add, AddAssign, Index, IndexMut};
 use core::ptr;
 use core::str as core_str;
@@ -1463,7 +1464,7 @@ impl String {
     #[stable(feature = "box_str", since = "1.4.0")]
     pub fn into_boxed_str(self) -> Box<str> {
         let slice = self.vec.into_boxed_slice();
-        unsafe { mem::transmute::<Box<[u8]>, Box<str>>(slice) }
+        unsafe { alloc_str::from_boxed_utf8_unchecked(slice) }
     }
 }
 
