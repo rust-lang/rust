@@ -21,9 +21,8 @@ use declare;
 use llvm::{self, ValueRef};
 use monomorphize::{self, Instance};
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, TypeFoldable};
+use rustc::ty::TypeFoldable;
 use rustc::ty::subst::Substs;
-use syntax_pos::DUMMY_SP;
 use trans_item::TransItem;
 use type_of;
 
@@ -105,7 +104,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // *in Rust code* may unwind. Foreign items like `extern "C" {
         // fn foo(); }` are assumed not to unwind **unless** they have
         // a `#[unwind]` attribute.
-        if !ty::queries::is_foreign_item::get(tcx, DUMMY_SP, instance.def_id()) {
+        if !tcx.is_foreign_item(instance.def_id()) {
             attributes::unwind(llfn, true);
             unsafe {
                 llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);

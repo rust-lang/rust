@@ -497,7 +497,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     fn assemble_inherent_impl_candidates_for_type(&mut self, def_id: DefId) {
-        let impl_def_ids = ty::queries::inherent_impls::get(self.tcx, self.span, def_id);
+        let impl_def_ids = self.tcx.at(self.span).inherent_impls(def_id);
         for &impl_def_id in impl_def_ids.iter() {
             self.assemble_inherent_impl_probe(impl_def_id);
         }
@@ -661,7 +661,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                expected: ty::Ty<'tcx>) -> bool {
         match method.def() {
             Def::Method(def_id) => {
-                let fty = self.tcx.item_type(def_id).fn_sig();
+                let fty = self.tcx.type_of(def_id).fn_sig();
                 self.probe(|_| {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);
                     let output = fty.output().subst(self.tcx, substs);
@@ -706,7 +706,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                                      import_id: Option<ast::NodeId>,
                                                      trait_def_id: DefId,
                                                      item: ty::AssociatedItem) {
-        let trait_def = self.tcx.lookup_trait_def(trait_def_id);
+        let trait_def = self.tcx.trait_def(trait_def_id);
 
         // FIXME(arielb1): can we use for_each_relevant_impl here?
         trait_def.for_each_impl(self.tcx, |impl_def_id| {
@@ -756,7 +756,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             }
         };
 
-        let impl_type = self.tcx.item_type(impl_def_id);
+        let impl_type = self.tcx.type_of(impl_def_id);
         let impl_simplified_type =
             match ty::fast_reject::simplify_type(self.tcx, impl_type, false) {
                 Some(simplified_type) => simplified_type,
@@ -858,7 +858,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                    def_id,
                    substs);
 
-            let trait_predicates = self.tcx.item_predicates(def_id);
+            let trait_predicates = self.tcx.predicates_of(def_id);
             let bounds = trait_predicates.instantiate(self.tcx, substs);
             let predicates = bounds.predicates;
             debug!("assemble_projection_candidates: predicates={:?}",
@@ -1167,7 +1167,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             let cause = traits::ObligationCause::misc(self.span, self.body_id);
 
             // Check whether the impl imposes obligations we have to worry about.
-            let impl_bounds = self.tcx.item_predicates(impl_def_id);
+            let impl_bounds = self.tcx.predicates_of(impl_def_id);
             let impl_bounds = impl_bounds.instantiate(self.tcx, substs);
             let traits::Normalized { value: impl_bounds, obligations: norm_obligations } =
                 traits::normalize(selcx, cause.clone(), &impl_bounds);
@@ -1276,7 +1276,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                             impl_ty: Ty<'tcx>,
                             substs: &Substs<'tcx>)
                             -> Ty<'tcx> {
-        let self_ty = self.tcx.item_type(method).fn_sig().input(0);
+        let self_ty = self.tcx.type_of(method).fn_sig().input(0);
         debug!("xform_self_ty(impl_ty={:?}, self_ty={:?}, substs={:?})",
                impl_ty,
                self_ty,
@@ -1289,7 +1289,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         // are given do not include type/lifetime parameters for the
         // method yet. So create fresh variables here for those too,
         // if there are any.
-        let generics = self.tcx.item_generics(method);
+        let generics = self.tcx.generics_of(method);
         assert_eq!(substs.types().count(), generics.parent_types as usize);
         assert_eq!(substs.regions().count(), generics.parent_regions as usize);
 
@@ -1323,7 +1323,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
     /// Get the type of an impl and generate substitutions with placeholders.
     fn impl_ty_and_substs(&self, impl_def_id: DefId) -> (Ty<'tcx>, &'tcx Substs<'tcx>) {
-        let impl_ty = self.tcx.item_type(impl_def_id);
+        let impl_ty = self.tcx.type_of(impl_def_id);
 
         let substs = Substs::for_item(self.tcx,
                                       impl_def_id,

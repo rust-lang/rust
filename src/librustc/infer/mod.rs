@@ -450,7 +450,7 @@ impl<'a, 'tcx> InferEnv<'a, 'tcx> for hir::BodyId {
                     Option<ty::TypeckTables<'tcx>>,
                     Option<ty::ParameterEnvironment<'tcx>>) {
         let item_id = tcx.hir.body_owner(self);
-        (Some(tcx.item_tables(tcx.hir.local_def_id(item_id))),
+        (Some(tcx.typeck_tables_of(tcx.hir.local_def_id(item_id))),
          None,
          Some(ty::ParameterEnvironment::for_item(tcx, item_id)))
     }
@@ -1237,7 +1237,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             substs: &[Kind<'tcx>])
                             -> Ty<'tcx> {
         let default = if def.has_default {
-            let default = self.tcx.item_type(def.def_id);
+            let default = self.tcx.type_of(def.def_id);
             Some(type_variable::Default {
                 ty: default.subst_spanned(self.tcx, substs, Some(span)),
                 origin_span: span,

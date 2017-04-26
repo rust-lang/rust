@@ -232,7 +232,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.tcx;
         let method_item = self.associated_item(trait_def_id, m_name).unwrap();
         let def_id = method_item.def_id;
-        let generics = tcx.item_generics(def_id);
+        let generics = tcx.generics_of(def_id);
         assert_eq!(generics.types.len(), 0);
         assert_eq!(generics.regions.len(), 0);
 
@@ -245,7 +245,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // NB: Instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let original_method_ty = tcx.item_type(def_id);
+        let original_method_ty = tcx.type_of(def_id);
         let fn_sig = original_method_ty.fn_sig();
         let fn_sig = self.replace_late_bound_regions_with_fresh_var(span,
                                                                     infer::FnCall,
@@ -272,7 +272,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         //
         // Note that as the method comes from a trait, it should not have
         // any late-bound regions appearing in its bounds.
-        let bounds = self.tcx.item_predicates(def_id).instantiate(self.tcx, substs);
+        let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, substs);
         let bounds = match self.normalize_associated_types_in_as_infer_ok(span, &bounds) {
             InferOk { value, obligations: o } => {
                 obligations.extend(o);
