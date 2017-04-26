@@ -20,7 +20,6 @@ fn some_func<T: Foo>(foo: T) {
 
 fn f(p: Path) { }
 //~^ ERROR the trait bound `[u8]: std::marker::Sized` is not satisfied in `std::path::Path`
-//~| NOTE within `std::path::Path`, the trait `std::marker::Sized` is not implemented for `[u8]`
 //~| NOTE `[u8]` does not have a constant size known at compile-time
 //~| NOTE required because it appears within the type `std::path::Path`
 //~| NOTE all local variables must have a statically known size

@@ -559,6 +559,23 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             trait_ref.to_predicate(),
                             post_message);
 
+                        let unimplemented_note = self.on_unimplemented_note(trait_ref, obligation);
+                        if let Some(ref s) = unimplemented_note {
+                            // If it has a custom "#[rustc_on_unimplemented]"
+                            // error message, let's display it as the label!
+                            err.span_label(span, s.as_str());
+                            err.help(&format!("{}the trait `{}` is not implemented for `{}`",
+                                              pre_message,
+                                              trait_ref,
+                                              trait_ref.self_ty()));
+                        } else {
+                            err.span_label(span,
+                                           &*format!("{}the trait `{}` is not implemented for `{}`",
+                                                     pre_message,
+                                                     trait_ref,
+                                                     trait_ref.self_ty()));
+                        }
+
                         // Try to report a help message
                         if !trait_ref.has_infer_types() &&
                             self.predicate_can_apply(trait_ref) {
@@ -571,21 +588,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             // which is somewhat confusing.
                             err.help(&format!("consider adding a `where {}` bound",
                                                 trait_ref.to_predicate()));
-                        } else if let Some(s) = self.on_unimplemented_note(trait_ref, obligation) {
-                            // If it has a custom "#[rustc_on_unimplemented]"
-                            // error message, let's display it!
-                            err.note(&s);
-                        } else {
+                        } else if unimplemented_note.is_none() {
                             // Can't show anything else useful, try to find similar impls.
                             let impl_candidates = self.find_similar_impl_candidates(trait_ref);
                             self.report_similar_impl_candidates(impl_candidates, &mut err);
                         }
 
-                        err.span_label(span,
-                                       format!("{}the trait `{}` is not implemented for `{}`",
-                                                pre_message,
-                                                trait_ref,
-                                                trait_ref.self_ty()));
                         err
                     }
 

@@ -210,18 +210,18 @@ error[E0277]: the trait bound `[u8]: std::marker::Sized` is not satisfied
   --> $DIR/cast-rfc0401.rs:63:13
    |
 63 |     let _ = fat_v as *const Foo;
-   |             ^^^^^ the trait `std::marker::Sized` is not implemented for `[u8]`
+   |             ^^^^^ `[u8]` does not have a constant size known at compile-time
    |
-   = note: `[u8]` does not have a constant size known at compile-time
+   = help: the trait `std::marker::Sized` is not implemented for `[u8]`
    = note: required for the cast to the object type `Foo`
 
 error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
   --> $DIR/cast-rfc0401.rs:72:13
    |
 72 |     let _ = a as *const Foo;
-   |             ^ the trait `std::marker::Sized` is not implemented for `str`
+   |             ^ `str` does not have a constant size known at compile-time
    |
-   = note: `str` does not have a constant size known at compile-time
+   = help: the trait `std::marker::Sized` is not implemented for `str`
    = note: required for the cast to the object type `Foo`
 
 error: casting `&{float}` as `f32` is invalid
