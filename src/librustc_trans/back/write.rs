@@ -37,11 +37,14 @@ use std::sync::mpsc::channel;
 use std::thread;
 use libc::{c_uint, c_void};
 
-pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 4] = [
+pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 7] = [
     ("pic", llvm::RelocMode::PIC),
     ("static", llvm::RelocMode::Static),
     ("default", llvm::RelocMode::Default),
     ("dynamic-no-pic", llvm::RelocMode::DynamicNoPic),
+    ("ropi", llvm::RelocMode::ROPI),
+    ("rwpi", llvm::RelocMode::RWPI),
+    ("ropi-rwpi", llvm::RelocMode::ROPI_RWPI),
 ];
 
 pub const CODE_GEN_MODEL_ARGS : [(&'static str, llvm::CodeModel); 5] = [

@@ -288,6 +288,9 @@ pub enum RelocMode {
     Static = 1,
     PIC = 2,
     DynamicNoPic = 3,
+    ROPI = 4,
+    RWPI = 5,
+    ROPI_RWPI = 6,
 }
 
 /// LLVMRustCodeModel

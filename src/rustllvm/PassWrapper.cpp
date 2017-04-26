@@ -290,7 +290,7 @@ extern "C" void LLVMRustPrintTargetFeatures(LLVMTargetMachineRef) {
 
 extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     const char *TripleStr, const char *CPU, const char *Feature,
-    LLVMRustCodeModel RustCM, LLVMRelocMode Reloc,
+    LLVMRustCodeModel RustCM, int Reloc,
     LLVMRustCodeGenOptLevel RustOptLevel, bool UseSoftFloat,
     bool PositionIndependentExecutable, bool FunctionSections,
     bool DataSections) {
@@ -304,15 +304,26 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   auto OptLevel = fromRust(RustOptLevel);
 
   switch (Reloc) {
-  case LLVMRelocStatic:
+  case 1:
     RM = Reloc::Static;
     break;
-  case LLVMRelocPIC:
+  case 2:
     RM = Reloc::PIC_;
     break;
-  case LLVMRelocDynamicNoPic:
+  case 3:
     RM = Reloc::DynamicNoPIC;
     break;
+#if LLVM_VERSION_GE(4, 0)
+  case 4:
+    RM = Reloc::ROPI;
+    break;
+  case 5:
+    RM = Reloc::RWPI;
+    break;
+  case 6:
+    RM = Reloc::ROPI_RWPI;
+    break;
+#endif
   default:
 #if LLVM_VERSION_LE(3, 8)
     RM = Reloc::Default;
