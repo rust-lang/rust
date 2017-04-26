@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// This is a small client program intended to pair with `qemu-test-server` in
+/// This is a small client program intended to pair with `remote-test-server` in
 /// this repository. This client connects to the server over TCP and is used to
 /// push artifacts and run tests on the server instead of locally.
 ///
@@ -16,11 +16,11 @@
 /// well.
 
 use std::env;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufWriter};
 use std::net::TcpStream;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
@@ -37,8 +37,10 @@ fn main() {
 
     match &args.next().unwrap()[..] {
         "spawn-emulator" => {
-            spawn_emulator(Path::new(&args.next().unwrap()),
-                           Path::new(&args.next().unwrap()))
+            spawn_emulator(&args.next().unwrap(),
+                           Path::new(&args.next().unwrap()),
+                           Path::new(&args.next().unwrap()),
+                           args.next().map(|s| s.into()))
         }
         "push" => {
             push(Path::new(&args.next().unwrap()))
@@ -50,11 +52,74 @@ fn main() {
     }
 }
 
-fn spawn_emulator(rootfs: &Path, tmpdir: &Path) {
+fn spawn_emulator(target: &str,
+                  server: &Path,
+                  tmpdir: &Path,
+                  rootfs: Option<PathBuf>) {
+    if target.contains("android") {
+        start_android_emulator(server);
+    } else {
+        let rootfs = rootfs.as_ref().expect("need rootfs on non-android");
+        start_qemu_emulator(rootfs, server, tmpdir);
+    }
+
+    // Wait for the emulator to come online
+    loop {
+        let dur = Duration::from_millis(100);
+        if let Ok(mut client) = TcpStream::connect("127.0.0.1:12345") {
+            t!(client.set_read_timeout(Some(dur)));
+            t!(client.set_write_timeout(Some(dur)));
+            if client.write_all(b"ping").is_ok() {
+                let mut b = [0; 4];
+                if client.read_exact(&mut b).is_ok() {
+                    break
+                }
+            }
+        }
+        thread::sleep(dur);
+    }
+}
+
+fn start_android_emulator(server: &Path) {
+    println!("waiting for device to come online");
+    let status = Command::new("adb")
+                    .arg("wait-for-device")
+                    .status()
+                    .unwrap();
+    assert!(status.success());
+
+    println!("pushing server");
+    let status = Command::new("adb")
+                    .arg("push")
+                    .arg(server)
+                    .arg("/data/tmp/testd")
+                    .status()
+                    .unwrap();
+    assert!(status.success());
+
+    println!("forwarding tcp");
+    let status = Command::new("adb")
+                    .arg("forward")
+                    .arg("tcp:12345")
+                    .arg("tcp:12345")
+                    .status()
+                    .unwrap();
+    assert!(status.success());
+
+    println!("executing server");
+    Command::new("adb")
+                    .arg("shell")
+                    .arg("/data/tmp/testd")
+                    .spawn()
+                    .unwrap();
+}
+
+fn start_qemu_emulator(rootfs: &Path, server: &Path, tmpdir: &Path) {
     // Generate a new rootfs image now that we've updated the test server
     // executable. This is the equivalent of:
     //
     //      find $rootfs -print 0 | cpio --null -o --format=newc > rootfs.img
+    t!(fs::copy(server, rootfs.join("testd")));
     let rootfs_img = tmpdir.join("rootfs.img");
     let mut cmd = Command::new("cpio");
     cmd.arg("--null")
@@ -83,22 +148,6 @@ fn spawn_emulator(rootfs: &Path, tmpdir: &Path) {
        .arg("-redir").arg("tcp:12345::12345");
     t!(cmd.spawn());
 
-    // Wait for the emulator to come online
-    loop {
-        let dur = Duration::from_millis(100);
-        if let Ok(mut client) = TcpStream::connect("127.0.0.1:12345") {
-            t!(client.set_read_timeout(Some(dur)));
-            t!(client.set_write_timeout(Some(dur)));
-            if client.write_all(b"ping").is_ok() {
-                let mut b = [0; 4];
-                if client.read_exact(&mut b).is_ok() {
-                    break
-                }
-            }
-        }
-        thread::sleep(dur);
-    }
-
     fn add_files(w: &mut Write, root: &Path, cur: &Path) {
         for entry in t!(cur.read_dir()) {
             let entry = t!(entry);
@@ -116,11 +165,15 @@ fn push(path: &Path) {
     let client = t!(TcpStream::connect("127.0.0.1:12345"));
     let mut client = BufWriter::new(client);
     t!(client.write_all(b"push"));
-    t!(client.write_all(path.file_name().unwrap().to_str().unwrap().as_bytes()));
-    t!(client.write_all(&[0]));
-    let mut file = t!(File::open(path));
-    t!(io::copy(&mut file, &mut client));
+    send(path, &mut client);
     t!(client.flush());
+
+    // Wait for an acknowledgement that all the data was received. No idea
+    // why this is necessary, seems like it shouldn't be!
+    let mut client = client.into_inner().unwrap();
+    let mut buf = [0; 4];
+    t!(client.read_exact(&mut buf));
+    assert_eq!(&buf, b"ack ");
     println!("done pushing {:?}", path);
 }
 
@@ -137,13 +190,20 @@ fn run(files: String, args: Vec<String>) {
     t!(client.write_all(&[0]));
 
     // Send over env vars
+    //
+    // Don't send over *everything* though as some env vars are set by and used
+    // by the client.
     for (k, v) in env::vars() {
-        if k != "PATH" && k != "LD_LIBRARY_PATH" {
-            t!(client.write_all(k.as_bytes()));
-            t!(client.write_all(&[0]));
-            t!(client.write_all(v.as_bytes()));
-            t!(client.write_all(&[0]));
+        match &k[..] {
+            "PATH" |
+            "LD_LIBRARY_PATH" |
+            "PWD" => continue,
+            _ => {}
         }
+        t!(client.write_all(k.as_bytes()));
+        t!(client.write_all(&[0]));
+        t!(client.write_all(v.as_bytes()));
+        t!(client.write_all(&[0]));
     }
     t!(client.write_all(&[0]));
 
@@ -151,8 +211,6 @@ fn run(files: String, args: Vec<String>) {
     let mut files = files.split(':');
     let exe = files.next().unwrap();
     for file in files.map(Path::new) {
-        t!(client.write_all(file.file_name().unwrap().to_str().unwrap().as_bytes()));
-        t!(client.write_all(&[0]));
         send(&file, &mut client);
     }
     t!(client.write_all(&[0]));
@@ -209,6 +267,8 @@ fn run(files: String, args: Vec<String>) {
 }
 
 fn send(path: &Path, dst: &mut Write) {
+    t!(dst.write_all(path.file_name().unwrap().to_str().unwrap().as_bytes()));
+    t!(dst.write_all(&[0]));
     let mut file = t!(File::open(&path));
     let amt = t!(file.metadata()).len();
     t!(dst.write_all(&[

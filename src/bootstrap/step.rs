@@ -513,15 +513,15 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.test("emulator-copy-libs", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
          .dep(move |s| {
-             if build.qemu_rootfs(s.target).is_some() {
-                s.name("tool-qemu-test-client").target(s.host).stage(0)
+             if build.remote_tested(s.target) {
+                s.name("tool-remote-test-client").target(s.host).stage(0)
              } else {
                  Step::noop()
              }
          })
          .dep(move |s| {
-             if build.qemu_rootfs(s.target).is_some() {
-                s.name("tool-qemu-test-server")
+             if build.remote_tested(s.target) {
+                s.name("tool-remote-test-server")
              } else {
                  Step::noop()
              }
@@ -566,14 +566,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "build-manifest"));
-    rules.build("tool-qemu-test-server", "src/tools/qemu-test-server")
+    rules.build("tool-remote-test-server", "src/tools/remote-test-server")
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
-         .run(move |s| compile::tool(build, s.stage, s.target, "qemu-test-server"));
-    rules.build("tool-qemu-test-client", "src/tools/qemu-test-client")
+         .run(move |s| compile::tool(build, s.stage, s.target, "remote-test-server"));
+    rules.build("tool-remote-test-client", "src/tools/remote-test-client")
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
-         .run(move |s| compile::tool(build, s.stage, s.target, "qemu-test-client"));
+         .run(move |s| compile::tool(build, s.stage, s.target, "remote-test-client"));
     rules.build("tool-cargo", "cargo")
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
