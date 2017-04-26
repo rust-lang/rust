@@ -80,7 +80,7 @@ To have cargo compile your crate with clippy without needing `#![plugin(clippy)]
 in your code, you can use:
 
 ```terminal
-cargo rustc -- -L /path/to/clippy_so -Z extra-plugins=clippy
+cargo rustc -- -L /path/to/clippy_so/dir/ -Z extra-plugins=clippy
 ```
 
 *[Note](https://github.com/Manishearth/rust-clippy/wiki#a-word-of-warning):*
