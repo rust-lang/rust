@@ -34,7 +34,7 @@ trait Sync {}
 impl Sync for .. {}
 #[lang = "copy"]
 trait Copy {}
-#[cfg_attr(not(stage0), lang = "freeze")]
+#[lang = "freeze"]
 trait Freeze {}
 impl Freeze for .. {}
 

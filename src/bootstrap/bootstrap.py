@@ -159,19 +159,20 @@ def format_build_time(duration):
 class RustBuild(object):
     def download_stage0(self):
         cache_dst = os.path.join(self.build_dir, "cache")
-        rustc_cache = os.path.join(cache_dst, self.stage0_rustc_date())
+        rustc_cache = os.path.join(cache_dst, self.stage0_date())
         if not os.path.exists(rustc_cache):
             os.makedirs(rustc_cache)
 
-        channel = self.stage0_rustc_channel()
+        rustc_channel = self.stage0_rustc_channel()
+        cargo_channel = self.stage0_cargo_channel()
 
         if self.rustc().startswith(self.bin_root()) and \
                 (not os.path.exists(self.rustc()) or self.rustc_out_of_date()):
             self.print_what_it_means_to_bootstrap()
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
-            filename = "rust-std-{}-{}.tar.gz".format(channel, self.build)
-            url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
+            filename = "rust-std-{}-{}.tar.gz".format(rustc_channel, self.build)
+            url = self._download_url + "/dist/" + self.stage0_date()
             tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
                 get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
@@ -179,8 +180,8 @@ class RustBuild(object):
                    match="rust-std-" + self.build,
                    verbose=self.verbose)
 
-            filename = "rustc-{}-{}.tar.gz".format(channel, self.build)
-            url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
+            filename = "rustc-{}-{}.tar.gz".format(rustc_channel, self.build)
+            url = self._download_url + "/dist/" + self.stage0_date()
             tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
                 get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
@@ -188,11 +189,11 @@ class RustBuild(object):
             self.fix_executable(self.bin_root() + "/bin/rustc")
             self.fix_executable(self.bin_root() + "/bin/rustdoc")
             with open(self.rustc_stamp(), 'w') as f:
-                f.write(self.stage0_rustc_date())
+                f.write(self.stage0_date())
 
             if "pc-windows-gnu" in self.build:
-                filename = "rust-mingw-{}-{}.tar.gz".format(channel, self.build)
-                url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
+                filename = "rust-mingw-{}-{}.tar.gz".format(rustc_channel, self.build)
+                url = self._download_url + "/dist/" + self.stage0_date()
                 tarball = os.path.join(rustc_cache, filename)
                 if not os.path.exists(tarball):
                     get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
@@ -201,15 +202,15 @@ class RustBuild(object):
         if self.cargo().startswith(self.bin_root()) and \
                 (not os.path.exists(self.cargo()) or self.cargo_out_of_date()):
             self.print_what_it_means_to_bootstrap()
-            filename = "cargo-{}-{}.tar.gz".format(channel, self.build)
-            url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
+            filename = "cargo-{}-{}.tar.gz".format(cargo_channel, self.build)
+            url = self._download_url + "/dist/" + self.stage0_date()
             tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
                 get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
             unpack(tarball, self.bin_root(), match="cargo", verbose=self.verbose)
             self.fix_executable(self.bin_root() + "/bin/cargo")
             with open(self.cargo_stamp(), 'w') as f:
-                f.write(self.stage0_rustc_date())
+                f.write(self.stage0_date())
 
     def fix_executable(self, fname):
         # If we're on NixOS we need to change the path to the dynamic loader
@@ -264,11 +265,14 @@ class RustBuild(object):
             print("warning: failed to call patchelf: %s" % e)
             return
 
-    def stage0_rustc_date(self):
-        return self._rustc_date
+    def stage0_date(self):
+        return self._date
 
     def stage0_rustc_channel(self):
         return self._rustc_channel
+
+    def stage0_cargo_channel(self):
+        return self._cargo_channel
 
     def rustc_stamp(self):
         return os.path.join(self.bin_root(), '.rustc-stamp')
@@ -280,13 +284,13 @@ class RustBuild(object):
         if not os.path.exists(self.rustc_stamp()) or self.clean:
             return True
         with open(self.rustc_stamp(), 'r') as f:
-            return self.stage0_rustc_date() != f.read()
+            return self.stage0_date() != f.read()
 
     def cargo_out_of_date(self):
         if not os.path.exists(self.cargo_stamp()) or self.clean:
             return True
         with open(self.cargo_stamp(), 'r') as f:
-            return self.stage0_rustc_date() != f.read()
+            return self.stage0_date() != f.read()
 
     def bin_root(self):
         return os.path.join(self.build_dir, self.build, "stage0")
@@ -585,7 +589,13 @@ def bootstrap():
             shutil.rmtree('.cargo')
 
     data = stage0_data(rb.rust_root)
-    rb._rustc_channel, rb._rustc_date = data['rustc'].split('-', 1)
+    rb._date = data['date']
+    rb._rustc_channel = data['rustc']
+    rb._cargo_channel = data['cargo']
+    if 'dev' in data:
+        rb._download_url = 'https://dev-static.rust-lang.org'
+    else:
+        rb._download_url = 'https://static.rust-lang.org'
 
     # Fetch/build the bootstrap
     rb.build = rb.build_triple()
