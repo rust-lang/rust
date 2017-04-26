@@ -46,7 +46,7 @@ To install from source, first checkout to the tag or branch you want to install,
 ```
 cargo install --path  .
 ```
-This will install `rustfmt` in your `~/.cargo/bin`. Make sure to add `~/.cargo/bin` directory to 
+This will install `rustfmt` in your `~/.cargo/bin`. Make sure to add `~/.cargo/bin` directory to
 your PATH variable.
 
 ## Running
@@ -151,7 +151,7 @@ Rustfmt is designed to be very configurable. You can create a TOML file called
 `rustfmt.toml` or `.rustfmt.toml`, place it in the project or any other parent
 directory and it will apply the options in that file. See `rustfmt
 --config-help` for the options which are available, or if you prefer to see
-source code, [src/config.rs](src/config.rs).
+visual style previews, [Configurations.md](Configurations.md).
 
 By default, Rustfmt uses a style which (mostly) conforms to the
 [Rust style guidelines](https://doc.rust-lang.org/1.12.0/style/README.html).
