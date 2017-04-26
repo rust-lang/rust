@@ -17,61 +17,61 @@ unsafe trait Foo {
     fn foo(&self) -> &'static str;
 }
 
-unsafe default impl<T> Foo for T {
+default unsafe impl<T> Foo for T {
     fn foo(&self) -> &'static str {
         "generic"
     }
 }
 
-unsafe default impl<T: Clone> Foo for T {
+default unsafe impl<T: Clone> Foo for T {
     fn foo(&self) -> &'static str {
         "generic Clone"
     }
 }
 
-unsafe default impl<T, U> Foo for (T, U) where T: Clone, U: Clone {
+default unsafe impl<T, U> Foo for (T, U) where T: Clone, U: Clone {
     fn foo(&self) -> &'static str {
         "generic pair"
     }
 }
 
-unsafe default impl<T: Clone> Foo for (T, T) {
+default unsafe impl<T: Clone> Foo for (T, T) {
     fn foo(&self) -> &'static str {
         "generic uniform pair"
     }
 }
 
-unsafe default impl Foo for (u8, u32) {
+default unsafe impl Foo for (u8, u32) {
     fn foo(&self) -> &'static str {
         "(u8, u32)"
     }
 }
 
-unsafe default impl Foo for (u8, u8) {
+default unsafe impl Foo for (u8, u8) {
     fn foo(&self) -> &'static str {
         "(u8, u8)"
     }
 }
 
-unsafe default impl<T: Clone> Foo for Vec<T> {
+default unsafe impl<T: Clone> Foo for Vec<T> {
     fn foo(&self) -> &'static str {
         "generic Vec"
     }
 }
 
-unsafe impl Foo for Vec<i32> {
+default unsafe impl Foo for Vec<i32> {
     fn foo(&self) -> &'static str {
         "Vec<i32>"
     }
 }
 
-unsafe impl Foo for String {
+default unsafe impl Foo for String {
     fn foo(&self) -> &'static str {
         "String"
     }
 }
 
-unsafe impl Foo for i32 {
+default unsafe impl Foo for i32 {
     fn foo(&self) -> &'static str {
         "i32"
     }
@@ -80,7 +80,7 @@ unsafe impl Foo for i32 {
 struct NotClone;
 
 unsafe trait MyMarker {}
-unsafe default impl<T: Clone + MyMarker> Foo for T {
+default unsafe impl<T: Clone + MyMarker> Foo for T {
     fn foo(&self) -> &'static str {
         "generic Clone + MyMarker"
     }

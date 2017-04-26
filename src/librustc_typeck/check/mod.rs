@@ -1141,10 +1141,8 @@ fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         .map(|node_item| node_item.map(|parent| parent.defaultness));
 
     if let Some(parent) = parent {
-        if parent.item.is_final() {
-            if !tcx.impl_is_default(parent.node.def_id()) {
-                report_forbidden_specialization(tcx, impl_item, parent.node.def_id());
-            }
+        if tcx.impl_item_is_final(&parent) {
+            report_forbidden_specialization(tcx, impl_item, parent.node.def_id());
         }
     }
 

@@ -14,6 +14,7 @@ use ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use ty::outlives::Component;
 use util::nodemap::FxHashSet;
 use hir::{self};
+use traits::specialize::specialization_graph::NodeItem;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
 
@@ -524,6 +525,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     .is_default()
             }
         }
+    }
+
+    pub fn impl_item_is_final(self, node_item: &NodeItem<hir::Defaultness>) -> bool {
+        node_item.item.is_final() && !self.impl_is_default(node_item.node.def_id())
     }
 }
 

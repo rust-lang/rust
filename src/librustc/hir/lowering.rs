@@ -1363,7 +1363,7 @@ impl<'a> LoweringContext<'a> {
             ItemKind::MacroDef(..) | ItemKind::Mac(..) => panic!("Shouldn't still be around"),
         }
 
-        // [1] `defaultness.has_value()` is necer called for an `impl`, always `true` in order to
+        // [1] `defaultness.has_value()` is never called for an `impl`, always `true` in order to
         //     not cause an assertion failure inside the `lower_defaultness` function
     }
 
