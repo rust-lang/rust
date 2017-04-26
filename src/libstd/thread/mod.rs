@@ -713,28 +713,34 @@ struct Inner {
 
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-/// A handle to a thread, its just an abstract reference and as such
-/// it can be used to identify a thread (by name, for example). In most
-/// usage cases, this struct is not used directly.
+/// A handle to a thread.
+///
+/// You can use it to identify a thread (by name, for example). Most of the
+/// time, there is no need to directly create a `Thread` struct using the
+/// constructor, instead you should use a function like `spawn` to create
+/// new threads, see the docs of [`Builder`] and [`spawn`] for more.
 ///
 /// # Examples
 ///
 /// ```
-/// use std::thread;
+/// use std::thread::Builder;
 ///
 /// for i in 0..5 {
 ///     let thread_name = format!("thread_{}", i);
-///     thread::Builder::new()
-///     .name(thread_name) // Now you can identify which thread panicked
-///                        // thanks to the handle's name
-///     .spawn(move || {
-///         if i == 3 {
-///             panic!("I'm scared!!!");
-///         }
-///     })
-///     .unwrap();
+///     Builder::new()
+///         .name(thread_name) // Now you can identify which thread panicked
+///                            // thanks to the handle's name
+///         .spawn(move || {
+///             if i == 3 {
+///                  panic!("I'm scared!!!");
+///             }
+///         })
+///         .unwrap();
 /// }
 /// ```
+/// [`Builder`]: ../../std/thread/struct.Builder.html
+/// [`spawn`]: ../../std/thread/fn.spawn.html
+
 pub struct Thread {
     inner: Arc<Inner>,
 }
