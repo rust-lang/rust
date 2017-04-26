@@ -407,7 +407,11 @@ class RustBuild(object):
         # The goal here is to come up with the same triple as LLVM would,
         # at least for the subset of platforms we're willing to target.
         if ostype == 'Linux':
-            ostype = 'unknown-linux-gnu'
+            os = subprocess.check_output(['uname', '-o']).strip().decode(default_encoding)
+            if os == 'Android':
+                ostype = 'linux-android'
+            else:
+                ostype = 'unknown-linux-gnu'
         elif ostype == 'FreeBSD':
             ostype = 'unknown-freebsd'
         elif ostype == 'DragonFly':
@@ -464,15 +468,21 @@ class RustBuild(object):
             cputype = 'i686'
         elif cputype in {'xscale', 'arm'}:
             cputype = 'arm'
+            if ostype == 'linux-android':
+                ostype = 'linux-androideabi'
         elif cputype == 'armv6l':
             cputype = 'arm'
-            ostype += 'eabihf'
+            if ostype == 'linux-android':
+                ostype = 'linux-androideabi'
+            else:
+                ostype += 'eabihf'
         elif cputype in {'armv7l', 'armv8l'}:
             cputype = 'armv7'
-            ostype += 'eabihf'
-        elif cputype == 'aarch64':
-            cputype = 'aarch64'
-        elif cputype == 'arm64':
+            if ostype == 'linux-android':
+                ostype = 'linux-androideabi'
+            else:
+                ostype += 'eabihf'
+        elif cputype in {'aarch64', 'arm64'}:
             cputype = 'aarch64'
         elif cputype == 'mips':
             if sys.byteorder == 'big':
