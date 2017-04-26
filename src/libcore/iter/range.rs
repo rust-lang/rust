@@ -86,12 +86,12 @@ macro_rules! step_impl_unsigned {
 
             #[inline]
             fn replace_one(&mut self) -> Self {
-                mem::replace(self, 0)
+                mem::replace(self, 1)
             }
 
             #[inline]
             fn replace_zero(&mut self) -> Self {
-                mem::replace(self, 1)
+                mem::replace(self, 0)
             }
 
             #[inline]
@@ -157,12 +157,12 @@ macro_rules! step_impl_signed {
 
             #[inline]
             fn replace_one(&mut self) -> Self {
-                mem::replace(self, 0)
+                mem::replace(self, 1)
             }
 
             #[inline]
             fn replace_zero(&mut self) -> Self {
-                mem::replace(self, 1)
+                mem::replace(self, 0)
             }
 
             #[inline]
@@ -206,12 +206,12 @@ macro_rules! step_impl_no_between {
 
             #[inline]
             fn replace_one(&mut self) -> Self {
-                mem::replace(self, 0)
+                mem::replace(self, 1)
             }
 
             #[inline]
             fn replace_zero(&mut self) -> Self {
-                mem::replace(self, 1)
+                mem::replace(self, 0)
             }
 
             #[inline]
