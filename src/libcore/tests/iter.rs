@@ -1082,3 +1082,41 @@ fn test_chain_fold() {
     assert_eq!(&[2, 3, 1, 2, 0], &result[..]);
 }
 
+#[test]
+fn test_step_replace_unsigned() {
+    let mut x = 4u32;
+    let y = x.replace_zero();
+    assert_eq!(x, 0);
+    assert_eq!(y, 4);
+
+    x = 5;
+    let y = x.replace_one();
+    assert_eq!(x, 1);
+    assert_eq!(y, 5);
+}
+
+#[test]
+fn test_step_replace_signed() {
+    let mut x = 4i32;
+    let y = x.replace_zero();
+    assert_eq!(x, 0);
+    assert_eq!(y, 4);
+
+    x = 5;
+    let y = x.replace_one();
+    assert_eq!(x, 1);
+    assert_eq!(y, 5);
+}
+
+#[test]
+fn test_step_replace_no_between() {
+    let mut x = 4u128;
+    let y = x.replace_zero();
+    assert_eq!(x, 0);
+    assert_eq!(y, 4);
+
+    x = 5;
+    let y = x.replace_one();
+    assert_eq!(x, 1);
+    assert_eq!(y, 5);
+}
