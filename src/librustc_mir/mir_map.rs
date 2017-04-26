@@ -139,7 +139,7 @@ fn build_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
             // types/lifetimes replaced)
             let fn_sig = cx.tables().liberated_fn_sigs[&id].clone();
 
-            let ty = tcx.item_type(tcx.hir.local_def_id(id));
+            let ty = tcx.type_of(tcx.hir.local_def_id(id));
             let mut abi = fn_sig.abi;
             let implicit_argument = if let ty::TyClosure(..) = ty.sty {
                 // HACK(eddyb) Avoid having RustCall on closures,

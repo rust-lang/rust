@@ -369,11 +369,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return None;
         };
 
-        ty::queries::coherent_trait::get(self, DUMMY_SP, (LOCAL_CRATE, drop_trait));
+        self.coherent_trait((LOCAL_CRATE, drop_trait));
 
         let mut dtor_did = None;
-        let ty = self.item_type(adt_did);
-        self.lookup_trait_def(drop_trait).for_each_relevant_impl(self, ty, |impl_did| {
+        let ty = self.type_of(adt_did);
+        self.trait_def(drop_trait).for_each_relevant_impl(self, ty, |impl_did| {
             if let Some(item) = self.associated_items(impl_did).next() {
                 if let Ok(()) = validate(self, impl_did) {
                     dtor_did = Some(item.def_id);
@@ -422,7 +422,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         let impl_def_id = self.associated_item(dtor).container.id();
-        let impl_generics = self.item_generics(impl_def_id);
+        let impl_generics = self.generics_of(impl_def_id);
 
         // We have a destructor - all the parameters that are not
         // pure_wrt_drop (i.e, don't have a #[may_dangle] attribute)
@@ -445,12 +445,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // <P1, P2, P0>, and then look up which of the impl substs refer to
         // parameters marked as pure.
 
-        let impl_substs = match self.item_type(impl_def_id).sty {
+        let impl_substs = match self.type_of(impl_def_id).sty {
             ty::TyAdt(def_, substs) if def_ == def => substs,
             _ => bug!()
         };
 
-        let item_substs = match self.item_type(def.did).sty {
+        let item_substs = match self.type_of(def.did).sty {
             ty::TyAdt(def_, substs) if def_ == def => substs,
             _ => bug!()
         };
@@ -522,7 +522,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::TyAdt(def, substs) => {
                 let ty::DtorckConstraint {
                     dtorck_types, outlives
-                } = ty::queries::adt_dtorck_constraint::get(self, span, def.did);
+                } = self.at(span).adt_dtorck_constraint(def.did);
                 Ok(ty::DtorckConstraint {
                     // FIXME: we can try to recursively `dtorck_constraint_on_ty`
                     // there, but that needs some way to handle cycles.

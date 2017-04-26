@@ -232,7 +232,7 @@ pub fn symbol_name<'a, 'tcx>(instance: Instance<'tcx>,
         match key.disambiguated_data.data {
             DefPathData::TypeNs(_) |
             DefPathData::ValueNs(_) => {
-                instance_ty = tcx.item_type(ty_def_id);
+                instance_ty = tcx.type_of(ty_def_id);
                 break;
             }
             _ => {

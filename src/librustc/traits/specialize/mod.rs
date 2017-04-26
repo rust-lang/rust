@@ -117,7 +117,7 @@ pub fn find_associated_item<'a, 'tcx>(
     assert!(!substs.needs_infer());
 
     let trait_def_id = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
-    let trait_def = tcx.lookup_trait_def(trait_def_id);
+    let trait_def = tcx.trait_def(trait_def_id);
 
     let ancestors = trait_def.ancestors(impl_data.impl_def_id);
     match ancestors.defs(tcx, item.name, item.kind).next() {
@@ -175,7 +175,7 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // See RFC 1210 for more details and justification.
 
     // Currently we do not allow e.g. a negative impl to specialize a positive one
-    if tcx.trait_impl_polarity(impl1_def_id) != tcx.trait_impl_polarity(impl2_def_id) {
+    if tcx.impl_polarity(impl1_def_id) != tcx.impl_polarity(impl2_def_id) {
         return false;
     }
 

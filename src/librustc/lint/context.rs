@@ -43,7 +43,7 @@ use std::fmt;
 use syntax::attr;
 use syntax::ast;
 use syntax::symbol::Symbol;
-use syntax_pos::{DUMMY_SP, MultiSpan, Span};
+use syntax_pos::{MultiSpan, Span};
 use errors::{self, Diagnostic, DiagnosticBuilder};
 use hir;
 use hir::def_id::LOCAL_CRATE;
@@ -1234,7 +1234,7 @@ fn check_lint_name_cmdline(sess: &Session, lint_cx: &LintStore,
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _task = tcx.dep_graph.in_task(DepNode::LateLintCheck);
 
-    let access_levels = &ty::queries::privacy_access_levels::get(tcx, DUMMY_SP, LOCAL_CRATE);
+    let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
 

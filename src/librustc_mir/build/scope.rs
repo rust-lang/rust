@@ -784,7 +784,7 @@ fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     TerminatorKind::Call {
         func: Operand::Constant(Constant {
             span: data.span,
-            ty: tcx.item_type(free_func).subst(tcx, substs),
+            ty: tcx.type_of(free_func).subst(tcx, substs),
             literal: Literal::Value {
                 value: ConstVal::Function(free_func, substs),
             }

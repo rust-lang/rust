@@ -118,7 +118,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
             hir::ItemStruct(..) |
             hir::ItemUnion(..) => {
                 let def_id = cx.tcx.hir.local_def_id(it.id);
-                self.check_heap_type(cx, it.span, cx.tcx.item_type(def_id))
+                self.check_heap_type(cx, it.span, cx.tcx.type_of(def_id))
             }
             _ => ()
         }
@@ -130,7 +130,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
                 for struct_field in struct_def.fields() {
                     let def_id = cx.tcx.hir.local_def_id(struct_field.id);
                     self.check_heap_type(cx, struct_field.span,
-                                         cx.tcx.item_type(def_id));
+                                         cx.tcx.type_of(def_id));
                 }
             }
             _ => (),
@@ -504,21 +504,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                let def = cx.tcx.lookup_adt_def(cx.tcx.hir.local_def_id(item.id));
+                let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemUnion(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                let def = cx.tcx.lookup_adt_def(cx.tcx.hir.local_def_id(item.id));
+                let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                let def = cx.tcx.lookup_adt_def(cx.tcx.hir.local_def_id(item.id));
+                let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             _ => return,
@@ -582,10 +582,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
         };
 
         if self.impling_types.is_none() {
-            let debug_def = cx.tcx.lookup_trait_def(debug);
+            let debug_def = cx.tcx.trait_def(debug);
             let mut impls = NodeSet();
             debug_def.for_each_impl(cx.tcx, |d| {
-                if let Some(ty_def) = cx.tcx.item_type(d).ty_to_def_id() {
+                if let Some(ty_def) = cx.tcx.type_of(d).ty_to_def_id() {
                     if let Some(node_id) = cx.tcx.hir.as_local_node_id(ty_def) {
                         impls.insert(node_id);
                     }
@@ -1094,7 +1094,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
         }
 
         fn def_id_is_transmute(cx: &LateContext, def_id: DefId) -> bool {
-            match cx.tcx.item_type(def_id).sty {
+            match cx.tcx.type_of(def_id).sty {
                 ty::TyFnDef(.., bfty) if bfty.abi() == RustIntrinsic => (),
                 _ => return false,
             }
@@ -1151,7 +1151,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
         if let hir::ItemUnion(ref vdata, _) = item.node {
             let param_env = &ty::ParameterEnvironment::for_item(ctx.tcx, item.id);
             for field in vdata.fields() {
-                let field_ty = ctx.tcx.item_type(ctx.tcx.hir.local_def_id(field.id));
+                let field_ty = ctx.tcx.type_of(ctx.tcx.hir.local_def_id(field.id));
                 if field_ty.needs_drop(ctx.tcx, param_env) {
                     ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
                                   field.span,
