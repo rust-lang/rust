@@ -1,0 +1,210 @@
+- Feature Name: external_doc
+- Start Date: 2017-04-26
+- RFC PR: (leave this empty)
+- Rust Issue: (leave this empty)
+
+# Summary
+[summary]: #summary
+
+Documentation is an important part of any project, it allows developers to
+explain how to use items within a library as well as communicate the intent of
+how to use it through examples. Rust has long championed this feature through
+the use of documentation comments and `rustdoc` to generate beautiful, easy to
+navigate documentation. However, there is no way right now to have documentation
+be imported into the code from an external file. This RFC proposes a way to
+extend the functionality of Rust to include this ability.
+
+# Motivation
+[motivation]: #motivation
+
+1. Many smaller crates are able to do all of the documentation that's needed in
+   a README file within their repo. Being able to include this as a crate or
+   module level doc comment would mean not having to duplicate documentation and
+   is easier to maintain. This means that one could run `cargo doc` with the
+   small crate as a dependency and be able to access the contents of the README
+   without needing to go online to the repo to read it. This also would help
+   with [this issue on
+   crates.io](https://github.com/rust-lang/crates.io/issues.81) by making it
+   easy to have the README in the crate and the crate root at the same.
+2. The feature would provide a way to have easier to read code for library
+   maintainers. Sometimes doc comments are quite long in terms of line count
+   (items in
+   [libstd](https://github.com/rust-lang/rust/blob/master/src/libstd) are a good
+   example of this). Doc comments document behavior of functions, structs, and
+   types to the end user, they do not explain for a coder working on the library
+   as to how they work internally. When actually writing code for a
+   library the doc comments end up cluttering the source code making it harder
+   to find relevant lines to change or skim through and read what is going on.
+3. Localization is something else that would further open up access to the
+   community. By providing docs in different languages we could significantly
+   expand our reach as a community and be more inclusive of those where English
+   is not their first language. This would be made possible with a config flag
+   choosing what file to import as a doc comment.
+
+These are just a few reasons as to why we should do this, but the expected
+outcome of this feature is expected to be positive with little to no downside
+for a user.
+
+# Detailed design
+[design]: #detailed-design
+
+All files included through the attribute will be relative paths from the crate
+root directory. Given a file like this stored in `docs/example.md`:
+
+```md
+# I'm an example
+This is a markdown file that gets imported to Rust as a Doc comment.
+```
+
+And code like this:
+
+```rust
+#[external_doc("docs/example.md", "line")]
+fn my_func() {
+  // Hidden implementation
+}
+```
+
+It should expand to this at compile time:
+
+```rust
+/// # I'm an example
+/// This is a markdown file that gets imported to Rust as a doc comment.
+fn my_func() {
+  // Hidden implementation
+}
+```
+
+Which `rustdoc` should be able to figure out and use for documentation.
+
+If the flag is changed from `line` to `mod` the file is then imported as
+a module comment for the file (or module) the attribute exists in.
+Using the previous markdown file we would have this code:
+
+```rust
+#[external_doc("docs/example.md", "mod")]
+fn my_func() {
+  // Hidden implementation
+}
+```
+
+Expand to this at compile time:
+
+```rust
+//! # I'm an example
+//! This is a markdown file that gets imported to Rust as a doc comment.
+fn my_func() {
+  // Hidden implementation
+}
+```
+
+In the case of this code:
+
+```rust
+mod example {
+    #[external_doc("docs/example.md", "mod")]
+    fn my_func() {
+      // Hidden implementation
+    }
+}
+```
+
+It should expand out to:
+
+```rust
+mod example {
+    //! # I'm an example
+    //! This is a markdown file that gets imported to Rust as a doc comment.
+    fn my_func() {
+      // Hidden implementation
+    }
+}
+```
+
+## Line numbers when errors occur
+As with all macros being expanded this brings up the question of line numbers
+and for documentation tests especially so, to keep things simple for the user
+the documentation should be treated separately from the code. Since the
+attribute only needs to be expanded with `rustdoc` or `cargo test`, it should be
+ignored by the compiler except for having the proper lines for error messages.
+
+For example if we have this:
+
+```rust
+#[external_doc("docs/example.md", "line")] // Line 1
+f my_func() {                              // Line 2
+  // Hidden implementation                 // Line 3
+}                                          // Line 4
+```
+
+Then we would have a syntax error on line 2, however the doc comment comes
+before that. In this case the compiler would ignore the attribute for expansion,
+but would say that the error occurs on line 2 rather than saying it is line 1 if
+the attribute is ignored. This makes it easy for the user to spot their error.
+This same behavior should be observed in the case of inline tests and those in
+the tests directory.
+
+If we have a documentation test failure the line number should be for the
+external doc file and the line number where it fails, rather than a line number
+from the code base itself. Having the numbers for the lines being used because
+they were inserted into the code for these scenarios would cause confusion and
+would obfuscate where errors occur, making it harder not easier for end users,
+making this feature useless if it creates ergonomic overhead like this.
+
+# How We Teach This
+[how-we-teach-this]: #how-we-teach-this
+
+`#[external_doc("path", "type")]` is an extension of the current
+`#[doc = "doc"]` attribute by allowing documentation to exist outside of the
+source code. This isn't entirely hard to grasp if one is familiar with
+attributes but if not then this syntax vs a `///` or `//!` type of comment
+could cause confusion. By labeling the attribute as `external_doc`, having a
+clear path and type (either `line` or `mod`) then should, at the very least,
+provide context as to what's going on and where to find this file for inclusion.
+
+The acceptance of this proposal would minimally impact all levels of Rust users
+as it is something that provides convenience but is not a necessary thing to
+learn to use Rust. It should be taught to existing users by updating
+documentation to show it in use and to include in in the Rust Programming
+Language book to teach new users. Currently the newest version of The Rust
+Programming Language does not include doc comments as part of it. This would
+need to be expanded to explain how doc comments work in general and this new
+syntax as well by showing that users can include docs from external sources.
+The Rust Reference comments section would need to updated to include this new
+syntax as well.
+
+# Drawbacks
+[drawbacks]: #drawbacks
+
+- This might confuse or frustrate people reading the code directly who prefer
+  those doc comments to be inline with the code rather than in a separate file.
+  This creates a burden of ergonomics by having to know the context of the code
+  that the doc comment is for while reading it separately from the code it
+  documents.
+
+# Alternatives
+[alternatives]: #alternatives
+
+Currently there already [exists a plugin](https://github.com/mgattozzi/rdoc)
+that could be used as a reference and has shown that
+[there is interest](https://www.reddit.com/r/rust/comments/67kqs6/announcing_rdoc_a_tiny_rustc_plugin_to_host_your/).
+Some limitations though being that it did not have module doc support and it
+would make doc test failures unclear as to where they happened, which could be
+solved with better support and intrinsics from the compiler.
+
+This same idea could be implemented as a crate with procedural macros (which are
+on nightly now) so that others can opt in to this rather than have it be part of
+the language itself. Docs will remain the same as they always have and will
+continue to work as is if this alternative is chosen, though this means we limit
+what we do and do not want rustc/rustdoc to be able to achieve here when it
+comes to docs.
+
+# Unresolved questions
+[unresolved]: #unresolved-questions
+
+- Should we include multiple items in one file or should each type/field be
+  allowed one file? If so how do we delimit it for the parser?
+- Are there corner cases not covered in the current design? If there are what
+  would be a good design to solve them?
+- Is this the syntax we want to use for the attribute? Do we want to use
+  something else?
