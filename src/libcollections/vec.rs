@@ -2033,6 +2033,18 @@ impl<'a, T: Clone> From<&'a [T]> for Vec<T> {
     }
 }
 
+#[stable(feature = "vec_from_mut", since = "1.21.0")]
+impl<'a, T: Clone> From<&'a mut [T]> for Vec<T> {
+    #[cfg(not(test))]
+    fn from(s: &'a mut [T]) -> Vec<T> {
+        s.to_vec()
+    }
+    #[cfg(test)]
+    fn from(s: &'a mut [T]) -> Vec<T> {
+        ::slice::to_vec(s)
+    }
+}
+
 #[stable(feature = "vec_from_cow_slice", since = "1.14.0")]
 impl<'a, T> From<Cow<'a, [T]>> for Vec<T> where [T]: ToOwned<Owned=Vec<T>> {
     fn from(s: Cow<'a, [T]>) -> Vec<T> {
