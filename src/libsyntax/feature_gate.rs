@@ -1226,13 +1226,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     _ => {}
                 }
 
-                match defaultness {
-                    ast::Defaultness::Default => {
-                        gate_feature_post!(&self, specialization,
-                                      i.span,
-                                      "specialization is unstable");
-                    }
-                    _ => {}
+                if let ast::Defaultness::Default = defaultness {
+                    gate_feature_post!(&self, specialization,
+                                       i.span,
+                                       "specialization is unstable");
                 }
             }
 

@@ -535,10 +535,11 @@ maybe_unsafe
 | %empty { $$ = mk_none(); }
 ;
 
-maybe_default_impl
-:         IMPL { $$ = mk_none(); }
-| DEFAULT IMPL { $$ = $1 }
-;
+maybe_default_maybe_unsafe
+: DEFAULT UNSAFE { $$ = mk_atom("DefaultUnsafe"); }
+| DEFAULT        { $$ = mk_atom("Default"); }
+|         UNSAFE { $$ = mk_atom("Unsafe"); }
+| %empty { $$ = mk_none(); }
 
 trait_method
 : type_method { $$ = mk_node("Required", 1, $1); }
@@ -594,27 +595,27 @@ impl_method
 // they are ambiguous with traits. We do the same here, regrettably,
 // by splitting ty into ty and ty_prim.
 item_impl
-: maybe_unsafe maybe_default_impl generic_params ty_prim_sum maybe_where_clause '{' maybe_inner_attrs maybe_impl_items '}'
+: maybe_default_maybe_unsafe IMPL generic_params ty_prim_sum maybe_where_clause '{' maybe_inner_attrs maybe_impl_items '}'
 {
-  $$ = mk_node("ItemImpl", 6, $1, $3, $4, $5, $7, $8, $2);
+  $$ = mk_node("ItemImpl", 6, $1, $3, $4, $5, $7, $8);
 }
-| maybe_unsafe maybe_default_impl generic_params '(' ty ')' maybe_where_clause '{' maybe_inner_attrs maybe_impl_items '}'
+| maybe_default_maybe_unsafe IMPL generic_params '(' ty ')' maybe_where_clause '{' maybe_inner_attrs maybe_impl_items '}'
 {
-  $$ = mk_node("ItemImpl", 6, $1, $3, 5, $6, $9, $10, $2);
+  $$ = mk_node("ItemImpl", 6, $1, $3, 5, $6, $9, $10);
 }
-| maybe_unsafe maybe_default_impl generic_params trait_ref FOR ty_sum maybe_where_clause '{' maybe_inner_attrs maybe_impl_items '}'
+| maybe_default_maybe_unsafe IMPL generic_params trait_ref FOR ty_sum maybe_where_clause '{' maybe_inner_attrs maybe_impl_items '}'
 {
-  $$ = mk_node("ItemImpl", 6, $3, $4, $6, $7, $9, $10, $2);
+  $$ = mk_node("ItemImpl", 6, $3, $4, $6, $7, $9, $10);
 }
-| maybe_unsafe maybe_default_impl generic_params '!' trait_ref FOR ty_sum maybe_where_clause '{' maybe_inner_attrs maybe_impl_items '}'
+| maybe_default_maybe_unsafe IMPL generic_params '!' trait_ref FOR ty_sum maybe_where_clause '{' maybe_inner_attrs maybe_impl_items '}'
 {
-  $$ = mk_node("ItemImplNeg", 7, $1, $3, $5, $7, $8, $10, $11, $2);
+  $$ = mk_node("ItemImplNeg", 7, $1, $3, $5, $7, $8, $10, $11);
 }
-| maybe_unsafe maybe_default_impl generic_params trait_ref FOR DOTDOT '{' '}'
+| maybe_default_maybe_unsafe IMPL generic_params trait_ref FOR DOTDOT '{' '}'
 {
   $$ = mk_node("ItemImplDefault", 3, $1, $3, $4);
 }
-| maybe_unsafe maybe_default_impl generic_params '!' trait_ref FOR DOTDOT '{' '}'
+| maybe_default_maybe_unsafe IMPL generic_params '!' trait_ref FOR DOTDOT '{' '}'
 {
   $$ = mk_node("ItemImplDefaultNeg", 3, $1, $3, $4);
 }
