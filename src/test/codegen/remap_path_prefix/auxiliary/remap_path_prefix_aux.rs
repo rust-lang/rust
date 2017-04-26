@@ -10,10 +10,9 @@
 
 // ignore-tidy-linelength
 
-// compile-flags: -g -Zremap-path-prefix-from={{cwd}} -Zremap-path-prefix-to=/the/cwd -Zremap-path-prefix-from={{src-base}} -Zremap-path-prefix-to=/the/src
+// compile-flags: -g  -Zremap-path-prefix-from={{cwd}} -Zremap-path-prefix-to=/the/aux-cwd -Zremap-path-prefix-from={{src-base}}/remap_path_prefix/auxiliary -Zremap-path-prefix-to=/the/aux-src
 
-// CHECK: !DIFile(filename: "/the/src/remap_path_prefix.rs", directory: "/the/cwd")
-
-fn main() {
-    // We just check that the DIFile got remapped properly.
+#[inline]
+pub fn some_aux_function() -> i32 {
+    1234
 }
