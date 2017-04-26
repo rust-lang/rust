@@ -1001,7 +1001,12 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                       expression_ty: Ty<'tcx>,
                       expression_diverges: Diverges)
     {
-        self.coerce_inner(fcx, cause, Some(expression), expression_ty, expression_diverges, None, false)
+        self.coerce_inner(fcx,
+                          cause,
+                          Some(expression),
+                          expression_ty,
+                          expression_diverges,
+                          None, false)
     }
 
     /// Indicates that one of the inputs is a "forced unit". This
