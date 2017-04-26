@@ -34,6 +34,7 @@ use back::linker::LinkerInfo;
 use back::symbol_export::{self, ExportedSymbols};
 use llvm::{ContextRef, Linkage, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
+use metadata;
 use rustc::hir::def_id::LOCAL_CRATE;
 use middle::lang_items::StartFnLangItem;
 use middle::cstore::EncodedMetadata;
@@ -778,8 +779,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
-        let section_name =
-            tcx.sess.cstore.metadata_section_name(&tcx.sess.target.target);
+        let section_name = metadata::metadata_section_name(&tcx.sess.target.target);
         let name = CString::new(section_name).unwrap();
         llvm::LLVMSetSection(llglobal, name.as_ptr());
 

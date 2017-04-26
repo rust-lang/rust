@@ -34,6 +34,7 @@ use rustc_driver::{self, driver, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
+use rustc_trans;
 use rustc_trans::back::link;
 use syntax::ast;
 use syntax::codemap::CodeMap;
@@ -81,7 +82,7 @@ pub fn run(input: &str,
 
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
-    let cstore = Rc::new(CStore::new(&dep_graph));
+    let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
         sessopts, &dep_graph, Some(input_path.clone()), handler, codemap.clone(), cstore.clone(),
     );
@@ -229,7 +230,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
 
     let dep_graph = DepGraph::new(false);
-    let cstore = Rc::new(CStore::new(&dep_graph));
+    let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
         sessopts, &dep_graph, None, diagnostic_handler, codemap, cstore.clone(),
     );
