@@ -119,6 +119,7 @@ pub struct Target {
     pub cc: Option<PathBuf>,
     pub cxx: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
+    pub crt_static: Option<bool>,
     pub musl_root: Option<PathBuf>,
     pub qemu_rootfs: Option<PathBuf>,
 }
@@ -235,6 +236,7 @@ struct TomlTarget {
     cc: Option<String>,
     cxx: Option<String>,
     android_ndk: Option<String>,
+    crt_static: Option<bool>,
     musl_root: Option<String>,
     qemu_rootfs: Option<String>,
 }
@@ -381,6 +383,7 @@ impl Config {
                 }
                 target.cxx = cfg.cxx.clone().map(PathBuf::from);
                 target.cc = cfg.cc.clone().map(PathBuf::from);
+                target.crt_static = cfg.crt_static.clone();
                 target.musl_root = cfg.musl_root.clone().map(PathBuf::from);
                 target.qemu_rootfs = cfg.qemu_rootfs.clone().map(PathBuf::from);
 
@@ -504,6 +507,18 @@ impl Config {
                 }
                 "CFG_MUSL_ROOT_ARMV7" if value.len() > 0 => {
                     let target = "armv7-unknown-linux-musleabihf".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.musl_root = Some(parse_configure_path(value));
+                }
+                "CFG_MUSL_ROOT_MIPS" if value.len() > 0 => {
+                    let target = "mips-unknown-linux-musl".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.musl_root = Some(parse_configure_path(value));
+                }
+                "CFG_MUSL_ROOT_MIPSEL" if value.len() > 0 => {
+                    let target = "mipsel-unknown-linux-musl".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
                     target.musl_root = Some(parse_configure_path(value));
