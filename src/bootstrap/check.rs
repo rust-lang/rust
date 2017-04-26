@@ -663,6 +663,7 @@ pub fn distcheck(build: &Build) {
         return
     }
 
+    println!("Distcheck");
     let dir = build.out.join("tmp").join("distcheck");
     let _ = fs::remove_dir_all(&dir);
     t!(fs::create_dir_all(&dir));
@@ -679,6 +680,26 @@ pub fn distcheck(build: &Build) {
                      .current_dir(&dir));
     build.run(Command::new(build_helper::make(&build.config.build))
                      .arg("check")
+                     .current_dir(&dir));
+
+    // Now make sure that rust-src has all of libstd's dependencies
+    println!("Distcheck rust-src");
+    let dir = build.out.join("tmp").join("distcheck-src");
+    let _ = fs::remove_dir_all(&dir);
+    t!(fs::create_dir_all(&dir));
+
+    let mut cmd = Command::new("tar");
+    cmd.arg("-xzf")
+       .arg(dist::rust_src_installer(build))
+       .arg("--strip-components=1")
+       .current_dir(&dir);
+    build.run(&mut cmd);
+
+    let toml = dir.join("rust-src/lib/rustlib/src/rust/src/libstd/Cargo.toml");
+    build.run(Command::new(&build.cargo)
+                     .arg("generate-lockfile")
+                     .arg("--manifest-path")
+                     .arg(&toml)
                      .current_dir(&dir));
 }
 

@@ -310,9 +310,16 @@ pub fn std(build: &Build, compiler: &Compiler, target: &str) {
     t!(fs::remove_dir_all(&image));
 }
 
+/// The path to the complete rustc-src tarball
 pub fn rust_src_location(build: &Build) -> PathBuf {
     let plain_name = format!("rustc-{}-src", build.rust_package_vers());
     distdir(build).join(&format!("{}.tar.gz", plain_name))
+}
+
+/// The path to the rust-src component installer
+pub fn rust_src_installer(build: &Build) -> PathBuf {
+    let name = pkgname(build, "rust-src");
+    distdir(build).join(&format!("{}.tar.gz", name))
 }
 
 /// Creates a tarball of save-analysis metadata, if available.
