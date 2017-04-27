@@ -68,7 +68,7 @@ pub fn lookup_const_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             _ => Some((def_id, substs))
         }
     } else {
-        match tcx.sess.cstore.describe_def(def_id) {
+        match tcx.describe_def(def_id) {
             Some(Def::AssociatedConst(_)) => {
                 // As mentioned in the comments above for in-crate
                 // constants, we only try to find the expression for a
