@@ -10,6 +10,7 @@
 
 use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use hir::def::Def;
 use hir;
 use middle::const_val;
 use middle::privacy::AccessLevels;
@@ -261,6 +262,12 @@ impl<'tcx> QueryDescription for queries::const_eval<'tcx> {
 impl<'tcx> QueryDescription for queries::symbol_name<'tcx> {
     fn describe(_tcx: TyCtxt, instance: ty::Instance<'tcx>) -> String {
         format!("computing the symbol for `{}`", instance)
+    }
+}
+
+impl<'tcx> QueryDescription for queries::describe_def<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        bug!("describe_def")
     }
 }
 
@@ -538,7 +545,9 @@ define_maps! { <'tcx>
     pub mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>,
 
     pub def_symbol_name: SymbolName(DefId) -> ty::SymbolName,
-    pub symbol_name: symbol_name_dep_node(ty::Instance<'tcx>) -> ty::SymbolName
+    pub symbol_name: symbol_name_dep_node(ty::Instance<'tcx>) -> ty::SymbolName,
+
+    pub describe_def: meta_data_node(DefId) -> Option<Def>
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -569,4 +578,8 @@ fn typeck_item_bodies_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn const_eval_dep_node((def_id, _): (DefId, &Substs)) -> DepNode<DefId> {
     DepNode::ConstEval(def_id)
+}
+
+fn meta_data_node(def_id: DefId) -> DepNode<DefId> {
+    DepNode::MetaData(def_id)
 }
