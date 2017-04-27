@@ -51,12 +51,20 @@ pub fn install(build: &Build, stage: u32, host: &str) {
     }
 
     for target in build.config.target.iter() {
-        install_sh(&build, "std", "rust-std", &build.rust_package_vers(), stage, target, &prefix,
-                   &docdir, &libdir, &mandir, &empty_dir);
+        install_sh(&build, "std", "rust-std", &build.rust_package_vers(),
+                   stage, target, &prefix, &docdir, &libdir, &mandir, &empty_dir);
     }
 
-    install_sh(&build, "rustc", "rustc", &build.rust_package_vers(), stage, host, &prefix,
-               &docdir, &libdir, &mandir, &empty_dir);
+    install_sh(&build, "rustc", "rustc", &build.rust_package_vers(),
+               stage, host, &prefix, &docdir, &libdir, &mandir, &empty_dir);
+
+    if build.config.extended {
+        install_sh(&build, "cargo", "cargo", &build.cargo_package_vers(),
+                   stage, host, &prefix, &docdir, &libdir, &mandir, &empty_dir);
+        install_sh(&build, "rls", "rls", &build.rls_package_vers(),
+                   stage, host, &prefix, &docdir, &libdir, &mandir, &empty_dir);
+    }
+
     t!(fs::remove_dir_all(&empty_dir));
 }
 
