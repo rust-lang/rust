@@ -1155,8 +1155,7 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, crate_name: &str) {
             // Build a list of files used to compile the output and
             // write Makefile-compatible dependency rules
             let files: Vec<String> = sess.codemap()
-                                         .files
-                                         .borrow()
+                                         .files()
                                          .iter()
                                          .filter(|fmap| fmap.is_real_file())
                                          .filter(|fmap| !fmap.is_imported())

@@ -10,7 +10,7 @@
 
 use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 
-use index_builder::EntryBuilder;
+use isolated_encoder::IsolatedEncoder;
 use schema::*;
 
 use rustc::hir;
@@ -31,7 +31,7 @@ impl_stable_hash_for!(struct Ast<'tcx> {
     rvalue_promotable_to_static
 });
 
-impl<'a, 'b, 'tcx> EntryBuilder<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx> IsolatedEncoder<'a, 'b, 'tcx> {
     pub fn encode_body(&mut self, body_id: hir::BodyId) -> Lazy<Ast<'tcx>> {
         let body = self.tcx.hir.body(body_id);
         let lazy_body = self.lazy(body);

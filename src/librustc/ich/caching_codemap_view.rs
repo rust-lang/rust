@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ty::TyCtxt;
+use dep_graph::{DepGraph, DepNode};
+use hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
+use rustc_data_structures::bitvec::BitVector;
 use std::rc::Rc;
+use std::sync::Arc;
 use syntax::codemap::CodeMap;
 use syntax_pos::{BytePos, FileMap};
+use ty::TyCtxt;
 
 #[derive(Clone)]
 struct CacheEntry {
@@ -20,30 +24,37 @@ struct CacheEntry {
     line_start: BytePos,
     line_end: BytePos,
     file: Rc<FileMap>,
+    file_index: usize,
 }
 
 pub struct CachingCodemapView<'tcx> {
     codemap: &'tcx CodeMap,
     line_cache: [CacheEntry; 3],
     time_stamp: usize,
+    dep_graph: DepGraph,
+    dep_tracking_reads: BitVector,
 }
 
 impl<'tcx> CachingCodemapView<'tcx> {
     pub fn new<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CachingCodemapView<'tcx> {
         let codemap = tcx.sess.codemap();
-        let first_file = codemap.files.borrow()[0].clone();
+        let files = codemap.files_untracked();
+        let first_file = files[0].clone();
         let entry = CacheEntry {
             time_stamp: 0,
             line_number: 0,
             line_start: BytePos(0),
             line_end: BytePos(0),
             file: first_file,
+            file_index: 0,
         };
 
         CachingCodemapView {
+            dep_graph: tcx.dep_graph.clone(),
             codemap: codemap,
             line_cache: [entry.clone(), entry.clone(), entry.clone()],
             time_stamp: 0,
+            dep_tracking_reads: BitVector::new(files.len()),
         }
     }
 
@@ -56,6 +67,10 @@ impl<'tcx> CachingCodemapView<'tcx> {
         for cache_entry in self.line_cache.iter_mut() {
             if pos >= cache_entry.line_start && pos < cache_entry.line_end {
                 cache_entry.time_stamp = self.time_stamp;
+                if self.dep_tracking_reads.insert(cache_entry.file_index) {
+                    self.dep_graph.read(dep_node(cache_entry));
+                }
+
                 return Some((cache_entry.file.clone(),
                              cache_entry.line_number,
                              pos - cache_entry.line_start));
@@ -75,7 +90,7 @@ impl<'tcx> CachingCodemapView<'tcx> {
         // If the entry doesn't point to the correct file, fix it up
         if pos < cache_entry.file.start_pos || pos >= cache_entry.file.end_pos {
             let file_valid;
-            let files = self.codemap.files.borrow();
+            let files = self.codemap.files_untracked();
 
             if files.len() > 0 {
                 let file_index = self.codemap.lookup_filemap_idx(pos);
@@ -83,6 +98,7 @@ impl<'tcx> CachingCodemapView<'tcx> {
 
                 if pos >= file.start_pos && pos < file.end_pos {
                     cache_entry.file = file;
+                    cache_entry.file_index = file_index;
                     file_valid = true;
                 } else {
                     file_valid = false;
@@ -104,8 +120,21 @@ impl<'tcx> CachingCodemapView<'tcx> {
         cache_entry.line_end = line_bounds.1;
         cache_entry.time_stamp = self.time_stamp;
 
+        if self.dep_tracking_reads.insert(cache_entry.file_index) {
+            self.dep_graph.read(dep_node(cache_entry));
+        }
+
         return Some((cache_entry.file.clone(),
                      cache_entry.line_number,
                      pos - cache_entry.line_start));
     }
+}
+
+fn dep_node(cache_entry: &CacheEntry) -> DepNode<DefId> {
+    let def_id = DefId {
+        krate: CrateNum::from_u32(cache_entry.file.crate_of_origin),
+        index: CRATE_DEF_INDEX,
+    };
+    let name = Arc::new(cache_entry.file.name.clone());
+    DepNode::FileMap(def_id, name)
 }

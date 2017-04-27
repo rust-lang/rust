@@ -12,7 +12,7 @@ use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
 use rustc::hir::svh::Svh;
 use rustc::ich::Fingerprint;
-use rustc::middle::cstore::EncodedMetadataHash;
+use rustc::middle::cstore::EncodedMetadataHashes;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
@@ -34,7 +34,7 @@ use super::work_product;
 
 pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 incremental_hashes_map: &IncrementalHashesMap,
-                                metadata_hashes: &[EncodedMetadataHash],
+                                metadata_hashes: &EncodedMetadataHashes,
                                 svh: Svh) {
     debug!("save_dep_graph()");
     let _ignore = tcx.dep_graph.in_ignore();
@@ -240,18 +240,19 @@ pub fn encode_dep_graph(preds: &Predecessors,
 
 pub fn encode_metadata_hashes(tcx: TyCtxt,
                               svh: Svh,
-                              metadata_hashes: &[EncodedMetadataHash],
+                              metadata_hashes: &EncodedMetadataHashes,
                               builder: &mut DefIdDirectoryBuilder,
                               current_metadata_hashes: &mut FxHashMap<DefId, Fingerprint>,
                               encoder: &mut Encoder)
                               -> io::Result<()> {
     let mut serialized_hashes = SerializedMetadataHashes {
-        hashes: metadata_hashes.to_vec(),
+        entry_hashes: metadata_hashes.entry_hashes.to_vec(),
+        global_hashes: metadata_hashes.global_hashes.to_vec(),
         index_map: FxHashMap()
     };
 
     if tcx.sess.opts.debugging_opts.query_dep_graph {
-        for serialized_hash in &serialized_hashes.hashes {
+        for serialized_hash in &serialized_hashes.entry_hashes {
             let def_id = DefId::local(serialized_hash.def_index);
 
             // Store entry in the index_map

@@ -23,6 +23,7 @@
 // probably get a better home if someone can find one.
 
 use hir::def;
+use dep_graph::DepNode;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::map as hir_map;
 use hir::map::definitions::{Definitions, DefKey, DisambiguatedDefPathData};
@@ -161,7 +162,16 @@ pub struct ExternCrate {
 
 pub struct EncodedMetadata {
     pub raw_data: Vec<u8>,
-    pub hashes: Vec<EncodedMetadataHash>,
+    pub hashes: EncodedMetadataHashes,
+}
+
+impl EncodedMetadata {
+    pub fn new() -> EncodedMetadata {
+        EncodedMetadata {
+            raw_data: Vec::new(),
+            hashes: EncodedMetadataHashes::new(),
+        }
+    }
 }
 
 /// The hash for some metadata that (when saving) will be exported
@@ -171,6 +181,24 @@ pub struct EncodedMetadata {
 pub struct EncodedMetadataHash {
     pub def_index: DefIndex,
     pub hash: ich::Fingerprint,
+}
+
+/// The hash for some metadata that (when saving) will be exported
+/// from this crate, or which (when importing) was exported by an
+/// upstream crate.
+#[derive(Debug, RustcEncodable, RustcDecodable, Clone)]
+pub struct EncodedMetadataHashes {
+    pub entry_hashes: Vec<EncodedMetadataHash>,
+    pub global_hashes: Vec<(DepNode<()>, ich::Fingerprint)>,
+}
+
+impl EncodedMetadataHashes {
+    pub fn new() -> EncodedMetadataHashes {
+        EncodedMetadataHashes {
+            entry_hashes: Vec::new(),
+            global_hashes: Vec::new(),
+        }
+    }
 }
 
 /// A store of Rust crates, through with their metadata

@@ -377,6 +377,8 @@ pub struct FileMap {
     pub name: FileName,
     /// True if the `name` field above has been modified by -Zremap-path-prefix
     pub name_was_remapped: bool,
+    /// Indicates which crate this FileMap was imported from.
+    pub crate_of_origin: u32,
     /// The complete source code
     pub src: Option<Rc<String>>,
     /// The start position of this source in the CodeMap
@@ -491,6 +493,8 @@ impl Decodable for FileMap {
             Ok(FileMap {
                 name: name,
                 name_was_remapped: name_was_remapped,
+                // `crate_of_origin` has to be set by the importer.
+                crate_of_origin: 0xEFFF_FFFF,
                 start_pos: start_pos,
                 end_pos: end_pos,
                 src: None,

@@ -66,3 +66,7 @@ impl Decodable for Svh {
          .map(Svh::new)
     }
 }
+
+impl_stable_hash_for!(struct Svh {
+    hash
+});
