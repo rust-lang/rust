@@ -38,6 +38,7 @@ use serialize::{self, Encodable, Encoder};
 use std::cell::{Cell, RefCell, Ref};
 use std::collections::BTreeMap;
 use std::cmp;
+use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
 use std::ops::Deref;
@@ -2743,5 +2744,24 @@ impl<'tcx> DtorckConstraint<'tcx> {
 
         self.outlives.retain(|&val| outlives.replace(val).is_none());
         self.dtorck_types.retain(|&val| dtorck_types.replace(val).is_none());
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct SymbolName {
+    // FIXME: we don't rely on interning or equality here - better have
+    // this be a `&'tcx str`.
+    pub name: InternedString
+}
+
+impl Deref for SymbolName {
+    type Target = str;
+
+    fn deref(&self) -> &str { &self.name }
+}
+
+impl fmt::Display for SymbolName {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.name, fmt)
     }
 }
