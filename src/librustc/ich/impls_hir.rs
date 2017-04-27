@@ -933,7 +933,7 @@ impl_stable_hash_for!(enum hir::Item_ {
     ItemUnion(variant_data, generics),
     ItemTrait(unsafety, generics, bounds, item_refs),
     ItemDefaultImpl(unsafety, trait_ref),
-    ItemImpl(unsafety, impl_polarity, generics, trait_ref, ty, impl_item_refs)
+    ItemImpl(unsafety, impl_polarity, impl_defaultness, generics, trait_ref, ty, impl_item_refs)
 });
 
 impl_stable_hash_for!(struct hir::TraitItemRef {

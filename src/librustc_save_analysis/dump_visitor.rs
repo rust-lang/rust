@@ -430,7 +430,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             }
                             None => {
                                 if let Some(NodeItem(item)) = self.tcx.hir.get_if_local(id) {
-                                    if let hir::ItemImpl(_, _, _, _, ref ty, _) = item.node {
+                                    if let hir::ItemImpl(_, _, _, _, _, ref ty, _) = item.node {
                                         trait_id = self.lookup_def_id(ty.id);
                                     }
                                 }

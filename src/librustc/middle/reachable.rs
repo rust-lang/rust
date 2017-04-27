@@ -49,7 +49,7 @@ fn item_might_be_inlined(item: &hir::Item) -> bool {
     }
 
     match item.node {
-        hir::ItemImpl(_, _, ref generics, ..) |
+        hir::ItemImpl(_, _, _, ref generics, ..) |
         hir::ItemFn(.., ref generics, _) => {
             generics_require_inlining(generics)
         }
@@ -185,7 +185,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             // does too.
                             let impl_node_id = self.tcx.hir.as_local_node_id(impl_did).unwrap();
                             match self.tcx.hir.expect_item(impl_node_id).node {
-                                hir::ItemImpl(_, _, ref generics, ..) => {
+                                hir::ItemImpl(_, _, _, ref generics, ..) => {
                                     generics_require_inlining(generics)
                                 }
                                 _ => false

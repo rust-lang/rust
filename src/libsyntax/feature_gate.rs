@@ -1215,7 +1215,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                     and possibly buggy");
             }
 
-            ast::ItemKind::Impl(_, polarity, _, _, _, _) => {
+            ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, _) => {
                 match polarity {
                     ast::ImplPolarity::Negative => {
                         gate_feature_post!(&self, optin_builtin_traits,
@@ -1224,6 +1224,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                             use marker types for now");
                     },
                     _ => {}
+                }
+
+                if let ast::Defaultness::Default = defaultness {
+                    gate_feature_post!(&self, specialization,
+                                       i.span,
+                                       "specialization is unstable");
                 }
             }
 

@@ -214,6 +214,7 @@ pub struct Trait {
 pub struct Impl {
     pub unsafety: hir::Unsafety,
     pub polarity: hir::ImplPolarity,
+    pub defaultness: hir::Defaultness,
     pub generics: hir::Generics,
     pub trait_: Option<hir::TraitRef>,
     pub for_: P<hir::Ty>,
