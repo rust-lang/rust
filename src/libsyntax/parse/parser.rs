@@ -57,9 +57,11 @@ use tokenstream::{self, Delimited, ThinTokenStream, TokenTree, TokenStream};
 use symbol::{Symbol, keywords};
 use util::ThinVec;
 
+use std::cmp;
 use std::collections::HashSet;
-use std::{cmp, mem, slice};
+use std::mem;
 use std::path::{self, Path, PathBuf};
+use std::slice;
 
 bitflags! {
     flags Restrictions: u8 {
@@ -5363,24 +5365,25 @@ impl<'a> Parser<'a> {
             }
             let mut err = self.diagnostic().struct_span_err(id_sp,
                 "cannot declare a new module at this location");
-            let this_module = match self.directory.path.file_name() {
-                Some(file_name) => file_name.to_str().unwrap().to_owned(),
-                None => self.root_module_name.as_ref().unwrap().clone(),
-            };
-            err.span_note(id_sp,
-                          &format!("maybe move this module `{0}` to its own directory \
-                                    via `{0}{1}mod.rs`",
-                                   this_module,
-                                   path::MAIN_SEPARATOR));
+            if id_sp != syntax_pos::DUMMY_SP {
+                let src_path = PathBuf::from(self.sess.codemap().span_to_filename(id_sp));
+                if let Some(stem) = src_path.file_stem() {
+                    let mut dest_path = src_path.clone();
+                    dest_path.set_file_name(stem);
+                    dest_path.push("mod.rs");
+                    err.span_note(id_sp,
+                                  &format!("maybe move this module `{}` to its own \
+                                            directory via `{}`", src_path.to_string_lossy(),
+                                           dest_path.to_string_lossy()));
+                }
+            }
             if paths.path_exists {
                 err.span_note(id_sp,
                               &format!("... or maybe `use` the module `{}` instead \
                                         of possibly redeclaring it",
                                        paths.name));
-                Err(err)
-            } else {
-                Err(err)
             }
+            Err(err)
         } else {
             paths.result.map_err(|err| self.span_fatal_err(id_sp, err))
         }

@@ -374,13 +374,11 @@ pub fn rust_src(build: &Build) {
 
     println!("Dist src");
 
-    let name = pkgname(build, "rust-src");
-    let image = tmpdir(build).join(format!("{}-image", name));
-    let _ = fs::remove_dir_all(&image);
-
-    let dst = image.join("lib/rustlib/src");
-    let dst_src = dst.join("rust");
-    t!(fs::create_dir_all(&dst_src));
+    // Make sure that the root folder of tarball has the correct name
+    let plain_name = format!("rustc-{}-src", build.rust_package_vers());
+    let plain_dst_src = tmpdir(build).join(&plain_name);
+    let _ = fs::remove_dir_all(&plain_dst_src);
+    t!(fs::create_dir_all(&plain_dst_src));
 
     // This is the set of root paths which will become part of the source package
     let src_files = [
@@ -429,13 +427,13 @@ pub fn rust_src(build: &Build) {
 
     // Copy the directories using our filter
     for item in &src_dirs {
-        let dst = &dst_src.join(item);
+        let dst = &plain_dst_src.join(item);
         t!(fs::create_dir(dst));
         cp_filtered(&build.src.join(item), dst, &filter_fn);
     }
     // Copy the files normally
     for item in &src_files {
-        copy(&build.src.join(item), &dst_src.join(item));
+        copy(&build.src.join(item), &plain_dst_src.join(item));
     }
 
     // If we're building from git sources, we need to vendor a complete distribution.
@@ -460,8 +458,61 @@ pub fn rust_src(build: &Build) {
         // Vendor all Cargo dependencies
         let mut cmd = Command::new(&build.cargo);
         cmd.arg("vendor")
-           .current_dir(&dst_src.join("src"));
+           .current_dir(&plain_dst_src.join("src"));
         build.run(&mut cmd);
+    }
+
+    // Create the version file
+    write_file(&plain_dst_src.join("version"), build.rust_version().as_bytes());
+
+    // Create plain source tarball
+    let tarball = rust_src_location(build);
+    if let Some(dir) = tarball.parent() {
+        t!(fs::create_dir_all(dir));
+    }
+    let mut cmd = Command::new("tar");
+    cmd.arg("-czf").arg(sanitize_sh(&tarball))
+       .arg(&plain_name)
+       .current_dir(tmpdir(build));
+    build.run(&mut cmd);
+
+
+    let name = pkgname(build, "rust-src");
+    let image = tmpdir(build).join(format!("{}-image", name));
+    let _ = fs::remove_dir_all(&image);
+
+    let dst = image.join("lib/rustlib/src");
+    let dst_src = dst.join("rust");
+    t!(fs::create_dir_all(&dst_src));
+
+    // This is the reduced set of paths which will become the rust-src component
+    // (essentially libstd and all of its path dependencies)
+    let std_src_dirs = [
+        "src/build_helper",
+        "src/liballoc",
+        "src/liballoc_jemalloc",
+        "src/liballoc_system",
+        "src/libcollections",
+        "src/libcompiler_builtins",
+        "src/libcore",
+        "src/liblibc",
+        "src/libpanic_abort",
+        "src/libpanic_unwind",
+        "src/librand",
+        "src/librustc_asan",
+        "src/librustc_lsan",
+        "src/librustc_msan",
+        "src/librustc_tsan",
+        "src/libstd",
+        "src/libstd_unicode",
+        "src/libunwind",
+        "src/rustc/libc_shim",
+    ];
+
+    for item in &std_src_dirs {
+        let dst = &dst_src.join(item);
+        t!(fs::create_dir_all(dst));
+        cp_r(&plain_dst_src.join(item), dst);
     }
 
     // Create source tarball in rust-installer format
@@ -476,23 +527,6 @@ pub fn rust_src(build: &Build) {
        .arg(format!("--package-name={}", name))
        .arg("--component-name=rust-src")
        .arg("--legacy-manifest-dirs=rustlib,cargo");
-    build.run(&mut cmd);
-
-    // Rename directory, so that root folder of tarball has the correct name
-    let plain_name = format!("rustc-{}-src", build.rust_package_vers());
-    let plain_dst_src = tmpdir(build).join(&plain_name);
-    let _ = fs::remove_dir_all(&plain_dst_src);
-    t!(fs::create_dir_all(&plain_dst_src));
-    cp_r(&dst_src, &plain_dst_src);
-
-    // Create the version file
-    write_file(&plain_dst_src.join("version"), build.rust_version().as_bytes());
-
-    // Create plain source tarball
-    let mut cmd = Command::new("tar");
-    cmd.arg("-czf").arg(sanitize_sh(&rust_src_location(build)))
-       .arg(&plain_name)
-       .current_dir(tmpdir(build));
     build.run(&mut cmd);
 
     t!(fs::remove_dir_all(&image));
