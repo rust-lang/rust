@@ -1005,11 +1005,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             mir_stats::print_mir_stats(tcx, "PRE CLEANUP MIR STATS");
         }
 
-        time(time_passes, "MIR cleanup and validation", || {
-            tcx.mir_passes.run_passes(tcx, MIR_CONST);
-            tcx.mir_passes.run_passes(tcx, MIR_VALIDATED);
-        });
-
         time(time_passes,
              "borrow checking",
              || borrowck::check_crate(tcx));
@@ -1057,20 +1052,6 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     time(time_passes,
          "resolving dependency formats",
          || dependency_format::calculate(&tcx.sess));
-
-    if tcx.sess.opts.debugging_opts.mir_stats {
-        mir_stats::print_mir_stats(tcx, "PRE OPTIMISATION MIR STATS");
-    }
-
-    // Run the passes that transform the MIR into a more suitable form for translation to LLVM
-    // code.
-    time(time_passes, "MIR optimisations", || {
-        tcx.mir_passes.run_passes(tcx, MIR_OPTIMIZED);
-    });
-
-    if tcx.sess.opts.debugging_opts.mir_stats {
-        mir_stats::print_mir_stats(tcx, "POST OPTIMISATION MIR STATS");
-    }
 
     let translation =
         time(time_passes,

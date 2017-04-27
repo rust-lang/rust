@@ -16,6 +16,7 @@ use middle::const_val;
 use middle::privacy::AccessLevels;
 use middle::region::RegionMaps;
 use mir;
+use mir::transform::{MirPassSet, MirPassIndex};
 use session::CompileResult;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::item_path;
@@ -98,6 +99,24 @@ impl<'tcx> Key for (DefId, &'tcx Substs<'tcx>) {
     }
     fn default_span(&self, tcx: TyCtxt) -> Span {
         self.0.default_span(tcx)
+    }
+}
+
+impl Key for (MirPassSet, DefId) {
+    fn map_crate(&self) -> CrateNum {
+        self.1.map_crate()
+    }
+    fn default_span(&self, tcx: TyCtxt) -> Span {
+        self.1.default_span(tcx)
+    }
+}
+
+impl Key for (MirPassSet, MirPassIndex, DefId) {
+    fn map_crate(&self) -> CrateNum {
+        self.2.map_crate()
+    }
+    fn default_span(&self, tcx: TyCtxt) -> Span {
+        self.2.default_span(tcx)
     }
 }
 
@@ -315,6 +334,18 @@ impl<'tcx> QueryDescription for queries::is_item_mir_available<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("checking if item is mir available: `{}`",
             tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::mir_pass_set<'tcx> {
+    fn describe(_: TyCtxt, (pass_set, _): (MirPassSet, DefId)) -> String {
+        format!("MIR passes #{}.*", pass_set.0)
+    }
+}
+
+impl<'tcx> QueryDescription for queries::mir_pass<'tcx> {
+    fn describe(_: TyCtxt, (pass_set, pass_num, _): (MirPassSet, MirPassIndex, DefId)) -> String {
+        format!("MIR pass #{}.{}", pass_set.0, pass_num.0)
     }
 }
 
@@ -542,15 +573,6 @@ define_maps! { <'tcx>
     /// Methods in these implementations don't need to be exported.
     [] inherent_impls: InherentImpls(DefId) -> Rc<Vec<DefId>>,
 
-    /// Maps from the def-id of a function/method or const/static
-    /// to its MIR. Mutation is done at an item granularity to
-    /// allow MIR optimization passes to function and still
-    /// access cross-crate MIR (e.g. inlining or const eval).
-    ///
-    /// Note that cross-crate MIR appears to be always borrowed
-    /// (in the `RefCell` sense) to prevent accidental mutation.
-    [] mir: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>>,
-
     /// Set of all the def-ids in this crate that have MIR associated with
     /// them. This includes all the body owners, but also things like struct
     /// constructors.
@@ -560,6 +582,26 @@ define_maps! { <'tcx>
     /// of the MIR qualify_consts pass. The actual meaning of
     /// the value isn't known except to the pass itself.
     [] mir_const_qualif: Mir(DefId) -> u8,
+
+    /// Performs the initial MIR construction. You almost certainly do not
+    /// want to use this query, because its output is intended to be stolen
+    /// immediately by the MIR passes below. Consider `optimized_mir` instead.
+    [] mir_build: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>>,
+
+    /// Fetch the MIR for a given def-id after the given set of passes has ben
+    /// applied to it. This is mostly an "intermediate" query. Normally, you would
+    /// prefer to use `optimized_mir(def_id)`, which will fetch the MIR after all
+    /// optimizations and so forth.
+    [] mir_pass_set: mir_pass_set((MirPassSet, DefId)) -> &'tcx RefCell<mir::Mir<'tcx>>,
+
+    /// Fetch the MIR for a given def-id after a given pass has been executed. This is
+    /// **only** intended to be used by the `mir_pass_set` provider -- if you are using it
+    /// manually, you're doing it wrong.
+    [] mir_pass: mir_pass((MirPassSet, MirPassIndex, DefId)) -> &'tcx RefCell<mir::Mir<'tcx>>,
+
+    /// MIR after our optimization passes have run. This is MIR that is ready
+    /// for trans. This is also the only query that can fetch non-local MIR, at present.
+    [] optimized_mir: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>>,
 
     /// Records the type of each closure. The def ID is the ID of the
     /// expression defining the closure.
@@ -657,4 +699,12 @@ fn const_eval_dep_node((def_id, _): (DefId, &Substs)) -> DepNode<DefId> {
 
 fn mir_keys(_: CrateNum) -> DepNode<DefId> {
     DepNode::MirKeys
+}
+
+fn mir_pass_set((_pass_set, def_id): (MirPassSet, DefId)) -> DepNode<DefId> {
+    DepNode::Mir(def_id)
+}
+
+fn mir_pass((_pass_set, _pass_num, def_id): (MirPassSet, MirPassIndex, DefId)) -> DepNode<DefId> {
+    DepNode::Mir(def_id)
 }

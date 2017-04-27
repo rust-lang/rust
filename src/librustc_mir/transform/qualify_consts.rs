@@ -16,7 +16,6 @@
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
@@ -27,13 +26,14 @@ use rustc::ty::cast::CastTy;
 use rustc::ty::maps::Providers;
 use rustc::mir::*;
 use rustc::mir::traversal::ReversePostorder;
-use rustc::mir::transform::{DefIdPass, MirSource};
+use rustc::mir::transform::{DefIdPass, MirCtxt, MirSource, MIR_CONST};
 use rustc::mir::visit::{LvalueContext, Visitor};
 use rustc::middle::lang_items;
 use syntax::abi::Abi;
 use syntax::feature_gate::UnstableFeatures;
 use syntax_pos::{Span, DUMMY_SP};
 
+use std::cell::RefCell;
 use std::fmt;
 use std::usize;
 
@@ -925,7 +925,7 @@ pub fn provide(providers: &mut Providers) {
 fn qualify_const_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 def_id: DefId)
                                 -> u8 {
-    let mir = &tcx.item_mir(def_id);
+    let mir = &tcx.mir_pass_set((MIR_CONST, def_id)).borrow();
     if mir.return_ty.references_error() {
         return Qualif::NOT_CONST.bits();
     }
@@ -940,30 +940,32 @@ fn qualify_const_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub struct QualifyAndPromoteConstants;
 
 impl DefIdPass for QualifyAndPromoteConstants {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          def_id: DefId)
-    {
-        let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
-        let id = tcx.hir.as_local_node_id(def_id).unwrap();
-        let src = MirSource::from_node(tcx, id);
+    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> &'tcx RefCell<Mir<'tcx>> {
+        let tcx = mir_cx.tcx();
+        match mir_cx.source() {
+            MirSource::Const(_) => {
+                // Ensure that we compute the `mir_const_qualif` for
+                // constants at this point, before we do any further
+                // optimization (and before we steal the previous
+                // MIR).
+                tcx.mir_const_qualif(mir_cx.def_id());
+                mir_cx.steal_previous_mir()
+            }
 
-        if let MirSource::Const(_) = src {
-            tcx.mir_const_qualif(def_id);
-            return;
+            src => {
+                let mir = mir_cx.steal_previous_mir();
+                self.run_pass(tcx, src, &mut mir.borrow_mut());
+                mir
+            }
         }
-
-        let mir = &mut tcx.mir(def_id).borrow_mut();
-        tcx.dep_graph.write(DepNode::Mir(def_id));
-
-        self.run_pass(tcx, src, mir);
     }
 }
 
 impl<'a, 'tcx> QualifyAndPromoteConstants {
     fn run_pass(&self,
                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                src: MirSource, mir: &mut Mir<'tcx>) {
+                src: MirSource,
+                mir: &mut Mir<'tcx>) {
         let id = src.item_id();
         let def_id = tcx.hir.local_def_id(id);
         let mode = match src {

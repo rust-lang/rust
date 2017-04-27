@@ -11,7 +11,7 @@
 use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::*;
-use rustc::mir::transform::MirSource;
+use rustc::mir::transform::{MirPassSet, MirPassIndex, MirSource};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx};
@@ -39,29 +39,18 @@ const ALIGN: usize = 40;
 ///   that can appear in the pass-name or the `item_path_str` for the given
 ///   node-id. If any one of the substrings match, the data is dumped out.
 pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          pass_num: usize,
+                          pass_num: Option<(MirPassSet, MirPassIndex)>,
                           pass_name: &str,
                           disambiguator: &Display,
                           source: MirSource,
                           mir: &Mir<'tcx>) {
-    let filters = match tcx.sess.opts.debugging_opts.dump_mir {
-        None => return,
-        Some(ref filters) => filters,
-    };
-    let node_id = source.item_id();
-    let node_path = tcx.item_path_str(tcx.hir.local_def_id(node_id));
-    let is_matched =
-        filters.split("&")
-               .any(|filter| {
-                   filter == "all" ||
-                       pass_name.contains(filter) ||
-                       node_path.contains(filter)
-               });
-    if !is_matched {
+    if !dump_enabled(tcx, pass_name, source) {
         return;
     }
 
-    dump_matched_mir_node(tcx, pass_num, pass_name, &node_path, disambiguator, source, mir);
+    let node_path = tcx.item_path_str(tcx.hir.local_def_id(source.item_id()));
+    dump_matched_mir_node(tcx, pass_num, pass_name, &node_path,
+                          disambiguator, source, mir);
     for (index, promoted_mir) in mir.promoted.iter_enumerated() {
         let promoted_source = MirSource::Promoted(source.item_id(), index);
         dump_matched_mir_node(tcx, pass_num, pass_name, &node_path, disambiguator,
@@ -69,8 +58,26 @@ pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
+pub fn dump_enabled<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              pass_name: &str,
+                              source: MirSource)
+                              -> bool {
+    let filters = match tcx.sess.opts.debugging_opts.dump_mir {
+        None => return false,
+        Some(ref filters) => filters,
+    };
+    let node_id = source.item_id();
+    let node_path = tcx.item_path_str(tcx.hir.local_def_id(node_id));
+    filters.split("&")
+           .any(|filter| {
+               filter == "all" ||
+                   pass_name.contains(filter) ||
+                   node_path.contains(filter)
+           })
+}
+
 fn dump_matched_mir_node<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   pass_num: usize,
+                                   pass_num: Option<(MirPassSet, MirPassIndex)>,
                                    pass_name: &str,
                                    node_path: &str,
                                    disambiguator: &Display,
@@ -84,7 +91,10 @@ fn dump_matched_mir_node<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let pass_num = if tcx.sess.opts.debugging_opts.dump_mir_exclude_pass_number {
         format!("")
     } else {
-        format!(".{:03}", pass_num)
+        match pass_num {
+            None => format!(".-------"),
+            Some((pass_set, pass_num)) => format!(".{:03}-{:03}", pass_set.0, pass_num.0),
+        }
     };
 
     let mut file_path = PathBuf::new();
