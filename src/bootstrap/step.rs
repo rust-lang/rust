@@ -575,6 +575,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "qemu-test-client"));
     rules.build("tool-cargo", "cargo")
+         .default(build.config.extended)
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
          .dep(|s| s.stage(0).host(s.target).name("openssl"))
@@ -588,6 +589,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .run(move |s| compile::tool(build, s.stage, s.target, "cargo"));
     rules.build("tool-rls", "rls")
          .host(true)
+         .default(build.config.extended)
          .dep(|s| s.name("librustc-tool"))
          .dep(|s| s.stage(0).host(s.target).name("openssl"))
          .dep(move |s| {
