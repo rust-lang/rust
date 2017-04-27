@@ -12,6 +12,7 @@ use common::Config;
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
 use common::{Incremental, RunMake, Ui, MirOpt};
+use diff;
 use errors::{self, ErrorKind, Error};
 use filetime::FileTime;
 use json;
@@ -19,7 +20,6 @@ use header::TestProps;
 use header;
 use procsrv;
 use test::TestPaths;
-use uidiff;
 use util::logv;
 
 use std::collections::HashSet;
@@ -2569,8 +2569,13 @@ actual:\n\
         println!("normalized {}:\n{}\n", kind, actual);
         println!("expected {}:\n{}\n", kind, expected);
         println!("diff of {}:\n", kind);
-        for line in uidiff::diff_lines(actual, expected) {
-            println!("{}", line);
+
+        for diff in diff::lines(actual, expected) {
+            match diff {
+                diff::Result::Left(l)    => println!("+{}", l),
+                diff::Result::Both(l, _) => println!(" {}", l),
+                diff::Result::Right(r)   => println!("-{}", r),
+            }
         }
 
         let output_file = self.output_base_name().with_extension(kind);
