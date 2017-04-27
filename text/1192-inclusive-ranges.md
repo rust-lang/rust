@@ -57,6 +57,26 @@ This `struct` definition is maximally consistent with the existing `Range`.
 `a..b` and `a...b` are the same size and have the same fields, just with
 the expected difference in semantics.
 
+The range `a...b` contains all `x` where `a <= x && x <= b`.  As such, an
+inclusive range is non-empty _iff_ `a <= b`.  When the range is iterable,
+a non-empty range will produce at least one item when iterated.  Because
+`T::MAX...T::MAX` is a non-empty range, the iteration needs extra handling
+compared to a half-open `Range`.  As such, `.next()` on an empty range
+`y...y` will produce the value `y` and replace the range with the canonical
+empty range for the type.  Using methods on the the existing (but unstable)
+[`Step` trait][step_trait], that's `1...0` for all currently-iterable
+value types.  Providing such a range is not a burden on the `T` type as
+any such range is acceptable, and only `PartialOrd` is required so
+it can be satisfied with an incomparable value `n` with `!(n <= n)`.
+
+Note that because ranges are not required to be well-formed, they have a
+much stronger bound than just needing successor function: they require a
+`b is-reachable-from a` predicate (as `a <= b`). Providing that efficiently
+for a DAG walk, or even a simpler forward list walk, is a substantially
+harder thing to do than providing a pair `(x, y)` such that `!(x <= y)`.
+
+[step_trait]: https://github.com/rust-lang/rust/issues/27741
+
 # Drawbacks
 
 There's a mismatch between pattern-`...` and expression-`...`, in that
@@ -66,32 +86,9 @@ semantically.)
 
 The `...` vs. `..` distinction is the exact inversion of Ruby's syntax.
 
-Not having a separate marker for `finished` or `empty` implies a requirement
-on `T` that it's possible to provide values such that `b...a` is an empty
-range.  But a separate marker is a false invariant: whether a `finished`
-field on the struct or a `Empty` variant of an enum, the range `10...0` still
-desugars to a `RangeInclusive` with `finised: false` or of the `NonEmpty`
-variant.  And the fields are public, so even fixing the desugar cannot
-guarantee the invariant.  As a result, all code using a `RangeInclusive`
-must still check whether a "`NonEmpty`" or "un`finished`" is actually finished.
-The "can produce an empty range" requirement is not a hardship.  It's trivial
-for anything that can be stepped forward and backward, as all things which are
-iterable in `std` are today.  But ther are other possibilities as well.  The
-proof-of-concept implementation for this change is done using the `replace_one`
-and `replace_zero` methods of the (existing but unstable) `Step` trait, as
-`1...0` is of course an empty range.  Something weirder, like walking along a
-DAG, could use the fact that `PartialOrd` is sufficient, and produce a range
-similar in character to `NaN...NaN`, which is empty as `(NaN <= NaN) == false`.
-The exact details of what is required to make a range iterable is outside the
-scope of this RFC, and will be decided in the [`step_by` issue][step_by].
-
-Note that iterable ranges today have a much stronger bound than just
-steppability: they require a `b is-reachable-from a` predicate (as `a <= b`).
-Providing that efficiently for a DAG walk, or even a simpler forward list
-walk, is a substantially harder thing to do that providing a pair `(x, y)`
-such that `!(x <= y)`.
-
-[step_by]: https://github.com/rust-lang/rust/issues/27741
+This proposal makes the post-iteration values of the `start` and `end` fields
+constant, and thus useless.  Some of the alternatives would expose the
+last value returned from the iteration, through a more complex interface.
 
 # Alternatives
 
@@ -110,20 +107,30 @@ reevaluated for usefulness and conflicts with other proposed syntax.
   field is set once the ends match.  But having the extra field in a
   language-level desugaring, catering to one library use-case is a little
   non-"hygienic". It is especially strange that the field isn't consistent
-  across the different `...` desugarings.
+  across the different `...` desugarings.  And the presence of the public
+  field encourages checkinging it, which can be misleading as
+  `r.finished == false` does not guarantee that `r.count() > 0`.
 - `RangeInclusive` could be an enum with `Empty` and `NonEmpty` variants.
-  This is cleaner than the `finished` field, but makes all uses of the
-  type substantially more complex.  For example, the clamp RFC would
-  naturally use a `RangeInclusive` parameter, but then the
-  unreliable-`Empty` vs `NonEmpty` distinction provides no value.  It does
-  prevent looking at `start` after iteration has completed, but that is
-  of questionable value when `Range` allows it without issue, and disallowing
-  looking at `start` while allowing looking at `end` feels inconsistent.
+  This is cleaner than the `finished` field, but still has the problem that
+  there's no invariant maintained: while an `Empty` range is definitely empty,
+  a `NonEmpty` range might actually be empty.  And requiring matching on every
+  use of the type is less ergonomic.  For example, the clamp RFC would
+  naturally use a `RangeInclusive` parameter, but because it still needs
+  to `assert!(start <= end)` in the `NonEmpty` arm, the noise of the `Empty`
+  vs `NonEmpty` match provides it no value.
 - `a...b` only implements `IntoIterator`, not `Iterator`, by
   converting to a different type that does have the field. However,
   this means that `a.. .b` behaves differently to `a..b`, so
   `(a...b).map(|x| ...)` doesn't work (the `..` version of that is
   used reasonably often, in the author's experience)
+- Different choices for the end of iteration are also possible.  While neither
+  `start` nor `end` can always have the last value of the iteration while
+  still producing an empty range (consider what happens with `MIN...MIN`
+  and `MAX...MAX`), they could be closer.  For example, `a...a` could become
+  `(a+1)...a` where possible, and `a...(a-1)` otherwise.
+- The name of the `end` field could be different, perhaps `last`, to reflect
+  its different (inclusive) semantics from the `end` (exclusive) field on
+  the other ranges.
 
 # Unresolved questions
 
