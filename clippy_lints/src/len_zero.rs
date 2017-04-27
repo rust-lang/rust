@@ -94,7 +94,7 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItemRef]
             has_self &&
             {
                 let did = cx.tcx.hir.local_def_id(item.id.node_id);
-                let impl_ty = cx.tcx.item_type(did);
+                let impl_ty = cx.tcx.type_of(did);
                 impl_ty.fn_args().skip_binder().len() == 1
             }
         } else {
@@ -121,7 +121,7 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
             has_self &&
             {
                 let did = cx.tcx.hir.local_def_id(item.id.node_id);
-                let impl_ty = cx.tcx.item_type(did);
+                let impl_ty = cx.tcx.type_of(did);
                 impl_ty.fn_args().skip_binder().len() == 1
             }
         } else {
@@ -142,7 +142,7 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
     if let Some(i) = impl_items.iter().find(|i| is_named_self(cx, i, "len")) {
         if cx.access_levels.is_exported(i.id.node_id) {
             let def_id = cx.tcx.hir.local_def_id(item.id);
-            let ty = cx.tcx.item_type(def_id);
+            let ty = cx.tcx.type_of(def_id);
 
             span_lint(cx,
                       LEN_WITHOUT_IS_EMPTY,
@@ -186,7 +186,7 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
     fn is_is_empty(cx: &LateContext, item: &ty::AssociatedItem) -> bool {
         if let ty::AssociatedKind::Method = item.kind {
             if item.name == "is_empty" {
-                let sig = cx.tcx.item_type(item.def_id).fn_sig();
+                let sig = cx.tcx.type_of(item.def_id).fn_sig();
                 let ty = sig.skip_binder();
                 ty.inputs().len() == 1
             } else {

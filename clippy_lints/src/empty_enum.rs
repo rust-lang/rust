@@ -34,7 +34,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EmptyEnum {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         let did = cx.tcx.hir.local_def_id(item.id);
         if let ItemEnum(..) = item.node {
-            let ty = cx.tcx.item_type(did);
+            let ty = cx.tcx.type_of(did);
             let adt = ty.ty_adt_def().expect("already checked whether this is an enum");
             if adt.variants.is_empty() {
                 span_lint_and_then(cx, EMPTY_ENUM, item.span, "enum with no variants", |db| {

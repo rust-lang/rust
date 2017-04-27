@@ -99,7 +99,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
         let fn_def_id = cx.tcx.hir.local_def_id(node_id);
         let param_env = ty::ParameterEnvironment::for_item(cx.tcx, node_id);
-        let fn_sig = cx.tcx.item_type(fn_def_id).fn_sig();
+        let fn_sig = cx.tcx.type_of(fn_def_id).fn_sig();
         let fn_sig = cx.tcx.liberate_late_bound_regions(param_env.free_id_outlive, &fn_sig);
 
         for ((input, &ty), arg) in decl.inputs.iter().zip(fn_sig.inputs()).zip(&body.arguments) {

@@ -1,10 +1,9 @@
 use rustc::hir::*;
 use rustc::hir::def::Def;
 use rustc::lint::*;
-use rustc::ty;
 use rustc_const_eval::lookup_const_by_id;
 use syntax::ast::LitKind;
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax::codemap::Span;
 use utils::span_lint;
 
 /// **What it does:** Checks for incompatible bit masks in comparisons.
@@ -252,7 +251,7 @@ fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u128> {
             if let Def::Const(def_id) = def {
                 lookup_const_by_id(cx.tcx, def_id, Substs::empty()).and_then(|(l, _ty)| {
                     let body = if let Some(id) = cx.tcx.hir.as_local_node_id(l) {
-                        ty::queries::mir_const_qualif::get(cx.tcx, DUMMY_SP, def_id);
+                        cx.tcx.mir_const_qualif(def_id);
                         cx.tcx.hir.body(cx.tcx.hir.body_owned_by(id))
                     } else {
                         cx.tcx.sess.cstore.item_body(cx.tcx, def_id)

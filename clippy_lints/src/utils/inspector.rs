@@ -364,26 +364,26 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
             }
         },
         hir::ItemUse(ref path, ref kind) => println!("{:?}, {:?}", path, kind),
-        hir::ItemStatic(..) => println!("static item of type {:#?}", cx.tcx.item_type(did)),
-        hir::ItemConst(..) => println!("const item of type {:#?}", cx.tcx.item_type(did)),
+        hir::ItemStatic(..) => println!("static item of type {:#?}", cx.tcx.type_of(did)),
+        hir::ItemConst(..) => println!("const item of type {:#?}", cx.tcx.type_of(did)),
         hir::ItemFn(..) => {
-            let item_ty = cx.tcx.item_type(did);
+            let item_ty = cx.tcx.type_of(did);
             println!("function of type {:#?}", item_ty);
         },
         hir::ItemMod(..) => println!("module"),
         hir::ItemForeignMod(ref fm) => println!("foreign module with abi: {}", fm.abi),
         hir::ItemGlobalAsm(ref asm) => println!("global asm: {:?}", asm),
         hir::ItemTy(..) => {
-            println!("type alias for {:?}", cx.tcx.item_type(did));
+            println!("type alias for {:?}", cx.tcx.type_of(did));
         },
         hir::ItemEnum(..) => {
-            println!("enum definition of type {:?}", cx.tcx.item_type(did));
+            println!("enum definition of type {:?}", cx.tcx.type_of(did));
         },
         hir::ItemStruct(..) => {
-            println!("struct definition of type {:?}", cx.tcx.item_type(did));
+            println!("struct definition of type {:?}", cx.tcx.type_of(did));
         },
         hir::ItemUnion(..) => {
-            println!("union definition of type {:?}", cx.tcx.item_type(did));
+            println!("union definition of type {:?}", cx.tcx.type_of(did));
         },
         hir::ItemTrait(..) => {
             println!("trait decl");

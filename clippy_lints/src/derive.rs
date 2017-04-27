@@ -73,7 +73,7 @@ impl LintPass for Derive {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node {
-            let ty = cx.tcx.item_type(cx.tcx.hir.local_def_id(item.id));
+            let ty = cx.tcx.type_of(cx.tcx.hir.local_def_id(item.id));
             let is_automatically_derived = is_automatically_derived(&*item.attrs);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
@@ -97,7 +97,7 @@ fn check_hash_peq<'a, 'tcx>(
         match_path_old(&trait_ref.path, &paths::HASH),
         let Some(peq_trait_def_id) = cx.tcx.lang_items.eq_trait()
     ], {
-        let peq_trait_def = cx.tcx.lookup_trait_def(peq_trait_def_id);
+        let peq_trait_def = cx.tcx.trait_def(peq_trait_def_id);
 
         // Look for the PartialEq implementations for `ty`
         peq_trait_def.for_each_relevant_impl(cx.tcx, ty, |impl_id| {

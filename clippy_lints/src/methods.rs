@@ -657,7 +657,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
 
             // check conventions w.r.t. conversion method names and predicates
-            let ty = cx.tcx.item_type(cx.tcx.hir.local_def_id(item.id));
+            let ty = cx.tcx.type_of(cx.tcx.hir.local_def_id(item.id));
             let is_copy = is_copy(cx, ty, item.id);
             for &(ref conv, self_kinds) in &CONVENTIONS {
                 if_let_chain! {[
