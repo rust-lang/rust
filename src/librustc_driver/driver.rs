@@ -929,7 +929,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     passes.push_pass(MIR_OPTIMIZED, mir::transform::simplify::SimplifyCfg::new("elaborate-drops"));
 
     // No lifetime analysis based on borrowing can be done from here on out.
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::inline::Inline);
+    // passes.push_pass(MIR_OPTIMIZED, mir::transform::inline::Inline); // TODO re-enable
     passes.push_pass(MIR_OPTIMIZED, mir::transform::instcombine::InstCombine);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::deaggregator::Deaggregator);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::copy_prop::CopyPropagation);

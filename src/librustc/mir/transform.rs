@@ -93,7 +93,7 @@ pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
 pub trait PassHook {
     fn on_mir_pass<'a, 'tcx>(&self,
                              tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             pass: &Pass,
+                             pass_name: &str,
                              pass_num: usize,
                              is_after: bool);
 }
@@ -173,7 +173,7 @@ pub struct Passes {
 
 #[derive(Clone)]
 struct PassSet {
-    passes: Vec<Rc<Pass>>,
+    passes: Vec<Rc<DefIdPass>>,
 }
 
 /// The number of "pass sets" that we have:
@@ -208,19 +208,23 @@ impl<'a, 'tcx> Passes {
         // NB: passes are numbered from 1, since "construction" is zero.
         for (pass, pass_num) in set.passes.iter().zip(start_num + 1..) {
             for hook in &self.pass_hooks {
-                hook.on_mir_pass(tcx, &**pass, pass_num, false);
+                hook.on_mir_pass(tcx, &pass.name(), pass_num, false);
             }
 
-            time(tcx.sess.time_passes(), &*pass.name(), || pass.run_pass(tcx));
+            time(tcx.sess.time_passes(), &*pass.name(), || {
+                for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
+                    pass.run_pass(tcx, def_id);
+                }
+            });
 
             for hook in &self.pass_hooks {
-                hook.on_mir_pass(tcx, &**pass, pass_num, true);
+                hook.on_mir_pass(tcx, &pass.name(), pass_num, true);
             }
         }
     }
 
     /// Pushes a built-in pass.
-    pub fn push_pass<T: Pass + 'static>(&mut self, set: usize, pass: T) {
+    pub fn push_pass<T: DefIdPass + 'static>(&mut self, set: usize, pass: T) {
         self.sets[set].passes.push(Rc::new(pass));
     }
 
