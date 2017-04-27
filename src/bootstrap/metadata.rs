@@ -59,6 +59,7 @@ fn build_krate(build: &mut Build, krate: &str) {
     let mut cargo = Command::new(&build.cargo);
     cargo.arg("metadata")
          .arg("--format-version").arg("1")
+         .arg("--format-version=1")
          .arg("--manifest-path").arg(build.src.join(krate).join("Cargo.toml"));
     let output = output(&mut cargo);
     let output: Output = json::decode(&output).unwrap();

@@ -147,6 +147,12 @@ extern "C" void LLVMRustAddPass(LLVMPassManagerRef PMR, LLVMPassRef RustPass) {
 #define SUBTARGET_SPARC
 #endif
 
+#ifdef LLVM_COMPONENT_HEXAGON
+#define SUBTARGET_HEXAGON SUBTARGET(Hexagon)
+#else
+#define SUBTARGET_HEXAGON
+#endif
+
 #define GEN_SUBTARGETS                                                         \
   SUBTARGET_X86                                                                \
   SUBTARGET_ARM                                                                \
@@ -155,7 +161,8 @@ extern "C" void LLVMRustAddPass(LLVMPassManagerRef PMR, LLVMPassRef RustPass) {
   SUBTARGET_PPC                                                                \
   SUBTARGET_SYSTEMZ                                                            \
   SUBTARGET_MSP430                                                             \
-  SUBTARGET_SPARC
+  SUBTARGET_SPARC                                                              \
+  SUBTARGET_HEXAGON
 
 #define SUBTARGET(x)                                                           \
   namespace llvm {                                                             \
