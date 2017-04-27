@@ -167,24 +167,46 @@ impl<T: MirPass> DefIdPass for T {
 /// A manager for MIR passes.
 #[derive(Clone)]
 pub struct Passes {
-    passes: Vec<Rc<Pass>>,
     pass_hooks: Vec<Rc<PassHook>>,
-    plugin_passes: Vec<Rc<Pass>>
+    sets: Vec<PassSet>,
 }
+
+#[derive(Clone)]
+struct PassSet {
+    passes: Vec<Rc<Pass>>,
+}
+
+/// The number of "pass sets" that we have:
+///
+/// - ready for constant evaluation
+/// - unopt
+/// - optimized
+pub const MIR_PASS_SETS: usize = 3;
+
+/// Run the passes we need to do constant qualification and evaluation.
+pub const MIR_CONST: usize = 0;
+
+/// Run the passes we need to consider the MIR validated and ready for borrowck etc.
+pub const MIR_VALIDATED: usize = 1;
+
+/// Run the passes we need to consider the MIR *optimized*.
+pub const MIR_OPTIMIZED: usize = 2;
 
 impl<'a, 'tcx> Passes {
     pub fn new() -> Passes {
-        let passes = Passes {
-            passes: Vec::new(),
+        Passes {
             pass_hooks: Vec::new(),
-            plugin_passes: Vec::new()
-        };
-        passes
+            sets: (0..MIR_PASS_SETS).map(|_| PassSet { passes: Vec::new() }).collect(),
+        }
     }
 
-    pub fn run_passes(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    pub fn run_passes(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, set_index: usize) {
+        let set = &self.sets[set_index];
+
+        let start_num: usize = self.sets[..set_index].iter().map(|s| s.passes.len()).sum();
+
         // NB: passes are numbered from 1, since "construction" is zero.
-        for (pass, pass_num) in self.plugin_passes.iter().chain(&self.passes).zip(1..) {
+        for (pass, pass_num) in set.passes.iter().zip(start_num + 1..) {
             for hook in &self.pass_hooks {
                 hook.on_mir_pass(tcx, &**pass, pass_num, false);
             }
@@ -198,19 +220,12 @@ impl<'a, 'tcx> Passes {
     }
 
     /// Pushes a built-in pass.
-    pub fn push_pass<T: Pass + 'static>(&mut self, pass: T) {
-        self.passes.push(Rc::new(pass));
+    pub fn push_pass<T: Pass + 'static>(&mut self, set: usize, pass: T) {
+        self.sets[set].passes.push(Rc::new(pass));
     }
 
     /// Pushes a pass hook.
     pub fn push_hook<T: PassHook + 'static>(&mut self, hook: T) {
         self.pass_hooks.push(Rc::new(hook));
-    }
-}
-
-/// Copies the plugin passes.
-impl ::std::iter::Extend<Rc<Pass>> for Passes {
-    fn extend<I: IntoIterator<Item=Rc<Pass>>>(&mut self, it: I) {
-        self.plugin_passes.extend(it);
     }
 }
