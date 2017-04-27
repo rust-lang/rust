@@ -31,7 +31,7 @@ use rustc::session::{self, config};
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
-use syntax::codemap::CodeMap;
+use syntax::codemap::{CodeMap, FilePathMapping};
 use errors;
 use errors::emitter::Emitter;
 use errors::{Level, DiagnosticBuilder};
@@ -108,7 +108,7 @@ fn test_env<F>(source_string: &str,
                                        &dep_graph,
                                        None,
                                        diagnostic_handler,
-                                       Rc::new(CodeMap::new()),
+                                       Rc::new(CodeMap::new(FilePathMapping::empty())),
                                        cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {

@@ -26,7 +26,7 @@ use std::fmt::Display;
 use std::io;
 use std::io::prelude::*;
 
-use syntax::codemap::CodeMap;
+use syntax::codemap::{CodeMap, FilePathMapping};
 use syntax::parse::lexer::{self, TokenAndSpan};
 use syntax::parse::token;
 use syntax::parse;
@@ -36,8 +36,8 @@ use syntax_pos::Span;
 pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>,
                                 extension: Option<&str>) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
-    let sess = parse::ParseSess::new();
-    let fm = sess.codemap().new_filemap("<stdin>".to_string(), None, src.to_string());
+    let sess = parse::ParseSess::new(FilePathMapping::empty());
+    let fm = sess.codemap().new_filemap("<stdin>".to_string(), src.to_string());
 
     let mut out = Vec::new();
     write_header(class, id, &mut out).unwrap();
@@ -58,8 +58,8 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>
 /// be inserted into an element. C.f., `render_with_highlighting` which includes
 /// an enclosing `<pre>` block.
 pub fn render_inner_with_highlighting(src: &str) -> io::Result<String> {
-    let sess = parse::ParseSess::new();
-    let fm = sess.codemap().new_filemap("<stdin>".to_string(), None, src.to_string());
+    let sess = parse::ParseSess::new(FilePathMapping::empty());
+    let fm = sess.codemap().new_filemap("<stdin>".to_string(), src.to_string());
 
     let mut out = Vec::new();
     let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm), sess.codemap());

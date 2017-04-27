@@ -827,7 +827,7 @@ impl<'a, 'tcx> CrateMetadata {
             EntryKind::AssociatedType(container) => {
                 (ty::AssociatedKind::Type, container, false)
             }
-            _ => bug!()
+            _ => bug!("cannot get associated-item of `{:?}`", def_key)
         };
 
         ty::AssociatedItem {
@@ -1138,7 +1138,7 @@ impl<'a, 'tcx> CrateMetadata {
                         // We can't reuse an existing FileMap, so allocate a new one
                         // containing the information we need.
                         let syntax_pos::FileMap { name,
-                                                  abs_path,
+                                                  name_was_remapped,
                                                   start_pos,
                                                   end_pos,
                                                   lines,
@@ -1162,7 +1162,7 @@ impl<'a, 'tcx> CrateMetadata {
                         }
 
                         let local_version = local_codemap.new_imported_filemap(name,
-                                                                               abs_path,
+                                                                               name_was_remapped,
                                                                                source_length,
                                                                                lines,
                                                                                multibyte_chars);
