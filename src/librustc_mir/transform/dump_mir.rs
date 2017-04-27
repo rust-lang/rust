@@ -50,7 +50,7 @@ impl PassHook for DumpMir {
     fn on_mir_pass<'a, 'tcx>(
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        pass: &Pass,
+        pass_name: &str,
         pass_num: usize,
         is_after: bool)
     {
@@ -66,7 +66,7 @@ impl PassHook for DumpMir {
             mir_util::dump_mir(
                 tcx,
                 pass_num,
-                &*pass.name(),
+                &pass_name,
                 &Disambiguator { is_after },
                 source,
                 &mir
