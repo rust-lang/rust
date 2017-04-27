@@ -516,6 +516,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     };
 
                     let index_expr_ty = self.node_ty(index_expr.id);
+                    let adjusted_base_ty = self.resolve_type_vars_if_possible(&adjusted_base_ty);
+                    let index_expr_ty = self.resolve_type_vars_if_possible(&index_expr_ty);
 
                     let result = self.try_index_step(ty::MethodCall::expr(expr.id),
                                                      expr,
@@ -531,6 +533,15 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
                         let expr_ty = self.node_ty(expr.id);
                         self.demand_suptype(expr.span, expr_ty, return_ty);
+                    } else {
+                        // We could not perform a mutable index. Re-apply the
+                        // immutable index adjustments - borrowck will detect
+                        // this as an error.
+                        if let Some(adjustment) = adjustment {
+                            self.apply_adjustment(expr.id, adjustment);
+                        }
+                        self.tcx.sess.delay_span_bug(
+                            expr.span, "convert_lvalue_derefs_to_mutable failed");
                     }
                 }
                 hir::ExprUnary(hir::UnDeref, ref base_expr) => {
