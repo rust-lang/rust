@@ -398,12 +398,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let method = match trait_did {
             Some(trait_did) => {
-                self.lookup_method_in_trait(expr.span,
-                                            Some(lhs_expr),
-                                            opname,
-                                            trait_did,
-                                            lhs_ty,
-                                            Some(other_tys))
+                let lhs_expr = Some(super::AdjustedRcvr {
+                    rcvr_expr: lhs_expr, autoderefs: 0, unsize: false
+                });
+                self.lookup_method_in_trait_adjusted(expr.span,
+                                                     lhs_expr,
+                                                     opname,
+                                                     trait_did,
+                                                     lhs_ty,
+                                                     Some(other_tys))
             }
             None => None
         };
