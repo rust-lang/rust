@@ -4865,7 +4865,9 @@ impl<'a> Parser<'a> {
     ///    impl<T> Foo { ... }
     ///    impl<T> ToString for &'static T { ... }
     ///    impl Send for .. {}
-    fn parse_item_impl(&mut self, unsafety: ast::Unsafety) -> PResult<'a, ItemInfo> {
+    fn parse_item_impl(&mut self,
+                       unsafety: ast::Unsafety,
+                       defaultness: Defaultness) -> PResult<'a, ItemInfo> {
         let impl_span = self.span;
 
         // First, parse type parameters if necessary.
@@ -4918,6 +4920,11 @@ impl<'a> Parser<'a> {
                                           allowed to have generics");
             }
 
+            if let ast::Defaultness::Default = defaultness {
+                self.span_err(impl_span, "`default impl` is not allowed for \
+                                         default trait implementations");
+            }
+
             self.expect(&token::OpenDelim(token::Brace))?;
             self.expect(&token::CloseDelim(token::Brace))?;
             Ok((keywords::Invalid.ident(),
@@ -4946,7 +4953,7 @@ impl<'a> Parser<'a> {
             }
 
             Ok((keywords::Invalid.ident(),
-             ItemKind::Impl(unsafety, polarity, generics, opt_trait, ty, impl_items),
+             ItemKind::Impl(unsafety, polarity, defaultness, generics, opt_trait, ty, impl_items),
              Some(attrs)))
         }
     }
@@ -5759,13 +5766,19 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return Ok(Some(item));
         }
-        if self.check_keyword(keywords::Unsafe) &&
-            self.look_ahead(1, |t| t.is_keyword(keywords::Impl))
+        if (self.check_keyword(keywords::Unsafe) &&
+            self.look_ahead(1, |t| t.is_keyword(keywords::Impl))) ||
+           (self.check_keyword(keywords::Default) &&
+            self.look_ahead(1, |t| t.is_keyword(keywords::Unsafe)) &&
+            self.look_ahead(2, |t| t.is_keyword(keywords::Impl)))
         {
             // IMPL ITEM
+            let defaultness = self.parse_defaultness()?;
             self.expect_keyword(keywords::Unsafe)?;
             self.expect_keyword(keywords::Impl)?;
-            let (ident, item_, extra_attrs) = self.parse_item_impl(ast::Unsafety::Unsafe)?;
+            let (ident,
+                 item_,
+                 extra_attrs) = self.parse_item_impl(ast::Unsafety::Unsafe, defaultness)?;
             let prev_span = self.prev_span;
             let item = self.mk_item(lo.to(prev_span),
                                     ident,
@@ -5859,9 +5872,16 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return Ok(Some(item));
         }
-        if self.eat_keyword(keywords::Impl) {
+        if (self.check_keyword(keywords::Impl)) ||
+           (self.check_keyword(keywords::Default) &&
+            self.look_ahead(1, |t| t.is_keyword(keywords::Impl)))
+        {
             // IMPL ITEM
-            let (ident, item_, extra_attrs) = self.parse_item_impl(ast::Unsafety::Normal)?;
+            let defaultness = self.parse_defaultness()?;
+            self.expect_keyword(keywords::Impl)?;
+            let (ident,
+                 item_,
+                 extra_attrs) = self.parse_item_impl(ast::Unsafety::Normal, defaultness)?;
             let prev_span = self.prev_span;
             let item = self.mk_item(lo.to(prev_span),
                                     ident,

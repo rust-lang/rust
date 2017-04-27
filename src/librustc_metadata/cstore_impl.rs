@@ -178,6 +178,12 @@ impl CrateStore for cstore::CStore {
         result
     }
 
+    fn impl_defaultness(&self, def: DefId) -> hir::Defaultness
+    {
+        self.dep_graph.read(DepNode::MetaData(def));
+        self.get_crate_data(def.krate).get_impl_defaultness(def.index)
+    }
+
     fn impl_parent(&self, impl_def: DefId) -> Option<DefId> {
         self.dep_graph.read(DepNode::MetaData(impl_def));
         self.get_crate_data(impl_def.krate).get_parent_impl(impl_def.index)

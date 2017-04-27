@@ -105,11 +105,11 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             ///
             /// won't be allowed unless there's an *explicit* implementation of `Send`
             /// for `T`
-            hir::ItemImpl(_, hir::ImplPolarity::Positive, _,
+            hir::ItemImpl(_, hir::ImplPolarity::Positive, _, _,
                           ref trait_ref, ref self_ty, _) => {
                 self.check_impl(item, self_ty, trait_ref);
             }
-            hir::ItemImpl(_, hir::ImplPolarity::Negative, _, Some(_), ..) => {
+            hir::ItemImpl(_, hir::ImplPolarity::Negative, _, _, Some(_), ..) => {
                 // FIXME(#27579) what amount of WF checking do we need for neg impls?
 
                 let trait_ref = tcx.impl_trait_ref(tcx.hir.local_def_id(item.id)).unwrap();

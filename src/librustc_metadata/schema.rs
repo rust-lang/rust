@@ -406,6 +406,7 @@ impl_stable_hash_for!(struct TraitData<'tcx> {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ImplData<'tcx> {
     pub polarity: hir::ImplPolarity,
+    pub defaultness: hir::Defaultness,
     pub parent_impl: Option<DefId>,
 
     /// This is `Some` only for impls of `CoerceUnsized`.
@@ -415,6 +416,7 @@ pub struct ImplData<'tcx> {
 
 impl_stable_hash_for!(struct ImplData<'tcx> {
     polarity,
+    defaultness,
     parent_impl,
     coerce_unsized_info,
     trait_ref

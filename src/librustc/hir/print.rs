@@ -678,12 +678,14 @@ impl<'a> State<'a> {
             }
             hir::ItemImpl(unsafety,
                           polarity,
+                          defaultness,
                           ref generics,
                           ref opt_trait,
                           ref ty,
                           ref impl_items) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
+                self.print_defaultness(defaultness)?;
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("impl")?;
 
@@ -820,6 +822,14 @@ impl<'a> State<'a> {
         }
     }
 
+    pub fn print_defaultness(&mut self, defaultness: hir::Defaultness) -> io::Result<()> {
+        match defaultness {
+            hir::Defaultness::Default { .. } => self.word_nbsp("default")?,
+            hir::Defaultness::Final => (),
+        }
+        Ok(())
+    }
+
     pub fn print_struct(&mut self,
                         struct_def: &hir::VariantData,
                         generics: &hir::Generics,
@@ -931,11 +941,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol()?;
         self.maybe_print_comment(ii.span.lo)?;
         self.print_outer_attributes(&ii.attrs)?;
-
-        match ii.defaultness {
-            hir::Defaultness::Default { .. } => self.word_nbsp("default")?,
-            hir::Defaultness::Final => (),
-        }
+        self.print_defaultness(ii.defaultness)?;
 
         match ii.node {
             hir::ImplItemKind::Const(ref ty, expr) => {

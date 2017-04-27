@@ -706,6 +706,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
             hir::ItemDefaultImpl(..) => {
                 let data = ImplData {
                     polarity: hir::ImplPolarity::Positive,
+                    defaultness: hir::Defaultness::Final,
                     parent_impl: None,
                     coerce_unsized_info: None,
                     trait_ref: tcx.impl_trait_ref(def_id).map(|trait_ref| self.lazy(&trait_ref)),
@@ -713,7 +714,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
 
                 EntryKind::DefaultImpl(self.lazy(&data))
             }
-            hir::ItemImpl(_, polarity, ..) => {
+            hir::ItemImpl(_, polarity, defaultness, ..) => {
                 let trait_ref = tcx.impl_trait_ref(def_id);
                 let parent = if let Some(trait_ref) = trait_ref {
                     let trait_def = tcx.trait_def(trait_ref.def_id);
@@ -740,6 +741,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
 
                 let data = ImplData {
                     polarity: polarity,
+                    defaultness: defaultness,
                     parent_impl: parent,
                     coerce_unsized_info: coerce_unsized_info,
                     trait_ref: trait_ref.map(|trait_ref| self.lazy(&trait_ref)),

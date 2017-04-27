@@ -923,7 +923,8 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                         // being invoked).
                         node_item.item.defaultness.has_value()
                     } else {
-                        node_item.item.defaultness.is_default()
+                        node_item.item.defaultness.is_default() ||
+                        selcx.tcx().impl_is_default(node_item.node.def_id())
                     };
 
                     // Only reveal a specializable default if we're past type-checking
