@@ -99,6 +99,7 @@ pub enum DepNode<D: Clone + Debug> {
     TypeckTables(D),
     UsedTraitImports(D),
     ConstEval(D),
+    SymbolName(D),
 
     // The set of impls for a given trait. Ultimately, it would be
     // nice to get more fine-grained here (e.g., to include a
@@ -236,6 +237,7 @@ impl<D: Clone + Debug> DepNode<D> {
             TypeckTables(ref d) => op(d).map(TypeckTables),
             UsedTraitImports(ref d) => op(d).map(UsedTraitImports),
             ConstEval(ref d) => op(d).map(ConstEval),
+            SymbolName(ref d) => op(d).map(SymbolName),
             TraitImpls(ref d) => op(d).map(TraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),
             ReprHints(ref d) => op(d).map(ReprHints),
