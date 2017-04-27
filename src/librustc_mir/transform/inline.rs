@@ -27,6 +27,7 @@ use rustc::util::nodemap::{DefIdSet};
 
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
 
+use std::cell::{Ref, RefCell};
 use syntax::{attr};
 use syntax::abi::Abi;
 
@@ -74,6 +75,14 @@ struct CallSite<'tcx> {
 }
 
 impl<'a, 'tcx> Inliner<'a, 'tcx> {
+    fn maybe_item_mir(&mut self, _def_id: DefId) -> Option<Ref<'tcx, Mir<'tcx>>> {
+        panic!() // TODO -- hook up inline into the system
+    }
+
+    fn mir(&mut self, _def_id: DefId) -> &'tcx RefCell<Mir<'tcx>> {
+        panic!() // TODO -- hook up inline into the system
+    }
+
     fn inline_scc(&mut self, callgraph: &callgraph::CallGraph, scc: &[graph::NodeIndex]) -> bool {
         let mut callsites = Vec::new();
         let mut in_scc = DefIdSet();
@@ -146,7 +155,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 self.tcx.dep_graph.write(DepNode::Mir(callsite.caller));
 
                 let callee_mir = {
-                    if let Some(callee_mir) = self.tcx.maybe_item_mir(callsite.callee) {
+                    if let Some(callee_mir) = self.maybe_item_mir(callsite.callee) {
                         if !self.should_inline(callsite, &callee_mir) {
                             continue;
                         }
@@ -158,7 +167,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                 };
 
-                let mut caller_mir = self.tcx.mir(callsite.caller).borrow_mut();
+                let mut caller_mir = self.mir(callsite.caller).borrow_mut();
 
                 let start = caller_mir.basic_blocks().len();
 
@@ -210,7 +219,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             let _task = self.tcx.dep_graph.in_task(DepNode::Mir(def_id));
             self.tcx.dep_graph.write(DepNode::Mir(def_id));
 
-            let mut caller_mir = self.tcx.mir(def_id).borrow_mut();
+            let mut caller_mir = self.mir(def_id).borrow_mut();
 
             debug!("Running simplify cfg on {:?}", def_id);
             CfgSimplifier::new(&mut caller_mir).simplify();

@@ -2323,9 +2323,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Given the did of an item, returns its MIR, borrowed immutably.
+    /// Given the did of an item, returns its (optimized) MIR, borrowed immutably.
     pub fn item_mir(self, did: DefId) -> Ref<'gcx, Mir<'gcx>> {
-        self.mir(did).borrow()
+        self.optimized_mir(did).borrow()
     }
 
     /// Return the possibly-auto-generated MIR of a (DefId, Subst) pair.
@@ -2333,8 +2333,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         -> Ref<'gcx, Mir<'gcx>>
     {
         match instance {
-            ty::InstanceDef::Item(did) if true => self.item_mir(did),
-            _ => self.mir_shims(instance).borrow(),
+            ty::InstanceDef::Item(did) => {
+                self.item_mir(did)
+            }
+            ty::InstanceDef::Intrinsic(..) |
+            ty::InstanceDef::FnPtrShim(..) |
+            ty::InstanceDef::Virtual(..) |
+            ty::InstanceDef::ClosureOnceShim { .. } |
+            ty::InstanceDef::DropGlue(..) => {
+                self.mir_shims(instance).borrow()
+            }
         }
     }
 

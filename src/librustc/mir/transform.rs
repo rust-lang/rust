@@ -9,13 +9,13 @@
 // except according to those terms.
 
 use hir;
-use hir::def_id::{DefId, LOCAL_CRATE};
+use hir::def_id::DefId;
 use hir::map::DefPathData;
 use mir::{Mir, Promoted};
 use ty::TyCtxt;
+use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 use syntax::ast::NodeId;
-use util::common::time;
 
 use std::borrow::Cow;
 
@@ -90,12 +90,37 @@ pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
     }
 }
 
+/// Gives you access to various bits of state during your MIR pass.
+pub trait MirCtxt<'a, 'tcx: 'a> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
+    fn def_id(&self) -> DefId;
+    fn pass_set(&self) -> MirPassSet;
+    fn pass_num(&self) -> MirPassIndex;
+    fn source(&self) -> MirSource;
+    fn read_previous_mir(&self) -> Ref<'tcx, Mir<'tcx>>;
+    fn steal_previous_mir(&self) -> &'tcx RefCell<Mir<'tcx>>;
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct MirPassSet(pub usize);
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct MirPassIndex(pub usize);
+
+/// A pass hook is invoked both before and after each pass executes.
+/// This is primarily used to dump MIR for debugging.
+///
+/// You can tell whether this is before or after by inspecting the
+/// `mir` parameter -- before the pass executes, it will be `None` (in
+/// which case you can inspect the MIR from previous pass by executing
+/// `mir_cx.read_previous_mir()`); after the pass executes, it will be
+/// `Some()` with the result of the pass (in which case the output
+/// from the previous pass is most likely stolen, so you would not
+/// want to try and access it).
 pub trait PassHook {
-    fn on_mir_pass<'a, 'tcx>(&self,
-                             tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             pass_name: &str,
-                             pass_num: usize,
-                             is_after: bool);
+    fn on_mir_pass<'a, 'tcx: 'a>(&self,
+                                 mir_cx: &MirCtxt<'a, 'tcx>,
+                                 mir: Option<&Mir<'tcx>>);
 }
 
 /// A streamlined trait that you can implement to create a pass; the
@@ -107,21 +132,7 @@ pub trait DefIdPass {
         default_name::<Self>()
     }
 
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          def_id: DefId);
-}
-
-impl<T: DefIdPass> Pass for T {
-    fn name<'a>(&'a self) -> Cow<'a, str> {
-        DefIdPass::name(self)
-    }
-
-    fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-        for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
-            DefIdPass::run_pass(self, tcx, def_id);
-        }
-    }
+    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> &'tcx RefCell<Mir<'tcx>>;
 }
 
 /// A streamlined trait that you can implement to create a pass; the
@@ -138,29 +149,24 @@ pub trait MirPass: DepGraphSafe {
                           mir: &mut Mir<'tcx>);
 }
 
-fn for_each_assoc_mir<'a, 'tcx, OP>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    def_id: DefId,
-                                    mut op: OP)
-    where OP: FnMut(MirSource, &mut Mir<'tcx>)
-{
-    let id = tcx.hir.as_local_node_id(def_id).expect("mir source requires local def-id");
-    let source = MirSource::from_node(tcx, id);
-    let mir = &mut tcx.mir(def_id).borrow_mut();
-    op(source, mir);
-
-    for (promoted_index, promoted_mir) in mir.promoted.iter_enumerated_mut() {
-        let promoted_source = MirSource::Promoted(id, promoted_index);
-        op(promoted_source, promoted_mir);
-    }
-}
-
 impl<T: MirPass> DefIdPass for T {
     fn name<'a>(&'a self) -> Cow<'a, str> {
         MirPass::name(self)
     }
 
-    fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
-        for_each_assoc_mir(tcx, def_id, |src, mir| MirPass::run_pass(self, tcx, src, mir));
+    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> &'tcx RefCell<Mir<'tcx>> {
+        let tcx = mir_cx.tcx();
+        let source = mir_cx.source();
+        let mir = mir_cx.steal_previous_mir();
+        MirPass::run_pass(self, tcx, source, &mut mir.borrow_mut());
+
+        let item_id = source.item_id();
+        for (promoted_index, promoted_mir) in mir.borrow_mut().promoted.iter_enumerated_mut() {
+            let promoted_source = MirSource::Promoted(item_id, promoted_index);
+            MirPass::run_pass(self, tcx, promoted_source, promoted_mir);
+        }
+
+        mir
     }
 }
 
@@ -168,12 +174,7 @@ impl<T: MirPass> DefIdPass for T {
 #[derive(Clone)]
 pub struct Passes {
     pass_hooks: Vec<Rc<PassHook>>,
-    sets: Vec<PassSet>,
-}
-
-#[derive(Clone)]
-struct PassSet {
-    passes: Vec<Rc<DefIdPass>>,
+    sets: Vec<Vec<Rc<DefIdPass>>>,
 }
 
 /// The number of "pass sets" that we have:
@@ -184,52 +185,41 @@ struct PassSet {
 pub const MIR_PASS_SETS: usize = 3;
 
 /// Run the passes we need to do constant qualification and evaluation.
-pub const MIR_CONST: usize = 0;
+pub const MIR_CONST: MirPassSet = MirPassSet(0);
 
 /// Run the passes we need to consider the MIR validated and ready for borrowck etc.
-pub const MIR_VALIDATED: usize = 1;
+pub const MIR_VALIDATED: MirPassSet = MirPassSet(1);
 
 /// Run the passes we need to consider the MIR *optimized*.
-pub const MIR_OPTIMIZED: usize = 2;
+pub const MIR_OPTIMIZED: MirPassSet = MirPassSet(2);
 
 impl<'a, 'tcx> Passes {
     pub fn new() -> Passes {
         Passes {
             pass_hooks: Vec::new(),
-            sets: (0..MIR_PASS_SETS).map(|_| PassSet { passes: Vec::new() }).collect(),
-        }
-    }
-
-    pub fn run_passes(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, set_index: usize) {
-        let set = &self.sets[set_index];
-
-        let start_num: usize = self.sets[..set_index].iter().map(|s| s.passes.len()).sum();
-
-        // NB: passes are numbered from 1, since "construction" is zero.
-        for (pass, pass_num) in set.passes.iter().zip(start_num + 1..) {
-            for hook in &self.pass_hooks {
-                hook.on_mir_pass(tcx, &pass.name(), pass_num, false);
-            }
-
-            time(tcx.sess.time_passes(), &*pass.name(), || {
-                for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
-                    pass.run_pass(tcx, def_id);
-                }
-            });
-
-            for hook in &self.pass_hooks {
-                hook.on_mir_pass(tcx, &pass.name(), pass_num, true);
-            }
+            sets: (0..MIR_PASS_SETS).map(|_| Vec::new()).collect(),
         }
     }
 
     /// Pushes a built-in pass.
-    pub fn push_pass<T: DefIdPass + 'static>(&mut self, set: usize, pass: T) {
-        self.sets[set].passes.push(Rc::new(pass));
+    pub fn push_pass<T: DefIdPass + 'static>(&mut self, set: MirPassSet, pass: T) {
+        self.sets[set.0].push(Rc::new(pass));
     }
 
     /// Pushes a pass hook.
     pub fn push_hook<T: PassHook + 'static>(&mut self, hook: T) {
         self.pass_hooks.push(Rc::new(hook));
+    }
+
+    pub fn len_passes(&self, set: MirPassSet) -> usize {
+        self.sets[set.0].len()
+    }
+
+    pub fn pass(&self, set: MirPassSet, pass: MirPassIndex) -> &DefIdPass {
+        &*self.sets[set.0][pass.0]
+    }
+
+    pub fn hooks(&self) -> &[Rc<PassHook>] {
+        &self.pass_hooks
     }
 }

@@ -11,14 +11,15 @@
 //! This pass just dumps MIR at a specified point.
 
 use std::borrow::Cow;
+use std::cell::RefCell;
 use std::fmt;
 use std::fs::File;
 use std::io;
 
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::TyCtxt;
-use rustc::mir::transform::{DefIdPass, Pass, PassHook, MirSource};
+use rustc::mir::Mir;
+use rustc::mir::transform::{DefIdPass, PassHook, MirCtxt};
 use util as mir_util;
 
 pub struct Marker(pub &'static str);
@@ -28,8 +29,8 @@ impl DefIdPass for Marker {
         Cow::Borrowed(self.0)
     }
 
-    fn run_pass<'a, 'tcx>(&self, _: TyCtxt<'a, 'tcx, 'tcx>, _: DefId) {
-        // no-op
+    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> &'tcx RefCell<Mir<'tcx>> {
+        mir_cx.steal_previous_mir()
     }
 }
 
@@ -47,30 +48,31 @@ impl fmt::Display for Disambiguator {
 pub struct DumpMir;
 
 impl PassHook for DumpMir {
-    fn on_mir_pass<'a, 'tcx>(
-        &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        pass_name: &str,
-        pass_num: usize,
-        is_after: bool)
+    fn on_mir_pass<'a, 'tcx: 'a>(&self,
+                             mir_cx: &MirCtxt<'a, 'tcx>,
+                             mir: Option<&Mir<'tcx>>)
     {
-        // No dump filters enabled.
-        if tcx.sess.opts.debugging_opts.dump_mir.is_none() {
-            return;
-        }
-
-        for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
-            let id = tcx.hir.as_local_node_id(def_id).unwrap();
-            let source = MirSource::from_node(tcx, id);
-            let mir = tcx.item_mir(def_id);
-            mir_util::dump_mir(
-                tcx,
-                pass_num,
-                &pass_name,
-                &Disambiguator { is_after },
-                source,
-                &mir
-            );
+        let tcx = mir_cx.tcx();
+        let pass_set = mir_cx.pass_set();
+        let pass_num = mir_cx.pass_num();
+        let pass = tcx.mir_passes.pass(pass_set, pass_num);
+        let name = &pass.name();
+        let source = mir_cx.source();
+        if mir_util::dump_enabled(tcx, name, source) {
+            let previous_mir;
+            let mir_to_dump = match mir {
+                Some(m) => m,
+                None => {
+                    previous_mir = mir_cx.read_previous_mir();
+                    &*previous_mir
+                }
+            };
+            mir_util::dump_mir(tcx,
+                               Some((pass_set, pass_num)),
+                               name,
+                               &Disambiguator { is_after: mir.is_some() },
+                               source,
+                               mir_to_dump);
         }
     }
 }

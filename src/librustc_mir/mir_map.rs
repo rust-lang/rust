@@ -52,8 +52,11 @@ pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.mir = build_mir;
-    providers.mir_keys = mir_keys;
+    *providers = Providers {
+        mir_build,
+        mir_keys,
+        ..*providers
+    };
 }
 
 fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
@@ -95,8 +98,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
     Rc::new(set)
 }
 
-fn build_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-                       -> &'tcx RefCell<Mir<'tcx>> {
+fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx RefCell<Mir<'tcx>> {
     let id = tcx.hir.as_local_node_id(def_id).unwrap();
     let unsupported = || {
         span_bug!(tcx.hir.span(id), "can't build MIR for {:?}", def_id);
@@ -192,7 +194,7 @@ fn build_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
             mem::transmute::<Mir, Mir<'tcx>>(mir)
         };
 
-        mir_util::dump_mir(tcx, 0, "mir_map", &0, src, &mir);
+        mir_util::dump_mir(tcx, None, "mir_map", &0, src, &mir);
 
         tcx.alloc_mir(mir)
     })
@@ -251,7 +253,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 mem::transmute::<Mir, Mir<'tcx>>(mir)
             };
 
-            mir_util::dump_mir(tcx, 0, "mir_map", &0, src, &mir);
+            mir_util::dump_mir(tcx, None, "mir_map", &0, src, &mir);
 
             tcx.alloc_mir(mir)
         })

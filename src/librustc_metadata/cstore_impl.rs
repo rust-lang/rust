@@ -95,7 +95,7 @@ provide! { <'tcx> tcx, def_id, cdata
             bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
         })
     }
-    mir => {
+    optimized_mir => {
         let mir = cdata.maybe_get_item_mir(tcx, def_id.index).unwrap_or_else(|| {
             bug!("get_item_mir: missing MIR for `{:?}`", def_id)
         });
