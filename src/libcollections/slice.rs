@@ -1046,8 +1046,9 @@ impl<T> [T] {
     /// assert!(match r { Ok(1...4) => true, _ => false, });
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn binary_search(&self, x: &T) -> Result<usize, usize>
-        where T: Ord
+    pub fn binary_search<Q: ?Sized>(&self, x: &Q) -> Result<usize, usize>
+        where T: Borrow<Q>,
+              Q: Ord
     {
         core_slice::SliceExt::binary_search(self, x)
     }
@@ -1123,9 +1124,10 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
     #[inline]
-    pub fn binary_search_by_key<'a, B, F>(&'a self, b: &B, f: F) -> Result<usize, usize>
+    pub fn binary_search_by_key<'a, B, F, Q: ?Sized>(&'a self, b: &Q, f: F) -> Result<usize, usize>
         where F: FnMut(&'a T) -> B,
-              B: Ord
+              B: Borrow<Q>,
+              Q: Ord
     {
         core_slice::SliceExt::binary_search_by_key(self, b, f)
     }
