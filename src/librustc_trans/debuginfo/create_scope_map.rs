@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::FunctionDebugContext;
+use super::{FunctionDebugContext, FunctionDebugContextData};
 use super::metadata::file_metadata;
 use super::utils::{DIB, span_start};
 
 use llvm;
-use llvm::debuginfo::{DIScope, DISubprogram};
+use llvm::debuginfo::DIScope;
 use common::CrateContext;
 use rustc::mir::{Mir, VisibilityScope};
 
@@ -53,8 +53,8 @@ pub fn create_mir_scopes(ccx: &CrateContext, mir: &Mir, debug_context: &Function
     };
     let mut scopes = IndexVec::from_elem(null_scope, &mir.visibility_scopes);
 
-    let fn_metadata = match *debug_context {
-        FunctionDebugContext::RegularContext(ref data) => data.fn_metadata,
+    let debug_context = match *debug_context {
+        FunctionDebugContext::RegularContext(ref data) => data,
         FunctionDebugContext::DebugInfoDisabled |
         FunctionDebugContext::FunctionWithoutDebugInfo => {
             return scopes;
@@ -71,7 +71,7 @@ pub fn create_mir_scopes(ccx: &CrateContext, mir: &Mir, debug_context: &Function
     // Instantiate all scopes.
     for idx in 0..mir.visibility_scopes.len() {
         let scope = VisibilityScope::new(idx);
-        make_mir_scope(ccx, &mir, &has_variables, fn_metadata, scope, &mut scopes);
+        make_mir_scope(ccx, &mir, &has_variables, debug_context, scope, &mut scopes);
     }
 
     scopes
@@ -80,7 +80,7 @@ pub fn create_mir_scopes(ccx: &CrateContext, mir: &Mir, debug_context: &Function
 fn make_mir_scope(ccx: &CrateContext,
                   mir: &Mir,
                   has_variables: &BitVector,
-                  fn_metadata: DISubprogram,
+                  debug_context: &FunctionDebugContextData,
                   scope: VisibilityScope,
                   scopes: &mut IndexVec<VisibilityScope, MirDebugScope>) {
     if scopes[scope].is_valid() {
@@ -89,13 +89,13 @@ fn make_mir_scope(ccx: &CrateContext,
 
     let scope_data = &mir.visibility_scopes[scope];
     let parent_scope = if let Some(parent) = scope_data.parent_scope {
-        make_mir_scope(ccx, mir, has_variables, fn_metadata, parent, scopes);
+        make_mir_scope(ccx, mir, has_variables, debug_context, parent, scopes);
         scopes[parent]
     } else {
         // The root is the function itself.
         let loc = span_start(ccx, mir.span);
         scopes[scope] = MirDebugScope {
-            scope_metadata: fn_metadata,
+            scope_metadata: debug_context.fn_metadata,
             file_start_pos: loc.file.start_pos,
             file_end_pos: loc.file.end_pos,
         };
@@ -109,14 +109,17 @@ fn make_mir_scope(ccx: &CrateContext,
         // However, we don't skip creating a nested scope if
         // our parent is the root, because we might want to
         // put arguments in the root and not have shadowing.
-        if parent_scope.scope_metadata != fn_metadata {
+        if parent_scope.scope_metadata != debug_context.fn_metadata {
             scopes[scope] = parent_scope;
             return;
         }
     }
 
     let loc = span_start(ccx, scope_data.span);
-    let file_metadata = file_metadata(ccx, &loc.file.name, &loc.file.abs_path);
+    let file_metadata = file_metadata(ccx,
+                                      &loc.file.name,
+                                      debug_context.defining_crate);
+
     let scope_metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateLexicalBlock(
             DIB(ccx),
