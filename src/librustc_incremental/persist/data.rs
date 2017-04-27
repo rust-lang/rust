@@ -99,7 +99,11 @@ pub struct SerializedMetadataHashes {
     /// where `X` refers to some item in this crate. That `X` will be
     /// a `DefPathIndex` that gets retracted to the current `DefId`
     /// (matching the one found in this structure).
-    pub hashes: Vec<EncodedMetadataHash>,
+    pub entry_hashes: Vec<EncodedMetadataHash>,
+
+    /// This map contains fingerprints that are not specific to some DefId but
+    /// describe something global to the whole crate.
+    pub global_hashes: Vec<(DepNode<()>, Fingerprint)>,
 
     /// For each DefIndex (as it occurs in SerializedMetadataHash), this
     /// map stores the DefPathIndex (as it occurs in DefIdDirectory), so

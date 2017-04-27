@@ -13,6 +13,7 @@
 use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
 use schema::*;
 
+use rustc::dep_graph::{DepGraph, DepNode, GlobalMetaDataKind};
 use rustc::hir::map::{DefKey, DefPath, DefPathData};
 use rustc::hir;
 
@@ -404,10 +405,14 @@ impl<'a, 'tcx> MetadataBlob {
         Lazy::with_position(pos).decode(self)
     }
 
-    pub fn list_crate_metadata(&self, out: &mut io::Write) -> io::Result<()> {
+    pub fn list_crate_metadata(&self,
+                               out: &mut io::Write) -> io::Result<()> {
         write!(out, "=External Dependencies=\n")?;
         let root = self.get_root();
-        for (i, dep) in root.crate_deps.decode(self).enumerate() {
+        for (i, dep) in root.crate_deps
+                            .get_untracked()
+                            .decode(self)
+                            .enumerate() {
             write!(out, "{} {}-{}\n", i + 1, dep.name, dep.hash)?;
         }
         write!(out, "\n")?;
@@ -653,8 +658,13 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     /// Iterates over the language items in the given crate.
-    pub fn get_lang_items(&self) -> Vec<(DefIndex, usize)> {
-        self.root.lang_items.decode(self).collect()
+    pub fn get_lang_items(&self, dep_graph: &DepGraph) -> Vec<(DefIndex, usize)> {
+        let dep_node = self.metadata_dep_node(GlobalMetaDataKind::LangItems);
+        self.root
+            .lang_items
+            .get(dep_graph, dep_node)
+            .decode(self)
+            .collect()
     }
 
     /// Iterates over each child of the given item.
@@ -853,12 +863,16 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_item_attrs(&self, node_id: DefIndex) -> Rc<[ast::Attribute]> {
+    pub fn get_item_attrs(&self,
+                          node_id: DefIndex,
+                          dep_graph: &DepGraph) -> Rc<[ast::Attribute]> {
         let (node_as, node_index) =
             (node_id.address_space().index(), node_id.as_array_index());
         if self.is_proc_macro(node_id) {
             return Rc::new([]);
         }
+
+        dep_graph.read(DepNode::MetaData(self.local_def_id(node_id)));
 
         if let Some(&Some(ref val)) =
             self.attribute_cache.borrow()[node_as].get(node_index) {
@@ -924,7 +938,10 @@ impl<'a, 'tcx> CrateMetadata {
             .collect()
     }
 
-    pub fn get_implementations_for_trait(&self, filter: Option<DefId>, result: &mut Vec<DefId>) {
+    pub fn get_implementations_for_trait(&self,
+                                         filter: Option<DefId>,
+                                         dep_graph: &DepGraph,
+                                         result: &mut Vec<DefId>) {
         // Do a reverse lookup beforehand to avoid touching the crate_num
         // hash map in the loop below.
         let filter = match filter.map(|def_id| self.reverse_translate_def_id(def_id)) {
@@ -935,7 +952,8 @@ impl<'a, 'tcx> CrateMetadata {
         };
 
         // FIXME(eddyb) Make this O(1) instead of O(n).
-        for trait_impls in self.root.impls.decode(self) {
+        let dep_node = self.metadata_dep_node(GlobalMetaDataKind::Impls);
+        for trait_impls in self.root.impls.get(dep_graph, dep_node).decode(self) {
             if filter.is_some() && filter != Some(trait_impls.trait_id) {
                 continue;
             }
@@ -958,13 +976,29 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
 
-    pub fn get_native_libraries(&self) -> Vec<NativeLibrary> {
-        self.root.native_libraries.decode(self).collect()
+    pub fn get_native_libraries(&self,
+                                dep_graph: &DepGraph)
+                                -> Vec<NativeLibrary> {
+        let dep_node = self.metadata_dep_node(GlobalMetaDataKind::NativeLibraries);
+        self.root
+            .native_libraries
+            .get(dep_graph, dep_node)
+            .decode(self)
+            .collect()
     }
 
-    pub fn get_dylib_dependency_formats(&self) -> Vec<(CrateNum, LinkagePreference)> {
+    pub fn get_dylib_dependency_formats(&self,
+                                        dep_graph: &DepGraph)
+                                        -> Vec<(CrateNum, LinkagePreference)> {
+        let def_id = DefId {
+            krate: self.cnum,
+            index: CRATE_DEF_INDEX,
+        };
+        let dep_node = DepNode::GlobalMetaData(def_id,
+                                               GlobalMetaDataKind::DylibDependencyFormats);
         self.root
             .dylib_dependency_formats
+            .get(dep_graph, dep_node)
             .decode(self)
             .enumerate()
             .flat_map(|(i, link)| {
@@ -974,8 +1008,13 @@ impl<'a, 'tcx> CrateMetadata {
             .collect()
     }
 
-    pub fn get_missing_lang_items(&self) -> Vec<lang_items::LangItem> {
-        self.root.lang_items_missing.decode(self).collect()
+    pub fn get_missing_lang_items(&self, dep_graph: &DepGraph) -> Vec<lang_items::LangItem> {
+        let dep_node = self.metadata_dep_node(GlobalMetaDataKind::LangItemsMissing);
+        self.root
+            .lang_items_missing
+            .get(dep_graph, dep_node)
+            .decode(self)
+            .collect()
     }
 
     pub fn get_fn_arg_names(&self, id: DefIndex) -> Vec<ast::Name> {
@@ -988,8 +1027,13 @@ impl<'a, 'tcx> CrateMetadata {
         arg_names.decode(self).collect()
     }
 
-    pub fn get_exported_symbols(&self) -> Vec<DefId> {
-        self.exported_symbols.iter().map(|&index| self.local_def_id(index)).collect()
+    pub fn get_exported_symbols(&self, dep_graph: &DepGraph) -> Vec<DefId> {
+        let dep_node = self.metadata_dep_node(GlobalMetaDataKind::ExportedSymbols);
+        self.exported_symbols
+            .get(dep_graph, dep_node)
+            .iter()
+            .map(|&index| self.local_def_id(index))
+            .collect()
     }
 
     pub fn get_macro(&self, id: DefIndex) -> (ast::Name, MacroDef) {
@@ -1018,8 +1062,11 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn is_dllimport_foreign_item(&self, id: DefIndex) -> bool {
-        self.dllimport_foreign_items.contains(&id)
+    pub fn is_dllimport_foreign_item(&self, id: DefIndex, dep_graph: &DepGraph) -> bool {
+        let dep_node = self.metadata_dep_node(GlobalMetaDataKind::NativeLibraries);
+        self.dllimport_foreign_items
+            .get(dep_graph, dep_node)
+            .contains(&id)
     }
 
     pub fn is_default_impl(&self, impl_id: DefIndex) -> bool {
@@ -1097,121 +1144,62 @@ impl<'a, 'tcx> CrateMetadata {
         let external_codemap = self.root.codemap.decode(self);
 
         let imported_filemaps = external_codemap.map(|filemap_to_import| {
-                // Try to find an existing FileMap that can be reused for the filemap to
-                // be imported. A FileMap is reusable if it is exactly the same, just
-                // positioned at a different offset within the codemap.
-                let reusable_filemap = {
-                    local_codemap.files
-                        .borrow()
-                        .iter()
-                        .find(|fm| are_equal_modulo_startpos(&fm, &filemap_to_import))
-                        .map(|rc| rc.clone())
-                };
+            // We can't reuse an existing FileMap, so allocate a new one
+            // containing the information we need.
+            let syntax_pos::FileMap { name,
+                                      name_was_remapped,
+                                      start_pos,
+                                      end_pos,
+                                      lines,
+                                      multibyte_chars,
+                                      .. } = filemap_to_import;
 
-                match reusable_filemap {
-                    Some(fm) => {
+            let source_length = (end_pos - start_pos).to_usize();
 
-                        debug!("CrateMetaData::imported_filemaps reuse \
-                                filemap {:?} original (start_pos {:?} end_pos {:?}) \
-                                translated (start_pos {:?} end_pos {:?})",
-                               filemap_to_import.name,
-                               filemap_to_import.start_pos, filemap_to_import.end_pos,
-                               fm.start_pos, fm.end_pos);
+            // Translate line-start positions and multibyte character
+            // position into frame of reference local to file.
+            // `CodeMap::new_imported_filemap()` will then translate those
+            // coordinates to their new global frame of reference when the
+            // offset of the FileMap is known.
+            let mut lines = lines.into_inner();
+            for pos in &mut lines {
+                *pos = *pos - start_pos;
+            }
+            let mut multibyte_chars = multibyte_chars.into_inner();
+            for mbc in &mut multibyte_chars {
+                mbc.pos = mbc.pos - start_pos;
+            }
 
-                        cstore::ImportedFileMap {
-                            original_start_pos: filemap_to_import.start_pos,
-                            original_end_pos: filemap_to_import.end_pos,
-                            translated_filemap: fm,
-                        }
-                    }
-                    None => {
-                        // We can't reuse an existing FileMap, so allocate a new one
-                        // containing the information we need.
-                        let syntax_pos::FileMap { name,
-                                                  name_was_remapped,
-                                                  start_pos,
-                                                  end_pos,
-                                                  lines,
-                                                  multibyte_chars,
-                                                  .. } = filemap_to_import;
+            let local_version = local_codemap.new_imported_filemap(name,
+                                                                   name_was_remapped,
+                                                                   self.cnum.as_u32(),
+                                                                   source_length,
+                                                                   lines,
+                                                                   multibyte_chars);
+            debug!("CrateMetaData::imported_filemaps alloc \
+                    filemap {:?} original (start_pos {:?} end_pos {:?}) \
+                    translated (start_pos {:?} end_pos {:?})",
+                   local_version.name, start_pos, end_pos,
+                   local_version.start_pos, local_version.end_pos);
 
-                        let source_length = (end_pos - start_pos).to_usize();
-
-                        // Translate line-start positions and multibyte character
-                        // position into frame of reference local to file.
-                        // `CodeMap::new_imported_filemap()` will then translate those
-                        // coordinates to their new global frame of reference when the
-                        // offset of the FileMap is known.
-                        let mut lines = lines.into_inner();
-                        for pos in &mut lines {
-                            *pos = *pos - start_pos;
-                        }
-                        let mut multibyte_chars = multibyte_chars.into_inner();
-                        for mbc in &mut multibyte_chars {
-                            mbc.pos = mbc.pos - start_pos;
-                        }
-
-                        let local_version = local_codemap.new_imported_filemap(name,
-                                                                               name_was_remapped,
-                                                                               source_length,
-                                                                               lines,
-                                                                               multibyte_chars);
-                        debug!("CrateMetaData::imported_filemaps alloc \
-                                filemap {:?} original (start_pos {:?} end_pos {:?}) \
-                                translated (start_pos {:?} end_pos {:?})",
-                               local_version.name, start_pos, end_pos,
-                               local_version.start_pos, local_version.end_pos);
-
-                        cstore::ImportedFileMap {
-                            original_start_pos: start_pos,
-                            original_end_pos: end_pos,
-                            translated_filemap: local_version,
-                        }
-                    }
-                }
-            })
-            .collect();
+            cstore::ImportedFileMap {
+                original_start_pos: start_pos,
+                original_end_pos: end_pos,
+                translated_filemap: local_version,
+            }
+        }).collect();
 
         // This shouldn't borrow twice, but there is no way to downgrade RefMut to Ref.
         *self.codemap_import_info.borrow_mut() = imported_filemaps;
         self.codemap_import_info.borrow()
     }
-}
 
-fn are_equal_modulo_startpos(fm1: &syntax_pos::FileMap, fm2: &syntax_pos::FileMap) -> bool {
-    if fm1.byte_length() != fm2.byte_length() {
-        return false;
+    pub fn metadata_dep_node(&self, kind: GlobalMetaDataKind) -> DepNode<DefId> {
+        let def_id = DefId {
+            krate: self.cnum,
+            index: CRATE_DEF_INDEX,
+        };
+
+        DepNode::GlobalMetaData(def_id, kind)
     }
-
-    if fm1.name != fm2.name {
-        return false;
-    }
-
-    let lines1 = fm1.lines.borrow();
-    let lines2 = fm2.lines.borrow();
-
-    if lines1.len() != lines2.len() {
-        return false;
-    }
-
-    for (&line1, &line2) in lines1.iter().zip(lines2.iter()) {
-        if (line1 - fm1.start_pos) != (line2 - fm2.start_pos) {
-            return false;
-        }
-    }
-
-    let multibytes1 = fm1.multibyte_chars.borrow();
-    let multibytes2 = fm2.multibyte_chars.borrow();
-
-    if multibytes1.len() != multibytes2.len() {
-        return false;
-    }
-
-    for (mb1, mb2) in multibytes1.iter().zip(multibytes2.iter()) {
-        if (mb1.bytes != mb2.bytes) || ((mb1.pos - fm1.start_pos) != (mb2.pos - fm2.start_pos)) {
-            return false;
-        }
-    }
-
-    true
 }

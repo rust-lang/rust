@@ -11,8 +11,8 @@
 pub use self::code_stats::{CodeStats, DataTypeKind, FieldInfo};
 pub use self::code_stats::{SizeKind, TypeSizeInfo, VariantInfo};
 
-use dep_graph::DepGraph;
-use hir::def_id::{CrateNum, DefIndex};
+use dep_graph::{DepGraph, DepNode};
+use hir::def_id::{DefId, CrateNum, DefIndex, CRATE_DEF_INDEX};
 use lint;
 use middle::cstore::CrateStore;
 use middle::dependency_format;
@@ -32,7 +32,7 @@ use syntax::parse::ParseSess;
 use syntax::symbol::Symbol;
 use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
-use syntax_pos::{Span, MultiSpan};
+use syntax_pos::{Span, MultiSpan, FileMap};
 
 use rustc_back::{LinkerFlavor, PanicStrategy};
 use rustc_back::target::Target;
@@ -48,6 +48,7 @@ use std::io::Write;
 use std::rc::Rc;
 use std::fmt;
 use std::time::Duration;
+use std::sync::Arc;
 use libc::c_int;
 
 mod code_stats;
@@ -627,6 +628,22 @@ pub fn build_session_(sopts: config::Options,
         }
     };
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
+
+    // Hook up the codemap with a callback that allows it to register FileMap
+    // accesses with the dependency graph.
+    let cm_depgraph = dep_graph.clone();
+    let codemap_dep_tracking_callback = Box::new(move |filemap: &FileMap| {
+        let def_id = DefId {
+            krate: CrateNum::from_u32(filemap.crate_of_origin),
+            index: CRATE_DEF_INDEX,
+        };
+        let name = Arc::new(filemap.name.clone());
+        let dep_node = DepNode::FileMap(def_id, name);
+
+        cm_depgraph.read(dep_node);
+    });
+    codemap.set_dep_tracking_callback(codemap_dep_tracking_callback);
+
     let p_s = parse::ParseSess::with_span_handler(span_diagnostic, codemap);
     let default_sysroot = match sopts.maybe_sysroot {
         Some(_) => None,
