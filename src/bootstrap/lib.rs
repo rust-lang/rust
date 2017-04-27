@@ -1048,6 +1048,11 @@ impl Build {
         self.package_vers(&self.release_num("cargo"))
     }
 
+    /// Returns the value of `package_vers` above for rls
+    fn rls_package_vers(&self) -> String {
+        self.package_vers(&self.release_num("rls"))
+    }
+
     /// Returns the `version` string associated with this compiler for Rust
     /// itself.
     ///
