@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Check that we do not suggest `ref f` here in the `main()` function.
 struct Foo {
     pub v: Vec<String>,
 }

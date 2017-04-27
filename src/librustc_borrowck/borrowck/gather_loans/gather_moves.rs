@@ -11,7 +11,7 @@
 //! Computes moves.
 
 use borrowck::*;
-use borrowck::gather_loans::move_error::MoveSpanAndPath;
+use borrowck::gather_loans::move_error::MovePlace;
 use borrowck::gather_loans::move_error::{MoveError, MoveErrorCollector};
 use borrowck::move_data::*;
 use rustc::middle::expr_use_visitor as euv;
@@ -25,16 +25,36 @@ use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir::*;
 use rustc::hir::map::Node::*;
-use rustc::hir::map::{PatternSource};
 
 struct GatherMoveInfo<'tcx> {
     id: ast::NodeId,
     kind: MoveKind,
     cmt: mc::cmt<'tcx>,
-    span_path_opt: Option<MoveSpanAndPath<'tcx>>
+    span_path_opt: Option<MovePlace<'tcx>>
 }
 
-/// Returns the kind of the Pattern
+/// Represents the kind of pattern
+#[derive(Debug, Clone, Copy)]
+pub enum PatternSource<'tcx> {
+    MatchExpr(&'tcx Expr),
+    LetDecl(&'tcx Local),
+    Other,
+}
+
+/// Analyzes the context where the pattern appears to determine the
+/// kind of hint we want to give. In particular, if the pattern is in a `match`
+/// or nested within other patterns, we want to suggest a `ref` binding:
+///
+///     let (a, b) = v[0]; // like the `a` and `b` patterns here
+///     match v[0] { a => ... } // or the `a` pattern here
+///
+/// But if the pattern is the outermost pattern in a `let`, we would rather
+/// suggest that the author add a `&` to the initializer:
+///
+///     let x = v[0]; // suggest `&v[0]` here
+///
+/// In this latter case, this function will return `PatternSource::LetDecl`
+/// with a reference to the let
 fn get_pattern_source<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &Pat) -> PatternSource<'tcx> {
 
     let parent = tcx.hir.get_parent_node(pat.id);
@@ -132,7 +152,7 @@ pub fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let source = get_pattern_source(bccx.tcx,move_pat);
     let pat_span_path_opt = match move_pat.node {
         PatKind::Binding(_, _, ref path1, _) => {
-            Some(MoveSpanAndPath {
+            Some(MovePlace {
                      span: move_pat.span,
                      name: path1.node,
                      pat_source: source,
