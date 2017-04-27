@@ -8,17 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that a by-ref `FnMut` closure gets an error when it tries to
-// consume a value.
+// check that borrowck looks inside consts/statics
 
-fn call<F>(f: F) where F : Fn() {
-    f();
-}
+static FN : &'static (Fn() -> (Box<Fn()->Box<i32>>) + Sync) = &|| {
+    let x = Box::new(0); //~ NOTE moved
+    Box::new(|| x) //~ ERROR cannot move out of captured outer variable
+};
 
 fn main() {
-    let y = vec![format!("World")];
-    call(|| {
-        y.into_iter();
-        //~^ ERROR cannot move out of captured outer variable in an `Fn` closure
-    });
+    let f = (FN)();
+    f();
+    f();
 }

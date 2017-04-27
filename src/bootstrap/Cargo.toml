@@ -23,6 +23,11 @@ name = "rustdoc"
 path = "bin/rustdoc.rs"
 test = false
 
+[[bin]]
+name = "sccache-plus-cl"
+path = "bin/sccache-plus-cl.rs"
+test = false
+
 [dependencies]
 build_helper = { path = "../build_helper" }
 cmake = "0.1.17"
