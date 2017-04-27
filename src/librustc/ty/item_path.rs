@@ -175,7 +175,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data @ DefPathData::LifetimeDef(..) |
             data @ DefPathData::EnumVariant(..) |
             data @ DefPathData::Field(..) |
-            data @ DefPathData::StructCtor |
             data @ DefPathData::Initializer |
             data @ DefPathData::MacroDef(..) |
             data @ DefPathData::ClosureExpr |
@@ -185,6 +184,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let parent_def_id = self.parent_def_id(def_id).unwrap();
                 self.push_item_path(buffer, parent_def_id);
                 buffer.push(&data.as_interned_str());
+            }
+            DefPathData::StructCtor => { // present `X` instead of `X::{{constructor}}`
+                let parent_def_id = self.parent_def_id(def_id).unwrap();
+                self.push_item_path(buffer, parent_def_id);
             }
         }
     }
