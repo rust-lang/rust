@@ -19,6 +19,7 @@
 //! ensure that they're always in place if needed.
 
 use std::env;
+use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::Path;
@@ -129,22 +130,56 @@ pub fn llvm(build: &Build, target: &str) {
            .define("LLVM_TABLEGEN", &host);
     }
 
-    // MSVC handles compiler business itself
-    if !target.contains("msvc") {
-        if let Some(ref ccache) = build.config.ccache {
-           cfg.define("CMAKE_C_COMPILER", ccache)
-              .define("CMAKE_C_COMPILER_ARG1", build.cc(target))
-              .define("CMAKE_CXX_COMPILER", ccache)
-              .define("CMAKE_CXX_COMPILER_ARG1", build.cxx(target));
+    let sanitize_cc = |cc: &Path| {
+        if target.contains("msvc") {
+            OsString::from(cc.to_str().unwrap().replace("\\", "/"))
         } else {
-           cfg.define("CMAKE_C_COMPILER", build.cc(target))
-              .define("CMAKE_CXX_COMPILER", build.cxx(target));
+            cc.as_os_str().to_owned()
         }
-        cfg.build_arg("-j").build_arg(build.jobs().to_string());
+    };
 
+    let configure_compilers = |cfg: &mut cmake::Config| {
+        // MSVC with CMake uses msbuild by default which doesn't respect these
+        // vars that we'd otherwise configure. In that case we just skip this
+        // entirely.
+        if target.contains("msvc") && !build.config.ninja {
+            return
+        }
+
+        let cc = build.cc(target);
+        let cxx = build.cxx(target);
+
+        // Handle msvc + ninja + ccache specially (this is what the bots use)
+        if target.contains("msvc") &&
+           build.config.ninja &&
+           build.config.ccache.is_some() {
+            let mut cc = env::current_exe().expect("failed to get cwd");
+            cc.set_file_name("sccache-plus-cl.exe");
+
+           cfg.define("CMAKE_C_COMPILER", sanitize_cc(&cc))
+              .define("CMAKE_CXX_COMPILER", sanitize_cc(&cc));
+           cfg.env("SCCACHE_PATH",
+                   build.config.ccache.as_ref().unwrap())
+              .env("SCCACHE_TARGET", target);
+
+        // If ccache is configured we inform the build a little differently hwo
+        // to invoke ccache while also invoking our compilers.
+        } else if let Some(ref ccache) = build.config.ccache {
+           cfg.define("CMAKE_C_COMPILER", ccache)
+              .define("CMAKE_C_COMPILER_ARG1", sanitize_cc(cc))
+              .define("CMAKE_CXX_COMPILER", ccache)
+              .define("CMAKE_CXX_COMPILER_ARG1", sanitize_cc(cxx));
+        } else {
+           cfg.define("CMAKE_C_COMPILER", sanitize_cc(cc))
+              .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx));
+        }
+
+        cfg.build_arg("-j").build_arg(build.jobs().to_string());
         cfg.define("CMAKE_C_FLAGS", build.cflags(target).join(" "));
         cfg.define("CMAKE_CXX_FLAGS", build.cflags(target).join(" "));
-    }
+    };
+
+    configure_compilers(&mut cfg);
 
     if env::var_os("SCCACHE_ERROR_LOG").is_some() {
         cfg.env("RUST_LOG", "sccache=info");
