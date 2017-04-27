@@ -2018,7 +2018,7 @@ pub fn def_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         substs: &'tcx Substs<'tcx>)
                         -> Ty<'tcx>
 {
-    let ty = tcx.item_type(def_id);
+    let ty = tcx.type_of(def_id);
     apply_param_substs(tcx, substs, &ty)
 }
 
