@@ -165,11 +165,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             match self.lookup_method_in_trait_adjusted(call_expr.span,
-                                                       Some(&callee_expr),
+                                                       Some(super::AdjustedRcvr {
+                                                           rcvr_expr: callee_expr,
+                                                           autoderefs,
+                                                           unsize: false
+                                                       }),
                                                        method_name,
                                                        trait_def_id,
-                                                       autoderefs,
-                                                       false,
                                                        adjusted_ty,
                                                        None) {
                 None => continue,
