@@ -105,8 +105,8 @@ pub mod mut_reference;
 pub mod mutex_atomic;
 pub mod needless_bool;
 pub mod needless_borrow;
-pub mod needless_pass_by_value;
 pub mod needless_continue;
+pub mod needless_pass_by_value;
 pub mod needless_update;
 pub mod neg_multiply;
 pub mod new_without_default;
@@ -461,8 +461,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         needless_bool::BOOL_COMPARISON,
         needless_bool::NEEDLESS_BOOL,
         needless_borrow::NEEDLESS_BORROW,
-        needless_pass_by_value::NEEDLESS_PASS_BY_VALUE,
         needless_continue::NEEDLESS_CONTINUE,
+        needless_pass_by_value::NEEDLESS_PASS_BY_VALUE,
         needless_update::NEEDLESS_UPDATE,
         neg_multiply::NEG_MULTIPLY,
         new_without_default::NEW_WITHOUT_DEFAULT,
