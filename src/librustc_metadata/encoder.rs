@@ -626,14 +626,14 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
     // Encodes the inherent implementations of a structure, enumeration, or trait.
     fn encode_inherent_implementations(&mut self, def_id: DefId) -> LazySeq<DefIndex> {
         debug!("EntryBuilder::encode_inherent_implementations({:?})", def_id);
-        match self.tcx.maps.inherent_impls.borrow().get(&def_id) {
-            None => LazySeq::empty(),
-            Some(implementations) => {
-                self.lazy_seq(implementations.iter().map(|&def_id| {
-                    assert!(def_id.is_local());
-                    def_id.index
-                }))
-            }
+        let implementations = self.tcx.inherent_impls(def_id);
+        if implementations.is_empty() {
+            LazySeq::empty()
+        } else {
+            self.lazy_seq(implementations.iter().map(|&def_id| {
+                assert!(def_id.is_local());
+                def_id.index
+            }))
         }
     }
 
