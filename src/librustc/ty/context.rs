@@ -25,6 +25,7 @@ use middle::region::{CodeExtent, CodeExtentData};
 use middle::resolve_lifetime;
 use middle::stability;
 use mir::Mir;
+use mir::transform::Passes;
 use ty::subst::{Kind, Substs};
 use ty::ReprOptions;
 use traits;
@@ -47,11 +48,12 @@ use arena::{TypedArena, DroplessArena};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
+use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ops::Deref;
 use std::iter;
-use std::cmp::Ordering;
+use std::rc::Rc;
 use syntax::abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
@@ -441,7 +443,10 @@ pub struct GlobalCtxt<'tcx> {
     pub named_region_map: resolve_lifetime::NamedRegionMap,
 
     pub hir: hir_map::Map<'tcx>,
+
     pub maps: maps::Maps<'tcx>,
+
+    pub mir_passes: Rc<Passes>,
 
     // Records the free variables refrenced by every closure
     // expression. Do not track deps for this, just recompute it from
@@ -712,6 +717,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn create_and_enter<F, R>(s: &'tcx Session,
                                   local_providers: ty::maps::Providers<'tcx>,
                                   extern_providers: ty::maps::Providers<'tcx>,
+                                  mir_passes: Rc<Passes>,
                                   arenas: &'tcx GlobalArenas<'tcx>,
                                   arena: &'tcx DroplessArena,
                                   resolutions: ty::Resolutions,
@@ -746,6 +752,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             fulfilled_predicates: RefCell::new(fulfilled_predicates),
             hir: hir,
             maps: maps::Maps::new(dep_graph, providers),
+            mir_passes,
             freevars: RefCell::new(resolutions.freevars),
             maybe_unused_trait_imports: resolutions.maybe_unused_trait_imports,
             rcache: RefCell::new(FxHashMap()),
