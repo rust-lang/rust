@@ -15,20 +15,20 @@ use std::fmt;
 use std::fs::File;
 use std::io;
 
-use rustc::hir::def_id::LOCAL_CRATE;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::TyCtxt;
-use rustc::mir::transform::{Pass, PassHook, MirSource};
+use rustc::mir::transform::{DefIdPass, Pass, PassHook, MirSource};
 use util as mir_util;
 
 pub struct Marker(pub &'static str);
 
-impl Pass for Marker {
+impl DefIdPass for Marker {
     fn name<'a>(&'a self) -> Cow<'a, str> {
         Cow::Borrowed(self.0)
     }
 
-    fn run_pass<'a, 'tcx>(&self, _tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    fn run_pass<'a, 'tcx>(&self, _: TyCtxt<'a, 'tcx, 'tcx>, _: DefId) {
         // no-op
     }
 }

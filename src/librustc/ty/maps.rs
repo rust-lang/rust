@@ -549,7 +549,7 @@ define_maps! { <'tcx>
     ///
     /// Note that cross-crate MIR appears to be always borrowed
     /// (in the `RefCell` sense) to prevent accidental mutation.
-    [pub] mir: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>>,
+    [] mir: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>>,
 
     /// Set of all the def-ids in this crate that have MIR associated with
     /// them. This includes all the body owners, but also things like struct

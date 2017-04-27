@@ -19,7 +19,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::map as hir_map;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::def_id::DefId;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::traits::{self, Reveal};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
@@ -27,7 +27,7 @@ use rustc::ty::cast::CastTy;
 use rustc::ty::maps::Providers;
 use rustc::mir::*;
 use rustc::mir::traversal::ReversePostorder;
-use rustc::mir::transform::{Pass, MirSource};
+use rustc::mir::transform::{DefIdPass, MirSource};
 use rustc::mir::visit::{LvalueContext, Visitor};
 use rustc::middle::lang_items;
 use syntax::abi::Abi;
@@ -939,25 +939,24 @@ fn qualify_const_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub struct QualifyAndPromoteConstants;
 
-impl Pass for QualifyAndPromoteConstants {
+impl DefIdPass for QualifyAndPromoteConstants {
     fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          def_id: DefId)
     {
-        for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
-            let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
-            let id = tcx.hir.as_local_node_id(def_id).unwrap();
-            let src = MirSource::from_node(tcx, id);
+        let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
+        let id = tcx.hir.as_local_node_id(def_id).unwrap();
+        let src = MirSource::from_node(tcx, id);
 
-            if let MirSource::Const(_) = src {
-                tcx.mir_const_qualif(def_id);
-                continue;
-            }
-
-            let mir = &mut tcx.mir(def_id).borrow_mut();
-            tcx.dep_graph.write(DepNode::Mir(def_id));
-
-            self.run_pass(tcx, src, mir);
+        if let MirSource::Const(_) = src {
+            tcx.mir_const_qualif(def_id);
+            return;
         }
+
+        let mir = &mut tcx.mir(def_id).borrow_mut();
+        tcx.dep_graph.write(DepNode::Mir(def_id));
+
+        self.run_pass(tcx, src, mir);
     }
 }
 
