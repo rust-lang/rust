@@ -74,7 +74,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
     fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, _: &Body, _: Span, id: NodeId) {
         // skip trait implementations, see #605
         if let Some(map::NodeItem(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent(id)) {
-            if let ItemImpl(_, _, _, Some(..), _, _) = item.node {
+            if let ItemImpl(_, _, _, _, Some(..), _, _) = item.node {
                 return;
             }
         }

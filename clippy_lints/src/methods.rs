@@ -642,7 +642,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             let hir::ImplItemKind::Method(ref sig, id) = implitem.node,
             let Some(first_arg_ty) = sig.decl.inputs.get(0),
             let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir.body(id)).next(),
-            let hir::ItemImpl(_, _, _, None, ref self_ty, _) = item.node,
+            let hir::ItemImpl(_, _, _, _, None, ref self_ty, _) = item.node,
         ], {
             // check missing trait implementations
             for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {

@@ -67,7 +67,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
 
         match item.node {
             ItemTrait(_, _, _, ref trait_items) => check_trait_items(cx, item, trait_items),
-            ItemImpl(_, _, _, None, _, ref impl_items) => check_impl_items(cx, item, impl_items),
+            ItemImpl(_, _, _, _, None, _, ref impl_items) => check_impl_items(cx, item, impl_items),
             _ => (),
         }
     }

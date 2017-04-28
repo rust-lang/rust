@@ -396,10 +396,10 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
         hir::ItemDefaultImpl(_, ref _trait_ref) => {
             println!("default impl");
         },
-        hir::ItemImpl(_, _, _, Some(ref _trait_ref), _, _) => {
+        hir::ItemImpl(_, _, _, _, Some(ref _trait_ref), _, _) => {
             println!("trait impl");
         },
-        hir::ItemImpl(_, _, _, None, _, _) => {
+        hir::ItemImpl(_, _, _, _, None, _, _) => {
             println!("impl");
         },
     }
