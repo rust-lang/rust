@@ -93,7 +93,7 @@ fn dump_matched_mir_node<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     } else {
         match pass_num {
             None => format!(".-------"),
-            Some((pass_set, pass_num)) => format!(".{:03}-{:03}", pass_set.0, pass_num.0),
+            Some((suite, pass_num)) => format!(".{:03}-{:03}", suite.0, pass_num.0),
         }
     };
 

@@ -33,7 +33,6 @@ use syntax::abi::Abi;
 use syntax::feature_gate::UnstableFeatures;
 use syntax_pos::{Span, DUMMY_SP};
 
-use std::cell::RefCell;
 use std::fmt;
 use std::usize;
 
@@ -925,7 +924,7 @@ pub fn provide(providers: &mut Providers) {
 fn qualify_const_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 def_id: DefId)
                                 -> u8 {
-    let mir = &tcx.mir_pass_set((MIR_CONST, def_id)).borrow();
+    let mir = &tcx.mir_suite((MIR_CONST, def_id)).borrow();
     if mir.return_ty.references_error() {
         return Qualif::NOT_CONST.bits();
     }
@@ -940,7 +939,7 @@ fn qualify_const_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub struct QualifyAndPromoteConstants;
 
 impl DefIdPass for QualifyAndPromoteConstants {
-    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> &'tcx RefCell<Mir<'tcx>> {
+    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> Mir<'tcx> {
         let tcx = mir_cx.tcx();
         match mir_cx.source() {
             MirSource::Const(_) => {
@@ -953,8 +952,8 @@ impl DefIdPass for QualifyAndPromoteConstants {
             }
 
             src => {
-                let mir = mir_cx.steal_previous_mir();
-                self.run_pass(tcx, src, &mut mir.borrow_mut());
+                let mut mir = mir_cx.steal_previous_mir();
+                self.run_pass(tcx, src, &mut mir);
                 mir
             }
         }

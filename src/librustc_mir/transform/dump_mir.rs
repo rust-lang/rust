@@ -11,7 +11,6 @@
 //! This pass just dumps MIR at a specified point.
 
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::fmt;
 use std::fs::File;
 use std::io;
@@ -29,7 +28,7 @@ impl DefIdPass for Marker {
         Cow::Borrowed(self.0)
     }
 
-    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> &'tcx RefCell<Mir<'tcx>> {
+    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> Mir<'tcx> {
         mir_cx.steal_previous_mir()
     }
 }
@@ -53,9 +52,9 @@ impl PassHook for DumpMir {
                              mir: Option<&Mir<'tcx>>)
     {
         let tcx = mir_cx.tcx();
-        let pass_set = mir_cx.pass_set();
+        let suite = mir_cx.suite();
         let pass_num = mir_cx.pass_num();
-        let pass = tcx.mir_passes.pass(pass_set, pass_num);
+        let pass = tcx.mir_passes.pass(suite, pass_num);
         let name = &pass.name();
         let source = mir_cx.source();
         if mir_util::dump_enabled(tcx, name, source) {
@@ -68,7 +67,7 @@ impl PassHook for DumpMir {
                 }
             };
             mir_util::dump_mir(tcx,
-                               Some((pass_set, pass_num)),
+                               Some((suite, pass_num)),
                                name,
                                &Disambiguator { is_after: mir.is_some() },
                                source,

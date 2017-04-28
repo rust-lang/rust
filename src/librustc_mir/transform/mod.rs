@@ -11,10 +11,10 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir::Mir;
 use rustc::mir::transform::{MirCtxt, MirPassIndex, MirSuite, MirSource, MIR_OPTIMIZED};
+use rustc::ty::steal::Steal;
 use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
-use std::cell::{Ref, RefCell};
-use std::mem;
+use std::cell::Ref;
 
 pub mod simplify_branches;
 pub mod simplify;
@@ -40,19 +40,14 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
-fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx RefCell<Mir<'tcx>> {
-    let mir = tcx.mir_suite((MIR_OPTIMIZED, def_id));
-
-    // "lock" the ref cell into read mode; after this point,
-    // there ought to be no more changes to the MIR.
-    mem::drop(mir.borrow());
-
-    mir
+fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Mir<'tcx> {
+    let mir = tcx.mir_suite((MIR_OPTIMIZED, def_id)).steal();
+    tcx.alloc_mir(mir)
 }
 
 fn mir_suite<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        (suite, def_id): (MirSuite, DefId))
-                       -> &'tcx RefCell<Mir<'tcx>>
+                       -> &'tcx Steal<Mir<'tcx>>
 {
     let passes = &tcx.mir_passes;
     let len = passes.len_passes(suite);
@@ -62,7 +57,7 @@ fn mir_suite<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn mir_pass<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       (suite, pass_num, def_id): (MirSuite, MirPassIndex, DefId))
-                      -> &'tcx RefCell<Mir<'tcx>>
+                      -> &'tcx Steal<Mir<'tcx>>
 {
     let passes = &tcx.mir_passes;
     let pass = passes.pass(suite, pass_num);
@@ -75,10 +70,10 @@ fn mir_pass<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mir = pass.run_pass(&mir_ctxt);
 
     for hook in passes.hooks() {
-        hook.on_mir_pass(&mir_ctxt, Some(&mir.borrow()));
+        hook.on_mir_pass(&mir_ctxt, Some(&mir));
     }
 
-    mir
+    tcx.alloc_steal_mir(mir)
 }
 
 struct MirCtxtImpl<'a, 'tcx: 'a> {
@@ -112,10 +107,16 @@ impl<'a, 'tcx> MirCtxt<'a, 'tcx> for MirCtxtImpl<'a, 'tcx> {
     }
 
     fn read_previous_mir(&self) -> Ref<'tcx, Mir<'tcx>> {
-        self.steal_previous_mir().borrow()
+        self.previous_mir().borrow()
     }
 
-    fn steal_previous_mir(&self) -> &'tcx RefCell<Mir<'tcx>> {
+    fn steal_previous_mir(&self) -> Mir<'tcx> {
+        self.previous_mir().steal()
+    }
+}
+
+impl<'a, 'tcx> MirCtxtImpl<'a, 'tcx> {
+    fn previous_mir(&self) -> &'tcx Steal<Mir<'tcx>> {
         let MirSuite(suite) = self.suite;
         let MirPassIndex(pass_num) = self.pass_num;
         if pass_num > 0 {

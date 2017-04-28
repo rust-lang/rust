@@ -29,6 +29,7 @@ use util as mir_util;
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
+use rustc::ty::steal::Steal;
 use rustc::ty::subst::Substs;
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -37,7 +38,6 @@ use syntax::abi::Abi;
 use syntax::ast;
 use syntax_pos::Span;
 
-use std::cell::RefCell;
 use std::mem;
 use std::rc::Rc;
 
@@ -98,7 +98,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
     Rc::new(set)
 }
 
-fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx RefCell<Mir<'tcx>> {
+fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
     let id = tcx.hir.as_local_node_id(def_id).unwrap();
     let unsupported = || {
         span_bug!(tcx.hir.span(id), "can't build MIR for {:?}", def_id);
@@ -196,7 +196,7 @@ fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx RefC
 
         mir_util::dump_mir(tcx, None, "mir_map", &0, src, &mir);
 
-        tcx.alloc_mir(mir)
+        tcx.alloc_steal_mir(mir)
     })
 }
 
@@ -233,7 +233,7 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
 fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      ctor_id: ast::NodeId,
                                      v: &'tcx hir::VariantData)
-                                     -> &'tcx RefCell<Mir<'tcx>>
+                                     -> &'tcx Steal<Mir<'tcx>>
 {
     let span = tcx.hir.span(ctor_id);
     if let hir::VariantData::Tuple(ref fields, ctor_id) = *v {
@@ -255,7 +255,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             mir_util::dump_mir(tcx, None, "mir_map", &0, src, &mir);
 
-            tcx.alloc_mir(mir)
+            tcx.alloc_steal_mir(mir)
         })
     } else {
         span_bug!(span, "attempting to create MIR for non-tuple variant {:?}", v);

@@ -30,7 +30,6 @@ use rustc::util::nodemap::{NodeSet, DefIdMap};
 use rustc_back::PanicStrategy;
 
 use std::any::Any;
-use std::mem;
 use std::rc::Rc;
 
 use syntax::ast;
@@ -101,9 +100,6 @@ provide! { <'tcx> tcx, def_id, cdata
         });
 
         let mir = tcx.alloc_mir(mir);
-
-        // Perma-borrow MIR from extern crates to prevent mutation.
-        mem::forget(mir.borrow());
 
         mir
     }
