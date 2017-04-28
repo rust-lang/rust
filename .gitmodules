@@ -22,15 +22,14 @@
 	path = src/doc/nomicon
 	url = https://github.com/rust-lang-nursery/nomicon.git
 [submodule "src/tools/cargo"]
-	path = cargo
-	url = https://github.com/rust-lang/cargo.git
+	path = src/tools/cargo
+	url = https://github.com/rust-lang/cargo
 [submodule "reference"]
 	path = src/doc/reference
 	url = https://github.com/rust-lang-nursery/reference.git
 [submodule "book"]
 	path = src/doc/book
 	url = https://github.com/rust-lang/book.git
-[submodule "rls"]
-	path = rls
-	url = https://github.com/rust-lang-nursery/rls.git
-
+[submodule "src/tools/rls"]
+	path = src/tools/rls
+	url = https://github.com/rust-lang-nursery/rls
