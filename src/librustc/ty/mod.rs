@@ -2265,14 +2265,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn def_span(self, def_id: DefId) -> Span {
-        if let Some(id) = self.hir.as_local_node_id(def_id) {
-            self.hir.span(id)
-        } else {
-            self.sess.cstore.def_span(&self.sess, def_id)
-        }
-    }
-
     pub fn vis_is_accessible_from(self, vis: Visibility, block: NodeId) -> bool {
         vis.is_accessible_from(self.hir.local_def_id(self.hir.get_module_parent(block)), self)
     }
@@ -2675,12 +2667,23 @@ fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     Rc::new(vec)
 }
 
+fn def_span<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Span {
+    match tcx.hir.span_if_local(def_id) {
+        Some(span) => span,
+        None => {
+            let node_id = tcx.sess.cstore.item_body(tcx, def_id).id().node_id;
+            tcx.hir.span(node_id)
+        },
+    }
+}
+
 pub fn provide(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
         associated_item,
         associated_item_def_ids,
         adt_sized_constraint,
         adt_dtorck_constraint,
+        def_span,
         ..*providers
     };
 }

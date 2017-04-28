@@ -114,16 +114,12 @@ provide! { <'tcx> tcx, def_id, cdata
     inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     describe_def => { cdata.get_def(def_id.index) }
+    def_span => { cdata.get_span(def_id.index, &tcx.sess) }
 }
 
 impl CrateStore for cstore::CStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any> {
         self.get_crate_data(krate)
-    }
-
-    fn def_span(&self, sess: &Session, def: DefId) -> Span {
-        self.dep_graph.read(DepNode::MetaData(def));
-        self.get_crate_data(def.krate).get_span(def.index, sess)
     }
 
     fn stability(&self, def: DefId) -> Option<attr::Stability> {
