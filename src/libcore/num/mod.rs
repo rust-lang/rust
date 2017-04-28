@@ -2340,6 +2340,9 @@ macro_rules! uint_impl {
         }
 
         /// Returns the smallest power of two greater than or equal to `self`.
+        /// When return value overflows, it panics in debug mode and return
+        /// value is wrapped in release mode.
+        ///
         /// More details about overflow behavior can be found in [RFC 560].
         ///
         /// # Examples
