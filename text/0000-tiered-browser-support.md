@@ -68,6 +68,7 @@ Officially produced web content includes:
 - play.rust-lang.org
 - crates.io
 - Rustdoc output
+- thanks.rust-lang.org
 
 Explicitly not included:
 
