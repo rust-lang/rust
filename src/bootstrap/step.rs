@@ -575,6 +575,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "qemu-test-client"));
     rules.build("tool-cargo", "cargo")
+         .host(true)
          .default(build.config.extended)
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
