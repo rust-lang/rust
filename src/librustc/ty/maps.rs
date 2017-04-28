@@ -24,8 +24,12 @@ use ty::steal::Steal;
 use ty::subst::Substs;
 use util::nodemap::{DefIdSet, NodeSet};
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::cell::{RefCell, RefMut};
+use std::fmt::Debug;
+use std::hash::Hash;
+use std::iter::{self, Once};
 use std::mem;
 use std::collections::BTreeMap;
 use std::ops::Deref;
@@ -33,7 +37,7 @@ use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::symbol::Symbol;
 
-trait Key: Clone {
+trait Key: Clone + Hash + Eq + Debug {
     fn map_crate(&self) -> CrateNum;
     fn default_span(&self, tcx: TyCtxt) -> Span;
 }
@@ -153,6 +157,33 @@ impl<'tcx> Value<'tcx> for ty::DtorckConstraint<'tcx> {
 impl<'tcx> Value<'tcx> for ty::SymbolName {
     fn from_cycle_error<'a>(_: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         ty::SymbolName { name: Symbol::intern("<error>").as_str() }
+    }
+}
+
+trait IntoKeyValues<K: Key, V> {
+    type KeyValues: IntoIterator<Item=(K, V)>;
+
+    fn into_key_values(tcx: TyCtxt, key: &K, value: Self) -> Self::KeyValues;
+}
+
+impl<K: Key, V> IntoKeyValues<K, V> for V {
+    type KeyValues = Once<(K, V)>;
+
+    fn into_key_values(_: TyCtxt, key: &K, value: Self) -> Self::KeyValues {
+        iter::once((key.clone(), value))
+    }
+}
+
+impl<K: Key, V> IntoKeyValues<K, V> for FxHashMap<K, V> {
+    type KeyValues = Self;
+
+    fn into_key_values(tcx: TyCtxt, key: &K, value: Self) -> Self {
+        if !value.contains_key(key) {
+            span_bug!(key.default_span(tcx),
+                      "multi-generation function for `{:?}` did not generate a value for `{:?}`",
+                      key, key)
+        }
+        value
     }
 }
 
@@ -437,7 +468,14 @@ macro_rules! define_maps {
                     provider(tcx.global_tcx(), key)
                 })?;
 
-                Ok(f(&tcx.maps.$name.borrow_mut().entry(key).or_insert(result)))
+                {
+                    let map = &mut *tcx.maps.$name.borrow_mut();
+                    for (k, v) in IntoKeyValues::<$K, $V>::into_key_values(tcx, &key, result) {
+                        map.insert(k, v);
+                    }
+                }
+
+                Ok(f(tcx.maps.$name.borrow().get(&key).expect("value just generated")))
             }
 
             pub fn try_get(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K)
