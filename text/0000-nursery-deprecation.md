@@ -66,8 +66,8 @@ not a major commitment.
 
 Acceptance into the nursery could be hindered if it is believed it could be 
 hard to reverse course later due to the required RFC being percieved as an 
-obstacle. On the other hand, RFCs with broad concensus do not generally impose 
-a large procedural burden, and if there is no concensus it might be too early 
+obstacle. On the other hand, RFCs with broad consensus do not generally impose 
+a large procedural burden, and if there is no consensus it might be too early 
 to deprecate a nursery crate anyway.
 
 # Alternatives
