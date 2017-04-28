@@ -94,7 +94,7 @@ pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
 pub trait MirCtxt<'a, 'tcx: 'a> {
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
     fn def_id(&self) -> DefId;
-    fn pass_set(&self) -> MirPassSet;
+    fn suite(&self) -> MirSuite;
     fn pass_num(&self) -> MirPassIndex;
     fn source(&self) -> MirSource;
     fn read_previous_mir(&self) -> Ref<'tcx, Mir<'tcx>>;
@@ -102,7 +102,7 @@ pub trait MirCtxt<'a, 'tcx: 'a> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct MirPassSet(pub usize);
+pub struct MirSuite(pub usize);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct MirPassIndex(pub usize);
@@ -174,36 +174,36 @@ impl<T: MirPass> DefIdPass for T {
 #[derive(Clone)]
 pub struct Passes {
     pass_hooks: Vec<Rc<PassHook>>,
-    sets: Vec<Vec<Rc<DefIdPass>>>,
+    suites: Vec<Vec<Rc<DefIdPass>>>,
 }
 
-/// The number of "pass sets" that we have:
+/// The number of "pass suites" that we have:
 ///
 /// - ready for constant evaluation
 /// - unopt
 /// - optimized
-pub const MIR_PASS_SETS: usize = 3;
+pub const MIR_SUITES: usize = 3;
 
 /// Run the passes we need to do constant qualification and evaluation.
-pub const MIR_CONST: MirPassSet = MirPassSet(0);
+pub const MIR_CONST: MirSuite = MirSuite(0);
 
 /// Run the passes we need to consider the MIR validated and ready for borrowck etc.
-pub const MIR_VALIDATED: MirPassSet = MirPassSet(1);
+pub const MIR_VALIDATED: MirSuite = MirSuite(1);
 
 /// Run the passes we need to consider the MIR *optimized*.
-pub const MIR_OPTIMIZED: MirPassSet = MirPassSet(2);
+pub const MIR_OPTIMIZED: MirSuite = MirSuite(2);
 
 impl<'a, 'tcx> Passes {
     pub fn new() -> Passes {
         Passes {
             pass_hooks: Vec::new(),
-            sets: (0..MIR_PASS_SETS).map(|_| Vec::new()).collect(),
+            suites: (0..MIR_SUITES).map(|_| Vec::new()).collect(),
         }
     }
 
     /// Pushes a built-in pass.
-    pub fn push_pass<T: DefIdPass + 'static>(&mut self, set: MirPassSet, pass: T) {
-        self.sets[set.0].push(Rc::new(pass));
+    pub fn push_pass<T: DefIdPass + 'static>(&mut self, suite: MirSuite, pass: T) {
+        self.suites[suite.0].push(Rc::new(pass));
     }
 
     /// Pushes a pass hook.
@@ -211,12 +211,12 @@ impl<'a, 'tcx> Passes {
         self.pass_hooks.push(Rc::new(hook));
     }
 
-    pub fn len_passes(&self, set: MirPassSet) -> usize {
-        self.sets[set.0].len()
+    pub fn len_passes(&self, suite: MirSuite) -> usize {
+        self.suites[suite.0].len()
     }
 
-    pub fn pass(&self, set: MirPassSet, pass: MirPassIndex) -> &DefIdPass {
-        &*self.sets[set.0][pass.0]
+    pub fn pass(&self, suite: MirSuite, pass: MirPassIndex) -> &DefIdPass {
+        &*self.suites[suite.0][pass.0]
     }
 
     pub fn hooks(&self) -> &[Rc<PassHook>] {
