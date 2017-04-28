@@ -387,8 +387,7 @@ macro_rules! define_maps {
        [$($modifiers:tt)*] $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
         define_map_struct! {
             tcx: $tcx,
-            input: ($(([$($attr)*] [$($modifiers)*] $name))*),
-            output: ()
+            input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)
         }
 
         impl<$tcx> Maps<$tcx> {
@@ -536,8 +535,10 @@ macro_rules! define_maps {
             })*
         }
 
-        pub struct Providers<$tcx> {
-            $(pub $name: for<'a> fn(TyCtxt<'a, $tcx, $tcx>, $K) -> $V),*
+        define_provider_struct! {
+            tcx: $tcx,
+            input: ($(([$($modifiers)*] [$name] [$K] [$V]))*),
+            output: ()
         }
 
         impl<$tcx> Copy for Providers<$tcx> {}
@@ -558,6 +559,17 @@ macro_rules! define_maps {
 }
 
 macro_rules! define_map_struct {
+    // Initial state
+    (tcx: $tcx:tt,
+     input: $input:tt) => {
+        define_map_struct! {
+            tcx: $tcx,
+            input: $input,
+            output: ()
+        }
+    };
+
+    // Final output
     (tcx: $tcx:tt,
      input: (),
      output: ($($output:tt)*)) => {
@@ -568,26 +580,121 @@ macro_rules! define_map_struct {
         }
     };
 
-    // Detect things with the `pub` modifier
+    // Field recognized and ready to shift into the output
     (tcx: $tcx:tt,
-     input: (([$($attr:meta)*] [pub] $name:ident) $($input:tt)*),
+     ready: ([$($pub:tt)*] [$($attr:tt)*] [$name:ident]),
+     input: $input:tt,
      output: ($($output:tt)*)) => {
         define_map_struct! {
             tcx: $tcx,
-            input: ($($input)*),
+            input: $input,
             output: ($($output)*
-                     $(#[$attr])* pub $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>,)
+                     $(#[$attr])* $($pub)* $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>,)
         }
     };
 
+    // Detect things with the `pub` modifier
     (tcx: $tcx:tt,
-     input: (([$($attr:meta)*] [$($modifiers:tt)*] $name:ident) $($input:tt)*),
-     output: ($($output:tt)*)) => {
+     input: (([pub $($other_modifiers:tt)*] $attrs:tt $name:tt) $($input:tt)*),
+     output: $output:tt) => {
         define_map_struct! {
             tcx: $tcx,
+            ready: ([pub] $attrs $name),
             input: ($($input)*),
+            output: $output
+        }
+    };
+
+    // No modifiers left? This is a private item.
+    (tcx: $tcx:tt,
+     input: (([] $attrs:tt $name:tt) $($input:tt)*),
+     output: $output:tt) => {
+        define_map_struct! {
+            tcx: $tcx,
+            ready: ([pub] $attrs $name),
+            input: ($($input)*),
+            output: $output
+        }
+    };
+
+    // Skip other modifiers
+    (tcx: $tcx:tt,
+     input: (([$other_modifier:tt $($modifiers:tt)*] $($fields:tt)*) $($input:tt)*),
+     output: $output:tt) => {
+        define_map_struct! {
+            tcx: $tcx,
+            input: (([$($modifiers)*] $($fields)*) $($input)*),
+            output: $output
+        }
+    };
+}
+
+macro_rules! define_provider_struct {
+    // Initial state:
+    (tcx: $tcx:tt, input: $input:tt) => {
+        define_provider_struct! {
+            tcx: $tcx,
+            input: $input,
+            output: ()
+        }
+    };
+
+    // Final state:
+    (tcx: $tcx:tt,
+     input: (),
+     output: ($($output:tt)*)) => {
+        pub struct Providers<$tcx> {
+            $($output)*
+        }
+    };
+
+    // Something ready to shift:
+    (tcx: $tcx:tt,
+     ready: ([$name:ident] [$K:ty] [$R:ty]),
+     input: $input:tt,
+     output: ($($output:tt)*)) => {
+        define_provider_struct! {
+            tcx: $tcx,
+            input: $input,
             output: ($($output)*
-                     $(#[$attr])* $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>,)
+                     pub $name: for<'a> fn(TyCtxt<'a, $tcx, $tcx>, $K) -> $R,)
+        }
+    };
+
+    // The `multi` modifier indicates a **multiquery**, in which case
+    // the function returns a `FxHashMap<K,V>` instead of just a value
+    // `V`.
+    (tcx: $tcx:tt,
+     input: (([multi $($other_modifiers:tt)*] $name:tt [$K:ty] [$V:ty]) $($input:tt)*),
+     output: $output:tt) => {
+        define_provider_struct! {
+            tcx: $tcx,
+            ready: ($name [$K] [FxHashMap<$K,$V>]),
+            input: ($($input)*),
+            output: $output
+        }
+    };
+
+    // Regular queries produce a `V` only.
+    (tcx: $tcx:tt,
+     input: (([] $name:tt $K:tt $V:tt) $($input:tt)*),
+     output: $output:tt) => {
+        define_provider_struct! {
+            tcx: $tcx,
+            ready: ($name $K $V),
+            input: ($($input)*),
+            output: $output
+        }
+    };
+
+    // Skip modifiers other than `multi`.
+    (tcx: $tcx:tt,
+     input: (([$other_modifier:tt $($modifiers:tt)*] $($fields:tt)*) $($input:tt)*),
+     output: $output:tt) => {
+        define_provider_struct! {
+            tcx: $tcx,
+            input: (([$($modifiers)*] $($fields)*) $($input)*),
+            output: $output
         }
     };
 }
