@@ -22,21 +22,21 @@ use rustc::ty;
 
 use rustc::util::nodemap::DefIdMap;
 
+use transform::interprocedural::InterproceduralCx;
+
 pub struct CallGraph {
     node_map: DefIdMap<graph::NodeIndex>,
     graph: graph::Graph<DefId, ()>
 }
 
 impl CallGraph {
-    // FIXME: allow for construction of a callgraph that inspects
-    // cross-crate MIRs if available.
-    pub fn build<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>) -> CallGraph {
+    pub fn build<'a, 'mir, 'tcx>(cx: &mut InterproceduralCx<'a, 'mir, 'tcx>) -> CallGraph {
         let mut callgraph = CallGraph {
             node_map: DefIdMap(),
             graph: graph::Graph::new()
         };
 
-        for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
+        for &def_id in cx.tcx.mir_keys(LOCAL_CRATE).iter() {
             let idx = callgraph.add_node(def_id);
 
             let mut call_visitor = CallVisitor {
@@ -44,8 +44,9 @@ impl CallGraph {
                 graph: &mut callgraph
             };
 
-            let mir = tcx.item_mir(def_id);
-            call_visitor.visit_mir(&mir);
+            if let Some(mir) = cx.ensure_mir_and_read(def_id) {
+                call_visitor.visit_mir(mir);
+            }
         }
 
         callgraph

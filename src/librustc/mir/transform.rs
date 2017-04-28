@@ -13,6 +13,8 @@ use hir::def_id::DefId;
 use hir::map::DefPathData;
 use mir::{Mir, Promoted};
 use ty::TyCtxt;
+use ty::maps::Multi;
+use ty::steal::Steal;
 use std::cell::Ref;
 use std::rc::Rc;
 use syntax::ast::NodeId;
@@ -70,15 +72,6 @@ impl<'a, 'tcx> MirSource {
     }
 }
 
-/// Various information about pass.
-pub trait Pass {
-    fn name<'a>(&'a self) -> Cow<'a, str> {
-        default_name::<Self>()
-    }
-
-    fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>);
-}
-
 /// Generates a default name for the pass based on the name of the
 /// type `T`.
 pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
@@ -97,8 +90,20 @@ pub trait MirCtxt<'a, 'tcx: 'a> {
     fn suite(&self) -> MirSuite;
     fn pass_num(&self) -> MirPassIndex;
     fn source(&self) -> MirSource;
+
+    // Get a read-only view on the MIR of this def-id from the
+    // previous pass.
     fn read_previous_mir(&self) -> Ref<'tcx, Mir<'tcx>>;
+
+    // Steal the MIR of this def-id from the previous pass; any future
+    // attempt to access the MIR from the previous pass is a bug.
     fn steal_previous_mir(&self) -> Mir<'tcx>;
+
+    // Same as `read_previous_mir()`, but for any def-id you want.
+    fn read_previous_mir_of(&self, def_id: DefId) -> Ref<'tcx, Mir<'tcx>>;
+
+    // Same as `steal_previous_mir()`, but for any def-id you want.
+    fn steal_previous_mir_of(&self, def_id: DefId) -> Mir<'tcx>;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -116,17 +121,35 @@ pub struct MirPassIndex(pub usize);
 /// `mir_cx.read_previous_mir()`); after the pass executes, it will be
 /// `Some()` with the result of the pass (in which case the output
 /// from the previous pass is most likely stolen, so you would not
-/// want to try and access it).
+/// want to try and access it). If the pass is interprocedural, then
+/// the hook will be invoked once per output.
 pub trait PassHook {
     fn on_mir_pass<'a, 'tcx: 'a>(&self,
                                  mir_cx: &MirCtxt<'a, 'tcx>,
-                                 mir: Option<&Mir<'tcx>>);
+                                 mir: Option<(DefId, &Mir<'tcx>)>);
 }
 
-/// A streamlined trait that you can implement to create a pass; the
-/// pass will be invoked to process the MIR with the given `def_id`.
-/// This lets you do things before we fetch the MIR itself.  You may
-/// prefer `MirPass`.
+/// The full suite of types that identifies a particular
+/// application of a pass to a def-id.
+pub type PassId = (MirSuite, MirPassIndex, DefId);
+
+/// The most generic sort of MIR pass. You only want to implement this
+/// rather general trait if you are doing an interprocedural pass that
+/// may inspect and affect the MIR of many def-ids. Otherwise, prefer
+/// the more steamlined `DefIdPass` or `MirPass`.
+pub trait Pass {
+    fn name<'a>(&'a self) -> Cow<'a, str> {
+        default_name::<Self>()
+    }
+
+    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>)
+                              -> Multi<PassId, &'tcx Steal<Mir<'tcx>>>;
+}
+
+/// A streamlined trait that you can implement to create an
+/// intraprocedural pass; the pass will be invoked to process the MIR
+/// with the given `def_id`.  This lets you do things before we fetch
+/// the MIR itself. You may prefer `MirPass`, which is even more streamlined.
 pub trait DefIdPass {
     fn name<'a>(&'a self) -> Cow<'a, str> {
         default_name::<Self>()
@@ -135,10 +158,21 @@ pub trait DefIdPass {
     fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> Mir<'tcx>;
 }
 
+impl<T: DefIdPass> Pass for T {
+    fn name<'a>(&'a self) -> Cow<'a, str> {
+        DefIdPass::name(self)
+    }
+
+    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>)
+                              -> Multi<PassId, &'tcx Steal<Mir<'tcx>>> {
+        Multi::from(mir_cx.tcx().alloc_steal_mir(DefIdPass::run_pass(self, mir_cx)))
+    }
+}
+
 /// A streamlined trait that you can implement to create a pass; the
 /// pass will be named after the type, and it will consist of a main
 /// loop that goes over each available MIR and applies `run_pass`.
-pub trait MirPass: DepGraphSafe {
+pub trait MirPass {
     fn name<'a>(&'a self) -> Cow<'a, str> {
         default_name::<Self>()
     }
@@ -174,7 +208,7 @@ impl<T: MirPass> DefIdPass for T {
 #[derive(Clone)]
 pub struct Passes {
     pass_hooks: Vec<Rc<PassHook>>,
-    suites: Vec<Vec<Rc<DefIdPass>>>,
+    suites: Vec<Vec<Rc<Pass>>>,
 }
 
 /// The number of "pass suites" that we have:
@@ -202,7 +236,7 @@ impl<'a, 'tcx> Passes {
     }
 
     /// Pushes a built-in pass.
-    pub fn push_pass<T: DefIdPass + 'static>(&mut self, suite: MirSuite, pass: T) {
+    pub fn push_pass<T: Pass + 'static>(&mut self, suite: MirSuite, pass: T) {
         self.suites[suite.0].push(Rc::new(pass));
     }
 
@@ -215,7 +249,7 @@ impl<'a, 'tcx> Passes {
         self.suites[suite.0].len()
     }
 
-    pub fn pass(&self, suite: MirSuite, pass: MirPassIndex) -> &DefIdPass {
+    pub fn pass(&self, suite: MirSuite, pass: MirPassIndex) -> &Pass {
         &*self.suites[suite.0][pass.0]
     }
 
