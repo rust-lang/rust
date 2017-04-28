@@ -1,5 +1,5 @@
 [package]
-name = "qemu-test-client"
+name = "remote-test-server"
 version = "0.1.0"
 authors = ["The Rust Project Developers"]
 

@@ -28,7 +28,7 @@ use {Build, Compiler, Mode};
 use dist;
 use util::{self, dylib_path, dylib_path_var, exe};
 
-const ADB_TEST_DIR: &'static str = "/data/tmp";
+const ADB_TEST_DIR: &'static str = "/data/tmp/work";
 
 /// The two modes of the test runner; tests or benchmarks.
 #[derive(Copy, Clone)]
@@ -243,10 +243,10 @@ pub fn compiletest(build: &Build,
            .arg("--llvm-cxxflags").arg("");
     }
 
-    if build.qemu_rootfs(target).is_some() {
-        cmd.arg("--qemu-test-client")
+    if build.remote_tested(target) {
+        cmd.arg("--remote-test-client")
            .arg(build.tool(&Compiler::new(0, &build.config.build),
-                           "qemu-test-client"));
+                           "remote-test-client"));
     }
 
     // Running a C compiler on MSVC requires a few env vars to be set, to be
@@ -445,9 +445,7 @@ pub fn krate(build: &Build,
     dylib_path.insert(0, build.sysroot_libdir(&compiler, target));
     cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
-    if target.contains("android") ||
-       target.contains("emscripten") ||
-       build.qemu_rootfs(target).is_some() {
+    if target.contains("emscripten") || build.remote_tested(target) {
         cargo.arg("--no-run");
     }
 
@@ -459,65 +457,15 @@ pub fn krate(build: &Build,
 
     let _time = util::timeit();
 
-    if target.contains("android") {
-        build.run(&mut cargo);
-        krate_android(build, &compiler, target, mode);
-    } else if target.contains("emscripten") {
+    if target.contains("emscripten") {
         build.run(&mut cargo);
         krate_emscripten(build, &compiler, target, mode);
-    } else if build.qemu_rootfs(target).is_some() {
+    } else if build.remote_tested(target) {
         build.run(&mut cargo);
-        krate_qemu(build, &compiler, target, mode);
+        krate_remote(build, &compiler, target, mode);
     } else {
         cargo.args(&build.flags.cmd.test_args());
         build.run(&mut cargo);
-    }
-}
-
-fn krate_android(build: &Build,
-                 compiler: &Compiler,
-                 target: &str,
-                 mode: Mode) {
-    let mut tests = Vec::new();
-    let out_dir = build.cargo_out(compiler, mode, target);
-    find_tests(&out_dir, target, &mut tests);
-    find_tests(&out_dir.join("deps"), target, &mut tests);
-
-    for test in tests {
-        build.run(Command::new("adb").arg("push").arg(&test).arg(ADB_TEST_DIR));
-
-        let test_file_name = test.file_name().unwrap().to_string_lossy();
-        let log = format!("{}/check-stage{}-T-{}-H-{}-{}.log",
-                          ADB_TEST_DIR,
-                          compiler.stage,
-                          target,
-                          compiler.host,
-                          test_file_name);
-        let quiet = if build.config.quiet_tests { "--quiet" } else { "" };
-        let program = format!("(cd {dir}; \
-                                LD_LIBRARY_PATH=./{target} ./{test} \
-                                    --logfile {log} \
-                                    {quiet} \
-                                    {args})",
-                              dir = ADB_TEST_DIR,
-                              target = target,
-                              test = test_file_name,
-                              log = log,
-                              quiet = quiet,
-                              args = build.flags.cmd.test_args().join(" "));
-
-        let output = output(Command::new("adb").arg("shell").arg(&program));
-        println!("{}", output);
-
-        t!(fs::create_dir_all(build.out.join("tmp")));
-        build.run(Command::new("adb")
-                          .arg("pull")
-                          .arg(&log)
-                          .arg(build.out.join("tmp")));
-        build.run(Command::new("adb").arg("shell").arg("rm").arg(&log));
-        if !output.contains("result: ok") {
-            panic!("some tests failed");
-        }
     }
 }
 
@@ -527,7 +475,6 @@ fn krate_emscripten(build: &Build,
                     mode: Mode) {
     let mut tests = Vec::new();
     let out_dir = build.cargo_out(compiler, mode, target);
-    find_tests(&out_dir, target, &mut tests);
     find_tests(&out_dir.join("deps"), target, &mut tests);
 
     for test in tests {
@@ -543,17 +490,16 @@ fn krate_emscripten(build: &Build,
     }
 }
 
-fn krate_qemu(build: &Build,
-              compiler: &Compiler,
-              target: &str,
-              mode: Mode) {
+fn krate_remote(build: &Build,
+                compiler: &Compiler,
+                target: &str,
+                mode: Mode) {
     let mut tests = Vec::new();
     let out_dir = build.cargo_out(compiler, mode, target);
-    find_tests(&out_dir, target, &mut tests);
     find_tests(&out_dir.join("deps"), target, &mut tests);
 
     let tool = build.tool(&Compiler::new(0, &build.config.build),
-                          "qemu-test-client");
+                          "remote-test-client");
     for test in tests {
         let mut cmd = Command::new(&tool);
         cmd.arg("run")
@@ -565,7 +511,6 @@ fn krate_qemu(build: &Build,
         build.run(&mut cmd);
     }
 }
-
 
 fn find_tests(dir: &Path,
               target: &str,
@@ -585,59 +530,28 @@ fn find_tests(dir: &Path,
 }
 
 pub fn emulator_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
-    if target.contains("android") {
-        android_copy_libs(build, compiler, target)
-    } else if let Some(s) = build.qemu_rootfs(target) {
-        qemu_copy_libs(build, compiler, target, s)
+    if !build.remote_tested(target) {
+        return
     }
-}
 
-fn android_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
-    println!("Android copy libs to emulator ({})", target);
-    build.run(Command::new("adb").arg("wait-for-device"));
-    build.run(Command::new("adb").arg("remount"));
-    build.run(Command::new("adb").args(&["shell", "rm", "-r", ADB_TEST_DIR]));
-    build.run(Command::new("adb").args(&["shell", "mkdir", ADB_TEST_DIR]));
-    build.run(Command::new("adb")
-                      .arg("push")
-                      .arg(build.src.join("src/etc/adb_run_wrapper.sh"))
-                      .arg(ADB_TEST_DIR));
-
-    let target_dir = format!("{}/{}", ADB_TEST_DIR, target);
-    build.run(Command::new("adb").args(&["shell", "mkdir", &target_dir]));
-
-    for f in t!(build.sysroot_libdir(compiler, target).read_dir()) {
-        let f = t!(f);
-        let name = f.file_name().into_string().unwrap();
-        if util::is_dylib(&name) {
-            build.run(Command::new("adb")
-                              .arg("push")
-                              .arg(f.path())
-                              .arg(&target_dir));
-        }
-    }
-}
-
-fn qemu_copy_libs(build: &Build,
-                  compiler: &Compiler,
-                  target: &str,
-                  rootfs: &Path) {
-    println!("QEMU copy libs to emulator ({})", target);
-    assert!(target.starts_with("arm"), "only works with arm for now");
+    println!("REMOTE copy libs to emulator ({})", target);
     t!(fs::create_dir_all(build.out.join("tmp")));
 
-    // Copy our freshly compiled test server over to the rootfs
     let server = build.cargo_out(compiler, Mode::Tool, target)
-                      .join(exe("qemu-test-server", target));
-    t!(fs::copy(&server, rootfs.join("testd")));
+                      .join(exe("remote-test-server", target));
 
     // Spawn the emulator and wait for it to come online
     let tool = build.tool(&Compiler::new(0, &build.config.build),
-                          "qemu-test-client");
-    build.run(Command::new(&tool)
-                      .arg("spawn-emulator")
-                      .arg(rootfs)
-                      .arg(build.out.join("tmp")));
+                          "remote-test-client");
+    let mut cmd = Command::new(&tool);
+    cmd.arg("spawn-emulator")
+       .arg(target)
+       .arg(&server)
+       .arg(build.out.join("tmp"));
+    if let Some(rootfs) = build.qemu_rootfs(target) {
+        cmd.arg(rootfs);
+    }
+    build.run(&mut cmd);
 
     // Push all our dylibs to the emulator
     for f in t!(build.sysroot_libdir(compiler, target).read_dir()) {
