@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// check that borrowck looks inside consts/statics
+// regression test for issue #41498.
 
-static FN : &'static (Fn() -> (Box<Fn()->Box<i32>>) + Sync) = &|| {
-    let x = Box::new(0);
-    Box::new(|| x) //~ ERROR cannot move out of captured outer variable
-};
+struct S;
+impl S {
+    fn mutate(&mut self) {}
+}
+
+fn call_and_ref<T, F: FnOnce() -> T>(x: &mut Option<T>, f: F) -> &mut T {
+    *x = Some(f());
+    x.as_mut().unwrap()
+}
 
 fn main() {
-    let f = (FN)();
-    f();
-    f();
+    let mut n = None;
+    call_and_ref(&mut n, || [S])[0].mutate();
 }
