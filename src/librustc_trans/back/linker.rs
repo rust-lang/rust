@@ -94,6 +94,7 @@ pub trait Linker {
     fn link_dylib(&mut self, lib: &str);
     fn link_rust_dylib(&mut self, lib: &str, path: &Path);
     fn link_framework(&mut self, framework: &str);
+    fn link_js(&mut self, lib: &str);
     fn link_staticlib(&mut self, lib: &str);
     fn link_rlib(&mut self, lib: &Path);
     fn link_whole_rlib(&mut self, lib: &Path);
@@ -185,6 +186,10 @@ impl<'a> Linker for GccLinker<'a> {
     fn link_framework(&mut self, framework: &str) {
         self.hint_dynamic();
         self.cmd.arg("-framework").arg(framework);
+    }
+
+    fn link_js(&mut self, _lib: &str) {
+        bug!("JS libraries are not supported on macOS")
     }
 
     // Here we explicitly ask that the entire archive is included into the
@@ -455,8 +460,13 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn framework_path(&mut self, _path: &Path) {
         bug!("frameworks are not supported on windows")
     }
+
     fn link_framework(&mut self, _framework: &str) {
         bug!("frameworks are not supported on windows")
+    }
+
+    fn link_js(&mut self, _lib: &str) {
+        bug!("JS libraries are not supported on windows")
     }
 
     fn link_whole_staticlib(&mut self, lib: &str, _search_path: &[PathBuf]) {
@@ -605,6 +615,10 @@ impl<'a> Linker for EmLinker<'a> {
 
     fn link_framework(&mut self, _framework: &str) {
         bug!("frameworks are not supported on Emscripten")
+    }
+
+    fn link_js(&mut self, lib: &str) {
+        self.cmd.args(&["--js-library", lib]);
     }
 
     fn gc_sections(&mut self, _keep_metadata: bool) {

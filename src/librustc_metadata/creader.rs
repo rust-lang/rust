@@ -105,6 +105,22 @@ fn register_native_lib(sess: &Session,
             None => sess.err(msg),
         }
     }
+    if lib.kind == cstore::NativeJS {
+        if !sess.target.target.options.is_like_emscripten {
+            let msg = "JavaScript libraries are only available on Emscripten targets";
+            match span {
+                Some(span) => span_err!(sess, span, E0455, "{}", msg),
+                None => sess.err(msg),
+            }
+        }
+        if !sess.features.borrow().link_js {
+            feature_gate::emit_feature_err(&sess.parse_sess,
+                                        "link_js",
+                                        span.unwrap(),
+                                        GateIssue::Language,
+                                        "kind=\"js\" is feature gated");
+        }
+    }
     if lib.cfg.is_some() && !sess.features.borrow().link_cfg {
         feature_gate::emit_feature_err(&sess.parse_sess,
                                        "link_cfg",
@@ -1026,6 +1042,7 @@ impl<'a> CrateLoader<'a> {
                 Some("static-nobundle") => cstore::NativeStaticNobundle,
                 Some("dylib") => cstore::NativeUnknown,
                 Some("framework") => cstore::NativeFramework,
+                Some("js") => cstore::NativeJS,
                 Some(k) => {
                     struct_span_err!(self.sess, m.span, E0458,
                               "unknown kind: `{}`", k)

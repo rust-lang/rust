@@ -321,6 +321,9 @@ declare_features! (
     // Allows #[link(kind="static-nobundle"...]
     (active, static_nobundle, "1.16.0", Some(37403)),
 
+    // Allows #[link(kind="js"...)]
+    (active, link_js, "1.18.0", None),
+
     // `extern "msp430-interrupt" fn()`
     (active, abi_msp430_interrupt, "1.16.0", Some(38487)),
 

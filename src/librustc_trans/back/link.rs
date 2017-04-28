@@ -485,6 +485,7 @@ fn link_rlib<'a>(sess: &'a Session,
             NativeLibraryKind::NativeStatic => {}
             NativeLibraryKind::NativeStaticNobundle |
             NativeLibraryKind::NativeFramework |
+            NativeLibraryKind::NativeJS |
             NativeLibraryKind::NativeUnknown => continue,
         }
         ab.add_native_library(&lib.name.as_str());
@@ -683,6 +684,7 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
     for lib in all_native_libs.iter().filter(|l| relevant_lib(sess, l)) {
         let name = match lib.kind {
             NativeLibraryKind::NativeStaticNobundle |
+            NativeLibraryKind::NativeJS |
             NativeLibraryKind::NativeUnknown => "library",
             NativeLibraryKind::NativeFramework => "framework",
             // These are included, no need to print them
@@ -1035,6 +1037,7 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
         match lib.kind {
             NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
             NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
+            NativeLibraryKind::NativeJS => cmd.link_js(&lib.name.as_str()),
             NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(&lib.name.as_str()),
             NativeLibraryKind::NativeStatic => cmd.link_whole_staticlib(&lib.name.as_str(),
                                                                         &search_path)
@@ -1329,6 +1332,7 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session, crate_type: c
             }
             match lib.kind {
                 NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
+                NativeLibraryKind::NativeJS => cmd.link_js(&lib.name.as_str()),
                 NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
                 NativeLibraryKind::NativeStaticNobundle => {
                     // Link "static-nobundle" native libs only if the crate they originate from
