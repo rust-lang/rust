@@ -1012,6 +1012,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "Set the optimization fuel quota for a crate."),
     print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
         "Make Rustc print the total optimization fuel used by a crate."),
+    debug_prefix_map_from: Vec<String> = (vec![], parse_string_push, [TRACKED],
+        "push a debuginfo path remapping source"),
+    debug_prefix_map_to: Vec<String> = (vec![], parse_string_push, [TRACKED],
+        "push a debuginfo path remapping target"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1428,6 +1432,23 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         output_types.insert(OutputType::Metadata, None);
     } else if output_types.is_empty() {
         output_types.insert(OutputType::Exe, None);
+    }
+
+    let debug_prefix_map_sources = debugging_opts.debug_prefix_map_from.len();
+    let debug_prefix_map_targets = debugging_opts.debug_prefix_map_from.len();
+
+    if debug_prefix_map_targets < debug_prefix_map_sources {
+        for source in &debugging_opts.debug_prefix_map_from[debug_prefix_map_targets..] {
+            early_error(error_format,
+                &format!("option `-Zdebug_prefix_map_from='{}'` does not have \
+                         a corresponding `-Zdebug_prefix_map_to`", source))
+        }
+    } else if debug_prefix_map_targets > debug_prefix_map_sources {
+        for target in &debugging_opts.debug_prefix_map_to[debug_prefix_map_sources..] {
+            early_error(error_format,
+                &format!("option `-Zdebug_prefix_map_to='{}'` does not have \
+                          a corresponding `-Zdebug_prefix_map_from`", target))
+        }
     }
 
     let mut cg = build_codegen_options(matches, error_format);

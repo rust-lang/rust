@@ -237,6 +237,15 @@ pub trait CrateStore {
     fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId>;
     fn is_no_builtins(&self, cnum: CrateNum) -> bool;
 
+    /// Gives the directory the compiler has been executed in when compiling
+    /// crate `cnum`. This is used by debuginfo generation.
+    fn compiler_working_dir(&self, cnum: CrateNum) -> String;
+
+    /// Gives the prefix map as specified via `-Zdebug-prefix-map-*`. We keep
+    /// using the original prefix-mapping for a crate, not the mapping specified
+    /// for the current one.
+    fn debug_prefix_map(&self, cnum: CrateNum) -> Vec<(String, String)>;
+
     // resolve
     fn retrace_path(&self,
                     cnum: CrateNum,
@@ -380,6 +389,12 @@ impl CrateStore for DummyCrateStore {
         { bug!("native_libraries") }
     fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId> { bug!("exported_symbols") }
     fn is_no_builtins(&self, cnum: CrateNum) -> bool { bug!("is_no_builtins") }
+    fn compiler_working_dir(&self, cnum: CrateNum) -> String {
+        bug!("compiler_working_dir")
+    }
+    fn debug_prefix_map(&self, cnum: CrateNum) -> Vec<(String, String)> {
+        bug!("debug_prefix_map")
+    }
 
     // resolve
     fn retrace_path(&self,

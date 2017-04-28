@@ -374,8 +374,6 @@ pub struct FileMap {
     /// originate from files has names between angle brackets by convention,
     /// e.g. `<anon>`
     pub name: FileName,
-    /// The absolute path of the file that the source came from.
-    pub abs_path: Option<FileName>,
     /// The complete source code
     pub src: Option<Rc<String>>,
     /// The start position of this source in the CodeMap
@@ -392,7 +390,6 @@ impl Encodable for FileMap {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_struct("FileMap", 6, |s| {
             s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
-            s.emit_struct_field("abs_path", 1, |s| self.abs_path.encode(s))?;
             s.emit_struct_field("start_pos", 2, |s| self.start_pos.encode(s))?;
             s.emit_struct_field("end_pos", 3, |s| self.end_pos.encode(s))?;
             s.emit_struct_field("lines", 4, |s| {
@@ -453,8 +450,6 @@ impl Decodable for FileMap {
 
         d.read_struct("FileMap", 6, |d| {
             let name: String = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
-            let abs_path: Option<String> =
-                d.read_struct_field("abs_path", 1, |d| Decodable::decode(d))?;
             let start_pos: BytePos = d.read_struct_field("start_pos", 2, |d| Decodable::decode(d))?;
             let end_pos: BytePos = d.read_struct_field("end_pos", 3, |d| Decodable::decode(d))?;
             let lines: Vec<BytePos> = d.read_struct_field("lines", 4, |d| {
@@ -489,7 +484,6 @@ impl Decodable for FileMap {
                 d.read_struct_field("multibyte_chars", 5, |d| Decodable::decode(d))?;
             Ok(FileMap {
                 name: name,
-                abs_path: abs_path,
                 start_pos: start_pos,
                 end_pos: end_pos,
                 src: None,

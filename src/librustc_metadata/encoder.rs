@@ -1344,6 +1344,25 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_seq(exported_symbols.iter().map(|&id| tcx.hir.local_def_id(id).index))
     }
 
+    fn encode_debug_prefix_map(&mut self) -> LazySeq<(String, String)> {
+        let tcx = self.tcx;
+
+        let debug_prefix_map = tcx.sess
+                                  .opts
+                                  .debugging_opts
+                                  .debug_prefix_map_from
+                                  .iter()
+                                  .cloned()
+                                  .zip(tcx.sess
+                                          .opts
+                                          .debugging_opts
+                                          .debug_prefix_map_from
+                                          .iter()
+                                          .cloned())
+                                  .collect::<Vec<(String, String)>>();
+        self.lazy_seq(debug_prefix_map.into_iter())
+    }
+
     fn encode_dylib_dependency_formats(&mut self) -> LazySeq<Option<LinkagePreference>> {
         match self.tcx.sess.dependency_formats.borrow().get(&config::CrateTypeDylib) {
             Some(arr) => {
@@ -1399,6 +1418,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let exported_symbols = self.encode_exported_symbols();
         let exported_symbols_bytes = self.position() - i;
 
+        i = self.position();
+        let debug_prefix_map = self.encode_debug_prefix_map();
+        let debug_prefix_map_bytes = self.position() - i;
+
         // Encode and index the items.
         i = self.position();
         let items = self.encode_info_for_items();
@@ -1437,6 +1460,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             def_path_table: def_path_table,
             impls: impls,
             exported_symbols: exported_symbols,
+            compiler_working_dir: tcx.sess.working_dir.to_string_lossy().into_owned(),
+            debug_prefix_map: debug_prefix_map,
             index: index,
         });
 
@@ -1457,6 +1482,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             println!("         codemap bytes: {}", codemap_bytes);
             println!("            impl bytes: {}", impl_bytes);
             println!("    exp. symbols bytes: {}", exported_symbols_bytes);
+            println!("debug prefix map bytes: {}", debug_prefix_map_bytes);
             println!("  def-path table bytes: {}", def_path_table_bytes);
             println!("            item bytes: {}", item_bytes);
             println!("           index bytes: {}", index_bytes);

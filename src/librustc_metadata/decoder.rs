@@ -651,6 +651,14 @@ impl<'a, 'tcx> CrateMetadata {
         self.root.lang_items.decode(self).collect()
     }
 
+    pub fn compiler_working_dir(&self) -> String {
+        self.root.compiler_working_dir.clone()
+    }
+
+    pub fn debug_prefix_map(&self) -> Vec<(String, String)> {
+        self.root.debug_prefix_map.decode(self).collect()
+    }
+
     /// Iterates over each child of the given item.
     pub fn each_child_of_item<F>(&self, id: DefIndex, mut callback: F)
         where F: FnMut(def::Export)
@@ -1138,7 +1146,6 @@ impl<'a, 'tcx> CrateMetadata {
                         // We can't reuse an existing FileMap, so allocate a new one
                         // containing the information we need.
                         let syntax_pos::FileMap { name,
-                                                  abs_path,
                                                   start_pos,
                                                   end_pos,
                                                   lines,
@@ -1162,7 +1169,6 @@ impl<'a, 'tcx> CrateMetadata {
                         }
 
                         let local_version = local_codemap.new_imported_filemap(name,
-                                                                               abs_path,
                                                                                source_length,
                                                                                lines,
                                                                                multibyte_chars);
