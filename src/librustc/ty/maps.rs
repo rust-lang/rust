@@ -298,6 +298,13 @@ impl<'tcx> QueryDescription for queries::item_body_nested_bodies<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::const_is_rvalue_promotable_to_static<'tcx> {
+    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+        format!("const checking if rvalue is promotable to static `{}`",
+            tcx.item_path_str(def_id))
+    }
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -587,6 +594,7 @@ define_maps! { <'tcx>
     [] def_span: DefSpan(DefId) -> Span,
 
     [] item_body_nested_bodies: metadata_dep_node(DefId) -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
+    [] const_is_rvalue_promotable_to_static: metadata_dep_node(DefId) -> bool,
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {

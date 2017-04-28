@@ -772,11 +772,6 @@ impl<'a, 'tcx> CrateMetadata {
         tcx.alloc_tables(ast.tables.decode((self, tcx)))
     }
 
-    pub fn const_is_rvalue_promotable_to_static(&self, id: DefIndex) -> bool {
-        self.entry(id).ast.expect("const item missing `ast`")
-            .decode(self).rvalue_promotable_to_static
-    }
-
     pub fn is_item_mir_available(&self, id: DefIndex) -> bool {
         !self.is_proc_macro(id) &&
         self.maybe_entry(id).and_then(|item| item.decode(self).mir).is_some()

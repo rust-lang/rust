@@ -122,6 +122,10 @@ provide! { <'tcx> tcx, def_id, cdata
 
         Rc::new(map)
     }
+    const_is_rvalue_promotable_to_static => {
+        cdata.entry(def_id.index).ast.expect("const item missing `ast`")
+            .decode(cdata).rvalue_promotable_to_static
+    }
 }
 
 impl CrateStore for cstore::CStore {
@@ -437,11 +441,6 @@ impl CrateStore for cstore::CStore {
         debug!("item_body({}): inlining item", tcx.item_path_str(def_id));
 
         self.get_crate_data(def_id.krate).item_body(tcx, def_id.index)
-    }
-
-    fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool {
-        self.dep_graph.read(DepNode::MetaData(def));
-        self.get_crate_data(def.krate).const_is_rvalue_promotable_to_static(def.index)
     }
 
     fn is_item_mir_available(&self, def: DefId) -> bool {

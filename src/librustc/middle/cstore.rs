@@ -249,7 +249,6 @@ pub trait CrateStore {
     // misc. metadata
     fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                            -> &'tcx hir::Body;
-    fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool;
 
     fn is_item_mir_available(&self, def: DefId) -> bool;
 
@@ -398,9 +397,6 @@ impl CrateStore for DummyCrateStore {
     fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                            -> &'tcx hir::Body {
         bug!("item_body")
-    }
-    fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool {
-        bug!("const_is_rvalue_promotable_to_static")
     }
 
     fn is_item_mir_available(&self, def: DefId) -> bool {
