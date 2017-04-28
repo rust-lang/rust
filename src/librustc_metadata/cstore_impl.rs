@@ -17,7 +17,7 @@ use rustc::dep_graph::DepTrackingMapConfig;
 use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind,
                             ExternCrate, NativeLibrary, LinkMeta,
                             LinkagePreference, LoadedMacro, EncodedMetadata};
-use rustc::hir::def::{self, Def};
+use rustc::hir::def;
 use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
@@ -113,16 +113,12 @@ provide! { <'tcx> tcx, def_id, cdata
     closure_type => { cdata.closure_ty(def_id.index, tcx) }
     inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
+    describe_def => { cdata.get_def(def_id.index) }
 }
 
 impl CrateStore for cstore::CStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any> {
         self.get_crate_data(krate)
-    }
-
-    fn describe_def(&self, def: DefId) -> Option<Def> {
-        self.dep_graph.read(DepNode::MetaData(def));
-        self.get_crate_data(def.krate).get_def(def.index)
     }
 
     fn def_span(&self, sess: &Session, def: DefId) -> Span {
