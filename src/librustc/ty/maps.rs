@@ -24,6 +24,7 @@ use util::nodemap::NodeSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::cell::{RefCell, RefMut};
 use std::mem;
+use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
@@ -291,10 +292,16 @@ impl<'tcx> QueryDescription for queries::def_span<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::item_body_nested_bodies<'tcx> {
+    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+        format!("nested item bodies of `{}`", tcx.item_path_str(def_id))
+    }
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
-       [$($pub:tt)*] $name:ident: $node:ident($K:ty) -> $V:ty),*) => {
+       [$($pub:tt)*] $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
         pub struct Maps<$tcx> {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
             query_stack: RefCell<Vec<(Span, Query<$tcx>)>>,
@@ -577,7 +584,9 @@ define_maps! { <'tcx>
     [] symbol_name: symbol_name_dep_node(ty::Instance<'tcx>) -> ty::SymbolName,
 
     [] describe_def: DescribeDef(DefId) -> Option<Def>,
-    [] def_span: DefSpan(DefId) -> Span
+    [] def_span: DefSpan(DefId) -> Span,
+
+    [] item_body_nested_bodies: metadata_dep_node(DefId) -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -590,6 +599,10 @@ fn crate_inherent_impls_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn reachability_dep_node(_: CrateNum) -> DepNode<DefId> {
     DepNode::Reachability
+}
+
+fn metadata_dep_node(def_id: DefId) -> DepNode<DefId> {
+    DepNode::MetaData(def_id)
 }
 
 fn mir_shim_dep_node(instance: ty::InstanceDef) -> DepNode<DefId> {
