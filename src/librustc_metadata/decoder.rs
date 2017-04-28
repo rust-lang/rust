@@ -827,7 +827,7 @@ impl<'a, 'tcx> CrateMetadata {
             EntryKind::AssociatedType(container) => {
                 (ty::AssociatedKind::Type, container, false)
             }
-            _ => bug!()
+            _ => bug!("cannot get associated-item of `{:?}`", def_key)
         };
 
         ty::AssociatedItem {
