@@ -519,6 +519,7 @@ valopt_nosave host "${CFG_BUILD}" "GNUs ./configure syntax LLVM host triples"
 valopt_nosave target "${CFG_HOST}" "GNUs ./configure syntax LLVM target triples"
 valopt_nosave mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
 valopt_nosave docdir "${CFG_PREFIX}/share/doc/rust" "install documentation in PATH"
+valopt_nosave bindir "${CFG_PREFIX}/bin" "install binaries"
 
 # On Windows this determines root of the subtree for target libraries.
 # Host runtime libs always go to 'bin'.
@@ -710,6 +711,7 @@ envopt LDFLAGS
 CFG_PREFIX=${CFG_PREFIX%/}
 CFG_MANDIR=${CFG_MANDIR%/}
 CFG_DOCDIR=${CFG_DOCDIR%/}
+CFG_BINDIR=${CFG_BINDIR%/}
 CFG_HOST="$(echo $CFG_HOST | tr ',' ' ')"
 CFG_TARGET="$(echo $CFG_TARGET | tr ',' ' ')"
 
@@ -750,6 +752,7 @@ putvar CFG_X86_64_LINUX_ANDROID_NDK
 putvar CFG_NACL_CROSS_PATH
 putvar CFG_MANDIR
 putvar CFG_DOCDIR
+putvar CFG_BINDIR
 putvar CFG_USING_LIBCPP
 
 msg
