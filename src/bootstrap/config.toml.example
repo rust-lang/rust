@@ -160,6 +160,10 @@
 # Instead of installing to /usr/local, install to this path instead.
 #prefix = "/usr/local"
 
+# Where to install system configuration files
+# If this is a relative path, it will get installed in `prefix` above
+#sysconfdir = "/etc"
+
 # Where to install documentation in `prefix` above
 #docdir = "share/doc/rust"
 
