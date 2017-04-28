@@ -24,9 +24,9 @@ use ty::steal::Steal;
 use ty::subst::Substs;
 use util::nodemap::{DefIdSet, NodeSet};
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::cell::{RefCell, RefMut};
+use std::option;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::{self, Once};
@@ -34,10 +34,11 @@ use std::mem;
 use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::vec;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::symbol::Symbol;
 
-trait Key: Clone + Hash + Eq + Debug {
+pub trait Key: Clone + Hash + Eq + Debug {
     fn map_crate(&self) -> CrateNum;
     fn default_span(&self, tcx: TyCtxt) -> Span;
 }
@@ -163,27 +164,61 @@ impl<'tcx> Value<'tcx> for ty::SymbolName {
 trait IntoKeyValues<K: Key, V> {
     type KeyValues: IntoIterator<Item=(K, V)>;
 
-    fn into_key_values(tcx: TyCtxt, key: &K, value: Self) -> Self::KeyValues;
+    fn into_key_values(key: &K, value: Self) -> Self::KeyValues;
 }
 
 impl<K: Key, V> IntoKeyValues<K, V> for V {
     type KeyValues = Once<(K, V)>;
 
-    fn into_key_values(_: TyCtxt, key: &K, value: Self) -> Self::KeyValues {
+    fn into_key_values(key: &K, value: Self) -> Self::KeyValues {
         iter::once((key.clone(), value))
     }
 }
 
-impl<K: Key, V> IntoKeyValues<K, V> for FxHashMap<K, V> {
-    type KeyValues = Self;
+/// Return type for a multi-query, which is a query which may (if it
+/// chooses) return more than one (key, value) pair. Construct a
+/// `Multi` using `Multi::from(...)`.
+pub struct Multi<K: Key, V> {
+    single: Option<V>,
+    map: Vec<(K, V)>,
+}
 
-    fn into_key_values(tcx: TyCtxt, key: &K, value: Self) -> Self {
-        if !value.contains_key(key) {
-            span_bug!(key.default_span(tcx),
-                      "multi-generation function for `{:?}` did not generate a value for `{:?}`",
-                      key, key)
+impl<K: Key, V> Multi<K, V> {
+    pub fn iter<'a>(&'a self, key: &'a K) -> impl Iterator<Item = (&'a K, &'a V)> + 'a {
+        self.single.iter()
+                   .map(move |v| (key, v))
+                   .chain(self.map.iter().map(move |&(ref k, ref v)| (k, v)))
+    }
+}
+
+/// Construct a `Multi` from a single value.
+impl<K: Key, V> From<V> for Multi<K, V> {
+    fn from(value: V) -> Self {
+        Multi {
+            single: Some(value),
+            map: vec![],
         }
-        value
+    }
+}
+
+/// Construct a `Multi` from a hashmap of (K, V) pairs.
+impl<K: Key, V> From<Vec<(K, V)>> for Multi<K, V> {
+    fn from(value: Vec<(K, V)>) -> Self {
+        Multi {
+            single: None,
+            map: value
+        }
+    }
+}
+
+impl<K: Key, V> IntoKeyValues<K, V> for Multi<K, V> {
+    type KeyValues = iter::Chain<option::IntoIter<(K, V)>, vec::IntoIter<(K, V)>>;
+
+    fn into_key_values(key: &K, value: Self) -> Self::KeyValues {
+        value.single
+             .map(|v| (key.clone(), v))
+             .into_iter()
+             .chain(value.map)
     }
 }
 
@@ -469,7 +504,7 @@ macro_rules! define_maps {
 
                 {
                     let map = &mut *tcx.maps.$name.borrow_mut();
-                    for (k, v) in IntoKeyValues::<$K, $V>::into_key_values(tcx, &key, result) {
+                    for (k, v) in IntoKeyValues::<$K, $V>::into_key_values(&key, result) {
                         map.insert(k, v);
                     }
                 }
@@ -544,16 +579,6 @@ macro_rules! define_maps {
         impl<$tcx> Copy for Providers<$tcx> {}
         impl<$tcx> Clone for Providers<$tcx> {
             fn clone(&self) -> Self { *self }
-        }
-
-        impl<$tcx> Default for Providers<$tcx> {
-            fn default() -> Self {
-                $(fn $name<'a, $tcx>(_: TyCtxt<'a, $tcx, $tcx>, key: $K) -> $V {
-                    bug!("tcx.maps.{}({:?}) unsupported by its crate",
-                         stringify!($name), key);
-                })*
-                Providers { $($name),* }
-            }
         }
     }
 }
@@ -642,34 +667,43 @@ macro_rules! define_provider_struct {
     // Final state:
     (tcx: $tcx:tt,
      input: (),
-     output: ($($output:tt)*)) => {
+     output: ($(([$name:ident] [$K:ty] [$R:ty]))*)) => {
         pub struct Providers<$tcx> {
-            $($output)*
+            $(pub $name: for<'a> fn(TyCtxt<'a, $tcx, $tcx>, $K) -> $R,)*
+        }
+
+        impl<$tcx> Default for Providers<$tcx> {
+            fn default() -> Self {
+                $(fn $name<'a, $tcx>(_: TyCtxt<'a, $tcx, $tcx>, key: $K) -> $R {
+                    bug!("tcx.maps.{}({:?}) unsupported by its crate",
+                         stringify!($name), key);
+                })*
+                Providers { $($name),* }
+            }
         }
     };
 
     // Something ready to shift:
     (tcx: $tcx:tt,
-     ready: ([$name:ident] [$K:ty] [$R:ty]),
+     ready: ($name:tt $K:tt $V:tt),
      input: $input:tt,
      output: ($($output:tt)*)) => {
         define_provider_struct! {
             tcx: $tcx,
             input: $input,
-            output: ($($output)*
-                     pub $name: for<'a> fn(TyCtxt<'a, $tcx, $tcx>, $K) -> $R,)
+            output: ($($output)* ($name $K $V))
         }
     };
 
     // The `multi` modifier indicates a **multiquery**, in which case
-    // the function returns a `FxHashMap<K,V>` instead of just a value
+    // the function returns a `Multi<K,V>` instead of just a value
     // `V`.
     (tcx: $tcx:tt,
      input: (([multi $($other_modifiers:tt)*] $name:tt [$K:ty] [$V:ty]) $($input:tt)*),
      output: $output:tt) => {
         define_provider_struct! {
             tcx: $tcx,
-            ready: ($name [$K] [FxHashMap<$K,$V>]),
+            ready: ($name [$K] [Multi<$K,$V>]),
             input: ($($input)*),
             output: $output
         }
@@ -778,7 +812,7 @@ define_maps! { <'tcx>
     /// Fetch the MIR for a given def-id after a given pass has been executed. This is
     /// **only** intended to be used by the `mir_suite` provider -- if you are using it
     /// manually, you're doing it wrong.
-    [] mir_pass: mir_pass((MirSuite, MirPassIndex, DefId)) -> &'tcx Steal<mir::Mir<'tcx>>,
+    [multi] mir_pass: mir_pass((MirSuite, MirPassIndex, DefId)) -> &'tcx Steal<mir::Mir<'tcx>>,
 
     /// MIR after our optimization passes have run. This is MIR that is ready
     /// for trans. This is also the only query that can fetch non-local MIR, at present.

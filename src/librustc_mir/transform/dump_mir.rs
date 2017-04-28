@@ -15,10 +15,11 @@ use std::fmt;
 use std::fs::File;
 use std::io;
 
+use rustc::hir::def_id::DefId;
+use rustc::mir::Mir;
+use rustc::mir::transform::{DefIdPass, MirCtxt, MirSource, PassHook};
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::TyCtxt;
-use rustc::mir::Mir;
-use rustc::mir::transform::{DefIdPass, PassHook, MirCtxt};
 use util as mir_util;
 
 pub struct Marker(pub &'static str);
@@ -48,19 +49,26 @@ pub struct DumpMir;
 
 impl PassHook for DumpMir {
     fn on_mir_pass<'a, 'tcx: 'a>(&self,
-                             mir_cx: &MirCtxt<'a, 'tcx>,
-                             mir: Option<&Mir<'tcx>>)
+                                 mir_cx: &MirCtxt<'a, 'tcx>,
+                                 mir: Option<(DefId, &Mir<'tcx>)>)
     {
         let tcx = mir_cx.tcx();
         let suite = mir_cx.suite();
         let pass_num = mir_cx.pass_num();
         let pass = tcx.mir_passes.pass(suite, pass_num);
         let name = &pass.name();
-        let source = mir_cx.source();
+        let source = match mir {
+            None => mir_cx.source(),
+            Some((def_id, _)) => {
+                let id = tcx.hir.as_local_node_id(def_id)
+                                .expect("mir source requires local def-id");
+                MirSource::from_node(tcx, id)
+            }
+        };
         if mir_util::dump_enabled(tcx, name, source) {
             let previous_mir;
             let mir_to_dump = match mir {
-                Some(m) => m,
+                Some((_, m)) => m,
                 None => {
                     previous_mir = mir_cx.read_previous_mir();
                     &*previous_mir
