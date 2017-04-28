@@ -336,7 +336,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                             _ => false
                         }
                     } else {
-                        v.tcx.sess.cstore.const_is_rvalue_promotable_to_static(did)
+                        v.tcx.const_is_rvalue_promotable_to_static(did)
                     };
                 }
                 _ => {
