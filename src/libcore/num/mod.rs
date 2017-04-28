@@ -2327,6 +2327,18 @@ macro_rules! uint_impl {
             (self.wrapping_sub(1)) & self == 0 && !(self == 0)
         }
 
+        fn round_up_to_one_less_than_a_power_of_two(self) -> Self {
+            let bits = size_of::<Self>() as u32 * 8;
+            let z = self.leading_zeros();
+            (if z == bits { 0 as Self } else { !0 }).wrapping_shr(z)
+        }
+
+        fn one_less_than_next_power_of_two(self) -> Self {
+            self.wrapping_sub(1)
+                .round_up_to_one_less_than_a_power_of_two()
+                .wrapping_add(if self == 0 { 1 } else { 0 })
+        }
+
         /// Returns the smallest power of two greater than or equal to `self`.
         /// More details about overflow behavior can be found in [RFC 560].
         ///
@@ -2343,13 +2355,7 @@ macro_rules! uint_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub fn next_power_of_two(self) -> Self {
-            let bits = size_of::<Self>() * 8;
-            let one: Self = 1;
-            if self == 0 {
-                1
-            } else {
-                one << (bits - (self - one).leading_zeros() as usize)
-            }
+            self.one_less_than_next_power_of_two() + 1
         }
 
         /// Returns the smallest power of two greater than or equal to `n`. If
@@ -2367,9 +2373,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         pub fn checked_next_power_of_two(self) -> Option<Self> {
-            let bits = size_of::<Self>() * 8;
-            let one: Self = 1;
-            let npot = one << ((bits - self.wrapping_sub(one).leading_zeros() as usize) % bits);
+            let npot = self.one_less_than_next_power_of_two().wrapping_add(1);
             if npot >= self {
                 Some(npot)
             } else {
