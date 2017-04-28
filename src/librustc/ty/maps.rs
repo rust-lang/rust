@@ -553,8 +553,8 @@ define_maps! { <'tcx>
     pub def_symbol_name: SymbolName(DefId) -> ty::SymbolName,
     pub symbol_name: symbol_name_dep_node(ty::Instance<'tcx>) -> ty::SymbolName,
 
-    pub describe_def: meta_data_node(DefId) -> Option<Def>,
-    pub def_span: meta_data_node(DefId) -> Span
+    pub describe_def: MetaData(DefId) -> Option<Def>,
+    pub def_span: MetaData(DefId) -> Span
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -585,8 +585,4 @@ fn typeck_item_bodies_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn const_eval_dep_node((def_id, _): (DefId, &Substs)) -> DepNode<DefId> {
     DepNode::ConstEval(def_id)
-}
-
-fn meta_data_node(def_id: DefId) -> DepNode<DefId> {
-    DepNode::MetaData(def_id)
 }

@@ -2668,13 +2668,7 @@ fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn def_span<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Span {
-    match tcx.hir.span_if_local(def_id) {
-        Some(span) => span,
-        None => {
-            let node_id = tcx.sess.cstore.item_body(tcx, def_id).id().node_id;
-            tcx.hir.span(node_id)
-        },
-    }
+    tcx.hir.span_if_local(def_id).unwrap()
 }
 
 pub fn provide(providers: &mut ty::maps::Providers) {
