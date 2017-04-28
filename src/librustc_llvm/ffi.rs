@@ -284,13 +284,13 @@ pub enum CodeGenOptLevel {
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub enum RelocMode {
-    Default = 0,
-    Static = 1,
-    PIC = 2,
-    DynamicNoPic = 3,
-    ROPI = 4,
-    RWPI = 5,
-    ROPI_RWPI = 6,
+    Default,
+    Static,
+    PIC,
+    DynamicNoPic,
+    ROPI,
+    RWPI,
+    ROPI_RWPI,
 }
 
 /// LLVMRustCodeModel
