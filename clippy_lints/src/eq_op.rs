@@ -52,14 +52,12 @@ impl LintPass for EqOp {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprBinary(ref op, ref left, ref right) = e.node {
-            if is_valid_operator(op) {
-                if SpanlessEq::new(cx).ignore_fn().eq_expr(left, right) {
-                    span_lint(cx,
-                              EQ_OP,
-                              e.span,
-                              &format!("equal expressions as operands to `{}`", op.node.as_str()));
-                    return;
-                }
+            if is_valid_operator(op) && SpanlessEq::new(cx).ignore_fn().eq_expr(left, right) {
+                span_lint(cx,
+                            EQ_OP,
+                            e.span,
+                            &format!("equal expressions as operands to `{}`", op.node.as_str()));
+                return;
             }
             let (trait_id, requires_ref) = match op.node {
                 BiAdd => (cx.tcx.lang_items.add_trait(), false),
