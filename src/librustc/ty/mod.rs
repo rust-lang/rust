@@ -2385,7 +2385,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// ID of the impl that the method belongs to. Otherwise, return `None`.
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
         let item = if def_id.krate != LOCAL_CRATE {
-            if let Some(Def::Method(_)) = self.sess.cstore.describe_def(def_id) {
+            if let Some(Def::Method(_)) = self.describe_def(def_id) {
                 Some(self.associated_item(def_id))
             } else {
                 None
