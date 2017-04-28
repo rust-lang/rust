@@ -1,7 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 0.0.127 — 2017-04-24
+## 0.0.127 — 2017-04-28
+* Update to *rustc 1.18.0-nightly (94e884b63 2017-04-27)*
+
+## 0.0.127 — 2017-04-27
 * Update to *rustc 1.18.0-nightly (036983201 2017-04-26)*
 * New lint: [`needless_continue`]
 
