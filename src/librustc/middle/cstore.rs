@@ -250,8 +250,6 @@ pub trait CrateStore {
     fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                            -> &'tcx hir::Body;
 
-    fn is_item_mir_available(&self, def: DefId) -> bool;
-
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
     fn crates(&self) -> Vec<CrateNum>;
@@ -397,10 +395,6 @@ impl CrateStore for DummyCrateStore {
     fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                            -> &'tcx hir::Body {
         bug!("item_body")
-    }
-
-    fn is_item_mir_available(&self, def: DefId) -> bool {
-        bug!("is_item_mir_available")
     }
 
     // This is basically a 1-based range of ints, which is a little

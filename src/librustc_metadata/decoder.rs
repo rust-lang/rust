@@ -441,11 +441,11 @@ impl<'tcx> EntryKind<'tcx> {
 }
 
 impl<'a, 'tcx> CrateMetadata {
-    fn is_proc_macro(&self, id: DefIndex) -> bool {
+    pub fn is_proc_macro(&self, id: DefIndex) -> bool {
         self.proc_macros.is_some() && id != CRATE_DEF_INDEX
     }
 
-    fn maybe_entry(&self, item_id: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
+    pub fn maybe_entry(&self, item_id: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
         assert!(!self.is_proc_macro(item_id));
         self.root.index.lookup(self.blob.raw_bytes(), item_id)
     }
@@ -770,11 +770,6 @@ impl<'a, 'tcx> CrateMetadata {
                             -> &'tcx ty::TypeckTables<'tcx> {
         let ast = self.entry(id).ast.unwrap().decode(self);
         tcx.alloc_tables(ast.tables.decode((self, tcx)))
-    }
-
-    pub fn is_item_mir_available(&self, id: DefIndex) -> bool {
-        !self.is_proc_macro(id) &&
-        self.maybe_entry(id).and_then(|item| item.decode(self).mir).is_some()
     }
 
     pub fn maybe_get_item_mir(&self,

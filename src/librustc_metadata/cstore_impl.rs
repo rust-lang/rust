@@ -126,6 +126,10 @@ provide! { <'tcx> tcx, def_id, cdata
         cdata.entry(def_id.index).ast.expect("const item missing `ast`")
             .decode(cdata).rvalue_promotable_to_static
     }
+    is_item_mir_available => {
+        !cdata.is_proc_macro(def_id.index) &&
+        cdata.maybe_entry(def_id.index).and_then(|item| item.decode(cdata).mir).is_some()
+    }
 }
 
 impl CrateStore for cstore::CStore {
@@ -441,11 +445,6 @@ impl CrateStore for cstore::CStore {
         debug!("item_body({}): inlining item", tcx.item_path_str(def_id));
 
         self.get_crate_data(def_id.krate).item_body(tcx, def_id.index)
-    }
-
-    fn is_item_mir_available(&self, def: DefId) -> bool {
-        self.dep_graph.read(DepNode::MetaData(def));
-        self.get_crate_data(def.krate).is_item_mir_available(def.index)
     }
 
     fn crates(&self) -> Vec<CrateNum>
