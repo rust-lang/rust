@@ -219,5 +219,15 @@ error: equal expressions as operands to `==`
 59 |     a == a;
    |     ^^^^^^
 
+warning: taken reference of right operand
+  --> $DIR/eq_op.rs:97:13
+   |
+97 |     let z = x & &y;
+   |             ^^^^^^
+   |
+   = note: #[warn(op_ref)] on by default
+help: use the right value directly
+   |     let z = y & &y;
+
 error: aborting due to 32 previous errors
 
