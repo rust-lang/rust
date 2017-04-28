@@ -66,14 +66,10 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         let item_id = tcx.hir.body_owner(body_id);
         let item_def_id = tcx.hir.local_def_id(item_id);
 
-        // this will have been written by the main typeck pass
-        if let Some(tables) = tcx.maps.typeck_tables_of.borrow().get(&item_def_id) {
-            let imports = &tables.used_trait_imports;
-            debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);
-            used_trait_imports.extend(imports);
-        } else {
-            debug!("GatherVisitor: item_def_id={:?} with no imports", item_def_id);
-        }
+        let tables = tcx.typeck_tables_of(item_def_id);
+        let imports = &tables.used_trait_imports;
+        debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);
+        used_trait_imports.extend(imports);
     }
 
     let mut visitor = CheckVisitor { tcx, used_trait_imports };
