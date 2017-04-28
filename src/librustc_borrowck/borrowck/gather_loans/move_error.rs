@@ -11,6 +11,7 @@
 use borrowck::BorrowckCtxt;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
+use rustc::middle::mem_categorization::NoteClosureEnv;
 use rustc::middle::mem_categorization::InteriorOffsetKind as Kind;
 use rustc::ty;
 use syntax::ast;
@@ -71,9 +72,11 @@ fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         let mut err = report_cannot_move_out_of(bccx, error.move_from.clone());
         let mut is_first_note = true;
         for move_to in &error.move_to_places {
-            err = note_move_destination(err, move_to.span,
-                                  move_to.name, is_first_note);
+            err = note_move_destination(err, move_to.span, move_to.name, is_first_note);
             is_first_note = false;
+        }
+        if let NoteClosureEnv(upvar_id) = error.move_from.note {
+            err.span_label(bccx.tcx.hir.span(upvar_id.var_id), &"captured outer variable");
         }
         err.emit();
     }

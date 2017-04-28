@@ -22,7 +22,7 @@
 // are *mostly* used as a part of that interface, but these should
 // probably get a better home if someone can find one.
 
-use hir::def::{self, Def};
+use hir::def;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::map as hir_map;
 use hir::map::definitions::{Definitions, DefKey, DisambiguatedDefPathData};
@@ -181,7 +181,6 @@ pub trait CrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>;
 
     // item info
-    fn describe_def(&self, def: DefId) -> Option<Def>;
     fn def_span(&self, sess: &Session, def: DefId) -> Span;
     fn stability(&self, def: DefId) -> Option<attr::Stability>;
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation>;
@@ -313,7 +312,6 @@ impl CrateStore for DummyCrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>
         { bug!("crate_data_as_rc_any") }
     // item info
-    fn describe_def(&self, def: DefId) -> Option<Def> { bug!("describe_def") }
     fn def_span(&self, sess: &Session, def: DefId) -> Span { bug!("def_span") }
     fn stability(&self, def: DefId) -> Option<attr::Stability> { bug!("stability") }
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> { bug!("deprecation") }
