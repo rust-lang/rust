@@ -821,7 +821,6 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
 fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_ty: ty::Ty) {
     let ty = cx.tables.expr_ty(expr);
     let parent = cx.tcx.hir.get_parent(expr.id);
-    let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, parent);
     if let ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) = arg_ty.sty {
         if let ty::TyRef(..) = inner.sty {
             span_lint_and_then(cx,
@@ -838,7 +837,7 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_t
         }
     }
 
-    if !ty.moves_by_default(cx.tcx.global_tcx(), &parameter_environment, expr.span) {
+    if is_copy(cx, ty, parent) {
         span_lint_and_then(cx,
                            CLONE_ON_COPY,
                            expr.span,

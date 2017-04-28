@@ -1,4 +1,4 @@
-warning: taken reference of both operands, which is done automatically by the operator anyway
+warning: needlessly taken reference of both operands
   --> $DIR/op_ref.rs:13:15
    |
 13 |     let foo = &5 - &6;
