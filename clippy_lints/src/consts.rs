@@ -6,6 +6,7 @@ use rustc_const_eval::lookup_const_by_id;
 use rustc_const_math::ConstInt;
 use rustc::hir::*;
 use rustc::ty::{self, TyCtxt};
+use rustc::ty::subst::{Substs, Subst};
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
 use std::hash::{Hash, Hasher};
@@ -225,6 +226,7 @@ pub fn constant(lcx: &LateContext, e: &Expr) -> Option<(Constant, bool)> {
         tcx: lcx.tcx,
         tables: lcx.tables,
         needed_resolution: false,
+        substs: lcx.tcx.intern_substs(&[]),
     };
     cx.expr(e).map(|cst| (cst, cx.needed_resolution))
 }
@@ -237,6 +239,7 @@ struct ConstEvalLateContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     needed_resolution: bool,
+    substs: &'tcx Substs<'tcx>,
 }
 
 impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
@@ -286,11 +289,17 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 let substs = self.tables
                     .node_id_item_substs(id)
                     .unwrap_or_else(|| self.tcx.intern_substs(&[]));
-                if let Some((const_expr, _)) = lookup_const_by_id(self.tcx, def_id, substs) {
+                let substs = if self.substs.is_empty() {
+                    substs
+                } else {
+                    substs.subst(self.tcx, self.substs)
+                };
+                if let Some((def_id, substs)) = lookup_const_by_id(self.tcx, def_id, substs) {
                     let mut cx = ConstEvalLateContext {
                         tcx: self.tcx,
-                        tables: self.tcx.typeck_tables_of(const_expr),
+                        tables: self.tcx.typeck_tables_of(def_id),
                         needed_resolution: false,
+                        substs,
                     };
                     let body = if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
                         self.tcx.mir_const_qualif(def_id);
