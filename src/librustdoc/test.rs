@@ -74,7 +74,7 @@ pub fn run(input: &str,
         ..config::basic_options().clone()
     };
 
-    let codemap = Rc::new(CodeMap::new());
+    let codemap = Rc::new(CodeMap::new(sessopts.file_path_mapping()));
     let handler =
         errors::Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()));
 
@@ -217,7 +217,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
         }
     }
     let data = Arc::new(Mutex::new(Vec::new()));
-    let codemap = Rc::new(CodeMap::new());
+    let codemap = Rc::new(CodeMap::new(sessopts.file_path_mapping()));
     let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
                                                       Some(codemap.clone()));
     let old = io::set_panic(Some(box Sink(data.clone())));

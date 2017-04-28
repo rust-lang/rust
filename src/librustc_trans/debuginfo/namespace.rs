@@ -72,7 +72,7 @@ pub fn item_namespace(ccx: &CrateContext, def_id: DefId) -> DIScope {
     let span = ccx.tcx().def_span(def_id);
     let (file, line) = if span != DUMMY_SP {
         let loc = span_start(ccx, span);
-        (file_metadata(ccx, &loc.file.name, &loc.file.abs_path), loc.line as c_uint)
+        (file_metadata(ccx, &loc.file.name, def_id.krate), loc.line as c_uint)
     } else {
         (unknown_file_metadata(ccx), UNKNOWN_LINE_NUMBER)
     };

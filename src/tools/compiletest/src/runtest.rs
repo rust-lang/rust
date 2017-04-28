@@ -16,7 +16,6 @@ use errors::{self, ErrorKind, Error};
 use filetime::FileTime;
 use json;
 use header::TestProps;
-use header;
 use procsrv;
 use test::TestPaths;
 use uidiff;
@@ -57,7 +56,7 @@ pub fn run(config: Config, testpaths: &TestPaths) {
         print!("\n\n");
     }
     debug!("running {:?}", testpaths.file.display());
-    let base_props = TestProps::from_file(&testpaths.file);
+    let base_props = TestProps::from_file(&testpaths.file, &config);
 
     let base_cx = TestCx { config: &config,
                            props: &base_props,
@@ -70,7 +69,7 @@ pub fn run(config: Config, testpaths: &TestPaths) {
     } else {
         for revision in &base_props.revisions {
             let mut revision_props = base_props.clone();
-            revision_props.load_from(&testpaths.file, Some(&revision));
+            revision_props.load_from(&testpaths.file, Some(&revision), &config);
             let rev_cx = TestCx {
                 config: &config,
                 props: &revision_props,
@@ -867,13 +866,13 @@ actual:\n\
                     }
 
                     for &(ref command_directive, ref check_directive) in &directives {
-                        header::parse_name_value_directive(
+                        self.config.parse_name_value_directive(
                             &line,
                             &command_directive).map(|cmd| {
                                 commands.push(cmd)
                             });
 
-                        header::parse_name_value_directive(
+                        self.config.parse_name_value_directive(
                             &line,
                             &check_directive).map(|cmd| {
                                 check_lines.push(cmd)
@@ -1158,7 +1157,9 @@ actual:\n\
         if self.props.build_aux_docs {
             for rel_ab in &self.props.aux_builds {
                 let aux_testpaths = self.compute_aux_test_paths(rel_ab);
-                let aux_props = self.props.from_aux_file(&aux_testpaths.file, self.revision);
+                let aux_props = self.props.from_aux_file(&aux_testpaths.file,
+                                                         self.revision,
+                                                         self.config);
                 let aux_cx = TestCx {
                     config: self.config,
                     props: &aux_props,
@@ -1279,7 +1280,9 @@ actual:\n\
 
         for rel_ab in &self.props.aux_builds {
             let aux_testpaths = self.compute_aux_test_paths(rel_ab);
-            let aux_props = self.props.from_aux_file(&aux_testpaths.file, self.revision);
+            let aux_props = self.props.from_aux_file(&aux_testpaths.file,
+                                                     self.revision,
+                                                     self.config);
             let mut crate_type = if aux_props.no_prefer_dynamic {
                 Vec::new()
             } else {

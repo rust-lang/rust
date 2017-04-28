@@ -37,6 +37,7 @@ use rustc::ty::{self, TyCtxt, AssociatedItemContainer};
 use std::collections::HashSet;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::*;
+use std::path::Path;
 
 use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
 use syntax::parse::token;
@@ -128,6 +129,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     pub fn dump_crate_info(&mut self, name: &str, krate: &ast::Crate) {
         let source_file = self.tcx.sess.local_crate_source_file.as_ref();
         let crate_root = source_file.map(|source_file| {
+            let source_file = Path::new(source_file);
             match source_file.file_name() {
                 Some(_) => source_file.parent().unwrap().display().to_string(),
                 None => source_file.display().to_string(),
