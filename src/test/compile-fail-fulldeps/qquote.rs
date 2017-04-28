@@ -16,12 +16,13 @@ extern crate syntax;
 extern crate syntax_pos;
 
 use syntax::ast;
+use syntax::codemap::FilePathMapping;
 use syntax::print::pprust;
 use syntax::symbol::Symbol;
 use syntax_pos::DUMMY_SP;
 
 fn main() {
-    let ps = syntax::parse::ParseSess::new();
+    let ps = syntax::parse::ParseSess::new(FilePathMapping::empty());
     let mut resolver = syntax::ext::base::DummyResolver;
     let mut cx = syntax::ext::base::ExtCtxt::new(
         &ps,

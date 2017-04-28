@@ -104,22 +104,33 @@ impl FileLoader for RealFileLoader {
 
 pub struct CodeMap {
     pub files: RefCell<Vec<Rc<FileMap>>>,
-    file_loader: Box<FileLoader>
+    file_loader: Box<FileLoader>,
+    // This is used to apply the file path remapping as specified via
+    // -Zremap-path-prefix to all FileMaps allocated within this CodeMap.
+    path_mapping: FilePathMapping,
 }
 
 impl CodeMap {
-    pub fn new() -> CodeMap {
+    pub fn new(path_mapping: FilePathMapping) -> CodeMap {
         CodeMap {
             files: RefCell::new(Vec::new()),
-            file_loader: Box::new(RealFileLoader)
+            file_loader: Box::new(RealFileLoader),
+            path_mapping: path_mapping,
         }
     }
 
-    pub fn with_file_loader(file_loader: Box<FileLoader>) -> CodeMap {
+    pub fn with_file_loader(file_loader: Box<FileLoader>,
+                            path_mapping: FilePathMapping)
+                            -> CodeMap {
         CodeMap {
             files: RefCell::new(Vec::new()),
-            file_loader: file_loader
+            file_loader: file_loader,
+            path_mapping: path_mapping,
         }
+    }
+
+    pub fn path_mapping(&self) -> &FilePathMapping {
+        &self.path_mapping
     }
 
     pub fn file_exists(&self, path: &Path) -> bool {
@@ -128,8 +139,7 @@ impl CodeMap {
 
     pub fn load_file(&self, path: &Path) -> io::Result<Rc<FileMap>> {
         let src = self.file_loader.read_file(path)?;
-        let abs_path = self.file_loader.abs_path(path).map(|p| p.to_str().unwrap().to_string());
-        Ok(self.new_filemap(path.to_str().unwrap().to_string(), abs_path, src))
+        Ok(self.new_filemap(path.to_str().unwrap().to_string(), src))
     }
 
     fn next_start_pos(&self) -> usize {
@@ -144,8 +154,7 @@ impl CodeMap {
 
     /// Creates a new filemap without setting its line information. If you don't
     /// intend to set the line information yourself, you should use new_filemap_and_lines.
-    pub fn new_filemap(&self, filename: FileName, abs_path: Option<FileName>,
-                       mut src: String) -> Rc<FileMap> {
+    pub fn new_filemap(&self, filename: FileName, mut src: String) -> Rc<FileMap> {
         let start_pos = self.next_start_pos();
         let mut files = self.files.borrow_mut();
 
@@ -156,9 +165,11 @@ impl CodeMap {
 
         let end_pos = start_pos + src.len();
 
+        let (filename, was_remapped) = self.path_mapping.map_prefix(filename);
+
         let filemap = Rc::new(FileMap {
             name: filename,
-            abs_path: abs_path,
+            name_was_remapped: was_remapped,
             src: Some(Rc::new(src)),
             start_pos: Pos::from_usize(start_pos),
             end_pos: Pos::from_usize(end_pos),
@@ -172,11 +183,8 @@ impl CodeMap {
     }
 
     /// Creates a new filemap and sets its line information.
-    pub fn new_filemap_and_lines(&self, filename: &str, abs_path: Option<&str>,
-                                 src: &str) -> Rc<FileMap> {
-        let fm = self.new_filemap(filename.to_string(),
-                                  abs_path.map(|s| s.to_owned()),
-                                  src.to_owned());
+    pub fn new_filemap_and_lines(&self, filename: &str, src: &str) -> Rc<FileMap> {
+        let fm = self.new_filemap(filename.to_string(), src.to_owned());
         let mut byte_pos: u32 = fm.start_pos.0;
         for line in src.lines() {
             // register the start of this line
@@ -195,7 +203,7 @@ impl CodeMap {
     /// information for things inlined from other crates.
     pub fn new_imported_filemap(&self,
                                 filename: FileName,
-                                abs_path: Option<FileName>,
+                                name_was_remapped: bool,
                                 source_len: usize,
                                 mut file_local_lines: Vec<BytePos>,
                                 mut file_local_multibyte_chars: Vec<MultiByteChar>)
@@ -216,7 +224,7 @@ impl CodeMap {
 
         let filemap = Rc::new(FileMap {
             name: filename,
-            abs_path: abs_path,
+            name_was_remapped: name_was_remapped,
             src: None,
             start_pos: start_pos,
             end_pos: end_pos,
@@ -550,6 +558,42 @@ impl CodeMapper for CodeMap {
     }
 }
 
+#[derive(Clone)]
+pub struct FilePathMapping {
+    mapping: Vec<(String, String)>,
+}
+
+impl FilePathMapping {
+    pub fn empty() -> FilePathMapping {
+        FilePathMapping {
+            mapping: vec![]
+        }
+    }
+
+    pub fn new(mapping: Vec<(String, String)>) -> FilePathMapping {
+        FilePathMapping {
+            mapping: mapping
+        }
+    }
+
+    /// Applies any path prefix substitution as defined by the mapping.
+    /// The return value is the remapped path and a boolean indicating whether
+    /// the path was affected by the mapping.
+    pub fn map_prefix(&self, path: String) -> (String, bool) {
+        // NOTE: We are iterating over the mapping entries from last to first
+        //       because entries specified later on the command line should
+        //       take precedence.
+        for &(ref from, ref to) in self.mapping.iter().rev() {
+            if path.starts_with(from) {
+                let mapped = path.replacen(from, to, 1);
+                return (mapped, true);
+            }
+        }
+
+        (path, false)
+    }
+}
+
 // _____________________________________________________________________________
 // Tests
 //
@@ -561,9 +605,8 @@ mod tests {
 
     #[test]
     fn t1 () {
-        let cm = CodeMap::new();
+        let cm = CodeMap::new(FilePathMapping::empty());
         let fm = cm.new_filemap("blork.rs".to_string(),
-                                None,
                                 "first line.\nsecond line".to_string());
         fm.next_line(BytePos(0));
         // Test we can get lines with partial line info.
@@ -578,9 +621,8 @@ mod tests {
     #[test]
     #[should_panic]
     fn t2 () {
-        let cm = CodeMap::new();
+        let cm = CodeMap::new(FilePathMapping::empty());
         let fm = cm.new_filemap("blork.rs".to_string(),
-                                None,
                                 "first line.\nsecond line".to_string());
         // TESTING *REALLY* BROKEN BEHAVIOR:
         fm.next_line(BytePos(0));
@@ -589,15 +631,12 @@ mod tests {
     }
 
     fn init_code_map() -> CodeMap {
-        let cm = CodeMap::new();
+        let cm = CodeMap::new(FilePathMapping::empty());
         let fm1 = cm.new_filemap("blork.rs".to_string(),
-                                 None,
                                  "first line.\nsecond line".to_string());
         let fm2 = cm.new_filemap("empty.rs".to_string(),
-                                 None,
                                  "".to_string());
         let fm3 = cm.new_filemap("blork2.rs".to_string(),
-                                 None,
                                  "first line.\nsecond line".to_string());
 
         fm1.next_line(BytePos(0));
@@ -656,14 +695,12 @@ mod tests {
     }
 
     fn init_code_map_mbc() -> CodeMap {
-        let cm = CodeMap::new();
+        let cm = CodeMap::new(FilePathMapping::empty());
         // € is a three byte utf8 char.
         let fm1 =
             cm.new_filemap("blork.rs".to_string(),
-                           None,
                            "fir€st €€€€ line.\nsecond line".to_string());
         let fm2 = cm.new_filemap("blork2.rs".to_string(),
-                                 None,
                                  "first line€€.\n€ second line".to_string());
 
         fm1.next_line(BytePos(0));
@@ -728,10 +765,10 @@ mod tests {
     /// lines in the middle of a file.
     #[test]
     fn span_to_snippet_and_lines_spanning_multiple_lines() {
-        let cm = CodeMap::new();
+        let cm = CodeMap::new(FilePathMapping::empty());
         let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
         let selection = "     \n    ~~\n~~~\n~~~~~     \n   \n";
-        cm.new_filemap_and_lines("blork.rs", None, inputtext);
+        cm.new_filemap_and_lines("blork.rs", inputtext);
         let span = span_from_selection(inputtext, selection);
 
         // check that we are extracting the text we thought we were extracting
@@ -770,11 +807,11 @@ mod tests {
     /// Test failing to merge two spans on different lines
     #[test]
     fn span_merging_fail() {
-        let cm = CodeMap::new();
+        let cm = CodeMap::new(FilePathMapping::empty());
         let inputtext  = "bbbb BB\ncc CCC\n";
         let selection1 = "     ~~\n      \n";
         let selection2 = "       \n   ~~~\n";
-        cm.new_filemap_and_lines("blork.rs", None, inputtext);
+        cm.new_filemap_and_lines("blork.rs", inputtext);
         let span1 = span_from_selection(inputtext, selection1);
         let span2 = span_from_selection(inputtext, selection2);
 
