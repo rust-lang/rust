@@ -100,6 +100,7 @@ pub struct Config {
     pub musl_root: Option<PathBuf>,
     pub prefix: Option<PathBuf>,
     pub docdir: Option<PathBuf>,
+    pub bindir: Option<PathBuf>,
     pub libdir: Option<PathBuf>,
     pub libdir_relative: Option<PathBuf>,
     pub mandir: Option<PathBuf>,
@@ -165,9 +166,10 @@ struct Build {
 #[derive(RustcDecodable, Default, Clone)]
 struct Install {
     prefix: Option<String>,
-    mandir: Option<String>,
     docdir: Option<String>,
+    bindir: Option<String>,
     libdir: Option<String>,
+    mandir: Option<String>,
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -315,9 +317,10 @@ impl Config {
 
         if let Some(ref install) = toml.install {
             config.prefix = install.prefix.clone().map(PathBuf::from);
-            config.mandir = install.mandir.clone().map(PathBuf::from);
             config.docdir = install.docdir.clone().map(PathBuf::from);
+            config.bindir = install.bindir.clone().map(PathBuf::from);
             config.libdir = install.libdir.clone().map(PathBuf::from);
+            config.mandir = install.mandir.clone().map(PathBuf::from);
         }
 
         if let Some(ref llvm) = toml.llvm {
@@ -525,6 +528,9 @@ impl Config {
                 }
                 "CFG_DOCDIR" => {
                     self.docdir = Some(PathBuf::from(value));
+                }
+                "CFG_BINDIR" => {
+                    self.bindir = Some(PathBuf::from(value));
                 }
                 "CFG_LIBDIR" => {
                     self.libdir = Some(PathBuf::from(value));
