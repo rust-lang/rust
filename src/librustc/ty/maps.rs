@@ -537,6 +537,8 @@ define_maps! { <'tcx>
 
     [] typeck_tables_of: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
 
+    [] has_typeck_tables: TypeckTables(DefId) -> bool,
+
     [] coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
 
     [] borrowck: BorrowCheck(DefId) -> (),
