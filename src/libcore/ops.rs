@@ -235,6 +235,42 @@ pub trait Drop {
 /// }
 /// ```
 ///
+/// Here is an example of the same `Point` struct implementing the `Add` trait
+/// using generics.
+///
+/// ```
+/// use std::ops::Add;
+///
+/// #[derive(Debug)]
+/// struct Point<T> {
+///     x: T,
+///     y: T,
+/// }
+///
+/// // Notice that the implementation uses the `Output` associated type
+/// impl<T: Add<Output=T>> Add for Point<T> {
+///     type Output = Point<T>;
+///
+///     fn add(self, other: Point<T>) -> Point<T> {
+///         Point {
+///             x: self.x + other.x,
+///             y: self.y + other.y,
+///         }
+///     }
+/// }
+///
+/// impl<T: PartialEq> PartialEq for Point<T> {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.x == other.x && self.y == other.y
+///     }
+/// }
+///
+/// fn main() {
+///     assert_eq!(Point { x: 1, y: 0 } + Point { x: 2, y: 3 },
+///                Point { x: 3, y: 3 });
+/// }
+/// ```
+///
 /// Note that `RHS = Self` by default, but this is not mandatory. For example,
 /// [std::time::SystemTime] implements `Add<Duration>`, which permits
 /// operations of the form `SystemTime = SystemTime + Duration`.
