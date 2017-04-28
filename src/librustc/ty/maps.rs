@@ -353,11 +353,11 @@ impl<'tcx> QueryDescription for queries::mir_pass<'tcx> {
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
-       [$($pub:tt)*] $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
-        pub struct Maps<$tcx> {
-            providers: IndexVec<CrateNum, Providers<$tcx>>,
-            query_stack: RefCell<Vec<(Span, Query<$tcx>)>>,
-            $($(#[$attr])* $($pub)* $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>),*
+       [$($modifiers:tt)*] $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
+        define_map_struct! {
+            tcx: $tcx,
+            input: ($(([$($attr)*] [$($modifiers)*] $name))*),
+            output: ()
         }
 
         impl<$tcx> Maps<$tcx> {
@@ -517,6 +517,41 @@ macro_rules! define_maps {
             }
         }
     }
+}
+
+macro_rules! define_map_struct {
+    (tcx: $tcx:tt,
+     input: (),
+     output: ($($output:tt)*)) => {
+        pub struct Maps<$tcx> {
+            providers: IndexVec<CrateNum, Providers<$tcx>>,
+            query_stack: RefCell<Vec<(Span, Query<$tcx>)>>,
+            $($output)*
+        }
+    };
+
+    // Detect things with the `pub` modifier
+    (tcx: $tcx:tt,
+     input: (([$($attr:meta)*] [pub] $name:ident) $($input:tt)*),
+     output: ($($output:tt)*)) => {
+        define_map_struct! {
+            tcx: $tcx,
+            input: ($($input)*),
+            output: ($($output)*
+                     $(#[$attr])* pub $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>,)
+        }
+    };
+
+    (tcx: $tcx:tt,
+     input: (([$($attr:meta)*] [$($modifiers:tt)*] $name:ident) $($input:tt)*),
+     output: ($($output:tt)*)) => {
+        define_map_struct! {
+            tcx: $tcx,
+            input: ($($input)*),
+            output: ($($output)*
+                     $(#[$attr])* $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>,)
+        }
+    };
 }
 
 // Each of these maps also corresponds to a method on a
