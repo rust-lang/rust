@@ -35,7 +35,7 @@ use util::common::ErrorReported;
 use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
 
 use serialize::{self, Encodable, Encoder};
-use std::cell::{Cell, RefCell, Ref};
+use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 use std::cmp;
 use std::fmt;
@@ -96,6 +96,7 @@ pub mod _match;
 pub mod maps;
 pub mod outlives;
 pub mod relate;
+pub mod steal;
 pub mod subst;
 pub mod trait_def;
 pub mod walk;
@@ -2324,13 +2325,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Given the did of an item, returns its (optimized) MIR, borrowed immutably.
-    pub fn item_mir(self, did: DefId) -> Ref<'gcx, Mir<'gcx>> {
-        self.optimized_mir(did).borrow()
+    pub fn item_mir(self, did: DefId) -> &'gcx Mir<'gcx> {
+        self.optimized_mir(did)
     }
 
     /// Return the possibly-auto-generated MIR of a (DefId, Subst) pair.
     pub fn instance_mir(self, instance: ty::InstanceDef<'gcx>)
-                        -> Ref<'gcx, Mir<'gcx>>
+                        -> &'gcx Mir<'gcx>
     {
         match instance {
             ty::InstanceDef::Item(did) => {
@@ -2341,14 +2342,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::InstanceDef::Virtual(..) |
             ty::InstanceDef::ClosureOnceShim { .. } |
             ty::InstanceDef::DropGlue(..) => {
-                self.mir_shims(instance).borrow()
+                self.mir_shims(instance)
             }
         }
     }
 
     /// Given the DefId of an item, returns its MIR, borrowed immutably.
     /// Returns None if there is no MIR for the DefId
-    pub fn maybe_item_mir(self, did: DefId) -> Option<Ref<'gcx, Mir<'gcx>>> {
+    pub fn maybe_item_mir(self, did: DefId) -> Option<&'gcx Mir<'gcx>> {
         if did.is_local() && !self.mir_keys(LOCAL_CRATE).contains(&did) {
             return None;
         }

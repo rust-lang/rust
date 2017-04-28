@@ -13,7 +13,7 @@ use hir::def_id::DefId;
 use hir::map::DefPathData;
 use mir::{Mir, Promoted};
 use ty::TyCtxt;
-use std::cell::{Ref, RefCell};
+use std::cell::Ref;
 use std::rc::Rc;
 use syntax::ast::NodeId;
 
@@ -98,7 +98,7 @@ pub trait MirCtxt<'a, 'tcx: 'a> {
     fn pass_num(&self) -> MirPassIndex;
     fn source(&self) -> MirSource;
     fn read_previous_mir(&self) -> Ref<'tcx, Mir<'tcx>>;
-    fn steal_previous_mir(&self) -> &'tcx RefCell<Mir<'tcx>>;
+    fn steal_previous_mir(&self) -> Mir<'tcx>;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -132,7 +132,7 @@ pub trait DefIdPass {
         default_name::<Self>()
     }
 
-    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> &'tcx RefCell<Mir<'tcx>>;
+    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> Mir<'tcx>;
 }
 
 /// A streamlined trait that you can implement to create a pass; the
@@ -154,14 +154,14 @@ impl<T: MirPass> DefIdPass for T {
         MirPass::name(self)
     }
 
-    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> &'tcx RefCell<Mir<'tcx>> {
+    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> Mir<'tcx> {
         let tcx = mir_cx.tcx();
         let source = mir_cx.source();
-        let mir = mir_cx.steal_previous_mir();
-        MirPass::run_pass(self, tcx, source, &mut mir.borrow_mut());
+        let mut mir = mir_cx.steal_previous_mir();
+        MirPass::run_pass(self, tcx, source, &mut mir);
 
         let item_id = source.item_id();
-        for (promoted_index, promoted_mir) in mir.borrow_mut().promoted.iter_enumerated_mut() {
+        for (promoted_index, promoted_mir) in mir.promoted.iter_enumerated_mut() {
             let promoted_source = MirSource::Promoted(item_id, promoted_index);
             MirPass::run_pass(self, tcx, promoted_source, promoted_mir);
         }

@@ -24,10 +24,8 @@ use syntax::abi::Abi;
 use syntax::ast;
 use syntax_pos::Span;
 
-use std::cell::RefCell;
 use std::fmt;
 use std::iter;
-use std::mem;
 
 use transform::{add_call_guards, no_landing_pads, simplify};
 use util::elaborate_drops::{self, DropElaborator, DropStyle, DropFlagMode};
@@ -39,7 +37,7 @@ pub fn provide(providers: &mut Providers) {
 
 fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                        instance: ty::InstanceDef<'tcx>)
-                       -> &'tcx RefCell<Mir<'tcx>>
+                       -> &'tcx Mir<'tcx>
 {
     debug!("make_shim({:?})", instance);
     let did = instance.def_id();
@@ -117,8 +115,6 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     debug!("make_shim({:?}) = {:?}", instance, result);
 
     let result = tcx.alloc_mir(result);
-    // Perma-borrow MIR from shims to prevent mutation.
-    mem::forget(result.borrow());
     result
 }
 

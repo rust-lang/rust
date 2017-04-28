@@ -20,6 +20,7 @@ use mir::transform::{MirSuite, MirPassIndex};
 use session::CompileResult;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::item_path;
+use ty::steal::Steal;
 use ty::subst::Substs;
 use util::nodemap::{DefIdSet, NodeSet};
 
@@ -32,7 +33,7 @@ use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::symbol::Symbol;
 
-trait Key {
+trait Key: Clone {
     fn map_crate(&self) -> CrateNum;
     fn default_span(&self, tcx: TyCtxt) -> Span;
 }
@@ -339,13 +340,13 @@ impl<'tcx> QueryDescription for queries::is_item_mir_available<'tcx> {
 
 impl<'tcx> QueryDescription for queries::mir_suite<'tcx> {
     fn describe(_: TyCtxt, (suite, _): (MirSuite, DefId)) -> String {
-        format!("MIR passes #{}.*", suite.0)
+        format!("MIR suite #{}.*", suite.0)
     }
 }
 
 impl<'tcx> QueryDescription for queries::mir_pass<'tcx> {
-    fn describe(_: TyCtxt, (pass_set, pass_num, _): (MirSuite, MirPassIndex, DefId)) -> String {
-        format!("MIR pass #{}.{}", pass_set.0, pass_num.0)
+    fn describe(_: TyCtxt, (suite, pass_num, _): (MirSuite, MirPassIndex, DefId)) -> String {
+        format!("MIR pass #{}.{}", suite.0, pass_num.0)
     }
 }
 
@@ -586,22 +587,22 @@ define_maps! { <'tcx>
     /// Performs the initial MIR construction. You almost certainly do not
     /// want to use this query, because its output is intended to be stolen
     /// immediately by the MIR passes below. Consider `optimized_mir` instead.
-    [] mir_build: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>>,
+    [] mir_build: Mir(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
 
     /// Fetch the MIR for a given def-id after the given set of passes has ben
     /// applied to it. This is mostly an "intermediate" query. Normally, you would
     /// prefer to use `optimized_mir(def_id)`, which will fetch the MIR after all
     /// optimizations and so forth.
-    [] mir_suite: mir_suite((MirSuite, DefId)) -> &'tcx RefCell<mir::Mir<'tcx>>,
+    [] mir_suite: mir_suite((MirSuite, DefId)) -> &'tcx Steal<mir::Mir<'tcx>>,
 
     /// Fetch the MIR for a given def-id after a given pass has been executed. This is
     /// **only** intended to be used by the `mir_suite` provider -- if you are using it
     /// manually, you're doing it wrong.
-    [] mir_pass: mir_pass((MirSuite, MirPassIndex, DefId)) -> &'tcx RefCell<mir::Mir<'tcx>>,
+    [] mir_pass: mir_pass((MirSuite, MirPassIndex, DefId)) -> &'tcx Steal<mir::Mir<'tcx>>,
 
     /// MIR after our optimization passes have run. This is MIR that is ready
     /// for trans. This is also the only query that can fetch non-local MIR, at present.
-    [] optimized_mir: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>>,
+    [] optimized_mir: Mir(DefId) -> &'tcx mir::Mir<'tcx>,
 
     /// Records the type of each closure. The def ID is the ID of the
     /// expression defining the closure.
@@ -650,7 +651,7 @@ define_maps! { <'tcx>
     /// fn item.
     [] region_maps: RegionMaps(DefId) -> Rc<RegionMaps<'tcx>>,
 
-    [] mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>,
+    [] mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx mir::Mir<'tcx>,
 
     [] def_symbol_name: SymbolName(DefId) -> ty::SymbolName,
     [] symbol_name: symbol_name_dep_node(ty::Instance<'tcx>) -> ty::SymbolName,
