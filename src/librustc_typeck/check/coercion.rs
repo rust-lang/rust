@@ -1104,7 +1104,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
             // Another example is `break` with no argument expression.
             assert!(expression_ty.is_nil());
             assert!(expression_ty.is_nil(), "if let hack without unit type");
-            fcx.eq_types(true, cause, expression_ty, self.merged_ty())
+            fcx.eq_types(label_expression_as_expected, cause, expression_ty, self.merged_ty())
                .map(|infer_ok| {
                    fcx.register_infer_ok_obligations(infer_ok);
                    expression_ty
@@ -1128,6 +1128,10 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
             }
             Err(err) => {
                 let (expected, found) = if label_expression_as_expected {
+                    // In the case where this is a "forced unit", like
+                    // `break`, we want to call the `()` "expected"
+                    // since it is implied by the syntax.
+                    // (Note: not all force-units work this way.)"
                     (expression_ty, self.final_ty.unwrap_or(self.expected_ty))
                 } else {
                     // Otherwise, the "expected" type for error
