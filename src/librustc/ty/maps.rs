@@ -16,7 +16,7 @@ use middle::const_val;
 use middle::privacy::AccessLevels;
 use middle::region::RegionMaps;
 use mir;
-use mir::transform::{MirPassSet, MirPassIndex};
+use mir::transform::{MirSuite, MirPassIndex};
 use session::CompileResult;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::item_path;
@@ -102,7 +102,7 @@ impl<'tcx> Key for (DefId, &'tcx Substs<'tcx>) {
     }
 }
 
-impl Key for (MirPassSet, DefId) {
+impl Key for (MirSuite, DefId) {
     fn map_crate(&self) -> CrateNum {
         self.1.map_crate()
     }
@@ -111,7 +111,7 @@ impl Key for (MirPassSet, DefId) {
     }
 }
 
-impl Key for (MirPassSet, MirPassIndex, DefId) {
+impl Key for (MirSuite, MirPassIndex, DefId) {
     fn map_crate(&self) -> CrateNum {
         self.2.map_crate()
     }
@@ -337,14 +337,14 @@ impl<'tcx> QueryDescription for queries::is_item_mir_available<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription for queries::mir_pass_set<'tcx> {
-    fn describe(_: TyCtxt, (pass_set, _): (MirPassSet, DefId)) -> String {
-        format!("MIR passes #{}.*", pass_set.0)
+impl<'tcx> QueryDescription for queries::mir_suite<'tcx> {
+    fn describe(_: TyCtxt, (suite, _): (MirSuite, DefId)) -> String {
+        format!("MIR passes #{}.*", suite.0)
     }
 }
 
 impl<'tcx> QueryDescription for queries::mir_pass<'tcx> {
-    fn describe(_: TyCtxt, (pass_set, pass_num, _): (MirPassSet, MirPassIndex, DefId)) -> String {
+    fn describe(_: TyCtxt, (pass_set, pass_num, _): (MirSuite, MirPassIndex, DefId)) -> String {
         format!("MIR pass #{}.{}", pass_set.0, pass_num.0)
     }
 }
@@ -592,12 +592,12 @@ define_maps! { <'tcx>
     /// applied to it. This is mostly an "intermediate" query. Normally, you would
     /// prefer to use `optimized_mir(def_id)`, which will fetch the MIR after all
     /// optimizations and so forth.
-    [] mir_pass_set: mir_pass_set((MirPassSet, DefId)) -> &'tcx RefCell<mir::Mir<'tcx>>,
+    [] mir_suite: mir_suite((MirSuite, DefId)) -> &'tcx RefCell<mir::Mir<'tcx>>,
 
     /// Fetch the MIR for a given def-id after a given pass has been executed. This is
-    /// **only** intended to be used by the `mir_pass_set` provider -- if you are using it
+    /// **only** intended to be used by the `mir_suite` provider -- if you are using it
     /// manually, you're doing it wrong.
-    [] mir_pass: mir_pass((MirPassSet, MirPassIndex, DefId)) -> &'tcx RefCell<mir::Mir<'tcx>>,
+    [] mir_pass: mir_pass((MirSuite, MirPassIndex, DefId)) -> &'tcx RefCell<mir::Mir<'tcx>>,
 
     /// MIR after our optimization passes have run. This is MIR that is ready
     /// for trans. This is also the only query that can fetch non-local MIR, at present.
@@ -701,10 +701,10 @@ fn mir_keys(_: CrateNum) -> DepNode<DefId> {
     DepNode::MirKeys
 }
 
-fn mir_pass_set((_pass_set, def_id): (MirPassSet, DefId)) -> DepNode<DefId> {
+fn mir_suite((_suite, def_id): (MirSuite, DefId)) -> DepNode<DefId> {
     DepNode::Mir(def_id)
 }
 
-fn mir_pass((_pass_set, _pass_num, def_id): (MirPassSet, MirPassIndex, DefId)) -> DepNode<DefId> {
+fn mir_pass((_suite, _pass_num, def_id): (MirSuite, MirPassIndex, DefId)) -> DepNode<DefId> {
     DepNode::Mir(def_id)
 }

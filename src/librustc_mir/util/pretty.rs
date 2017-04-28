@@ -11,7 +11,7 @@
 use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::*;
-use rustc::mir::transform::{MirPassSet, MirPassIndex, MirSource};
+use rustc::mir::transform::{MirSuite, MirPassIndex, MirSource};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx};
@@ -39,7 +39,7 @@ const ALIGN: usize = 40;
 ///   that can appear in the pass-name or the `item_path_str` for the given
 ///   node-id. If any one of the substrings match, the data is dumped out.
 pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          pass_num: Option<(MirPassSet, MirPassIndex)>,
+                          pass_num: Option<(MirSuite, MirPassIndex)>,
                           pass_name: &str,
                           disambiguator: &Display,
                           source: MirSource,
@@ -77,7 +77,7 @@ pub fn dump_enabled<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn dump_matched_mir_node<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   pass_num: Option<(MirPassSet, MirPassIndex)>,
+                                   pass_num: Option<(MirSuite, MirPassIndex)>,
                                    pass_name: &str,
                                    node_path: &str,
                                    disambiguator: &Display,
