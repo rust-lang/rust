@@ -24,16 +24,19 @@ use dist::{sanitize_sh, tmpdir};
 /// Installs everything.
 pub fn install(build: &Build, stage: u32, host: &str) {
     let prefix_default = PathBuf::from("/usr/local");
+    let sysconfdir_default = PathBuf::from("/etc");
     let docdir_default = PathBuf::from("share/doc/rust");
     let bindir_default = PathBuf::from("bin");
     let libdir_default = PathBuf::from("lib");
     let mandir_default = PathBuf::from("share/man");
     let prefix = build.config.prefix.as_ref().unwrap_or(&prefix_default);
+    let sysconfdir = build.config.sysconfdir.as_ref().unwrap_or(&sysconfdir_default);
     let docdir = build.config.docdir.as_ref().unwrap_or(&docdir_default);
     let bindir = build.config.bindir.as_ref().unwrap_or(&bindir_default);
     let libdir = build.config.libdir.as_ref().unwrap_or(&libdir_default);
     let mandir = build.config.mandir.as_ref().unwrap_or(&mandir_default);
 
+    let sysconfdir = prefix.join(sysconfdir);
     let docdir = prefix.join(docdir);
     let bindir = prefix.join(bindir);
     let libdir = prefix.join(libdir);
@@ -42,6 +45,7 @@ pub fn install(build: &Build, stage: u32, host: &str) {
     let destdir = env::var_os("DESTDIR").map(PathBuf::from);
 
     let prefix = add_destdir(&prefix, &destdir);
+    let sysconfdir = add_destdir(&sysconfdir, &destdir);
     let docdir = add_destdir(&docdir, &destdir);
     let bindir = add_destdir(&bindir, &destdir);
     let libdir = add_destdir(&libdir, &destdir);
@@ -51,29 +55,35 @@ pub fn install(build: &Build, stage: u32, host: &str) {
     t!(fs::create_dir_all(&empty_dir));
     if build.config.docs {
         install_sh(&build, "docs", "rust-docs", &build.rust_package_vers(),
-                   stage, host, &prefix, &docdir, &bindir, &libdir, &mandir, &empty_dir);
+                   stage, host, &prefix, &sysconfdir, &docdir, &bindir, &libdir,
+                   &mandir, &empty_dir);
     }
 
     for target in build.config.target.iter() {
         install_sh(&build, "std", "rust-std", &build.rust_package_vers(),
-                   stage, target, &prefix, &docdir, &bindir, &libdir, &mandir, &empty_dir);
+                   stage, target, &prefix, &sysconfdir, &docdir, &bindir, &libdir,
+                   &mandir, &empty_dir);
     }
 
     if build.config.extended {
         install_sh(&build, "cargo", "cargo", &build.cargo_package_vers(),
-                   stage, host, &prefix, &docdir, &bindir, &libdir, &mandir, &empty_dir);
+                   stage, host, &prefix, &sysconfdir, &docdir, &bindir, &libdir,
+                   &mandir, &empty_dir);
         install_sh(&build, "rls", "rls", &build.rls_package_vers(),
-                   stage, host, &prefix, &docdir, &bindir, &libdir, &mandir, &empty_dir);
+                   stage, host, &prefix, &sysconfdir, &docdir, &bindir, &libdir,
+                   &mandir, &empty_dir);
     }
 
     install_sh(&build, "rustc", "rustc", &build.rust_package_vers(),
-               stage, host, &prefix, &docdir, &bindir, &libdir, &mandir, &empty_dir);
+               stage, host, &prefix, &sysconfdir, &docdir, &bindir, &libdir,
+               &mandir, &empty_dir);
 
     t!(fs::remove_dir_all(&empty_dir));
 }
 
 fn install_sh(build: &Build, package: &str, name: &str, version: &str, stage: u32, host: &str,
-              prefix: &Path, docdir: &Path, bindir: &Path, libdir: &Path, mandir: &Path, empty_dir: &Path) {
+              prefix: &Path, sysconfdir: &Path, docdir: &Path, bindir: &Path, libdir: &Path,
+              mandir: &Path, empty_dir: &Path) {
     println!("Install {} stage{} ({})", package, stage, host);
     let package_name = format!("{}-{}-{}", name, version, host);
 
@@ -81,6 +91,7 @@ fn install_sh(build: &Build, package: &str, name: &str, version: &str, stage: u3
     cmd.current_dir(empty_dir)
        .arg(sanitize_sh(&tmpdir(build).join(&package_name).join("install.sh")))
        .arg(format!("--prefix={}", sanitize_sh(prefix)))
+       .arg(format!("--sysconfdir={}", sanitize_sh(sysconfdir)))
        .arg(format!("--docdir={}", sanitize_sh(docdir)))
        .arg(format!("--bindir={}", sanitize_sh(bindir)))
        .arg(format!("--libdir={}", sanitize_sh(libdir)))
