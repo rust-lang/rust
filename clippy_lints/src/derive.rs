@@ -1,11 +1,10 @@
 use rustc::lint::*;
-use rustc::ty::subst::Subst;
 use rustc::ty::TypeVariants;
 use rustc::ty;
 use rustc::hir::*;
 use syntax::codemap::Span;
 use utils::paths;
-use utils::{is_automatically_derived, span_lint_and_then, match_path_old};
+use utils::{is_automatically_derived, span_lint_and_then, match_path_old, is_copy};
 
 /// **What it does:** Checks for deriving `Hash` but implementing `PartialEq`
 /// explicitly.
@@ -137,11 +136,8 @@ fn check_hash_peq<'a, 'tcx>(
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
 fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref: &TraitRef, ty: ty::Ty<'tcx>) {
     if match_path_old(&trait_ref.path, &paths::CLONE_TRAIT) {
-        let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, item.id);
-        let subst_ty = ty.subst(cx.tcx, parameter_environment.free_substs);
-
-        if subst_ty.moves_by_default(cx.tcx.global_tcx(), &parameter_environment, item.span) {
-            return; // ty is not Copy
+        if !is_copy(cx, ty, item.id) {
+            return;
         }
 
         match ty.sty {
