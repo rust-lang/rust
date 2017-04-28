@@ -375,6 +375,9 @@ impl Handler {
         panic!(ExplicitBug);
     }
     pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
+        if self.treat_err_as_bug {
+            self.span_bug(sp, msg);
+        }
         let mut delayed = self.delayed_span_bug.borrow_mut();
         *delayed = Some((sp.into(), msg.to_string()));
     }
