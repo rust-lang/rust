@@ -2354,7 +2354,10 @@ impl<'a, T> FusedIterator for ChunksMut<'a, T> {}
 /// valid for `len` elements, nor whether the lifetime inferred is a suitable
 /// lifetime for the returned slice.
 ///
-/// `p` must be non-null, even for zero-length slices.
+/// `p` must be non-null, even for zero-length slices, because non-zero bits
+/// are required to distinguish between a zero-length slice within `Some()`
+/// from `None`. `p` can be a bogus non-dereferencable pointer, such as `0x1`,
+/// for zero-length slices, though.
 ///
 /// # Caveat
 ///
@@ -2387,7 +2390,8 @@ pub unsafe fn from_raw_parts<'a, T>(p: *const T, len: usize) -> &'a [T] {
 ///
 /// This function is unsafe for the same reasons as `from_raw_parts`, as well
 /// as not being able to provide a non-aliasing guarantee of the returned
-/// mutable slice.
+/// mutable slice. `p` must be non-null even for zero-length slices as with
+/// `from_raw_parts`.
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
