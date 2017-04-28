@@ -2376,12 +2376,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         pub fn checked_next_power_of_two(self) -> Option<Self> {
-            let npot = self.one_less_than_next_power_of_two().wrapping_add(1);
-            if npot >= self {
-                Some(npot)
-            } else {
-                None
-            }
+            self.one_less_than_next_power_of_two().checked_add(1)
         }
     }
 }
