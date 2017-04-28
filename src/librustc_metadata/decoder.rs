@@ -28,7 +28,6 @@ use rustc::mir::Mir;
 
 use std::borrow::Cow;
 use std::cell::Ref;
-use std::collections::BTreeMap;
 use std::io;
 use std::mem;
 use std::rc::Rc;
@@ -451,7 +450,7 @@ impl<'a, 'tcx> CrateMetadata {
         self.root.index.lookup(self.blob.raw_bytes(), item_id)
     }
 
-    fn entry(&self, item_id: DefIndex) -> Entry<'tcx> {
+    pub fn entry(&self, item_id: DefIndex) -> Entry<'tcx> {
         match self.maybe_entry(item_id) {
             None => {
                 bug!("entry: id not found: {:?} in crate {:?} with number {}",
@@ -771,12 +770,6 @@ impl<'a, 'tcx> CrateMetadata {
                             -> &'tcx ty::TypeckTables<'tcx> {
         let ast = self.entry(id).ast.unwrap().decode(self);
         tcx.alloc_tables(ast.tables.decode((self, tcx)))
-    }
-
-    pub fn item_body_nested_bodies(&self, id: DefIndex) -> BTreeMap<hir::BodyId, hir::Body> {
-        self.entry(id).ast.into_iter().flat_map(|ast| {
-            ast.decode(self).nested_bodies.decode(self).map(|body| (body.id(), body))
-        }).collect()
     }
 
     pub fn const_is_rvalue_promotable_to_static(&self, id: DefIndex) -> bool {

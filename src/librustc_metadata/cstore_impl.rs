@@ -115,6 +115,13 @@ provide! { <'tcx> tcx, def_id, cdata
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     describe_def => { cdata.get_def(def_id.index) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
+    item_body_nested_bodies => {
+        let map: BTreeMap<_, _> = cdata.entry(def_id.index).ast.into_iter().flat_map(|ast| {
+            ast.decode(cdata).nested_bodies.decode(cdata).map(|body| (body.id(), body))
+        }).collect();
+
+        Rc::new(map)
+    }
 }
 
 impl CrateStore for cstore::CStore {
@@ -430,11 +437,6 @@ impl CrateStore for cstore::CStore {
         debug!("item_body({}): inlining item", tcx.item_path_str(def_id));
 
         self.get_crate_data(def_id.krate).item_body(tcx, def_id.index)
-    }
-
-    fn item_body_nested_bodies(&self, def: DefId) -> BTreeMap<hir::BodyId, hir::Body> {
-        self.dep_graph.read(DepNode::MetaData(def));
-        self.get_crate_data(def.krate).item_body_nested_bodies(def.index)
     }
 
     fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool {
