@@ -95,6 +95,8 @@ almost-official Rust web content:
 Based on [actual usage metrics][] and with a goal of spending our time in an
 effective way, the browser support tiers would be defined as:
 
+[actual usage metrics]: #google-analytics-browser-usage-stats
+
 ### Tier 1
 
 Goal: Ensure functionality of our web content for 80% of users.
@@ -185,7 +187,6 @@ but our audience (developers) isn't the same as the general public.
 [CanIUse.com]: http://caniuse.com/usage-table
 
 ## Google analytics browser usage stats
-[actual usage metrics]: #actual-usage-metrics
 
 We have Google Analytics on crates.io and on rust-lang.org. The entire data set
 of the usage stats by browser, browser verison, and OS are available [in this
