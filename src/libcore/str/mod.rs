@@ -319,7 +319,10 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 ///
 /// The data must be valid UTF-8
 ///
-/// `p` must be non-null, even for zero-length str.
+/// `p` must be non-null, even for zero-length strs, because non-zero bits
+/// are required to distinguish between a zero-length str within `Some()`
+/// from `None`. `p` can be a bogus non-dereferencable pointer, such as `0x1`,
+/// for zero-length strs, though.
 ///
 /// # Caveat
 ///
