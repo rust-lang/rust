@@ -2139,6 +2139,26 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
+    pub fn opt_associated_item(self, def_id: DefId) -> Option<AssociatedItem> {
+        let is_associated_item = if let Some(node_id) = self.hir.as_local_node_id(def_id) {
+            match self.hir.get(node_id) {
+                hir_map::NodeTraitItem(_) | hir_map::NodeImplItem(_) => true,
+                _ => false,
+            }
+        } else {
+            match self.describe_def(def_id).expect("no def for def-id") {
+                Def::AssociatedConst(_) | Def::Method(_) | Def::AssociatedTy(_) => true,
+                _ => false,
+            }
+        };
+
+        if is_associated_item {
+            Some(self.associated_item(def_id))
+        } else {
+            None
+        }
+    }
+
     fn associated_item_from_trait_item_ref(self,
                                            parent_def_id: DefId,
                                            parent_vis: &hir::Visibility,
@@ -2391,7 +2411,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 None
             }
         } else {
-            self.maps.associated_item.borrow().get(&def_id).cloned()
+            self.opt_associated_item(def_id)
         };
 
         match item {
@@ -2412,15 +2432,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if def_id.krate != LOCAL_CRATE {
             return self.sess.cstore.trait_of_item(def_id);
         }
-        match self.maps.associated_item.borrow().get(&def_id) {
-            Some(associated_item) => {
+        self.opt_associated_item(def_id)
+            .and_then(|associated_item| {
                 match associated_item.container {
                     TraitContainer(def_id) => Some(def_id),
                     ImplContainer(_) => None
                 }
-            }
-            None => None
-        }
+            })
     }
 
     /// Construct a parameter environment suitable for static contexts or other contexts where there
@@ -2588,11 +2606,12 @@ fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
             }
         }
 
-        ref r => {
-            panic!("unexpected container of associated items: {:?}", r)
-        }
+        _ => { }
     }
-    panic!("associated item not found for def_id: {:?}", def_id);
+
+    span_bug!(parent_item.span,
+              "unexpected parent of trait or impl item or item not found: {:?}",
+              parent_item.node)
 }
 
 /// Calculates the Sized-constraint.
