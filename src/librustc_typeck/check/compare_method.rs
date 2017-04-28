@@ -788,16 +788,18 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              trait",
                                             trait_c.name);
 
-            // Add a label to the Span containing just the type of the item
-            let trait_c_node_id = tcx.hir.as_local_node_id(trait_c.def_id).unwrap();
-            let trait_c_span = match tcx.hir.expect_trait_item(trait_c_node_id).node {
-                TraitItemKind::Const(ref ty, _) => ty.span,
-                _ => bug!("{:?} is not a trait const", trait_c),
-            };
+            let trait_c_node_id = tcx.hir.as_local_node_id(trait_c.def_id);
+            let trait_c_span = trait_c_node_id.map(|trait_c_node_id| {
+                // Add a label to the Span containing just the type of the const
+                match tcx.hir.expect_trait_item(trait_c_node_id).node {
+                    TraitItemKind::Const(ref ty, _) => ty.span,
+                    _ => bug!("{:?} is not a trait const", trait_c),
+                }
+            });
 
             infcx.note_type_err(&mut diag,
                                 &cause,
-                                Some((trait_c_span, format!("type in trait"))),
+                                trait_c_span.map(|span| (span, format!("type in trait"))),
                                 Some(infer::ValuePairs::Types(ExpectedFound {
                                     expected: trait_ty,
                                     found: impl_ty,
