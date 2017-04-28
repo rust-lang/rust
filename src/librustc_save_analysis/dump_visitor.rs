@@ -114,15 +114,11 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         where F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, D>)
     {
         let item_def_id = self.tcx.hir.local_def_id(item_id);
-        match self.tcx.maps.typeck_tables_of.borrow().get(&item_def_id) {
-            Some(tables) => {
-                let old_tables = self.save_ctxt.tables;
-                self.save_ctxt.tables = tables;
-                f(self);
-                self.save_ctxt.tables = old_tables;
-            }
-            None => f(self),
-        }
+        let tables = self.tcx.typeck_tables_of(item_def_id);
+        let old_tables = self.save_ctxt.tables;
+        self.save_ctxt.tables = tables;
+        f(self);
+        self.save_ctxt.tables = old_tables;
     }
 
     pub fn dump_crate_info(&mut self, name: &str, krate: &ast::Crate) {
