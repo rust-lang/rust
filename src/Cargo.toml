@@ -15,6 +15,12 @@ members = [
   "tools/qemu-test-server",
 ]
 
+# These projects have their own Cargo.lock
+exclude = [
+  "tools/cargo",
+  "tools/rls",
+]
+
 # Curiously, compiletest will segfault if compiled with opt-level=3 on 64-bit
 # MSVC when running the compile-fail test suite when a should-fail test panics.
 # But hey if this is removed and it gets past the bots, sounds good to me.
