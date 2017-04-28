@@ -271,6 +271,12 @@ impl<'tcx> QueryDescription for queries::describe_def<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::def_span<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        bug!("def_span")
+    }
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -547,7 +553,8 @@ define_maps! { <'tcx>
     pub def_symbol_name: SymbolName(DefId) -> ty::SymbolName,
     pub symbol_name: symbol_name_dep_node(ty::Instance<'tcx>) -> ty::SymbolName,
 
-    pub describe_def: meta_data_node(DefId) -> Option<Def>
+    pub describe_def: meta_data_node(DefId) -> Option<Def>,
+    pub def_span: meta_data_node(DefId) -> Span
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
