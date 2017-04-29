@@ -1,7 +1,7 @@
 - Feature Name: nonportable
 - Start Date: 2016-11-15
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1868
+- Rust Issue: https://github.com/rust-lang/rust/issues/41619
 
 # Summary
 [summary]: #summary
