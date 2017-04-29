@@ -17,6 +17,7 @@ use rustc::ty;
 use syntax::ast;
 use syntax_pos;
 use errors::DiagnosticBuilder;
+use borrowck::gather_loans::gather_moves::PatternSource;
 
 pub struct MoveErrorCollector<'tcx> {
     errors: Vec<MoveError<'tcx>>
@@ -40,12 +41,12 @@ impl<'tcx> MoveErrorCollector<'tcx> {
 
 pub struct MoveError<'tcx> {
     move_from: mc::cmt<'tcx>,
-    move_to: Option<MoveSpanAndPath>
+    move_to: Option<MovePlace<'tcx>>
 }
 
 impl<'tcx> MoveError<'tcx> {
     pub fn with_move_info(move_from: mc::cmt<'tcx>,
-                          move_to: Option<MoveSpanAndPath>)
+                          move_to: Option<MovePlace<'tcx>>)
                           -> MoveError<'tcx> {
         MoveError {
             move_from: move_from,
@@ -55,30 +56,41 @@ impl<'tcx> MoveError<'tcx> {
 }
 
 #[derive(Clone)]
-pub struct MoveSpanAndPath {
+pub struct MovePlace<'tcx> {
     pub span: syntax_pos::Span,
     pub name: ast::Name,
+    pub pat_source: PatternSource<'tcx>,
 }
 
 pub struct GroupedMoveErrors<'tcx> {
     move_from: mc::cmt<'tcx>,
-    move_to_places: Vec<MoveSpanAndPath>
+    move_to_places: Vec<MovePlace<'tcx>>
 }
 
-fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                errors: &Vec<MoveError<'tcx>>) {
+fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>, errors: &Vec<MoveError<'tcx>>) {
     let grouped_errors = group_errors_with_same_origin(errors);
     for error in &grouped_errors {
         let mut err = report_cannot_move_out_of(bccx, error.move_from.clone());
         let mut is_first_note = true;
-        for move_to in &error.move_to_places {
-            err = note_move_destination(err, move_to.span, move_to.name, is_first_note);
-            is_first_note = false;
+        match error.move_to_places.get(0) {
+            Some(&MovePlace { pat_source: PatternSource::LetDecl(_), .. }) => {
+                // ignore patterns that are found at the top-level of a `let`;
+                // see `get_pattern_source()` for details
+            }
+            _ => {
+                for move_to in &error.move_to_places {
+
+                    err = note_move_destination(err, move_to.span, move_to.name, is_first_note);
+                    is_first_note = false;
+                }
+            }
         }
         if let NoteClosureEnv(upvar_id) = error.move_from.note {
-            err.span_label(bccx.tcx.hir.span(upvar_id.var_id), &"captured outer variable");
+            err.span_label(bccx.tcx.hir.span(upvar_id.var_id),
+                           &"captured outer variable");
         }
         err.emit();
+
     }
 }
 
