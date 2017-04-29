@@ -290,7 +290,7 @@ impl ast_node for hir::Pat {
 #[derive(Clone)]
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    pub region_maps: Rc<RegionMaps<'tcx>>,
+    pub region_maps: &'a RegionMaps<'tcx>,
     options: MemCategorizationOptions,
 }
 
@@ -406,16 +406,15 @@ impl MutabilityCategory {
 impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     /// Context should be the `DefId` we use to fetch region-maps.
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-               context: DefId)
+               region_maps: &'a RegionMaps<'tcx>)
                -> MemCategorizationContext<'a, 'gcx, 'tcx> {
-        MemCategorizationContext::with_options(infcx, context, MemCategorizationOptions::default())
+        MemCategorizationContext::with_options(infcx, region_maps, MemCategorizationOptions::default())
     }
 
     pub fn with_options(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-                        context: DefId,
+                        region_maps: &'a RegionMaps<'tcx>,
                         options: MemCategorizationOptions)
                         -> MemCategorizationContext<'a, 'gcx, 'tcx> {
-        let region_maps = infcx.tcx.region_maps(context);
         MemCategorizationContext {
             infcx: infcx,
             region_maps: region_maps,
