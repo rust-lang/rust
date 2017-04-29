@@ -577,7 +577,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
             // If necessary, constrain destructors in the unadjusted form of this
             // expression.
             let cmt_result = {
-                let mc = mc::MemCategorizationContext::new(self, self.subject_def_id);
+                let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
                 mc.cat_expr_unadjusted(expr)
             };
             match cmt_result {
@@ -594,7 +594,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         // If necessary, constrain destructors in this expression. This will be
         // the adjusted form if there is an adjustment.
         let cmt_result = {
-            let mc = mc::MemCategorizationContext::new(self, self.subject_def_id);
+            let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
             mc.cat_expr(expr)
         };
         match cmt_result {
@@ -956,7 +956,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                            r, m);
 
                     {
-                        let mc = mc::MemCategorizationContext::new(self, self.subject_def_id);
+                        let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
                         let self_cmt = ignore_err!(mc.cat_expr_autoderefd(deref_expr, i));
                         debug!("constrain_autoderefs: self_cmt={:?}",
                                self_cmt);
@@ -1068,7 +1068,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         debug!("link_addr_of(expr={:?}, base={:?})", expr, base);
 
         let cmt = {
-            let mc = mc::MemCategorizationContext::new(self, self.subject_def_id);
+            let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
             ignore_err!(mc.cat_expr(base))
         };
 
@@ -1086,7 +1086,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             None => { return; }
             Some(ref expr) => &**expr,
         };
-        let mc = &mc::MemCategorizationContext::new(self, self.subject_def_id);
+        let mc = &mc::MemCategorizationContext::new(self, &self.region_maps);
         let discr_cmt = ignore_err!(mc.cat_expr(init_expr));
         self.link_pattern(mc, discr_cmt, &local.pat);
     }
@@ -1096,7 +1096,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// linked to the lifetime of its guarantor (if any).
     fn link_match(&self, discr: &hir::Expr, arms: &[hir::Arm]) {
         debug!("regionck::for_match()");
-        let mc = &mc::MemCategorizationContext::new(self, self.subject_def_id);
+        let mc = &mc::MemCategorizationContext::new(self, &self.region_maps);
         let discr_cmt = ignore_err!(mc.cat_expr(discr));
         debug!("discr_cmt={:?}", discr_cmt);
         for arm in arms {
@@ -1111,7 +1111,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// linked to the lifetime of its guarantor (if any).
     fn link_fn_args(&self, body_scope: CodeExtent<'tcx>, args: &[hir::Arg]) {
         debug!("regionck::link_fn_args(body_scope={:?})", body_scope);
-        let mc = &mc::MemCategorizationContext::new(self, self.subject_def_id);
+        let mc = &mc::MemCategorizationContext::new(self, &self.region_maps);
         for arg in args {
             let arg_ty = self.node_ty(arg.id);
             let re_scope = self.tcx.mk_region(ty::ReScope(body_scope));
@@ -1154,7 +1154,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     autoref: &adjustment::AutoBorrow<'tcx>)
     {
         debug!("link_autoref(autoderefs={}, autoref={:?})", autoderefs, autoref);
-        let mc = mc::MemCategorizationContext::new(self, self.subject_def_id);
+        let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
         let expr_cmt = ignore_err!(mc.cat_expr_autoderefd(expr, autoderefs));
         debug!("expr_cmt={:?}", expr_cmt);
 
@@ -1178,7 +1178,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                    callee_scope: CodeExtent<'tcx>) {
         debug!("link_by_ref(expr={:?}, callee_scope={:?})",
                expr, callee_scope);
-        let mc = mc::MemCategorizationContext::new(self, self.subject_def_id);
+        let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
         let expr_cmt = ignore_err!(mc.cat_expr(expr));
         let borrow_region = self.tcx.mk_region(ty::ReScope(callee_scope));
         self.link_region(expr.span, borrow_region, ty::ImmBorrow, expr_cmt);

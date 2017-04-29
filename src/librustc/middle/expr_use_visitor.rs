@@ -23,6 +23,7 @@ use hir::def::Def;
 use hir::def_id::{DefId};
 use infer::InferCtxt;
 use middle::mem_categorization as mc;
+use middle::region::RegionMaps;
 use ty::{self, TyCtxt, adjustment};
 
 use hir::{self, PatKind};
@@ -270,24 +271,24 @@ enum PassArgs {
 
 impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     pub fn new(delegate: &'a mut (Delegate<'tcx>+'a),
-               context: DefId,
+               region_maps: &'a RegionMaps<'tcx>,
                infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
                -> Self
     {
         ExprUseVisitor::with_options(delegate,
                                      infcx,
-                                     context,
+                                     region_maps,
                                      mc::MemCategorizationOptions::default())
     }
 
     pub fn with_options(delegate: &'a mut (Delegate<'tcx>+'a),
                         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-                        context: DefId,
+                        region_maps: &'a RegionMaps<'tcx>,
                         options: mc::MemCategorizationOptions)
                -> Self
     {
         ExprUseVisitor {
-            mc: mc::MemCategorizationContext::with_options(infcx, context, options),
+            mc: mc::MemCategorizationContext::with_options(infcx, region_maps, options),
             delegate: delegate
         }
     }

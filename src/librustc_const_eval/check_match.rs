@@ -14,11 +14,11 @@ use _match::WitnessPreference::*;
 
 use pattern::{Pattern, PatternContext, PatternError, PatternKind};
 
-use rustc::hir::def_id::DefId;
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization::{cmt};
+use rustc::middle::region::RegionMaps;
 use rustc::session::Session;
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -47,11 +47,12 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
         intravisit::walk_fn(self, fk, fd, b, s, id);
 
         let region_context = self.tcx.hir.local_def_id(id);
+        let region_maps = self.tcx.region_maps(region_context);
 
         MatchVisitor {
             tcx: self.tcx,
             tables: self.tcx.body_tables(b),
-            region_context: region_context,
+            region_maps: &region_maps,
             param_env: &ty::ParameterEnvironment::for_item(self.tcx, id)
         }.visit_body(self.tcx.hir.body(b));
     }
@@ -68,9 +69,9 @@ fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> Diagn
 
 struct MatchVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    region_context: DefId,
     tables: &'a ty::TypeckTables<'tcx>,
-    param_env: &'a ty::ParameterEnvironment<'tcx>
+    param_env: &'a ty::ParameterEnvironment<'tcx>,
+    region_maps: &'a RegionMaps<'tcx>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
@@ -522,7 +523,7 @@ fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Expr) {
         let mut checker = MutationChecker {
             cx: cx,
         };
-        ExprUseVisitor::new(&mut checker, cx.region_context, &infcx).walk_expr(guard);
+        ExprUseVisitor::new(&mut checker, cx.region_maps, &infcx).walk_expr(guard);
     });
 }
 
