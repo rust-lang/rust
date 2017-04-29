@@ -365,6 +365,8 @@ macro_rules! define_maps {
                 }
 
                 // FIXME(eddyb) Get more valid Span's on queries.
+                // def_span guard is necesary to prevent a recursive loop,
+                // default_span calls def_span query internally.
                 if span == DUMMY_SP && stringify!($name) != "def_span" {
                     span = key.default_span(tcx)
                 }
@@ -574,9 +576,8 @@ define_maps! { <'tcx>
     [] def_symbol_name: SymbolName(DefId) -> ty::SymbolName,
     [] symbol_name: symbol_name_dep_node(ty::Instance<'tcx>) -> ty::SymbolName,
 
-
-    [] describe_def: MetaData(DefId) -> Option<Def>,
-    [] def_span: MetaData(DefId) -> Span
+    [] describe_def: describe_def(DefId) -> Option<Def>,
+    [] def_span: def_span(DefId) -> Span
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -607,4 +608,12 @@ fn typeck_item_bodies_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn const_eval_dep_node((def_id, _): (DefId, &Substs)) -> DepNode<DefId> {
     DepNode::ConstEval(def_id)
+}
+
+fn describe_def(def_id: DefId) -> DepNode<DefId> {
+    DepNode::DescribeDef(def_id)
+}
+
+fn def_span(def_id: DefId) -> DepNode<DefId> {
+    DepNode::DefSpan(def_id)
 }
