@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(slice_patterns)]
+#![allow(illegal_floating_point_literal_pattern)]
 
 enum t { a, b, }
 
