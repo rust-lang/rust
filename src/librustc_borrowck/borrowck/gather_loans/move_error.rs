@@ -73,9 +73,19 @@ fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>, errors: &Vec<Move
         let mut err = report_cannot_move_out_of(bccx, error.move_from.clone());
         let mut is_first_note = true;
         match error.move_to_places.get(0) {
-            Some(&MovePlace { pat_source: PatternSource::LetDecl(_), .. }) => {
+            Some(&MovePlace { pat_source: PatternSource::LetDecl(ref e), .. }) => {
                 // ignore patterns that are found at the top-level of a `let`;
                 // see `get_pattern_source()` for details
+                let initializer =
+                    e.init.as_ref().expect("should have an initializer to get an error");
+                if let Ok(snippet) = bccx.tcx.sess.codemap().span_to_snippet(initializer.span) {
+                    if snippet.len() > 10 {
+                        err.help(&format!("consider borrowing this with `&`"));
+                    } else {
+                        err.help(&format!("consider changing to `&{}`", snippet));
+                    }
+                }
+
             }
             _ => {
                 for move_to in &error.move_to_places {

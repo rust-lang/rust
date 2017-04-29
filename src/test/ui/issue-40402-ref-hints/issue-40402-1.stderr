@@ -3,6 +3,8 @@ error[E0507]: cannot move out of indexed content
    |
 19 |     let e = f.v[0];
    |             ^^^^^^ cannot move out of indexed content
+   |
+   = help: consider changing to `&f.v[0]`
 
 error: aborting due to previous error
 
