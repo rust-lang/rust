@@ -574,7 +574,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "remote-test-client"));
-    rules.build("tool-cargo", "cargo")
+    rules.build("tool-cargo", "src/tools/cargo")
          .host(true)
          .default(build.config.extended)
          .dep(|s| s.name("maybe-clean-tools"))
@@ -588,7 +588,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
               .host(&build.config.build)
          })
          .run(move |s| compile::tool(build, s.stage, s.target, "cargo"));
-    rules.build("tool-rls", "rls")
+    rules.build("tool-rls", "src/tools/rls")
          .host(true)
          .default(build.config.extended)
          .dep(|s| s.name("librustc-tool"))
