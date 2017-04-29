@@ -149,7 +149,6 @@ pub enum DepNode<D: Clone + Debug> {
     // not a hotspot.
     ProjectionCache { def_ids: Vec<D> },
 
-    // Depnodes for MetaData
     DescribeDef(D),
     DefSpan(D),
 }
