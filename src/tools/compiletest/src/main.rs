@@ -25,6 +25,7 @@ extern crate rustc_serialize;
 extern crate log;
 extern crate env_logger;
 extern crate filetime;
+extern crate diff;
 
 use std::env;
 use std::ffi::OsString;
@@ -49,7 +50,6 @@ pub mod runtest;
 pub mod common;
 pub mod errors;
 mod raise_fd_limit;
-mod uidiff;
 
 fn main() {
     env_logger::init().unwrap();
