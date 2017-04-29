@@ -346,8 +346,8 @@ macro_rules! define_maps {
                 }
 
                 // FIXME(eddyb) Get more valid Span's on queries.
-                if span == DUMMY_SP {
-                    span = key.default_span(tcx);
+                if span == DUMMY_SP && stringify!($name) != "def_span" {
+                    span = key.default_span(tcx)
                 }
 
                 let _task = tcx.dep_graph.in_task(Self::to_dep_node(&key));
