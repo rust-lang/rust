@@ -8,14 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// `ty` matcher accepts trait object types
+// ignore-tidy-linelength
 
-macro_rules! m {
-    ($t: ty) => ( let _: $t; )
-}
+// compile-flags: -g  -Zremap-path-prefix-from={{cwd}} -Zremap-path-prefix-to=/the/aux-cwd -Zremap-path-prefix-from={{src-base}}/remap_path_prefix/auxiliary -Zremap-path-prefix-to=/the/aux-src
 
-fn main() {
-    m!(Copy + Send + 'static); //~ ERROR the trait `std::marker::Copy` cannot be made into an object
-    m!('static + Send);
-    m!('static +); //~ ERROR at least one non-builtin trait is required for an object type
+#[inline]
+pub fn some_aux_function() -> i32 {
+    1234
 }

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 /// This is a small server which is intended to run inside of an emulator. This
-/// server pairs with the `qemu-test-client` program in this repository. The
-/// `qemu-test-client` connects to this server over a TCP socket and performs
+/// server pairs with the `remote-test-client` program in this repository. The
+/// `remote-test-client` connects to this server over a TCP socket and performs
 /// work such as:
 ///
 /// 1. Pushing shared libraries to the server
@@ -20,17 +20,18 @@
 /// themselves having support libraries. All data over the TCP sockets is in a
 /// basically custom format suiting our needs.
 
+use std::cmp;
 use std::fs::{self, File, Permissions};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::net::{TcpListener, TcpStream};
 use std::os::unix::prelude::*;
-use std::sync::{Arc, Mutex};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::str;
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread;
-use std::process::{Command, Stdio};
 
 macro_rules! t {
     ($e:expr) => (match $e {
@@ -43,10 +44,14 @@ static TEST: AtomicUsize = ATOMIC_USIZE_INIT;
 
 fn main() {
     println!("starting test server");
-    let listener = t!(TcpListener::bind("10.0.2.15:12345"));
+    let (listener, work) = if cfg!(target_os = "android") {
+        (t!(TcpListener::bind("0.0.0.0:12345")), "/data/tmp/work")
+    } else {
+        (t!(TcpListener::bind("10.0.2.15:12345")), "/tmp/work")
+    };
     println!("listening!");
 
-    let work = Path::new("/tmp/work");
+    let work = Path::new(work);
     t!(fs::create_dir_all(work));
 
     let lock = Arc::new(Mutex::new(()));
@@ -54,7 +59,9 @@ fn main() {
     for socket in listener.incoming() {
         let mut socket = t!(socket);
         let mut buf = [0; 4];
-        t!(socket.read_exact(&mut buf));
+        if socket.read_exact(&mut buf).is_err() {
+            continue
+        }
         if &buf[..] == b"ping" {
             t!(socket.write_all(b"pong"));
         } else if &buf[..] == b"push" {
@@ -70,14 +77,10 @@ fn main() {
 
 fn handle_push(socket: TcpStream, work: &Path) {
     let mut reader = BufReader::new(socket);
-    let mut filename = Vec::new();
-    t!(reader.read_until(0, &mut filename));
-    filename.pop(); // chop off the 0
-    let filename = t!(str::from_utf8(&filename));
+    recv(&work, &mut reader);
 
-    let path = work.join(filename);
-    t!(io::copy(&mut reader, &mut t!(File::create(&path))));
-    t!(fs::set_permissions(&path, Permissions::from_mode(0o755)));
+    let mut socket = reader.into_inner();
+    t!(socket.write_all(b"ack "));
 }
 
 struct RemoveOnDrop<'a> {
@@ -98,19 +101,19 @@ fn handle_run(socket: TcpStream, work: &Path, lock: &Mutex<()>) {
     // space.
     let n = TEST.fetch_add(1, Ordering::SeqCst);
     let path = work.join(format!("test{}", n));
-    let exe = path.join("exe");
     t!(fs::create_dir(&path));
     let _a = RemoveOnDrop { inner: &path };
 
     // First up we'll get a list of arguments delimited with 0 bytes. An empty
     // argument means that we're done.
-    let mut cmd = Command::new(&exe);
+    let mut args = Vec::new();
     while t!(reader.read_until(0, &mut arg)) > 1 {
-        cmd.arg(t!(str::from_utf8(&arg[..arg.len() - 1])));
+        args.push(t!(str::from_utf8(&arg[..arg.len() - 1])).to_string());
         arg.truncate(0);
     }
 
     // Next we'll get a bunch of env vars in pairs delimited by 0s as well
+    let mut env = Vec::new();
     arg.truncate(0);
     while t!(reader.read_until(0, &mut arg)) > 1 {
         let key_len = arg.len() - 1;
@@ -118,9 +121,9 @@ fn handle_run(socket: TcpStream, work: &Path, lock: &Mutex<()>) {
         {
             let key = &arg[..key_len];
             let val = &arg[key_len + 1..][..val_len];
-            let key = t!(str::from_utf8(key));
-            let val = t!(str::from_utf8(val));
-            cmd.env(key, val);
+            let key = t!(str::from_utf8(key)).to_string();
+            let val = t!(str::from_utf8(val)).to_string();
+            env.push((key, val));
         }
         arg.truncate(0);
     }
@@ -148,23 +151,23 @@ fn handle_run(socket: TcpStream, work: &Path, lock: &Mutex<()>) {
     let lock = lock.lock();
 
     // Next there's a list of dynamic libraries preceded by their filenames.
-    arg.truncate(0);
-    while t!(reader.read_until(0, &mut arg)) > 1 {
-        let dst = path.join(t!(str::from_utf8(&arg[..arg.len() - 1])));
-        let amt = read_u32(&mut reader) as u64;
-        t!(io::copy(&mut reader.by_ref().take(amt),
-                    &mut t!(File::create(&dst))));
-        t!(fs::set_permissions(&dst, Permissions::from_mode(0o755)));
-        arg.truncate(0);
+    while t!(reader.fill_buf())[0] != 0 {
+        recv(&path, &mut reader);
     }
+    assert_eq!(t!(reader.read(&mut [0])), 1);
 
     // Finally we'll get the binary. The other end will tell us how big the
     // binary is and then we'll download it all to the exe path we calculated
     // earlier.
-    let amt = read_u32(&mut reader) as u64;
-    t!(io::copy(&mut reader.by_ref().take(amt),
-                &mut t!(File::create(&exe))));
-    t!(fs::set_permissions(&exe, Permissions::from_mode(0o755)));
+    let exe = recv(&path, &mut reader);
+
+    let mut cmd = Command::new(&exe);
+    for arg in args {
+        cmd.arg(arg);
+    }
+    for (k, v) in env {
+        cmd.env(k, v);
+    }
 
     // Support libraries were uploaded to `work` earlier, so make sure that's
     // in `LD_LIBRARY_PATH`. Also include our own current dir which may have
@@ -200,6 +203,28 @@ fn handle_run(socket: TcpStream, work: &Path, lock: &Mutex<()>) {
         (code >>  8) as u8,
         (code >>  0) as u8,
     ]));
+}
+
+fn recv<B: BufRead>(dir: &Path, io: &mut B) -> PathBuf {
+    let mut filename = Vec::new();
+    t!(io.read_until(0, &mut filename));
+
+    // We've got some tests with *really* long names. We try to name the test
+    // executable the same on the target as it is on the host to aid with
+    // debugging, but the targets we're emulating are often more restrictive
+    // than the hosts as well.
+    //
+    // To ensure we can run a maximum number of tests without modifications we
+    // just arbitrarily truncate the filename to 50 bytes. That should
+    // hopefully allow us to still identify what's running while staying under
+    // the filesystem limits.
+    let len = cmp::min(filename.len() - 1, 50);
+    let dst = dir.join(t!(str::from_utf8(&filename[..len])));
+    let amt = read_u32(io) as u64;
+    t!(io::copy(&mut io.take(amt),
+                &mut t!(File::create(&dst))));
+    t!(fs::set_permissions(&dst, Permissions::from_mode(0o755)));
+    return dst
 }
 
 fn my_copy(src: &mut Read, which: u8, dst: &Mutex<Write>) {

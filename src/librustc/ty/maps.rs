@@ -17,11 +17,13 @@ use middle::privacy::AccessLevels;
 use mir;
 use session::CompileResult;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
+use ty::item_path;
 use ty::subst::Substs;
 use util::nodemap::NodeSet;
 
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::cell::{RefCell, RefMut};
+use std::mem;
 use std::ops::Deref;
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
@@ -139,24 +141,36 @@ pub struct CycleError<'a, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn report_cycle(self, CycleError { span, cycle }: CycleError) {
-        assert!(!cycle.is_empty());
+        // Subtle: release the refcell lock before invoking `describe()`
+        // below by dropping `cycle`.
+        let stack = cycle.to_vec();
+        mem::drop(cycle);
 
-        let mut err = struct_span_err!(self.sess, span, E0391,
-            "unsupported cyclic reference between types/traits detected");
-        err.span_label(span, &format!("cyclic reference"));
+        assert!(!stack.is_empty());
 
-        err.span_note(cycle[0].0, &format!("the cycle begins when {}...",
-                                           cycle[0].1.describe(self)));
+        // Disable naming impls with types in this path, since that
+        // sometimes cycles itself, leading to extra cycle errors.
+        // (And cycle errors around impls tend to occur during the
+        // collect/coherence phases anyhow.)
+        item_path::with_forced_impl_filename_line(|| {
+            let mut err =
+                struct_span_err!(self.sess, span, E0391,
+                                 "unsupported cyclic reference between types/traits detected");
+            err.span_label(span, &format!("cyclic reference"));
 
-        for &(span, ref query) in &cycle[1..] {
-            err.span_note(span, &format!("...which then requires {}...",
-                                         query.describe(self)));
-        }
+            err.span_note(stack[0].0, &format!("the cycle begins when {}...",
+                                               stack[0].1.describe(self)));
 
-        err.note(&format!("...which then again requires {}, completing the cycle.",
-                          cycle[0].1.describe(self)));
+            for &(span, ref query) in &stack[1..] {
+                err.span_note(span, &format!("...which then requires {}...",
+                                             query.describe(self)));
+            }
 
-        err.emit();
+            err.note(&format!("...which then again requires {}, completing the cycle.",
+                              stack[0].1.describe(self)));
+
+            err.emit();
+        });
     }
 
     fn cycle_check<F, R>(self, span: Span, query: Query<'gcx>, compute: F)
@@ -280,11 +294,11 @@ impl<'tcx> QueryDescription for queries::def_span<'tcx> {
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
-       pub $name:ident: $node:ident($K:ty) -> $V:ty),*) => {
+       [$($pub:tt)*] $name:ident: $node:ident($K:ty) -> $V:ty),*) => {
         pub struct Maps<$tcx> {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
             query_stack: RefCell<Vec<(Span, Query<$tcx>)>>,
-            $($(#[$attr])* pub $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>),*
+            $($(#[$attr])* $($pub)* $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>),*
         }
 
         impl<$tcx> Maps<$tcx> {
@@ -341,6 +355,11 @@ macro_rules! define_maps {
                                   -> Result<R, CycleError<'a, $tcx>>
                 where F: FnOnce(&$V) -> R
             {
+                debug!("ty::queries::{}::try_get_with(key={:?}, span={:?})",
+                       stringify!($name),
+                       key,
+                       span);
+
                 if let Some(result) = tcx.maps.$name.borrow().get(&key) {
                     return Ok(f(result));
                 }
@@ -447,12 +466,12 @@ macro_rules! define_maps {
 // the driver creates (using several `rustc_*` crates).
 define_maps! { <'tcx>
     /// Records the type of every item.
-    pub type_of: ItemSignature(DefId) -> Ty<'tcx>,
+    [] type_of: ItemSignature(DefId) -> Ty<'tcx>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated generics and predicates.
-    pub generics_of: ItemSignature(DefId) -> &'tcx ty::Generics,
-    pub predicates_of: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
+    [] generics_of: ItemSignature(DefId) -> &'tcx ty::Generics,
+    [] predicates_of: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
 
     /// Maps from the def-id of a trait to the list of
     /// super-predicates. This is a subset of the full list of
@@ -460,39 +479,39 @@ define_maps! { <'tcx>
     /// evaluate them even during type conversion, often before the
     /// full predicates are available (note that supertraits have
     /// additional acyclicity requirements).
-    pub super_predicates_of: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
+    [] super_predicates_of: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
 
     /// To avoid cycles within the predicates of a single item we compute
     /// per-type-parameter predicates for resolving `T::AssocTy`.
-    pub type_param_predicates: TypeParamPredicates((DefId, DefId))
+    [] type_param_predicates: TypeParamPredicates((DefId, DefId))
         -> ty::GenericPredicates<'tcx>,
 
-    pub trait_def: ItemSignature(DefId) -> &'tcx ty::TraitDef,
-    pub adt_def: ItemSignature(DefId) -> &'tcx ty::AdtDef,
-    pub adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
-    pub adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
-    pub adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
+    [] trait_def: ItemSignature(DefId) -> &'tcx ty::TraitDef,
+    [] adt_def: ItemSignature(DefId) -> &'tcx ty::AdtDef,
+    [] adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
+    [] adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
+    [] adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
 
     /// True if this is a foreign item (i.e., linked via `extern { ... }`).
-    pub is_foreign_item: IsForeignItem(DefId) -> bool,
+    [] is_foreign_item: IsForeignItem(DefId) -> bool,
 
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
-    pub variances_of: ItemSignature(DefId) -> Rc<Vec<ty::Variance>>,
+    [pub] variances_of: ItemSignature(DefId) -> Rc<Vec<ty::Variance>>,
 
     /// Maps from an impl/trait def-id to a list of the def-ids of its items
-    pub associated_item_def_ids: AssociatedItemDefIds(DefId) -> Rc<Vec<DefId>>,
+    [] associated_item_def_ids: AssociatedItemDefIds(DefId) -> Rc<Vec<DefId>>,
 
     /// Maps from a trait item to the trait item "descriptor"
-    pub associated_item: AssociatedItems(DefId) -> ty::AssociatedItem,
+    [] associated_item: AssociatedItems(DefId) -> ty::AssociatedItem,
 
-    pub impl_trait_ref: ItemSignature(DefId) -> Option<ty::TraitRef<'tcx>>,
-    pub impl_polarity: ItemSignature(DefId) -> hir::ImplPolarity,
+    [] impl_trait_ref: ItemSignature(DefId) -> Option<ty::TraitRef<'tcx>>,
+    [] impl_polarity: ItemSignature(DefId) -> hir::ImplPolarity,
 
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
-    pub inherent_impls: InherentImpls(DefId) -> Rc<Vec<DefId>>,
+    [] inherent_impls: InherentImpls(DefId) -> Rc<Vec<DefId>>,
 
     /// Maps from the def-id of a function/method or const/static
     /// to its MIR. Mutation is done at an item granularity to
@@ -501,60 +520,63 @@ define_maps! { <'tcx>
     ///
     /// Note that cross-crate MIR appears to be always borrowed
     /// (in the `RefCell` sense) to prevent accidental mutation.
-    pub mir: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>>,
+    [pub] mir: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>>,
 
     /// Maps DefId's that have an associated Mir to the result
     /// of the MIR qualify_consts pass. The actual meaning of
     /// the value isn't known except to the pass itself.
-    pub mir_const_qualif: Mir(DefId) -> u8,
+    [] mir_const_qualif: Mir(DefId) -> u8,
 
     /// Records the type of each closure. The def ID is the ID of the
     /// expression defining the closure.
-    pub closure_kind: ItemSignature(DefId) -> ty::ClosureKind,
+    [] closure_kind: ItemSignature(DefId) -> ty::ClosureKind,
 
     /// Records the type of each closure. The def ID is the ID of the
     /// expression defining the closure.
-    pub closure_type: ItemSignature(DefId) -> ty::PolyFnSig<'tcx>,
+    [] closure_type: ItemSignature(DefId) -> ty::PolyFnSig<'tcx>,
 
     /// Caches CoerceUnsized kinds for impls on custom types.
-    pub coerce_unsized_info: ItemSignature(DefId)
+    [] coerce_unsized_info: ItemSignature(DefId)
         -> ty::adjustment::CoerceUnsizedInfo,
 
-    pub typeck_item_bodies: typeck_item_bodies_dep_node(CrateNum) -> CompileResult,
+    [] typeck_item_bodies: typeck_item_bodies_dep_node(CrateNum) -> CompileResult,
 
-    pub typeck_tables_of: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
+    [] typeck_tables_of: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
 
-    pub coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
+    [] has_typeck_tables: TypeckTables(DefId) -> bool,
 
-    pub borrowck: BorrowCheck(DefId) -> (),
+    [] coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
+
+    [] borrowck: BorrowCheck(DefId) -> (),
 
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
     /// (Defined only for LOCAL_CRATE)
-    pub crate_inherent_impls: crate_inherent_impls_dep_node(CrateNum) -> CrateInherentImpls,
+    [] crate_inherent_impls: crate_inherent_impls_dep_node(CrateNum) -> CrateInherentImpls,
 
     /// Checks all types in the krate for overlap in their inherent impls. Reports errors.
     /// Not meant to be used directly outside of coherence.
     /// (Defined only for LOCAL_CRATE)
-    pub crate_inherent_impls_overlap_check: crate_inherent_impls_dep_node(CrateNum) -> (),
+    [] crate_inherent_impls_overlap_check: crate_inherent_impls_dep_node(CrateNum) -> (),
 
     /// Results of evaluating const items or constants embedded in
     /// other items (such as enum variant explicit discriminants).
-    pub const_eval: const_eval_dep_node((DefId, &'tcx Substs<'tcx>))
+    [] const_eval: const_eval_dep_node((DefId, &'tcx Substs<'tcx>))
         -> const_val::EvalResult<'tcx>,
 
     /// Performs the privacy check and computes "access levels".
-    pub privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,
+    [] privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,
 
-    pub reachable_set: reachability_dep_node(CrateNum) -> Rc<NodeSet>,
+    [] reachable_set: reachability_dep_node(CrateNum) -> Rc<NodeSet>,
 
-    pub mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>,
+    [] mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>,
 
-    pub def_symbol_name: SymbolName(DefId) -> ty::SymbolName,
-    pub symbol_name: symbol_name_dep_node(ty::Instance<'tcx>) -> ty::SymbolName,
+    [] def_symbol_name: SymbolName(DefId) -> ty::SymbolName,
+    [] symbol_name: symbol_name_dep_node(ty::Instance<'tcx>) -> ty::SymbolName,
 
-    pub describe_def: MetaData(DefId) -> Option<Def>,
-    pub def_span: MetaData(DefId) -> Span
+
+    [] describe_def: MetaData(DefId) -> Option<Def>,
+    [] def_span: MetaData(DefId) -> Span
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {

@@ -2,6 +2,7 @@
 
 - [Compiler flags](compiler-flags.md)
     - [linker_flavor](compiler-flags/linker-flavor.md)
+    - [remap_path_prefix](compiler-flags/remap-path-prefix.md)
 - [Language features](language-features.md)
     - [abi_msp430_interrupt](language-features/abi-msp430-interrupt.md)
     - [abi_ptx](language-features/abi-ptx.md)

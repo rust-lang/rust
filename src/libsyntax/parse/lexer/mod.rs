@@ -10,7 +10,7 @@
 
 use ast::{self, Ident};
 use syntax_pos::{self, BytePos, CharPos, Pos, Span, NO_EXPANSION};
-use codemap::CodeMap;
+use codemap::{CodeMap, FilePathMapping};
 use errors::{FatalError, DiagnosticBuilder};
 use parse::{token, ParseSess};
 use str::char_at;
@@ -563,7 +563,7 @@ impl<'a> StringReader<'a> {
 
                 // I guess this is the only way to figure out if
                 // we're at the beginning of the file...
-                let cmap = CodeMap::new();
+                let cmap = CodeMap::new(FilePathMapping::empty());
                 cmap.files.borrow_mut().push(self.filemap.clone());
                 let loc = cmap.lookup_char_pos_adj(self.pos);
                 debug!("Skipping a shebang");
@@ -1718,13 +1718,13 @@ mod tests {
                  sess: &'a ParseSess,
                  teststr: String)
                  -> StringReader<'a> {
-        let fm = cm.new_filemap("zebra.rs".to_string(), None, teststr);
+        let fm = cm.new_filemap("zebra.rs".to_string(), teststr);
         StringReader::new(sess, fm)
     }
 
     #[test]
     fn t1() {
-        let cm = Rc::new(CodeMap::new());
+        let cm = Rc::new(CodeMap::new(FilePathMapping::empty()));
         let sh = mk_sess(cm.clone());
         let mut string_reader = setup(&cm,
                                       &sh,
@@ -1776,7 +1776,7 @@ mod tests {
 
     #[test]
     fn doublecolonparsing() {
-        let cm = Rc::new(CodeMap::new());
+        let cm = Rc::new(CodeMap::new(FilePathMapping::empty()));
         let sh = mk_sess(cm.clone());
         check_tokenization(setup(&cm, &sh, "a b".to_string()),
                            vec![mk_ident("a"), token::Whitespace, mk_ident("b")]);
@@ -1784,7 +1784,7 @@ mod tests {
 
     #[test]
     fn dcparsing_2() {
-        let cm = Rc::new(CodeMap::new());
+        let cm = Rc::new(CodeMap::new(FilePathMapping::empty()));
         let sh = mk_sess(cm.clone());
         check_tokenization(setup(&cm, &sh, "a::b".to_string()),
                            vec![mk_ident("a"), token::ModSep, mk_ident("b")]);
@@ -1792,7 +1792,7 @@ mod tests {
 
     #[test]
     fn dcparsing_3() {
-        let cm = Rc::new(CodeMap::new());
+        let cm = Rc::new(CodeMap::new(FilePathMapping::empty()));
         let sh = mk_sess(cm.clone());
         check_tokenization(setup(&cm, &sh, "a ::b".to_string()),
                            vec![mk_ident("a"), token::Whitespace, token::ModSep, mk_ident("b")]);
@@ -1800,7 +1800,7 @@ mod tests {
 
     #[test]
     fn dcparsing_4() {
-        let cm = Rc::new(CodeMap::new());
+        let cm = Rc::new(CodeMap::new(FilePathMapping::empty()));
         let sh = mk_sess(cm.clone());
         check_tokenization(setup(&cm, &sh, "a:: b".to_string()),
                            vec![mk_ident("a"), token::ModSep, token::Whitespace, mk_ident("b")]);
@@ -1808,7 +1808,7 @@ mod tests {
 
     #[test]
     fn character_a() {
-        let cm = Rc::new(CodeMap::new());
+        let cm = Rc::new(CodeMap::new(FilePathMapping::empty()));
         let sh = mk_sess(cm.clone());
         assert_eq!(setup(&cm, &sh, "'a'".to_string()).next_token().tok,
                    token::Literal(token::Char(Symbol::intern("a")), None));
@@ -1816,7 +1816,7 @@ mod tests {
 
     #[test]
     fn character_space() {
-        let cm = Rc::new(CodeMap::new());
+        let cm = Rc::new(CodeMap::new(FilePathMapping::empty()));
         let sh = mk_sess(cm.clone());
         assert_eq!(setup(&cm, &sh, "' '".to_string()).next_token().tok,
                    token::Literal(token::Char(Symbol::intern(" ")), None));
@@ -1824,7 +1824,7 @@ mod tests {
 
     #[test]
     fn character_escaped() {
-        let cm = Rc::new(CodeMap::new());
+        let cm = Rc::new(CodeMap::new(FilePathMapping::empty()));
         let sh = mk_sess(cm.clone());
         assert_eq!(setup(&cm, &sh, "'\\n'".to_string()).next_token().tok,
                    token::Literal(token::Char(Symbol::intern("\\n")), None));
@@ -1832,7 +1832,7 @@ mod tests {
 
     #[test]
     fn lifetime_name() {
-        let cm = Rc::new(CodeMap::new());
+        let cm = Rc::new(CodeMap::new(FilePathMapping::empty()));
         let sh = mk_sess(cm.clone());
         assert_eq!(setup(&cm, &sh, "'abc".to_string()).next_token().tok,
                    token::Lifetime(Ident::from_str("'abc")));
@@ -1840,7 +1840,7 @@ mod tests {
 
     #[test]
     fn raw_string() {
-        let cm = Rc::new(CodeMap::new());
+        let cm = Rc::new(CodeMap::new(FilePathMapping::empty()));
         let sh = mk_sess(cm.clone());
         assert_eq!(setup(&cm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string())
                        .next_token()
@@ -1850,7 +1850,7 @@ mod tests {
 
     #[test]
     fn literal_suffixes() {
-        let cm = Rc::new(CodeMap::new());
+        let cm = Rc::new(CodeMap::new(FilePathMapping::empty()));
         let sh = mk_sess(cm.clone());
         macro_rules! test {
             ($input: expr, $tok_type: ident, $tok_contents: expr) => {{
@@ -1894,7 +1894,7 @@ mod tests {
 
     #[test]
     fn nested_block_comments() {
-        let cm = Rc::new(CodeMap::new());
+        let cm = Rc::new(CodeMap::new(FilePathMapping::empty()));
         let sh = mk_sess(cm.clone());
         let mut lexer = setup(&cm, &sh, "/* /* */ */'a'".to_string());
         match lexer.next_token().tok {
@@ -1907,7 +1907,7 @@ mod tests {
 
     #[test]
     fn crlf_comments() {
-        let cm = Rc::new(CodeMap::new());
+        let cm = Rc::new(CodeMap::new(FilePathMapping::empty()));
         let sh = mk_sess(cm.clone());
         let mut lexer = setup(&cm, &sh, "// test\r\n/// test\r\n".to_string());
         let comment = lexer.next_token();

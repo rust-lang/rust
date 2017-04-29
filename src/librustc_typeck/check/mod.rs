@@ -637,6 +637,7 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         typeck_item_bodies,
         typeck_tables_of,
+        has_typeck_tables,
         closure_type,
         closure_kind,
         adt_destructor,
@@ -664,55 +665,49 @@ fn adt_destructor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.calculate_dtor(def_id, &mut dropck::check_drop_impl)
 }
 
-fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           def_id: DefId)
-                           -> &'tcx ty::TypeckTables<'tcx> {
-    // Closures' tables come from their outermost function,
-    // as they are part of the same "inference environment".
-    let outer_def_id = tcx.closure_base_def_id(def_id);
-    if outer_def_id != def_id {
-        return tcx.typeck_tables_of(outer_def_id);
-    }
-
-    let id = tcx.hir.as_local_node_id(def_id).unwrap();
-    let span = tcx.hir.span(id);
-    let unsupported = || {
-        span_bug!(span, "can't type-check body of {:?}", def_id);
-    };
-
-    // Figure out what primary body this item has.
-    let mut fn_decl = None;
-    let body_id = match tcx.hir.get(id) {
+/// If this def-id is a "primary tables entry", returns `Some((body_id, decl))`
+/// with information about it's body-id and fn-decl (if any). Otherwise,
+/// returns `None`.
+///
+/// If this function returns "some", then `typeck_tables(def_id)` will
+/// succeed; if it returns `None`, then `typeck_tables(def_id)` may or
+/// may not succeed.  In some cases where this function returns `None`
+/// (notably closures), `typeck_tables(def_id)` would wind up
+/// redirecting to the owning function.
+fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             id: ast::NodeId)
+                             -> Option<(hir::BodyId, Option<&'tcx hir::FnDecl>)>
+{
+    match tcx.hir.get(id) {
         hir::map::NodeItem(item) => {
             match item.node {
                 hir::ItemConst(_, body) |
-                hir::ItemStatic(_, _, body) => body,
-                hir::ItemFn(ref decl, .., body) => {
-                    fn_decl = Some(decl);
-                    body
-                }
-                _ => unsupported()
+                hir::ItemStatic(_, _, body) =>
+                    Some((body, None)),
+                hir::ItemFn(ref decl, .., body) =>
+                    Some((body, Some(decl))),
+                _ =>
+                    None,
             }
         }
         hir::map::NodeTraitItem(item) => {
             match item.node {
-                hir::TraitItemKind::Const(_, Some(body)) => body,
-                hir::TraitItemKind::Method(ref sig,
-                    hir::TraitMethod::Provided(body)) => {
-                        fn_decl = Some(&sig.decl);
-                        body
-                    }
-                _ => unsupported()
+                hir::TraitItemKind::Const(_, Some(body)) =>
+                    Some((body, None)),
+                hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) =>
+                    Some((body, Some(&sig.decl))),
+                _ =>
+                    None,
             }
         }
         hir::map::NodeImplItem(item) => {
             match item.node {
-                hir::ImplItemKind::Const(_, body) => body,
-                hir::ImplItemKind::Method(ref sig, body) => {
-                    fn_decl = Some(&sig.decl);
-                    body
-                }
-                _ => unsupported()
+                hir::ImplItemKind::Const(_, body) =>
+                    Some((body, None)),
+                hir::ImplItemKind::Method(ref sig, body) =>
+                    Some((body, Some(&sig.decl))),
+                _ =>
+                    None,
             }
         }
         hir::map::NodeExpr(expr) => {
@@ -723,15 +718,47 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // Assume that everything other than closures
             // is a constant "initializer" expression.
             match expr.node {
-                hir::ExprClosure(..) => {
-                    // We should've bailed out above for closures.
-                    span_bug!(expr.span, "unexpected closure")
-                }
-                _ => hir::BodyId { node_id: expr.id }
+                hir::ExprClosure(..) =>
+                    None,
+                _ =>
+                    Some((hir::BodyId { node_id: expr.id }, None)),
             }
         }
-        _ => unsupported()
-    };
+        _ => None,
+    }
+}
+
+fn has_typeck_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                               def_id: DefId)
+                               -> bool {
+    // Closures' tables come from their outermost function,
+    // as they are part of the same "inference environment".
+    let outer_def_id = tcx.closure_base_def_id(def_id);
+    if outer_def_id != def_id {
+        return tcx.has_typeck_tables(outer_def_id);
+    }
+
+    let id = tcx.hir.as_local_node_id(def_id).unwrap();
+    primary_body_of(tcx, id).is_some()
+}
+
+fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              def_id: DefId)
+                              -> &'tcx ty::TypeckTables<'tcx> {
+    // Closures' tables come from their outermost function,
+    // as they are part of the same "inference environment".
+    let outer_def_id = tcx.closure_base_def_id(def_id);
+    if outer_def_id != def_id {
+        return tcx.typeck_tables_of(outer_def_id);
+    }
+
+    let id = tcx.hir.as_local_node_id(def_id).unwrap();
+    let span = tcx.hir.span(id);
+
+    // Figure out what primary body this item has.
+    let (body_id, fn_decl) = primary_body_of(tcx, id).unwrap_or_else(|| {
+        span_bug!(span, "can't type-check body of {:?}", def_id);
+    });
     let body = tcx.hir.body(body_id);
 
     Inherited::build(tcx, id).enter(|inh| {
