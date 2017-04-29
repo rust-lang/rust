@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// `ty` matcher accepts trait object types
+use std::fmt::Display;
 
-macro_rules! m {
-    ($t: ty) => ( let _: $t; )
-}
+static BYTE: u8 = 33;
 
 fn main() {
-    m!(Copy + Send + 'static); //~ ERROR the trait `std::marker::Copy` cannot be made into an object
-    m!('static + Send);
-    m!('static +); //~ ERROR at least one non-builtin trait is required for an object type
+    let x: &('static + Display) = &BYTE;
+    let y: Box<'static + Display> = Box::new(BYTE);
+    let xstr = format!("{}", x);
+    let ystr = format!("{}", y);
+    assert_eq!(xstr, "33");
+    assert_eq!(ystr, "33");
 }
