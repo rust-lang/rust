@@ -785,15 +785,17 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
             tcx.sess.cstore.metadata_section_name(&tcx.sess.target.target);
         let name = CString::new(section_name).unwrap();
         llvm::LLVMSetSection(llglobal, name.as_ptr());
-
-        // Also generate a .section directive to force no
-        // flags, at least for ELF outputs, so that the
-        // metadata doesn't get loaded into memory.
-        let directive = format!(".section {}", section_name);
-        let directive = CString::new(directive).unwrap();
-        llvm::LLVMSetModuleInlineAsm(metadata_llmod, directive.as_ptr())
+        make_section_non_loadable(metadata_llmod, section_name);
     }
     return (metadata_llcx, metadata_llmod, metadata);
+}
+
+/// Generate a .section directive to force no flags (e.g. for ELF outputs)
+/// so that the contents of that section don't get loaded into memory.
+pub unsafe fn make_section_non_loadable(llmod: ModuleRef, section: &str) {
+    let directive = format!(".section {}", section);
+    let directive = CString::new(directive).unwrap();
+    llvm::LLVMSetModuleInlineAsm(llmod, directive.as_ptr())
 }
 
 /// Find any symbols that are defined in one compilation unit, but not declared

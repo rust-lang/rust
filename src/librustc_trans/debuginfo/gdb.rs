@@ -13,6 +13,7 @@
 use llvm;
 
 use common::{C_bytes, CrateContext, C_i32};
+use base;
 use builder::Builder;
 use declare;
 use type_::Type;
@@ -51,7 +52,9 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
     };
 
     if section_var == ptr::null_mut() {
-        let section_name = b".debug_gdb_scripts\0";
+        let c_section_name = ".debug_gdb_scripts\0";
+        let section_name = &c_section_name[..c_section_name.len()-1];
+
         let section_contents = b"\x01gdb_load_rust_pretty_printers.py\0";
 
         unsafe {
@@ -62,7 +65,8 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
                                                      llvm_type).unwrap_or_else(||{
                 bug!("symbol `{}` is already defined", section_var_name)
             });
-            llvm::LLVMSetSection(section_var, section_name.as_ptr() as *const _);
+            llvm::LLVMSetSection(section_var, c_section_name.as_ptr() as *const _);
+            base::make_section_non_loadable(ccx.llmod(), section_name);
             llvm::LLVMSetInitializer(section_var, C_bytes(ccx, section_contents));
             llvm::LLVMSetGlobalConstant(section_var, llvm::True);
             llvm::LLVMSetUnnamedAddr(section_var, llvm::True);
