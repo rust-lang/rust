@@ -394,8 +394,6 @@ pub fn rust_src(build: &Build) {
     let src_dirs = [
         "man",
         "src",
-        "cargo",
-        "rls",
     ];
 
     let filter_fn = move |path: &Path| {
@@ -576,7 +574,7 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
     println!("Dist cargo stage{} ({})", stage, target);
     let compiler = Compiler::new(stage, &build.config.build);
 
-    let src = build.src.join("cargo");
+    let src = build.src.join("src/tools/cargo");
     let etc = src.join("src/etc");
     let release_num = build.release_num("cargo");
     let name = pkgname(build, "cargo");
@@ -637,7 +635,7 @@ pub fn rls(build: &Build, stage: u32, target: &str) {
     println!("Dist RLS stage{} ({})", stage, target);
     let compiler = Compiler::new(stage, &build.config.build);
 
-    let src = build.src.join("rls");
+    let src = build.src.join("src/tools/rls");
     let release_num = build.release_num("rls");
     let name = pkgname(build, "rls");
     let version = build.rls_info.version(build, &release_num);

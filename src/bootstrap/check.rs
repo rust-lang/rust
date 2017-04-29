@@ -106,7 +106,7 @@ pub fn cargo(build: &Build, stage: u32, host: &str) {
     let ref newpath = format!("{}{}{}", path.display(), sep, old_path);
 
     let mut cargo = build.cargo(compiler, Mode::Tool, host, "test");
-    cargo.arg("--manifest-path").arg(build.src.join("cargo/Cargo.toml"));
+    cargo.arg("--manifest-path").arg(build.src.join("src/tools/cargo/Cargo.toml"));
 
     // Don't build tests dynamically, just a pain to work with
     cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
