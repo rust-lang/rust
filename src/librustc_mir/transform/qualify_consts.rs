@@ -946,8 +946,9 @@ impl DefIdPass for QualifyAndPromoteConstants {
                 // Ensure that we compute the `mir_const_qualif` for
                 // constants at this point, before we do any further
                 // optimization (and before we steal the previous
-                // MIR).
-                tcx.mir_const_qualif(mir_cx.def_id());
+                // MIR). We don't directly need the result, so we can
+                // just force it.
+                ty::queries::mir_const_qualif::force(tcx, DUMMY_SP, mir_cx.def_id());
                 mir_cx.steal_previous_mir()
             }
 
