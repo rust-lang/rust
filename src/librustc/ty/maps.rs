@@ -801,17 +801,23 @@ define_maps! { <'tcx>
     /// Performs the initial MIR construction. You almost certainly do not
     /// want to use this query, because its output is intended to be stolen
     /// immediately by the MIR passes below. Consider `optimized_mir` instead.
+    ///
+    /// See the README for the `mir` module for details.
     [] mir_build: Mir(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
 
     /// Fetch the MIR for a given def-id after the given set of passes has ben
     /// applied to it. This is mostly an "intermediate" query. Normally, you would
     /// prefer to use `optimized_mir(def_id)`, which will fetch the MIR after all
     /// optimizations and so forth.
+    ///
+    /// See the README for the `mir` module for details.
     [] mir_suite: mir_suite((MirSuite, DefId)) -> &'tcx Steal<mir::Mir<'tcx>>,
 
     /// Fetch the MIR for a given def-id after a given pass has been executed. This is
     /// **only** intended to be used by the `mir_suite` provider -- if you are using it
     /// manually, you're doing it wrong.
+    ///
+    /// See the README for the `mir` module for details.
     [multi] mir_pass: mir_pass((MirSuite, MirPassIndex, DefId)) -> &'tcx Steal<mir::Mir<'tcx>>,
 
     /// MIR after our optimization passes have run. This is MIR that is ready

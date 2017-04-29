@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! See [the README](README.md) for details on writing your own pass.
+
 use hir;
 use hir::def_id::DefId;
 use hir::map::DefPathData;
