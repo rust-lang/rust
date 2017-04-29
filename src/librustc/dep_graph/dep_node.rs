@@ -257,8 +257,8 @@ impl<D: Clone + Debug> DepNode<D> {
                 let def_ids: Option<Vec<E>> = def_ids.iter().map(op).collect();
                 def_ids.map(|d| ProjectionCache { def_ids: d })
             }
-            DescribeDef(ref d) => op(d).map(MetaData),
-            DefSpan(ref d) => op(d).map(MetaData),
+            DescribeDef(ref d) => op(d).map(DescribeDef),
+            DefSpan(ref d) => op(d).map(DefSpan),
         }
     }
 }
