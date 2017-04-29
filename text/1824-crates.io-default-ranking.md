@@ -1,7 +1,7 @@
 - Feature Name: crates_io_default_ranking
 - Start Date: 2016-12-19
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1824
+- Rust Issue: https://github.com/rust-lang/rust/issues/41616
 
 # Summary
 [summary]: #summary
