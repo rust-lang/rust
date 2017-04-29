@@ -126,9 +126,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         self.tcx.with_freevars(closure_node_id, |freevars| {
             for freevar in freevars {
-                let var_def_id = freevar.def.def_id();
                 let upvar_id = ty::UpvarId {
-                    var_id: var_def_id.index,
+                    var_id: self.tcx.hir.node_to_hir_id(freevar.var_id()),
                     closure_expr_id: closure_def_id.index,
                 };
                 debug!("seed upvar_id {:?}", upvar_id);
@@ -236,11 +235,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         tcx.with_freevars(closure_id, |freevars| {
             freevars.iter().map(|freevar| {
-                let var_def_id = freevar.def.def_id();
-                let var_node_id = tcx.hir.as_local_node_id(var_def_id).unwrap();
-                let freevar_ty = self.node_ty(tcx.hir.node_to_hir_id(var_node_id));
+                let var_node_id = freevar.var_id();
+                let var_hir_id = tcx.hir.node_to_hir_id(var_node_id);
+                let freevar_ty = self.node_ty(var_hir_id);
                 let upvar_id = ty::UpvarId {
-                    var_id: var_def_id.index,
+                    var_id: var_hir_id,
                     closure_expr_id: closure_def_index,
                 };
                 let capture = self.tables.borrow().upvar_capture(upvar_id);
@@ -587,7 +586,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'gcx, 'tcx> {
     }
 }
 
-fn var_name(tcx: ty::TyCtxt, var_def_index: DefIndex) -> ast::Name {
-    let var_node_id = tcx.hir.def_index_to_node_id(var_def_index);
+fn var_name(tcx: ty::TyCtxt, var_hir_id: hir::HirId) -> ast::Name {
+    let var_node_id = tcx.hir.hir_to_node_id(var_hir_id);
     tcx.hir.name(var_node_id)
 }

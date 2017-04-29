@@ -827,12 +827,10 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     let mut sep = " ";
                     tcx.with_freevars(node_id, |freevars| {
                         for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
-                            let def_id = freevar.def.def_id();
-                            let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
                             write!(f,
                                         "{}{}:{}",
                                         sep,
-                                        tcx.local_var_name_str(node_id),
+                                        tcx.hir.name(freevar.var_id()),
                                         upvar_ty)?;
                             sep = ", ";
                         }
@@ -866,12 +864,10 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     let mut sep = " ";
                     tcx.with_freevars(node_id, |freevars| {
                         for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
-                            let def_id = freevar.def.def_id();
-                            let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
                             write!(f,
                                         "{}{}:{}",
                                         sep,
-                                        tcx.local_var_name_str(node_id),
+                                        tcx.hir.name(freevar.var_id()),
                                         upvar_ty)?;
                             sep = ", ";
                         }
@@ -906,7 +902,7 @@ impl fmt::Debug for ty::UpvarId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "UpvarId({:?};`{}`;{:?})",
                self.var_id,
-               ty::tls::with(|tcx| tcx.local_var_name_str_def_index(self.var_id)),
+               ty::tls::with(|tcx| tcx.hir.name(tcx.hir.hir_to_node_id(self.var_id))),
                self.closure_expr_id)
     }
 }

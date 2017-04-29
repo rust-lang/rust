@@ -113,7 +113,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.demand_eqtype(pat.span, expected, rhs_ty);
                 common_type
             }
-            PatKind::Binding(ba, def_id, _, ref sub) => {
+            PatKind::Binding(ba, var_id, _, ref sub) => {
                 // Note the binding mode in the typeck tables. For now, what we store is always
                 // identical to what could be scraped from the HIR, but this will change with
                 // default binding modes (#42640).
@@ -149,7 +149,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 // if there are multiple arms, make sure they all agree on
                 // what the type of the binding `x` ought to be
-                let var_id = tcx.hir.as_local_node_id(def_id).unwrap();
                 if var_id != pat.id {
                     let vt = self.local_ty(pat.span, var_id);
                     self.demand_eqtype(pat.span, vt, typ);

@@ -575,7 +575,7 @@ impl<T> Slice<T> {
 /// by the upvar) and the id of the closure expression.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UpvarId {
-    pub var_id: DefIndex,
+    pub var_id: hir::HirId,
     pub closure_expr_id: DefIndex,
 }
 
@@ -1973,25 +1973,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 bug!("Node id {} is not present in the node map", id);
             }
         }
-    }
-
-    pub fn local_var_name_str(self, id: NodeId) -> InternedString {
-        match self.hir.find(id) {
-            Some(hir_map::NodeBinding(pat)) => {
-                match pat.node {
-                    hir::PatKind::Binding(_, _, ref path1, _) => path1.node.as_str(),
-                    _ => {
-                        bug!("Variable id {} maps to {:?}, not local", id, pat);
-                    },
-                }
-            },
-            r => bug!("Variable id {} maps to {:?}, not local", id, r),
-        }
-    }
-
-    pub fn local_var_name_str_def_index(self, def_index: DefIndex) -> InternedString {
-        let node_id = self.hir.as_local_node_id(DefId::local(def_index)).unwrap();
-        self.local_var_name_str(node_id)
     }
 
     pub fn expr_is_lval(self, expr: &hir::Expr) -> bool {

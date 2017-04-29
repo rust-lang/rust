@@ -22,7 +22,7 @@ use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::subst::{Substs, Subst};
 use rustc::util::common::ErrorReported;
-use rustc::util::nodemap::DefIdMap;
+use rustc::util::nodemap::NodeMap;
 
 use syntax::abi::Abi;
 use syntax::ast;
@@ -88,7 +88,7 @@ pub struct ConstContext<'a, 'tcx: 'a> {
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     substs: &'tcx Substs<'tcx>,
-    fn_args: Option<DefIdMap<ConstVal<'tcx>>>
+    fn_args: Option<NodeMap<ConstVal<'tcx>>>
 }
 
 impl<'a, 'tcx> ConstContext<'a, 'tcx> {
@@ -302,9 +302,9 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
               Def::StructCtor(_, CtorKind::Fn) => {
                   signal!(e, UnimplementedConstVal("tuple struct constructors"))
               }
-              Def::Local(def_id) => {
-                  debug!("Def::Local({:?}): {:?}", def_id, cx.fn_args);
-                  if let Some(val) = cx.fn_args.as_ref().and_then(|args| args.get(&def_id)) {
+              Def::Local(id) => {
+                  debug!("Def::Local({:?}): {:?}", id, cx.fn_args);
+                  if let Some(val) = cx.fn_args.as_ref().and_then(|args| args.get(&id)) {
                       val.clone()
                   } else {
                       signal!(e, NonConstPath);
@@ -360,18 +360,18 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
             }
           };
 
-          let arg_defs = body.arguments.iter().map(|arg| match arg.pat.node {
-               hir::PatKind::Binding(_, def_id, _, _) => Some(def_id),
+          let arg_ids = body.arguments.iter().map(|arg| match arg.pat.node {
+               hir::PatKind::Binding(_, canonical_id, _, _) => Some(canonical_id),
                _ => None
            }).collect::<Vec<_>>();
-          assert_eq!(arg_defs.len(), args.len());
+          assert_eq!(arg_ids.len(), args.len());
 
-          let mut call_args = DefIdMap();
-          for (arg, arg_expr) in arg_defs.into_iter().zip(args.iter()) {
+          let mut call_args = NodeMap();
+          for (arg, arg_expr) in arg_ids.into_iter().zip(args.iter()) {
               let arg_val = cx.eval(arg_expr)?;
               debug!("const call arg: {:?}", arg);
-              if let Some(def_id) = arg {
-                assert!(call_args.insert(def_id, arg_val).is_none());
+              if let Some(id) = arg {
+                assert!(call_args.insert(id, arg_val).is_none());
               }
           }
           debug!("const call({:?})", call_args);

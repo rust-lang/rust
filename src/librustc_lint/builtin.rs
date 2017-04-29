@@ -913,7 +913,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                     } else {
                         return false;
                     };
-                    def.def_id() == cx.tcx.hir.local_def_id(fn_id)
+                    match def {
+                        Def::Local(..) | Def::Upvar(..) => false,
+                        _ => def.def_id() == cx.tcx.hir.local_def_id(fn_id)
+                    }
                 }
                 _ => false,
             }

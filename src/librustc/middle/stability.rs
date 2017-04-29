@@ -666,6 +666,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
 
     fn visit_path(&mut self, path: &'tcx hir::Path, id: ast::NodeId) {
         match path.def {
+            Def::Local(..) | Def::Upvar(..) |
             Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => {}
             _ => self.tcx.check_stability(path.def.def_id(), id, path.span)
         }

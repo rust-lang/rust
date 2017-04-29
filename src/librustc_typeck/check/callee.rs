@@ -227,10 +227,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     } else {
                         Def::Err
                     };
-                    if def != Def::Err {
-                        if let Some(span) = self.tcx.hir.span_if_local(def.def_id()) {
-                            err.span_note(span, "defined here");
+                    let def_span = match def {
+                        Def::Err => None,
+                        Def::Local(id) | Def::Upvar(id, ..) => {
+                            Some(self.tcx.hir.span(id))
                         }
+                        _ => self.tcx.hir.span_if_local(def.def_id())
+                    };
+                    if let Some(span) = def_span {
+                        err.span_note(span, "defined here");
                     }
                 }
 

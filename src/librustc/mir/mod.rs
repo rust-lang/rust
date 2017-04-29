@@ -1416,10 +1416,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                             tcx.with_freevars(node_id, |freevars| {
                                 for (freevar, lv) in freevars.iter().zip(lvs) {
-                                    let def_id = freevar.def.def_id();
-                                    let var_id = tcx.hir.as_local_node_id(def_id).unwrap();
-                                    let var_name = tcx.local_var_name_str(var_id);
-                                    struct_fmt.field(&var_name, lv);
+                                    let var_name = tcx.hir.name(freevar.var_id());
+                                    struct_fmt.field(&var_name.as_str(), lv);
                                 }
                             });
 
@@ -1436,10 +1434,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                             tcx.with_freevars(node_id, |freevars| {
                                 for (freevar, lv) in freevars.iter().zip(lvs) {
-                                    let def_id = freevar.def.def_id();
-                                    let var_id = tcx.hir.as_local_node_id(def_id).unwrap();
-                                    let var_name = tcx.local_var_name_str(var_id);
-                                    struct_fmt.field(&var_name, lv);
+                                    let var_name = tcx.hir.name(freevar.var_id());
+                                    struct_fmt.field(&var_name.as_str(), lv);
                                 }
                                 struct_fmt.field("$state", &lvs[freevars.len()]);
                                 for i in (freevars.len() + 1)..lvs.len() {

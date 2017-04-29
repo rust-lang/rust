@@ -48,8 +48,9 @@ pub enum Def {
     VariantCtor(DefId, CtorKind),
     Method(DefId),
     AssociatedConst(DefId),
-    Local(DefId),
-    Upvar(DefId,        // def id of closed over local
+
+    Local(ast::NodeId),
+    Upvar(ast::NodeId,  // node id of closed over local
           usize,        // index in the freevars list of the closure
           ast::NodeId), // expr node that creates the closure
     Label(ast::NodeId),
@@ -150,11 +151,13 @@ impl Def {
             Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) | Def::TyAlias(id) |
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
-            Def::AssociatedConst(id) | Def::Local(id) | Def::Upvar(id, ..) | Def::Macro(id, ..) |
+            Def::AssociatedConst(id) | Def::Macro(id, ..) |
             Def::GlobalAsm(id) => {
                 id
             }
 
+            Def::Local(..) |
+            Def::Upvar(..) |
             Def::Label(..)  |
             Def::PrimTy(..) |
             Def::SelfTy(..) |

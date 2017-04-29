@@ -384,11 +384,11 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     // Gather the upvars of a closure, if any.
     let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
         freevars.iter().map(|fv| {
-            let var_def_id = fv.def.def_id();
-            let var_node_id = tcx.hir.as_local_node_id(var_def_id).unwrap();
+            let var_id = fv.var_id();
+            let var_hir_id = tcx.hir.node_to_hir_id(var_id);
             let closure_expr_id = tcx.hir.local_def_id(fn_id).index;
             let capture = hir.tables().upvar_capture(ty::UpvarId {
-                var_id: var_def_id.index,
+                var_id: var_hir_id,
                 closure_expr_id,
             });
             let by_ref = match capture {
@@ -399,7 +399,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 debug_name: keywords::Invalid.name(),
                 by_ref,
             };
-            if let Some(hir::map::NodeBinding(pat)) = tcx.hir.find(var_node_id) {
+            if let Some(hir::map::NodeBinding(pat)) = tcx.hir.find(var_id) {
                 if let hir::PatKind::Binding(_, _, ref ident, _) = pat.node {
                     decl.debug_name = ident.node;
                 }

@@ -195,7 +195,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data @ DefPathData::Initializer |
             data @ DefPathData::MacroDef(..) |
             data @ DefPathData::ClosureExpr |
-            data @ DefPathData::Binding(..) |
             data @ DefPathData::ImplTrait |
             data @ DefPathData::Typeof |
             data @ DefPathData::GlobalMetaData(..) => {

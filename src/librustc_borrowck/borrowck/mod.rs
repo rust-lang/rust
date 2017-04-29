@@ -1311,10 +1311,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                       out: &mut String) {
         match loan_path.kind {
             LpUpvar(ty::UpvarId { var_id: id, closure_expr_id: _ }) => {
-                out.push_str(&self.tcx.local_var_name_str_def_index(id));
+                out.push_str(&self.tcx.hir.name(self.tcx.hir.hir_to_node_id(id)).as_str());
             }
             LpVar(id) => {
-                out.push_str(&self.tcx.local_var_name_str(id));
+                out.push_str(&self.tcx.hir.name(id).as_str());
             }
 
             LpDowncast(ref lp_base, variant_def_id) => {
@@ -1439,7 +1439,7 @@ impl<'tcx> fmt::Debug for LoanPath<'tcx> {
 
             LpUpvar(ty::UpvarId{ var_id, closure_expr_id }) => {
                 let s = ty::tls::with(|tcx| {
-                    let var_node_id = tcx.hir.def_index_to_node_id(var_id);
+                    let var_node_id = tcx.hir.hir_to_node_id(var_id);
                     tcx.hir.node_to_string(var_node_id)
                 });
                 write!(f, "$({} captured by id={:?})", s, closure_expr_id)
@@ -1474,7 +1474,7 @@ impl<'tcx> fmt::Display for LoanPath<'tcx> {
 
             LpUpvar(ty::UpvarId{ var_id, closure_expr_id: _ }) => {
                 let s = ty::tls::with(|tcx| {
-                    let var_node_id = tcx.hir.def_index_to_node_id(var_id);
+                    let var_node_id = tcx.hir.hir_to_node_id(var_id);
                     tcx.hir.node_to_string(var_node_id)
                 });
                 write!(f, "$({} captured by closure)", s)

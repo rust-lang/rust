@@ -913,8 +913,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         name)
             }
             infer::UpvarRegion(ref upvar_id, _) => {
-                format!(" for capture of `{}` by closure",
-                        self.tcx.local_var_name_str_def_index(upvar_id.var_id))
+                let var_node_id = self.tcx.hir.hir_to_node_id(upvar_id.var_id);
+                let var_name = self.tcx.hir.name(var_node_id);
+                format!(" for capture of `{}` by closure", var_name)
             }
         };
 

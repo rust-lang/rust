@@ -718,15 +718,16 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Typeck
                 let local_id_root =
                     local_id_root.expect("trying to hash invalid TypeckTables");
 
-                let var_def_id = DefId {
+                let var_owner_def_id = DefId {
                     krate: local_id_root.krate,
-                    index: var_id,
+                    index: var_id.owner,
                 };
                 let closure_def_id = DefId {
                     krate: local_id_root.krate,
                     index: closure_expr_id,
                 };
-                (hcx.def_path_hash(var_def_id), hcx.def_path_hash(closure_def_id))
+                ((hcx.def_path_hash(var_owner_def_id), var_id.local_id),
+                 hcx.def_path_hash(closure_def_id))
             });
 
             ich::hash_stable_itemlocalmap(hcx, hasher, closure_tys);

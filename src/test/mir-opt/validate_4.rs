@@ -48,8 +48,8 @@ fn main() {
 // START rustc.node22.EraseRegions.after.mir
 // fn write_42::{{closure}}(_1: &ReErased [closure@NodeId(22)], _2: *mut i32) -> () {
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:11) => validate_4/8cd878b::write_42[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(22)], _2: *mut i32]);
-//         Validate(Release, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:11) => validate_4/8cd878b::write_42[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(22)], _2: *mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:9) => validate_4/8cd878b::write_42[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(22)], _2: *mut i32]);
+//         Validate(Release, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:9) => validate_4/8cd878b::write_42[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(22)], _2: *mut i32]);
 //         StorageLive(_3);
 //         _3 = _2;
 //         (*_3) = const 23i32;
@@ -74,8 +74,8 @@ fn main() {
 // START rustc.node60.EraseRegions.after.mir
 // fn main::{{closure}}(_1: &ReErased [closure@NodeId(60)], _2: &ReErased mut i32) -> bool {
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:15) => validate_4/8cd878b::main[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(60)], _2: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:15) => validate_4/8cd878b::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
-//         Validate(Release, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:15) => validate_4/8cd878b::main[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(60)], _2: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:15) => validate_4/8cd878b::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:10) => validate_4/8cd878b::main[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(60)], _2: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:10) => validate_4/8cd878b::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
+//         Validate(Release, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:10) => validate_4/8cd878b::main[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(60)], _2: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:10) => validate_4/8cd878b::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
 //         StorageLive(_3);
 //         _0 = const write_42(_4) -> bb1;
 //     }

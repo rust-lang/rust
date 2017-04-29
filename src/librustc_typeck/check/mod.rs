@@ -4612,8 +4612,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         AstConv::prohibit_type_params(self, &segments[..segments.len() - poly_segments]);
 
         match def {
-            Def::Local(def_id) | Def::Upvar(def_id, ..) => {
-                let nid = self.tcx.hir.as_local_node_id(def_id).unwrap();
+            Def::Local(nid) | Def::Upvar(nid, ..) => {
                 let ty = self.local_ty(span, nid);
                 let ty = self.normalize_associated_types_in(span, &ty);
                 self.write_ty(self.tcx.hir.node_to_hir_id(node_id), ty);

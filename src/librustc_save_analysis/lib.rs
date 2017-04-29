@@ -38,7 +38,7 @@ mod sig;
 use rustc::hir;
 use rustc::hir::def::Def as HirDef;
 use rustc::hir::map::{Node, NodeItem};
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{LOCAL_CRATE, DefId};
 use rustc::session::config::CrateType::CrateTypeExecutable;
 use rustc::ty::{self, TyCtxt};
 use rustc_typeck::hir_ty_to_ty;
@@ -586,9 +586,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 self.tables.qpath_def(qpath, hir_id)
             }
 
-            Node::NodeBinding(&hir::Pat { node: hir::PatKind::Binding(_, def_id, ..), .. }) => {
-                HirDef::Local(def_id)
-            }
+            Node::NodeBinding(&hir::Pat {
+                node: hir::PatKind::Binding(_, canonical_id, ..), ..
+            }) => HirDef::Local(canonical_id),
 
             Node::NodeTy(ty) => {
                 if let hir::Ty { node: hir::TyPath(ref qpath), .. } = *ty {
@@ -616,8 +616,15 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let sub_span = self.span_utils.span_for_last_ident(path.span);
         filter!(self.span_utils, sub_span, path.span, None);
         match def {
-            HirDef::Upvar(..) |
-            HirDef::Local(..) |
+            HirDef::Upvar(id, ..) |
+            HirDef::Local(id) => {
+                let span = self.span_from_span(sub_span.unwrap());
+                Some(Ref {
+                    kind: RefKind::Variable,
+                    span,
+                    ref_id: id_from_node_id(id, self),
+                })
+            }
             HirDef::Static(..) |
             HirDef::Const(..) |
             HirDef::AssociatedConst(..) |
@@ -1013,7 +1020,15 @@ fn id_from_def_id(id: DefId) -> rls_data::Id {
 
 fn id_from_node_id(id: NodeId, scx: &SaveContext) -> rls_data::Id {
     let def_id = scx.tcx.hir.opt_local_def_id(id);
-    def_id.map(|id| id_from_def_id(id)).unwrap_or_else(null_id)
+    def_id.map(|id| id_from_def_id(id)).unwrap_or_else(|| {
+        // Create a *fake* `DefId` out of a `NodeId` by subtracting the `NodeId`
+        // out of the maximum u32 value. This will work unless you have *billions*
+        // of definitions in a single crate (very unlikely to actually happen).
+        rls_data::Id {
+            krate: LOCAL_CRATE.as_u32(),
+            index: !id.as_u32(),
+        }
+    })
 }
 
 fn null_id() -> rls_data::Id {
