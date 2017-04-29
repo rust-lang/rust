@@ -39,12 +39,16 @@ fn main() {
     match (x, 5) {
         (3.14, 1) => {}, //~ ERROR floating-point literals cannot be used
                          //~| WARNING hard error
+                         //~| ERROR floating-point literals cannot be used
+                         //~| WARNING hard error
         _ => {},
     }
     // Or structs
     struct Foo { x: f32 };
     match (Foo { x }) {
         Foo { x: 2.0 } => {}, //~ ERROR floating-point literals cannot be used
+                              //~| WARNING hard error
+                              //~| ERROR floating-point literals cannot be used
                               //~| WARNING hard error
         _ => {},
     }
