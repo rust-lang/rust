@@ -40,7 +40,7 @@ pub use intrinsics::transmute;
 /// `forget` is not marked as `unsafe`, because Rust's safety guarantees
 /// do not include a guarantee that destructors will always run. For example,
 /// a program can create a reference cycle using [`Rc`][rc], or call
-/// [`process:exit`][exit] to exit without running destructors. Thus, allowing
+/// [`process::exit`][exit] to exit without running destructors. Thus, allowing
 /// `mem::forget` from safe code does not fundamentally change Rust's safety
 /// guarantees.
 ///
