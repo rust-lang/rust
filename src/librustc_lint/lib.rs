@@ -113,6 +113,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                        UnusedParens,
                        UnusedImportBraces,
                        AnonymousParameters,
+                       IllegalFloatLiteralPattern,
                        );
 
     add_early_builtin_with_new!(sess,
@@ -200,6 +201,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(ILLEGAL_FLOATING_POINT_CONSTANT_PATTERN),
             reference: "issue #36890 <https://github.com/rust-lang/rust/issues/36890>",
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(ILLEGAL_FLOATING_POINT_LITERAL_PATTERN),
+            reference: "issue #41620 <https://github.com/rust-lang/rust/issues/41620>",
         },
         FutureIncompatibleInfo {
             id: LintId::of(ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN),
