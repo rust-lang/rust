@@ -283,6 +283,12 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
         return true;
     }
 
+    // #[used] also keeps the item alive forcefully,
+    // e.g. for placing it in a specific section.
+    if attr::contains_name(attrs, "used") {
+        return true;
+    }
+
     let dead_code = lint::builtin::DEAD_CODE.name_lower();
     for attr in lint::gather_attrs(attrs) {
         match attr {
