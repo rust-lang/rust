@@ -1604,6 +1604,15 @@ impl FromIterator<String> for String {
     }
 }
 
+#[stable(feature = "herd_cows", since = "1.19.0")]
+impl<'a> FromIterator<Cow<'a, str>> for String {
+    fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String {
+        let mut buf = String::new();
+        buf.extend(iter);
+        buf
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<char> for String {
     fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {
@@ -1635,6 +1644,15 @@ impl<'a> Extend<&'a str> for String {
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl Extend<String> for String {
     fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
+        for s in iter {
+            self.push_str(&s)
+        }
+    }
+}
+
+#[stable(feature = "herd_cows", since = "1.19.0")]
+impl<'a> Extend<Cow<'a, str>> for String {
+    fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
         for s in iter {
             self.push_str(&s)
         }
