@@ -361,6 +361,19 @@ impl UnsafetyState {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum LvalueOp {
+    Deref,
+    Index
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct AdjustedRcvr<'a> {
+    pub rcvr_expr: &'a hir::Expr,
+    pub autoderefs: usize,
+    pub unsize: bool
+}
+
 /// Tracks whether executing a node may exit normally (versus
 /// return/break/panic, which "diverge", leaving dead code in their
 /// wake). Tracked semi-automatically (through type variables marked
@@ -2156,9 +2169,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         while let Some((adj_ty, autoderefs)) = autoderef.next() {
             if let Some(final_mt) = self.try_index_step(
-                MethodCall::expr(expr.id),
-                expr, base_expr, adj_ty, autoderefs,
-                false, lvalue_pref, idx_ty)
+                MethodCall::expr(expr.id), expr, Some(AdjustedRcvr {
+                    rcvr_expr: base_expr,
+                    autoderefs,
+                    unsize: false
+                }), base_expr.span, adj_ty, lvalue_pref, idx_ty)
             {
                 autoderef.finalize(lvalue_pref, base_expr);
                 return Some(final_mt);
@@ -2166,10 +2181,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             if let ty::TyArray(element_ty, _) = adj_ty.sty {
                 autoderef.finalize(lvalue_pref, base_expr);
-                let adjusted_ty = self.tcx.mk_slice(element_ty);
+                let adj_ty = self.tcx.mk_slice(element_ty);
                 return self.try_index_step(
-                    MethodCall::expr(expr.id), expr, base_expr,
-                    adjusted_ty, autoderefs, true, lvalue_pref, idx_ty);
+                    MethodCall::expr(expr.id), expr, Some(AdjustedRcvr {
+                        rcvr_expr: base_expr,
+                        autoderefs,
+                        unsize: true
+                    }), base_expr.span, adj_ty, lvalue_pref, idx_ty)
             }
         }
         autoderef.unambiguous_final_ty();
@@ -2184,77 +2202,111 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn try_index_step(&self,
                       method_call: MethodCall,
                       expr: &hir::Expr,
-                      base_expr: &'gcx hir::Expr,
+                      base_expr: Option<AdjustedRcvr>,
+                      base_span: Span,
                       adjusted_ty: Ty<'tcx>,
-                      autoderefs: usize,
-                      unsize: bool,
                       lvalue_pref: LvaluePreference,
                       index_ty: Ty<'tcx>)
                       -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
     {
         let tcx = self.tcx;
-        debug!("try_index_step(expr={:?}, base_expr.id={:?}, adjusted_ty={:?}, \
-                               autoderefs={}, unsize={}, index_ty={:?})",
+        debug!("try_index_step(expr={:?}, base_expr={:?}, adjusted_ty={:?}, \
+                               index_ty={:?})",
                expr,
                base_expr,
                adjusted_ty,
-               autoderefs,
-               unsize,
                index_ty);
 
-        let input_ty = self.next_ty_var(TypeVariableOrigin::AutoDeref(base_expr.span));
+        let input_ty = self.next_ty_var(TypeVariableOrigin::AutoDeref(base_span));
 
         // First, try built-in indexing.
         match (adjusted_ty.builtin_index(), &index_ty.sty) {
             (Some(ty), &ty::TyUint(ast::UintTy::Us)) | (Some(ty), &ty::TyInfer(ty::IntVar(_))) => {
                 debug!("try_index_step: success, using built-in indexing");
                 // If we had `[T; N]`, we should've caught it before unsizing to `[T]`.
-                assert!(!unsize);
-                self.apply_autoderef_adjustment(base_expr.id, autoderefs, adjusted_ty);
+                if let Some(base_expr) = base_expr {
+                    assert!(!base_expr.unsize);
+                    self.apply_autoderef_adjustment(
+                        base_expr.rcvr_expr.id, base_expr.autoderefs, adjusted_ty);
+                }
                 return Some((tcx.types.usize, ty));
             }
             _ => {}
         }
 
-        // Try `IndexMut` first, if preferred.
-        let method = match (lvalue_pref, tcx.lang_items.index_mut_trait()) {
-            (PreferMutLvalue, Some(trait_did)) => {
-                self.lookup_method_in_trait_adjusted(expr.span,
-                                                     Some(&base_expr),
-                                                     Symbol::intern("index_mut"),
-                                                     trait_did,
-                                                     autoderefs,
-                                                     unsize,
-                                                     adjusted_ty,
-                                                     Some(vec![input_ty]))
-            }
-            _ => None,
-        };
-
-        // Otherwise, fall back to `Index`.
-        let method = match (method, tcx.lang_items.index_trait()) {
-            (None, Some(trait_did)) => {
-                self.lookup_method_in_trait_adjusted(expr.span,
-                                                     Some(&base_expr),
-                                                     Symbol::intern("index"),
-                                                     trait_did,
-                                                     autoderefs,
-                                                     unsize,
-                                                     adjusted_ty,
-                                                     Some(vec![input_ty]))
-            }
-            (method, _) => method,
-        };
-
         // If some lookup succeeds, write callee into table and extract index/element
         // type from the method signature.
         // If some lookup succeeded, install method in table
+        let method = self.try_overloaded_lvalue_op(
+            expr.span, base_expr, adjusted_ty, &[input_ty], lvalue_pref, LvalueOp::Index);
+
         method.map(|ok| {
             debug!("try_index_step: success, using overloaded indexing");
             let method = self.register_infer_ok_obligations(ok);
             self.tables.borrow_mut().method_map.insert(method_call, method);
             (input_ty, self.make_overloaded_lvalue_return_type(method).ty)
         })
+    }
+
+    fn resolve_lvalue_op(&self, op: LvalueOp, is_mut: bool) -> (Option<DefId>, Symbol) {
+        let (tr, name) = match (op, is_mut) {
+            (LvalueOp::Deref, false) =>
+                (self.tcx.lang_items.deref_trait(), "deref"),
+            (LvalueOp::Deref, true) =>
+                (self.tcx.lang_items.deref_mut_trait(), "deref_mut"),
+            (LvalueOp::Index, false) =>
+                (self.tcx.lang_items.index_trait(), "index"),
+            (LvalueOp::Index, true) =>
+                (self.tcx.lang_items.index_mut_trait(), "index_mut"),
+        };
+        (tr, Symbol::intern(name))
+    }
+
+    fn try_overloaded_lvalue_op(&self,
+                                span: Span,
+                                base_expr: Option<AdjustedRcvr>,
+                                base_ty: Ty<'tcx>,
+                                arg_tys: &[Ty<'tcx>],
+                                lvalue_pref: LvaluePreference,
+                                op: LvalueOp)
+                                -> Option<InferOk<'tcx, MethodCallee<'tcx>>>
+    {
+        debug!("try_overloaded_lvalue_op({:?},{:?},{:?},{:?},{:?})",
+               span,
+               base_expr,
+               base_ty,
+               lvalue_pref,
+               op);
+
+        // Try Mut first, if preferred.
+        let (mut_tr, mut_op) = self.resolve_lvalue_op(op, true);
+        let method = match (lvalue_pref, mut_tr) {
+            (PreferMutLvalue, Some(trait_did)) => {
+                self.lookup_method_in_trait_adjusted(span,
+                                                     base_expr,
+                                                     mut_op,
+                                                     trait_did,
+                                                     base_ty,
+                                                     Some(arg_tys.to_owned()))
+            }
+            _ => None,
+        };
+
+        // Otherwise, fall back to the immutable version.
+        let (imm_tr, imm_op) = self.resolve_lvalue_op(op, false);
+        let method = match (method, imm_tr) {
+            (None, Some(trait_did)) => {
+                self.lookup_method_in_trait_adjusted(span,
+                                                     base_expr,
+                                                     imm_op,
+                                                     trait_did,
+                                                     base_ty,
+                                                     Some(arg_tys.to_owned()))
+            }
+            (method, _) => method,
+        };
+
+        method
     }
 
     fn check_method_argument_types(&self,
