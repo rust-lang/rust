@@ -59,7 +59,7 @@ extern {
 }
 ```
 
-These types are FFI-safe. They are also DSTs, meaning that they do not implement `Sized`. Being DSTs, they cannot be kept on the stack and can only be accessed through pointers.
+These types are FFI-safe. They are also DSTs, meaning that they do not implement `Sized`. Being DSTs, they cannot be kept on the stack, can only be accessed through pointers and references and cannot be moved from.
 
 In Rust, pointers to DSTs carry metadata about the object being pointed to.
 For strings and slices this is the length of the buffer, for trait objects this is the object's vtable.
@@ -111,6 +111,9 @@ This should be taught in the foreign function interface chapter of the rust book
 
 Very slight addition of complexity to the language.
 
+The syntax has the potential to be confused with introducing a type alias, rather than a new nominal type.
+The use of `extern` here is also a bit of a misnomer as the name of the type does not refer to anything external to Rust.
+
 # Alternatives
 [alternatives]: #alternatives
 
@@ -119,6 +122,9 @@ Not do this.
 Alternatively, rather than provide a way to create opaque types, we could just offer one distinguished type (`std::mem::OpaqueData` or something like that).
 Then, to create new opaque types, users just declare a struct with a member of type `OpaqueData`.
 This has the advantage of introducing no new syntax, and issues like FFI-compatibility would fall out of existing rules.
+
+Another alternative is to drop the `extern` and allow a declaration to be written `type A;`.
+This removes the (arguably disingenuous) use of the `extern` keyword although it makes the syntax look even more like a type alias.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
