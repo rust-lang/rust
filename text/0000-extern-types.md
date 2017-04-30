@@ -95,9 +95,9 @@ And `libc` can, in the worst-case, make a breaking change.
 
 Really, the question is "how do we teach *without* this".
 As described above, the current tricks for doing this are wrong.
-Furthermore, they are quite advanced touching upon many advanced corners of the language: zero-sized and uninhabited types are phenomena few programmer coming from mainstream languages have considered.
+Furthermore, they are quite advanced touching upon many advanced corners of the language: zero-sized and uninhabited types are phenomena few programmer coming from mainstream languages have encountered.
 From reading around other RFCs, issues, and internal threads, one gets a sense of two issues:
-First, even among the group Rust programmers enthusiastic enough to participate in these fora, the semantics of foreign types are not widely understood.
+First, even among the group of Rust programmers enthusiastic enough to participate in these fora, the semantics of foreign types are not widely understood.
 Second, there is annoyance that none of the current tricks, by nature of them all being flawed in different ways, would become standard.
 
 By contrast, `extern type` does exactly what one wants, with an obvious and guessable syntax, without forcing the user to immediately understand all the nuance about why *these* semantics are indeed the right ones.
