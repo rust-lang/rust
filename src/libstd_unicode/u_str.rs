@@ -136,12 +136,14 @@ struct IsWhitespace;
 impl FnOnce<(char, )> for IsWhitespace {
     type Output = bool;
 
+    #[inline]
     extern "rust-call" fn call_once(mut self, arg: (char, )) -> bool {
         self.call_mut(arg)
     }
 }
 
 impl FnMut<(char, )> for IsWhitespace {
+    #[inline]
     extern "rust-call" fn call_mut(&mut self, arg: (char, )) -> bool {
         arg.0.is_whitespace()
     }
@@ -153,12 +155,14 @@ struct IsNotEmpty;
 impl<'a, 'b> FnOnce<(&'a &'b str, )> for IsNotEmpty {
     type Output = bool;
 
+    #[inline]
     extern "rust-call" fn call_once(mut self, arg: (&&str, )) -> bool {
         self.call_mut(arg)
     }
 }
 
 impl<'a, 'b> FnMut<(&'a &'b str, )> for IsNotEmpty {
+    #[inline]
     extern "rust-call" fn call_mut(&mut self, arg: (&&str, )) -> bool {
         !arg.0.is_empty()
     }
