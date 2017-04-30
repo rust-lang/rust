@@ -143,6 +143,7 @@ pub fn run_core(search_paths: SearchPaths,
     let mut sess = session::build_session_(
         sessopts, &dep_graph, cpath, diagnostic_handler, codemap, cstore.clone()
     );
+    rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs));

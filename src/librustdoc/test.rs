@@ -86,6 +86,7 @@ pub fn run(input: &str,
     let mut sess = session::build_session_(
         sessopts, &dep_graph, Some(input_path.clone()), handler, codemap.clone(), cstore.clone(),
     );
+    rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     sess.parse_sess.config =
         config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
@@ -234,6 +235,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     let mut sess = session::build_session_(
         sessopts, &dep_graph, None, diagnostic_handler, codemap, cstore.clone(),
     );
+    rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let outdir = Mutex::new(TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir"));

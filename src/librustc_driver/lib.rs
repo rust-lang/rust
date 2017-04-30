@@ -211,6 +211,7 @@ pub fn run_compiler<'a>(args: &[String],
     let mut sess = session::build_session_with_codemap(
         sopts, &dep_graph, input_file_path, descriptions, cstore.clone(), codemap, emitter_dest,
     );
+    rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess, cfg);
@@ -415,6 +416,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     None,
                     descriptions.clone(),
                     cstore.clone());
+                rustc_trans::init(&sess);
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let mut cfg = config::build_configuration(&sess, cfg.clone());
                 target_features::add_configuration(&mut cfg, &sess);

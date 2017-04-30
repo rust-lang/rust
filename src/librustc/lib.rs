@@ -55,7 +55,6 @@ extern crate getopts;
 extern crate graphviz;
 extern crate libc;
 extern crate owning_ref;
-extern crate rustc_llvm as llvm;
 extern crate rustc_back;
 extern crate rustc_data_structures;
 extern crate serialize;

@@ -112,6 +112,7 @@ fn test_env<F>(source_string: &str,
                                        diagnostic_handler,
                                        Rc::new(CodeMap::new(FilePathMapping::empty())),
                                        cstore.clone());
+    rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
         name: driver::anon_src(),
