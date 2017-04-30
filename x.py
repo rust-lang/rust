@@ -9,7 +9,7 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-# This file is only a "symlink" to boostrap.py, all logic should go there.
+# This file is only a "symlink" to bootstrap.py, all logic should go there.
 
 import os
 import sys

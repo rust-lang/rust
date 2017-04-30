@@ -414,8 +414,8 @@ class RustBuild(object):
         # The goal here is to come up with the same triple as LLVM would,
         # at least for the subset of platforms we're willing to target.
         if ostype == 'Linux':
-            os = subprocess.check_output(['uname', '-o']).strip().decode(default_encoding)
-            if os == 'Android':
+            os_from_sp = subprocess.check_output(['uname', '-o']).strip().decode(default_encoding)
+            if os_from_sp == 'Android':
                 ostype = 'linux-android'
             else:
                 ostype = 'unknown-linux-gnu'
