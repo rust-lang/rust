@@ -285,6 +285,12 @@ impl<'tcx> QueryDescription for queries::describe_def<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::def_span<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        bug!("def_span")
+    }
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -359,8 +365,10 @@ macro_rules! define_maps {
                 }
 
                 // FIXME(eddyb) Get more valid Span's on queries.
-                if span == DUMMY_SP {
-                    span = key.default_span(tcx);
+                // def_span guard is necesary to prevent a recursive loop,
+                // default_span calls def_span query internally.
+                if span == DUMMY_SP && stringify!($name) != "def_span" {
+                    span = key.default_span(tcx)
                 }
 
                 let _task = tcx.dep_graph.in_task(Self::to_dep_node(&key));
@@ -568,7 +576,8 @@ define_maps! { <'tcx>
     [] def_symbol_name: SymbolName(DefId) -> ty::SymbolName,
     [] symbol_name: symbol_name_dep_node(ty::Instance<'tcx>) -> ty::SymbolName,
 
-    [] describe_def: meta_data_node(DefId) -> Option<Def>
+    [] describe_def: DescribeDef(DefId) -> Option<Def>,
+    [] def_span: DefSpan(DefId) -> Span
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -599,8 +608,4 @@ fn typeck_item_bodies_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn const_eval_dep_node((def_id, _): (DefId, &Substs)) -> DepNode<DefId> {
     DepNode::ConstEval(def_id)
-}
-
-fn meta_data_node(def_id: DefId) -> DepNode<DefId> {
-    DepNode::MetaData(def_id)
 }

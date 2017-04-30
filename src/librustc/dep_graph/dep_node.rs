@@ -148,6 +148,9 @@ pub enum DepNode<D: Clone + Debug> {
     // For proj. cache, we just keep a list of all def-ids, since it is
     // not a hotspot.
     ProjectionCache { def_ids: Vec<D> },
+
+    DescribeDef(D),
+    DefSpan(D),
 }
 
 impl<D: Clone + Debug> DepNode<D> {
@@ -253,6 +256,8 @@ impl<D: Clone + Debug> DepNode<D> {
                 let def_ids: Option<Vec<E>> = def_ids.iter().map(op).collect();
                 def_ids.map(|d| ProjectionCache { def_ids: d })
             }
+            DescribeDef(ref d) => op(d).map(DescribeDef),
+            DefSpan(ref d) => op(d).map(DefSpan),
         }
     }
 }
