@@ -701,7 +701,7 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
 
         let bld = Builder::new_block(ccx, llfn, "top");
 
-        debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(ccx, &bld);
+        debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(ccx);
 
         let (start_fn, args) = if use_start_lang_item {
             let start_def_id = ccx.tcx().require_lang_item(StartFnLangItem);
