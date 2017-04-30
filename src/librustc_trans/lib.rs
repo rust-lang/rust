@@ -72,6 +72,7 @@ pub use base::trans_crate;
 pub use back::symbol_names::provide;
 
 pub use metadata::LlvmMetadataLoader;
+pub use llvm_util::{init, target_features, print_version, print_passes, print, enable_llvm_debug};
 
 pub mod back {
     pub use rustc::hir::svh;
@@ -122,6 +123,7 @@ mod debuginfo;
 mod declare;
 mod glue;
 mod intrinsic;
+mod llvm_util;
 mod machine;
 mod metadata;
 mod meth;
@@ -178,55 +180,3 @@ pub struct CrateTranslation {
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }
-
-use rustc::session::Session;
-pub fn init(sess: &Session) {
-    unsafe {
-        // Before we touch LLVM, make sure that multithreading is enabled.
-        use std::sync::Once;
-        static INIT: Once = Once::new();
-        static mut POISONED: bool = false;
-        INIT.call_once(|| {
-            if llvm::LLVMStartMultithreaded() != 1 {
-                // use an extra bool to make sure that all future usage of LLVM
-                // cannot proceed despite the Once not running more than once.
-                POISONED = true;
-            }
-
-            configure_llvm(sess);
-        });
-
-        if POISONED {
-            bug!("couldn't enable multi-threaded LLVM");
-        }
-    }
-}
-
-use std::ffi::CString;
-use libc::c_int;
-unsafe fn configure_llvm(sess: &Session) {
-    let mut llvm_c_strs = Vec::new();
-    let mut llvm_args = Vec::new();
-
-    {
-        let mut add = |arg: &str| {
-            let s = CString::new(arg).unwrap();
-            llvm_args.push(s.as_ptr());
-            llvm_c_strs.push(s);
-        };
-        add("rustc"); // fake program name
-        if sess.time_llvm_passes() { add("-time-passes"); }
-        if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
-
-        for arg in &sess.opts.cg.llvm_args {
-            add(&(*arg));
-        }
-    }
-
-    llvm::LLVMInitializePasses();
-
-    llvm::initialize_available_targets();
-
-    llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
-                                 llvm_args.as_ptr());
-}

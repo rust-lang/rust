@@ -328,7 +328,7 @@ top_level_options!(
     }
 );
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PrintRequest {
     FileNames,
     Sysroot,

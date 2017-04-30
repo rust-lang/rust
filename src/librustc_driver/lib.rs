@@ -56,7 +56,6 @@ extern crate rustc_save_analysis;
 extern crate rustc_trans;
 extern crate rustc_typeck;
 extern crate serialize;
-extern crate rustc_llvm as llvm;
 #[macro_use]
 extern crate log;
 extern crate syntax;
@@ -70,7 +69,7 @@ use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_trans::back::link;
-use rustc_trans::back::write::{create_target_machine, RELOC_MODEL_ARGS, CODE_GEN_MODEL_ARGS};
+use rustc_trans::back::write::{RELOC_MODEL_ARGS, CODE_GEN_MODEL_ARGS};
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
@@ -182,7 +181,7 @@ pub fn run_compiler<'a>(args: &[String],
     let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
 
     if sopts.debugging_opts.debug_llvm {
-        unsafe { llvm::LLVMRustSetDebug(1); }
+        rustc_trans::enable_llvm_debug();
     }
 
     let descriptions = diagnostics_registry();
@@ -671,14 +670,6 @@ impl RustcDefaultCalls {
                         println!("{}", cfg);
                     }
                 }
-                PrintRequest::TargetCPUs => {
-                    let tm = create_target_machine(sess);
-                    unsafe { llvm::LLVMRustPrintTargetCPUs(tm); }
-                }
-                PrintRequest::TargetFeatures => {
-                    let tm = create_target_machine(sess);
-                    unsafe { llvm::LLVMRustPrintTargetFeatures(tm); }
-                }
                 PrintRequest::RelocationModels => {
                     println!("Available relocation models:");
                     for &(name, _) in RELOC_MODEL_ARGS.iter() {
@@ -692,6 +683,9 @@ impl RustcDefaultCalls {
                         println!("    {}", name);
                     }
                     println!("");
+                }
+                PrintRequest::TargetCPUs | PrintRequest::TargetFeatures => {
+                    rustc_trans::print(*req, sess);
                 }
             }
         }
@@ -730,10 +724,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(release_str()));
-        unsafe {
-            println!("LLVM version: {}.{}",
-                     llvm::LLVMRustVersionMajor(), llvm::LLVMRustVersionMinor());
-        }
+        rustc_trans::print_version();
     }
 }
 
@@ -1026,9 +1017,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     if cg_flags.contains(&"passes=list".to_string()) {
-        unsafe {
-            ::llvm::LLVMRustPrintPasses();
-        }
+        rustc_trans::print_passes();
         return None;
     }
 
