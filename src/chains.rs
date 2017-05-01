@@ -104,11 +104,16 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         parent_shape = chain_indent(context, shape);
     }
     let parent_rewrite = try_opt!(parent.rewrite(context, parent_shape));
+    let parent_rewrite_contains_newline = parent_rewrite.contains('\n');
 
     // Decide how to layout the rest of the chain. `extend` is true if we can
     // put the first non-parent item on the same line as the parent.
-    let (nested_shape, extend) = if !parent_rewrite.contains('\n') && is_continuable(&parent) {
-        let nested_shape = if let ast::ExprKind::Try(..) = subexpr_list.last().unwrap().node {
+    let first_subexpr_is_try = match subexpr_list.last().unwrap().node {
+        ast::ExprKind::Try(..) => true,
+        _ => false,
+    };
+    let (nested_shape, extend) = if !parent_rewrite_contains_newline && is_continuable(&parent) {
+        let nested_shape = if first_subexpr_is_try {
             parent_shape.block_indent(context.config.tab_spaces)
         } else {
             chain_indent(context, shape.add_offset(parent_rewrite.len()))
@@ -120,7 +125,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         // The parent is a block, so align the rest of the chain with the closing
         // brace.
         (parent_shape, false)
-    } else if parent_rewrite.contains('\n') {
+    } else if parent_rewrite_contains_newline {
         (chain_indent(context,
                       parent_shape.block_indent(context.config.tab_spaces)),
          false)
@@ -137,9 +142,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         ..nested_shape
     };
     let first_child_shape = if extend {
-        let mut shape = try_opt!(parent_shape.shrink_left(last_line_width(&parent_rewrite)));
+        let mut shape = try_opt!(parent_shape.offset_left(last_line_width(&parent_rewrite)));
         match context.config.chain_indent {
-            IndentStyle::Visual => other_child_shape,
+            IndentStyle::Visual => shape,
             IndentStyle::Block => {
                 shape.offset = shape
                     .offset
@@ -207,7 +212,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         }
     }
 
-    let connector = if fits_single_line && !parent_rewrite.contains('\n') {
+    let connector = if fits_single_line && !parent_rewrite_contains_newline {
         // Yay, we can put everything on one line.
         String::new()
     } else {
@@ -215,9 +220,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         format!("\n{}", nested_shape.indent.to_string(context.config))
     };
 
-    let first_connector = if extend || subexpr_list.is_empty() {
-        ""
-    } else if let ast::ExprKind::Try(_) = subexpr_list.last().unwrap().node {
+    let first_connector = if extend || subexpr_list.is_empty() || first_subexpr_is_try {
         ""
     } else {
         &*connector
@@ -375,33 +378,19 @@ fn rewrite_chain_subexpr(expr: &ast::Expr,
                          context: &RewriteContext,
                          shape: Shape)
                          -> Option<String> {
+    let rewrite_element = |expr_str: String| if expr_str.len() <= shape.width {
+        Some(expr_str)
+    } else {
+        None
+    };
+
     match expr.node {
         ast::ExprKind::MethodCall(ref method_name, ref types, ref expressions) => {
             rewrite_method_call(method_name.node, types, expressions, span, context, shape)
         }
-        ast::ExprKind::Field(_, ref field) => {
-            let s = format!(".{}", field.node);
-            if s.len() <= shape.width {
-                Some(s)
-            } else {
-                None
-            }
-        }
-        ast::ExprKind::TupField(_, ref field) => {
-            let s = format!(".{}", field.node);
-            if s.len() <= shape.width {
-                Some(s)
-            } else {
-                None
-            }
-        }
-        ast::ExprKind::Try(_) => {
-            if shape.width >= 1 {
-                Some("?".into())
-            } else {
-                None
-            }
-        }
+        ast::ExprKind::Field(_, ref field) => rewrite_element(format!(".{}", field.node)),
+        ast::ExprKind::TupField(_, ref field) => rewrite_element(format!(".{}", field.node)),
+        ast::ExprKind::Try(_) => rewrite_element(String::from("?")),
         _ => unreachable!(),
     }
 }
