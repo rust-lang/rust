@@ -270,8 +270,10 @@ impl EmitterWriter {
                           line: &Line,
                           width_offset: usize,
                           code_offset: usize) -> Vec<(usize, Style)> {
-        let source_string = file.get_line(line.line_index - 1)
-            .unwrap_or("");
+        let source_string = match file.get_line(line.line_index - 1) {
+            Some(s) => s,
+            None => return Vec::new(),
+        };
 
         let line_offset = buffer.num_lines();
 
@@ -909,6 +911,11 @@ impl EmitterWriter {
 
         // Print out the annotate source lines that correspond with the error
         for annotated_file in annotated_files {
+            // we can't annotate anything if the source is unavailable.
+            if annotated_file.file.src.is_none() {
+                continue;
+            }
+
             // print out the span location and spacer before we print the annotated source
             // to do this, we need to know if this span will be primary
             let is_primary = primary_lo.file.name == annotated_file.file.name;
