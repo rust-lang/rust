@@ -21,7 +21,7 @@ use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, type_annota
 use comment::{FindUncommented, contains_comment};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
-use config::{Config, IndentStyle, Density, ReturnIndent, BraceStyle, Style};
+use config::{Config, IndentStyle, Density, ReturnIndent, BraceStyle, Style, TypeDensity};
 use itertools::Itertools;
 
 use syntax::{ast, abi, codemap, ptr, symbol};
@@ -1299,13 +1299,17 @@ pub fn rewrite_associated_type(ident: ast::Ident,
     let prefix = format!("type {}", ident);
 
     let type_bounds_str = if let Some(ty_param_bounds) = ty_param_bounds_opt {
+        let joiner = match context.config.type_punctuation_density {
+            TypeDensity::Compressed => "+",
+            TypeDensity::Wide => " + ",
+        };
         let bounds: &[_] = ty_param_bounds;
         let bound_str = try_opt!(bounds
                                      .iter()
                                      .map(|ty_bound| {
             ty_bound.rewrite(context, Shape::legacy(context.config.max_width, indent))
         })
-                                     .intersperse(Some(" + ".to_string()))
+                                     .intersperse(Some(joiner.to_string()))
                                      .collect::<Option<String>>());
         if bounds.len() > 0 {
             format!(": {}", bound_str)
@@ -2015,11 +2019,14 @@ fn rewrite_trait_bounds(context: &RewriteContext,
     if bounds.is_empty() {
         return Some(String::new());
     }
-
+    let joiner = match context.config.type_punctuation_density {
+        TypeDensity::Compressed => "+",
+        TypeDensity::Wide => " + ",
+    };
     let bound_str = try_opt!(bounds
                                  .iter()
                                  .map(|ty_bound| ty_bound.rewrite(&context, shape))
-                                 .intersperse(Some(" + ".to_string()))
+                                 .intersperse(Some(joiner.to_string()))
                                  .collect::<Option<String>>());
 
     let mut result = String::new();
