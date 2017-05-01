@@ -95,7 +95,9 @@ matrix:
         MACOSX_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode7
-      install: *osx_install_sccache
+      install:
+        - brew update && brew install xz
+        - *osx_install_sccache
     - env: >
         RUST_CHECK_TARGET=dist
         RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended"
@@ -106,7 +108,9 @@ matrix:
         MACOSX_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode7
-      install: *osx_install_sccache
+      install:
+        - brew update && brew install xz
+        - *osx_install_sccache
 
     # "alternate" deployments, these are "nightlies" but don't have assertions
     # turned on, they're deployed to a different location primarily for projects
@@ -123,7 +127,9 @@ matrix:
         MACOSX_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode7
-      install: *osx_install_sccache
+      install:
+        - brew update && brew install xz
+        - *osx_install_sccache
 
 env:
   global:
