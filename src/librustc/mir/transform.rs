@@ -37,6 +37,11 @@ pub enum MirSource {
 }
 
 impl<'a, 'tcx> MirSource {
+    pub fn from_local_def_id(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> MirSource {
+        let id = tcx.hir.as_local_node_id(def_id).expect("mir source requires local def-id");
+        Self::from_node(tcx, id)
+    }
+
     pub fn from_node(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: NodeId) -> MirSource {
         use hir::*;
 
@@ -169,12 +174,8 @@ impl<'a, 'tcx> Passes {
         self.pass_hooks.push(Rc::new(hook));
     }
 
-    pub fn len_passes(&self, suite: MirSuite) -> usize {
-        self.suites[suite.0].len()
-    }
-
-    pub fn pass(&self, suite: MirSuite, pass: MirPassIndex) -> &MirPass {
-        &*self.suites[suite.0][pass.0]
+    pub fn passes(&self, suite: MirSuite) -> &[Rc<MirPass>] {
+        &self.suites[suite.0]
     }
 
     pub fn hooks(&self) -> &[Rc<PassHook>] {
