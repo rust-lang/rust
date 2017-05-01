@@ -157,7 +157,11 @@ fn format_expr(expr: &ast::Expr,
             };
 
             if let Some(ref expr) = *opt_expr {
-                rewrite_unary_prefix(context, &format!("break{} ", id_str), &**expr, shape)
+                rewrite_unary_prefix(context,
+                                     &format!("break{} ", id_str),
+                                     &**expr,
+                                     shape,
+                                     expr.span)
             } else {
                 wrap_str(format!("break{}", id_str), context.config.max_width, shape)
             }
@@ -178,9 +182,11 @@ fn format_expr(expr: &ast::Expr,
         }
         ast::ExprKind::Ret(None) => wrap_str("return".to_owned(), context.config.max_width, shape),
         ast::ExprKind::Ret(Some(ref expr)) => {
-            rewrite_unary_prefix(context, "return ", &**expr, shape)
+            rewrite_unary_prefix(context, "return ", &**expr, shape, expr.span)
         }
-        ast::ExprKind::Box(ref expr) => rewrite_unary_prefix(context, "box ", &**expr, shape),
+        ast::ExprKind::Box(ref expr) => {
+            rewrite_unary_prefix(context, "box ", &**expr, shape, expr.span)
+        }
         ast::ExprKind::AddrOf(mutability, ref expr) => {
             rewrite_expr_addrof(context, mutability, expr, shape)
         }
@@ -222,7 +228,7 @@ fn format_expr(expr: &ast::Expr,
                     } else {
                         delim.into()
                     };
-                    rewrite_unary_prefix(context, &sp_delim, &**rhs, shape)
+                    rewrite_unary_prefix(context, &sp_delim, &**rhs, shape, expr.span)
                 }
                 (Some(ref lhs), None) => {
                     let sp_delim = if context.config.spaces_around_ranges {
@@ -1224,10 +1230,10 @@ fn rewrite_match(context: &RewriteContext,
 
 fn arm_start_pos(arm: &ast::Arm) -> BytePos {
     let &ast::Arm {
-             ref attrs,
-             ref pats,
-             ..
-         } = arm;
+        ref attrs,
+        ref pats,
+        ..
+    } = arm;
     if !attrs.is_empty() {
         return attrs[0].span.lo;
     }
@@ -1258,11 +1264,11 @@ impl Rewrite for ast::Arm {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         debug!("Arm::rewrite {:?} {:?}", self, shape);
         let &ast::Arm {
-                 ref attrs,
-                 ref pats,
-                 ref guard,
-                 ref body,
-             } = self;
+            ref attrs,
+            ref pats,
+            ref guard,
+            ref body,
+        } = self;
 
         // FIXME this is all a bit grotty, would be nice to abstract out the
         // treatment of attributes.
@@ -1997,9 +2003,22 @@ pub fn rewrite_tuple<'a, I>(context: &RewriteContext,
 pub fn rewrite_unary_prefix<R: Rewrite>(context: &RewriteContext,
                                         prefix: &str,
                                         rewrite: &R,
-                                        shape: Shape)
+                                        mut shape: Shape,
+                                        span: Span)
                                         -> Option<String> {
-    let shape = try_opt!(shape.shrink_left(prefix.len())).visual_indent(0);
+    // Heuristic: if unary is `&` and `rewrite` contains `{`,
+    // it is likely that block indent is preferred to visual indent.
+    if prefix == "&" {
+        let snippet = String::from(context.snippet(span).trim_left_matches('&'));
+        let first_line = try_opt!(snippet.lines().nth(0));
+        if first_line.contains("{") {
+            shape = try_opt!(shape.sub_width(prefix.len())).block_indent(0);
+        } else {
+            shape = try_opt!(shape.shrink_left(prefix.len())).visual_indent(0);
+        }
+    } else {
+        shape = try_opt!(shape.shrink_left(prefix.len())).visual_indent(0);
+    }
     rewrite
         .rewrite(context, shape)
         .map(|r| format!("{}{}", prefix, r))
@@ -2031,7 +2050,7 @@ fn rewrite_unary_op(context: &RewriteContext,
         ast::UnOp::Not => "!",
         ast::UnOp::Neg => "-",
     };
-    rewrite_unary_prefix(context, operator_str, expr, shape)
+    rewrite_unary_prefix(context, operator_str, expr, shape, expr.span)
 }
 
 fn rewrite_assignment(context: &RewriteContext,
@@ -2126,5 +2145,5 @@ fn rewrite_expr_addrof(context: &RewriteContext,
         ast::Mutability::Immutable => "&",
         ast::Mutability::Mutable => "&mut ",
     };
-    rewrite_unary_prefix(context, operator_str, expr, shape)
+    rewrite_unary_prefix(context, operator_str, expr, shape, expr.span)
 }
