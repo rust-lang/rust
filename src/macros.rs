@@ -196,15 +196,9 @@ pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext) -> Option<ast::
 
 fn macro_style(mac: &ast::Mac, context: &RewriteContext) -> MacroStyle {
     let snippet = context.snippet(mac.span);
-    let paren_pos = snippet
-        .find_uncommented("(")
-        .unwrap_or(usize::max_value());
-    let bracket_pos = snippet
-        .find_uncommented("[")
-        .unwrap_or(usize::max_value());
-    let brace_pos = snippet
-        .find_uncommented("{")
-        .unwrap_or(usize::max_value());
+    let paren_pos = snippet.find_uncommented("(").unwrap_or(usize::max_value());
+    let bracket_pos = snippet.find_uncommented("[").unwrap_or(usize::max_value());
+    let brace_pos = snippet.find_uncommented("{").unwrap_or(usize::max_value());
 
     if paren_pos < bracket_pos && paren_pos < brace_pos {
         MacroStyle::Parens

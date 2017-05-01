@@ -99,10 +99,7 @@ pub fn rewrite_comment(orig: &str,
         config: config,
     };
 
-    let line_breaks = orig.trim_right()
-        .chars()
-        .filter(|&c| c == '\n')
-        .count();
+    let line_breaks = orig.trim_right().chars().filter(|&c| c == '\n').count();
     let lines = orig.lines()
         .enumerate()
         .map(|(i, mut line)| {

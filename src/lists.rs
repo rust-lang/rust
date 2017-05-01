@@ -172,9 +172,7 @@ pub fn definitive_tactic<I, T>(items: I, tactic: ListTactic, width: usize) -> De
     let real_total = total_width + total_sep_len;
 
     if real_total <= limit && !pre_line_comments &&
-       !items
-            .into_iter()
-            .any(|item| item.as_ref().is_multiline()) {
+       !items.into_iter().any(|item| item.as_ref().is_multiline()) {
         DefinitiveListTactic::Horizontal
     } else {
         DefinitiveListTactic::Vertical
@@ -536,10 +534,7 @@ pub fn struct_lit_shape(shape: Shape,
         IndentStyle::Block => {
             let shape = shape.block_indent(context.config.tab_spaces);
             Shape {
-                width: try_opt!(context
-                                    .config
-                                    .max_width
-                                    .checked_sub(shape.indent.width())),
+                width: try_opt!(context.config.max_width.checked_sub(shape.indent.width())),
                 ..shape
             }
         }
@@ -556,12 +551,7 @@ pub fn struct_lit_tactic(h_shape: Option<Shape>,
     if let Some(h_shape) = h_shape {
         let mut prelim_tactic = match (context.config.struct_lit_style, items.len()) {
             (IndentStyle::Visual, 1) => ListTactic::HorizontalVertical,
-            _ => {
-                context
-                    .config
-                    .struct_lit_multiline_style
-                    .to_list_tactic()
-            }
+            _ => context.config.struct_lit_multiline_style.to_list_tactic(),
         };
 
         if prelim_tactic == ListTactic::HorizontalVertical && items.len() > 1 {

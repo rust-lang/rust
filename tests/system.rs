@@ -28,9 +28,7 @@ const DIFF_CONTEXT_SIZE: usize = 3;
 fn get_path_string(dir_entry: io::Result<fs::DirEntry>) -> String {
     let path = dir_entry.expect("Couldn't get DirEntry").path();
 
-    path.to_str()
-        .expect("Couldn't stringify path")
-        .to_owned()
+    path.to_str().expect("Couldn't stringify path").to_owned()
 }
 
 // Integration tests. The files in the tests/source are formatted and compared
@@ -337,8 +335,7 @@ fn handle_result(result: HashMap<String, String>,
         let mut f = fs::File::open(&target).expect("Couldn't open target");
 
         let mut text = String::new();
-        f.read_to_string(&mut text)
-            .expect("Failed reading target");
+        f.read_to_string(&mut text).expect("Failed reading target");
 
         if fmt_text != text {
             let diff = make_diff(&text, &fmt_text, DIFF_CONTEXT_SIZE);

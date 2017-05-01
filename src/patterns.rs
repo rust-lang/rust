@@ -102,10 +102,8 @@ impl Rewrite for Pat {
                 let suffix = suffix.iter().map(|p| p.rewrite(context, shape));
 
                 // Munge them together.
-                let pats: Option<Vec<String>> = prefix
-                    .chain(slice_pat.into_iter())
-                    .chain(suffix)
-                    .collect();
+                let pats: Option<Vec<String>> =
+                    prefix.chain(slice_pat.into_iter()).chain(suffix).collect();
 
                 // Check that all the rewrites succeeded, and if not return None.
                 let pats = try_opt!(pats);
@@ -244,9 +242,7 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
                      context: &RewriteContext,
                      shape: Shape)
                      -> Option<String> {
-    let mut pat_vec: Vec<_> = pats.into_iter()
-        .map(|x| TuplePatField::Pat(x))
-        .collect();
+    let mut pat_vec: Vec<_> = pats.into_iter().map(|x| TuplePatField::Pat(x)).collect();
 
     if let Some(pos) = dotdot_pos {
         let prev = if pos == 0 {

@@ -600,9 +600,7 @@ fn and_one_line(x: Option<String>) -> Option<String> {
 fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String> {
     debug!("nop_block_collapse {:?} {}", block_str, budget);
     block_str.map(|block_str| if block_str.starts_with('{') && budget >= 2 &&
-                                 (block_str[1..]
-                                      .find(|c: char| !c.is_whitespace())
-                                      .unwrap() ==
+                                 (block_str[1..].find(|c: char| !c.is_whitespace()).unwrap() ==
                                   block_str.len() - 2) {
                       "{}".to_owned()
                   } else {
@@ -933,16 +931,12 @@ impl<'a> Rewrite for ControlFlow<'a> {
 
         // for event in event
         let between_kwd_cond =
-            mk_sp(context
-                      .codemap
-                      .span_after(self.span, self.keyword.trim()),
+            mk_sp(context.codemap.span_after(self.span, self.keyword.trim()),
                   self.pat
                       .map_or(cond_span.lo, |p| if self.matcher.is_empty() {
                 p.span.lo
             } else {
-                context
-                    .codemap
-                    .span_before(self.span, self.matcher.trim())
+                context.codemap.span_before(self.span, self.matcher.trim())
             }));
 
         let between_kwd_cond_comment = extract_comment(between_kwd_cond, context, shape);
@@ -1137,10 +1131,7 @@ fn rewrite_match_arm_comment(context: &RewriteContext,
     let first = missed_str
         .find(|c: char| !c.is_whitespace())
         .unwrap_or(missed_str.len());
-    if missed_str[..first]
-           .chars()
-           .filter(|c| c == &'\n')
-           .count() >= 2 {
+    if missed_str[..first].chars().filter(|c| c == &'\n').count() >= 2 {
         // Excessive vertical whitespace before comment should be preserved
         // FIXME handle vertical whitespace better
         result.push('\n');

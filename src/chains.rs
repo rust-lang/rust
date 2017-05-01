@@ -169,7 +169,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let almost_total = rewrites[..rewrites.len() - 1]
         .iter()
         .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
-    let one_line_len = rewrites.iter().fold(0, |a, r| a + r.len() + 1) + parent_rewrite.len();
+    let one_line_len = rewrites.iter().fold(0, |a, r| a + r.len()) + parent_rewrite.len();
 
     let veto_single_line = if one_line_len > context.config.chain_one_line_max - 1 &&
                               rewrites.len() > 1 {
@@ -424,10 +424,8 @@ fn rewrite_method_call(method_name: ast::Ident,
     let (lo, type_str) = if types.is_empty() {
         (args[0].span.hi, String::new())
     } else {
-        let type_list: Vec<_> = try_opt!(types
-                                             .iter()
-                                             .map(|ty| ty.rewrite(context, shape))
-                                             .collect());
+        let type_list: Vec<_> =
+            try_opt!(types.iter().map(|ty| ty.rewrite(context, shape)).collect());
 
         let type_str = if context.config.spaces_within_angle_brackets && type_list.len() > 0 {
             format!("::< {} >", type_list.join(", "))
