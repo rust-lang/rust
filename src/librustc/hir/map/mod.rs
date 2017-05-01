@@ -572,18 +572,6 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Check if the node is a non-closure function item
-    pub fn is_fn(&self, id: NodeId) -> bool {
-        let entry = if let Some(id) = self.find_entry(id) { id } else { return false };
-
-        match entry {
-            EntryItem(_, &Item { node: ItemFn(..), .. }) |
-            EntryTraitItem(_, &TraitItem { node: TraitItemKind::Method(..), .. }) |
-            EntryImplItem(_, &ImplItem { node: ImplItemKind::Method(..), .. }) => true,
-            _ => false,
-        }
-    }
-
     /// If there is some error when walking the parents (e.g., a node does not
     /// have a parent in the map or a node can't be found), then we return the
     /// last good node id we found. Note that reaching the crate root (id == 0),
