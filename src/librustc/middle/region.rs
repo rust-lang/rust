@@ -1188,19 +1188,16 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 fn region_maps<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_id: DefId)
     -> Rc<RegionMaps<'tcx>>
 {
-    let fn_node_id = tcx.hir.as_local_node_id(fn_id)
-                            .expect("fn DefId should be for LOCAL_CRATE");
-    let node = tcx.hir.get(fn_node_id);
-    match node {
-        hir_map::NodeItem(_) | hir_map::NodeTraitItem(_) | hir_map::NodeImplItem(_) => { }
-        _ => {
-            let parent_id = tcx.hir.get_parent(fn_node_id);
-            let parent_def_id = tcx.hir.local_def_id(parent_id);
-            return tcx.region_maps(parent_def_id);
-        }
+    let closure_base_def_id = tcx.closure_base_def_id(fn_id);
+    if closure_base_def_id != fn_id {
+        return tcx.region_maps(closure_base_def_id);
     }
 
     let mut maps = RegionMaps::new();
+
+    let fn_node_id = tcx.hir.as_local_node_id(fn_id)
+                            .expect("fn DefId should be for LOCAL_CRATE");
+    let node = tcx.hir.get(fn_node_id);
 
     {
         let mut visitor = RegionResolutionVisitor {
