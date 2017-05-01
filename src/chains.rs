@@ -200,12 +200,18 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         if fits_single_line {
             fits_single_line = match expr.node {
                 ref e @ ast::ExprKind::MethodCall(..) => {
-                    rewrite_method_call_with_overflow(e,
-                                                      &mut last[0],
-                                                      almost_total,
-                                                      total_span,
-                                                      context,
-                                                      shape)
+                    if rewrite_method_call_with_overflow(e,
+                                                         &mut last[0],
+                                                         almost_total,
+                                                         total_span,
+                                                         context,
+                                                         shape) {
+                        // If the first line of the last method does not fit into a single line
+                        // after the others, allow new lines.
+                        almost_total + first_line_width(&last[0]) < context.config.max_width
+                    } else {
+                        false
+                    }
                 }
                 _ => !last[0].contains('\n'),
             }

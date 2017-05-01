@@ -194,9 +194,8 @@ impl JsonSpan {
     // To allow `collect()`ing into a `MultiMap`.
     fn into_tuple(self) -> Result<(String, Range), String> {
         let (lo, hi) = self.range;
-        let canonical = try!(canonicalize_path_string(&self.file).map_err(|_| {
-            format!("Can't canonicalize {}", &self.file)
-        }));
+        let canonical = try!(canonicalize_path_string(&self.file)
+                                 .map_err(|_| format!("Can't canonicalize {}", &self.file)));
         Ok((canonical, Range::new(lo, hi)))
     }
 }
