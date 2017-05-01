@@ -1373,16 +1373,19 @@ impl<T> [T] {
     /// a.rotate(k);
     /// assert_eq!(&a, &[1, 2, 3, 4, 5, 6, 7]);
     ///
-    /// fn extend_at<T, I>(v: &mut Vec<T>, index: usize, iter: I)
-    ///     where I: Iterator<Item=T>
-    /// {
-    ///     let mid = v.len() - index;
-    ///     v.extend(iter);
-    ///     v[index..].rotate(mid);
+    /// use std::ops::Range;
+    /// fn slide<T>(slice: &mut [T], range: Range<usize>, to: usize) {
+    ///     if to < range.start {
+    ///         slice[to..range.end].rotate(range.start-to);
+    ///     } else if to > range.end {
+    ///         slice[range.start..to].rotate(range.end-range.start);
+    ///     }
     /// }
-    /// let mut v = (0..10).collect();
-    /// extend_at(&mut v, 7, 100..104);
-    /// assert_eq!(&v, &[0, 1, 2, 3, 4, 5, 6, 100, 101, 102, 103, 7, 8, 9]);
+    /// let mut v: Vec<_> = (0..10).collect();
+    /// slide(&mut v, 1..4, 7);
+    /// assert_eq!(&v, &[0, 4, 5, 6, 1, 2, 3, 7, 8, 9]);
+    /// slide(&mut v, 6..8, 1);
+    /// assert_eq!(&v, &[0, 3, 7, 4, 5, 6, 1, 2, 8, 9]);
     /// ```
     #[unstable(feature = "slice_rotate", issue = "123456789")]
     pub fn rotate(&mut self, mid: usize) -> usize {
