@@ -259,21 +259,29 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
 
             let mut error_summary = Summary::new();
             for file in files {
-                // Check the file directory if the config-path could not be read or not provided
-                if path.is_none() {
-                    let (config_tmp, path_tmp) = resolve_config(file.parent().unwrap())?;
-                    if options.verbose {
-                        if let Some(path) = path_tmp.as_ref() {
-                            println!("Using rustfmt config file {} for {}",
-                                     path.display(),
-                                     file.display());
+                if !file.exists() {
+                    println!("Error: file `{}` does not exist", file.to_str().unwrap());
+                    error_summary.add_operational_error();
+                } else if file.is_dir() {
+                    println!("Error: `{}` is a directory", file.to_str().unwrap());
+                    error_summary.add_operational_error();
+                } else {
+                    // Check the file directory if the config-path could not be read or not provided
+                    if path.is_none() {
+                        let (config_tmp, path_tmp) = resolve_config(file.parent().unwrap())?;
+                        if options.verbose {
+                            if let Some(path) = path_tmp.as_ref() {
+                                println!("Using rustfmt config file {} for {}",
+                                         path.display(),
+                                         file.display());
+                            }
                         }
+                        config = config_tmp;
                     }
-                    config = config_tmp;
-                }
 
-                options.clone().apply_to(&mut config);
-                error_summary.add(run(Input::File(file), &config));
+                    options.clone().apply_to(&mut config);
+                    error_summary.add(run(Input::File(file), &config));
+                }
             }
             Ok(error_summary)
         }
