@@ -70,15 +70,11 @@ fn mir_pass<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let mir = pass.run_pass(&mir_ctxt);
 
-    let key = &(suite, pass_num, def_id);
     for hook in passes.hooks() {
-        for (&(_, _, k), v) in mir.iter(key) {
-            let v = &v.borrow();
-            hook.on_mir_pass(&mir_ctxt, Some((k, v)));
-        }
+        hook.on_mir_pass(&mir_ctxt, Some((def_id, &mir)));
     }
 
-    mir
+    Multi::from(tcx.alloc_steal_mir(mir))
 }
 
 struct MirCtxtImpl<'a, 'tcx: 'a> {

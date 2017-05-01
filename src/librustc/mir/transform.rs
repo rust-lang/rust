@@ -15,8 +15,6 @@ use hir::def_id::DefId;
 use hir::map::DefPathData;
 use mir::{Mir, Promoted};
 use ty::TyCtxt;
-use ty::maps::Multi;
-use ty::steal::Steal;
 use std::cell::Ref;
 use std::rc::Rc;
 use syntax::ast::NodeId;
@@ -135,19 +133,6 @@ pub trait PassHook {
 /// application of a pass to a def-id.
 pub type PassId = (MirSuite, MirPassIndex, DefId);
 
-/// The most generic sort of MIR pass. You only want to implement this
-/// rather general trait if you are doing an interprocedural pass that
-/// may inspect and affect the MIR of many def-ids. Otherwise, prefer
-/// the more steamlined `DefIdPass` or `MirPass`.
-pub trait Pass {
-    fn name<'a>(&'a self) -> Cow<'a, str> {
-        default_name::<Self>()
-    }
-
-    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>)
-                              -> Multi<PassId, &'tcx Steal<Mir<'tcx>>>;
-}
-
 /// A streamlined trait that you can implement to create an
 /// intraprocedural pass; the pass will be invoked to process the MIR
 /// with the given `def_id`.  This lets you do things before we fetch
@@ -158,17 +143,6 @@ pub trait DefIdPass {
     }
 
     fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> Mir<'tcx>;
-}
-
-impl<T: DefIdPass> Pass for T {
-    fn name<'a>(&'a self) -> Cow<'a, str> {
-        DefIdPass::name(self)
-    }
-
-    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>)
-                              -> Multi<PassId, &'tcx Steal<Mir<'tcx>>> {
-        Multi::from(mir_cx.tcx().alloc_steal_mir(DefIdPass::run_pass(self, mir_cx)))
-    }
 }
 
 /// A streamlined trait that you can implement to create a pass; the
@@ -210,7 +184,7 @@ impl<T: MirPass> DefIdPass for T {
 #[derive(Clone)]
 pub struct Passes {
     pass_hooks: Vec<Rc<PassHook>>,
-    suites: Vec<Vec<Rc<Pass>>>,
+    suites: Vec<Vec<Rc<DefIdPass>>>,
 }
 
 /// The number of "pass suites" that we have:
@@ -238,7 +212,7 @@ impl<'a, 'tcx> Passes {
     }
 
     /// Pushes a built-in pass.
-    pub fn push_pass<T: Pass + 'static>(&mut self, suite: MirSuite, pass: T) {
+    pub fn push_pass<T: DefIdPass + 'static>(&mut self, suite: MirSuite, pass: T) {
         self.suites[suite.0].push(Rc::new(pass));
     }
 
@@ -251,7 +225,7 @@ impl<'a, 'tcx> Passes {
         self.suites[suite.0].len()
     }
 
-    pub fn pass(&self, suite: MirSuite, pass: MirPassIndex) -> &Pass {
+    pub fn pass(&self, suite: MirSuite, pass: MirPassIndex) -> &DefIdPass {
         &*self.suites[suite.0][pass.0]
     }
 
