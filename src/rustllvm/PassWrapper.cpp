@@ -246,6 +246,47 @@ static CodeGenOpt::Level fromRust(LLVMRustCodeGenOptLevel Level) {
   }
 }
 
+enum class LLVMRustRelocMode {
+  Default,
+  Static,
+  PIC,
+  DynamicNoPic,
+  ROPI,
+  RWPI,
+  ROPIRWPI,
+};
+
+#if LLVM_VERSION_LE(3, 8)
+static Reloc::Model fromRust(LLVMRustRelocMode RustReloc) {
+#else
+static Optional<Reloc::Model> fromRust(LLVMRustRelocMode RustReloc) {
+#endif
+  switch (RustReloc) {
+  case LLVMRustRelocMode::Default:
+#if LLVM_VERSION_LE(3, 8)
+    return Reloc::Default;
+#else
+    return None;
+#endif
+  case LLVMRustRelocMode::Static:
+    return Reloc::Static;
+  case LLVMRustRelocMode::PIC:
+    return Reloc::PIC_;
+  case LLVMRustRelocMode::DynamicNoPic:
+    return Reloc::DynamicNoPIC;
+#if LLVM_VERSION_GE(4, 0)
+  case LLVMRustRelocMode::ROPI:
+    return Reloc::ROPI;
+  case LLVMRustRelocMode::RWPI:
+    return Reloc::RWPI;
+  case LLVMRustRelocMode::ROPIRWPI:
+    return Reloc::ROPI_RWPI;
+#endif
+  default:
+    llvm_unreachable("Bad RelocModel.");
+  }
+}
+
 #if LLVM_RUSTLLVM
 /// getLongestEntryLength - Return the length of the longest entry in the table.
 ///
@@ -297,35 +338,14 @@ extern "C" void LLVMRustPrintTargetFeatures(LLVMTargetMachineRef) {
 
 extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     const char *TripleStr, const char *CPU, const char *Feature,
-    LLVMRustCodeModel RustCM, LLVMRelocMode Reloc,
+    LLVMRustCodeModel RustCM, LLVMRustRelocMode RustReloc,
     LLVMRustCodeGenOptLevel RustOptLevel, bool UseSoftFloat,
     bool PositionIndependentExecutable, bool FunctionSections,
     bool DataSections) {
 
-#if LLVM_VERSION_LE(3, 8)
-  Reloc::Model RM;
-#else
-  Optional<Reloc::Model> RM;
-#endif
   auto CM = fromRust(RustCM);
   auto OptLevel = fromRust(RustOptLevel);
-
-  switch (Reloc) {
-  case LLVMRelocStatic:
-    RM = Reloc::Static;
-    break;
-  case LLVMRelocPIC:
-    RM = Reloc::PIC_;
-    break;
-  case LLVMRelocDynamicNoPic:
-    RM = Reloc::DynamicNoPIC;
-    break;
-  default:
-#if LLVM_VERSION_LE(3, 8)
-    RM = Reloc::Default;
-#endif
-    break;
-  }
+  auto RM = fromRust(RustReloc);
 
   std::string Error;
   Triple Trip(Triple::normalize(TripleStr));
