@@ -360,8 +360,6 @@ create_config! {
     // Should we at least try to put the where clause on the same line as the rest of the
     // function decl?
     where_density: Density, Density::CompressedIfEmpty, "Density of a where clause";
-    // Visual will be treated like Tabbed
-    where_indent: IndentStyle, IndentStyle::Block, "Indentation of a where clause";
     where_layout: ListTactic, ListTactic::Vertical, "Element layout inside a where clause";
     where_pred_indent: IndentStyle, IndentStyle::Visual,
         "Indentation style of a where predicate";

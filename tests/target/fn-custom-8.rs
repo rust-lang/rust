@@ -1,5 +1,4 @@
 // rustfmt-fn_args_layout: Block
-// rustfmt-where_indent: Block
 // rustfmt-fn_brace_style: PreferSameLine
 // Test different indents.
 

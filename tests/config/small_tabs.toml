@@ -8,7 +8,6 @@ fn_args_paren_newline = true
 fn_args_density = "Tall"
 fn_args_layout = "Visual"
 where_density = "Tall"
-where_indent = "Block"
 where_layout = "Vertical"
 where_pred_indent = "Visual"
 generics_indent = "Visual"
