@@ -1356,7 +1356,9 @@ impl Rewrite for ast::Arm {
             };
 
             match rewrite {
-                Some(ref body_str) if !body_str.contains('\n') || !context.config.wrap_match_arms ||
+                Some(ref body_str) if (!body_str.contains('\n') &&
+                                       body_str.len() <= arm_shape.width) ||
+                                      !context.config.wrap_match_arms ||
                                       is_block => {
                     let block_sep = match context.config.control_brace_style {
                         ControlBraceStyle::AlwaysNextLine if is_block => alt_block_sep.as_str(),

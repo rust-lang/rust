@@ -373,3 +373,10 @@ fn issue1456() {
         },
     })
 }
+
+fn issue1460() {
+    let _ = match foo {
+        REORDER_BUFFER_CHANGE_INTERNAL_SPEC_INSERT => "internal_spec_insert_internal_spec_insert_internal_spec_insert",
+        _ => "reorder_something",
+    };
+}
