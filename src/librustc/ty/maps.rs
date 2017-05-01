@@ -404,18 +404,6 @@ impl<'tcx> QueryDescription for queries::is_item_mir_available<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription for queries::mir_suite<'tcx> {
-    fn describe(_: TyCtxt, (suite, _): (MirSuite, DefId)) -> String {
-        format!("MIR suite #{}.*", suite.0)
-    }
-}
-
-impl<'tcx> QueryDescription for queries::mir_pass<'tcx> {
-    fn describe(_: TyCtxt, (suite, pass_num, _): (MirSuite, MirPassIndex, DefId)) -> String {
-        format!("MIR pass #{}.{}", suite.0, pass_num.0)
-    }
-}
-
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -798,27 +786,13 @@ define_maps! { <'tcx>
     /// the value isn't known except to the pass itself.
     [] mir_const_qualif: Mir(DefId) -> u8,
 
-    /// Performs the initial MIR construction. You almost certainly do not
-    /// want to use this query, because its output is intended to be stolen
-    /// immediately by the MIR passes below. Consider `optimized_mir` instead.
+    /// Fetch the MIR for a given def-id up till the point where it is
+    /// ready for const evaluation.
     ///
     /// See the README for the `mir` module for details.
-    [] mir_build: Mir(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
+    [] mir_const: Mir(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
 
-    /// Fetch the MIR for a given def-id after the given set of passes has ben
-    /// applied to it. This is mostly an "intermediate" query. Normally, you would
-    /// prefer to use `optimized_mir(def_id)`, which will fetch the MIR after all
-    /// optimizations and so forth.
-    ///
-    /// See the README for the `mir` module for details.
-    [] mir_suite: mir_suite((MirSuite, DefId)) -> &'tcx Steal<mir::Mir<'tcx>>,
-
-    /// Fetch the MIR for a given def-id after a given pass has been executed. This is
-    /// **only** intended to be used by the `mir_suite` provider -- if you are using it
-    /// manually, you're doing it wrong.
-    ///
-    /// See the README for the `mir` module for details.
-    [] mir_pass: mir_pass((MirSuite, MirPassIndex, DefId)) -> &'tcx Steal<mir::Mir<'tcx>>,
+    [] mir_validated: Mir(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
 
     /// MIR after our optimization passes have run. This is MIR that is ready
     /// for trans. This is also the only query that can fetch non-local MIR, at present.
@@ -920,12 +894,4 @@ fn const_eval_dep_node((def_id, _): (DefId, &Substs)) -> DepNode<DefId> {
 
 fn mir_keys(_: CrateNum) -> DepNode<DefId> {
     DepNode::MirKeys
-}
-
-fn mir_suite((_suite, def_id): (MirSuite, DefId)) -> DepNode<DefId> {
-    DepNode::Mir(def_id)
-}
-
-fn mir_pass((_suite, _pass_num, def_id): (MirSuite, MirPassIndex, DefId)) -> DepNode<DefId> {
-    DepNode::Mir(def_id)
 }

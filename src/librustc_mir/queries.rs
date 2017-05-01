@@ -16,27 +16,34 @@
 //! - `#[rustc_mir(graphviz="file.gv")]`
 //! - `#[rustc_mir(pretty="file.mir")]`
 
-use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
-
-use rustc::ty::TyCtxt;
+use build;
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc::mir::Mir;
+use rustc::mir::transform::{MirSource, MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED};
+use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
+use rustc::ty::steal::Steal;
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::util::nodemap::DefIdSet;
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{DUMMY_SP, Span};
+use transform;
 
 use std::rc::Rc;
 
 pub fn provide(providers: &mut Providers) {
-    use build::mir_build;
     *providers = Providers {
-        mir_build,
         mir_keys,
+        mir_const,
+        mir_validated,
+        optimized_mir,
         ..*providers
     };
 }
 
+/// Finds the full set of def-ids within the current crate that have
+/// MIR associated with them.
 fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
                       -> Rc<DefIdSet> {
     assert_eq!(krate, LOCAL_CRATE);
@@ -74,4 +81,32 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
     }.as_deep_visitor());
 
     Rc::new(set)
+}
+
+fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
+    let mut mir = build::mir_build(tcx, def_id);
+    let source = MirSource::from_local_def_id(tcx, def_id);
+    transform::run_suite(tcx, source, MIR_CONST, &mut mir);
+    tcx.alloc_steal_mir(mir)
+}
+
+fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
+    let source = MirSource::from_local_def_id(tcx, def_id);
+    if let MirSource::Const(_) = source {
+        // Ensure that we compute the `mir_const_qualif` for constants at
+        // this point, before we steal the mir-const result. We don't
+        // directly need the result or `mir_const_qualif`, so we can just force it.
+        ty::queries::mir_const_qualif::force(tcx, DUMMY_SP, def_id);
+    }
+
+    let mut mir = tcx.mir_const(def_id).steal();
+    transform::run_suite(tcx, source, MIR_VALIDATED, &mut mir);
+    tcx.alloc_steal_mir(mir)
+}
+
+fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Mir<'tcx> {
+    let mut mir = tcx.mir_validated(def_id).steal();
+    let source = MirSource::from_local_def_id(tcx, def_id);
+    transform::run_suite(tcx, source, MIR_OPTIMIZED, &mut mir);
+    tcx.alloc_mir(mir)
 }
