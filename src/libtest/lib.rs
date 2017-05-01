@@ -304,13 +304,14 @@ pub fn test_main_static(tests: &[TestDescAndFn]) {
     test_main(&args, owned_tests)
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum ColorConfig {
     AutoColor,
     AlwaysColor,
     NeverColor,
 }
 
+#[derive(Debug)]
 pub struct TestOpts {
     pub list: bool,
     pub filter: Option<String>,
@@ -324,6 +325,7 @@ pub struct TestOpts {
     pub quiet: bool,
     pub test_threads: Option<usize>,
     pub skip: Vec<String>,
+    pub display_stdout: bool,
 }
 
 impl TestOpts {
@@ -342,6 +344,7 @@ impl TestOpts {
             quiet: false,
             test_threads: None,
             skip: vec![],
+            display_stdout: false,
         }
     }
 }
@@ -369,7 +372,8 @@ fn optgroups() -> Vec<getopts::OptGroup> {
       getopts::optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
             always = always colorize output;
-            never  = never colorize output;", "auto|always|never")]
+            never  = never colorize output;", "auto|always|never"),
+      getopts::optflag("", "display-stdout", "to print stdout even if the test succeeds")]
 }
 
 fn usage(binary: &str) {
@@ -481,6 +485,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         quiet: quiet,
         test_threads: test_threads,
         skip: matches.opt_strs("skip"),
+        display_stdout: matches.opt_present("display-stdout"),
     };
 
     Some(Ok(test_opts))
@@ -521,7 +526,9 @@ struct ConsoleTestState<T> {
     measured: usize,
     metrics: MetricMap,
     failures: Vec<(TestDesc, Vec<u8>)>,
+    not_failures: Vec<(TestDesc, Vec<u8>)>,
     max_name_len: usize, // number of columns to fill when aligning names
+    display_stdout: bool,
 }
 
 impl<T: Write> ConsoleTestState<T> {
@@ -547,7 +554,9 @@ impl<T: Write> ConsoleTestState<T> {
             measured: 0,
             metrics: MetricMap::new(),
             failures: Vec::new(),
+            not_failures: Vec::new(),
             max_name_len: 0,
+            display_stdout: opts.display_stdout,
         })
     }
 
@@ -703,9 +712,38 @@ impl<T: Write> ConsoleTestState<T> {
         Ok(())
     }
 
+    pub fn write_outputs(&mut self) -> io::Result<()> {
+        self.write_plain("\nsuccesses:\n")?;
+        let mut successes = Vec::new();
+        let mut stdouts = String::new();
+        for &(ref f, ref stdout) in &self.not_failures {
+            successes.push(f.name.to_string());
+            if !stdout.is_empty() {
+                stdouts.push_str(&format!("---- {} stdout ----\n\t", f.name));
+                let output = String::from_utf8_lossy(stdout);
+                stdouts.push_str(&output);
+                stdouts.push_str("\n");
+            }
+        }
+        if !stdouts.is_empty() {
+            self.write_plain("\n")?;
+            self.write_plain(&stdouts)?;
+        }
+
+        self.write_plain("\nsuccesses:\n")?;
+        successes.sort();
+        for name in &successes {
+            self.write_plain(&format!("    {}\n", name))?;
+        }
+        Ok(())
+    }
+
     pub fn write_run_finish(&mut self) -> io::Result<bool> {
         assert!(self.passed + self.failed + self.ignored + self.measured == self.total);
 
+        if self.display_stdout {
+            self.write_outputs()?;
+        }
         let success = self.failed == 0;
         if !success {
             self.write_failures()?;
@@ -824,7 +862,10 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
                 st.write_log_result(&test, &result)?;
                 st.write_result(&result)?;
                 match result {
-                    TrOk => st.passed += 1,
+                    TrOk => {
+                        st.passed += 1;
+                        st.not_failures.push((test, stdout));
+                    }
                     TrIgnored => st.ignored += 1,
                     TrMetrics(mm) => {
                         let tname = test.name;
@@ -901,6 +942,8 @@ fn should_sort_failures_before_printing_them() {
         max_name_len: 10,
         metrics: MetricMap::new(),
         failures: vec![(test_b, Vec::new()), (test_a, Vec::new())],
+        display_stdout: false,
+        not_failures: Vec::new(),
     };
 
     st.write_failures().unwrap();
