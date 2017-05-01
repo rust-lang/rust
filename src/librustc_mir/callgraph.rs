@@ -30,7 +30,7 @@ pub struct CallGraph {
 }
 
 impl CallGraph {
-    pub fn build<'a, 'mir, 'tcx>(cx: &mut InterproceduralCx<'a, 'mir, 'tcx>) -> CallGraph {
+    pub fn build<'a, 'tcx>(cx: &mut InterproceduralCx<'a, 'tcx>) -> CallGraph {
         let mut callgraph = CallGraph {
             node_map: DefIdMap(),
             graph: graph::Graph::new()
