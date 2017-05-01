@@ -371,7 +371,7 @@ fn check_and_warn<'a>(ctx: &EarlyContext, expr: &'a ast::Expr) {
 ///
 /// ```
 ///     {
-///         let x = 5;"
+///         let x = 5;
 /// ```
 ///
 /// NOTE: when there is no closing brace in `s`, `s` is _not_ preserved, i.e.,
@@ -405,7 +405,6 @@ pub fn erode_from_back(s: &str) -> String {
 ///             something();
 ///             inside_a_block();
 ///         }
-///     
 /// ```
 ///
 pub fn erode_from_front(s: &str) -> String {
