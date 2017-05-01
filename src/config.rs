@@ -357,8 +357,10 @@ create_config! {
     type_punctuation_density: TypeDensity, TypeDensity::Wide,
         "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";
     where_style: Style, Style::Default, "Overall strategy for where clauses";
-    // Should we at least try to put the where clause on the same line as the rest of the
+    // TODO:
+    // 1. Should we at least try to put the where clause on the same line as the rest of the
     // function decl?
+    // 2. Currently options `Tall` and `Vertical` produce the same output.
     where_density: Density, Density::CompressedIfEmpty, "Density of a where clause";
     where_layout: ListTactic, ListTactic::Vertical, "Element layout inside a where clause";
     where_pred_indent: IndentStyle, IndentStyle::Visual,
