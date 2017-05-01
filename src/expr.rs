@@ -2091,13 +2091,15 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
             let new_offset = shape.indent.block_indent(context.config);
             let max_width = try_opt!((shape.width + shape.indent.width())
                                          .checked_sub(new_offset.width()));
-            let new_rhs = ex.rewrite(context, Shape::legacy(max_width, new_offset));
+            let new_shape = Shape::legacy(max_width, new_offset);
+            let new_rhs = ex.rewrite(context, new_shape);
 
             // FIXME: DRY!
             match (rhs, new_rhs) {
                 (Some(ref orig_rhs), Some(ref replacement_rhs))
-                    if count_line_breaks(orig_rhs) >
-                       count_line_breaks(replacement_rhs) + 1 => {
+                    if count_line_breaks(orig_rhs) > count_line_breaks(replacement_rhs) + 1 ||
+                       (orig_rhs.rewrite(context, shape).is_none() &&
+                        replacement_rhs.rewrite(context, new_shape).is_some()) => {
                     result.push_str(&format!("\n{}", new_offset.to_string(context.config)));
                     result.push_str(replacement_rhs);
                 }
