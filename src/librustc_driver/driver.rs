@@ -913,7 +913,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     // What we need to run borrowck etc.
     passes.push_pass(MIR_VALIDATED, mir::transform::qualify_consts::QualifyAndPromoteConstants);
-    passes.push_pass(MIR_VALIDATED, mir::transform::simplify_branches::SimplifyBranches::new("initial"));
+    passes.push_pass(MIR_VALIDATED,
+                     mir::transform::simplify_branches::SimplifyBranches::new("initial"));
     passes.push_pass(MIR_VALIDATED, mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
 
     // Optimizations begin.
