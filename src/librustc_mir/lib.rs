@@ -46,8 +46,7 @@ extern crate rustc_const_eval;
 
 pub mod diagnostics;
 
-pub mod build;
-pub mod callgraph;
+mod build;
 mod hair;
 mod shim;
 mod queries;
