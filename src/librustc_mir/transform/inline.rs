@@ -18,7 +18,7 @@ use rustc_data_structures::graph;
 
 use rustc::dep_graph::DepNode;
 use rustc::mir::*;
-use rustc::mir::transform::{MirCtxt, MirSource, Pass, PassId};
+use rustc::mir::transform::{MirCtxt, MirSource, PassId};
 use rustc::mir::visit::*;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -44,6 +44,11 @@ const CALL_PENALTY: usize = 25;
 const UNKNOWN_SIZE_COST: usize = 10;
 
 pub struct Inline;
+
+pub trait Pass {
+    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>)
+                              -> Multi<PassId, &'tcx Steal<Mir<'tcx>>>;
+}
 
 impl Pass for Inline {
     fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>)
