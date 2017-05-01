@@ -10,11 +10,11 @@
 
 use rustc::hir::def_id::DefId;
 use rustc::mir::Mir;
-use rustc::mir::transform::{MirCtxt, MirPassIndex, MirSuite, MirSource, MIR_OPTIMIZED, PassId};
+use rustc::mir::transform::{MirPassIndex, MirSuite, MirSource, MIR_VALIDATED, MIR_OPTIMIZED};
+use rustc::ty::{self, TyCtxt};
 use rustc::ty::steal::Steal;
-use rustc::ty::TyCtxt;
-use rustc::ty::maps::{Multi, Providers};
-use std::cell::Ref;
+use rustc::ty::maps::Providers;
+use syntax_pos::DUMMY_SP;
 
 pub mod simplify_branches;
 pub mod simplify;
@@ -51,6 +51,20 @@ fn mir_suite<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        -> &'tcx Steal<Mir<'tcx>>
 {
     let passes = &tcx.mir_passes;
+
+    if suite == MIR_VALIDATED {
+        let id = tcx.hir.as_local_node_id(def_id).expect("mir source requires local def-id");
+        let source = MirSource::from_node(tcx, id);
+        if let MirSource::Const(_) = source {
+            // Ensure that we compute the `mir_const_qualif` for
+            // constants at this point, before we do any further
+            // optimization (and before we steal the previous
+            // MIR). We don't directly need the result, so we can
+            // just force it.
+            ty::queries::mir_const_qualif::force(tcx, DUMMY_SP, def_id);
+        }
+    }
+
     let len = passes.len_passes(suite);
     assert!(len > 0, "no passes in {:?}", suite);
     tcx.mir_pass((suite, MirPassIndex(len - 1), def_id))
@@ -58,82 +72,36 @@ fn mir_suite<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn mir_pass<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       (suite, pass_num, def_id): (MirSuite, MirPassIndex, DefId))
-                      -> Multi<PassId, &'tcx Steal<Mir<'tcx>>>
+                      -> &'tcx Steal<Mir<'tcx>>
 {
     let passes = &tcx.mir_passes;
     let pass = passes.pass(suite, pass_num);
-    let mir_ctxt = MirCtxtImpl { tcx, pass_num, suite, def_id };
 
-    for hook in passes.hooks() {
-        hook.on_mir_pass(&mir_ctxt, None);
-    }
+    let id = tcx.hir.as_local_node_id(def_id).expect("mir source requires local def-id");
+    let source = MirSource::from_node(tcx, id);
 
-    let mir = pass.run_pass(&mir_ctxt);
-
-    for hook in passes.hooks() {
-        hook.on_mir_pass(&mir_ctxt, Some((def_id, &mir)));
-    }
-
-    Multi::from(tcx.alloc_steal_mir(mir))
-}
-
-struct MirCtxtImpl<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pass_num: MirPassIndex,
-    suite: MirSuite,
-    def_id: DefId
-}
-
-impl<'a, 'tcx> MirCtxt<'a, 'tcx> for MirCtxtImpl<'a, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
-        self.tcx
-    }
-
-    fn suite(&self) -> MirSuite {
-        self.suite
-    }
-
-    fn pass_num(&self) -> MirPassIndex {
-        self.pass_num
-    }
-
-    fn def_id(&self) -> DefId {
-        self.def_id
-    }
-
-    fn source(&self) -> MirSource {
-        let id = self.tcx.hir.as_local_node_id(self.def_id)
-                             .expect("mir source requires local def-id");
-        MirSource::from_node(self.tcx, id)
-    }
-
-    fn read_previous_mir(&self) -> Ref<'tcx, Mir<'tcx>> {
-        self.previous_mir(self.def_id).borrow()
-    }
-
-    fn steal_previous_mir(&self) -> Mir<'tcx> {
-        self.previous_mir(self.def_id).steal()
-    }
-
-    fn read_previous_mir_of(&self, def_id: DefId) -> Ref<'tcx, Mir<'tcx>> {
-        self.previous_mir(def_id).borrow()
-    }
-
-    fn steal_previous_mir_of(&self, def_id: DefId) -> Mir<'tcx> {
-        self.previous_mir(def_id).steal()
-    }
-}
-
-impl<'a, 'tcx> MirCtxtImpl<'a, 'tcx> {
-    fn previous_mir(&self, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
-        let MirSuite(suite) = self.suite;
-        let MirPassIndex(pass_num) = self.pass_num;
+    let mut mir = {
+        let MirSuite(suite) = suite;
+        let MirPassIndex(pass_num) = pass_num;
         if pass_num > 0 {
-            self.tcx.mir_pass((MirSuite(suite), MirPassIndex(pass_num - 1), def_id))
+            tcx.mir_pass((MirSuite(suite), MirPassIndex(pass_num - 1), def_id)).steal()
         } else if suite > 0 {
-            self.tcx.mir_suite((MirSuite(suite - 1), def_id))
+            tcx.mir_suite((MirSuite(suite - 1), def_id)).steal()
         } else {
-            self.tcx.mir_build(def_id)
+            tcx.mir_build(def_id).steal()
         }
+    };
+
+    for hook in passes.hooks() {
+        hook.on_mir_pass(tcx, suite, pass_num, &pass.name(), source, &mir, false);
     }
+
+    pass.run_pass(tcx, source, &mut mir);
+
+    for hook in passes.hooks() {
+        hook.on_mir_pass(tcx, suite, pass_num, &pass.name(), source, &mir, true);
+    }
+
+    tcx.alloc_steal_mir(mir)
 }
+

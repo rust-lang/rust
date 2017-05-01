@@ -818,7 +818,7 @@ define_maps! { <'tcx>
     /// manually, you're doing it wrong.
     ///
     /// See the README for the `mir` module for details.
-    [multi] mir_pass: mir_pass((MirSuite, MirPassIndex, DefId)) -> &'tcx Steal<mir::Mir<'tcx>>,
+    [] mir_pass: mir_pass((MirSuite, MirPassIndex, DefId)) -> &'tcx Steal<mir::Mir<'tcx>>,
 
     /// MIR after our optimization passes have run. This is MIR that is ready
     /// for trans. This is also the only query that can fetch non-local MIR, at present.

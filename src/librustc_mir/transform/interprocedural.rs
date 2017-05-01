@@ -10,7 +10,7 @@
 
 use rustc::hir::def_id::DefId;
 use rustc::mir::Mir;
-use rustc::mir::transform::{MirCtxt, PassId};
+use rustc::mir::transform::{PassId};
 use rustc::ty::steal::Steal;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
@@ -21,31 +21,21 @@ use rustc_data_structures::fx::FxHashMap;
 /// stolen and so forth. It is more of a placeholder meant to get
 /// inlining up and going again, and is probably going to need heavy
 /// revision as we scale up to more interesting optimizations.
-pub struct InterproceduralCx<'a, 'mir: 'a, 'tcx: 'mir> {
-    pub tcx: TyCtxt<'mir, 'tcx, 'tcx>,
-    pub mir_cx: &'a MirCtxt<'mir, 'tcx>,
+pub struct InterproceduralCx<'a, 'tcx: 'a> {
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     local_cache: FxHashMap<DefId, Mir<'tcx>>,
 }
 
-impl<'a, 'mir, 'tcx> InterproceduralCx<'a, 'mir, 'tcx> {
-    pub fn new(mir_cx: &'a MirCtxt<'mir, 'tcx>) -> Self {
+impl<'a, 'tcx> InterproceduralCx<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         InterproceduralCx {
-            mir_cx,
-            tcx: mir_cx.tcx(),
+            tcx: tcx,
             local_cache: FxHashMap::default(),
         }
     }
 
     pub fn into_local_mirs(self) -> Vec<(PassId, &'tcx Steal<Mir<'tcx>>)> {
-        let tcx = self.tcx;
-        let suite = self.mir_cx.suite();
-        let pass_num = self.mir_cx.pass_num();
-        self.local_cache.into_iter()
-                        .map(|(def_id, mir)| {
-                            let mir = tcx.alloc_steal_mir(mir);
-                            ((suite, pass_num, def_id), mir)
-                        })
-                        .collect()
+        unimplemented!()
     }
 
     /// Ensures that the mir for `def_id` is available, if it can be
@@ -93,8 +83,6 @@ impl<'a, 'mir, 'tcx> InterproceduralCx<'a, 'mir, 'tcx> {
 
     pub fn mir_mut(&mut self, def_id: DefId) -> &mut Mir<'tcx> {
         assert!(def_id.is_local(), "cannot get mutable mir of remote entry");
-        let mir_cx = self.mir_cx;
-        self.local_cache.entry(def_id)
-                        .or_insert_with(|| mir_cx.steal_previous_mir_of(def_id))
+        unimplemented!()
     }
 }

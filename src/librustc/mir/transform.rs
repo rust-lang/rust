@@ -15,7 +15,6 @@ use hir::def_id::DefId;
 use hir::map::DefPathData;
 use mir::{Mir, Promoted};
 use ty::TyCtxt;
-use std::cell::Ref;
 use std::rc::Rc;
 use syntax::ast::NodeId;
 
@@ -83,29 +82,6 @@ pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
     }
 }
 
-/// Gives you access to various bits of state during your MIR pass.
-pub trait MirCtxt<'a, 'tcx: 'a> {
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
-    fn def_id(&self) -> DefId;
-    fn suite(&self) -> MirSuite;
-    fn pass_num(&self) -> MirPassIndex;
-    fn source(&self) -> MirSource;
-
-    // Get a read-only view on the MIR of this def-id from the
-    // previous pass.
-    fn read_previous_mir(&self) -> Ref<'tcx, Mir<'tcx>>;
-
-    // Steal the MIR of this def-id from the previous pass; any future
-    // attempt to access the MIR from the previous pass is a bug.
-    fn steal_previous_mir(&self) -> Mir<'tcx>;
-
-    // Same as `read_previous_mir()`, but for any def-id you want.
-    fn read_previous_mir_of(&self, def_id: DefId) -> Ref<'tcx, Mir<'tcx>>;
-
-    // Same as `steal_previous_mir()`, but for any def-id you want.
-    fn steal_previous_mir_of(&self, def_id: DefId) -> Mir<'tcx>;
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct MirSuite(pub usize);
 
@@ -125,25 +101,18 @@ pub struct MirPassIndex(pub usize);
 /// the hook will be invoked once per output.
 pub trait PassHook {
     fn on_mir_pass<'a, 'tcx: 'a>(&self,
-                                 mir_cx: &MirCtxt<'a, 'tcx>,
-                                 mir: Option<(DefId, &Mir<'tcx>)>);
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 suite: MirSuite,
+                                 pass_num: MirPassIndex,
+                                 pass_name: &str,
+                                 source: MirSource,
+                                 mir: &Mir<'tcx>,
+                                 is_after: bool);
 }
 
 /// The full suite of types that identifies a particular
 /// application of a pass to a def-id.
 pub type PassId = (MirSuite, MirPassIndex, DefId);
-
-/// A streamlined trait that you can implement to create an
-/// intraprocedural pass; the pass will be invoked to process the MIR
-/// with the given `def_id`.  This lets you do things before we fetch
-/// the MIR itself. You may prefer `MirPass`, which is even more streamlined.
-pub trait DefIdPass {
-    fn name<'a>(&'a self) -> Cow<'a, str> {
-        default_name::<Self>()
-    }
-
-    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> Mir<'tcx>;
-}
 
 /// A streamlined trait that you can implement to create a pass; the
 /// pass will be named after the type, and it will consist of a main
@@ -159,32 +128,11 @@ pub trait MirPass {
                           mir: &mut Mir<'tcx>);
 }
 
-impl<T: MirPass> DefIdPass for T {
-    fn name<'a>(&'a self) -> Cow<'a, str> {
-        MirPass::name(self)
-    }
-
-    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> Mir<'tcx> {
-        let tcx = mir_cx.tcx();
-        let source = mir_cx.source();
-        let mut mir = mir_cx.steal_previous_mir();
-        MirPass::run_pass(self, tcx, source, &mut mir);
-
-        let item_id = source.item_id();
-        for (promoted_index, promoted_mir) in mir.promoted.iter_enumerated_mut() {
-            let promoted_source = MirSource::Promoted(item_id, promoted_index);
-            MirPass::run_pass(self, tcx, promoted_source, promoted_mir);
-        }
-
-        mir
-    }
-}
-
 /// A manager for MIR passes.
 #[derive(Clone)]
 pub struct Passes {
     pass_hooks: Vec<Rc<PassHook>>,
-    suites: Vec<Vec<Rc<DefIdPass>>>,
+    suites: Vec<Vec<Rc<MirPass>>>,
 }
 
 /// The number of "pass suites" that we have:
@@ -212,7 +160,7 @@ impl<'a, 'tcx> Passes {
     }
 
     /// Pushes a built-in pass.
-    pub fn push_pass<T: DefIdPass + 'static>(&mut self, suite: MirSuite, pass: T) {
+    pub fn push_pass<T: MirPass + 'static>(&mut self, suite: MirSuite, pass: T) {
         self.suites[suite.0].push(Rc::new(pass));
     }
 
@@ -225,7 +173,7 @@ impl<'a, 'tcx> Passes {
         self.suites[suite.0].len()
     }
 
-    pub fn pass(&self, suite: MirSuite, pass: MirPassIndex) -> &DefIdPass {
+    pub fn pass(&self, suite: MirSuite, pass: MirPassIndex) -> &MirPass {
         &*self.suites[suite.0][pass.0]
     }
 

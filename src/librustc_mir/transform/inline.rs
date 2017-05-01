@@ -18,7 +18,7 @@ use rustc_data_structures::graph;
 
 use rustc::dep_graph::DepNode;
 use rustc::mir::*;
-use rustc::mir::transform::{MirCtxt, MirSource, PassId};
+use rustc::mir::transform::{MirSource, PassId};
 use rustc::mir::visit::*;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -46,19 +46,14 @@ const UNKNOWN_SIZE_COST: usize = 10;
 pub struct Inline;
 
 pub trait Pass {
-    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>)
+    fn run_pass<'a, 'tcx: 'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
                               -> Multi<PassId, &'tcx Steal<Mir<'tcx>>>;
 }
 
 impl Pass for Inline {
-    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>)
+    fn run_pass<'a, 'tcx: 'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
                               -> Multi<PassId, &'tcx Steal<Mir<'tcx>>> {
-        let tcx = mir_cx.tcx();
-        if tcx.sess.opts.debugging_opts.mir_opt_level < 2 {
-            return Multi::from(tcx.alloc_steal_mir(mir_cx.steal_previous_mir()));
-        }
-
-        let mut cx = InterproceduralCx::new(mir_cx);
+        let mut cx = InterproceduralCx::new(tcx);
 
         let callgraph = callgraph::CallGraph::build(&mut cx);
 
@@ -72,8 +67,8 @@ impl Pass for Inline {
     }
 }
 
-struct Inliner<'mir, 'tcx: 'mir> {
-    tcx: TyCtxt<'mir, 'tcx, 'tcx>,
+struct Inliner<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 #[derive(Copy, Clone)]
@@ -85,11 +80,11 @@ struct CallSite<'tcx> {
     location: SourceInfo,
 }
 
-impl<'mir, 'tcx> Inliner<'mir, 'tcx> {
-    fn inline_scc<'a>(&mut self,
-                      cx: &mut InterproceduralCx<'a, 'mir, 'tcx>,
-                      callgraph: &callgraph::CallGraph,
-                      scc: &[graph::NodeIndex]) -> bool {
+impl<'a, 'tcx> Inliner<'a, 'tcx> {
+    fn inline_scc(&mut self,
+                  cx: &mut InterproceduralCx<'a, 'tcx>,
+                  callgraph: &callgraph::CallGraph,
+                  scc: &[graph::NodeIndex]) -> bool {
         let tcx = self.tcx;
         let mut callsites = Vec::new();
         let mut in_scc = DefIdSet();

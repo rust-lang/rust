@@ -26,7 +26,7 @@ use rustc::ty::cast::CastTy;
 use rustc::ty::maps::Providers;
 use rustc::mir::*;
 use rustc::mir::traversal::ReversePostorder;
-use rustc::mir::transform::{DefIdPass, MirCtxt, MirSource, MIR_CONST};
+use rustc::mir::transform::{MirPass, MirSource, MIR_CONST};
 use rustc::mir::visit::{LvalueContext, Visitor};
 use rustc::middle::lang_items;
 use syntax::abi::Abi;
@@ -938,34 +938,11 @@ fn qualify_const_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub struct QualifyAndPromoteConstants;
 
-impl DefIdPass for QualifyAndPromoteConstants {
-    fn run_pass<'a, 'tcx: 'a>(&self, mir_cx: &MirCtxt<'a, 'tcx>) -> Mir<'tcx> {
-        let tcx = mir_cx.tcx();
-        match mir_cx.source() {
-            MirSource::Const(_) => {
-                // Ensure that we compute the `mir_const_qualif` for
-                // constants at this point, before we do any further
-                // optimization (and before we steal the previous
-                // MIR). We don't directly need the result, so we can
-                // just force it.
-                ty::queries::mir_const_qualif::force(tcx, DUMMY_SP, mir_cx.def_id());
-                mir_cx.steal_previous_mir()
-            }
-
-            src => {
-                let mut mir = mir_cx.steal_previous_mir();
-                self.run_pass(tcx, src, &mut mir);
-                mir
-            }
-        }
-    }
-}
-
-impl<'a, 'tcx> QualifyAndPromoteConstants {
-    fn run_pass(&self,
-                tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                src: MirSource,
-                mir: &mut Mir<'tcx>) {
+impl MirPass for QualifyAndPromoteConstants {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          src: MirSource,
+                          mir: &mut Mir<'tcx>) {
         let id = src.item_id();
         let def_id = tcx.hir.local_def_id(id);
         let mode = match src {
