@@ -63,4 +63,14 @@ impl Summary {
         self.has_parsing_errors |= other.has_parsing_errors;
         self.has_diff |= other.has_diff;
     }
+
+    pub fn print_exit_codes() {
+        let exit_codes = r#"Exit Codes:
+    0 = No errors
+    1 = Encountered operational errors e.g. an IO error
+    2 = Failed to reformat code because of parsing errors
+    3 = Code is valid, but it is impossible to format it properly
+    4 = Formatted code differs from existing code (write-mode diff only)"#;
+        println!("{}", exit_codes);
+    }
 }
