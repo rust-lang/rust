@@ -2332,7 +2332,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return None;
         }
 
-        if !did.is_local() && !self.sess.cstore.is_item_mir_available(did) {
+        if !did.is_local() && !self.is_item_mir_available(did) {
             return None;
         }
 

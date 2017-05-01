@@ -13,6 +13,7 @@
 use std::collections::BTreeMap;
 use std::io;
 use std::iter::once;
+use std::rc::Rc;
 
 use syntax::ast;
 use rustc::hir;
@@ -471,7 +472,7 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
 }
 
 struct InlinedConst {
-    nested_bodies: BTreeMap<hir::BodyId, hir::Body>
+    nested_bodies: Rc<BTreeMap<hir::BodyId, hir::Body>>
 }
 
 impl hir::print::PpAnn for InlinedConst {
@@ -488,7 +489,7 @@ impl hir::print::PpAnn for InlinedConst {
 fn print_inlined_const(cx: &DocContext, did: DefId) -> String {
     let body = cx.tcx.sess.cstore.item_body(cx.tcx, did);
     let inlined = InlinedConst {
-        nested_bodies: cx.tcx.sess.cstore.item_body_nested_bodies(did)
+        nested_bodies: cx.tcx.item_body_nested_bodies(did)
     };
     hir::print::to_string(&inlined, |s| s.print_expr(&body.value))
 }

@@ -28,7 +28,6 @@ use rustc::mir::Mir;
 
 use std::borrow::Cow;
 use std::cell::Ref;
-use std::collections::BTreeMap;
 use std::io;
 use std::mem;
 use std::rc::Rc;
@@ -442,16 +441,16 @@ impl<'tcx> EntryKind<'tcx> {
 }
 
 impl<'a, 'tcx> CrateMetadata {
-    fn is_proc_macro(&self, id: DefIndex) -> bool {
+    pub fn is_proc_macro(&self, id: DefIndex) -> bool {
         self.proc_macros.is_some() && id != CRATE_DEF_INDEX
     }
 
-    fn maybe_entry(&self, item_id: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
+    pub fn maybe_entry(&self, item_id: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
         assert!(!self.is_proc_macro(item_id));
         self.root.index.lookup(self.blob.raw_bytes(), item_id)
     }
 
-    fn entry(&self, item_id: DefIndex) -> Entry<'tcx> {
+    pub fn entry(&self, item_id: DefIndex) -> Entry<'tcx> {
         match self.maybe_entry(item_id) {
             None => {
                 bug!("entry: id not found: {:?} in crate {:?} with number {}",
@@ -771,22 +770,6 @@ impl<'a, 'tcx> CrateMetadata {
                             -> &'tcx ty::TypeckTables<'tcx> {
         let ast = self.entry(id).ast.unwrap().decode(self);
         tcx.alloc_tables(ast.tables.decode((self, tcx)))
-    }
-
-    pub fn item_body_nested_bodies(&self, id: DefIndex) -> BTreeMap<hir::BodyId, hir::Body> {
-        self.entry(id).ast.into_iter().flat_map(|ast| {
-            ast.decode(self).nested_bodies.decode(self).map(|body| (body.id(), body))
-        }).collect()
-    }
-
-    pub fn const_is_rvalue_promotable_to_static(&self, id: DefIndex) -> bool {
-        self.entry(id).ast.expect("const item missing `ast`")
-            .decode(self).rvalue_promotable_to_static
-    }
-
-    pub fn is_item_mir_available(&self, id: DefIndex) -> bool {
-        !self.is_proc_macro(id) &&
-        self.maybe_entry(id).and_then(|item| item.decode(self).mir).is_some()
     }
 
     pub fn maybe_get_item_mir(&self,
