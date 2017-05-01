@@ -25,7 +25,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 use std::u32;
 
-pub struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     hir: Cx<'a, 'gcx, 'tcx>,
     cfg: CFG<'tcx>,
 
@@ -82,7 +82,7 @@ impl Idx for ScopeId {
 /// convenient.
 
 #[must_use] // if you don't use one of these results, you're leaving a dangling edge
-pub struct BlockAnd<T>(BasicBlock, T);
+struct BlockAnd<T>(BasicBlock, T);
 
 trait BlockAndExtension {
     fn and<T>(self, v: T) -> BlockAnd<T>;
