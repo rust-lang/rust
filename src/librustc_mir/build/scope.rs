@@ -270,7 +270,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
-    pub fn in_scope<F, R>(&mut self, extent: CodeExtent<'tcx>, mut block: BasicBlock, f: F) -> BlockAnd<R>
+    pub fn in_scope<F, R>(&mut self,
+                          extent: CodeExtent<'tcx>,
+                          mut block: BasicBlock,
+                          f: F)
+                          -> BlockAnd<R>
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
