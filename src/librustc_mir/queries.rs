@@ -18,7 +18,6 @@
 
 use build;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::dep_graph::DepNode;
 use rustc::mir::Mir;
 use rustc::mir::transform::MirSource;
 use rustc::mir::visit::MutVisitor;
@@ -40,16 +39,6 @@ use syntax_pos::Span;
 
 use std::mem;
 use std::rc::Rc;
-
-pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.dep_graph.with_task(DepNode::MirKrate, tcx, (), build_mir_for_crate_task);
-
-    fn build_mir_for_crate_task<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, (): ()) {
-        for &body_owner_def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
-            tcx.item_mir(body_owner_def_id);
-        }
-    }
-}
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
