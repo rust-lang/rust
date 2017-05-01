@@ -408,7 +408,9 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
                region_maps: &'a RegionMaps<'tcx>)
                -> MemCategorizationContext<'a, 'gcx, 'tcx> {
-        MemCategorizationContext::with_options(infcx, region_maps, MemCategorizationOptions::default())
+        MemCategorizationContext::with_options(infcx,
+                                               region_maps,
+                                               MemCategorizationOptions::default())
     }
 
     pub fn with_options(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,

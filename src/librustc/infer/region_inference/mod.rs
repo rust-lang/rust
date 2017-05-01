@@ -1053,7 +1053,9 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn expansion(&self, region_rels: &RegionRelations<'a, 'gcx, 'tcx>, var_values: &mut [VarValue<'tcx>]) {
+    fn expansion(&self,
+                 region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
+                 var_values: &mut [VarValue<'tcx>]) {
         self.iterate_until_fixed_point("Expansion", |constraint, origin| {
             debug!("expansion: constraint={:?} origin={:?}",
                    constraint, origin);
