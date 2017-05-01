@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
+// ignore-test not a test, auxillary
 
 mod_decl!(bar);
