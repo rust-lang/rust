@@ -363,7 +363,6 @@ create_config! {
     where_layout: ListTactic, ListTactic::Vertical, "Element layout inside a where clause";
     where_pred_indent: IndentStyle, IndentStyle::Visual,
         "Indentation style of a where predicate";
-    generics_style: Style, Style::Default, "Overall strategy for generics";
     generics_indent: IndentStyle, IndentStyle::Visual, "Indentation of generics";
     struct_lit_style: IndentStyle, IndentStyle::Block, "Style of struct definition";
     struct_lit_multiline_style: MultilineStyle, MultilineStyle::PreferSingle,
