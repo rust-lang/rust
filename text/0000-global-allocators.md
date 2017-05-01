@@ -30,9 +30,10 @@ There are a couple of issues with the current approach:
 
 A C-style ABI is error prone - nothing ensures that the signatures are correct,
 and if a function is omitted that error will be caught by the linker rather than
-compiler. The Macros 1.1 API is similar in that certain special functions must
-be identified to the compiler, and in that case a special attribute
-(`#[proc_macro_derive]`)is used rather than a magic symbol name.
+compiler.
+
+Allocators have some state, and with the current API, that state is forced to be
+truly global since bare functions can't carry state.
 
 Since an allocator is automatically selected when it is pulled into the crate
 graph, it is painful to compose allocators. For example, one may want to create
@@ -65,134 +66,119 @@ pinning, and diagnostic output dumps for code that depends on jemalloc directly.
 
 ## Defining an allocator
 
-An allocator crate identifies itself as such by applying the `#![allocator]`
-annotate at the crate root. It then defines a specific set of functions which
-are tagged with attributes:
+We introduce a new trait, `GlobalAllocator`. It is similar to the `Allocator`
+trait described in [RFC 1398][], but is stripped down and the methods take
+`&self` rather than `&mut self`.
+
+[RFC 1398]: https://github.com/rust-lang/rfcs/blob/master/text/1398-kinds-of-allocators.md
 
 ```rust
-#![allocator]
 
-/// Returns a pointer to `size` bytes of memory aligned to `align`.
-///
-/// On failure, returns a null pointer.
-///
-/// Behavior is undefined if the requested size is 0 or the alignment is not a
-/// power of 2. The alignment must be no larger than the largest supported page
-/// size on the platform.
-///
-/// This function is required.
-#[allocator(allocate)]
-pub fn allocate(size: usize, align: usize) -> *mut u8 {
-    ...
-}
+#[lang = "global_allocator"]
+pub unsafe trait GlobalAllocator: Send + Sync {
+    /// Returns a pointer to a newly allocated region of memory suitable for the
+    /// provided `Layout`. The contents of the memory are undefined.
+    ///
+    /// On failure, returns a null pointer.
+    pub fn allocate(&self, layout: Layout) -> *mut u8;
 
-/// Returns a pointer to `size` bytes of memory aligned to `align`, and
-/// initialized with zeroes.
-///
-/// On failure, returns a null pointer.
-///
-/// Behavior is undefined if the requested size is 0 or the alignment is not a
-/// power of 2. The alignment must be no larger than the largest supported page
-/// size on the platform.
-///
-/// This function is optional. If not provided, `allocate` will be called and
-/// the resulting buffer will be zerored.
-#[allocator(allocate_zeroed)]
-pub fn allocate_zeroed(size: usize, align: usize) -> *mut u8 {
-    ...
-}
+    /// Returns a pointer to a newly allocated region of memory suitable for the
+    /// provided `Layout`. The memory is guaranteed to contain zeroes.
+    ///
+    /// On failure, returns a null pointer.
+    pub fn allocate_zeroed(&self, layout: Layout) -> *mut u8 {
+        let ptr = self.allocate(layout);
+        if !ptr.is_null() {
+            ptr::write_bytes(ptr, 0, layout.size());
+        }
+        ptr
+    }
 
-/// Deallocates the memory referenced by `ptr`.
-///
-/// The `ptr` parameter must not be null.
-///
-/// The `old_size` and `align` parameters are the parameters that were used to
-/// create the allocation referenced by `ptr`.
-///
-/// This function is required.
-#[allocator(deallocate)]
-pub fn deallocate(ptr: *mut u8, old_size: usize, align: usize) {
-    ...
-}
+    /// Deallocates the memory referenced by `ptr`.
+    ///
+    /// The pointer must correspond to a region of memory previously allocated
+    /// by this allocator with the provided layout.
+    pub unsafe fn deallocate(&self, ptr: *mut u8, layout: Layout);
 
-/// Resizes the allocation referenced by `ptr` to `size` bytes.
-///
-/// On failure, returns a null pointer and leaves the original allocation
-/// intact.
-///
-/// If the allocation was relocated, the memory at the passed-in pointer is
-/// undefined after the call.
-///
-/// Behavior is undefined if the requested size is 0 or the alignment is not a
-/// power of 2. The alignment must be no larger than the largest supported page
-/// size on the platform.
-///
-/// The `old_size` and `align` parameters are the parameters that were used to
-/// create the allocation referenced by `ptr`.
-///
-/// This function is optional. If not provided, an implementation will be
-/// generated which calls `allocate` to obtain a new buffer, copies the old
-/// memory contents to the new buffer, and then calls `deallocate` on the old
-/// buffer.
-#[allocator(reallocate)]
-pub fn reallocate(ptr: *mut u8, old_size: usize, size: usize, align: usize) -> *mut u8 {
-    ...
-}
-
-/// Resizes the allocation referenced by `ptr` to `size` bytes without moving
-/// it.
-///
-/// The new size of the allocation is returned. This must be at least
-/// `old_size`. The allocation must always remain valid.
-///
-/// Behavior is undefined if the requested size is 0 or the alignment is not a
-/// power of 2. The alignment must be no larger than the largest supported page
-/// size on the platform.
-///
-/// The `old_size` and `align` parameters are the parameters that were used to
-/// create the allocation referenced by `ptr`.
-///
-/// This function is optional. The default implementation simply returns
-/// `old_size`.
-#[allocator(reallocate_inplace)]
-pub fn reallocate_inplace(ptr: *mut u8, old_size: usize, size: usize, align: usize) -> usize {
-    ...
+    /// Resizes the allocation referenced by `ptr` a new layout.
+    ///
+    /// On failure, returns a null pointer and leaves the original allocation
+    /// intact.
+    ///
+    /// If the allocation was relocated, the memory at the passed-in pointer is
+    /// undefined after the call.
+    ///
+    /// The pointer must correspond to a region of memory previously allocated
+    /// by this allocator with the provided layout.
+    pub fn reallocate(&self, ptr: *mut u8, old_layout: Layout, layout: Layout) -> *mut u8 {
+        let new_ptr = self.alloc(layout);
+        if !new_ptr.is_null() {
+            ptr::copy_nonoverlapping(ptr, new_ptr, cmp::min(old_layout.size(), layout.size()));
+            self.deallocate(ptr);
+        }
+        new_ptr
+    }
 }
 ```
 
-Note that `useable_size` has been removed, as it is not used anywhere in the
-standard library.
+Two methods currently defined in the global allocatr API are not present on this
+trait: `usable_size` which is used nowhere in the standard library, and
+`reallocate_inplace`, which is only used in libarena.
 
-The allocator functions must be publicly accessible, but can have any name and
-be defined in any module. However, it is recommended to use the names above in
-the crate root to minimize confusion.
-
-Note that new functions can be added to this API in the future as long as they
-can have default implementations in a similar manner to other optional
-functions.
+A global allocator is a type implementing `GlobalAllocator` which can be
+constructed in a constant expression.
 
 ## Using an allocator
 
-The functions that an allocator crate defines can be called directly, but most
-usage will happen through the *global allocator* interface located in
-`std::heap`. This module exposes a set of functions identical to those described
-above, but that call into the global allocator. To select the global allocator,
-a crate declares it via an `extern crate` annotated with `#[allocator]`:
+While the `GlobalAllocator` trait can be used like any other, the most common
+usage of a global allocator is through the functions defined in the
+`std::heap` module. It contains free functions corresponding to each of the
+methods defined on the `GlobalAllocator` trait:
 
 ```rust
-#[allocator]
-extern crate jemalloc;
+pub fn allocate(layout: Layout) -> *mut u8 {
+    ...
+}
+
+pub fn allocate_zeroed(layout: Layout) -> *mut u8 {
+    ...
+}
+
+pub unsafe fn deallocate(&self, ptr: *mut u8, layout: Layout) {
+    ...
+}
+
+pub fn reallocate(ptr: *mut u8, old_layout: Layout, layout: Layout) -> *mut u8 {
+    ...
+}
 ```
 
-As its name would suggest, the global allocator is a global resource - all
-crates in a dependency tree must agree on the selected global allocator. If two
-or more distinct allocator crates are selected, compilation will fail. Note that
-multiple crates can select a global allocator as long as that allocator is the
-same across all of them. In addition, a crate can depend on an allocator crate
-without declaring it to be the global allocator by omitting the `#[allocator]`
-annotation.
+Each of these functions simply delegates to the selected global allocator. The
+allocator is selected by tagging a static value of a type implementing
+`GlobalAllocator` with the `#[allocator]` annotation:
+
+```rust
+extern crate my_allocator;
+
+use my_allocator::{MyAllocator, MY_ALLOCATOR_INIT};
+
+#[allocator]
+static ALLOCATOR: MyAllocator = MY_ALLOCATOR_INIT;
+
+fn main() {
+    ...
+}
+```
+
+Note that `ALLOCATOR` is still a normal static value - it can be used like any
+other static would bed.
 
 ## Standard library
+
+A small `alloc_api` crate will be created which will contain the `Layout` type.
+The initial API will be more conservative than that described in [RFC 1398][],
+possibly nothing more than a `from_size_align` constructor and accessors for
+`size` and `align`.
 
 The standard library will gain a new stable crate - `alloc_system`. This is the
 default allocator crate and corresponds to the "system" allocator (i.e. `malloc`
@@ -201,7 +187,7 @@ etc on Unix and `HeapAlloc` etc on Windows).
 The `alloc::heap` module will be reexported in `std` and stabilized. It will
 simply contain functions matching directly to those defined by the allocator
 API. The `alloc` crate itself may also be stabilized at a later date, but this
-RFC does not propose that.
+RFC does not propose that. `Layout` will be reexported in the `heap` module.
 
 The existing `alloc_jemalloc` may continue to exist as an implementation detail
 of the Rust compiler, but it will never be stabilized. Applications wishing to
@@ -245,23 +231,14 @@ all of the requirements are met.
 # Alternatives
 [alternatives]: #alternatives
 
-We could require that at most one crate selects a global allocator in the crate
-graph, which may simplify the implementation.
+We could loosen the requirement that the root crate is the only one which may
+select the global allocator in favor of allowing any crate in the dependency
+graph to do so.
 
-The allocator APIs could be simplified to a more "traditional"
-malloc/calloc/free API at the cost of an efficiency loss when using allocators
-with more powerful APIs.
-
-The global allocator could be an instance of the `Allocator` trait. Since that
-trait's methods take `&mut self`, things are a bit complicated however. The
-allocator would most likely need to be a `const` type implementing `Allocator`
-since it wouldn't be sound to interact with a static. This may cause confusion
-since the allocator itself will therefor not be allowed to maintain any state
-internally since a new instance will be created for each use. In addition, the
-`Allocator` trait uses a `Layout` type as a higher level encapsulation of the
-requested alignment and size of the allocation. The larger API surface area
-will most likely cause this feature to have a significantly longer stabilization
-period.
+We could try to use the `Allocator` trait for global allocators. The `&mut self`
+problem can b e solved via an implementation on a reference to the allocator
+type in a way similar to `TcpStream`'s `Write` and `Read` implementations, but
+this is pretty hacky.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
@@ -277,6 +254,7 @@ implementations here:
   specific messaging that may exist.
 * `usable_size`, which is mentioned above as being unused, and should probably
   be removed from this trait as well.
+* `realloc_inplace`, which attempts to resize an allocation without moving it.
 * `alloc_excess`, which is like `alloc` but returns the entire usable size
   including any extra space beyond the requested size.
 * Some other higher level convenience methods like `alloc_array`.
