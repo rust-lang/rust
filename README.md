@@ -22,7 +22,6 @@ language is evolving in.
   - [When you need to follow this process]
   - [Before creating an RFC]
   - [What the process is]
-  - [The role of the shepherd]
   - [The RFC life-cycle]
   - [Reviewing RFCs]
   - [Implementing an RFC]
@@ -81,7 +80,7 @@ make the process smoother.
 
 Although there is no single way to prepare for submitting an RFC, it is
 generally a good idea to pursue feedback from other project developers
-beforehand, to ascertain that the RFC may be desirable: having a consistent
+beforehand, to ascertain that the RFC may be desirable; having a consistent
 impact on the project requires concerted effort toward consensus-building.
 
 The most common preparations for writing and submitting an RFC include talking
@@ -111,18 +110,13 @@ merged into the RFC repository as a markdown file. At that point the RFC is
   - Submit a pull request. As a pull request the RFC will receive design
     feedback from the larger community, and the author should be prepared to
     revise it in response.
-  - Each pull request will be labeled with the most relevant [sub-team].
-  - Each sub-team triages its RFC pull requests. The sub-team will either close
-    the pull request (for RFCs that clearly will not be accepted) or assign it
-    a *shepherd*. The shepherd is a trusted developer who is familiar with the
-    RFC process, who will help to move the RFC forward, and ensure that the
-    right people see and review it.
+  - Each pull request will be labeled with the most relevant [sub-team], which
+    will lead to its being triaged by that team in a future meeting and assigned
+    to a member of the subteam.
   - Build consensus and integrate feedback. RFCs that have broad support are
     much more likely to make progress than those that don't receive any
-    comments. The shepherd assigned to your RFC should help you get feedback
-    from Rust developers as well.
-  - The shepherd may schedule meetings with the author and/or relevant
-    stakeholders to discuss the issues in greater detail.
+    comments. Feel free to reach out to the RFC assignee in particular to get
+    help identifying stakeholders and obstacles.
   - The sub-team will discuss the RFC pull request, as much as possible in the
     comment thread of the pull request itself. Offline discussion will be
     summarized on the pull request comment thread.
@@ -132,36 +126,32 @@ merged into the RFC repository as a markdown file. At that point the RFC is
     request, and leave a comment on the pull request explaining your changes.
     Specifically, do not squash or rebase commits after they are visible on the
     pull request.
-  - Once both proponents and opponents have clarified and defended positions
-    and the conversation has settled, the RFC will enter its *final comment
-    period* (FCP). This is a final opportunity for the community to comment on
-    the pull request and is a reminder for all members of the sub-team to be
-    aware of the RFC.
-  - The FCP lasts ten calendar days, so that it is open for at least 5 business
-    days. It may be extended if consensus between sub-team members cannot be
-    reached. At the end of the FCP, the [sub-team] will either accept the RFC
-    by merging the pull request, assigning the RFC a number (corresponding to
-    the pull request number), at which point the RFC is "active", or reject it
-    by closing the pull request. How exactly the sub-team decide on an RFC is
-    up to the sub-team.
-
-
-## The role of the shepherd
-[The role of the shepherd]: #the-role-of-the-shepherd
-
-During triage, every RFC will either be closed or assigned a shepherd from the
-relevant sub-team. The role of the shepherd is to move the RFC through the
-process. This starts with simply reading the RFC in detail and providing
-initial feedback. The shepherd should also solicit feedback from people who are
-likely to have strong opinions about the RFC. When this feedback has been
-incorporated and the RFC seems to be in a steady state, the shepherd and/or
-sub-team leader will announce an FCP. In general, the idea here is to
-"front-load" as much of the feedback as possible before the point where we
-actually reach a decision - by the end of the FCP, the decision on whether or
-not to accept the RFC should usually be obvious from the RFC discussion thread.
-On occasion, there may not be consensus but discussion has stalled. In this
-case, the relevant team will make a decision.
-
+  - At some point, a member of the subteam will propose a "motion for final
+    comment period" (FCP), along with a *disposition* for the RFC (merge, close,
+    or postpone).
+    - This step is taken when enough of the tradeoffs have been discussed that
+    the subteam is in a position to make a decision. That does not require
+    consensus amongst all participants in the RFC thread (which is usually
+    impossible). However, the argument supporting the disposition on the RFC
+    needs to have already been clearly articulated, and there should not be a
+    strong consensus *against* that position outside of the subteam. Subteam
+    members use their best judgment in taking this step, and the FCP itself
+    ensures there is ample time and notification for stakeholders to push back
+    if it is made prematurely.
+    - For RFCs with lengthy discussion, the motion to FCP is usually preceded by
+      a *summary comment* trying to lay out the current state of the discussion
+      and major tradeoffs/points of disagreement.
+    - Before actually entering FCP, *all* members of the subteam must sign off;
+    this is often the point at which many subteam members first review the RFC
+    in full depth.
+    - The FCP lasts ten calendar days, so that it is open for at least 5
+    business days. It is also advertised widely,
+    e.g. in [This Week in Rust](https://this-week-in-rust.org/). This way all
+    stakeholders have a chance to lodge any final objections before a decision
+    is reached.
+    - In most cases, the FCP is quiet, and the RFC is either merged or
+      closed. However, sometimes substantial new arguments or ideas are raised,
+      the FCP is canceled, and the RFC goes back into development mode.
 
 ## The RFC life-cycle
 [The RFC life-cycle]: #the-rfc-life-cycle
