@@ -58,7 +58,8 @@ pub fn run(input: &str,
            mut test_args: Vec<String>,
            crate_name: Option<String>,
            maybe_sysroot: Option<PathBuf>,
-           render_type: RenderType)
+           render_type: RenderType,
+           display_warnings: bool)
            -> isize {
     let input_path = PathBuf::from(input);
     let input = config::Input::File(input_path.clone());
@@ -125,6 +126,9 @@ pub fn run(input: &str,
     }
 
     test_args.insert(0, "rustdoctest".to_string());
+    if display_warnings {
+        test_args.insert(1, "--display-stdout".to_string());
+    }
 
     testing::test_main(&test_args,
                        collector.tests.into_iter().collect());

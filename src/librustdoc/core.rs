@@ -104,7 +104,8 @@ pub fn run_core(search_paths: SearchPaths,
                 externs: config::Externs,
                 input: Input,
                 triple: Option<String>,
-                maybe_sysroot: Option<PathBuf>) -> (clean::Crate, RenderInfo)
+                maybe_sysroot: Option<PathBuf>,
+                allow_warnings: bool) -> (clean::Crate, RenderInfo)
 {
     // Parse, resolve, and typecheck the given crate.
 
@@ -119,7 +120,7 @@ pub fn run_core(search_paths: SearchPaths,
         maybe_sysroot: maybe_sysroot,
         search_paths: search_paths,
         crate_types: vec![config::CrateTypeRlib],
-        lint_opts: vec![(warning_lint, lint::Allow)],
+        lint_opts: if !allow_warnings { vec![(warning_lint, lint::Allow)] } else { vec![] },
         lint_cap: Some(lint::Allow),
         externs: externs,
         target_triple: triple.unwrap_or(config::host_triple().to_string()),
