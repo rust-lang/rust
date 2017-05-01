@@ -496,7 +496,7 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
             // Check for (and record) trailing whitespace.
             if let Some(lw) = last_wspace {
                 trims.push((cur_line, lw, b));
-                line_len -= b - lw;
+                line_len -= 1;
             }
             // Check for any line width errors we couldn't correct.
             if config.error_on_line_overflow && line_len > config.max_width {
