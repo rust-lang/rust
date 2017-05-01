@@ -36,8 +36,7 @@ use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
-use rustc_passes::{ast_validation, no_asm, loops, consts,
-                   static_recursion, hir_stats, mir_stats};
+use rustc_passes::{ast_validation, no_asm, loops, consts, static_recursion, hir_stats};
 use rustc_const_eval::{self, check_match};
 use super::Compilation;
 
@@ -996,14 +995,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         time(time_passes,
              "liveness checking",
              || middle::liveness::check_crate(tcx));
-
-        time(time_passes,
-             "MIR dump",
-             || mir::mir_map::build_mir_for_crate(tcx));
-
-        if sess.opts.debugging_opts.mir_stats {
-            mir_stats::print_mir_stats(tcx, "PRE CLEANUP MIR STATS");
-        }
 
         time(time_passes,
              "borrow checking",

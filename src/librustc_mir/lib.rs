@@ -50,14 +50,14 @@ pub mod build;
 pub mod callgraph;
 mod hair;
 mod shim;
-pub mod mir_map;
+mod queries;
 pub mod transform;
 pub mod util;
 
 use rustc::ty::maps::Providers;
 
 pub fn provide(providers: &mut Providers) {
-    mir_map::provide(providers);
+    queries::provide(providers);
     shim::provide(providers);
     transform::provide(providers);
 }
