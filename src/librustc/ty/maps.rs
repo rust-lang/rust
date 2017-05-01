@@ -26,15 +26,12 @@ use util::nodemap::{DefIdSet, NodeSet};
 
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::cell::{RefCell, RefMut};
-use std::option;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::iter::{self, Once};
 use std::mem;
 use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::rc::Rc;
-use std::vec;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::symbol::Symbol;
 
@@ -158,67 +155,6 @@ impl<'tcx> Value<'tcx> for ty::DtorckConstraint<'tcx> {
 impl<'tcx> Value<'tcx> for ty::SymbolName {
     fn from_cycle_error<'a>(_: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         ty::SymbolName { name: Symbol::intern("<error>").as_str() }
-    }
-}
-
-trait IntoKeyValues<K: Key, V> {
-    type KeyValues: IntoIterator<Item=(K, V)>;
-
-    fn into_key_values(key: &K, value: Self) -> Self::KeyValues;
-}
-
-impl<K: Key, V> IntoKeyValues<K, V> for V {
-    type KeyValues = Once<(K, V)>;
-
-    fn into_key_values(key: &K, value: Self) -> Self::KeyValues {
-        iter::once((key.clone(), value))
-    }
-}
-
-/// Return type for a multi-query, which is a query which may (if it
-/// chooses) return more than one (key, value) pair. Construct a
-/// `Multi` using `Multi::from(...)`.
-pub struct Multi<K: Key, V> {
-    single: Option<V>,
-    map: Vec<(K, V)>,
-}
-
-impl<K: Key, V> Multi<K, V> {
-    pub fn iter<'a>(&'a self, key: &'a K) -> impl Iterator<Item = (&'a K, &'a V)> + 'a {
-        self.single.iter()
-                   .map(move |v| (key, v))
-                   .chain(self.map.iter().map(move |&(ref k, ref v)| (k, v)))
-    }
-}
-
-/// Construct a `Multi` from a single value.
-impl<K: Key, V> From<V> for Multi<K, V> {
-    fn from(value: V) -> Self {
-        Multi {
-            single: Some(value),
-            map: vec![],
-        }
-    }
-}
-
-/// Construct a `Multi` from a hashmap of (K, V) pairs.
-impl<K: Key, V> From<Vec<(K, V)>> for Multi<K, V> {
-    fn from(value: Vec<(K, V)>) -> Self {
-        Multi {
-            single: None,
-            map: value
-        }
-    }
-}
-
-impl<K: Key, V> IntoKeyValues<K, V> for Multi<K, V> {
-    type KeyValues = iter::Chain<option::IntoIter<(K, V)>, vec::IntoIter<(K, V)>>;
-
-    fn into_key_values(key: &K, value: Self) -> Self::KeyValues {
-        value.single
-             .map(|v| (key.clone(), v))
-             .into_iter()
-             .chain(value.map)
     }
 }
 
@@ -490,14 +426,7 @@ macro_rules! define_maps {
                     provider(tcx.global_tcx(), key)
                 })?;
 
-                {
-                    let map = &mut *tcx.maps.$name.borrow_mut();
-                    for (k, v) in IntoKeyValues::<$K, $V>::into_key_values(&key, result) {
-                        map.insert(k, v);
-                    }
-                }
-
-                Ok(f(tcx.maps.$name.borrow().get(&key).expect("value just generated")))
+                Ok(f(tcx.maps.$name.borrow_mut().entry(key).or_insert(result)))
             }
 
             pub fn try_get(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K)
@@ -683,20 +612,6 @@ macro_rules! define_provider_struct {
         }
     };
 
-    // The `multi` modifier indicates a **multiquery**, in which case
-    // the function returns a `Multi<K,V>` instead of just a value
-    // `V`.
-    (tcx: $tcx:tt,
-     input: (([multi $($other_modifiers:tt)*] $name:tt [$K:ty] [$V:ty]) $($input:tt)*),
-     output: $output:tt) => {
-        define_provider_struct! {
-            tcx: $tcx,
-            ready: ($name [$K] [Multi<$K,$V>]),
-            input: ($($input)*),
-            output: $output
-        }
-    };
-
     // Regular queries produce a `V` only.
     (tcx: $tcx:tt,
      input: (([] $name:tt $K:tt $V:tt) $($input:tt)*),
@@ -709,7 +624,7 @@ macro_rules! define_provider_struct {
         }
     };
 
-    // Skip modifiers other than `multi`.
+    // Skip modifiers.
     (tcx: $tcx:tt,
      input: (([$other_modifier:tt $($modifiers:tt)*] $($fields:tt)*) $($input:tt)*),
      output: $output:tt) => {
