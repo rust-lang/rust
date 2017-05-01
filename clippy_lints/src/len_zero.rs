@@ -199,9 +199,9 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
 
     /// Check the inherent impl's items for an `is_empty(self)` method.
     fn has_is_empty_impl(cx: &LateContext, id: DefId) -> bool {
-        cx.tcx.maps.inherent_impls.borrow().get(&id).map_or(false, |impls| {
-            impls.iter().any(|imp| cx.tcx.associated_items(*imp).any(|item| is_is_empty(cx, &item)))
-        })
+        cx.tcx.inherent_impls(id)
+            .iter()
+            .any(|imp| cx.tcx.associated_items(*imp).any(|item| is_is_empty(cx, &item)))
     }
 
     let ty = &walk_ptrs_ty(cx.tables.expr_ty(expr));
