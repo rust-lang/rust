@@ -14,26 +14,19 @@ use rustc::hir::def_id::DefId;
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::graph;
 
-use rustc::dep_graph::DepNode;
 use rustc::mir::*;
-use rustc::mir::transform::{MirSource, PassId};
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::*;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::maps::Multi;
-use rustc::ty::steal::Steal;
 use rustc::ty::subst::{Subst,Substs};
-use rustc::util::nodemap::{DefIdSet};
 
+use std::collections::VecDeque;
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
 
 use syntax::{attr};
 use syntax::abi::Abi;
-
-use callgraph;
-use transform::interprocedural::InterproceduralCx;
 
 const DEFAULT_THRESHOLD: usize = 50;
 const HINT_THRESHOLD: usize = 100;
@@ -45,101 +38,63 @@ const UNKNOWN_SIZE_COST: usize = 10;
 
 pub struct Inline;
 
-pub trait Pass {
-    fn run_pass<'a, 'tcx: 'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                              -> Multi<PassId, &'tcx Steal<Mir<'tcx>>>;
-}
-
-impl Pass for Inline {
-    fn run_pass<'a, 'tcx: 'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                              -> Multi<PassId, &'tcx Steal<Mir<'tcx>>> {
-        let mut cx = InterproceduralCx::new(tcx);
-
-        let callgraph = callgraph::CallGraph::build(&mut cx);
-
-        let mut inliner = Inliner { tcx };
-
-        for scc in callgraph.scc_iter() {
-            inliner.inline_scc(&mut cx, &callgraph, &scc);
-        }
-
-        Multi::from(cx.into_local_mirs())
-    }
-}
-
-struct Inliner<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-}
-
 #[derive(Copy, Clone)]
 struct CallSite<'tcx> {
-    caller: DefId,
     callee: DefId,
     substs: &'tcx Substs<'tcx>,
     bb: BasicBlock,
     location: SourceInfo,
 }
 
-impl<'a, 'tcx> Inliner<'a, 'tcx> {
-    fn inline_scc(&mut self,
-                  cx: &mut InterproceduralCx<'a, 'tcx>,
-                  callgraph: &callgraph::CallGraph,
-                  scc: &[graph::NodeIndex]) -> bool {
-        let tcx = self.tcx;
-        let mut callsites = Vec::new();
-        let mut in_scc = DefIdSet();
-
-        let mut inlined_into = DefIdSet();
-
-        for &node in scc {
-            let def_id = callgraph.def_id(node);
-
-            // Don't inspect functions from other crates
-            let id = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
-                id
-            } else {
-                continue;
-            };
-            let src = MirSource::from_node(tcx, id);
-            if let MirSource::Fn(_) = src {
-                if let Some(mir) = cx.ensure_mir_and_read(def_id) {
-                    for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
-                        // Don't inline calls that are in cleanup blocks.
-                        if bb_data.is_cleanup { continue; }
-
-                        // Only consider direct calls to functions
-                        let terminator = bb_data.terminator();
-                        if let TerminatorKind::Call {
-                            func: Operand::Constant(ref f), .. } = terminator.kind {
-                            if let ty::TyFnDef(callee_def_id, substs, _) = f.ty.sty {
-                                callsites.push(CallSite {
-                                    caller: def_id,
-                                    callee: callee_def_id,
-                                    substs: substs,
-                                    bb: bb,
-                                    location: terminator.source_info
-                                });
-                            }
-                        }
-                    }
-
-                    in_scc.insert(def_id);
-                }
-            }
+impl MirPass for Inline {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          source: MirSource,
+                          mir: &mut Mir<'tcx>) {
+        if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
+            Inliner { tcx, source }.run_pass(mir);
         }
+    }
+}
 
-        // Move callsites that are in the the SCC to the end so
-        // they're inlined after calls to outside the SCC
-        let mut first_call_in_scc = callsites.len();
+struct Inliner<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    source: MirSource,
+}
 
-        let mut i = 0;
-        while i < first_call_in_scc {
-            let f = callsites[i].caller;
-            if in_scc.contains(&f) {
-                first_call_in_scc -= 1;
-                callsites.swap(i, first_call_in_scc);
-            } else {
-                i += 1;
+impl<'a, 'tcx> Inliner<'a, 'tcx> {
+    fn run_pass(&self, caller_mir: &mut Mir<'tcx>) {
+        // Keep a queue of callsites to try inlining on. We take
+        // advantage of the fact that queries detect cycles here to
+        // allow us to try and fetch the fully optimized MIR of a
+        // call; if it succeeds, we can inline it and we know that
+        // they do not call us.  Otherwise, we just don't try to
+        // inline.
+        //
+        // We use a queue so that we inline "broadly" before we inline
+        // in depth.  It is unclear if this is the current heuristic.
+
+        let mut callsites = VecDeque::new();
+
+        // Only do inlining into fn bodies.
+        if let MirSource::Fn(_) = self.source {
+            for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated() {
+                // Don't inline calls that are in cleanup blocks.
+                if bb_data.is_cleanup { continue; }
+
+                // Only consider direct calls to functions
+                let terminator = bb_data.terminator();
+                if let TerminatorKind::Call {
+                    func: Operand::Constant(ref f), .. } = terminator.kind {
+                    if let ty::TyFnDef(callee_def_id, substs, _) = f.ty.sty {
+                        callsites.push_back(CallSite {
+                            callee: callee_def_id,
+                            substs: substs,
+                            bb: bb,
+                            location: terminator.source_info
+                        });
+                    }
+                }
             }
         }
 
@@ -148,36 +103,26 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         loop {
             local_change = false;
-            let mut csi = 0;
-            while csi < callsites.len() {
-                let callsite = callsites[csi];
-                csi += 1;
+            while let Some(callsite) = callsites.pop_front() {
+                if !self.tcx.is_item_mir_available(callsite.callee) {
+                    continue;
+                }
 
-                let _task = tcx.dep_graph.in_task(DepNode::Mir(callsite.caller));
-                tcx.dep_graph.write(DepNode::Mir(callsite.caller));
-
-                let callee_mir = {
-                    if let Some(callee_mir) = cx.ensure_mir_and_read(callsite.callee) {
-                        if !self.should_inline(callsite, &callee_mir) {
-                            continue;
-                        }
-
-                        callee_mir.subst(tcx, callsite.substs)
-                    } else {
-                        continue;
+                let callee_mir = match ty::queries::optimized_mir::try_get(self.tcx,
+                                                                           callsite.location.span,
+                                                                           callsite.callee) {
+                    Ok(ref callee_mir) if self.should_inline(callsite, callee_mir) => {
+                        callee_mir.subst(self.tcx, callsite.substs)
                     }
 
+                    _ => continue,
                 };
-
-                let caller_mir = cx.mir_mut(callsite.caller);
 
                 let start = caller_mir.basic_blocks().len();
 
                 if !self.inline_call(callsite, caller_mir, callee_mir) {
                     continue;
                 }
-
-                inlined_into.insert(callsite.caller);
 
                 // Add callsites from inlined function
                 for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated().skip(start) {
@@ -188,8 +133,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                         if let ty::TyFnDef(callee_def_id, substs, _) = f.ty.sty {
                             // Don't inline the same function multiple times.
                             if callsite.callee != callee_def_id {
-                                callsites.push(CallSite {
-                                    caller: callsite.caller,
+                                callsites.push_back(CallSite {
                                     callee: callee_def_id,
                                     substs: substs,
                                     bb: bb,
@@ -198,13 +142,6 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                             }
                         }
                     }
-                }
-
-                csi -= 1;
-                if scc.len() == 1 {
-                    callsites.swap_remove(csi);
-                } else {
-                    callsites.remove(csi);
                 }
 
                 local_change = true;
@@ -216,18 +153,12 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             }
         }
 
-        // Simplify functions we inlined into.
-        for def_id in inlined_into {
-            let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
-            tcx.dep_graph.write(DepNode::Mir(def_id));
-
-            let caller_mir = cx.mir_mut(def_id);
-
-            debug!("Running simplify cfg on {:?}", def_id);
+        // Simplify if we inlined anything.
+        if changed {
+            debug!("Running simplify cfg on {:?}", self.source);
             CfgSimplifier::new(caller_mir).simplify();
             remove_dead_blocks(caller_mir);
         }
-        changed
     }
 
     fn should_inline(&self,
@@ -286,8 +217,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         // FIXME: Give a bonus to functions with only a single caller
 
-        let id = tcx.hir.as_local_node_id(callsite.caller).expect("Caller not local");
-        let param_env = ty::ParameterEnvironment::for_item(tcx, id);
+        let param_env = ty::ParameterEnvironment::for_item(tcx, self.source.item_id());
 
         let mut first_block = true;
         let mut cost = 0;
@@ -390,18 +320,11 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                    callsite: CallSite<'tcx>,
                    caller_mir: &mut Mir<'tcx>,
                    mut callee_mir: Mir<'tcx>) -> bool {
-        // Don't inline a function into itself
-        if callsite.caller == callsite.callee { return false; }
-
-        let _task = self.tcx.dep_graph.in_task(DepNode::Mir(callsite.caller));
-
-
         let terminator = caller_mir[callsite.bb].terminator.take().unwrap();
         match terminator.kind {
             // FIXME: Handle inlining of diverging calls
             TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
-
-                debug!("Inlined {:?} into {:?}", callsite.callee, callsite.caller);
+                debug!("Inlined {:?} into {:?}", callsite.callee, self.source);
 
                 let is_box_free = Some(callsite.callee) == self.tcx.lang_items.box_free_fn();
 
