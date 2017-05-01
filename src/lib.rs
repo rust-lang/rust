@@ -511,7 +511,7 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
             last_wspace = None;
         } else {
             newline_count = 0;
-            line_len += c.len_utf8();
+            line_len += 1;
             if c.is_whitespace() {
                 if last_wspace.is_none() {
                     last_wspace = Some(b);
