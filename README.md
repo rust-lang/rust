@@ -144,14 +144,14 @@ merged into the RFC repository as a markdown file. At that point the RFC is
     - Before actually entering FCP, *all* members of the subteam must sign off;
     this is often the point at which many subteam members first review the RFC
     in full depth.
-    - The FCP lasts ten calendar days, so that it is open for at least 5
-    business days. It is also advertised widely,
+  - The FCP lasts ten calendar days, so that it is open for at least 5 business
+    days. It is also advertised widely,
     e.g. in [This Week in Rust](https://this-week-in-rust.org/). This way all
     stakeholders have a chance to lodge any final objections before a decision
     is reached.
-    - In most cases, the FCP is quiet, and the RFC is either merged or
-      closed. However, sometimes substantial new arguments or ideas are raised,
-      the FCP is canceled, and the RFC goes back into development mode.
+  - In most cases, the FCP period is quiet, and the RFC is either merged or
+    closed. However, sometimes substantial new arguments or ideas are raised,
+    the FCP is canceled, and the RFC goes back into development mode.
 
 ## The RFC life-cycle
 [The RFC life-cycle]: #the-rfc-life-cycle
