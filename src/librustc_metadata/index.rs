@@ -58,7 +58,7 @@ impl Index {
         let pos = buf.position();
 
         // First we write the length of the lower range ...
-        buf.write_all(words_to_bytes(&[self.positions[0].len() as u32])).unwrap();
+        buf.write_all(words_to_bytes(&[(self.positions[0].len() as u32).to_le()])).unwrap();
         // ... then the values in the lower range ...
         buf.write_all(words_to_bytes(&self.positions[0][..])).unwrap();
         // ... then the values in the higher range.
