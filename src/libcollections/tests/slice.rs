@@ -467,6 +467,42 @@ fn test_sort_stability() {
 }
 
 #[test]
+fn test_rotate() {
+    let expected: Vec<_> = (0..13).collect();
+    let mut v = Vec::new();
+
+    // no-ops
+    v.clone_from(&expected);
+    v.rotate(0);
+    assert_eq!(v, expected);
+    v.rotate(expected.len());
+    assert_eq!(v, expected);
+    let mut zst_array = [(), (), ()];
+    zst_array.rotate(2);
+
+    // happy path
+    v = (5..13).chain(0..5).collect();
+    let k = v.rotate(8);
+    assert_eq!(v, expected);
+    assert_eq!(k, 5);
+
+    let expected: Vec<_> = (0..1000).collect();
+
+    // small rotations in large slice, uses ptr::copy
+    v = (2..1000).chain(0..2).collect();
+    v.rotate(998);
+    assert_eq!(v, expected);
+    v = (998..1000).chain(0..998).collect();
+    v.rotate(2);
+    assert_eq!(v, expected);
+
+    // non-small prime rotation, has a few rounds of swapping
+    v = (389..1000).chain(0..389).collect();
+    v.rotate(1000-389);
+    assert_eq!(v, expected);
+}
+
+#[test]
 fn test_concat() {
     let v: [Vec<i32>; 0] = [];
     let c = v.concat();

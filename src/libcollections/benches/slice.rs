@@ -195,6 +195,11 @@ fn gen_random(len: usize) -> Vec<u64> {
     rng.gen_iter::<u64>().take(len).collect()
 }
 
+fn gen_random_bytes(len: usize) -> Vec<u8> {
+    let mut rng = thread_rng();
+    rng.gen_iter::<u8>().take(len).collect()
+}
+
 fn gen_mostly_ascending(len: usize) -> Vec<u64> {
     let mut rng = thread_rng();
     let mut v = gen_ascending(len);
@@ -315,3 +320,39 @@ reverse!(reverse_u64, u64, |x| x as u64);
 reverse!(reverse_u128, u128, |x| x as u128);
 #[repr(simd)] struct F64x4(f64, f64, f64, f64);
 reverse!(reverse_simd_f64x4, F64x4, |x| { let x = x as f64; F64x4(x,x,x,x) });
+
+macro_rules! rotate {
+    ($name:ident, $gen:expr, $len:expr, $mid:expr) => {
+        #[bench]
+        fn $name(b: &mut Bencher) {
+            let size = mem::size_of_val(&$gen(1)[0]);
+            let mut v = $gen($len * 8 / size);
+            b.iter(|| black_box(&mut v).rotate(($mid*8+size-1)/size));
+            b.bytes = (v.len() * size) as u64;
+        }
+    }
+}
+
+rotate!(rotate_tiny_by1, gen_random, 16, 1);
+rotate!(rotate_tiny_half, gen_random, 16, 16/2);
+rotate!(rotate_tiny_half_plus_one, gen_random, 16, 16/2+1);
+
+rotate!(rotate_medium_by1, gen_random, 9158, 1);
+rotate!(rotate_medium_by727_u64, gen_random, 9158, 727);
+rotate!(rotate_medium_by727_bytes, gen_random_bytes, 9158, 727);
+rotate!(rotate_medium_by727_strings, gen_strings, 9158, 727);
+rotate!(rotate_medium_half, gen_random, 9158, 9158/2);
+rotate!(rotate_medium_half_plus_one, gen_random, 9158, 9158/2+1);
+
+// Intended to use more RAM than the machine has cache
+rotate!(rotate_huge_by1, gen_random, 5*1024*1024, 1);
+rotate!(rotate_huge_by9199_u64, gen_random, 5*1024*1024, 9199);
+rotate!(rotate_huge_by9199_bytes, gen_random_bytes, 5*1024*1024, 9199);
+rotate!(rotate_huge_by9199_strings, gen_strings, 5*1024*1024, 9199);
+rotate!(rotate_huge_by9199_big, gen_big_random, 5*1024*1024, 9199);
+rotate!(rotate_huge_by1234577_u64, gen_random, 5*1024*1024, 1234577);
+rotate!(rotate_huge_by1234577_bytes, gen_random_bytes, 5*1024*1024, 1234577);
+rotate!(rotate_huge_by1234577_strings, gen_strings, 5*1024*1024, 1234577);
+rotate!(rotate_huge_by1234577_big, gen_big_random, 5*1024*1024, 1234577);
+rotate!(rotate_huge_half, gen_random, 5*1024*1024, 5*1024*1024/2);
+rotate!(rotate_huge_half_plus_one, gen_random, 5*1024*1024, 5*1024*1024/2+1);

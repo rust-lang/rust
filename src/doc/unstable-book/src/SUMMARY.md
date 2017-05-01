@@ -195,6 +195,7 @@
     - [sip_hash_13](library-features/sip-hash-13.md)
     - [slice_concat_ext](library-features/slice-concat-ext.md)
     - [slice_get_slice](library-features/slice-get-slice.md)
+    - [slice_rotate](library-features/slice-rotate.md)
     - [slice_rsplit](library-features/slice-rsplit.md)
     - [sort_internals](library-features/sort-internals.md)
     - [sort_unstable](library-features/sort-unstable.md)

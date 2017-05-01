@@ -1337,6 +1337,58 @@ impl<T> [T] {
         core_slice::SliceExt::sort_unstable_by_key(self, f);
     }
 
+    /// Permutes the slice in-place such that `self[mid..]` move to the
+    /// beginning of the slice while `self[..mid]` move to the end of the
+    /// slice.  Equivalently, rotates the slice `mid` places to the left
+    /// or `k = self.len() - mid` places to the right.
+    ///
+    /// Rotation by `mid` and rotation by `k` are inverse operations.
+    /// The method returns `k`, which is also the new location of
+    /// the formerly-first element.
+    ///
+    /// This is a "k-rotation", a permutation in which item `i` moves to
+    /// position `i + k`, modulo the length of the slice.  See _Elements
+    /// of Programming_ [§10.4][eop].
+    ///
+    /// [eop]: https://books.google.com/books?id=CO9ULZGINlsC&pg=PA178&q=k-rotation
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `mid` is greater than the length of the
+    /// slice.  (Note that `mid == self.len()` does _not_ panic; it's a nop
+    /// rotation with `k == 0`, the inverse of a rotation with `mid == 0`.)
+    ///
+    /// # Complexity
+    ///
+    /// Takes linear (in `self.len()`) time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_rotate)]
+    ///
+    /// let mut a = [1, 2, 3, 4, 5, 6, 7];
+    /// let k = a.rotate(2);
+    /// assert_eq!(&a, &[3, 4, 5, 6, 7, 1, 2]);
+    /// a.rotate(k);
+    /// assert_eq!(&a, &[1, 2, 3, 4, 5, 6, 7]);
+    ///
+    /// fn extend_at<T, I>(v: &mut Vec<T>, index: usize, iter: I)
+    ///     where I: Iterator<Item=T>
+    /// {
+    ///     let mid = v.len() - index;
+    ///     v.extend(iter);
+    ///     v[index..].rotate(mid);
+    /// }
+    /// let mut v = (0..10).collect();
+    /// extend_at(&mut v, 7, 100..104);
+    /// assert_eq!(&v, &[0, 1, 2, 3, 4, 5, 6, 100, 101, 102, 103, 7, 8, 9]);
+    /// ```
+    #[unstable(feature = "slice_rotate", issue = "123456789")]
+    pub fn rotate(&mut self, mid: usize) -> usize {
+        core_slice::SliceExt::rotate(self, mid)
+    }
+
     /// Copies the elements from `src` into `self`.
     ///
     /// The length of `src` must be the same as `self`.
