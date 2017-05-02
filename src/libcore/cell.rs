@@ -456,8 +456,8 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
 /// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RefCell<T: ?Sized> {
-    borrow: Cell<BorrowFlag>,
     value: UnsafeCell<T>,
+    borrow: Cell<BorrowFlag>,
 }
 
 /// An error returned by [`RefCell::try_borrow`](struct.RefCell.html#method.try_borrow).
