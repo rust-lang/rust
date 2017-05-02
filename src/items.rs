@@ -908,7 +908,6 @@ fn format_struct_struct(context: &RewriteContext,
     };
     result.push_str(&generics_str);
 
-    // FIXME(#919): properly format empty structs and their comments.
     if fields.is_empty() {
         let snippet = context.snippet(mk_sp(body_lo, span.hi - BytePos(1)));
         if snippet.trim().is_empty() {
@@ -995,9 +994,8 @@ fn format_tuple_struct(context: &RewriteContext,
     let header_str = format_header(item_name, ident, vis);
     result.push_str(&header_str);
 
-    // FIXME(#919): don't lose comments on empty tuple structs.
     let body_lo = if fields.is_empty() {
-        span.hi
+        context.codemap.span_after(span, "(")
     } else {
         fields[0].span.lo
     };
@@ -1027,58 +1025,84 @@ fn format_tuple_struct(context: &RewriteContext,
         None => "".to_owned(),
     };
 
-    let (tactic, item_indent) = match context.config.fn_args_layout {
-        IndentStyle::Visual => {
-            // 1 = `(`
-            (ListTactic::HorizontalVertical, offset.block_only() + result.len() + 1)
-        }
-        IndentStyle::Block => {
-            (ListTactic::HorizontalVertical, offset.block_only().block_indent(&context.config))
-        }
-    };
-    // 3 = `();`
-    let item_budget = try_opt!(context
-                                   .config
-                                   .max_width
-                                   .checked_sub(item_indent.width() + 3));
-    let shape = Shape::legacy(item_budget, item_indent);
-
-    let items = itemize_list(context.codemap,
-                             fields.iter(),
-                             ")",
-                             |field| {
-                                 // Include attributes and doc comments, if present
-                                 if !field.attrs.is_empty() {
-                                     field.attrs[0].span.lo
-                                 } else {
-                                     field.span.lo
-                                 }
-                             },
-                             |field| field.ty.span.hi,
-                             |field| field.rewrite(context, shape),
-                             context.codemap.span_after(span, "("),
-                             span.hi);
-    let body = try_opt!(list_helper(items, shape, context.config, tactic));
-
-    if context.config.fn_args_layout == IndentStyle::Visual || !body.contains('\n') {
+    if fields.is_empty() {
         result.push('(');
-        if context.config.spaces_within_parens && body.len() > 0 {
-            result.push(' ');
-        }
-
-        result.push_str(&body);
-
-        if context.config.spaces_within_parens && body.len() > 0 {
-            result.push(' ');
+        let snippet = context.snippet(mk_sp(body_lo, context.codemap.span_before(span, ")")));
+        if snippet.is_empty() {
+            // `struct S ()`
+        } else if snippet
+                      .trim_right_matches(&[' ', '\t'][..])
+                      .ends_with('\n') {
+            result.push_str(&snippet.trim_right());
+            result.push('\n');
+            result.push_str(&offset.to_string(context.config));
+        } else {
+            result.push_str(&snippet);
         }
         result.push(')');
     } else {
-        result.push_str("(\n");
-        result.push_str(&item_indent.to_string(&context.config));
-        result.push_str(&body);
-        result.push('\n');
-        result.push_str(&offset.block_only().to_string(&context.config));
-        result.push(')');
+        let (tactic, item_indent) = match context.config.fn_args_layout {
+            IndentStyle::Visual => {
+                // 1 = `(`
+                (ListTactic::HorizontalVertical, offset.block_only() + result.len() + 1)
+            }
+            IndentStyle::Block => {
+                (ListTactic::HorizontalVertical, offset.block_only().block_indent(&context.config))
+            }
+        };
+        // 3 = `();`
+        let item_budget = try_opt!(context
+                                       .config
+                                       .max_width
+                                       .checked_sub(item_indent.width() + 3));
+
+        let items =
+            itemize_list(context.codemap,
+                         fields.iter(),
+                         ")",
+                         |field| {
+                             // Include attributes and doc comments, if present
+                             if !field.attrs.is_empty() {
+                                 field.attrs[0].span.lo
+                             } else {
+                                 field.span.lo
+                             }
+                         },
+                         |field| field.ty.span.hi,
+                         |field| field.rewrite(context, Shape::legacy(item_budget, item_indent)),
+                         context.codemap.span_after(span, "("),
+                         span.hi);
+        let body_budget = try_opt!(context
+                                       .config
+                                       .max_width
+                                       .checked_sub(offset.block_only().width() + result.len() +
+                                                    3));
+        let body = try_opt!(list_helper(items,
+                                        // TODO budget is wrong in block case
+                                        Shape::legacy(body_budget, item_indent),
+                                        context.config,
+                                        tactic));
+
+        if context.config.fn_args_layout == IndentStyle::Visual || !body.contains('\n') {
+            result.push('(');
+            if context.config.spaces_within_parens && body.len() > 0 {
+                result.push(' ');
+            }
+
+            result.push_str(&body);
+
+            if context.config.spaces_within_parens && body.len() > 0 {
+                result.push(' ');
+            }
+            result.push(')');
+        } else {
+            result.push_str("(\n");
+            result.push_str(&item_indent.to_string(&context.config));
+            result.push_str(&body);
+            result.push('\n');
+            result.push_str(&offset.block_only().to_string(&context.config));
+            result.push(')');
+        }
     }
 
     if !where_clause_str.is_empty() && !where_clause_str.contains('\n') &&

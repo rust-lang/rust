@@ -166,7 +166,7 @@ struct Foo {
 
     }
 struct Foo { /* comment */ }
-struct Foo();
+struct Foo( /* comment */ );
 
 struct LongStruct {
     a: A,
