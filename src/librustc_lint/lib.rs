@@ -112,6 +112,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     add_early_builtin!(sess,
                        UnusedParens,
                        UnusedImportBraces,
+                       AnonymousParameters,
                        );
 
     add_early_builtin_with_new!(sess,
@@ -243,6 +244,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(MISSING_FRAGMENT_SPECIFIER),
             reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(ANONYMOUS_PARAMETERS),
+            reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
         },
         ]);
 
