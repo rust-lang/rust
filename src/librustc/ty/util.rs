@@ -313,6 +313,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     ///
     /// Requires that trait definitions have been processed so that we can
     /// elaborate predicates and walk supertraits.
+    ///
+    /// FIXME callers may only have a &[Predicate], not a Vec, so that's
+    /// what this code should accept.
     pub fn required_region_bounds(self,
                                   erased_self_ty: Ty<'tcx>,
                                   predicates: Vec<ty::Predicate<'tcx>>)

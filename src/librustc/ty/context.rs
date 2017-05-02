@@ -32,7 +32,7 @@ use ty::{self, TraitRef, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants, Slice};
 use ty::{AdtKind, AdtDef, ClosureSubsts, Region};
 use hir::FreevarMap;
-use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
+use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
 use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
@@ -96,6 +96,7 @@ pub struct CtxtInterners<'tcx> {
     substs: RefCell<FxHashSet<Interned<'tcx, Substs<'tcx>>>>,
     region: RefCell<FxHashSet<Interned<'tcx, RegionKind<'tcx>>>>,
     existential_predicates: RefCell<FxHashSet<Interned<'tcx, Slice<ExistentialPredicate<'tcx>>>>>,
+    predicates: RefCell<FxHashSet<Interned<'tcx, Slice<Predicate<'tcx>>>>>,
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
@@ -107,6 +108,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             substs: RefCell::new(FxHashSet()),
             region: RefCell::new(FxHashSet()),
             existential_predicates: RefCell::new(FxHashSet()),
+            predicates: RefCell::new(FxHashSet()),
         }
     }
 
@@ -1130,6 +1132,13 @@ impl<'tcx: 'lcx, 'lcx> Borrow<[ExistentialPredicate<'lcx>]>
     }
 }
 
+impl<'tcx: 'lcx, 'lcx> Borrow<[Predicate<'lcx>]>
+    for Interned<'tcx, Slice<Predicate<'tcx>>> {
+    fn borrow<'a>(&'a self) -> &'a [Predicate<'lcx>] {
+        &self.0[..]
+    }
+}
+
 macro_rules! intern_method {
     ($lt_tcx:tt, $name:ident: $method:ident($alloc:ty,
                                             $alloc_method:ident,
@@ -1224,6 +1233,7 @@ macro_rules! slice_interners {
 
 slice_interners!(
     existential_predicates: _intern_existential_predicates(ExistentialPredicate),
+    predicates: _intern_predicates(Predicate),
     type_list: _intern_type_list(Ty),
     substs: _intern_substs(Kind)
 );
@@ -1443,6 +1453,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self._intern_existential_predicates(eps)
     }
 
+    pub fn intern_predicates(self, preds: &[Predicate<'tcx>])
+        -> &'tcx Slice<Predicate<'tcx>> {
+        // FIXME consider asking the input slice to be sorted to avoid
+        // re-interning permutations, in which case that would be asserted
+        // here.
+        if preds.len() == 0 {
+            // The macro-generated method below asserts we don't intern an empty slice.
+            Slice::empty()
+        } else {
+            self._intern_predicates(preds)
+        }
+    }
+
     pub fn intern_type_list(self, ts: &[Ty<'tcx>]) -> &'tcx Slice<Ty<'tcx>> {
         if ts.len() == 0 {
             Slice::empty()
@@ -1479,6 +1502,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                      &'tcx Slice<ExistentialPredicate<'tcx>>>>(self, iter: I)
                                      -> I::Output {
         iter.intern_with(|xs| self.intern_existential_predicates(xs))
+    }
+
+    pub fn mk_predicates<I: InternAs<[Predicate<'tcx>],
+                                     &'tcx Slice<Predicate<'tcx>>>>(self, iter: I)
+                                     -> I::Output {
+        iter.intern_with(|xs| self.intern_predicates(xs))
     }
 
     pub fn mk_type_list<I: InternAs<[Ty<'tcx>],

@@ -747,7 +747,7 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Predicate<'tcx> {
     /// Corresponds to `where Foo : Bar<A,B,C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
@@ -876,7 +876,7 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct TraitPredicate<'tcx> {
     pub trait_ref: TraitRef<'tcx>
 }
@@ -928,18 +928,18 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct EquatePredicate<'tcx>(pub Ty<'tcx>, pub Ty<'tcx>); // `0 == 1`
 pub type PolyEquatePredicate<'tcx> = ty::Binder<EquatePredicate<'tcx>>;
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct OutlivesPredicate<A,B>(pub A, pub B); // `A : B`
 pub type PolyOutlivesPredicate<A,B> = ty::Binder<OutlivesPredicate<A,B>>;
 pub type PolyRegionOutlivesPredicate<'tcx> = PolyOutlivesPredicate<ty::Region<'tcx>,
                                                                    ty::Region<'tcx>>;
 pub type PolyTypeOutlivesPredicate<'tcx> = PolyOutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>;
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct SubtypePredicate<'tcx> {
     pub a_is_expected: bool,
     pub a: Ty<'tcx>,
@@ -1173,7 +1173,7 @@ pub struct ParameterEnvironment<'tcx> {
     /// Obligations that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
     /// into Obligations, and elaborated and normalized.
-    pub caller_bounds: Vec<ty::Predicate<'tcx>>,
+    pub caller_bounds: &'tcx [ty::Predicate<'tcx>],
 
     /// Scope that is attached to free regions for this scope. This is
     /// usually the id of the fn body, but for more abstract scopes
@@ -1196,7 +1196,7 @@ pub struct ParameterEnvironment<'tcx> {
 
 impl<'a, 'tcx> ParameterEnvironment<'tcx> {
     pub fn with_caller_bounds(&self,
-                              caller_bounds: Vec<ty::Predicate<'tcx>>)
+                              caller_bounds: &'tcx [ty::Predicate<'tcx>])
                               -> ParameterEnvironment<'tcx>
     {
         ParameterEnvironment {
@@ -2441,7 +2441,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn empty_parameter_environment(self) -> ParameterEnvironment<'tcx> {
         ty::ParameterEnvironment {
             free_substs: self.intern_substs(&[]),
-            caller_bounds: Vec::new(),
+            caller_bounds: Slice::empty(),
             implicit_region_bound: None,
             free_id_outlive: None,
             is_copy_cache: RefCell::new(FxHashMap()),
@@ -2516,7 +2516,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let unnormalized_env = ty::ParameterEnvironment {
             free_substs: free_substs,
             implicit_region_bound: free_id_outlive.map(|f| tcx.mk_region(ty::ReScope(f))),
-            caller_bounds: predicates,
+            caller_bounds: tcx.intern_predicates(&predicates),
             free_id_outlive: free_id_outlive,
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),
