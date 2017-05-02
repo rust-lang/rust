@@ -276,7 +276,7 @@ pub trait Into<T>: Sized {
 pub trait From<T>: Sized {
     /// Performs the conversion.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn from(T) -> Self;
+    fn from(t: T) -> Self;
 }
 
 /// An attempted conversion that consumes `self`, which may or may not be

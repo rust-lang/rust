@@ -343,7 +343,7 @@ pub trait CompilerCalls<'a> {
 
     // Create a CompilController struct for controlling the behaviour of
     // compilation.
-    fn build_controller(&mut self, &Session, &getopts::Matches) -> CompileController<'a>;
+    fn build_controller(&mut self, _: &Session, _: &getopts::Matches) -> CompileController<'a>;
 }
 
 // CompilerCalls instance for a regular rustc build.
