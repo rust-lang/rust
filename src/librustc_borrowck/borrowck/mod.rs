@@ -86,6 +86,19 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     debug!("borrowck(body_owner_def_id={:?})", owner_def_id);
 
     let owner_id = tcx.hir.as_local_node_id(owner_def_id).unwrap();
+
+    match tcx.hir.get(owner_id) {
+        hir_map::NodeStructCtor(_) |
+        hir_map::NodeVariant(_) => {
+            // We get invoked with anything that has MIR, but some of
+            // those things (notably the synthesized constructors from
+            // tuple structs/variants) do not have an associated body
+            // and do not need borrowchecking.
+            return;
+        }
+        _ => { }
+    }
+
     let body_id = tcx.hir.body_owned_by(owner_id);
     let attributes = tcx.get_attrs(owner_def_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
