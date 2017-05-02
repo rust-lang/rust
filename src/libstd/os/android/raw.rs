@@ -105,7 +105,7 @@ mod arch {
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type dev_t = u64;
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub type mode_t = u32;
+    pub type mode_t = u16;
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type blkcnt_t = u64;
