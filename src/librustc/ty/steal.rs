@@ -29,6 +29,8 @@ use std::mem;
 /// Obviously, whenever you have a query that yields a `Steal` value,
 /// you must treat it with caution, and make sure that you know that
 /// -- once the value is stolen -- it will never be read from again.
+///
+/// FIXME(#41710) -- what is the best way to model linear queries?
 pub struct Steal<T> {
     value: RefCell<Option<T>>
 }
