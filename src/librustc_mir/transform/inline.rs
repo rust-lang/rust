@@ -72,7 +72,9 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // inline.
         //
         // We use a queue so that we inline "broadly" before we inline
-        // in depth.  It is unclear if this is the current heuristic.
+        // in depth. It is unclear if this is the best heuristic,
+        // really, but that's true of all the heuristics in this
+        // file. =)
 
         let mut callsites = VecDeque::new();
 
