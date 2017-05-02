@@ -49,14 +49,12 @@ pub mod diagnostics;
 mod build;
 mod hair;
 mod shim;
-mod queries;
 pub mod transform;
 pub mod util;
 
 use rustc::ty::maps::Providers;
 
 pub fn provide(providers: &mut Providers) {
-    queries::provide(providers);
     shim::provide(providers);
     transform::provide(providers);
 }
