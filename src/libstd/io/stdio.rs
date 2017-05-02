@@ -30,19 +30,22 @@ thread_local! {
 ///
 /// This handle is not synchronized or buffered in any fashion. Constructed via
 /// the `std::io::stdio::stdin_raw` function.
-struct StdinRaw(stdio::Stdin);
+#[unstable(feature = "stdio_raw", reason = "newly exposed", issue = "0")]
+pub struct StdinRaw(stdio::Stdin);
 
 /// A handle to a raw instance of the standard output stream of this process.
 ///
 /// This handle is not synchronized or buffered in any fashion. Constructed via
 /// the `std::io::stdio::stdout_raw` function.
-struct StdoutRaw(stdio::Stdout);
+#[unstable(feature = "stdio_raw", reason = "newly exposed", issue = "0")]
+pub struct StdoutRaw(stdio::Stdout);
 
 /// A handle to a raw instance of the standard output stream of this process.
 ///
 /// This handle is not synchronized or buffered in any fashion. Constructed via
 /// the `std::io::stdio::stderr_raw` function.
-struct StderrRaw(stdio::Stderr);
+#[unstable(feature = "stdio_raw", reason = "newly exposed", issue = "0")]
+pub struct StderrRaw(stdio::Stderr);
 
 /// Constructs a new raw handle to the standard input of this process.
 ///
@@ -51,7 +54,8 @@ struct StderrRaw(stdio::Stderr);
 /// handles is **not** available to raw handles returned from this function.
 ///
 /// The returned handle has no external synchronization or buffering.
-fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
+#[unstable(feature = "stdio_raw", reason = "newly exposed", issue = "0")]
+pub fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
 
 /// Constructs a new raw handle to the standard output stream of this process.
 ///
@@ -62,7 +66,8 @@ fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
+#[unstable(feature = "stdio_raw", reason = "newly exposed", issue = "0")]
+pub fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
 
 /// Constructs a new raw handle to the standard error stream of this process.
 ///
@@ -71,18 +76,24 @@ fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stderr_raw() -> io::Result<StderrRaw> { stdio::Stderr::new().map(StderrRaw) }
+#[unstable(feature = "stdio_raw", reason = "newly exposed", issue = "0")]
+pub fn stderr_raw() -> io::Result<StderrRaw> { stdio::Stderr::new().map(StderrRaw) }
 
+#[unstable(feature = "stdio_raw", reason = "newly exposed", issue = "0")]
 impl Read for StdinRaw {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         self.0.read_to_end(buf)
     }
 }
+
+#[unstable(feature = "stdio_raw", reason = "newly exposed", issue = "0")]
 impl Write for StdoutRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
     fn flush(&mut self) -> io::Result<()> { self.0.flush() }
 }
+
+#[unstable(feature = "stdio_raw", reason = "newly exposed", issue = "0")]
 impl Write for StderrRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
     fn flush(&mut self) -> io::Result<()> { self.0.flush() }
