@@ -1,0 +1,24 @@
+error[E0271]: type mismatch resolving `for<'r> <[closure@$DIR/closure-mismatch.rs:18:9: 18:15] as std::ops::FnOnce<(&'r (),)>>::Output == ()`
+  --> $DIR/closure-mismatch.rs:18:5
+   |
+18 |     baz(|_| ());
+   |     ^^^ expected bound lifetime parameter, found concrete lifetime
+   |
+   = note: concrete lifetime that was found is lifetime '_#0r
+   = note: required because of the requirements on the impl of `Foo` for `[closure@$DIR/closure-mismatch.rs:18:9: 18:15]`
+   = note: required by `baz`
+
+error[E0281]: type mismatch: `[closure@$DIR/closure-mismatch.rs:18:9: 18:15]` implements the trait `std::ops::Fn<(_,)>`, but the trait `for<'r> std::ops::Fn<(&'r (),)>` is required
+  --> $DIR/closure-mismatch.rs:18:5
+   |
+18 |     baz(|_| ());
+   |     ^^^ ------ implements `std::ops::Fn<(_,)>`
+   |     |
+   |     requires `for<'r> std::ops::Fn<(&'r (),)>`
+   |     expected concrete lifetime, found bound lifetime parameter
+   |
+   = note: required because of the requirements on the impl of `Foo` for `[closure@$DIR/closure-mismatch.rs:18:9: 18:15]`
+   = note: required by `baz`
+
+error: aborting due to 2 previous errors
+
