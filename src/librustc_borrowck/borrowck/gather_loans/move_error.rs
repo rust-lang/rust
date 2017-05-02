@@ -79,13 +79,10 @@ fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>, errors: &Vec<Move
                 let initializer =
                     e.init.as_ref().expect("should have an initializer to get an error");
                 if let Ok(snippet) = bccx.tcx.sess.codemap().span_to_snippet(initializer.span) {
-                    if snippet.len() > 10 {
-                        err.help(&format!("consider borrowing this with `&`"));
-                    } else {
-                        err.help(&format!("consider changing to `&{}`", snippet));
-                    }
+                    err.span_suggestion(initializer.span,
+                                        "consider using a reference instead",
+                                        format!("&{}", snippet));
                 }
-
             }
             _ => {
                 for move_to in &error.move_to_places {
