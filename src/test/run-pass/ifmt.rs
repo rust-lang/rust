@@ -79,6 +79,13 @@ pub fn main() {
     t!(format!("{:o}", 10_usize), "12");
     t!(format!("{:x}", 10_usize), "a");
     t!(format!("{:X}", 10_usize), "A");
+
+    t!(format!("{:x}", [100]), "[0x64]");
+    t!(format!("{:X}", [100]), "[0X64]");
+
+    t!(format!("{:?}", [100]), "[100]");
+    t!(format!("{:?}", [100]), "[100]");
+
     t!(format!("{}", "foo"), "foo");
     t!(format!("{}", "foo".to_string()), "foo");
     if cfg!(target_pointer_width = "32") {
