@@ -114,8 +114,7 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         add_call_guards::add_call_guards(&mut result);
     debug!("make_shim({:?}) = {:?}", instance, result);
 
-    let result = tcx.alloc_mir(result);
-    result
+    tcx.alloc_mir(result)
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
