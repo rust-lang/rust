@@ -3883,9 +3883,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                       let snip = tcx.sess.codemap().span_to_snippet(base.span);
                                       if let Ok(snip) = snip {
                                           err.span_suggestion(expr.span,
-                                                              "to access tuple elements, \
-                                                               use tuple indexing syntax \
-                                                               as shown",
+                                                              "to access tuple elements, use",
                                                               format!("{}.{}", snip, i));
                                           needs_note = false;
                                       }

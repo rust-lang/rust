@@ -11,7 +11,6 @@
 use CodeSuggestion;
 use Level;
 use RenderSpan;
-use RenderSpan::Suggestion;
 use std::fmt;
 use syntax_pos::{MultiSpan, Span};
 use snippet::Style;
@@ -24,6 +23,7 @@ pub struct Diagnostic {
     pub code: Option<String>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
+    pub suggestion: Option<CodeSuggestion>,
 }
 
 /// For example a note attached to an error.
@@ -87,6 +87,7 @@ impl Diagnostic {
             code: code,
             span: MultiSpan::new(),
             children: vec![],
+            suggestion: None,
         }
     }
 
@@ -202,19 +203,14 @@ impl Diagnostic {
 
     /// Prints out a message with a suggested edit of the code.
     ///
-    /// See `diagnostic::RenderSpan::Suggestion` for more information.
-    pub fn span_suggestion<S: Into<MultiSpan>>(&mut self,
-                                               sp: S,
-                                               msg: &str,
-                                               suggestion: String)
-                                               -> &mut Self {
-        self.sub(Level::Help,
-                 msg,
-                 MultiSpan::new(),
-                 Some(Suggestion(CodeSuggestion {
-                     msp: sp.into(),
-                     substitutes: vec![suggestion],
-                 })));
+    /// See `diagnostic::CodeSuggestion` for more information.
+    pub fn span_suggestion(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
+        assert!(self.suggestion.is_none());
+        self.suggestion = Some(CodeSuggestion {
+            msp: sp.into(),
+            substitutes: vec![suggestion],
+            msg: msg.to_owned(),
+        });
         self
     }
 

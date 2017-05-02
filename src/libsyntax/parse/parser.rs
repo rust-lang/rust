@@ -1492,9 +1492,8 @@ impl<'a> Parser<'a> {
         let bounds = self.parse_ty_param_bounds()?;
         let sum_span = ty.span.to(self.prev_span);
 
-        let mut err = struct_span_err!(self.sess.span_diagnostic, ty.span, E0178,
+        let mut err = struct_span_err!(self.sess.span_diagnostic, sum_span, E0178,
             "expected a path on the left-hand side of `+`, not `{}`", pprust::ty_to_string(&ty));
-        err.span_label(ty.span, &format!("expected a path"));
 
         match ty.node {
             TyKind::Rptr(ref lifetime, ref mut_ty) => {
@@ -1513,9 +1512,11 @@ impl<'a> Parser<'a> {
                 err.span_suggestion(sum_span, "try adding parentheses:", sum_with_parens);
             }
             TyKind::Ptr(..) | TyKind::BareFn(..) => {
-                help!(&mut err, "perhaps you forgot parentheses?");
+                err.span_label(sum_span, &"perhaps you forgot parentheses?");
             }
-            _ => {}
+            _ => {
+                err.span_label(sum_span, &"expected a path");
+            },
         }
         err.emit();
         Ok(())
@@ -5131,7 +5132,6 @@ impl<'a> Parser<'a> {
         }
 
         if self.check(&token::OpenDelim(token::Paren)) {
-            let start_span = self.span;
             // We don't `self.bump()` the `(` yet because this might be a struct definition where
             // `()` or a tuple might be allowed. For example, `struct Struct(pub (), pub (usize));`.
             // Because of this, we only `bump` the `(` if we're assured it is appropriate to do so
@@ -5170,12 +5170,9 @@ impl<'a> Parser<'a> {
 `pub(in path::to::module)`: visible only on the specified path"##;
                 let path = self.parse_path(PathStyle::Mod)?;
                 let path_span = self.prev_span;
-                let help_msg = format!("to make this visible only to module `{}`, add `in` before \
-                                       the path:",
-                                       path);
+                let help_msg = format!("make this visible only to module `{}` with `in`:", path);
                 self.expect(&token::CloseDelim(token::Paren))?;  // `)`
-                let sp = start_span.to(self.prev_span);
-                let mut err = self.span_fatal_help(sp, &msg, &suggestion);
+                let mut err = self.span_fatal_help(path_span, &msg, &suggestion);
                 err.span_suggestion(path_span, &help_msg, format!("in {}", path));
                 err.emit();  // emit diagnostic, but continue with public visibility
             }
