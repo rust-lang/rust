@@ -28,6 +28,7 @@ use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
+use syntax::attr;
 use syntax::symbol::Symbol;
 
 trait Key {
@@ -289,6 +290,19 @@ impl<'tcx> QueryDescription for queries::describe_def<'tcx> {
 impl<'tcx> QueryDescription for queries::def_span<'tcx> {
     fn describe(_: TyCtxt, _: DefId) -> String {
         bug!("def_span")
+    }
+}
+
+
+impl<'tcx> QueryDescription for queries::stability<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        bug!("stability")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::deprecation<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        bug!("deprecation")
     }
 }
 
@@ -599,7 +613,8 @@ define_maps! { <'tcx>
 
     [] describe_def: DescribeDef(DefId) -> Option<Def>,
     [] def_span: DefSpan(DefId) -> Span,
-
+    [] stability: Stability(DefId) -> Option<attr::Stability>,
+    [] deprecation: Deprecation(DefId) -> Option<attr::Deprecation>,
     [] item_body_nested_bodies: metadata_dep_node(DefId) -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
     [] const_is_rvalue_promotable_to_static: metadata_dep_node(DefId) -> bool,
     [] is_item_mir_available: metadata_dep_node(DefId) -> bool,
