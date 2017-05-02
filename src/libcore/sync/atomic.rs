@@ -939,9 +939,9 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            /// use std::sync::atomic::AtomicIsize;
+            /// use std::sync::atomic::$atomic_type;
             ///
-            /// let atomic_forty_two  = AtomicIsize::new(42);
+            /// let atomic_forty_two = $atomic_type::new(42);
             /// ```
             #[inline]
             #[$stable]
@@ -1005,11 +1005,11 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
-            /// use std::sync::atomic::{AtomicIsize, Ordering};
+            /// use std::sync::atomic::{$atomic_type, Ordering};
             ///
-            /// let some_isize = AtomicIsize::new(5);
+            /// let an_atomic = $atomic_type::new(5);
             ///
-            /// assert_eq!(some_isize.load(Ordering::Relaxed), 5);
+            /// assert_eq!(an_atomic.load(Ordering::Relaxed), 5);
             /// ```
             #[inline]
             #[$stable]
