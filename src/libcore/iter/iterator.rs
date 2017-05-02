@@ -2045,15 +2045,7 @@ pub trait Iterator {
         Self::Item: PartialEq<I::Item>,
         Self: Sized,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            match (self.next(), other.next()) {
-                (None, None) => return false,
-                (None, _) | (_, None) => return true,
-                (Some(x), Some(y)) => if x.ne(&y) { return true },
-            }
-        }
+        !self.eq(other)
     }
 
     /// Determines if the elements of this `Iterator` are lexicographically
@@ -2118,23 +2110,7 @@ pub trait Iterator {
         Self::Item: PartialOrd<I::Item>,
         Self: Sized,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            match (self.next(), other.next()) {
-                (None, None) => return false,
-                (None, _   ) => return false,
-                (_   , None) => return true,
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Less) => return false,
-                        Some(Ordering::Equal) => {}
-                        Some(Ordering::Greater) => return true,
-                        None => return false,
-                    }
-                }
-            }
-        }
+        !self.le(other)
     }
 
     /// Determines if the elements of this `Iterator` are lexicographically
@@ -2145,23 +2121,7 @@ pub trait Iterator {
         Self::Item: PartialOrd<I::Item>,
         Self: Sized,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            match (self.next(), other.next()) {
-                (None, None) => return true,
-                (None, _   ) => return false,
-                (_   , None) => return true,
-                (Some(x), Some(y)) => {
-                    match x.partial_cmp(&y) {
-                        Some(Ordering::Less) => return false,
-                        Some(Ordering::Equal) => {}
-                        Some(Ordering::Greater) => return true,
-                        None => return false,
-                    }
-                },
-            }
-        }
+        !self.lt(other)
     }
 }
 
