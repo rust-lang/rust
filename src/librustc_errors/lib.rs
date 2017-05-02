@@ -67,6 +67,7 @@ pub enum RenderSpan {
 pub struct CodeSuggestion {
     pub msp: MultiSpan,
     pub substitutes: Vec<String>,
+    pub msg: String,
 }
 
 pub trait CodeMapper {

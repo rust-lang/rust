@@ -34,6 +34,27 @@ impl Emitter for EmitterWriter {
     fn emit(&mut self, db: &DiagnosticBuilder) {
         let mut primary_span = db.span.clone();
         let mut children = db.children.clone();
+
+        if let Some(sugg) = db.suggestion.clone() {
+            assert_eq!(sugg.msp.primary_spans().len(), sugg.substitutes.len());
+            // don't display multispans as labels
+            if sugg.substitutes.len() == 1 &&
+               // don't display long messages as labels
+               sugg.msg.split_whitespace().count() < 10 &&
+               // don't display multiline suggestions as labels
+               sugg.substitutes[0].find('\n').is_none() {
+                let msg = format!("help: {} `{}`", sugg.msg, sugg.substitutes[0]);
+                primary_span.push_span_label(sugg.msp.primary_spans()[0], msg);
+            } else {
+                children.push(SubDiagnostic {
+                    level: Level::Help,
+                    message: Vec::new(),
+                    span: MultiSpan::new(),
+                    render_span: Some(Suggestion(sugg)),
+                });
+            }
+        }
+
         self.fix_multispans_in_std_macros(&mut primary_span, &mut children);
         self.emit_messages_default(&db.level,
                                    &db.styled_message(),
@@ -756,7 +777,7 @@ impl EmitterWriter {
     /// displayed, keeping the provided highlighting.
     fn msg_to_buffer(&self,
                      buffer: &mut StyledBuffer,
-                     msg: &Vec<(String, Style)>,
+                     msg: &[(String, Style)],
                      padding: usize,
                      label: &str,
                      override_style: Option<Style>) {
@@ -1022,7 +1043,6 @@ impl EmitterWriter {
     fn emit_suggestion_default(&mut self,
                                suggestion: &CodeSuggestion,
                                level: &Level,
-                               msg: &Vec<(String, Style)>,
                                max_line_num_len: usize)
                                -> io::Result<()> {
         use std::borrow::Borrow;
@@ -1034,7 +1054,7 @@ impl EmitterWriter {
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
             buffer.append(0, ": ", Style::HeaderMsg);
             self.msg_to_buffer(&mut buffer,
-                               msg,
+                               &[(suggestion.msg.to_owned(), Style::NoStyle)],
                                max_line_num_len,
                                "suggestion",
                                Some(Style::HeaderMsg));
@@ -1099,7 +1119,6 @@ impl EmitterWriter {
                         Some(Suggestion(ref cs)) => {
                             match self.emit_suggestion_default(cs,
                                                                &child.level,
-                                                               &child.styled_message(),
                                                                max_line_num_len) {
                                 Err(e) => panic!("failed to emit error: {}", e),
                                 _ => ()
