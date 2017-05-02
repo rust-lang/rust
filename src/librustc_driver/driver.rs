@@ -874,10 +874,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     }));
     sess.derive_registrar_fn.set(derive_registrar::find(&hir_map));
 
-    let region_map = time(time_passes,
-                          "region resolution",
-                          || middle::region::resolve_crate(sess, &hir_map));
-
     time(time_passes,
          "loop checking",
          || loops::check_crate(sess, &hir_map));
@@ -898,6 +894,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     ty::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
     rustc_const_eval::provide(&mut local_providers);
+    middle::region::provide(&mut local_providers);
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);
@@ -914,7 +911,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              resolutions,
                              named_region_map,
                              hir_map,
-                             region_map,
                              lang_items,
                              index,
                              name,
@@ -923,6 +919,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             time(time_passes,
                  "compute_incremental_hashes_map",
                  || rustc_incremental::compute_incremental_hashes_map(tcx));
+
         time(time_passes,
              "load_dep_graph",
              || rustc_incremental::load_dep_graph(tcx, &incremental_hashes_map));

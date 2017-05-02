@@ -23,7 +23,7 @@ use ich::StableHashingContext;
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::privacy::AccessLevels;
-use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
+use middle::region::CodeExtent;
 use middle::resolve_lifetime::ObjectLifetimeDefault;
 use mir::Mir;
 use traits;
@@ -46,7 +46,7 @@ use std::rc::Rc;
 use std::slice;
 use std::vec::IntoIter;
 use std::mem;
-use syntax::ast::{self, Name, NodeId};
+use syntax::ast::{self, DUMMY_NODE_ID, Name, NodeId};
 use syntax::attr;
 use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
@@ -67,11 +67,12 @@ pub use self::sty::{TraitRef, TypeVariants, PolyTraitRef};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
+pub use self::sty::RegionKind;
 pub use self::sty::Issue32330;
 pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid, SkolemizedRegionVid};
 pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
-pub use self::sty::Region::*;
+pub use self::sty::RegionKind::*;
 pub use self::sty::TypeVariants::*;
 
 pub use self::context::{TyCtxt, GlobalArenas, tls};
@@ -601,7 +602,7 @@ pub struct UpvarBorrow<'tcx> {
     pub kind: BorrowKind,
 
     /// Region of the resulting reference.
-    pub region: &'tcx ty::Region,
+    pub region: ty::Region<'tcx>,
 }
 
 pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
@@ -934,9 +935,9 @@ pub type PolyEquatePredicate<'tcx> = ty::Binder<EquatePredicate<'tcx>>;
 #[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct OutlivesPredicate<A,B>(pub A, pub B); // `A : B`
 pub type PolyOutlivesPredicate<A,B> = ty::Binder<OutlivesPredicate<A,B>>;
-pub type PolyRegionOutlivesPredicate<'tcx> = PolyOutlivesPredicate<&'tcx ty::Region,
-                                                                   &'tcx ty::Region>;
-pub type PolyTypeOutlivesPredicate<'tcx> = PolyOutlivesPredicate<Ty<'tcx>, &'tcx ty::Region>;
+pub type PolyRegionOutlivesPredicate<'tcx> = PolyOutlivesPredicate<ty::Region<'tcx>,
+                                                                   ty::Region<'tcx>>;
+pub type PolyTypeOutlivesPredicate<'tcx> = PolyOutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct SubtypePredicate<'tcx> {
@@ -1164,22 +1165,24 @@ pub struct ParameterEnvironment<'tcx> {
     /// Each type parameter has an implicit region bound that
     /// indicates it must outlive at least the function body (the user
     /// may specify stronger requirements). This field indicates the
-    /// region of the callee.
-    pub implicit_region_bound: &'tcx ty::Region,
+    /// region of the callee. If it is `None`, then the parameter
+    /// environment is for an item or something where the "callee" is
+    /// not clear.
+    pub implicit_region_bound: Option<ty::Region<'tcx>>,
 
     /// Obligations that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
     /// into Obligations, and elaborated and normalized.
     pub caller_bounds: Vec<ty::Predicate<'tcx>>,
 
-    /// Scope that is attached to free regions for this scope. This
-    /// is usually the id of the fn body, but for more abstract scopes
-    /// like structs we often use the node-id of the struct.
+    /// Scope that is attached to free regions for this scope. This is
+    /// usually the id of the fn body, but for more abstract scopes
+    /// like structs we use None or the item extent.
     ///
     /// FIXME(#3696). It would be nice to refactor so that free
     /// regions don't have this implicit scope and instead introduce
     /// relationships in the environment.
-    pub free_id_outlive: CodeExtent,
+    pub free_id_outlive: Option<CodeExtent<'tcx>>,
 
     /// A cache for `moves_by_default`.
     pub is_copy_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
@@ -1220,13 +1223,13 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         let impl_def_id = tcx.hir.local_def_id(impl_id);
                         tcx.construct_parameter_environment(impl_item.span,
                                                             impl_def_id,
-                                                            tcx.region_maps.item_extent(id))
+                                                            Some(tcx.item_extent(id)))
                     }
                     hir::ImplItemKind::Method(_, ref body) => {
                         tcx.construct_parameter_environment(
                             impl_item.span,
                             tcx.hir.local_def_id(id),
-                            tcx.region_maps.call_site_extent(id, body.node_id))
+                            Some(tcx.call_site_extent(id, body.node_id)))
                     }
                 }
             }
@@ -1239,7 +1242,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         let trait_def_id = tcx.hir.local_def_id(trait_id);
                         tcx.construct_parameter_environment(trait_item.span,
                                                             trait_def_id,
-                                                            tcx.region_maps.item_extent(id))
+                                                            Some(tcx.item_extent(id)))
                     }
                     hir::TraitItemKind::Method(_, ref body) => {
                         // Use call-site for extent (unless this is a
@@ -1247,15 +1250,15 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         // to the method id).
                         let extent = if let hir::TraitMethod::Provided(body_id) = *body {
                             // default impl: use call_site extent as free_id_outlive bound.
-                            tcx.region_maps.call_site_extent(id, body_id.node_id)
+                            tcx.call_site_extent(id, body_id.node_id)
                         } else {
                             // no default impl: use item extent as free_id_outlive bound.
-                            tcx.region_maps.item_extent(id)
+                            tcx.item_extent(id)
                         };
                         tcx.construct_parameter_environment(
                             trait_item.span,
                             tcx.hir.local_def_id(id),
-                            extent)
+                            Some(extent))
                     }
                 }
             }
@@ -1268,7 +1271,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         tcx.construct_parameter_environment(
                             item.span,
                             fn_def_id,
-                            tcx.region_maps.call_site_extent(id, body_id.node_id))
+                            Some(tcx.call_site_extent(id, body_id.node_id)))
                     }
                     hir::ItemEnum(..) |
                     hir::ItemStruct(..) |
@@ -1280,13 +1283,13 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         let def_id = tcx.hir.local_def_id(id);
                         tcx.construct_parameter_environment(item.span,
                                                             def_id,
-                                                            tcx.region_maps.item_extent(id))
+                                                            Some(tcx.item_extent(id)))
                     }
                     hir::ItemTrait(..) => {
                         let def_id = tcx.hir.local_def_id(id);
                         tcx.construct_parameter_environment(item.span,
                                                             def_id,
-                                                            tcx.region_maps.item_extent(id))
+                                                            Some(tcx.item_extent(id)))
                     }
                     _ => {
                         span_bug!(item.span,
@@ -1304,7 +1307,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                     tcx.construct_parameter_environment(
                         expr.span,
                         base_def_id,
-                        tcx.region_maps.call_site_extent(id, body.node_id))
+                        Some(tcx.call_site_extent(id, body.node_id)))
                 } else {
                     tcx.empty_parameter_environment()
                 }
@@ -1313,14 +1316,14 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                 let def_id = tcx.hir.local_def_id(id);
                 tcx.construct_parameter_environment(item.span,
                                                     def_id,
-                                                    ROOT_CODE_EXTENT)
+                                                    None)
             }
             Some(hir_map::NodeStructCtor(..)) |
             Some(hir_map::NodeVariant(..)) => {
                 let def_id = tcx.hir.local_def_id(id);
                 tcx.construct_parameter_environment(tcx.hir.span(id),
                                                     def_id,
-                                                    ROOT_CODE_EXTENT)
+                                                    None)
             }
             it => {
                 bug!("ParameterEnvironment::from_item(): \
@@ -2439,10 +2442,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         ty::ParameterEnvironment {
             free_substs: self.intern_substs(&[]),
             caller_bounds: Vec::new(),
-            implicit_region_bound: self.types.re_empty,
-            // for an empty parameter environment, there ARE no free
-            // regions, so it shouldn't matter what we use for the free id
-            free_id_outlive: ROOT_CODE_EXTENT,
+            implicit_region_bound: None,
+            free_id_outlive: None,
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),
             is_freeze_cache: RefCell::new(FxHashMap()),
@@ -2454,8 +2455,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// In general, this means converting from bound parameters to
     /// free parameters. Since we currently represent bound/free type
     /// parameters in the same way, this only has an effect on regions.
-    pub fn construct_free_substs(self, def_id: DefId,
-                                 free_id_outlive: CodeExtent)
+    pub fn construct_free_substs(self,
+                                 def_id: DefId,
+                                 free_id_outlive: Option<CodeExtent<'gcx>>)
                                  -> &'gcx Substs<'gcx> {
 
         let substs = Substs::for_item(self.global_tcx(), def_id, |def, _| {
@@ -2474,12 +2476,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// See `ParameterEnvironment` struct def'n for details.
-    /// If you were using `free_id: NodeId`, you might try `self.region_maps.item_extent(free_id)`
+    /// If you were using `free_id: NodeId`, you might try `self.region_maps().item_extent(free_id)`
     /// for the `free_id_outlive` parameter. (But note that this is not always quite right.)
     pub fn construct_parameter_environment(self,
                                            span: Span,
                                            def_id: DefId,
-                                           free_id_outlive: CodeExtent)
+                                           free_id_outlive: Option<CodeExtent<'gcx>>)
                                            -> ParameterEnvironment<'gcx>
     {
         //
@@ -2513,7 +2515,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let unnormalized_env = ty::ParameterEnvironment {
             free_substs: free_substs,
-            implicit_region_bound: tcx.mk_region(ty::ReScope(free_id_outlive)),
+            implicit_region_bound: free_id_outlive.map(|f| tcx.mk_region(ty::ReScope(f))),
             caller_bounds: predicates,
             free_id_outlive: free_id_outlive,
             is_copy_cache: RefCell::new(FxHashMap()),
@@ -2521,12 +2523,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             is_freeze_cache: RefCell::new(FxHashMap()),
         };
 
-        let cause = traits::ObligationCause::misc(span, free_id_outlive.node_id(&self.region_maps));
-        traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
+        let body_id = free_id_outlive.map(|f| f.node_id())
+                                     .unwrap_or(DUMMY_NODE_ID);
+        let cause = traits::ObligationCause::misc(span, body_id);
+        traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
     }
 
-    pub fn node_scope_region(self, id: NodeId) -> &'tcx Region {
-        self.mk_region(ty::ReScope(self.region_maps.node_extent(id)))
+    pub fn node_scope_region(self, id: NodeId) -> Region<'tcx> {
+        self.mk_region(ty::ReScope(self.node_extent(id)))
     }
 
     pub fn visit_all_item_likes_in_krate<V,F>(self,

@@ -315,7 +315,7 @@ impl<'cx, 'gcx, 'tcx> ty::fold::TypeFolder<'gcx, 'tcx> for Generalizer<'cx, 'gcx
         }
     }
 
-    fn fold_region(&mut self, r: &'tcx ty::Region) -> &'tcx ty::Region {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
             // Never make variables for regions bound within the type itself,
             // nor for erased regions.

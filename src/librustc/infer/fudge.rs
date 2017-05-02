@@ -147,7 +147,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn fold_region(&mut self, r: &'tcx ty::Region) -> &'tcx ty::Region {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
             ty::ReVar(v) if self.region_vars.contains(&v) => {
                 self.infcx.next_region_var(self.origin.clone())

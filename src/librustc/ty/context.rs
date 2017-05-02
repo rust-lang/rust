@@ -21,7 +21,7 @@ use hir::map as hir_map;
 use hir::map::DisambiguatedDefPathData;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
-use middle::region::RegionMaps;
+use middle::region::{CodeExtent, CodeExtentData};
 use middle::resolve_lifetime;
 use middle::stability;
 use mir::Mir;
@@ -33,6 +33,7 @@ use ty::{TyS, TypeVariants, Slice};
 use ty::{AdtKind, AdtDef, ClosureSubsts, Region};
 use hir::FreevarMap;
 use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
+use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
 use ty::layout::{Layout, TargetDataLayout};
@@ -93,7 +94,7 @@ pub struct CtxtInterners<'tcx> {
     type_: RefCell<FxHashSet<Interned<'tcx, TyS<'tcx>>>>,
     type_list: RefCell<FxHashSet<Interned<'tcx, Slice<Ty<'tcx>>>>>,
     substs: RefCell<FxHashSet<Interned<'tcx, Substs<'tcx>>>>,
-    region: RefCell<FxHashSet<Interned<'tcx, Region>>>,
+    region: RefCell<FxHashSet<Interned<'tcx, RegionKind<'tcx>>>>,
     existential_predicates: RefCell<FxHashSet<Interned<'tcx, Slice<ExistentialPredicate<'tcx>>>>>,
 }
 
@@ -191,9 +192,9 @@ pub struct CommonTypes<'tcx> {
     pub never: Ty<'tcx>,
     pub err: Ty<'tcx>,
 
-    pub re_empty: &'tcx Region,
-    pub re_static: &'tcx Region,
-    pub re_erased: &'tcx Region,
+    pub re_empty: Region<'tcx>,
+    pub re_static: Region<'tcx>,
+    pub re_erased: Region<'tcx>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -256,7 +257,7 @@ pub struct TypeckTables<'tcx> {
     /// Stores the free-region relationships that were deduced from
     /// its where clauses and parameter types. These are then
     /// read-again by borrowck.
-    pub free_region_map: FreeRegionMap,
+    pub free_region_map: FreeRegionMap<'tcx>,
 }
 
 impl<'tcx> TypeckTables<'tcx> {
@@ -392,9 +393,9 @@ impl<'tcx> CommonTypes<'tcx> {
             f32: mk(TyFloat(ast::FloatTy::F32)),
             f64: mk(TyFloat(ast::FloatTy::F64)),
 
-            re_empty: mk_region(Region::ReEmpty),
-            re_static: mk_region(Region::ReStatic),
-            re_erased: mk_region(Region::ReErased),
+            re_empty: mk_region(RegionKind::ReEmpty),
+            re_static: mk_region(RegionKind::ReStatic),
+            re_erased: mk_region(RegionKind::ReErased),
         }
     }
 }
@@ -438,8 +439,6 @@ pub struct GlobalCtxt<'tcx> {
     pub export_map: ExportMap,
 
     pub named_region_map: resolve_lifetime::NamedRegionMap,
-
-    pub region_maps: RegionMaps,
 
     pub hir: hir_map::Map<'tcx>,
     pub maps: maps::Maps<'tcx>,
@@ -550,6 +549,8 @@ pub struct GlobalCtxt<'tcx> {
 
     layout_interner: RefCell<FxHashSet<&'tcx Layout>>,
 
+    code_extent_interner: RefCell<FxHashSet<CodeExtent<'tcx>>>,
+
     /// A vector of every trait accessible in the whole crate
     /// (i.e. including those from subcrates). This is used only for
     /// error reporting, and so is lazily initialised and generally
@@ -650,6 +651,32 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         interned
     }
 
+    pub fn node_extent(self, n: ast::NodeId) -> CodeExtent<'gcx> {
+        self.intern_code_extent(CodeExtentData::Misc(n))
+    }
+
+    // Returns the code extent for an item - the destruction scope.
+    pub fn item_extent(self, n: ast::NodeId) -> CodeExtent<'gcx> {
+        self.intern_code_extent(CodeExtentData::DestructionScope(n))
+    }
+
+    pub fn call_site_extent(self, fn_id: ast::NodeId, body_id: ast::NodeId) -> CodeExtent<'gcx> {
+        assert!(fn_id != body_id);
+        self.intern_code_extent(CodeExtentData::CallSiteScope { fn_id: fn_id, body_id: body_id })
+    }
+
+    pub fn intern_code_extent(self, data: CodeExtentData) -> CodeExtent<'gcx> {
+        if let Some(st) = self.code_extent_interner.borrow().get(&data) {
+            return st;
+        }
+
+        let interned = self.global_interners.arena.alloc(data);
+        if let Some(prev) = self.code_extent_interner.borrow_mut().replace(interned) {
+            bug!("Tried to overwrite interned code-extent: {:?}", prev)
+        }
+        interned
+    }
+
     pub fn intern_layout(self, layout: Layout) -> &'gcx Layout {
         if let Some(layout) = self.layout_interner.borrow().get(&layout) {
             return layout;
@@ -690,7 +717,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   resolutions: ty::Resolutions,
                                   named_region_map: resolve_lifetime::NamedRegionMap,
                                   hir: hir_map::Map<'tcx>,
-                                  region_maps: RegionMaps,
                                   lang_items: middle::lang_items::LanguageItems,
                                   stability: stability::Index<'tcx>,
                                   crate_name: &str,
@@ -714,7 +740,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             dep_graph: dep_graph.clone(),
             types: common_types,
             named_region_map: named_region_map,
-            region_maps: region_maps,
             variance_computed: Cell::new(false),
             trait_map: resolutions.trait_map,
             export_map: resolutions.export_map,
@@ -740,6 +765,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data_layout: data_layout,
             layout_cache: RefCell::new(FxHashMap()),
             layout_interner: RefCell::new(FxHashSet()),
+            code_extent_interner: RefCell::new(FxHashSet()),
             layout_depth: Cell::new(0),
             derive_macros: RefCell::new(NodeMap()),
             stability_interner: RefCell::new(FxHashSet()),
@@ -819,9 +845,18 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for &'a Region {
-    type Lifted = &'tcx Region;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx Region> {
+impl<'a, 'tcx> Lift<'tcx> for ty::FreeRegion<'a> {
+    type Lifted = ty::FreeRegion<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        let scope = self.scope.map(|code_extent| tcx.intern_code_extent(*code_extent));
+        let bound_region = self.bound_region;
+        Some(ty::FreeRegion { scope, bound_region })
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for Region<'a> {
+    type Lifted = Region<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Region<'tcx>> {
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
         }
@@ -1082,9 +1117,9 @@ impl<'tcx: 'lcx, 'lcx> Borrow<[Kind<'lcx>]> for Interned<'tcx, Substs<'tcx>> {
     }
 }
 
-impl<'tcx> Borrow<Region> for Interned<'tcx, Region> {
-    fn borrow<'a>(&'a self) -> &'a Region {
-        self.0
+impl<'tcx> Borrow<RegionKind<'tcx>> for Interned<'tcx, RegionKind<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a RegionKind<'tcx> {
+        &self.0
     }
 }
 
@@ -1175,7 +1210,7 @@ direct_interners!('tcx,
             &ty::ReVar(_) | &ty::ReSkolemized(..) => true,
             _ => false
         }
-    }) -> Region
+    }) -> RegionKind<'tcx>
 );
 
 macro_rules! slice_interners {
@@ -1267,15 +1302,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(TyRawPtr(tm))
     }
 
-    pub fn mk_ref(self, r: &'tcx Region, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
+    pub fn mk_ref(self, r: Region<'tcx>, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
         self.mk_ty(TyRef(r, tm))
     }
 
-    pub fn mk_mut_ref(self, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn mk_mut_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::MutMutable})
     }
 
-    pub fn mk_imm_ref(self, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn mk_imm_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::MutImmutable})
     }
 
@@ -1337,7 +1372,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn mk_dynamic(
         self,
         obj: ty::Binder<&'tcx Slice<ExistentialPredicate<'tcx>>>,
-        reg: &'tcx ty::Region
+        reg: ty::Region<'tcx>
     ) -> Ty<'tcx> {
         self.mk_ty(TyDynamic(obj, reg))
     }
@@ -1467,7 +1502,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
 pub trait InternAs<T: ?Sized, R> {
     type Output;
-    fn intern_with<F>(self, F) -> Self::Output
+    fn intern_with<F>(self, f: F) -> Self::Output
         where F: FnOnce(&T) -> R;
 }
 

@@ -24,7 +24,7 @@ use rustc_serialize as serialize;
 ///
 /// (purpose: avoid mixing indexes for different bitvector domains.)
 pub trait Idx: Copy + 'static + Eq + Debug {
-    fn new(usize) -> Self;
+    fn new(idx: usize) -> Self;
     fn index(self) -> usize;
 }
 

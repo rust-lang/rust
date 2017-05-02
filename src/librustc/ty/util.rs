@@ -316,7 +316,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn required_region_bounds(self,
                                   erased_self_ty: Ty<'tcx>,
                                   predicates: Vec<ty::Predicate<'tcx>>)
-                                  -> Vec<&'tcx ty::Region>    {
+                                  -> Vec<ty::Region<'tcx>>    {
         debug!("required_region_bounds(erased_self_ty={:?}, predicates={:?})",
                erased_self_ty,
                predicates);
@@ -457,7 +457,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let result = item_substs.iter().zip(impl_substs.iter())
             .filter(|&(_, &k)| {
-                if let Some(&ty::Region::ReEarlyBound(ref ebr)) = k.as_region() {
+                if let Some(&ty::RegionKind::ReEarlyBound(ref ebr)) = k.as_region() {
                     !impl_generics.region_param(ebr).pure_wrt_drop
                 } else if let Some(&ty::TyS {
                     sty: ty::TypeVariants::TyParam(ref pt), ..
@@ -673,7 +673,7 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
         ty.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: &'tcx ty::Region) -> bool {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
         self.hash_discriminant_u8(r);
         match *r {
             ty::ReErased |

@@ -89,7 +89,7 @@ impl<'a, 'tcx> DocContext<'a, 'tcx> {
 }
 
 pub trait DocAccessLevels {
-    fn is_doc_reachable(&self, DefId) -> bool;
+    fn is_doc_reachable(&self, did: DefId) -> bool;
 }
 
 impl DocAccessLevels for AccessLevels<DefId> {
