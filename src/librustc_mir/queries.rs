@@ -38,12 +38,12 @@ pub fn provide(providers: &mut Providers) {
         mir_const,
         mir_validated,
         optimized_mir,
-        is_item_mir_available,
+        is_mir_available,
         ..*providers
     };
 }
 
-fn is_item_mir_available<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+fn is_mir_available<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
     tcx.mir_keys(def_id.krate).contains(&def_id)
 }
 

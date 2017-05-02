@@ -95,8 +95,8 @@ provide! { <'tcx> tcx, def_id, cdata
         })
     }
     optimized_mir => {
-        let mir = cdata.maybe_get_item_mir(tcx, def_id.index).unwrap_or_else(|| {
-            bug!("get_item_mir: missing MIR for `{:?}`", def_id)
+        let mir = cdata.maybe_get_optimized_mir(tcx, def_id.index).unwrap_or_else(|| {
+            bug!("get_optimized_mir: missing MIR for `{:?}`", def_id)
         });
 
         let mir = tcx.alloc_mir(mir);
@@ -122,7 +122,7 @@ provide! { <'tcx> tcx, def_id, cdata
         cdata.entry(def_id.index).ast.expect("const item missing `ast`")
             .decode(cdata).rvalue_promotable_to_static
     }
-    is_item_mir_available => {
+    is_mir_available => {
         !cdata.is_proc_macro(def_id.index) &&
         cdata.maybe_entry(def_id.index).and_then(|item| item.decode(cdata).mir).is_some()
     }

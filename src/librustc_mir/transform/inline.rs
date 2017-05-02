@@ -104,7 +104,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         loop {
             local_change = false;
             while let Some(callsite) = callsites.pop_front() {
-                if !self.tcx.is_item_mir_available(callsite.callee) {
+                if !self.tcx.is_mir_available(callsite.callee) {
                     continue;
                 }
 

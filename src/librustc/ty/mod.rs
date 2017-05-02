@@ -2324,18 +2324,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Given the did of an item, returns its (optimized) MIR, borrowed immutably.
-    pub fn item_mir(self, did: DefId) -> &'gcx Mir<'gcx> {
-        self.optimized_mir(did)
-    }
-
     /// Return the possibly-auto-generated MIR of a (DefId, Subst) pair.
     pub fn instance_mir(self, instance: ty::InstanceDef<'gcx>)
                         -> &'gcx Mir<'gcx>
     {
         match instance {
             ty::InstanceDef::Item(did) => {
-                self.item_mir(did)
+                self.optimized_mir(did)
             }
             ty::InstanceDef::Intrinsic(..) |
             ty::InstanceDef::FnPtrShim(..) |
@@ -2349,16 +2344,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Given the DefId of an item, returns its MIR, borrowed immutably.
     /// Returns None if there is no MIR for the DefId
-    pub fn maybe_item_mir(self, did: DefId) -> Option<&'gcx Mir<'gcx>> {
-        if did.is_local() && !self.mir_keys(LOCAL_CRATE).contains(&did) {
-            return None;
+    pub fn maybe_optimized_mir(self, did: DefId) -> Option<&'gcx Mir<'gcx>> {
+        if self.is_mir_available(did) {
+            Some(self.optimized_mir(did))
+        } else {
+            None
         }
-
-        if !did.is_local() && !self.is_item_mir_available(did) {
-            return None;
-        }
-
-        Some(self.item_mir(did))
     }
 
     /// Get the attributes of a definition.
