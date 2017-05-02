@@ -1073,6 +1073,53 @@ pub trait Write {
     fn by_ref(&mut self) -> &mut Self where Self: Sized { self }
 }
 
+/// A trait for objects which are wrap byte-oriented reader.
+///
+/// This wrappers typically used for make some data transformation such as
+/// decompression or data decryption.
+///
+/// ReadWrapper are defined two additional required methods, `reader()` and `finish()`:
+///
+/// * The `reader()` method will allow access to wrapped object.
+///
+/// * The `finish()` method complete reading and unwrap original reader.
+///   This method MAY NOT unwrap original stream until reached end of stream by `read()`
+///   method.
+pub trait ReadWrapper<R: Read>: Read {
+    /// Get wrapped object.
+    fn reader(&self) -> &R;
+
+    /// Complete reading and unwrap original reader.
+    ///
+    /// This method MAY NOT unwrap original stream until reached end of stream by `read()`
+    /// method.
+    fn finish(self) -> (R, Result<()>);
+}
+
+/// A trait for objects which are wrap byte-oriented writer.
+///
+/// This wrappers typically used for make some data transformation such as
+/// compression or data encryption.
+///
+/// WriteWrapper are defined two additional required methods, `writer()` and `finish()`:
+///
+/// * The `writer()` method will allow access to wrapped object.
+///
+/// * The `finish()` method complete writing (usually it write end of stream mark) and
+///   unwrap original writer.
+///   This method MUST be called on successfully code branch.
+///
+/// WriteWrapper SHOULD NOT write some data to wrapped writer in drop method.
+/// For example, for compression wrapped we do not want to get a "correct" stream without
+/// explict `finish()` call.
+pub trait WriteWrapper<W: Write>: Write {
+    /// Get wrapped object.
+    fn writer(&self) -> &W;
+
+    /// Complete writing (usually it write end of stream mark) and unwrap original writer.
+    fn finish(self) -> (W, Result<()>);
+}
+
 /// The `Seek` trait provides a cursor which can be moved within a stream of
 /// bytes.
 ///
