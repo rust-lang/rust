@@ -19,9 +19,8 @@ use super::intravisit::Visitor;
 ///
 /// 1. **Shallow visit**: Get a simple callback for every item (or item-like thing) in the HIR.
 ///    - Example: find all items with a `#[foo]` attribute on them.
-///    - How: Implement `ItemLikeVisitor` and call `tcx.visit_all_item_likes_in_krate()`.
+///    - How: Implement `ItemLikeVisitor` and call `tcx.hir.krate().visit_all_item_likes()`.
 ///    - Pro: Efficient; just walks the lists of item-like things, not the nodes themselves.
-///    - Pro: Integrates well into dependency tracking.
 ///    - Con: Don't get information about nesting
 ///    - Con: Don't have methods for specific bits of HIR, like "on
 ///      every expr, do this".
@@ -30,7 +29,7 @@ use super::intravisit::Visitor;
 ///    within one another.
 ///    - Example: Examine each expression to look for its type and do some check or other.
 ///    - How: Implement `intravisit::Visitor` and use
-///      `tcx.visit_all_item_likes_in_krate(visitor.as_deep_visitor())`. Within
+///      `tcx.hir.krate().visit_all_item_likes(visitor.as_deep_visitor())`. Within
 ///      your `intravisit::Visitor` impl, implement methods like
 ///      `visit_expr()`; don't forget to invoke
 ///      `intravisit::walk_visit_expr()` to keep walking the subparts.
