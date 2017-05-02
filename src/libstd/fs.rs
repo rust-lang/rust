@@ -1601,8 +1601,11 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// Removes a directory at this path, after removing all its contents. Use
 /// carefully!
 ///
-/// This function does **not** follow symbolic links and it will simply remove the
-/// symbolic link itself.
+/// This function does **not** follow symbolic links **inside** the
+/// directory and it will simply remove the symbolic link itself.
+/// But if a directory is **itself** a symbolic link to a directory
+/// it will first clean the target directory, then fail with the
+/// "Not a directory" error. 
 ///
 /// # Platform-specific behavior
 ///
