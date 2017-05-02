@@ -457,6 +457,7 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
 }
 
 /// Determines whether the current thread is unwinding because of panic.
+#[inline]
 pub fn panicking() -> bool {
     update_panic_count(0) != 0
 }
