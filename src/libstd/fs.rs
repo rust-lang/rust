@@ -563,6 +563,11 @@ impl OpenOptions {
     /// end of the file. So, before writing, save the current position (using
     /// `seek(SeekFrom::Current(0))`, and restore it before the next read.
     ///
+    /// Note that this isn't the same as `write` with the cursor starting at
+    /// the end of the file; this mode only allows writing to the end of the
+    /// file, but not changing any of its previous contents. This is common for
+    /// things like log files.
+    ///
     /// # Examples
     ///
     /// ```no_run
