@@ -687,7 +687,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
                 match err.cause {
                     MutabilityViolation => {
-                        format!("cannot assign to {}", descr)
+                        format!("cannot assign to immutable {}", descr)
                     }
                     BorrowViolation(euv::ClosureCapture(_)) => {
                         format!("closure cannot assign to {}", descr)
