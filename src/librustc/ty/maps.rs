@@ -14,6 +14,7 @@ use hir::def::Def;
 use hir;
 use middle::const_val;
 use middle::privacy::AccessLevels;
+use middle::region::RegionMaps;
 use mir;
 use session::CompileResult;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
@@ -591,6 +592,11 @@ define_maps! { <'tcx>
     [] privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,
 
     [] reachable_set: reachability_dep_node(CrateNum) -> Rc<NodeSet>,
+
+    /// Per-function `RegionMaps`. The `DefId` should be the owner-def-id for the fn body;
+    /// in the case of closures or "inline" expressions, this will be redirected to the enclosing
+    /// fn item.
+    [] region_maps: RegionMaps(DefId) -> Rc<RegionMaps<'tcx>>,
 
     [] mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>,
 

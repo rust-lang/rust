@@ -624,7 +624,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ImplHeader<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Region {
+impl<'tcx> TypeFoldable<'tcx> for ty::Region<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _folder: &mut F) -> Self {
         *self
     }

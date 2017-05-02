@@ -35,7 +35,7 @@ pub enum PatternError<'tcx> {
 #[derive(Copy, Clone, Debug)]
 pub enum BindingMode<'tcx> {
     ByValue,
-    ByRef(&'tcx Region, BorrowKind),
+    ByRef(Region<'tcx>, BorrowKind),
 }
 
 #[derive(Clone, Debug)]
@@ -811,7 +811,7 @@ macro_rules! CloneImpls {
 }
 
 CloneImpls!{ <'tcx>
-    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ConstVal<'tcx>, Region,
+    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ConstVal<'tcx>, Region<'tcx>,
     Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef,
     &'tcx Substs<'tcx>, &'tcx Kind<'tcx>
 }

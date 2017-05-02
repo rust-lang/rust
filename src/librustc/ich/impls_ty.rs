@@ -39,7 +39,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::subst::Kind<'t
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::Region {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::RegionKind<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -432,17 +432,6 @@ impl_stable_hash_for!(enum ty::cast::CastKind {
     FnPtrAddrCast
 });
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ::middle::region::CodeExtent
-{
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
-                                          hasher: &mut StableHasher<W>) {
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            hcx.tcx().region_maps.code_extent_data(*self).hash_stable(hcx, hasher);
-        });
-    }
-}
-
 impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ::middle::region::CodeExtentData
 {
     fn hash_stable<W: StableHasherResult>(&self,
@@ -477,7 +466,7 @@ impl_stable_hash_for!(struct ty::adjustment::CoerceUnsizedInfo {
     custom_kind
 });
 
-impl_stable_hash_for!(struct ty::FreeRegion {
+impl_stable_hash_for!(struct ty::FreeRegion<'tcx> {
     scope,
     bound_region
 });

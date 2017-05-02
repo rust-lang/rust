@@ -1034,7 +1034,7 @@ pub enum Rvalue<'tcx> {
     Repeat(Operand<'tcx>, ConstUsize),
 
     /// &x or &mut x
-    Ref(&'tcx Region, BorrowKind, Lvalue<'tcx>),
+    Ref(Region<'tcx>, BorrowKind, Lvalue<'tcx>),
 
     /// length of a [X] or [X;n] value
     Len(Lvalue<'tcx>),

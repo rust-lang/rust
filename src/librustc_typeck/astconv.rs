@@ -53,7 +53,7 @@ pub trait AstConv<'gcx, 'tcx> {
 
     /// What lifetime should we use when a lifetime is omitted (and not elided)?
     fn re_infer(&self, span: Span, _def: Option<&ty::RegionParameterDef>)
-                -> Option<&'tcx ty::Region>;
+                -> Option<ty::Region<'tcx>>;
 
     /// What type should we use when a type is omitted?
     fn ty_infer(&self, span: Span) -> Ty<'tcx>;
@@ -104,7 +104,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     pub fn ast_region_to_region(&self,
         lifetime: &hir::Lifetime,
         def: Option<&ty::RegionParameterDef>)
-        -> &'tcx ty::Region
+        -> ty::Region<'tcx>
     {
         let tcx = self.tcx();
         let r = match tcx.named_region_map.defs.get(&lifetime.id) {
@@ -133,7 +133,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             Some(&rl::Region::Free(scope, id)) => {
                 let name = tcx.hir.name(id);
                 tcx.mk_region(ty::ReFree(ty::FreeRegion {
-                    scope: scope.to_code_extent(&tcx.region_maps),
+                    scope: Some(scope.to_code_extent(tcx)),
                     bound_region: ty::BrNamed(tcx.hir.local_def_id(id), name)
                 }))
 
@@ -1342,7 +1342,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     fn compute_object_lifetime_bound(&self,
         span: Span,
         existential_predicates: ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>)
-        -> Option<&'tcx ty::Region> // if None, use the default
+        -> Option<ty::Region<'tcx>> // if None, use the default
     {
         let tcx = self.tcx();
 
@@ -1489,7 +1489,7 @@ fn report_lifetime_number_error(tcx: TyCtxt, span: Span, number: usize, expected
 // and return from functions in multiple places.
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Bounds<'tcx> {
-    pub region_bounds: Vec<&'tcx ty::Region>,
+    pub region_bounds: Vec<ty::Region<'tcx>>,
     pub implicitly_sized: bool,
     pub trait_bounds: Vec<ty::PolyTraitRef<'tcx>>,
     pub projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
@@ -1533,7 +1533,7 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
 
 pub enum ExplicitSelf<'tcx> {
     ByValue,
-    ByReference(&'tcx ty::Region, hir::Mutability),
+    ByReference(ty::Region<'tcx>, hir::Mutability),
     ByBox
 }
 
