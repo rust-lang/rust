@@ -979,6 +979,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             // NB: if you’re adding an *optimisation* it ought to go to another set of passes
             // in stage 4 below.
             passes.push_hook(box mir::transform::dump_mir::DumpMir);
+            passes.push_pass(box mir::transform::lower_intrinsics::LowerIntrinsics);
             passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("initial"));
             passes.push_pass(box mir::transform::type_check::TypeckMir);
             passes.push_pass(box mir::transform::qualify_consts::QualifyAndPromoteConstants);

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub mod lower_intrinsics;
 pub mod simplify_branches;
 pub mod simplify;
 pub mod erase_regions;
