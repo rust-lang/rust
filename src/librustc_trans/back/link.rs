@@ -756,6 +756,42 @@ fn link_natively(sess: &Session,
     // May have not found libraries in the right formats.
     sess.abort_if_errors();
 
+    // Ensure that when we target 32-bit MSVC from a Windows host that we only
+    // invoke at most one linker at a time.
+    //
+    // Well gee "whomever wrote this comment", isn't that bad! It sure is
+    // "whomever is reading this comment"!
+    //
+    // The backstory on this "weird linker hack #3194" is that awhile back we
+    // started seeing a lot of spurious failures on the 32-bit MSVC bot.
+    // Specifically, rust-lang/rust#33145 started tracking that, and the issue
+    // was that the linker was complaining about weird PDB RPCs. Searching
+    // around seemed to turn up that this is related to mspdbsrv.exe not exactly
+    // being robust in the face of things like **being run in parallel**.
+    //
+    // Some investigation turned up that this is indeed the case. Crucially, the
+    // linker would fail if run in parallel. This was tested by just writing a
+    // script that ran `rustc foo.rs` in two different directories for two
+    // differently-named `foo.rs` files each containing `fn main() {}`. When
+    // targeting 32-bit MSVC the linker would occasionally fail with a similar
+    // error as in the issue mentioned above.
+    //
+    // So all in all, that means if we're targeting 32-bit MSVC we can't
+    // actually run the linker in parallel! Well isn't that just a joy. To work
+    // around this we acquire a global IPC lock for our platform in that case to
+    // ensure that we only run one linker at a time.
+    //
+    // Note that the `acquire_global_lock` function is only implemented on
+    // Windows, it's just a noop for other platforms. Hopefully the linker for
+    // 32-bit MSVC can actually run in parallel when ported to a platform other
+    // than Windows!
+    let _lock = if sess.target.target.options.is_like_msvc &&
+                   sess.target.target.target_pointer_width == "32" {
+        Some(msvc::acquire_global_lock("__rustc_32_msvc_glorious_hack"))
+    } else {
+        None
+    };
+
     // Invoke the system linker
     //
     // Note that there's a terribly awful hack that really shouldn't be present
