@@ -248,7 +248,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                     bug!("static def id doesn't point to item");
                 }
             } else {
-                let def = self.ecx.tcx.sess.cstore.describe_def(def_id).expect("static not found");
+                let def = self.ecx.tcx.describe_def(def_id).expect("static not found");
                 if let hir::def::Def::Static(_, mutable) = def {
                     self.global_item(def_id, substs, span, !mutable);
                 } else {
