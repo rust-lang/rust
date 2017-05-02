@@ -1293,6 +1293,9 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
+/// Moving a file or directory is also a rename, in a sense, and so this
+/// function is not limited a single directory.
+///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
@@ -1309,6 +1312,17 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///
 /// # fn foo() -> std::io::Result<()> {
 /// fs::rename("a.txt", "b.txt")?; // Rename a.txt to b.txt
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Moving:
+///
+/// ```
+/// use std::fs;
+///
+/// # fn foo() -> std::io::Result<()> {
+/// try!(fs::rename("from/a.txt", "to/b.txt"));
 /// # Ok(())
 /// # }
 /// ```
