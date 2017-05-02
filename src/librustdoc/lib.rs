@@ -161,9 +161,9 @@ pub fn opts() -> Vec<RustcOptGroup> {
         stable(optopt("", "markdown-playground-url",
                       "URL to send code snippets to", "URL")),
         stable(optflag("", "markdown-no-toc", "don't include table of contents")),
-        unstable(optopt("e", "extend-css",
-                        "to redefine some css rules with a given file to generate doc with your \
-                         own theme", "PATH")),
+        stable(optopt("e", "extend-css",
+                      "to redefine some css rules with a given file to generate doc with your \
+                       own theme", "PATH")),
         unstable(optmulti("Z", "",
                           "internal and debugging options (only on nightly build)", "FLAG")),
         stable(optopt("", "sysroot", "Override the system root", "PATH")),
