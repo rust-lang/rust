@@ -1687,7 +1687,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         // To start, collect bounds from user:
         let mut param_bounds = self.tcx.required_region_bounds(generic.to_ty(self.tcx),
-                                                               param_env.caller_bounds.clone());
+                                                               param_env.caller_bounds.to_vec());
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list

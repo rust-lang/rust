@@ -462,7 +462,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            unnormalized_env);
 
     let predicates: Vec<_> =
-        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.clone())
+        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.to_vec())
         .filter(|p| !p.is_global()) // (*)
         .collect();
 
@@ -477,11 +477,19 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}",
            predicates);
 
-    let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
+    let elaborated_env = unnormalized_env.with_caller_bounds(tcx.intern_predicates(&predicates));
 
     tcx.infer_ctxt(elaborated_env, Reveal::UserFacing).enter(|infcx| {
-        let predicates = match fully_normalize(&infcx, cause,
-                                               &infcx.parameter_environment.caller_bounds) {
+        let predicates = match fully_normalize(
+                &infcx, cause,
+                // You would really want to pass infcx.parameter_environment.caller_bounds here,
+                // but that is an interned slice, and fully_normalize takes &T and returns T, so
+                // without further refactoring, a slice can't be used. Luckily, we still have the
+                // predicate vector from which we created the ParameterEnvironment in infcx, so we
+                // can pass that instead. It's roundabout and a bit brittle, but this code path
+                // ought to be refactored anyway, and until then it saves us from having to copy.
+                &predicates,
+        ) {
             Ok(predicates) => predicates,
             Err(errors) => {
                 infcx.report_fulfillment_errors(&errors);
@@ -520,7 +528,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("normalize_param_env_or_error: resolved predicates={:?}",
             predicates);
 
-        infcx.parameter_environment.with_caller_bounds(predicates)
+        infcx.parameter_environment.with_caller_bounds(tcx.intern_predicates(&predicates))
     })
 }
 
