@@ -295,7 +295,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
             predicates: Some(self.encode_predicates(def_id)),
 
             ast: None,
-            mir: self.encode_mir(def_id),
+            mir: self.encode_optimized_mir(def_id),
         }
     }
 
@@ -433,7 +433,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
             predicates: Some(self.encode_predicates(def_id)),
 
             ast: None,
-            mir: self.encode_mir(def_id),
+            mir: self.encode_optimized_mir(def_id),
         }
     }
 
@@ -528,7 +528,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
             } else {
                 None
             },
-            mir: self.encode_mir(def_id),
+            mir: self.encode_optimized_mir(def_id),
         }
     }
 
@@ -598,7 +598,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
             predicates: Some(self.encode_predicates(def_id)),
 
             ast: ast.map(|body| self.encode_body(body)),
-            mir: if mir { self.encode_mir(def_id) } else { None },
+            mir: if mir { self.encode_optimized_mir(def_id) } else { None },
         }
     }
 
@@ -619,10 +619,10 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
         self.lazy_seq(names.iter().map(|name| name.node))
     }
 
-    fn encode_mir(&mut self, def_id: DefId) -> Option<Lazy<mir::Mir<'tcx>>> {
+    fn encode_optimized_mir(&mut self, def_id: DefId) -> Option<Lazy<mir::Mir<'tcx>>> {
         debug!("EntryBuilder::encode_mir({:?})", def_id);
         if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
-            let mir = self.tcx.item_mir(def_id);
+            let mir = self.tcx.optimized_mir(def_id);
             Some(self.lazy(&mir))
         } else {
             None
@@ -861,15 +861,15 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
             },
             mir: match item.node {
                 hir::ItemStatic(..) if self.tcx.sess.opts.debugging_opts.always_encode_mir => {
-                    self.encode_mir(def_id)
+                    self.encode_optimized_mir(def_id)
                 }
-                hir::ItemConst(..) => self.encode_mir(def_id),
+                hir::ItemConst(..) => self.encode_optimized_mir(def_id),
                 hir::ItemFn(_, _, constness, _, ref generics, _) => {
                     let tps_len = generics.ty_params.len();
                     let needs_inline = tps_len > 0 || attr::requests_inline(&item.attrs);
                     let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
                     if needs_inline || constness == hir::Constness::Const || always_encode_mir {
-                        self.encode_mir(def_id)
+                        self.encode_optimized_mir(def_id)
                     } else {
                         None
                     }
@@ -1166,7 +1166,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
             predicates: None,
 
             ast: None,
-            mir: self.encode_mir(def_id),
+            mir: self.encode_optimized_mir(def_id),
         }
     }
 
@@ -1192,7 +1192,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
             predicates: Some(self.encode_predicates(def_id)),
 
             ast: Some(self.encode_body(body)),
-            mir: self.encode_mir(def_id),
+            mir: self.encode_optimized_mir(def_id),
         }
     }
 

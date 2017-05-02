@@ -779,10 +779,10 @@ impl<'a, 'tcx> CrateMetadata {
         tcx.alloc_tables(ast.tables.decode((self, tcx)))
     }
 
-    pub fn maybe_get_item_mir(&self,
-                              tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              id: DefIndex)
-                              -> Option<Mir<'tcx>> {
+    pub fn maybe_get_optimized_mir(&self,
+                                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   id: DefIndex)
+                                   -> Option<Mir<'tcx>> {
         match self.is_proc_macro(id) {
             true => None,
             false => self.entry(id).mir.map(|mir| mir.decode((self, tcx))),

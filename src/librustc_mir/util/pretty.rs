@@ -127,7 +127,7 @@ pub fn write_mir_pretty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let mut first = true;
     for def_id in dump_mir_def_ids(tcx, single) {
-        let mir = &tcx.item_mir(def_id);
+        let mir = &tcx.optimized_mir(def_id);
 
         if first {
             first = false;

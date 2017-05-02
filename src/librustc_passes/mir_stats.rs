@@ -46,7 +46,7 @@ pub fn print_mir_stats<'tcx, 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, title: &str) {
     // about maintaining the dep graph.
     let _ignore = tcx.dep_graph.in_ignore();
     for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
-        let mir = tcx.item_mir(def_id);
+        let mir = tcx.optimized_mir(def_id);
         collector.visit_mir(&mir);
     }
     collector.print(title);

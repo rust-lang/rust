@@ -29,7 +29,7 @@ pub fn write_mir_graphviz<'a, 'tcx, W>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     for def_id in dump_mir_def_ids(tcx, single) {
         let nodeid = tcx.hir.as_local_node_id(def_id).unwrap();
-        let mir = &tcx.item_mir(def_id);
+        let mir = &tcx.optimized_mir(def_id);
 
         writeln!(w, "digraph Mir_{} {{", nodeid)?;
 
