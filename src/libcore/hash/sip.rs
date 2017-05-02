@@ -403,8 +403,8 @@ impl<S: Sip> Default for Hasher<S> {
 
 #[doc(hidden)]
 trait Sip {
-    fn c_rounds(&mut State);
-    fn d_rounds(&mut State);
+    fn c_rounds(_: &mut State);
+    fn d_rounds(_: &mut State);
 }
 
 #[derive(Debug, Clone, Default)]
