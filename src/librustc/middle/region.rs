@@ -319,11 +319,28 @@ impl<'tcx> RegionMaps<'tcx> {
         }
     }
 
+    pub fn record_code_extent(&mut self,
+                              child: CodeExtent<'tcx>,
+                              parent: Option<CodeExtent<'tcx>>) {
+        debug!("{:?}.parent = {:?}", child, parent);
+
+        if let Some(p) = parent {
+            let prev = self.scope_map.insert(child, p);
+            assert!(prev.is_none());
+        }
+
+        // record the destruction scopes for later so we can query them
+        if let &CodeExtentData::DestructionScope(n) = child {
+            self.destruction_scopes.insert(n, child);
+        }
+    }
+
     pub fn each_encl_scope<E>(&self, mut e:E) where E: FnMut(CodeExtent<'tcx>, CodeExtent<'tcx>) {
         for (&child, &parent) in &self.scope_map {
             e(child, parent)
         }
     }
+
     pub fn each_var_scope<E>(&self, mut e:E) where E: FnMut(&ast::NodeId, CodeExtent<'tcx>) {
         for (child, parent) in self.var_map.iter() {
             e(child, parent)
@@ -1098,17 +1115,7 @@ impl<'a, 'tcx> RegionResolutionVisitor<'a, 'tcx> {
                               parent: Option<CodeExtent<'tcx>>)
                               -> CodeExtent<'tcx> {
         let code_extent = self.tcx.intern_code_extent(data);
-        debug!("{:?}.parent = {:?}", code_extent, parent);
-        if let Some(p) = parent {
-            let prev = self.region_maps.scope_map.insert(code_extent, p);
-            assert!(prev.is_none());
-        }
-
-        // record the destruction scopes for later so we can query them
-        if let &CodeExtentData::DestructionScope(n) = code_extent {
-            self.region_maps.destruction_scopes.insert(n, code_extent);
-        }
-
+        self.region_maps.record_code_extent(code_extent, parent);
         code_extent
     }
 
