@@ -1314,8 +1314,9 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                            valid types are any of the types for `--pretty`, as well as:
                            `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
                            `everybody_loops` (all function bodies replaced with `loop {}`),
-                           `hir` (the HIR), `hir,identified`, or
-                           `hir,typed` (HIR with types for each node).",
+                           `hir` (the HIR), `hir,identified`,
+                           `hir,typed` (HIR with types for each node), or
+                           `ast` (pretty-printed internal AST).",
                           "TYPE"),
 
         // new options here should **not** use the `_ubnr` functions, all new
