@@ -15,7 +15,7 @@ pub use self::IntVarValue::*;
 pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
-use dep_graph::{self, DepNode};
+use dep_graph::DepNode;
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -58,7 +58,6 @@ use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 
 use hir;
-use hir::itemlikevisit::ItemLikeVisitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
 pub use self::sty::{FnSig, PolyFnSig};
@@ -2563,14 +2562,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn node_scope_region(self, id: NodeId) -> Region<'tcx> {
         self.mk_region(ty::ReScope(self.node_extent(id)))
-    }
-
-    pub fn visit_all_item_likes_in_krate<V,F>(self,
-                                              dep_node_fn: F,
-                                              visitor: &mut V)
-        where F: FnMut(DefId) -> DepNode<DefId>, V: ItemLikeVisitor<'gcx>
-    {
-        dep_graph::visit_all_item_likes_in_krate(self.global_tcx(), dep_node_fn, visitor);
     }
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`
