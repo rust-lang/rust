@@ -58,13 +58,15 @@ mod signatures {
         fn method(&self, x: u32) { }
     }
 
-    #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
     struct WillChanges {
+        #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
         x: WillChange,
+        #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
         y: WillChange
     }
 
-    #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
+    // The fields change, not the type itself.
+    #[rustc_then_this_would_need(ItemSignature)] //~ ERROR no path
     fn indirect(x: WillChanges) { }
 }
 
