@@ -45,6 +45,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_attributes};
 use syntax_pos::Span;
+use syntax::symbol::keywords;
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::intravisit::FnKind;
@@ -601,6 +602,44 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
                          item.span,
                          "type does not implement `fmt::Debug`; consider adding #[derive(Debug)] \
                           or a manual implementation")
+        }
+    }
+}
+
+declare_lint! {
+    pub ANONYMOUS_PARAMETERS,
+    Allow,
+    "detects anonymous parameters"
+}
+
+/// Checks for use of anonymous parameters (RFC 1685)
+#[derive(Clone)]
+pub struct AnonymousParameters;
+
+impl LintPass for AnonymousParameters {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(ANONYMOUS_PARAMETERS)
+    }
+}
+
+impl EarlyLintPass for AnonymousParameters {
+    fn check_trait_item(&mut self, cx: &EarlyContext, it: &ast::TraitItem) {
+        match it.node {
+            ast::TraitItemKind::Method(ref sig, _) => {
+                for arg in sig.decl.inputs.iter() {
+                    match arg.pat.node {
+                        ast::PatKind::Ident(_, ident, None) => {
+                            if ident.node.name == keywords::Invalid.name() {
+                                cx.span_lint(ANONYMOUS_PARAMETERS,
+                                             arg.pat.span,
+                                             "use of deprecated anonymous parameter");
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+            },
+            _ => (),
         }
     }
 }
