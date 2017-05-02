@@ -208,9 +208,8 @@ pub fn size_of<T>() -> usize {
 ///
 /// assert_eq!(4, mem::size_of_val(&5i32));
 ///
-/// let x: [u8; 13] = [0; 13];
-/// let y: &[u8] = &x;
-/// assert_eq!(13, mem::size_of_val(y));
+/// let x = &[0u8; 13];
+/// assert_eq!(13, mem::size_of_val(x));
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
