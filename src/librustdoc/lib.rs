@@ -70,6 +70,7 @@ use rustc::session::config::{ErrorOutputType, RustcOptGroup, nightly_options,
 #[macro_use]
 pub mod externalfiles;
 
+pub mod frontmatter;
 pub mod clean;
 pub mod core;
 pub mod doctree;
