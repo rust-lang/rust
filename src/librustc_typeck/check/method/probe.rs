@@ -893,7 +893,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         debug!("assemble_where_clause_candidates(trait_def_id={:?})",
                trait_def_id);
 
-        let caller_predicates = self.parameter_environment.caller_bounds.clone();
+        let caller_predicates = self.parameter_environment.caller_bounds.to_vec();
         for poly_bound in traits::elaborate_predicates(self.tcx, caller_predicates)
             .filter_map(|p| p.to_opt_poly_trait_ref())
             .filter(|b| b.def_id() == trait_def_id) {
