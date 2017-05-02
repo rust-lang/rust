@@ -20,7 +20,7 @@ use rustc::session::search_paths::PathKind;
 use rustc::lint;
 use rustc::middle::{self, dependency_format, stability, reachable};
 use rustc::middle::privacy::AccessLevels;
-use rustc::mir::transform::{MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED};
+use rustc::mir::transform::{MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED, Passes};
 use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
 use rustc::util::common::time;
 use rustc::util::nodemap::NodeSet;
@@ -904,7 +904,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     rustc_const_eval::provide(&mut extern_providers);
 
     // Setup the MIR passes that we want to run.
-    let mut passes = sess.mir_passes.borrow().clone();
+    let mut passes = Passes::new();
     passes.push_hook(mir::transform::dump_mir::DumpMir);
 
     // What we need to do constant evaluation.

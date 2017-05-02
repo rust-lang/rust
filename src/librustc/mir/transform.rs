@@ -134,6 +134,8 @@ pub trait MirPass {
 }
 
 /// A manager for MIR passes.
+///
+/// FIXME(#41712) -- it is unclear whether we should have this struct.
 #[derive(Clone)]
 pub struct Passes {
     pass_hooks: Vec<Rc<PassHook>>,

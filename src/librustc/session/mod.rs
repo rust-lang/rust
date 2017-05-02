@@ -21,7 +21,6 @@ use session::config::DebugInfoLevel;
 use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::duration_to_secs_str;
-use mir::transform as mir_pass;
 
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder};
@@ -85,7 +84,6 @@ pub struct Session {
     /// redundantly verbose output (Issue #24690).
     pub one_time_diagnostics: RefCell<FxHashSet<(lint::LintId, Span, String)>>,
     pub plugin_llvm_passes: RefCell<Vec<String>>,
-    pub mir_passes: RefCell<mir_pass::Passes>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
@@ -670,7 +668,6 @@ pub fn build_session_(sopts: config::Options,
         lints: RefCell::new(lint::LintTable::new()),
         one_time_diagnostics: RefCell::new(FxHashSet()),
         plugin_llvm_passes: RefCell::new(Vec::new()),
-        mir_passes: RefCell::new(mir_pass::Passes::new()),
         plugin_attributes: RefCell::new(Vec::new()),
         crate_types: RefCell::new(Vec::new()),
         dependency_formats: RefCell::new(FxHashMap()),
