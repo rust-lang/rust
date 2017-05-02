@@ -65,7 +65,7 @@ macro_rules! panic {
 /// the end of the message.
 ///
 /// Note that stdout is frequently line-buffered by default so it may be
-/// necessary to use `io::stdout().flush()` to ensure the output is emitted
+/// necessary to use `io::stdout().lock().flush()` to ensure the output is emitted
 /// immediately.
 ///
 /// # Panics
