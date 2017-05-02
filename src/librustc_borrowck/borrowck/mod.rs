@@ -109,6 +109,16 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
 
     if bccx.tcx.has_attr(owner_def_id, "rustc_mir_borrowck") {
         mir::borrowck_mir(bccx, owner_id, &attributes);
+    } else {
+        // Eventually, borrowck will always read the MIR, but at the
+        // moment we do not. So, for now, we always force MIR to be
+        // constructed for a given fn, since this may result in errors
+        // being reported and we want that to happen.
+        //
+        // Note that `mir_validated` is a "stealable" result; the
+        // thief, `optimized_mir()`, forces borrowck, so we know that
+        // is not yet stolen.
+        tcx.mir_validated(owner_def_id).borrow();
     }
 
     let cfg = cfg::CFG::new(bccx.tcx, &body);
