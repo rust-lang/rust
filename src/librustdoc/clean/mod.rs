@@ -503,7 +503,7 @@ impl<'a> Iterator for ListAttributesIter<'a> {
 
 pub trait AttributesExt {
     /// Finds an attribute as List and returns the list of attributes nested inside.
-    fn lists<'a>(&'a self, &'a str) -> ListAttributesIter<'a>;
+    fn lists<'a>(&'a self, name: &'a str) -> ListAttributesIter<'a>;
 }
 
 impl AttributesExt for [ast::Attribute] {
@@ -518,7 +518,7 @@ impl AttributesExt for [ast::Attribute] {
 
 pub trait NestedAttributesExt {
     /// Returns whether the attribute list contains a specific `Word`
-    fn has_word(self, &str) -> bool;
+    fn has_word(self, word: &str) -> bool;
 }
 
 impl<I: IntoIterator<Item=ast::NestedMetaItem>> NestedAttributesExt for I {

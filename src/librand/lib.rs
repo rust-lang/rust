@@ -329,7 +329,7 @@ impl<'a, R: fmt::Debug> fmt::Debug for AsciiGenerator<'a, R> {
 /// the same stream of randomness multiple times.
 pub trait SeedableRng<Seed>: Rng {
     /// Reseed an RNG with the given seed.
-    fn reseed(&mut self, Seed);
+    fn reseed(&mut self, _: Seed);
 
     /// Create a new RNG with the given seed.
     fn from_seed(seed: Seed) -> Self;
