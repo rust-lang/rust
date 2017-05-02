@@ -455,7 +455,7 @@ impl<'hir> Map<'hir> {
                 if let EntryExpr(_, expr) = entry {
                     BodyId { node_id: expr.id }
                 } else {
-                    span_bug!(self.span(id), "id `{}` has no associated body", id);
+                    span_bug!(self.span(id), "id `{}` has no associated body: {:?}", id, entry);
                 }
             }
         } else {
