@@ -43,7 +43,7 @@ use ty::{IntType, UintType};
 use ty::{self, Ty, TyCtxt};
 use ty::error::TypeError;
 use ty::relate::{self, Relate, RelateResult, TypeRelation};
-use traits::PredicateObligations;
+use traits::{Obligation, PredicateObligations};
 
 use syntax::ast;
 use syntax_pos::Span;
@@ -206,10 +206,15 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         // `'?2` and `?3` are fresh region/type inference
         // variables. (Down below, we will relate `a_ty <: b_ty`,
         // adding constraints like `'x: '?2` and `?1 <: ?3`.)
-        let b_ty = self.generalize(a_ty, b_vid, dir)?;
+        let Generalization { ty: b_ty, needs_wf } = self.generalize(a_ty, b_vid, dir)?;
         debug!("instantiate(a_ty={:?}, dir={:?}, b_vid={:?}, generalized b_ty={:?})",
                a_ty, dir, b_vid, b_ty);
         self.infcx.type_variables.borrow_mut().instantiate(b_vid, b_ty);
+
+        if needs_wf {
+            self.obligations.push(Obligation::new(self.trace.cause.clone(),
+                                                  ty::Predicate::WellFormed(b_ty)));
+        }
 
         // Finally, relate `b_ty` to `a_ty`, as described in previous comment.
         //
@@ -229,10 +234,9 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
 
     /// Attempts to generalize `ty` for the type variable `for_vid`.
     /// This checks for cycle -- that is, whether the type `ty`
-    /// references `for_vid`. If `is_eq_relation` is false, it will
-    /// also replace all regions/unbound-type-variables with fresh
-    /// variables. Returns `TyError` in the case of a cycle, `Ok`
-    /// otherwise.
+    /// references `for_vid`. The `dir` is the "direction" for which we
+    /// a performing the generalization (i.e., are we producing a type
+    /// that can be used as a supertype etc).
     ///
     /// Preconditions:
     ///
@@ -241,7 +245,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
                   ty: Ty<'tcx>,
                   for_vid: ty::TyVid,
                   dir: RelationDir)
-                  -> RelateResult<'tcx, Ty<'tcx>>
+                  -> RelateResult<'tcx, Generalization<'tcx>>
     {
         // Determine the ambient variance within which `ty` appears.
         // The surrounding equation is:
@@ -261,9 +265,12 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
             span: self.trace.cause.span,
             for_vid_sub_root: self.infcx.type_variables.borrow_mut().sub_root_var(for_vid),
             ambient_variance: ambient_variance,
+            needs_wf: false,
         };
 
-        generalize.relate(&ty, &ty)
+        let ty = generalize.relate(&ty, &ty)?;
+        let needs_wf = generalize.needs_wf;
+        Ok(Generalization { ty, needs_wf })
     }
 }
 
@@ -272,6 +279,41 @@ struct Generalizer<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     span: Span,
     for_vid_sub_root: ty::TyVid,
     ambient_variance: ty::Variance,
+    needs_wf: bool, // see the field `needs_wf` in `Generalization`
+}
+
+/// Result from a generalization operation. This includes
+/// not only the generalized type, but also a bool flag
+/// indicating whether further WF checks are needed.q
+struct Generalization<'tcx> {
+    ty: Ty<'tcx>,
+
+    /// If true, then the generalized type may not be well-formed,
+    /// even if the source type is well-formed, so we should add an
+    /// additional check to enforce that it is. This arises in
+    /// particular around 'bivariant' type parameters that are only
+    /// constrained by a where-clause. As an example, imagine a type:
+    ///
+    ///     struct Foo<A, B> where A: Iterator<Item=B> {
+    ///         data: A
+    ///     }
+    ///
+    /// here, `A` will be covariant, but `B` is
+    /// unconstrained. However, whatever it is, for `Foo` to be WF, it
+    /// must be equal to `A::Item`. If we have an input `Foo<?A, ?B>`,
+    /// then after generalization we will wind up with a type like
+    /// `Foo<?C, ?D>`. When we enforce that `Foo<?A, ?B> <: Foo<?C,
+    /// ?D>` (or `>:`), we will wind up with the requirement that `?A
+    /// <: ?C`, but no particular relationship between `?B` and `?D`
+    /// (after all, we do not know the variance of the normalized form
+    /// of `A::Item` with respect to `A`). If we do nothing else, this
+    /// may mean that `?D` goes unconstrained (as in #41677).  So, in
+    /// this scenario where we create a new type variable in a
+    /// bivariant context, we set the `needs_wf` flag to true. This
+    /// will force the calling code to check that `WF(Foo<?C, ?D>)`
+    /// holds, which in turn implies that `?C::Item == ?D`. So once
+    /// `?C` is constrained, that should suffice to restrict `?D`.
+    needs_wf: bool,
 }
 
 impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, 'tcx> {
@@ -332,17 +374,26 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                         }
                         None => {
                             match self.ambient_variance {
-                                ty::Invariant => Ok(t),
+                                // Invariant: no need to make a fresh type variable.
+                                ty::Invariant => return Ok(t),
 
-                                ty::Bivariant | ty::Covariant | ty::Contravariant => {
-                                    let origin = variables.origin(vid);
-                                    let new_var_id = variables.new_var(false, origin, None);
-                                    let u = self.tcx().mk_var(new_var_id);
-                                    debug!("generalize: replacing original vid={:?} with new={:?}",
-                                           vid, u);
-                                    Ok(u)
-                                }
+                                // Bivariant: make a fresh var, but we
+                                // may need a WF predicate. See
+                                // comment on `needs_wf` field for
+                                // more info.
+                                ty::Bivariant => self.needs_wf = true,
+
+                                // Co/contravariant: this will be
+                                // sufficiently constrained later on.
+                                ty::Covariant | ty::Contravariant => (),
                             }
+
+                            let origin = variables.origin(vid);
+                            let new_var_id = variables.new_var(false, origin, None);
+                            let u = self.tcx().mk_var(new_var_id);
+                            debug!("generalize: replacing original vid={:?} with new={:?}",
+                                   vid, u);
+                            return Ok(u);
                         }
                     }
                 }
