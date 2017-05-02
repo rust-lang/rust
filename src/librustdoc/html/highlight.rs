@@ -134,7 +134,7 @@ pub trait Writer {
     fn string<T: Display>(&mut self,
                           text: T,
                           klass: Class,
-                          tas: Option<&TokenAndSpan>)
+                          tok: Option<&TokenAndSpan>)
                           -> io::Result<()>;
 }
 
