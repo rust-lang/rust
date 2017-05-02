@@ -56,7 +56,7 @@ pub enum DepNode<D: Clone + Debug> {
     WorkProduct(Arc<WorkProductId>),
 
     // Represents different phases in the compiler.
-    RegionResolveCrate,
+    RegionMaps(D),
     Coherence,
     Resolve,
     CoherenceCheckTrait(D),
@@ -197,7 +197,6 @@ impl<D: Clone + Debug> DepNode<D> {
             BorrowCheckKrate => Some(BorrowCheckKrate),
             MirKrate => Some(MirKrate),
             TypeckBodiesKrate => Some(TypeckBodiesKrate),
-            RegionResolveCrate => Some(RegionResolveCrate),
             Coherence => Some(Coherence),
             Resolve => Some(Resolve),
             Variance => Some(Variance),
@@ -223,6 +222,7 @@ impl<D: Clone + Debug> DepNode<D> {
                 def_ids.map(MirShim)
             }
             BorrowCheck(ref d) => op(d).map(BorrowCheck),
+            RegionMaps(ref d) => op(d).map(RegionMaps),
             RvalueCheck(ref d) => op(d).map(RvalueCheck),
             TransCrateItem(ref d) => op(d).map(TransCrateItem),
             TransInlinedItem(ref d) => op(d).map(TransInlinedItem),

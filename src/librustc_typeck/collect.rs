@@ -215,7 +215,7 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
     }
 
     fn re_infer(&self, _span: Span, _def: Option<&ty::RegionParameterDef>)
-                -> Option<&'tcx ty::Region> {
+                -> Option<ty::Region<'tcx>> {
         None
     }
 

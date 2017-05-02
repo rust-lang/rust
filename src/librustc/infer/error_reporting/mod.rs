@@ -69,6 +69,7 @@ use traits::{ObligationCause, ObligationCauseCode};
 use ty::{self, TyCtxt, TypeFoldable};
 use ty::{Region, Issue32330};
 use ty::error::TypeError;
+use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
 use errors::{DiagnosticBuilder, DiagnosticStyledString};
 
@@ -78,7 +79,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(self,
                                    err: &mut DiagnosticBuilder,
                                    prefix: &str,
-                                   region: &'tcx ty::Region,
+                                   region: ty::Region<'tcx>,
                                    suffix: &str) {
         fn item_scope_tag(item: &hir::Item) -> &'static str {
             match item.node {
@@ -123,14 +124,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     format!("{}unknown scope: {:?}{}.  Please report a bug.",
                             prefix, scope, suffix)
                 };
-                let span = match scope.span(&self.region_maps, &self.hir) {
+                let span = match scope.span(&self.hir) {
                     Some(s) => s,
                     None => {
                         err.note(&unknown_scope());
                         return;
                     }
                 };
-                let tag = match self.hir.find(scope.node_id(&self.region_maps)) {
+                let tag = match self.hir.find(scope.node_id()) {
                     Some(hir_map::NodeBlock(_)) => "block",
                     Some(hir_map::NodeExpr(expr)) => match expr.node {
                         hir::ExprCall(..) => "call",
@@ -150,7 +151,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         return;
                     }
                 };
-                let scope_decorated_tag = match self.region_maps.code_extent_data(scope) {
+                let scope_decorated_tag = match *scope {
                     region::CodeExtentData::Misc(_) => tag,
                     region::CodeExtentData::CallSiteScope { .. } => {
                         "scope of call-site for function"
@@ -183,7 +184,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }
                 };
 
-                let node = fr.scope.node_id(&self.region_maps);
+                let node = fr.scope.map(|s| s.node_id())
+                                   .unwrap_or(DUMMY_NODE_ID);
                 let unknown;
                 let tag = match self.hir.find(node) {
                     Some(hir_map::NodeBlock(_)) |
@@ -515,7 +517,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         values.1.push_normal("<");
                     }
 
-                    fn lifetime_display(lifetime: &Region) -> String {
+                    fn lifetime_display(lifetime: Region) -> String {
                         let s = format!("{}", lifetime);
                         if s.is_empty() {
                             "'_".to_string()
@@ -767,7 +769,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn report_generic_bound_failure(&self,
                                     origin: SubregionOrigin<'tcx>,
                                     bound_kind: GenericKind<'tcx>,
-                                    sub: &'tcx Region)
+                                    sub: Region<'tcx>)
     {
         // FIXME: it would be better to report the first error message
         // with the span of the parameter itself, rather than the span
@@ -846,9 +848,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn report_sub_sup_conflict(&self,
                                var_origin: RegionVariableOrigin,
                                sub_origin: SubregionOrigin<'tcx>,
-                               sub_region: &'tcx Region,
+                               sub_region: Region<'tcx>,
                                sup_origin: SubregionOrigin<'tcx>,
-                               sup_region: &'tcx Region) {
+                               sup_region: Region<'tcx>) {
         let mut err = self.report_inference_failure(var_origin);
 
         self.tcx.note_and_explain_region(&mut err,
