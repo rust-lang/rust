@@ -11,6 +11,7 @@
 // aux-build:two_macros.rs
 
 #[macro_use]
+#[no_link]
 extern crate two_macros;
 
 pub fn main() {
