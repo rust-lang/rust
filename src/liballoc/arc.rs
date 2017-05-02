@@ -751,11 +751,11 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
             return;
         }
 
-        // This fence is needed to prevent reordering of use of the data and
+        // This load is needed to prevent reordering of use of the data and
         // deletion of the data.  Because it is marked `Release`, the decreasing
-        // of the reference count synchronizes with this `Acquire` fence. This
+        // of the reference count synchronizes with this `Acquire` load. This
         // means that use of the data happens before decreasing the reference
-        // count, which happens before this fence, which happens before the
+        // count, which happens before this load, which happens before the
         // deletion of the data.
         //
         // As explained in the [Boost documentation][1],
@@ -768,7 +768,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
         // > "acquire" operation before deleting the object.
         //
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
-        atomic::fence(Acquire);
+        self.inner().strong.load(Acquire);
 
         unsafe {
             self.drop_slow();
