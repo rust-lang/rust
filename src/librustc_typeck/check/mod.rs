@@ -781,11 +781,11 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             check_abi(tcx, span, fn_sig.abi());
 
             // Compute the fty from point of view of inside fn.
-            let fn_scope = inh.tcx.region_maps.call_site_extent(id, body_id.node_id);
+            let fn_scope = inh.tcx.call_site_extent(id, body_id.node_id);
             let fn_sig =
                 fn_sig.subst(inh.tcx, &inh.parameter_environment.free_substs);
             let fn_sig =
-                inh.tcx.liberate_late_bound_regions(fn_scope, &fn_sig);
+                inh.tcx.liberate_late_bound_regions(Some(fn_scope), &fn_sig);
             let fn_sig =
                 inh.normalize_associated_types_in(body.value.span, body_id.node_id, &fn_sig);
 
@@ -1237,14 +1237,13 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          err.emit()
                     }
                 }
-                hir::ImplItemKind::Method(_, body_id) => {
+                hir::ImplItemKind::Method(..) => {
                     let trait_span = tcx.hir.span_if_local(ty_trait_item.def_id);
                     if ty_trait_item.kind == ty::AssociatedKind::Method {
                         let err_count = tcx.sess.err_count();
                         compare_impl_method(tcx,
                                             &ty_impl_item,
                                             impl_item.span,
-                                            body_id.node_id,
                                             &ty_trait_item,
                                             impl_trait_ref,
                                             trait_span,
@@ -1254,7 +1253,6 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             compare_impl_method(tcx,
                                                 &ty_impl_item,
                                                 impl_item.span,
-                                                body_id.node_id,
                                                 &ty_trait_item,
                                                 impl_trait_ref,
                                                 trait_span,
@@ -1549,7 +1547,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn re_infer(&self, span: Span, def: Option<&ty::RegionParameterDef>)
-                -> Option<&'tcx ty::Region> {
+                -> Option<ty::Region<'tcx>> {
         let v = match def {
             Some(def) => infer::EarlyBoundRegion(span, def.name, def.issue_32330),
             None => infer::MiscVariable(span)
@@ -1963,7 +1961,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// outlive the region `r`.
     pub fn register_region_obligation(&self,
                                       ty: Ty<'tcx>,
-                                      region: &'tcx ty::Region,
+                                      region: ty::Region<'tcx>,
                                       cause: traits::ObligationCause<'tcx>)
     {
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();

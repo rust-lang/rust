@@ -252,8 +252,8 @@ fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              -> Ty<'tcx> {
     let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_id);
 
-    let region = ty::Region::ReFree(ty::FreeRegion {
-        scope: tcx.region_maps.item_extent(body_id.node_id),
+    let region = ty::ReFree(ty::FreeRegion {
+        scope: Some(tcx.item_extent(body_id.node_id)),
         bound_region: ty::BoundRegion::BrEnv,
     });
     let region = tcx.mk_region(region);

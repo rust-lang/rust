@@ -43,8 +43,12 @@ pub struct TypeAndMut<'tcx> {
          RustcEncodable, RustcDecodable, Copy)]
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
-pub struct FreeRegion {
-    pub scope: region::CodeExtent,
+///
+/// If `fr.scope` is None, then this is in some context (e.g., an
+/// impl) where lifetimes are more abstract and the notion of the
+/// caller/callee stack frames are not applicable.
+pub struct FreeRegion<'tcx> {
+    pub scope: Option<region::CodeExtent<'tcx>>,
     pub bound_region: BoundRegion,
 }
 
@@ -133,7 +137,7 @@ pub enum TypeVariants<'tcx> {
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
-    TyRef(&'tcx Region, TypeAndMut<'tcx>),
+    TyRef(Region<'tcx>, TypeAndMut<'tcx>),
 
     /// The anonymous type of a function declaration/definition. Each
     /// function has a unique type.
@@ -145,7 +149,7 @@ pub enum TypeVariants<'tcx> {
     TyFnPtr(PolyFnSig<'tcx>),
 
     /// A trait, defined with `trait`.
-    TyDynamic(Binder<&'tcx Slice<ExistentialPredicate<'tcx>>>, &'tcx ty::Region),
+    TyDynamic(Binder<&'tcx Slice<ExistentialPredicate<'tcx>>>, ty::Region<'tcx>),
 
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
@@ -684,6 +688,8 @@ pub struct DebruijnIndex {
     pub depth: u32,
 }
 
+pub type Region<'tcx> = &'tcx RegionKind<'tcx>;
+
 /// Representation of regions.
 ///
 /// Unlike types, most region variants are "fictitious", not concrete,
@@ -741,7 +747,7 @@ pub struct DebruijnIndex {
 /// [1] http://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2] http://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 #[derive(Clone, PartialEq, Eq, Hash, Copy, RustcEncodable, RustcDecodable)]
-pub enum Region {
+pub enum RegionKind<'tcx> {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
     // parameters are substituted.
@@ -754,12 +760,12 @@ pub enum Region {
     /// When checking a function body, the types of all arguments and so forth
     /// that refer to bound region parameters are modified to refer to free
     /// region parameters.
-    ReFree(FreeRegion),
+    ReFree(FreeRegion<'tcx>),
 
     /// A concrete region naming some statically determined extent
     /// (e.g. an expression or sequence of statements) within the
     /// current function.
-    ReScope(region::CodeExtent),
+    ReScope(region::CodeExtent<'tcx>),
 
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
     ReStatic,
@@ -784,7 +790,7 @@ pub enum Region {
     ReErased,
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Region {}
+impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct EarlyBoundRegion {
@@ -903,7 +909,7 @@ impl DebruijnIndex {
 }
 
 // Region utilities
-impl Region {
+impl<'tcx> RegionKind<'tcx> {
     pub fn is_bound(&self) -> bool {
         match *self {
             ty::ReEarlyBound(..) => true,
@@ -927,7 +933,7 @@ impl Region {
     }
 
     /// Returns the depth of `self` from the (1-based) binding level `depth`
-    pub fn from_depth(&self, depth: u32) -> Region {
+    pub fn from_depth(&self, depth: u32) -> RegionKind<'tcx> {
         match *self {
             ty::ReLateBound(debruijn, r) => ty::ReLateBound(DebruijnIndex {
                 depth: debruijn.depth - (depth - 1)
@@ -1346,7 +1352,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// Returns the regions directly referenced from this type (but
     /// not types reachable from this type via `walk_tys`). This
     /// ignores late-bound regions binders.
-    pub fn regions(&self) -> Vec<&'tcx ty::Region> {
+    pub fn regions(&self) -> Vec<ty::Region<'tcx>> {
         match self.sty {
             TyRef(region, _) => {
                 vec![region]

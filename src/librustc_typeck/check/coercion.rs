@@ -250,7 +250,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                                   exprs: &[E],
                                   a: Ty<'tcx>,
                                   b: Ty<'tcx>,
-                                  r_b: &'tcx ty::Region,
+                                  r_b: ty::Region<'tcx>,
                                   mt_b: TypeAndMut<'tcx>)
                                   -> CoerceResult<'tcx>
         where E: AsCoercionSite

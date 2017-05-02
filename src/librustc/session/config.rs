@@ -1804,7 +1804,7 @@ mod dep_tracking {
     use rustc_back::PanicStrategy;
 
     pub trait DepTrackingHash {
-        fn hash(&self, &mut DefaultHasher, ErrorOutputType);
+        fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType);
     }
 
     macro_rules! impl_dep_tracking_hash_via_hash {

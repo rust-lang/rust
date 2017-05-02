@@ -17,6 +17,7 @@ pub use self::ObligationCauseCode::*;
 
 use hir;
 use hir::def_id::DefId;
+use middle::region::RegionMaps;
 use middle::free_region::FreeRegionMap;
 use ty::subst::Substs;
 use ty::{self, Ty, TyCtxt, TypeFoldable, ToPredicate};
@@ -112,7 +113,7 @@ pub enum ObligationCauseCode<'tcx> {
     ReferenceOutlivesReferent(Ty<'tcx>),
 
     /// A type like `Box<Foo<'a> + 'b>` is WF only if `'b: 'a`.
-    ObjectTypeBound(Ty<'tcx>, &'tcx ty::Region),
+    ObjectTypeBound(Ty<'tcx>, ty::Region<'tcx>),
 
     /// Obligation incurred due to an object cast.
     ObjectCastObligation(/* Object type */ Ty<'tcx>),
@@ -435,9 +436,10 @@ pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx
 // FIXME: this is gonna need to be removed ...
 /// Normalizes the parameter environment, reporting errors if they occur.
 pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    unnormalized_env: ty::ParameterEnvironment<'tcx>,
-    cause: ObligationCause<'tcx>)
-    -> ty::ParameterEnvironment<'tcx>
+                                              region_context: DefId,
+                                              unnormalized_env: ty::ParameterEnvironment<'tcx>,
+                                              cause: ObligationCause<'tcx>)
+                                              -> ty::ParameterEnvironment<'tcx>
 {
     // I'm not wild about reporting errors here; I'd prefer to
     // have the errors get reported at a defined place (e.g.,
@@ -455,7 +457,6 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // can be sure that no errors should occur.
 
     let span = cause.span;
-    let body_id = cause.body_id;
 
     debug!("normalize_param_env_or_error(unnormalized_env={:?})",
            unnormalized_env);
@@ -492,8 +493,9 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("normalize_param_env_or_error: normalized predicates={:?}",
             predicates);
 
+        let region_maps = RegionMaps::new();
         let free_regions = FreeRegionMap::new();
-        infcx.resolve_regions_and_report_errors(&free_regions, body_id);
+        infcx.resolve_regions_and_report_errors(region_context, &region_maps, &free_regions);
         let predicates = match infcx.fully_resolve(&predicates) {
             Ok(predicates) => predicates,
             Err(fixup_err) => {

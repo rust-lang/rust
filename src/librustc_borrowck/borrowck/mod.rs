@@ -34,7 +34,8 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::ImmutabilityBlame;
-use rustc::middle::region;
+use rustc::middle::region::{self, RegionMaps};
+use rustc::middle::free_region::RegionRelations;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 
@@ -88,11 +89,8 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     let body_id = tcx.hir.body_owned_by(owner_id);
     let attributes = tcx.get_attrs(owner_def_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
-
-    let mut bccx = &mut BorrowckCtxt {
-        tcx: tcx,
-        tables: tables,
-    };
+    let region_maps = tcx.region_maps(owner_def_id);
+    let mut bccx = &mut BorrowckCtxt { tcx, tables, region_maps, owner_def_id };
 
     let body = bccx.tcx.hir.body(body_id);
 
@@ -141,15 +139,15 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                              id_range,
                              all_loans.len());
     for (loan_idx, loan) in all_loans.iter().enumerate() {
-        loan_dfcx.add_gen(loan.gen_scope.node_id(&tcx.region_maps), loan_idx);
+        loan_dfcx.add_gen(loan.gen_scope.node_id(), loan_idx);
         loan_dfcx.add_kill(KillFrom::ScopeEnd,
-                           loan.kill_scope.node_id(&tcx.region_maps), loan_idx);
+                           loan.kill_scope.node_id(), loan_idx);
     }
     loan_dfcx.add_kills_from_flow_exits(cfg);
     loan_dfcx.propagate(cfg, body);
 
     let flowed_moves = move_data::FlowedMoveData::new(move_data,
-                                                      this.tcx,
+                                                      this,
                                                       cfg,
                                                       id_range,
                                                       body);
@@ -170,11 +168,8 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     let owner_id = tcx.hir.body_owner(body_id);
     let owner_def_id = tcx.hir.local_def_id(owner_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
-
-    let mut bccx = BorrowckCtxt {
-        tcx: tcx,
-        tables: tables,
-    };
+    let region_maps = tcx.region_maps(owner_def_id);
+    let mut bccx = BorrowckCtxt { tcx, tables, region_maps, owner_def_id };
 
     let dataflow_data = build_borrowck_dataflow_data(&mut bccx, cfg, body_id);
     (bccx, dataflow_data)
@@ -189,6 +184,10 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     // tables for the current thing we are checking; set to
     // Some in `borrowck_fn` and cleared later
     tables: &'a ty::TypeckTables<'tcx>,
+
+    region_maps: Rc<RegionMaps<'tcx>>,
+
+    owner_def_id: DefId,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -206,13 +205,13 @@ pub struct Loan<'tcx> {
     /// cases, notably method arguments, the loan may be introduced
     /// only later, once it comes into scope.  See also
     /// `GatherLoanCtxt::compute_gen_scope`.
-    gen_scope: region::CodeExtent,
+    gen_scope: region::CodeExtent<'tcx>,
 
     /// kill_scope indicates when the loan goes out of scope.  This is
     /// either when the lifetime expires or when the local variable
     /// which roots the loan-path goes out of scope, whichever happens
     /// faster. See also `GatherLoanCtxt::compute_kill_scope`.
-    kill_scope: region::CodeExtent,
+    kill_scope: region::CodeExtent<'tcx>,
     span: Span,
     cause: euv::LoanCause,
 }
@@ -312,15 +311,15 @@ pub fn closure_to_block(closure_id: ast::NodeId,
 }
 
 impl<'a, 'tcx> LoanPath<'tcx> {
-    pub fn kill_scope(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> region::CodeExtent {
+    pub fn kill_scope(&self, bccx: &BorrowckCtxt<'a, 'tcx>) -> region::CodeExtent<'tcx> {
         match self.kind {
-            LpVar(local_id) => tcx.region_maps.var_scope(local_id),
+            LpVar(local_id) => bccx.region_maps.var_scope(local_id),
             LpUpvar(upvar_id) => {
-                let block_id = closure_to_block(upvar_id.closure_expr_id, tcx);
-                tcx.region_maps.node_extent(block_id)
+                let block_id = closure_to_block(upvar_id.closure_expr_id, bccx.tcx);
+                bccx.tcx.node_extent(block_id)
             }
             LpDowncast(ref base, _) |
-            LpExtend(ref base, ..) => base.kill_scope(tcx),
+            LpExtend(ref base, ..) => base.kill_scope(bccx),
         }
     }
 
@@ -444,8 +443,8 @@ pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
 pub enum bckerr_code<'tcx> {
     err_mutbl,
     /// superscope, subscope, loan cause
-    err_out_of_scope(&'tcx ty::Region, &'tcx ty::Region, euv::LoanCause),
-    err_borrowed_pointer_too_short(&'tcx ty::Region, &'tcx ty::Region), // loan, ptr
+    err_out_of_scope(ty::Region<'tcx>, ty::Region<'tcx>, euv::LoanCause),
+    err_borrowed_pointer_too_short(ty::Region<'tcx>, ty::Region<'tcx>), // loan, ptr
 }
 
 // Combination of an error code and the categorization of the expression
@@ -475,11 +474,15 @@ pub enum MovedValueUseKind {
 
 impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     pub fn is_subregion_of(&self,
-                           r_sub: &'tcx ty::Region,
-                           r_sup: &'tcx ty::Region)
+                           r_sub: ty::Region<'tcx>,
+                           r_sup: ty::Region<'tcx>)
                            -> bool
     {
-        self.tables.free_region_map.is_subregion_of(self.tcx, r_sub, r_sup)
+        let region_rels = RegionRelations::new(self.tcx,
+                                               self.owner_def_id,
+                                               &self.region_maps,
+                                               &self.tables.free_region_map);
+        region_rels.is_subregion_of(r_sub, r_sup)
     }
 
     pub fn report(&self, err: BckError<'tcx>) {
@@ -963,10 +966,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             .emit();
     }
 
-    fn region_end_span(&self, region: &'tcx ty::Region) -> Option<Span> {
+    fn region_end_span(&self, region: ty::Region<'tcx>) -> Option<Span> {
         match *region {
             ty::ReScope(scope) => {
-                match scope.span(&self.tcx.region_maps, &self.tcx.hir) {
+                match scope.span(&self.tcx.hir) {
                     Some(s) => {
                         Some(s.end_point())
                     }
@@ -1244,10 +1247,10 @@ before rustc 1.16, this temporary lived longer - see issue #39283 \
     }
 }
 
-fn statement_scope_span(tcx: TyCtxt, region: &ty::Region) -> Option<Span> {
+fn statement_scope_span(tcx: TyCtxt, region: ty::Region) -> Option<Span> {
     match *region {
         ty::ReScope(scope) => {
-            match tcx.hir.find(scope.node_id(&tcx.region_maps)) {
+            match tcx.hir.find(scope.node_id()) {
                 Some(hir_map::NodeStmt(stmt)) => Some(stmt.span),
                 _ => None
             }

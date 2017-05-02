@@ -130,7 +130,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         };
 
         let outer_tables = self.tables;
-        self.tables = self.tcx.typeck_tables_of(self.tcx.hir.local_def_id(item_id));
+        let item_def_id = self.tcx.hir.local_def_id(item_id);
+        self.tables = self.tcx.typeck_tables_of(item_def_id);
 
         let body = self.tcx.hir.body(body_id);
         if !self.in_fn {
@@ -140,7 +141,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         let outer_penv = self.tcx.infer_ctxt(body_id, Reveal::UserFacing).enter(|infcx| {
             let param_env = infcx.parameter_environment.clone();
             let outer_penv = mem::replace(&mut self.param_env, param_env);
-            euv::ExprUseVisitor::new(self, &infcx).consume_body(body);
+            let region_maps = &self.tcx.region_maps(item_def_id);;
+            euv::ExprUseVisitor::new(self, region_maps, &infcx).consume_body(body);
             outer_penv
         });
 
@@ -480,7 +482,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
               borrow_id: ast::NodeId,
               _borrow_span: Span,
               cmt: mc::cmt<'tcx>,
-              _loan_region: &'tcx ty::Region,
+              _loan_region: ty::Region<'tcx>,
               bk: ty::BorrowKind,
               loan_cause: euv::LoanCause) {
         // Kind of hacky, but we allow Unsafe coercions in constants.

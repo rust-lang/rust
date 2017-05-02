@@ -2878,10 +2878,10 @@ pub trait Carrier {
     type Error;
 
     /// Create a `Carrier` from a success value.
-    fn from_success(Self::Success) -> Self;
+    fn from_success(_: Self::Success) -> Self;
 
     /// Create a `Carrier` from an error value.
-    fn from_error(Self::Error) -> Self;
+    fn from_error(_: Self::Error) -> Self;
 
     /// Translate this `Carrier` to another implementation of `Carrier` with the
     /// same associated types.
