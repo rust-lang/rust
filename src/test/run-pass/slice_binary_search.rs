@@ -24,6 +24,6 @@ fn main() {
     ];
 
     let key: &str = "def";
-    let r = xs.binary_search_by_key(&key, |e| &e.topic);
+    let r = xs.binary_search_by_key(key, |e| &e.topic);
     assert_eq!(Ok(1), r.map(|i| i));
 }

@@ -1125,8 +1125,8 @@ impl<T> [T] {
     #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
     #[inline]
     pub fn binary_search_by_key<'a, B, F, Q: ?Sized>(&'a self, b: &Q, f: F) -> Result<usize, usize>
-        where F: FnMut(&'a T) -> B,
-              B: Borrow<Q>,
+        where F: FnMut(&'a T) -> &'a B,
+              B: Borrow<Q> + 'a,
               Q: Ord
     {
         core_slice::SliceExt::binary_search_by_key(self, b, f)
