@@ -1,3 +1,4 @@
+<img src="https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png" alt="Rust logo">
 # The Rust Programming Language
 
 This is the main source code repository for [Rust]. It contains the compiler,
