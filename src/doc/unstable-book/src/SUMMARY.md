@@ -145,6 +145,7 @@
     - [future_atomic_orderings](library-features/future-atomic-orderings.md)
     - [get_type_id](library-features/get-type-id.md)
     - [heap_api](library-features/heap-api.md)
+    - [hint_core_should_pause](library-features/hint-core-should-pause.md)
     - [i128](library-features/i128.md)
     - [inclusive_range](library-features/inclusive-range.md)
     - [integer_atomics](library-features/integer-atomics.md)
