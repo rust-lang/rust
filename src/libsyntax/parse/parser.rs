@@ -4400,7 +4400,6 @@ impl<'a> Parser<'a> {
 
     fn parse_fn_args(&mut self, named_args: bool, allow_variadic: bool)
                      -> PResult<'a, (Vec<Arg> , bool)> {
-        let sp = self.span;
         let mut variadic = false;
         let args: Vec<Option<Arg>> =
             self.parse_unspanned_seq(
@@ -4441,11 +4440,6 @@ impl<'a> Parser<'a> {
             )?;
 
         let args: Vec<_> = args.into_iter().filter_map(|x| x).collect();
-
-        if variadic && args.is_empty() {
-            self.span_err(sp,
-                          "variadic function must be declared with at least one named argument");
-        }
 
         Ok((args, variadic))
     }
