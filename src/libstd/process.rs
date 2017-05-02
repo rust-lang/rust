@@ -1035,7 +1035,7 @@ impl Child {
 /// ```no_run
 /// use std::process;
 ///
-/// process::exit(0x0f00);
+/// process::exit(0x0100);
 /// ```
 ///
 /// [platform-specific behavior]: #platform-specific-behavior
