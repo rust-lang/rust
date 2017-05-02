@@ -50,6 +50,48 @@
             "llvm": "storeu.ps",
             "ret": "V",
             "args": ["F32Pm/S8", "f32"]
+        },
+        {
+            "intrinsic": "_ucomieq_ss",
+            "width": [128],
+            "llvm": "ucomieq.ss",
+            "ret": "S32",
+            "args": ["f32", "f32"]
+        },
+        {
+            "intrinsic": "_ucomige_ss",
+            "width": [128],
+            "llvm": "ucomige.ss",
+            "ret": "S32",
+            "args": ["f32", "f32"]
+        },
+        {
+            "intrinsic": "_ucomigt_ss",
+            "width": [128],
+            "llvm": "ucomigt.ss",
+            "ret": "S32",
+            "args": ["f32", "f32"]
+        },
+        {
+            "intrinsic": "_ucomile_ss",
+            "width": [128],
+            "llvm": "ucomile.ss",
+            "ret": "S32",
+            "args": ["f32", "f32"]
+        },
+        {
+            "intrinsic": "_ucomilt_ss",
+            "width": [128],
+            "llvm": "ucomilt.ss",
+            "ret": "S32",
+            "args": ["f32", "f32"]
+        },
+        {
+            "intrinsic": "_ucomineq_ss",
+            "width": [128],
+            "llvm": "ucomineq.ss",
+            "ret": "S32",
+            "args": ["f32", "f32"]
         }
     ]
 }
