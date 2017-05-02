@@ -545,7 +545,6 @@ mod impls {
     impl Hash for str {
         fn hash<H: Hasher>(&self, state: &mut H) {
             state.write(self.as_bytes());
-            state.write_u8(0xff)
         }
     }
 
