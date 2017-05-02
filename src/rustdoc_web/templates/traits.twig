@@ -1,0 +1,60 @@
+{% extends 'element.twig' %}
+
+{% block definition %}
+    <h2>Definition</h2>
+
+    {% set required_methods = extract_required_methods(element) %}
+    {% set provided_methods = extract_provided_methods(element) %}
+
+<pre class="{{ type }}">
+{% if element.visibility == 'private' %}priv {% endif %}trait {{ element.name }}{{ render_generics(element, type_tree) }}{% if element.inner.fields[0].parents is not empty %}: {% for parent in element.inner.fields[0].parents %}{{ short_type(parent, type_tree) }}{% if not loop.last %} + {% endif %}{% endfor %}{% endif %} {
+{% for method in required_methods %}
+    {{ render_fn(method, type_tree, "TraitFunction") }};
+{% endfor %}
+{% if provided_methods is not empty and required_methods is not empty %}
+
+{% endif %}
+{% for method in provided_methods %}
+    {{ render_fn(method, type_tree, "TraitFunction") }} { {% set src_url = source_url(method, crate) %}{% if src_url is not empty %}<a title="View sources" href="{{ src_url }}">...</a>{% else %}...{% endif %} }
+{% endfor %}
+}
+</pre>
+
+    {% if required_methods is not empty %}
+        <h2 id="required-methods">Required Methods</h2>
+        {% for method in required_methods %}
+            {% set src_url = source_url(method, crate) %}{% if src_url is not empty %}<a title="View sources" class="source" href="{{ src_url }}">[src]</a>{% endif %}
+            <h3 class="method"><code>{{ render_fn(method, type_tree, "TraitFunction") }}</code></h3>
+            <div class="docblock">{{ extract_docs(method) }}</div>
+        {% endfor %}
+    {% endif %}
+
+    {% if provided_methods is not empty %}
+        <h2 id="provided-methods">Provided Methods</h2>
+        {% for method in provided_methods %}
+            {% set src_url = source_url(method, crate) %}{% if src_url is not empty %}<a title="View sources" class="source" href="{{ src_url }}">[src]</a>{% endif %}
+            <h3 class="method"><code>{{ render_fn(method, type_tree, "TraitFunction") }}</code></h3>
+            <div class="docblock">{{ extract_docs(method) }}</div>
+        {% endfor %}
+    {% endif %}
+{% endblock %}
+
+{% block extra %}
+    {# TODO show inherited methods? #}
+    {% include 'impls.twig' %}
+
+    {% set impls = unique_sorted_trait_impls(element.id, type_tree) %}
+
+    {% if impls is not empty %}
+        <h2 id="implementors">Implementors</h2>
+        <ul class="item-list">
+            {% for impl in impls %}
+                {% if impl.inner.fields[0].for_.variant == 'ResolvedPath' %}
+                    <li>{{ short_type(impl.inner.fields[0].for_, type_tree, null, true) }}</li>
+                {% else %}
+                    <li><code>impl{{ render_generics(impl, type_tree) }} of {{ short_type(impl.inner.fields[0].trait_, type_tree) }} for {{ short_type(impl.inner.fields[0].for_, type_tree) }}</code></li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,24 @@
+{
+    "title": "Rust",
+    "inputDir": "input/",
+    "outputDir": "build/",
+    "faviconUrl": "http://www.rust-lang.org/favicon.ico",
+    "logoUrl": "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
+    "menu": [
+        {"name": "Tutorial", "url": "http://doc.rust-lang.org/doc/tutorial.html"},
+        {"name": "Manual", "url": "http://static.rust-lang.org/doc/rust.html"},
+        {"name": "Documentation", "url": "%rootPath%"},
+        {"name": "Releases", "url": "https://github.com/mozilla/rust/wiki/Doc-releases"}
+    ],
+    "baseSourceUrls": {
+        "std": "https://github.com/mozilla/rust/blob/%version%/src/",
+        "extra": "https://github.com/mozilla/rust/blob/%version%/src/"
+    },
+    "rustVersion": "master",
+    "knownCrates": {
+        "std": {
+            "url": "http://seld.be/rustdoc/%rustVersion%",
+            "type": "rustdoc_web"
+        }
+    }
+}

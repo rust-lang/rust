@@ -1,0 +1,6 @@
+{% extends 'element.twig' %}
+
+{% block definition %}
+    <h2>Definition</h2>
+    <pre>{% if element.visibility == 'private' %}priv {% endif %}type {{ element.name }}{{ render_generics(element, type_tree) }} = {{ short_type(element.inner.fields[0].type_, type_tree) }};</pre>
+{% endblock %}
