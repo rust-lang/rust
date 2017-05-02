@@ -257,6 +257,7 @@ impl<T: 'static> LocalKey<T> {
         }
     }
 
+    #[cold]
     unsafe fn init(&self, slot: &UnsafeCell<Option<T>>) -> &T {
         // Execute the initialization up front, *then* move it into our slot,
         // just in case initialization fails.
