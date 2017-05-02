@@ -68,6 +68,15 @@ pub enum BoundRegion {
     BrEnv,
 }
 
+impl BoundRegion {
+    pub fn is_named(&self) -> bool {
+        match *self {
+            BoundRegion::BrNamed(..) => true,
+            _ => false,
+        }
+    }
+}
+
 /// When a region changed from late-bound to early-bound when #32330
 /// was fixed, its `RegionParameterDef` will have one of these
 /// structures that we can use to give nicer errors.
@@ -1189,6 +1198,13 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_trait(&self) -> bool {
         match self.sty {
             TyDynamic(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_closure(&self) -> bool {
+        match self.sty {
+            TyClosure(..) => true,
             _ => false,
         }
     }

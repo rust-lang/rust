@@ -8,20 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
+fn takes_imm(x: &isize) { }
 
-use std::ops::FnMut;
+fn takes_mut(x: &mut isize) { }
 
-fn to_fn_mut<A,F:FnMut<A>>(f: F) -> F { f }
-
-fn call_it<F:FnMut(isize,isize)->isize>(y: isize, mut f: F) -> isize {
-    f(2, y)
+fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
+    f(t)
 }
 
-pub fn main() {
-    let f = to_fn_mut(|x: usize, y: isize| -> isize { (x as isize) + y });
-    let z = call_it(3, f);
+fn main() {
+    apply(&3, takes_imm);
+    apply(&3, takes_mut);
     //~^ ERROR type mismatch
-    //~| ERROR type mismatch
-    println!("{}", z);
+    //~| NOTE types differ in mutability
+    //~| NOTE required by `apply`
+
+    apply(&mut 3, takes_mut);
+    apply(&mut 3, takes_imm);
+    //~^ ERROR type mismatch
+    //~| NOTE types differ in mutability
+    //~| NOTE required by `apply`
 }

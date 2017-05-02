@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn takes_imm(x: &isize) { }
+trait Foo {}
 
-fn takes_mut(x: &mut isize) { }
+impl<T: Fn(&())> Foo for T {}
 
-fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
-    f(t)
-}
+fn baz<T: Foo>(_: T) {}
 
 fn main() {
-    apply(&3, takes_imm);
-    apply(&3, takes_mut);
-    //~^ ERROR (types differ in mutability)
-
-    apply(&mut 3, takes_mut);
-    apply(&mut 3, takes_imm);
-    //~^ ERROR (types differ in mutability)
+    baz(|_| ());
 }

@@ -8,9 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo<F: Fn()>(x: F) { }
+fn foo<F: Fn(usize)>(x: F) { }
 
 fn main() {
-    foo(|y| { }); //~ ERROR E0281
-                  //~^ ERROR E0281
+    foo(|y: String| { });
+    //~^ ERROR E0281
+    //~| ERROR E0281
+    //~| NOTE implements
+    //~| NOTE implements
+    //~| NOTE requires
+    //~| NOTE requires
+    //~| NOTE expected usize, found struct `std::string::String`
+    //~| NOTE expected usize, found struct `std::string::String`
+    //~| NOTE required by `foo`
+    //~| NOTE required by `foo`
 }
