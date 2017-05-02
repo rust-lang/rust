@@ -330,6 +330,66 @@ pub struct CrateVariancesMap {
     pub empty_variance: Rc<Vec<ty::Variance>>,
 }
 
+impl Variance {
+    /// `a.xform(b)` combines the variance of a context with the
+    /// variance of a type with the following meaning.  If we are in a
+    /// context with variance `a`, and we encounter a type argument in
+    /// a position with variance `b`, then `a.xform(b)` is the new
+    /// variance with which the argument appears.
+    ///
+    /// Example 1:
+    ///
+    ///     *mut Vec<i32>
+    ///
+    /// Here, the "ambient" variance starts as covariant. `*mut T` is
+    /// invariant with respect to `T`, so the variance in which the
+    /// `Vec<i32>` appears is `Covariant.xform(Invariant)`, which
+    /// yields `Invariant`. Now, the type `Vec<T>` is covariant with
+    /// respect to its type argument `T`, and hence the variance of
+    /// the `i32` here is `Invariant.xform(Covariant)`, which results
+    /// (again) in `Invariant`.
+    ///
+    /// Example 2:
+    ///
+    ///     fn(*const Vec<i32>, *mut Vec<i32)
+    ///
+    /// The ambient variance is covariant. A `fn` type is
+    /// contravariant with respect to its parameters, so the variance
+    /// within which both pointer types appear is
+    /// `Covariant.xform(Contravariant)`, or `Contravariant`.  `*const
+    /// T` is covariant with respect to `T`, so the variance within
+    /// which the first `Vec<i32>` appears is
+    /// `Contravariant.xform(Covariant)` or `Contravariant`.  The same
+    /// is true for its `i32` argument. In the `*mut T` case, the
+    /// variance of `Vec<i32>` is `Contravariant.xform(Invariant)`,
+    /// and hence the outermost type is `Invariant` with respect to
+    /// `Vec<i32>` (and its `i32` argument).
+    ///
+    /// Source: Figure 1 of "Taming the Wildcards:
+    /// Combining Definition- and Use-Site Variance" published in PLDI'11.
+    pub fn xform(self, v: ty::Variance) -> ty::Variance {
+        match (self, v) {
+            // Figure 1, column 1.
+            (ty::Covariant, ty::Covariant) => ty::Covariant,
+            (ty::Covariant, ty::Contravariant) => ty::Contravariant,
+            (ty::Covariant, ty::Invariant) => ty::Invariant,
+            (ty::Covariant, ty::Bivariant) => ty::Bivariant,
+
+            // Figure 1, column 2.
+            (ty::Contravariant, ty::Covariant) => ty::Contravariant,
+            (ty::Contravariant, ty::Contravariant) => ty::Covariant,
+            (ty::Contravariant, ty::Invariant) => ty::Invariant,
+            (ty::Contravariant, ty::Bivariant) => ty::Bivariant,
+
+            // Figure 1, column 3.
+            (ty::Invariant, _) => ty::Invariant,
+
+            // Figure 1, column 4.
+            (ty::Bivariant, _) => ty::Bivariant,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, RustcDecodable, RustcEncodable)]
 pub struct MethodCallee<'tcx> {
     /// Impl method ID, for inherent methods, or trait method ID, otherwise.

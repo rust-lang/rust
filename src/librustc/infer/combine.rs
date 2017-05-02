@@ -42,8 +42,7 @@ use super::{MiscVariable, TypeTrace};
 use ty::{IntType, UintType};
 use ty::{self, Ty, TyCtxt};
 use ty::error::TypeError;
-use ty::fold::TypeFoldable;
-use ty::relate::{RelateResult, TypeRelation};
+use ty::relate::{self, Relate, RelateResult, TypeRelation};
 use traits::PredicateObligations;
 
 use syntax::ast;
@@ -207,7 +206,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         // `'?2` and `?3` are fresh region/type inference
         // variables. (Down below, we will relate `a_ty <: b_ty`,
         // adding constraints like `'x: '?2` and `?1 <: ?3`.)
-        let b_ty = self.generalize(a_ty, b_vid, dir == EqTo)?;
+        let b_ty = self.generalize(a_ty, b_vid, dir)?;
         debug!("instantiate(a_ty={:?}, dir={:?}, b_vid={:?}, generalized b_ty={:?})",
                a_ty, dir, b_vid, b_ty);
         self.infcx.type_variables.borrow_mut().instantiate(b_vid, b_ty);
@@ -241,22 +240,30 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
     fn generalize(&self,
                   ty: Ty<'tcx>,
                   for_vid: ty::TyVid,
-                  is_eq_relation: bool)
+                  dir: RelationDir)
                   -> RelateResult<'tcx, Ty<'tcx>>
     {
+        // Determine the ambient variance within which `ty` appears.
+        // The surrounding equation is:
+        //
+        //     ty [op] ty2
+        //
+        // where `op` is either `==`, `<:`, or `:>`. This maps quite
+        // naturally.
+        let ambient_variance = match dir {
+            RelationDir::EqTo => ty::Invariant,
+            RelationDir::SubtypeOf => ty::Covariant,
+            RelationDir::SupertypeOf => ty::Contravariant,
+        };
+
         let mut generalize = Generalizer {
             infcx: self.infcx,
             span: self.trace.cause.span,
             for_vid_sub_root: self.infcx.type_variables.borrow_mut().sub_root_var(for_vid),
-            is_eq_relation: is_eq_relation,
-            cycle_detected: false
+            ambient_variance: ambient_variance,
         };
-        let u = ty.fold_with(&mut generalize);
-        if generalize.cycle_detected {
-            Err(TypeError::CyclicTy)
-        } else {
-            Ok(u)
-        }
+
+        generalize.relate(&ty, &ty)
     }
 }
 
@@ -264,16 +271,46 @@ struct Generalizer<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
     span: Span,
     for_vid_sub_root: ty::TyVid,
-    is_eq_relation: bool,
-    cycle_detected: bool,
+    ambient_variance: ty::Variance,
 }
 
-impl<'cx, 'gcx, 'tcx> ty::fold::TypeFolder<'gcx, 'tcx> for Generalizer<'cx, 'gcx, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn tag(&self) -> &'static str {
+        "Generalizer"
+    }
+
+    fn a_is_expected(&self) -> bool {
+        true
+    }
+
+    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
+                  -> RelateResult<'tcx, ty::Binder<T>>
+        where T: Relate<'tcx>
+    {
+        Ok(ty::Binder(self.relate(a.skip_binder(), b.skip_binder())?))
+    }
+
+    fn relate_with_variance<T: Relate<'tcx>>(&mut self,
+                                             variance: ty::Variance,
+                                             a: &T,
+                                             b: &T)
+                                             -> RelateResult<'tcx, T>
+    {
+        let old_ambient_variance = self.ambient_variance;
+        self.ambient_variance = self.ambient_variance.xform(variance);
+
+        let result = self.relate(a, b);
+        self.ambient_variance = old_ambient_variance;
+        result
+    }
+
+    fn tys(&mut self, t: Ty<'tcx>, t2: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        assert_eq!(t, t2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
+
         // Check to see whether the type we are genealizing references
         // any other type variable related to `vid` via
         // subtyping. This is basically our "occurs check", preventing
@@ -286,41 +323,54 @@ impl<'cx, 'gcx, 'tcx> ty::fold::TypeFolder<'gcx, 'tcx> for Generalizer<'cx, 'gcx
                 if sub_vid == self.for_vid_sub_root {
                     // If sub-roots are equal, then `for_vid` and
                     // `vid` are related via subtyping.
-                    self.cycle_detected = true;
-                    self.tcx().types.err
+                    return Err(TypeError::CyclicTy);
                 } else {
                     match variables.probe_root(vid) {
                         Some(u) => {
                             drop(variables);
-                            self.fold_ty(u)
+                            self.relate(&u, &u)
                         }
                         None => {
-                            if !self.is_eq_relation {
-                                let origin = variables.origin(vid);
-                                let new_var_id = variables.new_var(false, origin, None);
-                                let u = self.tcx().mk_var(new_var_id);
-                                debug!("generalize: replacing original vid={:?} with new={:?}",
-                                       vid, u);
-                                u
-                            } else {
-                                t
+                            match self.ambient_variance {
+                                ty::Invariant => Ok(t),
+
+                                ty::Bivariant | ty::Covariant | ty::Contravariant => {
+                                    let origin = variables.origin(vid);
+                                    let new_var_id = variables.new_var(false, origin, None);
+                                    let u = self.tcx().mk_var(new_var_id);
+                                    debug!("generalize: replacing original vid={:?} with new={:?}",
+                                           vid, u);
+                                    Ok(u)
+                                }
                             }
                         }
                     }
                 }
             }
+            ty::TyInfer(ty::IntVar(_)) |
+            ty::TyInfer(ty::FloatVar(_)) => {
+                // No matter what mode we are in,
+                // integer/floating-point types must be equal to be
+                // relatable.
+                Ok(t)
+            }
             _ => {
-                t.super_fold_with(self)
+                relate::super_relate_tys(self, t, t)
             }
         }
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn regions(&mut self, r: ty::Region<'tcx>, r2: ty::Region<'tcx>)
+               -> RelateResult<'tcx, ty::Region<'tcx>> {
+        assert_eq!(r, r2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
+
         match *r {
             // Never make variables for regions bound within the type itself,
             // nor for erased regions.
             ty::ReLateBound(..) |
-            ty::ReErased => { return r; }
+            ty::ReErased => {
+                return Ok(r);
+            }
 
             // Early-bound regions should really have been substituted away before
             // we get to this point.
@@ -342,15 +392,16 @@ impl<'cx, 'gcx, 'tcx> ty::fold::TypeFolder<'gcx, 'tcx> for Generalizer<'cx, 'gcx
             ty::ReScope(..) |
             ty::ReVar(..) |
             ty::ReFree(..) => {
-                if self.is_eq_relation {
-                    return r;
+                match self.ambient_variance {
+                    ty::Invariant => return Ok(r),
+                    ty::Bivariant | ty::Covariant | ty::Contravariant => (),
                 }
             }
         }
 
         // FIXME: This is non-ideal because we don't give a
         // very descriptive origin for this region variable.
-        self.infcx.next_region_var(MiscVariable(self.span))
+        Ok(self.infcx.next_region_var(MiscVariable(self.span)))
     }
 }
 
