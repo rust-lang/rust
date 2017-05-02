@@ -757,8 +757,6 @@ impl str {
     /// Lines are ended with either a newline (`\n`) or a carriage return with
     /// a line feed (`\r\n`).
     ///
-    /// The final line ending is optional.
-    ///
     /// # Examples
     ///
     /// Basic usage:
