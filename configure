@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # /bin/sh on Solaris is not a POSIX compatible shell, but /usr/bin/bash is.
 if [ `uname -s` = 'SunOS' -a "${POSIX_SHELL}" != "true" ]; then
