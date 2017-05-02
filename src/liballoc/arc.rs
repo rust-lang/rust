@@ -767,6 +767,37 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
         // > through this reference must obviously happened before), and an
         // > "acquire" operation before deleting the object.
         //
+        // Note that Rust is not C++, and so it's valid to ask whether we could
+        // do without the Acquire/Release handshake here. The contents of an Arc
+        // are immutable, and thus we could hypothetically assume that there are
+        // no writes to be flushed with the Release and thus there's no need to
+        // Acquire to pick them up. In that case, we could just use a single
+        // Relaxed operation here, and improve performance on ARM.
+        //
+        // However, things get a bit sketchy in the case of Arc<AtomicFoo>.
+        // Suppose that there are three threads (A, B, and C). Threads A and B
+        // each hold a strong reference to the arc. Thread A does a relaxed store
+        // to the atomic, and then drops the Arc, dropping the strong count to 1.
+        // Thread B then drops the arc, notices the count is now zero, and
+        // deallocates the ArcInner<AtomicFoo>.
+        //
+        // In this case, thread B is not guaranteed to observe the store to the
+        // AtomicFoo before handing the memory off to the allocator. This is ok,
+        // but if thread C were to recycle that memory without observing the
+        // store, then its newly-allocated memory would get clobbered at some
+        // later point, which would be catastrophic.
+        //
+        // Whether or not thread C is guaranteed to observe the store before
+        // the memory is allocated depends on what kind of memory ordering the
+        // allocator uses to synchronize the recyling of memory between threads.
+        // It needs _something_ to flush writes from thread B before the memory
+        // is transferred to thread C. But that could be accomplished by Release/
+        // Acquire operations by threads B and C on a shared atomic, which
+        // doesn't give us any guarantee about Relaxed writes from thread C.
+        //
+        // In practice, most allocators probably do conservative enough fencing
+        // that this is a non-issue. But we play it safe.
+        //
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
         self.inner().strong.load(Acquire);
 
