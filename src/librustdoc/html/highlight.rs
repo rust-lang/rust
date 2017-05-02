@@ -114,7 +114,7 @@ pub enum Class {
 pub trait Writer {
     /// Called when we start processing a span of text that should be highlighted.
     /// The `Class` argument specifies how it should be highlighted.
-    fn enter_span(&mut self, Class) -> io::Result<()>;
+    fn enter_span(&mut self, _: Class) -> io::Result<()>;
 
     /// Called at the end of a span of highlighted text.
     fn exit_span(&mut self) -> io::Result<()>;
@@ -131,7 +131,11 @@ pub trait Writer {
     /// ```
     /// The latter can be thought of as a shorthand for the former, which is
     /// more flexible.
-    fn string<T: Display>(&mut self, T, Class, Option<&TokenAndSpan>) -> io::Result<()>;
+    fn string<T: Display>(&mut self,
+                          text: T,
+                          klass: Class,
+                          tas: Option<&TokenAndSpan>)
+                          -> io::Result<()>;
 }
 
 // Implement `Writer` for anthing that can be written to, this just implements

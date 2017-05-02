@@ -1467,7 +1467,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
 pub trait InternAs<T: ?Sized, R> {
     type Output;
-    fn intern_with<F>(self, F) -> Self::Output
+    fn intern_with<F>(self, f: F) -> Self::Output
         where F: FnOnce(&T) -> R;
 }
 
