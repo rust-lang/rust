@@ -14,8 +14,6 @@
 #![unstable(feature = "compiler_builtins_lib",
             reason = "internal implementation detail of rustc right now",
             issue = "0")]
-#![crate_name = "compiler_builtins"]
-#![crate_type = "rlib"]
 #![allow(unused_features)]
 #![feature(staged_api, core_intrinsics, repr_simd,
            i128_type, core_float, abi_unadjusted, associated_consts)]

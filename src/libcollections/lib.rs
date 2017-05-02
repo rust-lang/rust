@@ -13,8 +13,6 @@
 //! See [`std::collections`](../std/collections/index.html) for a detailed
 //! discussion of collections in Rust.
 
-#![crate_name = "collections"]
-#![crate_type = "rlib"]
 #![unstable(feature = "collections",
             reason = "library is unlikely to be stabilized with the current \
                       layout and name, use std::collections instead",

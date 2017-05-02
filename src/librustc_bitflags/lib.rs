@@ -9,9 +9,7 @@
 // except according to those terms.
 
 
-#![crate_name = "rustc_bitflags"]
 #![feature(associated_consts)]
-#![crate_type = "rlib"]
 #![no_std]
 #![deny(warnings)]
 #![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
