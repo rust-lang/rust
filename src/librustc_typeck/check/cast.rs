@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -20,7 +20,8 @@
 //! * `e` is a C-like enum and `U` is an integer type; *enum-cast*
 //! * `e` has type `bool` or `char` and `U` is an integer; *prim-int-cast*
 //! * `e` has type `u8` and `U` is `char`; *u8-char-cast*
-//! * `e` has type `&[T; n]` and `U` is `*const T`; *array-ptr-cast*
+//! * `e` has type `&.[T; n]` and `U` is `*T`,
+//!   while if `e` is `&[T; n]` then `U` is `*const T`; *array-ptr-cast*
 //! * `e` is a function pointer type and `U` has type `*T`,
 //!   while `T: Sized`; *fptr-ptr-cast*
 //! * `e` is a function pointer type and `U` is an integer; *fptr-addr-cast*
@@ -517,7 +518,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                       -> Result<CastKind, CastError> {
         // array-ptr-cast.
 
-        if m_expr.mutbl == hir::MutImmutable && m_cast.mutbl == hir::MutImmutable {
+        if  !(m_expr.mutbl == hir::MutImmutable && m_cast.mutbl == hir::MutMutable) {
             if let ty::TyArray(ety, _) = m_expr.ty.sty {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of
