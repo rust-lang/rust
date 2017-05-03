@@ -299,7 +299,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                         tcx: self.tcx,
                         tables: self.tcx.typeck_tables_of(def_id),
                         needed_resolution: false,
-                        substs,
+                        substs: substs,
                     };
                     let body = if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
                         self.tcx.mir_const_qualif(def_id);

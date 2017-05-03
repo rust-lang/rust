@@ -199,7 +199,8 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
 
     /// Check the inherent impl's items for an `is_empty(self)` method.
     fn has_is_empty_impl(cx: &LateContext, id: DefId) -> bool {
-        cx.tcx.inherent_impls(id)
+        cx.tcx
+            .inherent_impls(id)
             .iter()
             .any(|imp| cx.tcx.associated_items(*imp).any(|item| is_is_empty(cx, &item)))
     }

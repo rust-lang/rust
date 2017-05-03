@@ -284,16 +284,7 @@ impl<'a, 'tcx: 'a> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
         }
     }
 
-    fn borrow(
-        &mut self,
-        _: NodeId,
-        _: Span,
-        _: mc::cmt<'tcx>,
-        _: ty::Region,
-        _: ty::BorrowKind,
-        _: euv::LoanCause
-    ) {
-    }
+    fn borrow(&mut self, _: NodeId, _: Span, _: mc::cmt<'tcx>, _: ty::Region, _: ty::BorrowKind, _: euv::LoanCause) {}
 
     fn mutate(&mut self, _: NodeId, _: Span, _: mc::cmt<'tcx>, _: euv::MutateMode) {}
 
