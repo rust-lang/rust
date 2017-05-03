@@ -34,6 +34,7 @@ use std::ops::Deref;
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::attr;
+use syntax::ast;
 use syntax::symbol::Symbol;
 
 pub trait Key: Clone + Hash + Eq + Debug {
@@ -331,6 +332,12 @@ impl<'tcx> QueryDescription for queries::stability<'tcx> {
 impl<'tcx> QueryDescription for queries::deprecation<'tcx> {
     fn describe(_: TyCtxt, _: DefId) -> String {
         bug!("deprecation")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::item_attrs<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        bug!("item_attrs")
     }
 }
 
@@ -783,6 +790,7 @@ define_maps! { <'tcx>
     [] def_span: DefSpan(DefId) -> Span,
     [] stability: Stability(DefId) -> Option<attr::Stability>,
     [] deprecation: Deprecation(DefId) -> Option<attr::Deprecation>,
+    [] item_attrs: ItemAttrs(DefId) -> Rc<[ast::Attribute]>,
     [] item_body_nested_bodies: ItemBodyNestedBodies(DefId) -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
     [] const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
     [] is_mir_available: IsMirAvailable(DefId) -> bool,

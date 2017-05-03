@@ -113,6 +113,7 @@ provide! { <'tcx> tcx, def_id, cdata
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
     stability => { cdata.get_stability(def_id.index) }
     deprecation => { cdata.get_deprecation(def_id.index) }
+    item_attrs => { cdata.get_item_attrs(def_id.index) }
     item_body_nested_bodies => {
         let map: BTreeMap<_, _> = cdata.entry(def_id.index).ast.into_iter().flat_map(|ast| {
             ast.decode(cdata).nested_bodies.decode(cdata).map(|body| (body.id(), body))
@@ -143,12 +144,6 @@ impl CrateStore for cstore::CStore {
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics {
         self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).get_generics(def.index)
-    }
-
-    fn item_attrs(&self, def_id: DefId) -> Rc<[ast::Attribute]>
-    {
-        self.dep_graph.read(DepNode::MetaData(def_id));
-        self.get_crate_data(def_id.krate).get_item_attrs(def_id.index)
     }
 
     fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name>

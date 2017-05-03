@@ -2357,7 +2357,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if let Some(id) = self.hir.as_local_node_id(did) {
             Attributes::Borrowed(self.hir.attrs(id))
         } else {
-            Attributes::Owned(self.sess.cstore.item_attrs(did))
+            Attributes::Owned(self.item_attrs(did))
         }
     }
 
