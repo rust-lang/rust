@@ -128,6 +128,21 @@ impl Duration {
     /// let duration = Duration::new(5, 730023852);
     /// assert_eq!(duration.as_secs(), 5);
     /// ```
+    ///
+    /// To determine the total number of seconds represented by the `Duration`,
+    /// use `as_secs` in combination with [`subsec_nanos`]:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::new(5, 730023852);
+    ///
+    /// assert_eq!(5.730023852,
+    ///            duration.as_secs() as f64
+    ///            + duration.subsec_nanos() as f64 * 1e-9);
+    /// ```
+    ///
+    /// [`subsec_nanos`]: #method.subsec_nanos
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     pub fn as_secs(&self) -> u64 { self.secs }
