@@ -382,8 +382,8 @@ impl<'a> FmtVisitor<'a> {
                                                       self.block_indent);
                 self.push_rewrite(ti.span, rewrite);
             }
-            ast::TraitItemKind::Macro(..) => {
-                // FIXME(#1158) Macros in trait item position
+            ast::TraitItemKind::Macro(ref mac) => {
+                self.visit_mac(mac, Some(ti.ident), MacroPosition::Item);
             }
         }
     }
