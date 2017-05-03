@@ -570,6 +570,19 @@ fn rewrite_closure(capture: ast::CaptureBy,
         rewrite.map(|rw| format!("{} {}", prefix, rw))
     }
 
+    fn no_weird_visual_indent(block_str: &str, context: &RewriteContext) -> bool {
+        let mut prev_indent_width = 0;
+        for line in block_str.lines() {
+            let cur_indent_width = line.find(|c: char| !c.is_whitespace()).unwrap_or(0);
+            if prev_indent_width > cur_indent_width + context.config.tab_spaces &&
+               line.find('}').unwrap_or(0) != cur_indent_width {
+                return false;
+            }
+            prev_indent_width = cur_indent_width;
+        }
+        true
+    }
+
     fn rewrite_closure_block(block: &ast::Block,
                              prefix: String,
                              context: &RewriteContext,
@@ -577,22 +590,27 @@ fn rewrite_closure(capture: ast::CaptureBy,
                              -> Option<String> {
         // Start with visual indent, then fall back to block indent if the
         // closure is large.
-        let rewrite = try_opt!(block.rewrite(&context, shape));
-
-        let block_threshold = context.config.closure_block_indent_threshold;
-        if block_threshold < 0 || rewrite.matches('\n').count() <= block_threshold as usize {
-            if let Some(rewrite) = wrap_str(rewrite, context.config.max_width, shape) {
-                return Some(format!("{} {}", prefix, rewrite));
+        if let Some(block_str) = block.rewrite(&context, shape) {
+            let block_threshold = context.config.closure_block_indent_threshold;
+            if (block_threshold < 0 ||
+                block_str.matches('\n').count() <= block_threshold as usize) &&
+               no_weird_visual_indent(&block_str, context) {
+                if let Some(block_str) = block_str.rewrite(context, shape) {
+                    return Some(format!("{} {}", prefix, block_str));
+                }
             }
         }
 
         // The body of the closure is big enough to be block indented, that
         // means we must re-format.
-        let block_shape = shape.block();
-        let rewrite = try_opt!(block.rewrite(&context, block_shape));
+        let block_shape = Shape {
+            width: context.config.max_width - shape.block().indent.width(),
+            ..shape.block()
+        };
+        let block_str = try_opt!(block.rewrite(&context, block_shape));
         Some(format!("{} {}",
                      prefix,
-                     try_opt!(wrap_str(rewrite, block_shape.width, block_shape))))
+                     try_opt!(block_str.rewrite(context, block_shape))))
     }
 }
 
