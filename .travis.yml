@@ -96,7 +96,8 @@ matrix:
       os: osx
       osx_image: xcode7
       install:
-        - brew update && brew install xz
+        - travis_retry brew update
+        - travis_retry brew install xz
         - *osx_install_sccache
     - env: >
         RUST_CHECK_TARGET=dist
@@ -109,7 +110,8 @@ matrix:
       os: osx
       osx_image: xcode7
       install:
-        - brew update && brew install xz
+        - travis_retry brew update
+        - travis_retry brew install xz
         - *osx_install_sccache
 
     # "alternate" deployments, these are "nightlies" but don't have assertions
@@ -128,7 +130,8 @@ matrix:
       os: osx
       osx_image: xcode7
       install:
-        - brew update && brew install xz
+        - travis_retry brew update
+        - travis_retry brew install xz
         - *osx_install_sccache
 
 env:
