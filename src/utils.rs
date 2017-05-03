@@ -195,15 +195,14 @@ macro_rules! impl_enum_decodable {
     ( $e:ident, $( $x:ident ),* ) => {
         impl<'de> ::serde::de::Deserialize<'de> for $e {
             fn deserialize<D>(d: D) -> Result<Self, D::Error>
-                    where D: ::serde::de::Deserializer<'de> {
+                    where D: ::serde::Deserializer<'de> {
                 use std::ascii::AsciiExt;
-                use serde::{Deserializer};
                 use serde::de::{Error, Visitor};
                 use std::marker::PhantomData;
                 use std::fmt;
                 struct StringOnly<T>(PhantomData<T>);
                 impl<'de, T> Visitor<'de> for StringOnly<T>
-                        where T: Deserializer<'de> {
+                        where T: ::serde::Deserializer<'de> {
                     type Value = String;
                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                         formatter.write_str("string")
@@ -218,7 +217,8 @@ macro_rules! impl_enum_decodable {
                       return Ok($e::$x);
                     }
                 )*
-                Err(<D as Deserializer<'de>>::Error::custom("Bad variant"))
+                static ALLOWED: &'static[&str] = &[$(stringify!($x),)*];
+                Err(D::Error::unknown_variant(&s, ALLOWED))
             }
         }
 
