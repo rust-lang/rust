@@ -116,8 +116,24 @@ struct Target {
     available: bool,
     url: Option<String>,
     hash: Option<String>,
+    xz_url: Option<String>,
+    xz_hash: Option<String>,
     components: Option<Vec<Component>>,
     extensions: Option<Vec<Component>>,
+}
+
+impl Target {
+    fn unavailable() -> Target {
+        Target {
+            available: false,
+            url: None,
+            hash: None,
+            xz_url: None,
+            xz_hash: None,
+            components: None,
+            extensions: None,
+        }
+    }
 }
 
 #[derive(RustcEncodable)]
@@ -242,16 +258,12 @@ impl Builder {
             let digest = match self.digests.remove(&filename) {
                 Some(digest) => digest,
                 None => {
-                    pkg.target.insert(host.to_string(), Target {
-                        available: false,
-                        url: None,
-                        hash: None,
-                        components: None,
-                        extensions: None,
-                    });
+                    pkg.target.insert(host.to_string(), Target::unavailable());
                     continue
                 }
             };
+            let xz_filename = filename.replace(".tar.gz", ".tar.xz");
+            let xz_digest = self.digests.remove(&xz_filename);
             let mut components = Vec::new();
             let mut extensions = Vec::new();
 
@@ -293,8 +305,10 @@ impl Builder {
 
             pkg.target.insert(host.to_string(), Target {
                 available: true,
-                url: Some(self.url("rust", host)),
+                url: Some(self.url(&filename)),
                 hash: Some(digest),
+                xz_url: xz_digest.as_ref().map(|_| self.url(&xz_filename)),
+                xz_hash: xz_digest,
                 components: Some(components),
                 extensions: Some(extensions),
             });
@@ -312,21 +326,17 @@ impl Builder {
             let filename = self.filename(pkgname, name);
             let digest = match self.digests.remove(&filename) {
                 Some(digest) => digest,
-                None => {
-                    return (name.to_string(), Target {
-                        available: false,
-                        url: None,
-                        hash: None,
-                        components: None,
-                        extensions: None,
-                    })
-                }
+                None => return (name.to_string(), Target::unavailable()),
             };
+            let xz_filename = filename.replace(".tar.gz", ".tar.xz");
+            let xz_digest = self.digests.remove(&xz_filename);
 
             (name.to_string(), Target {
                 available: true,
-                url: Some(self.url(pkgname, name)),
+                url: Some(self.url(&filename)),
                 hash: Some(digest),
+                xz_url: xz_digest.as_ref().map(|_| self.url(&xz_filename)),
+                xz_hash: xz_digest,
                 components: None,
                 extensions: None,
             })
@@ -338,11 +348,11 @@ impl Builder {
         });
     }
 
-    fn url(&self, component: &str, target: &str) -> String {
+    fn url(&self, filename: &str) -> String {
         format!("{}/{}/{}",
                 self.s3_address,
                 self.date,
-                self.filename(component, target))
+                filename)
     }
 
     fn filename(&self, component: &str, target: &str) -> String {
