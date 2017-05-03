@@ -116,7 +116,7 @@ pub fn provide(providers: &mut Providers) {
 /// `ItemCtxt` is parameterized by a `DefId` that it uses to satisfy
 /// `get_type_parameter_bounds` requests, drawing the information from
 /// the AST (`hir::Generics`), recursively.
-struct ItemCtxt<'a,'tcx:'a> {
+pub struct ItemCtxt<'a,'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     item_def_id: DefId,
 }
@@ -180,7 +180,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
 // Utility types and common code for the above passes.
 
 impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
            -> ItemCtxt<'a,'tcx> {
         ItemCtxt {
             tcx: tcx,
@@ -190,7 +190,7 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
 }
 
 impl<'a,'tcx> ItemCtxt<'a,'tcx> {
-    fn to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
+    pub fn to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
         AstConv::ast_ty_to_ty(self, ast_ty)
     }
 }
