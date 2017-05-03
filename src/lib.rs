@@ -15,9 +15,13 @@
 #[macro_use]
 extern crate log;
 
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
+
 extern crate syntex_syntax as syntax;
 extern crate syntex_errors as errors;
-extern crate rustc_serialize;
 
 extern crate strings;
 

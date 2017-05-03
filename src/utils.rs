@@ -193,16 +193,32 @@ pub fn trim_newlines(input: &str) -> &str {
 #[macro_export]
 macro_rules! impl_enum_decodable {
     ( $e:ident, $( $x:ident ),* ) => {
-        impl ::rustc_serialize::Decodable for $e {
-            fn decode<D: ::rustc_serialize::Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        impl<'de> ::serde::de::Deserialize<'de> for $e {
+            fn deserialize<D>(d: D) -> Result<Self, D::Error>
+                    where D: ::serde::de::Deserializer<'de> {
                 use std::ascii::AsciiExt;
-                let s = try!(d.read_str());
+                use serde::{Deserializer};
+                use serde::de::{Error, Visitor};
+                use std::marker::PhantomData;
+                use std::fmt;
+                struct StringOnly<T>(PhantomData<T>);
+                impl<'de, T> Visitor<'de> for StringOnly<T>
+                        where T: Deserializer<'de> {
+                    type Value = String;
+                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                        formatter.write_str("string")
+                    }
+                    fn visit_str<E>(self, value :&str) -> Result<String, E> {
+                        Ok(String::from(value))
+                    }
+                }
+                let s = try!(d.deserialize_string(StringOnly::<D>(PhantomData)));
                 $(
                     if stringify!($x).eq_ignore_ascii_case(&s) {
                       return Ok($e::$x);
                     }
                 )*
-                Err(d.error("Bad variant"))
+                Err(<D as Deserializer<'de>>::Error::custom("Bad variant"))
             }
         }
 
