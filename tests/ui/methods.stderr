@@ -241,7 +241,7 @@ error: use of `unwrap_or` followed by a function call
    --> $DIR/methods.rs:278:5
     |
 278 |     with_constructor.unwrap_or(make());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_constructor.unwrap_or_else(make)`
     |
     = note: #[deny(or_fun_call)] implied by #[deny(clippy)]
 note: lint level defined here
@@ -249,118 +249,94 @@ note: lint level defined here
     |
 5   | #![deny(clippy, clippy_pedantic)]
     |         ^^^^^^
-help: try this
-    |     with_constructor.unwrap_or_else(make);
 
 error: use of `unwrap_or` followed by a call to `new`
    --> $DIR/methods.rs:284:5
     |
 284 |     with_new.unwrap_or(Vec::new());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_new.unwrap_or_default()`
     |
     = note: #[deny(or_fun_call)] implied by #[deny(clippy)]
-help: try this
-    |     with_new.unwrap_or_default();
 
 error: use of `unwrap_or` followed by a function call
    --> $DIR/methods.rs:290:5
     |
 290 |     with_const_args.unwrap_or(Vec::with_capacity(12));
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_const_args.unwrap_or_else(|| Vec::with_capacity(12))`
     |
     = note: #[deny(or_fun_call)] implied by #[deny(clippy)]
-help: try this
-    |     with_const_args.unwrap_or_else(|| Vec::with_capacity(12));
 
 error: use of `unwrap_or` followed by a function call
    --> $DIR/methods.rs:296:5
     |
 296 |     with_err.unwrap_or(make());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_err.unwrap_or_else(|_| make())`
     |
     = note: #[deny(or_fun_call)] implied by #[deny(clippy)]
-help: try this
-    |     with_err.unwrap_or_else(|_| make());
 
 error: use of `unwrap_or` followed by a function call
    --> $DIR/methods.rs:302:5
     |
 302 |     with_err_args.unwrap_or(Vec::with_capacity(12));
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_err_args.unwrap_or_else(|_| Vec::with_capacity(12))`
     |
     = note: #[deny(or_fun_call)] implied by #[deny(clippy)]
-help: try this
-    |     with_err_args.unwrap_or_else(|_| Vec::with_capacity(12));
 
 error: use of `unwrap_or` followed by a call to `default`
    --> $DIR/methods.rs:308:5
     |
 308 |     with_default_trait.unwrap_or(Default::default());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_default_trait.unwrap_or_default()`
     |
     = note: #[deny(or_fun_call)] implied by #[deny(clippy)]
-help: try this
-    |     with_default_trait.unwrap_or_default();
 
 error: use of `unwrap_or` followed by a call to `default`
    --> $DIR/methods.rs:314:5
     |
 314 |     with_default_type.unwrap_or(u64::default());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_default_type.unwrap_or_default()`
     |
     = note: #[deny(or_fun_call)] implied by #[deny(clippy)]
-help: try this
-    |     with_default_type.unwrap_or_default();
 
 error: use of `unwrap_or` followed by a function call
    --> $DIR/methods.rs:320:5
     |
 320 |     with_vec.unwrap_or(vec![]);
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_vec.unwrap_or_else(|| < [ _ ] > :: into_vec ( box [ $ ( $ x ) , * ] ))`
     |
     = note: #[deny(or_fun_call)] implied by #[deny(clippy)]
-help: try this
-    |     with_vec.unwrap_or_else(|| < [ _ ] > :: into_vec ( box [ $ ( $ x ) , * ] ));
 
 error: use of `unwrap_or` followed by a function call
    --> $DIR/methods.rs:326:5
     |
 326 |     without_default.unwrap_or(Foo::new());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `without_default.unwrap_or_else(Foo::new)`
     |
     = note: #[deny(or_fun_call)] implied by #[deny(clippy)]
-help: try this
-    |     without_default.unwrap_or_else(Foo::new);
 
 error: use of `or_insert` followed by a function call
    --> $DIR/methods.rs:332:5
     |
 332 |     map.entry(42).or_insert(String::new());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `map.entry(42).or_insert_with(String::new)`
     |
     = note: #[deny(or_fun_call)] implied by #[deny(clippy)]
-help: try this
-    |     map.entry(42).or_insert_with(String::new);
 
 error: use of `or_insert` followed by a function call
    --> $DIR/methods.rs:338:5
     |
 338 |     btree.entry(42).or_insert(String::new());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `btree.entry(42).or_insert_with(String::new)`
     |
     = note: #[deny(or_fun_call)] implied by #[deny(clippy)]
-help: try this
-    |     btree.entry(42).or_insert_with(String::new);
 
 error: use of `unwrap_or` followed by a function call
    --> $DIR/methods.rs:344:13
     |
 344 |     let _ = stringy.unwrap_or("".to_owned());
-    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `stringy.unwrap_or_else(|| "".to_owned())`
     |
     = note: #[deny(or_fun_call)] implied by #[deny(clippy)]
-help: try this
-    |     let _ = stringy.unwrap_or_else(|| "".to_owned());
 
 error: called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
    --> $DIR/methods.rs:358:23
@@ -464,7 +440,7 @@ error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more co
    --> $DIR/methods.rs:429:17
     |
 429 |         let _ = boxed_slice.get(1).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&boxed_slice[1]`
     |
     = note: #[deny(get_unwrap)] implied by #[deny(clippy)]
 note: lint level defined here
@@ -472,98 +448,78 @@ note: lint level defined here
     |
 5   | #![deny(clippy, clippy_pedantic)]
     |         ^^^^^^
-help: try this
-    |         let _ = &boxed_slice[1];
 
 error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
    --> $DIR/methods.rs:433:17
     |
 433 |         let _ = some_slice.get(0).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&some_slice[0]`
     |
     = note: #[deny(get_unwrap)] implied by #[deny(clippy)]
-help: try this
-    |         let _ = &some_slice[0];
 
 error: called `.get().unwrap()` on a Vec. Using `[]` is more clear and more concise
    --> $DIR/methods.rs:437:17
     |
 437 |         let _ = some_vec.get(0).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&some_vec[0]`
     |
     = note: #[deny(get_unwrap)] implied by #[deny(clippy)]
-help: try this
-    |         let _ = &some_vec[0];
 
 error: called `.get().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
    --> $DIR/methods.rs:441:17
     |
 441 |         let _ = some_vecdeque.get(0).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&some_vecdeque[0]`
     |
     = note: #[deny(get_unwrap)] implied by #[deny(clippy)]
-help: try this
-    |         let _ = &some_vecdeque[0];
 
 error: called `.get().unwrap()` on a HashMap. Using `[]` is more clear and more concise
    --> $DIR/methods.rs:445:17
     |
 445 |         let _ = some_hashmap.get(&1).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&some_hashmap[&1]`
     |
     = note: #[deny(get_unwrap)] implied by #[deny(clippy)]
-help: try this
-    |         let _ = &some_hashmap[&1];
 
 error: called `.get().unwrap()` on a BTreeMap. Using `[]` is more clear and more concise
    --> $DIR/methods.rs:449:17
     |
 449 |         let _ = some_btreemap.get(&1).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&some_btreemap[&1]`
     |
     = note: #[deny(get_unwrap)] implied by #[deny(clippy)]
-help: try this
-    |         let _ = &some_btreemap[&1];
 
 error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
    --> $DIR/methods.rs:458:10
     |
 458 |         *boxed_slice.get_mut(0).unwrap() = 1;
-    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&mut boxed_slice[0]`
     |
     = note: #[deny(get_unwrap)] implied by #[deny(clippy)]
-help: try this
-    |         *&mut boxed_slice[0] = 1;
 
 error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
    --> $DIR/methods.rs:462:10
     |
 462 |         *some_slice.get_mut(0).unwrap() = 1;
-    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&mut some_slice[0]`
     |
     = note: #[deny(get_unwrap)] implied by #[deny(clippy)]
-help: try this
-    |         *&mut some_slice[0] = 1;
 
 error: called `.get_mut().unwrap()` on a Vec. Using `[]` is more clear and more concise
    --> $DIR/methods.rs:466:10
     |
 466 |         *some_vec.get_mut(0).unwrap() = 1;
-    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&mut some_vec[0]`
     |
     = note: #[deny(get_unwrap)] implied by #[deny(clippy)]
-help: try this
-    |         *&mut some_vec[0] = 1;
 
 error: called `.get_mut().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
    --> $DIR/methods.rs:470:10
     |
 470 |         *some_vecdeque.get_mut(0).unwrap() = 1;
-    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&mut some_vecdeque[0]`
     |
     = note: #[deny(get_unwrap)] implied by #[deny(clippy)]
-help: try this
-    |         *&mut some_vecdeque[0] = 1;
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
    --> $DIR/methods.rs:488:13
@@ -640,7 +596,7 @@ error: you should use the `starts_with` method
    --> $DIR/methods.rs:517:5
     |
 517 |     "".chars().next() == Some(' ');
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this `"".starts_with(' ')`
     |
     = note: #[deny(chars_next_cmp)] implied by #[deny(clippy)]
 note: lint level defined here
@@ -648,24 +604,20 @@ note: lint level defined here
     |
 5   | #![deny(clippy, clippy_pedantic)]
     |         ^^^^^^
-help: like this
-    |     "".starts_with(' ');
 
 error: you should use the `starts_with` method
    --> $DIR/methods.rs:522:5
     |
 522 |     Some(' ') != "".chars().next();
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this `!"".starts_with(' ')`
     |
     = note: #[deny(chars_next_cmp)] implied by #[deny(clippy)]
-help: like this
-    |     !"".starts_with(' ');
 
 error: calling `.extend(_.chars())`
    --> $DIR/methods.rs:534:5
     |
 534 |     s.extend(abc.chars());
-    |     ^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^ help: try this `s.push_str(abc)`
     |
     = note: #[deny(string_extend_chars)] implied by #[deny(clippy)]
 note: lint level defined here
@@ -673,34 +625,28 @@ note: lint level defined here
     |
 5   | #![deny(clippy, clippy_pedantic)]
     |         ^^^^^^
-help: try this
-    |     s.push_str(abc);
 
 error: calling `.extend(_.chars())`
    --> $DIR/methods.rs:540:5
     |
 540 |     s.extend("abc".chars());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try this `s.push_str("abc")`
     |
     = note: #[deny(string_extend_chars)] implied by #[deny(clippy)]
-help: try this
-    |     s.push_str("abc");
 
 error: calling `.extend(_.chars())`
    --> $DIR/methods.rs:546:5
     |
 546 |     s.extend(def.chars());
-    |     ^^^^^^^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^^^^^^^ help: try this `s.push_str(&def)`
     |
     = note: #[deny(string_extend_chars)] implied by #[deny(clippy)]
-help: try this
-    |     s.push_str(&def);
 
 error: using `clone` on a `Copy` type
    --> $DIR/methods.rs:560:5
     |
 560 |     42.clone();
-    |     ^^^^^^^^^^
+    |     ^^^^^^^^^^ help: try removing the `clone` call `42`
     |
     = note: #[deny(clone_on_copy)] implied by #[deny(clippy)]
 note: lint level defined here
@@ -708,44 +654,36 @@ note: lint level defined here
     |
 5   | #![deny(clippy, clippy_pedantic)]
     |         ^^^^^^
-help: try removing the `clone` call
-    |     42;
 
 error: using `clone` on a `Copy` type
    --> $DIR/methods.rs:565:5
     |
 565 |     (&42).clone();
-    |     ^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^ help: try dereferencing it `*(&42)`
     |
     = note: #[deny(clone_on_copy)] implied by #[deny(clippy)]
-help: try dereferencing it
-    |     *(&42);
 
 error: using `clone` on a `Copy` type
    --> $DIR/methods.rs:571:5
     |
 571 |     t.clone();
-    |     ^^^^^^^^^
+    |     ^^^^^^^^^ help: try removing the `clone` call `t`
     |
     = note: #[deny(clone_on_copy)] implied by #[deny(clippy)]
-help: try removing the `clone` call
-    |     t;
 
 error: using `clone` on a `Copy` type
    --> $DIR/methods.rs:574:5
     |
 574 |     Some(t).clone();
-    |     ^^^^^^^^^^^^^^^
+    |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call `Some(t)`
     |
     = note: #[deny(clone_on_copy)] implied by #[deny(clippy)]
-help: try removing the `clone` call
-    |     Some(t);
 
 error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
    --> $DIR/methods.rs:582:22
     |
 582 |     let z: &Vec<_> = y.clone();
-    |                      ^^^^^^^^^
+    |                      ^^^^^^^^^ help: try dereferencing it `(*y).clone()`
     |
     = note: #[deny(clone_double_ref)] implied by #[deny(clippy)]
 note: lint level defined here
@@ -753,14 +691,12 @@ note: lint level defined here
     |
 5   | #![deny(clippy, clippy_pedantic)]
     |         ^^^^^^
-help: try dereferencing it
-    |     let z: &Vec<_> = (*y).clone();
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:590:13
     |
 590 |     x.split("x");
-    |             ^^^
+    |     --------^^^- help: try using a char instead: `x.split('x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
 note: lint level defined here
@@ -768,168 +704,134 @@ note: lint level defined here
     |
 5   | #![deny(clippy, clippy_pedantic)]
     |         ^^^^^^
-help: try using a char instead:
-    |     x.split('x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:614:16
     |
 614 |     x.contains("x");
-    |                ^^^
+    |     -----------^^^- help: try using a char instead: `x.contains('x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.contains('x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:618:19
     |
 618 |     x.starts_with("x");
-    |                   ^^^
+    |     --------------^^^- help: try using a char instead: `x.starts_with('x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.starts_with('x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:622:17
     |
 622 |     x.ends_with("x");
-    |                 ^^^
+    |     ------------^^^- help: try using a char instead: `x.ends_with('x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.ends_with('x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:626:12
     |
 626 |     x.find("x");
-    |            ^^^
+    |     -------^^^- help: try using a char instead: `x.find('x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.find('x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:630:13
     |
 630 |     x.rfind("x");
-    |             ^^^
+    |     --------^^^- help: try using a char instead: `x.rfind('x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.rfind('x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:634:14
     |
 634 |     x.rsplit("x");
-    |              ^^^
+    |     ---------^^^- help: try using a char instead: `x.rsplit('x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.rsplit('x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:638:24
     |
 638 |     x.split_terminator("x");
-    |                        ^^^
+    |     -------------------^^^- help: try using a char instead: `x.split_terminator('x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.split_terminator('x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:642:25
     |
 642 |     x.rsplit_terminator("x");
-    |                         ^^^
+    |     --------------------^^^- help: try using a char instead: `x.rsplit_terminator('x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.rsplit_terminator('x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:646:17
     |
 646 |     x.splitn(0, "x");
-    |                 ^^^
+    |     ------------^^^- help: try using a char instead: `x.splitn(0, 'x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.splitn(0, 'x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:650:18
     |
 650 |     x.rsplitn(0, "x");
-    |                  ^^^
+    |     -------------^^^- help: try using a char instead: `x.rsplitn(0, 'x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.rsplitn(0, 'x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:654:15
     |
 654 |     x.matches("x");
-    |               ^^^
+    |     ----------^^^- help: try using a char instead: `x.matches('x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.matches('x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:658:16
     |
 658 |     x.rmatches("x");
-    |                ^^^
+    |     -----------^^^- help: try using a char instead: `x.rmatches('x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.rmatches('x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:662:21
     |
 662 |     x.match_indices("x");
-    |                     ^^^
+    |     ----------------^^^- help: try using a char instead: `x.match_indices('x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.match_indices('x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:666:22
     |
 666 |     x.rmatch_indices("x");
-    |                      ^^^
+    |     -----------------^^^- help: try using a char instead: `x.rmatch_indices('x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.rmatch_indices('x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:670:25
     |
 670 |     x.trim_left_matches("x");
-    |                         ^^^
+    |     --------------------^^^- help: try using a char instead: `x.trim_left_matches('x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.trim_left_matches('x');
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:674:26
     |
 674 |     x.trim_right_matches("x");
-    |                          ^^^
+    |     ---------------------^^^- help: try using a char instead: `x.trim_right_matches('x')`
     |
     = note: #[deny(single_char_pattern)] implied by #[deny(clippy)]
-help: try using a char instead:
-    |     x.trim_right_matches('x');
 
 error: you are getting the inner pointer of a temporary `CString`
    --> $DIR/methods.rs:687:5

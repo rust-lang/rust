@@ -4,7 +4,7 @@ error: this looks like you are swapping elements of `foo` manually
 11 | /     let temp = foo[0];
 12 | |     foo[0] = foo[1];
 13 | |     foo[1] = temp;
-   | |_________________^
+   | |_________________^ help: try `foo.swap(0, 1)`
    |
    = note: #[deny(manual_swap)] implied by #[deny(clippy)]
 note: lint level defined here
@@ -12,8 +12,6 @@ note: lint level defined here
    |
 4  | #![deny(clippy)]
    |         ^^^^^^
-help: try
-   |     foo.swap(0, 1);
 
 error: this looks like you are swapping elements of `foo` manually
   --> $DIR/swap.rs:23:5
@@ -21,11 +19,9 @@ error: this looks like you are swapping elements of `foo` manually
 23 | /     let temp = foo[0];
 24 | |     foo[0] = foo[1];
 25 | |     foo[1] = temp;
-   | |_________________^
+   | |_________________^ help: try `foo.swap(0, 1)`
    |
    = note: #[deny(manual_swap)] implied by #[deny(clippy)]
-help: try
-   |     foo.swap(0, 1);
 
 error: this looks like you are swapping elements of `foo` manually
   --> $DIR/swap.rs:35:5
@@ -33,11 +29,9 @@ error: this looks like you are swapping elements of `foo` manually
 35 | /     let temp = foo[0];
 36 | |     foo[0] = foo[1];
 37 | |     foo[1] = temp;
-   | |_________________^
+   | |_________________^ help: try `foo.swap(0, 1)`
    |
    = note: #[deny(manual_swap)] implied by #[deny(clippy)]
-help: try
-   |     foo.swap(0, 1);
 
 error: this looks like you are swapping `a` and `b` manually
   --> $DIR/swap.rs:60:7
@@ -46,11 +40,9 @@ error: this looks like you are swapping `a` and `b` manually
    |  _______^
 61 | |     a = b;
 62 | |     b = t;
-   | |_________^
+   | |_________^ help: try `std::mem::swap(&mut a, &mut b)`
    |
    = note: #[deny(manual_swap)] implied by #[deny(clippy)]
-help: try
-   |     ; std::mem::swap(&mut a, &mut b);
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are swapping `c.0` and `a` manually
@@ -60,11 +52,9 @@ error: this looks like you are swapping `c.0` and `a` manually
    |  _______^
 78 | |     c.0 = a;
 79 | |     a = t;
-   | |_________^
+   | |_________^ help: try `std::mem::swap(&mut c.0, &mut a)`
    |
    = note: #[deny(manual_swap)] implied by #[deny(clippy)]
-help: try
-   |     ; std::mem::swap(&mut c.0, &mut a);
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are trying to swap `a` and `b`
@@ -72,7 +62,7 @@ error: this looks like you are trying to swap `a` and `b`
    |
 53 | /     a = b;
 54 | |     b = a;
-   | |_________^
+   | |_________^ help: try `std::mem::swap(&mut a, &mut b)`
    |
    = note: #[deny(almost_swapped)] implied by #[deny(clippy)]
 note: lint level defined here
@@ -80,8 +70,6 @@ note: lint level defined here
    |
 4  | #![deny(clippy)]
    |         ^^^^^^
-help: try
-   |     std::mem::swap(&mut a, &mut b);
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are trying to swap `c.0` and `a`
@@ -89,11 +77,9 @@ error: this looks like you are trying to swap `c.0` and `a`
    |
 70 | /     c.0 = a;
 71 | |     a = c.0;
-   | |___________^
+   | |___________^ help: try `std::mem::swap(&mut c.0, &mut a)`
    |
    = note: #[deny(almost_swapped)] implied by #[deny(clippy)]
-help: try
-   |     std::mem::swap(&mut c.0, &mut a);
    = note: or maybe you should use `std::mem::replace`?
 
 error: aborting due to 7 previous errors

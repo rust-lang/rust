@@ -140,7 +140,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                         if (requires_ref || rcpy) && implements_trait(cx, cx.tables.expr_ty(left), trait_id, &[rty], None) {
                             span_lint_and_then(cx, OP_REF, e.span, "taken reference of right operand", |db| {
                                 let rsnip = snippet(cx, r.span, "...").to_string();
-                                db.span_suggestion(left.span, "use the right value directly", rsnip);
+                                db.span_suggestion(right.span, "use the right value directly", rsnip);
                             })
                         }
                     },

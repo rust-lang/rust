@@ -65,7 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         _: &'tcx FnDecl,
         body: &'tcx Body,
         _: Span,
-        _id: NodeId
+        node_id: NodeId
     ) {
         // we store the infcx because it is expensive to recreate
         // the context each time.
@@ -78,8 +78,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         };
 
         let infcx = cx.tcx.borrowck_fake_infer_ctxt(body.id());
+        let fn_def_id = cx.tcx.hir.local_def_id(node_id);
+        let region_maps = &cx.tcx.region_maps(fn_def_id);
         {
-            let mut vis = ExprUseVisitor::new(&mut v, &infcx);
+            let mut vis = ExprUseVisitor::new(&mut v, region_maps, &infcx);
             vis.consume_body(body);
         }
 
@@ -150,7 +152,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         borrow_id: NodeId,
         _: Span,
         cmt: cmt<'tcx>,
-        _: &ty::Region,
+        _: ty::Region,
         _: ty::BorrowKind,
         loan_cause: LoanCause
     ) {

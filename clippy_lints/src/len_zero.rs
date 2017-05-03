@@ -173,7 +173,7 @@ fn check_len_zero(cx: &LateContext, span: Span, name: Name, args: &[Expr], lit: 
         if name == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
             span_lint_and_then(cx, LEN_ZERO, span, "length comparison to zero", |db| {
                 db.span_suggestion(span,
-                                   "consider using `is_empty`",
+                                   "using `is_empty` is more concise:",
                                    format!("{}{}.is_empty()", op, snippet(cx, args[0].span, "_")));
             });
         }

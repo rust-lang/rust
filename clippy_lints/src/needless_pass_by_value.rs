@@ -86,18 +86,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 .collect()
         };
 
+        let fn_def_id = cx.tcx.hir.local_def_id(node_id);
+
         // Collect moved variables and spans which will need dereferencings from the function body.
         let MovedVariablesCtxt { moved_vars, spans_need_deref, .. } = {
             let mut ctx = MovedVariablesCtxt::new(cx);
             let infcx = cx.tcx.borrowck_fake_infer_ctxt(body.id());
+            let region_maps = &cx.tcx.region_maps(fn_def_id);
             {
-                let mut v = euv::ExprUseVisitor::new(&mut ctx, &infcx);
+                let mut v = euv::ExprUseVisitor::new(&mut ctx, region_maps, &infcx);
                 v.consume_body(body);
             }
             ctx
         };
 
-        let fn_def_id = cx.tcx.hir.local_def_id(node_id);
         let param_env = ty::ParameterEnvironment::for_item(cx.tcx, node_id);
         let fn_sig = cx.tcx.type_of(fn_def_id).fn_sig();
         let fn_sig = cx.tcx.liberate_late_bound_regions(param_env.free_id_outlive, &fn_sig);
@@ -146,7 +148,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                     ], {
                         let slice_ty = format!("&[{}]", snippet(cx, elem_ty.span, "_"));
                         db.span_suggestion(input.span,
-                                        &format!("consider changing the type to `{}`", slice_ty),
+                                        "consider changing the type to",
                                         slice_ty);
                         assert!(deref_span.is_none());
                         return; // `Vec` and `String` cannot be destructured - no need for `*` suggestion
@@ -154,7 +156,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
                     if match_type(cx, ty, &paths::STRING) {
                         db.span_suggestion(input.span,
-                                           "consider changing the type to `&str`",
+                                           "consider changing the type to",
                                            "&str".to_string());
                         assert!(deref_span.is_none());
                         return;
@@ -287,7 +289,7 @@ impl<'a, 'tcx: 'a> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
         _: NodeId,
         _: Span,
         _: mc::cmt<'tcx>,
-        _: &'tcx ty::Region,
+        _: ty::Region,
         _: ty::BorrowKind,
         _: euv::LoanCause
     ) {

@@ -2,200 +2,139 @@ error: assign operation detected
  --> $DIR/assign_ops.rs:8:5
   |
 8 |     i += 2;
-  |     ^^^^^^
+  |     ^^^^^^ help: replace it with `i = i + 2`
   |
 note: lint level defined here
  --> $DIR/assign_ops.rs:4:8
   |
 4 | #[deny(assign_ops)]
   |        ^^^^^^^^^^
-help: replace it with
-  |     i = i + 2;
 
 error: assign operation detected
   --> $DIR/assign_ops.rs:11:5
    |
 11 |     i += 2 + 17;
-   |     ^^^^^^^^^^^
-   |
-help: replace it with
-   |     i = i + 2 + 17;
+   |     ^^^^^^^^^^^ help: replace it with `i = i + 2 + 17`
 
 error: assign operation detected
   --> $DIR/assign_ops.rs:14:5
    |
 14 |     i -= 6;
-   |     ^^^^^^
-   |
-help: replace it with
-   |     i = i - 6;
+   |     ^^^^^^ help: replace it with `i = i - 6`
 
 error: assign operation detected
   --> $DIR/assign_ops.rs:17:5
    |
 17 |     i -= 2 - 1;
-   |     ^^^^^^^^^^
-   |
-help: replace it with
-   |     i = i - (2 - 1);
+   |     ^^^^^^^^^^ help: replace it with `i = i - (2 - 1)`
 
 error: assign operation detected
   --> $DIR/assign_ops.rs:21:5
    |
 21 |     i *= 5;
-   |     ^^^^^^
-   |
-help: replace it with
-   |     i = i * 5;
+   |     ^^^^^^ help: replace it with `i = i * 5`
 
 error: assign operation detected
   --> $DIR/assign_ops.rs:24:5
    |
 24 |     i *= 1+5;
-   |     ^^^^^^^^
-   |
-help: replace it with
-   |     i = i * (1+5);
+   |     ^^^^^^^^ help: replace it with `i = i * (1+5)`
 
 error: assign operation detected
   --> $DIR/assign_ops.rs:27:5
    |
 27 |     i /= 32;
-   |     ^^^^^^^
-   |
-help: replace it with
-   |     i = i / 32;
+   |     ^^^^^^^ help: replace it with `i = i / 32`
 
 error: assign operation detected
   --> $DIR/assign_ops.rs:30:5
    |
 30 |     i /= 32 | 5;
-   |     ^^^^^^^^^^^
-   |
-help: replace it with
-   |     i = i / (32 | 5);
+   |     ^^^^^^^^^^^ help: replace it with `i = i / (32 | 5)`
 
 error: assign operation detected
   --> $DIR/assign_ops.rs:33:5
    |
 33 |     i /= 32 / 5;
-   |     ^^^^^^^^^^^
-   |
-help: replace it with
-   |     i = i / (32 / 5);
+   |     ^^^^^^^^^^^ help: replace it with `i = i / (32 / 5)`
 
 error: assign operation detected
   --> $DIR/assign_ops.rs:36:5
    |
 36 |     i %= 42;
-   |     ^^^^^^^
-   |
-help: replace it with
-   |     i = i % 42;
+   |     ^^^^^^^ help: replace it with `i = i % 42`
 
 error: assign operation detected
   --> $DIR/assign_ops.rs:39:5
    |
 39 |     i >>= i;
-   |     ^^^^^^^
-   |
-help: replace it with
-   |     i = i >> i;
+   |     ^^^^^^^ help: replace it with `i = i >> i`
 
 error: assign operation detected
   --> $DIR/assign_ops.rs:42:5
    |
 42 |     i <<= 9 + 6 - 7;
-   |     ^^^^^^^^^^^^^^^
-   |
-help: replace it with
-   |     i = i << (9 + 6 - 7);
+   |     ^^^^^^^^^^^^^^^ help: replace it with `i = i << (9 + 6 - 7)`
 
 error: assign operation detected
   --> $DIR/assign_ops.rs:45:5
    |
 45 |     i += 1 << 5;
-   |     ^^^^^^^^^^^
-   |
-help: replace it with
-   |     i = i + (1 << 5);
+   |     ^^^^^^^^^^^ help: replace it with `i = i + (1 << 5)`
 
 error: manual implementation of an assign operation
   --> $DIR/assign_ops.rs:55:5
    |
 55 |     a = a + 1;
-   |     ^^^^^^^^^
+   |     ^^^^^^^^^ help: replace it with `a += 1`
    |
 note: lint level defined here
   --> $DIR/assign_ops.rs:52:8
    |
 52 | #[deny(assign_op_pattern)]
    |        ^^^^^^^^^^^^^^^^^
-help: replace it with
-   |     a += 1;
 
 error: manual implementation of an assign operation
   --> $DIR/assign_ops.rs:58:5
    |
 58 |     a = 1 + a;
-   |     ^^^^^^^^^
-   |
-help: replace it with
-   |     a += 1;
+   |     ^^^^^^^^^ help: replace it with `a += 1`
 
 error: manual implementation of an assign operation
   --> $DIR/assign_ops.rs:61:5
    |
 61 |     a = a - 1;
-   |     ^^^^^^^^^
-   |
-help: replace it with
-   |     a -= 1;
+   |     ^^^^^^^^^ help: replace it with `a -= 1`
 
 error: manual implementation of an assign operation
   --> $DIR/assign_ops.rs:64:5
    |
 64 |     a = a * 99;
-   |     ^^^^^^^^^^
-   |
-help: replace it with
-   |     a *= 99;
+   |     ^^^^^^^^^^ help: replace it with `a *= 99`
 
 error: manual implementation of an assign operation
   --> $DIR/assign_ops.rs:67:5
    |
 67 |     a = 42 * a;
-   |     ^^^^^^^^^^
-   |
-help: replace it with
-   |     a *= 42;
+   |     ^^^^^^^^^^ help: replace it with `a *= 42`
 
 error: manual implementation of an assign operation
   --> $DIR/assign_ops.rs:70:5
    |
 70 |     a = a / 2;
-   |     ^^^^^^^^^
-   |
-help: replace it with
-   |     a /= 2;
+   |     ^^^^^^^^^ help: replace it with `a /= 2`
 
 error: manual implementation of an assign operation
   --> $DIR/assign_ops.rs:73:5
    |
 73 |     a = a % 5;
-   |     ^^^^^^^^^
-   |
-help: replace it with
-   |     a %= 5;
+   |     ^^^^^^^^^ help: replace it with `a %= 5`
 
 error: manual implementation of an assign operation
   --> $DIR/assign_ops.rs:76:5
    |
 76 |     a = a & 1;
-   |     ^^^^^^^^^
-   |
-help: replace it with
-   |     a &= 1;
+   |     ^^^^^^^^^ help: replace it with `a &= 1`
 
 error: aborting due to 21 previous errors
 

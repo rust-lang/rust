@@ -50,69 +50,49 @@ error: length comparison to zero
    --> $DIR/len_zero.rs:130:8
     |
 130 |     if x.len() == 0 {
-    |        ^^^^^^^^^^^^
+    |        ^^^^^^^^^^^^ help: using `is_empty` is more concise: `x.is_empty()`
     |
 note: lint level defined here
    --> $DIR/len_zero.rs:4:31
     |
 4   | #![deny(len_without_is_empty, len_zero)]
     |                               ^^^^^^^^
-help: consider using `is_empty`
-    |     if x.is_empty() {
 
 error: length comparison to zero
    --> $DIR/len_zero.rs:137:8
     |
 137 |     if "".len() == 0 {
-    |        ^^^^^^^^^^^^^
-    |
-help: consider using `is_empty`
-    |     if "".is_empty() {
+    |        ^^^^^^^^^^^^^ help: using `is_empty` is more concise: `"".is_empty()`
 
 error: length comparison to zero
    --> $DIR/len_zero.rs:154:8
     |
 154 |     if has_is_empty.len() == 0 {
-    |        ^^^^^^^^^^^^^^^^^^^^^^^
-    |
-help: consider using `is_empty`
-    |     if has_is_empty.is_empty() {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `has_is_empty.is_empty()`
 
 error: length comparison to zero
    --> $DIR/len_zero.rs:160:8
     |
 160 |     if has_is_empty.len() != 0 {
-    |        ^^^^^^^^^^^^^^^^^^^^^^^
-    |
-help: consider using `is_empty`
-    |     if !has_is_empty.is_empty() {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
 
 error: length comparison to zero
    --> $DIR/len_zero.rs:166:8
     |
 166 |     if has_is_empty.len() > 0 {
-    |        ^^^^^^^^^^^^^^^^^^^^^^
-    |
-help: consider using `is_empty`
-    |     if !has_is_empty.is_empty() {
+    |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
 
 error: length comparison to zero
    --> $DIR/len_zero.rs:175:8
     |
 175 |     if with_is_empty.len() == 0 {
-    |        ^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-help: consider using `is_empty`
-    |     if with_is_empty.is_empty() {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `with_is_empty.is_empty()`
 
 error: length comparison to zero
    --> $DIR/len_zero.rs:190:8
     |
 190 |     if b.len() != 0 {
-    |        ^^^^^^^^^^^^
-    |
-help: consider using `is_empty`
-    |     if !b.is_empty() {
+    |        ^^^^^^^^^^^^ help: using `is_empty` is more concise: `!b.is_empty()`
 
 error: aborting due to 11 previous errors
 

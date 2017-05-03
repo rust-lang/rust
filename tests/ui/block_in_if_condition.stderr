@@ -54,15 +54,13 @@ warning: this boolean expression can be simplified
   --> $DIR/block_in_if_condition.rs:70:8
    |
 70 |     if true && x == 3 {
-   |        ^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^ help: try `x == 3`
    |
 note: lint level defined here
   --> $DIR/block_in_if_condition.rs:7:9
    |
 7  | #![warn(nonminimal_bool)]
    |         ^^^^^^^^^^^^^^^
-help: try
-   |     if x == 3 {
 
 error: aborting due to 4 previous errors
 
