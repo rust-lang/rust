@@ -148,6 +148,17 @@ impl Iterator for Vars {
         })
     }
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    fn count(self) -> usize { self.inner.count() }
+    fn nth(&mut self, n: usize) -> Option<(String, String)> {
+        self.inner.nth(n).map(|(a, b)| {
+            (a.into_string().unwrap(), b.into_string().unwrap())
+        })
+    }
+    fn last(self) -> Option<(String, String)> {
+        self.inner.last().map(|(a, b)| {
+            (a.into_string().unwrap(), b.into_string().unwrap())
+        })
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -162,6 +173,11 @@ impl Iterator for VarsOs {
     type Item = (OsString, OsString);
     fn next(&mut self) -> Option<(OsString, OsString)> { self.inner.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    fn count(self) -> usize { self.inner.count() }
+    fn nth(&mut self, n: usize) -> Option<(OsString, OsString)> {
+        self.inner.nth(n)
+    }
+    fn last(self) -> Option<(OsString, OsString)> { self.inner.last() }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
