@@ -636,7 +636,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if id.is_local() {
             None // The stability cache is filled partially lazily
         } else {
-            self.sess.cstore.stability(id).map(|st| self.intern_stability(st))
+            self.stability(id).map(|st| self.intern_stability(st))
         }
     }
 
@@ -645,7 +645,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if id.is_local() {
             None // The stability cache is filled partially lazily
         } else {
-            self.sess.cstore.deprecation(id).map(DeprecationEntry::external)
+            self.deprecation(id).map(DeprecationEntry::external)
         }
     }
 }
