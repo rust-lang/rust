@@ -20,10 +20,7 @@ error: Try not to call a closure in the expression where it is declared.
  --> $DIR/redundant_closure_call.rs:7:10
   |
 7 | \tlet a = (|| 42)();
-  | \t        ^^^^^^^^^
-  |
-help: Try doing something like: 
-  | \tlet a = 42;
+  | \t        ^^^^^^^^^ help: Try doing something like:  `42`
 
 error: Try not to call a closure in the expression where it is declared.
   --> $DIR/redundant_closure_call.rs:13:10

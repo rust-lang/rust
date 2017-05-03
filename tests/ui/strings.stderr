@@ -56,25 +56,21 @@ error: calling `as_bytes()` on a string literal
   --> $DIR/strings.rs:50:14
    |
 50 |     let bs = "hello there".as_bytes();
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead `b"hello there"`
    |
 note: lint level defined here
   --> $DIR/strings.rs:48:8
    |
 48 | #[deny(string_lit_as_bytes)]
    |        ^^^^^^^^^^^^^^^^^^^
-help: consider using a byte string literal instead
-   |     let bs = b"hello there";
 
 warning: manual implementation of an assign operation
   --> $DIR/strings.rs:68:7
    |
 68 |     ; x = x + 1;
-   |       ^^^^^^^^^
+   |       ^^^^^^^^^ help: replace it with `x += 1`
    |
    = note: #[warn(assign_op_pattern)] on by default
-help: replace it with
-   |     ; x += 1;
 
 error: aborting due to 6 previous errors
 

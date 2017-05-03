@@ -2,60 +2,43 @@ error: this boolean expression can be simplified
   --> $DIR/eq_op.rs:41:5
    |
 41 |     true && true;
-   |     ^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^ help: try `true`
    |
 note: lint level defined here
   --> $DIR/eq_op.rs:7:8
    |
 7  | #[deny(nonminimal_bool)]
    |        ^^^^^^^^^^^^^^^
-help: try
-   |     true;
 
 error: this boolean expression can be simplified
   --> $DIR/eq_op.rs:43:5
    |
 43 |     true || true;
-   |     ^^^^^^^^^^^^
-   |
-help: try
-   |     true;
+   |     ^^^^^^^^^^^^ help: try `true`
 
 error: this boolean expression can be simplified
   --> $DIR/eq_op.rs:49:5
    |
 49 |     a == b && b == a;
-   |     ^^^^^^^^^^^^^^^^
-   |
-help: try
-   |     a == b;
+   |     ^^^^^^^^^^^^^^^^ help: try `a == b`
 
 error: this boolean expression can be simplified
   --> $DIR/eq_op.rs:51:5
    |
 51 |     a != b && b != a;
-   |     ^^^^^^^^^^^^^^^^
-   |
-help: try
-   |     a != b;
+   |     ^^^^^^^^^^^^^^^^ help: try `a != b`
 
 error: this boolean expression can be simplified
   --> $DIR/eq_op.rs:53:5
    |
 53 |     a < b && b > a;
-   |     ^^^^^^^^^^^^^^
-   |
-help: try
-   |     a < b;
+   |     ^^^^^^^^^^^^^^ help: try `a < b`
 
 error: this boolean expression can be simplified
   --> $DIR/eq_op.rs:55:5
    |
 55 |     a <= b && b >= a;
-   |     ^^^^^^^^^^^^^^^^
-   |
-help: try
-   |     a <= b;
+   |     ^^^^^^^^^^^^^^^^ help: try `a <= b`
 
 error: equal expressions as operands to `==`
   --> $DIR/eq_op.rs:10:5
@@ -223,11 +206,11 @@ warning: taken reference of right operand
   --> $DIR/eq_op.rs:97:13
    |
 97 |     let z = x & &y;
-   |             ^^^^^^
+   |             ^^^^--
+   |                 |
+   |                 help: use the right value directly `y`
    |
    = note: #[warn(op_ref)] on by default
-help: use the right value directly
-   |     let z = y & &y;
 
 error: aborting due to 32 previous errors
 

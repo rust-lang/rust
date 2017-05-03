@@ -509,8 +509,11 @@ fn check_for_loop_range<'a, 'tcx>(
 
                 // ensure that the indexed variable was declared before the loop, see #601
                 if let Some(indexed_extent) = indexed_extent {
-                    let pat_extent = cx.tcx.region_maps.var_scope(pat.id);
-                    if cx.tcx.region_maps.is_subscope_of(indexed_extent, pat_extent) {
+                    let parent_id = cx.tcx.hir.get_parent(expr.id);
+                    let parent_def_id = cx.tcx.hir.local_def_id(parent_id);
+                    let region_maps = cx.tcx.region_maps(parent_def_id);
+                    let pat_extent = region_maps.var_scope(pat.id);
+                    if region_maps.is_subscope_of(indexed_extent, pat_extent) {
                         return;
                     }
                 }
@@ -872,7 +875,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
 struct VarVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>, // context reference
     var: DefId, // var name to look for as index
-    indexed: HashMap<Name, Option<CodeExtent>>, // indexed variables, the extent is None for global
+    indexed: HashMap<Name, Option<CodeExtent<'tcx>>>, // indexed variables, the extent is None for global
     nonindex: bool, // has the var been used otherwise?
 }
 
@@ -895,7 +898,9 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                                 let def_id = def.def_id();
                                 let node_id = self.cx.tcx.hir.as_local_node_id(def_id).expect("local/upvar are local nodes");
 
-                                let extent = self.cx.tcx.region_maps.var_scope(node_id);
+                                let parent_id = self.cx.tcx.hir.get_parent(expr.id);
+                                let parent_def_id = self.cx.tcx.hir.local_def_id(parent_id);
+                                let extent = self.cx.tcx.region_maps(parent_def_id).var_scope(node_id);
                                 self.indexed.insert(seqvar.segments[0].name, Some(extent));
                                 return;  // no need to walk further
                             }

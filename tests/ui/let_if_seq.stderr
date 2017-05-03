@@ -8,15 +8,13 @@ error: `if _ { .. } else { .. }` is an expression
 61 | |     if f() {
 62 | |         foo = 42;
 63 | |     }
-   | |_____^
+   | |_____^ help: it is more idiomatic to write `let <mut> foo = if f() { 42 } else { 0 };`
    |
 note: lint level defined here
   --> $DIR/let_if_seq.rs:5:9
    |
 5  | #![deny(useless_let_if_seq)]
    |         ^^^^^^^^^^^^^^^^^^
-help: it is more idiomatic to write
-   |     let <mut> foo = if f() { 42 } else { 0 };
    = note: you might not need `mut` at all
 
 error: `if _ { .. } else { .. }` is an expression
@@ -29,10 +27,8 @@ error: `if _ { .. } else { .. }` is an expression
 ...  |
 74 | |         f();
 75 | |     }
-   | |_____^
+   | |_____^ help: it is more idiomatic to write `let <mut> bar = if f() { ..; 42 } else { ..; 0 };`
    |
-help: it is more idiomatic to write
-   |     let <mut> bar = if f() { ..; 42 } else { ..; 0 };
    = note: you might not need `mut` at all
 
 error: `if _ { .. } else { .. }` is an expression
@@ -45,10 +41,7 @@ error: `if _ { .. } else { .. }` is an expression
 ...  |
 85 | |         quz = 0;
 86 | |     }
-   | |_____^
-   |
-help: it is more idiomatic to write
-   |     let quz = if f() { 42 } else { 0 };
+   | |_____^ help: it is more idiomatic to write `let quz = if f() { 42 } else { 0 };`
 
 error: `if _ { .. } else { .. }` is an expression
    --> $DIR/let_if_seq.rs:111:5
@@ -60,10 +53,8 @@ error: `if _ { .. } else { .. }` is an expression
 115 | |     if f() {
 116 | |         baz = 42;
 117 | |     }
-    | |_____^
+    | |_____^ help: it is more idiomatic to write `let <mut> baz = if f() { 42 } else { 0 };`
     |
-help: it is more idiomatic to write
-    |     let <mut> baz = if f() { 42 } else { 0 };
     = note: you might not need `mut` at all
 
 error: aborting due to 4 previous errors

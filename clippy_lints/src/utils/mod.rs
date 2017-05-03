@@ -593,18 +593,13 @@ pub fn span_lint_and_sugg<'a, 'tcx: 'a, T: LintContext<'tcx>>(
 /// Note: in the JSON format (used by `compiletest_rs`), the help message will appear once per
 /// replacement. In human-readable format though, it only appears once before the whole suggestion.
 pub fn multispan_sugg(db: &mut DiagnosticBuilder, help_msg: String, sugg: Vec<(Span, String)>) {
-    let sugg = rustc_errors::RenderSpan::Suggestion(rustc_errors::CodeSuggestion {
+    let sugg = rustc_errors::CodeSuggestion {
         msp: MultiSpan::from_spans(sugg.iter().map(|&(span, _)| span).collect()),
         substitutes: sugg.into_iter().map(|(_, subs)| subs).collect(),
-    });
-
-    let sub = rustc_errors::SubDiagnostic {
-        level: rustc_errors::Level::Help,
-        message: vec![(help_msg, rustc_errors::snippet::Style::LabelPrimary)],
-        span: MultiSpan::new(),
-        render_span: Some(sugg),
+        msg: help_msg,
     };
-    db.children.push(sub);
+    assert!(db.suggestion.is_none());
+    db.suggestion = Some(sugg);
 }
 
 /// Return the base type for references and raw pointers.
@@ -983,4 +978,3 @@ pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>) -> Opti
         .infer_ctxt((), Reveal::All)
         .enter(|infcx| ty.layout(&infcx).ok().map(|lay| lay.size(&TargetDataLayout::parse(cx.sess())).bytes()))
 }
-

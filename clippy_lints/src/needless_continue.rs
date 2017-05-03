@@ -29,7 +29,7 @@
 //! This lint is **warn** by default.
 use rustc::lint::*;
 use syntax::ast;
-use syntax::codemap::{original_sp,DUMMY_SP};
+use syntax::codemap::{original_sp, DUMMY_SP};
 use std::borrow::Cow;
 
 use utils::{in_macro, span_help_and_lint, snippet_block, snippet, trim_multiline};
@@ -163,7 +163,7 @@ impl EarlyLintPass for NeedlessContinue {
  *           // region C
  *       }
  *     }
- */
+ * */
 
 /// Given an expression, returns true if either of the following is true
 ///
@@ -181,10 +181,12 @@ fn needless_continue_in_else(else_expr: &ast::Expr) -> bool {
 fn is_first_block_stmt_continue(block: &ast::Block) -> bool {
     block.stmts.get(0).map_or(false, |stmt| match stmt.node {
         ast::StmtKind::Semi(ref e) |
-        ast::StmtKind::Expr(ref e) => if let ast::ExprKind::Continue(_) = e.node {
-            true
-        } else {
-            false
+        ast::StmtKind::Expr(ref e) => {
+            if let ast::ExprKind::Continue(_) = e.node {
+                true
+            } else {
+                false
+            }
         },
         _ => false,
     })
@@ -192,12 +194,14 @@ fn is_first_block_stmt_continue(block: &ast::Block) -> bool {
 
 /// If `expr` is a loop expression (while/while let/for/loop), calls `func` with
 /// the AST object representing the loop block of `expr`.
-fn with_loop_block<F>(expr: &ast::Expr, mut func: F) where F: FnMut(&ast::Block) {
+fn with_loop_block<F>(expr: &ast::Expr, mut func: F)
+    where F: FnMut(&ast::Block)
+{
     match expr.node {
-        ast::ExprKind::While(_, ref loop_block, _)       |
+        ast::ExprKind::While(_, ref loop_block, _) |
         ast::ExprKind::WhileLet(_, _, ref loop_block, _) |
-        ast::ExprKind::ForLoop( _, _, ref loop_block, _) |
-        ast::ExprKind::Loop(ref loop_block, _)           => func(loop_block),
+        ast::ExprKind::ForLoop(_, _, ref loop_block, _) |
+        ast::ExprKind::Loop(ref loop_block, _) => func(loop_block),
         _ => {},
     }
 }
@@ -211,7 +215,8 @@ fn with_loop_block<F>(expr: &ast::Expr, mut func: F) where F: FnMut(&ast::Block)
 /// - The `else` expression.
 ///
 fn with_if_expr<F>(stmt: &ast::Stmt, mut func: F)
-        where F: FnMut(&ast::Expr, &ast::Expr, &ast::Block, &ast::Expr) {
+    where F: FnMut(&ast::Expr, &ast::Expr, &ast::Block, &ast::Expr)
+{
     match stmt.node {
         ast::StmtKind::Semi(ref e) |
         ast::StmtKind::Expr(ref e) => {
@@ -219,7 +224,7 @@ fn with_if_expr<F>(stmt: &ast::Stmt, mut func: F)
                 func(e, cond, if_block, else_expr);
             }
         },
-        _ => { },
+        _ => {},
     }
 }
 
@@ -249,45 +254,37 @@ struct LintData<'a> {
 
 const MSG_REDUNDANT_ELSE_BLOCK: &'static str = "This else block is redundant.\n";
 
-const MSG_ELSE_BLOCK_NOT_NEEDED: &'static str = "There is no need for an explicit `else` block for this `if` expression\n";
+const MSG_ELSE_BLOCK_NOT_NEEDED: &'static str = "There is no need for an explicit `else` block for this `if` \
+                                                 expression\n";
 
-const DROP_ELSE_BLOCK_AND_MERGE_MSG: &'static str =
-    "Consider dropping the else clause and merging the code that follows (in the loop) with the if block, like so:\n";
+const DROP_ELSE_BLOCK_AND_MERGE_MSG: &'static str = "Consider dropping the else clause and merging the code that \
+                                                     follows (in the loop) with the if block, like so:\n";
 
-const DROP_ELSE_BLOCK_MSG: &'static str =
-    "Consider dropping the else clause, and moving out the code in the else block, like so:\n";
+const DROP_ELSE_BLOCK_MSG: &'static str = "Consider dropping the else clause, and moving out the code in the else \
+                                           block, like so:\n";
 
 
-fn emit_warning<'a>(ctx: &EarlyContext,
-                    data: &'a LintData,
-                    header: &str,
-                    typ: LintType) {
+fn emit_warning<'a>(ctx: &EarlyContext, data: &'a LintData, header: &str, typ: LintType) {
 
     // snip    is the whole *help* message that appears after the warning.
     // message is the warning message.
     // expr    is the expression which the lint warning message refers to.
     let (snip, message, expr) = match typ {
         LintType::ContinueInsideElseBlock => {
-            (suggestion_snippet_for_continue_inside_else(ctx, data, header),
-             MSG_REDUNDANT_ELSE_BLOCK,
-             data.else_expr)
+            (suggestion_snippet_for_continue_inside_else(ctx, data, header), MSG_REDUNDANT_ELSE_BLOCK, data.else_expr)
         },
         LintType::ContinueInsideThenBlock => {
-            (suggestion_snippet_for_continue_inside_if(ctx, data, header),
-             MSG_ELSE_BLOCK_NOT_NEEDED,
-             data.if_expr)
-        }
+            (suggestion_snippet_for_continue_inside_if(ctx, data, header), MSG_ELSE_BLOCK_NOT_NEEDED, data.if_expr)
+        },
     };
     span_help_and_lint(ctx, NEEDLESS_CONTINUE, expr.span, message, &snip);
 }
 
-fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext,
-                                                data: &'a LintData,
-                                                header: &str) -> String {
+fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext, data: &'a LintData, header: &str) -> String {
     let cond_code = snippet(ctx, data.if_cond.span, "..");
 
-    let if_code   = format!("if {} {{\n    continue;\n}}\n", cond_code);
-                                   /*  ^^^^--- Four spaces of indentation. */
+    let if_code = format!("if {} {{\n    continue;\n}}\n", cond_code);
+    /* ^^^^--- Four spaces of indentation. */
     // region B
     let else_code = snippet(ctx, data.else_expr.span, "..").into_owned();
     let else_code = erode_block(&else_code);
@@ -300,12 +297,9 @@ fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext,
     ret
 }
 
-fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext,
-                                                   data: &'a LintData,
-                                                   header: &str) -> String
-{
+fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext, data: &'a LintData, header: &str) -> String {
     let cond_code = snippet(ctx, data.if_cond.span, "..");
-    let mut if_code   = format!("if {} {{\n", cond_code);
+    let mut if_code = format!("if {} {{\n", cond_code);
 
     // Region B
     let block_code = &snippet(ctx, data.if_block.span, "..").into_owned();
@@ -318,13 +312,12 @@ fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext,
     // These is the code in the loop block that follows the if/else construction
     // we are complaining about. We want to pull all of this code into the
     // `then` block of the `if` statement.
-    let to_annex = data.block_stmts[data.stmt_idx+1..]
-                   .iter()
-                   .map(|stmt| {
-                        original_sp(stmt.span, DUMMY_SP)
-                    })
-                   .map(|span| snippet_block(ctx, span, "..").into_owned())
-                   .collect::<Vec<_>>().join("\n");
+    let to_annex = data.block_stmts[data.stmt_idx + 1..]
+        .iter()
+        .map(|stmt| original_sp(stmt.span, DUMMY_SP))
+        .map(|span| snippet_block(ctx, span, "..").into_owned())
+        .collect::<Vec<_>>()
+        .join("\n");
 
     let mut ret = String::from(header);
 
@@ -336,24 +329,22 @@ fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext,
 }
 
 fn check_and_warn<'a>(ctx: &EarlyContext, expr: &'a ast::Expr) {
-    with_loop_block(expr, |loop_block| {
-        for (i, stmt) in loop_block.stmts.iter().enumerate() {
-            with_if_expr(stmt, |if_expr, cond, then_block, else_expr| {
-                let data = &LintData {
-                    stmt_idx:    i,
-                    if_expr:     if_expr,
-                    if_cond:     cond,
-                    if_block:    then_block,
-                    else_expr:   else_expr,
-                    block_stmts: &loop_block.stmts,
-                };
-                if needless_continue_in_else(else_expr) {
-                    emit_warning(ctx, data, DROP_ELSE_BLOCK_AND_MERGE_MSG, LintType::ContinueInsideElseBlock);
-                } else if is_first_block_stmt_continue(then_block) {
-                    emit_warning(ctx, data, DROP_ELSE_BLOCK_MSG, LintType::ContinueInsideThenBlock);
-                }
-            });
-        }
+    with_loop_block(expr, |loop_block| for (i, stmt) in loop_block.stmts.iter().enumerate() {
+        with_if_expr(stmt, |if_expr, cond, then_block, else_expr| {
+            let data = &LintData {
+                stmt_idx: i,
+                if_expr: if_expr,
+                if_cond: cond,
+                if_block: then_block,
+                else_expr: else_expr,
+                block_stmts: &loop_block.stmts,
+            };
+            if needless_continue_in_else(else_expr) {
+                emit_warning(ctx, data, DROP_ELSE_BLOCK_AND_MERGE_MSG, LintType::ContinueInsideElseBlock);
+            } else if is_first_block_stmt_continue(then_block) {
+                emit_warning(ctx, data, DROP_ELSE_BLOCK_MSG, LintType::ContinueInsideThenBlock);
+            }
+        });
     });
 }
 
@@ -378,7 +369,7 @@ fn check_and_warn<'a>(ctx: &EarlyContext, expr: &'a ast::Expr) {
 /// an empty string will be returned in that case.
 pub fn erode_from_back(s: &str) -> String {
     let mut ret = String::from(s);
-    while ret.pop().map_or(false, |c| c != '}') { }
+    while ret.pop().map_or(false, |c| c != '}') {}
     while let Some(c) = ret.pop() {
         if !c.is_whitespace() {
             ret.push(c);
@@ -409,10 +400,10 @@ pub fn erode_from_back(s: &str) -> String {
 ///
 pub fn erode_from_front(s: &str) -> String {
     s.chars()
-     .skip_while(|c| c.is_whitespace())
-     .skip_while(|c| *c == '{')
-     .skip_while(|c| *c == '\n')
-     .collect::<String>()
+        .skip_while(|c| c.is_whitespace())
+        .skip_while(|c| *c == '{')
+        .skip_while(|c| *c == '\n')
+        .collect::<String>()
 }
 
 /// If `s` contains the code for a block, delimited by braces, this function

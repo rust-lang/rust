@@ -8,15 +8,13 @@ error: this loop could be written as a `while let` loop
 ...  |
 17 | |         }
 18 | |     }
-   | |_____^
+   | |_____^ help: try `while let Some(_x) = y { .. }`
    |
 note: lint level defined here
   --> $DIR/while_loop.rs:4:9
    |
 4  | #![deny(while_let_loop, empty_loop, while_let_on_iterator)]
    |         ^^^^^^^^^^^^^^
-help: try
-   |     while let Some(_x) = y { .. }
 
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:25:5
@@ -28,10 +26,7 @@ error: this loop could be written as a `while let` loop
 ...  |
 32 | |         };
 33 | |     }
-   | |_____^
-   |
-help: try
-   |     while let Some(_x) = y { .. }
+   | |_____^ help: try `while let Some(_x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:34:5
@@ -43,10 +38,7 @@ error: this loop could be written as a `while let` loop
 ...  |
 43 | |         let _str = "foo";
 44 | |     }
-   | |_____^
-   |
-help: try
-   |     while let Some(x) = y { .. }
+   | |_____^ help: try `while let Some(x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:45:5
@@ -58,10 +50,7 @@ error: this loop could be written as a `while let` loop
 ...  |
 54 | |         { let _b = "foobar"; }
 55 | |     }
-   | |_____^
-   |
-help: try
-   |     while let Some(x) = y { .. }
+   | |_____^ help: try `while let Some(x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:70:5
@@ -73,10 +62,7 @@ error: this loop could be written as a `while let` loop
 ...  |
 79 | |         let _ = (e, l);
 80 | |     }
-   | |_____^
-   |
-help: try
-   |     while let Some(word) = "".split_whitespace().next() { .. }
+   | |_____^ help: try `while let Some(word) = "".split_whitespace().next() { .. }`
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_loop.rs:83:5
@@ -87,15 +73,13 @@ error: this loop could be written as a `for` loop
 86 | |
 87 | |         println!("{}", x);
 88 | |     }
-   | |_____^
+   | |_____^ help: try `for x in iter { .. }`
    |
 note: lint level defined here
   --> $DIR/while_loop.rs:4:37
    |
 4  | #![deny(while_let_loop, empty_loop, while_let_on_iterator)]
    |                                     ^^^^^^^^^^^^^^^^^^^^^
-help: try
-   |     for x in iter { .. }
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_loop.rs:91:5
@@ -106,19 +90,13 @@ error: this loop could be written as a `for` loop
 94 | |
 95 | |         println!("{}", x);
 96 | |     }
-   | |_____^
-   |
-help: try
-   |     for x in iter { .. }
+   | |_____^ help: try `for x in iter { .. }`
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_loop.rs:99:5
    |
 99 |     while let Some(_) = iter.next() {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: try
-   |     for _ in iter { .. }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `for _ in iter { .. }`
 
 error: this loop could be written as a `while let` loop
    --> $DIR/while_loop.rs:142:5
@@ -130,10 +108,7 @@ error: this loop could be written as a `while let` loop
 ...   |
 150 | |         loop {}
 151 | |     }
-    | |_____^
-    |
-help: try
-    |     while let Some(ele) = iter.next() { .. }
+    | |_____^ help: try `while let Some(ele) = iter.next() { .. }`
 
 error: empty `loop {}` detected. You may want to either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
    --> $DIR/while_loop.rs:150:9

@@ -173,7 +173,7 @@ fn check_len_zero(cx: &LateContext, span: Span, name: Name, args: &[Expr], lit: 
         if name == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
             span_lint_and_then(cx, LEN_ZERO, span, "length comparison to zero", |db| {
                 db.span_suggestion(span,
-                                   "consider using `is_empty`",
+                                   "using `is_empty` is more concise:",
                                    format!("{}{}.is_empty()", op, snippet(cx, args[0].span, "_")));
             });
         }
@@ -199,7 +199,8 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
 
     /// Check the inherent impl's items for an `is_empty(self)` method.
     fn has_is_empty_impl(cx: &LateContext, id: DefId) -> bool {
-        cx.tcx.inherent_impls(id)
+        cx.tcx
+            .inherent_impls(id)
             .iter()
             .any(|imp| cx.tcx.associated_items(*imp).any(|item| is_is_empty(cx, &item)))
     }
