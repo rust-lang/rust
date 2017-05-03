@@ -10,7 +10,6 @@
 
 use cell::UnsafeCell;
 use fmt;
-use marker;
 use mem;
 use ops::{Deref, DerefMut};
 use ptr;
@@ -153,7 +152,9 @@ pub struct MutexGuard<'a, T: ?Sized + 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> !marker::Send for MutexGuard<'a, T> {}
+impl<'a, T: ?Sized> !Send for MutexGuard<'a, T> { }
+#[stable(feature = "mutexguard", since = "1.18.0")]
+unsafe impl<'a, T: ?Sized + Sync> Sync for MutexGuard<'a, T> { }
 
 impl<T> Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
@@ -458,9 +459,6 @@ mod tests {
 
     #[derive(Eq, PartialEq, Debug)]
     struct NonCopy(i32);
-
-    unsafe impl<T: Send> Send for Packet<T> {}
-    unsafe impl<T> Sync for Packet<T> {}
 
     #[test]
     fn smoke() {
