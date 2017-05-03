@@ -64,11 +64,10 @@ use rustc::ty::{ToPredicate, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
-use util::nodemap::{NodeMap, FxHashMap};
+use util::nodemap::FxHashMap;
 
 use rustc_const_math::ConstInt;
 
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 use syntax::{abi, ast};
@@ -197,10 +196,6 @@ impl<'a,'tcx> ItemCtxt<'a,'tcx> {
 
 impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> { self.tcx }
-
-    fn ast_ty_to_ty_cache(&self) -> &RefCell<NodeMap<Ty<'tcx>>> {
-        &self.tcx.ast_ty_to_ty_cache
-    }
 
     fn get_type_parameter_bounds(&self,
                                  span: Span,

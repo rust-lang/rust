@@ -556,9 +556,6 @@ pub struct GlobalCtxt<'tcx> {
     /// error reporting, and so is lazily initialised and generally
     /// shouldn't taint the common path (hence the RefCell).
     pub all_traits: RefCell<Option<Vec<DefId>>>,
-
-    /// HIR Ty -> Ty lowering cache.
-    pub ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -770,7 +767,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             derive_macros: RefCell::new(NodeMap()),
             stability_interner: RefCell::new(FxHashSet()),
             all_traits: RefCell::new(None),
-            ast_ty_to_ty_cache: RefCell::new(NodeMap()),
        }, f)
     }
 
