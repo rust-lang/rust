@@ -793,6 +793,7 @@ dependencies = [
  "rustc_metadata 0.0.0",
  "rustc_resolve 0.0.0",
  "rustc_trans 0.0.0",
+ "rustc_typeck 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
