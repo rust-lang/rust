@@ -207,7 +207,7 @@ macro_rules! impl_enum_decodable {
                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                         formatter.write_str("string")
                     }
-                    fn visit_str<E>(self, value :&str) -> Result<String, E> {
+                    fn visit_str<E>(self, value: &str) -> Result<String, E> {
                         Ok(String::from(value))
                     }
                 }
