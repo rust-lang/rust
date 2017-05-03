@@ -182,7 +182,6 @@ pub trait CrateStore {
     fn visibility(&self, def: DefId) -> ty::Visibility;
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>>;
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics;
-    fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name>;
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>;
@@ -308,7 +307,6 @@ impl CrateStore for DummyCrateStore {
     }
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics
         { bug!("item_generics_cloned") }
-    fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name> { bug!("fn_arg_names") }
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId> { vec![] }
