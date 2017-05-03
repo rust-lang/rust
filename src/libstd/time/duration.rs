@@ -84,7 +84,10 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let five_seconds = Duration::from_secs(5);
+    /// let duration = Duration::from_secs(5);
+    ///
+    /// assert_eq!(5, duration.as_secs());
+    /// assert_eq!(0, duration.subsec_nanos());
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
