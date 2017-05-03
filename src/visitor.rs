@@ -39,6 +39,7 @@ pub struct FmtVisitor<'a> {
     // FIXME: use an RAII util or closure for indenting
     pub block_indent: Indent,
     pub config: &'a Config,
+    pub failed: bool,
 }
 
 impl<'a> FmtVisitor<'a> {
@@ -65,6 +66,9 @@ impl<'a> FmtVisitor<'a> {
                                            Shape::legacy(self.config.max_width -
                                                          self.block_indent.width(),
                                                          self.block_indent));
+                if rewrite.is_none() {
+                    self.failed = true;
+                }
                 self.push_rewrite(stmt.span, rewrite);
             }
             ast::StmtKind::Mac(ref mac) => {
@@ -457,6 +461,7 @@ impl<'a> FmtVisitor<'a> {
                 alignment: 0,
             },
             config: config,
+            failed: false,
         }
     }
 

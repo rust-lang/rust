@@ -570,19 +570,6 @@ fn rewrite_closure(capture: ast::CaptureBy,
         rewrite.map(|rw| format!("{} {}", prefix, rw))
     }
 
-    fn no_weird_visual_indent(block_str: &str, context: &RewriteContext) -> bool {
-        let mut prev_indent_width = 0;
-        for line in block_str.lines() {
-            let cur_indent_width = line.find(|c: char| !c.is_whitespace()).unwrap_or(0);
-            if prev_indent_width > cur_indent_width + context.config.tab_spaces &&
-               line.find('}').unwrap_or(0) != cur_indent_width {
-                return false;
-            }
-            prev_indent_width = cur_indent_width;
-        }
-        true
-    }
-
     fn rewrite_closure_block(block: &ast::Block,
                              prefix: String,
                              context: &RewriteContext,
@@ -592,9 +579,7 @@ fn rewrite_closure(capture: ast::CaptureBy,
         // closure is large.
         if let Some(block_str) = block.rewrite(&context, shape) {
             let block_threshold = context.config.closure_block_indent_threshold;
-            if (block_threshold < 0 ||
-                block_str.matches('\n').count() <= block_threshold as usize) &&
-               no_weird_visual_indent(&block_str, context) {
+            if block_threshold < 0 || block_str.matches('\n').count() <= block_threshold as usize {
                 if let Some(block_str) = block_str.rewrite(context, shape) {
                     return Some(format!("{} {}", prefix, block_str));
                 }
@@ -697,8 +682,11 @@ impl Rewrite for ast::Block {
         };
 
         visitor.visit_block(self);
-
-        Some(format!("{}{}", prefix, visitor.buffer))
+        if visitor.failed {
+            None
+        } else {
+            Some(format!("{}{}", prefix, visitor.buffer))
+        }
     }
 }
 
