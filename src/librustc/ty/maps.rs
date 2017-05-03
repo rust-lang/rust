@@ -541,18 +541,6 @@ macro_rules! define_map_struct {
         }
     };
 
-    // Detect things with the `pub` modifier
-    (tcx: $tcx:tt,
-     input: (([pub $($other_modifiers:tt)*] $attrs:tt $name:tt) $($input:tt)*),
-     output: $output:tt) => {
-        define_map_struct! {
-            tcx: $tcx,
-            ready: ([pub] $attrs $name),
-            input: ($($input)*),
-            output: $output
-        }
-    };
-
     // No modifiers left? This is a private item.
     (tcx: $tcx:tt,
      input: (([] $attrs:tt $name:tt) $($input:tt)*),
@@ -685,7 +673,7 @@ define_maps! { <'tcx>
 
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
-    [pub] variances_of: ItemVariances(DefId) -> Rc<Vec<ty::Variance>>,
+    [] variances_of: ItemVariances(DefId) -> Rc<Vec<ty::Variance>>,
 
     /// Maps from an impl/trait def-id to a list of the def-ids of its items
     [] associated_item_def_ids: AssociatedItemDefIds(DefId) -> Rc<Vec<DefId>>,
