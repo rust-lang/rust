@@ -14,8 +14,9 @@
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "0", feature = "windows_c")]
 
-use os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort,};
-use os::raw::{c_char, c_ulonglong};
+use os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort, c_char};
+#[cfg(target_arch = "x86_64")]
+use os::raw::c_ulonglong;
 use libc::{wchar_t, size_t, c_void};
 use ptr;
 
@@ -45,7 +46,7 @@ pub type SIZE_T = usize;
 pub type WORD = u16;
 pub type CHAR = c_char;
 pub type HCRYPTPROV = LONG_PTR;
-pub type ULONG_PTR = c_ulonglong;
+pub type ULONG_PTR = usize;
 pub type ULONG = c_ulong;
 #[cfg(target_arch = "x86_64")]
 pub type ULONGLONG = u64;
@@ -282,8 +283,11 @@ pub const CRYPT_SILENT: DWORD = 64;
 pub const CRYPT_VERIFYCONTEXT: DWORD = 0xF0000000;
 
 pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
+pub const EXCEPTION_CONTINUE_EXECUTION: LONG = -1;
 pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
 pub const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;
+
+pub const MS_VC_EXCEPTION: DWORD = 0x406d1388;
 
 pub const PIPE_ACCESS_INBOUND: DWORD = 0x00000001;
 pub const PIPE_ACCESS_OUTBOUND: DWORD = 0x00000002;
@@ -833,6 +837,15 @@ pub struct CONSOLE_READCONSOLE_CONTROL {
 }
 pub type PCONSOLE_READCONSOLE_CONTROL = *mut CONSOLE_READCONSOLE_CONTROL;
 
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct THREADNAME_INFO {
+    pub dwType: DWORD,
+    pub szName: LPCSTR,
+    pub dwThreadID: DWORD,
+    pub dwFlags: DWORD,
+}
+
 extern "system" {
     pub fn WSAStartup(wVersionRequested: WORD,
                       lpWSAData: LPWSADATA) -> c_int;
@@ -1122,6 +1135,11 @@ extern "system" {
                                lpOverlapped: LPOVERLAPPED,
                                lpNumberOfBytesTransferred: LPDWORD,
                                bWait: BOOL) -> BOOL;
+
+    pub fn RaiseException(dwExceptionCode: DWORD,
+                          dwExceptionFlags: DWORD,
+                          nNumberOfArguments: DWORD,
+                          lpArguments: *const ULONG_PTR);
 }
 
 // Functions that aren't available on Windows XP, but we still use them and just
