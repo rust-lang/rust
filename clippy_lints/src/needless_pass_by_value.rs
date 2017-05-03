@@ -81,7 +81,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
         let preds: Vec<ty::Predicate> = {
             let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, node_id);
-            traits::elaborate_predicates(cx.tcx, parameter_env.caller_bounds.clone())
+            traits::elaborate_predicates(cx.tcx, parameter_env.caller_bounds.to_vec())
                 .filter(|p| !p.is_global())
                 .collect()
         };
