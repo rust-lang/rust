@@ -46,18 +46,15 @@ extern crate rustc_const_eval;
 
 pub mod diagnostics;
 
-pub mod build;
-pub mod callgraph;
+mod build;
 mod hair;
 mod shim;
-pub mod mir_map;
 pub mod transform;
 pub mod util;
 
 use rustc::ty::maps::Providers;
 
 pub fn provide(providers: &mut Providers) {
-    mir_map::provide(providers);
     shim::provide(providers);
-    transform::qualify_consts::provide(providers);
+    transform::provide(providers);
 }

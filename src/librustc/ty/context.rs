@@ -25,6 +25,7 @@ use middle::region::{CodeExtent, CodeExtentData};
 use middle::resolve_lifetime;
 use middle::stability;
 use mir::Mir;
+use mir::transform::Passes;
 use ty::subst::{Kind, Substs};
 use ty::ReprOptions;
 use traits;
@@ -39,6 +40,7 @@ use ty::TypeVariants::*;
 use ty::layout::{Layout, TargetDataLayout};
 use ty::inhabitedness::DefIdForest;
 use ty::maps;
+use ty::steal::Steal;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
@@ -47,11 +49,12 @@ use arena::{TypedArena, DroplessArena};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
+use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ops::Deref;
 use std::iter;
-use std::cmp::Ordering;
+use std::rc::Rc;
 use syntax::abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
@@ -68,7 +71,8 @@ pub struct GlobalArenas<'tcx> {
     generics: TypedArena<ty::Generics>,
     trait_def: TypedArena<ty::TraitDef>,
     adt_def: TypedArena<ty::AdtDef>,
-    mir: TypedArena<RefCell<Mir<'tcx>>>,
+    steal_mir: TypedArena<Steal<Mir<'tcx>>>,
+    mir: TypedArena<Mir<'tcx>>,
     tables: TypedArena<ty::TypeckTables<'tcx>>,
 }
 
@@ -79,6 +83,7 @@ impl<'tcx> GlobalArenas<'tcx> {
             generics: TypedArena::new(),
             trait_def: TypedArena::new(),
             adt_def: TypedArena::new(),
+            steal_mir: TypedArena::new(),
             mir: TypedArena::new(),
             tables: TypedArena::new(),
         }
@@ -443,7 +448,10 @@ pub struct GlobalCtxt<'tcx> {
     pub named_region_map: resolve_lifetime::NamedRegionMap,
 
     pub hir: hir_map::Map<'tcx>,
+
     pub maps: maps::Maps<'tcx>,
+
+    pub mir_passes: Rc<Passes>,
 
     // Records the free variables refrenced by every closure
     // expression. Do not track deps for this, just recompute it from
@@ -619,8 +627,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.global_arenas.generics.alloc(generics)
     }
 
-    pub fn alloc_mir(self, mir: Mir<'gcx>) -> &'gcx RefCell<Mir<'gcx>> {
-        self.global_arenas.mir.alloc(RefCell::new(mir))
+    pub fn alloc_steal_mir(self, mir: Mir<'gcx>) -> &'gcx Steal<Mir<'gcx>> {
+        self.global_arenas.steal_mir.alloc(Steal::new(mir))
+    }
+
+    pub fn alloc_mir(self, mir: Mir<'gcx>) -> &'gcx Mir<'gcx> {
+        self.global_arenas.mir.alloc(mir)
     }
 
     pub fn alloc_tables(self, tables: ty::TypeckTables<'gcx>) -> &'gcx ty::TypeckTables<'gcx> {
@@ -714,6 +726,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn create_and_enter<F, R>(s: &'tcx Session,
                                   local_providers: ty::maps::Providers<'tcx>,
                                   extern_providers: ty::maps::Providers<'tcx>,
+                                  mir_passes: Rc<Passes>,
                                   arenas: &'tcx GlobalArenas<'tcx>,
                                   arena: &'tcx DroplessArena,
                                   resolutions: ty::Resolutions,
@@ -748,6 +761,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             fulfilled_predicates: RefCell::new(fulfilled_predicates),
             hir: hir,
             maps: maps::Maps::new(dep_graph, providers),
+            mir_passes,
             freevars: RefCell::new(resolutions.freevars),
             maybe_unused_trait_imports: resolutions.maybe_unused_trait_imports,
             rcache: RefCell::new(FxHashMap()),

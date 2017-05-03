@@ -10,7 +10,7 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource, Pass};
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 pub struct AddCallGuards;
@@ -35,8 +35,11 @@ pub struct AddCallGuards;
  *
  */
 
-impl<'tcx> MirPass<'tcx> for AddCallGuards {
-    fn run_pass<'a>(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
+impl MirPass for AddCallGuards {
+    fn run_pass<'a, 'tcx>(&self,
+                          _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          _src: MirSource,
+                          mir: &mut Mir<'tcx>) {
         add_call_guards(mir);
     }
 }
@@ -82,5 +85,3 @@ pub fn add_call_guards(mir: &mut Mir) {
 
     mir.basic_blocks_mut().extend(new_blocks);
 }
-
-impl Pass for AddCallGuards {}
