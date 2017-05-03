@@ -125,8 +125,8 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let five_seconds = Duration::new(5, 0);
-    /// assert_eq!(five_seconds.as_secs(), 5);
+    /// let duration = Duration::new(5, 730023852);
+    /// assert_eq!(duration.as_secs(), 5);
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
