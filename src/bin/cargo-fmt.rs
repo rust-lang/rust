@@ -14,7 +14,7 @@
 #![deny(warnings)]
 
 extern crate getopts;
-extern crate rustc_serialize;
+extern crate serde_json as json;
 
 use std::env;
 use std::io::Write;
@@ -24,8 +24,9 @@ use std::str;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
+use json::Value;
+
 use getopts::{Options, Matches};
-use rustc_serialize::json::Json;
 
 fn main() {
     let exit_status = execute();
@@ -184,8 +185,9 @@ fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::
         if output.status.success() {
             // None of the unwraps should fail if output of `cargo read-manifest` is correct
             let data = &String::from_utf8(output.stdout).unwrap();
-            let json = Json::from_str(data).unwrap();
-            let jtargets = json.find("targets").unwrap().as_array().unwrap();
+            let json: Value = json::from_str(data).unwrap();
+            let json_obj = json.as_object().unwrap();
+            let jtargets = json_obj.get("targets").unwrap().as_array().unwrap();
             for jtarget in jtargets {
                 targets.push(target_from_json(jtarget));
             }
@@ -205,13 +207,15 @@ fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::
         .output()?;
     if output.status.success() {
         let data = &String::from_utf8(output.stdout).unwrap();
-        let json = Json::from_str(data).unwrap();
+        let json: Value = json::from_str(data).unwrap();
+        let json_obj = json.as_object().unwrap();
         let mut hitlist: HashSet<&String> = if workspace_hitlist != WorkspaceHitlist::All {
             HashSet::from_iter(workspace_hitlist.get_some().unwrap())
         } else {
             HashSet::new() // Unused
         };
-        let members: Vec<&Json> = json.find("packages")
+        let members: Vec<&Value> = json_obj
+            .get("packages")
             .unwrap()
             .as_array()
             .unwrap()
@@ -219,7 +223,8 @@ fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::
             .filter(|member| if workspace_hitlist == WorkspaceHitlist::All {
                         true
                     } else {
-                        let member_name = member.find("name").unwrap().as_string().unwrap();
+                        let member_obj = member.as_object().unwrap();
+                        let member_name = member_obj.get("name").unwrap().as_str().unwrap();
                         hitlist.take(&member_name.to_string()).is_some()
                     })
             .collect();
@@ -230,7 +235,8 @@ fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::
                                                    hitlist.iter().next().unwrap())));
         }
         for member in members {
-            let jtargets = member.find("targets").unwrap().as_array().unwrap();
+            let member_obj = member.as_object().unwrap();
+            let jtargets = member_obj.get("targets").unwrap().as_array().unwrap();
             for jtarget in jtargets {
                 targets.push(target_from_json(jtarget));
             }
@@ -242,11 +248,11 @@ fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::
 
 }
 
-fn target_from_json(jtarget: &Json) -> Target {
+fn target_from_json(jtarget: &Value) -> Target {
     let jtarget = jtarget.as_object().unwrap();
-    let path = PathBuf::from(jtarget.get("src_path").unwrap().as_string().unwrap());
+    let path = PathBuf::from(jtarget.get("src_path").unwrap().as_str().unwrap());
     let kinds = jtarget.get("kind").unwrap().as_array().unwrap();
-    let kind = match kinds[0].as_string().unwrap() {
+    let kind = match kinds[0].as_str().unwrap() {
         "bin" => TargetKind::Bin,
         "lib" | "dylib" | "staticlib" | "cdylib" | "rlib" => TargetKind::Lib,
         "test" => TargetKind::Test,

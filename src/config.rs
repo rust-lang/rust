@@ -210,7 +210,7 @@ impl ConfigHelpItem {
 
 macro_rules! create_config {
     ($($i:ident: $ty:ty, $def:expr, $( $dstring:expr ),+ );+ $(;)*) => (
-        #[derive(RustcDecodable, Clone)]
+        #[derive(Deserialize, Clone)]
         pub struct Config {
             $(pub $i: $ty),+
         }
@@ -220,7 +220,7 @@ macro_rules! create_config {
         // specity all properties of `Config`.
         // We first parse into `ParsedConfig`, then create a default `Config`
         // and overwrite the properties with corresponding values from `ParsedConfig`
-        #[derive(RustcDecodable, Clone)]
+        #[derive(Deserialize, Clone)]
         pub struct ParsedConfig {
             $(pub $i: Option<$ty>),+
         }
@@ -250,10 +250,10 @@ macro_rules! create_config {
                         }
                     }
                 }
-                match toml::decode(parsed) {
-                    Some(parsed_config) =>
+                match parsed.try_into() {
+                    Ok(parsed_config) =>
                         Ok(Config::default().fill_from_parsed_config(parsed_config)),
-                    None => {
+                    Err(_) => {
                         err.push_str("Error: Decoding config file failed. ");
                         err.push_str("Please check your config file.\n");
                         Err(err)
