@@ -154,6 +154,9 @@ pub enum DepNode<D: Clone + Debug> {
     DefSpan(D),
     Stability(D),
     Deprecation(D),
+    ItemBodyNestedBodies(D),
+    ConstIsRvaluePromotableToStatic(D),
+    IsMirAvailable(D),
 }
 
 impl<D: Clone + Debug> DepNode<D> {
@@ -264,6 +267,9 @@ impl<D: Clone + Debug> DepNode<D> {
             DefSpan(ref d) => op(d).map(DefSpan),
             Stability(ref d) => op(d).map(Stability),
             Deprecation(ref d) => op(d).map(Deprecation),
+            ItemBodyNestedBodies(ref d) => op(d).map(ItemBodyNestedBodies),
+            ConstIsRvaluePromotableToStatic(ref d) => op(d).map(ConstIsRvaluePromotableToStatic),
+            IsMirAvailable(ref d) => op(d).map(IsMirAvailable),
         }
     }
 }
