@@ -43,6 +43,9 @@
 #![feature(unboxed_closures)]
 #![feature(discriminant_value)]
 #![feature(sort_unstable)]
+#![feature(trace_macros)]
+
+#![recursion_limit="128"]
 
 extern crate arena;
 extern crate core;
