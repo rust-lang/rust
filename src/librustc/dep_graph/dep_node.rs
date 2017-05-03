@@ -158,6 +158,7 @@ pub enum DepNode<D: Clone + Debug> {
     ConstIsRvaluePromotableToStatic(D),
     IsMirAvailable(D),
     ItemAttrs(D),
+    FnArgNames(D),
 }
 
 impl<D: Clone + Debug> DepNode<D> {
@@ -269,6 +270,7 @@ impl<D: Clone + Debug> DepNode<D> {
             Stability(ref d) => op(d).map(Stability),
             Deprecation(ref d) => op(d).map(Deprecation),
             ItemAttrs(ref d) => op(d).map(ItemAttrs),
+            FnArgNames(ref d) => op(d).map(FnArgNames),
             ItemBodyNestedBodies(ref d) => op(d).map(ItemBodyNestedBodies),
             ConstIsRvaluePromotableToStatic(ref d) => op(d).map(ConstIsRvaluePromotableToStatic),
             IsMirAvailable(ref d) => op(d).map(IsMirAvailable),

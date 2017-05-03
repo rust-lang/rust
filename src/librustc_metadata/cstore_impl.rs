@@ -114,6 +114,11 @@ provide! { <'tcx> tcx, def_id, cdata
     stability => { cdata.get_stability(def_id.index) }
     deprecation => { cdata.get_deprecation(def_id.index) }
     item_attrs => { cdata.get_item_attrs(def_id.index) }
+    // FIXME(#38501) We've skipped a `read` on the `HirBody` of
+    // a `fn` when encoding, so the dep-tracking wouldn't work.
+    // This is only used by rustdoc anyway, which shouldn't have
+    // incremental recompilation ever enabled.
+    fn_arg_names => { cdata.get_fn_arg_names(def_id.index) }
     item_body_nested_bodies => {
         let map: BTreeMap<_, _> = cdata.entry(def_id.index).ast.into_iter().flat_map(|ast| {
             ast.decode(cdata).nested_bodies.decode(cdata).map(|body| (body.id(), body))
@@ -144,16 +149,6 @@ impl CrateStore for cstore::CStore {
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics {
         self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).get_generics(def.index)
-    }
-
-    fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name>
-    {
-        // FIXME(#38501) We've skipped a `read` on the `HirBody` of
-        // a `fn` when encoding, so the dep-tracking wouldn't work.
-        // This is only used by rustdoc anyway, which shouldn't have
-        // incremental recompilation ever enabled.
-        assert!(!self.dep_graph.is_fully_enabled());
-        self.get_crate_data(did.krate).get_fn_arg_names(did.index)
     }
 
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>
