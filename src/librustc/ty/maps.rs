@@ -783,9 +783,9 @@ define_maps! { <'tcx>
     [] def_span: DefSpan(DefId) -> Span,
     [] stability: Stability(DefId) -> Option<attr::Stability>,
     [] deprecation: Deprecation(DefId) -> Option<attr::Deprecation>,
-    [] item_body_nested_bodies: metadata_dep_node(DefId) -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
-    [] const_is_rvalue_promotable_to_static: metadata_dep_node(DefId) -> bool,
-    [] is_mir_available: metadata_dep_node(DefId) -> bool,
+    [] item_body_nested_bodies: ItemBodyNestedBodies(DefId) -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
+    [] const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
+    [] is_mir_available: IsMirAvailable(DefId) -> bool,
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -798,10 +798,6 @@ fn crate_inherent_impls_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn reachability_dep_node(_: CrateNum) -> DepNode<DefId> {
     DepNode::Reachability
-}
-
-fn metadata_dep_node(def_id: DefId) -> DepNode<DefId> {
-    DepNode::MetaData(def_id)
 }
 
 fn mir_shim_dep_node(instance: ty::InstanceDef) -> DepNode<DefId> {
