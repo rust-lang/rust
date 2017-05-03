@@ -2700,6 +2700,19 @@ impl<'a> Parser<'a> {
                 let (span, e) = self.interpolated_or_expr_span(e)?;
                 (span, self.mk_unary(UnOp::Not, e))
             }
+            // Suggest `!` for bitwise negation when encountering a `~`
+            token::Tilde => {
+                self.bump();
+                let e = self.parse_prefix_expr(None);
+                let (span, e) = self.interpolated_or_expr_span(e)?;
+                let span_of_tilde = lo;
+                let mut err = self.diagnostic().struct_span_err(span_of_tilde,
+                        "`~` can not be used as an unary operator");
+                err.span_label(span_of_tilde, &"did you mean `!`?");
+                err.help("use `!` instead of `~` if you meant to perform bitwise negation");
+                err.emit();
+                (span, self.mk_unary(UnOp::Not, e))
+            }
             token::BinOp(token::Minus) => {
                 self.bump();
                 let e = self.parse_prefix_expr(None);
