@@ -26,7 +26,7 @@ use rustc::middle::region::RegionMaps;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
-use syntax::symbol::{Symbol, InternedString};
+use syntax::symbol::Symbol;
 use rustc::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
 use std::rc::Rc;
@@ -101,10 +101,6 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
     pub fn unit_ty(&mut self) -> Ty<'tcx> {
         self.tcx.mk_nil()
-    }
-
-    pub fn str_literal(&mut self, value: InternedString) -> Literal<'tcx> {
-        Literal::Value { value: ConstVal::Str(value) }
     }
 
     pub fn true_literal(&mut self) -> Literal<'tcx> {

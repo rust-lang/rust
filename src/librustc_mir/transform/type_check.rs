@@ -18,7 +18,7 @@ use rustc::ty::{self, Ty, TyCtxt, TypeVariants};
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::tcx::LvalueTy;
-use rustc::mir::transform::{MirPass, MirSource, Pass};
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::Visitor;
 use std::fmt;
 use syntax::ast;
@@ -737,9 +737,11 @@ impl TypeckMir {
     }
 }
 
-impl<'tcx> MirPass<'tcx> for TypeckMir {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    src: MirSource, mir: &mut Mir<'tcx>) {
+impl MirPass for TypeckMir {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          src: MirSource,
+                          mir: &mut Mir<'tcx>) {
         let item_id = src.item_id();
         let def_id = tcx.hir.local_def_id(item_id);
         debug!("run_pass: {}", tcx.item_path_str(def_id));
@@ -764,7 +766,4 @@ impl<'tcx> MirPass<'tcx> for TypeckMir {
             checker.verify_obligations(mir);
         });
     }
-}
-
-impl Pass for TypeckMir {
 }

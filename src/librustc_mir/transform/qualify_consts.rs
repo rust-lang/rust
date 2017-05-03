@@ -16,7 +16,6 @@
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
@@ -27,7 +26,7 @@ use rustc::ty::cast::CastTy;
 use rustc::ty::maps::Providers;
 use rustc::mir::*;
 use rustc::mir::traversal::ReversePostorder;
-use rustc::mir::transform::{Pass, MirMapPass, MirPassHook, MirSource};
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::{LvalueContext, Visitor};
 use rustc::middle::lang_items;
 use syntax::abi::Abi;
@@ -919,13 +918,21 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.mir_const_qualif = qualify_const_item;
+    *providers = Providers {
+        mir_const_qualif,
+        ..*providers
+    };
 }
 
-fn qualify_const_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                def_id: DefId)
-                                -> u8 {
-    let mir = &tcx.item_mir(def_id);
+fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              def_id: DefId)
+                              -> u8 {
+    // NB: This `borrow()` is guaranteed to be valid (i.e., the value
+    // cannot yet be stolen), because `mir_validated()`, which steals
+    // from `mir_const(), forces this query to execute before
+    // performing the steal.
+    let mir = &tcx.mir_const(def_id).borrow();
+
     if mir.return_ty.references_error() {
         return Qualif::NOT_CONST.bits();
     }
@@ -939,45 +946,11 @@ fn qualify_const_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub struct QualifyAndPromoteConstants;
 
-impl Pass for QualifyAndPromoteConstants {}
-
-impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
-    fn run_pass<'a>(&mut self,
-                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    hooks: &mut [Box<for<'s> MirPassHook<'s>>])
-    {
-        let def_ids = tcx.maps.mir.borrow().keys();
-        for def_id in def_ids {
-            if !def_id.is_local() {
-                continue;
-            }
-
-            let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
-            let id = tcx.hir.as_local_node_id(def_id).unwrap();
-            let src = MirSource::from_node(tcx, id);
-
-            if let MirSource::Const(_) = src {
-                tcx.mir_const_qualif(def_id);
-                continue;
-            }
-
-            let mir = &mut tcx.maps.mir.borrow()[&def_id].borrow_mut();
-            tcx.dep_graph.write(DepNode::Mir(def_id));
-
-            for hook in &mut *hooks {
-                hook.on_mir_pass(tcx, src, mir, self, false);
-            }
-            self.run_pass(tcx, src, mir);
-            for hook in &mut *hooks {
-                hook.on_mir_pass(tcx, src, mir, self, true);
-            }
-        }
-    }
-}
-
-impl<'tcx> QualifyAndPromoteConstants {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    src: MirSource, mir: &mut Mir<'tcx>) {
+impl MirPass for QualifyAndPromoteConstants {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          src: MirSource,
+                          mir: &mut Mir<'tcx>) {
         let id = src.item_id();
         let def_id = tcx.hir.local_def_id(id);
         let mode = match src {

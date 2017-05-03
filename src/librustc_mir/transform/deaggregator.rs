@@ -10,16 +10,16 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource, Pass};
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc_data_structures::indexed_vec::Idx;
 
 pub struct Deaggregator;
 
-impl Pass for Deaggregator {}
-
-impl<'tcx> MirPass<'tcx> for Deaggregator {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    source: MirSource, mir: &mut Mir<'tcx>) {
+impl MirPass for Deaggregator {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          source: MirSource,
+                          mir: &mut Mir<'tcx>) {
         let node_id = source.item_id();
         let node_path = tcx.item_path_str(tcx.hir.local_def_id(node_id));
         debug!("running on: {:?}", node_path);

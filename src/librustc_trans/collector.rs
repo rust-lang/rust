@@ -659,7 +659,7 @@ fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instan
                 // in this crate
                 false
             } else {
-                if !tcx.is_item_mir_available(def_id) {
+                if !tcx.is_mir_available(def_id) {
                     bug!("Cannot create local trans-item for {:?}", def_id)
                 }
                 true
