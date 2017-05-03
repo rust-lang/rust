@@ -640,9 +640,9 @@ pub fn check_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult
 fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> CompileResult {
     debug_assert!(crate_num == LOCAL_CRATE);
     tcx.sess.track_errors(|| {
-        tcx.visit_all_bodies_in_krate(|body_owner_def_id, _body_id| {
+        for body_owner_def_id in tcx.body_owners() {
             tcx.typeck_tables_of(body_owner_def_id);
-        });
+        }
     })
 }
 

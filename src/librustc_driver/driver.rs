@@ -20,6 +20,7 @@ use rustc::session::search_paths::PathKind;
 use rustc::lint;
 use rustc::middle::{self, dependency_format, stability, reachable};
 use rustc::middle::privacy::AccessLevels;
+use rustc::mir::transform::{MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED, Passes};
 use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
 use rustc::util::common::time;
 use rustc::util::nodemap::NodeSet;
@@ -35,8 +36,7 @@ use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
-use rustc_passes::{ast_validation, no_asm, loops, consts,
-                   static_recursion, hir_stats, mir_stats};
+use rustc_passes::{ast_validation, no_asm, loops, consts, static_recursion, hir_stats};
 use rustc_const_eval::{self, check_match};
 use super::Compilation;
 
@@ -903,9 +903,44 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     // FIXME(eddyb) get rid of this once we replace const_eval with miri.
     rustc_const_eval::provide(&mut extern_providers);
 
+    // Setup the MIR passes that we want to run.
+    let mut passes = Passes::new();
+    passes.push_hook(mir::transform::dump_mir::DumpMir);
+
+    // What we need to do constant evaluation.
+    passes.push_pass(MIR_CONST, mir::transform::simplify::SimplifyCfg::new("initial"));
+    passes.push_pass(MIR_CONST, mir::transform::type_check::TypeckMir);
+
+    // What we need to run borrowck etc.
+    passes.push_pass(MIR_VALIDATED, mir::transform::qualify_consts::QualifyAndPromoteConstants);
+    passes.push_pass(MIR_VALIDATED,
+                     mir::transform::simplify_branches::SimplifyBranches::new("initial"));
+    passes.push_pass(MIR_VALIDATED, mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
+
+    // Optimizations begin.
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::simplify::SimplifyCfg::new("no-landing-pads"));
+
+    // From here on out, regions are gone.
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::erase_regions::EraseRegions);
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::AddCallGuards);
+    passes.push_pass(MIR_OPTIMIZED, borrowck::ElaborateDrops);
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::simplify::SimplifyCfg::new("elaborate-drops"));
+
+    // No lifetime analysis based on borrowing can be done from here on out.
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::inline::Inline);
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::instcombine::InstCombine);
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::deaggregator::Deaggregator);
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::copy_prop::CopyPropagation);
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::simplify::SimplifyLocals);
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::AddCallGuards);
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::dump_mir::Marker("PreTrans"));
+
     TyCtxt::create_and_enter(sess,
                              local_providers,
                              extern_providers,
+                             Rc::new(passes),
                              arenas,
                              arena,
                              resolutions,
@@ -963,30 +998,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              || middle::liveness::check_crate(tcx));
 
         time(time_passes,
-             "MIR dump",
-             || mir::mir_map::build_mir_for_crate(tcx));
-
-        if sess.opts.debugging_opts.mir_stats {
-            mir_stats::print_mir_stats(tcx, "PRE CLEANUP MIR STATS");
-        }
-
-        time(time_passes, "MIR cleanup and validation", || {
-            let mut passes = sess.mir_passes.borrow_mut();
-            // Push all the built-in validation passes.
-            // NB: if you’re adding an *optimisation* it ought to go to another set of passes
-            // in stage 4 below.
-            passes.push_hook(box mir::transform::dump_mir::DumpMir);
-            passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("initial"));
-            passes.push_pass(box mir::transform::type_check::TypeckMir);
-            passes.push_pass(box mir::transform::qualify_consts::QualifyAndPromoteConstants);
-            passes.push_pass(
-                box mir::transform::simplify_branches::SimplifyBranches::new("initial"));
-            passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
-            // And run everything.
-            passes.run_passes(tcx);
-        });
-
-        time(time_passes,
              "borrow checking",
              || borrowck::check_crate(tcx));
 
@@ -1033,43 +1044,6 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     time(time_passes,
          "resolving dependency formats",
          || dependency_format::calculate(&tcx.sess));
-
-    if tcx.sess.opts.debugging_opts.mir_stats {
-        mir_stats::print_mir_stats(tcx, "PRE OPTIMISATION MIR STATS");
-    }
-
-    // Run the passes that transform the MIR into a more suitable form for translation to LLVM
-    // code.
-    time(time_passes, "MIR optimisations", || {
-        let mut passes = ::rustc::mir::transform::Passes::new();
-        passes.push_hook(box mir::transform::dump_mir::DumpMir);
-        passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
-        passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("no-landing-pads"));
-
-        // From here on out, regions are gone.
-        passes.push_pass(box mir::transform::erase_regions::EraseRegions);
-
-        passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
-        passes.push_pass(box borrowck::ElaborateDrops);
-        passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
-        passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("elaborate-drops"));
-
-        // No lifetime analysis based on borrowing can be done from here on out.
-        passes.push_pass(box mir::transform::inline::Inline);
-        passes.push_pass(box mir::transform::instcombine::InstCombine::new());
-        passes.push_pass(box mir::transform::deaggregator::Deaggregator);
-        passes.push_pass(box mir::transform::copy_prop::CopyPropagation);
-
-        passes.push_pass(box mir::transform::simplify::SimplifyLocals);
-        passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
-        passes.push_pass(box mir::transform::dump_mir::Marker("PreTrans"));
-
-        passes.run_passes(tcx);
-    });
-
-    if tcx.sess.opts.debugging_opts.mir_stats {
-        mir_stats::print_mir_stats(tcx, "POST OPTIMISATION MIR STATS");
-    }
 
     let translation =
         time(time_passes,

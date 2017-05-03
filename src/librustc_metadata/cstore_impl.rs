@@ -30,7 +30,6 @@ use rustc::util::nodemap::{NodeSet, DefIdMap};
 use rustc_back::PanicStrategy;
 
 use std::any::Any;
-use std::mem;
 use std::rc::Rc;
 
 use syntax::ast;
@@ -95,15 +94,12 @@ provide! { <'tcx> tcx, def_id, cdata
             bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
         })
     }
-    mir => {
-        let mir = cdata.maybe_get_item_mir(tcx, def_id.index).unwrap_or_else(|| {
-            bug!("get_item_mir: missing MIR for `{:?}`", def_id)
+    optimized_mir => {
+        let mir = cdata.maybe_get_optimized_mir(tcx, def_id.index).unwrap_or_else(|| {
+            bug!("get_optimized_mir: missing MIR for `{:?}`", def_id)
         });
 
         let mir = tcx.alloc_mir(mir);
-
-        // Perma-borrow MIR from extern crates to prevent mutation.
-        mem::forget(mir.borrow());
 
         mir
     }
@@ -115,6 +111,8 @@ provide! { <'tcx> tcx, def_id, cdata
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     describe_def => { cdata.get_def(def_id.index) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
+    stability => { cdata.get_stability(def_id.index) }
+    deprecation => { cdata.get_deprecation(def_id.index) }
     item_body_nested_bodies => {
         let map: BTreeMap<_, _> = cdata.entry(def_id.index).ast.into_iter().flat_map(|ast| {
             ast.decode(cdata).nested_bodies.decode(cdata).map(|body| (body.id(), body))
@@ -126,7 +124,7 @@ provide! { <'tcx> tcx, def_id, cdata
         cdata.entry(def_id.index).ast.expect("const item missing `ast`")
             .decode(cdata).rvalue_promotable_to_static
     }
-    is_item_mir_available => {
+    is_mir_available => {
         !cdata.is_proc_macro(def_id.index) &&
         cdata.maybe_entry(def_id.index).and_then(|item| item.decode(cdata).mir).is_some()
     }
@@ -135,16 +133,6 @@ provide! { <'tcx> tcx, def_id, cdata
 impl CrateStore for cstore::CStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any> {
         self.get_crate_data(krate)
-    }
-
-    fn stability(&self, def: DefId) -> Option<attr::Stability> {
-        self.dep_graph.read(DepNode::MetaData(def));
-        self.get_crate_data(def.krate).get_stability(def.index)
-    }
-
-    fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> {
-        self.dep_graph.read(DepNode::MetaData(def));
-        self.get_crate_data(def.krate).get_deprecation(def.index)
     }
 
     fn visibility(&self, def: DefId) -> ty::Visibility {

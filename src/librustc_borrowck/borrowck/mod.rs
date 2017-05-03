@@ -63,9 +63,9 @@ pub struct LoanDataFlowOperator;
 pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.visit_all_bodies_in_krate(|body_owner_def_id, _body_id| {
+    for body_owner_def_id in tcx.body_owners() {
         tcx.borrowck(body_owner_def_id);
-    });
+    }
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -86,6 +86,19 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     debug!("borrowck(body_owner_def_id={:?})", owner_def_id);
 
     let owner_id = tcx.hir.as_local_node_id(owner_def_id).unwrap();
+
+    match tcx.hir.get(owner_id) {
+        hir_map::NodeStructCtor(_) |
+        hir_map::NodeVariant(_) => {
+            // We get invoked with anything that has MIR, but some of
+            // those things (notably the synthesized constructors from
+            // tuple structs/variants) do not have an associated body
+            // and do not need borrowchecking.
+            return;
+        }
+        _ => { }
+    }
+
     let body_id = tcx.hir.body_owned_by(owner_id);
     let attributes = tcx.get_attrs(owner_def_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
@@ -96,6 +109,16 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
 
     if bccx.tcx.has_attr(owner_def_id, "rustc_mir_borrowck") {
         mir::borrowck_mir(bccx, owner_id, &attributes);
+    } else {
+        // Eventually, borrowck will always read the MIR, but at the
+        // moment we do not. So, for now, we always force MIR to be
+        // constructed for a given fn, since this may result in errors
+        // being reported and we want that to happen.
+        //
+        // Note that `mir_validated` is a "stealable" result; the
+        // thief, `optimized_mir()`, forces borrowck, so we know that
+        // is not yet stolen.
+        tcx.mir_validated(owner_def_id).borrow();
     }
 
     let cfg = cfg::CFG::new(bccx.tcx, &body);

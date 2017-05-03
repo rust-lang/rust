@@ -16,22 +16,27 @@ use middle::const_val;
 use middle::privacy::AccessLevels;
 use middle::region::RegionMaps;
 use mir;
+use mir::transform::{MirSuite, MirPassIndex};
 use session::CompileResult;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::item_path;
+use ty::steal::Steal;
 use ty::subst::Substs;
-use util::nodemap::NodeSet;
+use util::nodemap::{DefIdSet, NodeSet};
 
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::cell::{RefCell, RefMut};
+use std::fmt::Debug;
+use std::hash::Hash;
 use std::mem;
 use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
+use syntax::attr;
 use syntax::symbol::Symbol;
 
-trait Key {
+pub trait Key: Clone + Hash + Eq + Debug {
     fn map_crate(&self) -> CrateNum;
     fn default_span(&self, tcx: TyCtxt) -> Span;
 }
@@ -98,6 +103,24 @@ impl<'tcx> Key for (DefId, &'tcx Substs<'tcx>) {
     }
     fn default_span(&self, tcx: TyCtxt) -> Span {
         self.0.default_span(tcx)
+    }
+}
+
+impl Key for (MirSuite, DefId) {
+    fn map_crate(&self) -> CrateNum {
+        self.1.map_crate()
+    }
+    fn default_span(&self, tcx: TyCtxt) -> Span {
+        self.1.default_span(tcx)
+    }
+}
+
+impl Key for (MirSuite, MirPassIndex, DefId) {
+    fn map_crate(&self) -> CrateNum {
+        self.2.map_crate()
+    }
+    fn default_span(&self, tcx: TyCtxt) -> Span {
+        self.2.default_span(tcx)
     }
 }
 
@@ -270,8 +293,13 @@ impl<'tcx> QueryDescription for queries::reachable_set<'tcx> {
 
 impl<'tcx> QueryDescription for queries::const_eval<'tcx> {
     fn describe(tcx: TyCtxt, (def_id, _): (DefId, &'tcx Substs<'tcx>)) -> String {
-        format!("const-evaluating `{}`",
-                tcx.item_path_str(def_id))
+        format!("const-evaluating `{}`", tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::mir_keys<'tcx> {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
+        format!("getting a list of all mir_keys")
     }
 }
 
@@ -293,6 +321,19 @@ impl<'tcx> QueryDescription for queries::def_span<'tcx> {
     }
 }
 
+
+impl<'tcx> QueryDescription for queries::stability<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        bug!("stability")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::deprecation<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        bug!("deprecation")
+    }
+}
+
 impl<'tcx> QueryDescription for queries::item_body_nested_bodies<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("nested item bodies of `{}`", tcx.item_path_str(def_id))
@@ -306,7 +347,7 @@ impl<'tcx> QueryDescription for queries::const_is_rvalue_promotable_to_static<'t
     }
 }
 
-impl<'tcx> QueryDescription for queries::is_item_mir_available<'tcx> {
+impl<'tcx> QueryDescription for queries::is_mir_available<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("checking if item is mir available: `{}`",
             tcx.item_path_str(def_id))
@@ -316,11 +357,10 @@ impl<'tcx> QueryDescription for queries::is_item_mir_available<'tcx> {
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
-       [$($pub:tt)*] $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
-        pub struct Maps<$tcx> {
-            providers: IndexVec<CrateNum, Providers<$tcx>>,
-            query_stack: RefCell<Vec<(Span, Query<$tcx>)>>,
-            $($(#[$attr])* $($pub)* $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>),*
+       [$($modifiers:tt)*] $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
+        define_map_struct! {
+            tcx: $tcx,
+            input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)
         }
 
         impl<$tcx> Maps<$tcx> {
@@ -400,7 +440,7 @@ macro_rules! define_maps {
                     provider(tcx.global_tcx(), key)
                 })?;
 
-                Ok(f(&tcx.maps.$name.borrow_mut().entry(key).or_insert(result)))
+                Ok(f(tcx.maps.$name.borrow_mut().entry(key).or_insert(result)))
             }
 
             pub fn try_get(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K)
@@ -461,25 +501,153 @@ macro_rules! define_maps {
             })*
         }
 
-        pub struct Providers<$tcx> {
-            $(pub $name: for<'a> fn(TyCtxt<'a, $tcx, $tcx>, $K) -> $V),*
+        define_provider_struct! {
+            tcx: $tcx,
+            input: ($(([$($modifiers)*] [$name] [$K] [$V]))*),
+            output: ()
         }
 
         impl<$tcx> Copy for Providers<$tcx> {}
         impl<$tcx> Clone for Providers<$tcx> {
             fn clone(&self) -> Self { *self }
         }
+    }
+}
+
+macro_rules! define_map_struct {
+    // Initial state
+    (tcx: $tcx:tt,
+     input: $input:tt) => {
+        define_map_struct! {
+            tcx: $tcx,
+            input: $input,
+            output: ()
+        }
+    };
+
+    // Final output
+    (tcx: $tcx:tt,
+     input: (),
+     output: ($($output:tt)*)) => {
+        pub struct Maps<$tcx> {
+            providers: IndexVec<CrateNum, Providers<$tcx>>,
+            query_stack: RefCell<Vec<(Span, Query<$tcx>)>>,
+            $($output)*
+        }
+    };
+
+    // Field recognized and ready to shift into the output
+    (tcx: $tcx:tt,
+     ready: ([$($pub:tt)*] [$($attr:tt)*] [$name:ident]),
+     input: $input:tt,
+     output: ($($output:tt)*)) => {
+        define_map_struct! {
+            tcx: $tcx,
+            input: $input,
+            output: ($($output)*
+                     $(#[$attr])* $($pub)* $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>,)
+        }
+    };
+
+    // Detect things with the `pub` modifier
+    (tcx: $tcx:tt,
+     input: (([pub $($other_modifiers:tt)*] $attrs:tt $name:tt) $($input:tt)*),
+     output: $output:tt) => {
+        define_map_struct! {
+            tcx: $tcx,
+            ready: ([pub] $attrs $name),
+            input: ($($input)*),
+            output: $output
+        }
+    };
+
+    // No modifiers left? This is a private item.
+    (tcx: $tcx:tt,
+     input: (([] $attrs:tt $name:tt) $($input:tt)*),
+     output: $output:tt) => {
+        define_map_struct! {
+            tcx: $tcx,
+            ready: ([pub] $attrs $name),
+            input: ($($input)*),
+            output: $output
+        }
+    };
+
+    // Skip other modifiers
+    (tcx: $tcx:tt,
+     input: (([$other_modifier:tt $($modifiers:tt)*] $($fields:tt)*) $($input:tt)*),
+     output: $output:tt) => {
+        define_map_struct! {
+            tcx: $tcx,
+            input: (([$($modifiers)*] $($fields)*) $($input)*),
+            output: $output
+        }
+    };
+}
+
+macro_rules! define_provider_struct {
+    // Initial state:
+    (tcx: $tcx:tt, input: $input:tt) => {
+        define_provider_struct! {
+            tcx: $tcx,
+            input: $input,
+            output: ()
+        }
+    };
+
+    // Final state:
+    (tcx: $tcx:tt,
+     input: (),
+     output: ($(([$name:ident] [$K:ty] [$R:ty]))*)) => {
+        pub struct Providers<$tcx> {
+            $(pub $name: for<'a> fn(TyCtxt<'a, $tcx, $tcx>, $K) -> $R,)*
+        }
 
         impl<$tcx> Default for Providers<$tcx> {
             fn default() -> Self {
-                $(fn $name<'a, $tcx>(_: TyCtxt<'a, $tcx, $tcx>, key: $K) -> $V {
+                $(fn $name<'a, $tcx>(_: TyCtxt<'a, $tcx, $tcx>, key: $K) -> $R {
                     bug!("tcx.maps.{}({:?}) unsupported by its crate",
                          stringify!($name), key);
                 })*
                 Providers { $($name),* }
             }
         }
-    }
+    };
+
+    // Something ready to shift:
+    (tcx: $tcx:tt,
+     ready: ($name:tt $K:tt $V:tt),
+     input: $input:tt,
+     output: ($($output:tt)*)) => {
+        define_provider_struct! {
+            tcx: $tcx,
+            input: $input,
+            output: ($($output)* ($name $K $V))
+        }
+    };
+
+    // Regular queries produce a `V` only.
+    (tcx: $tcx:tt,
+     input: (([] $name:tt $K:tt $V:tt) $($input:tt)*),
+     output: $output:tt) => {
+        define_provider_struct! {
+            tcx: $tcx,
+            ready: ($name $K $V),
+            input: ($($input)*),
+            output: $output
+        }
+    };
+
+    // Skip modifiers.
+    (tcx: $tcx:tt,
+     input: (([$other_modifier:tt $($modifiers:tt)*] $($fields:tt)*) $($input:tt)*),
+     output: $output:tt) => {
+        define_provider_struct! {
+            tcx: $tcx,
+            input: (([$($modifiers)*] $($fields)*) $($input)*),
+            output: $output
+        }
+    };
 }
 
 // Each of these maps also corresponds to a method on a
@@ -537,19 +705,27 @@ define_maps! { <'tcx>
     /// Methods in these implementations don't need to be exported.
     [] inherent_impls: InherentImpls(DefId) -> Rc<Vec<DefId>>,
 
-    /// Maps from the def-id of a function/method or const/static
-    /// to its MIR. Mutation is done at an item granularity to
-    /// allow MIR optimization passes to function and still
-    /// access cross-crate MIR (e.g. inlining or const eval).
-    ///
-    /// Note that cross-crate MIR appears to be always borrowed
-    /// (in the `RefCell` sense) to prevent accidental mutation.
-    [pub] mir: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>>,
+    /// Set of all the def-ids in this crate that have MIR associated with
+    /// them. This includes all the body owners, but also things like struct
+    /// constructors.
+    [] mir_keys: mir_keys(CrateNum) -> Rc<DefIdSet>,
 
     /// Maps DefId's that have an associated Mir to the result
     /// of the MIR qualify_consts pass. The actual meaning of
     /// the value isn't known except to the pass itself.
     [] mir_const_qualif: Mir(DefId) -> u8,
+
+    /// Fetch the MIR for a given def-id up till the point where it is
+    /// ready for const evaluation.
+    ///
+    /// See the README for the `mir` module for details.
+    [] mir_const: Mir(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
+
+    [] mir_validated: Mir(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
+
+    /// MIR after our optimization passes have run. This is MIR that is ready
+    /// for trans. This is also the only query that can fetch non-local MIR, at present.
+    [] optimized_mir: Mir(DefId) -> &'tcx mir::Mir<'tcx>,
 
     /// Records the type of each closure. The def ID is the ID of the
     /// expression defining the closure.
@@ -598,17 +774,18 @@ define_maps! { <'tcx>
     /// fn item.
     [] region_maps: RegionMaps(DefId) -> Rc<RegionMaps<'tcx>>,
 
-    [] mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>,
+    [] mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx mir::Mir<'tcx>,
 
     [] def_symbol_name: SymbolName(DefId) -> ty::SymbolName,
     [] symbol_name: symbol_name_dep_node(ty::Instance<'tcx>) -> ty::SymbolName,
 
     [] describe_def: DescribeDef(DefId) -> Option<Def>,
     [] def_span: DefSpan(DefId) -> Span,
-
+    [] stability: Stability(DefId) -> Option<attr::Stability>,
+    [] deprecation: Deprecation(DefId) -> Option<attr::Deprecation>,
     [] item_body_nested_bodies: metadata_dep_node(DefId) -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
     [] const_is_rvalue_promotable_to_static: metadata_dep_node(DefId) -> bool,
-    [] is_item_mir_available: metadata_dep_node(DefId) -> bool,
+    [] is_mir_available: metadata_dep_node(DefId) -> bool,
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -643,4 +820,8 @@ fn typeck_item_bodies_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn const_eval_dep_node((def_id, _): (DefId, &Substs)) -> DepNode<DefId> {
     DepNode::ConstEval(def_id)
+}
+
+fn mir_keys(_: CrateNum) -> DepNode<DefId> {
+    DepNode::MirKeys
 }

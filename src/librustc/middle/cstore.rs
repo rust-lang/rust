@@ -38,7 +38,6 @@ use std::any::Any;
 use std::path::PathBuf;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
@@ -180,8 +179,6 @@ pub trait CrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>;
 
     // item info
-    fn stability(&self, def: DefId) -> Option<attr::Stability>;
-    fn deprecation(&self, def: DefId) -> Option<attr::Deprecation>;
     fn visibility(&self, def: DefId) -> ty::Visibility;
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>>;
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics;
@@ -306,8 +303,6 @@ impl CrateStore for DummyCrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>
         { bug!("crate_data_as_rc_any") }
     // item info
-    fn stability(&self, def: DefId) -> Option<attr::Stability> { bug!("stability") }
-    fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> { bug!("deprecation") }
     fn visibility(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>> {
         bug!("visible_parent_map")
