@@ -965,10 +965,6 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.pushed == 0
-    }
-
     /// Return the "expected type" with which this coercion was
     /// constructed.  This represents the "downward propagated" type
     /// that was given to us at the start of typing whatever construct
