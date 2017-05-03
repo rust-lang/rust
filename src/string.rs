@@ -51,10 +51,7 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     let ender_length = fmt.line_end.len();
     // If we cannot put at least a single character per line, the rewrite won't
     // succeed.
-    let max_chars = try_opt!(shape
-                                 .width
-                                 .checked_sub(fmt.opener.len() + ender_length + 1)) +
-                    1;
+    let max_chars = try_opt!(shape.width.checked_sub(fmt.opener.len() + ender_length + 1)) + 1;
 
     // Snip a line at a time from `orig` until it is used up. Push the snippet
     // onto result.

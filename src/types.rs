@@ -704,9 +704,9 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
                                       .lifetimes
                                       .iter()
                                       .map(|l| {
-                                               l.rewrite(context,
+            l.rewrite(context,
                       Shape::legacy(try_opt!(shape.width.checked_sub(6)), shape.indent + 4))
-                                           })
+        })
                                       .intersperse(Some(", ".to_string()))
                                       .collect::<Option<String>>()));
         result.push_str("> ");
