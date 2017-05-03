@@ -102,7 +102,10 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let five_seconds = Duration::from_millis(5000);
+    /// let duration = Duration::from_millis(2569);
+    ///
+    /// assert_eq!(2, duration.as_secs());
+    /// assert_eq!(569000000, duration.subsec_nanos());
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
