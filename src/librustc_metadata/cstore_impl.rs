@@ -111,6 +111,8 @@ provide! { <'tcx> tcx, def_id, cdata
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     describe_def => { cdata.get_def(def_id.index) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
+    stability => { cdata.get_stability(def_id.index) }
+    deprecation => { cdata.get_deprecation(def_id.index) }
     item_body_nested_bodies => {
         let map: BTreeMap<_, _> = cdata.entry(def_id.index).ast.into_iter().flat_map(|ast| {
             ast.decode(cdata).nested_bodies.decode(cdata).map(|body| (body.id(), body))
@@ -131,16 +133,6 @@ provide! { <'tcx> tcx, def_id, cdata
 impl CrateStore for cstore::CStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any> {
         self.get_crate_data(krate)
-    }
-
-    fn stability(&self, def: DefId) -> Option<attr::Stability> {
-        self.dep_graph.read(DepNode::MetaData(def));
-        self.get_crate_data(def.krate).get_stability(def.index)
-    }
-
-    fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> {
-        self.dep_graph.read(DepNode::MetaData(def));
-        self.get_crate_data(def.krate).get_deprecation(def.index)
     }
 
     fn visibility(&self, def: DefId) -> ty::Visibility {
