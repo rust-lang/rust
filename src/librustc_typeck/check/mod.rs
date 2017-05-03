@@ -451,8 +451,6 @@ impl<'gcx, 'tcx> EnclosingBreakables<'gcx, 'tcx> {
 }
 
 pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
-
     body_id: ast::NodeId,
 
     // Number of errors that had been reported when we started
@@ -1516,10 +1514,6 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
-    fn ast_ty_to_ty_cache(&self) -> &RefCell<NodeMap<Ty<'tcx>>> {
-        &self.ast_ty_to_ty_cache
-    }
-
     fn get_free_substs(&self) -> Option<&Substs<'tcx>> {
         Some(&self.parameter_environment.free_substs)
     }
@@ -1621,7 +1615,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                body_id: ast::NodeId)
                -> FnCtxt<'a, 'gcx, 'tcx> {
         FnCtxt {
-            ast_ty_to_ty_cache: RefCell::new(NodeMap()),
             body_id: body_id,
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
