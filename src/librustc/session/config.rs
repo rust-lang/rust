@@ -1122,14 +1122,6 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
 pub enum OptionStability {
     Stable,
 
-    // FIXME: historically there were some options which were either `-Z` or
-    //        required the `-Z unstable-options` flag, which were all intended
-    //        to be unstable. Unfortunately we didn't actually gate usage of
-    //        these options on the stable compiler, so we still allow them there
-    //        today. There are some warnings printed out about this in the
-    //        driver.
-    UnstableButNotReally,
-
     Unstable,
 }
 
@@ -1148,16 +1140,8 @@ impl RustcOptGroup {
         RustcOptGroup { opt_group: g, stability: OptionStability::Stable }
     }
 
-    #[allow(dead_code)] // currently we have no "truly unstable" options
     pub fn unstable(g: getopts::OptGroup) -> RustcOptGroup {
         RustcOptGroup { opt_group: g, stability: OptionStability::Unstable }
-    }
-
-    fn unstable_bnr(g: getopts::OptGroup) -> RustcOptGroup {
-        RustcOptGroup {
-            opt_group: g,
-            stability: OptionStability::UnstableButNotReally,
-        }
     }
 }
 
@@ -1180,7 +1164,6 @@ mod opt {
 
     fn stable(g: getopts::OptGroup) -> R { RustcOptGroup::stable(g) }
     fn unstable(g: getopts::OptGroup) -> R { RustcOptGroup::unstable(g) }
-    fn unstable_bnr(g: getopts::OptGroup) -> R { RustcOptGroup::unstable_bnr(g) }
 
     pub fn opt_s(a: S, b: S, c: S, d: S) -> R {
         stable(getopts::optopt(a, b, c, d))
@@ -1212,24 +1195,6 @@ mod opt {
     }
     pub fn flagmulti(a: S, b: S, c: S) -> R {
         unstable(getopts::optflagmulti(a, b, c))
-    }
-
-    // Do not use these functions for any new options added to the compiler, all
-    // new options should use the `*_u` variants above to be truly unstable.
-    pub fn opt_ubnr(a: S, b: S, c: S, d: S) -> R {
-        unstable_bnr(getopts::optopt(a, b, c, d))
-    }
-    pub fn multi_ubnr(a: S, b: S, c: S, d: S) -> R {
-        unstable_bnr(getopts::optmulti(a, b, c, d))
-    }
-    pub fn flag_ubnr(a: S, b: S, c: S) -> R {
-        unstable_bnr(getopts::optflag(a, b, c))
-    }
-    pub fn flagopt_ubnr(a: S, b: S, c: S, d: S) -> R {
-        unstable_bnr(getopts::optflagopt(a, b, c, d))
-    }
-    pub fn flagmulti_ubnr(a: S, b: S, c: S) -> R {
-        unstable_bnr(getopts::optflagmulti(a, b, c))
     }
 }
 
@@ -1296,7 +1261,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
         opt::multi_s("", "extern", "Specify where an external rust library is located",
                      "NAME=PATH"),
         opt::opt_s("", "sysroot", "Override the system root", "PATH"),
-        opt::multi_ubnr("Z", "", "Set internal debugging options", "FLAG"),
+        opt::multi("Z", "", "Set internal debugging options", "FLAG"),
         opt::opt_s("", "error-format",
                       "How errors and other messages are produced",
                       "human|json"),
@@ -1305,28 +1270,20 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                                  always = always colorize output;
                                  never  = never colorize output", "auto|always|never"),
 
-        opt::flagopt_ubnr("", "pretty",
-                          "Pretty-print the input instead of compiling;
-                           valid types are: `normal` (un-annotated source),
-                           `expanded` (crates expanded), or
-                           `expanded,identified` (fully parenthesized, AST nodes with IDs).",
-                          "TYPE"),
-        opt::flagopt_ubnr("", "unpretty",
-                          "Present the input source, unstable (and less-pretty) variants;
-                           valid types are any of the types for `--pretty`, as well as:
-                           `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
-                           `everybody_loops` (all function bodies replaced with `loop {}`),
-                           `hir` (the HIR), `hir,identified`, or
-                           `hir,typed` (HIR with types for each node).",
-                          "TYPE"),
-
-        // new options here should **not** use the `_ubnr` functions, all new
-        // unstable options should use the short variants to indicate that they
-        // are truly unstable. All `_ubnr` flags are just that way because they
-        // were so historically.
-        //
-        // You may also wish to keep this comment at the bottom of this list to
-        // ensure that others see it.
+        opt::flagopt("", "pretty",
+                     "Pretty-print the input instead of compiling;
+                      valid types are: `normal` (un-annotated source),
+                      `expanded` (crates expanded), or
+                      `expanded,identified` (fully parenthesized, AST nodes with IDs).",
+                     "TYPE"),
+        opt::flagopt("", "unpretty",
+                     "Present the input source, unstable (and less-pretty) variants;
+                      valid types are any of the types for `--pretty`, as well as:
+                      `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
+                      `everybody_loops` (all function bodies replaced with `loop {}`),
+                      `hir` (the HIR), `hir,identified`, or
+                      `hir,typed` (HIR with types for each node).",
+                     "TYPE"),
     ]);
     opts
 }
@@ -1704,7 +1661,7 @@ pub mod nightly_options {
     use getopts;
     use syntax::feature_gate::UnstableFeatures;
     use super::{ErrorOutputType, OptionStability, RustcOptGroup};
-    use session::{early_error, early_warn};
+    use session::early_error;
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
         is_nightly_build() && matches.opt_strs("Z").iter().any(|x| *x == "unstable-options")
@@ -1745,15 +1702,6 @@ pub mod nightly_options {
                     let msg = format!("the option `{}` is only accepted on the \
                                        nightly compiler", opt_name);
                     early_error(ErrorOutputType::default(), &msg);
-                }
-                OptionStability::UnstableButNotReally => {
-                    let msg = format!("the option `{}` is unstable and should \
-                                       only be used on the nightly compiler, but \
-                                       it is currently accepted for backwards \
-                                       compatibility; this will soon change, \
-                                       see issue #31847 for more details",
-                                      opt_name);
-                    early_warn(ErrorOutputType::default(), &msg);
                 }
                 OptionStability::Stable => {}
             }
