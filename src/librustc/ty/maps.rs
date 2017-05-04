@@ -347,6 +347,12 @@ impl<'tcx> QueryDescription for queries::fn_arg_names<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::impl_parent<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        bug!("impl_parent")
+    }
+}
+
 impl<'tcx> QueryDescription for queries::trait_of_item<'tcx> {
     fn describe(_: TyCtxt, _: DefId) -> String {
         bug!("trait_of_item")
@@ -804,6 +810,7 @@ define_maps! { <'tcx>
     [] deprecation: Deprecation(DefId) -> Option<attr::Deprecation>,
     [] item_attrs: ItemAttrs(DefId) -> Rc<[ast::Attribute]>,
     [] fn_arg_names: FnArgNames(DefId) -> Vec<ast::Name>,
+    [] impl_parent: ImplParent(DefId) -> Option<DefId>,
     [] trait_of_item: TraitOfItem(DefId) -> Option<DefId>,
     [] item_body_nested_bodies: ItemBodyNestedBodies(DefId) -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
     [] const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,

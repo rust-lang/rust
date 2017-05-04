@@ -2393,7 +2393,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let trait_ref = self.impl_trait_ref(impl_def_id).unwrap();
 
             // Record the trait->implementation mapping.
-            let parent = self.sess.cstore.impl_parent(impl_def_id).unwrap_or(trait_id);
+            let parent = self.impl_parent(impl_def_id).unwrap_or(trait_id);
             def.record_remote_impl(self, impl_def_id, trait_ref, parent);
         }
 
