@@ -73,7 +73,7 @@ fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
 }
 
 impl<'a> StringReader<'a> {
-    fn next_token(&mut self) -> TokenAndSpan where Self: Sized {
+    fn next_token(&mut self) -> TokenAndSpan {
         let res = self.try_next_token();
         self.unwrap_or_abort(res)
     }
