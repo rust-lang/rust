@@ -188,7 +188,6 @@ pub trait CrateStore {
 
     // impl info
     fn impl_defaultness(&self, def: DefId) -> hir::Defaultness;
-    fn impl_parent(&self, impl_def_id: DefId) -> Option<DefId>;
 
     // trait/impl-item info
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem;
@@ -312,7 +311,6 @@ impl CrateStore for DummyCrateStore {
 
     // impl info
     fn impl_defaultness(&self, def: DefId) -> hir::Defaultness { bug!("impl_defaultness") }
-    fn impl_parent(&self, def: DefId) -> Option<DefId> { bug!("impl_parent") }
 
     // trait/impl-item info
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem

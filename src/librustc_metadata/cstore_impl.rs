@@ -119,6 +119,7 @@ provide! { <'tcx> tcx, def_id, cdata
     // This is only used by rustdoc anyway, which shouldn't have
     // incremental recompilation ever enabled.
     fn_arg_names => { cdata.get_fn_arg_names(def_id.index) }
+    impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
     item_body_nested_bodies => {
         let map: BTreeMap<_, _> = cdata.entry(def_id.index).ast.into_iter().flat_map(|ast| {
@@ -168,11 +169,6 @@ impl CrateStore for cstore::CStore {
     {
         self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).get_impl_defaultness(def.index)
-    }
-
-    fn impl_parent(&self, impl_def: DefId) -> Option<DefId> {
-        self.dep_graph.read(DepNode::MetaData(impl_def));
-        self.get_crate_data(impl_def.krate).get_parent_impl(impl_def.index)
     }
 
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem
