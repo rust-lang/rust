@@ -76,7 +76,7 @@ pub mod test {
     pub use {Bencher, TestName, TestResult, TestDesc, TestDescAndFn, TestOpts, TrFailed,
              TrFailedMsg, TrIgnored, TrOk, Metric, MetricMap, StaticTestFn, StaticTestName,
              DynTestName, DynTestFn, run_test, test_main, test_main_static, filter_tests,
-             parse_opts, StaticBenchFn, ShouldPanic};
+             parse_opts, StaticBenchFn, ShouldPanic, Options};
 }
 
 pub mod stats;
@@ -252,14 +252,34 @@ impl Clone for MetricMap {
     }
 }
 
+/// In case we want to add other options as well, just add them in this struct.
+#[derive(Copy, Clone, Debug)]
+pub struct Options {
+    display_output: bool,
+}
+
+impl Options {
+    pub fn new() -> Options {
+        Options {
+            display_output: false,
+        }
+    }
+
+    pub fn display_output(mut self, display_output: bool) -> Options {
+        self.display_output = display_output;
+        self
+    }
+}
+
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
-pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>) {
-    let opts = match parse_opts(args) {
+pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Options) {
+    let mut opts = match parse_opts(args) {
         Some(Ok(o)) => o,
         Some(Err(msg)) => panic!("{:?}", msg),
         None => return,
     };
+    opts.options = options;
     if opts.list {
         if let Err(e) = list_tests_console(&opts, tests) {
             panic!("io error when listing tests: {:?}", e);
@@ -301,7 +321,7 @@ pub fn test_main_static(tests: &[TestDescAndFn]) {
                                }
                            })
                            .collect();
-    test_main(&args, owned_tests)
+    test_main(&args, owned_tests, Options::new())
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -325,7 +345,7 @@ pub struct TestOpts {
     pub quiet: bool,
     pub test_threads: Option<usize>,
     pub skip: Vec<String>,
-    pub display_stdout: bool,
+    pub options: Options,
 }
 
 impl TestOpts {
@@ -344,7 +364,7 @@ impl TestOpts {
             quiet: false,
             test_threads: None,
             skip: vec![],
-            display_stdout: false,
+            options: Options::new(),
         }
     }
 }
@@ -372,8 +392,7 @@ fn optgroups() -> Vec<getopts::OptGroup> {
       getopts::optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
             always = always colorize output;
-            never  = never colorize output;", "auto|always|never"),
-      getopts::optflag("", "display-stdout", "to print stdout even if the test succeeds")]
+            never  = never colorize output;", "auto|always|never")]
 }
 
 fn usage(binary: &str) {
@@ -485,7 +504,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         quiet: quiet,
         test_threads: test_threads,
         skip: matches.opt_strs("skip"),
-        display_stdout: matches.opt_present("display-stdout"),
+        options: Options::new(),
     };
 
     Some(Ok(test_opts))
@@ -528,7 +547,7 @@ struct ConsoleTestState<T> {
     failures: Vec<(TestDesc, Vec<u8>)>,
     not_failures: Vec<(TestDesc, Vec<u8>)>,
     max_name_len: usize, // number of columns to fill when aligning names
-    display_stdout: bool,
+    options: Options,
 }
 
 impl<T: Write> ConsoleTestState<T> {
@@ -556,7 +575,7 @@ impl<T: Write> ConsoleTestState<T> {
             failures: Vec::new(),
             not_failures: Vec::new(),
             max_name_len: 0,
-            display_stdout: opts.display_stdout,
+            options: opts.options,
         })
     }
 
@@ -741,7 +760,7 @@ impl<T: Write> ConsoleTestState<T> {
     pub fn write_run_finish(&mut self) -> io::Result<bool> {
         assert!(self.passed + self.failed + self.ignored + self.measured == self.total);
 
-        if self.display_stdout {
+        if self.options.display_output {
             self.write_outputs()?;
         }
         let success = self.failed == 0;
@@ -942,7 +961,7 @@ fn should_sort_failures_before_printing_them() {
         max_name_len: 10,
         metrics: MetricMap::new(),
         failures: vec![(test_b, Vec::new()), (test_a, Vec::new())],
-        display_stdout: false,
+        options: Options::new(),
         not_failures: Vec::new(),
     };
 

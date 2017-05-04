@@ -336,7 +336,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         test_threads: None,
         skip: vec![],
         list: false,
-        display_stdout: false,
+        options: test::Options::new(),
     }
 }
 
