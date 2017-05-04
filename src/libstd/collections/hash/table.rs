@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc::heap::{EMPTY, allocate, deallocate};
+use alloc::heap::{allocate, deallocate};
 
 use cmp;
 use hash::{BuildHasher, Hash, Hasher};
@@ -33,6 +33,7 @@ use self::BucketState::*;
 type HashUint = usize;
 
 const EMPTY_BUCKET: HashUint = 0;
+const EMPTY: usize = 1;
 
 /// Special `Unique<HashUint>` that uses the lower bit of the pointer
 /// to expose a boolean tag.

@@ -156,7 +156,7 @@ fn make_place<T>() -> IntermediateBox<T> {
     let align = mem::align_of::<T>();
 
     let p = if size == 0 {
-        heap::EMPTY as *mut u8
+        mem::align_of::<T>() as *mut u8
     } else {
         let p = unsafe { heap::allocate(size, align) };
         if p.is_null() {
