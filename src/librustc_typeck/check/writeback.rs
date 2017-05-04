@@ -43,7 +43,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
         wbcx.visit_anon_types();
-        wbcx.visit_type_nodes();
         wbcx.visit_cast_types();
         wbcx.visit_lints();
         wbcx.visit_free_region_map();
@@ -439,13 +438,6 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         for (&node_id, ftys) in self.fcx.tables.borrow().fru_field_types.iter() {
             let ftys = self.resolve(ftys, &node_id);
             self.tables.fru_field_types.insert(node_id, ftys);
-        }
-    }
-
-    fn visit_type_nodes(&self) {
-        for (&id, ty) in self.fcx.ast_ty_to_ty_cache.borrow().iter() {
-            let ty = self.resolve(ty, &id);
-            self.fcx.tcx.ast_ty_to_ty_cache.borrow_mut().insert(id, ty);
         }
     }
 

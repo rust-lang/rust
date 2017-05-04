@@ -25,9 +25,8 @@ use rustc::ty::wf::object_region_bounds;
 use rustc_back::slice;
 use require_c_abi_if_variadic;
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
-use util::nodemap::{NodeMap, FxHashSet};
+use util::nodemap::FxHashSet;
 
-use std::cell::RefCell;
 use std::iter;
 use syntax::{abi, ast};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
@@ -36,9 +35,6 @@ use syntax_pos::Span;
 
 pub trait AstConv<'gcx, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx>;
-
-    /// A cache used for the result of `ast_ty_to_ty_cache`
-    fn ast_ty_to_ty_cache(&self) -> &RefCell<NodeMap<Ty<'tcx>>>;
 
     /// Returns the set of bounds in scope for the type parameter with
     /// the given id.
@@ -1074,11 +1070,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let tcx = self.tcx();
 
-        let cache = self.ast_ty_to_ty_cache();
-        if let Some(ty) = cache.borrow().get(&ast_ty.id) {
-            return ty;
-        }
-
         let result_ty = match ast_ty.node {
             hir::TySlice(ref ty) => {
                 tcx.mk_slice(self.ast_ty_to_ty(&ty))
@@ -1239,8 +1230,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.types.err
             }
         };
-
-        cache.borrow_mut().insert(ast_ty.id, result_ty);
 
         result_ty
     }

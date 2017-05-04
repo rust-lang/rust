@@ -41,6 +41,7 @@ extern crate rustc_resolve;
 extern crate rustc_lint;
 extern crate rustc_back;
 extern crate rustc_metadata;
+extern crate rustc_typeck;
 extern crate serialize;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
