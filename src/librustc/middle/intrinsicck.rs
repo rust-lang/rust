@@ -92,7 +92,7 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
                     struct_span_err!(self.infcx.tcx.sess, span, E0591,
                                      "`{}` is zero-sized and can't be transmuted to `{}`",
                                      from, to)
-                        .span_note(span, &format!("cast with `as` to a pointer instead"))
+                        .span_note(span, "cast with `as` to a pointer instead")
                         .emit();
                     return;
                 }
@@ -126,7 +126,7 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
                   from, skeleton_string(from, sk_from),
                   to, skeleton_string(to, sk_to))
             .span_label(span,
-                &format!("transmuting between {} and {}",
+                format!("transmuting between {} and {}",
                     skeleton_string(from, sk_from),
                     skeleton_string(to, sk_to)))
             .emit();

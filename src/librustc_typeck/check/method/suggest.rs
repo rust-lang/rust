@@ -209,9 +209,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                               expr_string,
                                                               item_name));
                                         }
-                                        err.span_label(span, &"field, not a method");
+                                        err.span_label(span, "field, not a method");
                                     } else {
-                                        err.span_label(span, &"private field, not a method");
+                                        err.span_label(span, "private field, not a method");
                                     }
                                     break;
                                 }
@@ -272,7 +272,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                span,
                                                E0034,
                                                "multiple applicable items in scope");
-                err.span_label(span, &format!("multiple `{}` found", item_name));
+                err.span_label(span, format!("multiple `{}` found", item_name));
 
                 report_candidates(&mut err, sources);
                 err.emit();

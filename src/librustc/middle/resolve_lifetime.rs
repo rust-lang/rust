@@ -574,9 +574,9 @@ fn signal_shadowing_problem(sess: &Session, name: ast::Name, orig: Original, sha
                                         {} name that is already in scope",
                                        shadower.kind.desc(), name, orig.kind.desc()))
     };
-    err.span_label(orig.span, &"first declared here");
+    err.span_label(orig.span, "first declared here");
     err.span_label(shadower.span,
-                   &format!("lifetime {} already in scope", name));
+                   format!("lifetime {} already in scope", name));
     err.emit();
 }
 
@@ -919,7 +919,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         } else {
             struct_span_err!(self.sess, lifetime_ref.span, E0261,
                 "use of undeclared lifetime name `{}`", lifetime_ref.name)
-                .span_label(lifetime_ref.span, &format!("undeclared lifetime"))
+                .span_label(lifetime_ref.span, "undeclared lifetime")
                 .emit();
         }
     }
@@ -1328,7 +1328,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         } else {
             format!("expected lifetime parameter")
         };
-        err.span_label(span, &msg);
+        err.span_label(span, msg);
 
         if let Some(params) = error {
             if lifetime_refs.len() == 1 {
@@ -1438,7 +1438,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     let mut err = struct_span_err!(self.sess, lifetime.span, E0262,
                                   "invalid lifetime parameter name: `{}`", lifetime.name);
                     err.span_label(lifetime.span,
-                                   &format!("{} is a reserved lifetime name", lifetime.name));
+                                   format!("{} is a reserved lifetime name", lifetime.name));
                     err.emit();
                 }
             }
@@ -1452,9 +1452,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                      "lifetime name `{}` declared twice in the same scope",
                                      lifetime_j.lifetime.name)
                         .span_label(lifetime_j.lifetime.span,
-                                    &format!("declared twice"))
+                                    "declared twice")
                         .span_label(lifetime_i.lifetime.span,
-                                   &format!("previous declaration here"))
+                                   "previous declaration here")
                         .emit();
                 }
             }

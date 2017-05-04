@@ -259,7 +259,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
                                  ty.span,
                                  E0118,
                                  "no base type found for inherent implementation")
-                    .span_label(ty.span, &format!("impl requires a base type"))
+                    .span_label(ty.span, "impl requires a base type")
                     .note(&format!("either implement a trait on it or create a newtype \
                                     to wrap it instead"))
                     .emit();
@@ -296,7 +296,7 @@ impl<'a, 'tcx> InherentCollect<'a, 'tcx> {
                              "cannot define inherent `impl` for a type outside of the crate \
                               where the type is defined")
                 .span_label(item.span,
-                            &format!("impl for type defined outside of crate."))
+                            "impl for type defined outside of crate.")
                 .note("define and implement a trait or new type instead")
                 .emit();
         }

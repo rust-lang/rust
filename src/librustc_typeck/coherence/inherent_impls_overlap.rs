@@ -56,9 +56,9 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
                                      "duplicate definitions with name `{}`",
                                      name)
                         .span_label(self.tcx.span_of_impl(item1).unwrap(),
-                                    &format!("duplicate definitions for `{}`", name))
+                                    format!("duplicate definitions for `{}`", name))
                         .span_label(self.tcx.span_of_impl(item2).unwrap(),
-                                    &format!("other definition for `{}`", name))
+                                    format!("other definition for `{}`", name))
                         .emit();
                 }
             }

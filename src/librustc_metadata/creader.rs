@@ -88,7 +88,7 @@ fn register_native_lib(sess: &Session,
             Some(span) => {
                 struct_span_err!(sess, span, E0454,
                                  "#[link(name = \"\")] given with empty name")
-                    .span_label(span, &format!("empty name given"))
+                    .span_label(span, "empty name given")
                     .emit();
             }
             None => {
@@ -1029,7 +1029,7 @@ impl<'a> CrateLoader<'a> {
                 Some(k) => {
                     struct_span_err!(self.sess, m.span, E0458,
                               "unknown kind: `{}`", k)
-                        .span_label(m.span, &format!("unknown kind")).emit();
+                        .span_label(m.span, "unknown kind").emit();
                     cstore::NativeUnknown
                 }
                 None => cstore::NativeUnknown
@@ -1042,7 +1042,7 @@ impl<'a> CrateLoader<'a> {
                 None => {
                     struct_span_err!(self.sess, m.span, E0459,
                                      "#[link(...)] specified without `name = \"foo\"`")
-                        .span_label(m.span, &format!("missing `name` argument")).emit();
+                        .span_label(m.span, "missing `name` argument").emit();
                     Symbol::intern("foo")
                 }
             };

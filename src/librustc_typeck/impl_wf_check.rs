@@ -166,7 +166,7 @@ fn report_unused_parameter(tcx: TyCtxt,
         "the {} parameter `{}` is not constrained by the \
         impl trait, self type, or predicates",
         kind, name)
-        .span_label(span, &format!("unconstrained {} parameter", kind))
+        .span_label(span, format!("unconstrained {} parameter", kind))
         .emit();
 }
 
@@ -188,9 +188,9 @@ fn enforce_impl_items_are_distinct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                "duplicate definitions with name `{}`:",
                                                impl_item.name);
                 err.span_label(*entry.get(),
-                               &format!("previous definition of `{}` here",
+                               format!("previous definition of `{}` here",
                                         impl_item.name));
-                err.span_label(impl_item.span, &format!("duplicate definition"));
+                err.span_label(impl_item.span, "duplicate definition");
                 err.emit();
             }
             Vacant(entry) => {

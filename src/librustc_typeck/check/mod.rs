@@ -1130,7 +1130,7 @@ fn check_on_unimplemented<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             struct_span_err!(
                 tcx.sess, attr.span, E0232,
                 "this attribute must have a value")
-                .span_label(attr.span, &format!("attribute requires a value"))
+                .span_label(attr.span, "attribute requires a value")
                 .note(&format!("eg `#[rustc_on_unimplemented = \"foo\"]`"))
                 .emit();
         }
@@ -1146,12 +1146,12 @@ fn report_forbidden_specialization<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         "`{}` specializes an item from a parent `impl`, but \
          that item is not marked `default`",
         impl_item.name);
-    err.span_label(impl_item.span, &format!("cannot specialize default item `{}`",
+    err.span_label(impl_item.span, format!("cannot specialize default item `{}`",
                                             impl_item.name));
 
     match tcx.span_of_impl(parent_impl) {
         Ok(span) => {
-            err.span_label(span, &"parent `impl` is here");
+            err.span_label(span, "parent `impl` is here");
             err.note(&format!("to specialize, `{}` in the parent `impl` must be marked `default`",
                               impl_item.name));
         }
@@ -1226,11 +1226,11 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   which doesn't match its trait `{}`",
                                   ty_impl_item.name,
                                   impl_trait_ref);
-                         err.span_label(impl_item.span, &format!("does not match trait"));
+                         err.span_label(impl_item.span, "does not match trait");
                          // We can only get the spans from local trait definition
                          // Same for E0324 and E0325
                          if let Some(trait_span) = tcx.hir.span_if_local(ty_trait_item.def_id) {
-                            err.span_label(trait_span, &format!("item in trait"));
+                            err.span_label(trait_span, "item in trait");
                          }
                          err.emit()
                     }
@@ -1262,9 +1262,9 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   which doesn't match its trait `{}`",
                                   ty_impl_item.name,
                                   impl_trait_ref);
-                         err.span_label(impl_item.span, &format!("does not match trait"));
+                         err.span_label(impl_item.span, "does not match trait");
                          if let Some(trait_span) = tcx.hir.span_if_local(ty_trait_item.def_id) {
-                            err.span_label(trait_span, &format!("item in trait"));
+                            err.span_label(trait_span, "item in trait");
                          }
                          err.emit()
                     }
@@ -1280,9 +1280,9 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   which doesn't match its trait `{}`",
                                   ty_impl_item.name,
                                   impl_trait_ref);
-                         err.span_label(impl_item.span, &format!("does not match trait"));
+                         err.span_label(impl_item.span, "does not match trait");
                          if let Some(trait_span) = tcx.hir.span_if_local(ty_trait_item.def_id) {
-                            err.span_label(trait_span, &format!("item in trait"));
+                            err.span_label(trait_span, "item in trait");
                          }
                          err.emit()
                     }
@@ -1331,13 +1331,13 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             missing_items.iter()
                   .map(|trait_item| trait_item.name.to_string())
                   .collect::<Vec<_>>().join("`, `"));
-        err.span_label(impl_span, &format!("missing `{}` in implementation",
+        err.span_label(impl_span, format!("missing `{}` in implementation",
                 missing_items.iter()
                     .map(|trait_item| trait_item.name.to_string())
                     .collect::<Vec<_>>().join("`, `")));
         for trait_item in missing_items {
             if let Some(span) = tcx.hir.span_if_local(trait_item.def_id) {
-                err.span_label(span, &format!("`{}` from trait", trait_item.name));
+                err.span_label(span, format!("`{}` from trait", trait_item.name));
             } else {
                 err.note(&format!("`{}` from trait: `{}`",
                                   trait_item.name,
@@ -1377,7 +1377,7 @@ fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Representability::SelfRecursive(spans) => {
             let mut err = tcx.recursive_type_with_infinite_size_error(item_def_id);
             for span in spans {
-                err.span_label(span, &"recursive without indirection");
+                err.span_label(span, "recursive without indirection");
             }
             err.emit();
             return false
@@ -1399,7 +1399,7 @@ pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: DefId
             let e = fields[0].ty(tcx, substs);
             if !fields.iter().all(|f| f.ty(tcx, substs) == e) {
                 struct_span_err!(tcx.sess, sp, E0076, "SIMD vector should be homogeneous")
-                                .span_label(sp, &format!("SIMD elements must have the same type"))
+                                .span_label(sp, "SIMD elements must have the same type")
                                 .emit();
                 return;
             }
@@ -1471,7 +1471,7 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         struct_span_err!(
             tcx.sess, sp, E0084,
             "unsupported representation for zero-variant enum")
-            .span_label(sp, &format!("unsupported enum representation"))
+            .span_label(sp, "unsupported enum representation")
             .emit();
     }
 
@@ -1505,8 +1505,8 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             };
             struct_span_err!(tcx.sess, span, E0081,
                              "discriminant value `{}` already exists", disr_vals[i])
-                .span_label(i_span, &format!("first use of `{}`", disr_vals[i]))
-                .span_label(span , &format!("enum already has `{}`", disr_vals[i]))
+                .span_label(i_span, format!("first use of `{}`", disr_vals[i]))
+                .span_label(span , format!("enum already has `{}`", disr_vals[i]))
                 .emit();
         }
         disr_vals.push(discr);
@@ -2401,12 +2401,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if arg_count == 1 {" was"} else {"s were"}),
                 error_code);
 
-            err.span_label(sp, &format!("expected {}{} parameter{}",
+            err.span_label(sp, format!("expected {}{} parameter{}",
                                         if variadic {"at least "} else {""},
                                         expected_count,
                                         if expected_count == 1 {""} else {"s"}));
             if let Some(def_s) = def_span {
-                err.span_label(def_s, &format!("defined here"));
+                err.span_label(def_s, "defined here");
             }
             err.emit();
         }
@@ -2938,10 +2938,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let Some(suggested_field_name) =
                         Self::suggest_field_name(def.struct_variant(), field, vec![]) {
                             err.span_label(field.span,
-                                           &format!("did you mean `{}`?", suggested_field_name));
+                                           format!("did you mean `{}`?", suggested_field_name));
                         } else {
                             err.span_label(field.span,
-                                           &format!("unknown field"));
+                                           "unknown field");
                         };
                 }
                 ty::TyRawPtr(..) => {
@@ -3076,15 +3076,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                            &field.name,
                                                            skip_fields.collect()) {
             err.span_label(field.name.span,
-                           &format!("field does not exist - did you mean `{}`?", field_name));
+                           format!("field does not exist - did you mean `{}`?", field_name));
         } else {
             match ty.sty {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {
-                    err.span_label(field.name.span, &format!("`{}::{}` does not have this field",
+                    err.span_label(field.name.span, format!("`{}::{}` does not have this field",
                                                              ty, variant.name));
                 }
                 _ => {
-                    err.span_label(field.name.span, &format!("`{}` does not have this field", ty));
+                    err.span_label(field.name.span, format!("`{}` does not have this field", ty));
                 }
             }
         };
@@ -3149,10 +3149,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                 "field `{}` specified more than once",
                                                 field.name.node);
 
-                    err.span_label(field.name.span, &format!("used more than once"));
+                    err.span_label(field.name.span, "used more than once");
 
                     if let Some(prev_span) = seen_fields.get(&field.name.node) {
-                        err.span_label(*prev_span, &format!("first use of `{}`", field.name.node));
+                        err.span_label(*prev_span, format!("first use of `{}`", field.name.node));
                     }
 
                     err.emit();
@@ -3199,7 +3199,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         remaining_fields_names,
                         truncated_fields_error,
                         adt_ty)
-                        .span_label(span, &format!("missing {}{}",
+                        .span_label(span, format!("missing {}{}",
                             remaining_fields_names,
                             truncated_fields_error))
                         .emit();
@@ -3266,7 +3266,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             struct_span_err!(self.tcx.sess, path_span, E0071,
                              "expected struct, variant or union type, found {}",
                              ty.sort_string(self.tcx))
-                .span_label(path_span, &format!("not a struct"))
+                .span_label(path_span, "not a struct")
                 .emit();
             None
         }
@@ -3625,7 +3625,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     "invalid left-hand side expression")
                 .span_label(
                     expr.span,
-                    &format!("left-hand of expression not valid"))
+                    "left-hand of expression not valid")
                 .emit();
             }
 
@@ -4517,7 +4517,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                              "too many lifetime parameters provided: \
                               expected at most {}, found {}",
                              expected_text, actual_text)
-                .span_label(span, &format!("expected {}", expected_text))
+                .span_label(span, format!("expected {}", expected_text))
                 .emit();
         } else if lifetimes.len() > 0 && lifetimes.len() < lifetime_defs.len() {
             let expected_text = count_lifetime_params(lifetime_defs.len());
@@ -4526,7 +4526,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                              "too few lifetime parameters provided: \
                               expected {}, found {}",
                              expected_text, actual_text)
-                .span_label(span, &format!("expected {}", expected_text))
+                .span_label(span, format!("expected {}", expected_text))
                 .emit();
         }
 
@@ -4551,7 +4551,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                              "too many type parameters provided: \
                               expected at most {}, found {}",
                              expected_text, actual_text)
-                .span_label(span, &format!("expected {}", expected_text))
+                .span_label(span, format!("expected {}", expected_text))
                 .emit();
 
             // To prevent derived errors to accumulate due to extra
@@ -4565,7 +4565,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                              "too few type parameters provided: \
                               expected {}, found {}",
                              expected_text, actual_text)
-                .span_label(span, &format!("expected {}", expected_text))
+                .span_label(span, format!("expected {}", expected_text))
                 .emit();
         }
 
@@ -4654,7 +4654,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             struct_span_err!(tcx.sess, param.span, E0091,
                 "type parameter `{}` is unused",
                 param.name)
-                .span_label(param.span, &format!("unused type parameter"))
+                .span_label(param.span, "unused type parameter")
                 .emit();
         }
     }
