@@ -4,7 +4,7 @@ extern crate rustc;
 extern crate rustc_driver;
 extern crate test;
 
-use self::miri::{eval_main, run_mir_passes};
+use self::miri::eval_main;
 use self::rustc::session::Session;
 use self::rustc_driver::{driver, CompilerCalls, Compilation};
 use std::cell::RefCell;
@@ -55,7 +55,6 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls<'a> {
                 .expect("no main or start function found");
             let entry_def_id = tcx.map.local_def_id(entry_node_id);
 
-            run_mir_passes(tcx);
             let memory_size = 100*1024*1024; // 100MB
             let step_limit = 1000_000;
             let stack_limit = 100;

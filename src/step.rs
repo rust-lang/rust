@@ -2,8 +2,6 @@
 //!
 //! The main entry point is the `step` method.
 
-use std::cell::Ref;
-
 use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::mir::visit::{Visitor, LvalueContext};
@@ -12,7 +10,7 @@ use rustc::ty::layout::Layout;
 use rustc::ty::{subst, self};
 
 use error::{EvalResult, EvalError};
-use eval_context::{EvalContext, StackPopCleanup, MirRef};
+use eval_context::{EvalContext, StackPopCleanup};
 use lvalue::{Global, GlobalId, Lvalue};
 use value::{Value, PrimVal};
 use syntax::codemap::Span;
@@ -47,7 +45,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 span: stmt.source_info.span,
                 instance: self.frame().instance,
                 ecx: self,
-                mir: Ref::clone(&mir),
+                mir,
                 new_constants: &mut new,
             }.visit_statement(block, stmt, mir::Location { block, statement_index: stmt_id });
             if new? == 0 {
@@ -64,7 +62,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             span: terminator.source_info.span,
             instance: self.frame().instance,
             ecx: self,
-            mir: Ref::clone(&mir),
+            mir,
             new_constants: &mut new,
         }.visit_terminator(block, terminator, mir::Location { block, statement_index: stmt_id });
         if new? == 0 {
@@ -142,7 +140,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
     span: Span,
     ecx: &'a mut EvalContext<'b, 'tcx>,
-    mir: MirRef<'tcx>,
+    mir: &'tcx mir::Mir<'tcx>,
     instance: ty::Instance<'tcx>,
     new_constants: &'a mut EvalResult<'tcx, u64>,
 }
@@ -209,8 +207,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                 if self.ecx.globals.contains_key(&cid) {
                     return;
                 }
-                let mir = Ref::clone(&self.mir);
-                let mir = Ref::map(mir, |mir| &mir.promoted[index]);
+                let mir = &self.mir.promoted[index];
                 self.try(|this| {
                     let ty = this.ecx.monomorphize(mir.return_ty, this.instance.substs);
                     this.ecx.globals.insert(cid, Global::uninitialized(ty));

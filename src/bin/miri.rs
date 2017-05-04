@@ -74,7 +74,6 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
     state.session.abort_if_errors();
 
     let tcx = state.tcx.unwrap();
-    miri::run_mir_passes(tcx);
     let limits = resource_limits_from_attributes(state);
 
     if std::env::args().any(|arg| arg == "--test") {
