@@ -66,14 +66,14 @@
 //! not ([`None`]).
 //!
 //! ```
-//! let optional: Option<Box<i32>> = None;
-//! check_optional(&optional);
+//! let optional = None;
+//! check_optional(optional);
 //!
-//! let optional: Option<Box<i32>> = Some(Box::new(9000));
-//! check_optional(&optional);
+//! let optional = Some(Box::new(9000));
+//! check_optional(optional);
 //!
-//! fn check_optional(optional: &Option<Box<i32>>) {
-//!     match *optional {
+//! fn check_optional(optional: Option<Box<i32>>) {
+//!     match optional {
 //!         Some(ref p) => println!("has value {}", p),
 //!         None => println!("has no value"),
 //!     }
