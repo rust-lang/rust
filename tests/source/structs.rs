@@ -180,3 +180,11 @@ struct Deep {
 }
 
 struct Foo<C=()>(String);
+
+// #1364
+fn foo() {
+    convex_shape.set_point(0, &Vector2f { x: 400.0, y: 100.0 });
+    convex_shape.set_point(1, &Vector2f { x: 500.0, y: 70.0 });
+    convex_shape.set_point(2, &Vector2f { x: 450.0, y: 100.0 });
+    convex_shape.set_point(3, &Vector2f { x: 580.0, y: 150.0 });
+}

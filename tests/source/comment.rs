@@ -33,6 +33,12 @@ fn test() {
 
     funk(); //dontchangeme
             // or me
+
+    // #1388
+    const EXCEPTION_PATHS: &'static [&'static str] =
+        &[// std crates
+          "src/libstd/sys/", // Platform-specific code for std lives here.
+          "src/bootstrap"];
 }
 
   /// test123
