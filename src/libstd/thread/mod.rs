@@ -66,7 +66,7 @@
 //! let res = child.join();
 //! ```
 //!
-//! The [`join`] method returns a [`Result`] containing [`Ok`] of the final
+//! The [`join`] method returns a [`thread::Result`] containing [`Ok`] of the final
 //! value produced by the child thread, or [`Err`] of the value given to
 //! a call to [`panic!`] if the child panicked.
 //!
