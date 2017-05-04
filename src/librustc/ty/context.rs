@@ -482,14 +482,6 @@ pub struct GlobalCtxt<'tcx> {
     /// about.
     pub used_mut_nodes: RefCell<NodeSet>,
 
-    /// The set of external nominal types whose implementations have been read.
-    /// This is used for lazy resolution of methods.
-    pub populated_external_types: RefCell<DefIdSet>,
-
-    /// The set of external primitive types whose implementations have been read.
-    /// FIXME(arielb1): why is this separate from populated_external_types?
-    pub populated_external_primitive_impls: RefCell<DefIdSet>,
-
     /// Maps any item's def-id to its stability index.
     pub stability: RefCell<stability::Index<'tcx>>,
 
@@ -767,8 +759,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             lang_items: lang_items,
             used_unsafe: RefCell::new(NodeSet()),
             used_mut_nodes: RefCell::new(NodeSet()),
-            populated_external_types: RefCell::new(DefIdSet()),
-            populated_external_primitive_impls: RefCell::new(DefIdSet()),
             stability: RefCell::new(stability),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
