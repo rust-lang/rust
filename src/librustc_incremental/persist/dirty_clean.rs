@@ -383,7 +383,7 @@ fn check_config(tcx: TyCtxt, attr: &Attribute) -> bool {
 
     tcx.sess.span_fatal(
         attr.span,
-        &format!("no cfg attribute"));
+        "no cfg attribute");
 }
 
 fn expect_associated_value(tcx: TyCtxt, item: &NestedMetaItem) -> ast::Name {

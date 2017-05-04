@@ -546,7 +546,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     "{} of possibly uninitialized variable: `{}`",
                     verb,
                     self.loan_path_to_string(lp))
-                .span_label(use_span, &format!("use of possibly uninitialized `{}`",
+                .span_label(use_span, format!("use of possibly uninitialized `{}`",
                     self.loan_path_to_string(lp)))
                 .emit();
                 return;
@@ -616,12 +616,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         err = if use_span == move_span {
             err.span_label(
                 use_span,
-                &format!("value moved{} here in previous iteration of loop",
+                format!("value moved{} here in previous iteration of loop",
                          move_note));
             err
         } else {
-            err.span_label(use_span, &format!("value {} here after move", verb_participle))
-               .span_label(move_span, &format!("value moved{} here", move_note));
+            err.span_label(use_span, format!("value {} here after move", verb_participle))
+               .span_label(move_span, format!("value moved{} here", move_note));
             err
         };
 
@@ -657,9 +657,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             self.tcx.sess, span, E0384,
             "re-assignment of immutable variable `{}`",
             self.loan_path_to_string(lp));
-        err.span_label(span, &format!("re-assignment of immutable variable"));
+        err.span_label(span, "re-assignment of immutable variable");
         if span != assign.span {
-            err.span_label(assign.span, &format!("first assignment to `{}`",
+            err.span_label(assign.span, format!("first assignment to `{}`",
                                               self.loan_path_to_string(lp)));
         }
         err.emit();
@@ -821,7 +821,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess, span, E0389,
                     "{} in a `&` reference", prefix);
-                err.span_label(span, &"assignment into an immutable reference");
+                err.span_label(span, "assignment into an immutable reference");
                 err
             }
         };
@@ -914,7 +914,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         }
                         db.span_label(
                             let_span,
-                            &format!("consider changing this to `mut {}`", snippet)
+                            format!("consider changing this to `mut {}`", snippet)
                         );
                     }
                 }
@@ -927,7 +927,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         if let Ok(snippet) = snippet {
                             db.span_label(
                                 let_span,
-                                &format!("consider changing this to `{}`",
+                                format!("consider changing this to `{}`",
                                          snippet.replace("ref ", "ref mut "))
                             );
                         }
@@ -936,7 +936,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         if let (Some(local_ty), is_implicit_self) = self.local_ty(node_id) {
                             if let Some(msg) =
                                  self.suggest_mut_for_immutable(local_ty, is_implicit_self) {
-                                db.span_label(local_ty.span, &msg);
+                                db.span_label(local_ty.span, msg);
                             }
                         }
                     }
@@ -950,7 +950,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
                 if let hir_map::Node::NodeField(ref field) = self.tcx.hir.get(node_id) {
                     if let Some(msg) = self.suggest_mut_for_immutable(&field.ty, false) {
-                        db.span_label(field.ty.span, &msg);
+                        db.span_label(field.ty.span, msg);
                     }
                 }
             }
@@ -975,10 +975,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                           which is owned by the current function",
                          cmt_path_or_string)
             .span_label(capture_span,
-                       &format!("{} is borrowed here",
+                       format!("{} is borrowed here",
                                 cmt_path_or_string))
             .span_label(err.span,
-                       &format!("may outlive borrowed value {}",
+                       format!("may outlive borrowed value {}",
                                 cmt_path_or_string))
             .span_suggestion(err.span,
                              &format!("to force the closure to take ownership of {} \
@@ -1029,15 +1029,15 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         match db.span.primary_span() {
                             Some(primary) => {
                                 db.span = MultiSpan::from_span(s);
-                                db.span_label(primary, &format!("capture occurs here"));
-                                db.span_label(s, &"does not live long enough");
+                                db.span_label(primary, "capture occurs here");
+                                db.span_label(s, "does not live long enough");
                                 true
                             }
                             None => false
                         }
                     }
                     _ => {
-                        db.span_label(error_span, &"does not live long enough");
+                        db.span_label(error_span, "does not live long enough");
                         false
                     }
                 };
@@ -1049,7 +1049,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     (Some(s1), Some(s2)) if s1 == s2 => {
                         if !is_closure {
                             db.span = MultiSpan::from_span(s1);
-                            db.span_label(error_span, &value_msg);
+                            db.span_label(error_span, value_msg);
                             let msg = match opt_loan_path(&err.cmt) {
                                 None => value_kind.to_string(),
                                 Some(lp) => {
@@ -1057,29 +1057,29 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                 }
                             };
                             db.span_label(s1,
-                                          &format!("{} dropped here while still borrowed", msg));
+                                          format!("{} dropped here while still borrowed", msg));
                         } else {
-                            db.span_label(s1, &format!("{} dropped before borrower", value_kind));
+                            db.span_label(s1, format!("{} dropped before borrower", value_kind));
                         }
                         db.note("values in a scope are dropped in the opposite order \
                                 they are created");
                     }
                     (Some(s1), Some(s2)) if !is_closure => {
                         db.span = MultiSpan::from_span(s2);
-                        db.span_label(error_span, &value_msg);
+                        db.span_label(error_span, value_msg);
                         let msg = match opt_loan_path(&err.cmt) {
                             None => value_kind.to_string(),
                             Some(lp) => {
                                 format!("`{}`", self.loan_path_to_string(&lp))
                             }
                         };
-                        db.span_label(s2, &format!("{} dropped here while still borrowed", msg));
-                        db.span_label(s1, &format!("{} needs to live until here", value_kind));
+                        db.span_label(s2, format!("{} dropped here while still borrowed", msg));
+                        db.span_label(s1, format!("{} needs to live until here", value_kind));
                     }
                     _ => {
                         match sub_span {
                             Some(s) => {
-                                db.span_label(s, &format!("{} needs to live until here",
+                                db.span_label(s, format!("{} needs to live until here",
                                                           value_kind));
                             }
                             None => {
@@ -1092,7 +1092,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         }
                         match super_span {
                             Some(s) => {
-                                db.span_label(s, &format!("{} only lives until here", value_kind));
+                                db.span_label(s, format!("{} only lives until here", value_kind));
                             }
                             None => {
                                 self.tcx.note_and_explain_region(
@@ -1162,23 +1162,23 @@ before rustc 1.16, this temporary lived longer - see issue #39283 \
             }
             _ => {
                 if let Categorization::Deref(..) = err.cmt.cat {
-                    db.span_label(*error_span, &"cannot borrow as mutable");
+                    db.span_label(*error_span, "cannot borrow as mutable");
                 } else if let Categorization::Local(local_id) = err.cmt.cat {
                     let span = self.tcx.hir.span(local_id);
                     if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
                         if snippet.starts_with("ref mut ") || snippet.starts_with("&mut ") {
-                            db.span_label(*error_span, &format!("cannot reborrow mutably"));
-                            db.span_label(*error_span, &format!("try removing `&mut` here"));
+                            db.span_label(*error_span, "cannot reborrow mutably");
+                            db.span_label(*error_span, "try removing `&mut` here");
                         } else {
-                            db.span_label(*error_span, &format!("cannot borrow mutably"));
+                            db.span_label(*error_span, "cannot borrow mutably");
                         }
                     } else {
-                        db.span_label(*error_span, &format!("cannot borrow mutably"));
+                        db.span_label(*error_span, "cannot borrow mutably");
                     }
                 } else if let Categorization::Interior(ref cmt, _) = err.cmt.cat {
                     if let mc::MutabilityCategory::McImmutable = cmt.mutbl {
                         db.span_label(*error_span,
-                                      &"cannot mutably borrow immutable field");
+                                      "cannot mutably borrow immutable field");
                     }
                 }
             }

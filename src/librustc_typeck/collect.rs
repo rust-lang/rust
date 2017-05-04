@@ -220,7 +220,7 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
             span,
             E0121,
             "the type placeholder `_` is not allowed within types on item signatures"
-        ).span_label(span, &format!("not allowed in type signatures"))
+        ).span_label(span, "not allowed in type signatures")
         .emit();
         self.tcx().types.err
     }
@@ -568,7 +568,7 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         } else {
             struct_span_err!(tcx.sess, variant.span, E0370,
                              "enum discriminant overflowed")
-                .span_label(variant.span, &format!("overflowed on value after {}",
+                .span_label(variant.span, format!("overflowed on value after {}",
                                                    prev_discr.unwrap()))
                 .note(&format!("explicitly set `{} = {}` if that is desired outcome",
                                variant.node.name, wrapped_discr))
@@ -604,8 +604,8 @@ fn convert_struct_variant<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             struct_span_err!(tcx.sess, f.span, E0124,
                              "field `{}` is already declared",
                              f.name)
-                .span_label(f.span, &"field already declared")
-                .span_label(prev_span, &format!("`{}` first declared here", f.name))
+                .span_label(f.span, "field already declared")
+                .span_label(prev_span, format!("`{}` first declared here", f.name))
                 .emit();
         } else {
             seen_fields.insert(f.name, f.span);

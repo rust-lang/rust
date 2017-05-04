@@ -155,7 +155,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                        },
                                        self.expr_ty);
                 err.span_label(error_span,
-                               &format!("cannot cast `{}` as `{}`",
+                               format!("cannot cast `{}` as `{}`",
                                         fcx.ty_to_string(self.expr_ty),
                                         cast_ty));
                 if let Ok(snippet) = fcx.sess().codemap().span_to_snippet(self.expr.span) {
@@ -200,7 +200,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             }
             CastError::CastToBool => {
                 struct_span_err!(fcx.tcx.sess, self.span, E0054, "cannot cast as `bool`")
-                    .span_label(self.span, &format!("unsupported cast"))
+                    .span_label(self.span, "unsupported cast")
                     .help("compare with zero instead")
                     .emit();
             }

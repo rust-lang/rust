@@ -630,7 +630,7 @@ impl<'a> Resolver<'a> {
                     err.help(&format!("did you mean `{}`?", suggestion));
                 }
             } else {
-                err.help(&format!("have you added the `#[macro_use]` on the module/import?"));
+                err.help("have you added the `#[macro_use]` on the module/import?");
             }
         }
     }

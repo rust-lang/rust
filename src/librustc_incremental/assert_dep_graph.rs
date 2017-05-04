@@ -154,7 +154,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                     None => {
                         self.tcx.sess.span_fatal(
                             attr.span,
-                            &format!("missing DepNode variant"));
+                            "missing DepNode variant");
                     }
                 };
                 self.then_this_would_need.push((attr.span,
@@ -201,7 +201,7 @@ fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         for &(target_span, _, _, _) in then_this_would_need {
             tcx.sess.span_err(
                 target_span,
-                &format!("no #[rustc_if_this_changed] annotation detected"));
+                "no #[rustc_if_this_changed] annotation detected");
 
         }
         return;
@@ -219,7 +219,7 @@ fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             } else {
                 tcx.sess.span_err(
                     target_span,
-                    &format!("OK"));
+                    "OK");
             }
         }
     }

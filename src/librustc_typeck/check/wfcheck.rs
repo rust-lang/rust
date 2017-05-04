@@ -684,7 +684,7 @@ fn error_392<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span, param_name: ast:
                        -> DiagnosticBuilder<'tcx> {
     let mut err = struct_span_err!(tcx.sess, span, E0392,
                   "parameter `{}` is never used", param_name);
-    err.span_label(span, &format!("unused type parameter"));
+    err.span_label(span, "unused type parameter");
     err
 }
 
@@ -692,7 +692,7 @@ fn error_194(tcx: TyCtxt, span: Span, trait_decl_span: Span, name: ast::Name) {
     struct_span_err!(tcx.sess, span, E0194,
               "type parameter `{}` shadows another type parameter of the same name",
               name)
-        .span_label(span, &format!("shadows another type parameter"))
-        .span_label(trait_decl_span, &format!("first `{}` declared here", name))
+        .span_label(span, "shadows another type parameter")
+        .span_label(trait_decl_span, format!("first `{}` declared here", name))
         .emit();
 }

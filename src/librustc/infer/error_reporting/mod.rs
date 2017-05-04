@@ -668,9 +668,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        diag.span_label(span, &terr);
+        diag.span_label(span, terr.to_string());
         if let Some((sp, msg)) = secondary_span {
-            diag.span_label(sp, &msg);
+            diag.span_label(sp, msg);
         }
 
         self.note_error_origin(diag, &cause);
