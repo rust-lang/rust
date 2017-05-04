@@ -232,12 +232,14 @@ mod option {
 }    
 ```
 
-Note the use of the `Missing` type. This is intended to mitigate the
+Note the use of the `Missing` type, which is specific to `Option`,
+rather than a generic type like `()`. This is intended to mitigate the
 risk of accidental `Result -> Option` conversion. In particular, we
 will only allow conversion from `Result<T, Missing>` to `Option<T>`.
 The idea is that if one uses the `Missing` type as an error, that
 indicates an error that can be "handled" by converting the value into
-an `Option`.
+an `Option`. (This rationale was originally
+[explained in a comment by Aaron Turon](https://github.com/rust-lang/rfcs/pull/1859#issuecomment-282091865).)
 
 The use of a fresh type like `Missing` is recommended whenever one
 implements `Try` for a type that does not have the `#[must_use]`
@@ -402,7 +404,8 @@ the type of `x` is `Result`.
 
 There is also the risk that results or other "must use" values are
 accidentally converted into other types. This is mitigated by the use
-of newtypes like `option::Missing`.
+of newtypes like `option::Missing` (rather than, say, a generic type
+like `()`).
 
 # Alternatives
 [alternatives]: #alternatives
@@ -432,8 +435,9 @@ context using `from_error`. The reasons for the change are roughly as follows:
 - The resulting trait feels simpler and more straight-forward. It also
   supports `from_ok` in a simple fashion.
 - Context dependent behavior has the potential to be quite surprising.
-- The use of types like `option::Missing` mitigates the primary concern that
-  motivated the original design (avoiding overly loose interconversion).
+- The use of specific types like `option::Missing` mitigates the
+  primary concern that motivated the original design (avoiding overly
+  loose interconversion).
 - It is nice that the use of the `From` trait is now part of the `?` desugaring,
   and hence supported universally across all types.
 - The interaction with the orphan rules is made somewhat nicer. For example,
@@ -459,7 +463,7 @@ implement `Try` on `Result`, which has kind `type -> type ->
 type`. There has even been talk of implementing `Try` for simple types
 like `bool`, which simply have kind `type`. More generally, the
 problems encountered are quite similar to the problems that
-[Simon Peyton-Jones describes in attempting to model collections using HKT](https://github.com/rust-lang/rust/pull/35056#issuecomment-240129923):
+[Simon Peyton-Jones describes in attempting to model collections using HKT](https://www.microsoft.com/en-us/research/wp-content/uploads/1997/01/multi.pdf):
 we wish the `Try` trait to be implemented in a great number of
 scenarios.  Some of them, like converting `Result<T,E>` to
 `Result<U,F>`, allow for the type of the success value and the error
@@ -477,7 +481,7 @@ value. A proposed alternative was `QuestionMark`, named after the
 operator `?`. However, the general consensus seemed to be that since
 Rust operator overloading traits tend to be named after the
 *operation* that the operator performed (e.g., `Add` and not `Plus`,
-`Deref` and not `Star` or `Asterix`), it was more appropriate to name
+`Deref` and not `Star` or `Asterisk`), it was more appropriate to name
 the trait `Try`, which seems to be the best name for the operation in
 question.
 
