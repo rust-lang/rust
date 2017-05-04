@@ -159,7 +159,7 @@
 //! [`panic!`]: ../../std/macro.panic.html
 //! [`Builder`]: ../../std/thread/struct.Builder.html
 //! [`thread::current`]: ../../std/thread/fn.current.html
-//! [`thread::Result`]: ../../std/thread/struct.Result.html
+//! [`thread::Result`]: ../../std/thread/type.Result.html
 //! [`Thread`]: ../../std/thread/struct.Thread.html
 //! [`park`]: ../../std/thread/fn.park.html
 //! [`unpark`]: ../../std/thread/struct.Thread.html#method.unpark
