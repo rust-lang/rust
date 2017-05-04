@@ -166,9 +166,7 @@ pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
     old_find_testable_code(&input_str, &mut collector, DUMMY_SP);
     find_testable_code(&input_str, &mut collector, DUMMY_SP);
     test_args.insert(0, "rustdoctest".to_string());
-    if display_warnings {
-        test_args.insert(1, "--display-stdout".to_string());
-    }
-    testing::test_main(&test_args, collector.tests);
+    testing::test_main(&test_args, collector.tests,
+                       testing::Options::new().display_output(display_warnings));
     0
 }

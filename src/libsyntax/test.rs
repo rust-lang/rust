@@ -442,7 +442,7 @@ We're going to be building a module that looks more or less like:
 mod __test {
   extern crate test (name = "test", vers = "...");
   fn main() {
-    test::test_main_static(&::os::args()[], tests)
+    test::test_main_static(&::os::args()[], tests, test::Options::new())
   }
 
   static tests : &'static [test::TestDescAndFn] = &[
@@ -478,7 +478,7 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
     //        pub fn main() {
     //            #![main]
     //            use std::slice::AsSlice;
-    //            test::test_main_static(::std::os::args().as_slice(), TESTS);
+    //            test::test_main_static(::std::os::args().as_slice(), TESTS, test::Options::new());
     //        }
 
     let sp = ignored_span(cx, DUMMY_SP);
