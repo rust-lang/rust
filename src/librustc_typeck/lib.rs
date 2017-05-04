@@ -122,14 +122,14 @@ use std::iter;
 // registered before they are used.
 pub mod diagnostics;
 
-pub mod check;
-pub mod check_unused;
+mod check;
+mod check_unused;
 mod astconv;
-pub mod collect;
+mod collect;
 mod constrained_type_params;
 mod impl_wf_check;
-pub mod coherence;
-pub mod variance;
+mod coherence;
+mod variance;
 
 pub struct TypeAndSubsts<'tcx> {
     pub substs: &'tcx Substs<'tcx>,
@@ -335,6 +335,18 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     } else {
         Err(err_count)
     }
+}
+
+/// A quasi-deprecated helper used in rustdoc and save-analysis to get
+/// the type from a HIR node.
+pub fn hir_ty_to_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx> {
+    // In case there are any projections etc, find the "environment"
+    // def-id that will be used to determine the traits/predicates in
+    // scope.  This is derived from the enclosing item-like thing.
+    let env_node_id = tcx.hir.get_parent(hir_ty.id);
+    let env_def_id = tcx.hir.local_def_id(env_node_id);
+    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
+    item_cx.to_ty(hir_ty)
 }
 
 __build_diagnostic_array! { librustc_typeck, DIAGNOSTICS }
