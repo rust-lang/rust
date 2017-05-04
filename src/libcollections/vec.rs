@@ -67,7 +67,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use alloc::boxed::Box;
-use alloc::heap::EMPTY;
 use alloc::raw_vec::RawVec;
 use borrow::ToOwned;
 use borrow::Cow;
@@ -2192,7 +2191,8 @@ impl<T> Iterator for IntoIter<T> {
                     self.ptr = arith_offset(self.ptr as *const i8, 1) as *mut T;
 
                     // Use a non-null pointer value
-                    Some(ptr::read(EMPTY as *mut T))
+                    // (self.ptr might be null because of wrapping)
+                    Some(ptr::read(1 as *mut T))
                 } else {
                     let old = self.ptr;
                     self.ptr = self.ptr.offset(1);
@@ -2231,7 +2231,8 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
                     self.end = arith_offset(self.end as *const i8, -1) as *mut T;
 
                     // Use a non-null pointer value
-                    Some(ptr::read(EMPTY as *mut T))
+                    // (self.end might be null because of wrapping)
+                    Some(ptr::read(1 as *mut T))
                 } else {
                     self.end = self.end.offset(-1);
 
