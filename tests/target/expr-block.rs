@@ -101,7 +101,7 @@ fn arrays() {
             Weighted { weight: 1, item: 1 },
             Weighted { weight: x, item: 2 },
             Weighted { weight: 1, item: 3 },
-        ],
+        ]
     );
 
     let z = [
