@@ -41,8 +41,6 @@ use rustc::hir::svh::Svh;
 use rustc_back::target::Target;
 use rustc::hir;
 
-use std::collections::BTreeMap;
-
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $cdata:ident $($name:ident => $compute:block)*) => {
         pub fn provide<$lt>(providers: &mut Providers<$lt>) {
@@ -121,21 +119,11 @@ provide! { <'tcx> tcx, def_id, cdata
     fn_arg_names => { cdata.get_fn_arg_names(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
-    item_body_nested_bodies => {
-        let map: BTreeMap<_, _> = cdata.entry(def_id.index).ast.into_iter().flat_map(|ast| {
-            ast.decode(cdata).nested_bodies.decode(cdata).map(|body| (body.id(), body))
-        }).collect();
-
-        Rc::new(map)
-    }
+    item_body_nested_bodies => { Rc::new(cdata.item_body_nested_bodies(def_id.index)) }
     const_is_rvalue_promotable_to_static => {
-        cdata.entry(def_id.index).ast.expect("const item missing `ast`")
-            .decode(cdata).rvalue_promotable_to_static
+        cdata.const_is_rvalue_promotable_to_static(def_id.index)
     }
-    is_mir_available => {
-        !cdata.is_proc_macro(def_id.index) &&
-        cdata.maybe_entry(def_id.index).and_then(|item| item.decode(cdata).mir).is_some()
-    }
+    is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 }
 
 impl CrateStore for cstore::CStore {
