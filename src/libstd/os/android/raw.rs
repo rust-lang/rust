@@ -36,7 +36,6 @@ mod arch {
     pub type dev_t = u64;
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type mode_t = u32;
-
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type blkcnt_t = u64;
     #[stable(feature = "raw_ext", since = "1.1.0")]
@@ -93,20 +92,18 @@ mod arch {
         #[stable(feature = "raw_ext", since = "1.1.0")]
         pub st_ino: c_ulonglong,
     }
-
 }
 
 
 #[cfg(target_arch = "aarch64")]
 mod arch {
-    use os::raw::{c_uchar, c_ulong};
+    use os::raw::{c_uint, c_int, c_ulong, c_long};
     use os::unix::raw::{uid_t, gid_t};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type dev_t = u64;
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type mode_t = u32;
-
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type blkcnt_t = u64;
     #[stable(feature = "raw_ext", since = "1.1.0")]
@@ -127,13 +124,11 @@ mod arch {
         #[stable(feature = "raw_ext", since = "1.1.0")]
         pub st_dev: dev_t,
         #[stable(feature = "raw_ext", since = "1.1.0")]
-        pub __pad0: [c_uchar; 4],
-        #[stable(feature = "raw_ext", since = "1.1.0")]
-        pub __st_ino: ino_t,
+        pub st_ino: ino_t,
         #[stable(feature = "raw_ext", since = "1.1.0")]
         pub st_mode: mode_t,
         #[stable(feature = "raw_ext", since = "1.1.0")]
-        pub st_nlink: nlink_t,
+        pub st_nlink: c_uint,
         #[stable(feature = "raw_ext", since = "1.1.0")]
         pub st_uid: uid_t,
         #[stable(feature = "raw_ext", since = "1.1.0")]
@@ -141,13 +136,15 @@ mod arch {
         #[stable(feature = "raw_ext", since = "1.1.0")]
         pub st_rdev: dev_t,
         #[stable(feature = "raw_ext", since = "1.1.0")]
-        pub __pad3: [c_uchar; 4],
+        pub __pad1: c_ulong,
         #[stable(feature = "raw_ext", since = "1.1.0")]
-        pub st_size: off_t,
+        pub st_size: i64,
         #[stable(feature = "raw_ext", since = "1.1.0")]
-        pub st_blksize: blksize_t,
+        pub st_blksize: c_int,
         #[stable(feature = "raw_ext", since = "1.1.0")]
-        pub st_blocks: blkcnt_t,
+        pub __pad2: c_int,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub st_blocks: c_long,
         #[stable(feature = "raw_ext", since = "1.1.0")]
         pub st_atime: time_t,
         #[stable(feature = "raw_ext", since = "1.1.0")]
@@ -161,9 +158,12 @@ mod arch {
         #[stable(feature = "raw_ext", since = "1.1.0")]
         pub st_ctime_nsec: c_ulong,
         #[stable(feature = "raw_ext", since = "1.1.0")]
-        pub st_ino: ino_t,
+        pub __unused4: c_uint,
+        #[stable(feature = "raw_ext", since = "1.1.0")]
+        pub __unused5: c_uint,
     }
 }
+
 
 #[cfg(target_arch = "x86_64")]
 mod arch {
@@ -174,7 +174,6 @@ mod arch {
     pub type dev_t = u64;
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type mode_t = u32;
-
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type blkcnt_t = u64;
     #[stable(feature = "raw_ext", since = "1.1.0")]
@@ -182,7 +181,7 @@ mod arch {
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type ino_t = u64;
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub type nlink_t = u32;
+    pub type nlink_t = u64;
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type off_t = u64;
     #[stable(feature = "raw_ext", since = "1.1.0")]
@@ -227,4 +226,3 @@ mod arch {
         __unused: [c_long; 3],
     }
 }
-
