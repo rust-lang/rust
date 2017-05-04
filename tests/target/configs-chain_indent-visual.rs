@@ -7,5 +7,5 @@ fn main() {
                      .amet()
                      .consectetur()
                      .adipiscing()
-                     .elit();
+                     .elite();
 }

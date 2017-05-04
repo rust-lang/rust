@@ -278,8 +278,7 @@ impl<'a> FmtVisitor<'a> {
             result.push(' ');
         }
 
-        self.single_line_fn(&result, block)
-            .or_else(|| Some(result))
+        self.single_line_fn(&result, block).or_else(|| Some(result))
     }
 
     pub fn rewrite_required_fn(&mut self,
@@ -912,9 +911,7 @@ fn format_struct_struct(context: &RewriteContext,
         let snippet = context.snippet(mk_sp(body_lo, span.hi - BytePos(1)));
         if snippet.trim().is_empty() {
             // `struct S {}`
-        } else if snippet
-                      .trim_right_matches(&[' ', '\t'][..])
-                      .ends_with('\n') {
+        } else if snippet.trim_right_matches(&[' ', '\t'][..]).ends_with('\n') {
             // fix indent
             result.push_str(&snippet.trim_right());
             result.push('\n');
@@ -1030,9 +1027,7 @@ fn format_tuple_struct(context: &RewriteContext,
         let snippet = context.snippet(mk_sp(body_lo, context.codemap.span_before(span, ")")));
         if snippet.is_empty() {
             // `struct S ()`
-        } else if snippet
-                      .trim_right_matches(&[' ', '\t'][..])
-                      .ends_with('\n') {
+        } else if snippet.trim_right_matches(&[' ', '\t'][..]).ends_with('\n') {
             result.push_str(&snippet.trim_right());
             result.push('\n');
             result.push_str(&offset.to_string(context.config));
@@ -1229,8 +1224,7 @@ impl Rewrite for ast::StructField {
         let type_offset = shape.indent.block_indent(context.config);
         let rewrite_type_in_next_line = || {
             let budget = try_opt!(context.config.max_width.checked_sub(type_offset.width()));
-            self.ty
-                .rewrite(context, Shape::legacy(budget, type_offset))
+            self.ty.rewrite(context, Shape::legacy(budget, type_offset))
         };
 
         let last_line_width = last_line_width(&result) + type_annotation_spacing.1.len();

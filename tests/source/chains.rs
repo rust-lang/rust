@@ -13,6 +13,8 @@ fn main() {
 
     bbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccc.ddddddddddddddddddddddddddd.eeeeeeee();
 
+    let f = fooooooooooooooooooooooooooooooooooooooooooooooooooo.baaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaar;
+
     // Test case where first chain element isn't a path, but is shorter than
     // the size of a tab.
     x()

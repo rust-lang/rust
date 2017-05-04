@@ -176,9 +176,15 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
     let one_line_len = rewrites.iter().fold(0, |a, r| a + r.len()) + parent_rewrite.len();
 
-    let veto_single_line = if one_line_len > context.config.chain_one_line_max - 1 &&
-                              rewrites.len() > 1 {
-        true
+    let veto_single_line = if one_line_len > context.config.chain_one_line_max {
+        if rewrites.len() > 1 {
+            true
+        } else if rewrites.len() == 1 {
+            let one_line_len = parent_rewrite.len() + first_line_width(&rewrites[0]);
+            one_line_len > shape.width
+        } else {
+            false
+        }
     } else if context.config.take_source_hints && subexpr_list.len() > 1 {
         // Look at the source code. Unless all chain elements start on the same
         // line, we won't consider putting them on a single line either.
