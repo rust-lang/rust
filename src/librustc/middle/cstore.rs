@@ -191,7 +191,6 @@ pub trait CrateStore {
     fn impl_parent(&self, impl_def_id: DefId) -> Option<DefId>;
 
     // trait/impl-item info
-    fn trait_of_item(&self, def_id: DefId) -> Option<DefId>;
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem;
 
     // flags
@@ -316,7 +315,6 @@ impl CrateStore for DummyCrateStore {
     fn impl_parent(&self, def: DefId) -> Option<DefId> { bug!("impl_parent") }
 
     // trait/impl-item info
-    fn trait_of_item(&self, def_id: DefId) -> Option<DefId> { bug!("trait_of_item") }
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem
         { bug!("associated_item_cloned") }
 
