@@ -864,7 +864,7 @@ impl fmt::Debug for Thread {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// A specialized [`Result`] type for threads.
-/// 
+///
 /// Indicates the manner in which a thread exited.
 ///
 /// A thread that completes without panicking is considered to exit successfully.
