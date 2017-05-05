@@ -217,6 +217,7 @@
     - [unique](library-features/unique.md)
     - [unsize](library-features/unsize.md)
     - [utf8_error_error_len](library-features/utf8-error-error-len.md)
+    - [vec_resize_default](library-features/vec-resize-default.md)
     - [vec_remove_item](library-features/vec-remove-item.md)
     - [windows_c](library-features/windows-c.md)
     - [windows_handle](library-features/windows-handle.md)
