@@ -12,7 +12,7 @@ macro_rules! fp_overflow {
     }
 }
 
-macro_rules! fp_convert {
+macro_rules! int_to_float {
     ($intrinsic:ident: $ity:ty, $fty:ty) => {
 
     pub extern "C" fn $intrinsic(i: $ity) -> $fty {
@@ -82,12 +82,12 @@ macro_rules! fp_convert {
     }
 }
 
-fp_convert!(__floatsisf: i32, f32);
-fp_convert!(__floatsidf: i32, f64);
-fp_convert!(__floatdidf: i64, f64);
-fp_convert!(__floatunsisf: u32, f32);
-fp_convert!(__floatunsidf: u32, f64);
-fp_convert!(__floatundidf: u64, f64);
+int_to_float!(__floatsisf: i32, f32);
+int_to_float!(__floatsidf: i32, f64);
+int_to_float!(__floatdidf: i64, f64);
+int_to_float!(__floatunsisf: u32, f32);
+int_to_float!(__floatunsidf: u32, f64);
+int_to_float!(__floatundidf: u64, f64);
 
 #[derive(PartialEq, Debug)]
 enum Sign {
@@ -95,7 +95,7 @@ enum Sign {
     Negative
 }
 
-macro_rules! fp_fix {
+macro_rules! float_to_int {
     ($intrinsic:ident: $fty:ty, $ity:ty) => {
         pub extern "C" fn $intrinsic(f: $fty) -> $ity {
             let fixint_min = <$ity>::min_value();
@@ -147,12 +147,12 @@ macro_rules! fp_fix {
     }
 }
 
-fp_fix!(__fixsfsi: f32, i32);
-fp_fix!(__fixsfdi: f32, i64);
-fp_fix!(__fixdfsi: f64, i32);
-fp_fix!(__fixdfdi: f64, i64);
+float_to_int!(__fixsfsi: f32, i32);
+float_to_int!(__fixsfdi: f32, i64);
+float_to_int!(__fixdfsi: f64, i32);
+float_to_int!(__fixdfdi: f64, i64);
 
-fp_fix!(__fixunssfsi: f32, u32);
-fp_fix!(__fixunssfdi: f32, u64);
-fp_fix!(__fixunsdfsi: f64, u32);
-fp_fix!(__fixunsdfdi: f64, u64);
+float_to_int!(__fixunssfsi: f32, u32);
+float_to_int!(__fixunssfdi: f32, u64);
+float_to_int!(__fixunsdfsi: f64, u32);
+float_to_int!(__fixunsdfdi: f64, u64);
