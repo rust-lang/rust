@@ -176,10 +176,6 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(impl_did.krate).is_default_impl(impl_did.index)
     }
 
-    fn is_foreign_item(&self, did: DefId) -> bool {
-        self.get_crate_data(did.krate).is_foreign_item(did.index)
-    }
-
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool
     {
         self.do_is_statically_included_foreign_item(def_id)
