@@ -18,20 +18,21 @@ use sys::c;
 use sys::handle::Handle;
 use sys_common::thread::*;
 use time::Duration;
+use cell::Cell;
 use sync;
 
-extern "system"
-fn exception_filter(ExceptionInfo: *mut c::EXCEPTION_POINTERS) -> c::LONG {
-    unsafe {
-        let rec = &(*(*ExceptionInfo).ExceptionRecord);
-        let code = rec.ExceptionCode;
+thread_local! {
+    static IGNORE_EXCEPTIONS: Cell<bool> = Cell::new(false);
+}
 
-        if code == c::MS_VC_EXCEPTION {
-            c::EXCEPTION_CONTINUE_EXECUTION
-        } else {
-            c::EXCEPTION_CONTINUE_SEARCH
+extern "system"
+fn exception_filter(_ExceptionInfo: *mut c::EXCEPTION_POINTERS) -> c::LONG {
+    IGNORE_EXCEPTIONS.with(|ignoring| {
+        match ignoring.get() {
+            true => c::EXCEPTION_CONTINUE_EXECUTION,
+            false => c::EXCEPTION_CONTINUE_SEARCH,
         }
-    }
+    })
 }
 
 pub struct Thread {
@@ -97,9 +98,11 @@ impl Thread {
 
         let args = &info as *const _ as *const _;
 
-        unsafe {
-            c::RaiseException(c::MS_VC_EXCEPTION, 0, size, args);
-        }
+        IGNORE_EXCEPTIONS.with(|ignoring| {
+            ignoring.set(true);
+            unsafe { c::RaiseException(c::MS_VC_EXCEPTION, 0, size, args); }
+            ignoring.set(false);
+        });
     }
 
     pub fn join(self) {
