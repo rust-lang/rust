@@ -17,7 +17,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use intrinsics;
-use ops::{CoerceUnsized, Deref};
+use ops::CoerceUnsized;
 use fmt;
 use hash;
 use marker::{PhantomData, Unsize};
@@ -957,13 +957,25 @@ impl<T: ?Sized> PartialOrd for *mut T {
 }
 
 /// A wrapper around a raw non-null `*mut T` that indicates that the possessor
-/// of this wrapper owns the referent. This in turn implies that the
-/// `Unique<T>` is `Send`/`Sync` if `T` is `Send`/`Sync`, unlike a raw
-/// `*mut T` (which conveys no particular ownership semantics).  It
-/// also implies that the referent of the pointer should not be
-/// modified without a unique path to the `Unique` reference. Useful
-/// for building abstractions like `Vec<T>` or `Box<T>`, which
-/// internally use raw pointers to manage the memory that they own.
+/// of this wrapper owns the referent. Useful for building abstractions like
+/// `Box<T>`, `Vec<T>`, `String`, and `HashMap<K, V>`.
+///
+/// Unlike `*mut T`, `Unique<T>` behaves "as if" it were an instance of `T`.
+/// It implements `Send`/`Sync` if `T` is `Send`/`Sync`. It also implies
+/// the kind of strong aliasing guarantees an instance of `T` can expect:
+/// the referent of the pointer should not be modified without a unique path to
+/// its owning Unique.
+///
+/// If you're uncertain of whether it's correct to use `Unique` for your purposes,
+/// consider using `Shared`, which has weaker semantics.
+///
+/// Unlike `*mut T`, the pointer must always be non-null, even if the pointer
+/// is never dereferenced. This is so that enums may use this forbidden value
+/// as a discriminant -- `Option<Unique<T>>` has the same size as `Unique<T>`.
+/// However the pointer may still dangle if it isn't dereferenced.
+///
+/// Unlike `*mut T`, `Unique<T>` is covariant over `T`. This should always be correct
+/// for any type which upholds Unique's aliasing requirements.
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
            issue = "27730")]
@@ -992,6 +1004,20 @@ unsafe impl<T: Send + ?Sized> Send for Unique<T> { }
 unsafe impl<T: Sync + ?Sized> Sync for Unique<T> { }
 
 #[unstable(feature = "unique", issue = "27730")]
+impl<T: Sized> Unique<T> {
+    /// Creates a new `Shared` that is dangling, but well-aligned.
+    ///
+    /// This is useful for initializing types which lazily allocate, like
+    /// `Vec::new` does.
+    pub fn empty() -> Self {
+        unsafe {
+            let ptr = mem::align_of::<T>() as *mut T;
+            Unique::new(ptr)
+        }
+    }
+}
+
+#[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized> Unique<T> {
     /// Creates a new `Unique`.
     ///
@@ -1002,41 +1028,72 @@ impl<T: ?Sized> Unique<T> {
         Unique { pointer: NonZero::new(ptr), _marker: PhantomData }
     }
 
+    /// Acquires the underlying `*mut` pointer.
+    pub fn as_ptr(self) -> *mut T {
+        self.pointer.get() as *mut T
+    }
+
     /// Dereferences the content.
-    pub unsafe fn get(&self) -> &T {
-        &**self.pointer
+    ///
+    /// The resulting lifetime is bound to self so this behaves "as if"
+    /// it were actually an instance of T that is getting borrowed. If a longer
+    /// (unbound) lifetime is needed, use `&*my_ptr.ptr()`.
+    pub unsafe fn as_ref(&self) -> &T {
+        &*self.as_ptr()
     }
 
     /// Mutably dereferences the content.
-    pub unsafe fn get_mut(&mut self) -> &mut T {
-        &mut ***self
+    ///
+    /// The resulting lifetime is bound to self so this behaves "as if"
+    /// it were actually an instance of T that is getting borrowed. If a longer
+    /// (unbound) lifetime is needed, use `&mut *my_ptr.ptr()`.
+    pub unsafe fn as_mut(&mut self) -> &mut T {
+        &mut *self.as_ptr()
     }
 }
+
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: ?Sized> Clone for Unique<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: ?Sized> Copy for Unique<T> { }
 
 #[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> { }
 
-#[unstable(feature = "unique", issue= "27730")]
-impl<T:?Sized> Deref for Unique<T> {
-    type Target = *mut T;
-
-    #[inline]
-    fn deref(&self) -> &*mut T {
-        unsafe { mem::transmute(&*self.pointer) }
-    }
-}
-
 #[unstable(feature = "unique", issue = "27730")]
-impl<T> fmt::Pointer for Unique<T> {
+impl<T: ?Sized> fmt::Pointer for Unique<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Pointer::fmt(&*self.pointer, f)
+        fmt::Pointer::fmt(&self.as_ptr(), f)
     }
 }
 
-/// A wrapper around a raw non-null `*mut T` that indicates that the possessor
+/// A wrapper around a raw `*mut T` that indicates that the possessor
 /// of this wrapper has shared ownership of the referent. Useful for
-/// building abstractions like `Rc<T>` or `Arc<T>`, which internally
-/// use raw pointers to manage the memory that they own.
+/// building abstractions like `Rc<T>`, `Arc<T>`, or doubly-linked lists, which
+/// internally use aliased raw pointers to manage the memory that they own.
+///
+/// This is similar to `Unique`, except that it doesn't make any aliasing
+/// guarantees, and doesn't derive Send and Sync. Note that unlike `&T`,
+/// Shared has no special mutability requirements. Shared may mutate data
+/// aliased by other Shared pointers. More precise rules require Rust to
+/// develop an actual aliasing model.
+///
+/// Unlike `*mut T`, the pointer must always be non-null, even if the pointer
+/// is never dereferenced. This is so that enums may use this forbidden value
+/// as a discriminant -- `Option<Shared<T>>` has the same size as `Shared<T>`.
+/// However the pointer may still dangle if it isn't dereferenced.
+///
+/// Unlike `*mut T`, `Shared<T>` is covariant over `T`. If this is incorrect
+/// for your use case, you should include some PhantomData in your type to
+/// provide invariance, such as `PhantomData<Cell<T>>` or `PhantomData<&'a mut T>`.
+/// Usually this won't be necessary; covariance is correct for Rc, Arc, and LinkedList
+/// because they provide a public API that follows the normal shared XOR mutable
+/// rules of Rust.
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "shared", reason = "needs an RFC to flesh out design",
            issue = "27730")]
@@ -1061,22 +1118,58 @@ impl<T: ?Sized> !Send for Shared<T> { }
 impl<T: ?Sized> !Sync for Shared<T> { }
 
 #[unstable(feature = "shared", issue = "27730")]
+impl<T: Sized> Shared<T> {
+    /// Creates a new `Shared` that is dangling, but well-aligned.
+    ///
+    /// This is useful for initializing types which lazily allocate, like
+    /// `Vec::new` does.
+    pub fn empty() -> Self {
+        unsafe {
+            let ptr = mem::align_of::<T>() as *mut T;
+            Shared::new(ptr)
+        }
+    }
+}
+
+#[unstable(feature = "shared", issue = "27730")]
 impl<T: ?Sized> Shared<T> {
     /// Creates a new `Shared`.
     ///
     /// # Safety
     ///
     /// `ptr` must be non-null.
-    pub unsafe fn new(ptr: *const T) -> Self {
+    pub unsafe fn new(ptr: *mut T) -> Self {
         Shared { pointer: NonZero::new(ptr), _marker: PhantomData }
     }
-}
 
-#[unstable(feature = "shared", issue = "27730")]
-impl<T: ?Sized> Shared<T> {
+    /// Acquires the underlying `*mut` pointer.
+    pub fn as_ptr(self) -> *mut T {
+        self.pointer.get() as *mut T
+    }
+
+    /// Dereferences the content.
+    ///
+    /// The resulting lifetime is bound to self so this behaves "as if"
+    /// it were actually an instance of T that is getting borrowed. If a longer
+    /// (unbound) lifetime is needed, use `&*my_ptr.ptr()`.
+    pub unsafe fn as_ref(&self) -> &T {
+        &*self.as_ptr()
+    }
+
+    /// Mutably dereferences the content.
+    ///
+    /// The resulting lifetime is bound to self so this behaves "as if"
+    /// it were actually an instance of T that is getting borrowed. If a longer
+    /// (unbound) lifetime is needed, use `&mut *my_ptr.ptr_mut()`.
+    pub unsafe fn as_mut(&mut self) -> &mut T {
+        &mut *self.as_ptr()
+    }
+
     /// Acquires the underlying pointer as a `*mut` pointer.
+    #[rustc_deprecated(since = "1.19", reason = "renamed to `as_ptr` for ergonomics/consistency")]
+    #[unstable(feature = "shared", issue = "27730")]
     pub unsafe fn as_mut_ptr(&self) -> *mut T {
-        **self as _
+        self.as_ptr()
     }
 }
 
@@ -1094,18 +1187,8 @@ impl<T: ?Sized> Copy for Shared<T> { }
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<Shared<U>> for Shared<T> where T: Unsize<U> { }
 
 #[unstable(feature = "shared", issue = "27730")]
-impl<T: ?Sized> Deref for Shared<T> {
-    type Target = *const T;
-
-    #[inline]
-    fn deref(&self) -> &*const T {
-        unsafe { mem::transmute(&*self.pointer) }
-    }
-}
-
-#[unstable(feature = "shared", issue = "27730")]
-impl<T> fmt::Pointer for Shared<T> {
+impl<T: ?Sized> fmt::Pointer for Shared<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Pointer::fmt(&*self.pointer, f)
+        fmt::Pointer::fmt(&self.as_ptr(), f)
     }
 }

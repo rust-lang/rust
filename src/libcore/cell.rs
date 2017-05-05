@@ -132,7 +132,6 @@
 //! use std::cell::Cell;
 //! use std::ptr::Shared;
 //! use std::intrinsics::abort;
-//! use std::intrinsics::assume;
 //!
 //! struct Rc<T: ?Sized> {
 //!     ptr: Shared<RcBox<T>>
@@ -171,8 +170,7 @@
 //! impl<T: ?Sized> RcBoxPtr<T> for Rc<T> {
 //!    fn inner(&self) -> &RcBox<T> {
 //!        unsafe {
-//!            assume(!(*(&self.ptr as *const _ as *const *const ())).is_null());
-//!            &(**self.ptr)
+//!            self.ptr.as_ref()
 //!        }
 //!    }
 //! }

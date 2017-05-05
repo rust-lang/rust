@@ -30,8 +30,7 @@ struct TestStruct<U,T:Setter<U>> { //~ ERROR [+, +]
 }
 
 #[rustc_variance]
-enum TestEnum<U,T:Setter<U>> {//~ ERROR [*, +]
-    //~^ ERROR parameter `U` is never used
+enum TestEnum<U,T:Setter<U>> { //~ ERROR [*, +]
     Foo(T)
 }
 
@@ -51,13 +50,11 @@ trait TestTrait3<U> { //~ ERROR [o, o]
 
 #[rustc_variance]
 struct TestContraStruct<U,T:Setter<U>> { //~ ERROR [*, +]
-    //~^ ERROR parameter `U` is never used
     t: T
 }
 
 #[rustc_variance]
 struct TestBox<U,T:Getter<U>+Setter<U>> { //~ ERROR [*, +]
-    //~^ ERROR parameter `U` is never used
     t: T
 }
 

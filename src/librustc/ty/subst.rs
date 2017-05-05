@@ -72,7 +72,7 @@ impl<'tcx> From<ty::Region<'tcx>> for Kind<'tcx> {
 impl<'tcx> Kind<'tcx> {
     #[inline]
     unsafe fn downcast<T>(self, tag: usize) -> Option<&'tcx T> {
-        let ptr = *self.ptr;
+        let ptr = self.ptr.get();
         if ptr & TAG_MASK == tag {
             Some(&*((ptr & !TAG_MASK) as *const _))
         } else {
@@ -102,7 +102,7 @@ impl<'tcx> fmt::Debug for Kind<'tcx> {
         } else if let Some(r) = self.as_region() {
             write!(f, "{:?}", r)
         } else {
-            write!(f, "<unknwon @ {:p}>", *self.ptr as *const ())
+            write!(f, "<unknwon @ {:p}>", self.ptr.get() as *const ())
         }
     }
 }
