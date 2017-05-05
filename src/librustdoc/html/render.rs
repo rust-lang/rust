@@ -660,8 +660,6 @@ fn write_shared(cx: &Context,
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
 
-    write(cx.dst.join("jquery.js"),
-          include_bytes!("static/jquery-2.1.4.min.js"))?;
     write(cx.dst.join("main.js"),
           include_bytes!("static/main.js"))?;
     write(cx.dst.join("rustdoc.css"),

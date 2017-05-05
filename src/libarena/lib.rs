@@ -31,7 +31,6 @@
 #![feature(alloc)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
-#![feature(heap_api)]
 #![feature(generic_param_attrs)]
 #![feature(staged_api)]
 #![cfg_attr(test, feature(test))]
@@ -48,7 +47,6 @@ use std::mem;
 use std::ptr;
 use std::slice;
 
-use alloc::heap;
 use alloc::raw_vec::RawVec;
 
 /// An arena that can hold objects of only one type.
@@ -140,7 +138,7 @@ impl<T> TypedArena<T> {
         unsafe {
             if mem::size_of::<T>() == 0 {
                 self.ptr.set(intrinsics::arith_offset(self.ptr.get() as *mut u8, 1) as *mut T);
-                let ptr = heap::EMPTY as *mut T;
+                let ptr = mem::align_of::<T>() as *mut T;
                 // Don't drop the object. This `write` is equivalent to `forget`.
                 ptr::write(ptr, object);
                 &mut *ptr

@@ -138,7 +138,9 @@ pub fn usable_size(size: usize, align: usize) -> usize {
 ///
 /// This preserves the non-null invariant for types like `Box<T>`. The address
 /// may overlap with non-zero-size memory allocations.
-pub const EMPTY: *mut () = 0x1 as *mut ();
+#[rustc_deprecated(since = "1.19", reason = "Use Unique/Shared::empty() instead")]
+#[unstable(feature = "heap_api", issue = "27700")]
+pub const EMPTY: *mut () = 1 as *mut ();
 
 /// The allocator for unique pointers.
 // This function must not unwind. If it does, MIR trans will fail.
@@ -147,7 +149,7 @@ pub const EMPTY: *mut () = 0x1 as *mut ();
 #[inline]
 unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
     if size == 0 {
-        EMPTY as *mut u8
+        align as *mut u8
     } else {
         let ptr = allocate(size, align);
         if ptr.is_null() {
