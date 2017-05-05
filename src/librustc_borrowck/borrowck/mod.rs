@@ -39,6 +39,8 @@ use rustc::middle::free_region::RegionRelations;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 
+use syntax_pos::DUMMY_SP;
+
 use std::fmt;
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
@@ -539,7 +541,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             MovedInCapture => ("capture", "captured"),
         };
 
-        let (_ol, _moved_lp_msg, mut err) = match the_move.kind {
+        let (_ol, _moved_lp_msg, mut err, need_note) = match the_move.kind {
             move_data::Declared => {
                 // If this is an uninitialized variable, just emit a simple warning
                 // and return.
@@ -586,11 +588,24 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 let msg = if !has_fork && partial { "partially " }
                           else if has_fork && !has_common { "collaterally "}
                           else { "" };
-                let err = struct_span_err!(
+                let mut err = struct_span_err!(
                     self.tcx.sess, use_span, E0382,
                     "{} of {}moved value: `{}`",
                     verb, msg, nl);
-                (ol, moved_lp_msg, err)}
+                let need_note = match lp.ty.sty {
+                    ty::TypeVariants::TyClosure(id, _) => {
+                        if let Ok(ty::ClosureKind::FnOnce) =
+                           ty::queries::closure_kind::try_get(self.tcx, DUMMY_SP, id) {
+                            err.help("closure was moved because it only implements `FnOnce`");
+                            false
+                        } else {
+                            true
+                        }
+                    }
+                    _ => true,
+                };
+                (ol, moved_lp_msg, err, need_note)
+            }
         };
 
         // Get type of value and span where it was previously
@@ -627,10 +642,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             err
         };
 
-        err.note(&format!("move occurs because `{}` has type `{}`, \
-                           which does not implement the `Copy` trait",
-                          self.loan_path_to_string(moved_lp),
-                          moved_lp.ty));
+        if need_note {
+            err.note(&format!("move occurs because `{}` has type `{}`, \
+                               which does not implement the `Copy` trait",
+                              self.loan_path_to_string(moved_lp),
+                              moved_lp.ty));
+        }
 
         // Note: we used to suggest adding a `ref binding` or calling
         // `clone` but those suggestions have been removed because
