@@ -723,7 +723,9 @@ struct Inner {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
+/// # // Note that this example isn't executed by default because it causes
+/// # // deadlocks on Windows unfortunately (see #25824)
 /// use std::thread::Builder;
 ///
 /// for i in 0..5 {
