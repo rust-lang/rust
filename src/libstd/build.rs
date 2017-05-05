@@ -43,11 +43,16 @@ fn main() {
         println!("cargo:rustc-link-lib=pthread");
     } else if target.contains("apple-darwin") {
         println!("cargo:rustc-link-lib=System");
+
+        // res_init and friends require -lresolv on macOS/iOS.
+        // See #41582 and http://blog.achernya.com/2013/03/os-x-has-silly-libsystem.html
+        println!("cargo:rustc-link-lib=resolv");
     } else if target.contains("apple-ios") {
         println!("cargo:rustc-link-lib=System");
         println!("cargo:rustc-link-lib=objc");
         println!("cargo:rustc-link-lib=framework=Security");
         println!("cargo:rustc-link-lib=framework=Foundation");
+        println!("cargo:rustc-link-lib=resolv");
     } else if target.contains("windows") {
         println!("cargo:rustc-link-lib=advapi32");
         println!("cargo:rustc-link-lib=ws2_32");
