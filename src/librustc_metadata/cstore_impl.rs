@@ -11,7 +11,7 @@
 use cstore;
 use encoder;
 use locator;
-use schema;
+use schema::{self, EntryKind};
 
 use rustc::dep_graph::DepTrackingMapConfig;
 use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind,
@@ -22,7 +22,7 @@ use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
-use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 
 use rustc::dep_graph::{DepNode, GlobalMetaDataKind};
 use rustc::hir::map::{DefKey, DefPath, DisambiguatedDefPathData};
@@ -128,6 +128,16 @@ provide! { <'tcx> tcx, def_id, cdata
         !cdata.is_proc_macro(def_id.index) &&
         cdata.maybe_entry(def_id.index).and_then(|item| item.decode(cdata).mir).is_some()
     }
+    is_const_fn => { cdata.is_const_fn(def_id.index) }
+    is_default_impl => {
+        match cdata.entry(def_id.index).kind {
+            EntryKind::DefaultImpl(_) => true,
+            _ => false,
+        }
+    }
+    is_dllimport_foreign_item => {
+        cdata.dllimport_foreign_items.contains(&def_id.index)
+    }
 }
 
 impl CrateStore for cstore::CStore {
@@ -193,17 +203,6 @@ impl CrateStore for cstore::CStore {
     {
         self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).get_associated_item(def.index)
-    }
-
-    fn is_const_fn(&self, did: DefId) -> bool
-    {
-        self.dep_graph.read(DepNode::MetaData(did));
-        self.get_crate_data(did.krate).is_const_fn(did.index)
-    }
-
-    fn is_default_impl(&self, impl_did: DefId) -> bool {
-        self.dep_graph.read(DepNode::MetaData(impl_did));
-        self.get_crate_data(impl_did.krate).is_default_impl(impl_did.index)
     }
 
     fn is_foreign_item(&self, did: DefId) -> bool {
