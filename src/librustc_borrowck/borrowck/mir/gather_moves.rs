@@ -43,7 +43,7 @@ mod indexes {
                     unsafe { $Index(NonZero::new(idx + 1)) }
                 }
                 fn index(self) -> usize {
-                    *self.0 - 1
+                    self.0.get() - 1
                 }
             }
 
