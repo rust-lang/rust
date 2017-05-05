@@ -61,6 +61,7 @@
 use sync::atomic::{self, AtomicUsize, Ordering};
 
 use sys::thread_local as imp;
+use sys_common::mutex::Mutex;
 
 /// A type for TLS keys that are statically allocated.
 ///
@@ -145,20 +146,6 @@ impl StaticKey {
     #[inline]
     pub unsafe fn set(&self, val: *mut u8) { imp::set(self.key(), val) }
 
-    /// Deallocates this OS TLS key.
-    ///
-    /// This function is unsafe as there is no guarantee that the key is not
-    /// currently in use by other threads or will not ever be used again.
-    ///
-    /// Note that this does *not* run the user-provided destructor if one was
-    /// specified at definition time. Doing so must be done manually.
-    pub unsafe fn destroy(&self) {
-        match self.key.swap(0, Ordering::SeqCst) {
-            0 => {}
-            n => { imp::destroy(n as imp::Key) }
-        }
-    }
-
     #[inline]
     unsafe fn key(&self) -> imp::Key {
         match self.key.load(Ordering::Relaxed) {
@@ -168,6 +155,24 @@ impl StaticKey {
     }
 
     unsafe fn lazy_init(&self) -> usize {
+        // Currently the Windows implementation of TLS is pretty hairy, and
+        // it greatly simplifies creation if we just synchronize everything.
+        //
+        // Additionally a 0-index of a tls key hasn't been seen on windows, so
+        // we just simplify the whole branch.
+        if imp::requires_synchronized_create() {
+            static INIT_LOCK: Mutex = Mutex::new();
+            INIT_LOCK.lock();
+            let mut key = self.key.load(Ordering::SeqCst);
+            if key == 0 {
+                key = imp::create(self.dtor) as usize;
+                self.key.store(key, Ordering::SeqCst);
+            }
+            INIT_LOCK.unlock();
+            assert!(key != 0);
+            return key
+        }
+
         // POSIX allows the key created here to be 0, but the compare_and_swap
         // below relies on using 0 as a sentinel value to check who won the
         // race to set the shared TLS key. As far as I know, there is no
@@ -227,7 +232,9 @@ impl Key {
 
 impl Drop for Key {
     fn drop(&mut self) {
-        unsafe { imp::destroy(self.key) }
+        // Right now Windows doesn't support TLS key destruction, but this also
+        // isn't used anywhere other than tests, so just leak the TLS key.
+        // unsafe { imp::destroy(self.key) }
     }
 }
 
