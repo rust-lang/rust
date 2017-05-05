@@ -27,12 +27,12 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for VarianceTest<'a, 'tcx> {
         // For unit testing: check for a special "rustc_variance"
         // attribute and report an error with various results if found.
         if self.tcx.has_attr(item_def_id, "rustc_variance") {
-            let item_variances = self.tcx.variances_of(item_def_id);
+            let variances_of = self.tcx.variances_of(item_def_id);
             span_err!(self.tcx.sess,
                       item.span,
                       E0208,
                       "{:?}",
-                      item_variances);
+                      variances_of);
         }
     }
 

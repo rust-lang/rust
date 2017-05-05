@@ -313,7 +313,7 @@ pub enum Variance {
 /// variance of every item in the local crate. You should not use it
 /// directly, because to do so will make your pass dependent on the
 /// HIR of every item in the local crate. Instead, use
-/// `tcx.item_variances()` to get the variance for a *particular*
+/// `tcx.variances_of()` to get the variance for a *particular*
 /// item.
 pub struct CrateVariancesMap {
     /// This relation tracks the dependencies between the variance of

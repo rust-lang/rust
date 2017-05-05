@@ -102,15 +102,15 @@ can become quite muddled if we are not careful. To resolve this, we refactor
 into two queries:
 
 - `crate_variances` computes the variance for all items in the current crate.
-- `item_variances` accesses the variance for an individual reading; it
+- `variances_of` accesses the variance for an individual reading; it
   works by requesting `crate_variances` and extracting the relevant data.
   
-If you limit yourself to reading `item_variances`, your code will only
+If you limit yourself to reading `variances_of`, your code will only
 depend then on the inference inferred for that particular item.
 
 Eventually, the goal is to rely on the red-green dependency management
 algorithm. At the moment, however, we rely instead on a hack, where
-`item_variances` ignores the dependencies of accessing
+`variances_of` ignores the dependencies of accessing
 `crate_variances` and instead computes the *correct* dependencies
 itself. To this end, when we build up the constraints in the system,
 we also built up a transitive `dependencies` relation as part of the
