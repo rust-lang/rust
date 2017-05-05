@@ -141,22 +141,22 @@ features = ["c"]
 - [x] divsi3.c
 - [ ] extendhfsf2.c
 - [ ] extendsfdf2.c
-- [ ] fixdfdi.c
-- [ ] fixdfsi.c
-- [ ] fixsfdi.c
-- [ ] fixsfsi.c
-- [ ] fixunsdfdi.c
-- [ ] fixunsdfsi.c
-- [ ] fixunssfdi.c
-- [ ] fixunssfsi.c
-- [ ] floatdidf.c
+- [x] fixdfdi.c
+- [x] fixdfsi.c
+- [x] fixsfdi.c
+- [x] fixsfsi.c
+- [x] fixunsdfdi.c
+- [x] fixunsdfsi.c
+- [x] fixunssfdi.c
+- [x] fixunssfsi.c
+- [x] floatdidf.c
 - [ ] floatdisf.c
-- [ ] floatsidf.c
-- [ ] floatsisf.c
-- [ ] floatundidf.c
+- [x] floatsidf.c
+- [x] floatsisf.c
+- [x] floatundidf.c
 - [ ] floatundisf.c
-- [ ] floatunsidf.c
-- [ ] floatunsisf.c
+- [x] floatunsidf.c
+- [x] floatunsisf.c
 - [ ] i386/ashldi3.S
 - [ ] i386/ashrdi3.S
 - [ ] i386/chkstk.S
