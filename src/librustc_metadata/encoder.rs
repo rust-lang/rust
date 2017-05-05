@@ -240,8 +240,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 }
 
 impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
-    fn encode_item_variances(&mut self, def_id: DefId) -> LazySeq<ty::Variance> {
-        debug!("EntryBuilder::encode_item_variances({:?})", def_id);
+    fn encode_variances_of(&mut self, def_id: DefId) -> LazySeq<ty::Variance> {
+        debug!("EntryBuilder::encode_variances_of({:?})", def_id);
         let tcx = self.tcx;
         self.lazy_seq_from_slice(&tcx.variances_of(def_id))
     }
@@ -824,7 +824,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
                 hir::ItemEnum(..) |
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) |
-                hir::ItemTrait(..) => self.encode_item_variances(def_id),
+                hir::ItemTrait(..) => self.encode_variances_of(def_id),
                 _ => LazySeq::empty(),
             },
             generics: match item.node {
