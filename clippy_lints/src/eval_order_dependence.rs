@@ -160,9 +160,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
     }
 }
 
-/// Walks up the AST from the the given write expression (`vis.write_expr`)
-/// looking for reads to the same variable that are unsequenced relative to the
-/// write.
+/// Walks up the AST from the given write expression (`vis.write_expr`) looking
+/// for reads to the same variable that are unsequenced relative to the write.
 ///
 /// This means reads for which there is a common ancestor between the read and
 /// the write such that
