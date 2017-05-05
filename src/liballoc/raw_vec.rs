@@ -46,7 +46,7 @@ use core::cmp;
 /// this type.
 pub struct RawVec<T> {
     ptr: Unique<T>,
-    cap: usize,
+    cap: usize, // field is ignored for ZST
 }
 
 impl<T> RawVec<T> {
@@ -56,27 +56,24 @@ impl<T> RawVec<T> {
     /// delayed allocation.
     pub fn new() -> Self {
         unsafe {
-            // !0 is usize::MAX. This branch should be stripped at compile time.
-            let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
-
             // heap::EMPTY doubles as "unallocated" and "zero-sized allocation"
             RawVec {
                 ptr: Unique::new(heap::EMPTY as *mut T),
-                cap: cap,
+                cap: 0,
             }
         }
     }
 
     /// Creates a RawVec with exactly the capacity and alignment requirements
-    /// for a `[T; cap]`. This is equivalent to calling RawVec::new when `cap` is 0
-    /// or T is zero-sized. Note that if `T` is zero-sized this means you will *not*
-    /// get a RawVec with the requested capacity!
+    /// for a `[T; cap]`, except for zero-sized `T` for which RawVec is created with
+    /// `usize::MAX` capacity. This is equivalent to calling RawVec::new when `cap` is 0
+    /// or T is zero-sized.
     ///
     /// # Panics
     ///
     /// * Panics if the requested capacity exceeds `usize::MAX` bytes.
     /// * Panics on 32-bit platforms if the requested capacity exceeds
-    ///   `isize::MAX` bytes.
+    ///   `isize::MAX` bytes and `T` has non-zero size.
     ///
     /// # Aborts
     ///
@@ -95,6 +92,11 @@ impl<T> RawVec<T> {
     fn allocate(cap: usize, zeroed: bool) -> Self {
         unsafe {
             let elem_size = mem::size_of::<T>();
+
+            if elem_size == 0 {
+                // `cap` is ignored for ZST
+                return RawVec::new()
+            }
 
             let alloc_size = cap.checked_mul(elem_size).expect("capacity overflow");
             alloc_guard(alloc_size);
