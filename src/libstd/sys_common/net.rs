@@ -177,9 +177,22 @@ pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
     };
     let mut res = ptr::null_mut();
     unsafe {
-        cvt_gai(c::getaddrinfo(c_host.as_ptr(), ptr::null(), &hints,
-                               &mut res))?;
-        Ok(LookupHost { original: res, cur: res })
+        match cvt_gai(c::getaddrinfo(c_host.as_ptr(), ptr::null(), &hints, &mut res)) {
+            Ok(_) => {
+                Ok(LookupHost { original: res, cur: res })
+            },
+            #[cfg(unix)]
+            Err(e) => {
+                // The lookup failure could be caused by using a stale /etc/resolv.conf.
+                // See https://github.com/rust-lang/rust/issues/41570.
+                // We therefore force a reload of the nameserver information.
+                c::res_init();
+                Err(e)
+            },
+            // the cfg is needed here to avoid an "unreachable pattern" warning
+            #[cfg(not(unix))]
+            Err(e) => Err(e),
+        }
     }
 }
 
