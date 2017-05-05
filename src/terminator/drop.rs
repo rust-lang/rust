@@ -53,13 +53,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     _ => bug!("expected thin ptr, got {:?}", arg),
                 };
                 arg = Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(n as u128));
-                ::eval_context::MirRef::clone(&self.seq_drop_glue)
+                self.seq_drop_glue
             },
             ty::TySlice(elem) => {
                 instance.substs = self.tcx.mk_substs([
                     Kind::from(elem),
                 ].iter().cloned());
-                ::eval_context::MirRef::clone(&self.seq_drop_glue)
+                self.seq_drop_glue
             },
             _ => self.load_mir(instance.def)?,
         };

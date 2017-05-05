@@ -9,10 +9,8 @@ extern crate log;
 extern crate log_settings;
 #[macro_use]
 extern crate rustc;
-extern crate rustc_borrowck;
 extern crate rustc_const_math;
 extern crate rustc_data_structures;
-extern crate rustc_mir;
 extern crate syntax;
 
 // From crates.io.
@@ -40,7 +38,6 @@ pub use eval_context::{
     ResourceLimits,
     StackPopCleanup,
     eval_main,
-    run_mir_passes,
 };
 
 pub use lvalue::{
