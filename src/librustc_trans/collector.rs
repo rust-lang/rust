@@ -653,7 +653,7 @@ fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instan
         Some(_) => true,
         None => {
             if tcx.sess.cstore.is_exported_symbol(def_id) ||
-                tcx.sess.cstore.is_foreign_item(def_id)
+                tcx.is_foreign_item(def_id)
             {
                 // We can link to the item in question, no instance needed
                 // in this crate
