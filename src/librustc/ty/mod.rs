@@ -2682,7 +2682,7 @@ fn def_span<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Span {
 /// Otherwise, return `None`.
 fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option<DefId> {
     if def_id.krate != LOCAL_CRATE {
-        return None
+        return tcx.trait_of_item(def_id)
     }
     tcx.opt_associated_item(def_id)
         .and_then(|associated_item| {
