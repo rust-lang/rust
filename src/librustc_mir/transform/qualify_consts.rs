@@ -117,7 +117,7 @@ pub fn is_const_fn(tcx: TyCtxt, def_id: DefId) -> bool {
             false
         }
     } else {
-        tcx.sess.cstore.is_const_fn(def_id)
+        tcx.is_const_fn(def_id)
     }
 }
 

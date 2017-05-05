@@ -197,10 +197,7 @@ pub trait CrateStore {
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem;
 
     // flags
-    fn is_const_fn(&self, did: DefId) -> bool;
-    fn is_default_impl(&self, impl_did: DefId) -> bool;
     fn is_foreign_item(&self, did: DefId) -> bool;
-    fn is_dllimport_foreign_item(&self, def: DefId) -> bool;
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool;
     fn is_exported_symbol(&self, def_id: DefId) -> bool;
 
@@ -325,10 +322,7 @@ impl CrateStore for DummyCrateStore {
         { bug!("associated_item_cloned") }
 
     // flags
-    fn is_const_fn(&self, did: DefId) -> bool { bug!("is_const_fn") }
-    fn is_default_impl(&self, impl_did: DefId) -> bool { bug!("is_default_impl") }
     fn is_foreign_item(&self, did: DefId) -> bool { bug!("is_foreign_item") }
-    fn is_dllimport_foreign_item(&self, id: DefId) -> bool { false }
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool { false }
     fn is_exported_symbol(&self, def_id: DefId) -> bool { false }
 

@@ -347,11 +347,23 @@ impl<'tcx> QueryDescription for queries::const_is_rvalue_promotable_to_static<'t
     }
 }
 
-impl<'tcx> QueryDescription for queries::is_mir_available<'tcx> {
-    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
-        format!("checking if item is mir available: `{}`",
-            tcx.item_path_str(def_id))
+macro_rules! simple_query_description {
+    ($($fn_name:ident, $desc:expr),*,) => {
+        $(
+        impl<'tcx> QueryDescription for queries::$fn_name<'tcx> {
+            fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+                format!(concat!($desc, "`: {}`"),
+                    tcx.item_path_str(def_id))
+            }
+        }
+        )*
     }
+}
+
+simple_query_description! {
+    is_mir_available, "checking if item is mir available",
+    is_const_fn, "checking if item is const fn",
+    is_dllimport_foreign_item, "checking if item is dll import foreign item",
 }
 
 macro_rules! define_maps {
@@ -786,6 +798,10 @@ define_maps! { <'tcx>
     [] item_body_nested_bodies: metadata_dep_node(DefId) -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
     [] const_is_rvalue_promotable_to_static: metadata_dep_node(DefId) -> bool,
     [] is_mir_available: metadata_dep_node(DefId) -> bool,
+
+    [] is_const_fn: metadata_dep_node(DefId) -> bool,
+    [] is_default_impl: metadata_dep_node(DefId) -> bool,
+    [] is_dllimport_foreign_item: metadata_dep_node(DefId) -> bool,
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
