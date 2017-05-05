@@ -1,5 +1,6 @@
 fn_args_layout = "Block"
 array_layout = "Block"
+control_style = "Rfc"
 where_style = "Rfc"
 generics_indent = "Block"
 fn_call_style = "Block"

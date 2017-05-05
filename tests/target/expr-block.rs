@@ -1,5 +1,6 @@
 // rustfmt-array_layout: Block
 // rustfmt-fn_call_style: Block
+// rustfmt-control_style: Rfc
 // Test expressions with block formatting.
 
 fn arrays() {
@@ -187,4 +188,28 @@ fn macros() {
         }
         Some(p) => baz!(one_item_macro_as_expression_which_is_also_loooooooooooooooong),
     };
+}
+
+fn issue_1450() {
+    if selfstate
+        .compare_exchandsfasdsdfgsdgsdfgsdfgsdfgsdfgsdfgfsfdsage_weak(
+            STATE_PARKED,
+            STATE_UNPARKED,
+            Release,
+            Relaxed,
+            Release,
+            Relaxed,
+        )
+        .is_ok()
+    {
+        return;
+    }
+}
+
+fn foo() {
+    if real_total <= limit && !pre_line_comments &&
+        !items.into_iter().any(|item| item.as_ref().is_multiline())
+    {
+        DefinitiveListTactic::Horizontal
+    }
 }

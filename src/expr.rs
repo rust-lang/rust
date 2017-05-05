@@ -26,7 +26,7 @@ use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_w
             semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr,
             colon_spaces};
 use visitor::FmtVisitor;
-use config::{Config, IndentStyle, MultilineStyle, ControlBraceStyle};
+use config::{Config, IndentStyle, MultilineStyle, ControlBraceStyle, Style};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
 use types::{rewrite_path, PathContext};
 use items::{span_lo_for_arg, span_hi_for_arg};
@@ -314,8 +314,12 @@ pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
                                   .max_width
                                   .checked_sub(shape.used_width() + prefix.len() +
                                                infix.len()));
-    let rhs_shape = try_opt!(shape.sub_width(suffix.len() + prefix.len()))
-        .visual_indent(prefix.len());
+    let rhs_shape = match context.config.control_style {
+        Style::Default => {
+            try_opt!(shape.sub_width(suffix.len() + prefix.len())).visual_indent(prefix.len())
+        }
+        Style::Rfc => try_opt!(shape.block_left(context.config.tab_spaces)),
+    };
 
     let rhs_result = try_opt!(rhs.rewrite(context, rhs_shape));
     let lhs_result = try_opt!(lhs.rewrite(context,
@@ -884,7 +888,10 @@ impl<'a> Rewrite for ControlFlow<'a> {
 
         let pat_expr_string = match self.cond {
             Some(cond) => {
-                let mut cond_shape = try_opt!(constr_shape.shrink_left(add_offset));
+                let mut cond_shape = match context.config.control_style {
+                    Style::Default => try_opt!(constr_shape.shrink_left(add_offset)),
+                    Style::Rfc => constr_shape,
+                };
                 if context.config.control_brace_style != ControlBraceStyle::AlwaysNextLine {
                     // 2 = " {".len()
                     cond_shape = try_opt!(cond_shape.sub_width(2));
@@ -899,6 +906,9 @@ impl<'a> Rewrite for ControlFlow<'a> {
             }
             None => String::new(),
         };
+
+        let force_newline_brace = context.config.control_style == Style::Rfc &&
+                                  pat_expr_string.contains('\n');
 
         // Try to format if-else on single line.
         if self.allow_single_line && context.config.single_line_if_else_max_width > 0 {
@@ -957,8 +967,8 @@ impl<'a> Rewrite for ControlFlow<'a> {
                             &shape.indent.block_only().to_string(context.config);
         let block_sep = if self.cond.is_none() && between_kwd_cond_comment.is_some() {
             ""
-        } else if context.config.control_brace_style ==
-                  ControlBraceStyle::AlwaysNextLine {
+        } else if context.config.control_brace_style == ControlBraceStyle::AlwaysNextLine ||
+                  force_newline_brace {
             alt_block_sep.as_str()
         } else {
             " "
@@ -1494,7 +1504,7 @@ fn rewrite_pat_expr(context: &RewriteContext,
                     connector: &str,
                     shape: Shape)
                     -> Option<String> {
-    debug!("rewrite_pat_expr {:?} {:?}", shape, pat);
+    debug!("rewrite_pat_expr {:?} {:?} {:?}", shape, pat, expr);
     let mut result = match pat {
         Some(pat) => {
             let matcher = if matcher.is_empty() {

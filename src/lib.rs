@@ -287,6 +287,14 @@ impl Shape {
         }
     }
 
+    pub fn block_left(&self, width: usize) -> Option<Shape> {
+        let block_shape = self.block_indent(width);
+        Some(Shape {
+                 width: try_opt!(block_shape.width.checked_sub(width)),
+                 ..block_shape
+             })
+    }
+
     pub fn add_offset(&self, extra_width: usize) -> Shape {
         Shape {
             width: self.width,

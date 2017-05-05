@@ -338,6 +338,7 @@ create_config! {
     newline_style: NewlineStyle, NewlineStyle::Unix, "Unix or Windows line endings";
     fn_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for functions";
     item_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for structs and enums";
+    control_style: Style, Style::Default, "Indent style for control flow statements";
     control_brace_style: ControlBraceStyle, ControlBraceStyle::AlwaysSameLine,
         "Brace style for control flow constructs";
     impl_empty_single_line: bool, true, "Put empty-body implementations on a single line";
