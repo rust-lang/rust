@@ -1023,7 +1023,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub(super) fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> Ty<'tcx> {
-        self.monomorphize(operand.ty(&self.mir(), self.tcx), self.substs())
+        self.monomorphize(operand.ty(self.mir(), self.tcx), self.substs())
     }
 
     fn copy(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx> {

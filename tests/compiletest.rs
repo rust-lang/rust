@@ -5,7 +5,7 @@ use std::io::Write;
 
 fn compile_fail(sysroot: &Path) {
     let flags = format!("--sysroot {} -Dwarnings", sysroot.to_str().expect("non utf8 path"));
-    for_all_targets(&sysroot, |target| {
+    for_all_targets(sysroot, |target| {
         let mut config = compiletest::default_config();
         config.host_rustcflags = Some(flags.clone());
         config.mode = "compile-fail".parse().expect("Invalid mode");
@@ -79,8 +79,8 @@ fn compile_test() {
         .expect("rustc not found for -vV")
         .stdout;
     let host = std::str::from_utf8(&host).expect("sysroot is not utf8");
-    let host = host.split("\nhost: ").skip(1).next().expect("no host: part in rustc -vV");
-    let host = host.split("\n").next().expect("no \n after host");
+    let host = host.split("\nhost: ").nth(1).expect("no host: part in rustc -vV");
+    let host = host.split('\n').next().expect("no \n after host");
 
     if let Ok(path) = std::env::var("MIRI_RUSTC_TEST") {
         let mut mir_not_found = Vec::new();
@@ -148,10 +148,8 @@ fn compile_test() {
                                 abi.push(text[abi_s.len()..end].to_string());
                             } else if text.starts_with(limit_s) {
                                 limits.push(text[limit_s.len()..end].to_string());
-                            } else {
-                                if text.find("aborting").is_none() {
-                                    failed.push(text[..end].to_string());
-                                }
+                            } else if text.find("aborting").is_none() {
+                                failed.push(text[..end].to_string());
                             }
                         }
                         writeln!(stderr.lock(), "FAILED with exit code {:?}", output.status.code()).unwrap();
@@ -196,10 +194,10 @@ fn compile_test() {
         panic!("ran miri on rustc test suite. Test failing for convenience");
     } else {
         run_pass();
-        for_all_targets(&sysroot, |target| {
+        for_all_targets(sysroot, |target| {
             miri_pass("tests/run-pass", &target, host);
         });
-        compile_fail(&sysroot);
+        compile_fail(sysroot);
     }
 }
 
@@ -218,7 +216,7 @@ fn vec_to_hist<T: PartialEq + Ord>(mut v: Vec<T>) -> Vec<(usize, T)> {
     let mut current = v.next();
     'outer: while let Some(current_val) = current {
         let mut n = 1;
-        while let Some(next) = v.next() {
+        for next in &mut v {
             if next == current_val {
                 n += 1;
             } else {
