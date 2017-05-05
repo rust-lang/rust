@@ -539,6 +539,44 @@ impl<T> SliceExt for [T] {
     fn reverse(&mut self) {
         let mut i: usize = 0;
         let ln = self.len();
+
+        let fast_unaligned =
+            cfg!(any(target_arch = "x86", target_arch = "x86_64"));
+
+        if fast_unaligned && mem::size_of::<T>() == 1 {
+            // Single-byte read & write are comparatively slow. Instead,
+            // work in usize chunks and get bswap to do the hard work.
+            let chunk = mem::size_of::<usize>();
+            while i + chunk - 1 < ln / 2 {
+                unsafe {
+                    let pa: *mut T = self.get_unchecked_mut(i);
+                    let pb: *mut T = self.get_unchecked_mut(ln - i - chunk);
+                    let va = ptr::read_unaligned(pa as *mut usize);
+                    let vb = ptr::read_unaligned(pb as *mut usize);
+                    ptr::write_unaligned(pa as *mut usize, vb.swap_bytes());
+                    ptr::write_unaligned(pb as *mut usize, va.swap_bytes());
+                }
+                i += chunk;
+            }
+        }
+
+        if fast_unaligned && mem::size_of::<T>() == 2 {
+            // Not quite as good as the above, but still helpful.
+            // Same general idea, read bigger and do the swap in a register.
+            let chunk = mem::size_of::<u32>() / 2;
+            while i + chunk - 1 < ln / 2 {
+                unsafe {
+                    let pa: *mut T = self.get_unchecked_mut(i);
+                    let pb: *mut T = self.get_unchecked_mut(ln - i - chunk);
+                    let va = ptr::read_unaligned(pa as *mut u32);
+                    let vb = ptr::read_unaligned(pb as *mut u32);
+                    ptr::write_unaligned(pa as *mut u32, vb.rotate_left(16));
+                    ptr::write_unaligned(pb as *mut u32, va.rotate_left(16));
+                }
+                i += chunk;
+            }
+        }
+
         while i < ln / 2 {
             // Unsafe swap to avoid the bounds check in safe swap.
             unsafe {

@@ -290,3 +290,24 @@ sort!(sort_unstable, sort_unstable_large_random, gen_random, 10000);
 sort!(sort_unstable, sort_unstable_large_big_random, gen_big_random, 10000);
 sort!(sort_unstable, sort_unstable_large_strings, gen_strings, 10000);
 sort_expensive!(sort_unstable_by, sort_unstable_large_random_expensive, gen_random, 10000);
+
+macro_rules! reverse {
+    ($name:ident, $ty:ident) => {
+        #[bench]
+        fn $name(b: &mut Bencher) {
+            // odd length and offset by 1 to be as unaligned as possible
+            let n = 0xFFFFF;
+            let mut v: Vec<_> =
+                (0..1+(n / mem::size_of::<$ty>() as u64))
+                .map(|x| x as $ty)
+                .collect();
+            b.iter(|| black_box(&mut v[1..]).reverse());
+            b.bytes = n;
+        }
+    }
+}
+
+reverse!(reverse_u8, u8);
+reverse!(reverse_u16, u16);
+reverse!(reverse_u32, u32);
+reverse!(reverse_u64, u64);
