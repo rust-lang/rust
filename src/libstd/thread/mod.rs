@@ -66,7 +66,7 @@
 //! let res = child.join();
 //! ```
 //!
-//! The [`join`] method returns a [`Result`] containing [`Ok`] of the final
+//! The [`join`] method returns a [`thread::Result`] containing [`Ok`] of the final
 //! value produced by the child thread, or [`Err`] of the value given to
 //! a call to [`panic!`] if the child panicked.
 //!
@@ -159,6 +159,7 @@
 //! [`panic!`]: ../../std/macro.panic.html
 //! [`Builder`]: ../../std/thread/struct.Builder.html
 //! [`thread::current`]: ../../std/thread/fn.current.html
+//! [`thread::Result`]: ../../std/thread/type.Result.html
 //! [`Thread`]: ../../std/thread/struct.Thread.html
 //! [`park`]: ../../std/thread/fn.park.html
 //! [`unpark`]: ../../std/thread/struct.Thread.html#method.unpark
