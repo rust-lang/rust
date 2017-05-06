@@ -161,6 +161,12 @@ policy we end up with:
   through color also conveyed through an icon or text.
 - Follow best practices for making content usable from mobile devices with a
   variety of screen sizes.
+- Render content without requiring JavaScript (especially on
+  [crates.io][noscript]). Additional functionality beyond reading (ex: search,
+  follow/unfollow crate) may require JavaScript, but we will attempt to use
+  links and forms for progressive enhancement as much as possible.
+
+[noscript]: https://github.com/rust-lang/crates.io/issues/204
 
 Please comment if you think any of these should **not** be assumed, but rest
 assured it is not the intent of this RFC to get rid of these kinds of support.
@@ -267,8 +273,5 @@ reproduce it.
 [unresolved]: #unresolved-questions
 
 - Am I missing any official web content that this policy should apply to?
-- [Should we have web content that can function without JavaScript?][noscript]
 - Is it possible to add browser tests to rustdoc or would that just make the
   current situation of long, flaky rustc builds worse?
-
-[noscript]: https://github.com/rust-lang/crates.io/issues/204
