@@ -196,14 +196,14 @@ These builtins are needed to support 128-bit integers, which are in the process 
 - [x] ashlti3.c
 - [x] ashrti3.c
 - [x] divti3.c
-- [ ] fixdfti.c
-- [ ] fixsfti.c
-- [ ] fixunsdfti.c
-- [ ] fixunssfti.c
-- [ ] floattidf.c
-- [ ] floattisf.c
-- [ ] floatuntidf.c
-- [ ] floatuntisf.c
+- [x] fixdfti.c
+- [x] fixsfti.c
+- [x] fixunsdfti.c
+- [x] fixunssfti.c
+- [x] floattidf.c
+- [x] floattisf.c
+- [x] floatuntidf.c
+- [x] floatuntisf.c
 - [x] lshrti3.c
 - [x] modti3.c
 - [x] muloti4.c
