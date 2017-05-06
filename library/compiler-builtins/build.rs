@@ -1092,7 +1092,7 @@ static TEST_CASES: &[((u32,), i32)] = &[
 ];
 
 #[test]
-fn fixsfdi() {
+fn fixsfsi() {
     for &((a,), b) in TEST_CASES {
         let b_ = __fixsfsi(mk_f32(a));
         assert_eq!(((a,), b), ((a,), b_));
