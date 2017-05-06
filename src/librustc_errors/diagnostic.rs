@@ -11,7 +11,6 @@
 use CodeSuggestion;
 use Level;
 use RenderSpan;
-use RenderSpan::Suggestion;
 use std::fmt;
 use syntax_pos::{MultiSpan, Span};
 use snippet::Style;
@@ -24,6 +23,7 @@ pub struct Diagnostic {
     pub code: Option<String>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
+    pub suggestion: Option<CodeSuggestion>,
 }
 
 /// For example a note attached to an error.
@@ -33,6 +33,46 @@ pub struct SubDiagnostic {
     pub message: Vec<(String, Style)>,
     pub span: MultiSpan,
     pub render_span: Option<RenderSpan>,
+}
+
+#[derive(PartialEq, Eq)]
+pub struct DiagnosticStyledString(pub Vec<StringPart>);
+
+impl DiagnosticStyledString {
+    pub fn new() -> DiagnosticStyledString {
+        DiagnosticStyledString(vec![])
+    }
+    pub fn push_normal<S: Into<String>>(&mut self, t: S) {
+        self.0.push(StringPart::Normal(t.into()));
+    }
+    pub fn push_highlighted<S: Into<String>>(&mut self, t: S) {
+        self.0.push(StringPart::Highlighted(t.into()));
+    }
+    pub fn normal<S: Into<String>>(t: S) -> DiagnosticStyledString {
+        DiagnosticStyledString(vec![StringPart::Normal(t.into())])
+    }
+
+    pub fn highlighted<S: Into<String>>(t: S) -> DiagnosticStyledString {
+        DiagnosticStyledString(vec![StringPart::Highlighted(t.into())])
+    }
+
+    pub fn content(&self) -> String {
+        self.0.iter().map(|x| x.content()).collect::<String>()
+    }
+}
+
+#[derive(PartialEq, Eq)]
+pub enum StringPart {
+    Normal(String),
+    Highlighted(String),
+}
+
+impl StringPart {
+    pub fn content(&self) -> String {
+        match self {
+            &StringPart::Normal(ref s) | & StringPart::Highlighted(ref s) => s.to_owned()
+        }
+    }
 }
 
 impl Diagnostic {
@@ -47,6 +87,7 @@ impl Diagnostic {
             code: code,
             span: MultiSpan::new(),
             children: vec![],
+            suggestion: None,
         }
     }
 
@@ -81,8 +122,8 @@ impl Diagnostic {
 
     pub fn note_expected_found(&mut self,
                                label: &fmt::Display,
-                               expected: &fmt::Display,
-                               found: &fmt::Display)
+                               expected: DiagnosticStyledString,
+                               found: DiagnosticStyledString)
                                -> &mut Self
     {
         self.note_expected_found_extra(label, expected, found, &"", &"")
@@ -90,21 +131,29 @@ impl Diagnostic {
 
     pub fn note_expected_found_extra(&mut self,
                                      label: &fmt::Display,
-                                     expected: &fmt::Display,
-                                     found: &fmt::Display,
+                                     expected: DiagnosticStyledString,
+                                     found: DiagnosticStyledString,
                                      expected_extra: &fmt::Display,
                                      found_extra: &fmt::Display)
                                      -> &mut Self
     {
+        let mut msg: Vec<_> = vec![(format!("expected {} `", label), Style::NoStyle)];
+        msg.extend(expected.0.iter()
+                   .map(|x| match *x {
+                       StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
+                       StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+                   }));
+        msg.push((format!("`{}\n", expected_extra), Style::NoStyle));
+        msg.push((format!("   found {} `", label), Style::NoStyle));
+        msg.extend(found.0.iter()
+                   .map(|x| match *x {
+                       StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
+                       StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+                   }));
+        msg.push((format!("`{}", found_extra), Style::NoStyle));
+
         // For now, just attach these as notes
-        self.highlighted_note(vec![
-            (format!("expected {} `", label), Style::NoStyle),
-            (format!("{}", expected), Style::Highlight),
-            (format!("`{}\n", expected_extra), Style::NoStyle),
-            (format!("   found {} `", label), Style::NoStyle),
-            (format!("{}", found), Style::Highlight),
-            (format!("`{}", found_extra), Style::NoStyle),
-        ]);
+        self.highlighted_note(msg);
         self
     }
 
@@ -154,19 +203,14 @@ impl Diagnostic {
 
     /// Prints out a message with a suggested edit of the code.
     ///
-    /// See `diagnostic::RenderSpan::Suggestion` for more information.
-    pub fn span_suggestion<S: Into<MultiSpan>>(&mut self,
-                                               sp: S,
-                                               msg: &str,
-                                               suggestion: String)
-                                               -> &mut Self {
-        self.sub(Level::Help,
-                 msg,
-                 MultiSpan::new(),
-                 Some(Suggestion(CodeSuggestion {
-                     msp: sp.into(),
-                     substitutes: vec![suggestion],
-                 })));
+    /// See `diagnostic::CodeSuggestion` for more information.
+    pub fn span_suggestion(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
+        assert!(self.suggestion.is_none());
+        self.suggestion = Some(CodeSuggestion {
+            msp: sp.into(),
+            substitutes: vec![suggestion],
+            msg: msg.to_owned(),
+        });
         self
     }
 

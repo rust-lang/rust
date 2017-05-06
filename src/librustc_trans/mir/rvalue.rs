@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
-use rustc::ty::layout::Layout;
+use rustc::ty::layout::{Layout, LayoutTyper};
 use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
 use middle::lang_items::ExchangeMallocFnLangItem;
@@ -28,7 +28,6 @@ use type_::Type;
 use type_of;
 use tvec;
 use value::Value;
-use Disr;
 
 use super::MirContext;
 use super::constant::const_scalar_checked_binop;
@@ -107,9 +106,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
                 match *kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, substs, active_field_index) => {
-                        let disr = Disr::for_variant(bcx.tcx(), adt_def, variant_index);
+                        let discr = adt_def.discriminant_for_variant(bcx.tcx(), variant_index)
+                           .to_u128_unchecked() as u64;
                         let dest_ty = dest.ty.to_ty(bcx.tcx());
-                        adt::trans_set_discr(&bcx, dest_ty, dest.llval, disr);
+                        adt::trans_set_discr(&bcx, dest_ty, dest.llval, discr);
                         for (i, operand) in operands.iter().enumerate() {
                             let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.
@@ -130,10 +130,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     _ => {
                         // If this is a tuple or closure, we need to translate GEP indices.
                         let layout = bcx.ccx.layout_of(dest.ty.to_ty(bcx.tcx()));
-                        let translation = if let Layout::Univariant { ref variant, .. } = *layout {
-                            Some(&variant.memory_index)
-                        } else {
-                            None
+                        let get_memory_index = |i| {
+                            if let Layout::Univariant { ref variant, .. } = *layout {
+                                adt::struct_llfields_index(variant, i)
+                            } else {
+                                i
+                            }
                         };
                         let alignment = dest.alignment;
                         for (i, operand) in operands.iter().enumerate() {
@@ -143,11 +145,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 // Note: perhaps this should be StructGep, but
                                 // note that in some cases the values here will
                                 // not be structs but arrays.
-                                let i = if let Some(ref t) = translation {
-                                    t[i] as usize
-                                } else {
-                                    i
-                                };
+                                let i = get_memory_index(i);
                                 let dest = bcx.gepi(dest.llval, &[0, i]);
                                 self.store_operand(&bcx, dest, alignment.to_align(), op);
                             }
@@ -158,7 +156,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             _ => {
-                assert!(rvalue_creates_operand(rvalue));
+                assert!(self.rvalue_creates_operand(rvalue));
                 let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
                 self.store_operand(&bcx, dest.llval, dest.alignment.to_align(), temp);
                 bcx
@@ -171,7 +169,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 rvalue: &mir::Rvalue<'tcx>)
                                 -> (Builder<'a, 'tcx>, OperandRef<'tcx>)
     {
-        assert!(rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
+        assert!(self.rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
 
         match *rvalue {
             mir::Rvalue::Cast(ref kind, ref source, cast_ty) => {
@@ -331,7 +329,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 let ty = tr_lvalue.ty.to_ty(bcx.tcx());
                 let ref_ty = bcx.tcx().mk_ref(
-                    bcx.tcx().mk_region(ty::ReErased),
+                    bcx.tcx().types.re_erased,
                     ty::TypeAndMut { ty: ty, mutbl: bk.to_mutbl_lossy() }
                 );
 
@@ -438,7 +436,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let content_ty: Ty<'tcx> = self.monomorphize(&content_ty);
                 let llty = type_of::type_of(bcx.ccx, content_ty);
                 let llsize = machine::llsize_of(bcx.ccx, llty);
-                let align = type_of::align_of(bcx.ccx, content_ty);
+                let align = bcx.ccx.align_of(content_ty);
                 let llalign = C_uint(bcx.ccx, align);
                 let llty_ptr = llty.ptr_to();
                 let box_ty = bcx.tcx().mk_box(content_ty);
@@ -466,8 +464,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) => {
-                bug!("cannot generate operand from rvalue {:?}", rvalue);
-
+                // According to `rvalue_creates_operand`, only ZST
+                // aggregate rvalues are allowed to be operands.
+                let ty = rvalue.ty(self.mir, self.ccx.tcx());
+                (bcx, OperandRef::new_zst(self.ccx, self.monomorphize(&ty)))
             }
         }
     }
@@ -650,26 +650,29 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         OperandValue::Pair(val, of)
     }
-}
 
-pub fn rvalue_creates_operand(rvalue: &mir::Rvalue) -> bool {
-    match *rvalue {
-        mir::Rvalue::Ref(..) |
-        mir::Rvalue::Len(..) |
-        mir::Rvalue::Cast(..) | // (*)
-        mir::Rvalue::BinaryOp(..) |
-        mir::Rvalue::CheckedBinaryOp(..) |
-        mir::Rvalue::UnaryOp(..) |
-        mir::Rvalue::Discriminant(..) |
-        mir::Rvalue::Box(..) |
-        mir::Rvalue::Use(..) => // (*)
-            true,
-        mir::Rvalue::Repeat(..) |
-        mir::Rvalue::Aggregate(..) =>
-            false,
+    pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {
+        match *rvalue {
+            mir::Rvalue::Ref(..) |
+            mir::Rvalue::Len(..) |
+            mir::Rvalue::Cast(..) | // (*)
+            mir::Rvalue::BinaryOp(..) |
+            mir::Rvalue::CheckedBinaryOp(..) |
+            mir::Rvalue::UnaryOp(..) |
+            mir::Rvalue::Discriminant(..) |
+            mir::Rvalue::Box(..) |
+            mir::Rvalue::Use(..) => // (*)
+                true,
+            mir::Rvalue::Repeat(..) |
+            mir::Rvalue::Aggregate(..) => {
+                let ty = rvalue.ty(self.mir, self.ccx.tcx());
+                let ty = self.monomorphize(&ty);
+                common::type_is_zero_size(self.ccx, ty)
+            }
+        }
+
+        // (*) this is only true if the type is suitable
     }
-
-    // (*) this is only true if the type is suitable
 }
 
 #[derive(Copy, Clone)]

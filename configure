@@ -445,7 +445,6 @@ opt dist-host-only 0 "only install bins for the host architecture"
 opt inject-std-version 1 "inject the current compiler version of libstd into programs"
 opt llvm-version-check 1 "check if the LLVM version is supported, build anyway"
 opt codegen-tests 1 "run the src/test/codegen tests"
-opt save-analysis 0 "save API analysis data"
 opt option-checking 1 "complain about unrecognized options in this configure script"
 opt ninja 0 "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)"
 opt locked-deps 0 "force Cargo.lock to be up to date"
@@ -480,6 +479,7 @@ valopt i686-linux-android-ndk "" "i686-linux-android NDK standalone path"
 valopt arm-linux-androideabi-ndk "" "arm-linux-androideabi NDK standalone path"
 valopt armv7-linux-androideabi-ndk "" "armv7-linux-androideabi NDK standalone path"
 valopt aarch64-linux-android-ndk "" "aarch64-linux-android NDK standalone path"
+valopt x86_64-linux-android-ndk "" "x86_64-linux-android NDK standalone path"
 valopt nacl-cross-path  "" "NaCl SDK path (Pepper Canary is recommended). Must be absolute!"
 valopt musl-root "/usr/local" "MUSL root installation directory (deprecated)"
 valopt musl-root-x86_64 "" "x86_64-unknown-linux-musl install directory"
@@ -510,7 +510,6 @@ valopt default-ar     "ar" "the default ar"
 opt_nosave manage-submodules 1 "let the build manage the git submodules"
 opt_nosave clang 0 "prefer clang to gcc for building the runtime"
 opt_nosave jemalloc 1 "build liballoc with jemalloc"
-opt elf-tls 1 "elf thread local storage on platforms where supported"
 opt full-bootstrap 0 "build three compilers instead of two"
 opt extended 0 "build an extended rust tool set"
 
@@ -747,6 +746,7 @@ putvar CFG_AARCH64_LINUX_ANDROID_NDK
 putvar CFG_ARM_LINUX_ANDROIDEABI_NDK
 putvar CFG_ARMV7_LINUX_ANDROIDEABI_NDK
 putvar CFG_I686_LINUX_ANDROID_NDK
+putvar CFG_X86_64_LINUX_ANDROID_NDK
 putvar CFG_NACL_CROSS_PATH
 putvar CFG_MANDIR
 putvar CFG_DOCDIR

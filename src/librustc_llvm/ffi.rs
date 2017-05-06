@@ -284,10 +284,13 @@ pub enum CodeGenOptLevel {
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub enum RelocMode {
-    Default = 0,
-    Static = 1,
-    PIC = 2,
-    DynamicNoPic = 3,
+    Default,
+    Static,
+    PIC,
+    DynamicNoPic,
+    ROPI,
+    RWPI,
+    ROPI_RWPI,
 }
 
 /// LLVMRustCodeModel
@@ -507,6 +510,7 @@ extern "C" {
 
     /// See Module::setModuleInlineAsm.
     pub fn LLVMSetModuleInlineAsm(M: ModuleRef, Asm: *const c_char);
+    pub fn LLVMRustAppendModuleInlineAsm(M: ModuleRef, Asm: *const c_char);
 
     /// See llvm::LLVMTypeKind::getTypeID.
     pub fn LLVMRustGetTypeKind(Ty: TypeRef) -> TypeKind;
@@ -1662,10 +1666,3 @@ extern "C" {
     pub fn LLVMRustUnsetComdat(V: ValueRef);
     pub fn LLVMRustSetModulePIELevel(M: ModuleRef);
 }
-
-
-// LLVM requires symbols from this library, but apparently they're not printed
-// during llvm-config?
-#[cfg(windows)]
-#[link(name = "ole32")]
-extern "C" {}

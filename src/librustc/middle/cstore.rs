@@ -22,11 +22,12 @@
 // are *mostly* used as a part of that interface, but these should
 // probably get a better home if someone can find one.
 
-use hir::def::{self, Def};
+use hir::def;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::map as hir_map;
 use hir::map::definitions::{Definitions, DefKey, DisambiguatedDefPathData};
 use hir::svh::Svh;
+use ich;
 use middle::lang_items;
 use ty::{self, TyCtxt};
 use session::Session;
@@ -34,11 +35,9 @@ use session::search_paths::PathKind;
 use util::nodemap::{NodeSet, DefIdMap};
 
 use std::any::Any;
-use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
@@ -52,7 +51,6 @@ pub use self::NativeLibraryKind::*;
 
 #[derive(Clone, Debug)]
 pub struct LinkMeta {
-    pub crate_name: Symbol,
     pub crate_hash: Svh,
 }
 
@@ -161,28 +159,37 @@ pub struct ExternCrate {
     pub path_len: usize,
 }
 
+pub struct EncodedMetadata {
+    pub raw_data: Vec<u8>,
+    pub hashes: Vec<EncodedMetadataHash>,
+}
+
+/// The hash for some metadata that (when saving) will be exported
+/// from this crate, or which (when importing) was exported by an
+/// upstream crate.
+#[derive(Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
+pub struct EncodedMetadataHash {
+    pub def_index: DefIndex,
+    pub hash: ich::Fingerprint,
+}
+
 /// A store of Rust crates, through with their metadata
 /// can be accessed.
 pub trait CrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>;
 
     // item info
-    fn describe_def(&self, def: DefId) -> Option<Def>;
-    fn def_span(&self, sess: &Session, def: DefId) -> Span;
-    fn stability(&self, def: DefId) -> Option<attr::Stability>;
-    fn deprecation(&self, def: DefId) -> Option<attr::Deprecation>;
     fn visibility(&self, def: DefId) -> ty::Visibility;
-    fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>>;
+    fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>>;
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics;
-    fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>;
+    fn item_attrs(&self, def_id: DefId) -> Rc<[ast::Attribute]>;
     fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name>;
-    fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId>;
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>;
 
     // impl info
-    fn impl_polarity(&self, def: DefId) -> hir::ImplPolarity;
+    fn impl_defaultness(&self, def: DefId) -> hir::Defaultness;
     fn impl_parent(&self, impl_def_id: DefId) -> Option<DefId>;
 
     // trait/impl-item info
@@ -231,17 +238,14 @@ pub trait CrateStore {
                     -> Option<DefId>;
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
+    fn def_path_hash(&self, def: DefId) -> u64;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children(&self, did: DefId) -> Vec<def::Export>;
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro;
 
     // misc. metadata
-    fn maybe_get_item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                                     -> Option<&'tcx hir::Body>;
-    fn item_body_nested_bodies(&self, def: DefId) -> BTreeMap<hir::BodyId, hir::Body>;
-    fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool;
-
-    fn is_item_mir_available(&self, def: DefId) -> bool;
+    fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                           -> &'tcx hir::Body;
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
@@ -255,10 +259,11 @@ pub trait CrateStore {
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>;
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource;
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
-    fn encode_metadata<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 reexports: &def::ExportMap,
+    fn encode_metadata<'a, 'tcx>(&self,
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
-                                 reachable: &NodeSet) -> Vec<u8>;
+                                 reachable: &NodeSet)
+                                 -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }
 
@@ -298,25 +303,20 @@ impl CrateStore for DummyCrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>
         { bug!("crate_data_as_rc_any") }
     // item info
-    fn describe_def(&self, def: DefId) -> Option<Def> { bug!("describe_def") }
-    fn def_span(&self, sess: &Session, def: DefId) -> Span { bug!("def_span") }
-    fn stability(&self, def: DefId) -> Option<attr::Stability> { bug!("stability") }
-    fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> { bug!("deprecation") }
     fn visibility(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
-    fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>> {
+    fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>> {
         bug!("visible_parent_map")
     }
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics
         { bug!("item_generics_cloned") }
-    fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute> { bug!("item_attrs") }
+    fn item_attrs(&self, def_id: DefId) -> Rc<[ast::Attribute]> { bug!("item_attrs") }
     fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name> { bug!("fn_arg_names") }
-    fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId> { vec![] }
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId> { vec![] }
 
     // impl info
-    fn impl_polarity(&self, def: DefId) -> hir::ImplPolarity { bug!("impl_polarity") }
+    fn impl_defaultness(&self, def: DefId) -> hir::Defaultness { bug!("impl_defaultness") }
     fn impl_parent(&self, def: DefId) -> Option<DefId> { bug!("impl_parent") }
 
     // trait/impl-item info
@@ -379,24 +379,17 @@ impl CrateStore for DummyCrateStore {
     fn def_path(&self, def: DefId) -> hir_map::DefPath {
         bug!("relative_def_path")
     }
+    fn def_path_hash(&self, def: DefId) -> u64 {
+        bug!("wa")
+    }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
     fn item_children(&self, did: DefId) -> Vec<def::Export> { bug!("item_children") }
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
 
     // misc. metadata
-    fn maybe_get_item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                                     -> Option<&'tcx hir::Body> {
-        bug!("maybe_get_item_body")
-    }
-    fn item_body_nested_bodies(&self, def: DefId) -> BTreeMap<hir::BodyId, hir::Body> {
-        bug!("item_body_nested_bodies")
-    }
-    fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool {
-        bug!("const_is_rvalue_promotable_to_static")
-    }
-
-    fn is_item_mir_available(&self, def: DefId) -> bool {
-        bug!("is_item_mir_available")
+    fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                           -> &'tcx hir::Body {
+        bug!("item_body")
     }
 
     // This is basically a 1-based range of ints, which is a little
@@ -412,10 +405,13 @@ impl CrateStore for DummyCrateStore {
         { vec![] }
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource { bug!("used_crate_source") }
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> { None }
-    fn encode_metadata<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           reexports: &def::ExportMap,
-                           link_meta: &LinkMeta,
-                           reachable: &NodeSet) -> Vec<u8> { vec![] }
+    fn encode_metadata<'a, 'tcx>(&self,
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 link_meta: &LinkMeta,
+                                 reachable: &NodeSet)
+                                 -> EncodedMetadata {
+        bug!("encode_metadata")
+    }
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
 }
 

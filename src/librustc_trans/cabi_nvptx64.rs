@@ -11,35 +11,26 @@
 // Reference: PTX Writer's Guide to Interoperability
 // http://docs.nvidia.com/cuda/ptx-writers-guide-to-interoperability
 
-#![allow(non_upper_case_globals)]
-
-use llvm::Struct;
-
-use abi::{self, ArgType, FnType};
+use abi::{ArgType, FnType, LayoutExt};
 use context::CrateContext;
-use type_::Type;
 
-fn ty_size(ty: Type) -> usize {
-    abi::ty_size(ty, 8)
-}
-
-fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
-    if ret.ty.kind() == Struct && ty_size(ret.ty) > 64 {
+fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
+    if ret.layout.is_aggregate() && ret.layout.size(ccx).bits() > 64 {
         ret.make_indirect(ccx);
     } else {
         ret.extend_integer_width_to(64);
     }
 }
 
-fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
-    if arg.ty.kind() == Struct && ty_size(arg.ty) > 64 {
+fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
+    if arg.layout.is_aggregate() && arg.layout.size(ccx).bits() > 64 {
         arg.make_indirect(ccx);
     } else {
         arg.extend_integer_width_to(64);
     }
 }
 
-pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
+pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     if !fty.ret.is_ignore() {
         classify_ret_ty(ccx, &mut fty.ret);
     }

@@ -9,12 +9,13 @@
 // except according to those terms.
 
 use llvm::{self, ValueRef, BasicBlockRef};
-use rustc_const_eval::{ErrKind, ConstEvalErr, note_const_eval_err};
 use rustc::middle::lang_items;
-use rustc::middle::const_val::ConstInt;
-use rustc::ty::{self, layout, TypeFoldable};
+use rustc::middle::const_val::{ConstEvalErr, ConstInt, ErrKind};
+use rustc::ty::{self, TypeFoldable};
+use rustc::ty::layout::{self, LayoutTyper};
 use rustc::mir;
 use abi::{Abi, FnType, ArgType};
+use adt;
 use base::{self, Lifetime};
 use callee;
 use builder::Builder;
@@ -24,8 +25,8 @@ use consts;
 use machine::llalign_of_min;
 use meth;
 use monomorphize;
+use type_of;
 use tvec;
-use type_of::{self, align_of};
 use type_::Type;
 
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -177,7 +178,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     };
                     let llslot = match op.val {
                         Immediate(_) | Pair(..) => {
-                            let llscratch = bcx.alloca(ret.original_ty, "ret");
+                            let llscratch = bcx.alloca(ret.memory_ty(bcx.ccx), "ret", None);
                             self.store_operand(&bcx, llscratch, None, op);
                             llscratch
                         }
@@ -189,7 +190,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     };
                     let load = bcx.load(
                         bcx.pointercast(llslot, cast_ty.ptr_to()),
-                        Some(llalign_of_min(bcx.ccx, ret.ty)));
+                        Some(ret.layout.align(bcx.ccx).abi() as u32));
                     load
                 } else {
                     let op = self.trans_consume(&bcx, &mir::Lvalue::Local(mir::RETURN_POINTER));
@@ -362,7 +363,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let err = ConstEvalErr{ span: span, kind: err };
                         let mut diag = bcx.tcx().sess.struct_span_warn(
                             span, "this expression will panic at run-time");
-                        note_const_eval_err(bcx.tcx(), &err, span, "expression", &mut diag);
+                        err.note(bcx.tcx(), span, "expression", &mut diag);
                         diag.emit();
                     }
                 }
@@ -417,16 +418,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     _ => None
                 };
                 let intrinsic = intrinsic.as_ref().map(|s| &s[..]);
-
-                if intrinsic == Some("move_val_init") {
-                    let &(_, target) = destination.as_ref().unwrap();
-                    // The first argument is a thin destination pointer.
-                    let llptr = self.trans_operand(&bcx, &args[0]).immediate();
-                    let val = self.trans_operand(&bcx, &args[1]);
-                    self.store_operand(&bcx, llptr, None, val);
-                    funclet_br(self, bcx, target);
-                    return;
-                }
 
                 if intrinsic == Some("transmute") {
                     let &(ref dest, target) = destination.as_ref().unwrap();
@@ -515,7 +506,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             (llargs[0], &llargs[1..])
                         }
                         ReturnDest::Nothing => {
-                            (C_undef(fn_ty.ret.original_ty.ptr_to()), &llargs[..])
+                            (C_undef(fn_ty.ret.memory_ty(bcx.ccx).ptr_to()), &llargs[..])
                         }
                         ReturnDest::IndirectOperand(dst, _) |
                         ReturnDest::Store(dst) => (dst, &llargs[..]),
@@ -534,7 +525,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             val: Ref(dst, Alignment::AbiAligned),
                             ty: sig.output(),
                         };
-                        self.store_return(&bcx, ret_dest, fn_ty.ret, op);
+                        self.store_return(&bcx, ret_dest, &fn_ty.ret, op);
                     }
 
                     if let Some((_, target)) = *destination {
@@ -573,7 +564,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             val: Immediate(invokeret),
                             ty: sig.output(),
                         };
-                        self.store_return(&ret_bcx, ret_dest, fn_ty.ret, op);
+                        self.store_return(&ret_bcx, ret_dest, &fn_ty.ret, op);
                     }
                 } else {
                     let llret = bcx.call(fn_ptr, &llargs, cleanup_bundle);
@@ -583,7 +574,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             val: Immediate(llret),
                             ty: sig.output(),
                         };
-                        self.store_return(&bcx, ret_dest, fn_ty.ret, op);
+                        self.store_return(&bcx, ret_dest, &fn_ty.ret, op);
                         funclet_br(self, bcx, target);
                     } else {
                         bcx.unreachable();
@@ -597,7 +588,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                       bcx: &Builder<'a, 'tcx>,
                       op: OperandRef<'tcx>,
                       llargs: &mut Vec<ValueRef>,
-                      fn_ty: &FnType,
+                      fn_ty: &FnType<'tcx>,
                       next_idx: &mut usize,
                       llfn: &mut Option<ValueRef>,
                       def: &Option<ty::InstanceDef<'tcx>>) {
@@ -640,7 +631,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let (mut llval, align, by_ref) = match op.val {
             Immediate(_) | Pair(..) => {
                 if arg.is_indirect() || arg.cast.is_some() {
-                    let llscratch = bcx.alloca(arg.original_ty, "arg");
+                    let llscratch = bcx.alloca(arg.memory_ty(bcx.ccx), "arg", None);
                     self.store_operand(bcx, llscratch, None, op);
                     (llscratch, Alignment::AbiAligned, true)
                 } else {
@@ -652,7 +643,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // think that ATM (Rust 1.16) we only pass temporaries, but we shouldn't
                 // have scary latent bugs around.
 
-                let llscratch = bcx.alloca(arg.original_ty, "arg");
+                let llscratch = bcx.alloca(arg.memory_ty(bcx.ccx), "arg", None);
                 base::memcpy_ty(bcx, llscratch, llval, op.ty, Some(1));
                 (llscratch, Alignment::AbiAligned, true)
             }
@@ -661,13 +652,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
-            if arg.original_ty == Type::i1(bcx.ccx) {
+            if arg.layout.ty == bcx.tcx().types.bool {
                 // We store bools as i8 so we need to truncate to i1.
                 llval = bcx.load_range_assert(llval, 0, 2, llvm::False, None);
-                llval = bcx.trunc(llval, arg.original_ty);
+                llval = bcx.trunc(llval, Type::i1(bcx.ccx));
             } else if let Some(ty) = arg.cast {
                 llval = bcx.load(bcx.pointercast(llval, ty.ptr_to()),
-                                 align.min_with(llalign_of_min(bcx.ccx, arg.ty)));
+                                 align.min_with(arg.layout.align(bcx.ccx).abi() as u32));
             } else {
                 llval = bcx.load(llval, align.to_align());
             }
@@ -680,7 +671,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 bcx: &Builder<'a, 'tcx>,
                                 operand: &mir::Operand<'tcx>,
                                 llargs: &mut Vec<ValueRef>,
-                                fn_ty: &FnType,
+                                fn_ty: &FnType<'tcx>,
                                 next_idx: &mut usize,
                                 llfn: &mut Option<ValueRef>,
                                 def: &Option<ty::InstanceDef<'tcx>>) {
@@ -721,7 +712,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     bug!("Not a tuple.");
                 };
                 for (n, &ty) in arg_types.iter().enumerate() {
-                    let mut elem = bcx.extract_value(llval, v.memory_index[n] as usize);
+                    let mut elem = bcx.extract_value(
+                        llval, adt::struct_llfields_index(v, n));
                     // Truncate bools to i1, if needed
                     if ty.is_bool() && common::val_ty(elem) != Type::i1(bcx.ccx) {
                         elem = bcx.trunc(elem, Type::i1(bcx.ccx));
@@ -760,9 +752,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             slot
         } else {
             let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
-            let slot = bcx.alloca(llretty, "personalityslot");
+            let slot = bcx.alloca(llretty, "personalityslot", None);
             self.llpersonalityslot = Some(slot);
-            Lifetime::Start.call(bcx, slot);
             slot
         }
     }
@@ -794,6 +785,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let llretval = bcx.landing_pad(llretty, llpersonality, 1, self.llfn);
         bcx.set_cleanup(llretval);
         let slot = self.get_personality_slot(&bcx);
+        Lifetime::Start.call(&bcx, slot);
         bcx.store(llretval, slot, None);
         bcx.br(target_bb);
         bcx.llbb()
@@ -910,7 +902,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let cast_ptr = bcx.pointercast(dst.llval, llty.ptr_to());
         let in_type = val.ty;
         let out_type = dst.ty.to_ty(bcx.tcx());;
-        let llalign = cmp::min(align_of(bcx.ccx, in_type), align_of(bcx.ccx, out_type));
+        let llalign = cmp::min(bcx.ccx.align_of(in_type), bcx.ccx.align_of(out_type));
         self.store_operand(bcx, cast_ptr, Some(llalign), val);
     }
 
@@ -919,7 +911,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     fn store_return(&mut self,
                     bcx: &Builder<'a, 'tcx>,
                     dest: ReturnDest,
-                    ret_ty: ArgType,
+                    ret_ty: &ArgType<'tcx>,
                     op: OperandRef<'tcx>) {
         use self::ReturnDest::*;
 

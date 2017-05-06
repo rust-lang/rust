@@ -349,6 +349,9 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
 
             collect_neighbours(scx, instance, &mut neighbors);
         }
+        TransItem::GlobalAsm(..) => {
+            recursion_depth_reset = None;
+        }
     }
 
     record_inlining_canditates(scx.tcx(), starting_point, &neighbors[..], inlining_map);
@@ -464,13 +467,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             // have to instantiate all methods of the trait being cast to, so we
             // can build the appropriate vtable.
             mir::Rvalue::Cast(mir::CastKind::Unsize, ref operand, target_ty) => {
-                let target_ty = monomorphize::apply_param_substs(self.scx,
-                                                                 self.param_substs,
-                                                                 &target_ty);
+                let target_ty = self.scx.tcx().trans_apply_param_substs(self.param_substs,
+                                                                        &target_ty);
                 let source_ty = operand.ty(self.mir, self.scx.tcx());
-                let source_ty = monomorphize::apply_param_substs(self.scx,
-                                                                 self.param_substs,
-                                                                 &source_ty);
+                let source_ty = self.scx.tcx().trans_apply_param_substs(self.param_substs,
+                                                                        &source_ty);
                 let (source_ty, target_ty) = find_vtable_types_for_unsizing(self.scx,
                                                                             source_ty,
                                                                             target_ty);
@@ -486,10 +487,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             }
             mir::Rvalue::Cast(mir::CastKind::ReifyFnPointer, ref operand, _) => {
                 let fn_ty = operand.ty(self.mir, self.scx.tcx());
-                let fn_ty = monomorphize::apply_param_substs(
-                    self.scx,
-                    self.param_substs,
-                    &fn_ty);
+                let fn_ty = self.scx.tcx().trans_apply_param_substs(self.param_substs,
+                                                                    &fn_ty);
                 visit_fn_use(self.scx, fn_ty, false, &mut self.output);
             }
             mir::Rvalue::Cast(mir::CastKind::ClosureFnPointer, ref operand, _) => {
@@ -531,9 +530,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         }
 
         if let mir::Literal::Item { def_id, substs } = constant.literal {
-            let substs = monomorphize::apply_param_substs(self.scx,
-                                                          self.param_substs,
-                                                          &substs);
+            let substs = self.scx.tcx().trans_apply_param_substs(self.param_substs,
+                                                                 &substs);
             let instance = monomorphize::resolve(self.scx, def_id, substs);
             collect_neighbours(self.scx, instance, self.output);
         }
@@ -549,17 +547,14 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         match *kind {
             mir::TerminatorKind::Call { ref func, .. } => {
                 let callee_ty = func.ty(self.mir, tcx);
-                let callee_ty = monomorphize::apply_param_substs(
-                    self.scx, self.param_substs, &callee_ty);
+                let callee_ty = tcx.trans_apply_param_substs(self.param_substs, &callee_ty);
                 visit_fn_use(self.scx, callee_ty, true, &mut self.output);
             }
             mir::TerminatorKind::Drop { ref location, .. } |
             mir::TerminatorKind::DropAndReplace { ref location, .. } => {
                 let ty = location.ty(self.mir, self.scx.tcx())
                     .to_ty(self.scx.tcx());
-                let ty = monomorphize::apply_param_substs(self.scx,
-                                                          self.param_substs,
-                                                          &ty);
+                let ty = tcx.trans_apply_param_substs(self.param_substs, &ty);
                 visit_drop_use(self.scx, ty, true, self.output);
             }
             mir::TerminatorKind::Goto { .. } |
@@ -664,7 +659,7 @@ fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instan
                 // in this crate
                 false
             } else {
-                if !tcx.sess.cstore.is_item_mir_available(def_id) {
+                if !tcx.is_mir_available(def_id) {
                     bug!("Cannot create local trans-item for {:?}", def_id)
                 }
                 true
@@ -840,6 +835,12 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                     }
                 }
             }
+            hir::ItemGlobalAsm(..) => {
+                debug!("RootCollector: ItemGlobalAsm({})",
+                       def_id_to_string(self.scx.tcx(),
+                                        self.scx.tcx().hir.local_def_id(item.id)));
+                self.output.push(TransItem::GlobalAsm(item.id));
+            }
             hir::ItemStatic(..) => {
                 debug!("RootCollector: ItemStatic({})",
                        def_id_to_string(self.scx.tcx(),
@@ -879,7 +880,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 let parent_node_id = hir_map.get_parent_node(ii.id);
                 let is_impl_generic = match hir_map.expect_item(parent_node_id) {
                     &hir::Item {
-                        node: hir::ItemImpl(_, _, ref generics, ..),
+                        node: hir::ItemImpl(_, _, _, ref generics, ..),
                         ..
                     } => {
                         generics.is_type_parameterized()
@@ -911,6 +912,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
     match item.node {
         hir::ItemImpl(_,
                       _,
+                      _,
                       ref generics,
                       ..,
                       ref impl_item_refs) => {
@@ -934,14 +936,14 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
                         continue;
                     }
 
-                    if !tcx.item_generics(method.def_id).types.is_empty() {
+                    if !tcx.generics_of(method.def_id).types.is_empty() {
                         continue;
                     }
 
                     let instance =
                         monomorphize::resolve(scx, method.def_id, callee_substs);
 
-                    let predicates = tcx.item_predicates(instance.def_id()).predicates
+                    let predicates = tcx.predicates_of(instance.def_id()).predicates
                         .subst(tcx, instance.substs);
                     if !traits::normalize_and_test_predicates(tcx, predicates) {
                         continue;

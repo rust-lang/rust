@@ -72,7 +72,7 @@ use html::format::{TyParamBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
-use html::markdown::{self, Markdown, MarkdownHtml};
+use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine, RenderType};
 use html::{highlight, layout};
 
 /// A pair of name and its optional document.
@@ -98,6 +98,7 @@ pub struct Context {
     /// publicly reused items to redirect to the right location.
     pub render_redirect_pages: bool,
     pub shared: Arc<SharedContext>,
+    pub render_type: RenderType,
 }
 
 pub struct SharedContext {
@@ -433,7 +434,8 @@ pub fn run(mut krate: clean::Crate,
            dst: PathBuf,
            passes: FxHashSet<String>,
            css_file_extension: Option<PathBuf>,
-           renderinfo: RenderInfo) -> Result<(), Error> {
+           renderinfo: RenderInfo,
+           render_type: RenderType) -> Result<(), Error> {
     let src_root = match krate.src.parent() {
         Some(p) => p.to_path_buf(),
         None => PathBuf::new(),
@@ -495,6 +497,7 @@ pub fn run(mut krate: clean::Crate,
         dst: dst,
         render_redirect_pages: false,
         shared: Arc::new(scx),
+        render_type: render_type,
     };
 
     // Crawl the crate to build various caches used for the output
@@ -1638,11 +1641,12 @@ fn plain_summary_line(s: Option<&str>) -> String {
 
 fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
     document_stability(w, cx, item)?;
-    document_full(w, item)?;
+    document_full(w, item, cx.render_type)?;
     Ok(())
 }
 
-fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink) -> fmt::Result {
+fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink,
+                  render_type: RenderType) -> fmt::Result {
     if let Some(s) = item.doc_value() {
         let markdown = if s.contains('\n') {
             format!("{} [Read more]({})",
@@ -1650,7 +1654,8 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
         } else {
             format!("{}", &plain_summary_line(Some(s)))
         };
-        write!(w, "<div class='docblock'>{}</div>", Markdown(&markdown))?;
+        write!(w, "<div class='docblock'>{}</div>",
+               Markdown(&markdown, render_type))?;
     }
     Ok(())
 }
@@ -1680,10 +1685,11 @@ fn get_doc_value(item: &clean::Item) -> Option<&str> {
     }
 }
 
-fn document_full(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
+fn document_full(w: &mut fmt::Formatter, item: &clean::Item,
+                 render_type: RenderType) -> fmt::Result {
     if let Some(s) = get_doc_value(item) {
         write!(w, "<div class='docblock'>{}</div>",
-               Markdown(&format!("{}{}", md_render_assoc_item(item), s)))?;
+               Markdown(&format!("{}{}", md_render_assoc_item(item), s), render_type))?;
     }
     Ok(())
 }
@@ -1871,7 +1877,13 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        </tr>",
                        name = *myitem.name.as_ref().unwrap(),
                        stab_docs = stab_docs,
-                       docs = shorter(Some(&Markdown(doc_value).to_string())),
+                       docs = if cx.render_type == RenderType::Hoedown {
+                           format!("{}",
+                                   shorter(Some(&Markdown(doc_value,
+                                                          RenderType::Hoedown).to_string())))
+                       } else {
+                           format!("{}", MarkdownSummaryLine(doc_value))
+                       },
                        class = myitem.type_(),
                        stab = myitem.stability_class().unwrap_or("".to_string()),
                        unsafety_flag = unsafety_flag,
@@ -1914,7 +1926,9 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             } else {
                 String::new()
             };
-            let text = format!("Deprecated{}{}", since, MarkdownHtml(&deprecated_reason));
+            let text = format!("Deprecated{}{}",
+                               since,
+                               MarkdownHtml(&deprecated_reason, cx.render_type));
             stability.push(format!("<div class='stab deprecated'>{}</div>", text))
         };
 
@@ -1943,7 +1957,8 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                     let text = format!("<summary><span class=microscope>🔬</span> \
                                         This is a nightly-only experimental API. {}\
                                         </summary>{}",
-                                       unstable_extra, MarkdownHtml(&stab.unstable_reason));
+                                       unstable_extra,
+                                       MarkdownHtml(&stab.unstable_reason, cx.render_type));
                     stability.push(format!("<div class='stab unstable'><details>{}</details></div>",
                                    text));
                 }
@@ -1963,7 +1978,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             String::new()
         };
 
-        let text = format!("Deprecated{}{}", since, MarkdownHtml(&note));
+        let text = format!("Deprecated{}{}", since, MarkdownHtml(&note, cx.render_type));
         stability.push(format!("<div class='stab deprecated'>{}</div>", text))
     }
 
@@ -2015,13 +2030,13 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         UnstableFeatures::Allow => f.constness,
         _ => hir::Constness::NotConst
     };
-    let indent = format!("{}{}{}{:#}fn {}{:#}",
-                         VisSpace(&it.visibility),
-                         ConstnessSpace(vis_constness),
-                         UnsafetySpace(f.unsafety),
-                         AbiSpace(f.abi),
-                         it.name.as_ref().unwrap(),
-                         f.generics).len();
+    let name_len = format!("{}{}{}{:#}fn {}{:#}",
+                           VisSpace(&it.visibility),
+                           ConstnessSpace(vis_constness),
+                           UnsafetySpace(f.unsafety),
+                           AbiSpace(f.abi),
+                           it.name.as_ref().unwrap(),
+                           f.generics).len();
     write!(w, "<pre class='rust fn'>")?;
     render_attributes(w, it)?;
     write!(w, "{vis}{constness}{unsafety}{abi}fn \
@@ -2032,8 +2047,12 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            abi = AbiSpace(f.abi),
            name = it.name.as_ref().unwrap(),
            generics = f.generics,
-           where_clause = WhereClause(&f.generics, 2),
-           decl = Method(&f.decl, indent))?;
+           where_clause = WhereClause { gens: &f.generics, indent: 0, end_newline: true },
+           decl = Method {
+               decl: &f.decl,
+               name_len: name_len,
+               indent: 0,
+           })?;
     document(w, cx, it)
 }
 
@@ -2061,14 +2080,18 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     // Output the trait definition
     write!(w, "<pre class='rust trait'>")?;
     render_attributes(w, it)?;
-    write!(w, "{}{}trait {}{}{}{} ",
+    write!(w, "{}{}trait {}{}{}",
            VisSpace(&it.visibility),
            UnsafetySpace(t.unsafety),
            it.name.as_ref().unwrap(),
            t.generics,
-           bounds,
-           // Where clauses in traits are indented nine spaces, per rustdoc.css
-           WhereClause(&t.generics, 9))?;
+           bounds)?;
+
+    if !t.generics.where_predicates.is_empty() {
+        write!(w, "{}", WhereClause { gens: &t.generics, indent: 0, end_newline: true })?;
+    } else {
+        write!(w, " ")?;
+    }
 
     let types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
     let consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
@@ -2107,7 +2130,14 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         for m in &provided {
             write!(w, "    ")?;
             render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait)?;
-            write!(w, " {{ ... }}\n")?;
+            match m.inner {
+                clean::MethodItem(ref inner) if !inner.generics.where_predicates.is_empty() => {
+                    write!(w, ",\n    {{ ... }}\n")?;
+                },
+                _ => {
+                    write!(w, " {{ ... }}\n")?;
+                },
+            }
         }
         write!(w, "}}")?;
     }
@@ -2341,21 +2371,17 @@ fn render_assoc_item(w: &mut fmt::Formatter,
         } else {
             hir::Constness::NotConst
         };
-        let prefix = format!("{}{}{:#}fn {}{:#}",
-                             ConstnessSpace(vis_constness),
-                             UnsafetySpace(unsafety),
-                             AbiSpace(abi),
-                             name,
-                             *g);
-        let mut indent = prefix.len();
-        let where_indent = if parent == ItemType::Trait {
-            indent += 4;
-            8
-        } else if parent == ItemType::Impl {
-            2
+        let mut head_len = format!("{}{}{:#}fn {}{:#}",
+                                   ConstnessSpace(vis_constness),
+                                   UnsafetySpace(unsafety),
+                                   AbiSpace(abi),
+                                   name,
+                                   *g).len();
+        let (indent, end_newline) = if parent == ItemType::Trait {
+            head_len += 4;
+            (4, false)
         } else {
-            let prefix = prefix + &format!("{:#}", Method(d, indent));
-            prefix.lines().last().unwrap().len() + 1
+            (0, true)
         };
         write!(w, "{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
@@ -2365,8 +2391,16 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                href = href,
                name = name,
                generics = *g,
-               decl = Method(d, indent),
-               where_clause = WhereClause(g, where_indent))
+               decl = Method {
+                   decl: d,
+                   name_len: head_len,
+                   indent: indent,
+               },
+               where_clause = WhereClause {
+                   gens: g,
+                   indent: indent,
+                   end_newline: end_newline,
+               })
     }
     match item.inner {
         clean::StrippedItem(..) => Ok(()),
@@ -2410,7 +2444,7 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     }).peekable();
     if let doctree::Plain = s.struct_type {
         if fields.peek().is_some() {
-            write!(w, "<h2 class='fields'>Fields</h2>")?;
+            write!(w, "<h2 id='fields' class='fields'>Fields</h2>")?;
             for (field, ty) in fields {
                 let id = derive_id(format!("{}.{}",
                                            ItemType::StructField,
@@ -2458,7 +2492,7 @@ fn item_union(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
     }).peekable();
     if fields.peek().is_some() {
-        write!(w, "<h2 class='fields'>Fields</h2>")?;
+        write!(w, "<h2 id='fields' class='fields'>Fields</h2>")?;
         for (field, ty) in fields {
             write!(w, "<span id='{shortty}.{name}' class=\"{shortty}\"><code>{name}: {ty}</code>
                        </span>",
@@ -2479,15 +2513,11 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
              e: &clean::Enum) -> fmt::Result {
     write!(w, "<pre class='rust enum'>")?;
     render_attributes(w, it)?;
-    let padding = format!("{}enum {}{:#} ",
-                          VisSpace(&it.visibility),
-                          it.name.as_ref().unwrap(),
-                          e.generics).len();
     write!(w, "{}enum {}{}{}",
            VisSpace(&it.visibility),
            it.name.as_ref().unwrap(),
            e.generics,
-           WhereClause(&e.generics, padding))?;
+           WhereClause { gens: &e.generics, indent: 0, end_newline: true })?;
     if e.variants.is_empty() && !e.variants_stripped {
         write!(w, " {{}}")?;
     } else {
@@ -2534,7 +2564,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
     document(w, cx, it)?;
     if !e.variants.is_empty() {
-        write!(w, "<h2 class='variants'>Variants</h2>\n")?;
+        write!(w, "<h2 id='variants' class='variants'>Variants</h2>\n")?;
         for variant in &e.variants {
             let id = derive_id(format!("{}.{}",
                                        ItemType::Variant,
@@ -2611,7 +2641,7 @@ fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
     if attr.is_word() {
         Some(format!("{}", name))
     } else if let Some(v) = attr.value_str() {
-        Some(format!("{} = {:?}", name, &v.as_str()[..]))
+        Some(format!("{} = {:?}", name, v.as_str()))
     } else if let Some(values) = attr.meta_item_list() {
         let display: Vec<_> = values.iter().filter_map(|attr| {
             attr.meta_item().and_then(|mi| render_attribute(mi))
@@ -2642,7 +2672,7 @@ fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
 
     for attr in &it.attrs.other_attrs {
         let name = attr.name().unwrap();
-        if !ATTRIBUTE_WHITELIST.contains(&&name.as_str()[..]) {
+        if !ATTRIBUTE_WHITELIST.contains(&&*name.as_str()) {
             continue;
         }
         if let Some(s) = render_attribute(&attr.meta().unwrap()) {
@@ -2661,23 +2691,17 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
                  fields: &[clean::Item],
                  tab: &str,
                  structhead: bool) -> fmt::Result {
-    let mut plain = String::new();
     write!(w, "{}{}{}",
            VisSpace(&it.visibility),
            if structhead {"struct "} else {""},
            it.name.as_ref().unwrap())?;
-    plain.push_str(&format!("{}{}{}",
-                            VisSpace(&it.visibility),
-                            if structhead {"struct "} else {""},
-                            it.name.as_ref().unwrap()));
     if let Some(g) = g {
-        plain.push_str(&format!("{:#}", g));
         write!(w, "{}", g)?
     }
     match ty {
         doctree::Plain => {
             if let Some(g) = g {
-                write!(w, "{}", WhereClause(g, plain.len() + 1))?
+                write!(w, "{}", WhereClause { gens: g, indent: 0, end_newline: true })?
             }
             let mut has_visible_fields = false;
             write!(w, " {{")?;
@@ -2706,35 +2730,30 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
         }
         doctree::Tuple => {
             write!(w, "(")?;
-            plain.push_str("(");
             for (i, field) in fields.iter().enumerate() {
                 if i > 0 {
                     write!(w, ", ")?;
-                    plain.push_str(", ");
                 }
                 match field.inner {
                     clean::StrippedItem(box clean::StructFieldItem(..)) => {
-                        plain.push_str("_");
                         write!(w, "_")?
                     }
                     clean::StructFieldItem(ref ty) => {
-                        plain.push_str(&format!("{}{:#}", VisSpace(&field.visibility), *ty));
                         write!(w, "{}{}", VisSpace(&field.visibility), *ty)?
                     }
                     _ => unreachable!()
                 }
             }
             write!(w, ")")?;
-            plain.push_str(")");
             if let Some(g) = g {
-                write!(w, "{}", WhereClause(g, plain.len() + 1))?
+                write!(w, "{}", WhereClause { gens: g, indent: 0, end_newline: false })?
             }
             write!(w, ";")?;
         }
         doctree::Unit => {
             // Needed for PhantomData.
             if let Some(g) = g {
-                write!(w, "{}", WhereClause(g, plain.len() + 1))?
+                write!(w, "{}", WhereClause { gens: g, indent: 0, end_newline: false })?
             }
             write!(w, ";")?;
         }
@@ -2747,19 +2766,13 @@ fn render_union(w: &mut fmt::Formatter, it: &clean::Item,
                 fields: &[clean::Item],
                 tab: &str,
                 structhead: bool) -> fmt::Result {
-    let mut plain = String::new();
     write!(w, "{}{}{}",
            VisSpace(&it.visibility),
            if structhead {"union "} else {""},
            it.name.as_ref().unwrap())?;
-    plain.push_str(&format!("{}{}{}",
-                            VisSpace(&it.visibility),
-                            if structhead {"union "} else {""},
-                            it.name.as_ref().unwrap()));
     if let Some(g) = g {
         write!(w, "{}", g)?;
-        plain.push_str(&format!("{:#}", g));
-        write!(w, "{}", WhereClause(g, plain.len() + 1))?;
+        write!(w, "{}", WhereClause { gens: g, indent: 0, end_newline: true })?;
     }
 
     write!(w, " {{\n{}", tab)?;
@@ -2901,7 +2914,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         write!(w, "</span>")?;
         write!(w, "</h3>\n")?;
         if let Some(ref dox) = i.impl_item.doc_value() {
-            write!(w, "<div class='docblock'>{}</div>", Markdown(dox))?;
+            write!(w, "<div class='docblock'>{}</div>", Markdown(dox, cx.render_type))?;
         }
     }
 
@@ -3000,11 +3013,11 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                         // because impls can't have a stability.
                         document_stability(w, cx, it)?;
                         if get_doc_value(item).is_some() {
-                            document_full(w, item)?;
+                            document_full(w, item, cx.render_type)?;
                         } else {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(w, it, link)?;
+                            document_short(w, it, link, cx.render_type)?;
                         }
                     }
                 } else {
@@ -3012,7 +3025,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 }
             } else {
                 document_stability(w, cx, item)?;
-                document_short(w, item, link)?;
+                document_short(w, item, link, cx.render_type)?;
             }
         }
         Ok(())
@@ -3058,13 +3071,12 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
 
 fn item_typedef(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 t: &clean::Typedef) -> fmt::Result {
-    let indent = format!("type {}{:#} ", it.name.as_ref().unwrap(), t.generics).len();
     write!(w, "<pre class='rust typedef'>")?;
     render_attributes(w, it)?;
     write!(w, "type {}{}{where_clause} = {type_};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,
-           where_clause = WhereClause(&t.generics, indent),
+           where_clause = WhereClause { gens: &t.generics, indent: 0, end_newline: true },
            type_ = t.type_)?;
 
     document(w, cx, it)
@@ -3075,6 +3087,37 @@ impl<'a> fmt::Display for Sidebar<'a> {
         let cx = self.cx;
         let it = self.item;
         let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
+
+        if it.is_struct() || it.is_trait() || it.is_primitive() || it.is_union()
+            || it.is_enum() || it.is_mod()
+        {
+            write!(fmt, "<p class='location'>")?;
+            match it.inner {
+                clean::StructItem(..) => write!(fmt, "Struct ")?,
+                clean::TraitItem(..) => write!(fmt, "Trait ")?,
+                clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
+                clean::UnionItem(..) => write!(fmt, "Union ")?,
+                clean::EnumItem(..) => write!(fmt, "Enum ")?,
+                clean::ModuleItem(..) => if it.is_crate() {
+                    write!(fmt, "Crate ")?;
+                } else {
+                    write!(fmt, "Module ")?;
+                },
+                _ => (),
+            }
+            write!(fmt, "{}", it.name.as_ref().unwrap())?;
+            write!(fmt, "</p>")?;
+
+            match it.inner {
+                clean::StructItem(ref s) => sidebar_struct(fmt, it, s)?,
+                clean::TraitItem(ref t) => sidebar_trait(fmt, it, t)?,
+                clean::PrimitiveItem(ref p) => sidebar_primitive(fmt, it, p)?,
+                clean::UnionItem(ref u) => sidebar_union(fmt, it, u)?,
+                clean::EnumItem(ref e) => sidebar_enum(fmt, it, e)?,
+                clean::ModuleItem(ref m) => sidebar_module(fmt, it, &m.items)?,
+                _ => (),
+            }
+        }
 
         // The sidebar is designed to display sibling functions, modules and
         // other miscellaneous information. since there are lots of sibling
@@ -3116,6 +3159,193 @@ impl<'a> fmt::Display for Sidebar<'a> {
 
         Ok(())
     }
+}
+
+fn sidebar_assoc_items(it: &clean::Item) -> String {
+    let mut out = String::new();
+    let c = cache();
+    if let Some(v) = c.impls.get(&it.def_id) {
+        if v.iter().any(|i| i.inner_impl().trait_.is_none()) {
+            out.push_str("<li><a href=\"#methods\">Methods</a></li>");
+        }
+
+        if v.iter().any(|i| i.inner_impl().trait_.is_some()) {
+            if let Some(impl_) = v.iter()
+                                  .filter(|i| i.inner_impl().trait_.is_some())
+                                  .find(|i| i.inner_impl().trait_.def_id() == c.deref_trait_did) {
+                if let Some(target) = impl_.inner_impl().items.iter().filter_map(|item| {
+                    match item.inner {
+                        clean::TypedefItem(ref t, true) => Some(&t.type_),
+                        _ => None,
+                    }
+                }).next() {
+                    let inner_impl = target.def_id().or(target.primitive_type().and_then(|prim| {
+                        c.primitive_locations.get(&prim).cloned()
+                    })).and_then(|did| c.impls.get(&did));
+                    if inner_impl.is_some() {
+                        out.push_str("<li><a href=\"#deref-methods\">");
+                        out.push_str(&format!("Methods from {:#}&lt;Target={:#}&gt;",
+                                                  impl_.inner_impl().trait_.as_ref().unwrap(),
+                                                  target));
+                        out.push_str("</a></li>");
+                    }
+                }
+            }
+            out.push_str("<li><a href=\"#implementations\">Trait Implementations</a></li>");
+        }
+    }
+
+    out
+}
+
+fn sidebar_struct(fmt: &mut fmt::Formatter, it: &clean::Item,
+                  s: &clean::Struct) -> fmt::Result {
+    let mut sidebar = String::new();
+
+    if s.fields.iter()
+               .any(|f| if let clean::StructFieldItem(..) = f.inner { true } else { false }) {
+        if let doctree::Plain = s.struct_type {
+            sidebar.push_str("<li><a href=\"#fields\">Fields</a></li>");
+        }
+    }
+
+    sidebar.push_str(&sidebar_assoc_items(it));
+
+    if !sidebar.is_empty() {
+        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+    }
+    Ok(())
+}
+
+fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
+                 t: &clean::Trait) -> fmt::Result {
+    let mut sidebar = String::new();
+
+    let has_types = t.items.iter().any(|m| m.is_associated_type());
+    let has_consts = t.items.iter().any(|m| m.is_associated_const());
+    let has_required = t.items.iter().any(|m| m.is_ty_method());
+    let has_provided = t.items.iter().any(|m| m.is_method());
+
+    if has_types {
+        sidebar.push_str("<li><a href=\"#associated-types\">Associated Types</a></li>");
+    }
+    if has_consts {
+        sidebar.push_str("<li><a href=\"#associated-const\">Associated Constants</a></li>");
+    }
+    if has_required {
+        sidebar.push_str("<li><a href=\"#required-methods\">Required Methods</a></li>");
+    }
+    if has_provided {
+        sidebar.push_str("<li><a href=\"#provided-methods\">Provided Methods</a></li>");
+    }
+
+    sidebar.push_str(&sidebar_assoc_items(it));
+
+    sidebar.push_str("<li><a href=\"#implementors\">Implementors</a></li>");
+
+    write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)
+}
+
+fn sidebar_primitive(fmt: &mut fmt::Formatter, it: &clean::Item,
+                     _p: &clean::PrimitiveType) -> fmt::Result {
+    let sidebar = sidebar_assoc_items(it);
+
+    if !sidebar.is_empty() {
+        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+    }
+    Ok(())
+}
+
+fn sidebar_union(fmt: &mut fmt::Formatter, it: &clean::Item,
+                 u: &clean::Union) -> fmt::Result {
+    let mut sidebar = String::new();
+
+    if u.fields.iter()
+               .any(|f| if let clean::StructFieldItem(..) = f.inner { true } else { false }) {
+        sidebar.push_str("<li><a href=\"#fields\">Fields</a></li>");
+    }
+
+    sidebar.push_str(&sidebar_assoc_items(it));
+
+    if !sidebar.is_empty() {
+        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+    }
+    Ok(())
+}
+
+fn sidebar_enum(fmt: &mut fmt::Formatter, it: &clean::Item,
+                e: &clean::Enum) -> fmt::Result {
+    let mut sidebar = String::new();
+
+    if !e.variants.is_empty() {
+        sidebar.push_str("<li><a href=\"#variants\">Variants</a></li>");
+    }
+
+    sidebar.push_str(&sidebar_assoc_items(it));
+
+    if !sidebar.is_empty() {
+        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+    }
+    Ok(())
+}
+
+fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
+                  items: &[clean::Item]) -> fmt::Result {
+    let mut sidebar = String::new();
+
+    if items.iter().any(|it| it.type_() == ItemType::ExternCrate ||
+                             it.type_() == ItemType::Import) {
+        sidebar.push_str(&format!("<li><a href=\"#{id}\">{name}</a></li>",
+                                  id = "reexports",
+                                  name = "Reexports"));
+    }
+
+    // ordering taken from item_module, reorder, where it prioritized elements in a certain order
+    // to print its headings
+    for &myty in &[ItemType::Primitive, ItemType::Module, ItemType::Macro, ItemType::Struct,
+                   ItemType::Enum, ItemType::Constant, ItemType::Static, ItemType::Trait,
+                   ItemType::Function, ItemType::Typedef, ItemType::Union, ItemType::Impl,
+                   ItemType::TyMethod, ItemType::Method, ItemType::StructField, ItemType::Variant,
+                   ItemType::AssociatedType, ItemType::AssociatedConst] {
+        if items.iter().any(|it| {
+            if let clean::DefaultImplItem(..) = it.inner {
+                false
+            } else {
+                !maybe_ignore_item(it) && !it.is_stripped() && it.type_() == myty
+            }
+        }) {
+            let (short, name) = match myty {
+                ItemType::ExternCrate |
+                ItemType::Import          => ("reexports", "Reexports"),
+                ItemType::Module          => ("modules", "Modules"),
+                ItemType::Struct          => ("structs", "Structs"),
+                ItemType::Union           => ("unions", "Unions"),
+                ItemType::Enum            => ("enums", "Enums"),
+                ItemType::Function        => ("functions", "Functions"),
+                ItemType::Typedef         => ("types", "Type Definitions"),
+                ItemType::Static          => ("statics", "Statics"),
+                ItemType::Constant        => ("constants", "Constants"),
+                ItemType::Trait           => ("traits", "Traits"),
+                ItemType::Impl            => ("impls", "Implementations"),
+                ItemType::TyMethod        => ("tymethods", "Type Methods"),
+                ItemType::Method          => ("methods", "Methods"),
+                ItemType::StructField     => ("fields", "Struct Fields"),
+                ItemType::Variant         => ("variants", "Variants"),
+                ItemType::Macro           => ("macros", "Macros"),
+                ItemType::Primitive       => ("primitives", "Primitive Types"),
+                ItemType::AssociatedType  => ("associated-types", "Associated Types"),
+                ItemType::AssociatedConst => ("associated-consts", "Associated Constants"),
+            };
+            sidebar.push_str(&format!("<li><a href=\"#{id}\">{name}</a></li>",
+                                      id = short,
+                                      name = name));
+        }
+    }
+
+    if !sidebar.is_empty() {
+        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+    }
+    Ok(())
 }
 
 impl<'a> fmt::Display for Source<'a> {

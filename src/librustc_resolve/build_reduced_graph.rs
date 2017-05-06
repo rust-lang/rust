@@ -268,6 +268,8 @@ impl<'a> Resolver<'a> {
                 self.define(parent, ident, TypeNS, imported_binding);
             }
 
+            ItemKind::GlobalAsm(..) => {}
+
             ItemKind::Mod(..) if item.ident == keywords::Invalid.ident() => {} // Crate root
 
             ItemKind::Mod(..) => {
@@ -519,7 +521,9 @@ impl<'a> Resolver<'a> {
             LoadedMacro::ProcMacro(ext) => return ext,
         };
 
-        let ext = Rc::new(macro_rules::compile(&self.session.parse_sess, &macro_def));
+        let ext = Rc::new(macro_rules::compile(&self.session.parse_sess,
+                                               &self.session.features,
+                                               &macro_def));
         self.macro_map.insert(def_id, ext.clone());
         ext
     }
@@ -539,7 +543,7 @@ impl<'a> Resolver<'a> {
                            binding: &'a NameBinding<'a>,
                            span: Span,
                            allow_shadowing: bool) {
-        if self.builtin_macros.insert(name, binding).is_some() && !allow_shadowing {
+        if self.global_macros.insert(name, binding).is_some() && !allow_shadowing {
             let msg = format!("`{}` is already in scope", name);
             let note =
                 "macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)";
@@ -680,7 +684,7 @@ pub struct BuildReducedGraphVisitor<'a, 'b: 'a> {
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn visit_invoc(&mut self, id: ast::NodeId) -> &'b InvocationData<'b> {
-        let mark = Mark::from_placeholder_id(id);
+        let mark = id.placeholder_to_mark();
         self.resolver.current_module.unresolved_invocations.borrow_mut().insert(mark);
         let invocation = self.resolver.invocations[&mark];
         invocation.module.set(self.resolver.current_module);

@@ -11,7 +11,7 @@
 use eval;
 
 use rustc::lint;
-use rustc::middle::const_val::ConstVal;
+use rustc::middle::const_val::{ConstEvalErr, ConstVal};
 use rustc::mir::{Field, BorrowKind, Mutability};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, TypeVariants, Region};
 use rustc::ty::subst::{Substs, Kind};
@@ -29,13 +29,13 @@ use syntax_pos::Span;
 #[derive(Clone, Debug)]
 pub enum PatternError<'tcx> {
     StaticInPattern(Span),
-    ConstEval(eval::ConstEvalErr<'tcx>),
+    ConstEval(ConstEvalErr<'tcx>),
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum BindingMode<'tcx> {
     ByValue,
-    ByRef(&'tcx Region, BorrowKind),
+    ByRef(Region<'tcx>, BorrowKind),
 }
 
 #[derive(Clone, Debug)]
@@ -116,6 +116,7 @@ fn print_const_val(value: &ConstVal, f: &mut fmt::Formatter) -> fmt::Result {
         ConstVal::ByteStr(ref b) => write!(f, "{:?}", &b[..]),
         ConstVal::Bool(b) => write!(f, "{:?}", b),
         ConstVal::Char(c) => write!(f, "{:?}", c),
+        ConstVal::Variant(_) |
         ConstVal::Struct(_) |
         ConstVal::Tuple(_) |
         ConstVal::Function(..) |
@@ -546,7 +547,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
         match def {
             Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
                 let enum_id = self.tcx.parent_def_id(variant_id).unwrap();
-                let adt_def = self.tcx.lookup_adt_def(enum_id);
+                let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.variants.len() > 1 {
                     let substs = match ty.sty {
                         TypeVariants::TyAdt(_, substs) => substs,
@@ -587,11 +588,16 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                 let substs = self.tables.node_id_item_substs(id)
                     .unwrap_or_else(|| tcx.intern_substs(&[]));
                 match eval::lookup_const_by_id(tcx, def_id, substs) {
-                    Some((const_expr, const_tables)) => {
+                    Some((def_id, _substs)) => {
                         // Enter the inlined constant's tables temporarily.
                         let old_tables = self.tables;
-                        self.tables = const_tables;
-                        let pat = self.lower_const_expr(const_expr, pat_id, span);
+                        self.tables = tcx.typeck_tables_of(def_id);
+                        let body = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
+                            tcx.hir.body(tcx.hir.body_owned_by(id))
+                        } else {
+                            tcx.sess.cstore.item_body(tcx, def_id)
+                        };
+                        let pat = self.lower_const_expr(&body.value, pat_id, span);
                         self.tables = old_tables;
                         return pat;
                     }
@@ -615,7 +621,12 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
         let const_cx = eval::ConstContext::with_tables(self.tcx.global_tcx(), self.tables);
         match const_cx.eval(expr) {
             Ok(value) => {
-                PatternKind::Constant { value: value }
+                if let ConstVal::Variant(def_id) = value {
+                    let ty = self.tables.expr_ty(expr);
+                    self.lower_variant_or_leaf(Def::Variant(def_id), ty, vec![])
+                } else {
+                    PatternKind::Constant { value: value }
+                }
             }
             Err(e) => {
                 self.errors.push(PatternError::ConstEval(e));
@@ -800,7 +811,7 @@ macro_rules! CloneImpls {
 }
 
 CloneImpls!{ <'tcx>
-    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ConstVal<'tcx>, Region,
+    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ConstVal<'tcx>, Region<'tcx>,
     Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef,
     &'tcx Substs<'tcx>, &'tcx Kind<'tcx>
 }

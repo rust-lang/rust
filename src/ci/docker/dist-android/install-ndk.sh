@@ -25,7 +25,7 @@ bash android-ndk-r11c/build/tools/make-standalone-toolchain.sh \
 bash android-ndk-r11c/build/tools/make-standalone-toolchain.sh \
         --platform=android-21 \
         --toolchain=aarch64-linux-android-4.9 \
-        --install-dir=/android/ndk-aarch64 \
+        --install-dir=/android/ndk-arm64-21 \
         --ndk-dir=/android/android-ndk-r11c \
         --arch=arm64
 bash android-ndk-r11c/build/tools/make-standalone-toolchain.sh \
@@ -34,5 +34,11 @@ bash android-ndk-r11c/build/tools/make-standalone-toolchain.sh \
         --install-dir=/android/ndk-x86-9 \
         --ndk-dir=/android/android-ndk-r11c \
         --arch=x86
+bash android-ndk-r11c/build/tools/make-standalone-toolchain.sh \
+        --platform=android-21 \
+        --toolchain=x86_64-4.9 \
+        --install-dir=/android/ndk-x86_64-21 \
+        --ndk-dir=/android/android-ndk-r11c \
+        --arch=x86_64
 
 rm -rf ./android-ndk-r11c-linux-x86_64.zip ./android-ndk-r11c

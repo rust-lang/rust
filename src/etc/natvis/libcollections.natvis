@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
   <Type Name="collections::vec::Vec&lt;*&gt;">
-    <DisplayString>{{ size={len} }}</DisplayString>
-    <Expand>
+    <DisplayString>{{ size={len} }}</DisplayString>
+    <Expand>
       <Item Name="[size]" ExcludeView="simple">len</Item>
       <Item Name="[capacity]" ExcludeView="simple">buf.cap</Item>
       <ArrayItems>
         <Size>len</Size>
         <ValuePointer>buf.ptr.pointer.__0</ValuePointer>
       </ArrayItems>
-    </Expand>
-  </Type>
+    </Expand>
+  </Type>
   <Type Name="collections::vec_deque::VecDeque&lt;*&gt;">
     <DisplayString>{{ size={tail &lt;= head ? head - tail : buf.cap - tail + head} }}</DisplayString>
     <Expand>

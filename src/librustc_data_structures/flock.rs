@@ -113,6 +113,7 @@ mod imp {
             pub l_sysid: libc::c_int,
         }
 
+        pub const F_RDLCK: libc::c_short = 0x0040;
         pub const F_UNLCK: libc::c_short = 0x0200;
         pub const F_WRLCK: libc::c_short = 0x0400;
         pub const F_SETLK: libc::c_int = 0x0080;

@@ -31,6 +31,7 @@ use entry::{self, EntryPointType};
 use ext::base::{ExtCtxt, Resolver};
 use ext::build::AstBuilder;
 use ext::expand::ExpansionConfig;
+use ext::hygiene::{Mark, SyntaxContext};
 use fold::Folder;
 use util::move_map::MoveMap;
 use fold;
@@ -62,6 +63,7 @@ struct TestCtxt<'a> {
     testfns: Vec<Test>,
     reexport_test_harness_main: Option<Symbol>,
     is_test_crate: bool,
+    ctxt: SyntaxContext,
 
     // top-level re-export submodule, filled out after folding is finished
     toplevel_reexport: Option<Ident>,
@@ -275,6 +277,7 @@ fn generate_test_harness(sess: &ParseSess,
     let mut cleaner = EntryPointCleaner { depth: 0 };
     let krate = cleaner.fold_crate(krate);
 
+    let mark = Mark::fresh();
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
         span_diagnostic: sd,
@@ -284,15 +287,16 @@ fn generate_test_harness(sess: &ParseSess,
         reexport_test_harness_main: reexport_test_harness_main,
         is_test_crate: is_test_crate(&krate),
         toplevel_reexport: None,
+        ctxt: SyntaxContext::empty().apply_mark(mark),
     };
     cx.ext_cx.crate_root = Some("std");
 
-    cx.ext_cx.bt_push(ExpnInfo {
+    mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
             format: MacroAttribute(Symbol::intern("test")),
             span: None,
-            allow_internal_unstable: false,
+            allow_internal_unstable: true,
         }
     });
 
@@ -307,18 +311,7 @@ fn generate_test_harness(sess: &ParseSess,
 /// call to codemap's is_internal check.
 /// The expanded code calls some unstable functions in the test crate.
 fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
-    let info = ExpnInfo {
-        call_site: sp,
-        callee: NameAndSpan {
-            format: MacroAttribute(Symbol::intern("test")),
-            span: None,
-            allow_internal_unstable: true,
-        }
-    };
-    let expn_id = cx.sess.codemap().record_expansion(info);
-    let mut sp = sp;
-    sp.expn_id = expn_id;
-    return sp;
+    Span { ctxt: cx.ctxt, ..sp }
 }
 
 #[derive(PartialEq)]
@@ -616,7 +609,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
 
 fn is_test_crate(krate: &ast::Crate) -> bool {
     match attr::find_crate_name(&krate.attrs) {
-        Some(s) if "test" == &*s.as_str() => true,
+        Some(s) if "test" == s.as_str() => true,
         _ => false
     }
 }

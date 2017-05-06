@@ -21,7 +21,6 @@
 
 pub use self::LangItem::*;
 
-use dep_graph::DepNode;
 use hir::map as hir_map;
 use session::Session;
 use hir::def_id::DefId;
@@ -224,9 +223,10 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
 
 pub fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
     for attribute in attrs {
-        match attribute.value_str() {
-            Some(value) if attribute.check_name("lang") => return Some(value),
-            _ => {}
+        if attribute.check_name("lang") {
+            if let Some(value) = attribute.value_str() {
+                return Some(value)
+            }
         }
     }
 
@@ -236,7 +236,6 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
 pub fn collect_language_items(session: &Session,
                               map: &hir_map::Map)
                               -> LanguageItems {
-    let _task = map.dep_graph.in_task(DepNode::CollectLanguageItems);
     let krate: &hir::Crate = map.krate();
     let mut collector = LanguageItemCollector::new(session, map);
     collector.collect(krate);
@@ -276,6 +275,7 @@ language_item_table! {
     UnsizeTraitLangItem,             "unsize",                  unsize_trait;
     CopyTraitLangItem,               "copy",                    copy_trait;
     SyncTraitLangItem,               "sync",                    sync_trait;
+    FreezeTraitLangItem,             "freeze",                  freeze_trait;
 
     DropTraitLangItem,               "drop",                    drop_trait;
 

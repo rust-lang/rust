@@ -40,13 +40,13 @@ use std::cmp;
 use std::default::Default as StdDefault;
 use std::mem;
 use std::fmt;
-use std::ops::Deref;
 use syntax::attr;
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::{MultiSpan, Span};
 use errors::{self, Diagnostic, DiagnosticBuilder};
 use hir;
+use hir::def_id::LOCAL_CRATE;
 use hir::intravisit as hir_visit;
 use syntax::visit as ast_visit;
 
@@ -484,7 +484,7 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
                 Allow => bug!("earlier conditional return should handle Allow case")
             };
             let hyphen_case_lint_name = name.replace("_", "-");
-            if lint_flag_val.as_str().deref() == name {
+            if lint_flag_val.as_str() == name {
                 err.note(&format!("requested on the command line with `{} {}`",
                                   flag, hyphen_case_lint_name));
             } else {
@@ -495,7 +495,7 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
         },
         Node(lint_attr_name, src) => {
             def = Some(src);
-            if lint_attr_name.as_str().deref() != name {
+            if lint_attr_name.as_str() != name {
                 let level_str = level.as_str();
                 err.note(&format!("#[{}({})] implied by #[{}({})]",
                                   level_str, name, level_str, lint_attr_name));
@@ -1231,9 +1231,10 @@ fn check_lint_name_cmdline(sess: &Session, lint_cx: &LintStore,
 /// Perform lint checking on a crate.
 ///
 /// Consumes the `lint_store` field of the `Session`.
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             access_levels: &AccessLevels) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _task = tcx.dep_graph.in_task(DepNode::LateLintCheck);
+
+    let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
 

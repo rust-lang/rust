@@ -13,9 +13,11 @@
 #![feature(rand)]
 #![feature(const_fn)]
 
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::__rand::{thread_rng, Rng};
+use std::panic;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
+use std::cell::Cell;
 
 const MAX_LEN: usize = 80;
 
@@ -76,6 +78,7 @@ fn test(input: &[DropCounter]) {
             let mut panic_countdown = panic_countdown;
             v.sort_by(|a, b| {
                 if panic_countdown == 0 {
+                    SILENCE_PANIC.with(|s| s.set(true));
                     panic!();
                 }
                 panic_countdown -= 1;
@@ -94,7 +97,15 @@ fn test(input: &[DropCounter]) {
     }
 }
 
+thread_local!(static SILENCE_PANIC: Cell<bool> = Cell::new(false));
+
 fn main() {
+    let prev = panic::take_hook();
+    panic::set_hook(Box::new(move |info| {
+        if !SILENCE_PANIC.with(|s| s.get()) {
+            prev(info);
+        }
+    }));
     for len in (1..20).chain(70..MAX_LEN) {
         // Test on a random array.
         let mut rng = thread_rng();

@@ -66,7 +66,7 @@
 //! let res = child.join();
 //! ```
 //!
-//! The [`join`] method returns a [`Result`] containing [`Ok`] of the final
+//! The [`join`] method returns a [`thread::Result`] containing [`Ok`] of the final
 //! value produced by the child thread, or [`Err`] of the value given to
 //! a call to [`panic!`] if the child panicked.
 //!
@@ -90,7 +90,7 @@
 //! two ways:
 //!
 //! * By spawning a new thread, e.g. using the [`thread::spawn`][`spawn`]
-//!   function, and calling [`thread`] on the [`JoinHandle`].
+//!   function, and calling [`thread`][`JoinHandle::thread`] on the [`JoinHandle`].
 //! * By requesting the current thread, using the [`thread::current`] function.
 //!
 //! The [`thread::current`] function is available even for threads not spawned
@@ -151,14 +151,15 @@
 //! [`Arc`]: ../../std/sync/struct.Arc.html
 //! [`spawn`]: ../../std/thread/fn.spawn.html
 //! [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
-//! [`thread`]: ../../std/thread/struct.JoinHandle.html#method.thread
+//! [`JoinHandle::thread`]: ../../std/thread/struct.JoinHandle.html#method.thread
 //! [`join`]: ../../std/thread/struct.JoinHandle.html#method.join
 //! [`Result`]: ../../std/result/enum.Result.html
 //! [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
 //! [`Err`]: ../../std/result/enum.Result.html#variant.Err
 //! [`panic!`]: ../../std/macro.panic.html
 //! [`Builder`]: ../../std/thread/struct.Builder.html
-//! [`thread::current`]: ../../std/thread/fn.spawn.html
+//! [`thread::current`]: ../../std/thread/fn.current.html
+//! [`thread::Result`]: ../../std/thread/type.Result.html
 //! [`Thread`]: ../../std/thread/struct.Thread.html
 //! [`park`]: ../../std/thread/fn.park.html
 //! [`unpark`]: ../../std/thread/struct.Thread.html#method.unpark
@@ -652,8 +653,8 @@ pub fn park_timeout(dur: Duration) {
 /// A unique identifier for a running thread.
 ///
 /// A `ThreadId` is an opaque object that has a unique value for each thread
-/// that creates one. `ThreadId`s do not correspond to a thread's system-
-/// designated identifier.
+/// that creates one. `ThreadId`s are not guaranteed to correspond to a thread's
+/// system-designated identifier.
 ///
 /// # Examples
 ///
@@ -662,17 +663,15 @@ pub fn park_timeout(dur: Duration) {
 ///
 /// use std::thread;
 ///
-/// let handler = thread::Builder::new()
-///     .spawn(|| {
-///         let thread = thread::current();
-///         let thread_id = thread.id();
-///     })
-///     .unwrap();
+/// let other_thread = thread::spawn(|| {
+///     thread::current().id()
+/// });
 ///
-/// handler.join().unwrap();
+/// let other_thread_id = other_thread.join().unwrap();
+/// assert!(thread::current().id() != other_thread_id);
 /// ```
 #[unstable(feature = "thread_id", issue = "21507")]
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
 pub struct ThreadId(u64);
 
 impl ThreadId {
@@ -701,13 +700,6 @@ impl ThreadId {
     }
 }
 
-#[unstable(feature = "thread_id", issue = "21507")]
-impl fmt::Debug for ThreadId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("ThreadId { .. }")
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Thread
 ////////////////////////////////////////////////////////////////////////////////
@@ -724,21 +716,34 @@ struct Inner {
 #[stable(feature = "rust1", since = "1.0.0")]
 /// A handle to a thread.
 ///
+/// You can use it to identify a thread (by name, for example). Most of the
+/// time, there is no need to directly create a `Thread` struct using the
+/// constructor, instead you should use a function like `spawn` to create
+/// new threads, see the docs of [`Builder`] and [`spawn`] for more.
+///
 /// # Examples
 ///
-/// ```
-/// use std::thread;
+/// ```no_run
+/// # // Note that this example isn't executed by default because it causes
+/// # // deadlocks on Windows unfortunately (see #25824)
+/// use std::thread::Builder;
 ///
-/// let handler = thread::Builder::new()
-///     .name("foo".into())
-///     .spawn(|| {
-///         let thread = thread::current();
-///         println!("thread name: {}", thread.name().unwrap());
-///     })
-///     .unwrap();
-///
-/// handler.join().unwrap();
+/// for i in 0..5 {
+///     let thread_name = format!("thread_{}", i);
+///     Builder::new()
+///         .name(thread_name) // Now you can identify which thread panicked
+///                            // thanks to the handle's name
+///         .spawn(move || {
+///             if i == 3 {
+///                  panic!("I'm scared!!!");
+///             }
+///         })
+///         .unwrap();
+/// }
 /// ```
+/// [`Builder`]: ../../std/thread/struct.Builder.html
+/// [`spawn`]: ../../std/thread/fn.spawn.html
+
 pub struct Thread {
     inner: Arc<Inner>,
 }
@@ -795,14 +800,12 @@ impl Thread {
     ///
     /// use std::thread;
     ///
-    /// let handler = thread::Builder::new()
-    ///     .spawn(|| {
-    ///         let thread = thread::current();
-    ///         println!("thread id: {:?}", thread.id());
-    ///     })
-    ///     .unwrap();
+    /// let other_thread = thread::spawn(|| {
+    ///     thread::current().id()
+    /// });
     ///
-    /// handler.join().unwrap();
+    /// let other_thread_id = other_thread.join().unwrap();
+    /// assert!(thread::current().id() != other_thread_id);
     /// ```
     #[unstable(feature = "thread_id", issue = "21507")]
     pub fn id(&self) -> ThreadId {

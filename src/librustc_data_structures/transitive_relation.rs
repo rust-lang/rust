@@ -9,10 +9,13 @@
 // except according to those terms.
 
 use bitvec::BitMatrix;
+use stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::mem;
+
+
 
 #[derive(Clone)]
 pub struct TransitiveRelation<T: Debug + PartialEq> {
@@ -75,6 +78,27 @@ impl<T: Debug + PartialEq> TransitiveRelation<T> {
                 Index(self.elements.len() - 1)
             }
         }
+    }
+
+    /// Applies the (partial) function to each edge and returns a new
+    /// relation.  If `f` returns `None` for any end-point, returns
+    /// `None`.
+    pub fn maybe_map<F, U>(&self, mut f: F) -> Option<TransitiveRelation<U>>
+        where F: FnMut(&T) -> Option<U>,
+              U: Debug + PartialEq,
+    {
+        let mut result = TransitiveRelation::new();
+        for edge in &self.edges {
+            let r = f(&self.elements[edge.source.0]).and_then(|source| {
+                f(&self.elements[edge.target.0]).and_then(|target| {
+                    Some(result.add(source, target))
+                })
+            });
+            if r.is_none() {
+                return None;
+            }
+        }
+        Some(result)
     }
 
     /// Indicate that `a < b` (where `<` is this relation)
@@ -331,6 +355,49 @@ impl<T> Decodable for TransitiveRelation<T>
             let edges = d.read_struct_field("edges", 1, |d| Decodable::decode(d))?;
             Ok(TransitiveRelation { elements, edges, closure: RefCell::new(None) })
         })
+    }
+}
+
+impl<CTX, T> HashStable<CTX> for TransitiveRelation<T>
+    where T: HashStable<CTX> + PartialEq + Debug
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        // We are assuming here that the relation graph has been built in a
+        // deterministic way and we can just hash it the way it is.
+        let TransitiveRelation {
+            ref elements,
+            ref edges,
+            // "closure" is just a copy of the data above
+            closure: _
+        } = *self;
+
+        elements.hash_stable(hcx, hasher);
+        edges.hash_stable(hcx, hasher);
+    }
+}
+
+impl<CTX> HashStable<CTX> for Edge {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        let Edge {
+            ref source,
+            ref target,
+        } = *self;
+
+        source.hash_stable(hcx, hasher);
+        target.hash_stable(hcx, hasher);
+    }
+}
+
+impl<CTX> HashStable<CTX> for Index {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        let Index(idx) = *self;
+        idx.hash_stable(hcx, hasher);
     }
 }
 

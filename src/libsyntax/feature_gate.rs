@@ -28,7 +28,7 @@ use self::AttributeGate::*;
 use abi::Abi;
 use ast::{self, NodeId, PatKind, RangeEnd};
 use attr;
-use codemap::{CodeMap, Spanned};
+use codemap::Spanned;
 use syntax_pos::Span;
 use errors::{DiagnosticBuilder, Handler, FatalError};
 use visit::{self, FnKind, Visitor};
@@ -292,9 +292,6 @@ declare_features! (
     // Allows attributes on lifetime/type formal parameters in generics (RFC 1327)
     (active, generic_param_attrs, "1.11.0", Some(34761)),
 
-    // The #![windows_subsystem] attribute
-    (active, windows_subsystem, "1.14.0", Some(37499)),
-
     // Allows #[link(..., cfg(..))]
     (active, link_cfg, "1.14.0", Some(37406)),
 
@@ -337,11 +334,27 @@ declare_features! (
     // `extern "x86-interrupt" fn()`
     (active, abi_x86_interrupt, "1.17.0", Some(40180)),
 
+
     // Allows the `catch {...}` expression
     (active, catch_expr, "1.17.0", Some(31436)),
 
+    // Allows `repr(align(u16))` struct attribute (RFC 1358)
+    (active, repr_align, "1.17.0", Some(33626)),
+
     // See rust-lang/rfcs#1414. Allows code like `let x: &'static u32 = &42` to work.
     (active, rvalue_static_promotion, "1.15.1", Some(38865)),
+
+    // Used to preserve symbols (see llvm.used)
+    (active, used, "1.18.0", Some(40289)),
+
+    // Allows module-level inline assembly by way of global_asm!()
+    (active, global_asm, "1.18.0", Some(35119)),
+
+    // Allows overlapping impls of marker traits
+    (active, overlapping_marker_traits, "1.18.0", Some(29864)),
+
+    // Allows use of the :vis macro fragment specifier
+    (active, macro_vis_matcher, "1.18.0", Some(41022)),
 );
 
 declare_features! (
@@ -407,8 +420,9 @@ declare_features! (
     // Allows the definition recursive static items.
     (accepted, static_recursion, "1.17.0", Some(29719)),
     // pub(restricted) visibilities (RFC 1422)
-    (accepted, pub_restricted, "1.17.0", Some(32409)),
-
+    (accepted, pub_restricted, "1.18.0", Some(32409)),
+    // The #![windows_subsystem] attribute
+    (accepted, windows_subsystem, "1.18.0", Some(37499)),
 );
 // If you change this, please modify src/doc/unstable-book as well. You must
 // move that documentation into the relevant place in the other docs, and
@@ -748,6 +762,10 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                   "unwind_attributes",
                                   "#[unwind] is experimental",
                                   cfg_fn!(unwind_attributes))),
+    ("used", Whitelisted, Gated(
+        Stability::Unstable, "used",
+        "the `#[used]` attribute is an experimental feature",
+        cfg_fn!(used))),
 
     // used in resolve
     ("prelude_import", Whitelisted, Gated(Stability::Unstable,
@@ -768,11 +786,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                         "unboxed_closures are still evolving",
                                         cfg_fn!(unboxed_closures))),
 
-    ("windows_subsystem", Whitelisted, Gated(Stability::Unstable,
-                                             "windows_subsystem",
-                                             "the windows subsystem attribute \
-                                              is currently unstable",
-                                             cfg_fn!(windows_subsystem))),
+    ("windows_subsystem", Whitelisted, Ungated),
 
     ("proc_macro_attribute", Normal, Gated(Stability::Unstable,
                                            "proc_macro",
@@ -818,7 +832,7 @@ pub struct GatedCfg {
 
 impl GatedCfg {
     pub fn gate(cfg: &ast::MetaItem) -> Option<GatedCfg> {
-        let name = &*cfg.name().as_str();
+        let name = cfg.name().as_str();
         GATED_CFGS.iter()
                   .position(|info| info.0 == name)
                   .map(|idx| {
@@ -831,7 +845,7 @@ impl GatedCfg {
 
     pub fn check_and_emit(&self, sess: &ParseSess, features: &Features) {
         let (cfg, feature, has_feature) = GATED_CFGS[self.index];
-        if !has_feature(features) && !sess.codemap().span_allows_unstable(self.span) {
+        if !has_feature(features) && !self.span.allows_unstable() {
             let explain = format!("`cfg({})` is experimental and subject to change", cfg);
             emit_feature_err(sess, feature, self.span, GateIssue::Language, &explain);
         }
@@ -841,7 +855,6 @@ impl GatedCfg {
 struct Context<'a> {
     features: &'a Features,
     parse_sess: &'a ParseSess,
-    cm: &'a CodeMap,
     plugin_attributes: &'a [(String, AttributeType)],
 }
 
@@ -850,7 +863,7 @@ macro_rules! gate_feature_fn {
         let (cx, has_feature, span, name, explain) = ($cx, $has_feature, $span, $name, $explain);
         let has_feature: bool = has_feature(&$cx.features);
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
-        if !has_feature && !cx.cm.span_allows_unstable(span) {
+        if !has_feature && !span.allows_unstable() {
             emit_feature_err(cx.parse_sess, name, span, GateIssue::Language, explain);
         }
     }}
@@ -865,8 +878,7 @@ macro_rules! gate_feature {
 impl<'a> Context<'a> {
     fn check_attribute(&self, attr: &ast::Attribute, is_macro: bool) {
         debug!("check_attribute(attr = {:?})", attr);
-        let name = unwrap_or!(attr.name(), return);
-
+        let name = unwrap_or!(attr.name(), return).as_str();
         for &(n, ty, ref gateage) in BUILTIN_ATTRIBUTES {
             if name == n {
                 if let &Gated(_, ref name, ref desc, ref has_feature) = gateage {
@@ -885,12 +897,12 @@ impl<'a> Context<'a> {
                 return;
             }
         }
-        if name.as_str().starts_with("rustc_") {
+        if name.starts_with("rustc_") {
             gate_feature!(self, rustc_attrs, attr.span,
                           "unless otherwise specified, attributes \
                            with the prefix `rustc_` \
                            are reserved for internal compiler diagnostics");
-        } else if name.as_str().starts_with("derive_") {
+        } else if name.starts_with("derive_") {
             gate_feature!(self, custom_derive, attr.span, EXPLAIN_DERIVE_UNDERSCORE);
         } else if !attr::is_known(attr) {
             // Only run the custom attribute lint during regular
@@ -909,12 +921,8 @@ impl<'a> Context<'a> {
     }
 }
 
-pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess,
-                       cm: &CodeMap, features: &Features) {
-    let cx = Context {
-        features: features, parse_sess: parse_sess,
-        cm: cm, plugin_attributes: &[]
-    };
+pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
+    let cx = Context { features: features, parse_sess: parse_sess, plugin_attributes: &[] };
     cx.check_attribute(attr, true);
 }
 
@@ -983,6 +991,9 @@ pub const EXPLAIN_STMT_ATTR_SYNTAX: &'static str =
 pub const EXPLAIN_ASM: &'static str =
     "inline assembly is not stable enough for use and is subject to change";
 
+pub const EXPLAIN_GLOBAL_ASM: &'static str =
+    "`global_asm!` is not stable enough for use and is subject to change";
+
 pub const EXPLAIN_LOG_SYNTAX: &'static str =
     "`log_syntax!` is not stable enough for use and is subject to change";
 
@@ -1004,6 +1015,9 @@ pub const EXPLAIN_DEPR_CUSTOM_DERIVE: &'static str =
 pub const EXPLAIN_DERIVE_UNDERSCORE: &'static str =
     "attributes of the form `#[derive_*]` are reserved for the compiler";
 
+pub const EXPLAIN_VIS_MATCHER: &'static str =
+    ":vis fragment specifier is experimental and subject to change";
+
 pub const EXPLAIN_PLACEMENT_IN: &'static str =
     "placement-in expression syntax is experimental and subject to change.";
 
@@ -1017,7 +1031,7 @@ struct PostExpansionVisitor<'a> {
 macro_rules! gate_feature_post {
     ($cx: expr, $feature: ident, $span: expr, $explain: expr) => {{
         let (cx, span) = ($cx, $span);
-        if !cx.context.cm.span_allows_unstable(span) {
+        if !span.allows_unstable() {
             gate_feature!(cx.context, $feature, span, $explain)
         }
     }}
@@ -1097,7 +1111,7 @@ fn starts_with_digit(s: &str) -> bool {
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        if !self.context.cm.span_allows_unstable(attr.span) {
+        if !attr.span.allows_unstable() {
             // check for gated attributes
             self.context.check_attribute(attr, false);
         }
@@ -1178,6 +1192,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                                     and possibly buggy");
 
                             }
+                            if item.check_name("align") {
+                                gate_feature_post!(&self, repr_align, i.span,
+                                                   "the struct `#[repr(align(u16))]` attribute \
+                                                    is experimental");
+                            }
                         }
                     }
                 }
@@ -1196,7 +1215,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                     and possibly buggy");
             }
 
-            ast::ItemKind::Impl(_, polarity, _, _, _, _) => {
+            ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, _) => {
                 match polarity {
                     ast::ImplPolarity::Negative => {
                         gate_feature_post!(&self, optin_builtin_traits,
@@ -1205,6 +1224,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                             use marker types for now");
                     },
                     _ => {}
+                }
+
+                if let ast::Defaultness::Default = defaultness {
+                    gate_feature_post!(&self, specialization,
+                                       i.span,
+                                       "specialization is unstable");
                 }
             }
 
@@ -1531,7 +1556,6 @@ pub fn check_crate(krate: &ast::Crate,
     let ctx = Context {
         features: features,
         parse_sess: sess,
-        cm: sess.codemap(),
         plugin_attributes: plugin_attributes,
     };
     visit::walk_crate(&mut PostExpansionVisitor { context: &ctx }, krate);

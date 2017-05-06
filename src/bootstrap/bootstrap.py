@@ -159,21 +159,20 @@ def format_build_time(duration):
 class RustBuild(object):
     def download_stage0(self):
         cache_dst = os.path.join(self.build_dir, "cache")
-        rustc_cache = os.path.join(cache_dst, self.stage0_rustc_date())
-        cargo_cache = os.path.join(cache_dst, self.stage0_cargo_rev())
+        rustc_cache = os.path.join(cache_dst, self.stage0_date())
         if not os.path.exists(rustc_cache):
             os.makedirs(rustc_cache)
-        if not os.path.exists(cargo_cache):
-            os.makedirs(cargo_cache)
+
+        rustc_channel = self.stage0_rustc_channel()
+        cargo_channel = self.stage0_cargo_channel()
 
         if self.rustc().startswith(self.bin_root()) and \
                 (not os.path.exists(self.rustc()) or self.rustc_out_of_date()):
             self.print_what_it_means_to_bootstrap()
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
-            channel = self.stage0_rustc_channel()
-            filename = "rust-std-{}-{}.tar.gz".format(channel, self.build)
-            url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
+            filename = "rust-std-{}-{}.tar.gz".format(rustc_channel, self.build)
+            url = self._download_url + "/dist/" + self.stage0_date()
             tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
                 get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
@@ -181,8 +180,8 @@ class RustBuild(object):
                    match="rust-std-" + self.build,
                    verbose=self.verbose)
 
-            filename = "rustc-{}-{}.tar.gz".format(channel, self.build)
-            url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
+            filename = "rustc-{}-{}.tar.gz".format(rustc_channel, self.build)
+            url = self._download_url + "/dist/" + self.stage0_date()
             tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
                 get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
@@ -190,20 +189,28 @@ class RustBuild(object):
             self.fix_executable(self.bin_root() + "/bin/rustc")
             self.fix_executable(self.bin_root() + "/bin/rustdoc")
             with open(self.rustc_stamp(), 'w') as f:
-                f.write(self.stage0_rustc_date())
+                f.write(self.stage0_date())
+
+            if "pc-windows-gnu" in self.build:
+                filename = "rust-mingw-{}-{}.tar.gz".format(rustc_channel, self.build)
+                url = self._download_url + "/dist/" + self.stage0_date()
+                tarball = os.path.join(rustc_cache, filename)
+                if not os.path.exists(tarball):
+                    get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
+                unpack(tarball, self.bin_root(), match="rust-mingw", verbose=self.verbose)
 
         if self.cargo().startswith(self.bin_root()) and \
                 (not os.path.exists(self.cargo()) or self.cargo_out_of_date()):
             self.print_what_it_means_to_bootstrap()
-            filename = "cargo-nightly-{}.tar.gz".format(self.build)
-            url = "https://s3.amazonaws.com/rust-lang-ci/cargo-builds/" + self.stage0_cargo_rev()
-            tarball = os.path.join(cargo_cache, filename)
+            filename = "cargo-{}-{}.tar.gz".format(cargo_channel, self.build)
+            url = self._download_url + "/dist/" + self.stage0_date()
+            tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
                 get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
             unpack(tarball, self.bin_root(), match="cargo", verbose=self.verbose)
             self.fix_executable(self.bin_root() + "/bin/cargo")
             with open(self.cargo_stamp(), 'w') as f:
-                f.write(self.stage0_cargo_rev())
+                f.write(self.stage0_date())
 
     def fix_executable(self, fname):
         # If we're on NixOS we need to change the path to the dynamic loader
@@ -258,14 +265,14 @@ class RustBuild(object):
             print("warning: failed to call patchelf: %s" % e)
             return
 
-    def stage0_cargo_rev(self):
-        return self._cargo_rev
-
-    def stage0_rustc_date(self):
-        return self._rustc_date
+    def stage0_date(self):
+        return self._date
 
     def stage0_rustc_channel(self):
         return self._rustc_channel
+
+    def stage0_cargo_channel(self):
+        return self._cargo_channel
 
     def rustc_stamp(self):
         return os.path.join(self.bin_root(), '.rustc-stamp')
@@ -277,13 +284,13 @@ class RustBuild(object):
         if not os.path.exists(self.rustc_stamp()) or self.clean:
             return True
         with open(self.rustc_stamp(), 'r') as f:
-            return self.stage0_rustc_date() != f.read()
+            return self.stage0_date() != f.read()
 
     def cargo_out_of_date(self):
         if not os.path.exists(self.cargo_stamp()) or self.clean:
             return True
         with open(self.cargo_stamp(), 'r') as f:
-            return self.stage0_cargo_rev() != f.read()
+            return self.stage0_date() != f.read()
 
     def bin_root(self):
         return os.path.join(self.build_dir, self.build, "stage0")
@@ -364,6 +371,9 @@ class RustBuild(object):
         env["DYLD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
                                    (os.pathsep + env["DYLD_LIBRARY_PATH"]) \
                                    if "DYLD_LIBRARY_PATH" in env else ""
+        env["LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
+                                   (os.pathsep + env["LIBRARY_PATH"]) \
+                                   if "LIBRARY_PATH" in env else ""
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
                       os.pathsep + env["PATH"]
         if not os.path.isfile(self.cargo()):
@@ -401,18 +411,14 @@ class RustBuild(object):
                 raise Exception(err)
             sys.exit(err)
 
-        # Darwin's `uname -s` lies and always returns i386. We have to use
-        # sysctl instead.
-        if ostype == 'Darwin' and cputype == 'i686':
-            args = ['sysctl', 'hw.optional.x86_64']
-            sysctl = subprocess.check_output(args).decode(default_encoding)
-            if ': 1' in sysctl:
-                cputype = 'x86_64'
-
         # The goal here is to come up with the same triple as LLVM would,
         # at least for the subset of platforms we're willing to target.
         if ostype == 'Linux':
-            ostype = 'unknown-linux-gnu'
+            os_from_sp = subprocess.check_output(['uname', '-o']).strip().decode(default_encoding)
+            if os_from_sp == 'Android':
+                ostype = 'linux-android'
+            else:
+                ostype = 'unknown-linux-gnu'
         elif ostype == 'FreeBSD':
             ostype = 'unknown-freebsd'
         elif ostype == 'DragonFly':
@@ -469,15 +475,21 @@ class RustBuild(object):
             cputype = 'i686'
         elif cputype in {'xscale', 'arm'}:
             cputype = 'arm'
-        elif cputype in {'armv6l', 'armv7l', 'armv8l'}:
+            if ostype == 'linux-android':
+                ostype = 'linux-androideabi'
+        elif cputype == 'armv6l':
             cputype = 'arm'
-            ostype += 'eabihf'
-        elif cputype == 'armv7l':
+            if ostype == 'linux-android':
+                ostype = 'linux-androideabi'
+            else:
+                ostype += 'eabihf'
+        elif cputype in {'armv7l', 'armv8l'}:
             cputype = 'armv7'
-            ostype += 'eabihf'
-        elif cputype == 'aarch64':
-            cputype = 'aarch64'
-        elif cputype == 'arm64':
+            if ostype == 'linux-android':
+                ostype = 'linux-androideabi'
+            else:
+                ostype += 'eabihf'
+        elif cputype in {'aarch64', 'arm64'}:
             cputype = 'aarch64'
         elif cputype == 'mips':
             if sys.byteorder == 'big':
@@ -577,8 +589,13 @@ def bootstrap():
             shutil.rmtree('.cargo')
 
     data = stage0_data(rb.rust_root)
-    rb._rustc_channel, rb._rustc_date = data['rustc'].split('-', 1)
-    rb._cargo_rev = data['cargo']
+    rb._date = data['date']
+    rb._rustc_channel = data['rustc']
+    rb._cargo_channel = data['cargo']
+    if 'dev' in data:
+        rb._download_url = 'https://dev-static.rust-lang.org'
+    else:
+        rb._download_url = 'https://static.rust-lang.org'
 
     # Fetch/build the bootstrap
     rb.build = rb.build_triple()
@@ -598,16 +615,19 @@ def bootstrap():
 
 def main():
     start_time = time()
+    help_triggered = ('-h' in sys.argv) or ('--help' in sys.argv) or (len(sys.argv) == 1)
     try:
         bootstrap()
-        print("Build completed successfully in %s" % format_build_time(time() - start_time))
+        if not help_triggered:
+            print("Build completed successfully in %s" % format_build_time(time() - start_time))
     except (SystemExit, KeyboardInterrupt) as e:
         if hasattr(e, 'code') and isinstance(e.code, int):
             exit_code = e.code
         else:
             exit_code = 1
             print(e)
-        print("Build completed unsuccessfully in %s" % format_build_time(time() - start_time))
+        if not help_triggered:
+            print("Build completed unsuccessfully in %s" % format_build_time(time() - start_time))
         sys.exit(exit_code)
 
 if __name__ == '__main__':

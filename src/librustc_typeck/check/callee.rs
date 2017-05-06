@@ -55,7 +55,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             })
             .next();
         let callee_ty = autoderef.unambiguous_final_ty();
-        autoderef.finalize(LvaluePreference::NoPreference, Some(callee_expr));
+        autoderef.finalize(LvaluePreference::NoPreference, callee_expr);
 
         let output = match result {
             None => {
@@ -100,7 +100,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // If the callee is a bare function or a closure, then we're all set.
         match self.structurally_resolved_type(callee_expr.span, adjusted_ty).sty {
             ty::TyFnDef(..) | ty::TyFnPtr(_) => {
-                self.write_autoderef_adjustment(callee_expr.id, autoderefs, adjusted_ty);
+                self.apply_autoderef_adjustment(callee_expr.id, autoderefs, adjusted_ty);
                 return Some(CallStep::Builtin);
             }
 
@@ -165,15 +165,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             match self.lookup_method_in_trait_adjusted(call_expr.span,
-                                                       Some(&callee_expr),
+                                                       Some(super::AdjustedRcvr {
+                                                           rcvr_expr: callee_expr,
+                                                           autoderefs,
+                                                           unsize: false
+                                                       }),
                                                        method_name,
                                                        trait_def_id,
-                                                       autoderefs,
-                                                       false,
                                                        adjusted_ty,
                                                        None) {
                 None => continue,
-                Some(method_callee) => {
+                Some(ok) => {
+                    let method_callee = self.register_infer_ok_obligations(ok);
                     return Some(method_callee);
                 }
             }

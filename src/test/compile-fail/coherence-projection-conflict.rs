@@ -10,7 +10,7 @@
 
 use std::marker::PhantomData;
 
-pub trait Foo<P> {}
+pub trait Foo<P> { fn foo() {} }
 
 pub trait Bar {
     type Output: 'static;

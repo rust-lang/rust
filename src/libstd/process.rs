@@ -73,6 +73,15 @@ use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 /// spawning process and can itself be constructed using a builder-style
 /// interface.
 ///
+/// There is no implementation of [`Drop`] for child processes,
+/// so if you do not ensure the `Child` has exited then it will continue to
+/// run, even after the `Child` handle to the child process has gone out of
+/// scope.
+///
+/// Calling [`wait`](#method.wait) (or other functions that wrap around it) will make
+/// the parent process wait until the child has actually exited before
+/// continuing.
+///
 /// # Examples
 ///
 /// ```should_panic
@@ -88,17 +97,6 @@ use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 ///
 /// assert!(ecode.success());
 /// ```
-///
-/// # Note
-///
-/// Take note that there is no implementation of [`Drop`] for child processes,
-/// so if you do not ensure the `Child` has exited then it will continue to
-/// run, even after the `Child` handle to the child process has gone out of
-/// scope.
-///
-/// Calling [`wait`][`wait`] (or other functions that wrap around it) will make
-/// the parent process wait until the child has actually exited before
-/// continuing.
 ///
 /// [`Command`]: struct.Command.html
 /// [`Drop`]: ../../core/ops/trait.Drop.html
@@ -150,8 +148,9 @@ impl fmt::Debug for Child {
     }
 }
 
-/// A handle to a child process's stdin. This struct is used in the [`stdin`]
-/// field on [`Child`].
+/// A handle to a child process's stdin.
+///
+/// This struct is used in the [`stdin`] field on [`Child`].
 ///
 /// [`Child`]: struct.Child.html
 /// [`stdin`]: struct.Child.html#structfield.stdin
@@ -192,8 +191,9 @@ impl fmt::Debug for ChildStdin {
     }
 }
 
-/// A handle to a child process's stdout. This struct is used in the [`stdout`]
-/// field on [`Child`].
+/// A handle to a child process's stdout.
+///
+/// This struct is used in the [`stdout`] field on [`Child`].
 ///
 /// [`Child`]: struct.Child.html
 /// [`stdout`]: struct.Child.html#structfield.stdout
@@ -233,8 +233,9 @@ impl fmt::Debug for ChildStdout {
     }
 }
 
-/// A handle to a child process's stderr. This struct is used in the [`stderr`]
-/// field on [`Child`].
+/// A handle to a child process's stderr.
+///
+/// This struct is used in the [`stderr`] field on [`Child`].
 ///
 /// [`Child`]: struct.Child.html
 /// [`stderr`]: struct.Child.html#structfield.stderr
@@ -1036,7 +1037,7 @@ impl Child {
 /// ```no_run
 /// use std::process;
 ///
-/// process::exit(0x0f00);
+/// process::exit(0x0100);
 /// ```
 ///
 /// [platform-specific behavior]: #platform-specific-behavior
@@ -1056,6 +1057,41 @@ pub fn exit(code: i32) -> ! {
 /// will be run. If a clean shutdown is needed it is recommended to only call
 /// this function at a known point where there are no more destructors left
 /// to run.
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::process;
+///
+/// fn main() {
+///     println!("aborting");
+///
+///     process::abort();
+///
+///     // execution never gets here
+/// }
+/// ```
+///
+/// The [`abort`] function terminates the process, so the destructor will not
+/// get run on the example below:
+///
+/// ```no_run
+/// use std::process;
+///
+/// struct HasDrop;
+///
+/// impl Drop for HasDrop {
+///     fn drop(&mut self) {
+///         println!("This will never be printed!");
+///     }
+/// }
+///
+/// fn main() {
+///     let _x = HasDrop;
+///     process::abort();
+///     // the destructor implemented for HasDrop will never get run
+/// }
+/// ```
 #[stable(feature = "process_abort", since = "1.17.0")]
 pub fn abort() -> ! {
     unsafe { ::sys::abort_internal() };

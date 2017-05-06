@@ -16,9 +16,6 @@
 // error-pattern:cannot infer
 // error-pattern:cannot outlive the lifetime 'a
 // error-pattern:must be valid for the static lifetime
-// error-pattern:cannot infer
-// error-pattern:cannot outlive the lifetime 'a
-// error-pattern:must be valid for the static lifetime
 
 struct Invariant<'a>(Option<&'a mut &'a mut ()>);
 

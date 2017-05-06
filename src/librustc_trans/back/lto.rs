@@ -61,7 +61,7 @@ pub fn run(sess: &session::Session,
     }
 
     let export_threshold =
-        symbol_export::crates_export_threshold(&sess.crate_types.borrow()[..]);
+        symbol_export::crates_export_threshold(&sess.crate_types.borrow());
 
     let symbol_filter = &|&(ref name, level): &(String, _)| {
         if symbol_export::is_below_threshold(level, export_threshold) {
@@ -147,7 +147,7 @@ pub fn run(sess: &session::Session,
                                                         bc_decoded.len() as libc::size_t) {
                     write::llvm_err(sess.diagnostic(),
                                     format!("failed to load bc of `{}`",
-                                            &name[..]));
+                                            name));
                 }
             });
         }

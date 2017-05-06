@@ -56,7 +56,13 @@ struct Node<T> {
     element: T,
 }
 
-/// An iterator over references to the elements of a `LinkedList`.
+/// An iterator over the elements of a `LinkedList`.
+///
+/// This `struct` is created by the [`iter`] method on [`LinkedList`]. See its
+/// documentation for more.
+///
+/// [`iter`]: struct.LinkedList.html#method.iter
+/// [`LinkedList`]: struct.LinkedList.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     head: Option<Shared<Node<T>>>,
@@ -69,7 +75,7 @@ pub struct Iter<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Iter")
-         .field(&self.clone())
+         .field(&self.len)
          .finish()
     }
 }
@@ -82,7 +88,13 @@ impl<'a, T> Clone for Iter<'a, T> {
     }
 }
 
-/// An iterator over mutable references to the elements of a `LinkedList`.
+/// A mutable iterator over the elements of a `LinkedList`.
+///
+/// This `struct` is created by the [`iter_mut`] method on [`LinkedList`]. See its
+/// documentation for more.
+///
+/// [`iter_mut`]: struct.LinkedList.html#method.iter_mut
+/// [`LinkedList`]: struct.LinkedList.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     list: &'a mut LinkedList<T>,
@@ -95,12 +107,19 @@ pub struct IterMut<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for IterMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("IterMut")
-         .field(self.clone())
+         .field(&self.list)
+         .field(&self.len)
          .finish()
     }
 }
 
-/// An iterator over the elements of a `LinkedList`.
+/// An owning iterator over the elements of a `LinkedList`.
+///
+/// This `struct` is created by the [`into_iter`] method on [`LinkedList`][`LinkedList`]
+/// (provided by the `IntoIterator` trait). See its documentation for more.
+///
+/// [`into_iter`]: struct.LinkedList.html#method.into_iter
+/// [`LinkedList`]: struct.LinkedList.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
@@ -111,7 +130,7 @@ pub struct IntoIter<T> {
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("IntoIter")
-         .field(self.clone())
+         .field(&self.list)
          .finish()
     }
 }
@@ -618,11 +637,11 @@ impl<T> LinkedList<T> {
     /// Splits the list into two at the given index. Returns everything after the given index,
     /// including the index.
     ///
+    /// This operation should compute in O(n) time.
+    ///
     /// # Panics
     ///
     /// Panics if `at > len`.
-    ///
-    /// This operation should compute in O(n) time.
     ///
     /// # Examples
     ///
@@ -697,8 +716,8 @@ impl<T> LinkedList<T> {
 
     /// Returns a place for insertion at the front of the list.
     ///
-    /// Using this method with placement syntax is equivalent to [`push_front`]
-    /// (#method.push_front), but may be more efficient.
+    /// Using this method with placement syntax is equivalent to
+    /// [`push_front`](#method.push_front), but may be more efficient.
     ///
     /// # Examples
     ///
@@ -1110,7 +1129,7 @@ pub struct FrontPlace<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for FrontPlace<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("FrontPlace")
-         .field(self.clone())
+         .field(&self.list)
          .finish()
     }
 }
@@ -1165,7 +1184,7 @@ pub struct BackPlace<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for BackPlace<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("BackPlace")
-         .field(self.clone())
+         .field(&self.list)
          .finish()
     }
 }
@@ -1376,7 +1395,7 @@ mod tests {
         thread::spawn(move || {
                 check_links(&n);
                 let a: &[_] = &[&1, &2, &3];
-                assert_eq!(a, &n.iter().collect::<Vec<_>>()[..]);
+                assert_eq!(a, &*n.iter().collect::<Vec<_>>());
             })
             .join()
             .ok()

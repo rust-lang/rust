@@ -11,7 +11,6 @@
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer;
-use rustc::middle::region::ROOT_CODE_EXTENT;
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
@@ -25,10 +24,8 @@ use syntax::abi::Abi;
 use syntax::ast;
 use syntax_pos::Span;
 
-use std::cell::RefCell;
 use std::fmt;
 use std::iter;
-use std::mem;
 
 use transform::{add_call_guards, no_landing_pads, simplify};
 use util::elaborate_drops::{self, DropElaborator, DropStyle, DropFlagMode};
@@ -40,13 +37,12 @@ pub fn provide(providers: &mut Providers) {
 
 fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                        instance: ty::InstanceDef<'tcx>)
-                       -> &'tcx RefCell<Mir<'tcx>>
+                       -> &'tcx Mir<'tcx>
 {
     debug!("make_shim({:?})", instance);
     let did = instance.def_id();
     let span = tcx.def_span(did);
-    let param_env =
-        tcx.construct_parameter_environment(span, did, ROOT_CODE_EXTENT);
+    let param_env = tcx.construct_parameter_environment(span, did, None);
 
     let mut result = match instance {
         ty::InstanceDef::Item(..) =>
@@ -118,10 +114,7 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         add_call_guards::add_call_guards(&mut result);
     debug!("make_shim({:?}) = {:?}", instance, result);
 
-    let result = tcx.alloc_mir(result);
-    // Perma-borrow MIR from shims to prevent mutation.
-    mem::forget(result.borrow());
-    result
+    tcx.alloc_mir(result)
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -137,16 +130,20 @@ enum CallKind {
     Direct(DefId),
 }
 
-fn temp_decl(mutability: Mutability, ty: Ty) -> LocalDecl {
-    LocalDecl { mutability, ty, name: None, source_info: None }
+fn temp_decl(mutability: Mutability, ty: Ty, span: Span) -> LocalDecl {
+    LocalDecl {
+        mutability, ty, name: None,
+        source_info: SourceInfo { scope: ARGUMENT_VISIBILITY_SCOPE, span },
+        is_user_variable: false
+    }
 }
 
-fn local_decls_for_sig<'tcx>(sig: &ty::FnSig<'tcx>)
+fn local_decls_for_sig<'tcx>(sig: &ty::FnSig<'tcx>, span: Span)
     -> IndexVec<Local, LocalDecl<'tcx>>
 {
-    iter::once(temp_decl(Mutability::Mut, sig.output()))
+    iter::once(temp_decl(Mutability::Mut, sig.output(), span))
         .chain(sig.inputs().iter().map(
-            |ity| temp_decl(Mutability::Not, ity)))
+            |ity| temp_decl(Mutability::Not, ity, span)))
         .collect()
 }
 
@@ -163,7 +160,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     } else {
         param_env.free_substs
     };
-    let fn_ty = tcx.item_type(def_id).subst(tcx, substs);
+    let fn_ty = tcx.type_of(def_id).subst(tcx, substs);
     let sig = tcx.erase_late_bound_regions(&fn_ty.fn_sig());
     let span = tcx.def_span(def_id);
 
@@ -188,7 +185,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         ),
         IndexVec::new(),
         sig.output(),
-        local_decls_for_sig(&sig),
+        local_decls_for_sig(&sig, span),
         sig.inputs().len(),
         vec![],
         span
@@ -201,12 +198,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                 patch: MirPatch::new(&mir),
                 tcx, param_env
             };
-            let dropee = Lvalue::Projection(
-                box Projection {
-                    base: Lvalue::Local(Local::new(1+0)),
-                    elem: ProjectionElem::Deref
-                }
-                );
+            let dropee = Lvalue::Local(Local::new(1+0)).deref();
             let resume_block = elaborator.patch.resume_block();
             elaborate_drops::elaborate_drop(
                 &mut elaborator,
@@ -291,13 +283,13 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             call_kind={:?}, untuple_args={:?})",
            def_id, rcvr_adjustment, call_kind, untuple_args);
 
-    let fn_ty = tcx.item_type(def_id).subst(tcx, param_env.free_substs);
+    let fn_ty = tcx.type_of(def_id).subst(tcx, param_env.free_substs);
     let sig = tcx.erase_late_bound_regions(&fn_ty.fn_sig());
     let span = tcx.def_span(def_id);
 
     debug!("build_call_shim: sig={:?}", sig);
 
-    let mut local_decls = local_decls_for_sig(&sig);
+    let mut local_decls = local_decls_for_sig(&sig, span);
     let source_info = SourceInfo { span, scope: ARGUMENT_VISIBILITY_SCOPE };
 
     let rcvr_arg = Local::new(1+0);
@@ -306,24 +298,22 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 
     let rcvr = match rcvr_adjustment {
         Adjustment::Identity => Operand::Consume(rcvr_l),
-        Adjustment::Deref => Operand::Consume(Lvalue::Projection(
-            box Projection { base: rcvr_l, elem: ProjectionElem::Deref }
-        )),
+        Adjustment::Deref => Operand::Consume(rcvr_l.deref()),
         Adjustment::RefMut => {
             // let rcvr = &mut rcvr;
-            let re_erased = tcx.mk_region(ty::ReErased);
             let ref_rcvr = local_decls.push(temp_decl(
                 Mutability::Not,
-                tcx.mk_ref(re_erased, ty::TypeAndMut {
+                tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
                     ty: sig.inputs()[0],
                     mutbl: hir::Mutability::MutMutable
-                })
+                }),
+                span
             ));
             statements.push(Statement {
                 source_info: source_info,
                 kind: StatementKind::Assign(
                     Lvalue::Local(ref_rcvr),
-                    Rvalue::Ref(re_erased, BorrowKind::Mut, rcvr_l)
+                    Rvalue::Ref(tcx.types.re_erased, BorrowKind::Mut, rcvr_l)
                 )
             });
             Operand::Consume(Lvalue::Local(ref_rcvr))
@@ -335,7 +325,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         CallKind::Direct(def_id) => (
             Operand::Constant(Constant {
                 span: span,
-                ty: tcx.item_type(def_id).subst(tcx, param_env.free_substs),
+                ty: tcx.type_of(def_id).subst(tcx, param_env.free_substs),
                 literal: Literal::Value {
                     value: ConstVal::Function(def_id, param_env.free_substs),
                 },
@@ -347,10 +337,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     if let Some(untuple_args) = untuple_args {
         args.extend(untuple_args.iter().enumerate().map(|(i, ity)| {
             let arg_lv = Lvalue::Local(Local::new(1+1));
-            Operand::Consume(Lvalue::Projection(box Projection {
-                base: arg_lv,
-                elem: ProjectionElem::Field(Field::new(i), *ity)
-            }))
+            Operand::Consume(arg_lv.field(Field::new(i), *ity))
         }));
     } else {
         args.extend((1..sig.inputs().len()).map(|i| {
@@ -428,7 +415,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
 {
     let tcx = infcx.tcx;
     let def_id = tcx.hir.local_def_id(ctor_id);
-    let sig = match tcx.item_type(def_id).sty {
+    let sig = match tcx.type_of(def_id).sty {
         ty::TyFnDef(_, _, fty) => tcx.no_late_bound_regions(&fty)
             .expect("LBR in ADT constructor signature"),
         _ => bug!("unexpected type for ctor {:?}", def_id)
@@ -442,7 +429,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
 
     debug!("build_ctor: def_id={:?} sig={:?} fields={:?}", def_id, sig, fields);
 
-    let local_decls = local_decls_for_sig(&sig);
+    let local_decls = local_decls_for_sig(&sig, span);
 
     let source_info = SourceInfo {
         span: span,

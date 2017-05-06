@@ -26,8 +26,9 @@ error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:45:5
    |
 45 |     a::b.J
-   |     ^^^^--
-   |     |
+   |     ^^^---
+   |     |  |
+   |     |  did you mean `I`?
    |     did you mean `a::b::J`?
 
 error[E0423]: expected value, found module `a`
@@ -50,8 +51,9 @@ error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:61:5
    |
 61 |     a::b.f()
-   |     ^^^^----
-   |     |
+   |     ^^^-----
+   |     |  |
+   |     |  did you mean `I`?
    |     did you mean `a::b::f(...)`?
 
 error[E0423]: expected value, found module `a::b`

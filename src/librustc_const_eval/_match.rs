@@ -680,10 +680,10 @@ fn is_useful_specialized<'p, 'a:'p, 'tcx: 'a>(
     }).collect();
     let wild_patterns: Vec<_> = wild_patterns_owned.iter().collect();
     let matrix = Matrix(m.iter().flat_map(|r| {
-        specialize(cx, &r[..], &ctor, &wild_patterns)
+        specialize(cx, &r, &ctor, &wild_patterns)
     }).collect());
     match specialize(cx, v, &ctor, &wild_patterns) {
-        Some(v) => match is_useful(cx, &matrix, &v[..], witness) {
+        Some(v) => match is_useful(cx, &matrix, &v, witness) {
             UsefulWithWitness(witnesses) => UsefulWithWitness(
                 witnesses.into_iter()
                     .map(|witness| witness.apply_constructor(cx, &ctor, lty))

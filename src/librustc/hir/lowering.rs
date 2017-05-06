@@ -57,6 +57,7 @@ use std::mem;
 use syntax::attr;
 use syntax::ast::*;
 use syntax::errors;
+use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ptr::P;
 use syntax::codemap::{self, respan, Spanned};
 use syntax::std_inject;
@@ -392,7 +393,8 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn allow_internal_unstable(&self, reason: &'static str, mut span: Span) -> Span {
-        span.expn_id = self.sess.codemap().record_expansion(codemap::ExpnInfo {
+        let mark = Mark::fresh();
+        mark.set_expn_info(codemap::ExpnInfo {
             call_site: span,
             callee: codemap::NameAndSpan {
                 format: codemap::CompilerDesugaring(Symbol::intern(reason)),
@@ -400,6 +402,7 @@ impl<'a> LoweringContext<'a> {
                 allow_internal_unstable: true,
             },
         });
+        span.ctxt = SyntaxContext::empty().apply_mark(mark);
         span
     }
 
@@ -552,6 +555,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_ty(&mut self, t: &Ty) -> P<hir::Ty> {
         let kind = match t.node {
             TyKind::Infer => hir::TyInfer,
+            TyKind::Err => hir::TyErr,
             TyKind::Slice(ref ty) => hir::TySlice(self.lower_ty(ty)),
             TyKind::Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt)),
             TyKind::Rptr(ref region, ref mt) => {
@@ -640,6 +644,13 @@ impl<'a> LoweringContext<'a> {
             abi: fm.abi,
             items: fm.items.iter().map(|x| self.lower_foreign_item(x)).collect(),
         }
+    }
+
+    fn lower_global_asm(&mut self, ga: &GlobalAsm) -> P<hir::GlobalAsm> {
+        P(hir::GlobalAsm {
+            asm: ga.asm,
+            ctxt: ga.ctxt,
+        })
     }
 
     fn lower_variant(&mut self, v: &Variant) -> hir::Variant {
@@ -907,6 +918,13 @@ impl<'a> LoweringContext<'a> {
                 FunctionRetTy::Default(span) => hir::DefaultReturn(span),
             },
             variadic: decl.variadic,
+            has_implicit_self: decl.inputs.get(0).map_or(false, |arg| {
+                match arg.ty.node {
+                    TyKind::ImplicitSelf => true,
+                    TyKind::Rptr(_, ref mt) => mt.ty.node == TyKind::ImplicitSelf,
+                    _ => false
+                }
+            })
         })
     }
 
@@ -1146,7 +1164,7 @@ impl<'a> LoweringContext<'a> {
         bounds.iter().map(|bound| self.lower_ty_param_bound(bound)).collect()
     }
 
-    fn lower_block(&mut self, b: &Block, break_to: Option<NodeId>) -> P<hir::Block> {
+    fn lower_block(&mut self, b: &Block, targeted_by_break: bool) -> P<hir::Block> {
         let mut expr = None;
 
         let mut stmts = vec![];
@@ -1169,7 +1187,7 @@ impl<'a> LoweringContext<'a> {
             expr: expr,
             rules: self.lower_block_check_mode(&b.rules),
             span: b.span,
-            break_to_expr_id: break_to,
+            targeted_by_break: targeted_by_break,
         })
     }
 
@@ -1264,7 +1282,7 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
                 self.with_new_scopes(|this| {
-                    let body = this.lower_block(body, None);
+                    let body = this.lower_block(body, false);
                     let body = this.expr_block(body, ThinVec::new());
                     let body_id = this.record_body(body, Some(decl));
                     hir::ItemFn(this.lower_fn_decl(decl),
@@ -1277,6 +1295,7 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::Mod(ref m) => hir::ItemMod(self.lower_mod(m)),
             ItemKind::ForeignMod(ref nm) => hir::ItemForeignMod(self.lower_foreign_mod(nm)),
+            ItemKind::GlobalAsm(ref ga) => hir::ItemGlobalAsm(self.lower_global_asm(ga)),
             ItemKind::Ty(ref t, ref generics) => {
                 hir::ItemTy(self.lower_ty(t), self.lower_generics(generics))
             }
@@ -1307,7 +1326,13 @@ impl<'a> LoweringContext<'a> {
                 hir::ItemDefaultImpl(self.lower_unsafety(unsafety),
                                      trait_ref)
             }
-            ItemKind::Impl(unsafety, polarity, ref generics, ref ifce, ref ty, ref impl_items) => {
+            ItemKind::Impl(unsafety,
+                           polarity,
+                           defaultness,
+                           ref generics,
+                           ref ifce,
+                           ref ty,
+                           ref impl_items) => {
                 let new_impl_items = impl_items.iter()
                                                .map(|item| self.lower_impl_item_ref(item))
                                                .collect();
@@ -1321,6 +1346,7 @@ impl<'a> LoweringContext<'a> {
 
                 hir::ItemImpl(self.lower_unsafety(unsafety),
                               self.lower_impl_polarity(polarity),
+                              self.lower_defaultness(defaultness, true /* [1] */),
                               self.lower_generics(generics),
                               ifce,
                               self.lower_ty(ty),
@@ -1336,6 +1362,9 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::MacroDef(..) | ItemKind::Mac(..) => panic!("Shouldn't still be around"),
         }
+
+        // [1] `defaultness.has_value()` is never called for an `impl`, always `true` in order to
+        //     not cause an assertion failure inside the `lower_defaultness` function
     }
 
     fn lower_trait_item(&mut self, i: &TraitItem) -> hir::TraitItem {
@@ -1358,7 +1387,7 @@ impl<'a> LoweringContext<'a> {
                                                    hir::TraitMethod::Required(names))
                     }
                     TraitItemKind::Method(ref sig, Some(ref body)) => {
-                        let body = this.lower_block(body, None);
+                        let body = this.lower_block(body, false);
                         let expr = this.expr_block(body, ThinVec::new());
                         let body_id = this.record_body(expr, Some(&sig.decl));
                         hir::TraitItemKind::Method(this.lower_method_sig(sig),
@@ -1414,7 +1443,7 @@ impl<'a> LoweringContext<'a> {
                         hir::ImplItemKind::Const(this.lower_ty(ty), body_id)
                     }
                     ImplItemKind::Method(ref sig, ref body) => {
-                        let body = this.lower_block(body, None);
+                        let body = this.lower_block(body, false);
                         let expr = this.expr_block(body, ThinVec::new());
                         let body_id = this.record_body(expr, Some(&sig.decl));
                         hir::ImplItemKind::Method(this.lower_method_sig(sig), body_id)
@@ -1838,7 +1867,7 @@ impl<'a> LoweringContext<'a> {
                                 id: id,
                                 rules: hir::DefaultBlock,
                                 span: span,
-                                break_to_expr_id: None,
+                                targeted_by_break: false,
                             });
                             P(self.expr_block(blk, ThinVec::new()))
                         }
@@ -1846,24 +1875,27 @@ impl<'a> LoweringContext<'a> {
                     }
                 });
 
-                hir::ExprIf(P(self.lower_expr(cond)), self.lower_block(blk, None), else_opt)
+                let then_blk = self.lower_block(blk, false);
+                let then_expr = self.expr_block(then_blk, ThinVec::new());
+
+                hir::ExprIf(P(self.lower_expr(cond)), P(then_expr), else_opt)
             }
             ExprKind::While(ref cond, ref body, opt_ident) => {
                 self.with_loop_scope(e.id, |this|
                     hir::ExprWhile(
                         this.with_loop_condition_scope(|this| P(this.lower_expr(cond))),
-                        this.lower_block(body, None),
+                        this.lower_block(body, false),
                         this.lower_opt_sp_ident(opt_ident)))
             }
             ExprKind::Loop(ref body, opt_ident) => {
                 self.with_loop_scope(e.id, |this|
-                    hir::ExprLoop(this.lower_block(body, None),
+                    hir::ExprLoop(this.lower_block(body, false),
                                   this.lower_opt_sp_ident(opt_ident),
                                   hir::LoopSource::Loop))
             }
             ExprKind::Catch(ref body) => {
-                self.with_catch_scope(e.id, |this|
-                    hir::ExprBlock(this.lower_block(body, Some(e.id))))
+                self.with_catch_scope(body.id, |this|
+                    hir::ExprBlock(this.lower_block(body, true)))
             }
             ExprKind::Match(ref expr, ref arms) => {
                 hir::ExprMatch(P(self.lower_expr(expr)),
@@ -1881,7 +1913,7 @@ impl<'a> LoweringContext<'a> {
                     })
                 })
             }
-            ExprKind::Block(ref blk) => hir::ExprBlock(self.lower_block(blk, None)),
+            ExprKind::Block(ref blk) => hir::ExprBlock(self.lower_block(blk, false)),
             ExprKind::Assign(ref el, ref er) => {
                 hir::ExprAssign(P(self.lower_expr(el)), P(self.lower_expr(er)))
             }
@@ -1900,57 +1932,45 @@ impl<'a> LoweringContext<'a> {
                 hir::ExprIndex(P(self.lower_expr(el)), P(self.lower_expr(er)))
             }
             ExprKind::Range(ref e1, ref e2, lims) => {
-                fn make_struct(this: &mut LoweringContext,
-                               ast_expr: &Expr,
-                               path: &[&str],
-                               fields: &[(&str, &P<Expr>)]) -> hir::Expr {
-                    let struct_path = &iter::once(&"ops").chain(path).map(|s| *s)
-                                                         .collect::<Vec<_>>();
-                    let unstable_span = this.allow_internal_unstable("...", ast_expr.span);
-
-                    if fields.len() == 0 {
-                        this.expr_std_path(unstable_span, struct_path,
-                                           ast_expr.attrs.clone())
-                    } else {
-                        let fields = fields.into_iter().map(|&(s, e)| {
-                            let expr = P(this.lower_expr(&e));
-                            let unstable_span = this.allow_internal_unstable("...", e.span);
-                            this.field(Symbol::intern(s), expr, unstable_span)
-                        }).collect();
-                        let attrs = ast_expr.attrs.clone();
-
-                        this.expr_std_struct(unstable_span, struct_path, fields, None, attrs)
-                    }
-                }
-
                 use syntax::ast::RangeLimits::*;
 
-                return match (e1, e2, lims) {
-                    (&None,         &None,         HalfOpen) =>
-                        make_struct(self, e, &["RangeFull"], &[]),
+                let (path, variant) = match (e1, e2, lims) {
+                    (&None, &None, HalfOpen) => ("RangeFull", None),
+                    (&Some(..), &None, HalfOpen) => ("RangeFrom", None),
+                    (&None, &Some(..), HalfOpen) => ("RangeTo", None),
+                    (&Some(..), &Some(..), HalfOpen) => ("Range", None),
+                    (&None, &Some(..), Closed) => ("RangeToInclusive", None),
+                    (&Some(..), &Some(..), Closed) => ("RangeInclusive", Some("NonEmpty")),
+                    (_, &None, Closed) =>
+                        panic!(self.diagnostic().span_fatal(
+                            e.span, "inclusive range with no end")),
+                };
 
-                    (&Some(ref e1), &None,         HalfOpen) =>
-                        make_struct(self, e, &["RangeFrom"],
-                                             &[("start", e1)]),
+                let fields =
+                    e1.iter().map(|e| ("start", e)).chain(e2.iter().map(|e| ("end", e)))
+                    .map(|(s, e)| {
+                        let expr = P(self.lower_expr(&e));
+                        let unstable_span = self.allow_internal_unstable("...", e.span);
+                        self.field(Symbol::intern(s), expr, unstable_span)
+                    }).collect::<P<[hir::Field]>>();
 
-                    (&None,         &Some(ref e2), HalfOpen) =>
-                        make_struct(self, e, &["RangeTo"],
-                                             &[("end", e2)]),
+                let is_unit = fields.is_empty();
+                let unstable_span = self.allow_internal_unstable("...", e.span);
+                let struct_path =
+                    iter::once("ops").chain(iter::once(path)).chain(variant)
+                    .collect::<Vec<_>>();
+                let struct_path = self.std_path(unstable_span, &struct_path, is_unit);
+                let struct_path = hir::QPath::Resolved(None, P(struct_path));
 
-                    (&Some(ref e1), &Some(ref e2), HalfOpen) =>
-                        make_struct(self, e, &["Range"],
-                                             &[("start", e1), ("end", e2)]),
-
-                    (&None,         &Some(ref e2), Closed)   =>
-                        make_struct(self, e, &["RangeToInclusive"],
-                                             &[("end", e2)]),
-
-                    (&Some(ref e1), &Some(ref e2), Closed)   =>
-                        make_struct(self, e, &["RangeInclusive", "NonEmpty"],
-                                             &[("start", e1), ("end", e2)]),
-
-                    _ => panic!(self.diagnostic()
-                                    .span_fatal(e.span, "inclusive range with no end")),
+                return hir::Expr {
+                    id: self.lower_node_id(e.id),
+                    node: if is_unit {
+                        hir::ExprPath(struct_path)
+                    } else {
+                        hir::ExprStruct(struct_path, fields, None)
+                    },
+                    span: unstable_span,
+                    attrs: e.attrs.clone(),
                 };
             }
             ExprKind::Path(ref qself, ref path) => {
@@ -1998,7 +2018,7 @@ impl<'a> LoweringContext<'a> {
                     volatile: asm.volatile,
                     alignstack: asm.alignstack,
                     dialect: asm.dialect,
-                    expn_id: asm.expn_id,
+                    ctxt: asm.ctxt,
                 };
                 let outputs =
                     asm.outputs.iter().map(|out| self.lower_expr(&out.expr)).collect();
@@ -2031,7 +2051,6 @@ impl<'a> LoweringContext<'a> {
                 //
                 //   match <sub_expr> {
                 //     <pat> => <body>,
-                //     [_ if <else_opt_if_cond> => <else_opt_if_body>,]
                 //     _ => [<else_opt> | ()]
                 //   }
 
@@ -2039,99 +2058,22 @@ impl<'a> LoweringContext<'a> {
 
                 // `<pat> => <body>`
                 {
-                    let body = self.lower_block(body, None);
+                    let body = self.lower_block(body, false);
                     let body_expr = P(self.expr_block(body, ThinVec::new()));
                     let pat = self.lower_pat(pat);
                     arms.push(self.arm(hir_vec![pat], body_expr));
                 }
 
-                // `[_ if <else_opt_if_cond> => <else_opt_if_body>,]`
-                // `_ => [<else_opt> | ()]`
+                // _ => [<else_opt>|()]
                 {
-                    let mut current: Option<&Expr> = else_opt.as_ref().map(|p| &**p);
-                    let mut else_exprs: Vec<Option<&Expr>> = vec![current];
-
-                    // First, we traverse the AST and recursively collect all
-                    // `else` branches into else_exprs, e.g.:
-                    //
-                    // if let Some(_) = x {
-                    //    ...
-                    // } else if ... {  // Expr1
-                    //    ...
-                    // } else if ... {  // Expr2
-                    //    ...
-                    // } else {         // Expr3
-                    //    ...
-                    // }
-                    //
-                    // ... results in else_exprs = [Some(&Expr1),
-                    //                              Some(&Expr2),
-                    //                              Some(&Expr3)]
-                    //
-                    // Because there also the case there is no `else`, these
-                    // entries can also be `None`, as in:
-                    //
-                    // if let Some(_) = x {
-                    //    ...
-                    // } else if ... {  // Expr1
-                    //    ...
-                    // } else if ... {  // Expr2
-                    //    ...
-                    // }
-                    //
-                    // ... results in else_exprs = [Some(&Expr1),
-                    //                              Some(&Expr2),
-                    //                              None]
-                    //
-                    // The last entry in this list is always translated into
-                    // the final "unguard" wildcard arm of the `match`. In the
-                    // case of a `None`, it becomes `_ => ()`.
-                    loop {
-                        if let Some(e) = current {
-                            // There is an else branch at this level
-                            if let ExprKind::If(_, _, ref else_opt) = e.node {
-                                // The else branch is again an if-expr
-                                current = else_opt.as_ref().map(|p| &**p);
-                                else_exprs.push(current);
-                            } else {
-                                // The last item in the list is not an if-expr,
-                                // stop here
-                                break
-                             }
-                        } else {
-                            // We have no more else branch
-                            break
-                         }
-                    }
-
-                    // Now translate the list of nested else-branches into the
-                    // arms of the match statement.
-                    for else_expr in else_exprs {
-                        if let Some(else_expr) = else_expr {
-                            let (guard, body) = if let ExprKind::If(ref cond,
-                                                                    ref then,
-                                                                    _) = else_expr.node {
-                                let then = self.lower_block(then, None);
-                                (Some(cond),
-                                 self.expr_block(then, ThinVec::new()))
-                            } else {
-                                (None,
-                                 self.lower_expr(else_expr))
-                            };
-
-                            arms.push(hir::Arm {
-                                attrs: hir_vec![],
-                                pats: hir_vec![self.pat_wild(e.span)],
-                                guard: guard.map(|e| P(self.lower_expr(e))),
-                                body: P(body),
-                            });
-                        } else {
-                            // There was no else-branch, push a noop
-                            let pat_under = self.pat_wild(e.span);
-                            let unit = self.expr_tuple(e.span, hir_vec![]);
-                            arms.push(self.arm(hir_vec![pat_under], unit));
-                        }
-                    }
+                    let wildcard_arm: Option<&Expr> = else_opt.as_ref().map(|p| &**p);
+                    let wildcard_pattern = self.pat_wild(e.span);
+                    let body = if let Some(else_expr) = wildcard_arm {
+                        P(self.lower_expr(else_expr))
+                    } else {
+                        self.expr_tuple(e.span, hir_vec![])
+                    };
+                    arms.push(self.arm(hir_vec![wildcard_pattern], body));
                 }
 
                 let contains_else_clause = else_opt.is_some();
@@ -2161,7 +2103,7 @@ impl<'a> LoweringContext<'a> {
                 // Note that the block AND the condition are evaluated in the loop scope.
                 // This is done to allow `break` from inside the condition of the loop.
                 let (body, break_expr, sub_expr) = self.with_loop_scope(e.id, |this| (
-                    this.lower_block(body, None),
+                    this.lower_block(body, false),
                     this.expr_break(e.span, ThinVec::new()),
                     this.with_loop_condition_scope(|this| P(this.lower_expr(sub_expr))),
                 ));
@@ -2222,7 +2164,7 @@ impl<'a> LoweringContext<'a> {
                 // `::std::option::Option::Some(<pat>) => <body>`
                 let pat_arm = {
                     let body_block = self.with_loop_scope(e.id,
-                                                          |this| this.lower_block(body, None));
+                                                          |this| this.lower_block(body, false));
                     let body_expr = P(self.expr_block(body_block, ThinVec::new()));
                     let pat = self.lower_pat(pat);
                     let some_pat = self.pat_some(e.span, pat);
@@ -2613,17 +2555,6 @@ impl<'a> LoweringContext<'a> {
         P(self.expr(sp, hir::ExprTup(exprs), ThinVec::new()))
     }
 
-    fn expr_std_struct(&mut self,
-                       span: Span,
-                       components: &[&str],
-                       fields: hir::HirVec<hir::Field>,
-                       e: Option<P<hir::Expr>>,
-                       attrs: ThinVec<Attribute>) -> hir::Expr {
-        let path = self.std_path(span, components, false);
-        let qpath = hir::QPath::Resolved(None, P(path));
-        self.expr(span, hir::ExprStruct(qpath, fields, e), attrs)
-    }
-
     fn expr(&mut self, span: Span, node: hir::Expr_, attrs: ThinVec<Attribute>) -> hir::Expr {
         hir::Expr {
             id: self.next_id(),
@@ -2665,7 +2596,7 @@ impl<'a> LoweringContext<'a> {
             id: self.next_id(),
             rules: hir::DefaultBlock,
             span: span,
-            break_to_expr_id: None,
+            targeted_by_break: false,
         }
     }
 
@@ -2707,7 +2638,7 @@ impl<'a> LoweringContext<'a> {
     fn pat_ident_binding_mode(&mut self, span: Span, name: Name, bm: hir::BindingMode)
                               -> P<hir::Pat> {
         let id = self.next_id();
-        let parent_def = self.parent_def;
+        let parent_def = self.parent_def.unwrap();
         let def_id = {
             let defs = self.resolver.definitions();
             let def_path_data = DefPathData::Binding(name.as_str());
@@ -2773,7 +2704,7 @@ impl<'a> LoweringContext<'a> {
             id: id,
             stmts: stmts,
             expr: Some(expr),
-            break_to_expr_id: None,
+            targeted_by_break: false,
         });
         self.expr_block(block, attrs)
     }

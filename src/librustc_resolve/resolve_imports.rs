@@ -145,7 +145,7 @@ impl<'a> Resolver<'a> {
                                    module: Module<'a>,
                                    ident: Ident,
                                    ns: Namespace,
-                                   ignore_unresolved_invocations: bool,
+                                   restricted_shadowing: bool,
                                    record_used: Option<Span>)
                                    -> Result<&'a NameBinding<'a>, Determinacy> {
         self.populate_module_if_necessary(module);
@@ -158,9 +158,8 @@ impl<'a> Resolver<'a> {
             if let Some(binding) = resolution.binding {
                 if let Some(shadowed_glob) = resolution.shadows_glob {
                     let name = ident.name;
-                    // If we ignore unresolved invocations, we must forbid
-                    // expanded shadowing to avoid time travel.
-                    if ignore_unresolved_invocations &&
+                    // Forbid expanded shadowing to avoid time travel.
+                    if restricted_shadowing &&
                        binding.expansion != Mark::root() &&
                        ns != MacroNS && // In MacroNS, `try_define` always forbids this shadowing
                        binding.def() != shadowed_glob.def() {
@@ -215,7 +214,7 @@ impl<'a> Resolver<'a> {
         }
 
         let no_unresolved_invocations =
-            ignore_unresolved_invocations || module.unresolved_invocations.borrow().is_empty();
+            restricted_shadowing || module.unresolved_invocations.borrow().is_empty();
         match resolution.binding {
             // In `MacroNS`, expanded bindings do not shadow (enforced in `try_define`).
             Some(binding) if no_unresolved_invocations || ns == MacroNS =>
@@ -225,6 +224,9 @@ impl<'a> Resolver<'a> {
         }
 
         // Check if the globs are determined
+        if restricted_shadowing && module.def().is_some() {
+            return Err(Determined);
+        }
         for directive in module.globs.borrow().iter() {
             if self.is_accessible(directive.vis.get()) {
                 if let Some(module) = directive.imported_module.get() {

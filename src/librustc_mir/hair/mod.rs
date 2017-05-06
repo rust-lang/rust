@@ -31,7 +31,8 @@ pub use rustc_const_eval::pattern::{BindingMode, Pattern, PatternKind, FieldPatt
 
 #[derive(Clone, Debug)]
 pub struct Block<'tcx> {
-    pub extent: CodeExtent,
+    pub targeted_by_break: bool,
+    pub extent: CodeExtent<'tcx>,
     pub span: Span,
     pub stmts: Vec<StmtRef<'tcx>>,
     pub expr: Option<ExprRef<'tcx>>,
@@ -52,7 +53,7 @@ pub struct Stmt<'tcx> {
 pub enum StmtKind<'tcx> {
     Expr {
         /// scope for this statement; may be used as lifetime of temporaries
-        scope: CodeExtent,
+        scope: CodeExtent<'tcx>,
 
         /// expression being evaluated in this statement
         expr: ExprRef<'tcx>,
@@ -61,11 +62,11 @@ pub enum StmtKind<'tcx> {
     Let {
         /// scope for variables bound in this let; covers this and
         /// remaining statements in block
-        remainder_scope: CodeExtent,
+        remainder_scope: CodeExtent<'tcx>,
 
         /// scope for the initialization itself; might be used as
         /// lifetime of temporaries
-        init_scope: CodeExtent,
+        init_scope: CodeExtent<'tcx>,
 
         /// let <PAT> = ...
         pattern: Pattern<'tcx>,
@@ -96,7 +97,7 @@ pub struct Expr<'tcx> {
 
     /// lifetime of this expression if it should be spilled into a
     /// temporary; should be None only if in a constant context
-    pub temp_lifetime: Option<CodeExtent>,
+    pub temp_lifetime: Option<CodeExtent<'tcx>>,
 
     /// whether this temp lifetime was shrunk by #36082.
     pub temp_lifetime_was_shrunk: bool,
@@ -111,12 +112,12 @@ pub struct Expr<'tcx> {
 #[derive(Clone, Debug)]
 pub enum ExprKind<'tcx> {
     Scope {
-        extent: CodeExtent,
+        extent: CodeExtent<'tcx>,
         value: ExprRef<'tcx>,
     },
     Box {
         value: ExprRef<'tcx>,
-        value_extents: CodeExtent,
+        value_extents: CodeExtent<'tcx>,
     },
     Call {
         ty: ty::Ty<'tcx>,
@@ -204,16 +205,16 @@ pub enum ExprKind<'tcx> {
         id: DefId,
     },
     Borrow {
-        region: &'tcx Region,
+        region: Region<'tcx>,
         borrow_kind: BorrowKind,
         arg: ExprRef<'tcx>,
     },
     Break {
-        label: CodeExtent,
+        label: CodeExtent<'tcx>,
         value: Option<ExprRef<'tcx>>,
     },
     Continue {
-        label: CodeExtent,
+        label: CodeExtent<'tcx>,
     },
     Return {
         value: Option<ExprRef<'tcx>>,

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use LinkerFlavor;
 use target::{Target, TargetResult};
 
 // See https://developer.android.com/ndk/guides/abis.html#x86
@@ -31,6 +32,7 @@ pub fn target() -> TargetResult {
         target_os: "android".to_string(),
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
+        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     })
 }

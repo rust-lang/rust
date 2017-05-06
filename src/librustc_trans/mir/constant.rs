@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use llvm::{self, ValueRef};
-use rustc::middle::const_val::ConstVal;
-use rustc_const_eval::{ErrKind, ConstEvalErr, report_const_eval_err};
+use rustc::middle::const_val::{ConstEvalErr, ConstVal, ErrKind};
 use rustc_const_math::ConstInt::*;
 use rustc_const_math::ConstFloat::*;
 use rustc_const_math::{ConstInt, ConstMathErr};
@@ -18,11 +17,12 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
-use rustc::ty::{self, layout, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::layout::{self, LayoutTyper};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::{Kind, Substs, Subst};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use {abi, adt, base, Disr, machine};
+use {abi, adt, base, machine};
 use callee;
 use builder::Builder;
 use common::{self, CrateContext, const_get_elt, val_ty};
@@ -100,15 +100,13 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Integral(ref i) => return Const::from_constint(ccx, i),
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
             ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
+            ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),
+            ConstVal::Function(..) => C_null(type_of::type_of(ccx, ty)),
+            ConstVal::Variant(_) |
             ConstVal::Struct(_) | ConstVal::Tuple(_) |
             ConstVal::Array(..) | ConstVal::Repeat(..) => {
                 bug!("MIR must not use `{:?}` (aggregates are expanded to MIR rvalues)", cv)
             }
-            ConstVal::Function(..) => {
-                let llty = type_of::type_of(ccx, ty);
-                return Const::new(C_null(llty), ty);
-            }
-            ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),
         };
 
         assert!(!ty.has_erasable_regions());
@@ -148,7 +146,7 @@ impl<'tcx> Const<'tcx> {
         } else {
             // Otherwise, or if the value is not immediate, we create
             // a constant LLVM global and cast its address if necessary.
-            let align = type_of::align_of(ccx, self.ty);
+            let align = ccx.align_of(self.ty);
             let ptr = consts::addr_of(ccx, self.llval, align, "const");
             OperandValue::Ref(consts::ptrcast(ptr, llty.ptr_to()), Alignment::AbiAligned)
         };
@@ -260,9 +258,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     fn monomorphize<T>(&self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
-        monomorphize::apply_param_substs(self.ccx.shared(),
-                                         self.substs,
-                                         value)
+        self.ccx.tcx().trans_apply_param_substs(self.substs, value)
     }
 
     fn trans(&mut self) -> Result<Const<'tcx>, ConstEvalErr<'tcx>> {
@@ -326,8 +322,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             }
                         };
 
-                        let err = ConstEvalErr{ span: span, kind: err };
-                        report_const_eval_err(tcx, &err, span, "expression");
+                        let err = ConstEvalErr { span: span, kind: err };
+                        err.report(tcx, span, "expression");
                         failure = Err(err);
                     }
                     target
@@ -428,7 +424,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     }
                     mir::ProjectionElem::Field(ref field, _) => {
                         let llprojected = adt::const_get_field(self.ccx, tr_base.ty, base.llval,
-                                                               Disr(0), field.index());
+                                                               field.index());
                         let llextra = if is_sized {
                             ptr::null_mut()
                         } else {
@@ -710,14 +706,14 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let tr_lvalue = self.const_lvalue(lvalue, span)?;
 
                 let ty = tr_lvalue.ty;
-                let ref_ty = tcx.mk_ref(tcx.mk_region(ty::ReErased),
+                let ref_ty = tcx.mk_ref(tcx.types.re_erased,
                     ty::TypeAndMut { ty: ty, mutbl: bk.to_mutbl_lossy() });
 
                 let base = match tr_lvalue.base {
                     Base::Value(llval) => {
                         // FIXME: may be wrong for &*(&simd_vec as &fmt::Debug)
                         let align = if self.ccx.shared().type_is_sized(ty) {
-                            type_of::align_of(self.ccx, ty)
+                            self.ccx.align_of(ty)
                         } else {
                             self.ccx.tcx().data_layout.pointer_align.abi() as machine::llalign
                         };
@@ -979,7 +975,6 @@ fn trans_const<'a, 'tcx>(
     vals: &[ValueRef]
 ) -> ValueRef {
     let l = ccx.layout_of(t);
-    let dl = &ccx.tcx().data_layout;
     let variant_index = match *kind {
         mir::AggregateKind::Adt(_, index, _, _) => index,
         _ => 0,
@@ -988,13 +983,14 @@ fn trans_const<'a, 'tcx>(
         layout::CEnum { discr: d, min, max, .. } => {
             let discr = match *kind {
                 mir::AggregateKind::Adt(adt_def, _, _, _) => {
-                    Disr::for_variant(ccx.tcx(), adt_def, variant_index)
+                    adt_def.discriminant_for_variant(ccx.tcx(), variant_index)
+                           .to_u128_unchecked() as u64
                 },
-                _ => Disr(0),
+                _ => 0,
             };
             assert_eq!(vals.len(), 0);
-            adt::assert_discr_in_range(Disr(min), Disr(max), discr);
-            C_integral(Type::from_integer(ccx, d), discr.0, true)
+            adt::assert_discr_in_range(min, max, discr);
+            C_integral(Type::from_integer(ccx, d), discr, true)
         }
         layout::General { discr: d, ref variants, .. } => {
             let variant = &variants[variant_index];
@@ -1002,7 +998,7 @@ fn trans_const<'a, 'tcx>(
             let mut vals_with_discr = vec![lldiscr];
             vals_with_discr.extend_from_slice(vals);
             let mut contents = build_const_struct(ccx, &variant, &vals_with_discr[..]);
-            let needed_padding = l.size(dl).bytes() - variant.stride().bytes();
+            let needed_padding = l.size(ccx).bytes() - variant.stride().bytes();
             if needed_padding > 0 {
                 contents.push(padding(ccx, needed_padding));
             }
@@ -1022,25 +1018,20 @@ fn trans_const<'a, 'tcx>(
             C_vector(vals)
         }
         layout::RawNullablePointer { nndiscr, .. } => {
-            let nnty = adt::compute_fields(ccx, t, nndiscr as usize, false)[0];
             if variant_index as u64 == nndiscr {
                 assert_eq!(vals.len(), 1);
                 vals[0]
             } else {
-                C_null(type_of::sizing_type_of(ccx, nnty))
+                C_null(type_of::type_of(ccx, t))
             }
         }
         layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
             if variant_index as u64 == nndiscr {
                 C_struct(ccx, &build_const_struct(ccx, &nonnull, vals), false)
             } else {
-                let fields = adt::compute_fields(ccx, t, nndiscr as usize, false);
-                let vals = fields.iter().map(|&ty| {
-                    // Always use null even if it's not the `discrfield`th
-                    // field; see #8506.
-                    C_null(type_of::sizing_type_of(ccx, ty))
-                }).collect::<Vec<ValueRef>>();
-                C_struct(ccx, &build_const_struct(ccx, &nonnull, &vals[..]), false)
+                // Always use null even if it's not the `discrfield`th
+                // field; see #8506.
+                C_null(type_of::type_of(ccx, t))
             }
         }
         _ => bug!("trans_const: cannot handle type {} repreented as {:#?}", t, l)

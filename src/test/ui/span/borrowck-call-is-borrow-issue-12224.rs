@@ -21,8 +21,11 @@ struct Test<'a> {
 fn call<F>(mut f: F) where F: FnMut(Fn) {
     f(Box::new(|| {
     //~^ ERROR: cannot borrow `f` as mutable more than once
+    //~| NOTE first mutable borrow occurs here
+    //~| NOTE second mutable borrow occurs here
         f((Box::new(|| {})))
     }));
+    //~^ NOTE first borrow ends here
 }
 
 fn test1() {
@@ -32,7 +35,10 @@ fn test1() {
 }
 
 fn test2<F>(f: &F) where F: FnMut() {
-    (*f)(); //~ ERROR: cannot borrow immutable borrowed content `*f` as mutable
+    //~^ NOTE use `&mut F` here to make mutable
+    (*f)();
+    //~^ ERROR cannot borrow immutable borrowed content `*f` as mutable
+    //~| NOTE cannot borrow as mutable
 }
 
 fn test3<F>(f: &mut F) where F: FnMut() {
@@ -40,7 +46,10 @@ fn test3<F>(f: &mut F) where F: FnMut() {
 }
 
 fn test4(f: &Test) {
-    f.f.call_mut(()) //~ ERROR: cannot borrow immutable `Box` content `*f.f` as mutable
+    //~^ NOTE use `&mut Test` here to make mutable
+    f.f.call_mut(())
+    //~^ ERROR: cannot borrow immutable `Box` content `*f.f` as mutable
+    //~| NOTE cannot borrow as mutable
 }
 
 fn test5(f: &mut Test) {
@@ -57,10 +66,14 @@ fn test6() {
 fn test7() {
     fn foo<F>(_: F) where F: FnMut(Box<FnMut(isize)>, isize) {}
     let mut f = |g: Box<FnMut(isize)>, b: isize| {};
+    //~^ NOTE moved
     f(Box::new(|a| {
+    //~^ NOTE borrow of `f` occurs here
         foo(f);
         //~^ ERROR cannot move `f` into closure because it is borrowed
         //~| ERROR cannot move out of captured outer variable in an `FnMut` closure
+        //~| NOTE move into closure occurs here
+        //~| NOTE cannot move out of captured outer variable in an `FnMut` closure
     }), 3);
 }
 

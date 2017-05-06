@@ -142,7 +142,14 @@ fn check(cache: &mut Cache,
     if file.ends_with("btree_set/struct.BTreeSet.html") ||
        file.ends_with("collections/struct.BTreeSet.html") ||
        file.ends_with("collections/btree_map/struct.BTreeMap.html") ||
-       file.ends_with("collections/hash_map/struct.HashMap.html") {
+       file.ends_with("collections/hash_map/struct.HashMap.html") ||
+       file.ends_with("collections/hash_set/struct.HashSet.html") {
+        return None;
+    }
+
+    // mdbook uses the HTML <base> tag to handle links for subdirectories, which
+    // linkchecker doesn't support
+    if file.to_str().unwrap().contains("unstable-book") {
         return None;
     }
 

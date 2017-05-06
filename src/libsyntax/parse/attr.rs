@@ -10,8 +10,7 @@
 
 use attr;
 use ast;
-use syntax_pos::{mk_sp, Span};
-use codemap::spanned;
+use codemap::respan;
 use parse::common::SeqSep;
 use parse::PResult;
 use parse::token::{self, Nonterminal};
@@ -49,8 +48,7 @@ impl<'a> Parser<'a> {
                     just_parsed_doc_comment = false;
                 }
                 token::DocComment(s) => {
-                    let Span { lo, hi, .. } = self.span;
-                    let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, lo, hi);
+                    let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, self.span);
                     if attr.style != ast::AttrStyle::Outer {
                         let mut err = self.fatal("expected outer doc comment");
                         err.note("inner doc comments like this (starting with \
@@ -94,7 +92,7 @@ impl<'a> Parser<'a> {
                self.token);
         let (span, path, tokens, mut style) = match self.token {
             token::Pound => {
-                let lo = self.span.lo;
+                let lo = self.span;
                 self.bump();
 
                 if inner_parse_policy == InnerAttributeParsePolicy::Permitted {
@@ -122,9 +120,9 @@ impl<'a> Parser<'a> {
                 self.expect(&token::OpenDelim(token::Bracket))?;
                 let (path, tokens) = self.parse_path_and_tokens()?;
                 self.expect(&token::CloseDelim(token::Bracket))?;
-                let hi = self.prev_span.hi;
+                let hi = self.prev_span;
 
-                (mk_sp(lo, hi), path, tokens, style)
+                (lo.to(hi), path, tokens, style)
             }
             _ => {
                 let token_str = self.this_token_to_string();
@@ -189,8 +187,7 @@ impl<'a> Parser<'a> {
                 }
                 token::DocComment(s) => {
                     // we need to get the position of this token before we bump.
-                    let Span { lo, hi, .. } = self.span;
-                    let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, lo, hi);
+                    let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, self.span);
                     if attr.style == ast::AttrStyle::Inner {
                         attrs.push(attr);
                         self.bump();
@@ -238,11 +235,10 @@ impl<'a> Parser<'a> {
             return Ok(meta);
         }
 
-        let lo = self.span.lo;
+        let lo = self.span;
         let ident = self.parse_ident()?;
         let node = self.parse_meta_item_kind()?;
-        let hi = self.prev_span.hi;
-        Ok(ast::MetaItem { name: ident.name, node: node, span: mk_sp(lo, hi) })
+        Ok(ast::MetaItem { name: ident.name, node: node, span: lo.to(self.prev_span) })
     }
 
     pub fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
@@ -258,26 +254,25 @@ impl<'a> Parser<'a> {
 
     /// matches meta_item_inner : (meta_item | UNSUFFIXED_LIT) ;
     fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::NestedMetaItem> {
-        let sp = self.span;
-        let lo = self.span.lo;
+        let lo = self.span;
 
         match self.parse_unsuffixed_lit() {
             Ok(lit) => {
-                return Ok(spanned(lo, self.prev_span.hi, ast::NestedMetaItemKind::Literal(lit)))
+                return Ok(respan(lo.to(self.prev_span), ast::NestedMetaItemKind::Literal(lit)))
             }
             Err(ref mut err) => self.diagnostic().cancel(err)
         }
 
         match self.parse_meta_item() {
             Ok(mi) => {
-                return Ok(spanned(lo, self.prev_span.hi, ast::NestedMetaItemKind::MetaItem(mi)))
+                return Ok(respan(lo.to(self.prev_span), ast::NestedMetaItemKind::MetaItem(mi)))
             }
             Err(ref mut err) => self.diagnostic().cancel(err)
         }
 
         let found = self.this_token_to_string();
         let msg = format!("expected unsuffixed literal or identifier, found {}", found);
-        Err(self.diagnostic().struct_span_err(sp, &msg))
+        Err(self.diagnostic().struct_span_err(lo, &msg))
     }
 
     /// matches meta_seq = ( COMMASEP(meta_item_inner) )

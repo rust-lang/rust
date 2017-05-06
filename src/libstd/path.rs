@@ -15,6 +15,13 @@
 //! around [`OsString`] and [`OsStr`] respectively, meaning that they work directly
 //! on strings according to the local platform's path syntax.
 //!
+//! Paths can be parsed into [`Component`]s by iterating over the structure
+//! returned by the [`components`] method on [`Path`]. [`Component`]s roughly
+//! correspond to the substrings between path separators (`/` or `\`). You can
+//! reconstruct an equivalent path from components with the [`push`] method on
+//! [`PathBuf`]; note that the paths may differ syntactically by the
+//! normalization described in the documentation for the [`components`] method.
+//!
 //! ## Simple usage
 //!
 //! Path manipulation includes both parsing components from slices and building
@@ -50,62 +57,11 @@
 //! path.set_extension("dll");
 //! ```
 //!
-//! ## Path components and normalization
-//!
-//! The path APIs are built around the notion of "components", which roughly
-//! correspond to the substrings between path separators (`/` and, on Windows,
-//! `\`). The APIs for path parsing are largely specified in terms of the path's
-//! components, so it's important to clearly understand how those are
-//! determined.
-//!
-//! A path can always be reconstructed into an *equivalent* path by
-//! putting together its components via `push`. Syntactically, the
-//! paths may differ by the normalization described below.
-//!
-//! ### Component types
-//!
-//! Components come in several types:
-//!
-//! * Normal components are the default: standard references to files or
-//! directories. The path `a/b` has two normal components, `a` and `b`.
-//!
-//! * Current directory components represent the `.` character. For example,
-//! `./a` has a current directory component and a normal component `a`.
-//!
-//! * The root directory component represents a separator that designates
-//!   starting from root. For example, `/a/b` has a root directory component
-//!   followed by normal components `a` and `b`.
-//!
-//! On Windows, an additional component type comes into play:
-//!
-//! * Prefix components, of which there is a large variety. For example, `C:`
-//! and `\\server\share` are prefixes. The path `C:windows` has a prefix
-//! component `C:` and a normal component `windows`; the path `C:\windows` has a
-//! prefix component `C:`, a root directory component, and a normal component
-//! `windows`.
-//!
-//! ### Normalization
-//!
-//! Aside from splitting on the separator(s), there is a small amount of
-//! "normalization":
-//!
-//! * Repeated separators are ignored: `a/b` and `a//b` both have components `a`
-//!   and `b`.
-//!
-//! * Occurrences of `.` are normalized away, *except* if they are at
-//! the beginning of the path (in which case they are often meaningful
-//! in terms of path searching). So, for example, `a/./b`, `a/b/`,
-//! `/a/b/.` and `a/b` all have components `a` and `b`, but `./a/b`
-//! has a leading current directory component.
-//!
-//! No other normalization takes place by default. In particular,
-//! `a/c` and `a/b/../c` are distinct, to account for the possibility
-//! that `b` is a symbolic link (so its parent isn't `a`). Further
-//! normalization is possible to build on top of the components APIs,
-//! and will be included in this library in the near future.
-//!
+//! [`Component`]: ../../std/path/enum.Component.html
+//! [`components`]: ../../std/path/struct.Path.html#method.components
 //! [`PathBuf`]: ../../std/path/struct.PathBuf.html
 //! [`Path`]: ../../std/path/struct.Path.html
+//! [`push`]: ../../std/path/struct.PathBuf.html#method.push
 //! [`String`]: ../../std/string/struct.String.html
 //! [`str`]: ../../std/primitive.str.html
 //! [`OsString`]: ../../std/ffi/struct.OsString.html
@@ -143,36 +99,81 @@ use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 // Windows Prefixes
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Path prefixes (Windows only).
+/// Windows path prefixes, e.g. `C:` or `\\server\share`.
 ///
-/// Windows uses a variety of path styles, including references to drive
-/// volumes (like `C:`), network shared folders (like `\\server\share`) and
-/// others. In addition, some path prefixes are "verbatim", in which case
-/// `/` is *not* treated as a separator and essentially no normalization is
-/// performed.
+/// Windows uses a variety of path prefix styles, including references to drive
+/// volumes (like `C:`), network shared folders (like `\\server\share`), and
+/// others. In addition, some path prefixes are "verbatim" (i.e. prefixed with
+/// `\\?\`), in which case `/` is *not* treated as a separator and essentially
+/// no normalization is performed.
+///
+/// # Examples
+///
+/// ```
+/// use std::path::{Component, Path, Prefix};
+/// use std::path::Prefix::*;
+/// use std::ffi::OsStr;
+///
+/// fn get_path_prefix(s: &str) -> Prefix {
+///     let path = Path::new(s);
+///     match path.components().next().unwrap() {
+///         Component::Prefix(prefix_component) => prefix_component.kind(),
+///         _ => panic!(),
+///     }
+/// }
+///
+/// # if cfg!(windows) {
+/// assert_eq!(Verbatim(OsStr::new("pictures")),
+///            get_path_prefix(r"\\?\pictures\kittens"));
+/// assert_eq!(VerbatimUNC(OsStr::new("server"), OsStr::new("share")),
+///            get_path_prefix(r"\\?\UNC\server\share"));
+/// assert_eq!(VerbatimDisk('C' as u8), get_path_prefix(r"\\?\c:\"));
+/// assert_eq!(DeviceNS(OsStr::new("BrainInterface")),
+///            get_path_prefix(r"\\.\BrainInterface"));
+/// assert_eq!(UNC(OsStr::new("server"), OsStr::new("share")),
+///            get_path_prefix(r"\\server\share"));
+/// assert_eq!(Disk('C' as u8), get_path_prefix(r"C:\Users\Rust\Pictures\Ferris"));
+/// # }
+/// ```
 #[derive(Copy, Clone, Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Prefix<'a> {
-    /// Prefix `\\?\`, together with the given component immediately following it.
+    /// Verbatim prefix, e.g. `\\?\cat_pics`.
+    ///
+    /// Verbatim prefixes consist of `\\?\` immediately followed by the given
+    /// component.
     #[stable(feature = "rust1", since = "1.0.0")]
     Verbatim(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 
-    /// Prefix `\\?\UNC\`, with the "server" and "share" components following it.
+    /// Verbatim prefix using Windows' _**U**niform **N**aming **C**onvention_,
+    /// e.g. `\\?\UNC\server\share`.
+    ///
+    /// Verbatim UNC prefixes consist of `\\?\UNC\` immediately followed by the
+    /// server's hostname and a share name.
     #[stable(feature = "rust1", since = "1.0.0")]
     VerbatimUNC(
         #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
         #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
     ),
 
-    /// Prefix like `\\?\C:\`, for the given drive letter
+    /// Verbatim disk prefix, e.g. `\\?\C:\`.
+    ///
+    /// Verbatim disk prefixes consist of `\\?\` immediately followed by the
+    /// drive letter and `:\`.
     #[stable(feature = "rust1", since = "1.0.0")]
     VerbatimDisk(#[stable(feature = "rust1", since = "1.0.0")] u8),
 
-    /// Prefix `\\.\`, together with the given component immediately following it.
+    /// Device namespace prefix, e.g. `\\.\COM42`.
+    ///
+    /// Device namespace prefixes consist of `\\.\` immediately followed by the
+    /// device name.
     #[stable(feature = "rust1", since = "1.0.0")]
     DeviceNS(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 
-    /// Prefix `\\server\share`, with the given "server" and "share" components.
+    /// Prefix using Windows' _**U**niform **N**aming **C**onvention_, e.g.
+    /// `\\server\share`.
+    ///
+    /// UNC prefixes consist of the server's hostname and a share name.
     #[stable(feature = "rust1", since = "1.0.0")]
     UNC(
         #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
@@ -217,6 +218,20 @@ impl<'a> Prefix<'a> {
     }
 
     /// Determines if the prefix is verbatim, i.e. begins with `\\?\`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Prefix::*;
+    /// use std::ffi::OsStr;
+    ///
+    /// assert!(Verbatim(OsStr::new("pictures")).is_verbatim());
+    /// assert!(VerbatimUNC(OsStr::new("server"), OsStr::new("share")).is_verbatim());
+    /// assert!(VerbatimDisk('C' as u8).is_verbatim());
+    /// assert!(!DeviceNS(OsStr::new("BrainInterface")).is_verbatim());
+    /// assert!(!UNC(OsStr::new("server"), OsStr::new("share")).is_verbatim());
+    /// assert!(!Disk('C' as u8).is_verbatim());
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_verbatim(&self) -> bool {
@@ -356,9 +371,42 @@ enum State {
     Done = 3,
 }
 
-/// A Windows path prefix, e.g. `C:` or `\\server\share`.
+/// A structure wrapping a Windows path prefix as well as its unparsed string
+/// representation.
+///
+/// In addition to the parsed [`Prefix`] information returned by [`kind`],
+/// `PrefixComponent` also holds the raw and unparsed [`OsStr`] slice,
+/// returned by [`as_os_str`].
+///
+/// Instances of this `struct` can be obtained by matching against the
+/// [`Prefix` variant] on [`Component`].
 ///
 /// Does not occur on Unix.
+///
+/// # Examples
+///
+/// ```
+/// # if cfg!(windows) {
+/// use std::path::{Component, Path, Prefix};
+/// use std::ffi::OsStr;
+///
+/// let path = Path::new(r"c:\you\later\");
+/// match path.components().next().unwrap() {
+///     Component::Prefix(prefix_component) => {
+///         assert_eq!(Prefix::Disk('C' as u8), prefix_component.kind());
+///         assert_eq!(OsStr::new("c:"), prefix_component.as_os_str());
+///     }
+///     _ => unreachable!(),
+/// }
+/// # }
+/// ```
+///
+/// [`as_os_str`]: #method.as_os_str
+/// [`Component`]: enum.Component.html
+/// [`kind`]: #method.kind
+/// [`OsStr`]: ../../std/ffi/struct.OsStr.html
+/// [`Prefix` variant]: enum.Component.html#variant.Prefix
+/// [`Prefix`]: enum.Prefix.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone, Eq, Debug)]
 pub struct PrefixComponent<'a> {
@@ -370,13 +418,20 @@ pub struct PrefixComponent<'a> {
 }
 
 impl<'a> PrefixComponent<'a> {
-    /// The parsed prefix data.
+    /// Returns the parsed prefix data.
+    ///
+    /// See [`Prefix`]'s documentation for more information on the different
+    /// kinds of prefixes.
+    ///
+    /// [`Prefix`]: enum.Prefix.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn kind(&self) -> Prefix<'a> {
         self.parsed
     }
 
-    /// The raw `OsStr` slice for this prefix.
+    /// Returns the raw [`OsStr`] slice for this prefix.
+    ///
+    /// [`OsStr`]: ../../std/ffi/struct.OsStr.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(&self) -> &'a OsStr {
         self.raw
@@ -413,11 +468,11 @@ impl<'a> Hash for PrefixComponent<'a> {
 
 /// A single component of a path.
 ///
-/// See the module documentation for an in-depth explanation of components and
-/// their role in the API.
+/// A `Component` roughtly corresponds to a substring between path separators
+/// (`/` or `\`).
 ///
-/// This `enum` is created from iterating over the [`path::Components`]
-/// `struct`.
+/// This `enum` is created by iterating over [`Components`], which in turn is
+/// created by the [`components`][`Path::components`] method on [`Path`].
 ///
 /// # Examples
 ///
@@ -434,37 +489,49 @@ impl<'a> Hash for PrefixComponent<'a> {
 /// ]);
 /// ```
 ///
-/// [`path::Components`]: struct.Components.html
+/// [`Components`]: struct.Components.html
+/// [`Path`]: struct.Path.html
+/// [`Path::components`]: struct.Path.html#method.components
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Component<'a> {
     /// A Windows path prefix, e.g. `C:` or `\\server\share`.
     ///
+    /// There is a large variety of prefix types, see [`Prefix`]'s documentation
+    /// for more.
+    ///
     /// Does not occur on Unix.
+    ///
+    /// [`Prefix`]: enum.Prefix.html
     #[stable(feature = "rust1", since = "1.0.0")]
     Prefix(
         #[stable(feature = "rust1", since = "1.0.0")] PrefixComponent<'a>
     ),
 
-    /// The root directory component, appears after any prefix and before anything else
+    /// The root directory component, appears after any prefix and before anything else.
+    ///
+    /// It represents a separator that designates that a path starts from root.
     #[stable(feature = "rust1", since = "1.0.0")]
     RootDir,
 
-    /// A reference to the current directory, i.e. `.`
+    /// A reference to the current directory, i.e. `.`.
     #[stable(feature = "rust1", since = "1.0.0")]
     CurDir,
 
-    /// A reference to the parent directory, i.e. `..`
+    /// A reference to the parent directory, i.e. `..`.
     #[stable(feature = "rust1", since = "1.0.0")]
     ParentDir,
 
-    /// A normal component, i.e. `a` and `b` in `a/b`
+    /// A normal component, e.g. `a` and `b` in `a/b`.
+    ///
+    /// This variant is the most common one, it represents references to files
+    /// or directories.
     #[stable(feature = "rust1", since = "1.0.0")]
     Normal(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 }
 
 impl<'a> Component<'a> {
-    /// Extracts the underlying `OsStr` slice.
+    /// Extracts the underlying [`OsStr`] slice.
     ///
     /// # Examples
     ///
@@ -475,6 +542,8 @@ impl<'a> Component<'a> {
     /// let components: Vec<_> = path.components().map(|comp| comp.as_os_str()).collect();
     /// assert_eq!(&components, &[".", "tmp", "foo", "bar.txt"]);
     /// ```
+    ///
+    /// [`OsStr`]: ../../std/ffi/struct.OsStr.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(self) -> &'a OsStr {
         match self {
@@ -494,12 +563,10 @@ impl<'a> AsRef<OsStr> for Component<'a> {
     }
 }
 
-/// The core iterator giving the components of a path.
+/// An interator over the [`Component`]s of a [`Path`].
 ///
-/// See the module documentation for an in-depth explanation of components and
-/// their role in the API.
-///
-/// This `struct` is created by the [`path::Path::components`] method.
+/// This `struct` is created by the [`components`] method on [`Path`].
+/// See its documentation for more.
 ///
 /// # Examples
 ///
@@ -513,7 +580,9 @@ impl<'a> AsRef<OsStr> for Component<'a> {
 /// }
 /// ```
 ///
-/// [`path::Path::components`]: struct.Path.html#method.components
+/// [`Component`]: enum.Component.html
+/// [`components`]: struct.Path.html#method.components
+/// [`Path`]: struct.Path.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Components<'a> {
@@ -534,9 +603,15 @@ pub struct Components<'a> {
     back: State,
 }
 
-/// An iterator over the components of a path, as [`OsStr`] slices.
+/// An iterator over the [`Component`]s of a [`Path`], as [`OsStr`] slices.
 ///
+/// This `struct` is created by the [`iter`] method on [`Path`].
+/// See its documentation for more.
+///
+/// [`Component`]: enum.Component.html
+/// [`iter`]: struct.Path.html#method.iter
 /// [`OsStr`]: ../../std/ffi/struct.OsStr.html
+/// [`Path`]: struct.Path.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a> {
@@ -762,6 +837,18 @@ impl<'a> fmt::Debug for Iter<'a> {
 
 impl<'a> Iter<'a> {
     /// Extracts a slice corresponding to the portion of the path remaining for iteration.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    ///
+    /// let mut iter = Path::new("/tmp/foo/bar.txt").iter();
+    /// iter.next();
+    /// iter.next();
+    ///
+    /// assert_eq!(Path::new("foo/bar.txt"), iter.as_path());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_path(&self) -> &'a Path {
         self.inner.as_path()
@@ -1067,9 +1154,10 @@ impl PathBuf {
 
     /// Truncate `self` to [`self.parent`].
     ///
-    /// Returns false and does nothing if [`self.file_name`] is `None`.
+    /// Returns `false` and does nothing if [`self.file_name`] is [`None`].
     /// Otherwise, returns `true`.
     ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     /// [`self.parent`]: struct.PathBuf.html#method.parent
     /// [`self.file_name`]: struct.PathBuf.html#method.file_name
     ///
@@ -1101,8 +1189,13 @@ impl PathBuf {
     /// If [`self.file_name`] was [`None`], this is equivalent to pushing
     /// `file_name`.
     ///
+    /// Otherwise it is equivalent to calling [`pop`] and then pushing
+    /// `file_name`. The new path will be a sibling of the original path.
+    /// (That is, it will have the same parent.)
+    ///
     /// [`self.file_name`]: struct.PathBuf.html#method.file_name
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`pop`]: struct.PathBuf.html#method.pop
     ///
     /// # Examples
     ///
@@ -1132,10 +1225,11 @@ impl PathBuf {
 
     /// Updates [`self.extension`] to `extension`.
     ///
-    /// If [`self.file_name`] is `None`, does nothing and returns `false`.
+    /// Returns `false` and does nothing if [`self.file_name`] is [`None`],
+    /// returns `true` and updates the extension otherwise.
     ///
-    /// Otherwise, returns `true`; if [`self.extension`] is [`None`], the
-    /// extension is added; otherwise it is replaced.
+    /// If [`self.extension`] is [`None`], the extension is added; otherwise
+    /// it is replaced.
     ///
     /// [`self.file_name`]: struct.PathBuf.html#method.file_name
     /// [`self.extension`]: struct.PathBuf.html#method.extension
@@ -1195,7 +1289,10 @@ impl PathBuf {
         self.inner
     }
 
-    /// Converts this `PathBuf` into a boxed `Path`.
+    /// Converts this `PathBuf` into a [boxed][`Box`] [`Path`].
+    ///
+    /// [`Box`]: ../../std/boxed/struct.Box.html
+    /// [`Path`]: struct.Path.html
     #[unstable(feature = "into_boxed_path", issue = "40380")]
     pub fn into_boxed_path(self) -> Box<Path> {
         unsafe { mem::transmute(self.inner.into_boxed_os_str()) }
@@ -1322,6 +1419,9 @@ impl ToOwned for Path {
     fn to_owned(&self) -> PathBuf {
         self.to_path_buf()
     }
+    fn clone_into(&self, target: &mut PathBuf) {
+        self.inner.clone_into(&mut target.inner);
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1402,10 +1502,14 @@ pub struct Path {
     inner: OsStr,
 }
 
-/// An error returned from the [`Path::strip_prefix`] method indicating that the
-/// prefix was not found in `self`.
+/// An error returned from [`Path::strip_prefix`][`strip_prefix`] if the prefix
+/// was not found.
 ///
-/// [`Path::strip_prefix`]: struct.Path.html#method.strip_prefix
+/// This `struct` is created by the [`strip_prefix`] method on [`Path`].
+/// See its documentation for more.
+///
+/// [`strip_prefix`]: struct.Path.html#method.strip_prefix
+/// [`Path`]: struct.Path.html
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(since = "1.7.0", feature = "strip_prefix")]
 pub struct StripPrefixError(());
@@ -1421,7 +1525,7 @@ impl Path {
         os_str_as_u8_slice(&self.inner)
     }
 
-    /// Directly wrap a string slice as a `Path` slice.
+    /// Directly wraps a string slice as a `Path` slice.
     ///
     /// This is a cost-free conversion.
     ///
@@ -1525,10 +1629,11 @@ impl Path {
         PathBuf::from(self.inner.to_os_string())
     }
 
-    /// A path is *absolute* if it is independent of the current directory.
+    /// Returns `true` if the `Path` is absolute, i.e. if it is independent of
+    /// the current directory.
     ///
     /// * On Unix, a path is absolute if it starts with the root, so
-    /// `is_absolute` and `has_root` are equivalent.
+    /// `is_absolute` and [`has_root`] are equivalent.
     ///
     /// * On Windows, a path is absolute if it has a prefix and starts with the
     /// root: `c:\windows` is absolute, while `c:temp` and `\temp` are not.
@@ -1540,6 +1645,8 @@ impl Path {
     ///
     /// assert!(!Path::new("foo.txt").is_absolute());
     /// ```
+    ///
+    /// [`has_root`]: #method.has_root
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
@@ -1547,7 +1654,9 @@ impl Path {
         self.has_root() && (cfg!(unix) || cfg!(target_os = "redox") || self.prefix().is_some())
     }
 
-    /// A path is *relative* if it is not absolute.
+    /// Return `false` if the `Path` is relative, i.e. not absolute.
+    ///
+    /// See [`is_absolute`]'s documentation for more details.
     ///
     /// # Examples
     ///
@@ -1556,6 +1665,8 @@ impl Path {
     ///
     /// assert!(Path::new("foo.txt").is_relative());
     /// ```
+    ///
+    /// [`is_absolute`]: #method.is_absolute
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_relative(&self) -> bool {
         !self.is_absolute()
@@ -1565,7 +1676,7 @@ impl Path {
         self.components().prefix
     }
 
-    /// A path has a root if the body of the path begins with the directory separator.
+    /// Returns `true` if the `Path` has a root.
     ///
     /// * On Unix, a path has a root if it begins with `/`.
     ///
@@ -1586,7 +1697,7 @@ impl Path {
         self.components().has_root()
     }
 
-    /// The path without its final component, if any.
+    /// Returns the `Path` without its final component, if there is one.
     ///
     /// Returns [`None`] if the path terminates in a root or prefix.
     ///
@@ -1619,9 +1730,12 @@ impl Path {
         })
     }
 
-    /// The final component of the path, if it is a normal file.
+    /// Returns the final component of the `Path`, if there is one.
     ///
-    /// If the path terminates in `..`, `file_name` will return [`None`].
+    /// If the path is a normal file, this is the file name. If it's the path of a directory, this
+    /// is the directory name.
+    ///
+    /// Returns [`None`] If the path terminates in `..`.
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
@@ -1631,21 +1745,12 @@ impl Path {
     /// use std::path::Path;
     /// use std::ffi::OsStr;
     ///
-    /// let path = Path::new("foo.txt");
-    /// let os_str = OsStr::new("foo.txt");
-    ///
-    /// assert_eq!(Some(os_str), path.file_name());
-    /// ```
-    ///
-    /// # Other examples
-    ///
-    /// ```
-    /// use std::path::Path;
-    /// use std::ffi::OsStr;
-    ///
+    /// assert_eq!(Some(OsStr::new("bin")), Path::new("/usr/bin/").file_name());
+    /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("tmp/foo.txt").file_name());
     /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("foo.txt/.").file_name());
     /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("foo.txt/.//").file_name());
     /// assert_eq!(None, Path::new("foo.txt/..").file_name());
+    /// assert_eq!(None, Path::new("/").file_name());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_name(&self) -> Option<&OsStr> {
@@ -1831,6 +1936,9 @@ impl Path {
     ///
     /// let path = Path::new("/tmp/foo.txt");
     /// assert_eq!(path.with_file_name("bar.txt"), PathBuf::from("/tmp/bar.txt"));
+    ///
+    /// let path = Path::new("/tmp");
+    /// assert_eq!(path.with_file_name("var"), PathBuf::from("/var"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_file_name<S: AsRef<OsStr>>(&self, file_name: S) -> PathBuf {
@@ -1869,7 +1977,21 @@ impl Path {
         buf
     }
 
-    /// Produce an iterator over the components of the path.
+    /// Produces an iterator over the [`Component`]s of the path.
+    ///
+    /// When parsing the path, there is a small amount of normalization:
+    ///
+    /// * Repeated separators are ignored, so `a/b` and `a//b` both have
+    ///   `a` and `b` as components.
+    ///
+    /// * Occurentces of `.` are normalized away, exept if they are at the
+    ///   beginning of the path. For example, `a/./b`, `a/b/`, `a/b/.` and
+    ///   `a/b` all have `a` and `b` as components, but `./a/b` starts with
+    ///   an additional [`CurDir`] component.
+    ///
+    /// Note that no other normalization takes place; in particular, `a/c`
+    /// and `a/b/../c` are distinct, to account for the possibility that `b`
+    /// is a symbolic link (so its parent isn't `a`).
     ///
     /// # Examples
     ///
@@ -1884,6 +2006,9 @@ impl Path {
     /// assert_eq!(components.next(), Some(Component::Normal(OsStr::new("foo.txt"))));
     /// assert_eq!(components.next(), None)
     /// ```
+    ///
+    /// [`Component`]: enum.Component.html
+    /// [`CurDir`]: enum.Component.html#variant.CurDir
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn components(&self) -> Components {
         let prefix = parse_prefix(self.as_os_str());
@@ -1896,8 +2021,13 @@ impl Path {
         }
     }
 
-    /// Produce an iterator over the path's components viewed as [`OsStr`] slices.
+    /// Produces an iterator over the path's components viewed as [`OsStr`]
+    /// slices.
     ///
+    /// For more information about the particulars of how the path is separated
+    /// into components, see [`components`].
+    ///
+    /// [`components`]: #method.components
     /// [`OsStr`]: ../ffi/struct.OsStr.html
     ///
     /// # Examples
@@ -1936,7 +2066,7 @@ impl Path {
         Display { path: self }
     }
 
-    /// Query the file system to get information about a file, directory, etc.
+    /// Queries the file system to get information about a file, directory, etc.
     ///
     /// This function will traverse symbolic links to query information about the
     /// destination file.
@@ -1959,7 +2089,7 @@ impl Path {
         fs::metadata(self)
     }
 
-    /// Query the metadata about a file without following symlinks.
+    /// Queries the metadata about a file without following symlinks.
     ///
     /// This is an alias to [`fs::symlink_metadata`].
     ///
@@ -2096,7 +2226,11 @@ impl Path {
         fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
     }
 
-    /// Converts a `Box<Path>` into a `PathBuf` without copying or allocating.
+    /// Converts a [`Box<Path>`][`Box`] into a [`PathBuf`] without copying or
+    /// allocating.
+    ///
+    /// [`Box`]: ../../std/boxed/struct.Box.html
+    /// [`PathBuf`]: struct.PathBuf.html
     #[unstable(feature = "into_boxed_path", issue = "40380")]
     pub fn into_path_buf(self: Box<Path>) -> PathBuf {
         let inner: Box<OsStr> = unsafe { mem::transmute(self) };
@@ -2118,7 +2252,26 @@ impl fmt::Debug for Path {
     }
 }
 
-/// Helper struct for safely printing paths with `format!()` and `{}`
+/// Helper struct for safely printing paths with [`format!`] and `{}`.
+///
+/// A [`Path`] might contain non-Unicode data. This `struct` implements the
+/// [`Display`] trait in a way that mitigates that. It is created by the
+/// [`display`][`Path::display`] method on [`Path`].
+///
+/// # Examples
+///
+/// ```
+/// use std::path::Path;
+///
+/// let path = Path::new("/tmp/foo.rs");
+///
+/// println!("{}", path.display());
+/// ```
+///
+/// [`Display`]: ../../std/fmt/trait.Display.html
+/// [`format!`]: ../../std/macro.format.html
+/// [`Path`]: struct.Path.html
+/// [`Path::display`]: struct.Path.html#method.display
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Display<'a> {
     path: &'a Path,
@@ -3721,5 +3874,14 @@ mod tests {
         assert_eq!(path, &*boxed);
         assert_eq!(&*boxed, &*path_buf);
         assert_eq!(&*path_buf, path);
+    }
+
+    #[test]
+    fn test_clone_into() {
+        let mut path_buf = PathBuf::from("supercalifragilisticexpialidocious");
+        let path = Path::new("short");
+        path.clone_into(&mut path_buf);
+        assert_eq!(path, path_buf);
+        assert!(path_buf.into_os_string().capacity() >= 15);
     }
 }

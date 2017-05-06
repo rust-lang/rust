@@ -10,13 +10,12 @@ crate-type = ["dylib"]
 test = false
 
 [dependencies]
-log = { path = "../liblog" }
+log = "0.3"
 syntax = { path = "../libsyntax" }
 arena = { path = "../libarena" }
 fmt_macros = { path = "../libfmt_macros" }
 rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }
-rustc_const_eval = { path = "../librustc_const_eval" }
 rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_platform_intrinsics = { path = "../librustc_platform_intrinsics" }

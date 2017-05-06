@@ -629,8 +629,9 @@ pub trait Iterator {
     ///
     /// Note that the underlying iterator is still advanced when [`peek`] is
     /// called for the first time: In order to retrieve the next element,
-    /// [`next`] is called on the underlying iterator, hence any side effects of
-    /// the [`next`] method will occur.
+    /// [`next`] is called on the underlying iterator, hence any side effects (i.e.
+    /// anything other than fetching the next value) of the [`next`] method
+    /// will occur.
     ///
     /// [`peek`]: struct.Peekable.html#method.peek
     /// [`next`]: ../../std/iter/trait.Iterator.html#tymethod.next
@@ -1532,14 +1533,18 @@ pub trait Iterator {
     /// Stopping at the first `true`:
     ///
     /// ```
-    /// let a = [1, 2, 3];
+    /// let a = [1, 2, 3, 4];
     ///
     /// let mut iter = a.iter();
     ///
-    /// assert_eq!(iter.position(|&x| x == 2), Some(1));
+    /// assert_eq!(iter.position(|&x| x >= 2), Some(1));
     ///
     /// // we can still use `iter`, as there are more elements.
     /// assert_eq!(iter.next(), Some(&3));
+    ///
+    /// // The returned index depends on iterator state
+    /// assert_eq!(iter.position(|&x| x == 4), Some(0));
+    ///
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -2160,16 +2165,16 @@ pub trait Iterator {
     }
 }
 
-/// Select an element from an iterator based on the given projection
+/// Select an element from an iterator based on the given "projection"
 /// and "comparison" function.
 ///
 /// This is an idiosyncratic helper to try to factor out the
 /// commonalities of {max,min}{,_by}. In particular, this avoids
 /// having to implement optimizations several times.
 #[inline]
-fn select_fold1<I,B, FProj, FCmp>(mut it: I,
-                                  mut f_proj: FProj,
-                                  mut f_cmp: FCmp) -> Option<(B, I::Item)>
+fn select_fold1<I, B, FProj, FCmp>(mut it: I,
+                                   mut f_proj: FProj,
+                                   mut f_cmp: FCmp) -> Option<(B, I::Item)>
     where I: Iterator,
           FProj: FnMut(&I::Item) -> B,
           FCmp: FnMut(&B, &I::Item, &B, &I::Item) -> bool
@@ -2182,7 +2187,7 @@ fn select_fold1<I,B, FProj, FCmp>(mut it: I,
 
         for x in it {
             let x_p = f_proj(&x);
-            if f_cmp(&sel_p,  &sel, &x_p, &x) {
+            if f_cmp(&sel_p, &sel, &x_p, &x) {
                 sel = x;
                 sel_p = x_p;
             }

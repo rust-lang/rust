@@ -416,7 +416,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
                 match def.adt_kind() {
                     AdtKind::Struct => {
-                        if !def.repr.c {
+                        if !def.repr.c() {
                             return FfiUnsafe("found struct without foreign-function-safe \
                                               representation annotation in foreign module, \
                                               consider adding a #[repr(C)] attribute to the type");
@@ -450,7 +450,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         if all_phantom { FfiPhantom } else { FfiSafe }
                     }
                     AdtKind::Union => {
-                        if !def.repr.c {
+                        if !def.repr.c() {
                             return FfiUnsafe("found union without foreign-function-safe \
                                               representation annotation in foreign module, \
                                               consider adding a #[repr(C)] attribute to the type");
@@ -489,7 +489,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                         // Check for a repr() attribute to specify the size of the
                         // discriminant.
-                        if !def.repr.c && def.repr.int.is_none() {
+                        if !def.repr.c() && def.repr.int.is_none() {
                             // Special-case types like `Option<extern fn()>`.
                             if !is_repr_nullable_ptr(cx, def, substs) {
                                 return FfiUnsafe("found enum without foreign-function-safe \
@@ -660,7 +660,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     fn check_foreign_fn(&mut self, id: ast::NodeId, decl: &hir::FnDecl) {
         let def_id = self.cx.tcx.hir.local_def_id(id);
-        let sig = self.cx.tcx.item_type(def_id).fn_sig();
+        let sig = self.cx.tcx.type_of(def_id).fn_sig();
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
 
         for (input_ty, input_hir) in sig.inputs().iter().zip(&decl.inputs) {
@@ -677,7 +677,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     fn check_foreign_static(&mut self, id: ast::NodeId, span: Span) {
         let def_id = self.cx.tcx.hir.local_def_id(id);
-        let ty = self.cx.tcx.item_type(def_id);
+        let ty = self.cx.tcx.type_of(def_id);
         self.check_type_for_ffi_and_report_errors(span, ty);
     }
 }
@@ -724,7 +724,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
         if let hir::ItemEnum(ref enum_definition, ref gens) = it.node {
             if gens.ty_params.is_empty() {
                 // sizes only make sense for non-generic types
-                let t = cx.tcx.item_type(cx.tcx.hir.local_def_id(it.id));
+                let t = cx.tcx.type_of(cx.tcx.hir.local_def_id(it.id));
                 let layout = cx.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
                     let ty = cx.tcx.erase_regions(&t);
                     ty.layout(&infcx).unwrap_or_else(|e| {
@@ -733,7 +733,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                 });
 
                 if let Layout::General { ref variants, ref size, discr, .. } = *layout {
-                    let discr_size = Primitive::Int(discr).size(&cx.tcx.data_layout).bytes();
+                    let discr_size = Primitive::Int(discr).size(cx.tcx).bytes();
 
                     debug!("enum `{}` is {} bytes large with layout:\n{:#?}",
                       t, size.bytes(), layout);

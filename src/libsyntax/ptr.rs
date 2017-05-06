@@ -43,6 +43,8 @@ use std::{mem, ptr, slice, vec};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
+use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
+                                           HashStable};
 /// An owned smart pointer.
 #[derive(Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct P<T: ?Sized> {
@@ -213,5 +215,15 @@ impl<T: Decodable> Decodable for P<[T]> {
             Ok(t) => t,
             Err(e) => return Err(e)
         }))
+    }
+}
+
+impl<CTX, T> HashStable<CTX> for P<T>
+    where T: ?Sized + HashStable<CTX>
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        (**self).hash_stable(hcx, hasher);
     }
 }

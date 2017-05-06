@@ -143,36 +143,6 @@ pub mod consts {
            reason = "stable interface is via `impl f{32,64}` in later crates",
            issue = "32110")]
 impl Float for f64 {
-    #[inline]
-    fn nan() -> f64 {
-        NAN
-    }
-
-    #[inline]
-    fn infinity() -> f64 {
-        INFINITY
-    }
-
-    #[inline]
-    fn neg_infinity() -> f64 {
-        NEG_INFINITY
-    }
-
-    #[inline]
-    fn zero() -> f64 {
-        0.0
-    }
-
-    #[inline]
-    fn neg_zero() -> f64 {
-        -0.0
-    }
-
-    #[inline]
-    fn one() -> f64 {
-        1.0
-    }
-
     /// Returns `true` if the number is NaN.
     #[inline]
     fn is_nan(self) -> bool {
@@ -212,21 +182,6 @@ impl Float for f64 {
             (_, EXP_MASK) => Fp::Nan,
             _ => Fp::Normal,
         }
-    }
-
-    /// Returns the mantissa, exponent and sign as integers.
-    fn integer_decode(self) -> (u64, i16, i8) {
-        let bits: u64 = unsafe { mem::transmute(self) };
-        let sign: i8 = if bits >> 63 == 0 { 1 } else { -1 };
-        let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
-        let mantissa = if exponent == 0 {
-            (bits & 0xfffffffffffff) << 1
-        } else {
-            (bits & 0xfffffffffffff) | 0x10000000000000
-        };
-        // Exponent bias + mantissa shift
-        exponent -= 1023 + 52;
-        (mantissa, exponent, sign)
     }
 
     /// Computes the absolute value of `self`. Returns `Float::nan()` if the

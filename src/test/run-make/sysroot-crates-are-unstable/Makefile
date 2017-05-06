@@ -1,7 +1,7 @@
 -include ../tools.mk
 
-# This is a whitelist of crates which are stable, we don't check for the
-# instability of these crates as they're all stable!
+# This is a whitelist of files which are stable crates or simply are not crates,
+# we don't check for the instability of these crates as they're all stable!
 STABLE_CRATES := \
 	std \
 	core \
@@ -9,7 +9,8 @@ STABLE_CRATES := \
 	rsbegin.o \
 	rsend.o \
 	dllcrt2.o \
-	crt2.o
+	crt2.o \
+	clang_rt.%_dynamic.dylib
 
 # Generate a list of all crates in the sysroot. To do this we list all files in
 # rustc's sysroot, look at the filename, strip everything after the `-`, and

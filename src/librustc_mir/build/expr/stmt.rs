@@ -138,7 +138,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             _ => {
                 let expr_ty = expr.ty;
-                let temp = this.temp(expr.ty.clone());
+                let temp = this.temp(expr.ty.clone(), expr_span);
                 unpack!(block = this.into(&temp, block, expr));
                 unpack!(block = this.build_drop(block, expr_span, temp, expr_ty));
                 block.unit()

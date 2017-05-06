@@ -10,69 +10,65 @@
 
 //! This pass just dumps MIR at a specified point.
 
+use std::borrow::Cow;
 use std::fmt;
 use std::fs::File;
 use std::io;
 
+use rustc::mir::Mir;
+use rustc::mir::transform::{MirPass, MirPassIndex, MirSource, MirSuite, PassHook};
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::TyCtxt;
-use rustc::mir::*;
-use rustc::mir::transform::{Pass, MirPass, MirPassHook, MirSource};
 use util as mir_util;
 
-pub struct Marker<'a>(pub &'a str);
+pub struct Marker(pub &'static str);
 
-impl<'b, 'tcx> MirPass<'tcx> for Marker<'b> {
-    fn run_pass<'a>(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    _src: MirSource, _mir: &mut Mir<'tcx>)
-    {}
+impl MirPass for Marker {
+    fn name<'a>(&'a self) -> Cow<'a, str> {
+        Cow::Borrowed(self.0)
+    }
+
+    fn run_pass<'a, 'tcx>(&self,
+                          _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          _source: MirSource,
+                          _mir: &mut Mir<'tcx>)
+    {
+    }
 }
 
-impl<'b> Pass for Marker<'b> {
-    fn name(&self) -> ::std::borrow::Cow<'static, str> { String::from(self.0).into() }
-}
-
-pub struct Disambiguator<'a> {
-    pass: &'a Pass,
+pub struct Disambiguator {
     is_after: bool
 }
 
-impl<'a> fmt::Display for Disambiguator<'a> {
+impl fmt::Display for Disambiguator {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let title = if self.is_after { "after" } else { "before" };
-        if let Some(fmt) = self.pass.disambiguator() {
-            write!(formatter, "{}-{}", fmt, title)
-        } else {
-            write!(formatter, "{}", title)
-        }
+        write!(formatter, "{}", title)
     }
 }
 
 pub struct DumpMir;
 
-impl<'tcx> MirPassHook<'tcx> for DumpMir {
-    fn on_mir_pass<'a>(
-        &mut self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        src: MirSource,
-        mir: &Mir<'tcx>,
-        pass: &Pass,
-        is_after: bool)
+impl PassHook for DumpMir {
+    fn on_mir_pass<'a, 'tcx: 'a>(&self,
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 suite: MirSuite,
+                                 pass_num: MirPassIndex,
+                                 pass_name: &str,
+                                 source: MirSource,
+                                 mir: &Mir<'tcx>,
+                                 is_after: bool)
     {
-        mir_util::dump_mir(
-            tcx,
-            &*pass.name(),
-            &Disambiguator {
-                pass: pass,
-                is_after: is_after
-            },
-            src,
-            mir
-        );
+        if mir_util::dump_enabled(tcx, pass_name, source) {
+            mir_util::dump_mir(tcx,
+                               Some((suite, pass_num)),
+                               pass_name,
+                               &Disambiguator { is_after },
+                               source,
+                               mir);
+        }
     }
 }
-
-impl<'b> Pass for DumpMir {}
 
 pub fn emit_mir<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -81,6 +77,6 @@ pub fn emit_mir<'a, 'tcx>(
 {
     let path = outputs.path(OutputType::Mir);
     let mut f = File::create(&path)?;
-    mir_util::write_mir_pretty(tcx, tcx.maps.mir.borrow().keys().into_iter(), &mut f)?;
+    mir_util::write_mir_pretty(tcx, None, &mut f)?;
     Ok(())
 }

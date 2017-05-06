@@ -9,11 +9,12 @@
 // except according to those terms.
 
 use super::SubregionOrigin;
-use super::combine::CombineFields;
-use super::type_variable::{SubtypeOf, SupertypeOf};
+use super::combine::{CombineFields, RelationDir};
 
+use traits::Obligation;
 use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
+use ty::fold::TypeFoldable;
 use ty::relate::{Cause, Relate, RelateResult, TypeRelation};
 use std::mem;
 
@@ -65,7 +66,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         match variance {
             ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
             ty::Covariant => self.relate(a, b),
-            ty::Bivariant => self.fields.bivariate(self.a_is_expected).relate(a, b),
+            ty::Bivariant => Ok(a.clone()),
             ty::Contravariant => self.with_expected_switched(|this| { this.relate(b, a) }),
         }
     }
@@ -79,19 +80,38 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         let a = infcx.type_variables.borrow_mut().replace_if_possible(a);
         let b = infcx.type_variables.borrow_mut().replace_if_possible(b);
         match (&a.sty, &b.sty) {
-            (&ty::TyInfer(TyVar(a_id)), &ty::TyInfer(TyVar(b_id))) => {
-                infcx.type_variables
-                    .borrow_mut()
-                    .relate_vars(a_id, SubtypeOf, b_id);
+            (&ty::TyInfer(TyVar(a_vid)), &ty::TyInfer(TyVar(b_vid))) => {
+                // Shouldn't have any LBR here, so we can safely put
+                // this under a binder below without fear of accidental
+                // capture.
+                assert!(!a.has_escaping_regions());
+                assert!(!b.has_escaping_regions());
+
+                // can't make progress on `A <: B` if both A and B are
+                // type variables, so record an obligation. We also
+                // have to record in the `type_variables` tracker that
+                // the two variables are equal modulo subtyping, which
+                // is important to the occurs check later on.
+                infcx.type_variables.borrow_mut().sub(a_vid, b_vid);
+                self.fields.obligations.push(
+                    Obligation::new(
+                        self.fields.trace.cause.clone(),
+                        ty::Predicate::Subtype(
+                            ty::Binder(ty::SubtypePredicate {
+                                a_is_expected: self.a_is_expected,
+                                a,
+                                b,
+                            }))));
+
                 Ok(a)
             }
             (&ty::TyInfer(TyVar(a_id)), _) => {
                 self.fields
-                    .instantiate(b, SupertypeOf, a_id, !self.a_is_expected)?;
+                    .instantiate(b, RelationDir::SupertypeOf, a_id, !self.a_is_expected)?;
                 Ok(a)
             }
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                self.fields.instantiate(a, SubtypeOf, b_id, self.a_is_expected)?;
+                self.fields.instantiate(a, RelationDir::SubtypeOf, b_id, self.a_is_expected)?;
                 Ok(a)
             }
 
@@ -107,8 +127,8 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         }
     }
 
-    fn regions(&mut self, a: &'tcx ty::Region, b: &'tcx ty::Region)
-               -> RelateResult<'tcx, &'tcx ty::Region> {
+    fn regions(&mut self, a: ty::Region<'tcx>, b: ty::Region<'tcx>)
+               -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!("{}.regions({:?}, {:?}) self.cause={:?}",
                self.tag(), a, b, self.fields.cause);
 

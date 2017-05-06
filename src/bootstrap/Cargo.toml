@@ -23,11 +23,16 @@ name = "rustdoc"
 path = "bin/rustdoc.rs"
 test = false
 
+[[bin]]
+name = "sccache-plus-cl"
+path = "bin/sccache-plus-cl.rs"
+test = false
+
 [dependencies]
 build_helper = { path = "../build_helper" }
 cmake = "0.1.17"
 filetime = "0.1"
-num_cpus = "0.2"
+num_cpus = "1.0"
 toml = "0.1"
 getopts = "0.2"
 rustc-serialize = "0.3"

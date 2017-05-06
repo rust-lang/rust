@@ -74,7 +74,6 @@ pub struct Config {
     pub rustc_default_ar: Option<String>,
     pub rust_optimize_tests: bool,
     pub rust_debuginfo_tests: bool,
-    pub rust_save_analysis: bool,
     pub rust_dist_src: bool,
 
     pub build: String,
@@ -226,7 +225,6 @@ struct Rust {
     optimize_tests: Option<bool>,
     debuginfo_tests: Option<bool>,
     codegen_tests: Option<bool>,
-    save_analysis: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -352,7 +350,6 @@ impl Config {
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
             set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
             set(&mut config.codegen_tests, rust.codegen_tests);
-            set(&mut config.rust_save_analysis, rust.save_analysis);
             set(&mut config.rust_rpath, rust.rpath);
             set(&mut config.debug_jemalloc, rust.debug_jemalloc);
             set(&mut config.use_jemalloc, rust.use_jemalloc);
@@ -460,7 +457,6 @@ impl Config {
                 ("LOCAL_REBUILD", self.local_rebuild),
                 ("NINJA", self.ninja),
                 ("CODEGEN_TESTS", self.codegen_tests),
-                ("SAVE_ANALYSIS", self.rust_save_analysis),
                 ("LOCKED_DEPS", self.locked_deps),
                 ("VENDOR", self.vendor),
                 ("FULL_BOOTSTRAP", self.full_bootstrap),
@@ -570,6 +566,12 @@ impl Config {
                 }
                 "CFG_AARCH64_LINUX_ANDROID_NDK" if value.len() > 0 => {
                     let target = "aarch64-linux-android".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.ndk = Some(parse_configure_path(value));
+                }
+                "CFG_X86_64_LINUX_ANDROID_NDK" if value.len() > 0 => {
+                    let target = "x86_64-linux-android".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
                     target.ndk = Some(parse_configure_path(value));

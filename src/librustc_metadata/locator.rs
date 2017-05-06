@@ -477,15 +477,15 @@ impl<'a> Context<'a> {
                 Some(file) => file,
             };
             let (hash, found_kind) =
-                if file.starts_with(&rlib_prefix[..]) && file.ends_with(".rlib") {
+                if file.starts_with(&rlib_prefix) && file.ends_with(".rlib") {
                     (&file[(rlib_prefix.len())..(file.len() - ".rlib".len())], CrateFlavor::Rlib)
-                } else if file.starts_with(&rlib_prefix[..]) && file.ends_with(".rmeta") {
+                } else if file.starts_with(&rlib_prefix) && file.ends_with(".rmeta") {
                     (&file[(rlib_prefix.len())..(file.len() - ".rmeta".len())], CrateFlavor::Rmeta)
                 } else if file.starts_with(&dylib_prefix) &&
                                              file.ends_with(&dypair.1) {
                     (&file[(dylib_prefix.len())..(file.len() - dypair.1.len())], CrateFlavor::Dylib)
                 } else {
-                    if file.starts_with(&staticlib_prefix[..]) && file.ends_with(&staticpair.1) {
+                    if file.starts_with(&staticlib_prefix) && file.ends_with(&staticpair.1) {
                         staticlibs.push(CrateMismatch {
                             path: path.to_path_buf(),
                             got: "static".to_string(),

@@ -151,6 +151,7 @@ pub struct Build {
     out: PathBuf,
     rust_info: channel::GitInfo,
     cargo_info: channel::GitInfo,
+    rls_info: channel::GitInfo,
     local_rebuild: bool,
 
     // Probed tools at runtime
@@ -162,6 +163,7 @@ pub struct Build {
     cxx: HashMap<String, gcc::Tool>,
     crates: HashMap<String, Crate>,
     is_sudo: bool,
+    src_is_git: bool,
 }
 
 #[derive(Debug)]
@@ -232,7 +234,9 @@ impl Build {
             None => false,
         };
         let rust_info = channel::GitInfo::new(&src);
-        let cargo_info = channel::GitInfo::new(&src.join("cargo"));
+        let cargo_info = channel::GitInfo::new(&src.join("src/tools/cargo"));
+        let rls_info = channel::GitInfo::new(&src.join("src/tools/rls"));
+        let src_is_git = src.join(".git").exists();
 
         Build {
             flags: flags,
@@ -244,6 +248,7 @@ impl Build {
 
             rust_info: rust_info,
             cargo_info: cargo_info,
+            rls_info: rls_info,
             local_rebuild: local_rebuild,
             cc: HashMap::new(),
             cxx: HashMap::new(),
@@ -251,6 +256,7 @@ impl Build {
             lldb_version: None,
             lldb_python_dir: None,
             is_sudo: is_sudo,
+            src_is_git: src_is_git,
         }
     }
 
@@ -307,10 +313,7 @@ impl Build {
             OutOfSync,
         }
 
-        if !self.config.submodules {
-            return
-        }
-        if fs::metadata(self.src.join(".git")).is_err() {
+        if !self.src_is_git || !self.config.submodules {
             return
         }
         let git = || {
@@ -461,8 +464,6 @@ impl Build {
              .env("RUSTC", self.out.join("bootstrap/debug/rustc"))
              .env("RUSTC_REAL", self.compiler_path(compiler))
              .env("RUSTC_STAGE", stage.to_string())
-             .env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
-             .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string())
              .env("RUSTC_CODEGEN_UNITS",
                   self.config.rust_codegen_units.to_string())
              .env("RUSTC_DEBUG_ASSERTIONS",
@@ -473,6 +474,13 @@ impl Build {
              .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
              .env("RUSTDOC_REAL", self.rustdoc(compiler))
              .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
+
+        // Tools don't get debuginfo right now, e.g. cargo and rls don't get
+        // compiled with debuginfo.
+        if mode != Mode::Tool {
+             cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
+                  .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string());
+        }
 
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
@@ -545,8 +553,21 @@ impl Build {
                  .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
         }
 
-        if self.config.rust_save_analysis && compiler.is_final_stage(self) {
+        if self.config.extended && compiler.is_final_stage(self) {
             cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
+        }
+
+        // When being built Cargo will at some point call `nmake.exe` on Windows
+        // MSVC. Unfortunately `nmake` will read these two environment variables
+        // below and try to intepret them. We're likely being run, however, from
+        // MSYS `make` which uses the same variables.
+        //
+        // As a result, to prevent confusion and errors, we remove these
+        // variables from our environment to prevent passing MSYS make flags to
+        // nmake, causing it to blow up.
+        if cfg!(target_env = "msvc") {
+            cargo.env_remove("MAKE");
+            cargo.env_remove("MAKEFLAGS");
         }
 
         // Environment variables *required* needed throughout the build
@@ -874,6 +895,13 @@ impl Build {
         if target.contains("apple-darwin") {
             base.push("-stdlib=libc++".into());
         }
+
+        // Work around an apparently bad MinGW / GCC optimization,
+        // See: http://lists.llvm.org/pipermail/cfe-dev/2016-December/051980.html
+        // See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=78936
+        if target == "i686-pc-windows-gnu" {
+            base.push("-fno-omit-frame-pointer".into());
+        }
         return base
     }
 
@@ -915,6 +943,12 @@ impl Build {
             .and_then(|t| t.musl_root.as_ref())
             .or(self.config.musl_root.as_ref())
             .map(|p| &**p)
+    }
+
+    /// Returns whether the target will be tested using the `remote-test-client`
+    /// and `remote-test-server` binaries.
+    fn remote_tested(&self, target: &str) -> bool {
+        self.qemu_rootfs(target).is_some() || target.contains("android")
     }
 
     /// Returns the root of the "rootfs" image that this target will be using,
@@ -1017,7 +1051,12 @@ impl Build {
 
     /// Returns the value of `package_vers` above for Cargo
     fn cargo_package_vers(&self) -> String {
-        self.package_vers(&self.cargo_release_num())
+        self.package_vers(&self.release_num("cargo"))
+    }
+
+    /// Returns the value of `package_vers` above for rls
+    fn rls_package_vers(&self) -> String {
+        self.package_vers(&self.release_num("rls"))
     }
 
     /// Returns the `version` string associated with this compiler for Rust
@@ -1029,10 +1068,11 @@ impl Build {
         self.rust_info.version(self, channel::CFG_RELEASE_NUM)
     }
 
-    /// Returns the `a.b.c` version that Cargo is at.
-    fn cargo_release_num(&self) -> String {
+    /// Returns the `a.b.c` version that the given package is at.
+    fn release_num(&self, package: &str) -> String {
         let mut toml = String::new();
-        t!(t!(File::open(self.src.join("cargo/Cargo.toml"))).read_to_string(&mut toml));
+        let toml_file_name = self.src.join(&format!("src/tools/{}/Cargo.toml", package));
+        t!(t!(File::open(toml_file_name)).read_to_string(&mut toml));
         for line in toml.lines() {
             let prefix = "version = \"";
             let suffix = "\"";
@@ -1041,7 +1081,7 @@ impl Build {
             }
         }
 
-        panic!("failed to find version in cargo's Cargo.toml")
+        panic!("failed to find version in {}'s Cargo.toml", package)
     }
 
     /// Returns whether unstable features should be enabled for the compiler

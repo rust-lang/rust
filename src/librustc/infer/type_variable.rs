@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::RelationDir::*;
 use self::TypeVariableValue::*;
-use self::UndoEntry::*;
 use hir::def_id::{DefId};
-use syntax::util::small_vector::SmallVector;
 use syntax::ast;
 use syntax_pos::Span;
 use ty::{self, Ty};
@@ -21,15 +18,39 @@ use std::cmp::min;
 use std::marker::PhantomData;
 use std::mem;
 use std::u32;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
 
 pub struct TypeVariableTable<'tcx> {
     values: sv::SnapshotVec<Delegate<'tcx>>,
+
+    /// Two variables are unified in `eq_relations` when we have a
+    /// constraint `?X == ?Y`.
     eq_relations: ut::UnificationTable<ty::TyVid>,
+
+    /// Two variables are unified in `eq_relations` when we have a
+    /// constraint `?X <: ?Y` *or* a constraint `?Y <: ?X`. This second
+    /// table exists only to help with the occurs check. In particular,
+    /// we want to report constraints like these as an occurs check
+    /// violation:
+    ///
+    ///     ?1 <: ?3
+    ///     Box<?3> <: ?1
+    ///
+    /// This works because `?1` and `?3` are unified in the
+    /// `sub_relations` relation (not in `eq_relations`). Then when we
+    /// process the `Box<?3> <: ?1` constraint, we do an occurs check
+    /// on `Box<?3>` and find a potential cycle.
+    ///
+    /// This is reasonable because, in Rust, subtypes have the same
+    /// "skeleton" and hence there is no possible type such that
+    /// (e.g.)  `Box<?3> <: ?3` for any `?3`.
+    sub_relations: ut::UnificationTable<ty::TyVid>,
 }
 
 /// Reasons to create a type inference variable
+#[derive(Copy, Clone, Debug)]
 pub enum TypeVariableOrigin {
     MiscVariable(Span),
     NormalizeProjectionType(Span),
@@ -41,8 +62,12 @@ pub enum TypeVariableOrigin {
     AdjustmentType(Span),
     DivergingStmt(Span),
     DivergingBlockExpr(Span),
+    DivergingFn(Span),
     LatticeVariable(Span),
+    Generalized(ty::TyVid),
 }
+
+pub type TypeVariableMap = FxHashMap<ty::TyVid, TypeVariableOrigin>;
 
 struct TypeVariableData<'tcx> {
     value: TypeVariableValue<'tcx>,
@@ -53,7 +78,6 @@ struct TypeVariableData<'tcx> {
 enum TypeVariableValue<'tcx> {
     Known(Ty<'tcx>),
     Bounded {
-        relations: Vec<Relation>,
         default: Option<Default<'tcx>>
     }
 }
@@ -72,45 +96,23 @@ pub struct Default<'tcx> {
 pub struct Snapshot {
     snapshot: sv::Snapshot,
     eq_snapshot: ut::Snapshot<ty::TyVid>,
+    sub_snapshot: ut::Snapshot<ty::TyVid>,
 }
 
-enum UndoEntry<'tcx> {
-    // The type of the var was specified.
-    SpecifyVar(ty::TyVid, Vec<Relation>, Option<Default<'tcx>>),
-    Relate(ty::TyVid, ty::TyVid),
-    RelateRange(ty::TyVid, usize),
+struct Instantiate<'tcx> {
+    vid: ty::TyVid,
+    default: Option<Default<'tcx>>,
 }
 
 struct Delegate<'tcx>(PhantomData<&'tcx ()>);
-
-type Relation = (RelationDir, ty::TyVid);
-
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub enum RelationDir {
-    SubtypeOf, SupertypeOf, EqTo, BiTo
-}
-
-impl RelationDir {
-    fn opposite(self) -> RelationDir {
-        match self {
-            SubtypeOf => SupertypeOf,
-            SupertypeOf => SubtypeOf,
-            EqTo => EqTo,
-            BiTo => BiTo,
-        }
-    }
-}
 
 impl<'tcx> TypeVariableTable<'tcx> {
     pub fn new() -> TypeVariableTable<'tcx> {
         TypeVariableTable {
             values: sv::SnapshotVec::new(),
             eq_relations: ut::UnificationTable::new(),
+            sub_relations: ut::UnificationTable::new(),
         }
-    }
-
-    fn relations<'a>(&'a mut self, a: ty::TyVid) -> &'a mut Vec<Relation> {
-        relations(self.values.get_mut(a.index as usize))
     }
 
     pub fn default(&self, vid: ty::TyVid) -> Option<Default<'tcx>> {
@@ -128,82 +130,62 @@ impl<'tcx> TypeVariableTable<'tcx> {
         &self.values.get(vid.index as usize).origin
     }
 
-    /// Records that `a <: b`, `a :> b`, or `a == b`, depending on `dir`.
+    /// Records that `a == b`, depending on `dir`.
     ///
     /// Precondition: neither `a` nor `b` are known.
-    pub fn relate_vars(&mut self, a: ty::TyVid, dir: RelationDir, b: ty::TyVid) {
-        let a = self.root_var(a);
-        let b = self.root_var(b);
-        if a != b {
-            if dir == EqTo {
-                // a and b must be equal which we mark in the unification table
-                let root = self.eq_relations.union(a, b);
-                // In addition to being equal, all relations from the variable which is no longer
-                // the root must be added to the root so they are not forgotten as the other
-                // variable should no longer be referenced (other than to get the root)
-                let other = if a == root { b } else { a };
-                let count = {
-                    let (relations, root_relations) = if other.index < root.index {
-                        let (pre, post) = self.values.split_at_mut(root.index as usize);
-                        (relations(&mut pre[other.index as usize]), relations(&mut post[0]))
-                    } else {
-                        let (pre, post) = self.values.split_at_mut(other.index as usize);
-                        (relations(&mut post[0]), relations(&mut pre[root.index as usize]))
-                    };
-                    root_relations.extend_from_slice(relations);
-                    relations.len()
-                };
-                self.values.record(RelateRange(root, count));
-            } else {
-                self.relations(a).push((dir, b));
-                self.relations(b).push((dir.opposite(), a));
-                self.values.record(Relate(a, b));
-            }
-        }
+    pub fn equate(&mut self, a: ty::TyVid, b: ty::TyVid) {
+        debug_assert!(self.probe(a).is_none());
+        debug_assert!(self.probe(b).is_none());
+        self.eq_relations.union(a, b);
+        self.sub_relations.union(a, b);
     }
 
-    /// Instantiates `vid` with the type `ty` and then pushes an entry onto `stack` for each of the
-    /// relations of `vid` to other variables. The relations will have the form `(ty, dir, vid1)`
-    /// where `vid1` is some other variable id.
+    /// Records that `a <: b`, depending on `dir`.
     ///
-    /// Precondition: `vid` must be a root in the unification table
-    pub fn instantiate_and_push(
-        &mut self,
-        vid: ty::TyVid,
-        ty: Ty<'tcx>,
-        stack: &mut SmallVector<(Ty<'tcx>, RelationDir, ty::TyVid)>)
-    {
-        debug_assert!(self.root_var(vid) == vid);
+    /// Precondition: neither `a` nor `b` are known.
+    pub fn sub(&mut self, a: ty::TyVid, b: ty::TyVid) {
+        debug_assert!(self.probe(a).is_none());
+        debug_assert!(self.probe(b).is_none());
+        self.sub_relations.union(a, b);
+    }
+
+    /// Instantiates `vid` with the type `ty`.
+    ///
+    /// Precondition: `vid` must not have been previously instantiated.
+    pub fn instantiate(&mut self, vid: ty::TyVid, ty: Ty<'tcx>) {
+        let vid = self.root_var(vid);
+        debug_assert!(self.probe_root(vid).is_none());
+
         let old_value = {
-            let value_ptr = &mut self.values.get_mut(vid.index as usize).value;
-            mem::replace(value_ptr, Known(ty))
+            let vid_data = &mut self.values[vid.index as usize];
+            mem::replace(&mut vid_data.value, TypeVariableValue::Known(ty))
         };
 
-        let (relations, default) = match old_value {
-            Bounded { relations, default } => (relations, default),
-            Known(_) => bug!("Asked to instantiate variable that is \
-                              already instantiated")
-        };
-
-        for &(dir, vid) in &relations {
-            stack.push((ty, dir, vid));
+        match old_value {
+            TypeVariableValue::Bounded { default } => {
+                self.values.record(Instantiate { vid: vid, default: default });
+            }
+            TypeVariableValue::Known(old_ty) => {
+                bug!("instantiating type variable `{:?}` twice: new-value = {:?}, old-value={:?}",
+                     vid, ty, old_ty)
+            }
         }
-
-        self.values.record(SpecifyVar(vid, relations, default));
     }
 
     pub fn new_var(&mut self,
                    diverging: bool,
                    origin: TypeVariableOrigin,
                    default: Option<Default<'tcx>>,) -> ty::TyVid {
+        debug!("new_var(diverging={:?}, origin={:?})", diverging, origin);
         self.eq_relations.new_key(());
+        self.sub_relations.new_key(());
         let index = self.values.push(TypeVariableData {
-            value: Bounded { relations: vec![], default: default },
+            value: Bounded { default: default },
             origin: origin,
             diverging: diverging
         });
         let v = ty::TyVid { index: index as u32 };
-        debug!("new_var() -> {:?}", v);
+        debug!("new_var: diverging={:?} index={:?}", diverging, v);
         v
     }
 
@@ -211,13 +193,39 @@ impl<'tcx> TypeVariableTable<'tcx> {
         self.values.len()
     }
 
+    /// Returns the "root" variable of `vid` in the `eq_relations`
+    /// equivalence table. All type variables that have been equated
+    /// will yield the same root variable (per the union-find
+    /// algorithm), so `root_var(a) == root_var(b)` implies that `a ==
+    /// b` (transitively).
     pub fn root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
         self.eq_relations.find(vid)
+    }
+
+    /// Returns the "root" variable of `vid` in the `sub_relations`
+    /// equivalence table. All type variables that have been are
+    /// related via equality or subtyping will yield the same root
+    /// variable (per the union-find algorithm), so `sub_root_var(a)
+    /// == sub_root_var(b)` implies that:
+    ///
+    ///     exists X. (a <: X || X <: a) && (b <: X || X <: b)
+    pub fn sub_root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
+        self.sub_relations.find(vid)
+    }
+
+    /// True if `a` and `b` have same "sub-root" (i.e., exists some
+    /// type X such that `forall i in {a, b}. (i <: X || X <: i)`.
+    pub fn sub_unified(&mut self, a: ty::TyVid, b: ty::TyVid) -> bool {
+        self.sub_root_var(a) == self.sub_root_var(b)
     }
 
     pub fn probe(&mut self, vid: ty::TyVid) -> Option<Ty<'tcx>> {
         let vid = self.root_var(vid);
         self.probe_root(vid)
+    }
+
+    pub fn origin(&self, vid: ty::TyVid) -> TypeVariableOrigin {
+        self.values.get(vid.index as usize).origin.clone()
     }
 
     /// Retrieves the type of `vid` given that it is currently a root in the unification table
@@ -245,6 +253,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         Snapshot {
             snapshot: self.values.start_snapshot(),
             eq_snapshot: self.eq_relations.snapshot(),
+            sub_snapshot: self.sub_relations.snapshot(),
         }
     }
 
@@ -260,13 +269,37 @@ impl<'tcx> TypeVariableTable<'tcx> {
             }
         });
 
-        self.values.rollback_to(s.snapshot);
-        self.eq_relations.rollback_to(s.eq_snapshot);
+        let Snapshot { snapshot, eq_snapshot, sub_snapshot } = s;
+        self.values.rollback_to(snapshot);
+        self.eq_relations.rollback_to(eq_snapshot);
+        self.sub_relations.rollback_to(sub_snapshot);
     }
 
     pub fn commit(&mut self, s: Snapshot) {
-        self.values.commit(s.snapshot);
-        self.eq_relations.commit(s.eq_snapshot);
+        let Snapshot { snapshot, eq_snapshot, sub_snapshot } = s;
+        self.values.commit(snapshot);
+        self.eq_relations.commit(eq_snapshot);
+        self.sub_relations.commit(sub_snapshot);
+    }
+
+    /// Returns a map `{V1 -> V2}`, where the keys `{V1}` are
+    /// ty-variables created during the snapshot, and the values
+    /// `{V2}` are the root variables that they were unified with,
+    /// along with their origin.
+    pub fn types_created_since_snapshot(&mut self, s: &Snapshot) -> TypeVariableMap {
+        let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
+
+        actions_since_snapshot
+            .iter()
+            .filter_map(|action| match action {
+                &sv::UndoLog::NewElem(index) => Some(ty::TyVid { index: index as u32 }),
+                _ => None,
+            })
+            .map(|vid| {
+                let origin = self.values.get(vid.index as usize).origin.clone();
+                (vid, origin)
+            })
+            .collect()
     }
 
     pub fn types_escaping_snapshot(&mut self, s: &Snapshot) -> Vec<Ty<'tcx>> {
@@ -295,7 +328,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
                     debug!("NewElem({}) new_elem_threshold={}", index, new_elem_threshold);
                 }
 
-                sv::UndoLog::Other(SpecifyVar(vid, ..)) => {
+                sv::UndoLog::Other(Instantiate { vid, .. }) => {
                     if vid.index < new_elem_threshold {
                         // quick check to see if this variable was
                         // created since the snapshot started or not.
@@ -331,35 +364,12 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
 impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
     type Value = TypeVariableData<'tcx>;
-    type Undo = UndoEntry<'tcx>;
+    type Undo = Instantiate<'tcx>;
 
-    fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: UndoEntry<'tcx>) {
-        match action {
-            SpecifyVar(vid, relations, default) => {
-                values[vid.index as usize].value = Bounded {
-                    relations: relations,
-                    default: default
-                };
-            }
-
-            Relate(a, b) => {
-                relations(&mut (*values)[a.index as usize]).pop();
-                relations(&mut (*values)[b.index as usize]).pop();
-            }
-
-            RelateRange(i, n) => {
-                let relations = relations(&mut (*values)[i.index as usize]);
-                for _ in 0..n {
-                    relations.pop();
-                }
-            }
-        }
-    }
-}
-
-fn relations<'a>(v: &'a mut TypeVariableData) -> &'a mut Vec<Relation> {
-    match v.value {
-        Known(_) => bug!("var_sub_var: variable is known"),
-        Bounded { ref mut relations, .. } => relations
+    fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: Instantiate<'tcx>) {
+        let Instantiate { vid, default } = action;
+        values[vid.index as usize].value = Bounded {
+            default: default
+        };
     }
 }

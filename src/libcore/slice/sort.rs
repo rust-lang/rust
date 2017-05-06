@@ -20,12 +20,6 @@ use cmp;
 use mem;
 use ptr;
 
-/// Holds a value, but never drops it.
-#[allow(unions_with_drop_fields)]
-union NoDrop<T> {
-    value: T
-}
-
 /// When dropped, copies from `src` into `dest`.
 struct CopyOnDrop<T> {
     src: *mut T,
@@ -49,15 +43,15 @@ fn shift_head<T, F>(v: &mut [T], is_less: &mut F)
             // Read the first element into a stack-allocated variable. If a following comparison
             // operation panics, `hole` will get dropped and automatically write the element back
             // into the slice.
-            let mut tmp = NoDrop { value: ptr::read(v.get_unchecked(0)) };
+            let mut tmp = mem::ManuallyDrop::new(ptr::read(v.get_unchecked(0)));
             let mut hole = CopyOnDrop {
-                src: &mut tmp.value,
+                src: &mut *tmp,
                 dest: v.get_unchecked_mut(1),
             };
             ptr::copy_nonoverlapping(v.get_unchecked(1), v.get_unchecked_mut(0), 1);
 
             for i in 2..len {
-                if !is_less(v.get_unchecked(i), &tmp.value) {
+                if !is_less(v.get_unchecked(i), &*tmp) {
                     break;
                 }
 
@@ -81,15 +75,15 @@ fn shift_tail<T, F>(v: &mut [T], is_less: &mut F)
             // Read the last element into a stack-allocated variable. If a following comparison
             // operation panics, `hole` will get dropped and automatically write the element back
             // into the slice.
-            let mut tmp = NoDrop { value: ptr::read(v.get_unchecked(len - 1)) };
+            let mut tmp = mem::ManuallyDrop::new(ptr::read(v.get_unchecked(len - 1)));
             let mut hole = CopyOnDrop {
-                src: &mut tmp.value,
+                src: &mut *tmp,
                 dest: v.get_unchecked_mut(len - 2),
             };
             ptr::copy_nonoverlapping(v.get_unchecked(len - 2), v.get_unchecked_mut(len - 1), 1);
 
             for i in (0..len-2).rev() {
-                if !is_less(&tmp.value, v.get_unchecked(i)) {
+                if !is_less(&*tmp, v.get_unchecked(i)) {
                     break;
                 }
 
@@ -152,8 +146,8 @@ fn partial_insertion_sort<T, F>(v: &mut [T], is_less: &mut F) -> bool
 fn insertion_sort<T, F>(v: &mut [T], is_less: &mut F)
     where F: FnMut(&T, &T) -> bool
 {
-    for i in 2..v.len()+1 {
-        shift_tail(&mut v[..i], is_less);
+    for i in 1..v.len() {
+        shift_tail(&mut v[..i+1], is_less);
     }
 }
 
@@ -403,12 +397,12 @@ fn partition<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> (usize, bool)
 
         // Read the pivot into a stack-allocated variable for efficiency. If a following comparison
         // operation panics, the pivot will be automatically written back into the slice.
-        let mut tmp = NoDrop { value: unsafe { ptr::read(pivot) } };
+        let mut tmp = mem::ManuallyDrop::new(unsafe { ptr::read(pivot) });
         let _pivot_guard = CopyOnDrop {
-            src: unsafe { &mut tmp.value },
+            src: &mut *tmp,
             dest: pivot,
         };
-        let pivot = unsafe { &tmp.value };
+        let pivot = &*tmp;
 
         // Find the first pair of out-of-order elements.
         let mut l = 0;
@@ -452,12 +446,12 @@ fn partition_equal<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> usize
 
     // Read the pivot into a stack-allocated variable for efficiency. If a following comparison
     // operation panics, the pivot will be automatically written back into the slice.
-    let mut tmp = NoDrop { value: unsafe { ptr::read(pivot) } };
+    let mut tmp = mem::ManuallyDrop::new(unsafe { ptr::read(pivot) });
     let _pivot_guard = CopyOnDrop {
-        src: unsafe { &mut tmp.value },
+        src: &mut *tmp,
         dest: pivot,
     };
-    let pivot = unsafe { &tmp.value };
+    let pivot = &*tmp;
 
     // Now partition the slice.
     let mut l = 0;
@@ -498,32 +492,42 @@ fn partition_equal<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> usize
 #[cold]
 fn break_patterns<T>(v: &mut [T]) {
     let len = v.len();
-
     if len >= 8 {
-        // A random number will be taken modulo this one. The modulus is a power of two so that we
-        // can simply take bitwise "and", thus avoiding costly CPU operations.
-        let modulus = (len / 4).next_power_of_two();
-        debug_assert!(modulus >= 1 && modulus <= len / 2);
+        // Pseudorandom number generator from the "Xorshift RNGs" paper by George Marsaglia.
+        let mut random = len as u32;
+        let mut gen_u32 = || {
+            random ^= random << 13;
+            random ^= random >> 17;
+            random ^= random << 5;
+            random
+        };
+        let mut gen_usize = || {
+            if mem::size_of::<usize>() <= 4 {
+                gen_u32() as usize
+            } else {
+                (((gen_u32() as u64) << 32) | (gen_u32() as u64)) as usize
+            }
+        };
 
-        // Pseudorandom number generation from the "Xorshift RNGs" paper by George Marsaglia.
-        let mut random = len;
-        random ^= random << 13;
-        random ^= random >> 17;
-        random ^= random << 5;
-        random &= modulus - 1;
-        debug_assert!(random < len / 2);
+        // Take random numbers modulo this number.
+        // The number fits into `usize` because `len` is not greater than `isize::MAX`.
+        let modulus = len.next_power_of_two();
 
-        // The first index.
-        let a = len / 4 * 2;
-        debug_assert!(a >= 1 && a < len - 2);
+        // Some pivot candidates will be in the nearby of this index. Let's randomize them.
+        let pos = len / 4 * 2;
 
-        // The second index.
-        let b = len / 4 + random;
-        debug_assert!(b >= 1 && b < len - 2);
-
-        // Swap neighbourhoods of `a` and `b`.
         for i in 0..3 {
-            v.swap(a - 1 + i, b - 1 + i);
+            // Generate a random number modulo `len`. However, in order to avoid costly operations
+            // we first take it modulo a power of two, and then decrease by `len` until it fits
+            // into the range `[0, len - 1]`.
+            let mut other = gen_usize() & (modulus - 1);
+
+            // `other` is guaranteed to be less than `2 * len`.
+            if other >= len {
+                other -= len;
+            }
+
+            v.swap(pos - 1 + i, other);
         }
     }
 }

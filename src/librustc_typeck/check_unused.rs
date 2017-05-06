@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use lint;
-use rustc::dep_graph::DepNode;
 use rustc::ty::TyCtxt;
 
 use syntax::ast;
@@ -62,21 +61,13 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CheckVisitor<'a, 'tcx> {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let _task = tcx.dep_graph.in_task(DepNode::UnusedTraitCheck);
-
     let mut used_trait_imports = DefIdSet();
     for &body_id in tcx.hir.krate().bodies.keys() {
-        let item_id = tcx.hir.body_owner(body_id);
-        let item_def_id = tcx.hir.local_def_id(item_id);
-
-        // this will have been written by the main typeck pass
-        if let Some(tables) = tcx.maps.typeck_tables.borrow().get(&item_def_id) {
-            let imports = &tables.used_trait_imports;
-            debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);
-            used_trait_imports.extend(imports);
-        } else {
-            debug!("GatherVisitor: item_def_id={:?} with no imports", item_def_id);
-        }
+        let item_def_id = tcx.hir.body_owner_def_id(body_id);
+        let tables = tcx.typeck_tables_of(item_def_id);
+        let imports = &tables.used_trait_imports;
+        debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);
+        used_trait_imports.extend(imports);
     }
 
     let mut visitor = CheckVisitor { tcx, used_trait_imports };

@@ -12,7 +12,7 @@ crate-type = ["dylib"]
 arena = { path = "../libarena" }
 fmt_macros = { path = "../libfmt_macros" }
 graphviz = { path = "../libgraphviz" }
-log = { path = "../liblog" }
+log = "0.3"
 rustc_back = { path = "../librustc_back" }
 rustc_bitflags = { path = "../librustc_bitflags" }
 rustc_const_math = { path = "../librustc_const_math" }

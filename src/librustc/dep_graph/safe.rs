@@ -50,6 +50,12 @@ impl<A, B> DepGraphSafe for (A, B)
 {
 }
 
+/// Shared ref to dep-graph-safe stuff should still be dep-graph-safe.
+impl<'a, A> DepGraphSafe for &'a A
+    where A: DepGraphSafe,
+{
+}
+
 /// No data here! :)
 impl DepGraphSafe for () {
 }

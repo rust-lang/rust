@@ -94,6 +94,17 @@
 //! compiler - but they are documented here the same). Like the prelude, the
 //! standard macros are imported by default into all crates.
 //!
+//! # Contributing changes to the documentation
+//!
+//! Check out the rust contribution guidelines [here](
+//! https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md).
+//! The source for this documentation can be found on [Github](https://github.com/rust-lang).
+//! To contribute changes, make sure you read the guidelines first, then submit
+//! pull-requests for your suggested changes.
+//!
+//! Contributions are appreciated! If you see a part of the docs that can be
+//! improved, submit a PR, or chat with us first on irc.mozilla.org #rust-docs.
+//!
 //! # A Tour of The Rust Standard Library
 //!
 //! The rest of this crate documentation is dedicated to pointing out notable
@@ -237,7 +248,6 @@
 #![feature(allow_internal_unstable)]
 #![feature(asm)]
 #![feature(associated_consts)]
-#![feature(borrow_state)]
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
@@ -252,7 +262,6 @@
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
-#![feature(float_extras)]
 #![feature(float_from_str_radix)]
 #![feature(fn_traits)]
 #![feature(fnbox)]
@@ -296,9 +305,11 @@
 #![feature(stmt_expr_attributes)]
 #![feature(str_char)]
 #![feature(str_internals)]
+#![feature(str_mut_extras)]
 #![feature(str_utf16)]
 #![feature(test, rustc_private)]
 #![feature(thread_local)]
+#![feature(toowned_clone_into)]
 #![feature(try_from)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
@@ -306,9 +317,8 @@
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
-#![feature(zero_one)]
 #![cfg_attr(test, feature(update_panic_count))]
-#![cfg_attr(stage0, feature(pub_restricted))]
+#![cfg_attr(test, feature(float_bits_conv))]
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.

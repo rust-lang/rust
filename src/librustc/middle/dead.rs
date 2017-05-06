@@ -12,7 +12,6 @@
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
-use dep_graph::DepNode;
 use hir::map as hir_map;
 use hir::{self, PatKind};
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -21,7 +20,7 @@ use hir::itemlikevisit::ItemLikeVisitor;
 use middle::privacy;
 use ty::{self, TyCtxt};
 use hir::def::Def;
-use hir::def_id::{DefId};
+use hir::def_id::{DefId, LOCAL_CRATE};
 use lint;
 use util::nodemap::FxHashSet;
 
@@ -160,8 +159,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                 match item.node {
                     hir::ItemStruct(..) | hir::ItemUnion(..) => {
                         let def_id = self.tcx.hir.local_def_id(item.id);
-                        let def = self.tcx.lookup_adt_def(def_id);
-                        self.struct_has_extern_repr = def.repr.c;
+                        let def = self.tcx.adt_def(def_id);
+                        self.struct_has_extern_repr = def.repr.c();
 
                         intravisit::walk_item(self, &item);
                     }
@@ -281,6 +280,12 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
 
 fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
     if attr::contains_name(attrs, "lang") {
+        return true;
+    }
+
+    // #[used] also keeps the item alive forcefully,
+    // e.g. for placing it in a specific section.
+    if attr::contains_name(attrs, "used") {
         return true;
     }
 
@@ -433,7 +438,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 
     fn should_warn_about_field(&mut self, field: &hir::StructField) -> bool {
-        let field_type = self.tcx.item_type(self.tcx.hir.local_def_id(field.id));
+        let field_type = self.tcx.type_of(self.tcx.hir.local_def_id(field.id));
         let is_marker_field = match field_type.ty_to_def_id() {
             Some(def_id) => self.tcx.lang_items.items().iter().any(|item| *item == Some(def_id)),
             _ => false
@@ -476,14 +481,13 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         // This is done to handle the case where, for example, the static
         // method of a private type is used, but the type itself is never
         // called directly.
-        if let Some(impl_list) =
-                self.tcx.maps.inherent_impls.borrow().get(&self.tcx.hir.local_def_id(id)) {
-            for &impl_did in impl_list.iter() {
-                for &item_did in &self.tcx.associated_item_def_ids(impl_did)[..] {
-                    if let Some(item_node_id) = self.tcx.hir.as_local_node_id(item_did) {
-                        if self.live_symbols.contains(&item_node_id) {
-                            return true;
-                        }
+        let def_id = self.tcx.hir.local_def_id(id);
+        let inherent_impls = self.tcx.inherent_impls(def_id);
+        for &impl_did in inherent_impls.iter() {
+            for &item_did in &self.tcx.associated_item_def_ids(impl_did)[..] {
+                if let Some(item_node_id) = self.tcx.hir.as_local_node_id(item_did) {
+                    if self.live_symbols.contains(&item_node_id) {
+                        return true;
                     }
                 }
             }
@@ -592,9 +596,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             access_levels: &privacy::AccessLevels) {
-    let _task = tcx.dep_graph.in_task(DepNode::DeadCheck);
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
     let krate = tcx.hir.krate();
     let live_symbols = find_live(tcx, access_levels, krate);
     let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };

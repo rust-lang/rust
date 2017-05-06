@@ -18,16 +18,18 @@ use syntax::ast::NodeId;
 
 use rustc_data_structures::indexed_vec::Idx;
 
+use super::pretty::dump_mir_def_ids;
+
 /// Write a graphviz DOT graph of a list of MIRs.
-pub fn write_mir_graphviz<'a, 'b, 'tcx, W, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
-                                              iter: I,
-                                              w: &mut W)
-                                              -> io::Result<()>
-    where W: Write, I: Iterator<Item=DefId>
+pub fn write_mir_graphviz<'a, 'tcx, W>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                       single: Option<DefId>,
+                                       w: &mut W)
+                                       -> io::Result<()>
+    where W: Write
 {
-    for def_id in iter {
+    for def_id in dump_mir_def_ids(tcx, single) {
         let nodeid = tcx.hir.as_local_node_id(def_id).unwrap();
-        let mir = &tcx.item_mir(def_id);
+        let mir = &tcx.optimized_mir(def_id);
 
         writeln!(w, "digraph Mir_{} {{", nodeid)?;
 

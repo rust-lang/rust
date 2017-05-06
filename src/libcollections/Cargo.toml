@@ -13,8 +13,8 @@ core = { path = "../libcore" }
 std_unicode = { path = "../libstd_unicode" }
 
 [[test]]
-name = "collectionstest"
-path = "../libcollectionstest/lib.rs"
+name = "collectionstests"
+path = "../libcollections/tests/lib.rs"
 
 [[bench]]
 name = "collectionsbenches"

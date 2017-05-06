@@ -27,3 +27,4 @@ fn main() {
        .include(src_dir)
        .compile("libhoedown.a");
 }
+

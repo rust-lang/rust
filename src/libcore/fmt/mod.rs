@@ -49,8 +49,31 @@ pub mod rt {
     pub mod v1;
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
 /// The type returned by formatter methods.
+///
+/// # Examples
+///
+/// ```
+/// use std::fmt;
+///
+/// #[derive(Debug)]
+/// struct Triangle {
+///     a: f32,
+///     b: f32,
+///     c: f32
+/// }
+///
+/// impl fmt::Display for Triangle {
+///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+///         write!(f, "({}, {}, {})", self.a, self.b, self.c)
+///     }
+/// }
+///
+/// let pythagorean_triple = Triangle { a: 3.0, b: 4.0, c: 5.0 };
+///
+/// println!("{}", pythagorean_triple);
+/// ```
+#[stable(feature = "rust1", since = "1.0.0")]
 pub type Result = result::Result<(), Error>;
 
 /// The error type which is returned from formatting a message into a stream.

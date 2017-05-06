@@ -448,3 +448,8 @@ fn test_format_args() {
     print!("{0} + {} = {}", x, y);
     print!("x is {}, y is {1}, name is {n}", x, y, n = name);
 }
+
+extern {
+    static EXTERN_FOO: u8;
+    fn extern_foo(a: u8, b: i32) -> String;
+}

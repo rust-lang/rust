@@ -57,6 +57,8 @@ pub enum Def {
     // Macro namespace
     Macro(DefId, MacroKind),
 
+    GlobalAsm(DefId),
+
     // Both namespaces
     Err,
 }
@@ -144,7 +146,8 @@ impl Def {
             Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) | Def::TyAlias(id) |
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
-            Def::AssociatedConst(id) | Def::Local(id) | Def::Upvar(id, ..) | Def::Macro(id, ..) => {
+            Def::AssociatedConst(id) | Def::Local(id) | Def::Upvar(id, ..) | Def::Macro(id, ..) |
+            Def::GlobalAsm(id) => {
                 id
             }
 
@@ -185,6 +188,7 @@ impl Def {
             Def::Label(..) => "label",
             Def::SelfTy(..) => "self type",
             Def::Macro(..) => "macro",
+            Def::GlobalAsm(..) => "global asm",
             Def::Err => "unresolved item",
         }
     }

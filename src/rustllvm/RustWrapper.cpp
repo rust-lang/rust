@@ -312,6 +312,10 @@ extern "C" LLVMValueRef LLVMRustInlineAsm(LLVMTypeRef Ty, char *AsmString,
                              HasSideEffects, IsAlignStack, fromRust(Dialect)));
 }
 
+extern "C" void LLVMRustAppendModuleInlineAsm(LLVMModuleRef M, const char *Asm) {
+  unwrap(M)->appendModuleInlineAsm(StringRef(Asm));
+}
+
 typedef DIBuilder *LLVMRustDIBuilderRef;
 
 typedef struct LLVMOpaqueMetadata *LLVMRustMetadataRef;

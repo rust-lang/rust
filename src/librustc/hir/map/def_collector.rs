@@ -40,11 +40,9 @@ impl<'a> DefCollector<'a> {
         }
     }
 
-    pub fn collect_root(&mut self) {
-        let root = self.create_def_with_parent(None,
-                                               CRATE_NODE_ID,
-                                               DefPathData::CrateRoot,
-                                               ITEM_LIKE_SPACE);
+    pub fn collect_root(&mut self, crate_name: &str, crate_disambiguator: &str) {
+        let root = self.definitions.create_root_def(crate_name,
+                                                    crate_disambiguator);
         assert_eq!(root, CRATE_DEF_INDEX);
         self.parent_def = Some(root);
     }
@@ -54,18 +52,9 @@ impl<'a> DefCollector<'a> {
                   data: DefPathData,
                   address_space: DefIndexAddressSpace)
                   -> DefIndex {
-        let parent_def = self.parent_def;
+        let parent_def = self.parent_def.unwrap();
         debug!("create_def(node_id={:?}, data={:?}, parent_def={:?})", node_id, data, parent_def);
         self.definitions.create_def_with_parent(parent_def, node_id, data, address_space)
-    }
-
-    fn create_def_with_parent(&mut self,
-                              parent: Option<DefIndex>,
-                              node_id: NodeId,
-                              data: DefPathData,
-                              address_space: DefIndexAddressSpace)
-                              -> DefIndex {
-        self.definitions.create_def_with_parent(parent, node_id, data, address_space)
     }
 
     pub fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: DefIndex, f: F) {
@@ -92,7 +81,7 @@ impl<'a> DefCollector<'a> {
     fn visit_macro_invoc(&mut self, id: NodeId, const_expr: bool) {
         if let Some(ref mut visit) = self.visit_macro_invoc {
             visit(MacroInvocationData {
-                mark: Mark::from_placeholder_id(id),
+                mark: id.placeholder_to_mark(),
                 const_expr: const_expr,
                 def_index: self.parent_def.unwrap(),
             })
@@ -120,6 +109,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                 DefPathData::ValueNs(i.ident.name.as_str()),
             ItemKind::MacroDef(..) => DefPathData::MacroDef(i.ident.name.as_str()),
             ItemKind::Mac(..) => return self.visit_macro_invoc(i.id, false),
+            ItemKind::GlobalAsm(..) => DefPathData::Misc,
             ItemKind::Use(ref view_path) => {
                 match view_path.node {
                     ViewPathGlob(..) => {}

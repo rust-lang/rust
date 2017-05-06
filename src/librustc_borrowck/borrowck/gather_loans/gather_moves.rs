@@ -11,7 +11,7 @@
 //! Computes moves.
 
 use borrowck::*;
-use borrowck::gather_loans::move_error::MoveSpanAndPath;
+use borrowck::gather_loans::move_error::MovePlace;
 use borrowck::gather_loans::move_error::{MoveError, MoveErrorCollector};
 use borrowck::move_data::*;
 use rustc::middle::expr_use_visitor as euv;
@@ -23,13 +23,67 @@ use rustc::ty::{self, Ty};
 use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::Span;
-use rustc::hir::{self, PatKind};
+use rustc::hir::*;
+use rustc::hir::map::Node::*;
 
 struct GatherMoveInfo<'tcx> {
     id: ast::NodeId,
     kind: MoveKind,
     cmt: mc::cmt<'tcx>,
-    span_path_opt: Option<MoveSpanAndPath>
+    span_path_opt: Option<MovePlace<'tcx>>
+}
+
+/// Represents the kind of pattern
+#[derive(Debug, Clone, Copy)]
+pub enum PatternSource<'tcx> {
+    MatchExpr(&'tcx Expr),
+    LetDecl(&'tcx Local),
+    Other,
+}
+
+/// Analyzes the context where the pattern appears to determine the
+/// kind of hint we want to give. In particular, if the pattern is in a `match`
+/// or nested within other patterns, we want to suggest a `ref` binding:
+///
+///     let (a, b) = v[0]; // like the `a` and `b` patterns here
+///     match v[0] { a => ... } // or the `a` pattern here
+///
+/// But if the pattern is the outermost pattern in a `let`, we would rather
+/// suggest that the author add a `&` to the initializer:
+///
+///     let x = v[0]; // suggest `&v[0]` here
+///
+/// In this latter case, this function will return `PatternSource::LetDecl`
+/// with a reference to the let
+fn get_pattern_source<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &Pat) -> PatternSource<'tcx> {
+
+    let parent = tcx.hir.get_parent_node(pat.id);
+
+    match tcx.hir.get(parent) {
+        NodeExpr(ref e) => {
+            // the enclosing expression must be a `match` or something else
+            assert!(match e.node {
+                        ExprMatch(..) => true,
+                        _ => return PatternSource::Other,
+                    });
+            PatternSource::MatchExpr(e)
+        }
+        NodeStmt(ref s) => {
+            // the enclosing statement must be a `let` or something else
+            match s.node {
+                StmtDecl(ref decl, _) => {
+                    match decl.node {
+                        DeclLocal(ref local) => PatternSource::LetDecl(local),
+                        _ => return PatternSource::Other,
+                    }
+                }
+                _ => return PatternSource::Other,
+            }
+        }
+
+        _ => return PatternSource::Other,
+
+    }
 }
 
 pub fn gather_decl<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
@@ -95,11 +149,15 @@ pub fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                       move_error_collector: &mut MoveErrorCollector<'tcx>,
                                       move_pat: &hir::Pat,
                                       cmt: mc::cmt<'tcx>) {
+    let source = get_pattern_source(bccx.tcx,move_pat);
     let pat_span_path_opt = match move_pat.node {
         PatKind::Binding(_, _, ref path1, _) => {
-            Some(MoveSpanAndPath{span: move_pat.span,
-                                 name: path1.node})
-        },
+            Some(MovePlace {
+                     span: move_pat.span,
+                     name: path1.node,
+                     pat_source: source,
+                 })
+        }
         _ => None,
     };
     let move_info = GatherMoveInfo {
@@ -108,6 +166,11 @@ pub fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         cmt: cmt,
         span_path_opt: pat_span_path_opt,
     };
+
+    debug!("gather_move_from_pat: move_pat={:?} source={:?}",
+           move_pat,
+           source);
+
     gather_move(bccx, move_data, move_error_collector, move_info);
 }
 

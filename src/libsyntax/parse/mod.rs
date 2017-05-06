@@ -11,8 +11,8 @@
 //! The main parser interface
 
 use ast::{self, CrateConfig};
-use codemap::CodeMap;
-use syntax_pos::{self, Span, FileMap};
+use codemap::{CodeMap, FilePathMapping};
+use syntax_pos::{self, Span, FileMap, NO_EXPANSION};
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
@@ -53,8 +53,8 @@ pub struct ParseSess {
 }
 
 impl ParseSess {
-    pub fn new() -> Self {
-        let cm = Rc::new(CodeMap::new());
+    pub fn new(file_path_mapping: FilePathMapping) -> Self {
+        let cm = Rc::new(CodeMap::new(file_path_mapping));
         let handler = Handler::with_tty_emitter(ColorConfig::Auto,
                                                 true,
                                                 false,
@@ -143,13 +143,13 @@ pub fn parse_stmt_from_source_str<'a>(name: String, source: String, sess: &'a Pa
 
 pub fn parse_stream_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
                                         -> TokenStream {
-    filemap_to_stream(sess, sess.codemap().new_filemap(name, None, source))
+    filemap_to_stream(sess, sess.codemap().new_filemap(name, source))
 }
 
 // Create a new parser from a source string
 pub fn new_parser_from_source_str<'a>(sess: &'a ParseSess, name: String, source: String)
                                       -> Parser<'a> {
-    filemap_to_parser(sess, sess.codemap().new_filemap(name, None, source))
+    filemap_to_parser(sess, sess.codemap().new_filemap(name, source))
 }
 
 /// Create a new parser, handling errors as appropriate
@@ -178,7 +178,7 @@ pub fn filemap_to_parser<'a>(sess: &'a ParseSess, filemap: Rc<FileMap>, ) -> Par
     let mut parser = stream_to_parser(sess, filemap_to_stream(sess, filemap));
 
     if parser.token == token::Eof && parser.span == syntax_pos::DUMMY_SP {
-        parser.span = syntax_pos::mk_sp(end_pos, end_pos);
+        parser.span = Span { lo: end_pos, hi: end_pos, ctxt: NO_EXPANSION };
     }
 
     parser
@@ -218,9 +218,7 @@ pub fn filemap_to_stream(sess: &ParseSess, filemap: Rc<FileMap>) -> TokenStream 
 
 /// Given stream and the ParseSess, produce a parser
 pub fn stream_to_parser<'a>(sess: &'a ParseSess, stream: TokenStream) -> Parser<'a> {
-    let mut p = Parser::new(sess, stream, None, false);
-    p.check_unknown_macro_variable();
-    p
+    Parser::new(sess, stream, None, false)
 }
 
 /// Parse a string representing a character literal into its final form.
@@ -665,7 +663,7 @@ mod tests {
 
     // produce a syntax_pos::span
     fn sp(a: u32, b: u32) -> Span {
-        Span {lo: BytePos(a), hi: BytePos(b), expn_id: NO_EXPANSION}
+        Span {lo: BytePos(a), hi: BytePos(b), ctxt: NO_EXPANSION}
     }
 
     fn str2seg(s: &str, lo: u32, hi: u32) -> ast::PathSegment {
@@ -830,7 +828,7 @@ mod tests {
     }
 
     #[test] fn parse_ident_pat () {
-        let sess = ParseSess::new();
+        let sess = ParseSess::new(FilePathMapping::empty());
         let mut parser = string_to_parser(&sess, "b".to_string());
         assert!(panictry!(parser.parse_pat())
                 == P(ast::Pat{
@@ -1000,7 +998,7 @@ mod tests {
     }
 
     #[test] fn crlf_doc_comments() {
-        let sess = ParseSess::new();
+        let sess = ParseSess::new(FilePathMapping::empty());
 
         let name = "<source>".to_string();
         let source = "/// doc comment\r\nfn foo() {}".to_string();
@@ -1025,7 +1023,7 @@ mod tests {
 
     #[test]
     fn ttdelim_span() {
-        let sess = ParseSess::new();
+        let sess = ParseSess::new(FilePathMapping::empty());
         let expr = parse::parse_expr_from_source_str("foo".to_string(),
             "foo!( fn main() { body } )".to_string(), &sess).unwrap();
 

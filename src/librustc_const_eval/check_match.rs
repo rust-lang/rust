@@ -14,14 +14,11 @@ use _match::WitnessPreference::*;
 
 use pattern::{Pattern, PatternContext, PatternError, PatternKind};
 
-use eval::report_const_eval_err;
-
-use rustc::dep_graph::DepNode;
-
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization::{cmt};
+use rustc::middle::region::RegionMaps;
 use rustc::session::Session;
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -49,17 +46,20 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
                 b: hir::BodyId, s: Span, id: ast::NodeId) {
         intravisit::walk_fn(self, fk, fd, b, s, id);
 
+        let region_context = self.tcx.hir.local_def_id(id);
+        let region_maps = self.tcx.region_maps(region_context);
+
         MatchVisitor {
             tcx: self.tcx,
             tables: self.tcx.body_tables(b),
+            region_maps: &region_maps,
             param_env: &ty::ParameterEnvironment::for_item(self.tcx, id)
         }.visit_body(self.tcx.hir.body(b));
     }
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.visit_all_item_likes_in_krate(DepNode::MatchCheck,
-                                      &mut OuterVisitor { tcx: tcx }.as_deep_visitor());
+    tcx.hir.krate().visit_all_item_likes(&mut OuterVisitor { tcx: tcx }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }
 
@@ -70,7 +70,8 @@ fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> Diagn
 struct MatchVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
-    param_env: &'a ty::ParameterEnvironment<'tcx>
+    param_env: &'a ty::ParameterEnvironment<'tcx>,
+    region_maps: &'a RegionMaps<'tcx>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
@@ -108,25 +109,27 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
     }
 }
 
+impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
+    fn report_inlining_errors(&self, pat_span: Span) {
+        for error in &self.errors {
+            match *error {
+                PatternError::StaticInPattern(span) => {
+                    span_err!(self.tcx.sess, span, E0158,
+                              "statics cannot be referenced in patterns");
+                }
+                PatternError::ConstEval(ref err) => {
+                    err.report(self.tcx, pat_span, "pattern");
+                }
+            }
+        }
+    }
+}
+
 impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     fn check_patterns(&self, has_guard: bool, pats: &[P<Pat>]) {
         check_legality_of_move_bindings(self, has_guard, pats);
         for pat in pats {
             check_legality_of_bindings_in_at_patterns(self, pat);
-        }
-    }
-
-    fn report_inlining_errors(&self, patcx: PatternContext, pat_span: Span) {
-        for error in patcx.errors {
-            match error {
-                PatternError::StaticInPattern(span) => {
-                    span_err!(self.tcx.sess, span, E0158,
-                              "statics cannot be referenced in patterns");
-                }
-                PatternError::ConstEval(err) => {
-                    report_const_eval_err(self.tcx, &err, pat_span, "pattern");
-                }
-            }
         }
     }
 
@@ -161,7 +164,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                     let mut patcx = PatternContext::new(self.tcx, self.tables);
                     let pattern = expand_pattern(cx, patcx.lower_pattern(&pat));
                     if !patcx.errors.is_empty() {
-                        self.report_inlining_errors(patcx, pat.span);
+                        patcx.report_inlining_errors(pat.span);
                         have_errors = true;
                     }
                     (pattern, &**pat)
@@ -311,7 +314,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         for &(pat, hir_pat) in pats {
             let v = vec![pat];
 
-            match is_useful(cx, &seen, &v[..], LeaveOutWitness) {
+            match is_useful(cx, &seen, &v, LeaveOutWitness) {
                 NotUseful => {
                     match source {
                         hir::MatchSource::IfLetDesugar { .. } => {
@@ -520,7 +523,7 @@ fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Expr) {
         let mut checker = MutationChecker {
             cx: cx,
         };
-        ExprUseVisitor::new(&mut checker, &infcx).walk_expr(guard);
+        ExprUseVisitor::new(&mut checker, cx.region_maps, &infcx).walk_expr(guard);
     });
 }
 
@@ -536,7 +539,7 @@ impl<'a, 'gcx, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'gcx> {
               _: ast::NodeId,
               span: Span,
               _: cmt,
-              _: &'tcx ty::Region,
+              _: ty::Region<'tcx>,
               kind:ty:: BorrowKind,
               _: LoanCause) {
         match kind {

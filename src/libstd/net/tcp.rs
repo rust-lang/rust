@@ -17,10 +17,25 @@ use sys_common::net as net_imp;
 use sys_common::{AsInner, FromInner, IntoInner};
 use time::Duration;
 
-/// A structure which represents a TCP stream between a local socket and a
-/// remote socket.
+/// A TCP stream between a local and a remote socket.
 ///
-/// The socket will be closed when the value is dropped.
+/// After creating a `TcpStream` by either [`connect`]ing to a remote host or
+/// [`accept`]ing a connection on a [`TcpListener`], data can be transmitted
+/// by [reading] and [writing] to it.
+///
+/// The connection will be closed when the value is dropped. The reading and writing
+/// portions of the connection can also be shut down individually with the [`shutdown`]
+/// method.
+///
+/// The Transmission Control Protocol is specified in [IETF RFC 793].
+///
+/// [`accept`]: ../../std/net/struct.TcpListener.html#method.accept
+/// [`connect`]: #method.connect
+/// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
+/// [reading]: ../../std/io/trait.Read.html
+/// [`shutdown`]: #method.shutdown
+/// [`TcpListener`]: ../../std/net/struct.TcpListener.html
+/// [writing]: ../../std/io/trait.Write.html
 ///
 /// # Examples
 ///
@@ -39,42 +54,53 @@ use time::Duration;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TcpStream(net_imp::TcpStream);
 
-/// A structure representing a socket server.
+/// A TCP socket server, listening for connections.
+///
+/// After creating a `TcpListener` by [`bind`]ing it to a socket address, it listens
+/// for incoming TCP connections. These can be accepted by calling [`accept`] or by
+/// iterating over the [`Incoming`] iterator returned by [`incoming`][`TcpListener::incoming`].
+///
+/// The socket will be closed when the value is dropped.
+///
+/// The Transmission Control Protocol is specified in [IETF RFC 793].
+///
+/// [`accept`]: #method.accept
+/// [`bind`]: #method.bind
+/// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
+/// [`Incoming`]: ../../std/net/struct.Incoming.html
+/// [`TcpListener::incoming`]: #method.incoming
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```
+/// # use std::io;
 /// use std::net::{TcpListener, TcpStream};
-///
-/// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
 ///
 /// fn handle_client(stream: TcpStream) {
 ///     // ...
 /// }
 ///
+/// # fn process() -> io::Result<()> {
+/// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+///
 /// // accept connections and process them serially
 /// for stream in listener.incoming() {
-///     match stream {
-///         Ok(stream) => {
-///             handle_client(stream);
-///         }
-///         Err(e) => { /* connection failed */ }
-///     }
+///     handle_client(stream?);
 /// }
+/// # Ok(())
+/// # }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TcpListener(net_imp::TcpListener);
 
-/// An infinite iterator over the connections from a `TcpListener`.
-///
-/// This iterator will infinitely yield [`Some`] of the accepted connections. It
-/// is equivalent to calling `accept` in a loop.
+/// An iterator that infinitely [`accept`]s connections on a [`TcpListener`].
 ///
 /// This `struct` is created by the [`incoming`] method on [`TcpListener`].
+/// See its documentation for more.
 ///
-/// [`Some`]: ../../std/option/enum.Option.html#variant.Some
-/// [`incoming`]: struct.TcpListener.html#method.incoming
-/// [`TcpListener`]: struct.TcpListener.html
+/// [`accept`]: ../../std/net/struct.TcpListener.html#method.accept
+/// [`incoming`]: ../../std/net/struct.TcpListener.html#method.incoming
+/// [`TcpListener`]: ../../std/net/struct.TcpListener.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Incoming<'a> { listener: &'a TcpListener }
@@ -83,10 +109,14 @@ impl TcpStream {
     /// Opens a TCP connection to a remote host.
     ///
     /// `addr` is an address of the remote host. Anything which implements
-    /// `ToSocketAddrs` trait can be supplied for the address; see this trait
+    /// [`ToSocketAddrs`] trait can be supplied for the address; see this trait
     /// documentation for concrete examples.
-    /// In case `ToSocketAddrs::to_socket_addrs()` returns more than one entry,
+    /// In case [`ToSocketAddrs::to_socket_addrs()`] returns more than one entry,
     /// then the first valid and reachable address is used.
+    ///
+    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
+    /// [`ToSocketAddrs::to_socket_addrs()`]:
+    /// ../../std/net/trait.ToSocketAddrs.html#tymethod.to_socket_addrs
     ///
     /// # Examples
     ///
@@ -145,6 +175,13 @@ impl TcpStream {
     /// documentation of [`Shutdown`]).
     ///
     /// [`Shutdown`]: ../../std/net/enum.Shutdown.html
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// Calling this function multiple times may result in different behavior,
+    /// depending on the operating system. On Linux, the second call will
+    /// return `Ok(())`, but on macOS, it will return `ErrorKind::NotConnected`.
+    /// This may change in the future.
     ///
     /// # Examples
     ///
@@ -494,10 +531,13 @@ impl TcpListener {
     ///
     /// Binding with a port number of 0 will request that the OS assigns a port
     /// to this listener. The port allocated can be queried via the
-    /// `local_addr` method.
+    /// [`local_addr`] method.
     ///
-    /// The address type can be any implementor of `ToSocketAddrs` trait. See
+    /// The address type can be any implementor of [`ToSocketAddrs`] trait. See
     /// its documentation for concrete examples.
+    ///
+    /// [`local_addr`]: #method.local_addr
+    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
     ///
     /// # Examples
     ///
@@ -529,9 +569,11 @@ impl TcpListener {
 
     /// Creates a new independently owned handle to the underlying socket.
     ///
-    /// The returned `TcpListener` is a reference to the same socket that this
+    /// The returned [`TcpListener`] is a reference to the same socket that this
     /// object references. Both handles can be used to accept incoming
     /// connections and options set on one listener will affect the other.
+    ///
+    /// [`TcpListener`]: ../../std/net/struct.TcpListener.html
     ///
     /// # Examples
     ///
@@ -549,8 +591,10 @@ impl TcpListener {
     /// Accept a new incoming connection from this listener.
     ///
     /// This function will block the calling thread until a new TCP connection
-    /// is established. When established, the corresponding `TcpStream` and the
+    /// is established. When established, the corresponding [`TcpStream`] and the
     /// remote peer's address will be returned.
+    ///
+    /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
     ///
     /// # Examples
     ///
@@ -572,10 +616,12 @@ impl TcpListener {
     /// listener.
     ///
     /// The returned iterator will never return [`None`] and will also not yield
-    /// the peer's [`SocketAddr`] structure.
+    /// the peer's [`SocketAddr`] structure. Iterating over it is equivalent to
+    /// calling [`accept`] in a loop.
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
     /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+    /// [`accept`]: #method.accept
     ///
     /// # Examples
     ///

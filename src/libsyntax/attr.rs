@@ -18,8 +18,8 @@ use ast;
 use ast::{AttrId, Attribute, Name, Ident};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind};
-use codemap::{Spanned, spanned, dummy_spanned, mk_sp};
-use syntax_pos::{Span, BytePos, DUMMY_SP};
+use codemap::{Spanned, respan, dummy_spanned};
+use syntax_pos::{Span, DUMMY_SP};
 use errors::Handler;
 use feature_gate::{Features, GatedCfg};
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
@@ -145,6 +145,24 @@ impl NestedMetaItem {
     /// MetaItemKind::NameValue variant containing a string, otherwise None.
     pub fn value_str(&self) -> Option<Symbol> {
         self.meta_item().and_then(|meta_item| meta_item.value_str())
+    }
+
+    /// Returns a name and single literal value tuple of the MetaItem.
+    pub fn name_value_literal(&self) -> Option<(Name, &Lit)> {
+        self.meta_item().and_then(
+            |meta_item| meta_item.meta_item_list().and_then(
+                |meta_item_list| {
+                    if meta_item_list.len() == 1 {
+                        let nested_item = &meta_item_list[0];
+                        if nested_item.is_literal() {
+                            Some((meta_item.name(), nested_item.literal().unwrap()))
+                        } else {
+                            None
+                        }
+                    }
+                    else {
+                        None
+                    }}))
     }
 
     /// Returns a MetaItem if self is a MetaItem with Kind Word.
@@ -447,17 +465,16 @@ pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: MetaItem) -> Attribute 
     }
 }
 
-pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, lo: BytePos, hi: BytePos)
-                           -> Attribute {
+pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
     let style = doc_comment_style(&text.as_str());
-    let lit = spanned(lo, hi, LitKind::Str(text, ast::StrStyle::Cooked));
+    let lit = respan(span, LitKind::Str(text, ast::StrStyle::Cooked));
     Attribute {
         id: id,
         style: style,
-        path: ast::Path::from_ident(mk_sp(lo, hi), ast::Ident::from_str("doc")),
-        tokens: MetaItemKind::NameValue(lit).tokens(mk_sp(lo, hi)),
+        path: ast::Path::from_ident(span, ast::Ident::from_str("doc")),
+        tokens: MetaItemKind::NameValue(lit).tokens(span),
         is_sugared_doc: true,
-        span: mk_sp(lo, hi),
+        span: span,
     }
 }
 
@@ -932,6 +949,7 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                     continue
                 }
 
+                let mut recognised = false;
                 if let Some(mi) = item.word() {
                     let word = &*mi.name().as_str();
                     let hint = match word {
@@ -942,20 +960,43 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                         _ => match int_type_of_word(word) {
                             Some(ity) => Some(ReprInt(ity)),
                             None => {
-                                // Not a word we recognize
-                                span_err!(diagnostic, item.span, E0552,
-                                          "unrecognized representation hint");
                                 None
                             }
                         }
                     };
 
                     if let Some(h) = hint {
+                        recognised = true;
                         acc.push(h);
                     }
-                } else {
-                    span_err!(diagnostic, item.span, E0553,
-                              "unrecognized enum representation hint");
+                } else if let Some((name, value)) = item.name_value_literal() {
+                    if name == "align" {
+                        recognised = true;
+                        let mut align_error = None;
+                        if let ast::LitKind::Int(align, ast::LitIntType::Unsuffixed) = value.node {
+                            if align.is_power_of_two() {
+                                // rustc::ty::layout::Align restricts align to <= 32768
+                                if align <= 32768 {
+                                    acc.push(ReprAlign(align as u16));
+                                } else {
+                                    align_error = Some("larger than 32768");
+                                }
+                            } else {
+                                align_error = Some("not a power of two");
+                            }
+                        } else {
+                            align_error = Some("not an unsuffixed integer");
+                        }
+                        if let Some(align_error) = align_error {
+                            span_err!(diagnostic, item.span, E0589,
+                                      "invalid `repr(align)` attribute: {}", align_error);
+                        }
+                    }
+                }
+                if !recognised {
+                    // Not a word we recognize
+                    span_err!(diagnostic, item.span, E0552,
+                              "unrecognized representation hint");
                 }
             }
         }
@@ -987,6 +1028,7 @@ pub enum ReprAttr {
     ReprExtern,
     ReprPacked,
     ReprSimd,
+    ReprAlign(u16),
 }
 
 #[derive(Eq, Hash, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
@@ -1016,9 +1058,10 @@ impl MetaItem {
     {
         let (mut span, name) = match tokens.next() {
             Some(TokenTree::Token(span, Token::Ident(ident))) => (span, ident.name),
-            Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => return match **nt {
-                token::Nonterminal::NtMeta(ref meta) => Some(meta.clone()),
-                _ => None,
+            Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => match **nt {
+                token::Nonterminal::NtIdent(ident) => (ident.span, ident.node.name),
+                token::Nonterminal::NtMeta(ref meta) => return Some(meta.clone()),
+                _ => return None,
             },
             _ => return None,
         };

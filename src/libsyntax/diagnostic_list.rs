@@ -287,10 +287,10 @@ register_diagnostics! {
     E0550, // multiple deprecated attributes
     E0551, // incorrect meta item
     E0552, // unrecognized representation hint
-    E0553, // unrecognized enum representation hint
     E0554, // #[feature] may not be used on the [] release channel
     E0555, // malformed feature attribute, expected #![feature(...)]
     E0556, // malformed feature, expected just one word
     E0557, // feature has been removed
     E0584, // file for module `..` found at both .. and ..
+    E0589, // invalid `repr(align)` attribute
 }

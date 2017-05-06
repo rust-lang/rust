@@ -239,7 +239,7 @@ use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
 use core::convert::From;
 
-use heap::deallocate;
+use heap::{allocate, deallocate, box_free};
 use raw_vec::RawVec;
 
 struct RcBox<T: ?Sized> {
@@ -247,7 +247,6 @@ struct RcBox<T: ?Sized> {
     weak: Cell<usize>,
     value: T,
 }
-
 
 /// A single-threaded reference-counting pointer.
 ///
@@ -341,19 +340,6 @@ impl<T> Rc<T> {
         }
     }
 
-    /// Checks whether [`Rc::try_unwrap`][try_unwrap] would return
-    /// [`Ok`].
-    ///
-    /// [try_unwrap]: struct.Rc.html#method.try_unwrap
-    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
-    #[unstable(feature = "rc_would_unwrap",
-               reason = "just added for niche usecase",
-               issue = "28356")]
-    #[rustc_deprecated(since = "1.15.0", reason = "too niche; use `strong_count` instead")]
-    pub fn would_unwrap(this: &Self) -> bool {
-        Rc::strong_count(&this) == 1
-    }
-
     /// Consumes the `Rc`, returning the wrapped pointer.
     ///
     /// To avoid a memory leak the pointer must be converted back to an `Rc` using
@@ -438,6 +424,38 @@ impl Rc<str> {
     }
 }
 
+impl<T> Rc<[T]> {
+    /// Constructs a new `Rc<[T]>` from a `Box<[T]>`.
+    #[doc(hidden)]
+    #[unstable(feature = "rustc_private",
+               reason = "for internal use in rustc",
+               issue = "0")]
+    pub fn __from_array(value: Box<[T]>) -> Rc<[T]> {
+        unsafe {
+            let ptr: *mut RcBox<[T]> =
+                mem::transmute([mem::align_of::<RcBox<[T; 1]>>(), value.len()]);
+            // FIXME(custom-DST): creating this invalid &[T] is dubiously defined,
+            // we should have a better way of getting the size/align
+            // of a DST from its unsized part.
+            let ptr = allocate(size_of_val(&*ptr), align_of_val(&*ptr));
+            let ptr: *mut RcBox<[T]> = mem::transmute([ptr as usize, value.len()]);
+
+            // Initialize the new RcBox.
+            ptr::write(&mut (*ptr).strong, Cell::new(1));
+            ptr::write(&mut (*ptr).weak, Cell::new(1));
+            ptr::copy_nonoverlapping(
+                value.as_ptr(),
+                &mut (*ptr).value as *mut [T] as *mut T,
+                value.len());
+
+            // Free the original allocation without freeing its (moved) contents.
+            box_free(Box::into_raw(value));
+
+            Rc { ptr: Shared::new(ptr as *const _) }
+        }
+    }
+}
+
 impl<T: ?Sized> Rc<T> {
     /// Creates a new [`Weak`][weak] pointer to this value.
     ///
@@ -501,11 +519,7 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// [weak]: struct.Weak.html
     #[inline]
-    #[unstable(feature = "is_unique", reason = "uniqueness has unclear meaning",
-               issue = "28356")]
-    #[rustc_deprecated(since = "1.15.0",
-                       reason = "too niche; use `strong_count` and `weak_count` instead")]
-    pub fn is_unique(this: &Self) -> bool {
+    fn is_unique(this: &Self) -> bool {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
     }
 
@@ -922,18 +936,29 @@ impl<T> From<T> for Rc<T> {
     }
 }
 
-/// A weak version of [`Rc`][rc].
+/// `Weak` is a version of [`Rc`] that holds a non-owning reference to the
+/// managed value. The value is accessed by calling [`upgrade`] on the `Weak`
+/// pointer, which returns an [`Option`]`<`[`Rc`]`<T>>`.
 ///
-/// `Weak` pointers do not count towards determining if the inner value
-/// should be dropped.
+/// Since a `Weak` reference does not count towards ownership, it will not
+/// prevent the inner value from being dropped, and `Weak` itself makes no
+/// guarantees about the value still being present and may return [`None`]
+/// when [`upgrade`]d.
 ///
-/// The typical way to obtain a `Weak` pointer is to call
-/// [`Rc::downgrade`][downgrade].
+/// A `Weak` pointer is useful for keeping a temporary reference to the value
+/// within [`Rc`] without extending its lifetime. It is also used to prevent
+/// circular references between [`Rc`] pointers, since mutual owning references
+/// would never allow either [`Arc`] to be dropped. For example, a tree could
+/// have strong [`Rc`] pointers from parent nodes to children, and `Weak`
+/// pointers from children back to their parents.
 ///
-/// See the [module-level documentation](./index.html) for more details.
+/// The typical way to obtain a `Weak` pointer is to call [`Rc::downgrade`].
 ///
-/// [rc]: struct.Rc.html
-/// [downgrade]: struct.Rc.html#method.downgrade
+/// [`Rc`]: struct.Rc.html
+/// [`Rc::downgrade`]: struct.Rc.html#method.downgrade
+/// [`upgrade`]: struct.Weak.html#method.upgrade
+/// [`Option`]: ../../std/option/enum.Option.html
+/// [`None`]: ../../std/option/enum.Option.html#variant.None
 #[stable(feature = "rc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
     ptr: Shared<RcBox<T>>,
@@ -948,14 +973,11 @@ impl<T: ?Sized> !marker::Sync for Weak<T> {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
 impl<T> Weak<T> {
-    /// Constructs a new `Weak<T>`, without an accompanying instance of `T`.
+    /// Constructs a new `Weak<T>`, allocating memory for `T` without initializing
+    /// it. Calling [`upgrade`] on the return value always gives [`None`].
     ///
-    /// This allocates memory for `T`, but does not initialize it. Calling
-    /// [`upgrade`][upgrade] on the return value always gives
-    /// [`None`][option].
-    ///
-    /// [upgrade]: struct.Weak.html#method.upgrade
-    /// [option]: ../../std/option/enum.Option.html
+    /// [`upgrade`]: struct.Weak.html#method.upgrade
+    /// [`None`]: ../../std/option/enum.Option.html
     ///
     /// # Examples
     ///
@@ -980,13 +1002,13 @@ impl<T> Weak<T> {
 }
 
 impl<T: ?Sized> Weak<T> {
-    /// Upgrades the `Weak` pointer to an [`Rc`][rc], if possible.
+    /// Attempts to upgrade the `Weak` pointer to an [`Rc`], extending
+    /// the lifetime of the value if successful.
     ///
-    /// Returns [`None`][option] if the strong count has reached zero and the
-    /// inner value was destroyed.
+    /// Returns [`None`] if the value has since been dropped.
     ///
-    /// [rc]: struct.Rc.html
-    /// [option]: ../../std/option/enum.Option.html
+    /// [`Rc`]: struct.Rc.html
+    /// [`None`]: ../../std/option/enum.Option.html
     ///
     /// # Examples
     ///
@@ -1020,8 +1042,6 @@ impl<T: ?Sized> Weak<T> {
 #[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized> Drop for Weak<T> {
     /// Drops the `Weak` pointer.
-    ///
-    /// This will decrement the weak reference count.
     ///
     /// # Examples
     ///
@@ -1061,10 +1081,7 @@ impl<T: ?Sized> Drop for Weak<T> {
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized> Clone for Weak<T> {
-    /// Makes a clone of the `Weak` pointer.
-    ///
-    /// This creates another pointer to the same inner value, increasing the
-    /// weak reference count.
+    /// Makes a clone of the `Weak` pointer that points to the same value.
     ///
     /// # Examples
     ///
@@ -1091,14 +1108,11 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
 
 #[stable(feature = "downgraded_weak", since = "1.10.0")]
 impl<T> Default for Weak<T> {
-    /// Constructs a new `Weak<T>`, without an accompanying instance of `T`.
+    /// Constructs a new `Weak<T>`, allocating memory for `T` without initializing
+    /// it. Calling [`upgrade`] on the return value always gives [`None`].
     ///
-    /// This allocates memory for `T`, but does not initialize it. Calling
-    /// [`upgrade`][upgrade] on the return value always gives
-    /// [`None`][option].
-    ///
-    /// [upgrade]: struct.Weak.html#method.upgrade
-    /// [option]: ../../std/option/enum.Option.html
+    /// [`upgrade`]: struct.Weak.html#method.upgrade
+    /// [`None`]: ../../std/option/enum.Option.html
     ///
     /// # Examples
     ///

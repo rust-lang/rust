@@ -326,6 +326,7 @@ impl<'a> CrateLoader<'a> {
             cnum_map: RefCell::new(cnum_map),
             cnum: cnum,
             codemap_import_info: RefCell::new(vec![]),
+            attribute_cache: RefCell::new([Vec::new(), Vec::new()]),
             dep_kind: Cell::new(dep_kind),
             source: cstore::CrateSource {
                 dylib: dylib,
@@ -600,7 +601,7 @@ impl<'a> CrateLoader<'a> {
             Err(err) => self.sess.span_fatal(span, &err),
         };
 
-        let sym = self.sess.generate_derive_registrar_symbol(&root.hash,
+        let sym = self.sess.generate_derive_registrar_symbol(root.disambiguator,
                                                              root.macro_derive_registrar.unwrap());
         let registrar = unsafe {
             let sym = match lib.symbol(&sym) {
@@ -654,7 +655,7 @@ impl<'a> CrateLoader<'a> {
     /// Look for a plugin registrar. Returns library path, crate
     /// SVH and DefIndex of the registrar function.
     pub fn find_plugin_registrar(&mut self, span: Span, name: &str)
-                                 -> Option<(PathBuf, Svh, DefIndex)> {
+                                 -> Option<(PathBuf, Symbol, DefIndex)> {
         let ekrate = self.read_extension_crate(span, &ExternCrateInfo {
              name: Symbol::intern(name),
              ident: Symbol::intern(name),
@@ -669,13 +670,13 @@ impl<'a> CrateLoader<'a> {
                                   name,
                                   config::host_triple(),
                                   self.sess.opts.target_triple);
-            span_fatal!(self.sess, span, E0456, "{}", &message[..]);
+            span_fatal!(self.sess, span, E0456, "{}", &message);
         }
 
         let root = ekrate.metadata.get_root();
         match (ekrate.dylib.as_ref(), root.plugin_registrar_fn) {
             (Some(dylib), Some(reg)) => {
-                Some((dylib.to_path_buf(), root.hash, reg))
+                Some((dylib.to_path_buf(), root.disambiguator, reg))
             }
             (None, Some(_)) => {
                 span_err!(self.sess, span, E0457,
@@ -798,11 +799,26 @@ impl<'a> CrateLoader<'a> {
 
     fn inject_sanitizer_runtime(&mut self) {
         if let Some(ref sanitizer) = self.sess.opts.debugging_opts.sanitizer {
-            // Sanitizers can only be used with x86_64 Linux executables linked
-            // to `std`
-            if self.sess.target.target.llvm_target != "x86_64-unknown-linux-gnu" {
-                self.sess.err(&format!("Sanitizers only work with the \
-                                        `x86_64-unknown-linux-gnu` target."));
+            // Sanitizers can only be used on some tested platforms with
+            // executables linked to `std`
+            const ASAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu",
+                                                      "x86_64-apple-darwin"];
+            const TSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu",
+                                                      "x86_64-apple-darwin"];
+            const LSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu"];
+            const MSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu"];
+
+            let supported_targets = match *sanitizer {
+                Sanitizer::Address => ASAN_SUPPORTED_TARGETS,
+                Sanitizer::Thread => TSAN_SUPPORTED_TARGETS,
+                Sanitizer::Leak => LSAN_SUPPORTED_TARGETS,
+                Sanitizer::Memory => MSAN_SUPPORTED_TARGETS,
+            };
+            if !supported_targets.contains(&&*self.sess.target.target.llvm_target) {
+                self.sess.err(&format!("{:?}Sanitizer only works with the `{}` target",
+                    sanitizer,
+                    supported_targets.join("` or `")
+                ));
                 return
             }
 
@@ -1058,7 +1074,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         self.inject_allocator_crate();
         self.inject_panic_runtime(krate);
 
-        if log_enabled!(log::INFO) {
+        if log_enabled!(log::LogLevel::Info) {
             dump_crates(&self.cstore);
         }
 

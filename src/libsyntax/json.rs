@@ -19,11 +19,12 @@
 
 // FIXME spec the JSON output properly.
 
-use codemap::CodeMap;
+use codemap::{CodeMap, FilePathMapping};
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
-use errors::{DiagnosticBuilder, SubDiagnostic, RenderSpan, CodeSuggestion, CodeMapper};
+use errors::{Level, DiagnosticBuilder, SubDiagnostic, RenderSpan, CodeSuggestion, CodeMapper};
 use errors::emitter::Emitter;
+use errors::snippet::Style;
 
 use std::rc::Rc;
 use std::io::{self, Write};
@@ -48,7 +49,8 @@ impl JsonEmitter {
     }
 
     pub fn basic() -> JsonEmitter {
-        JsonEmitter::stderr(None, Rc::new(CodeMap::new()))
+        let file_path_mapping = FilePathMapping::empty();
+        JsonEmitter::stderr(None, Rc::new(CodeMap::new(file_path_mapping)))
     }
 
     pub fn new(dst: Box<Write + Send>,
@@ -152,12 +154,21 @@ impl Diagnostic {
     fn from_diagnostic_builder(db: &DiagnosticBuilder,
                                je: &JsonEmitter)
                                -> Diagnostic {
+        let sugg = db.suggestion.as_ref().map(|sugg| {
+            SubDiagnostic {
+                level: Level::Help,
+                message: vec![(sugg.msg.clone(), Style::NoStyle)],
+                span: MultiSpan::new(),
+                render_span: Some(RenderSpan::Suggestion(sugg.clone())),
+            }
+        });
+        let sugg = sugg.as_ref();
         Diagnostic {
             message: db.message(),
             code: DiagnosticCode::map_opt_string(db.code.clone(), je),
             level: db.level.to_str(),
             spans: DiagnosticSpan::from_multispan(&db.span, je),
-            children: db.children.iter().map(|c| {
+            children: db.children.iter().chain(sugg).map(|c| {
                 Diagnostic::from_sub_diagnostic(c, je)
             }).collect(),
             rendered: None,
@@ -202,7 +213,7 @@ impl DiagnosticSpan {
         // backtrace ourselves, but the `macro_backtrace` helper makes
         // some decision, such as dropping some frames, and I don't
         // want to duplicate that logic here.
-        let backtrace = je.cm.macro_backtrace(span).into_iter();
+        let backtrace = span.macro_backtrace().into_iter();
         DiagnosticSpan::from_span_full(span,
                                        is_primary,
                                        label,

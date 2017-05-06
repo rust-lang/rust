@@ -29,12 +29,11 @@
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
-#![cfg_attr(stage0,feature(field_init_shorthand))]
 #![feature(i128_type)]
 #![feature(libc)]
 #![feature(loop_break_value)]
+#![feature(never_type)]
 #![feature(nonzero)]
-#![cfg_attr(stage0, feature(pub_restricted))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -42,6 +41,11 @@
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
+#![feature(discriminant_value)]
+#![feature(sort_unstable)]
+#![feature(trace_macros)]
+
+#![recursion_limit="128"]
 
 extern crate arena;
 extern crate core;

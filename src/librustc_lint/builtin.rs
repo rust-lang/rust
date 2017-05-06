@@ -45,6 +45,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_attributes};
 use syntax_pos::Span;
+use syntax::symbol::keywords;
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::intravisit::FnKind;
@@ -118,7 +119,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
             hir::ItemStruct(..) |
             hir::ItemUnion(..) => {
                 let def_id = cx.tcx.hir.local_def_id(it.id);
-                self.check_heap_type(cx, it.span, cx.tcx.item_type(def_id))
+                self.check_heap_type(cx, it.span, cx.tcx.type_of(def_id))
             }
             _ => ()
         }
@@ -130,7 +131,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
                 for struct_field in struct_def.fields() {
                     let def_id = cx.tcx.hir.local_def_id(struct_field.id);
                     self.check_heap_type(cx, struct_field.span,
-                                         cx.tcx.item_type(def_id));
+                                         cx.tcx.type_of(def_id));
                 }
             }
             _ => (),
@@ -334,7 +335,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             attr.check_name("doc") &&
             match attr.meta_item_list() {
                 None => false,
-                Some(l) => attr::list_contains_name(&l[..], "hidden"),
+                Some(l) => attr::list_contains_name(&l, "hidden"),
             }
         });
         self.doc_hidden_stack.push(doc_hidden);
@@ -432,7 +433,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
     fn check_impl_item(&mut self, cx: &LateContext, impl_item: &hir::ImplItem) {
         // If the method is an impl for a trait, don't doc.
-        if method_context(cx, impl_item.id, impl_item.span) == MethodLateContext::TraitImpl {
+        if method_context(cx, impl_item.id) == MethodLateContext::TraitImpl {
             return;
         }
 
@@ -504,21 +505,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                let def = cx.tcx.lookup_adt_def(cx.tcx.hir.local_def_id(item.id));
+                let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemUnion(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                let def = cx.tcx.lookup_adt_def(cx.tcx.hir.local_def_id(item.id));
+                let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                let def = cx.tcx.lookup_adt_def(cx.tcx.hir.local_def_id(item.id));
+                let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             _ => return,
@@ -582,10 +583,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
         };
 
         if self.impling_types.is_none() {
-            let debug_def = cx.tcx.lookup_trait_def(debug);
+            let debug_def = cx.tcx.trait_def(debug);
             let mut impls = NodeSet();
             debug_def.for_each_impl(cx.tcx, |d| {
-                if let Some(ty_def) = cx.tcx.item_type(d).ty_to_def_id() {
+                if let Some(ty_def) = cx.tcx.type_of(d).ty_to_def_id() {
                     if let Some(node_id) = cx.tcx.hir.as_local_node_id(ty_def) {
                         impls.insert(node_id);
                     }
@@ -601,6 +602,44 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
                          item.span,
                          "type does not implement `fmt::Debug`; consider adding #[derive(Debug)] \
                           or a manual implementation")
+        }
+    }
+}
+
+declare_lint! {
+    pub ANONYMOUS_PARAMETERS,
+    Allow,
+    "detects anonymous parameters"
+}
+
+/// Checks for use of anonymous parameters (RFC 1685)
+#[derive(Clone)]
+pub struct AnonymousParameters;
+
+impl LintPass for AnonymousParameters {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(ANONYMOUS_PARAMETERS)
+    }
+}
+
+impl EarlyLintPass for AnonymousParameters {
+    fn check_trait_item(&mut self, cx: &EarlyContext, it: &ast::TraitItem) {
+        match it.node {
+            ast::TraitItemKind::Method(ref sig, _) => {
+                for arg in sig.decl.inputs.iter() {
+                    match arg.pat.node {
+                        ast::PatKind::Ident(_, ident, None) => {
+                            if ident.node.name == keywords::Invalid.name() {
+                                cx.span_lint(ANONYMOUS_PARAMETERS,
+                                             arg.pat.span,
+                                             "use of deprecated anonymous parameter");
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+            },
+            _ => (),
         }
     }
 }
@@ -1094,7 +1133,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
         }
 
         fn def_id_is_transmute(cx: &LateContext, def_id: DefId) -> bool {
-            match cx.tcx.item_type(def_id).sty {
+            match cx.tcx.type_of(def_id).sty {
                 ty::TyFnDef(.., bfty) if bfty.abi() == RustIntrinsic => (),
                 _ => return false,
             }
@@ -1151,8 +1190,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
         if let hir::ItemUnion(ref vdata, _) = item.node {
             let param_env = &ty::ParameterEnvironment::for_item(ctx.tcx, item.id);
             for field in vdata.fields() {
-                let field_ty = ctx.tcx.item_type(ctx.tcx.hir.local_def_id(field.id));
-                if ctx.tcx.type_needs_drop_given_env(field_ty, param_env) {
+                let field_ty = ctx.tcx.type_of(ctx.tcx.hir.local_def_id(field.id));
+                if field_ty.needs_drop(ctx.tcx, param_env) {
                     ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
                                   field.span,
                                   "union contains a field with possibly non-trivial drop code, \

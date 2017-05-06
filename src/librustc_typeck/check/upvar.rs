@@ -164,9 +164,12 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         debug!("analyze_closure(id={:?}, body.id={:?})", id, body.id());
 
         {
+            let body_owner_def_id = self.fcx.tcx.hir.body_owner_def_id(body.id());
+            let region_maps = &self.fcx.tcx.region_maps(body_owner_def_id);
             let mut euv =
                 euv::ExprUseVisitor::with_options(self,
                                                   self.fcx,
+                                                  region_maps,
                                                   mc::MemCategorizationOptions {
                                                       during_closure_kind_inference: true
                                                   });
@@ -536,7 +539,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a, 'gcx, 'tcx> {
               borrow_id: ast::NodeId,
               _borrow_span: Span,
               cmt: mc::cmt<'tcx>,
-              _loan_region: &'tcx ty::Region,
+              _loan_region: ty::Region<'tcx>,
               bk: ty::BorrowKind,
               _loan_cause: euv::LoanCause)
     {

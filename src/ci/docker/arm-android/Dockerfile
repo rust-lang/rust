@@ -13,7 +13,7 @@ RUN dpkg --add-architecture i386 && \
   cmake \
   unzip \
   expect \
-  openjdk-9-jre \
+  openjdk-9-jre-headless \
   sudo \
   libstdc++6:i386 \
   xz-utils \

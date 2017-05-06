@@ -31,7 +31,7 @@ then types, or something like that) because the user can introduce
 arbitrary interdependencies. So instead we generally convert things
 lazilly and on demand, and include logic that checks for cycles.
 Demand is driven by calls to `AstConv::get_item_type_scheme` or
-`AstConv::lookup_trait_def`.
+`AstConv::trait_def`.
 
 Currently, we "convert" types and traits in two phases (note that
 conversion only affects the types of items / enum variants / methods;
@@ -59,19 +59,15 @@ use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::const_val::ConstVal;
 use middle::resolve_lifetime as rl;
-use rustc_const_eval::{ConstContext, report_const_eval_err};
 use rustc::ty::subst::Substs;
 use rustc::ty::{ToPredicate, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
-use rustc::dep_graph::DepNode;
-use util::common::MemoizationMap;
-use util::nodemap::{NodeMap, FxHashMap};
+use util::nodemap::FxHashMap;
 
 use rustc_const_math::ConstInt;
 
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 use syntax::{abi, ast};
@@ -89,19 +85,21 @@ use rustc::hir::def_id::DefId;
 
 pub fn collect_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut visitor = CollectItemTypesVisitor { tcx: tcx };
-    tcx.visit_all_item_likes_in_krate(DepNode::CollectItem, &mut visitor.as_deep_visitor());
+    tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
 }
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
-        ty,
-        generics,
-        predicates,
-        super_predicates,
+        type_of,
+        generics_of,
+        predicates_of,
+        super_predicates_of,
         type_param_predicates,
         trait_def,
         adt_def,
         impl_trait_ref,
+        impl_polarity,
+        is_foreign_item,
         ..*providers
     };
 }
@@ -117,7 +115,7 @@ pub fn provide(providers: &mut Providers) {
 /// `ItemCtxt` is parameterized by a `DefId` that it uses to satisfy
 /// `get_type_parameter_bounds` requests, drawing the information from
 /// the AST (`hir::Generics`), recursively.
-struct ItemCtxt<'a,'tcx:'a> {
+pub struct ItemCtxt<'a,'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     item_def_id: DefId,
 }
@@ -128,57 +126,13 @@ struct CollectItemTypesVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>
 }
 
-impl<'a, 'tcx> CollectItemTypesVisitor<'a, 'tcx> {
-    /// Collect item types is structured into two tasks. The outer
-    /// task, `CollectItem`, walks the entire content of an item-like
-    /// thing, including its body. It also spawns an inner task,
-    /// `CollectItemSig`, which walks only the signature. This inner
-    /// task is the one that writes the item-type into the various
-    /// maps.  This setup ensures that the item body is never
-    /// accessible to the task that computes its signature, so that
-    /// changes to the body don't affect the signature.
-    ///
-    /// Consider an example function `foo` that also has a closure in its body:
-    ///
-    /// ```
-    /// fn foo(<sig>) {
-    ///     ...
-    ///     let bar = || ...; // we'll label this closure as "bar" below
-    /// }
-    /// ```
-    ///
-    /// This results in a dep-graph like so. I've labeled the edges to
-    /// document where they arise.
-    ///
-    /// ```
-    /// [HirBody(foo)] -2--> [CollectItem(foo)] -4-> [ItemSignature(bar)]
-    ///                       ^           ^
-    ///                       1           3
-    /// [Hir(foo)] -----------+-6-> [CollectItemSig(foo)] -5-> [ItemSignature(foo)]
-    /// ```
-    ///
-    /// 1. This is added by the `visit_all_item_likes_in_krate`.
-    /// 2. This is added when we fetch the item body.
-    /// 3. This is added because `CollectItem` launches `CollectItemSig`.
-    ///    - it is arguably false; if we refactor the `with_task` system;
-    ///      we could get probably rid of it, but it is also harmless enough.
-    /// 4. This is added by the code in `visit_expr` when we write to `item_types`.
-    /// 5. This is added by the code in `convert_item` when we write to `item_types`;
-    ///    note that this write occurs inside the `CollectItemSig` task.
-    /// 6. Added by reads from within `op`.
-    fn with_collect_item_sig(&self, id: ast::NodeId, op: fn(TyCtxt<'a, 'tcx, 'tcx>, ast::NodeId)) {
-        let def_id = self.tcx.hir.local_def_id(id);
-        self.tcx.dep_graph.with_task(DepNode::CollectItemSig(def_id), self.tcx, id, op);
-    }
-}
-
 impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir)
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        self.with_collect_item_sig(item.id, convert_item);
+        convert_item(self.tcx, item.id);
         intravisit::walk_item(self, item);
     }
 
@@ -186,7 +140,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
         for param in &generics.ty_params {
             if param.default.is_some() {
                 let def_id = self.tcx.hir.local_def_id(param.id);
-                self.tcx.item_type(def_id);
+                self.tcx.type_of(def_id);
             }
         }
         intravisit::walk_generics(self, generics);
@@ -195,8 +149,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if let hir::ExprClosure(..) = expr.node {
             let def_id = self.tcx.hir.local_def_id(expr.id);
-            self.tcx.item_generics(def_id);
-            self.tcx.item_type(def_id);
+            self.tcx.generics_of(def_id);
+            self.tcx.type_of(def_id);
         }
         intravisit::walk_expr(self, expr);
     }
@@ -204,19 +158,19 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         if let hir::TyImplTrait(..) = ty.node {
             let def_id = self.tcx.hir.local_def_id(ty.id);
-            self.tcx.item_generics(def_id);
-            self.tcx.item_predicates(def_id);
+            self.tcx.generics_of(def_id);
+            self.tcx.predicates_of(def_id);
         }
         intravisit::walk_ty(self, ty);
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
-        self.with_collect_item_sig(trait_item.id, convert_trait_item);
+        convert_trait_item(self.tcx, trait_item.id);
         intravisit::walk_trait_item(self, trait_item);
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
-        self.with_collect_item_sig(impl_item.id, convert_impl_item);
+        convert_impl_item(self.tcx, impl_item.id);
         intravisit::walk_impl_item(self, impl_item);
     }
 }
@@ -225,7 +179,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
 // Utility types and common code for the above passes.
 
 impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
            -> ItemCtxt<'a,'tcx> {
         ItemCtxt {
             tcx: tcx,
@@ -235,7 +189,7 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
 }
 
 impl<'a,'tcx> ItemCtxt<'a,'tcx> {
-    fn to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
+    pub fn to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
         AstConv::ast_ty_to_ty(self, ast_ty)
     }
 }
@@ -243,16 +197,12 @@ impl<'a,'tcx> ItemCtxt<'a,'tcx> {
 impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> { self.tcx }
 
-    fn ast_ty_to_ty_cache(&self) -> &RefCell<NodeMap<Ty<'tcx>>> {
-        &self.tcx.ast_ty_to_ty_cache
-    }
-
     fn get_type_parameter_bounds(&self,
                                  span: Span,
                                  def_id: DefId)
                                  -> ty::GenericPredicates<'tcx>
     {
-        ty::queries::type_param_predicates::get(self.tcx, span, (self.item_def_id, def_id))
+        self.tcx.at(span).type_param_predicates((self.item_def_id, def_id))
     }
 
     fn get_free_substs(&self) -> Option<&Substs<'tcx>> {
@@ -260,7 +210,7 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
     }
 
     fn re_infer(&self, _span: Span, _def: Option<&ty::RegionParameterDef>)
-                -> Option<&'tcx ty::Region> {
+                -> Option<ty::Region<'tcx>> {
         None
     }
 
@@ -316,7 +266,7 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let param_id = tcx.hir.as_local_node_id(def_id).unwrap();
     let param_owner = tcx.hir.ty_param_owner(param_id);
     let param_owner_def_id = tcx.hir.local_def_id(param_owner);
-    let generics = tcx.item_generics(param_owner_def_id);
+    let generics = tcx.generics_of(param_owner_def_id);
     let index = generics.type_param_to_index[&def_id.index];
     let ty = tcx.mk_param(index, tcx.hir.ty_param_name(param_id));
 
@@ -324,7 +274,7 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let parent = if item_def_id == param_owner_def_id {
         None
     } else {
-        tcx.item_generics(item_def_id).parent
+        tcx.generics_of(item_def_id).parent
     };
 
     let mut result = parent.map_or(ty::GenericPredicates {
@@ -354,7 +304,7 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeItem(item) => {
             match item.node {
                 ItemFn(.., ref generics, _) |
-                ItemImpl(_, _, ref generics, ..) |
+                ItemImpl(_, _, _, ref generics, ..) |
                 ItemTy(_, ref generics) |
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
@@ -490,48 +440,50 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
     let def_id = tcx.hir.local_def_id(item_id);
     match it.node {
         // These don't define types.
-        hir::ItemExternCrate(_) | hir::ItemUse(..) | hir::ItemMod(_) => {
-        }
+        hir::ItemExternCrate(_) |
+        hir::ItemUse(..) |
+        hir::ItemMod(_) |
+        hir::ItemGlobalAsm(_) => {}
         hir::ItemForeignMod(ref foreign_mod) => {
             for item in &foreign_mod.items {
                 let def_id = tcx.hir.local_def_id(item.id);
-                tcx.item_generics(def_id);
-                tcx.item_type(def_id);
-                tcx.item_predicates(def_id);
+                tcx.generics_of(def_id);
+                tcx.type_of(def_id);
+                tcx.predicates_of(def_id);
             }
         }
         hir::ItemEnum(ref enum_definition, _) => {
-            tcx.item_generics(def_id);
-            tcx.item_type(def_id);
-            tcx.item_predicates(def_id);
+            tcx.generics_of(def_id);
+            tcx.type_of(def_id);
+            tcx.predicates_of(def_id);
             convert_enum_variant_types(tcx, def_id, &enum_definition.variants);
         },
         hir::ItemDefaultImpl(..) => {
             tcx.impl_trait_ref(def_id);
         }
         hir::ItemImpl(..) => {
-            tcx.item_generics(def_id);
-            tcx.item_type(def_id);
+            tcx.generics_of(def_id);
+            tcx.type_of(def_id);
             tcx.impl_trait_ref(def_id);
-            tcx.item_predicates(def_id);
+            tcx.predicates_of(def_id);
         },
         hir::ItemTrait(..) => {
-            tcx.item_generics(def_id);
-            tcx.lookup_trait_def(def_id);
-            ty::queries::super_predicates::get(tcx, it.span, def_id);
-            tcx.item_predicates(def_id);
+            tcx.generics_of(def_id);
+            tcx.trait_def(def_id);
+            tcx.at(it.span).super_predicates_of(def_id);
+            tcx.predicates_of(def_id);
         },
         hir::ItemStruct(ref struct_def, _) |
         hir::ItemUnion(ref struct_def, _) => {
-            tcx.item_generics(def_id);
-            tcx.item_type(def_id);
-            tcx.item_predicates(def_id);
+            tcx.generics_of(def_id);
+            tcx.type_of(def_id);
+            tcx.predicates_of(def_id);
 
             for f in struct_def.fields() {
                 let def_id = tcx.hir.local_def_id(f.id);
-                tcx.item_generics(def_id);
-                tcx.item_type(def_id);
-                tcx.item_predicates(def_id);
+                tcx.generics_of(def_id);
+                tcx.type_of(def_id);
+                tcx.predicates_of(def_id);
             }
 
             if !struct_def.is_struct() {
@@ -540,66 +492,55 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
         },
         hir::ItemTy(_, ref generics) => {
             ensure_no_ty_param_bounds(tcx, it.span, generics, "type");
-            tcx.item_generics(def_id);
-            tcx.item_type(def_id);
-            tcx.item_predicates(def_id);
-        },
-        _ => {
-            tcx.item_generics(def_id);
-            tcx.item_type(def_id);
-            tcx.item_predicates(def_id);
-        },
+            tcx.generics_of(def_id);
+            tcx.type_of(def_id);
+            tcx.predicates_of(def_id);
+        }
+        hir::ItemStatic(..) | hir::ItemConst(..) | hir::ItemFn(..) => {
+            tcx.generics_of(def_id);
+            tcx.type_of(def_id);
+            tcx.predicates_of(def_id);
+        }
     }
 }
 
 fn convert_trait_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_item_id: ast::NodeId) {
     let trait_item = tcx.hir.expect_trait_item(trait_item_id);
     let def_id = tcx.hir.local_def_id(trait_item.id);
-    tcx.item_generics(def_id);
+    tcx.generics_of(def_id);
 
     match trait_item.node {
         hir::TraitItemKind::Const(..) |
         hir::TraitItemKind::Type(_, Some(_)) |
         hir::TraitItemKind::Method(..) => {
-            tcx.item_type(def_id);
+            tcx.type_of(def_id);
         }
 
         hir::TraitItemKind::Type(_, None) => {}
     };
 
-    tcx.item_predicates(def_id);
+    tcx.predicates_of(def_id);
 }
 
 fn convert_impl_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_item_id: ast::NodeId) {
     let def_id = tcx.hir.local_def_id(impl_item_id);
-    tcx.item_generics(def_id);
-    tcx.item_type(def_id);
-    tcx.item_predicates(def_id);
+    tcx.generics_of(def_id);
+    tcx.type_of(def_id);
+    tcx.predicates_of(def_id);
 }
 
 fn convert_variant_ctor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   ctor_id: ast::NodeId) {
     let def_id = tcx.hir.local_def_id(ctor_id);
-    tcx.item_generics(def_id);
-    tcx.item_type(def_id);
-    tcx.item_predicates(def_id);
-}
-
-fn evaluate_disr_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                body: hir::BodyId)
-                                -> Result<ConstVal<'tcx>, ()> {
-    let e = &tcx.hir.body(body).value;
-    ConstContext::new(tcx, body).eval(e).map_err(|err| {
-        // enum variant evaluation happens before the global constant check
-        // so we need to report the real error
-        report_const_eval_err(tcx, &err, e.span, "enum discriminant");
-    })
+    tcx.generics_of(def_id);
+    tcx.type_of(def_id);
+    tcx.predicates_of(def_id);
 }
 
 fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         def_id: DefId,
                                         variants: &[hir::Variant]) {
-    let def = tcx.lookup_adt_def(def_id);
+    let def = tcx.adt_def(def_id);
     let repr_type = def.repr.discr_type();
     let initial = repr_type.initial_discriminant(tcx);
     let mut prev_discr = None::<ConstInt>;
@@ -609,9 +550,14 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr());
         prev_discr = Some(if let Some(e) = variant.node.disr_expr {
             let expr_did = tcx.hir.local_def_id(e.node_id);
-            let result = tcx.maps.monomorphic_const_eval.memoize(expr_did, || {
-                evaluate_disr_expr(tcx, e)
-            });
+            let substs = Substs::empty();
+            let result = tcx.at(variant.span).const_eval((expr_did, substs));
+
+            // enum variant evaluation happens before the global constant check
+            // so we need to report the real error
+            if let Err(ref err) = result {
+                err.report(tcx, variant.span, "enum discriminant");
+            }
 
             match result {
                 Ok(ConstVal::Integral(x)) => Some(x),
@@ -632,9 +578,9 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         for f in variant.node.data.fields() {
             let def_id = tcx.hir.local_def_id(f.id);
-            tcx.item_generics(def_id);
-            tcx.item_type(def_id);
-            tcx.item_predicates(def_id);
+            tcx.generics_of(def_id);
+            tcx.type_of(def_id);
+            tcx.predicates_of(def_id);
         }
 
         // Convert the ctor, if any. This also registers the variant as
@@ -735,9 +681,9 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// Ensures that the super-predicates of the trait with def-id
 /// trait_def_id are converted and stored. This also ensures that
 /// the transitive super-predicates are converted;
-fn super_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              trait_def_id: DefId)
-                              -> ty::GenericPredicates<'tcx> {
+fn super_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 trait_def_id: DefId)
+                                 -> ty::GenericPredicates<'tcx> {
     debug!("super_predicates(trait_def_id={:?})", trait_def_id);
     let trait_node_id = tcx.hir.as_local_node_id(trait_def_id).unwrap();
 
@@ -774,7 +720,7 @@ fn super_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Now require that immediate supertraits are converted,
     // which will, in turn, reach indirect supertraits.
     for bound in superbounds.iter().filter_map(|p| p.to_opt_poly_trait_ref()) {
-        ty::queries::super_predicates::get(tcx, item.span, bound.def_id());
+        tcx.at(item.span).super_predicates_of(bound.def_id());
     }
 
     ty::GenericPredicates {
@@ -806,7 +752,7 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         err.emit();
     }
 
-    let def_path_hash = tcx.def_path(def_id).deterministic_hash(tcx);
+    let def_path_hash = tcx.def_path_hash(def_id);
     let def = ty::TraitDef::new(def_id, unsafety, paren_sugar, def_path_hash);
 
     if tcx.hir.trait_is_auto(def_id) {
@@ -816,9 +762,9 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.alloc_trait_def(def)
 }
 
-fn generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                      def_id: DefId)
-                      -> &'tcx ty::Generics {
+fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         def_id: DefId)
+                         -> &'tcx ty::Generics {
     use rustc::hir::map::*;
     use rustc::hir::*;
 
@@ -874,7 +820,7 @@ fn generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeItem(item) => {
             match item.node {
                 ItemFn(.., ref generics, _) |
-                ItemImpl(_, _, ref generics, ..) => generics,
+                ItemImpl(_, _, _, ref generics, ..) => generics,
 
                 ItemTy(_, ref generics) |
                 ItemEnum(_, ref generics) |
@@ -922,7 +868,7 @@ fn generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut parent_has_self = false;
     let mut own_start = has_self as u32;
     let (parent_regions, parent_types) = parent_def_id.map_or((0, 0), |def_id| {
-        let generics = tcx.item_generics(def_id);
+        let generics = tcx.generics_of(def_id);
         assert_eq!(has_self, false);
         parent_has_self = generics.has_self;
         own_start = generics.count() as u32;
@@ -1007,9 +953,9 @@ fn generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     })
 }
 
-fn ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                def_id: DefId)
-                -> Ty<'tcx> {
+fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                     def_id: DefId)
+                     -> Ty<'tcx> {
     use rustc::hir::map::*;
     use rustc::hir::*;
 
@@ -1066,7 +1012,7 @@ fn ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemEnum(..) |
                 ItemStruct(..) |
                 ItemUnion(..) => {
-                    let def = tcx.lookup_adt_def(def_id);
+                    let def = tcx.adt_def(def_id);
                     let substs = Substs::identity_for_item(tcx, def_id);
                     tcx.mk_adt(def, substs)
                 }
@@ -1074,6 +1020,7 @@ fn ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemTrait(..) |
                 ItemMod(..) |
                 ItemForeignMod(..) |
+                ItemGlobalAsm(..) |
                 ItemExternCrate(..) |
                 ItemUse(..) => {
                     span_bug!(
@@ -1097,12 +1044,12 @@ fn ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeStructCtor(&ref def) |
         NodeVariant(&Spanned { node: hir::Variant_ { data: ref def, .. }, .. }) => {
-            let ty = tcx.item_type(tcx.hir.get_parent_did(node_id));
+            let ty = tcx.type_of(tcx.hir.get_parent_did(node_id));
             match *def {
                 VariantData::Unit(..) | VariantData::Struct(..) => ty,
                 VariantData::Tuple(ref fields, _) => {
                     let inputs = fields.iter().map(|f| {
-                        tcx.item_type(tcx.hir.local_def_id(f.id))
+                        tcx.type_of(tcx.hir.local_def_id(f.id))
                     });
                     let substs = Substs::identity_for_item(tcx, def_id);
                     tcx.mk_fn_def(def_id, substs, ty::Binder(tcx.mk_fn_sig(
@@ -1137,7 +1084,7 @@ fn ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             NodeVariant(&Spanned { node: Variant_ { disr_expr: Some(e), .. }, .. })
                 if e.node_id == node_id => {
-                    tcx.lookup_adt_def(tcx.hir.get_parent_did(node_id))
+                    tcx.adt_def(tcx.hir.get_parent_did(node_id))
                         .repr.discr_type().to_ty(tcx)
                 }
 
@@ -1152,7 +1099,7 @@ fn ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeTy(&hir::Ty { node: TyImplTrait(..), .. }) => {
             let owner = tcx.hir.get_parent_did(node_id);
-            tcx.item_tables(owner).node_id_to_type(node_id)
+            tcx.typeck_tables_of(owner).node_id_to_type(node_id)
         }
 
         x => {
@@ -1175,11 +1122,21 @@ fn impl_trait_ref<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         hir::ItemImpl(.., ref opt_trait_ref, _, _) => {
             opt_trait_ref.as_ref().map(|ast_trait_ref| {
-                let selfty = tcx.item_type(def_id);
+                let selfty = tcx.type_of(def_id);
                 AstConv::instantiate_mono_trait_ref(&icx, ast_trait_ref, selfty)
             })
         }
         _ => bug!()
+    }
+}
+
+fn impl_polarity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           def_id: DefId)
+                           -> hir::ImplPolarity {
+    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+    match tcx.hir.expect_item(node_id).node {
+        hir::ItemImpl(_, polarity, ..) => polarity,
+        ref item => bug!("impl_polarity: {:?} not an impl", item)
     }
 }
 
@@ -1243,9 +1200,9 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
         .filter(move |l| !tcx.named_region_map.late_bound.contains(&l.lifetime.id))
 }
 
-fn predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        def_id: DefId)
-                        -> ty::GenericPredicates<'tcx> {
+fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           def_id: DefId)
+                           -> ty::GenericPredicates<'tcx> {
     use rustc::hir::map::*;
     use rustc::hir::*;
 
@@ -1274,7 +1231,7 @@ fn predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeItem(item) => {
             match item.node {
                 ItemFn(.., ref generics, _) |
-                ItemImpl(_, _, ref generics, ..) |
+                ItemImpl(_, _, _, ref generics, ..) |
                 ItemTy(_, ref generics) |
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
@@ -1318,7 +1275,7 @@ fn predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         _ => &no_generics
     };
 
-    let generics = tcx.item_generics(def_id);
+    let generics = tcx.generics_of(def_id);
     let parent_count = generics.parent_count() as u32;
     let has_own_self = generics.has_self && parent_count == 0;
 
@@ -1329,7 +1286,7 @@ fn predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // on a trait we need to add in the supertrait bounds and bounds found on
     // associated types.
     if let Some((trait_ref, _)) = is_trait {
-        predicates = tcx.item_super_predicates(def_id).predicates;
+        predicates = tcx.super_predicates_of(def_id).predicates;
 
         // Add in a predicate that `Self:Trait` (where `Trait` is the
         // current trait).  This is needed for builtin bounds.
@@ -1448,7 +1405,7 @@ fn predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // in trait checking. See `setup_constraining_predicates`
     // for details.
     if let NodeItem(&Item { node: ItemImpl(..), .. }) = node {
-        let self_ty = tcx.item_type(def_id);
+        let self_ty = tcx.type_of(def_id);
         let trait_ref = tcx.impl_trait_ref(def_id);
         ctp::setup_constraining_predicates(&mut predicates,
                                            trait_ref,
@@ -1580,4 +1537,14 @@ fn compute_type_of_foreign_fn_decl<'a, 'tcx>(
 
     let substs = Substs::identity_for_item(tcx, def_id);
     tcx.mk_fn_def(def_id, substs, fty)
+}
+
+fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             def_id: DefId)
+                             -> bool {
+    match tcx.hir.get_if_local(def_id) {
+        Some(hir_map::NodeForeignItem(..)) => true,
+        Some(_) => false,
+        _ => bug!("is_foreign_item applied to non-local def-id {:?}", def_id)
+    }
 }

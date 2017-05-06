@@ -211,9 +211,7 @@ impl Token {
             ModSep                      => true, // global path
             Pound                       => true, // expression attributes
             Interpolated(ref nt) => match **nt {
-                NtExpr(..) => true,
-                NtBlock(..) => true,
-                NtPath(..) => true,
+                NtIdent(..) | NtExpr(..) | NtBlock(..) | NtPath(..) => true,
                 _ => false,
             },
             _ => false,
@@ -236,8 +234,7 @@ impl Token {
             Lt | BinOp(Shl)             => true, // associated path
             ModSep                      => true, // global path
             Interpolated(ref nt) => match **nt {
-                NtTy(..) => true,
-                NtPath(..) => true,
+                NtIdent(..) | NtTy(..) | NtPath(..) => true,
                 _ => false,
             },
             _ => false,
@@ -252,12 +249,20 @@ impl Token {
         }
     }
 
+    pub fn ident(&self) -> Option<ast::Ident> {
+        match *self {
+            Ident(ident) => Some(ident),
+            Interpolated(ref nt) => match **nt {
+                NtIdent(ident) => Some(ident.node),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     /// Returns `true` if the token is an identifier.
     pub fn is_ident(&self) -> bool {
-        match *self {
-            Ident(..)   => true,
-            _           => false,
-        }
+        self.ident().is_some()
     }
 
     /// Returns `true` if the token is a documentation comment.
@@ -311,18 +316,15 @@ impl Token {
 
     /// Returns `true` if the token is a given keyword, `kw`.
     pub fn is_keyword(&self, kw: keywords::Keyword) -> bool {
-        match *self {
-            Ident(id) => id.name == kw.name(),
-            _ => false,
-        }
+        self.ident().map(|ident| ident.name == kw.name()).unwrap_or(false)
     }
 
     pub fn is_path_segment_keyword(&self) -> bool {
-        match *self {
-            Ident(id) => id.name == keywords::Super.name() ||
-                         id.name == keywords::SelfValue.name() ||
-                         id.name == keywords::SelfType.name(),
-            _ => false,
+        match self.ident() {
+            Some(id) => id.name == keywords::Super.name() ||
+                        id.name == keywords::SelfValue.name() ||
+                        id.name == keywords::SelfType.name(),
+            None => false,
         }
     }
 
@@ -333,18 +335,16 @@ impl Token {
 
     /// Returns `true` if the token is a strict keyword.
     pub fn is_strict_keyword(&self) -> bool {
-        match *self {
-            Ident(id) => id.name >= keywords::As.name() &&
-                         id.name <= keywords::While.name(),
+        match self.ident() {
+            Some(id) => id.name >= keywords::As.name() && id.name <= keywords::While.name(),
             _ => false,
         }
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_reserved_keyword(&self) -> bool {
-        match *self {
-            Ident(id) => id.name >= keywords::Abstract.name() &&
-                         id.name <= keywords::Yield.name(),
+        match self.ident() {
+            Some(id) => id.name >= keywords::Abstract.name() && id.name <= keywords::Yield.name(),
             _ => false,
         }
     }
@@ -363,6 +363,7 @@ pub enum Nonterminal {
     /// Stuff inside brackets for attributes
     NtMeta(ast::MetaItem),
     NtPath(ast::Path),
+    NtVis(ast::Visibility),
     NtTT(TokenTree),
     // These are not exposed to macros, but are used by quasiquote.
     NtArm(ast::Arm),
@@ -392,6 +393,7 @@ impl fmt::Debug for Nonterminal {
             NtGenerics(..) => f.pad("NtGenerics(..)"),
             NtWhereClause(..) => f.pad("NtWhereClause(..)"),
             NtArg(..) => f.pad("NtArg(..)"),
+            NtVis(..) => f.pad("NtVis(..)"),
         }
     }
 }

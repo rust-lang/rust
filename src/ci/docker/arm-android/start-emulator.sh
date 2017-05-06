@@ -10,7 +10,9 @@
 # except according to those terms.
 
 set -ex
-ANDROID_EMULATOR_FORCE_32BIT=true \
-  nohup nohup emulator @arm-18 -no-window -partition-size 2047 \
-  0<&- &>/dev/null &
+
+# Setting SHELL to a file instead on a symlink helps android
+# emulator identify the system
+export SHELL=/bin/bash
+nohup nohup emulator @arm-18 -no-window -partition-size 2047 0<&- &>/dev/null &
 exec "$@"

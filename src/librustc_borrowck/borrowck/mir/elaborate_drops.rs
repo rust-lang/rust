@@ -11,12 +11,12 @@
 use super::gather_moves::{HasMoveData, MoveData, MovePathIndex, LookupResult};
 use super::dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use super::dataflow::{DataflowResults};
-use super::{drop_flag_effects_for_location, on_all_children_bits};
-use super::on_lookup_result_bits;
+use super::{on_all_children_bits, on_all_drop_children_bits};
+use super::{drop_flag_effects_for_location, on_lookup_result_bits};
 use super::MoveDataParamEnv;
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
-use rustc::mir::transform::{Pass, MirPass, MirSource};
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc::middle::const_val::ConstVal;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -24,6 +24,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_mir::util::patch::MirPatch;
 use rustc_mir::util::elaborate_drops::{DropFlagState, elaborate_drop};
 use rustc_mir::util::elaborate_drops::{DropElaborator, DropStyle, DropFlagMode};
+use syntax::ast;
 use syntax_pos::Span;
 
 use std::fmt;
@@ -31,9 +32,11 @@ use std::u32;
 
 pub struct ElaborateDrops;
 
-impl<'tcx> MirPass<'tcx> for ElaborateDrops {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    src: MirSource, mir: &mut Mir<'tcx>)
+impl MirPass for ElaborateDrops {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          src: MirSource,
+                          mir: &mut Mir<'tcx>)
     {
         debug!("elaborate_drops({:?} @ {:?})", src, mir.span);
         match src {
@@ -49,12 +52,13 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 move_data: move_data,
                 param_env: param_env
             };
+            let dead_unwinds = find_dead_unwinds(tcx, mir, id, &env);
             let flow_inits =
-                super::do_dataflow(tcx, mir, id, &[],
+                super::do_dataflow(tcx, mir, id, &[], &dead_unwinds,
                                    MaybeInitializedLvals::new(tcx, mir, &env),
                                    |bd, p| &bd.move_data().move_paths[p]);
             let flow_uninits =
-                super::do_dataflow(tcx, mir, id, &[],
+                super::do_dataflow(tcx, mir, id, &[], &dead_unwinds,
                                    MaybeUninitializedLvals::new(tcx, mir, &env),
                                    |bd, p| &bd.move_data().move_paths[p]);
 
@@ -72,7 +76,66 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
     }
 }
 
-impl Pass for ElaborateDrops {}
+/// Return the set of basic blocks whose unwind edges are known
+/// to not be reachable, because they are `drop` terminators
+/// that can't drop anything.
+fn find_dead_unwinds<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir: &Mir<'tcx>,
+    id: ast::NodeId,
+    env: &MoveDataParamEnv<'tcx>)
+    -> IdxSetBuf<BasicBlock>
+{
+    debug!("find_dead_unwinds({:?})", mir.span);
+    // We only need to do this pass once, because unwind edges can only
+    // reach cleanup blocks, which can't have unwind edges themselves.
+    let mut dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
+    let flow_inits =
+        super::do_dataflow(tcx, mir, id, &[], &dead_unwinds,
+                           MaybeInitializedLvals::new(tcx, mir, &env),
+                           |bd, p| &bd.move_data().move_paths[p]);
+    for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
+        match bb_data.terminator().kind {
+            TerminatorKind::Drop { ref location, unwind: Some(_), .. } |
+            TerminatorKind::DropAndReplace { ref location, unwind: Some(_), .. } => {
+                let mut init_data = InitializationData {
+                    live: flow_inits.sets().on_entry_set_for(bb.index()).to_owned(),
+                    dead: IdxSetBuf::new_empty(env.move_data.move_paths.len()),
+                };
+                debug!("find_dead_unwinds @ {:?}: {:?}; init_data={:?}",
+                       bb, bb_data, init_data.live);
+                for stmt in 0..bb_data.statements.len() {
+                    let loc = Location { block: bb, statement_index: stmt };
+                    init_data.apply_location(tcx, mir, env, loc);
+                }
+
+                let path = match env.move_data.rev_lookup.find(location) {
+                    LookupResult::Exact(e) => e,
+                    LookupResult::Parent(..) => {
+                        debug!("find_dead_unwinds: has parent; skipping");
+                        continue
+                    }
+                };
+
+                debug!("find_dead_unwinds @ {:?}: path({:?})={:?}", bb, location, path);
+
+                let mut maybe_live = false;
+                on_all_drop_children_bits(tcx, mir, &env, path, |child| {
+                    let (child_maybe_live, _) = init_data.state(child);
+                    maybe_live |= child_maybe_live;
+                });
+
+                debug!("find_dead_unwinds @ {:?}: maybe_live={}", bb, maybe_live);
+                if !maybe_live {
+                    dead_unwinds.add(&bb);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    dead_unwinds
+}
 
 struct InitializationData {
     live: IdxSetBuf<MovePathIndex>,
@@ -144,17 +207,14 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
                 let mut some_live = false;
                 let mut some_dead = false;
                 let mut children_count = 0;
-                on_all_children_bits(
-                    self.tcx(), self.mir(), self.ctxt.move_data(),
-                    path, |child| {
-                        if self.ctxt.path_needs_drop(child) {
-                            let (live, dead) = self.init_data.state(child);
-                            debug!("elaborate_drop: state({:?}) = {:?}",
-                                   child, (live, dead));
-                            some_live |= live;
-                            some_dead |= dead;
-                            children_count += 1;
-                        }
+                on_all_drop_children_bits(
+                    self.tcx(), self.mir(), self.ctxt.env, path, |child| {
+                        let (live, dead) = self.init_data.state(child);
+                        debug!("elaborate_drop: state({:?}) = {:?}",
+                               child, (live, dead));
+                        some_live |= live;
+                        some_dead |= dead;
+                        children_count += 1;
                     });
                 ((some_live, some_dead), children_count != 1)
             }
@@ -247,12 +307,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         data
     }
 
-    fn create_drop_flag(&mut self, index: MovePathIndex) {
+    fn create_drop_flag(&mut self, index: MovePathIndex, span: Span) {
         let tcx = self.tcx;
         let patch = &mut self.patch;
         debug!("create_drop_flag({:?})", self.mir.span);
         self.drop_flags.entry(index).or_insert_with(|| {
-            patch.new_temp(tcx.types.bool)
+            patch.new_temp(tcx.types.bool, span)
         });
     }
 
@@ -274,15 +334,6 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         self.drop_flags_for_locs();
 
         self.patch
-    }
-
-    fn path_needs_drop(&self, path: MovePathIndex) -> bool
-    {
-        let lvalue = &self.move_data().move_paths[path].lvalue;
-        let ty = lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
-        debug!("path_needs_drop({:?}, {:?} : {:?})", path, lvalue, ty);
-
-        self.tcx.type_needs_drop_given_env(ty, self.param_env())
     }
 
     fn collect_drop_flags(&mut self)
@@ -318,14 +369,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 }
             };
 
-            on_all_children_bits(self.tcx, self.mir, self.move_data(), path, |child| {
-                if self.path_needs_drop(child) {
-                    let (maybe_live, maybe_dead) = init_data.state(child);
-                    debug!("collect_drop_flags: collecting {:?} from {:?}@{:?} - {:?}",
-                           child, location, path, (maybe_live, maybe_dead));
-                    if maybe_live && maybe_dead {
-                        self.create_drop_flag(child)
-                    }
+            on_all_drop_children_bits(self.tcx, self.mir, self.env, path, |child| {
+                let (maybe_live, maybe_dead) = init_data.state(child);
+                debug!("collect_drop_flags: collecting {:?} from {:?}@{:?} - {:?}",
+                       child, location, path, (maybe_live, maybe_dead));
+                if maybe_live && maybe_dead {
+                    self.create_drop_flag(child, terminator.source_info.span)
                 }
             });
         }

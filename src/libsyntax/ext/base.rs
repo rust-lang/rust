@@ -12,11 +12,11 @@ pub use self::SyntaxExtension::{MultiDecorator, MultiModifier, NormalTT, IdentTT
 
 use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
-use codemap::{self, CodeMap, ExpnInfo, Spanned, respan};
-use syntax_pos::{Span, ExpnId, NO_EXPANSION};
-use errors::{DiagnosticBuilder, FatalError};
+use codemap::{self, CodeMap, Spanned, respan};
+use syntax_pos::{Span, DUMMY_SP};
+use errors::DiagnosticBuilder;
 use ext::expand::{self, Expansion, Invocation};
-use ext::hygiene::Mark;
+use ext::hygiene::{Mark, SyntaxContext};
 use fold::{self, Folder};
 use parse::{self, parser, DirectoryOwnership};
 use parse::token;
@@ -56,6 +56,14 @@ impl HasAttrs for Annotatable {
 }
 
 impl Annotatable {
+    pub fn span(&self) -> Span {
+        match *self {
+            Annotatable::Item(ref item) => item.span,
+            Annotatable::TraitItem(ref trait_item) => trait_item.span,
+            Annotatable::ImplItem(ref impl_item) => impl_item.span,
+        }
+    }
+
     pub fn expect_item(self) -> P<ast::Item> {
         match self {
             Annotatable::Item(i) => i,
@@ -201,7 +209,26 @@ impl<F> TTMacroExpander for F
 {
     fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt, span: Span, input: TokenStream)
                    -> Box<MacResult+'cx> {
-        (*self)(ecx, span, &input.trees().collect::<Vec<_>>())
+        struct AvoidInterpolatedIdents;
+
+        impl Folder for AvoidInterpolatedIdents {
+            fn fold_tt(&mut self, tt: tokenstream::TokenTree) -> tokenstream::TokenTree {
+                if let tokenstream::TokenTree::Token(_, token::Interpolated(ref nt)) = tt {
+                    if let token::NtIdent(ident) = **nt {
+                        return tokenstream::TokenTree::Token(ident.span, token::Ident(ident.node));
+                    }
+                }
+                fold::noop_fold_tt(tt, self)
+            }
+
+            fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
+                fold::noop_fold_mac(mac, self)
+            }
+        }
+
+        let input: Vec<_> =
+            input.trees().map(|tt| AvoidInterpolatedIdents.fold_tt(tt)).collect();
+        (*self)(ecx, span, &input)
     }
 }
 
@@ -602,7 +629,6 @@ pub struct ModuleData {
 pub struct ExpansionData {
     pub mark: Mark,
     pub depth: usize,
-    pub backtrace: ExpnId,
     pub module: Rc<ModuleData>,
     pub directory_ownership: DirectoryOwnership,
 }
@@ -633,7 +659,6 @@ impl<'a> ExtCtxt<'a> {
             current_expansion: ExpansionData {
                 mark: Mark::root(),
                 depth: 0,
-                backtrace: NO_EXPANSION,
                 module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
                 directory_ownership: DirectoryOwnership::Owned,
             },
@@ -658,58 +683,36 @@ impl<'a> ExtCtxt<'a> {
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }
     pub fn cfg(&self) -> &ast::CrateConfig { &self.parse_sess.config }
     pub fn call_site(&self) -> Span {
-        self.codemap().with_expn_info(self.backtrace(), |ei| match ei {
+        match self.current_expansion.mark.expn_info() {
             Some(expn_info) => expn_info.call_site,
-            None => self.bug("missing top span")
-        })
+            None => DUMMY_SP,
+        }
     }
-    pub fn backtrace(&self) -> ExpnId { self.current_expansion.backtrace }
+    pub fn backtrace(&self) -> SyntaxContext {
+        SyntaxContext::empty().apply_mark(self.current_expansion.mark)
+    }
 
     /// Returns span for the macro which originally caused the current expansion to happen.
     ///
     /// Stops backtracing at include! boundary.
     pub fn expansion_cause(&self) -> Span {
-        let mut expn_id = self.backtrace();
+        let mut ctxt = self.backtrace();
         let mut last_macro = None;
         loop {
-            if self.codemap().with_expn_info(expn_id, |info| {
-                info.map_or(None, |i| {
-                    if i.callee.name() == "include" {
-                        // Stop going up the backtrace once include! is encountered
-                        return None;
-                    }
-                    expn_id = i.call_site.expn_id;
-                    last_macro = Some(i.call_site);
-                    return Some(());
-                })
+            if ctxt.outer().expn_info().map_or(None, |info| {
+                if info.callee.name() == "include" {
+                    // Stop going up the backtrace once include! is encountered
+                    return None;
+                }
+                ctxt = info.call_site.ctxt;
+                last_macro = Some(info.call_site);
+                return Some(());
             }).is_none() {
                 break
             }
         }
         last_macro.expect("missing expansion backtrace")
     }
-
-    pub fn bt_push(&mut self, ei: ExpnInfo) {
-        if self.current_expansion.depth > self.ecfg.recursion_limit {
-            let suggested_limit = self.ecfg.recursion_limit * 2;
-            let mut err = self.struct_span_fatal(ei.call_site,
-                &format!("recursion limit reached while expanding the macro `{}`",
-                         ei.callee.name()));
-            err.help(&format!(
-                "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
-                suggested_limit));
-            err.emit();
-            panic!(FatalError);
-        }
-
-        let mut call_site = ei.call_site;
-        call_site.expn_id = self.backtrace();
-        self.current_expansion.backtrace = self.codemap().record_expansion(ExpnInfo {
-            call_site: call_site,
-            callee: ei.callee
-        });
-    }
-    pub fn bt_pop(&mut self) {}
 
     pub fn struct_span_warn(&self,
                             sp: Span,
@@ -792,9 +795,9 @@ impl<'a> ExtCtxt<'a> {
 /// compilation on error, merely emits a non-fatal error and returns None.
 pub fn expr_to_spanned_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &str)
                               -> Option<Spanned<(Symbol, ast::StrStyle)>> {
-    // Update `expr.span`'s expn_id now in case expr is an `include!` macro invocation.
+    // Update `expr.span`'s ctxt now in case expr is an `include!` macro invocation.
     let expr = expr.map(|mut expr| {
-        expr.span.expn_id = cx.backtrace();
+        expr.span.ctxt = expr.span.ctxt.apply_mark(cx.current_expansion.mark);
         expr
     });
 

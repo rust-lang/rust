@@ -20,15 +20,31 @@ use vec;
 use iter;
 use slice;
 
-/// Representation of a socket address for networking applications.
+/// An internet socket address, either IPv4 or IPv6.
 ///
-/// A socket address can either represent the IPv4 or IPv6 protocol and is
-/// paired with at least a port number as well. Each protocol may have more
-/// specific information about the address available to it as well.
+/// Internet socket addresses consist of an [IP address], a 16-bit port number, as well
+/// as possibly some version-dependent additional information. See [`SocketAddrV4`]'s and
+/// [`SocketAddrV6`]'s respective documentation for more details.
+///
+/// [IP address]: ../../std/net/enum.IpAddr.html
+/// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
+/// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
+///
+/// # Examples
+///
+/// ```
+/// use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+///
+/// let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+///
+/// assert_eq!("127.0.0.1:8080".parse(), Ok(socket));
+/// assert_eq!(socket.port(), 8080);
+/// assert_eq!(socket.is_ipv4(), true);
+/// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum SocketAddr {
-    /// An IPv4 socket address which is a (ip, port) combination.
+    /// An IPv4 socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
     V4(#[stable(feature = "rust1", since = "1.0.0")] SocketAddrV4),
     /// An IPv6 socket address.
@@ -36,18 +52,63 @@ pub enum SocketAddr {
     V6(#[stable(feature = "rust1", since = "1.0.0")] SocketAddrV6),
 }
 
-/// An IPv4 socket address which is a (ip, port) combination.
+/// An IPv4 socket address.
+///
+/// IPv4 socket addresses consist of an [IPv4 address] and a 16-bit port number, as
+/// stated in [IETF RFC 793].
+///
+/// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
+///
+/// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
+/// [IPv4 address]: ../../std/net/struct.Ipv4Addr.html
+/// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+///
+/// # Examples
+///
+/// ```
+/// use std::net::{Ipv4Addr, SocketAddrV4};
+///
+/// let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
+///
+/// assert_eq!("127.0.0.1:8080".parse(), Ok(socket));
+/// assert_eq!(socket.ip(), &Ipv4Addr::new(127, 0, 0, 1));
+/// assert_eq!(socket.port(), 8080);
+/// ```
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SocketAddrV4 { inner: c::sockaddr_in }
 
 /// An IPv6 socket address.
+///
+/// IPv6 socket addresses consist of an [Ipv6 address], a 16-bit port number, as well
+/// as fields containing the traffic class, the flow label, and a scope identifier
+/// (see [IETF RFC 2553, Section 3.3] for more details).
+///
+/// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
+///
+/// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
+/// [IPv6 address]: ../../std/net/struct.Ipv6Addr.html
+/// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+///
+/// # Examples
+///
+/// ```
+/// use std::net::{Ipv6Addr, SocketAddrV6};
+///
+/// let socket = SocketAddrV6::new(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1), 8080, 0, 0);
+///
+/// assert_eq!("[2001:db8::1]:8080".parse(), Ok(socket));
+/// assert_eq!(socket.ip(), &Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1));
+/// assert_eq!(socket.port(), 8080);
+/// ```
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SocketAddrV6 { inner: c::sockaddr_in6 }
 
 impl SocketAddr {
-    /// Creates a new socket address from the (ip, port) pair.
+    /// Creates a new socket address from an [IP address] and a port number.
+    ///
+    /// [IP address]: ../../std/net/enum.IpAddr.html
     ///
     /// # Examples
     ///
@@ -84,7 +145,7 @@ impl SocketAddr {
         }
     }
 
-    /// Change the IP address associated with this socket address.
+    /// Changes the IP address associated with this socket address.
     ///
     /// # Examples
     ///
@@ -123,7 +184,7 @@ impl SocketAddr {
         }
     }
 
-    /// Change the port number associated with this socket address.
+    /// Changes the port number associated with this socket address.
     ///
     /// # Examples
     ///
@@ -142,8 +203,13 @@ impl SocketAddr {
         }
     }
 
-    /// Returns true if the IP in this `SocketAddr` is a valid IPv4 address,
-    /// false if it's a valid IPv6 address.
+    /// Returns [`true`] if the [IP address] in this `SocketAddr` is an
+    /// [IPv4 address], and [`false`] otherwise.
+    ///
+    /// [`true`]: ../../std/primitive.bool.html
+    /// [`false`]: ../../std/primitive.bool.html
+    /// [IP address]: ../../std/net/enum.IpAddr.html
+    /// [IPv4 address]: ../../std/net/enum.IpAddr.html#variant.V4
     ///
     /// # Examples
     ///
@@ -164,8 +230,13 @@ impl SocketAddr {
         }
     }
 
-    /// Returns true if the IP in this `SocketAddr` is a valid IPv6 address,
-    /// false if it's a valid IPv4 address.
+    /// Returns [`true`] if the [IP address] in this `SocketAddr` is an
+    /// [IPv6 address], and [`false`] otherwise.
+    ///
+    /// [`true`]: ../../std/primitive.bool.html
+    /// [`false`]: ../../std/primitive.bool.html
+    /// [IP address]: ../../std/net/enum.IpAddr.html
+    /// [IPv6 address]: ../../std/net/enum.IpAddr.html#variant.V6
     ///
     /// # Examples
     ///
@@ -189,7 +260,9 @@ impl SocketAddr {
 }
 
 impl SocketAddrV4 {
-    /// Creates a new socket address from the (ip, port) pair.
+    /// Creates a new socket address from an [IPv4 address] and a port number.
+    ///
+    /// [IPv4 address]: ../../std/net/struct.Ipv4Addr.html
     ///
     /// # Examples
     ///
@@ -227,7 +300,7 @@ impl SocketAddrV4 {
         }
     }
 
-    /// Change the IP address associated with this socket address.
+    /// Changes the IP address associated with this socket address.
     ///
     /// # Examples
     ///
@@ -258,7 +331,7 @@ impl SocketAddrV4 {
         ntoh(self.inner.sin_port)
     }
 
-    /// Change the port number associated with this socket address.
+    /// Changes the port number associated with this socket address.
     ///
     /// # Examples
     ///
@@ -276,8 +349,14 @@ impl SocketAddrV4 {
 }
 
 impl SocketAddrV6 {
-    /// Creates a new socket address from the ip/port/flowinfo/scope_id
-    /// components.
+    /// Creates a new socket address from an [IPv6 address], a 16-bit port number,
+    /// and the `flowinfo` and `scope_id` fields.
+    ///
+    /// For more information on the meaning and layout of the `flowinfo` and `scope_id`
+    /// parameters, see [IETF RFC 2553, Section 3.3].
+    ///
+    /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
+    /// [IPv6 address]: ../../std/net/struct.Ipv6Addr.html
     ///
     /// # Examples
     ///
@@ -318,7 +397,7 @@ impl SocketAddrV6 {
         }
     }
 
-    /// Change the IP address associated with this socket address.
+    /// Changes the IP address associated with this socket address.
     ///
     /// # Examples
     ///
@@ -349,7 +428,7 @@ impl SocketAddrV6 {
         ntoh(self.inner.sin6_port)
     }
 
-    /// Change the port number associated with this socket address.
+    /// Changes the port number associated with this socket address.
     ///
     /// # Examples
     ///
@@ -365,8 +444,17 @@ impl SocketAddrV6 {
         self.inner.sin6_port = hton(new_port);
     }
 
-    /// Returns the flow information associated with this address,
-    /// corresponding to the `sin6_flowinfo` field in C.
+    /// Returns the flow information associated with this address.
+    ///
+    /// This information corresponds to the `sin6_flowinfo` field in C's `netinet/in.h`,
+    /// as specified in [IETF RFC 2553, Section 3.3].
+    /// It combines information about the flow label and the traffic class as specified
+    /// in [IETF RFC 2460], respectively [Section 6] and [Section 7].
+    ///
+    /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
+    /// [IETF RFC 2460]: https://tools.ietf.org/html/rfc2460
+    /// [Section 6]: https://tools.ietf.org/html/rfc2460#section-6
+    /// [Section 7]: https://tools.ietf.org/html/rfc2460#section-7
     ///
     /// # Examples
     ///
@@ -381,7 +469,11 @@ impl SocketAddrV6 {
         self.inner.sin6_flowinfo
     }
 
-    /// Change the flow information associated with this socket address.
+    /// Changes the flow information associated with this socket address.
+    ///
+    /// See the [`flowinfo`] method's documentation for more details.
+    ///
+    /// [`flowinfo`]: #method.flowinfo
     ///
     /// # Examples
     ///
@@ -397,8 +489,12 @@ impl SocketAddrV6 {
         self.inner.sin6_flowinfo = new_flowinfo;
     }
 
-    /// Returns the scope ID associated with this address,
-    /// corresponding to the `sin6_scope_id` field in C.
+    /// Returns the scope ID associated with this address.
+    ///
+    /// This information corresponds to the `sin6_scope_id` field in C's `netinet/in.h`,
+    /// as specified in [IETF RFC 2553, Section 3.3].
+    ///
+    /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
     ///
     /// # Examples
     ///
@@ -414,6 +510,10 @@ impl SocketAddrV6 {
     }
 
     /// Change the scope ID associated with this socket address.
+    ///
+    /// See the [`scope_id`] method's documentation for more details.
+    ///
+    /// [`scope_id`]: #method.scope_id
     ///
     /// # Examples
     ///
@@ -559,37 +659,51 @@ impl hash::Hash for SocketAddrV6 {
 }
 
 /// A trait for objects which can be converted or resolved to one or more
-/// `SocketAddr` values.
+/// [`SocketAddr`] values.
 ///
 /// This trait is used for generic address resolution when constructing network
 /// objects.  By default it is implemented for the following types:
 ///
-///  * `SocketAddr`, `SocketAddrV4`, `SocketAddrV6` - `to_socket_addrs` is
-///    identity function.
+///  * [`SocketAddr`]: [`to_socket_addrs`] is the identity function.
 ///
-///  * `(IpvNAddr, u16)` - `to_socket_addrs` constructs `SocketAddr` trivially.
+///  * [`SocketAddrV4`], [`SocketAddrV6`], `(`[`IpAddr`]`, `[`u16`]`)`,
+///    `(`[`Ipv4Addr`]`, `[`u16`]`)`, `(`[`Ipv6Addr`]`, `[`u16`]`)`:
+///    [`to_socket_addrs`] constructs a [`SocketAddr`] trivially.
 ///
-///  * `(&str, u16)` - the string should be either a string representation of an
-///    IP address expected by `FromStr` implementation for `IpvNAddr` or a host
+///  * `(`[`&str`]`, `[`u16`]`)`: the string should be either a string representation
+///    of an [`IpAddr`] address as expected by [`FromStr`] implementation or a host
 ///    name.
 ///
-///  * `&str` - the string should be either a string representation of a
-///    `SocketAddr` as expected by its `FromStr` implementation or a string like
-///    `<host_name>:<port>` pair where `<port>` is a `u16` value.
+///  * [`&str`]: the string should be either a string representation of a
+///    [`SocketAddr`] as expected by its [`FromStr`] implementation or a string like
+///    `<host_name>:<port>` pair where `<port>` is a [`u16`] value.
 ///
-/// This trait allows constructing network objects like `TcpStream` or
-/// `UdpSocket` easily with values of various types for the bind/connection
+/// This trait allows constructing network objects like [`TcpStream`] or
+/// [`UdpSocket`] easily with values of various types for the bind/connection
 /// address. It is needed because sometimes one type is more appropriate than
 /// the other: for simple uses a string like `"localhost:12345"` is much nicer
-/// than manual construction of the corresponding `SocketAddr`, but sometimes
-/// `SocketAddr` value is *the* main source of the address, and converting it to
+/// than manual construction of the corresponding [`SocketAddr`], but sometimes
+/// [`SocketAddr`] value is *the* main source of the address, and converting it to
 /// some other type (e.g. a string) just for it to be converted back to
-/// `SocketAddr` in constructor methods is pointless.
+/// [`SocketAddr`] in constructor methods is pointless.
 ///
 /// Addresses returned by the operating system that are not IP addresses are
 /// silently ignored.
 ///
-/// Some examples:
+/// [`FromStr`]: ../../std/str/trait.FromStr.html
+/// [`IpAddr`]: ../../std/net/enum.IpAddr.html
+/// [`Ipv4Addr`]: ../../std/net/struct.Ipv4Addr.html
+/// [`Ipv6Addr`]: ../../std/net/struct.Ipv6Addr.html
+/// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+/// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
+/// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
+/// [`&str`]: ../../std/primitive.str.html
+/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
+/// [`to_socket_addrs`]: #tymethod.to_socket_addrs
+/// [`UdpSocket`]: ../../std/net/struct.UdpSocket.html
+/// [`u16`]: ../../std/primitive.u16.html
+///
+/// # Examples
 ///
 /// ```no_run
 /// use std::net::{SocketAddrV4, TcpStream, UdpSocket, TcpListener, Ipv4Addr};
@@ -629,10 +743,6 @@ pub trait ToSocketAddrs {
     ///
     /// Note that this function may block the current thread while resolution is
     /// performed.
-    ///
-    /// # Errors
-    ///
-    /// Any errors encountered during resolution will be returned as an `Err`.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_socket_addrs(&self) -> io::Result<Self::Iter>;
 }

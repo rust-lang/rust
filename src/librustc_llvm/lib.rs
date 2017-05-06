@@ -29,6 +29,7 @@
 #![feature(link_args)]
 #![feature(staged_api)]
 #![feature(rustc_private)]
+#![feature(static_nobundle)]
 
 extern crate libc;
 #[macro_use]
@@ -381,6 +382,12 @@ pub fn initialize_available_targets() {
                  LLVMInitializeNVPTXTarget,
                  LLVMInitializeNVPTXTargetMC,
                  LLVMInitializeNVPTXAsmPrinter);
+    init_target!(llvm_component = "hexagon",
+                 LLVMInitializeHexagonTargetInfo,
+                 LLVMInitializeHexagonTarget,
+                 LLVMInitializeHexagonTargetMC,
+                 LLVMInitializeHexagonAsmPrinter,
+                 LLVMInitializeHexagonAsmParser);
 }
 
 pub fn last_error() -> Option<String> {

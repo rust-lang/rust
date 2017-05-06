@@ -215,8 +215,7 @@ const DISPLACEMENT_THRESHOLD: usize = 128;
 // 1. Alfredo Viola (2005). Distributional analysis of Robin Hood linear probing
 //    hashing with buckets.
 
-/// A hash map implementation which uses linear probing with Robin Hood bucket
-/// stealing.
+/// A hash map implemented with linear probing and Robin Hood bucket stealing.
 ///
 /// By default, `HashMap` uses a hashing algorithm selected to provide
 /// resistance against HashDoS attacks. The algorithm is randomly seeded, and a
@@ -235,9 +234,8 @@ const DISPLACEMENT_THRESHOLD: usize = 128;
 /// attacks such as HashDoS.
 ///
 /// The hashing algorithm can be replaced on a per-`HashMap` basis using the
-/// [`HashMap::default`], [`HashMap::with_hasher`], and
-/// [`HashMap::with_capacity_and_hasher`] methods. Many alternative algorithms
-/// are available on crates.io, such as the [`fnv`] crate.
+/// [`default`], [`with_hasher`], and [`with_capacity_and_hasher`] methods. Many
+/// alternative algorithms are available on crates.io, such as the [`fnv`] crate.
 ///
 /// It is required that the keys implement the [`Eq`] and [`Hash`] traits, although
 /// this can frequently be achieved by using `#[derive(PartialEq, Eq, Hash)]`.
@@ -339,9 +337,9 @@ const DISPLACEMENT_THRESHOLD: usize = 128;
 /// [`PartialEq`]: ../../std/cmp/trait.PartialEq.html
 /// [`RefCell`]: ../../std/cell/struct.RefCell.html
 /// [`Cell`]: ../../std/cell/struct.Cell.html
-/// [`HashMap::default`]: #method.default
-/// [`HashMap::with_hasher`]: #method.with_hasher
-/// [`HashMap::with_capacity_and_hasher`]: #method.with_capacity_and_hasher
+/// [`default`]: #method.default
+/// [`with_hasher`]: #method.with_hasher
+/// [`with_capacity_and_hasher`]: #method.with_capacity_and_hasher
 /// [`fnv`]: https://crates.io/crates/fnv
 ///
 /// ```
@@ -373,7 +371,7 @@ const DISPLACEMENT_THRESHOLD: usize = 128;
 /// }
 /// ```
 ///
-/// A HashMap with fixed list of elements can be initialized from an array:
+/// A `HashMap` with fixed list of elements can be initialized from an array:
 ///
 /// ```
 /// use std::collections::HashMap;
@@ -472,7 +470,7 @@ fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>)
     }
 
     // Now we've done all our shifting. Return the value we grabbed earlier.
-    (retkey, retval, gap.into_bucket().into_table())
+    (retkey, retval, gap.into_table())
 }
 
 /// Perform robin hood bucket stealing at the given `bucket`. You must
@@ -485,14 +483,14 @@ fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
                                 mut key: K,
                                 mut val: V)
                                 -> FullBucketMut<'a, K, V> {
-    let start_index = bucket.index();
     let size = bucket.table().size();
-    // Save the *starting point*.
-    let mut bucket = bucket.stash();
+    let raw_capacity = bucket.table().capacity();
     // There can be at most `size - dib` buckets to displace, because
     // in the worst case, there are `size` elements and we already are
     // `displacement` buckets away from the initial one.
-    let idx_end = start_index + size - bucket.displacement();
+    let idx_end = (bucket.index() + size - bucket.displacement()) % raw_capacity;
+    // Save the *starting point*.
+    let mut bucket = bucket.stash();
 
     loop {
         let (old_hash, old_key, old_val) = bucket.replace(hash, key, val);
@@ -568,11 +566,8 @@ impl<K, V, S> HashMap<K, V, S>
     // The caller should ensure that invariants by Robin Hood Hashing hold
     // and that there's space in the underlying table.
     fn insert_hashed_ordered(&mut self, hash: SafeHash, k: K, v: V) {
-        let raw_cap = self.raw_capacity();
         let mut buckets = Bucket::new(&mut self.table, hash);
-        // note that buckets.index() keeps increasing
-        // even if the pointer wraps back to the first bucket.
-        let limit_bucket = buckets.index() + raw_cap;
+        let start_index = buckets.index();
 
         loop {
             // We don't need to compare hashes for value swap.
@@ -585,7 +580,7 @@ impl<K, V, S> HashMap<K, V, S>
                 Full(b) => b.into_bucket(),
             };
             buckets.next();
-            debug_assert!(buckets.index() < limit_bucket);
+            debug_assert!(buckets.index() != start_index);
         }
     }
 }
@@ -657,12 +652,13 @@ impl<K, V, S> HashMap<K, V, S>
         }
     }
 
-    /// Creates an empty `HashMap` with the specified capacity, using `hasher`
+    /// Creates an empty `HashMap` with the specified capacity, using `hash_builder`
     /// to hash the keys.
     ///
     /// The hash map will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash map will not allocate.
-    /// Warning: `hasher` is normally randomly generated, and
+    ///
+    /// Warning: `hash_builder` is normally randomly generated, and
     /// is designed to allow HashMaps to be resistant to attacks that
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
@@ -689,7 +685,9 @@ impl<K, V, S> HashMap<K, V, S>
         }
     }
 
-    /// Returns a reference to the map's hasher.
+    /// Returns a reference to the map's [`BuildHasher`].
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[stable(feature = "hashmap_public_hasher", since = "1.9.0")]
     pub fn hasher(&self) -> &S {
         &self.hash_builder
@@ -852,7 +850,7 @@ impl<K, V, S> HashMap<K, V, S>
     }
 
     /// An iterator visiting all keys in arbitrary order.
-    /// Iterator element type is `&'a K`.
+    /// The iterator element type is `&'a K`.
     ///
     /// # Examples
     ///
@@ -874,7 +872,7 @@ impl<K, V, S> HashMap<K, V, S>
     }
 
     /// An iterator visiting all values in arbitrary order.
-    /// Iterator element type is `&'a V`.
+    /// The iterator element type is `&'a V`.
     ///
     /// # Examples
     ///
@@ -896,7 +894,7 @@ impl<K, V, S> HashMap<K, V, S>
     }
 
     /// An iterator visiting all values mutably in arbitrary order.
-    /// Iterator element type is `&'a mut V`.
+    /// The iterator element type is `&'a mut V`.
     ///
     /// # Examples
     ///
@@ -923,7 +921,7 @@ impl<K, V, S> HashMap<K, V, S>
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order.
-    /// Iterator element type is `(&'a K, &'a V)`.
+    /// The iterator element type is `(&'a K, &'a V)`.
     ///
     /// # Examples
     ///
@@ -946,7 +944,7 @@ impl<K, V, S> HashMap<K, V, S>
 
     /// An iterator visiting all key-value pairs in arbitrary order,
     /// with mutable references to the values.
-    /// Iterator element type is `(&'a K, &'a mut V)`.
+    /// The iterator element type is `(&'a K, &'a mut V)`.
     ///
     /// # Examples
     ///
@@ -1244,24 +1242,25 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn retain<F>(&mut self, mut f: F)
         where F: FnMut(&K, &mut V) -> bool
     {
-        if self.table.capacity() == 0 || self.table.size() == 0 {
+        if self.table.size() == 0 {
             return;
         }
+        let mut elems_left = self.table.size();
         let mut bucket = Bucket::head_bucket(&mut self.table);
         bucket.prev();
-        let tail = bucket.index();
-        loop {
+        let start_index = bucket.index();
+        while elems_left != 0 {
             bucket = match bucket.peek() {
                 Full(mut full) => {
+                    elems_left -= 1;
                     let should_remove = {
                         let (k, v) = full.read_mut();
                         !f(k, v)
                     };
                     if should_remove {
-                        let prev_idx = full.index();
                         let prev_raw = full.raw();
                         let (_, _, t) = pop_internal(full);
-                        Bucket::new_from(prev_raw, prev_idx, t)
+                        Bucket::new_from(prev_raw, t)
                     } else {
                         full.into_bucket()
                     }
@@ -1271,9 +1270,7 @@ impl<K, V, S> HashMap<K, V, S>
                 }
             };
             bucket.prev();  // reverse iteration
-            if bucket.index() == tail {
-                break;
-            }
+            debug_assert!(elems_left == 0 || bucket.index() != start_index);
         }
     }
 }
@@ -1337,7 +1334,13 @@ impl<'a, K, Q: ?Sized, V, S> Index<&'a Q> for HashMap<K, V, S>
     }
 }
 
-/// HashMap iterator.
+/// An iterator over the entries of a `HashMap`.
+///
+/// This `struct` is created by the [`iter`] method on [`HashMap`]. See its
+/// documentation for more.
+///
+/// [`iter`]: struct.HashMap.html#method.iter
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a, V: 'a> {
     inner: table::Iter<'a, K, V>,
@@ -1360,19 +1363,37 @@ impl<'a, K: Debug, V: Debug> fmt::Debug for Iter<'a, K, V> {
     }
 }
 
-/// HashMap mutable values iterator.
+/// A mutable iterator over the entries of a `HashMap`.
+///
+/// This `struct` is created by the [`iter_mut`] method on [`HashMap`]. See its
+/// documentation for more.
+///
+/// [`iter_mut`]: struct.HashMap.html#method.iter_mut
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, K: 'a, V: 'a> {
     inner: table::IterMut<'a, K, V>,
 }
 
-/// HashMap move iterator.
+/// An owning iterator over the entries of a `HashMap`.
+///
+/// This `struct` is created by the [`into_iter`] method on [`HashMap`][`HashMap`]
+/// (provided by the `IntoIterator` trait). See its documentation for more.
+///
+/// [`into_iter`]: struct.HashMap.html#method.into_iter
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K, V> {
     pub(super) inner: table::IntoIter<K, V>,
 }
 
-/// HashMap keys iterator.
+/// An iterator over the keys of a `HashMap`.
+///
+/// This `struct` is created by the [`keys`] method on [`HashMap`]. See its
+/// documentation for more.
+///
+/// [`keys`]: struct.HashMap.html#method.keys
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
@@ -1395,7 +1416,13 @@ impl<'a, K: Debug, V: Debug> fmt::Debug for Keys<'a, K, V> {
     }
 }
 
-/// HashMap values iterator.
+/// An iterator over the values of a `HashMap`.
+///
+/// This `struct` is created by the [`values`] method on [`HashMap`]. See its
+/// documentation for more.
+///
+/// [`values`]: struct.HashMap.html#method.values
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
@@ -1418,13 +1445,25 @@ impl<'a, K: Debug, V: Debug> fmt::Debug for Values<'a, K, V> {
     }
 }
 
-/// HashMap drain iterator.
+/// A draining iterator over the entries of a `HashMap`.
+///
+/// This `struct` is created by the [`drain`] method on [`HashMap`]. See its
+/// documentation for more.
+///
+/// [`drain`]: struct.HashMap.html#method.drain
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, K: 'a, V: 'a> {
     pub(super) inner: table::Drain<'a, K, V>,
 }
 
-/// Mutable HashMap values iterator.
+/// A mutable iterator over the values of a `HashMap`.
+///
+/// This `struct` is created by the [`values_mut`] method on [`HashMap`]. See its
+/// documentation for more.
+///
+/// [`values_mut`]: struct.HashMap.html#method.values_mut
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
@@ -1471,19 +1510,20 @@ impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
     }
 }
 
-/// A view into a single location in a map, which may be vacant or occupied.
-/// This enum is constructed from the [`entry`] method on [`HashMap`].
+/// A view into a single entry in a map, which may either be vacant or occupied.
+///
+/// This `enum` is constructed from the [`entry`] method on [`HashMap`].
 ///
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry`]: struct.HashMap.html#method.entry
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Entry<'a, K: 'a, V: 'a> {
-    /// An occupied Entry.
+    /// An occupied entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     Occupied(#[stable(feature = "rust1", since = "1.0.0")]
              OccupiedEntry<'a, K, V>),
 
-    /// A vacant Entry.
+    /// A vacant entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     Vacant(#[stable(feature = "rust1", since = "1.0.0")]
            VacantEntry<'a, K, V>),
@@ -1507,7 +1547,7 @@ impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for Entry<'a, K, V> {
     }
 }
 
-/// A view into a single occupied location in a HashMap.
+/// A view into an occupied entry in a `HashMap`.
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
@@ -1527,7 +1567,7 @@ impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for OccupiedEntry<'a, K, V> {
     }
 }
 
-/// A view into a single empty location in a HashMap.
+/// A view into a vacant entry in a `HashMap`.
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
@@ -1977,13 +2017,6 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
         self.elem.read().0
     }
 
-    /// Deprecated, renamed to `remove_entry`
-    #[unstable(feature = "map_entry_recover_keys", issue = "34285")]
-    #[rustc_deprecated(since = "1.12.0", reason = "renamed to `remove_entry`")]
-    pub fn remove_pair(self) -> (K, V) {
-        self.remove_entry()
-    }
-
     /// Take the ownership of the key and value from the map.
     ///
     /// # Examples
@@ -2370,10 +2403,9 @@ impl DefaultHasher {
 
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
 impl Default for DefaultHasher {
-    /// Creates a new `DefaultHasher` using [`DefaultHasher::new`]. See
-    /// [`DefaultHasher::new`] documentation for more information.
+    /// Creates a new `DefaultHasher` using [`new`]. See its documentation for more.
     ///
-    /// [`DefaultHasher::new`]: #method.new
+    /// [`new`]: #method.new
     fn default() -> DefaultHasher {
         DefaultHasher::new()
     }

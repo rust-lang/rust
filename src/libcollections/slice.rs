@@ -115,6 +115,8 @@ pub use core::slice::{Iter, IterMut};
 pub use core::slice::{SplitMut, ChunksMut, Split};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
+#[unstable(feature = "slice_rsplit", issue = "41020")]
+pub use core::slice::{RSplit, RSplitMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
 #[unstable(feature = "slice_get_slice", issue = "35729")]
@@ -362,7 +364,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn get<I>(&self, index: I) -> Option<&I::Output>
-        where I: SliceIndex<T>
+        where I: SliceIndex<Self>
     {
         core_slice::SliceExt::get(self, index)
     }
@@ -385,7 +387,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
-        where I: SliceIndex<T>
+        where I: SliceIndex<Self>
     {
         core_slice::SliceExt::get_mut(self, index)
     }
@@ -405,7 +407,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
-        where I: SliceIndex<T>
+        where I: SliceIndex<Self>
     {
         core_slice::SliceExt::get_unchecked(self, index)
     }
@@ -427,7 +429,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
-        where I: SliceIndex<T>
+        where I: SliceIndex<Self>
     {
         core_slice::SliceExt::get_unchecked_mut(self, index)
     }
@@ -777,6 +779,72 @@ impl<T> [T] {
         where F: FnMut(&T) -> bool
     {
         core_slice::SliceExt::split_mut(self, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred`, starting at the end of the slice and working backwards.
+    /// The matched element is not contained in the subslices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_rsplit)]
+    ///
+    /// let slice = [11, 22, 33, 0, 44, 55];
+    /// let mut iter = slice.rsplit(|num| *num == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[44, 55]);
+    /// assert_eq!(iter.next().unwrap(), &[11, 22, 33]);
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// As with `split()`, if the first or last element is matched, an empty
+    /// slice will be the first (or last) item returned by the iterator.
+    ///
+    /// ```
+    /// #![feature(slice_rsplit)]
+    ///
+    /// let v = &[0, 1, 1, 2, 3, 5, 8];
+    /// let mut it = v.rsplit(|n| *n % 2 == 0);
+    /// assert_eq!(it.next().unwrap(), &[]);
+    /// assert_eq!(it.next().unwrap(), &[3, 5]);
+    /// assert_eq!(it.next().unwrap(), &[1, 1]);
+    /// assert_eq!(it.next().unwrap(), &[]);
+    /// assert_eq!(it.next(), None);
+    /// ```
+    #[unstable(feature = "slice_rsplit", issue = "41020")]
+    #[inline]
+    pub fn rsplit<F>(&self, pred: F) -> RSplit<T, F>
+        where F: FnMut(&T) -> bool
+    {
+        core_slice::SliceExt::rsplit(self, pred)
+    }
+
+    /// Returns an iterator over mutable subslices separated by elements that
+    /// match `pred`, starting at the end of the slice and working
+    /// backwards. The matched element is not contained in the subslices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_rsplit)]
+    ///
+    /// let mut v = [100, 400, 300, 200, 600, 500];
+    ///
+    /// let mut count = 0;
+    /// for group in v.rsplit_mut(|num| *num % 3 == 0) {
+    ///     count += 1;
+    ///     group[0] = count;
+    /// }
+    /// assert_eq!(v, [3, 400, 300, 2, 600, 1]);
+    /// ```
+    ///
+    #[unstable(feature = "slice_rsplit", issue = "41020")]
+    #[inline]
+    pub fn rsplit_mut<F>(&mut self, pred: F) -> RSplitMut<T, F>
+        where F: FnMut(&T) -> bool
+    {
+        core_slice::SliceExt::rsplit_mut(self, pred)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -1451,13 +1519,22 @@ impl<T: Clone> ToOwned for [T] {
         self.to_vec()
     }
 
-    // HACK(japaric): with cfg(test) the inherent `[T]::to_vec`, which is required for this method
-    // definition, is not available. Since we don't require this method for testing purposes, I'll
-    // just stub it
-    // NB see the slice::hack module in slice.rs for more information
     #[cfg(test)]
     fn to_owned(&self) -> Vec<T> {
-        panic!("not available with cfg(test)")
+        hack::to_vec(self)
+    }
+
+    fn clone_into(&self, target: &mut Vec<T>) {
+        // drop anything in target that will not be overwritten
+        target.truncate(self.len());
+        let len = target.len();
+
+        // reuse the contained values' allocations/resources.
+        target.clone_from_slice(&self[..len]);
+
+        // target.len <= self.len due to the truncate above, so the
+        // slice here is always in-bounds.
+        target.extend_from_slice(&self[len..]);
     }
 }
 
@@ -1490,7 +1567,7 @@ fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
             //    performance than with the 2nd method.
             //
             // All methods were benchmarked, and the 3rd showed best results. So we chose that one.
-            let mut tmp = NoDrop { value: ptr::read(&v[0]) };
+            let mut tmp = mem::ManuallyDrop::new(ptr::read(&v[0]));
 
             // Intermediate state of the insertion process is always tracked by `hole`, which
             // serves two purposes:
@@ -1503,13 +1580,13 @@ fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
             // fill the hole in `v` with `tmp`, thus ensuring that `v` still holds every object it
             // initially held exactly once.
             let mut hole = InsertionHole {
-                src: &mut tmp.value,
+                src: &mut *tmp,
                 dest: &mut v[1],
             };
             ptr::copy_nonoverlapping(&v[1], &mut v[0], 1);
 
             for i in 2..v.len() {
-                if !is_less(&v[i], &tmp.value) {
+                if !is_less(&v[i], &*tmp) {
                     break;
                 }
                 ptr::copy_nonoverlapping(&v[i], &mut v[i - 1], 1);
@@ -1517,12 +1594,6 @@ fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
             }
             // `hole` gets dropped and thus copies `tmp` into the remaining hole in `v`.
         }
-    }
-
-    // Holds a value, but never drops it.
-    #[allow(unions_with_drop_fields)]
-    union NoDrop<T> {
-        value: T
     }
 
     // When dropped, copies from `src` into `dest`.

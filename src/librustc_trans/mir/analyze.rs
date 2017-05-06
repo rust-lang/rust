@@ -19,7 +19,6 @@ use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir::traversal;
 use common;
 use super::MirContext;
-use super::rvalue;
 
 pub fn lvalue_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
     let mir = mircx.mir;
@@ -93,7 +92,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 
         if let mir::Lvalue::Local(index) = *lvalue {
             self.mark_assigned(index);
-            if !rvalue::rvalue_creates_operand(rvalue) {
+            if !self.cx.rvalue_creates_operand(rvalue) {
                 self.mark_as_lvalue(index);
             }
         } else {

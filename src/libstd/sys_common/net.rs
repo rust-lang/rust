@@ -339,7 +339,7 @@ impl TcpListener {
 
         // Bind our new socket
         let (addrp, len) = addr.into_inner();
-        cvt(unsafe { c::bind(*sock.as_inner(), addrp, len) })?;
+        cvt(unsafe { c::bind(*sock.as_inner(), addrp, len as _) })?;
 
         // Start listening
         cvt(unsafe { c::listen(*sock.as_inner(), 128) })?;
@@ -430,7 +430,7 @@ impl UdpSocket {
 
         let sock = Socket::new(addr, c::SOCK_DGRAM)?;
         let (addrp, len) = addr.into_inner();
-        cvt(unsafe { c::bind(*sock.as_inner(), addrp, len) })?;
+        cvt(unsafe { c::bind(*sock.as_inner(), addrp, len as _) })?;
         Ok(UdpSocket { inner: sock })
     }
 

@@ -277,8 +277,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
         let mut fields = fields;
         fields.retain(|&(ref lvalue, _)| {
-            self.tcx().type_needs_drop_given_env(
-                self.lvalue_ty(lvalue), self.elaborator.param_env())
+            self.lvalue_ty(lvalue).needs_drop(self.tcx(), self.elaborator.param_env())
         });
 
         debug!("drop_ladder - fields needing drop: {:?}", fields);
@@ -507,8 +506,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let ty = self.lvalue_ty(self.lvalue);
         let substs = tcx.mk_substs(iter::once(Kind::from(ty)));
 
-        let re_erased = tcx.mk_region(ty::ReErased);
-        let ref_ty = tcx.mk_ref(re_erased, ty::TypeAndMut {
+        let ref_ty = tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
             ty: ty,
             mutbl: hir::Mutability::MutMutable
         });
@@ -520,7 +518,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 source_info: self.source_info,
                 kind: StatementKind::Assign(
                     Lvalue::Local(ref_lvalue),
-                    Rvalue::Ref(re_erased, BorrowKind::Mut, self.lvalue.clone())
+                    Rvalue::Ref(tcx.types.re_erased, BorrowKind::Mut, self.lvalue.clone())
                 )
             }],
             terminator: Some(Terminator {
@@ -686,7 +684,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     }
 
     fn new_temp(&mut self, ty: Ty<'tcx>) -> Local {
-        self.elaborator.patch().new_temp(ty)
+        self.elaborator.patch().new_temp(ty, self.source_info.span)
     }
 
     fn terminator_loc(&mut self, bb: BasicBlock) -> Location {

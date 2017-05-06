@@ -73,7 +73,9 @@ pub struct PoisonError<T> {
 }
 
 /// An enumeration of possible errors which can occur while calling the
-/// `try_lock` method.
+/// [`try_lock`] method.
+///
+/// [`try_lock`]: struct.Mutex.html#method.try_lock
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum TryLockError<T> {
     /// The lock could not be acquired because another thread failed while holding

@@ -185,8 +185,8 @@ pub struct Config {
     // Print one character per test instead of one line
     pub quiet: bool,
 
-    // where to find the qemu test client process, if we're using it
-    pub qemu_test_client: Option<PathBuf>,
+    // where to find the remote test client process, if we're using it
+    pub remote_test_client: Option<PathBuf>,
 
     // Configuration for various run-make tests frobbing things like C compilers
     // or querying about various LLVM component information.

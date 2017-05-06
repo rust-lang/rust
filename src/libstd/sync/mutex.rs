@@ -10,7 +10,6 @@
 
 use cell::UnsafeCell;
 use fmt;
-use marker;
 use mem;
 use ops::{Deref, DerefMut};
 use ptr;
@@ -30,7 +29,7 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 ///
 /// The mutexes in this module implement a strategy called "poisoning" where a
 /// mutex is considered poisoned whenever a thread panics while holding the
-/// lock. Once a mutex is poisoned, all other threads are unable to access the
+/// mutex. Once a mutex is poisoned, all other threads are unable to access the
 /// data by default as it is likely tainted (some invariant is not being
 /// upheld).
 ///
@@ -61,7 +60,7 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 /// let data = Arc::new(Mutex::new(0));
 ///
 /// let (tx, rx) = channel();
-/// for _ in 0..10 {
+/// for _ in 0..N {
 ///     let (data, tx) = (data.clone(), tx.clone());
 ///     thread::spawn(move || {
 ///         // The shared state can only be accessed once the lock is held.
@@ -115,7 +114,7 @@ pub struct Mutex<T: ?Sized> {
     // Note that this mutex is in a *box*, not inlined into the struct itself.
     // Once a native mutex has been used once, its address can never change (it
     // can't be moved). This mutex type can be safely moved at any time, so to
-    // ensure that the native mutex is used correctly we box the inner lock to
+    // ensure that the native mutex is used correctly we box the inner mutex to
     // give it a constant address.
     inner: Box<sys::Mutex>,
     poison: poison::Flag,
@@ -153,7 +152,9 @@ pub struct MutexGuard<'a, T: ?Sized + 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> !marker::Send for MutexGuard<'a, T> {}
+impl<'a, T: ?Sized> !Send for MutexGuard<'a, T> { }
+#[stable(feature = "mutexguard", since = "1.18.0")]
+unsafe impl<'a, T: ?Sized + Sync> Sync for MutexGuard<'a, T> { }
 
 impl<T> Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
@@ -183,7 +184,7 @@ impl<T: ?Sized> Mutex<T> {
     /// Acquires a mutex, blocking the current thread until it is able to do so.
     ///
     /// This function will block the local thread until it is available to acquire
-    /// the mutex. Upon returning, the thread is the only thread with the mutex
+    /// the mutex. Upon returning, the thread is the only thread with the lock
     /// held. An RAII guard is returned to allow scoped unlock of the lock. When
     /// the guard goes out of scope, the mutex will be unlocked.
     ///
@@ -267,9 +268,9 @@ impl<T: ?Sized> Mutex<T> {
         }
     }
 
-    /// Determines whether the lock is poisoned.
+    /// Determines whether the mutex is poisoned.
     ///
-    /// If another thread is active, the lock can still become poisoned at any
+    /// If another thread is active, the mutex can still become poisoned at any
     /// time. You should not trust a `false` value for program correctness
     /// without additional synchronization.
     ///
@@ -312,7 +313,7 @@ impl<T: ?Sized> Mutex<T> {
     #[stable(feature = "mutex_into_inner", since = "1.6.0")]
     pub fn into_inner(self) -> LockResult<T> where T: Sized {
         // We know statically that there are no outstanding references to
-        // `self` so there's no need to lock the inner lock.
+        // `self` so there's no need to lock the inner mutex.
         //
         // To get the inner value, we'd like to call `data.into_inner()`,
         // but because `Mutex` impl-s `Drop`, we can't move out of it, so
@@ -353,7 +354,7 @@ impl<T: ?Sized> Mutex<T> {
     #[stable(feature = "mutex_get_mut", since = "1.6.0")]
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         // We know statically that there are no other references to `self`, so
-        // there's no need to lock the inner lock.
+        // there's no need to lock the inner mutex.
         let data = unsafe { &mut *self.data.get() };
         poison::map_result(self.poison.borrow(), |_| data )
     }
@@ -458,9 +459,6 @@ mod tests {
 
     #[derive(Eq, PartialEq, Debug)]
     struct NonCopy(i32);
-
-    unsafe impl<T: Send> Send for Packet<T> {}
-    unsafe impl<T> Sync for Packet<T> {}
 
     #[test]
     fn smoke() {

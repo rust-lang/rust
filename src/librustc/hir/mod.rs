@@ -33,11 +33,12 @@ use hir::def::Def;
 use hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use util::nodemap::{NodeMap, FxHashSet};
 
-use syntax_pos::{Span, ExpnId, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 use syntax::codemap::{self, Spanned};
 use syntax::abi::Abi;
 use syntax::ast::{Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
+use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::TokenStream;
@@ -158,6 +159,10 @@ impl fmt::Debug for Lifetime {
 impl Lifetime {
     pub fn is_elided(&self) -> bool {
         self.name == keywords::Invalid.name()
+    }
+
+    pub fn is_static(&self) -> bool {
+        self.name == keywords::StaticLifetime.name()
     }
 }
 
@@ -544,9 +549,11 @@ pub struct Block {
     /// Distinguishes between `unsafe { ... }` and `{ ... }`
     pub rules: BlockCheckMode,
     pub span: Span,
-    /// The id of the expression that `break` breaks to if the block can be broken out of.
-    /// Currently only `Some(_)` for `catch {}` blocks
-    pub break_to_expr_id: Option<NodeId>,
+    /// If true, then there may exist `break 'a` values that aim to
+    /// break out of this block early. As of this writing, this is not
+    /// currently permitted in Rust itself, but it is generated as
+    /// part of `catch` statements.
+    pub targeted_by_break: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
@@ -988,8 +995,8 @@ pub enum Expr_ {
     ExprType(P<Expr>, P<Ty>),
     /// An `if` block, with an optional else block
     ///
-    /// `if expr { block } else { expr }`
-    ExprIf(P<Expr>, P<Block>, Option<P<Expr>>),
+    /// `if expr { expr } else { expr }`
+    ExprIf(P<Expr>, P<Expr>, Option<P<Expr>>),
     /// A while loop, with an optional label
     ///
     /// `'label: while expr { block }`
@@ -1344,6 +1351,8 @@ pub enum Ty_ {
     /// TyInfer means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     TyInfer,
+    /// Placeholder for a type that has failed to be defined.
+    TyErr,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1363,7 +1372,7 @@ pub struct InlineAsm {
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
-    pub expn_id: ExpnId,
+    pub ctxt: SyntaxContext,
 }
 
 /// represents an argument in a function header
@@ -1379,6 +1388,9 @@ pub struct FnDecl {
     pub inputs: HirVec<P<Ty>>,
     pub output: FunctionRetTy,
     pub variadic: bool,
+    /// True if this function has an `self`, `&self` or `&mut self` receiver
+    /// (but not a `self: Xxx` one).
+    pub has_implicit_self: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1481,6 +1493,12 @@ pub struct Mod {
 pub struct ForeignMod {
     pub abi: Abi,
     pub items: HirVec<ForeignItem>,
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct GlobalAsm {
+    pub asm: Symbol,
+    pub ctxt: SyntaxContext,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1674,6 +1692,8 @@ pub enum Item_ {
     ItemMod(Mod),
     /// An external module
     ItemForeignMod(ForeignMod),
+    /// Module-level inline assembly (from global_asm!)
+    ItemGlobalAsm(P<GlobalAsm>),
     /// A type alias, e.g. `type Foo = Bar<u8>`
     ItemTy(P<Ty>, Generics),
     /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
@@ -1692,6 +1712,7 @@ pub enum Item_ {
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,
              ImplPolarity,
+             Defaultness,
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
@@ -1708,6 +1729,7 @@ impl Item_ {
             ItemFn(..) => "function",
             ItemMod(..) => "module",
             ItemForeignMod(..) => "foreign module",
+            ItemGlobalAsm(..) => "global asm",
             ItemTy(..) => "type alias",
             ItemEnum(..) => "enum",
             ItemStruct(..) => "struct",

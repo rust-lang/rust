@@ -11,7 +11,6 @@ use self::Context::*;
 
 use rustc::session::Session;
 
-use rustc::dep_graph::DepNode;
 use rustc::hir::map::Map;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
@@ -50,7 +49,6 @@ struct CheckLoopVisitor<'a, 'hir: 'a> {
 }
 
 pub fn check_crate(sess: &Session, map: &Map) {
-    let _task = map.dep_graph.in_task(DepNode::CheckLoops);
     let krate = map.krate();
     krate.visit_all_item_likes(&mut CheckLoopVisitor {
         sess: sess,

@@ -146,7 +146,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             ty::TyBool => return,
             ty::TyAdt(def, _) => {
                 let attrs = cx.tcx.get_attrs(def.did);
-                check_must_use(cx, &attrs[..], s.span)
+                check_must_use(cx, &attrs, s.span)
             }
             _ => false,
         };

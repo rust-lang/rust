@@ -107,29 +107,25 @@ mod sip;
 
 /// A hashable type.
 ///
-/// The `H` type parameter is an abstract hash state that is used by the `Hash`
-/// to compute the hash.
+/// Types implementing `Hash` are able to be [`hash`]ed with an instance of
+/// [`Hasher`].
 ///
-/// If you are also implementing [`Eq`], there is an additional property that
-/// is important:
+/// ## Implementing `Hash`
 ///
-/// ```text
-/// k1 == k2 -> hash(k1) == hash(k2)
+/// You can derive `Hash` with `#[derive(Hash)]` if all fields implement `Hash`.
+/// The resulting hash will be the combination of the values from calling
+/// [`hash`] on each field.
+///
+/// ```
+/// #[derive(Hash)]
+/// struct Rustacean {
+///     name: String,
+///     country: String,
+/// }
 /// ```
 ///
-/// In other words, if two keys are equal, their hashes should also be equal.
-/// [`HashMap`] and [`HashSet`] both rely on this behavior.
-///
-/// ## Derivable
-///
-/// This trait can be used with `#[derive]` if all fields implement `Hash`.
-/// When `derive`d, the resulting hash will be the combination of the values
-/// from calling [`.hash`] on each field.
-///
-/// ## How can I implement `Hash`?
-///
-/// If you need more control over how a value is hashed, you need to implement
-/// the `Hash` trait:
+/// If you need more control over how a value is hashed, you can of course
+/// implement the `Hash` trait yourself:
 ///
 /// ```
 /// use std::hash::{Hash, Hasher};
@@ -148,17 +144,60 @@ mod sip;
 /// }
 /// ```
 ///
+/// ## `Hash` and `Eq`
+///
+/// When implementing both `Hash` and [`Eq`], it is important that the following
+/// property holds:
+///
+/// ```text
+/// k1 == k2 -> hash(k1) == hash(k2)
+/// ```
+///
+/// In other words, if two keys are equal, their hashes must also be equal.
+/// [`HashMap`] and [`HashSet`] both rely on this behavior.
+///
+/// Thankfully, you won't need to worry about upholding this property when
+/// deriving both [`Eq`] and `Hash` with `#[derive(PartialEq, Eq, Hash)]`.
+///
 /// [`Eq`]: ../../std/cmp/trait.Eq.html
+/// [`Hasher`]: trait.Hasher.html
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
 /// [`HashSet`]: ../../std/collections/struct.HashSet.html
-/// [`.hash`]: #tymethod.hash
+/// [`hash`]: #tymethod.hash
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Hash {
-    /// Feeds this value into the state given, updating the hasher as necessary.
+    /// Feeds this value into the given [`Hasher`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::hash_map::DefaultHasher;
+    /// use std::hash::{Hash, Hasher};
+    ///
+    /// let mut hasher = DefaultHasher::new();
+    /// 7920.hash(&mut hasher);
+    /// println!("Hash is {:x}!", hasher.finish());
+    /// ```
+    ///
+    /// [`Hasher`]: trait.Hasher.html
     #[stable(feature = "rust1", since = "1.0.0")]
     fn hash<H: Hasher>(&self, state: &mut H);
 
-    /// Feeds a slice of this type into the state provided.
+    /// Feeds a slice of this type into the given [`Hasher`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::hash_map::DefaultHasher;
+    /// use std::hash::{Hash, Hasher};
+    ///
+    /// let mut hasher = DefaultHasher::new();
+    /// let numbers = [6, 28, 496, 8128];
+    /// Hash::hash_slice(&numbers, &mut hasher);
+    /// println!("Hash is {:x}!", hasher.finish());
+    /// ```
+    ///
+    /// [`Hasher`]: trait.Hasher.html
     #[stable(feature = "hash_slice", since = "1.3.0")]
     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H)
         where Self: Sized
@@ -169,18 +208,73 @@ pub trait Hash {
     }
 }
 
-/// A trait which represents the ability to hash an arbitrary stream of bytes.
+/// A trait for hashing an arbitrary stream of bytes.
+///
+/// Instances of `Hasher` usually represent state that is changed while hashing
+/// data.
+///
+/// `Hasher` provides a fairly basic interface for retrieving the generated hash
+/// (with [`finish`]), and writing integers as well as slices of bytes into an
+/// instance (with [`write`] and [`write_u8`] etc.). Most of the time, `Hasher`
+/// instances are used in conjunction with the [`Hash`] trait.
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::hash_map::DefaultHasher;
+/// use std::hash::Hasher;
+///
+/// let mut hasher = DefaultHasher::new();
+///
+/// hasher.write_u32(1989);
+/// hasher.write_u8(11);
+/// hasher.write_u8(9);
+/// hasher.write(b"Huh?");
+///
+/// println!("Hash is {:x}!", hasher.finish());
+/// ```
+///
+/// [`Hash`]: trait.Hash.html
+/// [`finish`]: #tymethod.finish
+/// [`write`]: #tymethod.write
+/// [`write_u8`]: #method.write_u8
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Hasher {
     /// Completes a round of hashing, producing the output hash generated.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::hash_map::DefaultHasher;
+    /// use std::hash::Hasher;
+    ///
+    /// let mut hasher = DefaultHasher::new();
+    /// hasher.write(b"Cool!");
+    ///
+    /// println!("Hash is {:x}!", hasher.finish());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn finish(&self) -> u64;
 
     /// Writes some data into this `Hasher`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::hash_map::DefaultHasher;
+    /// use std::hash::Hasher;
+    ///
+    /// let mut hasher = DefaultHasher::new();
+    /// let data = [0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef];
+    ///
+    /// hasher.write(&data);
+    ///
+    /// println!("Hash is {:x}!", hasher.finish());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write(&mut self, bytes: &[u8]);
 
-    /// Write a single `u8` into this hasher.
+    /// Writes a single `u8` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_u8(&mut self, i: u8) {
@@ -258,12 +352,35 @@ pub trait Hasher {
     }
 }
 
-/// A `BuildHasher` is typically used as a factory for instances of `Hasher`
-/// which a `HashMap` can then use to hash keys independently.
+/// A trait for creating instances of [`Hasher`].
 ///
-/// Note that for each instance of `BuildHasher`, the created hashers should be
-/// identical. That is, if the same stream of bytes is fed into each hasher, the
-/// same output will also be generated.
+/// A `BuildHasher` is typically used (e.g. by [`HashMap`]) to create
+/// [`Hasher`]s for each key such that they are hashed independently of one
+/// another, since [`Hasher`]s contain state.
+///
+/// For each instance of `BuildHasher`, the [`Hasher`]s created by
+/// [`build_hasher`] should be identical. That is, if the same stream of bytes
+/// is fed into each hasher, the same output will also be generated.
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::hash_map::RandomState;
+/// use std::hash::{BuildHasher, Hasher};
+///
+/// let s = RandomState::new();
+/// let mut hasher_1 = s.build_hasher();
+/// let mut hasher_2 = s.build_hasher();
+///
+/// hasher_1.write_u32(8128);
+/// hasher_2.write_u32(8128);
+///
+/// assert_eq!(hasher_1.finish(), hasher_2.finish());
+/// ```
+///
+/// [`build_hasher`]: #tymethod.build_hasher
+/// [`Hasher`]: trait.Hasher.html
+/// [`HashMap`]: ../../std/collections/struct.HashMap.html
 #[stable(since = "1.7.0", feature = "build_hasher")]
 pub trait BuildHasher {
     /// Type of the hasher that will be created.
@@ -271,6 +388,9 @@ pub trait BuildHasher {
     type Hasher: Hasher;
 
     /// Creates a new hasher.
+    ///
+    /// Each call to `build_hasher` on the same instance should produce identical
+    /// [`Hasher`]s.
     ///
     /// # Examples
     ///
@@ -281,15 +401,23 @@ pub trait BuildHasher {
     /// let s = RandomState::new();
     /// let new_s = s.build_hasher();
     /// ```
+    ///
+    /// [`Hasher`]: trait.Hasher.html
     #[stable(since = "1.7.0", feature = "build_hasher")]
     fn build_hasher(&self) -> Self::Hasher;
 }
 
-/// The `BuildHasherDefault` structure is used in scenarios where one has a
-/// type that implements [`Hasher`] and [`Default`], but needs that type to
-/// implement [`BuildHasher`].
+/// Used to create a default [`BuildHasher`] instance for types that implement
+/// [`Hasher`] and [`Default`].
 ///
-/// This structure is zero-sized and does not need construction.
+/// `BuildHasherDefault<H>` can be used when a type `H` implements [`Hasher`] and
+/// [`Default`], and you need a corresponding [`BuildHasher`] instance, but none is
+/// defined.
+///
+/// Any `BuildHasherDefault` is [zero-sized]. It can be created with
+/// [`default`][method.Default]. When using `BuildHasherDefault` with [`HashMap`] or
+/// [`HashSet`], this doesn't need to be done, since they implement appropriate
+/// [`Default`] instances themselves.
 ///
 /// # Examples
 ///
@@ -322,8 +450,11 @@ pub trait BuildHasher {
 ///
 /// [`BuildHasher`]: trait.BuildHasher.html
 /// [`Default`]: ../default/trait.Default.html
+/// [method.default]: #method.default
 /// [`Hasher`]: trait.Hasher.html
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
+/// [`HashSet`]: ../../std/collections/struct.HashSet.html
+/// [zero-sized]: https://doc.rust-lang.org/nomicon/exotic-sizes.html#zero-sized-types-zsts
 #[stable(since = "1.7.0", feature = "build_hasher")]
 pub struct BuildHasherDefault<H>(marker::PhantomData<H>);
 

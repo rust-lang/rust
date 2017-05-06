@@ -8,94 +8,40 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_upper_case_globals)]
-
-use libc::c_uint;
 use std::cmp;
-use llvm;
-use llvm::{Integer, Pointer, Float, Double, Vector};
-use abi::{self, align_up_to, ArgType, FnType};
+use abi::{align_up_to, ArgType, FnType, LayoutExt, Reg, Uniform};
 use context::CrateContext;
-use type_::Type;
 
-fn ty_align(ty: Type) -> usize {
-    abi::ty_align(ty, 8)
-}
-
-fn ty_size(ty: Type) -> usize {
-    abi::ty_size(ty, 8)
-}
-
-fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
-    if is_reg_ty(ret.ty) {
+fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
+    if !ret.layout.is_aggregate() {
         ret.extend_integer_width_to(64);
     } else {
         ret.make_indirect(ccx);
     }
 }
 
-fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, offset: &mut usize) {
-    let orig_offset = *offset;
-    let size = ty_size(arg.ty) * 8;
-    let mut align = ty_align(arg.ty);
-
+fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, offset: &mut u64) {
+    let size = arg.layout.size(ccx);
+    let mut align = arg.layout.align(ccx).abi();
     align = cmp::min(cmp::max(align, 4), 8);
-    *offset = align_up_to(*offset, align);
-    *offset += align_up_to(size, align * 8) / 8;
 
-    if !is_reg_ty(arg.ty) {
-        arg.cast = Some(struct_ty(ccx, arg.ty));
-        arg.pad = padding_ty(ccx, align, orig_offset);
+    if arg.layout.is_aggregate() {
+        arg.cast_to(ccx, Uniform {
+            unit: Reg::i64(),
+            total: size
+        });
+        if ((align - 1) & *offset) > 0 {
+            arg.pad_with(ccx, Reg::i64());
+        }
     } else {
         arg.extend_integer_width_to(64);
     }
+
+    *offset = align_up_to(*offset, align);
+    *offset += align_up_to(size.bytes(), align);
 }
 
-fn is_reg_ty(ty: Type) -> bool {
-    return match ty.kind() {
-        Integer
-        | Pointer
-        | Float
-        | Double
-        | Vector => true,
-        _ => false
-    };
-}
-
-fn padding_ty(ccx: &CrateContext, align: usize, offset: usize) -> Option<Type> {
-    if ((align - 1 ) & offset) > 0 {
-        Some(Type::i64(ccx))
-    } else {
-        None
-    }
-}
-
-fn coerce_to_int(ccx: &CrateContext, size: usize) -> Vec<Type> {
-    let int_ty = Type::i64(ccx);
-    let mut args = Vec::new();
-
-    let mut n = size / 64;
-    while n > 0 {
-        args.push(int_ty);
-        n -= 1;
-    }
-
-    let r = size % 64;
-    if r > 0 {
-        unsafe {
-            args.push(Type::from_ref(llvm::LLVMIntTypeInContext(ccx.llcx(), r as c_uint)));
-        }
-    }
-
-    args
-}
-
-fn struct_ty(ccx: &CrateContext, ty: Type) -> Type {
-    let size = ty_size(ty) * 8;
-    Type::struct_(ccx, &coerce_to_int(ccx, size), false)
-}
-
-pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
+pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     if !fty.ret.is_ignore() {
         classify_ret_ty(ccx, &mut fty.ret);
     }

@@ -17,7 +17,6 @@ use consts;
 use machine;
 use monomorphize;
 use type_::Type;
-use type_of::*;
 use value::Value;
 use rustc::ty;
 
@@ -80,14 +79,10 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Not in the cache. Build it.
     let nullptr = C_null(Type::nil(ccx).ptr_to());
 
-    let size_ty = sizing_type_of(ccx, ty);
-    let size = machine::llsize_of_alloc(ccx, size_ty);
-    let align = align_of(ccx, ty);
-
     let mut components: Vec<_> = [
         callee::get_fn(ccx, monomorphize::resolve_drop_in_place(ccx.shared(), ty)),
-        C_uint(ccx, size),
-        C_uint(ccx, align)
+        C_uint(ccx, ccx.size_of(ty)),
+        C_uint(ccx, ccx.align_of(ty))
     ].iter().cloned().collect();
 
     if let Some(trait_ref) = trait_ref {

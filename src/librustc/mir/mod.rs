@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! MIR datatypes and passes. See [the README](README.md) for details.
+
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
@@ -197,10 +199,10 @@ impl<'tcx> Mir<'tcx> {
     pub fn temps_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
         (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
-            if self.local_decls[local].source_info.is_none() {
-                Some(local)
-            } else {
+            if self.local_decls[local].is_user_variable {
                 None
+            } else {
+                Some(local)
             }
         })
     }
@@ -210,10 +212,10 @@ impl<'tcx> Mir<'tcx> {
     pub fn vars_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
         (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
-            if self.local_decls[local].source_info.is_none() {
-                None
-            } else {
+            if self.local_decls[local].is_user_variable {
                 Some(local)
+            } else {
+                None
             }
         })
     }
@@ -242,6 +244,19 @@ impl<'tcx> Mir<'tcx> {
         block.statements[location.statement_index].make_nop()
     }
 }
+
+impl_stable_hash_for!(struct Mir<'tcx> {
+    basic_blocks,
+    visibility_scopes,
+    promoted,
+    return_ty,
+    local_decls,
+    arg_count,
+    upvar_decls,
+    spread_arg,
+    span,
+    cache
+});
 
 impl<'tcx> Index<BasicBlock> for Mir<'tcx> {
     type Output = BasicBlockData<'tcx>;
@@ -357,6 +372,9 @@ pub struct LocalDecl<'tcx> {
     /// Temporaries and the return pointer are always mutable.
     pub mutability: Mutability,
 
+    /// True if this corresponds to a user-declared local variable.
+    pub is_user_variable: bool,
+
     /// Type of this local.
     pub ty: Ty<'tcx>,
 
@@ -366,24 +384,23 @@ pub struct LocalDecl<'tcx> {
     /// to generate better debuginfo.
     pub name: Option<Name>,
 
-    /// For user-declared variables, stores their source information.
-    ///
-    /// For temporaries, this is `None`.
-    ///
-    /// This is the primary way to differentiate between user-declared
-    /// variables and compiler-generated temporaries.
-    pub source_info: Option<SourceInfo>,
+    /// Source info of the local.
+    pub source_info: SourceInfo,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
     /// Create a new `LocalDecl` for a temporary.
     #[inline]
-    pub fn new_temp(ty: Ty<'tcx>) -> Self {
+    pub fn new_temp(ty: Ty<'tcx>, span: Span) -> Self {
         LocalDecl {
             mutability: Mutability::Mut,
             ty: ty,
             name: None,
-            source_info: None,
+            source_info: SourceInfo {
+                span: span,
+                scope: ARGUMENT_VISIBILITY_SCOPE
+            },
+            is_user_variable: false
         }
     }
 
@@ -391,12 +408,16 @@ impl<'tcx> LocalDecl<'tcx> {
     ///
     /// This must be inserted into the `local_decls` list as the first local.
     #[inline]
-    pub fn new_return_pointer(return_ty: Ty) -> LocalDecl {
+    pub fn new_return_pointer(return_ty: Ty, span: Span) -> LocalDecl {
         LocalDecl {
             mutability: Mutability::Mut,
             ty: return_ty,
-            source_info: None,
+            source_info: SourceInfo {
+                span: span,
+                scope: ARGUMENT_VISIBILITY_SCOPE
+            },
             name: None,     // FIXME maybe we do want some name here?
+            is_user_variable: false
         }
     }
 }
@@ -830,6 +851,11 @@ pub struct Static<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
+impl_stable_hash_for!(struct Static<'tcx> {
+    def_id,
+    ty
+});
+
 /// The `Projection` data structure defines things of the form `B.x`
 /// or `*B` or `B[index]`. Note that it is parameterized because it is
 /// shared between `Constant` and `Lvalue`. See the aliases
@@ -991,7 +1017,7 @@ impl<'tcx> Operand<'tcx> {
     ) -> Self {
         Operand::Constant(Constant {
             span: span,
-            ty: tcx.item_type(def_id).subst(tcx, substs),
+            ty: tcx.type_of(def_id).subst(tcx, substs),
             literal: Literal::Value { value: ConstVal::Function(def_id, substs) },
         })
     }
@@ -1010,7 +1036,7 @@ pub enum Rvalue<'tcx> {
     Repeat(Operand<'tcx>, ConstUsize),
 
     /// &x or &mut x
-    Ref(&'tcx Region, BorrowKind, Lvalue<'tcx>),
+    Ref(Region<'tcx>, BorrowKind, Lvalue<'tcx>),
 
     /// length of a [X] or [X;n] value
     Len(Lvalue<'tcx>),
@@ -1283,10 +1309,11 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
             write!(fmt, "b\"{}\"", escaped)
         }
         Bool(b) => write!(fmt, "{:?}", b),
+        Char(c) => write!(fmt, "{:?}", c),
+        Variant(def_id) |
         Function(def_id, _) => write!(fmt, "{}", item_path_str(def_id)),
         Struct(_) | Tuple(_) | Array(_) | Repeat(..) =>
             bug!("ConstVal `{:?}` should not be in MIR", const_val),
-        Char(c) => write!(fmt, "{:?}", c),
     }
 }
 

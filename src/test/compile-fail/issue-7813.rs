@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn main() {
-    let v = &[];
-    let it = v.iter(); //~ ERROR type annotations needed [E0282]
-                       //~| NOTE cannot infer type for `T`
-                       //~| NOTE consider giving `it` a type
+    let v = &[]; //~ ERROR type annotations needed
+    //~| NOTE consider giving `v` a type
+    //~| NOTE cannot infer type for `_`
+    let it = v.iter();
 }

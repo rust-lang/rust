@@ -21,7 +21,8 @@
 //! of other types, and you can implement them for your types too. As such,
 //! you'll see a few different types of I/O throughout the documentation in
 //! this module: [`File`]s, [`TcpStream`]s, and sometimes even [`Vec<T>`]s. For
-//! example, [`Read`] adds a [`read`] method, which we can use on `File`s:
+//! example, [`Read`] adds a [`read`][`Read::read`] method, which we can use on
+//! `File`s:
 //!
 //! ```
 //! use std::io;
@@ -106,7 +107,7 @@
 //! ```
 //!
 //! [`BufWriter`] doesn't add any new ways of writing; it just buffers every call
-//! to [`write`]:
+//! to [`write`][`Write::write`]:
 //!
 //! ```
 //! use std::io;
@@ -143,6 +144,18 @@
 //! println!("You typed: {}", input.trim());
 //! # Ok(())
 //! # }
+//! ```
+//!
+//! Note that you cannot use the `?` operator in functions that do not return
+//! a `Result<T, E>` (e.g. `main`). Instead, you can call `.unwrap()` or `match`
+//! on the return value to catch any possible errors:
+//!
+//! ```
+//! use std::io;
+//!
+//! let mut input = String::new();
+//!
+//! io::stdin().read_line(&mut input).unwrap();
 //! ```
 //!
 //! And a very common source of output is standard output:
@@ -245,13 +258,13 @@
 //! [`Vec<T>`]: ../vec/struct.Vec.html
 //! [`BufReader`]: struct.BufReader.html
 //! [`BufWriter`]: struct.BufWriter.html
-//! [`write`]: trait.Write.html#tymethod.write
+//! [`Write::write`]: trait.Write.html#tymethod.write
 //! [`io::stdout`]: fn.stdout.html
 //! [`println!`]: ../macro.println.html
 //! [`Lines`]: struct.Lines.html
 //! [`io::Result`]: type.Result.html
 //! [`?` operator]: ../../book/syntax-index.html
-//! [`read`]: trait.Read.html#tymethod.read
+//! [`Read::read`]: trait.Read.html#tymethod.read
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -453,6 +466,9 @@ pub trait Read {
     /// variant will be returned. If an error is returned then it must be
     /// guaranteed that no bytes were read.
     ///
+    /// An error of the `ErrorKind::Interrupted` kind is non-fatal and the read
+    /// operation should be retried if there is nothing else to do.
+    ///
     /// # Examples
     ///
     /// [`File`][file]s implement `Read`:
@@ -468,7 +484,7 @@ pub trait Read {
     /// let mut f = File::open("foo.txt")?;
     /// let mut buffer = [0; 10];
     ///
-    /// // read 10 bytes
+    /// // read up to 10 bytes
     /// f.read(&mut buffer[..])?;
     /// # Ok(())
     /// # }
@@ -872,6 +888,9 @@ pub trait Write {
     /// It is **not** considered an error if the entire buffer could not be
     /// written to this writer.
     ///
+    /// An error of the `ErrorKind::Interrupted` kind is non-fatal and the
+    /// write operation should be retried if there is nothing else to do.
+    ///
     /// # Examples
     ///
     /// ```
@@ -881,6 +900,7 @@ pub trait Write {
     /// # fn foo() -> std::io::Result<()> {
     /// let mut buffer = File::create("foo.txt")?;
     ///
+    /// // Writes some prefix of the byte string, not necessarily all of it.
     /// buffer.write(b"some bytes")?;
     /// # Ok(())
     /// # }
@@ -916,14 +936,17 @@ pub trait Write {
 
     /// Attempts to write an entire buffer into this write.
     ///
-    /// This method will continuously call `write` while there is more data to
-    /// write. This method will not return until the entire buffer has been
-    /// successfully written or an error occurs. The first error generated from
-    /// this method will be returned.
+    /// This method will continuously call `write` until there is no more data
+    /// to be written or an error of non-`ErrorKind::Interrupted` kind is
+    /// returned. This method will not return until the entire buffer has been
+    /// successfully written or such an error occurs. The first error that is
+    /// not of `ErrorKind::Interrupted` kind generated from this method will be
+    /// returned.
     ///
     /// # Errors
     ///
-    /// This function will return the first error that `write` returns.
+    /// This function will return the first error of
+    /// non-`ErrorKind::Interrupted` kind that `write` returns.
     ///
     /// # Examples
     ///
@@ -1290,28 +1313,42 @@ pub trait BufRead: Read {
     /// If an I/O error is encountered then all bytes read so far will be
     /// present in `buf` and its length will have been adjusted appropriately.
     ///
-    /// # Examples
-    ///
-    /// A locked standard input implements `BufRead`. In this example, we'll
-    /// read from standard input until we see an `a` byte.
-    ///
     /// [`fill_buf`]: #tymethod.fill_buf
     /// [`ErrorKind::Interrupted`]: enum.ErrorKind.html#variant.Interrupted
     ///
+    /// # Examples
+    ///
+    /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
+    /// this example, we use [`Cursor`] to read all the bytes in a byte slice
+    /// in hyphen delimited segments:
+    ///
+    /// [`Cursor`]: struct.Cursor.html
+    ///
     /// ```
-    /// use std::io;
-    /// use std::io::prelude::*;
+    /// use std::io::{self, BufRead};
     ///
-    /// fn foo() -> io::Result<()> {
-    /// let stdin = io::stdin();
-    /// let mut stdin = stdin.lock();
-    /// let mut buffer = Vec::new();
+    /// let mut cursor = io::Cursor::new(b"lorem-ipsum");
+    /// let mut buf = vec![];
     ///
-    /// stdin.read_until(b'a', &mut buffer)?;
+    /// // cursor is at 'l'
+    /// let num_bytes = cursor.read_until(b'-', &mut buf)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 6);
+    /// assert_eq!(buf, b"lorem-");
+    /// buf.clear();
     ///
-    /// println!("{:?}", buffer);
-    /// # Ok(())
-    /// # }
+    /// // cursor is at 'i'
+    /// let num_bytes = cursor.read_until(b'-', &mut buf)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 5);
+    /// assert_eq!(buf, b"ipsum");
+    /// buf.clear();
+    ///
+    /// // cursor is at EOF
+    /// let num_bytes = cursor.read_until(b'-', &mut buf)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 0);
+    /// assert_eq!(buf, b"");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> Result<usize> {
@@ -1337,28 +1374,36 @@ pub trait BufRead: Read {
     ///
     /// # Examples
     ///
-    /// A locked standard input implements `BufRead`. In this example, we'll
-    /// read all of the lines from standard input. If we were to do this in
-    /// an actual project, the [`lines`] method would be easier, of
-    /// course.
+    /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
+    /// this example, we use [`Cursor`] to read all the lines in a byte slice:
     ///
-    /// [`lines`]: #method.lines
-    /// [`read_until`]: #method.read_until
+    /// [`Cursor`]: struct.Cursor.html
     ///
     /// ```
-    /// use std::io;
-    /// use std::io::prelude::*;
+    /// use std::io::{self, BufRead};
     ///
-    /// let stdin = io::stdin();
-    /// let mut stdin = stdin.lock();
-    /// let mut buffer = String::new();
+    /// let mut cursor = io::Cursor::new(b"foo\nbar");
+    /// let mut buf = String::new();
     ///
-    /// while stdin.read_line(&mut buffer).unwrap() > 0 {
-    ///     // work with buffer
-    ///     println!("{:?}", buffer);
+    /// // cursor is at 'f'
+    /// let num_bytes = cursor.read_line(&mut buf)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 4);
+    /// assert_eq!(buf, "foo\n");
+    /// buf.clear();
     ///
-    ///     buffer.clear();
-    /// }
+    /// // cursor is at 'b'
+    /// let num_bytes = cursor.read_line(&mut buf)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 3);
+    /// assert_eq!(buf, "bar");
+    /// buf.clear();
+    ///
+    /// // cursor is at EOF
+    /// let num_bytes = cursor.read_line(&mut buf)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 0);
+    /// assert_eq!(buf, "");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_line(&mut self, buf: &mut String) -> Result<usize> {
@@ -1378,24 +1423,28 @@ pub trait BufRead: Read {
     /// This function will yield errors whenever [`read_until`] would have
     /// also yielded an error.
     ///
-    /// # Examples
-    ///
-    /// A locked standard input implements `BufRead`. In this example, we'll
-    /// read some input from standard input, splitting on commas.
-    ///
     /// [`io::Result`]: type.Result.html
     /// [`Vec<u8>`]: ../vec/struct.Vec.html
     /// [`read_until`]: #method.read_until
     ///
+    /// # Examples
+    ///
+    /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
+    /// this example, we use [`Cursor`] to iterate over all hyphen delimited
+    /// segments in a byte slice
+    ///
+    /// [`Cursor`]: struct.Cursor.html
+    ///
     /// ```
-    /// use std::io;
-    /// use std::io::prelude::*;
+    /// use std::io::{self, BufRead};
     ///
-    /// let stdin = io::stdin();
+    /// let cursor = io::Cursor::new(b"lorem-ipsum-dolor");
     ///
-    /// for content in stdin.lock().split(b',') {
-    ///     println!("{:?}", content.unwrap());
-    /// }
+    /// let mut split_iter = cursor.split(b'-').map(|l| l.unwrap());
+    /// assert_eq!(split_iter.next(), Some(b"lorem".to_vec()));
+    /// assert_eq!(split_iter.next(), Some(b"ipsum".to_vec()));
+    /// assert_eq!(split_iter.next(), Some(b"dolor".to_vec()));
+    /// assert_eq!(split_iter.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn split(self, byte: u8) -> Split<Self> where Self: Sized {
@@ -1413,17 +1462,22 @@ pub trait BufRead: Read {
     ///
     /// # Examples
     ///
-    /// A locked standard input implements `BufRead`:
+    /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
+    /// this example, we use [`Cursor`] to iterate over all the lines in a byte
+    /// slice.
+    ///
+    /// [`Cursor`]: struct.Cursor.html
     ///
     /// ```
-    /// use std::io;
-    /// use std::io::prelude::*;
+    /// use std::io::{self, BufRead};
     ///
-    /// let stdin = io::stdin();
+    /// let cursor = io::Cursor::new(b"lorem\nipsum\r\ndolor");
     ///
-    /// for line in stdin.lock().lines() {
-    ///     println!("{}", line.unwrap());
-    /// }
+    /// let mut lines_iter = cursor.lines().map(|l| l.unwrap());
+    /// assert_eq!(lines_iter.next(), Some(String::from("lorem")));
+    /// assert_eq!(lines_iter.next(), Some(String::from("ipsum")));
+    /// assert_eq!(lines_iter.next(), Some(String::from("dolor")));
+    /// assert_eq!(lines_iter.next(), None);
     /// ```
     ///
     /// # Errors
@@ -1448,6 +1502,87 @@ pub struct Chain<T, U> {
     first: T,
     second: U,
     done_first: bool,
+}
+
+impl<T, U> Chain<T, U> {
+    /// Consumes the `Chain`, returning the wrapped readers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(more_io_inner_methods)]
+    ///
+    /// # use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut foo_file = File::open("foo.txt")?;
+    /// let mut bar_file = File::open("bar.txt")?;
+    ///
+    /// let chain = foo_file.chain(bar_file);
+    /// let (foo_file, bar_file) = chain.into_inner();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "more_io_inner_methods", issue="41519")]
+    pub fn into_inner(self) -> (T, U) {
+        (self.first, self.second)
+    }
+
+    /// Gets references to the underlying readers in this `Chain`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(more_io_inner_methods)]
+    ///
+    /// # use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut foo_file = File::open("foo.txt")?;
+    /// let mut bar_file = File::open("bar.txt")?;
+    ///
+    /// let chain = foo_file.chain(bar_file);
+    /// let (foo_file, bar_file) = chain.get_ref();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "more_io_inner_methods", issue="41519")]
+    pub fn get_ref(&self) -> (&T, &U) {
+        (&self.first, &self.second)
+    }
+
+    /// Gets mutable references to the underlying readers in this `Chain`.
+    ///
+    /// Care should be taken to avoid modifying the internal I/O state of the
+    /// underlying readers as doing so may corrupt the internal state of this
+    /// `Chain`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(more_io_inner_methods)]
+    ///
+    /// # use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut foo_file = File::open("foo.txt")?;
+    /// let mut bar_file = File::open("bar.txt")?;
+    ///
+    /// let mut chain = foo_file.chain(bar_file);
+    /// let (foo_file, bar_file) = chain.get_mut();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "more_io_inner_methods", issue="41519")]
+    pub fn get_mut(&mut self) -> (&mut T, &mut U) {
+        (&mut self.first, &mut self.second)
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -1561,6 +1696,64 @@ impl<T> Take<T> {
     #[stable(feature = "io_take_into_inner", since = "1.15.0")]
     pub fn into_inner(self) -> T {
         self.inner
+    }
+
+    /// Gets a reference to the underlying reader.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(more_io_inner_methods)]
+    ///
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut file = File::open("foo.txt")?;
+    ///
+    /// let mut buffer = [0; 5];
+    /// let mut handle = file.take(5);
+    /// handle.read(&mut buffer)?;
+    ///
+    /// let file = handle.get_ref();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "more_io_inner_methods", issue="41519")]
+    pub fn get_ref(&self) -> &T {
+        &self.inner
+    }
+
+    /// Gets a mutable reference to the underlying reader.
+    ///
+    /// Care should be taken to avoid modifying the internal I/O state of the
+    /// underlying reader as doing so may corrupt the internal limit of this
+    /// `Take`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(more_io_inner_methods)]
+    ///
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut file = File::open("foo.txt")?;
+    ///
+    /// let mut buffer = [0; 5];
+    /// let mut handle = file.take(5);
+    /// handle.read(&mut buffer)?;
+    ///
+    /// let file = handle.get_mut();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "more_io_inner_methods", issue="41519")]
+    pub fn get_mut(&mut self) -> &mut T {
+        &mut self.inner
     }
 }
 

@@ -55,16 +55,15 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     debug!("overlap: b_impl_header={:?}", b_impl_header);
 
     // Do `a` and `b` unify? If not, no overlap.
-    match selcx.infcx().eq_impl_headers(true,
+    let obligations = match selcx.infcx().eq_impl_headers(true,
                                         &ObligationCause::dummy(),
                                         &a_impl_header,
                                         &b_impl_header) {
         Ok(InferOk { obligations, .. }) => {
-            // FIXME(#32730) propagate obligations
-            assert!(obligations.is_empty());
+            obligations
         }
         Err(_) => return None
-    }
+    };
 
     debug!("overlap: unification check succeeded");
 
@@ -78,6 +77,7 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
                      .map(|p| Obligation { cause: ObligationCause::dummy(),
                                            recursion_depth: 0,
                                            predicate: p })
+                     .chain(obligations)
                      .find(|o| !selcx.evaluate_obligation(o));
 
     if let Some(failing_obligation) = opt_failing_obligation {

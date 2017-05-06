@@ -9,32 +9,42 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+# ignore-tidy-linelength
+
 set -ex
 source shared.sh
 
 # Download sources
 SRCS=(
-  "https://fuchsia.googlesource.com/magenta magenta ac69119"
-  "https://fuchsia.googlesource.com/third_party/llvm llvm 5463083"
-  "https://fuchsia.googlesource.com/third_party/clang llvm/tools/clang 4ff7b4b"
-  "https://fuchsia.googlesource.com/third_party/lld llvm/tools/lld fd465a3"
-  "https://fuchsia.googlesource.com/third_party/lldb llvm/tools/lldb 6bb11f8"
-  "https://fuchsia.googlesource.com/third_party/compiler-rt llvm/runtimes/compiler-rt 52d4ecc"
-  "https://fuchsia.googlesource.com/third_party/libcxx llvm/runtimes/libcxx e891cc8"
-  "https://fuchsia.googlesource.com/third_party/libcxxabi llvm/runtimes/libcxxabi f0f0257"
-  "https://fuchsia.googlesource.com/third_party/libunwind llvm/runtimes/libunwind 50bddc1"
+  "https://fuchsia.googlesource.com/magenta magenta d17073dc8de344ead3b65e8cc6a12280dec38c84"
+  "https://llvm.googlesource.com/llvm llvm 3f58a16d8eec385e2b3ebdfbb84ff9d3bf27e025"
+  "https://llvm.googlesource.com/clang llvm/tools/clang 727ea63e6e82677f6e10e05e08bc7d6bdbae3111"
+  "https://llvm.googlesource.com/lld llvm/tools/lld a31286c1366e5e89b8872803fded13805a1a084b"
+  "https://llvm.googlesource.com/lldb llvm/tools/lldb 0b2384abec4cb99ad66687712e07dee4dd9d187e"
+  "https://llvm.googlesource.com/compiler-rt llvm/runtimes/compiler-rt 9093a35c599fe41278606a20b51095ea8bd5a081"
+  "https://llvm.googlesource.com/libcxx llvm/runtimes/libcxx 607e0c71ec4f7fd377ad3f6c47b08dbe89f66eaa"
+  "https://llvm.googlesource.com/libcxxabi llvm/runtimes/libcxxabi 0a3a1a8a5ca5ef69e0f6b7d5b9d13e63e6fd2c19"
+  "https://llvm.googlesource.com/libunwind llvm/runtimes/libunwind e128003563d99d9ee62247c4cee40f07d21c03e3"
 )
 
 fetch() {
   mkdir -p $2
   pushd $2 > /dev/null
-  curl -sL $1/+archive/$3.tar.gz | tar xzf -
+  git init
+  git remote add origin $1
+  git fetch --depth=1 origin $3
+  git reset --hard FETCH_HEAD
   popd > /dev/null
 }
 
 for i in "${SRCS[@]}"; do
   fetch $i
 done
+
+# Remove this once https://reviews.llvm.org/D28791 is resolved
+cd llvm/runtimes/compiler-rt
+patch -Np1 < /tmp/compiler-rt-dso-handle.patch
+cd ../../..
 
 # Build toolchain
 cd llvm

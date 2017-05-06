@@ -12,7 +12,7 @@ use ast::Ident;
 use errors::Handler;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use ext::tt::quoted;
-use parse::token::{self, SubstNt, Token, NtIdent, NtTT};
+use parse::token::{self, SubstNt, Token, NtTT};
 use syntax_pos::{Span, DUMMY_SP};
 use tokenstream::{TokenStream, TokenTree, Delimited};
 use util::small_vector::SmallVector;
@@ -154,13 +154,6 @@ pub fn transcribe(sp_diag: &Handler,
                     None => result.push(TokenTree::Token(sp, SubstNt(ident)).into()),
                     Some(cur_matched) => if let MatchedNonterminal(ref nt) = *cur_matched {
                         match **nt {
-                            // sidestep the interpolation tricks for ident because
-                            // (a) idents can be in lots of places, so it'd be a pain
-                            // (b) we actually can, since it's a token.
-                            NtIdent(ref sn) => {
-                                let token = TokenTree::Token(sn.span, token::Ident(sn.node));
-                                result.push(token.into());
-                            }
                             NtTT(ref tt) => result.push(tt.clone().into()),
                             _ => {
                                 let token = TokenTree::Token(sp, token::Interpolated(nt.clone()));

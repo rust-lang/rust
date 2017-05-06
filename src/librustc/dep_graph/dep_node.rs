@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use hir::def_id::CrateNum;
 use std::fmt::Debug;
 use std::sync::Arc;
 
@@ -55,35 +56,15 @@ pub enum DepNode<D: Clone + Debug> {
     WorkProduct(Arc<WorkProductId>),
 
     // Represents different phases in the compiler.
-    CollectLanguageItems,
-    CheckStaticRecursion,
-    ResolveLifetimes,
-    RegionResolveCrate,
-    CheckLoops,
-    PluginRegistrar,
-    StabilityIndex,
-    CollectItem(D),
-    CollectItemSig(D),
+    RegionMaps(D),
     Coherence,
-    EffectCheck,
-    Liveness,
     Resolve,
-    EntryPoint,
-    CheckEntryFn,
     CoherenceCheckTrait(D),
     CoherenceCheckImpl(D),
     CoherenceOverlapCheck(D),
     CoherenceOverlapCheckSpecial(D),
-    CoherenceOverlapInherentCheck(D),
-    CoherenceOrphanCheck(D),
     Variance,
-    WfCheck(D),
-    TypeckItemType(D),
-    UnusedTraitCheck,
-    CheckConst(D),
-    Privacy,
-    IntrinsicCheck(D),
-    MatchCheck(D),
+    PrivacyAccessLevels(CrateNum),
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
@@ -95,14 +76,11 @@ pub enum DepNode<D: Clone + Debug> {
     BorrowCheck(D),
     RvalueCheck(D),
     Reachability,
-    DeadCheck,
-    StabilityCheck(D),
+    MirKeys,
     LateLintCheck,
-    TransCrate,
     TransCrateItem(D),
     TransInlinedItem(D),
     TransWriteMetadata,
-    LinkBinary,
 
     // Nodes representing bits of computed IR in the tcx. Each shared
     // table in the tcx (or elsewhere) maps to one of these
@@ -111,15 +89,18 @@ pub enum DepNode<D: Clone + Debug> {
     // predicates for an item wind up in `ItemSignature`).
     AssociatedItems(D),
     ItemSignature(D),
+    IsForeignItem(D),
     TypeParamPredicates((D, D)),
     SizedConstraint(D),
+    DtorckConstraint(D),
     AdtDestructor(D),
     AssociatedItemDefIds(D),
     InherentImpls(D),
     TypeckBodiesKrate,
     TypeckTables(D),
     UsedTraitImports(D),
-    MonomorphicConstEval(D),
+    ConstEval(D),
+    SymbolName(D),
 
     // The set of impls for a given trait. Ultimately, it would be
     // nice to get more fine-grained here (e.g., to include a
@@ -168,6 +149,11 @@ pub enum DepNode<D: Clone + Debug> {
     // For proj. cache, we just keep a list of all def-ids, since it is
     // not a hotspot.
     ProjectionCache { def_ids: Vec<D> },
+
+    DescribeDef(D),
+    DefSpan(D),
+    Stability(D),
+    Deprecation(D),
 }
 
 impl<D: Clone + Debug> DepNode<D> {
@@ -188,14 +174,13 @@ impl<D: Clone + Debug> DepNode<D> {
         }
 
         check! {
-            CollectItem,
             BorrowCheck,
             Hir,
             HirBody,
             TransCrateItem,
-            TypeckItemType,
             AssociatedItems,
             ItemSignature,
+            IsForeignItem,
             AssociatedItemDefIds,
             InherentImpls,
             TypeckTables,
@@ -215,28 +200,14 @@ impl<D: Clone + Debug> DepNode<D> {
             BorrowCheckKrate => Some(BorrowCheckKrate),
             MirKrate => Some(MirKrate),
             TypeckBodiesKrate => Some(TypeckBodiesKrate),
-            CollectLanguageItems => Some(CollectLanguageItems),
-            CheckStaticRecursion => Some(CheckStaticRecursion),
-            ResolveLifetimes => Some(ResolveLifetimes),
-            RegionResolveCrate => Some(RegionResolveCrate),
-            CheckLoops => Some(CheckLoops),
-            PluginRegistrar => Some(PluginRegistrar),
-            StabilityIndex => Some(StabilityIndex),
             Coherence => Some(Coherence),
-            EffectCheck => Some(EffectCheck),
-            Liveness => Some(Liveness),
             Resolve => Some(Resolve),
-            EntryPoint => Some(EntryPoint),
-            CheckEntryFn => Some(CheckEntryFn),
             Variance => Some(Variance),
-            UnusedTraitCheck => Some(UnusedTraitCheck),
-            Privacy => Some(Privacy),
+            PrivacyAccessLevels(k) => Some(PrivacyAccessLevels(k)),
             Reachability => Some(Reachability),
-            DeadCheck => Some(DeadCheck),
+            MirKeys => Some(MirKeys),
             LateLintCheck => Some(LateLintCheck),
-            TransCrate => Some(TransCrate),
             TransWriteMetadata => Some(TransWriteMetadata),
-            LinkBinary => Some(LinkBinary),
 
             // work product names do not need to be mapped, because
             // they are always absolute.
@@ -245,41 +216,35 @@ impl<D: Clone + Debug> DepNode<D> {
             Hir(ref d) => op(d).map(Hir),
             HirBody(ref d) => op(d).map(HirBody),
             MetaData(ref d) => op(d).map(MetaData),
-            CollectItem(ref d) => op(d).map(CollectItem),
-            CollectItemSig(ref d) => op(d).map(CollectItemSig),
             CoherenceCheckTrait(ref d) => op(d).map(CoherenceCheckTrait),
             CoherenceCheckImpl(ref d) => op(d).map(CoherenceCheckImpl),
             CoherenceOverlapCheck(ref d) => op(d).map(CoherenceOverlapCheck),
             CoherenceOverlapCheckSpecial(ref d) => op(d).map(CoherenceOverlapCheckSpecial),
-            CoherenceOverlapInherentCheck(ref d) => op(d).map(CoherenceOverlapInherentCheck),
-            CoherenceOrphanCheck(ref d) => op(d).map(CoherenceOrphanCheck),
-            WfCheck(ref d) => op(d).map(WfCheck),
-            TypeckItemType(ref d) => op(d).map(TypeckItemType),
-            CheckConst(ref d) => op(d).map(CheckConst),
-            IntrinsicCheck(ref d) => op(d).map(IntrinsicCheck),
-            MatchCheck(ref d) => op(d).map(MatchCheck),
             Mir(ref d) => op(d).map(Mir),
             MirShim(ref def_ids) => {
                 let def_ids: Option<Vec<E>> = def_ids.iter().map(op).collect();
                 def_ids.map(MirShim)
             }
             BorrowCheck(ref d) => op(d).map(BorrowCheck),
+            RegionMaps(ref d) => op(d).map(RegionMaps),
             RvalueCheck(ref d) => op(d).map(RvalueCheck),
-            StabilityCheck(ref d) => op(d).map(StabilityCheck),
             TransCrateItem(ref d) => op(d).map(TransCrateItem),
             TransInlinedItem(ref d) => op(d).map(TransInlinedItem),
             AssociatedItems(ref d) => op(d).map(AssociatedItems),
             ItemSignature(ref d) => op(d).map(ItemSignature),
+            IsForeignItem(ref d) => op(d).map(IsForeignItem),
             TypeParamPredicates((ref item, ref param)) => {
                 Some(TypeParamPredicates((try_opt!(op(item)), try_opt!(op(param)))))
             }
             SizedConstraint(ref d) => op(d).map(SizedConstraint),
+            DtorckConstraint(ref d) => op(d).map(DtorckConstraint),
             AdtDestructor(ref d) => op(d).map(AdtDestructor),
             AssociatedItemDefIds(ref d) => op(d).map(AssociatedItemDefIds),
             InherentImpls(ref d) => op(d).map(InherentImpls),
             TypeckTables(ref d) => op(d).map(TypeckTables),
             UsedTraitImports(ref d) => op(d).map(UsedTraitImports),
-            MonomorphicConstEval(ref d) => op(d).map(MonomorphicConstEval),
+            ConstEval(ref d) => op(d).map(ConstEval),
+            SymbolName(ref d) => op(d).map(SymbolName),
             TraitImpls(ref d) => op(d).map(TraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),
             ReprHints(ref d) => op(d).map(ReprHints),
@@ -295,6 +260,10 @@ impl<D: Clone + Debug> DepNode<D> {
                 let def_ids: Option<Vec<E>> = def_ids.iter().map(op).collect();
                 def_ids.map(|d| ProjectionCache { def_ids: d })
             }
+            DescribeDef(ref d) => op(d).map(DescribeDef),
+            DefSpan(ref d) => op(d).map(DefSpan),
+            Stability(ref d) => op(d).map(Stability),
+            Deprecation(ref d) => op(d).map(Deprecation),
         }
     }
 }

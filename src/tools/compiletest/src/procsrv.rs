@@ -20,6 +20,8 @@ pub fn dylib_env_var() -> &'static str {
         "PATH"
     } else if cfg!(target_os = "macos") {
         "DYLD_LIBRARY_PATH"
+    } else if cfg!(target_os = "haiku") {
+        "LIBRARY_PATH"
     } else {
         "LD_LIBRARY_PATH"
     }
@@ -58,24 +60,8 @@ pub fn run(lib_path: &str,
     let mut cmd = Command::new(prog);
     cmd.args(args)
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-
-    // Why oh why do we sometimes make a pipe and sometimes inherit the stdin
-    // stream, well that's an excellent question! In theory it should suffice to
-    // always create a pipe here and be done with it. Unfortunately though
-    // there's apparently something odd with the gdb that comes with gcc 6.3.0
-    // on MinGW. Tracked at rust-lang/rust#40184 when stdin is piped here
-    // (unconditionally) then all gdb tests will fail on MinGW when using gcc
-    // 6.3.0. WHen using an inherited stdin though they happen to all work!
-    //
-    // As to why this fixes the issue, well, I have no idea. If you can remove
-    // this branch and unconditionally use `piped` and it gets past @bors please
-    // feel free to send a PR!
-    if input.is_some() || !cfg!(windows) {
-        cmd.stdin(Stdio::piped());
-    } else {
-        cmd.stdin(Stdio::inherit());
-    }
+        .stderr(Stdio::piped())
+        .stdin(Stdio::piped());
 
     add_target_env(&mut cmd, lib_path, aux_path);
     for (key, val) in env {

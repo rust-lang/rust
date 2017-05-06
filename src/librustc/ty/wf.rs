@@ -94,6 +94,10 @@ pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         }
         ty::Predicate::ClosureKind(..) => {
         }
+        ty::Predicate::Subtype(ref data) => {
+            wf.compute(data.skip_binder().a); // (*)
+            wf.compute(data.skip_binder().b); // (*)
+        }
     }
 
     wf.normalize()
@@ -112,9 +116,9 @@ pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 /// For `&'a T` to be WF, `T: 'a` must hold. So we can assume `T: 'a`.
 #[derive(Debug)]
 pub enum ImpliedBound<'tcx> {
-    RegionSubRegion(&'tcx ty::Region, &'tcx ty::Region),
-    RegionSubParam(&'tcx ty::Region, ty::ParamTy),
-    RegionSubProjection(&'tcx ty::Region, ty::ProjectionTy<'tcx>),
+    RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
+    RegionSubParam(ty::Region<'tcx>, ty::ParamTy),
+    RegionSubProjection(ty::Region<'tcx>, ty::ProjectionTy<'tcx>),
 }
 
 /// Compute the implied bounds that a callee/impl can assume based on
@@ -156,6 +160,7 @@ pub fn implied_bounds<'a, 'gcx, 'tcx>(
                 match obligation.predicate {
                     ty::Predicate::Trait(..) |
                     ty::Predicate::Equate(..) |
+                    ty::Predicate::Subtype(..) |
                     ty::Predicate::Projection(..) |
                     ty::Predicate::ClosureKind(..) |
                     ty::Predicate::ObjectSafe(..) =>
@@ -193,7 +198,7 @@ pub fn implied_bounds<'a, 'gcx, 'tcx>(
 /// this down to determine what relationships would have to hold for
 /// `T: 'a` to hold. We get to assume that the caller has validated
 /// those relationships.
-fn implied_bounds_from_components<'tcx>(sub_region: &'tcx ty::Region,
+fn implied_bounds_from_components<'tcx>(sub_region: ty::Region<'tcx>,
                                         sup_components: Vec<Component<'tcx>>)
                                         -> Vec<ImpliedBound<'tcx>>
 {
@@ -438,7 +443,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                            -> Vec<traits::PredicateObligation<'tcx>>
     {
         let predicates =
-            self.infcx.tcx.item_predicates(def_id)
+            self.infcx.tcx.predicates_of(def_id)
                           .instantiate(self.infcx.tcx, substs);
         let cause = self.cause(traits::ItemObligation(def_id));
         predicates.predicates
@@ -450,7 +455,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
     fn from_object_ty(&mut self, ty: Ty<'tcx>,
                       data: ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>,
-                      region: &'tcx ty::Region) {
+                      region: ty::Region<'tcx>) {
         // Imagine a type like this:
         //
         //     trait Foo { }
@@ -507,7 +512,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 pub fn object_region_bounds<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     existential_predicates: ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>)
-    -> Vec<&'tcx ty::Region>
+    -> Vec<ty::Region<'tcx>>
 {
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically

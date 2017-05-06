@@ -28,10 +28,6 @@ pub struct Vector<T, D: Dim> {
 fn main() {
     let array: [usize; Dim3::dim()]
     //~^ ERROR calls in constants are limited to constant functions
-    //~| ERROR constant evaluation error
-    //~| non-constant path in constant expression
         = [0; Dim3::dim()];
         //~^ ERROR calls in constants are limited to constant functions
-        //~| ERROR constant evaluation error
-        //~| non-constant path in constant expression
 }

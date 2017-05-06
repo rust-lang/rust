@@ -178,8 +178,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         // parameters".
         if self.num_inferred() == inferreds_on_entry {
             let item_def_id = self.tcx.hir.local_def_id(item_id);
-            self.tcx.maps.variances
-                .borrow_mut()
+            self.tcx.maps.variances_of.borrow_mut()
                 .insert(item_def_id, self.empty_variances.clone());
         }
     }
@@ -251,6 +250,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
             hir::ItemFn(..) |
             hir::ItemMod(..) |
             hir::ItemForeignMod(..) |
+            hir::ItemGlobalAsm(..) |
             hir::ItemTy(..) => {}
         }
     }

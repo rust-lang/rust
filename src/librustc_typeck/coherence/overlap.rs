@@ -24,7 +24,7 @@ pub fn check_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     // this secondary walk specifically checks for some other cases,
     // like defaulted traits, for which additional overlap rules exist
-    tcx.visit_all_item_likes_in_krate(DepNode::CoherenceOverlapCheckSpecial, &mut overlap);
+    tcx.hir.krate().visit_all_item_likes(&mut overlap);
 }
 
 pub fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
@@ -41,7 +41,7 @@ pub fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
     let _task =
         tcx.dep_graph.in_task(DepNode::CoherenceOverlapCheck(trait_def_id));
 
-    let def = tcx.lookup_trait_def(trait_def_id);
+    let def = tcx.trait_def(trait_def_id);
 
     // attempt to insert into the specialization graph
     let insert_result = def.add_impl_for_specialization(tcx, impl_def_id);

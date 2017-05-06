@@ -51,4 +51,6 @@ mod borrowck;
 
 pub mod graphviz;
 
+pub use borrowck::provide;
+
 __build_diagnostic_array! { librustc_borrowck, DIAGNOSTICS }

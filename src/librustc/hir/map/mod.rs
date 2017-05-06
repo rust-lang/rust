@@ -442,6 +442,27 @@ impl<'hir> Map<'hir> {
         self.local_def_id(self.body_owner(id))
     }
 
+    /// Given a body owner's id, returns the `BodyId` associated with it.
+    pub fn body_owned_by(&self, id: NodeId) -> BodyId {
+        if let Some(entry) = self.find_entry(id) {
+            if let Some(body_id) = entry.associated_body() {
+                // For item-like things and closures, the associated
+                // body has its own distinct id, and that is returned
+                // by `associated_body`.
+                body_id
+            } else {
+                // For some expressions, the expression is its own body.
+                if let EntryExpr(_, expr) = entry {
+                    BodyId { node_id: expr.id }
+                } else {
+                    span_bug!(self.span(id), "id `{}` has no associated body: {:?}", id, entry);
+                }
+            }
+        } else {
+            bug!("no entry for id `{}`", id)
+        }
+    }
+
     pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
         match self.get(id) {
             NodeItem(&Item { node: ItemTrait(..), .. }) => id,
@@ -948,7 +969,7 @@ pub fn map_crate<'hir>(forest: &'hir mut Forest,
     intravisit::walk_crate(&mut collector, &forest.krate);
     let map = collector.map;
 
-    if log_enabled!(::log::DEBUG) {
+    if log_enabled!(::log::LogLevel::Debug) {
         // This only makes sense for ordered stores; note the
         // enumerate to count the number of entries.
         let (entries_less_1, _) = map.iter().filter(|&x| {
@@ -1056,6 +1077,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemFn(..) => "fn",
                 ItemMod(..) => "mod",
                 ItemForeignMod(..) => "foreign mod",
+                ItemGlobalAsm(..) => "global asm",
                 ItemTy(..) => "ty",
                 ItemEnum(..) => "enum",
                 ItemStruct(..) => "struct",

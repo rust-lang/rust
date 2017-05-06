@@ -35,6 +35,7 @@
 extern crate arena;
 extern crate getopts;
 extern crate graphviz;
+extern crate env_logger;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_back;
@@ -66,6 +67,7 @@ use pretty::{PpMode, UserIdentifiedItem};
 
 use rustc_resolve as resolve;
 use rustc_save_analysis as save;
+use rustc_save_analysis::DumpHandler;
 use rustc_trans::back::link;
 use rustc_trans::back::write::{create_target_machine, RELOC_MODEL_ARGS, CODE_GEN_MODEL_ARGS};
 use rustc::dep_graph::DepGraph;
@@ -204,7 +206,7 @@ pub fn run_compiler<'a>(args: &[String],
     let cstore = Rc::new(CStore::new(&dep_graph));
 
     let loader = file_loader.unwrap_or(box RealFileLoader);
-    let codemap = Rc::new(CodeMap::with_file_loader(loader));
+    let codemap = Rc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
     let mut sess = session::build_session_with_codemap(
         sopts, &dep_graph, input_file_path, descriptions, cstore.clone(), codemap, emitter_dest,
     );
@@ -232,7 +234,7 @@ fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<PathBuf>)
 // Extract input (string or file and optional path) from matches.
 fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>)> {
     if free_matches.len() == 1 {
-        let ifile = &free_matches[0][..];
+        let ifile = &free_matches[0];
         if ifile == "-" {
             let mut src = String::new();
             io::stdin().read_to_string(&mut src).unwrap();
@@ -341,7 +343,7 @@ pub trait CompilerCalls<'a> {
 
     // Create a CompilController struct for controlling the behaviour of
     // compilation.
-    fn build_controller(&mut self, &Session, &getopts::Matches) -> CompileController<'a>;
+    fn build_controller(&mut self, _: &Session, _: &getopts::Matches) -> CompileController<'a>;
 }
 
 // CompilerCalls instance for a regular rustc build.
@@ -506,14 +508,25 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                                         state.expanded_crate.unwrap(),
                                         state.analysis.unwrap(),
                                         state.crate_name.unwrap(),
-                                        state.out_dir,
-                                        save_analysis_format(state.session))
+                                        DumpHandler::new(save_analysis_format(state.session),
+                                                         state.out_dir,
+                                                         state.crate_name.unwrap()))
                 });
             };
             control.after_analysis.run_callback_on_error = true;
             control.make_glob_map = resolve::MakeGlobMap::Yes;
         }
 
+        if sess.print_fuel_crate.is_some() {
+            let old_callback = control.compilation_done.callback;
+            control.compilation_done.callback = box move |state| {
+                old_callback(state);
+                let sess = state.session;
+                println!("Fuel used by {}: {}",
+                    sess.print_fuel_crate.as_ref().unwrap(),
+                    sess.print_fuel.get());
+            }
+        }
         control
     }
 }
@@ -799,7 +812,7 @@ Available lint options:
         for lint in lints {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7}  {}",
-                     padded(&name[..]),
+                     padded(&name),
                      lint.default_level.as_str(),
                      lint.desc);
         }
@@ -837,7 +850,7 @@ Available lint options:
                          .map(|x| x.to_string().replace("_", "-"))
                          .collect::<Vec<String>>()
                          .join(", ");
-            println!("    {}  {}", padded(&name[..]), desc);
+            println!("    {}  {}", padded(&name), desc);
         }
         println!("\n");
     };
@@ -944,7 +957,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
                                                  .into_iter()
                                                  .map(|x| x.opt_group)
                                                  .collect();
-    let matches = match getopts::getopts(&args[..], &all_groups) {
+    let matches = match getopts::getopts(&args, &all_groups) {
         Ok(m) => m,
         Err(f) => early_error(ErrorOutputType::default(), &f.to_string()),
     };
@@ -1083,7 +1096,7 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
                       format!("we would appreciate a bug report: {}", BUG_REPORT_URL)];
             for note in &xs {
                 handler.emit(&MultiSpan::new(),
-                             &note[..],
+                             &note,
                              errors::Level::Note);
             }
             if match env::var_os("RUST_BACKTRACE") {
@@ -1127,6 +1140,7 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
 }
 
 pub fn main() {
+    env_logger::init().unwrap();
     let result = run(|| run_compiler(&env::args().collect::<Vec<_>>(),
                                      &mut RustcDefaultCalls,
                                      None,

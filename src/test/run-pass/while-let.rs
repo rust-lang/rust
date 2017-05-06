@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-#![feature(binary_heap_extras)]
-
 use std::collections::BinaryHeap;
 
 fn make_pq() -> BinaryHeap<isize> {

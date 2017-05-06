@@ -90,83 +90,11 @@ impl<T: fmt::UpperHex> fmt::UpperHex for Wrapping<T> {
 
 mod wrapping;
 
-// All these modules are technically private and only exposed for libcoretest:
+// All these modules are technically private and only exposed for coretests:
 pub mod flt2dec;
 pub mod dec2flt;
 pub mod bignum;
 pub mod diy_float;
-
-/// Types that have a "zero" value.
-///
-/// This trait is intended for use in conjunction with `Add`, as an identity:
-/// `x + T::zero() == x`.
-#[unstable(feature = "zero_one",
-           reason = "unsure of placement, wants to use associated constants",
-           issue = "27739")]
-#[rustc_deprecated(since = "1.11.0", reason = "no longer used for \
-                                               Iterator::sum")]
-pub trait Zero: Sized {
-    /// The "zero" (usually, additive identity) for this type.
-    fn zero() -> Self;
-}
-
-/// Types that have a "one" value.
-///
-/// This trait is intended for use in conjunction with `Mul`, as an identity:
-/// `x * T::one() == x`.
-#[unstable(feature = "zero_one",
-           reason = "unsure of placement, wants to use associated constants",
-           issue = "27739")]
-#[rustc_deprecated(since = "1.11.0", reason = "no longer used for \
-                                               Iterator::product")]
-pub trait One: Sized {
-    /// The "one" (usually, multiplicative identity) for this type.
-    fn one() -> Self;
-}
-
-macro_rules! zero_one_impl {
-    ($($t:ty)*) => ($(
-        #[unstable(feature = "zero_one",
-                   reason = "unsure of placement, wants to use associated constants",
-                   issue = "27739")]
-        #[allow(deprecated)]
-        impl Zero for $t {
-            #[inline]
-            fn zero() -> Self { 0 }
-        }
-        #[unstable(feature = "zero_one",
-                   reason = "unsure of placement, wants to use associated constants",
-                   issue = "27739")]
-        #[allow(deprecated)]
-        impl One for $t {
-            #[inline]
-            fn one() -> Self { 1 }
-        }
-    )*)
-}
-zero_one_impl! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
-
-macro_rules! zero_one_impl_float {
-    ($($t:ty)*) => ($(
-        #[unstable(feature = "zero_one",
-                   reason = "unsure of placement, wants to use associated constants",
-                   issue = "27739")]
-        #[allow(deprecated)]
-        impl Zero for $t {
-            #[inline]
-            fn zero() -> Self { 0.0 }
-        }
-        #[unstable(feature = "zero_one",
-                   reason = "unsure of placement, wants to use associated constants",
-                   issue = "27739")]
-        #[allow(deprecated)]
-        impl One for $t {
-            #[inline]
-            fn one() -> Self { 1.0 }
-        }
-    )*)
-}
-zero_one_impl_float! { f32 f64 }
 
 macro_rules! checked_op {
     ($U:ty, $op:path, $x:expr, $y:expr) => {{
@@ -850,19 +778,10 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
-        #[cfg(not(stage0))]
         pub fn wrapping_shl(self, rhs: u32) -> Self {
             unsafe {
                 intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
             }
-        }
-
-        /// Stage 0
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
-        #[cfg(stage0)]
-        pub fn wrapping_shl(self, rhs: u32) -> Self {
-            self.overflowing_shl(rhs).0
         }
 
         /// Panic-free bitwise shift-right; yields `self >> mask(rhs)`,
@@ -886,19 +805,10 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
-        #[cfg(not(stage0))]
         pub fn wrapping_shr(self, rhs: u32) -> Self {
             unsafe {
                 intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
             }
-        }
-
-        /// Stage 0
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
-        #[cfg(stage0)]
-        pub fn wrapping_shr(self, rhs: u32) -> Self {
-            self.overflowing_shr(rhs).0
         }
 
         /// Wrapping (modular) absolute value. Computes `self.abs()`,
@@ -1111,17 +1021,8 @@ macro_rules! int_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(not(stage0))]
         pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
             (self.wrapping_shl(rhs), (rhs > ($BITS - 1)))
-        }
-
-        /// Stage 0
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(stage0)]
-        pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
-            (self << (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }
 
         /// Shifts self right by `rhs` bits.
@@ -1142,17 +1043,8 @@ macro_rules! int_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(not(stage0))]
         pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
             (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
-        }
-
-        /// Stage 0
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(stage0)]
-        pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
-            (self >> (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }
 
         /// Computes the absolute value of `self`.
@@ -2018,19 +1910,10 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
-        #[cfg(not(stage0))]
         pub fn wrapping_shl(self, rhs: u32) -> Self {
             unsafe {
                 intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
             }
-        }
-
-        /// Stage 0
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
-        #[cfg(stage0)]
-        pub fn wrapping_shl(self, rhs: u32) -> Self {
-            self.overflowing_shl(rhs).0
         }
 
         /// Panic-free bitwise shift-right; yields `self >> mask(rhs)`,
@@ -2054,19 +1937,10 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
-        #[cfg(not(stage0))]
         pub fn wrapping_shr(self, rhs: u32) -> Self {
             unsafe {
                 intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
             }
-        }
-
-        /// Stage 0
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
-        #[cfg(stage0)]
-        pub fn wrapping_shr(self, rhs: u32) -> Self {
-            self.overflowing_shr(rhs).0
         }
 
         /// Calculates `self` + `rhs`
@@ -2232,17 +2106,8 @@ macro_rules! uint_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(not(stage0))]
         pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
             (self.wrapping_shl(rhs), (rhs > ($BITS - 1)))
-        }
-
-        /// Stage 0
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(stage0)]
-        pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
-            (self << (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }
 
         /// Shifts self right by `rhs` bits.
@@ -2263,18 +2128,9 @@ macro_rules! uint_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(not(stage0))]
         pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
             (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
 
-        }
-
-        /// Stage 0
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(stage0)]
-        pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
-            (self >> (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }
 
         /// Raises self to the power of `exp`, using exponentiation by squaring.
@@ -2525,49 +2381,6 @@ pub enum FpCategory {
            reason = "stable interface is via `impl f{32,64}` in later crates",
            issue = "32110")]
 pub trait Float: Sized {
-    /// Returns the NaN value.
-    #[unstable(feature = "float_extras", reason = "needs removal",
-               issue = "27752")]
-    #[rustc_deprecated(since = "1.11.0",
-                       reason = "never really came to fruition and easily \
-                                 implementable outside the standard library")]
-    fn nan() -> Self;
-    /// Returns the infinite value.
-    #[unstable(feature = "float_extras", reason = "needs removal",
-               issue = "27752")]
-    #[rustc_deprecated(since = "1.11.0",
-                       reason = "never really came to fruition and easily \
-                                 implementable outside the standard library")]
-    fn infinity() -> Self;
-    /// Returns the negative infinite value.
-    #[unstable(feature = "float_extras", reason = "needs removal",
-               issue = "27752")]
-    #[rustc_deprecated(since = "1.11.0",
-                       reason = "never really came to fruition and easily \
-                                 implementable outside the standard library")]
-    fn neg_infinity() -> Self;
-    /// Returns -0.0.
-    #[unstable(feature = "float_extras", reason = "needs removal",
-               issue = "27752")]
-    #[rustc_deprecated(since = "1.11.0",
-                       reason = "never really came to fruition and easily \
-                                 implementable outside the standard library")]
-    fn neg_zero() -> Self;
-    /// Returns 0.0.
-    #[unstable(feature = "float_extras", reason = "needs removal",
-               issue = "27752")]
-    #[rustc_deprecated(since = "1.11.0",
-                       reason = "never really came to fruition and easily \
-                                 implementable outside the standard library")]
-    fn zero() -> Self;
-    /// Returns 1.0.
-    #[unstable(feature = "float_extras", reason = "needs removal",
-               issue = "27752")]
-    #[rustc_deprecated(since = "1.11.0",
-                       reason = "never really came to fruition and easily \
-                                 implementable outside the standard library")]
-    fn one() -> Self;
-
     /// Returns `true` if this value is NaN and false otherwise.
     #[stable(feature = "core", since = "1.6.0")]
     fn is_nan(self) -> bool;
@@ -2584,14 +2397,6 @@ pub trait Float: Sized {
     /// Returns the category that this number falls into.
     #[stable(feature = "core", since = "1.6.0")]
     fn classify(self) -> FpCategory;
-
-    /// Returns the mantissa, exponent and sign as integers, respectively.
-    #[unstable(feature = "float_extras", reason = "signature is undecided",
-               issue = "27752")]
-    #[rustc_deprecated(since = "1.11.0",
-                       reason = "never really came to fruition and easily \
-                                 implementable outside the standard library")]
-    fn integer_decode(self) -> (u64, i16, i8);
 
     /// Computes the absolute value of `self`. Returns `Float::nan()` if the
     /// number is `Float::nan()`.

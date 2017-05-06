@@ -208,7 +208,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         let no_stmts = self.source[loc.block].statements.len();
         let new_temp = self.promoted.local_decls.push(
-            LocalDecl::new_temp(self.source.local_decls[temp].ty));
+            LocalDecl::new_temp(self.source.local_decls[temp].ty,
+                                self.source.local_decls[temp].source_info.span));
 
         debug!("promote({:?} @ {:?}/{:?}, {:?})",
                temp, loc, no_stmts, self.keep_original);
@@ -379,7 +380,8 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
         };
 
         // Declare return pointer local
-        let initial_locals = iter::once(LocalDecl::new_return_pointer(ty)).collect();
+        let initial_locals = iter::once(LocalDecl::new_return_pointer(ty, span))
+            .collect();
 
         let mut promoter = Promoter {
             promoted: Mir::new(

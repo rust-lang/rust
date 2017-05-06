@@ -73,8 +73,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         debug!("check_closure: expr.id={:?} closure_type={:?}", expr.id, closure_type);
 
-        let extent = self.tcx.region_maps.call_site_extent(expr.id, body.value.id);
-        let fn_sig = self.tcx.liberate_late_bound_regions(extent, &sig);
+        let extent = self.tcx.call_site_extent(expr.id, body.value.id);
+        let fn_sig = self.tcx.liberate_late_bound_regions(Some(extent), &sig);
         let fn_sig = self.inh.normalize_associated_types_in(body.value.span,
                                                             body.value.id, &fn_sig);
 
@@ -169,6 +169,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty::Predicate::Projection(ref data) => Some(data.to_poly_trait_ref()),
                     ty::Predicate::Trait(ref data) => Some(data.to_poly_trait_ref()),
                     ty::Predicate::Equate(..) => None,
+                    ty::Predicate::Subtype(..) => None,
                     ty::Predicate::RegionOutlives(..) => None,
                     ty::Predicate::TypeOutlives(..) => None,
                     ty::Predicate::WellFormed(..) => None,

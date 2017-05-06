@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use LinkerFlavor;
 use target::{Target, TargetResult};
 
 pub fn target() -> TargetResult {
@@ -17,12 +18,13 @@ pub fn target() -> TargetResult {
 
     // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
     // space available to x86 Windows binaries on x86_64.
-    base.pre_link_args.push("/LARGEADDRESSAWARE".to_string());
+    base.pre_link_args
+        .get_mut(&LinkerFlavor::Msvc).unwrap().push("/LARGEADDRESSAWARE".to_string());
 
     // Ensure the linker will only produce an image if it can also produce a table of
     // the image's safe exception handlers.
     // https://msdn.microsoft.com/en-us/library/9a89h429.aspx
-    base.pre_link_args.push("/SAFESEH".to_string());
+    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().push("/SAFESEH".to_string());
 
     Ok(Target {
         llvm_target: "i686-pc-windows-msvc".to_string(),
@@ -33,6 +35,7 @@ pub fn target() -> TargetResult {
         target_os: "windows".to_string(),
         target_env: "msvc".to_string(),
         target_vendor: "pc".to_string(),
+        linker_flavor: LinkerFlavor::Msvc,
         options: base,
     })
 }

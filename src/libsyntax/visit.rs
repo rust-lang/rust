@@ -58,6 +58,7 @@ pub trait Visitor<'ast>: Sized {
     }
     fn visit_mod(&mut self, m: &'ast Mod, _s: Span, _n: NodeId) { walk_mod(self, m) }
     fn visit_foreign_item(&mut self, i: &'ast ForeignItem) { walk_foreign_item(self, i) }
+    fn visit_global_asm(&mut self, ga: &'ast GlobalAsm) { walk_global_asm(self, ga) }
     fn visit_item(&mut self, i: &'ast Item) { walk_item(self, i) }
     fn visit_local(&mut self, l: &'ast Local) { walk_local(self, l) }
     fn visit_block(&mut self, b: &'ast Block) { walk_block(self, b) }
@@ -253,6 +254,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         ItemKind::ForeignMod(ref foreign_module) => {
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }
+        ItemKind::GlobalAsm(ref ga) => visitor.visit_global_asm(ga),
         ItemKind::Ty(ref typ, ref type_parameters) => {
             visitor.visit_ty(typ);
             visitor.visit_generics(type_parameters)
@@ -264,7 +266,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         ItemKind::DefaultImpl(_, ref trait_ref) => {
             visitor.visit_trait_ref(trait_ref)
         }
-        ItemKind::Impl(_, _,
+        ItemKind::Impl(_, _, _,
                  ref type_parameters,
                  ref opt_trait_reference,
                  ref typ,
@@ -350,7 +352,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
         TyKind::Typeof(ref expression) => {
             visitor.visit_expr(expression)
         }
-        TyKind::Infer | TyKind::ImplicitSelf => {}
+        TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err => {}
         TyKind::Mac(ref mac) => {
             visitor.visit_mac(mac)
         }
@@ -462,6 +464,10 @@ pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, foreign_item: &'a 
     }
 
     walk_list!(visitor, visit_attribute, &foreign_item.attrs);
+}
+
+pub fn walk_global_asm<'a, V: Visitor<'a>>(_: &mut V, _: &'a GlobalAsm) {
+    // Empty!
 }
 
 pub fn walk_ty_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a TyParamBound) {

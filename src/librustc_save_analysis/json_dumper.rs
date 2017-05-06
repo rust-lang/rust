@@ -22,22 +22,52 @@ use external_data::*;
 use data::{self, VariableKind};
 use dump::Dump;
 
-pub struct JsonDumper<'b, W: Write + 'b> {
-    output: &'b mut W,
+pub struct JsonDumper<O: DumpOutput> {
     result: Analysis,
+    output: O,
 }
 
-impl<'b, W: Write> JsonDumper<'b, W> {
-    pub fn new(writer: &'b mut W) -> JsonDumper<'b, W> {
-        JsonDumper { output: writer, result: Analysis::new() }
+pub trait DumpOutput {
+    fn dump(&mut self, result: &Analysis);
+}
+
+pub struct WriteOutput<'b, W: Write + 'b> {
+    output: &'b mut W,
+}
+
+impl<'b, W: Write> DumpOutput for WriteOutput<'b, W> {
+    fn dump(&mut self, result: &Analysis) {
+        if let Err(_) = write!(self.output, "{}", as_json(&result)) {
+            error!("Error writing output");
+        }
     }
 }
 
-impl<'b, W: Write> Drop for JsonDumper<'b, W> {
+pub struct CallbackOutput<'b> {
+    callback: &'b mut FnMut(&Analysis),
+}
+
+impl<'b> DumpOutput for CallbackOutput<'b> {
+    fn dump(&mut self, result: &Analysis) {
+        (self.callback)(result)
+    }
+}
+
+impl<'b, W: Write> JsonDumper<WriteOutput<'b, W>> {
+    pub fn new(writer: &'b mut W) -> JsonDumper<WriteOutput<'b, W>> {
+        JsonDumper { output: WriteOutput { output: writer }, result: Analysis::new() }
+    }
+}
+
+impl<'b> JsonDumper<CallbackOutput<'b>> {
+    pub fn with_callback(callback: &'b mut FnMut(&Analysis)) -> JsonDumper<CallbackOutput<'b>> {
+        JsonDumper { output: CallbackOutput { callback: callback }, result: Analysis::new() }
+    }
+}
+
+impl<O: DumpOutput> Drop for JsonDumper<O> {
     fn drop(&mut self) {
-        if let Err(_) = write!(self.output, "{}", as_json(&self.result)) {
-            error!("Error writing output");
-        }
+        self.output.dump(&self.result);
     }
 }
 
@@ -49,7 +79,7 @@ macro_rules! impl_fn {
     }
 }
 
-impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
+impl<'b, O: DumpOutput + 'b> Dump for JsonDumper<O> {
     fn crate_prelude(&mut self, data: CratePreludeData) {
         self.result.prelude = Some(data)
     }

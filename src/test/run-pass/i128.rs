@@ -104,4 +104,9 @@ fn main() {
     assert_eq!(l.checked_sub(l), Some(0));
     assert_eq!(b(1u128).checked_shl(b(127)), Some(1 << 127));
     assert_eq!(o.checked_shl(b(128)), None);
+
+    // https://github.com/rust-lang/rust/issues/41228
+    assert_eq!(b(-87559967289969187895646876466835277875_i128) /
+               b(84285771033834995895337664386045050880_i128),
+               -1i128);
 }

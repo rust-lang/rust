@@ -22,42 +22,43 @@ use sys::cvt;
 use sys::handle::Handle;
 use sys_common::io::read_to_end_uninitialized;
 
-pub struct NoClose(Option<Handle>);
-
 pub enum Output {
-    Console(NoClose),
-    Pipe(NoClose),
+    Console(c::HANDLE),
+    Pipe(c::HANDLE),
 }
 
 pub struct Stdin {
-    handle: Output,
     utf8: Mutex<io::Cursor<Vec<u8>>>,
 }
-pub struct Stdout(Output);
-pub struct Stderr(Output);
+pub struct Stdout;
+pub struct Stderr;
 
 pub fn get(handle: c::DWORD) -> io::Result<Output> {
     let handle = unsafe { c::GetStdHandle(handle) };
     if handle == c::INVALID_HANDLE_VALUE {
         Err(io::Error::last_os_error())
     } else if handle.is_null() {
-        Err(io::Error::new(io::ErrorKind::Other,
-                           "no stdio handle available for this process"))
+        Err(io::Error::from_raw_os_error(c::ERROR_INVALID_HANDLE as i32))
     } else {
-        let ret = NoClose::new(handle);
         let mut out = 0;
         match unsafe { c::GetConsoleMode(handle, &mut out) } {
-            0 => Ok(Output::Pipe(ret)),
-            _ => Ok(Output::Console(ret)),
+            0 => Ok(Output::Pipe(handle)),
+            _ => Ok(Output::Console(handle)),
         }
     }
 }
 
-fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
-    let handle = match *out {
-        Output::Console(ref c) => c.get().raw(),
-        Output::Pipe(ref p) => return p.get().write(data),
+fn write(handle: c::DWORD, data: &[u8]) -> io::Result<usize> {
+    let handle = match try!(get(handle)) {
+        Output::Console(c) => c,
+        Output::Pipe(p) => {
+            let handle = Handle::new(p);
+            let ret = handle.write(data);
+            handle.into_raw();
+            return ret
+        }
     };
+
     // As with stdin on windows, stdout often can't handle writes of large
     // sizes. For an example, see #14940. For this reason, don't try to
     // write the entire output buffer on windows.
@@ -93,18 +94,20 @@ fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
 
 impl Stdin {
     pub fn new() -> io::Result<Stdin> {
-        get(c::STD_INPUT_HANDLE).map(|handle| {
-            Stdin {
-                handle: handle,
-                utf8: Mutex::new(Cursor::new(Vec::new())),
-            }
+        Ok(Stdin {
+            utf8: Mutex::new(Cursor::new(Vec::new())),
         })
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        let handle = match self.handle {
-            Output::Console(ref c) => c.get().raw(),
-            Output::Pipe(ref p) => return p.get().read(buf),
+        let handle = match try!(get(c::STD_INPUT_HANDLE)) {
+            Output::Console(c) => c,
+            Output::Pipe(p) => {
+                let handle = Handle::new(p);
+                let ret = handle.read(buf);
+                handle.into_raw();
+                return ret
+            }
         };
         let mut utf8 = self.utf8.lock().unwrap();
         // Read more if the buffer is empty
@@ -125,11 +128,9 @@ impl Stdin {
                 Ok(utf8) => utf8.into_bytes(),
                 Err(..) => return Err(invalid_encoding()),
             };
-            if let Output::Console(_) = self.handle {
-                if let Some(&last_byte) = data.last() {
-                    if last_byte == CTRL_Z {
-                        data.pop();
-                    }
+            if let Some(&last_byte) = data.last() {
+                if last_byte == CTRL_Z {
+                    data.pop();
                 }
             }
             *utf8 = Cursor::new(data);
@@ -158,11 +159,11 @@ impl<'a> Read for &'a Stdin {
 
 impl Stdout {
     pub fn new() -> io::Result<Stdout> {
-        get(c::STD_OUTPUT_HANDLE).map(Stdout)
+        Ok(Stdout)
     }
 
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        write(&self.0, data)
+        write(c::STD_OUTPUT_HANDLE, data)
     }
 
     pub fn flush(&self) -> io::Result<()> {
@@ -172,11 +173,11 @@ impl Stdout {
 
 impl Stderr {
     pub fn new() -> io::Result<Stderr> {
-        get(c::STD_ERROR_HANDLE).map(Stderr)
+        Ok(Stderr)
     }
 
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        write(&self.0, data)
+        write(c::STD_ERROR_HANDLE, data)
     }
 
     pub fn flush(&self) -> io::Result<()> {
@@ -197,27 +198,12 @@ impl io::Write for Stderr {
     }
 }
 
-impl NoClose {
-    fn new(handle: c::HANDLE) -> NoClose {
-        NoClose(Some(Handle::new(handle)))
-    }
-
-    fn get(&self) -> &Handle { self.0.as_ref().unwrap() }
-}
-
-impl Drop for NoClose {
-    fn drop(&mut self) {
-        self.0.take().unwrap().into_raw();
-    }
-}
-
 impl Output {
-    pub fn handle(&self) -> &Handle {
-        let nc = match *self {
-            Output::Console(ref c) => c,
-            Output::Pipe(ref c) => c,
-        };
-        nc.0.as_ref().unwrap()
+    pub fn handle(&self) -> c::HANDLE {
+        match *self {
+            Output::Console(c) => c,
+            Output::Pipe(c) => c,
+        }
     }
 }
 

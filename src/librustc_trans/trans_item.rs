@@ -14,10 +14,11 @@
 //! item-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
+use asm;
 use attributes;
 use base;
 use consts;
-use context::{CrateContext, SharedCrateContext};
+use context::CrateContext;
 use common;
 use declare;
 use llvm;
@@ -27,18 +28,19 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::Substs;
-use rustc_const_eval::fatal_const_eval_err;
 use syntax::ast::{self, NodeId};
 use syntax::attr;
+use syntax_pos::Span;
+use syntax_pos::symbol::Symbol;
 use type_of;
-use back::symbol_names;
 use std::fmt::Write;
 use std::iter;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum TransItem<'tcx> {
     Fn(Instance<'tcx>),
-    Static(NodeId)
+    Static(NodeId),
+    GlobalAsm(NodeId),
 }
 
 /// Describes how a translation item will be instantiated in object files.
@@ -80,11 +82,17 @@ impl<'a, 'tcx> TransItem<'tcx> {
                     match consts::trans_static(&ccx, m, item.id, &item.attrs) {
                         Ok(_) => { /* Cool, everything's alright. */ },
                         Err(err) => {
-                            // FIXME: shouldn't this be a `span_err`?
-                            fatal_const_eval_err(
-                                ccx.tcx(), &err, item.span, "static");
+                            err.report(ccx.tcx(), item.span, "static");
                         }
                     };
+                } else {
+                    span_bug!(item.span, "Mismatch between hir::Item type and TransItem type")
+                }
+            }
+            TransItem::GlobalAsm(node_id) => {
+                let item = ccx.tcx().hir.expect_item(node_id);
+                if let hir::ItemGlobalAsm(ref ga) = item.node {
+                    asm::trans_global_asm(ccx, ga);
                 } else {
                     span_bug!(item.span, "Mismatch between hir::Item type and TransItem type")
                 }
@@ -111,8 +119,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                self.to_raw_string(),
                ccx.codegen_unit().name());
 
-        let symbol_name = ccx.symbol_map()
-                             .get_or_compute(ccx.shared(), *self);
+        let symbol_name = self.symbol_name(ccx.tcx());
 
         debug!("symbol {}", &symbol_name);
 
@@ -123,6 +130,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
             TransItem::Fn(instance) => {
                 TransItem::predefine_fn(ccx, instance, linkage, &symbol_name);
             }
+            TransItem::GlobalAsm(..) => {}
         }
 
         debug!("END PREDEFINING '{} ({})' in cgu {}",
@@ -177,15 +185,32 @@ impl<'a, 'tcx> TransItem<'tcx> {
         ccx.instances().borrow_mut().insert(instance, lldecl);
     }
 
-    pub fn compute_symbol_name(&self,
-                               scx: &SharedCrateContext<'a, 'tcx>) -> String {
+    pub fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::SymbolName {
         match *self {
-            TransItem::Fn(instance) => symbol_names::symbol_name(instance, scx),
+            TransItem::Fn(instance) => tcx.symbol_name(instance),
             TransItem::Static(node_id) => {
-                let def_id = scx.tcx().hir.local_def_id(node_id);
-                symbol_names::symbol_name(Instance::mono(scx.tcx(), def_id), scx)
+                let def_id = tcx.hir.local_def_id(node_id);
+                tcx.symbol_name(Instance::mono(tcx, def_id))
+            }
+            TransItem::GlobalAsm(node_id) => {
+                let def_id = tcx.hir.local_def_id(node_id);
+                ty::SymbolName {
+                    name: Symbol::intern(&format!("global_asm_{:?}", def_id)).as_str()
+                }
             }
         }
+    }
+
+    pub fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
+        match *self {
+            TransItem::Fn(Instance { def, .. }) => {
+                tcx.hir.as_local_node_id(def.def_id())
+            }
+            TransItem::Static(node_id) |
+            TransItem::GlobalAsm(node_id) => {
+                Some(node_id)
+            }
+        }.map(|node_id| tcx.hir.span(node_id))
     }
 
     pub fn instantiation_mode(&self,
@@ -202,6 +227,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 }
             }
             TransItem::Static(..) => InstantiationMode::GloballyShared,
+            TransItem::GlobalAsm(..) => InstantiationMode::GloballyShared,
         }
     }
 
@@ -210,7 +236,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
             TransItem::Fn(ref instance) => {
                 instance.substs.types().next().is_some()
             }
-            TransItem::Static(..)   => false,
+            TransItem::Static(..) |
+            TransItem::GlobalAsm(..) => false,
         }
     }
 
@@ -218,6 +245,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         let def_id = match *self {
             TransItem::Fn(ref instance) => instance.def_id(),
             TransItem::Static(node_id) => tcx.hir.local_def_id(node_id),
+            TransItem::GlobalAsm(..) => return None,
         };
 
         let attributes = tcx.get_attrs(def_id);
@@ -249,6 +277,9 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 let instance = Instance::new(def_id, tcx.intern_substs(&[]));
                 to_string_internal(tcx, "static ", instance)
             },
+            TransItem::GlobalAsm(..) => {
+                "global_asm".to_string()
+            }
         };
 
         fn to_string_internal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -272,6 +303,9 @@ impl<'a, 'tcx> TransItem<'tcx> {
             }
             TransItem::Static(id) => {
                 format!("Static({:?})", id)
+            }
+            TransItem::GlobalAsm(id) => {
+                format!("GlobalAsm({:?})", id)
             }
         }
     }
@@ -425,7 +459,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             },
             ty::TyClosure(def_id, ref closure_substs) => {
                 self.push_def_path(def_id, output);
-                let generics = self.tcx.item_generics(self.tcx.closure_base_def_id(def_id));
+                let generics = self.tcx.generics_of(self.tcx.closure_base_def_id(def_id));
                 let substs = closure_substs.substs.truncate_to(self.tcx, generics);
                 self.push_type_params(substs, iter::empty(), output);
             }

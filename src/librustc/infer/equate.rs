@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::combine::CombineFields;
+use super::combine::{CombineFields, RelationDir};
 use super::{Subtype};
-use super::type_variable::{EqTo};
 
 use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
@@ -58,17 +57,17 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         let b = infcx.type_variables.borrow_mut().replace_if_possible(b);
         match (&a.sty, &b.sty) {
             (&ty::TyInfer(TyVar(a_id)), &ty::TyInfer(TyVar(b_id))) => {
-                infcx.type_variables.borrow_mut().relate_vars(a_id, EqTo, b_id);
+                infcx.type_variables.borrow_mut().equate(a_id, b_id);
                 Ok(a)
             }
 
             (&ty::TyInfer(TyVar(a_id)), _) => {
-                self.fields.instantiate(b, EqTo, a_id, self.a_is_expected)?;
+                self.fields.instantiate(b, RelationDir::EqTo, a_id, self.a_is_expected)?;
                 Ok(a)
             }
 
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                self.fields.instantiate(a, EqTo, b_id, self.a_is_expected)?;
+                self.fields.instantiate(a, RelationDir::EqTo, b_id, self.a_is_expected)?;
                 Ok(a)
             }
 
@@ -79,8 +78,8 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         }
     }
 
-    fn regions(&mut self, a: &'tcx ty::Region, b: &'tcx ty::Region)
-               -> RelateResult<'tcx, &'tcx ty::Region> {
+    fn regions(&mut self, a: ty::Region<'tcx>, b: ty::Region<'tcx>)
+               -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!("{}.regions({:?}, {:?})",
                self.tag(),
                a,

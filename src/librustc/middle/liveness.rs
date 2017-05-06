@@ -109,7 +109,6 @@ use self::LoopKind::*;
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
-use dep_graph::DepNode;
 use hir::def::*;
 use ty::{self, TyCtxt, ParameterEnvironment};
 use traits::{self, Reveal};
@@ -196,7 +195,6 @@ impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let _task = tcx.dep_graph.in_task(DepNode::Liveness);
     tcx.hir.krate().visit_all_item_likes(&mut IrMaps::new(tcx).as_deep_visitor());
     tcx.sess.abort_if_errors();
 }
@@ -821,8 +819,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_block(&mut self, blk: &hir::Block, succ: LiveNode)
                                -> LiveNode {
-        if let Some(break_to_expr_id) = blk.break_to_expr_id {
-            self.breakable_block_ln.insert(break_to_expr_id, succ);
+        if blk.targeted_by_break {
+            self.breakable_block_ln.insert(blk.id, succ);
         }
         let succ = self.propagate_through_opt_expr(blk.expr.as_ref().map(|e| &**e), succ);
         blk.stmts.iter().rev().fold(succ, |succ, stmt| {
@@ -951,7 +949,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             //   (  succ  )
             //
             let else_ln = self.propagate_through_opt_expr(els.as_ref().map(|e| &**e), succ);
-            let then_ln = self.propagate_through_block(&then, succ);
+            let then_ln = self.propagate_through_expr(&then, succ);
             let ln = self.live_node(expr.id, expr.span);
             self.init_from_succ(ln, else_ln);
             self.merge_from_succ(ln, then_ln, false);
@@ -1428,7 +1426,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                  entry_ln: LiveNode,
                  body: &hir::Body)
     {
-        let fn_ty = self.ir.tcx.item_type(self.ir.tcx.hir.local_def_id(id));
+        let fn_ty = self.ir.tcx.type_of(self.ir.tcx.hir.local_def_id(id));
         let fn_sig = match fn_ty.sty {
             ty::TyClosure(closure_def_id, substs) => {
                 self.ir.tcx.closure_type(closure_def_id)
@@ -1443,7 +1441,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // and must outlive the *call-site* of the function.
         let fn_ret =
             self.ir.tcx.liberate_late_bound_regions(
-                self.ir.tcx.region_maps.call_site_extent(id, body.value.id),
+                Some(self.ir.tcx.call_site_extent(id, body.value.id)),
                 &fn_ret);
 
         if !fn_ret.is_never() && self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {

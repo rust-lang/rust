@@ -39,7 +39,7 @@ use syntax::codemap::Spanned;
 use syntax_pos::Span;
 use hir::*;
 use hir::def::Def;
-use hir::map::Map;
+use hir::map::{self, Map};
 use super::itemlikevisit::DeepVisitor;
 
 use std::cmp;
@@ -140,6 +140,23 @@ impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
 pub trait Visitor<'v> : Sized {
+    /// Invokes the suitable visitor method for the given `Node`
+    /// extracted from the hir map.
+    fn visit_hir_map_node(&mut self, node: map::Node<'v>) {
+        match node {
+            map::NodeItem(a) => self.visit_item(a),
+            map::NodeForeignItem(a) => self.visit_foreign_item(a),
+            map::NodeTraitItem(a) => self.visit_trait_item(a),
+            map::NodeImplItem(a) => self.visit_impl_item(a),
+            map::NodeExpr(a) => self.visit_expr(a),
+            map::NodeStmt(a) => self.visit_stmt(a),
+            map::NodeTy(a) => self.visit_ty(a),
+            map::NodePat(a) => self.visit_pat(a),
+            map::NodeBlock(a) => self.visit_block(a),
+            _ => bug!("Visitor::visit_hir_map_node() not yet impl for node `{:?}`", node)
+        }
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // Nested items.
 
@@ -474,6 +491,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_id(item.id);
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }
+        ItemGlobalAsm(_) => {
+            visitor.visit_id(item.id);
+        }
         ItemTy(ref typ, ref type_parameters) => {
             visitor.visit_id(item.id);
             visitor.visit_ty(typ);
@@ -578,7 +598,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         TyTypeof(expression) => {
             visitor.visit_nested_body(expression)
         }
-        TyInfer => {}
+        TyInfer | TyErr => {}
     }
 }
 
@@ -960,7 +980,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         }
         ExprIf(ref head_expression, ref if_block, ref optional_else) => {
             visitor.visit_expr(head_expression);
-            visitor.visit_block(if_block);
+            visitor.visit_expr(if_block);
             walk_list!(visitor, visit_expr, optional_else);
         }
         ExprWhile(ref subexpression, ref block, ref opt_sp_name) => {
