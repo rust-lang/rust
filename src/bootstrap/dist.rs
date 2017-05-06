@@ -98,6 +98,139 @@ pub fn docs(build: &Build, stage: u32, host: &str) {
     }
 }
 
+fn find_files(files: &[&str], path: &[PathBuf]) -> Vec<PathBuf> {
+    let mut found = Vec::new();
+
+    for file in files {
+        let file_path =
+            path.iter()
+                .map(|dir| dir.join(file))
+                .find(|p| p.exists());
+
+        if let Some(file_path) = file_path {
+            found.push(file_path);
+        } else {
+            panic!("Could not find '{}' in {:?}", file, path);
+        }
+    }
+
+    found
+}
+
+fn make_win_dist(rust_root: &Path, plat_root: &Path, target_triple: &str, build: &Build) {
+    //Ask gcc where it keeps its stuff
+    let mut cmd = Command::new(build.cc(target_triple));
+    cmd.arg("-print-search-dirs");
+    build.run_quiet(&mut cmd);
+    let gcc_out =
+        String::from_utf8(
+                cmd
+                .output()
+                .expect("failed to execute gcc")
+                .stdout).expect("gcc.exe output was not utf8");
+
+    let mut bin_path: Vec<_> =
+        env::split_paths(&env::var_os("PATH").unwrap_or_default())
+        .collect();
+    let mut lib_path = Vec::new();
+
+    for line in gcc_out.lines() {
+        let idx = line.find(':').unwrap();
+        let key = &line[..idx];
+        let trim_chars: &[_] = &[' ', '='];
+        let value =
+            line[(idx + 1)..]
+                .trim_left_matches(trim_chars)
+                .split(';')
+                .map(|s| PathBuf::from(s));
+
+        if key == "programs" {
+            bin_path.extend(value);
+        } else if key == "libraries" {
+            lib_path.extend(value);
+        }
+    }
+
+    let target_tools = vec!["gcc.exe", "ld.exe", "ar.exe", "dlltool.exe", "libwinpthread-1.dll"];
+    let mut rustc_dlls = vec!["libstdc++-6.dll", "libwinpthread-1.dll"];
+    if target_triple.starts_with("i686-") {
+        rustc_dlls.push("libgcc_s_dw2-1.dll");
+    } else {
+        rustc_dlls.push("libgcc_s_seh-1.dll");
+    }
+
+    let target_libs = vec![ //MinGW libs
+        "libgcc.a",
+        "libgcc_eh.a",
+        "libgcc_s.a",
+        "libm.a",
+        "libmingw32.a",
+        "libmingwex.a",
+        "libstdc++.a",
+        "libiconv.a",
+        "libmoldname.a",
+        "libpthread.a",
+        //Windows import libs
+        "libadvapi32.a",
+        "libbcrypt.a",
+        "libcomctl32.a",
+        "libcomdlg32.a",
+        "libcrypt32.a",
+        "libgdi32.a",
+        "libimagehlp.a",
+        "libiphlpapi.a",
+        "libkernel32.a",
+        "libmsvcrt.a",
+        "libodbc32.a",
+        "libole32.a",
+        "liboleaut32.a",
+        "libopengl32.a",
+        "libpsapi.a",
+        "librpcrt4.a",
+        "libsetupapi.a",
+        "libshell32.a",
+        "libuser32.a",
+        "libuserenv.a",
+        "libuuid.a",
+        "libwinhttp.a",
+        "libwinmm.a",
+        "libwinspool.a",
+        "libws2_32.a",
+        "libwsock32.a",
+    ];
+
+    //Find mingw artifacts we want to bundle
+    let target_tools = find_files(&target_tools, &bin_path);
+    let rustc_dlls = find_files(&rustc_dlls, &bin_path);
+    let target_libs = find_files(&target_libs, &lib_path);
+
+    fn copy_to_folder(src: &Path, dest_folder: &Path) {
+        let file_name = src.file_name().unwrap().to_os_string();
+        let dest = dest_folder.join(file_name);
+        copy(src, &dest);
+    }
+
+    //Copy runtime dlls next to rustc.exe
+    let dist_bin_dir = rust_root.join("bin/");
+    for src in rustc_dlls {
+        copy_to_folder(&src, &dist_bin_dir);
+    }
+
+    //Copy platform tools to platform-specific bin directory
+    let target_bin_dir = plat_root.join("lib").join("rustlib").join(target_triple).join("bin");
+    fs::create_dir_all(&target_bin_dir).expect("creating target_bin_dir failed");
+    for src in target_tools {
+        copy_to_folder(&src, &target_bin_dir);
+    }
+
+    //Copy platform libs to platform-specific lib directory
+    let target_lib_dir = plat_root.join("lib").join("rustlib").join(target_triple).join("lib");
+    fs::create_dir_all(&target_lib_dir).expect("creating target_lib_dir failed");
+    for src in target_libs {
+        copy_to_folder(&src, &target_lib_dir);
+    }
+}
+
 /// Build the `rust-mingw` installer component.
 ///
 /// This contains all the bits and pieces to run the MinGW Windows targets
@@ -111,18 +244,11 @@ pub fn mingw(build: &Build, host: &str) {
     let _ = fs::remove_dir_all(&image);
     t!(fs::create_dir_all(&image));
 
-    // The first argument to the script is a "temporary directory" which is just
+    // The first argument is a "temporary directory" which is just
     // thrown away (this contains the runtime DLLs included in the rustc package
     // above) and the second argument is where to place all the MinGW components
     // (which is what we want).
-    //
-    // FIXME: this script should be rewritten into Rust
-    let mut cmd = Command::new(build.python());
-    cmd.arg(build.src.join("src/etc/make-win-dist.py"))
-       .arg(tmpdir(build))
-       .arg(&image)
-       .arg(host);
-    build.run(&mut cmd);
+    make_win_dist(&tmpdir(build), &image, host, &build);
 
     let mut cmd = Command::new(SH_CMD);
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
@@ -174,15 +300,8 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
     // anything requiring us to distribute a license, but it's likely the
     // install will *also* include the rust-mingw package, which also needs
     // licenses, so to be safe we just include it here in all MinGW packages.
-    //
-    // FIXME: this script should be rewritten into Rust
     if host.contains("pc-windows-gnu") {
-        let mut cmd = Command::new(build.python());
-        cmd.arg(build.src.join("src/etc/make-win-dist.py"))
-           .arg(&image)
-           .arg(tmpdir(build))
-           .arg(host);
-        build.run(&mut cmd);
+        make_win_dist(&image, &tmpdir(build), host, build);
 
         let dst = image.join("share/doc");
         t!(fs::create_dir_all(&dst));
