@@ -24,6 +24,7 @@ use ptr::P;
 use symbol::Symbol;
 use util::small_vector::SmallVector;
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::default::Default;
@@ -643,6 +644,7 @@ pub struct ExtCtxt<'a> {
     pub resolver: &'a mut Resolver,
     pub resolve_err_count: usize,
     pub current_expansion: ExpansionData,
+    pub expansions: HashMap<Span, Vec<String>>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -662,6 +664,7 @@ impl<'a> ExtCtxt<'a> {
                 module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
                 directory_ownership: DirectoryOwnership::Owned,
             },
+            expansions: HashMap::new(),
         }
     }
 
@@ -765,8 +768,14 @@ impl<'a> ExtCtxt<'a> {
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
         self.parse_sess.span_diagnostic.span_bug(sp, msg);
     }
-    pub fn span_label_without_error(&self, sp: Span, msg: &str, label: &str) {
-        self.parse_sess.span_diagnostic.span_label_without_error(sp, msg, label);
+    pub fn trace_macros_diag(&self) {
+        for (sp, notes) in self.expansions.iter() {
+            let mut db = self.parse_sess.span_diagnostic.span_note_diag(*sp, &"trace_macro");
+            for note in notes {
+                db.note(&note);
+            }
+            db.emit();
+        }
     }
     pub fn bug(&self, msg: &str) -> ! {
         self.parse_sess.span_diagnostic.bug(msg);

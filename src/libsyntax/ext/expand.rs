@@ -231,7 +231,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             },
             _ => unreachable!(),
         };
-
+        self.cx.trace_macros_diag();
         krate
     }
 
