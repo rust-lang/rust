@@ -44,10 +44,19 @@ use rustc::hir;
 use std::collections::BTreeMap;
 
 macro_rules! provide {
-    (<$lt:tt> $tcx:ident, $def_id:ident, $cdata:ident $($name:ident => $compute:block)*) => {
+    (<$lt:tt> $tcx:ident, $def_id:ident, $cdata:ident, $cnum:ident
+        ByDefId
+        {
+            $($cdata_fn_name:ident => $cdata_fn_compute:block)*
+        }
+        ByCrateNum
+        {
+            $($cnum_fn_name:ident => $cnum_fn_compute:block)*
+        }
+    ) => {
         pub fn provide<$lt>(providers: &mut Providers<$lt>) {
-            $(fn $name<'a, $lt:$lt>($tcx: TyCtxt<'a, $lt, $lt>, $def_id: DefId)
-                                    -> <ty::queries::$name<$lt> as
+            $(fn $cdata_fn_name<'a, $lt:$lt>($tcx: TyCtxt<'a, $lt, $lt>, $def_id: DefId)
+                                    -> <ty::queries::$cdata_fn_name<$lt> as
                                         DepTrackingMapConfig>::Value {
                 assert!(!$def_id.is_local());
 
@@ -56,87 +65,114 @@ macro_rules! provide {
                 let $cdata = $tcx.sess.cstore.crate_data_as_rc_any($def_id.krate);
                 let $cdata = $cdata.downcast_ref::<cstore::CrateMetadata>()
                     .expect("CrateStore crated ata is not a CrateMetadata");
-                $compute
+                $cdata_fn_compute
+            })*
+
+            $(fn $cnum_fn_name<'a, $lt:$lt>($tcx: TyCtxt<'a, $lt, $lt>, $cnum: CrateNum)
+                                -> <ty::queries::$cnum_fn_name<$lt> as
+                                    DepTrackingMapConfig>::Value {
+                let $cdata = $tcx.sess.cstore.crate_data_as_rc_any($cnum);
+                let $cdata = $cdata.downcast_ref::<cstore::CrateMetadata>()
+                    .expect("CrateStore crated ata is not a CrateMetadata");
+                $cnum_fn_compute
             })*
 
             *providers = Providers {
-                $($name,)*
+                $($cdata_fn_name,)*
+                $($cnum_fn_name,)*
                 ..*providers
             };
         }
     }
 }
 
-provide! { <'tcx> tcx, def_id, cdata
-    type_of => { cdata.get_type(def_id.index, tcx) }
-    generics_of => { tcx.alloc_generics(cdata.get_generics(def_id.index)) }
-    predicates_of => { cdata.get_predicates(def_id.index, tcx) }
-    super_predicates_of => { cdata.get_super_predicates(def_id.index, tcx) }
-    trait_def => {
-        tcx.alloc_trait_def(cdata.get_trait_def(def_id.index))
-    }
-    adt_def => { cdata.get_adt_def(def_id.index, tcx) }
-    adt_destructor => {
-        let _ = cdata;
-        tcx.calculate_dtor(def_id, &mut |_,_| Ok(()))
-    }
-    variances_of => { Rc::new(cdata.get_item_variances(def_id.index)) }
-    associated_item_def_ids => {
-        let mut result = vec![];
-        cdata.each_child_of_item(def_id.index, |child| result.push(child.def.def_id()));
-        Rc::new(result)
-    }
-    associated_item => { cdata.get_associated_item(def_id.index) }
-    impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
-    impl_polarity => { cdata.get_impl_polarity(def_id.index) }
-    coerce_unsized_info => {
-        cdata.get_coerce_unsized_info(def_id.index).unwrap_or_else(|| {
-            bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
-        })
-    }
-    optimized_mir => {
-        let mir = cdata.maybe_get_optimized_mir(tcx, def_id.index).unwrap_or_else(|| {
-            bug!("get_optimized_mir: missing MIR for `{:?}`", def_id)
-        });
+provide! { <'tcx> tcx, def_id, cdata, cnum
 
-        let mir = tcx.alloc_mir(mir);
+    ByDefId
+    {
+        type_of => { cdata.get_type(def_id.index, tcx) }
+        generics_of => { tcx.alloc_generics(cdata.get_generics(def_id.index)) }
+        predicates_of => { cdata.get_predicates(def_id.index, tcx) }
+        super_predicates_of => { cdata.get_super_predicates(def_id.index, tcx) }
+        trait_def => {
+            tcx.alloc_trait_def(cdata.get_trait_def(def_id.index))
+        }
+        adt_def => { cdata.get_adt_def(def_id.index, tcx) }
+        adt_destructor => {
+            let _ = cdata;
+            tcx.calculate_dtor(def_id, &mut |_,_| Ok(()))
+        }
+        variances_of => { Rc::new(cdata.get_item_variances(def_id.index)) }
+        associated_item_def_ids => {
+            let mut result = vec![];
+            cdata.each_child_of_item(def_id.index, |child| result.push(child.def.def_id()));
+            Rc::new(result)
+        }
+        associated_item => { cdata.get_associated_item(def_id.index) }
+        impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
+        impl_polarity => { cdata.get_impl_polarity(def_id.index) }
+        coerce_unsized_info => {
+            cdata.get_coerce_unsized_info(def_id.index).unwrap_or_else(|| {
+                bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
+            })
+        }
+        optimized_mir => {
+            let mir = cdata.maybe_get_optimized_mir(tcx, def_id.index).unwrap_or_else(|| {
+                bug!("get_optimized_mir: missing MIR for `{:?}`", def_id)
+            });
 
-        mir
-    }
-    mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
-    typeck_tables_of => { cdata.item_body_tables(def_id.index, tcx) }
-    closure_kind => { cdata.closure_kind(def_id.index) }
-    closure_type => { cdata.closure_ty(def_id.index, tcx) }
-    inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
-    is_foreign_item => { cdata.is_foreign_item(def_id.index) }
-    describe_def => { cdata.get_def(def_id.index) }
-    def_span => { cdata.get_span(def_id.index, &tcx.sess) }
-    stability => { cdata.get_stability(def_id.index) }
-    deprecation => { cdata.get_deprecation(def_id.index) }
-    item_body_nested_bodies => {
-        let map: BTreeMap<_, _> = cdata.entry(def_id.index).ast.into_iter().flat_map(|ast| {
-            ast.decode(cdata).nested_bodies.decode(cdata).map(|body| (body.id(), body))
-        }).collect();
+            let mir = tcx.alloc_mir(mir);
 
-        Rc::new(map)
-    }
-    const_is_rvalue_promotable_to_static => {
-        cdata.entry(def_id.index).ast.expect("const item missing `ast`")
-            .decode(cdata).rvalue_promotable_to_static
-    }
-    is_mir_available => {
-        !cdata.is_proc_macro(def_id.index) &&
-        cdata.maybe_entry(def_id.index).and_then(|item| item.decode(cdata).mir).is_some()
-    }
-    is_const_fn => { cdata.is_const_fn(def_id.index) }
-    is_default_impl => {
-        match cdata.entry(def_id.index).kind {
-            EntryKind::DefaultImpl(_) => true,
-            _ => false,
+            mir
+        }
+        mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
+        typeck_tables_of => { cdata.item_body_tables(def_id.index, tcx) }
+        closure_kind => { cdata.closure_kind(def_id.index) }
+        closure_type => { cdata.closure_ty(def_id.index, tcx) }
+        inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
+        is_foreign_item => { cdata.is_foreign_item(def_id.index) }
+        describe_def => { cdata.get_def(def_id.index) }
+        def_span => { cdata.get_span(def_id.index, &tcx.sess) }
+        stability => { cdata.get_stability(def_id.index) }
+        deprecation => { cdata.get_deprecation(def_id.index) }
+        item_body_nested_bodies => {
+            let map: BTreeMap<_, _> = cdata.entry(def_id.index).ast.into_iter().flat_map(|ast| {
+                ast.decode(cdata).nested_bodies.decode(cdata).map(|body| (body.id(), body))
+            }).collect();
+
+            Rc::new(map)
+        }
+        const_is_rvalue_promotable_to_static => {
+            cdata.entry(def_id.index).ast.expect("const item missing `ast`")
+                .decode(cdata).rvalue_promotable_to_static
+        }
+        is_mir_available => {
+            !cdata.is_proc_macro(def_id.index) &&
+            cdata.maybe_entry(def_id.index).and_then(|item| item.decode(cdata).mir).is_some()
+        }
+        is_const_fn => { cdata.is_const_fn(def_id.index) }
+        is_default_impl => {
+            match cdata.entry(def_id.index).kind {
+                EntryKind::DefaultImpl(_) => true,
+                _ => false,
+            }
+        }
+        is_dllimport_foreign_item => {
+            cdata.dllimport_foreign_items.contains(&def_id.index)
         }
     }
-    is_dllimport_foreign_item => {
-        cdata.dllimport_foreign_items.contains(&def_id.index)
+
+    ByCrateNum
+    {
+        derive_registrar_fn => {
+            cdata.root.macro_derive_registrar.map(|index| DefId {
+                krate: cnum,
+                index: index
+            })
+        }
+        native_libraries => { cdata.get_native_libraries() }
+        exported_symbols => { cdata.get_exported_symbols() }
+        is_no_builtins => { cdata.is_no_builtins() }
     }
 }
 
@@ -304,28 +340,6 @@ impl CrateStore for cstore::CStore {
             krate: cnum,
             index: index
         })
-    }
-
-    fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
-    {
-        self.get_crate_data(cnum).root.macro_derive_registrar.map(|index| DefId {
-            krate: cnum,
-            index: index
-        })
-    }
-
-    fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>
-    {
-        self.get_crate_data(cnum).get_native_libraries()
-    }
-
-    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId>
-    {
-        self.get_crate_data(cnum).get_exported_symbols()
-    }
-
-    fn is_no_builtins(&self, cnum: CrateNum) -> bool {
-        self.get_crate_data(cnum).is_no_builtins()
     }
 
     fn retrace_path(&self,

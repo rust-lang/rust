@@ -12,6 +12,7 @@ use back::lto;
 use back::link::{get_linker, remove};
 use back::symbol_export::ExportedSymbols;
 use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
+use rustc::ty::TyCtxt;
 use session::config::{OutputFilenames, OutputTypes, Passes, SomePasses, AllPasses, Sanitizer};
 use session::Session;
 use session::config::{self, OutputType};
@@ -334,10 +335,10 @@ impl ModuleConfig {
 }
 
 /// Additional resources used by optimize_and_codegen (not module specific)
-struct CodegenContext<'a> {
+struct CodegenContext<'a, 'tcx: 'a> {
     // Extra resources used for LTO: (sess, reachable).  This will be `None`
     // when running in a worker thread.
-    lto_ctxt: Option<(&'a Session, &'a ExportedSymbols)>,
+    lto_ctxt: Option<(TyCtxt<'a, 'tcx, 'tcx>, &'a ExportedSymbols)>,
     // Handler to use for diagnostics produced during codegen.
     handler: &'a Handler,
     // LLVM passes added by plugins.
@@ -351,36 +352,36 @@ struct CodegenContext<'a> {
     incr_comp_session_dir: Option<PathBuf>
 }
 
-impl<'a> CodegenContext<'a> {
-    fn new_with_session(sess: &'a Session,
+impl<'a, 'tcx: 'a> CodegenContext<'a, 'tcx> {
+    fn new_with_session(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         exported_symbols: &'a ExportedSymbols)
-                        -> CodegenContext<'a> {
+                        -> CodegenContext<'a, 'tcx> {
         CodegenContext {
-            lto_ctxt: Some((sess, exported_symbols)),
-            handler: sess.diagnostic(),
-            plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
-            remark: sess.opts.cg.remark.clone(),
+            lto_ctxt: Some((tcx, exported_symbols)),
+            handler: tcx.sess.diagnostic(),
+            plugin_passes: tcx.sess.plugin_llvm_passes.borrow().clone(),
+            remark: tcx.sess.opts.cg.remark.clone(),
             worker: 0,
-            incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone())
+            incr_comp_session_dir: tcx.sess.incr_comp_session_dir_opt().map(|r| r.clone())
         }
     }
 }
 
-struct HandlerFreeVars<'a> {
+struct HandlerFreeVars<'a, 'tcx: 'a> {
     llcx: ContextRef,
-    cgcx: &'a CodegenContext<'a>,
+    cgcx: &'a CodegenContext<'a, 'tcx>,
 }
 
-unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext<'a>,
+unsafe extern "C" fn report_inline_asm<'a, 'b, 'tcx>(cgcx: &'a CodegenContext<'a, 'tcx>,
                                                msg: &'b str,
                                                cookie: c_uint) {
     use syntax::ext::hygiene::Mark;
 
     match cgcx.lto_ctxt {
-        Some((sess, _)) => {
+        Some((tcx, _)) => {
             match Mark::from_u32(cookie).expn_info() {
-                Some(ei) => sess.span_err(ei.call_site, msg),
-                None     => sess.err(msg),
+                Some(ei) => tcx.sess.span_err(ei.call_site, msg),
+                None     => tcx.sess.err(msg),
             };
         }
 
@@ -527,11 +528,11 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         llvm::LLVMDisposePassManager(mpm);
 
         match cgcx.lto_ctxt {
-            Some((sess, exported_symbols)) if sess.lto() =>  {
-                time(sess.time_passes(), "all lto passes", || {
+            Some((tcx, exported_symbols)) if tcx.sess.lto() =>  {
+                time(tcx.sess.time_passes(), "all lto passes", || {
                     let temp_no_opt_bc_filename =
                         output_names.temp_path_ext("no-opt.lto.bc", module_name);
-                    lto::run(sess,
+                    lto::run(tcx,
                              llmod,
                              tm,
                              exported_symbols,
@@ -656,7 +657,7 @@ pub fn cleanup_llvm(trans: &CrateTranslation) {
     }
 }
 
-pub fn run_passes(sess: &Session,
+pub fn run_passes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   trans: &CrateTranslation,
                   output_types: &OutputTypes,
                   crate_output: &OutputFilenames) {
@@ -665,28 +666,28 @@ pub fn run_passes(sess: &Session,
     // case, but it would be confusing to have the validity of
     // `-Z lto -C codegen-units=2` depend on details of the crate being
     // compiled, so we complain regardless.
-    if sess.lto() && sess.opts.cg.codegen_units > 1 {
+    if tcx.sess.lto() && tcx.sess.opts.cg.codegen_units > 1 {
         // This case is impossible to handle because LTO expects to be able
         // to combine the entire crate and all its dependencies into a
         // single compilation unit, but each codegen unit is in a separate
         // LLVM context, so they can't easily be combined.
-        sess.fatal("can't perform LTO when using multiple codegen units");
+        tcx.sess.fatal("can't perform LTO when using multiple codegen units");
     }
 
     // Sanity check
-    assert!(trans.modules.len() == sess.opts.cg.codegen_units ||
-            sess.opts.debugging_opts.incremental.is_some() ||
-            !sess.opts.output_types.should_trans() ||
-            sess.opts.debugging_opts.no_trans);
+    assert!(trans.modules.len() == tcx.sess.opts.cg.codegen_units ||
+            tcx.sess.opts.debugging_opts.incremental.is_some() ||
+            !tcx.sess.opts.output_types.should_trans() ||
+            tcx.sess.opts.debugging_opts.no_trans);
 
-    let tm = create_target_machine(sess);
+    let tm = create_target_machine(tcx.sess);
 
     // Figure out what we actually need to build.
 
-    let mut modules_config = ModuleConfig::new(tm, sess.opts.cg.passes.clone());
+    let mut modules_config = ModuleConfig::new(tm, tcx.sess.opts.cg.passes.clone());
     let mut metadata_config = ModuleConfig::new(tm, vec![]);
 
-    if let Some(ref sanitizer) = sess.opts.debugging_opts.sanitizer {
+    if let Some(ref sanitizer) = tcx.sess.opts.debugging_opts.sanitizer {
         match *sanitizer {
             Sanitizer::Address => {
                 modules_config.passes.push("asan".to_owned());
@@ -702,11 +703,11 @@ pub fn run_passes(sess: &Session,
         }
     }
 
-    modules_config.opt_level = Some(get_llvm_opt_level(sess.opts.optimize));
-    modules_config.opt_size = Some(get_llvm_opt_size(sess.opts.optimize));
+    modules_config.opt_level = Some(get_llvm_opt_level(tcx.sess.opts.optimize));
+    modules_config.opt_size = Some(get_llvm_opt_size(tcx.sess.opts.optimize));
 
     // Save all versions of the bytecode if we're saving our temporaries.
-    if sess.opts.cg.save_temps {
+    if tcx.sess.opts.cg.save_temps {
         modules_config.emit_no_opt_bc = true;
         modules_config.emit_bc = true;
         modules_config.emit_lto_bc = true;
@@ -717,10 +718,10 @@ pub fn run_passes(sess: &Session,
     // Whenever an rlib is created, the bitcode is inserted into the
     // archive in order to allow LTO against it.
     let needs_crate_bitcode =
-            sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
-            sess.opts.output_types.contains_key(&OutputType::Exe);
+            tcx.sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
+            tcx.sess.opts.output_types.contains_key(&OutputType::Exe);
     let needs_crate_object =
-            sess.opts.output_types.contains_key(&OutputType::Exe);
+            tcx.sess.opts.output_types.contains_key(&OutputType::Exe);
     if needs_crate_bitcode {
         modules_config.emit_bc = true;
     }
@@ -734,7 +735,7 @@ pub fn run_passes(sess: &Session,
                 // If we're not using the LLVM assembler, this function
                 // could be invoked specially with output_type_assembly, so
                 // in this case we still want the metadata object file.
-                if !sess.opts.output_types.contains_key(&OutputType::Assembly) {
+                if !tcx.sess.opts.output_types.contains_key(&OutputType::Assembly) {
                     metadata_config.emit_obj = true;
                 }
             }
@@ -749,8 +750,8 @@ pub fn run_passes(sess: &Session,
         }
     }
 
-    modules_config.set_flags(sess, trans);
-    metadata_config.set_flags(sess, trans);
+    modules_config.set_flags(tcx.sess, trans);
+    metadata_config.set_flags(tcx.sess, trans);
 
 
     // Populate a buffer with a list of codegen threads.  Items are processed in
@@ -759,7 +760,7 @@ pub fn run_passes(sess: &Session,
     let mut work_items = Vec::with_capacity(1 + trans.modules.len());
 
     {
-        let work = build_work_item(sess,
+        let work = build_work_item(tcx.sess,
                                    trans.metadata_module.clone(),
                                    metadata_config.clone(),
                                    crate_output.clone());
@@ -767,14 +768,14 @@ pub fn run_passes(sess: &Session,
     }
 
     for mtrans in trans.modules.iter() {
-        let work = build_work_item(sess,
+        let work = build_work_item(tcx.sess,
                                    mtrans.clone(),
                                    modules_config.clone(),
                                    crate_output.clone());
         work_items.push(work);
     }
 
-    if sess.opts.debugging_opts.incremental_info {
+    if tcx.sess.opts.debugging_opts.incremental_info {
         dump_incremental_data(&trans);
     }
 
@@ -787,9 +788,9 @@ pub fn run_passes(sess: &Session,
     //       some discussion on how to improve this in the future.
     let num_workers = cmp::min(work_items.len() - 1, 32);
     if num_workers <= 1 {
-        run_work_singlethreaded(sess, &trans.exported_symbols, work_items);
+        run_work_singlethreaded(tcx, &trans.exported_symbols, work_items);
     } else {
-        run_work_multithreaded(sess, work_items, num_workers);
+        run_work_multithreaded(tcx, work_items, num_workers);
     }
 
     // If in incr. comp. mode, preserve the `.o` files for potential re-use
@@ -806,7 +807,7 @@ pub fn run_passes(sess: &Session,
             files.push((OutputType::Bitcode, path));
         }
 
-        save_trans_partition(sess, &mtrans.name, mtrans.symbol_name_hash, &files);
+        save_trans_partition(tcx.sess, &mtrans.name, mtrans.symbol_name_hash, &files);
     }
 
     // All codegen is finished.
@@ -817,7 +818,7 @@ pub fn run_passes(sess: &Session,
     // Produce final compile outputs.
     let copy_gracefully = |from: &Path, to: &Path| {
         if let Err(e) = fs::copy(from, to) {
-            sess.err(&format!("could not copy {:?} to {:?}: {}", from, to, e));
+            tcx.sess.err(&format!("could not copy {:?} to {:?}: {}", from, to, e));
         }
     };
 
@@ -830,9 +831,9 @@ pub fn run_passes(sess: &Session,
             let path = crate_output.temp_path(output_type, module_name);
             copy_gracefully(&path,
                             &crate_output.path(output_type));
-            if !sess.opts.cg.save_temps && !keep_numbered {
+            if !tcx.sess.opts.cg.save_temps && !keep_numbered {
                 // The user just wants `foo.x`, not `foo.#module-name#.x`.
-                remove(sess, &path);
+                remove(tcx.sess, &path);
             }
         } else {
             let ext = crate_output.temp_path(output_type, None)
@@ -845,12 +846,12 @@ pub fn run_passes(sess: &Session,
             if crate_output.outputs.contains_key(&output_type) {
                 // 2) Multiple codegen units, with `--emit foo=some_name`.  We have
                 //    no good solution for this case, so warn the user.
-                sess.warn(&format!("ignoring emit path because multiple .{} files \
+                tcx.sess.warn(&format!("ignoring emit path because multiple .{} files \
                                     were produced", ext));
             } else if crate_output.single_output_file.is_some() {
                 // 3) Multiple codegen units, with `-o some_name`.  We have
                 //    no good solution for this case, so warn the user.
-                sess.warn(&format!("ignoring -o because multiple .{} files \
+                tcx.sess.warn(&format!("ignoring -o because multiple .{} files \
                                     were produced", ext));
             } else {
                 // 4) Multiple codegen units, but no explicit name.  We
@@ -904,7 +905,7 @@ pub fn run_passes(sess: &Session,
     // We may create additional files if requested by the user (through
     // `-C save-temps` or `--emit=` flags).
 
-    if !sess.opts.cg.save_temps {
+    if !tcx.sess.opts.cg.save_temps {
         // Remove the temporary .#module-name#.o objects.  If the user didn't
         // explicitly request bitcode (with --emit=bc), and the bitcode is not
         // needed for building an rlib, then we must remove .#module-name#.bc as
@@ -923,27 +924,27 @@ pub fn run_passes(sess: &Session,
         // where .#module-name#.bc files are (maybe) deleted after making an
         // rlib.
         let keep_numbered_bitcode = needs_crate_bitcode ||
-                (user_wants_bitcode && sess.opts.cg.codegen_units > 1);
+                (user_wants_bitcode && tcx.sess.opts.cg.codegen_units > 1);
 
         let keep_numbered_objects = needs_crate_object ||
-                (user_wants_objects && sess.opts.cg.codegen_units > 1);
+                (user_wants_objects && tcx.sess.opts.cg.codegen_units > 1);
 
         for module_name in trans.modules.iter().map(|m| Some(&m.name[..])) {
             if modules_config.emit_obj && !keep_numbered_objects {
                 let path = crate_output.temp_path(OutputType::Object, module_name);
-                remove(sess, &path);
+                remove(tcx.sess, &path);
             }
 
             if modules_config.emit_bc && !keep_numbered_bitcode {
                 let path = crate_output.temp_path(OutputType::Bitcode, module_name);
-                remove(sess, &path);
+                remove(tcx.sess, &path);
             }
         }
 
         if metadata_config.emit_bc && !user_wants_bitcode {
             let path = crate_output.temp_path(OutputType::Bitcode,
                                               Some(&trans.metadata_module.name));
-            remove(sess, &path);
+            remove(tcx.sess, &path);
         }
     }
 
@@ -955,7 +956,7 @@ pub fn run_passes(sess: &Session,
 
     // FIXME: time_llvm_passes support - does this use a global context or
     // something?
-    if sess.opts.cg.codegen_units == 1 && sess.time_llvm_passes() {
+    if tcx.sess.opts.cg.codegen_units == 1 && tcx.sess.time_llvm_passes() {
         unsafe { llvm::LLVMRustPrintPassTimings(); }
     }
 }
@@ -1032,10 +1033,11 @@ fn execute_work_item(cgcx: &CodegenContext,
     }
 }
 
-fn run_work_singlethreaded(sess: &Session,
+fn run_work_singlethreaded<'a, 'tcx: 'a>(
+                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            exported_symbols: &ExportedSymbols,
                            work_items: Vec<WorkItem>) {
-    let cgcx = CodegenContext::new_with_session(sess, exported_symbols);
+    let cgcx = CodegenContext::new_with_session(tcx, exported_symbols);
 
     // Since we're running single-threaded, we can pass the session to
     // the proc, allowing `optimize_and_codegen` to perform LTO.
@@ -1044,7 +1046,8 @@ fn run_work_singlethreaded(sess: &Session,
     }
 }
 
-fn run_work_multithreaded(sess: &Session,
+fn run_work_multithreaded<'a, 'tcx: 'a>(
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           work_items: Vec<WorkItem>,
                           num_workers: usize) {
     assert!(num_workers > 0);
@@ -1057,14 +1060,14 @@ fn run_work_multithreaded(sess: &Session,
     for i in 0..num_workers {
         let work_items_arc = work_items_arc.clone();
         let diag_emitter = diag_emitter.clone();
-        let plugin_passes = sess.plugin_llvm_passes.borrow().clone();
-        let remark = sess.opts.cg.remark.clone();
+        let plugin_passes = tcx.sess.plugin_llvm_passes.borrow().clone();
+        let remark = tcx.sess.opts.cg.remark.clone();
 
         let (tx, rx) = channel();
         let mut tx = Some(tx);
         futures.push(rx);
 
-        let incr_comp_session_dir = sess.incr_comp_session_dir_opt().map(|r| r.clone());
+        let incr_comp_session_dir = tcx.sess.incr_comp_session_dir_opt().map(|r| r.clone());
 
         let depth = time_depth();
         thread::Builder::new().name(format!("codegen-{}", i)).spawn(move || {
@@ -1111,10 +1114,10 @@ fn run_work_multithreaded(sess: &Session,
             },
         }
         // Display any new diagnostics.
-        diag_emitter.dump(sess.diagnostic());
+        diag_emitter.dump(tcx.sess.diagnostic());
     }
     if panicked {
-        sess.fatal("aborting due to worker thread panic");
+        tcx.sess.fatal("aborting due to worker thread panic");
     }
 }
 

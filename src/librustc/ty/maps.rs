@@ -13,6 +13,7 @@ use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::def::Def;
 use hir;
 use middle::const_val;
+use middle::cstore::NativeLibrary;
 use middle::privacy::AccessLevels;
 use middle::region::RegionMaps;
 use mir;
@@ -364,6 +365,25 @@ simple_query_description! {
     is_mir_available, "checking if item is mir available",
     is_const_fn, "checking if item is const fn",
     is_dllimport_foreign_item, "checking if item is dll import foreign item",
+}
+
+macro_rules! cratenum_query_description {
+    ($($fn_name:ident, $desc:expr),*,) => {
+        $(
+        impl<'tcx> QueryDescription for queries::$fn_name<'tcx> {
+            fn describe(_tcx: TyCtxt, crate_num: CrateNum) -> String {
+                format!(concat!($desc, "`: crate {}`"), crate_num)
+            }
+        }
+        )*
+    }
+}
+
+cratenum_query_description! {
+    derive_registrar_fn, "getting the derive_registrar_fn",
+    native_libraries, "getting native libraries",
+    exported_symbols, "getting the exported symbols",
+    is_no_builtins, "checking if is_no_builtins",
 }
 
 macro_rules! define_maps {
@@ -802,6 +822,11 @@ define_maps! { <'tcx>
     [] is_const_fn: metadata_dep_node(DefId) -> bool,
     [] is_default_impl: metadata_dep_node(DefId) -> bool,
     [] is_dllimport_foreign_item: metadata_dep_node(DefId) -> bool,
+
+    [] derive_registrar_fn: cratenum_metadata_dep_node(CrateNum) -> Option<DefId>,
+    [] native_libraries: cratenum_metadata_dep_node(CrateNum) -> Vec<NativeLibrary>,
+    [] exported_symbols: cratenum_metadata_dep_node(CrateNum) -> Vec<DefId>,
+    [] is_no_builtins: cratenum_metadata_dep_node(CrateNum) -> bool,
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -818,6 +843,10 @@ fn reachability_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn metadata_dep_node(def_id: DefId) -> DepNode<DefId> {
     DepNode::MetaData(def_id)
+}
+
+fn cratenum_metadata_dep_node(crate_num: CrateNum) -> DepNode<DefId> {
+    DepNode::MetaDataByCrateNum(crate_num)
 }
 
 fn mir_shim_dep_node(instance: ty::InstanceDef) -> DepNode<DefId> {

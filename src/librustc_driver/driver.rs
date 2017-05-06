@@ -1065,9 +1065,11 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
 /// as a side effect.
-pub fn phase_5_run_llvm_passes(sess: &Session,
+pub fn phase_5_run_llvm_passes<'a, 'tcx>(
+                               tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                trans: &trans::CrateTranslation,
                                outputs: &OutputFilenames) -> CompileResult {
+    let sess = tcx.sess;
     if sess.opts.cg.no_integrated_as ||
         (sess.target.target.options.no_integrated_as &&
          (outputs.outputs.contains_key(&OutputType::Object) ||
@@ -1076,7 +1078,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
         let output_types = OutputTypes::new(&[(OutputType::Assembly, None)]);
         time(sess.time_passes(),
              "LLVM passes",
-             || write::run_passes(sess, trans, &output_types, outputs));
+             || write::run_passes(tcx, trans, &output_types, outputs));
 
         write::run_assembler(sess, outputs);
 
@@ -1097,7 +1099,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
     } else {
         time(sess.time_passes(),
              "LLVM passes",
-             || write::run_passes(sess, trans, &sess.opts.output_types, outputs));
+             || write::run_passes(tcx, trans, &sess.opts.output_types, outputs));
     }
 
     time(sess.time_passes(),
@@ -1113,12 +1115,13 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 
 /// Run the linker on any artifacts that resulted from the LLVM run.
 /// This should produce either a finished executable or library.
-pub fn phase_6_link_output(sess: &Session,
+pub fn phase_6_link_output<'a, 'tcx>(
+                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            trans: &trans::CrateTranslation,
                            outputs: &OutputFilenames) {
-    time(sess.time_passes(),
+    time(tcx.sess.time_passes(),
          "linking",
-         || link::link_binary(sess, trans, outputs, &trans.crate_name.as_str()));
+         || link::link_binary(tcx, trans, outputs, &trans.crate_name.as_str()));
 }
 
 fn escape_dep_filename(filename: &str) -> String {
