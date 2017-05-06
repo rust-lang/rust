@@ -144,6 +144,20 @@ impl FileLines {
             Err(_) => false,
         }
     }
+
+    pub fn contains_line(&self, file_name: &str, line: usize) -> bool {
+        let map = match self.0 {
+            // `None` means "all lines in all files".
+            None => return true,
+            Some(ref map) => map,
+        };
+
+        match canonicalize_path_string(file_name)
+                  .and_then(|canonical| map.get_vec(&canonical).ok_or(())) {
+            Ok(ranges) => ranges.iter().any(|r| r.lo <= line && r.hi >= line),
+            Err(_) => false,
+        }
+    }
 }
 
 /// FileLines files iterator.

@@ -481,27 +481,35 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
             continue;
         }
 
-        // Add warnings for bad todos/ fixmes
-        if let Some(issue) = issue_seeker.inspect(c) {
-            errors.push(FormattingError {
-                            line: cur_line,
-                            kind: ErrorKind::BadIssue(issue),
-                        });
+        let format_line = config.file_lines.contains_line(name, cur_line as usize);
+
+        if format_line {
+            // Add warnings for bad todos/ fixmes
+            if let Some(issue) = issue_seeker.inspect(c) {
+                errors.push(FormattingError {
+                                line: cur_line,
+                                kind: ErrorKind::BadIssue(issue),
+                            });
+            }
         }
 
         if c == '\n' {
-            // Check for (and record) trailing whitespace.
-            if let Some(lw) = last_wspace {
-                trims.push((cur_line, lw, b));
-                line_len -= 1;
+            if format_line {
+                // Check for (and record) trailing whitespace.
+                if let Some(lw) = last_wspace {
+                    trims.push((cur_line, lw, b));
+                    line_len -= 1;
+                }
+
+                // Check for any line width errors we couldn't correct.
+                if config.error_on_line_overflow && line_len > config.max_width {
+                    errors.push(FormattingError {
+                                    line: cur_line,
+                                    kind: ErrorKind::LineOverflow(line_len, config.max_width),
+                                });
+                }
             }
-            // Check for any line width errors we couldn't correct.
-            if config.error_on_line_overflow && line_len > config.max_width {
-                errors.push(FormattingError {
-                                line: cur_line,
-                                kind: ErrorKind::LineOverflow(line_len, config.max_width),
-                            });
-            }
+
             line_len = 0;
             cur_line += 1;
             newline_count += 1;
