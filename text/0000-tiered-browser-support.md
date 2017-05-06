@@ -128,35 +128,8 @@ Support:
 - Bugs affecting the functionality of the sites in these browsers are
   prioritized highly.
 
-### Tier 2
 
-Goal: Have some support of our web content, without additional time, effort, or
-monetary cost, for about 90% of users.
-
-Browsers:
-
-- Chrome up to 3 releases back and 1 release ahead of the current stable
-- Firefox up to 2 releases back and 2 releases ahead of the current stable, one
-  previous ESR
-- Safari up to 2 releases back from the current stable
-- UC Browser 1 previous stable release
-- Edge current stable and 2 previous releases
-- IE 11 until its EOL
-- Android Webview current stable and 1 previous release
-- Opera latest stable
-
-Support:
-
-- No automated testing for these.
-- Bug reports for these browsers are left open but given a low priority, and
-  closed if they are still open when a browser is old enough to drop out of
-  this tier.
-- Pull requests to fix functionality for these browsers are accepted.
-
-### Tier 9999
-
-Otherwise known as "deliberately not supporting". Not tier 3, to avoid
-conflating with the Rustc tier 3 that still has some support.
+### Unsupported browsers
 
 Goal: Avoid spending large amounts of time and code complexity debugging and
 hacking around quirks in older or more obscure browsers.
