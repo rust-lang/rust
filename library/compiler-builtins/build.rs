@@ -2135,12 +2135,13 @@ fn floatunsisf() {
             Self: Sized,
         {
             let a = gen_u128(rng);
-            Some(
+            let f_a = f32(a);
+            f_a.ok().map(|f| {
                 Floatuntisf {
                     a,
-                    b: to_u32(f32(a)),
-                },
-            )
+                    b: to_u32(f),
+                }
+            })
         }
 
         fn to_string(&self, buffer: &mut String) {
