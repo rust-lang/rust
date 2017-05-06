@@ -74,6 +74,8 @@ mod tests {
             Fixdfsi,
             Fixsfdi,
             Fixsfsi,
+            Fixsfti,
+            Fixdfti,
             Fixunsdfdi,
             Fixunsdfsi,
             Fixunssfdi,
@@ -1089,6 +1091,128 @@ static TEST_CASES: &[((u32,), i32)] = &[
 fn fixsfdi() {
     for &((a,), b) in TEST_CASES {
         let b_ = __fixsfsi(mk_f32(a));
+        assert_eq!(((a,), b), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Fixsfti {
+        a: u32,  // f32
+        b: i128,
+    }
+
+    impl TestCase for Fixsfti {
+        fn name() -> &'static str {
+            "fixsfti"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f32(rng);
+            i128(a).ok().map(|b| Fixsfti { a: to_u32(a), b })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__fixsfti;
+
+fn mk_f32(x: u32) -> f32 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u32,), i128)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn fixsfti() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __fixsfti(mk_f32(a));
+        assert_eq!(((a,), b), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Fixdfti {
+        a: u64,  // f64
+        b: i128,
+    }
+
+    impl TestCase for Fixdfti {
+        fn name() -> &'static str {
+            "fixdfti"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f64(rng);
+            i128(a).ok().map(|b| Fixdfti { a: to_u64(a), b })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__fixdfti;
+
+fn mk_f64(x: u64) -> f64 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u64,), i128)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn fixdfti() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __fixdfti(mk_f64(a));
         assert_eq!(((a,), b), ((a,), b_));
     }
 }
