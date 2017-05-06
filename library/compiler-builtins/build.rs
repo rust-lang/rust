@@ -90,6 +90,8 @@ mod tests {
             Floatundidf,
             Floatunsidf,
             Floatunsisf,
+            Floatuntisf,
+            Floatuntidf,
 
             // float/pow.rs
             Powidf2,
@@ -2110,6 +2112,138 @@ fn floatunsisf() {
     for &((a,), b) in TEST_CASES {
         let b_ = __floatunsisf(a);
         assert_eq!(((a,), b), ((a,), to_u32(b_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Floatuntisf {
+        a: u128,
+        b: u32, // f32
+    }
+
+    impl TestCase for Floatuntisf {
+        fn name() -> &'static str {
+            "floatuntisf"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u128(rng);
+            Some(
+                Floatuntisf {
+                    a,
+                    b: to_u32(f32(a)),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__floatuntisf;
+
+fn to_u32(x: f32) -> u32 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u128,), u32)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn floatuntisf() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __floatuntisf(a);
+        assert_eq!(((a,), b), ((a,), to_u32(b_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Floatuntidf {
+        a: u128,
+        b: u64, // f64
+    }
+
+    impl TestCase for Floatuntidf {
+        fn name() -> &'static str {
+            "floatuntidf"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u128(rng);
+            Some(
+                Floatuntidf {
+                    a,
+                    b: to_u64(f64(a)),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__floatuntidf;
+
+fn to_u64(x: f64) -> u64 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u128,), u64)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn floatuntidf() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __floatuntidf(a);
+        assert_eq!(((a,), b), ((a,), to_u64(b_)));
     }
 }
 "
