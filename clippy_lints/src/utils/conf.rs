@@ -164,7 +164,7 @@ define_Conf! {
     ("cyclomatic-complexity-threshold", cyclomatic_complexity_threshold, 25 => u64),
     /// Lint: DOC_MARKDOWN. The list of words this lint should not consider as identifiers needing ticks
     ("doc-valid-idents", doc_valid_idents, [
-        "MiB", "GiB", "TiB", "PiB", "EiB",
+        "KiB", "MiB", "GiB", "TiB", "PiB", "EiB",
         "DirectX",
         "ECMAScript",
         "GPLv2", "GPLv3",
