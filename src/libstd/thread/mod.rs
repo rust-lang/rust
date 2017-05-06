@@ -865,9 +865,31 @@ impl fmt::Debug for Thread {
 // JoinHandle
 ////////////////////////////////////////////////////////////////////////////////
 
+/// A specialized [`Result`] type for threads.
+///
 /// Indicates the manner in which a thread exited.
 ///
 /// A thread that completes without panicking is considered to exit successfully.
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::thread;
+/// use std::fs;
+///
+/// fn copy_in_thread() -> thread::Result<()> {
+///     thread::spawn(move || { fs::copy("foo.txt", "bar.txt").unwrap(); }).join()
+/// }
+///
+/// fn main() {
+///     match copy_in_thread() {
+///         Ok(_) => println!("this is fine"),
+///         Err(_) => println!("thread panicked"),
+///     }
+/// }
+/// ```
+///
+/// [`Result`]: ../../std/result/enum.Result.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type Result<T> = ::result::Result<T, Box<Any + Send + 'static>>;
 
