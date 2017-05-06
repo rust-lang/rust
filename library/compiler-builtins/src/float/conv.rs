@@ -14,8 +14,11 @@ macro_rules! fp_overflow {
 
 macro_rules! int_to_float {
     ($intrinsic:ident: $ity:ty, $fty:ty) => {
+        int_to_float!($intrinsic: $ity, $fty, "C");
+    };
+    ($intrinsic:ident: $ity:ty, $fty:ty, $abi:tt) => {
 
-    pub extern "C" fn $intrinsic(i: $ity) -> $fty {
+    pub extern $abi fn $intrinsic(i: $ity) -> $fty {
         if i == 0 {
             return 0.0
         }
@@ -82,12 +85,25 @@ macro_rules! int_to_float {
     }
 }
 
+macro_rules! int_to_float_unadj_on_win {
+    ($intrinsic:ident: $ity:ty, $fty:ty) => {
+        #[cfg(all(windows, target_pointer_width="64"))]
+        int_to_float!($intrinsic: $ity, $fty, "unadjusted");
+        #[cfg(not(all(windows, target_pointer_width="64")))]
+        int_to_float!($intrinsic: $ity, $fty, "C");
+    };
+}
+
 int_to_float!(__floatsisf: i32, f32);
 int_to_float!(__floatsidf: i32, f64);
 int_to_float!(__floatdidf: i64, f64);
+int_to_float_unadj_on_win!(__floattisf: i128, f32);
+int_to_float_unadj_on_win!(__floattidf: i128, f64);
 int_to_float!(__floatunsisf: u32, f32);
 int_to_float!(__floatunsidf: u32, f64);
 int_to_float!(__floatundidf: u64, f64);
+int_to_float_unadj_on_win!(__floatuntisf: u128, f32);
+int_to_float_unadj_on_win!(__floatuntidf: u128, f64);
 
 #[derive(PartialEq, Debug)]
 enum Sign {
@@ -97,7 +113,10 @@ enum Sign {
 
 macro_rules! float_to_int {
     ($intrinsic:ident: $fty:ty, $ity:ty) => {
-        pub extern "C" fn $intrinsic(f: $fty) -> $ity {
+        float_to_int!($intrinsic: $fty, $ity, "C");
+    };
+    ($intrinsic:ident: $fty:ty, $ity:ty, $abi:tt) => {
+        pub extern $abi fn $intrinsic(f: $fty) -> $ity {
             let fixint_min = <$ity>::min_value();
             let fixint_max = <$ity>::max_value();
             let fixint_bits = <$ity>::bits() as usize;
@@ -147,12 +166,25 @@ macro_rules! float_to_int {
     }
 }
 
+macro_rules! float_to_int_unadj_on_win {
+    ($intrinsic:ident: $fty:ty, $ity:ty) => {
+        #[cfg(all(windows, target_pointer_width="64"))]
+        float_to_int!($intrinsic: $fty, $ity, "unadjusted");
+        #[cfg(not(all(windows, target_pointer_width="64")))]
+        float_to_int!($intrinsic: $fty, $ity, "C");
+    };
+}
+
 float_to_int!(__fixsfsi: f32, i32);
 float_to_int!(__fixsfdi: f32, i64);
+float_to_int_unadj_on_win!(__fixsfti: f32, i128);
 float_to_int!(__fixdfsi: f64, i32);
 float_to_int!(__fixdfdi: f64, i64);
+float_to_int_unadj_on_win!(__fixdfti: f64, i128);
 
 float_to_int!(__fixunssfsi: f32, u32);
 float_to_int!(__fixunssfdi: f32, u64);
+float_to_int_unadj_on_win!(__fixunssfti: f32, u128);
 float_to_int!(__fixunsdfsi: f64, u32);
 float_to_int!(__fixunsdfdi: f64, u64);
+float_to_int_unadj_on_win!(__fixunsdfti: f64, u128);
