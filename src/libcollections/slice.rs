@@ -1341,6 +1341,9 @@ impl<T> [T] {
     ///
     /// The length of `src` must be the same as `self`.
     ///
+    /// If `src` implements `Copy`, it can be more performant to use
+    /// [`copy_from_slice`].
+    ///
     /// # Panics
     ///
     /// This function will panic if the two slices have different lengths.
@@ -1354,6 +1357,8 @@ impl<T> [T] {
     /// dst.clone_from_slice(&src);
     /// assert!(dst == [1, 2, 3]);
     /// ```
+    ///
+    /// [`copy_from_slice`]: #method.copy_from_slice
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
     pub fn clone_from_slice(&mut self, src: &[T]) where T: Clone {
         core_slice::SliceExt::clone_from_slice(self, src)
@@ -1362,6 +1367,8 @@ impl<T> [T] {
     /// Copies all elements from `src` into `self`, using a memcpy.
     ///
     /// The length of `src` must be the same as `self`.
+    ///
+    /// If `src` does not implement `Copy`, use [`clone_from_slice`].
     ///
     /// # Panics
     ///
@@ -1376,6 +1383,8 @@ impl<T> [T] {
     /// dst.copy_from_slice(&src);
     /// assert_eq!(src, dst);
     /// ```
+    ///
+    /// [`clone_from_slice`]: #method.clone_from_slice
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     pub fn copy_from_slice(&mut self, src: &[T]) where T: Copy {
         core_slice::SliceExt::copy_from_slice(self, src)
