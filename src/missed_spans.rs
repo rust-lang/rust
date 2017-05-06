@@ -83,17 +83,18 @@ impl<'a> FmtVisitor<'a> {
         let big_snippet = &local_begin.fm.src.as_ref().unwrap()[start_index..end_index];
 
         let big_diff = (span.lo - big_span_lo).to_usize();
-        let snippet = self.snippet(span);
+        let snippet = self.snippet(span.clone());
 
         debug!("write_snippet `{}`", snippet);
 
-        self.write_snippet_inner(big_snippet, big_diff, &snippet, process_last_snippet);
+        self.write_snippet_inner(big_snippet, big_diff, &snippet, span, process_last_snippet);
     }
 
     fn write_snippet_inner<F>(&mut self,
                               big_snippet: &str,
                               big_diff: usize,
                               old_snippet: &str,
+                              span: Span,
                               process_last_snippet: F)
         where F: Fn(&mut FmtVisitor, &str, &str)
     {
@@ -103,6 +104,10 @@ impl<'a> FmtVisitor<'a> {
         let mut line_start = 0;
         let mut last_wspace = None;
         let mut rewrite_next_comment = true;
+
+        let char_pos = self.codemap.lookup_char_pos(span.lo);
+        let file_name = &char_pos.file.name;
+        let mut cur_line = char_pos.line;
 
         fn replace_chars(string: &str) -> String {
             string
@@ -128,6 +133,15 @@ impl<'a> FmtVisitor<'a> {
                     .next();
 
                 let fix_indent = last_char.map_or(true, |rev_c| ['{', '\n'].contains(&rev_c));
+
+                let subslice_num_lines = subslice.chars().filter(|c| *c == '\n').count();
+
+                if rewrite_next_comment &&
+                   !self.config
+                        .file_lines
+                        .intersects_range(file_name, cur_line, cur_line + subslice_num_lines) {
+                    rewrite_next_comment = false;
+                }
 
                 if rewrite_next_comment {
                     if fix_indent {
@@ -172,6 +186,7 @@ impl<'a> FmtVisitor<'a> {
                         }
                     }
 
+                    cur_line += subslice_num_lines;
                     continue;
                 } else {
                     rewrite_next_comment = false;
@@ -182,6 +197,10 @@ impl<'a> FmtVisitor<'a> {
                 i += offset;
 
                 if c == '\n' {
+                    if !self.config.file_lines.contains_line(file_name, cur_line) {
+                        last_wspace = None;
+                    }
+
                     if let Some(lw) = last_wspace {
                         self.buffer.push_str(&snippet[line_start..lw]);
                         self.buffer.push_str("\n");
@@ -189,6 +208,7 @@ impl<'a> FmtVisitor<'a> {
                         self.buffer.push_str(&snippet[line_start..i + 1]);
                     }
 
+                    cur_line += 1;
                     line_start = i + 1;
                     last_wspace = None;
                     rewrite_next_comment = rewrite_next_comment || kind == CodeCharKind::Normal;

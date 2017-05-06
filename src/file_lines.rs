@@ -158,6 +158,20 @@ impl FileLines {
             Err(_) => false,
         }
     }
+
+    pub fn intersects_range(&self, file_name: &str, lo: usize, hi: usize) -> bool {
+        let map = match self.0 {
+            // `None` means "all lines in all files".
+            None => return true,
+            Some(ref map) => map,
+        };
+
+        match canonicalize_path_string(file_name)
+                  .and_then(|canonical| map.get_vec(&canonical).ok_or(())) {
+            Ok(ranges) => ranges.iter().any(|r| r.intersects(Range::new(lo, hi))),
+            Err(_) => false,
+        }
+    }
 }
 
 /// FileLines files iterator.
