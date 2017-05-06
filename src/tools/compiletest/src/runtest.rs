@@ -570,7 +570,7 @@ actual:\n\
                          format!("-command={}", debugger_script.to_str().unwrap())];
 
                 let mut gdb_path = tool_path;
-                gdb_path.push_str(&format!("/bin/{}-gdb", self.config.target));
+                gdb_path.push_str("/bin/gdb");
                 let procsrv::Result {
                     out,
                     err,
