@@ -41,8 +41,7 @@ Writing `a...b` in an expression desugars to
 expression desugars to `std::ops::RangeToInclusive { end: b }`.
 
 `RangeInclusive` implements the standard traits (`Clone`, `Debug`
-etc.), and implements `Iterator`. The `Empty` variant is to allow the
-`Iterator` implementation to work without hacks (see Alternatives).
+etc.), and implements `Iterator`.
 
 The use of `...` in a pattern remains as testing for inclusion
 within that range, *not* a struct match.
