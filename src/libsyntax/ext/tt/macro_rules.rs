@@ -27,8 +27,8 @@ use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree};
 
 use std::cell::RefCell;
-use std::collections::{HashMap};
-use std::collections::hash_map::{Entry};
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::rc::Rc;
 
 pub struct ParserAnyMacro<'a> {
@@ -85,7 +85,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
 }
 
 /// Given `lhses` and `rhses`, this is the new macro we create
-fn generic_extension<'cx>(cx: &'cx ExtCtxt,
+fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                           sp: Span,
                           name: ast::Ident,
                           arg: TokenStream,
@@ -93,9 +93,9 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                           rhses: &[quoted::TokenTree])
                           -> Box<MacResult+'cx> {
     if cx.trace_macros() {
-        cx.span_label_without_error(sp,
-                                    &"trace_macro",
-                                    &format!("expands to `{}! {{ {} }}`", name, arg));
+        let sp = sp.macro_backtrace().last().map(|trace| trace.call_site).unwrap_or(sp);
+        let mut values: &mut Vec<String> = cx.expansions.entry(sp).or_insert(vec![]);
+        values.push(format!("expands to `{}! {{ {} }}`", name, arg));
     }
 
     // Which arm's failure should we report? (the one furthest along)
