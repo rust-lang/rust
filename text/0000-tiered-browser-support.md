@@ -155,6 +155,8 @@ policy we end up with:
 - Follow best practices for accessibilty, fix bug reports from blind users,
   reach out to blind users in the community about how the accessibility of the
   web content could be improved.
+  - This would include supporting lynx/links as these are sometimes used with
+    screen readers.
 - Follow best practices for colorblindness, such as have information conveyed
   through color also conveyed through an icon or text.
 - Follow best practices for making content usable from mobile devices with a
