@@ -2707,7 +2707,7 @@ impl<'a> Parser<'a> {
                 let (span, e) = self.interpolated_or_expr_span(e)?;
                 let span_of_tilde = lo;
                 let mut err = self.diagnostic().struct_span_err(span_of_tilde,
-                        "`~` can not be used as an unary operator");
+                        "`~` can not be used as a unary operator");
                 err.span_label(span_of_tilde, &"did you mean `!`?");
                 err.help("use `!` instead of `~` if you meant to perform bitwise negation");
                 err.emit();
