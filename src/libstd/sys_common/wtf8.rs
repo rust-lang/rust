@@ -750,6 +750,7 @@ impl<'a> Iterator for Wtf8CodePoints<'a> {
     }
 }
 
+/// Generates a wide character sequence for potentially ill-formed UTF-16.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct EncodeWide<'a> {
