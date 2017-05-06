@@ -194,7 +194,7 @@ after_failure:
 
 # Save tagged docker images we created and load them if they're available
 # Travis saves caches whether the build failed or not, nuke rustsrc if
-# the failure was while updating it (as it may be in an bad state)
+# the failure was while updating it (as it may be in a bad state)
 # https://github.com/travis-ci/travis-ci/issues/4472
 before_cache:
   - docker history -q rust-ci |
