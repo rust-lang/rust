@@ -98,17 +98,27 @@ effective way, the browser support tiers would be defined as:
 
 [actual usage metrics]: #google-analytics-browser-usage-stats
 
-### Tier 1
+Browsers are listed in [browserslist][] format.
+
+[browserslist]: https://github.com/ai/browserslist
+
+### Supported browsers
 
 Goal: Ensure functionality of our web content for 80% of users.
 
 Browsers:
 
-- Chrome current stable and one previous release
-- Firefox current stable and the latest ESR
-- Safari current stable, one previous minor release, and the current version on
-  iOS
-- UC Browser current stable
+```
+last 2 Chrome versions
+last 1 Firefox version
+Firefox ESR
+last 1 Safari version
+last 1 iOS version
+last 1 Edge version
+last 1 UCAndroid version
+```
+
+[On browserl.ist](http://browserl.ist/?q=last+2+Chrome+versions%2C+last+1+Firefox+version%2C+Firefox+ESR%2C+last+1+Safari+version%2C+last+1+iOS+version%2C+last+1+Edge+version%2C+last+1+UCAndroid+version)
 
 Support:
 
