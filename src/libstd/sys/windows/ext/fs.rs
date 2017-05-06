@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Windows-specific extensions for the primitives in `std::fs`
+//! Windows-specific extensions for the primitives in the `std::fs` module.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -35,6 +35,25 @@ pub trait FileExt {
     /// Note that similar to `File::read`, it is not an error to return with a
     /// short read. When returning from such a short read, the file pointer is
     /// still updated.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut file = File::open("foo.txt")?;
+    /// let mut buffer = [0; 10];
+    ///
+    /// // Read 10 bytes, starting 72 bytes from the
+    /// // start of the file.
+    /// file.seek_read(&mut buffer[..], 72)?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize>;
 
@@ -52,6 +71,23 @@ pub trait FileExt {
     /// Note that similar to `File::write`, it is not an error to return a
     /// short write. When returning from such a short write, the file pointer
     /// is still updated.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut buffer = File::create("foo.txt")?;
+    ///
+    /// // Write a byte string starting 72 bytes from
+    /// // the start of the file.
+    /// buffer.write(b"some bytes", offset)?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize>;
 }
@@ -70,13 +106,13 @@ impl FileExt for fs::File {
 /// Windows-specific extensions to `OpenOptions`
 #[stable(feature = "open_options_ext", since = "1.10.0")]
 pub trait OpenOptionsExt {
-    /// Overrides the `dwDesiredAccess` argument to the call to `CreateFile`
+    /// Overrides the `dwDesiredAccess` argument to the call to [`CreateFile`]
     /// with the specified value.
     ///
     /// This will override the `read`, `write`, and `append` flags on the
     /// `OpenOptions` structure. This method provides fine-grained control over
     /// the permissions to read, write and append data, attributes (like hidden
-    /// and system) and extended attributes.
+    /// and system), and extended attributes.
     ///
     /// # Examples
     ///
@@ -88,16 +124,20 @@ pub trait OpenOptionsExt {
     /// // to call `stat()` on the file
     /// let file = OpenOptions::new().access_mode(0).open("foo.txt");
     /// ```
+    ///
+    /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn access_mode(&mut self, access: u32) -> &mut Self;
 
-    /// Overrides the `dwShareMode` argument to the call to `CreateFile` with
+    /// Overrides the `dwShareMode` argument to the call to [`CreateFile`] with
     /// the specified value.
     ///
     /// By default `share_mode` is set to
-    /// `FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE`. Specifying
-    /// less permissions denies others to read from, write to and/or delete the
-    /// file while it is open.
+    /// `FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE`. This allows
+    /// other processes to to read, write, and delete/rename the same file
+    /// while it is open. Removing any of the flags will prevent other
+    /// processes from performing the corresponding operation until the file
+    /// handle is closed.
     ///
     /// # Examples
     ///
@@ -106,42 +146,46 @@ pub trait OpenOptionsExt {
     /// use std::os::windows::fs::OpenOptionsExt;
     ///
     /// // Do not allow others to read or modify this file while we have it open
-    /// // for writing
+    /// // for writing.
     /// let file = OpenOptions::new().write(true)
     ///                              .share_mode(0)
     ///                              .open("foo.txt");
     /// ```
+    ///
+    /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn share_mode(&mut self, val: u32) -> &mut Self;
 
     /// Sets extra flags for the `dwFileFlags` argument to the call to
-    /// `CreateFile2` (or combines it with `attributes` and `security_qos_flags`
-    /// to set the `dwFlagsAndAttributes` for `CreateFile`).
+    /// [`CreateFile2`] to the specified value (or combines it with
+    /// `attributes` and `security_qos_flags` to set the `dwFlagsAndAttributes`
+    /// for [`CreateFile`]).
     ///
-    /// Custom flags can only set flags, not remove flags set by Rusts options.
-    /// This options overwrites any previously set custom flags.
+    /// Custom flags can only set flags, not remove flags set by Rust's options.
+    /// This option overwrites any previously set custom flags.
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```ignore
     /// extern crate winapi;
     /// use std::fs::OpenOptions;
     /// use std::os::windows::fs::OpenOptionsExt;
     ///
     /// let mut options = OpenOptions::new();
     /// options.create(true).write(true);
-    /// if cfg!(windows) {
-    ///     options.custom_flags(winapi::FILE_FLAG_DELETE_ON_CLOSE);
-    /// }
+    /// options.custom_flags(winapi::FILE_FLAG_DELETE_ON_CLOSE);
     /// let file = options.open("foo.txt");
     /// ```
+    ///
+    /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
+    /// [`CreateFile2`]: https://msdn.microsoft.com/en-us/library/windows/desktop/hh449422.aspx
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn custom_flags(&mut self, flags: u32) -> &mut Self;
 
-    /// Sets the `dwFileAttributes` argument to the call to `CreateFile2` to
+    /// Sets the `dwFileAttributes` argument to the call to [`CreateFile2`] to
     /// the specified value (or combines it with `custom_flags` and
     /// `security_qos_flags` to set the `dwFlagsAndAttributes` for
-    /// `CreateFile`).
+    /// [`CreateFile`]).
     ///
     /// If a _new_ file is created because it does not yet exist and
     ///`.create(true)` or `.create_new(true)` are specified, the new file is
@@ -155,7 +199,7 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```ignore
     /// extern crate winapi;
     /// use std::fs::OpenOptions;
     /// use std::os::windows::fs::OpenOptionsExt;
@@ -164,12 +208,38 @@ pub trait OpenOptionsExt {
     ///                              .attributes(winapi::FILE_ATTRIBUTE_HIDDEN)
     ///                              .open("foo.txt");
     /// ```
+    ///
+    /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
+    /// [`CreateFile2`]: https://msdn.microsoft.com/en-us/library/windows/desktop/hh449422.aspx
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn attributes(&mut self, val: u32) -> &mut Self;
 
-    /// Sets the `dwSecurityQosFlags` argument to the call to `CreateFile2` to
+    /// Sets the `dwSecurityQosFlags` argument to the call to [`CreateFile2`] to
     /// the specified value (or combines it with `custom_flags` and `attributes`
-    /// to set the `dwFlagsAndAttributes` for `CreateFile`).
+    /// to set the `dwFlagsAndAttributes` for [`CreateFile`]).
+    ///
+    /// By default, `security_qos_flags` is set to `SECURITY_ANONYMOUS`. For
+    /// information about possible values, see [Impersonation Levels] on the
+    /// Windows Dev Center site.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use std::fs::OpenOptions;
+    /// use std::os::windows::fs::OpenOptionsExt;
+    ///
+    /// let options = OpenOptions::new();
+    /// options.write(true).create(true);
+    ///
+    /// // Sets the flag value to `SecurityIdentification`.
+    /// options.security_qos_flags(1);
+    ///
+    /// let file = options.open("foo.txt");
+    /// ```
+    ///
+    /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
+    /// [`CreateFile2`]: https://msdn.microsoft.com/en-us/library/windows/desktop/hh449422.aspx
+    /// [Impersonation Levels]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa379572.aspx
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn security_qos_flags(&mut self, flags: u32) -> &mut OpenOptions;
 }
