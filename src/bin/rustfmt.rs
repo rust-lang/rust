@@ -98,6 +98,8 @@ impl CliOptions {
     }
 }
 
+const CONFIG_FILE_NAMES: [&'static str; 2] = [".rustfmt.toml", "rustfmt.toml"];
+
 /// Try to find a project file in the given directory and its parents. Returns the path of a the
 /// nearest project file if one exists, or `None` if no project file was found.
 fn lookup_project_file(dir: &Path) -> FmtResult<Option<PathBuf>> {
@@ -108,8 +110,6 @@ fn lookup_project_file(dir: &Path) -> FmtResult<Option<PathBuf>> {
     };
 
     current = try!(fs::canonicalize(current));
-
-    const CONFIG_FILE_NAMES: [&'static str; 2] = [".rustfmt.toml", "rustfmt.toml"];
 
     loop {
         for config_file_name in &CONFIG_FILE_NAMES {
@@ -136,6 +136,16 @@ fn lookup_project_file(dir: &Path) -> FmtResult<Option<PathBuf>> {
     }
 }
 
+fn open_config_file(file_path: &Path) -> FmtResult<(Config, Option<PathBuf>)> {
+    let mut file = try!(File::open(&file_path));
+    let mut toml = String::new();
+    try!(file.read_to_string(&mut toml));
+    match Config::from_toml(&toml) {
+        Ok(cfg) => Ok((cfg, Some(file_path.to_path_buf()))),
+        Err(err) => Err(FmtError::from(err)),
+    }
+}
+
 /// Resolve the config for input in `dir`.
 ///
 /// Returns the `Config` to use, and the path of the project file if there was
@@ -145,14 +155,7 @@ fn resolve_config(dir: &Path) -> FmtResult<(Config, Option<PathBuf>)> {
     if path.is_none() {
         return Ok((Config::default(), None));
     }
-    let path = path.unwrap();
-    let mut file = try!(File::open(&path));
-    let mut toml = String::new();
-    try!(file.read_to_string(&mut toml));
-    match Config::from_toml(&toml) {
-        Ok(cfg) => Ok((cfg, Some(path))),
-        Err(err) => Err(FmtError::from(err)),
-    }
+    open_config_file(&path.unwrap())
 }
 
 /// read the given config file path recursively if present else read the project file path
@@ -161,7 +164,7 @@ fn match_cli_path_or_file(config_path: Option<PathBuf>,
                           -> FmtResult<(Config, Option<PathBuf>)> {
 
     if let Some(config_file) = config_path {
-        let (toml, path) = try!(resolve_config(config_file.as_ref()));
+        let (toml, path) = try!(open_config_file(config_file.as_ref()));
         if path.is_some() {
             return Ok((toml, path));
         }
@@ -246,7 +249,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             let mut path = None;
             // Load the config path file if provided
             if let Some(config_file) = config_path {
-                let (cfg_tmp, path_tmp) = resolve_config(config_file.as_ref())?;
+                let (cfg_tmp, path_tmp) = open_config_file(config_file.as_ref())?;
                 config = cfg_tmp;
                 path = path_tmp;
             };
@@ -325,7 +328,7 @@ fn main() {
 }
 
 fn print_usage(opts: &Options, reason: &str) {
-    let reason = format!("{}\nusage: {} [options] <file>...",
+    let reason = format!("{}\n\nusage: {} [options] <file>...",
                          reason,
                          env::args_os().next().unwrap().to_string_lossy());
     println!("{}", opts.usage(&reason));
@@ -354,16 +357,31 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
         return Ok(Operation::Version);
     }
 
+    let config_path_not_found = |path: &str| -> FmtResult<Operation> {
+        Err(FmtError::from(format!("Error: unable to find a config file for the given path: `{}`",
+                                   path)))
+    };
+
     // Read the config_path and convert to parent dir if a file is provided.
-    let config_path: Option<PathBuf> = matches
-        .opt_str("config-path")
-        .map(PathBuf::from)
-        .and_then(|dir| {
-                      if dir.is_file() {
-                          return dir.parent().map(|v| v.into());
-                      }
-                      Some(dir)
-                  });
+    // If a config file cannot be found from the given path, return error.
+    let config_path: Option<PathBuf> = match matches.opt_str("config-path").map(PathBuf::from) {
+        Some(ref path) if !path.exists() => return config_path_not_found(path.to_str().unwrap()),
+        Some(ref path) if path.is_dir() => {
+            let mut config_file_path = None;
+            for config_file_name in &CONFIG_FILE_NAMES {
+                let temp_path = path.join(config_file_name);
+                if temp_path.is_file() {
+                    config_file_path = Some(temp_path);
+                }
+            }
+            if config_file_path.is_some() {
+                config_file_path
+            } else {
+                return config_path_not_found(path.to_str().unwrap());
+            }
+        }
+        path @ _ => path,
+    };
 
     // if no file argument is supplied, read from stdin
     if matches.free.is_empty() {

@@ -237,16 +237,24 @@ macro_rules! create_config {
             }
 
             pub fn from_toml(toml: &str) -> Result<Config, String> {
-                let parsed: toml::Value = toml.parse().expect("Could not parse TOML");
+                let parsed: toml::Value =
+                    toml.parse().map_err(|e| format!("Could not parse TOML: {}", e))?;
                 let mut err: String = String::new();
-                for (key, _) in parsed.as_table().expect("Parsed config was not table") {
-                    match &**key {
-                        $(
-                            stringify!($i) => (),
-                        )+
-                        _ => {
-                            let msg = &format!("Warning: Unknown configuration option `{}`\n", key);
-                            err.push_str(msg)
+                {
+                    let table = parsed
+                        .as_table()
+                        .ok_or(String::from("Parsed config was not table"))?;
+                    for (key, _) in table {
+                        match &**key {
+                            $(
+                                stringify!($i) => (),
+                            )+
+                                _ => {
+                                    let msg =
+                                        &format!("Warning: Unknown configuration option `{}`\n",
+                                                 key);
+                                    err.push_str(msg)
+                                }
                         }
                     }
                 }
