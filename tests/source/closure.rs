@@ -131,3 +131,15 @@ impl Foo {
         })
     }
 }
+
+fn issue1329() {
+    aaaaaaaaaaaaaaaa.map(|x| {
+        x += 1;
+        x
+    })
+        .filter
+}
+
+fn issue325() {
+    let f = || unsafe { xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx };
+}
