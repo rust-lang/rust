@@ -5,7 +5,7 @@ name = "compiler_builtins"
 version = "0.1.0"
 
 [build-dependencies]
-cast = { version = "0.2.1", features = ["x128"], optional = true }
+cast = { version = "0.2.2", features = ["x128"], optional = true }
 rand = { version = "0.3.15", optional = true }
 
 [build-dependencies.gcc]
