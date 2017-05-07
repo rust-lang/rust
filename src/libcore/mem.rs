@@ -453,15 +453,13 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
         // #[repr(simd)], even if we don't actually use this struct directly.
         #[repr(simd)]
         struct Block(u64, u64, u64, u64);
+        struct UnalignedBlock(u64, u64, u64, u64);
+
         let block_size = size_of::<Block>();
 
-        // Create some uninitialized memory as scratch space
-        let mut t: Block = uninitialized();
-
-        // Get raw pointers to the bytes of x, y & t for easier manipulation
+        // Get raw pointers to the bytes of x & y for easier manipulation
         let x = x as *mut T as *mut u8;
         let y = y as *mut T as *mut u8;
-        let t = &mut t as *mut _ as *mut u8;
 
         // Loop through x & y, copying them `Block` at a time
         // The optimizer should unroll the loop fully for most types
@@ -469,6 +467,12 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
         let len = size_of::<T>() as isize;
         let mut i = 0;
         while i + block_size as isize <= len {
+            // Create some uninitialized memory as scratch space
+            // Moving the declaration of `t` here avoids aligning the stack when
+            // this loop is unused
+            let mut t: Block = uninitialized();
+            let t = &mut t as *mut _ as *mut u8;
+
             // Swap a block of bytes of x & y, using t as a temporary buffer
             // This should be optimized into efficient SIMD operations where available
             ptr::copy_nonoverlapping(x.offset(i), t, block_size);
@@ -478,6 +482,9 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
         }
         if i < len {
             // Swap any remaining bytes
+            let mut t: UnalignedBlock = uninitialized();
+            let t = &mut t as *mut _ as *mut u8;
+
             let rem = (len - i) as usize;
             ptr::copy_nonoverlapping(x.offset(i), t, rem);
             ptr::copy_nonoverlapping(y.offset(i), x.offset(i), rem);
