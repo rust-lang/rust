@@ -1750,7 +1750,8 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
         tactic: tactic,
         separator: ",",
         trailing_separator: if force_no_trailing_comma ||
-                               context.config.fn_call_style == IndentStyle::Visual {
+                               context.config.fn_call_style == IndentStyle::Visual ||
+                               args.len() <= 1 {
             SeparatorTactic::Never
         } else {
             context.config.trailing_comma

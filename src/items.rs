@@ -1619,7 +1619,8 @@ fn rewrite_fn_base(context: &RewriteContext,
                                         indent,
                                         arg_indent,
                                         args_span,
-                                        fd.variadic));
+                                        fd.variadic,
+                                        generics_str.contains('\n')));
 
     let multi_line_arg_str = arg_str.contains('\n');
 
@@ -1773,7 +1774,8 @@ fn rewrite_args(context: &RewriteContext,
                 indent: Indent,
                 arg_indent: Indent,
                 span: Span,
-                variadic: bool)
+                variadic: bool,
+                generics_str_contains_newline: bool)
                 -> Option<String> {
     let mut arg_item_strs =
         try_opt!(args.iter()
@@ -1858,6 +1860,9 @@ fn rewrite_args(context: &RewriteContext,
     }
 
     let (indent, trailing_comma, end_with_newline) = match context.config.fn_args_layout {
+        IndentStyle::Block if !generics_str_contains_newline && arg_items.len() <= 1 => {
+            (indent.block_indent(context.config), SeparatorTactic::Never, true)
+        }
         IndentStyle::Block => {
             (indent.block_indent(context.config), SeparatorTactic::Vertical, true)
         }

@@ -4,7 +4,7 @@
 // rustfmt-fn_brace_style: AlwaysNextLine
 
 // Case with only one variable.
-fn foo(a: u8,) -> u8
+fn foo(a: u8) -> u8
 {
     bar()
 }
@@ -30,11 +30,11 @@ fn foo(
 }
 
 trait Test {
-    fn foo(a: u8,)
+    fn foo(a: u8)
     {
     }
 
-    fn bar(a: u8,) -> String
+    fn bar(a: u8) -> String
     {
     }
 }
