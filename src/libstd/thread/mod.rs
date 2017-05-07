@@ -585,7 +585,7 @@ pub fn park() {
 /// Blocks unless or until the current thread's token is made available or
 /// the specified duration has been reached (may wake spuriously).
 ///
-/// The semantics of this function are equivalent to [`park()`][[park] except
+/// The semantics of this function are equivalent to [`park()`][park] except
 /// that the thread will be blocked for roughly no longer than `dur`. This
 /// method should not be used for precise timing due to anomalies such as
 /// preemption or platform differences that may not cause the maximum
@@ -605,7 +605,7 @@ pub fn park_timeout_ms(ms: u32) {
 /// Blocks unless or until the current thread's token is made available or
 /// the specified duration has been reached (may wake spuriously).
 ///
-/// The semantics of this function are equivalent to [`park()`][[park] except
+/// The semantics of this function are equivalent to [`park()`][park] except
 /// that the thread will be blocked for roughly no longer than `dur`. This
 /// method should not be used for precise timing due to anomalies such as
 /// preemption or platform differences that may not cause the maximum
