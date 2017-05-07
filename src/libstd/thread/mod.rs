@@ -768,7 +768,11 @@ impl Thread {
 
     /// Atomically makes the handle's token available if it is not already.
     ///
-    /// See the module doc for more detail.
+    /// Every thread is equipped with some basic low-level blocking support, via
+    /// the [`park()`][park] function and the `unpark` method. These can be
+    /// used as a more CPU-efficient implementation of a spinlock.
+    ///
+    /// See the [module doc][thread] for more detail.
     ///
     /// # Examples
     ///
@@ -784,6 +788,9 @@ impl Thread {
     ///
     /// handler.join().unwrap();
     /// ```
+    ///
+    /// [thread]: index.html
+    /// [park]: fn.park.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unpark(&self) {
         let mut guard = self.inner.lock.lock().unwrap();
