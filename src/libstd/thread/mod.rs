@@ -721,33 +721,21 @@ struct Inner {
 
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-/// A handle to a thread.
+/// Threads are represented via the `Thread` type, which you can get in one of
+/// two ways:
 ///
-/// You can use it to identify a thread (by name, for example). Most of the
-/// time, there is no need to directly create a `Thread` struct using the
-/// constructor, instead you should use a function like `spawn` to create
-/// new threads, see the docs of [`Builder`] and [`spawn`] for more.
+/// * By spawning a new thread, e.g. using the [`thread::spawn`][`spawn`]
+///   function, and calling [`thread`][`JoinHandle::thread`] on the
+///   [`JoinHandle`].
+/// * By requesting the current thread, using the [`thread::current`] function.
 ///
-/// # Examples
+/// The [`thread::current`] function is available even for threads not spawned
+/// by the APIs of this module.
 ///
-/// ```no_run
-/// # // Note that this example isn't executed by default because it causes
-/// # // deadlocks on Windows unfortunately (see #25824)
-/// use std::thread::Builder;
+/// There is usualy no need to create a `Thread` struct yourself, one
+/// should instead use a function like `spawn` to create new threads, see the
+/// docs of [`Builder`] and [`spawn`] for more details.
 ///
-/// for i in 0..5 {
-///     let thread_name = format!("thread_{}", i);
-///     Builder::new()
-///         .name(thread_name) // Now you can identify which thread panicked
-///                            // thanks to the handle's name
-///         .spawn(move || {
-///             if i == 3 {
-///                  panic!("I'm scared!!!");
-///             }
-///         })
-///         .unwrap();
-/// }
-/// ```
 /// [`Builder`]: ../../std/thread/struct.Builder.html
 /// [`spawn`]: ../../std/thread/fn.spawn.html
 
