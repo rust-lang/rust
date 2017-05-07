@@ -110,7 +110,7 @@ use self::LiveNodeKind::*;
 use self::VarKind::*;
 
 use hir::def::*;
-use ty::{self, TyCtxt, ParameterEnvironment};
+use ty::{self, TyCtxt};
 use traits::{self, Reveal};
 use ty::subst::Subst;
 use lint;
@@ -382,7 +382,7 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
 
     // check for various error conditions
     lsets.visit_body(body);
-    lsets.check_ret(id, sp, entry_ln, body);
+    lsets.check_ret(id, sp, entry_ln);
     lsets.warn_about_unused_args(body, entry_ln);
 }
 
@@ -1423,10 +1423,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_ret(&self,
                  id: NodeId,
                  sp: Span,
-                 entry_ln: LiveNode,
-                 body: &hir::Body)
+                 entry_ln: LiveNode)
     {
-        let fn_ty = self.ir.tcx.type_of(self.ir.tcx.hir.local_def_id(id));
+        let def_id = self.ir.tcx.hir.local_def_id(id);
+        let fn_ty = self.ir.tcx.type_of(def_id);
         let fn_sig = match fn_ty.sty {
             ty::TyClosure(closure_def_id, substs) => {
                 self.ir.tcx.closure_type(closure_def_id)
@@ -1441,11 +1441,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // and must outlive the *call-site* of the function.
         let fn_ret =
             self.ir.tcx.liberate_late_bound_regions(
-                Some(self.ir.tcx.call_site_extent(id, body.value.id)),
+                Some(self.ir.tcx.call_site_extent(id)),
                 &fn_ret);
 
         if !fn_ret.is_never() && self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
-            let param_env = ParameterEnvironment::for_item(self.ir.tcx, id);
+            let param_env = self.ir.tcx.parameter_environment(def_id);
             let t_ret_subst = fn_ret.subst(self.ir.tcx, &param_env.free_substs);
             let is_nil = self.ir.tcx.infer_ctxt(param_env, Reveal::All).enter(|infcx| {
                 let cause = traits::ObligationCause::dummy();

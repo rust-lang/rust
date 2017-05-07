@@ -41,8 +41,7 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 {
     debug!("make_shim({:?})", instance);
     let did = instance.def_id();
-    let span = tcx.def_span(did);
-    let param_env = tcx.construct_parameter_environment(span, did, None);
+    let param_env = tcx.parameter_environment(did);
 
     let mut result = match instance {
         ty::InstanceDef::Item(..) =>

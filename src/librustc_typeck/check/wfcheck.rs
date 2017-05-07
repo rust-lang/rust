@@ -117,8 +117,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                     error_192(tcx, item.span);
                 }
             }
-            hir::ItemFn(.., body_id) => {
-                self.check_item_fn(item, body_id);
+            hir::ItemFn(..) => {
+                self.check_item_fn(item);
             }
             hir::ItemStatic(..) => {
                 self.check_item_type(item);
@@ -210,7 +210,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
     fn for_id<'tcx>(&self, id: ast::NodeId, span: Span)
                     -> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
         CheckWfFcxBuilder {
-            inherited: Inherited::build(self.tcx, id),
+            inherited: Inherited::build(self.tcx, self.tcx.hir.local_def_id(id)),
             code: self.code.clone(),
             id: id,
             span: span
@@ -327,10 +327,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         });
     }
 
-    fn check_item_fn(&mut self,
-                     item: &hir::Item,
-                     body_id: hir::BodyId)
-    {
+    fn check_item_fn(&mut self, item: &hir::Item) {
         self.for_item(item).with_fcx(|fcx, this| {
             let free_substs = &fcx.parameter_environment.free_substs;
             let def_id = fcx.tcx.hir.local_def_id(item.id);
@@ -341,7 +338,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             let predicates = fcx.instantiate_bounds(item.span, def_id, free_substs);
 
             let mut implied_bounds = vec![];
-            let free_id_outlive = fcx.tcx.call_site_extent(item.id, body_id.node_id);
+            let free_id_outlive = fcx.tcx.call_site_extent(item.id);
             this.check_fn_or_method(fcx, item.span, sig, &predicates,
                                     Some(free_id_outlive), &mut implied_bounds);
             implied_bounds

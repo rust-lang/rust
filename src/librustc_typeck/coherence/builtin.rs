@@ -17,7 +17,6 @@ use rustc::middle::lang_items::UnsizeTraitLangItem;
 
 use rustc::traits::{self, ObligationCause, Reveal};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::ParameterEnvironment;
 use rustc::ty::TypeFoldable;
 use rustc::ty::adjustment::CoerceUnsizedInfo;
 use rustc::ty::subst::Subst;
@@ -107,7 +106,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            self_type);
 
     let span = tcx.hir.span(impl_node_id);
-    let param_env = ParameterEnvironment::for_item(tcx, impl_node_id);
+    let param_env = tcx.parameter_environment(impl_did);
     let self_type = self_type.subst(tcx, &param_env.free_substs);
     assert!(!self_type.has_escaping_regions());
 
@@ -202,7 +201,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            target);
 
     let span = tcx.hir.span(impl_node_id);
-    let param_env = ParameterEnvironment::for_item(tcx, impl_node_id);
+    let param_env = tcx.parameter_environment(impl_did);
     let source = source.subst(tcx, &param_env.free_substs);
     let target = target.subst(tcx, &param_env.free_substs);
     assert!(!source.has_escaping_regions());

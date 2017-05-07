@@ -990,12 +990,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                         traits::Obligation::new(traits::ObligationCause::misc(span, expr_id),
                                                 trait_ref.to_poly_trait_predicate());
 
-                    // unwrap() is ok here b/c `method` is the method
-                    // defined in this crate whose body we are
-                    // checking, so it's always local
-                    let node_id = tcx.hir.as_local_node_id(method.def_id).unwrap();
-
-                    let param_env = ty::ParameterEnvironment::for_item(tcx, node_id);
+                    let param_env = tcx.parameter_environment(method.def_id);
                     tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
                         let mut selcx = traits::SelectionContext::new(&infcx);
                         match selcx.select(&obligation) {
@@ -1263,7 +1258,7 @@ impl LintPass for UnionsWithDropFields {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
     fn check_item(&mut self, ctx: &LateContext, item: &hir::Item) {
         if let hir::ItemUnion(ref vdata, _) = item.node {
-            let param_env = &ty::ParameterEnvironment::for_item(ctx.tcx, item.id);
+            let param_env = &ctx.tcx.parameter_environment(ctx.tcx.hir.local_def_id(item.id));
             for field in vdata.fields() {
                 let field_ty = ctx.tcx.type_of(ctx.tcx.hir.local_def_id(field.id));
                 if field_ty.needs_drop(ctx.tcx, param_env) {

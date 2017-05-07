@@ -46,14 +46,13 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
                 b: hir::BodyId, s: Span, id: ast::NodeId) {
         intravisit::walk_fn(self, fk, fd, b, s, id);
 
-        let region_context = self.tcx.hir.local_def_id(id);
-        let region_maps = self.tcx.region_maps(region_context);
+        let def_id = self.tcx.hir.local_def_id(id);
 
         MatchVisitor {
             tcx: self.tcx,
             tables: self.tcx.body_tables(b),
-            region_maps: &region_maps,
-            param_env: &ty::ParameterEnvironment::for_item(self.tcx, id)
+            region_maps: &self.tcx.region_maps(def_id),
+            param_env: &self.tcx.parameter_environment(def_id)
         }.visit_body(self.tcx.hir.body(b));
     }
 }

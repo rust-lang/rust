@@ -937,8 +937,7 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return Qualif::NOT_CONST.bits();
     }
 
-    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-    let param_env = ty::ParameterEnvironment::for_item(tcx, node_id);
+    let param_env = tcx.parameter_environment(def_id);
 
     let mut qualifier = Qualifier::new(tcx, param_env, def_id, mir, Mode::Const);
     qualifier.qualify_const().bits()
@@ -966,7 +965,7 @@ impl MirPass for QualifyAndPromoteConstants {
             MirSource::Const(_) |
             MirSource::Promoted(..) => return
         };
-        let param_env = ty::ParameterEnvironment::for_item(tcx, id);
+        let param_env = tcx.parameter_environment(def_id);
 
         if mode == Mode::Fn || mode == Mode::ConstFn {
             // This is ugly because Qualifier holds onto mir,

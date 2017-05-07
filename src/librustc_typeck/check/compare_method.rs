@@ -167,7 +167,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Create a parameter environment that represents the implementation's
     // method.
-    let impl_param_env = ty::ParameterEnvironment::for_item(tcx, impl_m_node_id);
+    let impl_param_env = tcx.parameter_environment(impl_m.def_id);
 
     // Create mapping from impl to skolemized.
     let impl_to_skol_substs = &impl_param_env.free_substs;
@@ -739,7 +739,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Create a parameter environment that represents the implementation's
         // method.
         let impl_c_node_id = tcx.hir.as_local_node_id(impl_c.def_id).unwrap();
-        let impl_param_env = ty::ParameterEnvironment::for_item(tcx, impl_c_node_id);
+        let impl_param_env = tcx.parameter_environment(impl_c.def_id);
 
         // Create mapping from impl to skolemized.
         let impl_to_skol_substs = &impl_param_env.free_substs;

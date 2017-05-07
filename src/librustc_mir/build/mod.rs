@@ -14,7 +14,7 @@ use hair::cx::Cx;
 use hair::Pattern;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::middle::region::{CodeExtent, CodeExtentData};
+use rustc::middle::region::CodeExtent;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use rustc::mir::visit::MutVisitor;
@@ -172,7 +172,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let span = tcx.hir.span(ctor_id);
     if let hir::VariantData::Tuple(ref fields, ctor_id) = *v {
-        let pe = ty::ParameterEnvironment::for_item(tcx, ctor_id);
+        let pe = tcx.parameter_environment(tcx.hir.local_def_id(ctor_id));
         tcx.infer_ctxt(pe, Reveal::UserFacing).enter(|infcx| {
             let (mut mir, src) =
                 shim::build_adt_ctor(&infcx, ctor_id, fields, span);
@@ -337,12 +337,8 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let span = tcx.hir.span(fn_id);
     let mut builder = Builder::new(hir.clone(), span, arguments.len(), return_ty);
 
-    let call_site_extent =
-        tcx.intern_code_extent(
-            CodeExtentData::CallSiteScope { fn_id: fn_id, body_id: body.value.id });
-    let arg_extent =
-        tcx.intern_code_extent(
-            CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body.value.id });
+    let call_site_extent = tcx.call_site_extent(fn_id);
+    let arg_extent = tcx.parameter_extent(fn_id);
     let mut block = START_BLOCK;
     unpack!(block = builder.in_scope(call_site_extent, block, |builder| {
         unpack!(block = builder.in_scope(arg_extent, block, |builder| {

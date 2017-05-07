@@ -87,7 +87,7 @@ use check::FnCtxt;
 use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
-use middle::region::{self, CodeExtent, RegionMaps};
+use middle::region::{CodeExtent, RegionMaps};
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
@@ -286,8 +286,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         let body_id = body.id();
 
-        let call_site = self.tcx.intern_code_extent(
-            region::CodeExtentData::CallSiteScope { fn_id: id, body_id: body_id.node_id });
+        let call_site = self.tcx.call_site_extent(id);
         let old_call_site_scope = self.set_call_site_scope(Some(call_site));
 
         let fn_sig = {

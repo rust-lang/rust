@@ -90,8 +90,7 @@ use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode, Reveal};
-use rustc::ty::{ParamTy, ParameterEnvironment};
-use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
+use rustc::ty::{ParamTy, LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, Ty, TyCtxt, Visibility};
 use rustc::ty::{MethodCall, MethodCallee};
 use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
@@ -527,10 +526,10 @@ pub struct InheritedBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
-    pub fn build(tcx: TyCtxt<'a, 'gcx, 'gcx>, id: ast::NodeId)
+    pub fn build(tcx: TyCtxt<'a, 'gcx, 'gcx>, def_id: DefId)
                  -> InheritedBuilder<'a, 'gcx, 'tcx> {
         let tables = ty::TypeckTables::empty();
-        let param_env = ParameterEnvironment::for_item(tcx, id);
+        let param_env = tcx.parameter_environment(def_id);
         InheritedBuilder {
             infcx: tcx.infer_ctxt((tables, param_env), Reveal::UserFacing)
         }
@@ -772,14 +771,14 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
     let body = tcx.hir.body(body_id);
 
-    Inherited::build(tcx, id).enter(|inh| {
+    Inherited::build(tcx, def_id).enter(|inh| {
         let fcx = if let Some(decl) = fn_decl {
             let fn_sig = tcx.type_of(def_id).fn_sig();
 
             check_abi(tcx, span, fn_sig.abi());
 
             // Compute the fty from point of view of inside fn.
-            let fn_scope = inh.tcx.call_site_extent(id, body_id.node_id);
+            let fn_scope = inh.tcx.call_site_extent(id);
             let fn_sig =
                 fn_sig.subst(inh.tcx, &inh.parameter_environment.free_substs);
             let fn_sig =

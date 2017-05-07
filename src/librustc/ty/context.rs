@@ -660,9 +660,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.intern_code_extent(CodeExtentData::DestructionScope(n))
     }
 
-    pub fn call_site_extent(self, fn_id: ast::NodeId, body_id: ast::NodeId) -> CodeExtent<'gcx> {
-        assert!(fn_id != body_id);
-        self.intern_code_extent(CodeExtentData::CallSiteScope { fn_id: fn_id, body_id: body_id })
+    pub fn call_site_extent(self, fn_id: ast::NodeId) -> CodeExtent<'gcx> {
+        self.intern_code_extent(CodeExtentData::CallSiteScope {
+            fn_id,
+            body_id: self.hir.body_owned_by(fn_id).node_id
+        })
+    }
+
+    pub fn parameter_extent(self, fn_id: ast::NodeId) -> CodeExtent<'gcx> {
+        self.intern_code_extent(CodeExtentData::ParameterScope {
+            fn_id,
+            body_id: self.hir.body_owned_by(fn_id).node_id
+        })
     }
 
     pub fn intern_code_extent(self, data: CodeExtentData) -> CodeExtent<'gcx> {

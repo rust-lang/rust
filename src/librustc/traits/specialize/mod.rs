@@ -179,9 +179,7 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     // create a parameter environment corresponding to a (skolemized) instantiation of impl1
-    let penv = tcx.construct_parameter_environment(DUMMY_SP,
-                                                   impl1_def_id,
-                                                   None);
+    let penv = tcx.parameter_environment(impl1_def_id);
     let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id)
                              .unwrap()
                              .subst(tcx, &penv.free_substs);

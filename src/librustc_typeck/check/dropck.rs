@@ -76,11 +76,10 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
     -> Result<(), ErrorReported>
 {
     let drop_impl_node_id = tcx.hir.as_local_node_id(drop_impl_did).unwrap();
-    let self_type_node_id = tcx.hir.as_local_node_id(self_type_did).unwrap();
 
     // check that the impl type can be made to match the trait type.
 
-    let impl_param_env = ty::ParameterEnvironment::for_item(tcx, self_type_node_id);
+    let impl_param_env = tcx.parameter_environment(self_type_did);
     tcx.infer_ctxt(impl_param_env, Reveal::UserFacing).enter(|ref infcx| {
         let tcx = infcx.tcx;
         let mut fulfillment_cx = traits::FulfillmentContext::new();
@@ -99,7 +98,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
                 fulfillment_cx.register_predicate_obligations(infcx, obligations);
             }
             Err(_) => {
-                let item_span = tcx.hir.span(self_type_node_id);
+                let item_span = tcx.def_span(self_type_did);
                 struct_span_err!(tcx.sess, drop_impl_span, E0366,
                                  "Implementations of Drop cannot be specialized")
                     .span_note(item_span,

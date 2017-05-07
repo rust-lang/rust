@@ -751,7 +751,7 @@ impl MirPass for TypeckMir {
             // broken MIR, so try not to report duplicate errors.
             return;
         }
-        let param_env = ty::ParameterEnvironment::for_item(tcx, item_id);
+        let param_env = tcx.parameter_environment(def_id);
         tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
             let mut checker = TypeChecker::new(&infcx, item_id);
             {

@@ -73,7 +73,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         debug!("check_closure: expr.id={:?} closure_type={:?}", expr.id, closure_type);
 
-        let extent = self.tcx.call_site_extent(expr.id, body.value.id);
+        let extent = self.tcx.call_site_extent(expr.id);
         let fn_sig = self.tcx.liberate_late_bound_regions(Some(extent), &sig);
         let fn_sig = self.inh.normalize_associated_types_in(body.value.span,
                                                             body.value.id, &fn_sig);
