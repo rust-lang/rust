@@ -3934,7 +3934,9 @@ macro_rules! panic {
 
         let rng = &mut rand::thread_rng();
         let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
-        let out_file = out_dir.join(format!("{}.rs", T::name()));
+        let out_file_name = format!("{}.rs", T::name());
+        let out_file = out_dir.join(&out_file_name);
+        println!("Generating {}", out_file_name);
         let contents = mk_tests::<T, _>(NTESTS, rng);
 
         File::create(out_file)
