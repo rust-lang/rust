@@ -530,13 +530,11 @@ fn rewrite_closure(capture: ast::CaptureBy,
             // We need braces, but we might still prefer a one-liner.
             let stmt = &block.stmts[0];
             // 4 = braces and spaces.
-            let mut rewrite = stmt.rewrite(context, try_opt!(body_shape.sub_width(4)));
-
-            // Checks if rewrite succeeded and fits on a single line.
-            rewrite = and_one_line(rewrite);
-
-            if let Some(rewrite) = rewrite {
-                return Some(format!("{} {{ {} }}", prefix, rewrite));
+            if let Some(body_shape) = body_shape.sub_width(4) {
+                // Checks if rewrite succeeded and fits on a single line.
+                if let Some(rewrite) = and_one_line(stmt.rewrite(context, body_shape)) {
+                    return Some(format!("{} {{ {} }}", prefix, rewrite));
+                }
             }
         }
 
