@@ -468,8 +468,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
         let mut i = 0;
         while i + block_size as isize <= len {
             // Create some uninitialized memory as scratch space
-            // Moving the declaration of `t` here avoids aligning the stack when
-            // this loop is unused
+            // Decaring `t` here avoids aligning the stack when this loop is unused
             let mut t: Block = uninitialized();
             let t = &mut t as *mut _ as *mut u8;
 
