@@ -46,7 +46,8 @@ const MILLIS_PER_SEC: u64 = 1_000;
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Default)]
 pub struct Duration {
     secs: u64,
-    nanos: u32, // Always 0 <= nanos < NANOS_PER_SEC
+    /// Always 0 <= nanos < NANOS_PER_SEC
+    nanos: u32,
 }
 
 impl Duration {
@@ -91,7 +92,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    pub fn from_secs(secs: u64) -> Duration {
+    pub const fn from_secs(secs: u64) -> Duration {
         Duration { secs: secs, nanos: 0 }
     }
 
@@ -109,10 +110,11 @@ impl Duration {
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    pub fn from_millis(millis: u64) -> Duration {
-        let secs = millis / MILLIS_PER_SEC;
-        let nanos = ((millis % MILLIS_PER_SEC) as u32) * NANOS_PER_MILLI;
-        Duration { secs: secs, nanos: nanos }
+    pub const fn from_millis(millis: u64) -> Duration {
+        Duration {
+            secs: millis / MILLIS_PER_SEC
+            nanos: ((millis % MILLIS_PER_SEC) as u32) * NANOS_PER_MILLI
+        }
     }
 
     /// Returns the number of whole seconds represented by this `Duration`.
