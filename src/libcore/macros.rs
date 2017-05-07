@@ -562,6 +562,17 @@ macro_rules! unimplemented {
 ///
 /// For more information, see documentation for `std`'s macros.
 mod builtin {
+
+    /// Unconditionally causes compilation to fail with the given error message when encountered.
+    ///
+    /// For more information, see the [RFC].
+    ///
+    /// [RFC]: https://github.com/rust-lang/rfcs/blob/master/text/1695-add-error-macro.md
+    #[unstable(feature = "compile_error_macro", issue = "40872")]
+    #[macro_export]
+    #[cfg(dox)]
+    macro_rules! compile_error { ($msg:expr) => ({ /* compiler built-in */ }) }
+
     /// The core macro for formatted string creation & output.
     ///
     /// For more information, see the documentation for [`std::format_args!`].

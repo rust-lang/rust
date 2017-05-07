@@ -1065,6 +1065,7 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_allow_internal_unstable = allow_internal_unstable,
         fn enable_custom_derive = custom_derive,
         fn proc_macro_enabled = proc_macro,
+        fn enable_compile_error = compile_error,
     }
 }
 
