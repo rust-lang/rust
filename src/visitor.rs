@@ -62,10 +62,9 @@ impl<'a> FmtVisitor<'a> {
             ast::StmtKind::Local(..) |
             ast::StmtKind::Expr(..) |
             ast::StmtKind::Semi(..) => {
-                let rewrite = stmt.rewrite(&self.get_context(),
-                                           Shape::legacy(self.config.max_width -
-                                                         self.block_indent.width(),
-                                                         self.block_indent));
+                let rewrite =
+                    stmt.rewrite(&self.get_context(),
+                                 Shape::indented(self.block_indent, self.config));
                 if rewrite.is_none() {
                     self.failed = true;
                 }
@@ -497,8 +496,7 @@ impl<'a> FmtVisitor<'a> {
 
         let rewrite = outers
             .rewrite(&self.get_context(),
-                     Shape::legacy(self.config.max_width - self.block_indent.width(),
-                                   self.block_indent))
+                     Shape::indented(self.block_indent, self.config))
             .unwrap();
         self.buffer.push_str(&rewrite);
         let last = outers.last().unwrap();

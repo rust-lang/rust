@@ -592,10 +592,7 @@ fn rewrite_closure(capture: ast::CaptureBy,
 
         // The body of the closure is big enough to be block indented, that
         // means we must re-format.
-        let block_shape = Shape {
-            width: context.config.max_width - shape.block().indent.width(),
-            ..shape.block()
-        };
+        let block_shape = shape.block().with_max_width(context.config);
         let block_str = try_opt!(block.rewrite(&context, block_shape));
         Some(format!("{} {}",
                      prefix,
@@ -1212,11 +1209,7 @@ fn rewrite_match(context: &RewriteContext,
         result.push('\n');
         result.push_str(&arm_indent_str);
 
-        let arm_str = arm.rewrite(&context,
-                                  Shape {
-                                      width: context.config.max_width - arm_shape.indent.width(),
-                                      ..arm_shape
-                                  });
+        let arm_str = arm.rewrite(&context, arm_shape.with_max_width(context.config));
         if let Some(ref arm_str) = arm_str {
             result.push_str(arm_str);
         } else {
@@ -1323,10 +1316,7 @@ impl Rewrite for ast::Arm {
         let pats_str = try_opt!(write_list(items, &fmt));
 
         let guard_shape = if pats_str.contains('\n') {
-            Shape {
-                width: context.config.max_width - shape.indent.width(),
-                ..shape
-            }
+            shape.with_max_width(context.config)
         } else {
             shape
         };
