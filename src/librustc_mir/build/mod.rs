@@ -401,22 +401,15 @@ pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     let span = tcx.hir.span(owner_id);
     let mut builder = Builder::new(hir.clone(), span, 0, ty);
 
-    let extent = hir.region_maps.temporary_scope(tcx, ast_expr.id)
-                                .unwrap_or(tcx.item_extent(owner_id));
     let mut block = START_BLOCK;
-    let _ = builder.in_scope(extent, block, |builder| {
-        let expr = builder.hir.mirror(ast_expr);
-        unpack!(block = builder.into(&Lvalue::Local(RETURN_POINTER), block, expr));
+    let expr = builder.hir.mirror(ast_expr);
+    unpack!(block = builder.into_expr(&Lvalue::Local(RETURN_POINTER), block, expr));
 
-        let source_info = builder.source_info(span);
-        let return_block = builder.return_block();
-        builder.cfg.terminate(block, source_info,
-                              TerminatorKind::Goto { target: return_block });
-        builder.cfg.terminate(return_block, source_info,
-                              TerminatorKind::Return);
+    let source_info = builder.source_info(span);
+    builder.cfg.terminate(block, source_info, TerminatorKind::Return);
 
-        return_block.unit()
-    });
+    // Constants can't `return` so a return block should not be created.
+    assert_eq!(builder.cached_return_block, None);
 
     builder.finish(vec![], ty)
 }
