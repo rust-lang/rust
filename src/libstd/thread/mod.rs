@@ -458,6 +458,16 @@ pub fn yield_now() {
 
 /// Determines whether the current thread is unwinding because of panic.
 ///
+/// A common use of this feature is to poison shared resources when writing
+/// unsafe code, by checking `panicking` when the `drop` is called.
+///
+/// This is usually not needed when writing safe code, as [`Mutex`es][Mutex]
+/// already poison themselves when a thread panics while holding the lock.
+///
+/// This can also be used in multithreaded applications, in order to send a
+/// message to other threads warning that a thread has panicked (e.g. for
+/// monitoring purposes).
+///
 /// # Examples
 ///
 /// ```should_panic
@@ -486,6 +496,8 @@ pub fn yield_now() {
 ///     panic!()
 /// }
 /// ```
+///
+/// [Mutex]: ../../std/sync/struct.Mutex.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn panicking() -> bool {
