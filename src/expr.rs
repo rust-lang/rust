@@ -681,8 +681,9 @@ impl Rewrite for ast::Block {
         };
 
         visitor.visit_block(self);
-        if visitor.failed {
-            None
+        if visitor.failed && shape.indent.alignment != 0 {
+            self.rewrite(context,
+                         Shape::indented(shape.indent.block_only(), context.config))
         } else {
             Some(format!("{}{}", prefix, visitor.buffer))
         }
