@@ -223,14 +223,6 @@ pub struct Shape {
 }
 
 impl Shape {
-    pub fn indented(indent: Indent, config: &Config) -> Shape {
-        Shape {
-            width: config.max_width,
-            indent: indent,
-            offset: indent.width(),
-        }
-    }
-
     /// `indent` is the indentation of the first line. The next lines
     /// should begin with at least `indent` spaces (except backwards
     /// indentation). The first line should not begin with indentation.
@@ -251,6 +243,24 @@ impl Shape {
             width: width,
             indent: indent,
             offset: indent.alignment,
+        }
+    }
+
+    pub fn indented(indent: Indent, config: &Config) -> Shape {
+        Shape {
+            width: config.max_width.checked_sub(indent.width()).unwrap_or(0),
+            indent: indent,
+            offset: indent.alignment,
+        }
+    }
+
+    pub fn with_max_width(&self, config: &Config) -> Shape {
+        Shape {
+            width: config
+                .max_width
+                .checked_sub(self.indent.width())
+                .unwrap_or(0),
+            ..*self
         }
     }
 
@@ -288,34 +298,27 @@ impl Shape {
     }
 
     pub fn block_left(&self, width: usize) -> Option<Shape> {
-        let block_shape = self.block_indent(width);
-        Some(Shape {
-                 width: try_opt!(block_shape.width.checked_sub(width)),
-                 ..block_shape
-             })
+        self.block_indent(width).sub_width(width)
     }
 
     pub fn add_offset(&self, extra_width: usize) -> Shape {
         Shape {
-            width: self.width,
-            indent: self.indent,
             offset: self.offset + extra_width,
+            ..*self
         }
     }
 
     pub fn block(&self) -> Shape {
         Shape {
-            width: self.width,
             indent: self.indent.block_only(),
-            offset: self.offset,
+            ..*self
         }
     }
 
     pub fn sub_width(&self, width: usize) -> Option<Shape> {
         Some(Shape {
                  width: try_opt!(self.width.checked_sub(width)),
-                 indent: self.indent,
-                 offset: self.offset,
+                 ..*self
              })
     }
 
@@ -328,11 +331,7 @@ impl Shape {
     }
 
     pub fn offset_left(&self, width: usize) -> Option<Shape> {
-        Some(Shape {
-                 width: try_opt!(self.width.checked_sub(width)),
-                 indent: self.indent,
-                 offset: self.offset + width,
-             })
+        self.add_offset(width).sub_width(width)
     }
 
     pub fn used_width(&self) -> usize {
@@ -712,20 +711,20 @@ mod test {
     fn shape_visual_indent() {
         let config = Config::default();
         let indent = Indent::new(4, 8);
-        let shape = Shape::indented(indent, &config);
+        let shape = Shape::legacy(config.max_width, indent);
         let shape = shape.visual_indent(20);
 
         assert_eq!(config.max_width, shape.width);
         assert_eq!(4, shape.indent.block_indent);
-        assert_eq!(32, shape.indent.alignment);
-        assert_eq!(32, shape.offset);
+        assert_eq!(28, shape.indent.alignment);
+        assert_eq!(28, shape.offset);
     }
 
     #[test]
     fn shape_block_indent_without_alignment() {
         let config = Config::default();
         let indent = Indent::new(4, 0);
-        let shape = Shape::indented(indent, &config);
+        let shape = Shape::legacy(config.max_width, indent);
         let shape = shape.block_indent(20);
 
         assert_eq!(config.max_width, shape.width);
@@ -738,7 +737,7 @@ mod test {
     fn shape_block_indent_with_alignment() {
         let config = Config::default();
         let indent = Indent::new(4, 8);
-        let shape = Shape::indented(indent, &config);
+        let shape = Shape::legacy(config.max_width, indent);
         let shape = shape.block_indent(20);
 
         assert_eq!(config.max_width, shape.width);

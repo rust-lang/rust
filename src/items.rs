@@ -208,8 +208,8 @@ impl<'a> FmtVisitor<'a> {
                 let prefix = format!("{}static {}{}: ", vis, mut_str, item.ident);
                 let offset = self.block_indent + prefix.len();
                 // 1 = ;
-                let width = self.config.max_width - offset.width() - 1;
-                let rewrite = ty.rewrite(&self.get_context(), Shape::legacy(width, offset));
+                let shape = Shape::indented(offset, self.config).sub_width(1).unwrap();
+                let rewrite = ty.rewrite(&self.get_context(), shape);
 
                 match rewrite {
                     Some(result) => {
@@ -332,17 +332,13 @@ impl<'a> FmtVisitor<'a> {
                             let suffix = if semicolon_for_expr(e) { ";" } else { "" };
 
                             e.rewrite(&self.get_context(),
-                                         Shape::legacy(self.config.max_width -
-                                                       self.block_indent.width(),
-                                                       self.block_indent))
+                                         Shape::indented(self.block_indent, self.config))
                                 .map(|s| s + suffix)
                                 .or_else(|| Some(self.snippet(e.span)))
                         }
                         None => {
                             stmt.rewrite(&self.get_context(),
-                                         Shape::legacy(self.config.max_width -
-                                                       self.block_indent.width(),
-                                                       self.block_indent))
+                                         Shape::indented(self.block_indent, self.config))
                         }
                     }
                 } else {
@@ -434,12 +430,14 @@ impl<'a> FmtVisitor<'a> {
                                  body_lo,
                                  body_hi);
 
-        let budget = self.config.max_width - self.block_indent.width() - 2;
+        let shape = Shape::indented(self.block_indent, self.config)
+            .sub_width(2)
+            .unwrap();
         let fmt = ListFormatting {
             tactic: DefinitiveListTactic::Vertical,
             separator: ",",
             trailing_separator: self.config.trailing_comma,
-            shape: Shape::legacy(budget, self.block_indent),
+            shape: shape,
             ends_with_newline: true,
             config: self.config,
         };
@@ -463,9 +461,7 @@ impl<'a> FmtVisitor<'a> {
                                       .node
                                       .attrs
                                       .rewrite(&self.get_context(),
-                                               Shape::legacy(self.config.max_width -
-                                                             indent.width(),
-                                                             indent)));
+                                               Shape::indented(indent, self.config)));
         if !result.is_empty() {
             result.push('\n');
             result.push_str(&indent.to_string(self.config));
@@ -495,7 +491,7 @@ impl<'a> FmtVisitor<'a> {
 
                 wrap_str(tag,
                          self.config.max_width,
-                         Shape::legacy(self.config.max_width - indent.width(), indent))
+                         Shape::indented(indent, self.config))
             }
         };
 
@@ -643,7 +639,7 @@ fn format_impl_ref_and_type(context: &RewriteContext,
             None => self_ty.span.lo,
         };
         let generics_indent = offset + last_line_width(&result);
-        let shape = try_opt!(generics_shape(context.config, generics_indent));
+        let shape = Shape::indented(generics_indent, context.config);
         let generics_str = try_opt!(rewrite_generics(context, generics, shape, mk_sp(lo, hi)));
         result.push_str(&generics_str);
 
@@ -697,8 +693,8 @@ fn format_impl_ref_and_type(context: &RewriteContext,
         // Can't fit the self type on what's left of the line, so start a new one.
         let indent = offset.block_indent(context.config);
         result.push_str(&format!("\n{}", indent.to_string(context.config)));
-        let budget = try_opt!(context.config.max_width.checked_sub(indent.width()));
-        result.push_str(&*try_opt!(self_ty.rewrite(context, Shape::legacy(budget, indent))));
+        result.push_str(&*try_opt!(self_ty.rewrite(context,
+                                                   Shape::indented(indent, context.config))));
         Some(result)
     } else {
         unreachable!();
@@ -755,7 +751,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let body_lo = context.codemap.span_after(item.span, "{");
 
         let generics_indent = offset + last_line_width(&result);
-        let shape = try_opt!(generics_shape(context.config, generics_indent));
+        let shape = Shape::indented(generics_indent, context.config);
         let generics_str =
             try_opt!(rewrite_generics(context, generics, shape, mk_sp(item.span.lo, body_lo)));
         result.push_str(&generics_str);
@@ -1000,7 +996,7 @@ fn format_tuple_struct(context: &RewriteContext,
     let where_clause_str = match generics {
         Some(generics) => {
             let generics_indent = offset + last_line_width(&header_str);
-            let shape = try_opt!(generics_shape(context.config, generics_indent));
+            let shape = Shape::indented(generics_indent, context.config);
             let generics_str =
                 try_opt!(rewrite_generics(context, generics, shape, mk_sp(span.lo, body_lo)));
             result.push_str(&generics_str);
@@ -1131,7 +1127,7 @@ pub fn rewrite_type_alias(context: &RewriteContext,
 
     let generics_indent = indent + result.len();
     let generics_span = mk_sp(context.codemap.span_after(span, "type"), ty.span.lo);
-    let shape = try_opt!(try_opt!(generics_shape(context.config, generics_indent))
+    let shape = try_opt!(Shape::indented(generics_indent, context.config)
                              .sub_width(" =".len()));
     let generics_str = try_opt!(rewrite_generics(context, generics, shape, generics_span));
 
@@ -1205,11 +1201,9 @@ impl Rewrite for ast::StructField {
 
         let name = self.ident;
         let vis = format_visibility(&self.vis);
-        let mut attr_str = try_opt!(self.attrs
-                                        .rewrite(context,
-                                                 Shape::legacy(context.config.max_width -
-                                                               shape.indent.width(),
-                                                               shape.indent)));
+        let mut attr_str =
+            try_opt!(self.attrs
+                         .rewrite(context, Shape::indented(shape.indent, context.config)));
         if !attr_str.is_empty() {
             attr_str.push('\n');
             attr_str.push_str(&shape.indent.to_string(context.config));
@@ -1223,8 +1217,8 @@ impl Rewrite for ast::StructField {
 
         let type_offset = shape.indent.block_indent(context.config);
         let rewrite_type_in_next_line = || {
-            let budget = try_opt!(context.config.max_width.checked_sub(type_offset.width()));
-            self.ty.rewrite(context, Shape::legacy(budget, type_offset))
+            self.ty
+                .rewrite(context, Shape::indented(type_offset, context.config))
         };
 
         let last_line_width = last_line_width(&result) + type_annotation_spacing.1.len();
@@ -1555,7 +1549,7 @@ fn rewrite_fn_base(context: &RewriteContext,
     // Generics.
     let generics_indent = indent + last_line_width(&result);
     let generics_span = mk_sp(span.lo, span_for_return(&fd.output).lo);
-    let shape = try_opt!(generics_shape(context.config, generics_indent));
+    let shape = Shape::indented(generics_indent, context.config);
     let generics_str = try_opt!(rewrite_generics(context, generics, shape, generics_span));
     result.push_str(&generics_str);
 
@@ -1564,10 +1558,7 @@ fn rewrite_fn_base(context: &RewriteContext,
     // Note that the width and indent don't really matter, we'll re-layout the
     // return type later anyway.
     let ret_str = try_opt!(fd.output
-                               .rewrite(&context,
-                                        Shape::legacy(context.config.max_width -
-                                                      indent.width(),
-                                                      indent)));
+                               .rewrite(&context, Shape::indented(indent, context.config)));
 
     let multi_line_ret_str = ret_str.contains('\n');
     let ret_str_len = if multi_line_ret_str { 0 } else { ret_str.len() };
@@ -1701,9 +1692,9 @@ fn rewrite_fn_base(context: &RewriteContext,
         if multi_line_ret_str || ret_should_indent {
             // Now that we know the proper indent and width, we need to
             // re-layout the return type.
-            let budget = try_opt!(context.config.max_width.checked_sub(ret_indent.width()));
             let ret_str = try_opt!(fd.output
-                                       .rewrite(context, Shape::legacy(budget, ret_indent)));
+                                       .rewrite(context,
+                                                Shape::indented(ret_indent, context.config)));
             result.push_str(&ret_str);
         } else {
             result.push_str(&ret_str);
@@ -1759,11 +1750,10 @@ fn rewrite_fn_base(context: &RewriteContext,
         }
     }
 
-    let budget = try_opt!(context.config.max_width.checked_sub(indent.block_indent));
     let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                          where_clause,
                                                          context.config.fn_brace_style,
-                                                         Shape::legacy(budget, indent),
+                                                         Shape::indented(indent, context.config),
                                                          Density::Tall,
                                                          "{",
                                                          !has_braces,
@@ -2226,7 +2216,7 @@ fn format_generics(context: &RewriteContext,
                    offset: Indent,
                    span: Span)
                    -> Option<String> {
-    let shape = try_opt!(generics_shape(context.config, offset));
+    let shape = Shape::indented(offset, context.config);
     let mut result = try_opt!(rewrite_generics(context, generics, shape, span));
 
     if !generics.where_clause.predicates.is_empty() || result.contains('\n') {
@@ -2268,9 +2258,4 @@ fn format_generics(context: &RewriteContext,
     }
 
     Some(result)
-}
-
-fn generics_shape(config: &Config, indent: Indent) -> Option<Shape> {
-    Some(Shape::legacy(try_opt!(config.max_width.checked_sub(indent.width())),
-                       indent))
 }
