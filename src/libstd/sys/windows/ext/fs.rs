@@ -18,7 +18,9 @@ use path::Path;
 use sys;
 use sys_common::{AsInnerMut, AsInner};
 
-/// Windows-specific extensions to `File`
+/// Windows-specific extensions to [`File`].
+///
+/// [`File`]: ../../../fs/struct.File.html
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
     /// Seeks to a given position and reads a number of bytes.
@@ -103,7 +105,9 @@ impl FileExt for fs::File {
     }
 }
 
-/// Windows-specific extensions to `OpenOptions`
+/// Windows-specific extensions to [`OpenOptions`].
+///
+/// [`OpenOptions`]: ../../../fs/struct.OpenOptions.html
 #[stable(feature = "open_options_ext", since = "1.10.0")]
 pub trait OpenOptionsExt {
     /// Overrides the `dwDesiredAccess` argument to the call to [`CreateFile`]
@@ -267,35 +271,134 @@ impl OpenOptionsExt for OpenOptions {
     }
 }
 
-/// Extension methods for `fs::Metadata` to access the raw fields contained
+/// Extension methods for [`fs::Metadata`] to access the raw fields contained
 /// within.
+///
+/// The data members that this trait exposes correspond to the members
+/// of the [`BY_HANDLE_FILE_INFORMATION`] structure.
+///
+/// [`fs::Metadata`]: ../../../fs/struct.Metadata.html
+/// [`BY_HANDLE_FILE_INFORMATION`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363788.aspx
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Returns the value of the `dwFileAttributes` field of this metadata.
     ///
     /// This field contains the file system attribute information for a file
-    /// or directory.
+    /// or directory. For possible values and their descriptions, see
+    /// [File Attribute Constants] in the Windows Dev Center.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut file = File::open("foo.txt")?;
+    /// let attributes = file.file_attributes();
+    /// # }
+    /// ```
+    ///
+    /// [File Attribute Constants]: https://msdn.microsoft.com/en-us/library/windows/desktop/gg258117.aspx
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn file_attributes(&self) -> u32;
 
     /// Returns the value of the `ftCreationTime` field of this metadata.
     ///
-    /// The returned 64-bit value represents the number of 100-nanosecond
-    /// intervals since January 1, 1601 (UTC).
+    /// The returned 64-bit value is equivalent to a [`FILETIME`] struct,
+    /// which represents the number of 100-nanosecond intervals since
+    /// January 1, 1601 (UTC). The struct is automatically
+    /// converted to a `u64` value, as that is the recommended way
+    /// to use it.
+    ///
+    /// If the underlying filesystem does not support creation time, the
+    /// returned value is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut file = File::open("foo.txt")?;
+    /// let creation_time = file.creation_time();
+    /// # }
+    /// ```
+    ///
+    /// [`FILETIME`]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724284.aspx
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn creation_time(&self) -> u64;
 
     /// Returns the value of the `ftLastAccessTime` field of this metadata.
     ///
-    /// The returned 64-bit value represents the number of 100-nanosecond
-    /// intervals since January 1, 1601 (UTC).
+    /// The returned 64-bit value is equivalent to a [`FILETIME`] struct,
+    /// which represents the number of 100-nanosecond intervals since
+    /// January 1, 1601 (UTC). The struct is automatically
+    /// converted to a `u64` value, as that is the recommended way
+    /// to use it.
+    ///
+    /// For a file, the value specifies the last time that a file was read
+    /// from or written to. For a directory, the value specifies when
+    /// the directory was created. For both files and directories, the
+    /// specified date is correct, but the time of day is always set to
+    /// midnight.
+    ///
+    /// If the underlying filesystem does not support last access time, the
+    /// returned value is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut file = File::open("foo.txt")?;
+    /// let last_access_time = file.last_access_time();
+    /// # }
+    /// ```
+    ///
+    /// [`FILETIME`]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724284.aspx
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn last_access_time(&self) -> u64;
 
     /// Returns the value of the `ftLastWriteTime` field of this metadata.
     ///
-    /// The returned 64-bit value represents the number of 100-nanosecond
-    /// intervals since January 1, 1601 (UTC).
+    /// The returned 64-bit value is equivalent to a [`FILETIME`] struct,
+    /// which represents the number of 100-nanosecond intervals since
+    /// January 1, 1601 (UTC). The struct is automatically
+    /// converted to a `u64` value, as that is the recommended way
+    /// to use it.
+    ///
+    /// For a file, the value specifies the last time that a file was written
+    /// to. For a directory, the structure specifies when the directory was
+    /// created.
+    ///
+    /// If the underlying filesystem does not support the last write time
+    /// time, the returned value is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut file = File::open("foo.txt")?;
+    /// let last_write_time = file.last_write_time();
+    /// # }
+    /// ```
+    ///
+    /// [`FILETIME`]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724284.aspx
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn last_write_time(&self) -> u64;
 
@@ -303,6 +406,20 @@ pub trait MetadataExt {
     /// metadata.
     ///
     /// The returned value does not have meaning for directories.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut file = File::open("foo.txt")?;
+    /// let file_size = file.file_size();
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn file_size(&self) -> u64;
 }
