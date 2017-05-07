@@ -207,7 +207,7 @@ fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_id);
 
     let region = ty::ReFree(ty::FreeRegion {
-        scope: Some(tcx.item_extent(body_id.node_id)),
+        scope: Some(tcx.call_site_extent(closure_expr_id)),
         bound_region: ty::BoundRegion::BrEnv,
     });
     let region = tcx.mk_region(region);

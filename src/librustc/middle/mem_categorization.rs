@@ -785,26 +785,12 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                  cmt_result: cmt_<'tcx>)
                  -> cmt_<'tcx>
     {
-        // Look up the node ID of the closure body so we can construct
-        // a free region within it
-        let fn_body_id = {
-            let fn_expr = match self.tcx().hir.find(upvar_id.closure_expr_id) {
-                Some(hir_map::NodeExpr(e)) => e,
-                _ => bug!()
-            };
-
-            match fn_expr.node {
-                hir::ExprClosure(.., body_id, _) => body_id,
-                _ => bug!()
-            }
-        };
-
         // Region of environment pointer
         let env_region = self.tcx().mk_region(ty::ReFree(ty::FreeRegion {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
-            scope: Some(self.tcx().item_extent(fn_body_id.node_id)),
+            scope: Some(self.tcx().call_site_extent(upvar_id.closure_expr_id)),
             bound_region: ty::BrEnv
         }));
 
