@@ -244,6 +244,11 @@ impl Builder {
     /// Generates the base configuration for spawning a thread, from which
     /// configuration methods can be chained.
     ///
+    /// If the [`stack_size`][stack_size] field is not specified, the stack size
+    /// will be the `RUST_MIN_STACK` environment variable, if it is
+    /// not specified either, a sensible default size will be set (2MB as
+    /// of the writting of this doc).
+    ///
     /// # Examples
     ///
     /// ```
@@ -259,6 +264,8 @@ impl Builder {
     ///
     /// handler.join().unwrap();
     /// ```
+    ///
+    /// [stack_size]: ../../std/thread/struct.Builder.html#method.stack_size
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Builder {
         Builder {
