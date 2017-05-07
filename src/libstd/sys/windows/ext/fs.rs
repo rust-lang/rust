@@ -42,7 +42,6 @@ pub trait FileExt {
     ///
     /// ```
     /// use std::io;
-    /// use std::io::prelude::*;
     /// use std::fs::File;
     /// use std::os::windows::prelude::*;
     ///
@@ -77,7 +76,6 @@ pub trait FileExt {
     /// # Examples
     ///
     /// ```
-    /// use std::io::prelude::*;
     /// use std::fs::File;
     /// use std::os::windows::prelude::*;
     ///
@@ -86,7 +84,7 @@ pub trait FileExt {
     ///
     /// // Write a byte string starting 72 bytes from
     /// // the start of the file.
-    /// buffer.write(b"some bytes", offset)?;
+    /// buffer.seek_write(b"some bytes", 72)?;
     /// # Ok(())
     /// # }
     /// ```
