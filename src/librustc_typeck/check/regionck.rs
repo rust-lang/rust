@@ -1612,8 +1612,6 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn param_bound(&self, param_ty: ty::ParamTy) -> VerifyBound<'tcx> {
-        let param_env = &self.parameter_environment;
-
         debug!("param_bound(param_ty={:?})",
                param_ty);
 
@@ -1621,7 +1619,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         // Add in the default bound of fn body that applies to all in
         // scope type parameters:
-        param_bounds.extend(param_env.implicit_region_bound);
+        param_bounds.extend(self.implicit_region_bound);
 
         VerifyBound::AnyRegion(param_bounds)
     }

@@ -206,13 +206,14 @@ fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              -> Ty<'tcx> {
     let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_id);
 
+    let closure_def_id = tcx.hir.local_def_id(closure_expr_id);
     let region = ty::ReFree(ty::FreeRegion {
-        scope: Some(tcx.call_site_extent(closure_expr_id)),
+        scope: closure_def_id,
         bound_region: ty::BoundRegion::BrEnv,
     });
     let region = tcx.mk_region(region);
 
-    match tcx.closure_kind(tcx.hir.local_def_id(closure_expr_id)) {
+    match tcx.closure_kind(closure_def_id) {
         ty::ClosureKind::Fn =>
             tcx.mk_ref(region,
                        ty::TypeAndMut { ty: closure_ty,

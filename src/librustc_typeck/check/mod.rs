@@ -176,6 +176,14 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // variables to get the concrete type, which can be used to
     // deanonymize TyAnon, after typeck is done with all functions.
     anon_types: RefCell<NodeMap<Ty<'tcx>>>,
+
+    /// Each type parameter has an implicit region bound that
+    /// indicates it must outlive at least the function body (the user
+    /// may specify stronger requirements). This field indicates the
+    /// region of the callee. If it is `None`, then the parameter
+    /// environment is for an item or something where the "callee" is
+    /// not clear.
+    implicit_region_bound: Option<ty::Region<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> Deref for Inherited<'a, 'gcx, 'tcx> {
@@ -522,7 +530,8 @@ impl<'a, 'gcx, 'tcx> Deref for FnCtxt<'a, 'gcx, 'tcx> {
 /// Necessary because we can't write the following bound:
 /// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(Inherited<'b, 'gcx, 'tcx>).
 pub struct InheritedBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    infcx: infer::InferCtxtBuilder<'a, 'gcx, 'tcx>
+    infcx: infer::InferCtxtBuilder<'a, 'gcx, 'tcx>,
+    def_id: DefId,
 }
 
 impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
@@ -531,7 +540,8 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
         let tables = ty::TypeckTables::empty();
         let param_env = tcx.parameter_environment(def_id);
         InheritedBuilder {
-            infcx: tcx.infer_ctxt((tables, param_env), Reveal::UserFacing)
+            infcx: tcx.infer_ctxt((tables, param_env), Reveal::UserFacing),
+            def_id,
         }
     }
 }
@@ -540,12 +550,24 @@ impl<'a, 'gcx, 'tcx> InheritedBuilder<'a, 'gcx, 'tcx> {
     fn enter<F, R>(&'tcx mut self, f: F) -> R
         where F: for<'b> FnOnce(Inherited<'b, 'gcx, 'tcx>) -> R
     {
-        self.infcx.enter(|infcx| f(Inherited::new(infcx)))
+        let def_id = self.def_id;
+        self.infcx.enter(|infcx| f(Inherited::new(infcx, def_id)))
     }
 }
 
 impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
-    fn new(infcx: InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+    fn new(infcx: InferCtxt<'a, 'gcx, 'tcx>, def_id: DefId) -> Self {
+        let tcx = infcx.tcx;
+        let item_id = tcx.hir.as_local_node_id(def_id);
+        let body_id = item_id.and_then(|id| tcx.hir.maybe_body_owned_by(id));
+        let implicit_region_bound = item_id.and_then(|id| {
+            if body_id.is_some() {
+                Some(tcx.mk_region(ty::ReScope(tcx.call_site_extent(id))))
+            } else {
+                None
+            }
+        });
+
         Inherited {
             infcx: infcx,
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
@@ -553,6 +575,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
             deferred_call_resolutions: RefCell::new(DefIdMap()),
             deferred_cast_checks: RefCell::new(Vec::new()),
             anon_types: RefCell::new(NodeMap()),
+            implicit_region_bound,
         }
     }
 
@@ -778,11 +801,10 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             check_abi(tcx, span, fn_sig.abi());
 
             // Compute the fty from point of view of inside fn.
-            let fn_scope = inh.tcx.call_site_extent(id);
             let fn_sig =
                 fn_sig.subst(inh.tcx, &inh.parameter_environment.free_substs);
             let fn_sig =
-                inh.tcx.liberate_late_bound_regions(Some(fn_scope), &fn_sig);
+                inh.tcx.liberate_late_bound_regions(def_id, &fn_sig);
             let fn_sig =
                 inh.normalize_associated_types_in(body.value.span, body_id.node_id, &fn_sig);
 

@@ -39,7 +39,7 @@
 //! These methods return true to indicate that the visitor has found what it is looking for
 //! and does not need to visit anything else.
 
-use middle::region;
+use hir::def_id::DefId;
 use ty::subst::Substs;
 use ty::adjustment;
 use ty::{self, Binder, Ty, TyCtxt, TypeFlags};
@@ -330,7 +330,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Replace any late-bound regions bound in `value` with free variants attached to scope-id
     /// `scope_id`.
     pub fn liberate_late_bound_regions<T>(self,
-        all_outlive_scope: Option<region::CodeExtent<'tcx>>,
+        all_outlive_scope: DefId,
         value: &Binder<T>)
         -> T
         where T : TypeFoldable<'tcx>

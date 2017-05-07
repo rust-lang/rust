@@ -14,7 +14,6 @@ use rustc_const_math::ConstInt;
 use hair::cx::Cx;
 use hair::cx::block;
 use hair::cx::to_ref::ToRef;
-use rustc::hir::map;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
@@ -807,33 +806,20 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                    closure_expr_id);
             let var_ty = cx.tables().node_id_to_type(id_var);
 
-            let body_id = match cx.tcx.hir.find(closure_expr_id) {
-                Some(map::NodeExpr(expr)) => {
-                    match expr.node {
-                        hir::ExprClosure(.., body, _) => body.node_id,
-                        _ => {
-                            span_bug!(expr.span, "closure expr is not a closure expr");
-                        }
-                    }
-                }
-                _ => {
-                    span_bug!(expr.span, "ast-map has garbage for closure expr");
-                }
-            };
-
             // FIXME free regions in closures are not right
             let closure_ty = cx.tables().node_id_to_type(closure_expr_id);
 
             // FIXME we're just hard-coding the idea that the
             // signature will be &self or &mut self and hence will
             // have a bound region with number 0
+            let closure_def_id = cx.tcx.hir.local_def_id(closure_expr_id);
             let region = ty::ReFree(ty::FreeRegion {
-                scope: Some(cx.tcx.node_extent(body_id)),
+                scope: closure_def_id,
                 bound_region: ty::BoundRegion::BrAnon(0),
             });
             let region = cx.tcx.mk_region(region);
 
-            let self_expr = match cx.tcx.closure_kind(cx.tcx.hir.local_def_id(closure_expr_id)) {
+            let self_expr = match cx.tcx.closure_kind(closure_def_id) {
                 ty::ClosureKind::Fn => {
                     let ref_closure_ty = cx.tcx.mk_ref(region,
                                                        ty::TypeAndMut {

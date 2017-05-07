@@ -409,11 +409,6 @@ impl_stable_hash_for!(enum ::middle::resolve_lifetime::Region {
     Free(call_site_scope_data, decl)
 });
 
-impl_stable_hash_for!(struct ::middle::region::CallSiteScopeData {
-    fn_id,
-    body_id
-});
-
 impl_stable_hash_for!(struct ty::DebruijnIndex {
     depth
 });
@@ -466,7 +461,7 @@ impl_stable_hash_for!(struct ty::adjustment::CoerceUnsizedInfo {
     custom_kind
 });
 
-impl_stable_hash_for!(struct ty::FreeRegion<'tcx> {
+impl_stable_hash_for!(struct ty::FreeRegion {
     scope,
     bound_region
 });

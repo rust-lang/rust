@@ -13,7 +13,6 @@ use check::{Inherited, FnCtxt};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 
 use hir::def_id::DefId;
-use middle::region::{CodeExtent};
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
@@ -161,7 +160,6 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         let code = self.code.clone();
         self.for_id(item_id, span).with_fcx(|fcx, this| {
             let free_substs = &fcx.parameter_environment.free_substs;
-            let free_id_outlive = fcx.parameter_environment.free_id_outlive;
 
             let item = fcx.tcx.associated_item(fcx.tcx.hir.local_def_id(item_id));
 
@@ -184,10 +182,9 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                     let predicates = fcx.instantiate_bounds(span, item.def_id, free_substs);
                     let sig = method_ty.fn_sig();
                     this.check_fn_or_method(fcx, span, sig, &predicates,
-                                            free_id_outlive, &mut implied_bounds);
+                                            item.def_id, &mut implied_bounds);
                     let sig_if_method = sig_if_method.expect("bad signature for method");
-                    this.check_method_receiver(fcx, sig_if_method, &item,
-                                               free_id_outlive, self_ty);
+                    this.check_method_receiver(fcx, sig_if_method, &item, self_ty);
                 }
                 ty::AssociatedKind::Type => {
                     if item.defaultness.has_value() {
@@ -338,9 +335,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             let predicates = fcx.instantiate_bounds(item.span, def_id, free_substs);
 
             let mut implied_bounds = vec![];
-            let free_id_outlive = fcx.tcx.call_site_extent(item.id);
             this.check_fn_or_method(fcx, item.span, sig, &predicates,
-                                    Some(free_id_outlive), &mut implied_bounds);
+                                    def_id, &mut implied_bounds);
             implied_bounds
         })
     }
@@ -426,12 +422,12 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                                       span: Span,
                                       sig: ty::PolyFnSig<'tcx>,
                                       predicates: &ty::InstantiatedPredicates<'tcx>,
-                                      free_id_outlive: Option<CodeExtent<'tcx>>,
+                                      def_id: DefId,
                                       implied_bounds: &mut Vec<Ty<'tcx>>)
     {
         let free_substs = &fcx.parameter_environment.free_substs;
         let sig = fcx.instantiate_type_scheme(span, free_substs, &sig);
-        let sig = fcx.tcx.liberate_late_bound_regions(free_id_outlive, &sig);
+        let sig = fcx.tcx.liberate_late_bound_regions(def_id, &sig);
 
         for input_ty in sig.inputs() {
             fcx.register_wf_obligation(&input_ty, span, self.code.clone());
@@ -450,7 +446,6 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                                          fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
                                          method_sig: &hir::MethodSig,
                                          method: &ty::AssociatedItem,
-                                         free_id_outlive: Option<CodeExtent<'tcx>>,
                                          self_ty: ty::Ty<'tcx>)
     {
         // check that the type of the method's receiver matches the
@@ -467,7 +462,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         let free_substs = &fcx.parameter_environment.free_substs;
         let method_ty = fcx.tcx.type_of(method.def_id);
         let fty = fcx.instantiate_type_scheme(span, free_substs, &method_ty);
-        let sig = fcx.tcx.liberate_late_bound_regions(free_id_outlive, &fty.fn_sig());
+        let sig = fcx.tcx.liberate_late_bound_regions(method.def_id, &fty.fn_sig());
 
         debug!("check_method_receiver: sig={:?}", sig);
 
@@ -483,7 +478,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             ExplicitSelf::ByBox => fcx.tcx.mk_box(self_ty)
         };
         let rcvr_ty = fcx.instantiate_type_scheme(span, free_substs, &rcvr_ty);
-        let rcvr_ty = fcx.tcx.liberate_late_bound_regions(free_id_outlive,
+        let rcvr_ty = fcx.tcx.liberate_late_bound_regions(method.def_id,
                                                           &ty::Binder(rcvr_ty));
 
         debug!("check_method_receiver: receiver ty = {:?}", rcvr_ty);

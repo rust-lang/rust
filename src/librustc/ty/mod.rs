@@ -23,7 +23,6 @@ use ich::StableHashingContext;
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::privacy::AccessLevels;
-use middle::region::CodeExtent;
 use middle::resolve_lifetime::ObjectLifetimeDefault;
 use mir::Mir;
 use traits;
@@ -1244,27 +1243,10 @@ pub struct ParameterEnvironment<'tcx> {
     /// See `construct_free_substs` for details.
     pub free_substs: &'tcx Substs<'tcx>,
 
-    /// Each type parameter has an implicit region bound that
-    /// indicates it must outlive at least the function body (the user
-    /// may specify stronger requirements). This field indicates the
-    /// region of the callee. If it is `None`, then the parameter
-    /// environment is for an item or something where the "callee" is
-    /// not clear.
-    pub implicit_region_bound: Option<ty::Region<'tcx>>,
-
     /// Obligations that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
     /// into Obligations, and elaborated and normalized.
     pub caller_bounds: &'tcx [ty::Predicate<'tcx>],
-
-    /// Scope that is attached to free regions for this scope. This is
-    /// usually the id of the fn body, but for more abstract scopes
-    /// like structs we use None or the item extent.
-    ///
-    /// FIXME(#3696). It would be nice to refactor so that free
-    /// regions don't have this implicit scope and instead introduce
-    /// relationships in the environment.
-    pub free_id_outlive: Option<CodeExtent<'tcx>>,
 
     /// A cache for `moves_by_default`.
     pub is_copy_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
@@ -1283,9 +1265,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
     {
         ParameterEnvironment {
             free_substs: self.free_substs,
-            implicit_region_bound: self.implicit_region_bound,
             caller_bounds: caller_bounds,
-            free_id_outlive: self.free_id_outlive,
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),
             is_freeze_cache: RefCell::new(FxHashMap()),
@@ -2394,8 +2374,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         ty::ParameterEnvironment {
             free_substs: self.intern_substs(&[]),
             caller_bounds: Slice::empty(),
-            implicit_region_bound: None,
-            free_id_outlive: None,
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),
             is_freeze_cache: RefCell::new(FxHashMap()),
@@ -2407,15 +2385,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// In general, this means converting from bound parameters to
     /// free parameters. Since we currently represent bound/free type
     /// parameters in the same way, this only has an effect on regions.
-    pub fn construct_free_substs(self,
-                                 def_id: DefId,
-                                 free_id_outlive: Option<CodeExtent<'gcx>>)
-                                 -> &'gcx Substs<'gcx> {
+    pub fn construct_free_substs(self, def_id: DefId) -> &'gcx Substs<'gcx> {
 
         let substs = Substs::for_item(self.global_tcx(), def_id, |def, _| {
             // map bound 'a => free 'a
             self.global_tcx().mk_region(ReFree(FreeRegion {
-                scope: free_id_outlive,
+                scope: def_id,
                 bound_region: def.to_bound_region()
             }))
         }, |def, _| {
@@ -2433,14 +2408,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Construct the free substs.
         //
 
-        let free_id_outlive = self.hir.as_local_node_id(def_id).map(|id| {
-            if self.hir.maybe_body_owned_by(id).is_some() {
-                self.call_site_extent(id)
-            } else {
-                self.item_extent(id)
-            }
-        });
-        let free_substs = self.construct_free_substs(def_id, free_id_outlive);
+        let free_substs = self.construct_free_substs(def_id);
 
         //
         // Compute the bounds on Self and the type parameters.
@@ -2449,7 +2417,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.global_tcx();
         let generic_predicates = tcx.predicates_of(def_id);
         let bounds = generic_predicates.instantiate(tcx, free_substs);
-        let bounds = tcx.liberate_late_bound_regions(free_id_outlive, &ty::Binder(bounds));
+        let bounds = tcx.liberate_late_bound_regions(def_id, &ty::Binder(bounds));
         let predicates = bounds.predicates;
 
         // Finally, we have to normalize the bounds in the environment, in
@@ -2466,17 +2434,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         //
 
         let unnormalized_env = ty::ParameterEnvironment {
-            free_substs: free_substs,
-            implicit_region_bound: free_id_outlive.map(|f| tcx.mk_region(ty::ReScope(f))),
+            free_substs,
             caller_bounds: tcx.intern_predicates(&predicates),
-            free_id_outlive: free_id_outlive,
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),
             is_freeze_cache: RefCell::new(FxHashMap()),
         };
 
-        let body_id = free_id_outlive.map(|f| f.node_id())
-                                     .unwrap_or(DUMMY_NODE_ID);
+        let body_id = self.hir.as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
+            self.hir.maybe_body_owned_by(id).map_or(id, |body| body.node_id)
+        });
         let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
         traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
     }

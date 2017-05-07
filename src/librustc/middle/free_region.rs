@@ -71,12 +71,9 @@ impl<'a, 'gcx, 'tcx> RegionRelations<'a, 'gcx, 'tcx> {
                 (&ty::ReScope(sub_scope), &ty::ReScope(super_scope)) =>
                     self.region_maps.is_subscope_of(sub_scope, super_scope),
 
-                (&ty::ReScope(sub_scope), &ty::ReFree(fr)) => {
-                    // 1. It is safe to unwrap `fr.scope` because we
-                    // should only ever wind up comparing against
-                    // `ReScope` in the context of a method or
-                    // body, where `fr.scope` should be `Some`.
-                    self.region_maps.is_subscope_of(sub_scope, fr.scope.unwrap() /*1*/) ||
+                (&ty::ReScope(sub_scope), &ty::ReFree(ref fr)) => {
+                    let fr_scope = self.region_maps.free_extent(self.tcx, fr);
+                    self.region_maps.is_subscope_of(sub_scope, fr_scope) ||
                         self.is_static(super_region)
                 }
 

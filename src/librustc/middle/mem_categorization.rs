@@ -790,7 +790,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
-            scope: Some(self.tcx().call_site_extent(upvar_id.closure_expr_id)),
+            scope: self.tcx().hir.local_def_id(upvar_id.closure_expr_id),
             bound_region: ty::BrEnv
         }));
 

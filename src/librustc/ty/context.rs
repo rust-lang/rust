@@ -655,11 +655,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.intern_code_extent(CodeExtentData::Misc(n))
     }
 
-    // Returns the code extent for an item - the destruction scope.
-    pub fn item_extent(self, n: ast::NodeId) -> CodeExtent<'gcx> {
-        self.intern_code_extent(CodeExtentData::DestructionScope(n))
-    }
-
     pub fn call_site_extent(self, fn_id: ast::NodeId) -> CodeExtent<'gcx> {
         self.intern_code_extent(CodeExtentData::CallSiteScope {
             fn_id,
@@ -849,15 +844,6 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
         } else {
             None
         }
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for ty::FreeRegion<'a> {
-    type Lifted = ty::FreeRegion<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        let scope = self.scope.map(|code_extent| tcx.intern_code_extent(*code_extent));
-        let bound_region = self.bound_region;
-        Some(ty::FreeRegion { scope, bound_region })
     }
 }
 

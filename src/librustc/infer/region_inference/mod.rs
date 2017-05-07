@@ -127,7 +127,7 @@ pub enum UndoLogEntry<'tcx> {
     AddVerify(usize),
 
     /// We added the given `given`
-    AddGiven(ty::FreeRegion<'tcx>, ty::RegionVid),
+    AddGiven(ty::FreeRegion, ty::RegionVid),
 
     /// We added a GLB/LUB "combinaton variable"
     AddCombination(CombineMapType, TwoRegions<'tcx>),
@@ -213,7 +213,7 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // record the fact that `'a <= 'b` is implied by the fn signature,
     // and then ignore the constraint when solving equations. This is
     // a bit of a hack but seems to work.
-    givens: RefCell<FxHashSet<(ty::FreeRegion<'tcx>, ty::RegionVid)>>,
+    givens: RefCell<FxHashSet<(ty::FreeRegion, ty::RegionVid)>>,
 
     lubs: RefCell<CombineMap<'tcx>>,
     glbs: RefCell<CombineMap<'tcx>>,
@@ -661,7 +661,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn add_given(&self, sub: ty::FreeRegion<'tcx>, sup: ty::RegionVid) {
+    pub fn add_given(&self, sub: ty::FreeRegion, sup: ty::RegionVid) {
         // cannot add givens once regions are resolved
         assert!(self.values_are_none());
 
@@ -931,19 +931,18 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                           b);
             }
 
-            (&ReFree(fr), &ReScope(s_id)) |
-            (&ReScope(s_id), &ReFree(fr)) => {
+            (&ReFree(ref fr), &ReScope(s_id)) |
+            (&ReScope(s_id), &ReFree(ref fr)) => {
                 // A "free" region can be interpreted as "some region
-                // at least as big as the block fr.scope_id".  So, we can
+                // at least as big as fr.scope".  So, we can
                 // reasonably compare free regions and scopes:
-                if let Some(fr_scope) = fr.scope {
-                    let r_id = region_rels.region_maps.nearest_common_ancestor(fr_scope, s_id);
-                    if r_id == fr_scope {
-                        // if the free region's scope `fr.scope_id` is bigger than
-                        // the scope region `s_id`, then the LUB is the free
-                        // region itself:
-                        return self.tcx.mk_region(ReFree(fr));
-                    }
+                let fr_scope = region_rels.region_maps.free_extent(self.tcx, fr);
+                let r_id = region_rels.region_maps.nearest_common_ancestor(fr_scope, s_id);
+                if r_id == fr_scope {
+                    // if the free region's scope `fr.scope` is bigger than
+                    // the scope region `s_id`, then the LUB is the free
+                    // region itself:
+                    return self.tcx.mk_region(ReFree(*fr));
                 }
 
                 // otherwise, we don't know what the free region is,

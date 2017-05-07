@@ -1440,9 +1440,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // within the fn body, late-bound regions are liberated
         // and must outlive the *call-site* of the function.
         let fn_ret =
-            self.ir.tcx.liberate_late_bound_regions(
-                Some(self.ir.tcx.call_site_extent(id)),
-                &fn_ret);
+            self.ir.tcx.liberate_late_bound_regions(def_id, &fn_ret);
 
         if !fn_ret.is_never() && self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
             let param_env = self.ir.tcx.parameter_environment(def_id);

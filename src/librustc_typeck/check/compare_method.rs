@@ -226,7 +226,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                                normalize_cause.clone());
 
     tcx.infer_ctxt(trait_param_env, Reveal::UserFacing).enter(|infcx| {
-        let inh = Inherited::new(infcx);
+        let inh = Inherited::new(infcx, impl_m.def_id);
         let infcx = &inh.infcx;
 
         debug!("compare_impl_method: caller_bounds={:?}",
@@ -283,7 +283,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
         let trait_sig = tcx.liberate_late_bound_regions(
-            infcx.parameter_environment.free_id_outlive,
+            impl_m.def_id,
             &m_sig(trait_m));
         let trait_sig =
             trait_sig.subst(tcx, trait_to_skol_substs);
@@ -726,7 +726,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
 
     tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
-        let inh = Inherited::new(infcx);
+        let inh = Inherited::new(infcx, impl_c.def_id);
         let infcx = &inh.infcx;
 
         // The below is for the most part highly similar to the procedure

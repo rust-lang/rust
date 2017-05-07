@@ -120,23 +120,6 @@ pub enum CodeExtentData {
     Remainder(BlockRemainder)
 }
 
-/// extent of call-site for a function/method.
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
-           RustcDecodable, Debug, Copy)]
-pub struct CallSiteScopeData {
-    pub fn_id: ast::NodeId, pub body_id: ast::NodeId,
-}
-
-impl CallSiteScopeData {
-    pub fn to_code_extent<'a, 'tcx, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> CodeExtent<'tcx> {
-        tcx.intern_code_extent(
-            match *self {
-                CallSiteScopeData { fn_id, body_id } =>
-                    CodeExtentData::CallSiteScope { fn_id: fn_id, body_id: body_id },
-            })
-    }
-}
-
 /// Represents a subscope of `block` for a binding that is introduced
 /// by `block.stmts[first_statement_index]`. Such subscopes represent
 /// a suffix of the block. Note that each subscope does not include
@@ -611,6 +594,14 @@ impl<'tcx> RegionMaps<'tcx> {
                 }
             }
         }
+    }
+
+    /// Assuming that the provided region was defined within this `RegionMaps`,
+    /// returns the outermost `CodeExtent` that the region outlives.
+    pub fn free_extent<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, fr: &ty::FreeRegion)
+                                 -> CodeExtent<'tcx> {
+        let scope_id = tcx.hir.as_local_node_id(fr.scope).unwrap();
+        tcx.call_site_extent(scope_id)
     }
 }
 

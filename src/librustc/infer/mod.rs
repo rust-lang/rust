@@ -1009,7 +1009,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn add_given(&self,
-                     sub: ty::FreeRegion<'tcx>,
+                     sub: ty::FreeRegion,
                      sup: ty::RegionVid)
     {
         self.region_vars.add_given(sub, sup);

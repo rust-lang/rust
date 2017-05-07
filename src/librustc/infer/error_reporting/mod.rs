@@ -184,7 +184,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }
                 };
 
-                let node = fr.scope.map(|s| s.node_id())
+                let node = self.hir.as_local_node_id(fr.scope)
                                    .unwrap_or(DUMMY_NODE_ID);
                 let unknown;
                 let tag = match self.hir.find(node) {

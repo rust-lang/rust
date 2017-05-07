@@ -43,12 +43,8 @@ pub struct TypeAndMut<'tcx> {
          RustcEncodable, RustcDecodable, Copy)]
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
-///
-/// If `fr.scope` is None, then this is in some context (e.g., an
-/// impl) where lifetimes are more abstract and the notion of the
-/// caller/callee stack frames are not applicable.
-pub struct FreeRegion<'tcx> {
-    pub scope: Option<region::CodeExtent<'tcx>>,
+pub struct FreeRegion {
+    pub scope: DefId,
     pub bound_region: BoundRegion,
 }
 
@@ -760,7 +756,7 @@ pub enum RegionKind<'tcx> {
     /// When checking a function body, the types of all arguments and so forth
     /// that refer to bound region parameters are modified to refer to free
     /// region parameters.
-    ReFree(FreeRegion<'tcx>),
+    ReFree(FreeRegion),
 
     /// A concrete region naming some statically determined extent
     /// (e.g. an expression or sequence of statements) within the
