@@ -455,10 +455,7 @@ impl<'a> FmtVisitor<'a> {
             codemap: parse_session.codemap(),
             buffer: StringBuffer::new(),
             last_pos: BytePos(0),
-            block_indent: Indent {
-                block_indent: 0,
-                alignment: 0,
-            },
+            block_indent: Indent::empty(),
             config: config,
             failed: false,
         }

@@ -298,34 +298,27 @@ impl Shape {
     }
 
     pub fn block_left(&self, width: usize) -> Option<Shape> {
-        let block_shape = self.block_indent(width);
-        Some(Shape {
-                 width: try_opt!(block_shape.width.checked_sub(width)),
-                 ..block_shape
-             })
+        self.block_indent(width).sub_width(width)
     }
 
     pub fn add_offset(&self, extra_width: usize) -> Shape {
         Shape {
-            width: self.width,
-            indent: self.indent,
             offset: self.offset + extra_width,
+            ..*self
         }
     }
 
     pub fn block(&self) -> Shape {
         Shape {
-            width: self.width,
             indent: self.indent.block_only(),
-            offset: self.offset,
+            ..*self
         }
     }
 
     pub fn sub_width(&self, width: usize) -> Option<Shape> {
         Some(Shape {
                  width: try_opt!(self.width.checked_sub(width)),
-                 indent: self.indent,
-                 offset: self.offset,
+                 ..*self
              })
     }
 
@@ -338,11 +331,7 @@ impl Shape {
     }
 
     pub fn offset_left(&self, width: usize) -> Option<Shape> {
-        Some(Shape {
-                 width: try_opt!(self.width.checked_sub(width)),
-                 indent: self.indent,
-                 offset: self.offset + width,
-             })
+        self.add_offset(width).sub_width(width)
     }
 
     pub fn used_width(&self) -> usize {
