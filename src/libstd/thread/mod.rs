@@ -611,7 +611,7 @@ pub fn park_timeout_ms(ms: u32) {
 /// preemption or platform differences that may not cause the maximum
 /// amount of time waited to be precisely `dur` long.
 ///
-/// See the module doc for more detail.
+/// See the [module doc][thread] for more detail.
 ///
 /// # Platform behavior
 ///
@@ -637,6 +637,7 @@ pub fn park_timeout_ms(ms: u32) {
 /// }
 /// ```
 ///
+/// [thread]: index.html
 /// [park]: fn.park.html
 #[stable(feature = "park_timeout", since = "1.4.0")]
 pub fn park_timeout(dur: Duration) {
