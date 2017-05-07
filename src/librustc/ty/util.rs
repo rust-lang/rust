@@ -145,11 +145,11 @@ pub enum CopyImplementationError<'tcx> {
 ///
 /// The ordering of the cases is significant. They are sorted so that cmp::max
 /// will keep the "more erroneous" of two values.
-#[derive(Copy, Clone, PartialOrd, Ord, Eq, PartialEq, Debug)]
+#[derive(Clone, PartialOrd, Ord, Eq, PartialEq, Debug)]
 pub enum Representability {
     Representable,
     ContainsRecursive,
-    SelfRecursive,
+    SelfRecursive(Vec<Span>),
 }
 
 impl<'tcx> ParameterEnvironment<'tcx> {
@@ -1006,18 +1006,22 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
     /// Check whether a type is representable. This means it cannot contain unboxed
     /// structural recursion. This check is needed for structs and enums.
-    pub fn is_representable(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span)
+    pub fn is_representable(&'tcx self,
+                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            sp: Span)
                             -> Representability {
 
         // Iterate until something non-representable is found
-        fn find_nonrepresentable<'a, 'tcx, It>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                               sp: Span,
-                                               seen: &mut Vec<Ty<'tcx>>,
-                                               iter: It)
-                                               -> Representability
-        where It: Iterator<Item=Ty<'tcx>> {
-            iter.fold(Representability::Representable,
-                      |r, ty| cmp::max(r, is_type_structurally_recursive(tcx, sp, seen, ty)))
+        fn fold_repr<It: Iterator<Item=Representability>>(iter: It) -> Representability {
+            iter.fold(Representability::Representable, |r1, r2| {
+                match (r1, r2) {
+                    (Representability::SelfRecursive(v1),
+                     Representability::SelfRecursive(v2)) => {
+                        Representability::SelfRecursive(v1.iter().map(|s| *s).chain(v2).collect())
+                    }
+                    (r1, r2) => cmp::max(r1, r2)
+                }
+            })
         }
 
         fn are_inner_types_recursive<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span,
@@ -1025,7 +1029,10 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                                                -> Representability {
             match ty.sty {
                 TyTuple(ref ts, _) => {
-                    find_nonrepresentable(tcx, sp, seen, ts.iter().cloned())
+                    // Find non representable
+                    fold_repr(ts.iter().map(|ty| {
+                        is_type_structurally_recursive(tcx, sp, seen, ty)
+                    }))
                 }
                 // Fixed-length vectors.
                 // FIXME(#11924) Behavior undecided for zero-length vectors.
@@ -1033,10 +1040,17 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                     is_type_structurally_recursive(tcx, sp, seen, ty)
                 }
                 TyAdt(def, substs) => {
-                    find_nonrepresentable(tcx,
-                                          sp,
-                                          seen,
-                                          def.all_fields().map(|f| f.ty(tcx, substs)))
+                    // Find non representable fields with their spans
+                    fold_repr(def.all_fields().map(|field| {
+                        let ty = field.ty(tcx, substs);
+                        let span = tcx.hir.span_if_local(field.did).unwrap_or(sp);
+                        match is_type_structurally_recursive(tcx, span, seen, ty) {
+                            Representability::SelfRecursive(_) => {
+                                Representability::SelfRecursive(vec![span])
+                            }
+                            x => x,
+                        }
+                    }))
                 }
                 TyClosure(..) => {
                     // this check is run on type definitions, so we don't expect
@@ -1075,7 +1089,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                                                     sp: Span,
                                                     seen: &mut Vec<Ty<'tcx>>,
                                                     ty: Ty<'tcx>) -> Representability {
-            debug!("is_type_structurally_recursive: {:?}", ty);
+            debug!("is_type_structurally_recursive: {:?} {:?}", ty, sp);
 
             match ty.sty {
                 TyAdt(def, _) => {
@@ -1096,7 +1110,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                                 debug!("SelfRecursive: {:?} contains {:?}",
                                        seen_type,
                                        ty);
-                                return Representability::SelfRecursive;
+                                return Representability::SelfRecursive(vec![sp]);
                             }
                         }
 

@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum foo { foo_(bar) }
-struct bar { x: bar }
-//~^ ERROR E0072
-//~| NOTE recursive type has infinite size
-//~| NOTE recursive without indirection
+use std::rc::Rc;
 
-fn main() {
+struct Foo<'a> {
+    bar: Bar<'a>,
+    b: Rc<Bar<'a>>,
 }
+
+struct Bar<'a> {
+    y: (Foo<'a>, Foo<'a>),
+    z: Option<Bar<'a>>,
+    a: &'a Foo<'a>,
+    c: &'a [Bar<'a>],
+    d: [Bar<'a>; 1],
+    e: Foo<'a>,
+    x: Bar<'a>,
+}
+
+fn main() {}
