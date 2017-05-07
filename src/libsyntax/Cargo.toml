@@ -11,7 +11,7 @@ crate-type = ["dylib"]
 [dependencies]
 serialize = { path = "../libserialize" }
 log = "0.3"
-rustc_bitflags = { path = "../librustc_bitflags" }
+bitflags = "0.8"
 syntax_pos = { path = "../libsyntax_pos" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_data_structures = { path = "../librustc_data_structures" }

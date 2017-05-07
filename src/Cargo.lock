@@ -860,8 +860,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "syntax"
 version = "0.0.0"
 dependencies = [
+ "bitflags 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc_bitflags 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "serialize 0.0.0",
