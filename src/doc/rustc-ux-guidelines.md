@@ -56,18 +56,22 @@ Error explanations are long form descriptions of error messages provided with
 the compiler. They are accessible via the `--explain` flag. Each explanation
 comes with an example of how to trigger it and advice on how to fix it.
 
+Please read [RFC 1567](https://github.com/rust-lang/rfcs/blob/master/text/1567-long-error-codes-explanation-normalization.md)
+for details on how to format and write long error codes.
+
 * All of them are accessible [online](http://doc.rust-lang.org/error-index.html),
   which are auto-generated from rustc source code in different places:
   [librustc](https://github.com/rust-lang/rust/blob/master/src/librustc/diagnostics.rs),
+  [libsyntax](https://github.com/rust-lang/rust/blob/master/src/libsyntax/diagnostics.rs),
   [librustc_borrowck](https://github.com/rust-lang/rust/blob/master/src/librustc_borrowck/diagnostics.rs),
   [librustc_const_eval](https://github.com/rust-lang/rust/blob/master/src/librustc_const_eval/diagnostics.rs),
-  [librustc_lint](https://github.com/rust-lang/rust/blob/master/src/librustc_lint/types.rs),
   [librustc_metadata](https://github.com/rust-lang/rust/blob/master/src/librustc_metadata/diagnostics.rs),
   [librustc_mir](https://github.com/rust-lang/rust/blob/master/src/librustc_mir/diagnostics.rs),
   [librustc_passes](https://github.com/rust-lang/rust/blob/master/src/librustc_passes/diagnostics.rs),
   [librustc_privacy](https://github.com/rust-lang/rust/blob/master/src/librustc_privacy/diagnostics.rs),
   [librustc_resolve](https://github.com/rust-lang/rust/blob/master/src/librustc_resolve/diagnostics.rs),
   [librustc_trans](https://github.com/rust-lang/rust/blob/master/src/librustc_trans/diagnostics.rs),
+  [librustc_plugin](https://github.com/rust-lang/rust/blob/master/src/librustc_plugin/diagnostics.rs),
   [librustc_typeck](https://github.com/rust-lang/rust/blob/master/src/librustc_typeck/diagnostics.rs).
 * Explanations have full markdown support. Use it, especially to highlight
 code with backticks.
@@ -79,7 +83,7 @@ code with backticks.
 * Flags should be orthogonal to each other. For example, if we'd have a
 json-emitting variant of multiple actions `foo` and `bar`, an additional
 --json flag is better than adding `--foo-json` and `--bar-json`.
-* Always give options a long descriptive name, if only for better
+* Always give options a long descriptive name, if only for more
 understandable compiler scripts.
 * The `--verbose` flag is for adding verbose information to `rustc` output
 when not compiling a program. For example, using it with the `--version` flag
