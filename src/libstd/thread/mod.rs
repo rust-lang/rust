@@ -518,7 +518,7 @@ pub fn sleep(dur: Duration) {
 /// # park and unpark
 ///
 /// Every thread is equipped with some basic low-level blocking support, via the
-/// [`thread::park`][`park`] function and [`thread::Thread::unpark()`][`unpark`]
+/// [`thread::park`][`park`] function and [`thread::Thread::unpark`][`unpark`]
 /// method. [`park`] blocks the current thread, which can then be resumed from
 /// another thread by calling the [`unpark`] method on the blocked thread's
 /// handle.
@@ -555,6 +555,7 @@ pub fn sleep(dur: Duration) {
 ///
 /// ```
 /// use std::thread;
+/// use std::time::Duration;
 ///
 /// let parked_thread = thread::Builder::new()
 ///     .spawn(|| {
@@ -598,7 +599,7 @@ pub fn park() {
 /// Blocks unless or until the current thread's token is made available or
 /// the specified duration has been reached (may wake spuriously).
 ///
-/// The semantics of this function are equivalent to [`park()`][park] except
+/// The semantics of this function are equivalent to [`park`][park] except
 /// that the thread will be blocked for roughly no longer than `dur`. This
 /// method should not be used for precise timing due to anomalies such as
 /// preemption or platform differences that may not cause the maximum
@@ -617,7 +618,7 @@ pub fn park_timeout_ms(ms: u32) {
 /// Blocks unless or until the current thread's token is made available or
 /// the specified duration has been reached (may wake spuriously).
 ///
-/// The semantics of this function are equivalent to [`park()`][park] except
+/// The semantics of this function are equivalent to [`park`][park] except
 /// that the thread will be blocked for roughly no longer than `dur`. This
 /// method should not be used for precise timing due to anomalies such as
 /// preemption or platform differences that may not cause the maximum
@@ -780,7 +781,7 @@ impl Thread {
     /// Atomically makes the handle's token available if it is not already.
     ///
     /// Every thread is equipped with some basic low-level blocking support, via
-    /// the [`park()`][park] function and the `unpark()` method. These can be
+    /// the [`park`][park] function and the `unpark()` method. These can be
     /// used as a more CPU-efficient implementation of a spinlock.
     ///
     /// See the [park documentation][park] for more details.
@@ -789,6 +790,7 @@ impl Thread {
     ///
     /// ```
     /// use std::thread;
+    /// use std::time::Duration;
     ///
     /// let parked_thread = thread::Builder::new()
     ///     .spawn(|| {
