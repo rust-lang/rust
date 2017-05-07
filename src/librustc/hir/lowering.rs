@@ -2244,23 +2244,23 @@ impl<'a> LoweringContext<'a> {
             ExprKind::Try(ref sub_expr) => {
                 // to:
                 //
-                // match Carrier::translate(<expr>) {
+                // match Try::into_result(<expr>) {
                 //     Ok(val) => #[allow(unreachable_code)] val,
                 //     Err(err) => #[allow(unreachable_code)]
                 //                 // If there is an enclosing `catch {...}`
-                //                 break 'catch_target Carrier::from_error(From::from(err)),
+                //                 break 'catch_target Try::from_error(From::from(err)),
                 //                 // Otherwise
-                //                 return Carrier::from_error(From::from(err)),
+                //                 return Try::from_error(From::from(err)),
                 // }
 
                 let unstable_span = self.allow_internal_unstable("?", e.span);
 
-                // Carrier::translate(<expr>)
+                // Try::into_result(<expr>)
                 let discr = {
                     // expand <expr>
                     let sub_expr = self.lower_expr(sub_expr);
 
-                    let path = &["ops", "Carrier", "translate"];
+                    let path = &["ops", "Try", "into_result"];
                     let path = P(self.expr_std_path(unstable_span, path, ThinVec::new()));
                     P(self.expr_call(e.span, path, hir_vec![sub_expr]))
                 };
@@ -2306,7 +2306,7 @@ impl<'a> LoweringContext<'a> {
                         self.expr_call(e.span, from, hir_vec![err_expr])
                     };
                     let from_err_expr = {
-                        let path = &["ops", "Carrier", "from_error"];
+                        let path = &["ops", "Try", "from_error"];
                         let from_err = P(self.expr_std_path(unstable_span, path,
                                                             ThinVec::new()));
                         P(self.expr_call(e.span, from_err, hir_vec![from_expr]))
