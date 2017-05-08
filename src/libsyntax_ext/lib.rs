@@ -11,7 +11,6 @@
 //! Syntax extensions in the Rust compiler.
 
 #![crate_name = "syntax_ext"]
-#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -20,8 +19,10 @@
 #![deny(warnings)]
 
 #![feature(proc_macro_internals)]
-#![feature(rustc_private)]
-#![feature(staged_api)]
+
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(rustc_private))]
+#![cfg_attr(stage0, feature(staged_api))]
 
 extern crate fmt_macros;
 extern crate log;
