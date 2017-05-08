@@ -267,11 +267,6 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).get_missing_lang_items(&self.dep_graph)
     }
 
-    fn is_staged_api(&self, cnum: CrateNum) -> bool
-    {
-        self.get_crate_data(cnum).is_staged_api(&self.dep_graph)
-    }
-
     fn is_allocator(&self, cnum: CrateNum) -> bool
     {
         self.get_crate_data(cnum).is_allocator(&self.dep_graph)
