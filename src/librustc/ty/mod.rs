@@ -2681,9 +2681,6 @@ fn def_span<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Span {
 /// return the ID of the trait that the trait item belongs to.
 /// Otherwise, return `None`.
 fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option<DefId> {
-    if def_id.krate != LOCAL_CRATE {
-        return tcx.trait_of_item(def_id)
-    }
     tcx.opt_associated_item(def_id)
         .and_then(|associated_item| {
             match associated_item.container {
