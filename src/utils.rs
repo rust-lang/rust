@@ -211,7 +211,7 @@ macro_rules! impl_enum_decodable {
                         Ok(String::from(value))
                     }
                 }
-                let s = try!(d.deserialize_string(StringOnly::<D>(PhantomData)));
+                let s = d.deserialize_string(StringOnly::<D>(PhantomData))?;
                 $(
                     if stringify!($x).eq_ignore_ascii_case(&s) {
                       return Ok($e::$x);

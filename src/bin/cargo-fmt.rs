@@ -105,7 +105,7 @@ pub enum Verbosity {
 fn format_crate(verbosity: Verbosity,
                 workspace_hitlist: WorkspaceHitlist)
                 -> Result<ExitStatus, std::io::Error> {
-    let targets = try!(get_targets(workspace_hitlist));
+    let targets = get_targets(workspace_hitlist)?;
 
     // Currently only bin and lib files get formatted
     let files: Vec<_> = targets
@@ -181,7 +181,7 @@ impl WorkspaceHitlist {
 fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::io::Error> {
     let mut targets: Vec<Target> = vec![];
     if workspace_hitlist == WorkspaceHitlist::None {
-        let output = try!(Command::new("cargo").arg("read-manifest").output());
+        let output = Command::new("cargo").arg("read-manifest").output()?;
         if output.status.success() {
             // None of the unwraps should fail if output of `cargo read-manifest` is correct
             let data = &String::from_utf8(output.stdout).unwrap();
@@ -287,7 +287,7 @@ fn format_files(files: &[PathBuf],
         }
         println!("");
     }
-    let mut command = try!(Command::new("rustfmt")
+    let mut command = Command::new("rustfmt")
         .stdout(stdout)
         .args(files)
         .args(fmt_args)
@@ -298,6 +298,6 @@ fn format_files(files: &[PathBuf],
                                     "Could not run rustfmt, please make sure it is in your PATH.")
             }
             _ => e,
-        }));
+        })?;
     command.wait()
 }

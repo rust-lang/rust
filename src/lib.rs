@@ -414,13 +414,13 @@ impl fmt::Display for FormatReport {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         for (file, errors) in &self.file_error_map {
             for error in errors {
-                try!(write!(fmt,
-                            "{} {}:{}: {} {}\n",
-                            error.msg_prefix(),
-                            file,
-                            error.line,
-                            error.kind,
-                            error.msg_suffix()));
+                write!(fmt,
+                       "{} {}:{}: {} {}\n",
+                       error.msg_prefix(),
+                       file,
+                       error.line,
+                       error.kind,
+                       error.msg_suffix())?;
             }
         }
         Ok(())
@@ -454,7 +454,7 @@ fn format_ast<F>(krate: &ast::Crate,
         let mut visitor = FmtVisitor::from_codemap(parse_session, config);
         visitor.format_separate_mod(module);
 
-        has_diff |= try!(after_file(path, &mut visitor.buffer));
+        has_diff |= after_file(path, &mut visitor.buffer)?;
 
         result.push((path.to_owned(), visitor.buffer));
     }

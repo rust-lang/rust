@@ -82,7 +82,7 @@ impl CliOptions {
         }
 
         if let Some(ref file_lines) = matches.opt_str("file-lines") {
-            options.file_lines = try!(file_lines.parse());
+            options.file_lines = file_lines.parse()?;
         }
 
         Ok(options)
@@ -104,12 +104,12 @@ const CONFIG_FILE_NAMES: [&'static str; 2] = [".rustfmt.toml", "rustfmt.toml"];
 /// nearest project file if one exists, or `None` if no project file was found.
 fn lookup_project_file(dir: &Path) -> FmtResult<Option<PathBuf>> {
     let mut current = if dir.is_relative() {
-        try!(env::current_dir()).join(dir)
+        env::current_dir()?.join(dir)
     } else {
         dir.to_path_buf()
     };
 
-    current = try!(fs::canonicalize(current));
+    current = fs::canonicalize(current)?;
 
     loop {
         for config_file_name in &CONFIG_FILE_NAMES {
@@ -137,9 +137,9 @@ fn lookup_project_file(dir: &Path) -> FmtResult<Option<PathBuf>> {
 }
 
 fn open_config_file(file_path: &Path) -> FmtResult<(Config, Option<PathBuf>)> {
-    let mut file = try!(File::open(&file_path));
+    let mut file = File::open(&file_path)?;
     let mut toml = String::new();
-    try!(file.read_to_string(&mut toml));
+    file.read_to_string(&mut toml)?;
     match Config::from_toml(&toml) {
         Ok(cfg) => Ok((cfg, Some(file_path.to_path_buf()))),
         Err(err) => Err(FmtError::from(err)),
@@ -151,7 +151,7 @@ fn open_config_file(file_path: &Path) -> FmtResult<(Config, Option<PathBuf>)> {
 /// Returns the `Config` to use, and the path of the project file if there was
 /// one.
 fn resolve_config(dir: &Path) -> FmtResult<(Config, Option<PathBuf>)> {
-    let path = try!(lookup_project_file(dir));
+    let path = lookup_project_file(dir)?;
     if path.is_none() {
         return Ok((Config::default(), None));
     }
@@ -164,7 +164,7 @@ fn match_cli_path_or_file(config_path: Option<PathBuf>,
                           -> FmtResult<(Config, Option<PathBuf>)> {
 
     if let Some(config_file) = config_path {
-        let (toml, path) = try!(open_config_file(config_file.as_ref()));
+        let (toml, path) = open_config_file(config_file.as_ref())?;
         if path.is_some() {
             return Ok((toml, path));
         }
@@ -200,9 +200,9 @@ fn make_opts() -> Options {
 }
 
 fn execute(opts: &Options) -> FmtResult<Summary> {
-    let matches = try!(opts.parse(env::args().skip(1)));
+    let matches = opts.parse(env::args().skip(1))?;
 
-    match try!(determine_operation(&matches)) {
+    match determine_operation(&matches)? {
         Operation::Help => {
             print_usage(opts, "");
             Summary::print_exit_codes();
@@ -226,7 +226,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
 
             // parse file_lines
             if let Some(ref file_lines) = matches.opt_str("file-lines") {
-                config.file_lines = try!(file_lines.parse());
+                config.file_lines = file_lines.parse()?;
                 for f in config.file_lines.files() {
                     if f != "stdin" {
                         println!("Warning: Extra file listed in file_lines option '{}'", f);
@@ -237,7 +237,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             Ok(run(Input::Text(input), &config))
         }
         Operation::Format { files, config_path } => {
-            let options = try!(CliOptions::from_matches(&matches));
+            let options = CliOptions::from_matches(&matches)?;
 
             for f in options.file_lines.files() {
                 if !files.contains(&PathBuf::from(f)) {
@@ -386,7 +386,7 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
     // if no file argument is supplied, read from stdin
     if matches.free.is_empty() {
         let mut buffer = String::new();
-        try!(io::stdin().read_to_string(&mut buffer));
+        io::stdin().read_to_string(&mut buffer)?;
 
         return Ok(Operation::Stdin {
                       input: buffer,
