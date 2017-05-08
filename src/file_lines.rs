@@ -173,8 +173,10 @@ impl str::FromStr for FileLines {
     type Err = String;
 
     fn from_str(s: &str) -> Result<FileLines, String> {
-        let v: Vec<JsonSpan> = try!(json::from_str(s).map_err(|e| e.to_string()));
-        let m = try!(v.into_iter().map(JsonSpan::into_tuple).collect());
+        let v: Vec<JsonSpan> = json::from_str(s).map_err(|e| e.to_string())?;
+        let m = v.into_iter()
+            .map(JsonSpan::into_tuple)
+            .collect::<Result<_, _>>()?;
         Ok(FileLines::from_multimap(m))
     }
 }
@@ -190,8 +192,8 @@ impl JsonSpan {
     // To allow `collect()`ing into a `MultiMap`.
     fn into_tuple(self) -> Result<(String, Range), String> {
         let (lo, hi) = self.range;
-        let canonical = try!(canonicalize_path_string(&self.file)
-                                 .map_err(|_| format!("Can't canonicalize {}", &self.file)));
+        let canonical = canonicalize_path_string(&self.file)
+            .map_err(|_| format!("Can't canonicalize {}", &self.file))?;
         Ok((canonical, Range::new(lo, hi)))
     }
 }

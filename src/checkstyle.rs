@@ -20,7 +20,7 @@ pub fn output_header<T>(out: &mut T, mode: WriteMode) -> Result<(), io::Error>
         xml_heading.push_str("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
         xml_heading.push_str("\n");
         xml_heading.push_str("<checkstyle version=\"4.3\">");
-        try!(write!(out, "{}", xml_heading));
+        write!(out, "{}", xml_heading)?;
     }
     Ok(())
 }
@@ -31,7 +31,7 @@ pub fn output_footer<T>(out: &mut T, mode: WriteMode) -> Result<(), io::Error>
     if mode == WriteMode::Checkstyle {
         let mut xml_tail = String::new();
         xml_tail.push_str("</checkstyle>");
-        try!(write!(out, "{}", xml_tail));
+        write!(out, "{}", xml_tail)?;
     }
     Ok(())
 }
@@ -42,21 +42,21 @@ pub fn output_checkstyle_file<T>(mut writer: T,
                                  -> Result<(), io::Error>
     where T: Write
 {
-    try!(write!(writer, "<file name=\"{}\">", filename));
+    write!(writer, "<file name=\"{}\">", filename)?;
     for mismatch in diff {
         for line in mismatch.lines {
             // Do nothing with `DiffLine::Context` and `DiffLine::Resulting`.
             if let DiffLine::Expected(ref str) = line {
                 let message = xml_escape_str(str);
-                try!(write!(writer,
-                            "<error line=\"{}\" severity=\"warning\" message=\"Should be `{}`\" \
+                write!(writer,
+                       "<error line=\"{}\" severity=\"warning\" message=\"Should be `{}`\" \
                              />",
-                            mismatch.line_number,
-                            message));
+                       mismatch.line_number,
+                       message)?;
             }
         }
     }
-    try!(write!(writer, "</file>"));
+    write!(writer, "</file>")?;
     Ok(())
 }
 
