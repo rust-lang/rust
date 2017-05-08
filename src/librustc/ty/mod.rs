@@ -504,8 +504,8 @@ impl<'tcx> serialize::UseSpecializedDecodable for Ty<'tcx> {}
 /// A wrapper for slices with the additional invariant
 /// that the slice is interned and no other slice with
 /// the same contents can exist in the same context.
-/// This means we can use pointer + length for both
-/// equality comparisons and hashing.
+/// This means we can use pointer alone for both equality
+/// comparisons and hashing.
 #[derive(Debug, RustcEncodable)]
 pub struct Slice<T>([T]);
 
@@ -519,7 +519,7 @@ impl<T> Eq for Slice<T> {}
 
 impl<T> Hash for Slice<T> {
     fn hash<H: Hasher>(&self, s: &mut H) {
-        (self.as_ptr(), self.len()).hash(s)
+        self.as_ptr().hash(s)
     }
 }
 
