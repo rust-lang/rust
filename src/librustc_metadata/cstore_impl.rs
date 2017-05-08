@@ -119,6 +119,7 @@ provide! { <'tcx> tcx, def_id, cdata
     fn_arg_names => { cdata.get_fn_arg_names(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
+    is_exported_symbol => { cdata.exported_symbols.contains(&def_id.index) }
     item_body_nested_bodies => { Rc::new(cdata.item_body_nested_bodies(def_id.index)) }
     const_is_rvalue_promotable_to_static => {
         cdata.const_is_rvalue_promotable_to_static(def_id.index)
@@ -179,10 +180,6 @@ impl CrateStore for cstore::CStore {
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool
     {
         self.do_is_statically_included_foreign_item(def_id)
-    }
-
-    fn is_exported_symbol(&self, def_id: DefId) -> bool {
-        self.get_crate_data(def_id.krate).exported_symbols.contains(&def_id.index)
     }
 
     fn is_dllimport_foreign_item(&self, def_id: DefId) -> bool {
