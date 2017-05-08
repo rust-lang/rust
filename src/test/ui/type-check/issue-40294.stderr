@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed
+error[E0283]: type annotations required: cannot resolve `&'a T: Foo`
   --> $DIR/issue-40294.rs:15:1
    |
 15 | / fn foo<'a,'b,T>(x: &'a T, y: &'b T)
@@ -8,7 +8,9 @@ error[E0282]: type annotations needed
 19 | |     x.foo();
 20 | |     y.foo();
 21 | | }
-   | |_^ cannot infer type for `&'a T`
+   | |_^
+   |
+   = note: required by `Foo`
 
 error: aborting due to previous error(s)
 

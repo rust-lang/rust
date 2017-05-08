@@ -30,14 +30,6 @@ error[E0277]: the trait bound `{integer}: std::ops::Div<&str>` is not satisfied
    |
    = help: the trait `std::ops::Div<&str>` is not implemented for `{integer}`
 
-error[E0277]: the trait bound `{integer}: std::cmp::PartialEq<std::string::String>` is not satisfied
-  --> $DIR/binops.rs:16:7
-   |
-16 |     5 < String::new();
-   |       ^ can't compare `{integer}` with `std::string::String`
-   |
-   = help: the trait `std::cmp::PartialEq<std::string::String>` is not implemented for `{integer}`
-
 error[E0277]: the trait bound `{integer}: std::cmp::PartialOrd<std::string::String>` is not satisfied
   --> $DIR/binops.rs:16:7
    |

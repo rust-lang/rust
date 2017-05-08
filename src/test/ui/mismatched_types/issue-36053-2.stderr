@@ -17,14 +17,5 @@ error[E0281]: type mismatch: `[closure@$DIR/issue-36053-2.rs:17:39: 17:53]` impl
    |                                requires `for<'r> std::ops::FnMut<(&'r &str,)>`
    |                                expected &str, found str
 
-error[E0281]: type mismatch: `[closure@$DIR/issue-36053-2.rs:17:39: 17:53]` implements the trait `for<'r> std::ops::FnOnce<(&'r str,)>`, but the trait `for<'r> std::ops::FnOnce<(&'r &str,)>` is required
-  --> $DIR/issue-36053-2.rs:17:32
-   |
-17 |     once::<&str>("str").fuse().filter(|a: &str| true).count();
-   |                                ^^^^^^ -------------- implements `for<'r> std::ops::FnOnce<(&'r str,)>`
-   |                                |
-   |                                requires `for<'r> std::ops::FnOnce<(&'r &str,)>`
-   |                                expected &str, found str
-
 error: aborting due to previous error(s)
 

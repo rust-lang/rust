@@ -9,16 +9,5 @@ error[E0281]: type mismatch: `[closure@$DIR/E0281.rs:14:9: 14:24]` implements th
    |
    = note: required by `foo`
 
-error[E0281]: type mismatch: `[closure@$DIR/E0281.rs:14:9: 14:24]` implements the trait `std::ops::FnOnce<(std::string::String,)>`, but the trait `std::ops::FnOnce<(usize,)>` is required
-  --> $DIR/E0281.rs:14:5
-   |
-14 |     foo(|y: String| { });
-   |     ^^^ --------------- implements `std::ops::FnOnce<(std::string::String,)>`
-   |     |
-   |     requires `std::ops::FnOnce<(usize,)>`
-   |     expected usize, found struct `std::string::String`
-   |
-   = note: required by `foo`
-
 error: aborting due to previous error(s)
 
