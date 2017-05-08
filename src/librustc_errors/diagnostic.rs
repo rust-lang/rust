@@ -114,9 +114,8 @@ impl Diagnostic {
     /// all, and you just supplied a `Span` to create the diagnostic,
     /// then the snippet will just include that `Span`, which is
     /// called the primary span.
-    pub fn span_label(&mut self, span: Span, label: &fmt::Display)
-                      -> &mut Self {
-        self.span.push_span_label(span, format!("{}", label));
+    pub fn span_label<T: Into<String>>(&mut self, span: Span, label: T) -> &mut Self {
+        self.span.push_span_label(span, label.into());
         self
     }
 

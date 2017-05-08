@@ -285,7 +285,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                  self.span,
                                  E0035,
                                  "does not take type parameters")
-                    .span_label(self.span, &"called with unneeded type parameters")
+                    .span_label(self.span, "called with unneeded type parameters")
                     .emit();
             } else {
                 struct_span_err!(self.tcx.sess,
@@ -296,7 +296,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                  num_method_types,
                                  num_supplied_types)
                     .span_label(self.span,
-                                &format!("Passed {} type argument{}, expected {}",
+                                format!("Passed {} type argument{}, expected {}",
                                          num_supplied_types,
                                          if num_supplied_types != 1 { "s" } else { "" },
                                          num_method_types))

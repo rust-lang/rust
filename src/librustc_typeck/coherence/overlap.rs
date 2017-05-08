@@ -60,9 +60,9 @@ pub fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
 
         match tcx.span_of_impl(overlap.with_impl) {
             Ok(span) => {
-                err.span_label(span, &format!("first implementation here"));
+                err.span_label(span, "first implementation here");
                 err.span_label(tcx.span_of_impl(impl_def_id).unwrap(),
-                               &format!("conflicting implementation{}",
+                               format!("conflicting implementation{}",
                                         overlap.self_desc
                                             .map_or(String::new(),
                                                     |ty| format!(" for `{}`", ty))));

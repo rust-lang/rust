@@ -215,7 +215,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedUnsafe {
                 let mut db = cx.struct_span_lint(UNUSED_UNSAFE, blk.span,
                                                  "unnecessary `unsafe` block");
 
-                db.span_label(blk.span, &"unnecessary `unsafe` block");
+                db.span_label(blk.span, "unnecessary `unsafe` block");
                 if let Some((kind, id)) = is_enclosed(cx, blk.id) {
                     db.span_note(cx.tcx.hir.span(id),
                                  &format!("because it's nested under this `unsafe` {}", kind));

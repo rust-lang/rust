@@ -181,7 +181,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let mut err =
                 struct_span_err!(self.sess, span, E0391,
                                  "unsupported cyclic reference between types/traits detected");
-            err.span_label(span, &format!("cyclic reference"));
+            err.span_label(span, "cyclic reference");
 
             err.span_note(stack[0].0, &format!("the cycle begins when {}...",
                                                stack[0].1.describe(self)));

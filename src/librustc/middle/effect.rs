@@ -74,7 +74,7 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
                     struct_span_err!(
                         self.tcx.sess, span, E0133,
                         "{} requires unsafe function or block", description)
-                        .span_label(span, &description)
+                        .span_label(span, description)
                         .emit();
                 }
             }

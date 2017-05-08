@@ -197,7 +197,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
     {
         match self.description() {
             ConstEvalErrDescription::Simple(message) => {
-                diag.span_label(self.span, &message);
+                diag.span_label(self.span, message);
             }
         }
 
