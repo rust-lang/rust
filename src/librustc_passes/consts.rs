@@ -180,7 +180,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
                     Ok(Ordering::Greater) => {
                         struct_span_err!(self.tcx.sess, start.span, E0030,
                             "lower range bound must be less than or equal to upper")
-                            .span_label(start.span, &format!("lower bound larger than upper bound"))
+                            .span_label(start.span, "lower bound larger than upper bound")
                             .emit();
                     }
                     Err(ErrorReported) => {}

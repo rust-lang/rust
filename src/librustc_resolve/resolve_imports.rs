@@ -539,7 +539,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 Ok(binding) if !binding.is_importable() => {
                     let msg = format!("`{}` is not directly importable", target);
                     struct_span_err!(this.session, directive.span, E0253, "{}", &msg)
-                        .span_label(directive.span, &format!("cannot be imported directly"))
+                        .span_label(directive.span, "cannot be imported directly")
                         .emit();
                     // Do not import this illegal binding. Import a dummy binding and pretend
                     // everything is fine
@@ -701,7 +701,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             } else if ns == TypeNS {
                 struct_span_err!(self.session, directive.span, E0365,
                                  "`{}` is private, and cannot be reexported", ident)
-                    .span_label(directive.span, &format!("reexport of private `{}`", ident))
+                    .span_label(directive.span, format!("reexport of private `{}`", ident))
                     .note(&format!("consider declaring type or module `{}` with `pub`", ident))
                     .emit();
             } else {
@@ -794,7 +794,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                             let msg =
                                 format!("a macro named `{}` has already been exported", ident);
                             self.session.struct_span_err(span, &msg)
-                                .span_label(span, &format!("`{}` already exported", ident))
+                                .span_label(span, format!("`{}` already exported", ident))
                                 .span_note(binding.span, "previous macro export here")
                                 .emit();
                         }

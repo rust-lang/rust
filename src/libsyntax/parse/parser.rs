@@ -602,10 +602,10 @@ impl<'a> Parser<'a> {
                 label_sp
             };
             if self.span.contains(sp) {
-                err.span_label(self.span, &label_exp);
+                err.span_label(self.span, label_exp);
             } else {
-                err.span_label(sp, &label_exp);
-                err.span_label(self.span, &"unexpected token");
+                err.span_label(sp, label_exp);
+                err.span_label(self.span, "unexpected token");
             }
             Err(err)
         }
@@ -1512,10 +1512,10 @@ impl<'a> Parser<'a> {
                 err.span_suggestion(sum_span, "try adding parentheses:", sum_with_parens);
             }
             TyKind::Ptr(..) | TyKind::BareFn(..) => {
-                err.span_label(sum_span, &"perhaps you forgot parentheses?");
+                err.span_label(sum_span, "perhaps you forgot parentheses?");
             }
             _ => {
-                err.span_label(sum_span, &"expected a path");
+                err.span_label(sum_span, "expected a path");
             },
         }
         err.emit();
@@ -2556,7 +2556,7 @@ impl<'a> Parser<'a> {
                     let fstr = n.as_str();
                     let mut err = self.diagnostic().struct_span_err(self.prev_span,
                         &format!("unexpected token: `{}`", n));
-                    err.span_label(self.prev_span, &"unexpected token");
+                    err.span_label(self.prev_span, "unexpected token");
                     if fstr.chars().all(|x| "0123456789.".contains(x)) {
                         let float = match fstr.parse::<f64>().ok() {
                             Some(f) => f,
@@ -2708,7 +2708,7 @@ impl<'a> Parser<'a> {
                 let span_of_tilde = lo;
                 let mut err = self.diagnostic().struct_span_err(span_of_tilde,
                         "`~` can not be used as a unary operator");
-                err.span_label(span_of_tilde, &"did you mean `!`?");
+                err.span_label(span_of_tilde, "did you mean `!`?");
                 err.help("use `!` instead of `~` if you meant to perform bitwise negation");
                 err.emit();
                 (span, self.mk_unary(UnOp::Not, e))
@@ -4792,7 +4792,7 @@ impl<'a> Parser<'a> {
             sp,
             &format!("missing `fn`, `type`, or `const` for {}-item declaration",
                      item_type));
-        err.span_label(sp, &"missing `fn`, `type`, or `const`");
+        err.span_label(sp, "missing `fn`, `type`, or `const`");
         err
     }
 

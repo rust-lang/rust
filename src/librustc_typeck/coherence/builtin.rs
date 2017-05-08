@@ -74,7 +74,7 @@ fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                          E0120,
                                          "the Drop trait may only be implemented on \
                                          structures")
-                            .span_label(span, &format!("implementing Drop requires a struct"))
+                            .span_label(span, "implementing Drop requires a struct")
                             .emit();
                     }
                     _ => {
@@ -130,7 +130,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              "the trait `Copy` may not be implemented for this type")
                 .span_label(
                     tcx.def_span(field.did),
-                    &"this field does not implement `Copy`")
+                    "this field does not implement `Copy`")
                 .emit()
         }
         Err(CopyImplementationError::NotAnAdt) => {
@@ -145,7 +145,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              span,
                              E0206,
                              "the trait `Copy` may not be implemented for this type")
-                .span_label(span, &format!("type is not a structure or enumeration"))
+                .span_label(span, "type is not a structure or enumeration")
                 .emit();
         }
         Err(CopyImplementationError::HasDestructor) => {
@@ -154,7 +154,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              E0184,
                              "the trait `Copy` may not be implemented for this type; the \
                               type has a destructor")
-                .span_label(span, &format!("Copy not allowed on types with destructors"))
+                .span_label(span, "Copy not allowed on types with destructors")
                 .emit();
         }
     }
@@ -310,7 +310,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                           })
                                           .collect::<Vec<_>>()
                                           .join(", ")));
-                    err.span_label(span, &format!("requires multiple coercions"));
+                    err.span_label(span, "requires multiple coercions");
                     err.emit();
                     return err_info;
                 }

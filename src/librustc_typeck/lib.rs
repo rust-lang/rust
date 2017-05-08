@@ -143,7 +143,7 @@ fn require_c_abi_if_variadic(tcx: TyCtxt,
     if decl.variadic && abi != Abi::C {
         let mut err = struct_span_err!(tcx.sess, span, E0045,
                   "variadic function must have C calling convention");
-        err.span_label(span, &("variadics require C calling conventions").to_string())
+        err.span_label(span, "variadics require C calling conventions")
             .emit();
     }
 }
@@ -190,7 +190,7 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 struct_span_err!(tcx.sess, generics.span, E0131,
                                          "main function is not allowed to have type parameters")
                                     .span_label(generics.span,
-                                                &format!("main cannot have type parameters"))
+                                                "main cannot have type parameters")
                                     .emit();
                                 return;
                             }
@@ -240,7 +240,7 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             struct_span_err!(tcx.sess, ps.span, E0132,
                                 "start function is not allowed to have type parameters")
                                 .span_label(ps.span,
-                                            &format!("start function cannot have type parameters"))
+                                            "start function cannot have type parameters")
                                 .emit();
                             return;
                         }

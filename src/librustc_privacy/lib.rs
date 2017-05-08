@@ -433,7 +433,7 @@ impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
         if !def.is_enum() && !field.vis.is_accessible_from(self.current_item, self.tcx) {
             struct_span_err!(self.tcx.sess, span, E0451, "field `{}` of {} `{}` is private",
                              field.name, def.variant_descr(), self.tcx.item_path_str(def.did))
-                .span_label(span, &format!("field `{}` is private", field.name))
+                .span_label(span, format!("field `{}` is private", field.name))
                 .emit();
         }
     }
@@ -926,7 +926,7 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
                     if self.has_pub_restricted || self.has_old_errors {
                         let mut err = struct_span_err!(self.tcx.sess, self.span, E0446,
                             "private type `{}` in public interface", ty);
-                        err.span_label(self.span, &format!("can't leak private type"));
+                        err.span_label(self.span, "can't leak private type");
                         err.emit();
                     } else {
                         self.tcx.sess.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
@@ -961,7 +961,7 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
                 if self.has_pub_restricted || self.has_old_errors {
                     struct_span_err!(self.tcx.sess, self.span, E0445,
                                      "private trait `{}` in public interface", trait_ref)
-                        .span_label(self.span, &format!(
+                        .span_label(self.span, format!(
                                     "private trait can't be public"))
                         .emit();
                 } else {

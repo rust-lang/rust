@@ -183,7 +183,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                                            E0401,
                                            "can't use type parameters from outer function; \
                                            try using a local type parameter instead");
-            err.span_label(span, &format!("use of type variable from outer function"));
+            err.span_label(span, "use of type variable from outer function");
             err
         }
         ResolutionError::OuterTypeParameterContext => {
@@ -199,8 +199,8 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                                             "the name `{}` is already used for a type parameter \
                                             in this type parameter list",
                                             name);
-             err.span_label(span, &format!("already used"));
-             err.span_label(first_use_span.clone(), &format!("first use of `{}`", name));
+             err.span_label(span, "already used");
+             err.span_label(first_use_span.clone(), format!("first use of `{}`", name));
              err
         }
         ResolutionError::MethodNotMemberOfTrait(method, trait_) => {
@@ -210,7 +210,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                                            "method `{}` is not a member of trait `{}`",
                                            method,
                                            trait_);
-            err.span_label(span, &format!("not a member of trait `{}`", trait_));
+            err.span_label(span, format!("not a member of trait `{}`", trait_));
             err
         }
         ResolutionError::TypeNotMemberOfTrait(type_, trait_) => {
@@ -220,7 +220,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                              "type `{}` is not a member of trait `{}`",
                              type_,
                              trait_);
-            err.span_label(span, &format!("not a member of trait `{}`", trait_));
+            err.span_label(span, format!("not a member of trait `{}`", trait_));
             err
         }
         ResolutionError::ConstNotMemberOfTrait(const_, trait_) => {
@@ -230,7 +230,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                              "const `{}` is not a member of trait `{}`",
                              const_,
                              trait_);
-            err.span_label(span, &format!("not a member of trait `{}`", trait_));
+            err.span_label(span, format!("not a member of trait `{}`", trait_));
             err
         }
         ResolutionError::VariableNotBoundInPattern(binding_error) => {
@@ -239,11 +239,11 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             let msg = format!("variable `{}` is not bound in all patterns", binding_error.name);
             let mut err = resolver.session.struct_span_err_with_code(msp, &msg, "E0408");
             for sp in target_sp {
-                err.span_label(sp, &format!("pattern doesn't bind `{}`", binding_error.name));
+                err.span_label(sp, format!("pattern doesn't bind `{}`", binding_error.name));
             }
             let origin_sp = binding_error.origin.iter().map(|x| *x).collect::<Vec<_>>();
             for sp in origin_sp {
-                err.span_label(sp, &"variable not in all patterns");
+                err.span_label(sp, "variable not in all patterns");
             }
             err
         }
@@ -255,8 +255,8 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                              "variable `{}` is bound in inconsistent \
                              ways within the same match arm",
                              variable_name);
-            err.span_label(span, &format!("bound in different ways"));
-            err.span_label(first_binding_span, &format!("first binding"));
+            err.span_label(span, "bound in different ways");
+            err.span_label(first_binding_span, "first binding");
             err
         }
         ResolutionError::IdentifierBoundMoreThanOnceInParameterList(identifier) => {
@@ -265,7 +265,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                              E0415,
                              "identifier `{}` is bound more than once in this parameter list",
                              identifier);
-            err.span_label(span, &format!("used as parameter more than once"));
+            err.span_label(span, "used as parameter more than once");
             err
         }
         ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(identifier) => {
@@ -274,7 +274,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                              E0416,
                              "identifier `{}` is bound more than once in the same pattern",
                              identifier);
-            err.span_label(span, &format!("used in a pattern more than once"));
+            err.span_label(span, "used in a pattern more than once");
             err
         }
         ResolutionError::UndeclaredLabel(name) => {
@@ -283,7 +283,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                                            E0426,
                                            "use of undeclared label `{}`",
                                            name);
-            err.span_label(span, &format!("undeclared label `{}`",&name));
+            err.span_label(span, format!("undeclared label `{}`", name));
             err
         }
         ResolutionError::SelfImportsOnlyAllowedWithin => {
@@ -313,14 +313,14 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             };
             let mut err = struct_span_err!(resolver.session, span, E0432, "{}", msg);
             if let Some((_, p)) = name {
-                err.span_label(span, &p);
+                err.span_label(span, p);
             }
             err
         }
         ResolutionError::FailedToResolve(msg) => {
             let mut err = struct_span_err!(resolver.session, span, E0433,
                                            "failed to resolve. {}", msg);
-            err.span_label(span, &msg);
+            err.span_label(span, msg);
             err
         }
         ResolutionError::CannotCaptureDynamicEnvironmentInFnItem => {
@@ -336,7 +336,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                              span,
                              E0435,
                              "attempt to use a non-constant value in a constant");
-            err.span_label(span, &format!("non-constant used with constant"));
+            err.span_label(span, "non-constant used with constant");
             err
         }
         ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
@@ -345,9 +345,9 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                                            span,
                                            E0530,
                                            "{}s cannot shadow {}s", what_binding, shadows_what);
-            err.span_label(span, &format!("cannot be named the same as a {}", shadows_what));
+            err.span_label(span, format!("cannot be named the same as a {}", shadows_what));
             let participle = if binding.is_import() { "imported" } else { "defined" };
-            let msg = &format!("a {} `{}` is {} here", shadows_what, name, participle);
+            let msg = format!("a {} `{}` is {} here", shadows_what, name, participle);
             err.span_label(binding.span, msg);
             err
         }
@@ -355,7 +355,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             let mut err = struct_span_err!(resolver.session, span, E0128,
                                            "type parameters with a default cannot use \
                                             forward declared identifiers");
-            err.span_label(span, &format!("defaulted type parameters \
+            err.span_label(span, format!("defaulted type parameters \
                                            cannot be forward declared"));
             err
         }
@@ -2256,13 +2256,13 @@ impl<'a> Resolver<'a> {
             if is_self_type(path, ns) {
                 __diagnostic_used!(E0411);
                 err.code("E0411".into());
-                err.span_label(span, &format!("`Self` is only available in traits and impls"));
+                err.span_label(span, "`Self` is only available in traits and impls");
                 return err;
             }
             if is_self_value(path, ns) {
                 __diagnostic_used!(E0424);
                 err.code("E0424".into());
-                err.span_label(span, &format!("`self` value is only available in \
+                err.span_label(span, format!("`self` value is only available in \
                                                methods with `self` parameter"));
                 return err;
             }
@@ -2294,18 +2294,18 @@ impl<'a> Resolver<'a> {
                     let self_is_available = this.self_value_is_available(path[0].ctxt);
                     match candidate {
                         AssocSuggestion::Field => {
-                            err.span_label(span, &format!("did you mean `self.{}`?", path_str));
+                            err.span_label(span, format!("did you mean `self.{}`?", path_str));
                             if !self_is_available {
-                                err.span_label(span, &format!("`self` value is only available in \
+                                err.span_label(span, format!("`self` value is only available in \
                                                                methods with `self` parameter"));
                             }
                         }
                         AssocSuggestion::MethodWithSelf if self_is_available => {
-                            err.span_label(span, &format!("did you mean `self.{}(...)`?",
+                            err.span_label(span, format!("did you mean `self.{}(...)`?",
                                                            path_str));
                         }
                         AssocSuggestion::MethodWithSelf | AssocSuggestion::AssocItem => {
-                            err.span_label(span, &format!("did you mean `Self::{}`?", path_str));
+                            err.span_label(span, format!("did you mean `Self::{}`?", path_str));
                         }
                     }
                     return err;
@@ -2316,7 +2316,7 @@ impl<'a> Resolver<'a> {
 
             // Try Levenshtein.
             if let Some(candidate) = this.lookup_typo_candidate(path, ns, is_expected) {
-                err.span_label(ident_span, &format!("did you mean `{}`?", candidate));
+                err.span_label(ident_span, format!("did you mean `{}`?", candidate));
                 levenshtein_worked = true;
             }
 
@@ -2324,21 +2324,21 @@ impl<'a> Resolver<'a> {
             if let Some(def) = def {
                 match (def, source) {
                     (Def::Macro(..), _) => {
-                        err.span_label(span, &format!("did you mean `{}!(...)`?", path_str));
+                        err.span_label(span, format!("did you mean `{}!(...)`?", path_str));
                         return err;
                     }
                     (Def::TyAlias(..), PathSource::Trait) => {
-                        err.span_label(span, &format!("type aliases cannot be used for traits"));
+                        err.span_label(span, "type aliases cannot be used for traits");
                         return err;
                     }
                     (Def::Mod(..), PathSource::Expr(Some(parent))) => match parent.node {
                         ExprKind::Field(_, ident) => {
-                            err.span_label(parent.span, &format!("did you mean `{}::{}`?",
+                            err.span_label(parent.span, format!("did you mean `{}::{}`?",
                                                                  path_str, ident.node));
                             return err;
                         }
                         ExprKind::MethodCall(ident, ..) => {
-                            err.span_label(parent.span, &format!("did you mean `{}::{}(...)`?",
+                            err.span_label(parent.span, format!("did you mean `{}::{}(...)`?",
                                                                  path_str, ident.node));
                             return err;
                         }
@@ -2349,12 +2349,12 @@ impl<'a> Resolver<'a> {
                             if let Some((ctor_def, ctor_vis))
                                     = this.struct_constructors.get(&def_id).cloned() {
                                 if is_expected(ctor_def) && !this.is_accessible(ctor_vis) {
-                                    err.span_label(span, &format!("constructor is not visible \
+                                    err.span_label(span, format!("constructor is not visible \
                                                                    here due to private fields"));
                                 }
                             }
                         }
-                        err.span_label(span, &format!("did you mean `{} {{ /* fields */ }}`?",
+                        err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?",
                                                        path_str));
                         return err;
                     }
@@ -2364,7 +2364,7 @@ impl<'a> Resolver<'a> {
 
             // Fallback label.
             if !levenshtein_worked {
-                err.span_label(base_span, &fallback_label);
+                err.span_label(base_span, fallback_label);
             }
             err
         };
@@ -3374,9 +3374,9 @@ impl<'a> Resolver<'a> {
             },
         };
 
-        err.span_label(span, &format!("`{}` already {}", name, participle));
+        err.span_label(span, format!("`{}` already {}", name, participle));
         if old_binding.span != syntax_pos::DUMMY_SP {
-            err.span_label(old_binding.span, &format!("previous {} of `{}` here", noun, name));
+            err.span_label(old_binding.span, format!("previous {} of `{}` here", noun, name));
         }
         err.emit();
         self.name_already_seen.insert(name, span);
