@@ -380,3 +380,11 @@ fn issue1460() {
         _ => "reorder_something",
     };
 }
+
+fn issue525() {
+    foobar(f, "{}", match *self {
+        TaskState::Started => "started",
+        TaskState::Success => "success",
+        TaskState::Failed => "failed",
+    });
+}
