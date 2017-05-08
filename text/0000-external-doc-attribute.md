@@ -59,7 +59,7 @@ This is a markdown file that gets imported to Rust as a Doc comment.
 And code like this:
 
 ```rust
-#[external_doc("docs/example.md", "line")]
+#[doc(include = "docs/example.md")]
 fn my_func() {
   // Hidden implementation
 }
@@ -77,18 +77,16 @@ fn my_func() {
 
 Which `rustdoc` should be able to figure out and use for documentation.
 
-If the flag is changed from `line` to `mod` the file is then imported as
-a module comment for the file (or module) the attribute exists in.
-Using the previous markdown file we would have this code:
+If the code is written like this:
 
 ```rust
-#[external_doc("docs/example.md", "mod")]
+#![doc(include = "docs/example.md")]
 fn my_func() {
   // Hidden implementation
 }
 ```
 
-Expand to this at compile time:
+It should expand out to this at compile time:
 
 ```rust
 //! # I'm an example
@@ -102,7 +100,7 @@ In the case of this code:
 
 ```rust
 mod example {
-    #[external_doc("docs/example.md", "mod")]
+    #![doc(include = "docs/example.md")]
     fn my_func() {
       // Hidden implementation
     }
@@ -131,10 +129,10 @@ ignored by the compiler except for having the proper lines for error messages.
 For example if we have this:
 
 ```rust
-#[external_doc("docs/example.md", "line")] // Line 1
-f my_func() {                              // Line 2
-  // Hidden implementation                 // Line 3
-}                                          // Line 4
+#[doc(include = "docs/example.md")] // Line 1
+f my_func() {                       // Line 2
+  // Hidden implementation          // Line 3
+}                                   // Line 4
 ```
 
 Then we would have a syntax error on line 2, however the doc comment comes
@@ -167,11 +165,9 @@ as it is something that provides convenience but is not a necessary thing to
 learn to use Rust. It should be taught to existing users by updating
 documentation to show it in use and to include in in the Rust Programming
 Language book to teach new users. Currently the newest version of The Rust
-Programming Language does not include doc comments as part of it. This would
-need to be expanded to explain how doc comments work in general and this new
-syntax as well by showing that users can include docs from external sources.
-The Rust Reference comments section would need to updated to include this new
-syntax as well.
+Programming Language book has a section for [doc comments](https://doc.rust-lang.org/nightly/book/second-edition/ch14-02-publishing-to-crates-io.html#documentation-comments) that will need to be expanded
+to show how users can include docs from external sources. The Rust Reference
+comments section would need to updated to include this new syntax as well.
 
 # Drawbacks
 [drawbacks]: #drawbacks
