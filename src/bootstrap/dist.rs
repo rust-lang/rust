@@ -26,12 +26,6 @@ use std::process::{Command, Stdio};
 
 use build_helper::output;
 
-#[cfg(not(target_os = "solaris"))]
-const SH_CMD: &'static str = "sh";
-// On Solaris, sh is the historical bourne shell, not a POSIX shell, or bash.
-#[cfg(target_os = "solaris")]
-const SH_CMD: &'static str = "bash";
-
 use {Build, Compiler, Mode};
 use channel;
 use util::{cp_r, libdir, is_dylib, cp_filtered, copy, exe};
@@ -55,6 +49,10 @@ pub fn tmpdir(build: &Build) -> PathBuf {
     build.out.join("tmp/dist")
 }
 
+fn rust_installer(build: &Build) -> Command {
+    build.tool_cmd(&Compiler::new(0, &build.config.build), "rust-installer")
+}
+
 /// Builds the `rust-docs` installer component.
 ///
 /// Slurps up documentation from the `stage`'s `host`.
@@ -74,8 +72,8 @@ pub fn docs(build: &Build, stage: u32, host: &str) {
     let src = build.out.join(host).join("doc");
     cp_r(&src, &dst);
 
-    let mut cmd = Command::new(SH_CMD);
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
        .arg("--product-name=Rust-Documentation")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Rust-documentation-is-installed.")
@@ -124,8 +122,8 @@ pub fn mingw(build: &Build, host: &str) {
        .arg(host);
     build.run(&mut cmd);
 
-    let mut cmd = Command::new(SH_CMD);
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
        .arg("--product-name=Rust-MinGW")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Rust-MinGW-is-installed.")
@@ -190,8 +188,8 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
     }
 
     // Finally, wrap everything up in a nice tarball!
-    let mut cmd = Command::new(SH_CMD);
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Rust-is-ready-to-roll.")
@@ -300,8 +298,8 @@ pub fn std(build: &Build, compiler: &Compiler, target: &str) {
     let src = build.sysroot(compiler).join("lib/rustlib");
     cp_r(&src.join(target), &dst);
 
-    let mut cmd = Command::new(SH_CMD);
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=std-is-standing-at-the-ready.")
@@ -356,8 +354,8 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
     println!("image_src: {:?}, dst: {:?}", image_src, dst);
     cp_r(&image_src, &dst);
 
-    let mut cmd = Command::new(SH_CMD);
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=save-analysis-saved.")
@@ -521,8 +519,8 @@ pub fn rust_src(build: &Build) {
     }
 
     // Create source tarball in rust-installer format
-    let mut cmd = Command::new(SH_CMD);
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Awesome-Source.")
@@ -622,8 +620,8 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
     t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
 
     // Generate the installer tarball
-    let mut cmd = Command::new("sh");
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Rust-is-ready-to-roll.")
@@ -671,8 +669,8 @@ pub fn rls(build: &Build, stage: u32, target: &str) {
     t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
 
     // Generate the installer tarball
-    let mut cmd = Command::new("sh");
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=RLS-ready-to-serve.")
@@ -742,8 +740,8 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         input_tarballs.push_str(&sanitize_sh(&mingw_installer));
     }
 
-    let mut cmd = Command::new(SH_CMD);
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/combine-installers.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("combine")
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Rust-is-ready-to-roll.")
