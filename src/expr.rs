@@ -1004,7 +1004,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                                         false,
                                         true,
                                         mk_sp(else_block.span.lo, self.span.hi))
-                            .rewrite(context, shape.visual_indent(0))
+                            .rewrite(context, shape)
                 }
                 ast::ExprKind::If(ref cond, ref if_block, ref next_else_block) => {
                     ControlFlow::new_if(cond,
@@ -1014,7 +1014,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                                         false,
                                         true,
                                         mk_sp(else_block.span.lo, self.span.hi))
-                            .rewrite(context, shape.visual_indent(0))
+                            .rewrite(context, shape)
                 }
                 _ => {
                     last_in_chain = true;
