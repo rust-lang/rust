@@ -469,13 +469,17 @@ pub fn rust_src(build: &Build) {
     write_file(&plain_dst_src.join("version"), build.rust_version().as_bytes());
 
     // Create plain source tarball
-    let tarball = rust_src_location(build);
+    let mut tarball = rust_src_location(build);
+    tarball.set_extension(""); // strip .gz
+    tarball.set_extension(""); // strip .tar
     if let Some(dir) = tarball.parent() {
         t!(fs::create_dir_all(dir));
     }
-    let mut cmd = Command::new("tar");
-    cmd.arg("-czf").arg(sanitize_sh(&tarball))
-       .arg(&plain_name)
+    let mut cmd = rust_installer(build);
+    cmd.arg("tarball")
+       .arg("--input").arg(&plain_name)
+       .arg("--output").arg(sanitize_sh(&tarball))
+       .arg("--work-dir=.")
        .current_dir(tmpdir(build));
     build.run(&mut cmd);
 
