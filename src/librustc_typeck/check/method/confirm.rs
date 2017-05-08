@@ -433,22 +433,11 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         for (i, &expr) in exprs.iter().rev().enumerate() {
             debug!("convert_lvalue_derefs_to_mutable: i={} expr={:?}", i, expr);
 
-            // Fix up the adjustment.
-            let autoderefs = match self.tables.borrow_mut().adjustments.get_mut(&expr.id) {
-                Some(&mut Adjustment {
-                    kind: Adjust::DerefRef { autoderefs, ref mut autoref, .. }, ref mut target
-                }) => {
-                    if let &mut Some(AutoBorrow::Ref(_, ref mut mutbl)) = autoref {
-                        *mutbl = hir::Mutability::MutMutable;
-                        *target = match target.sty {
-                            ty::TyRef(r, ty::TypeAndMut { ty, .. }) =>
-                                self.tcx.mk_ref(r, ty::TypeAndMut { ty, mutbl: *mutbl }),
-                            _ => span_bug!(expr.span, "AutoBorrow::Ref resulted in non-ref {:?}",
-                                           target)
-                        };
-                    }
-                    autoderefs
-                }
+            // Fix up the autoderefs. Autorefs can only occur immediately preceding
+            // overloaded lvalue ops, and will be fixed by them in order to get
+            // the correct region.
+            let autoderefs = match self.tables.borrow().adjustments.get(&expr.id) {
+                Some(&Adjustment { kind: Adjust::DerefRef { autoderefs, .. }, .. }) => autoderefs,
                 Some(_) | None => 0
             };
 
@@ -502,10 +491,35 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         let method = self.try_overloaded_lvalue_op(
             expr.span, None, base_ty, arg_tys, PreferMutLvalue, op);
-        let ok = method.expect("re-trying op failed");
+        let ok = match method {
+            Some(method) => method,
+            None => return self.tcx.sess.delay_span_bug(expr.span, "re-trying op failed")
+        };
         let method = self.register_infer_ok_obligations(ok);
         debug!("convert_lvalue_op_to_mutable: method={:?}", method);
         self.tables.borrow_mut().method_map.insert(method_call, method);
+
+        // Convert the autoref in the base expr to mutable with the correct
+        // region and mutability.
+        if let Some(&mut Adjustment {
+            ref mut target, kind: Adjust::DerefRef {
+                autoref: Some(AutoBorrow::Ref(ref mut r, ref mut mutbl)), ..
+            }
+        }) = self.tables.borrow_mut().adjustments.get_mut(&base_expr.id) {
+            debug!("convert_lvalue_op_to_mutable: converting autoref of {:?}", target);
+
+            // extract method return type, which will be &mut T;
+            // all LB regions should have been instantiated during method lookup
+            let method_sig = self.tcx.no_late_bound_regions(&method.ty.fn_sig()).unwrap();
+
+            *target = method_sig.inputs()[0];
+            if let ty::TyRef(r_, mt) = target.sty {
+                *r = r_;
+                *mutbl = mt.mutbl;
+            } else {
+                span_bug!(expr.span, "input to lvalue op is not a ref?");
+            }
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////
