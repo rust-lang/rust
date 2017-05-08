@@ -24,14 +24,16 @@ use std::mem;
 use std::rc::Rc;
 use serialize;
 use syntax::codemap;
-use syntax::ast::{self, NodeId};
+use syntax::ast;
 use syntax_pos::Span;
 use ty::TyCtxt;
 use ty::maps::Providers;
 
-use hir; use hir::def_id::DefId;
-use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
-use hir::{Block, Item, FnDecl, Arm, Pat, PatKind, Stmt, Expr, Local};
+use hir;
+use hir::def_id::DefId;
+use hir::intravisit::{self, Visitor, NestedVisitorMap};
+use hir::{Block, Arm, Pat, PatKind, Stmt, Expr, Local};
+use mir::transform::MirSource;
 
 pub type CodeExtent<'tcx> = &'tcx CodeExtentData;
 
@@ -811,7 +813,17 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
         }
     }
 
-    intravisit::walk_expr(visitor, expr);
+    match expr.node {
+        // Manually recurse over closures, because they are the only
+        // case of nested bodies that share the parent environment.
+        hir::ExprClosure(.., body, _) => {
+            let body = visitor.tcx.hir.body(body);
+            visitor.visit_body(body);
+        }
+
+        _ => intravisit::walk_expr(visitor, expr)
+    }
+
     visitor.cx = prev_cx;
 }
 
@@ -1041,74 +1053,6 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
     }
 }
 
-fn resolve_item_like<'a, 'tcx, F>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, walk: F)
-    where F: FnOnce(&mut RegionResolutionVisitor<'a, 'tcx>)
-{
-    // Items create a new outer block scope as far as we're concerned.
-    let prev_cx = visitor.cx;
-    let prev_ts = mem::replace(&mut visitor.terminating_scopes, NodeSet());
-    visitor.cx = Context {
-        root_id: None,
-        var_parent: None,
-        parent: None,
-    };
-    walk(visitor);
-    visitor.cx = prev_cx;
-    visitor.terminating_scopes = prev_ts;
-}
-
-fn resolve_fn<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
-                        kind: FnKind<'tcx>,
-                        decl: &'tcx hir::FnDecl,
-                        body_id: hir::BodyId,
-                        sp: Span,
-                        id: ast::NodeId) {
-    visitor.cx.parent = Some(visitor.new_code_extent(
-        CodeExtentData::CallSiteScope { fn_id: id, body_id: body_id.node_id }));
-
-    debug!("region::resolve_fn(id={:?}, \
-            span={:?}, \
-            body.id={:?}, \
-            cx.parent={:?})",
-           id,
-           visitor.tcx.sess.codemap().span_to_string(sp),
-           body_id,
-           visitor.cx.parent);
-
-    let fn_decl_scope = visitor.new_code_extent(
-        CodeExtentData::ParameterScope { fn_id: id, body_id: body_id.node_id });
-
-    if let Some(root_id) = visitor.cx.root_id {
-        visitor.region_maps.record_fn_parent(body_id.node_id, root_id);
-    }
-
-    let outer_cx = visitor.cx;
-    let outer_ts = mem::replace(&mut visitor.terminating_scopes, NodeSet());
-    visitor.terminating_scopes.insert(body_id.node_id);
-
-    // The arguments and `self` are parented to the fn.
-    visitor.cx = Context {
-        root_id: Some(body_id.node_id),
-        parent: None,
-        var_parent: Some(fn_decl_scope),
-    };
-
-    intravisit::walk_fn_decl(visitor, decl);
-    intravisit::walk_fn_kind(visitor, kind);
-
-    // The body of the every fn is a root scope.
-    visitor.cx = Context {
-        root_id: Some(body_id.node_id),
-        parent: Some(fn_decl_scope),
-        var_parent: Some(fn_decl_scope),
-    };
-    visitor.visit_nested_body(body_id);
-
-    // Restore context we had at the start.
-    visitor.cx = outer_cx;
-    visitor.terminating_scopes = outer_ts;
-}
-
 impl<'a, 'tcx> RegionResolutionVisitor<'a, 'tcx> {
     pub fn intern_code_extent(&mut self,
                               data: CodeExtentData,
@@ -1152,29 +1096,57 @@ impl<'a, 'tcx> RegionResolutionVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.map)
+        NestedVisitorMap::None
     }
 
     fn visit_block(&mut self, b: &'tcx Block) {
         resolve_block(self, b);
     }
 
-    fn visit_item(&mut self, i: &'tcx Item) {
-        resolve_item_like(self, |this| intravisit::walk_item(this, i));
+    fn visit_body(&mut self, body: &'tcx hir::Body) {
+        let body_id = body.id();
+        let owner_id = self.map.body_owner(body_id);
+
+        debug!("visit_body(id={:?}, span={:?}, body.id={:?}, cx.parent={:?})",
+               owner_id,
+               self.tcx.sess.codemap().span_to_string(body.value.span),
+               body_id,
+               self.cx.parent);
+
+        let outer_cx = self.cx;
+        let outer_ts = mem::replace(&mut self.terminating_scopes, NodeSet());
+
+        // Only functions have an outer terminating (drop) scope,
+        // while temporaries in constant initializers are 'static.
+        if let MirSource::Fn(_) = MirSource::from_node(self.tcx, owner_id) {
+            self.terminating_scopes.insert(body_id.node_id);
+        }
+
+        if let Some(root_id) = self.cx.root_id {
+            self.region_maps.record_fn_parent(body_id.node_id, root_id);
+        }
+        self.cx.root_id = Some(body_id.node_id);
+
+        self.cx.parent = Some(self.new_code_extent(
+            CodeExtentData::CallSiteScope { fn_id: owner_id, body_id: body_id.node_id }));
+        self.cx.parent = Some(self.new_code_extent(
+            CodeExtentData::ParameterScope { fn_id: owner_id, body_id: body_id.node_id }));
+
+        // The arguments and `self` are parented to the fn.
+        self.cx.var_parent = self.cx.parent.take();
+        for argument in &body.arguments {
+            self.visit_pat(&argument.pat);
+        }
+
+        // The body of the every fn is a root scope.
+        self.cx.parent = self.cx.var_parent;
+        self.visit_expr(&body.value);
+
+        // Restore context we had at the start.
+        self.cx = outer_cx;
+        self.terminating_scopes = outer_ts;
     }
 
-    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
-        resolve_item_like(self, |this| intravisit::walk_impl_item(this, ii));
-    }
-
-    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
-        resolve_item_like(self, |this| intravisit::walk_trait_item(this, ti));
-    }
-
-    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx FnDecl,
-                b: hir::BodyId, s: Span, n: NodeId) {
-        resolve_fn(self, fk, fd, b, s, n);
-    }
     fn visit_arm(&mut self, a: &'tcx Arm) {
         resolve_arm(self, a);
     }
@@ -1192,21 +1164,18 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
     }
 }
 
-fn region_maps<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_id: DefId)
+fn region_maps<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     -> Rc<RegionMaps<'tcx>>
 {
-    let closure_base_def_id = tcx.closure_base_def_id(fn_id);
-    if closure_base_def_id != fn_id {
+    let closure_base_def_id = tcx.closure_base_def_id(def_id);
+    if closure_base_def_id != def_id {
         return tcx.region_maps(closure_base_def_id);
     }
 
     let mut maps = RegionMaps::new();
 
-    let fn_node_id = tcx.hir.as_local_node_id(fn_id)
-                            .expect("fn DefId should be for LOCAL_CRATE");
-    let node = tcx.hir.get(fn_node_id);
-
-    {
+    let id = tcx.hir.as_local_node_id(def_id).unwrap();
+    if let Some(body) = tcx.hir.maybe_body_owned_by(id) {
         let mut visitor = RegionResolutionVisitor {
             tcx: tcx,
             region_maps: &mut maps,
@@ -1218,7 +1187,8 @@ fn region_maps<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_id: DefId)
             },
             terminating_scopes: NodeSet(),
         };
-        visitor.visit_hir_map_node(node);
+
+        visitor.visit_body(tcx.hir.body(body));
     }
 
     Rc::new(maps)
