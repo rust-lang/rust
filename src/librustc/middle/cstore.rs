@@ -197,7 +197,6 @@ pub trait CrateStore {
     fn is_default_impl(&self, impl_did: DefId) -> bool;
     fn is_dllimport_foreign_item(&self, def: DefId) -> bool;
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool;
-    fn is_exported_symbol(&self, def_id: DefId) -> bool;
 
     // crate metadata
     fn dylib_dependency_formats(&self, cnum: CrateNum)
@@ -320,7 +319,6 @@ impl CrateStore for DummyCrateStore {
     fn is_default_impl(&self, impl_did: DefId) -> bool { bug!("is_default_impl") }
     fn is_dllimport_foreign_item(&self, id: DefId) -> bool { false }
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool { false }
-    fn is_exported_symbol(&self, def_id: DefId) -> bool { false }
 
     // crate metadata
     fn dylib_dependency_formats(&self, cnum: CrateNum)
