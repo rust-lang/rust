@@ -116,6 +116,8 @@ pub enum DepNode<D: Clone + Debug> {
     // than changes in the impl body.
     TraitImpls(D),
 
+    AllLocalTraitImpls,
+
     // Nodes representing caches. To properly handle a true cache, we
     // don't use a DepTrackingMap, but rather we push a task node.
     // Otherwise the write into the map would be incorrectly
@@ -263,6 +265,7 @@ impl<D: Clone + Debug> DepNode<D> {
             ConstEval(ref d) => op(d).map(ConstEval),
             SymbolName(ref d) => op(d).map(SymbolName),
             TraitImpls(ref d) => op(d).map(TraitImpls),
+            AllLocalTraitImpls => Some(AllLocalTraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),
             ReprHints(ref d) => op(d).map(ReprHints),
             TraitSelect { ref trait_def_id, ref input_def_id } => {

@@ -961,17 +961,17 @@ impl<'a, 'tcx> CrateMetadata {
             None => None,
         };
 
-        // FIXME(eddyb) Make this O(1) instead of O(n).
         let dep_node = self.metadata_dep_node(GlobalMetaDataKind::Impls);
-        for trait_impls in self.root.impls.get(dep_graph, dep_node).decode(self) {
-            if filter.is_some() && filter != Some(trait_impls.trait_id) {
-                continue;
+
+        if let Some(filter) = filter {
+            if let Some(impls) = self.trait_impls
+                                     .get(dep_graph, dep_node)
+                                     .get(&filter) {
+                result.extend(impls.decode(self).map(|idx| self.local_def_id(idx)));
             }
-
-            result.extend(trait_impls.impls.decode(self).map(|index| self.local_def_id(index)));
-
-            if filter.is_some() {
-                break;
+        } else {
+            for impls in self.trait_impls.get(dep_graph, dep_node).values() {
+                result.extend(impls.decode(self).map(|idx| self.local_def_id(idx)));
             }
         }
     }

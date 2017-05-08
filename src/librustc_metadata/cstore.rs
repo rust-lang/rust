@@ -85,6 +85,8 @@ pub struct CrateMetadata {
 
     pub exported_symbols: Tracked<FxHashSet<DefIndex>>,
 
+    pub trait_impls: Tracked<FxHashMap<(u32, DefIndex), schema::LazySeq<DefIndex>>>,
+
     pub dep_kind: Cell<DepKind>,
     pub source: CrateSource,
 

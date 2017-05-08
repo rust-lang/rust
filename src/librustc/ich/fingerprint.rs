@@ -94,3 +94,11 @@ impl stable_hasher::StableHasherResult for Fingerprint {
         fingerprint
     }
 }
+
+impl<CTX> stable_hasher::HashStable<CTX> for Fingerprint {
+    fn hash_stable<W: stable_hasher::StableHasherResult>(&self,
+                                          _: &mut CTX,
+                                          hasher: &mut stable_hasher::StableHasher<W>) {
+        ::std::hash::Hash::hash(&self.0, hasher);
+    }
+}

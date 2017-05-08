@@ -497,7 +497,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn trait_impls(&self, trait_did: DefId) -> &'hir [NodeId] {
-        self.dep_graph.read(DepNode::TraitImpls(trait_did));
+        self.dep_graph.read(DepNode::AllLocalTraitImpls);
 
         // NB: intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
@@ -505,7 +505,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn trait_default_impl(&self, trait_did: DefId) -> Option<NodeId> {
-        self.dep_graph.read(DepNode::TraitImpls(trait_did));
+        self.dep_graph.read(DepNode::AllLocalTraitImpls);
 
         // NB: intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
