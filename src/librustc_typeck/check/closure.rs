@@ -126,6 +126,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 (sig, kind)
             }
             ty::TyInfer(ty::TyVar(vid)) => self.deduce_expectations_from_obligations(vid),
+            ty::TyFnPtr(sig) => (Some(sig.skip_binder().clone()), Some(ty::ClosureKind::Fn)),
             _ => (None, None),
         }
     }
