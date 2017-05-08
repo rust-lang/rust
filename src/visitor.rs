@@ -65,9 +65,6 @@ impl<'a> FmtVisitor<'a> {
                 let rewrite =
                     stmt.rewrite(&self.get_context(),
                                  Shape::indented(self.block_indent, self.config));
-                if rewrite.is_none() {
-                    self.failed = true;
-                }
                 self.push_rewrite(stmt.span, rewrite);
             }
             ast::StmtKind::Mac(ref mac) => {
@@ -433,17 +430,22 @@ impl<'a> FmtVisitor<'a> {
 
     fn visit_mac(&mut self, mac: &ast::Mac, ident: Option<ast::Ident>, pos: MacroPosition) {
         // 1 = ;
-        let width = self.config.max_width - self.block_indent.width() - 1;
-        let rewrite = rewrite_macro(mac,
-                                    ident,
-                                    &self.get_context(),
-                                    Shape::legacy(width, self.block_indent),
-                                    pos);
+        let shape = Shape::indented(self.block_indent, self.config)
+            .sub_width(1)
+            .unwrap();
+        let rewrite = rewrite_macro(mac, ident, &self.get_context(), shape, pos);
         self.push_rewrite(mac.span, rewrite);
     }
 
     fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
         self.format_missing_with_indent(source!(self, span).lo);
+        self.failed = match rewrite {
+            Some(ref s) if s.rewrite(&self.get_context(),
+                                     Shape::indented(self.block_indent, self.config))
+                               .is_none() => true,
+            None => true,
+            _ => self.failed,
+        };
         let result = rewrite.unwrap_or_else(|| self.snippet(span));
         self.buffer.push_str(&result);
         self.last_pos = source!(self, span).hi;
