@@ -387,7 +387,7 @@ class RustBuild(object):
         self.run(args, env)
 
     def run(self, args, env):
-        proc = subprocess.Popen(args, env=env)
+        proc = subprocess.Popen(args, env=env, shell=True)
         ret = proc.wait()
         if ret != 0:
             sys.exit(ret)
