@@ -504,7 +504,7 @@ impl<'a> StringReader<'a> {
                     self.bump();
 
                     // line comments starting with "///" or "//!" are doc-comments
-                    let doc_comment = self.ch_is('/') || self.ch_is('!');
+                    let doc_comment = (self.ch_is('/') && !self.nextch_is('/')) || self.ch_is('!');
                     let start_bpos = self.pos - BytePos(2);
 
                     while !self.is_eof() {
