@@ -1,14 +1,14 @@
 % Rustc UX guidelines
 
 Don't forget the user. Whether human or another program, such as an IDE, a
-good user experience with the compiler goes a long way into making developer
-lives better. We don't want users to be baffled by compiler output or
+good user experience with the compiler goes a long way toward making developers'
+lives better. We do not want users to be baffled by compiler output or
 learn arcane patterns to compile their program.
 
 ## Error, Warning, Help, Note Messages
 
-When the compiler detects a problem, it can emit either an error, warning,
-note, or help message.
+When the compiler detects a problem, it can emit one of the following: an error, a warning,
+a note, or a help message.
 
 An `error` is emitted when the compiler detects a problem that makes it unable
  to compile the program, either because the program is invalid or the
@@ -17,11 +17,11 @@ An `error` is emitted when the compiler detects a problem that makes it unable
 A `warning` is emitted when the compiler detects something odd about a
 program. For instance, dead code and unused `Result` values.
 
-A `help` is emitted following either an `error` or `warning` giving extra
+A `help` message is emitted following an `error` or `warning` to give additional
 information to the user about how to solve their problem.
 
-A `note` is for identifying additional circumstances and parts of the code
-that lead to a warning or error. For example, the borrow checker will note any
+A `note` to emitted to identify additional circumstances and parts of the code
+that caused the warning or error. For example, the borrow checker will note any
 previous conflicting borrows.
 
 * Write in plain simple English. If your message, when shown on a – possibly
