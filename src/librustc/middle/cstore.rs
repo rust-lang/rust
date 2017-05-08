@@ -239,7 +239,6 @@ pub trait CrateStore {
     fn export_macros(&self, cnum: CrateNum);
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>;
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>;
-    fn is_staged_api(&self, cnum: CrateNum) -> bool;
     fn is_allocator(&self, cnum: CrateNum) -> bool;
     fn is_panic_runtime(&self, cnum: CrateNum) -> bool;
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool;
@@ -368,7 +367,6 @@ impl CrateStore for DummyCrateStore {
         { bug!("lang_items") }
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>
         { bug!("missing_lang_items") }
-    fn is_staged_api(&self, cnum: CrateNum) -> bool { bug!("is_staged_api") }
     fn dep_kind(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
     fn export_macros(&self, cnum: CrateNum) { bug!("export_macros") }
     fn is_allocator(&self, cnum: CrateNum) -> bool { bug!("is_allocator") }

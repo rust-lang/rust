@@ -269,15 +269,6 @@ impl CrateMetadata {
         self.root.disambiguator
     }
 
-    pub fn is_staged_api(&self, dep_graph: &DepGraph) -> bool {
-        for attr in self.get_item_attrs(CRATE_DEF_INDEX, dep_graph).iter() {
-            if attr.path == "stable" || attr.path == "unstable" {
-                return true;
-            }
-        }
-        false
-    }
-
     pub fn is_allocator(&self, dep_graph: &DepGraph) -> bool {
         let attrs = self.get_item_attrs(CRATE_DEF_INDEX, dep_graph);
         attr::contains_name(&attrs, "allocator")
