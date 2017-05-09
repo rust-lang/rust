@@ -203,6 +203,34 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
     }
 }
 
+/// Fetches the environment variable `key` from the current process.
+///
+/// The returned value if the environment variable is present and is
+/// valid unicode. If the environment variable is not present, or it is not
+/// valid unicode, then default value will be returned.
+///
+/// # Examples
+///
+/// ```
+/// use std::env;
+///
+/// let key = "SOMETHING";
+/// assert_eq!("HOUSE", env::var_or_default(key, "HOUSE"));
+/// let home = match env::home_dir() {
+///     Some(path) => format!("{}", path.display()),
+///     None => "".to_string()
+/// };
+/// assert_eq!(home, env::var_or_default("HOME", "HOUSE"));
+///
+/// ```
+#[stable(feature = "env", since = "1.0.0")]
+pub fn var_or_default<K: AsRef<OsStr>, T: ToString>(key: K, def: T) -> String {
+    match var(key.as_ref()) {
+        Ok(s) => s,
+        Err(_) => def.to_string()
+    }
+}
+
 /// Fetches the environment variable `key` from the current process, returning
 /// [`None`] if the variable isn't set.
 ///
@@ -228,6 +256,31 @@ fn _var_os(key: &OsStr) -> Option<OsString> {
     os_imp::getenv(key).unwrap_or_else(|e| {
         panic!("failed to get environment variable `{:?}`: {}", key, e)
     })
+}
+
+/// Fetches the environment variable `key` from the current process, returning
+/// the default value if the variable isn't set.
+///
+/// # Examples
+///
+/// ```
+/// use std::env;
+/// use std::ffi::OsString;
+///
+/// let key = "SOMETHING";
+/// assert_eq!(OsString::from("HOUSE"), env::var_os_or_default(key, "HOUSE"));
+/// let home = match env::home_dir() {
+///     Some(path) => format!("{}", path.display()),
+///     None => "".to_string()
+/// };
+/// assert_eq!(OsString::from(home), env::var_os_or_default("HOME", "HOUSE"));
+/// ```
+#[stable(feature = "env", since = "1.0.0")]
+pub fn var_os_or_default<K: AsRef<OsStr>, T: ToString>(key: K, def: T) -> OsString {
+    match _var_os(key.as_ref()) {
+        Some(s) => s,
+        None => OsString::from(def.to_string())
+    }
 }
 
 /// Possible errors from the [`env::var`] function.
