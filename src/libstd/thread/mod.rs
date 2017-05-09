@@ -389,6 +389,10 @@ impl Builder {
 /// panics, [`join`] will return an [`Err`] containing the argument given to
 /// [`panic`].
 ///
+/// This will create a thread using default parameters of [`Builder`], if you
+/// want to specify the stack size or the name of the thread, use this API
+/// instead.
+///
 /// # Panics
 ///
 /// Panics if the OS fails to create a thread; use [`Builder::spawn`]
@@ -454,6 +458,7 @@ impl Builder {
 /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
 /// [`panic`]: ../../std/macro.panic.html
 /// [`Builder::spawn`]: ../../std/thread/struct.Builder.html#method.spawn
+/// [`Builder`]: ../../std/thread/struct.Builder.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
     F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
