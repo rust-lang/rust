@@ -18,6 +18,15 @@ fn main() {
     let vec_val = g(&vec); // should not error, because `&Vec<T>` derefs to `&[T]`
     h(&"foo"); // should not error, because the `&&str` is required, due to `&Trait`
     if let Some(ref cake) = Some(&5) {}
+    let garbl = match 42 {
+        44 => &a,
+        45 => {
+            println!("foo");
+            &&a // FIXME: this should lint, too
+        },
+        46 => &&a,
+        _ => panic!(),
+    };
 }
 
 fn f<T:Copy>(y: &T) -> T {
