@@ -1494,6 +1494,7 @@ fn rewrite_pat_expr(context: &RewriteContext,
                     shape: Shape)
                     -> Option<String> {
     debug!("rewrite_pat_expr {:?} {:?} {:?}", shape, pat, expr);
+    let mut pat_string = String::new();
     let mut result = match pat {
         Some(pat) => {
             let matcher = if matcher.is_empty() {
@@ -1503,7 +1504,7 @@ fn rewrite_pat_expr(context: &RewriteContext,
             };
             let pat_shape = try_opt!(try_opt!(shape.shrink_left(matcher.len()))
                                          .sub_width(connector.len()));
-            let pat_string = try_opt!(pat.rewrite(context, pat_shape));
+            pat_string = try_opt!(pat.rewrite(context, pat_shape));
             format!("{}{}{}", matcher, pat_string, connector)
         }
         None => String::new(),
@@ -1516,19 +1517,11 @@ fn rewrite_pat_expr(context: &RewriteContext,
     if shape.width > extra_offset + 1 {
         let spacer = if pat.is_some() { " " } else { "" };
 
-        let expr_shape = try_opt!(shape.sub_width(extra_offset + spacer.len()))
-            .add_offset(extra_offset + spacer.len());
+        let expr_shape = try_opt!(shape.offset_left(extra_offset + spacer.len()));
         let expr_rewrite = expr.rewrite(context, expr_shape);
 
         if let Some(expr_string) = expr_rewrite {
-            let pat_simple = pat.and_then(|p| {
-                                              p.rewrite(context,
-                                                        Shape::legacy(context.config.max_width,
-                                                                      Indent::empty()))
-                                          })
-                .map(|s| pat_is_simple(&s));
-
-            if pat.is_none() || pat_simple.unwrap_or(false) || !expr_string.contains('\n') {
+            if pat.is_none() || pat_is_simple(&pat_string) || !expr_string.contains('\n') {
                 result.push_str(spacer);
                 result.push_str(&expr_string);
                 return Some(result);
@@ -1542,11 +1535,7 @@ fn rewrite_pat_expr(context: &RewriteContext,
     result.push('\n');
     result.push_str(&nested_indent.to_string(context.config));
 
-    let expr_rewrite = expr.rewrite(&context,
-                                    Shape::legacy(try_opt!(context.config
-                                                      .max_width
-                                                      .checked_sub(nested_indent.width())),
-                                                  nested_indent));
+    let expr_rewrite = expr.rewrite(&context, Shape::indented(nested_indent, context.config));
     result.push_str(&try_opt!(expr_rewrite));
 
     Some(result)
