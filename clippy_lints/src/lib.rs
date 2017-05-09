@@ -124,7 +124,7 @@ pub mod ranges;
 pub mod reference;
 pub mod regex;
 pub mod returns;
-pub mod serde;
+pub mod serde_api;
 pub mod shadow;
 pub mod should_assert_eq;
 pub mod strings;
@@ -202,7 +202,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
-    reg.register_late_lint_pass(box serde::Serde);
+    reg.register_late_lint_pass(box serde_api::Serde);
     reg.register_early_lint_pass(box utils::internal_lints::Clippy);
     reg.register_late_lint_pass(box utils::internal_lints::LintWithoutLintPass::default());
     reg.register_late_lint_pass(box utils::inspector::Pass);

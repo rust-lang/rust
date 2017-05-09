@@ -7,7 +7,7 @@ extern crate serde;
 
 struct A;
 
-impl serde::de::Visitor for A {
+impl<'de> serde::de::Visitor<'de> for A {
     type Value = ();
 
     fn expecting(&self, _: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -29,7 +29,7 @@ impl serde::de::Visitor for A {
 
 struct B;
 
-impl serde::de::Visitor for B {
+impl<'de> serde::de::Visitor<'de> for B {
     type Value = ();
 
     fn expecting(&self, _: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
