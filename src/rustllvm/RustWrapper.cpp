@@ -466,6 +466,10 @@ extern "C" void LLVMRustAddModuleFlag(LLVMModuleRef M, const char *Name,
   unwrap(M)->addModuleFlag(Module::Warning, Name, Value);
 }
 
+extern "C" void LLVMRustMetadataAsValue(LLVMContextRef C, LLVMRustMetadataRef MD) {
+  wrap(MetadataAsValue::get(*unwrap(C), unwrap(MD)));
+}
+
 extern "C" LLVMRustDIBuilderRef LLVMRustDIBuilderCreate(LLVMModuleRef M) {
   return new DIBuilder(*unwrap(M));
 }

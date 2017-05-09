@@ -1027,6 +1027,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "add a source pattern to the file path remapping config"),
     remap_path_prefix_to: Vec<String> = (vec![], parse_string_push, [TRACKED],
         "add a mapping target to the file path remapping config"),
+    profile: bool = (false, parse_bool, [TRACKED],
+                     "insert profiling code"),
 }
 
 pub fn default_lib_output() -> CrateType {
