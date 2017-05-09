@@ -161,10 +161,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         match item_segment.parameters {
             hir::AngleBracketedParameters(_) => {}
             hir::ParenthesizedParameters(..) => {
-                struct_span_err!(tcx.sess, span, E0214,
-                          "parenthesized parameters may only be used with a trait")
-                    .span_label(span, "only traits may use parentheses")
-                    .emit();
+                self.prohibit_parenthesized_params(item_segment);
 
                 return Substs::for_item(tcx, def_id, |_, _| {
                     tcx.types.re_static
@@ -948,6 +945,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     pub fn prohibit_type_params(&self, segments: &[hir::PathSegment]) {
         for segment in segments {
+            if let hir::ParenthesizedParameters(_) = segment.parameters {
+                self.prohibit_parenthesized_params(segment);
+                break;
+            }
             for typ in segment.parameters.types() {
                 struct_span_err!(self.tcx().sess, typ.span, E0109,
                                  "type parameters are not allowed on this type")
@@ -967,6 +968,15 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 self.prohibit_projection(binding.span);
                 break;
             }
+        }
+    }
+
+    pub fn prohibit_parenthesized_params(&self, segment: &hir::PathSegment) {
+        if let hir::ParenthesizedParameters(ref data) = segment.parameters {
+            struct_span_err!(self.tcx().sess, data.span, E0214,
+                      "parenthesized parameters may only be used with a trait")
+                .span_label(data.span, "only traits may use parentheses")
+                .emit();
         }
     }
 
