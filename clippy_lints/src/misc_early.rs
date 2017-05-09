@@ -4,7 +4,7 @@ use std::char;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
-use utils::{constants, span_lint, span_help_and_lint, snippet, snippet_opt, span_lint_and_then};
+use utils::{constants, span_lint, span_help_and_lint, snippet, snippet_opt, span_lint_and_then, in_external_macro};
 
 /// **What it does:** Checks for structure field patterns bound to wildcards.
 ///
@@ -293,78 +293,7 @@ impl EarlyLintPass for MiscEarly {
                               "`--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op");
                 }
             },
-            ExprKind::Lit(ref lit) => {
-                if_let_chain! {[
-                    let LitKind::Int(value, ..) = lit.node,
-                    let Some(src) = snippet_opt(cx, lit.span),
-                    let Some(firstch) = src.chars().next(),
-                    char::to_digit(firstch, 10).is_some()
-                ], {
-                    let mut prev = '\0';
-                    for ch in src.chars() {
-                        if ch == 'i' || ch == 'u' {
-                            if prev != '_' {
-                                span_lint(cx, UNSEPARATED_LITERAL_SUFFIX, lit.span,
-                                          "integer type suffix should be separated by an underscore");
-                            }
-                            break;
-                        }
-                        prev = ch;
-                    }
-                    if src.starts_with("0x") {
-                        let mut seen = (false, false);
-                        for ch in src.chars() {
-                            match ch {
-                                'a' ... 'f' => seen.0 = true,
-                                'A' ... 'F' => seen.1 = true,
-                                'i' | 'u'   => break,   // start of suffix already
-                                _ => ()
-                            }
-                        }
-                        if seen.0 && seen.1 {
-                            span_lint(cx, MIXED_CASE_HEX_LITERALS, lit.span,
-                                      "inconsistent casing in hexadecimal literal");
-                        }
-                    } else if src.starts_with("0b") || src.starts_with("0o") {
-                        /* nothing to do */
-                    } else if value != 0 && src.starts_with('0') {
-                        span_lint_and_then(cx,
-                                           ZERO_PREFIXED_LITERAL,
-                                           lit.span,
-                                           "this is a decimal constant",
-                                           |db| {
-                            db.span_suggestion(
-                                lit.span,
-                                "if you mean to use a decimal constant, remove the `0` to remove confusion:",
-                                src[1..].to_string(),
-                            );
-                            /*db.span_suggestion(
-                                lit.span,
-                                "if you mean to use an octal constant, use `0o`:",
-                                format!("0o{}", &src[1..]),
-                            ); FIXME: rustc doesn't support multiple suggestions anymore */
-                        });
-                    }
-                }}
-                if_let_chain! {[
-                    let LitKind::Float(..) = lit.node,
-                    let Some(src) = snippet_opt(cx, lit.span),
-                    let Some(firstch) = src.chars().next(),
-                    char::to_digit(firstch, 10).is_some()
-                ], {
-                    let mut prev = '\0';
-                    for ch in src.chars() {
-                        if ch == 'f' {
-                            if prev != '_' {
-                                span_lint(cx, UNSEPARATED_LITERAL_SUFFIX, lit.span,
-                                          "float type suffix should be separated by an underscore");
-                            }
-                            break;
-                        }
-                        prev = ch;
-                    }
-                }}
-            },
+            ExprKind::Lit(ref lit) => self.check_lit(cx, lit),
             _ => (),
         }
     }
@@ -391,5 +320,80 @@ impl EarlyLintPass for MiscEarly {
                 }
             }}
         }
+    }
+}
+
+impl MiscEarly {
+    fn check_lit(&self, cx: &EarlyContext, lit: &Lit) {
+        if_let_chain! {[
+            let LitKind::Int(value, ..) = lit.node,
+            let Some(src) = snippet_opt(cx, lit.span),
+            let Some(firstch) = src.chars().next(),
+            char::to_digit(firstch, 10).is_some()
+        ], {
+            let mut prev = '\0';
+            for ch in src.chars() {
+                if ch == 'i' || ch == 'u' {
+                    if prev != '_' {
+                        span_lint(cx, UNSEPARATED_LITERAL_SUFFIX, lit.span,
+                                    "integer type suffix should be separated by an underscore");
+                    }
+                    break;
+                }
+                prev = ch;
+            }
+            if src.starts_with("0x") {
+                let mut seen = (false, false);
+                for ch in src.chars() {
+                    match ch {
+                        'a' ... 'f' => seen.0 = true,
+                        'A' ... 'F' => seen.1 = true,
+                        'i' | 'u'   => break,   // start of suffix already
+                        _ => ()
+                    }
+                }
+                if seen.0 && seen.1 {
+                    span_lint(cx, MIXED_CASE_HEX_LITERALS, lit.span,
+                                "inconsistent casing in hexadecimal literal");
+                }
+            } else if src.starts_with("0b") || src.starts_with("0o") {
+                /* nothing to do */
+            } else if value != 0 && src.starts_with('0') {
+                span_lint_and_then(cx,
+                                    ZERO_PREFIXED_LITERAL,
+                                    lit.span,
+                                    "this is a decimal constant",
+                                    |db| {
+                    db.span_suggestion(
+                        lit.span,
+                        "if you mean to use a decimal constant, remove the `0` to remove confusion:",
+                        src[1..].to_string(),
+                    );
+                    /*db.span_suggestion(
+                        lit.span,
+                        "if you mean to use an octal constant, use `0o`:",
+                        format!("0o{}", &src[1..]),
+                    ); FIXME: rustc doesn't support multiple suggestions anymore */
+                });
+            }
+        }}
+        if_let_chain! {[
+            let LitKind::Float(..) = lit.node,
+            let Some(src) = snippet_opt(cx, lit.span),
+            let Some(firstch) = src.chars().next(),
+            char::to_digit(firstch, 10).is_some()
+        ], {
+            let mut prev = '\0';
+            for ch in src.chars() {
+                if ch == 'f' {
+                    if prev != '_' {
+                        span_lint(cx, UNSEPARATED_LITERAL_SUFFIX, lit.span,
+                                    "float type suffix should be separated by an underscore");
+                    }
+                    break;
+                }
+                prev = ch;
+            }
+        }}
     }
 }
