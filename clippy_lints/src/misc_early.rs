@@ -267,6 +267,9 @@ impl EarlyLintPass for MiscEarly {
     }
 
     fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
+        if in_external_macro(cx, expr.span) {
+            return;
+        }
         match expr.node {
             ExprKind::Call(ref paren, _) => {
                 if let ExprKind::Paren(ref closure) = paren.node {
