@@ -104,51 +104,9 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
     }
 }
 
-unsafe fn ptr_swap_u8(a: *mut u8, b: *mut u8, n: usize) {
-    for i in 0..n {
-        ptr::swap(a.offset(i as isize), b.offset(i as isize));
-    }
-}
-unsafe fn ptr_swap_u16(a: *mut u16, b: *mut u16, n: usize) {
-    for i in 0..n {
-        ptr::swap(a.offset(i as isize), b.offset(i as isize));
-    }
-}
-unsafe fn ptr_swap_u32(a: *mut u32, b: *mut u32, n: usize) {
-    for i in 0..n {
-        ptr::swap(a.offset(i as isize), b.offset(i as isize));
-    }
-}
-unsafe fn ptr_swap_u64(a: *mut u64, b: *mut u64, n: usize) {
-    for i in 0..n {
-        ptr::swap(a.offset(i as isize), b.offset(i as isize));
-    }
-}
-
 unsafe fn ptr_swap_n<T>(a: *mut T, b: *mut T, n: usize) {
-    // Doing this as a generic is 16% & 40% slower in two of the `String`
-    // benchmarks, as (based on the block names) LLVM doesn't vectorize it.
-    // Since this is just operating on raw memory, dispatch to a version
-    // with appropriate alignment.  Helps with code size as well, by
-    // avoiding monomorphizing different unrolled loops for `i32`,
-    // `u32`, `f32`, `[u32; 1]`, etc.
-    let size_of_t = mem::size_of::<T>();
-    let align_of_t = mem::align_of::<T>();
-
-    let a64 = mem::align_of::<u64>();
-    if a64 == 8 && align_of_t % a64 == 0 {
-        return ptr_swap_u64(a as *mut u64, b as *mut u64, n * (size_of_t / 8));
+    for i in 0..n {
+        // These are nonoverlapping, so use mem::swap instead of ptr::swap
+        mem::swap(&mut *a.offset(i as isize), &mut *b.offset(i as isize));
     }
-
-    let a32 = mem::align_of::<u32>();
-    if a32 == 4 && align_of_t % a32 == 0 {
-        return ptr_swap_u32(a as *mut u32, b as *mut u32, n * (size_of_t / 4));
-    }
-
-    let a16 = mem::align_of::<u16>();
-    if a16 == 2 && align_of_t % a16 == 0 {
-        return ptr_swap_u16(a as *mut u16, b as *mut u16, n * (size_of_t / 2));
-    }
-
-    ptr_swap_u8(a as *mut u8, b as *mut u8, n * size_of_t);
 }
