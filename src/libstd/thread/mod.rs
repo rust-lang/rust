@@ -244,6 +244,11 @@ impl Builder {
     /// Generates the base configuration for spawning a thread, from which
     /// configuration methods can be chained.
     ///
+    /// If the [`stack_size`] field is not specified, the stack size
+    /// will be the `RUST_MIN_STACK` environment variable, if it is
+    /// not specified either, a sensible default size will be set (2MB as
+    /// of the writting of this doc).
+    ///
     /// # Examples
     ///
     /// ```
@@ -259,6 +264,8 @@ impl Builder {
     ///
     /// handler.join().unwrap();
     /// ```
+    ///
+    /// [`stack_size`]: ../../std/thread/struct.Builder.html#method.stack_size
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Builder {
         Builder {
@@ -728,31 +735,21 @@ struct Inner {
 #[stable(feature = "rust1", since = "1.0.0")]
 /// A handle to a thread.
 ///
-/// You can use it to identify a thread (by name, for example). Most of the
-/// time, there is no need to directly create a `Thread` struct using the
-/// constructor, instead you should use a function like `spawn` to create
-/// new threads, see the docs of [`Builder`] and [`spawn`] for more.
+/// Threads are represented via the `Thread` type, which you can get in one of
+/// two ways:
 ///
-/// # Examples
+/// * By spawning a new thread, e.g. using the [`thread::spawn`][`spawn`]
+///   function, and calling [`thread`][`JoinHandle::thread`] on the
+///   [`JoinHandle`].
+/// * By requesting the current thread, using the [`thread::current`] function.
 ///
-/// ```no_run
-/// # // Note that this example isn't executed by default because it causes
-/// # // deadlocks on Windows unfortunately (see #25824)
-/// use std::thread::Builder;
+/// The [`thread::current`] function is available even for threads not spawned
+/// by the APIs of this module.
 ///
-/// for i in 0..5 {
-///     let thread_name = format!("thread_{}", i);
-///     Builder::new()
-///         .name(thread_name) // Now you can identify which thread panicked
-///                            // thanks to the handle's name
-///         .spawn(move || {
-///             if i == 3 {
-///                  panic!("I'm scared!!!");
-///             }
-///         })
-///         .unwrap();
-/// }
-/// ```
+/// There is usualy no need to create a `Thread` struct yourself, one
+/// should instead use a function like `spawn` to create new threads, see the
+/// docs of [`Builder`] and [`spawn`] for more details.
+///
 /// [`Builder`]: ../../std/thread/struct.Builder.html
 /// [`spawn`]: ../../std/thread/fn.spawn.html
 
