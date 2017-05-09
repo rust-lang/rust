@@ -1,0 +1,12 @@
+error: struct update syntax specified more than once
+  --> $DIR/multiple_struct_update.rs:37:11
+   |
+36 |         ..Foo::default(),
+   |           -------------- first use of struct update syntax
+37 |         ..Foo::new(),
+   |           ^^^^^^^^^^
+   |
+   = help: multiple use of struct update syntax
+
+error: aborting due to previous error
+
