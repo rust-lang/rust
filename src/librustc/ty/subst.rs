@@ -102,7 +102,7 @@ impl<'tcx> fmt::Debug for Kind<'tcx> {
         } else if let Some(r) = self.as_region() {
             write!(f, "{:?}", r)
         } else {
-            write!(f, "<unknwon @ {:p}>", self.ptr.get() as *const ())
+            write!(f, "<unknown @ {:p}>", self.ptr.get() as *const ())
         }
     }
 }
