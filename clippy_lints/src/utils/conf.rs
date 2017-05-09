@@ -204,6 +204,9 @@ pub fn lookup_conf_file() -> io::Result<Option<path::PathBuf>> {
     }
 }
 
+/// Produces a `Conf` filled with the default values and forwards the errors
+///
+/// Used internally for convenience
 fn default(errors: Vec<Error>) -> (Conf, Vec<Error>) {
     (toml::from_str("").expect("we never error on empty config files"), errors)
 }
