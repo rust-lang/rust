@@ -12,9 +12,9 @@
 // crates and libraries
 
 use locator;
-use schema;
+use schema::{self, Tracked};
 
-use rustc::dep_graph::DepGraph;
+use rustc::dep_graph::{DepGraph, DepNode, GlobalMetaDataKind};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefIndex, DefId};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir::svh::Svh;
@@ -83,14 +83,14 @@ pub struct CrateMetadata {
     /// compilation support.
     pub def_path_table: DefPathTable,
 
-    pub exported_symbols: FxHashSet<DefIndex>,
+    pub exported_symbols: Tracked<FxHashSet<DefIndex>>,
 
     pub dep_kind: Cell<DepKind>,
     pub source: CrateSource,
 
     pub proc_macros: Option<Vec<(ast::Name, Rc<SyntaxExtension>)>>,
     // Foreign items imported from a dylib (Windows only)
-    pub dllimport_foreign_items: FxHashSet<DefIndex>,
+    pub dllimport_foreign_items: Tracked<FxHashSet<DefIndex>>,
 }
 
 pub struct CStore {
@@ -269,8 +269,8 @@ impl CrateMetadata {
         self.root.disambiguator
     }
 
-    pub fn is_staged_api(&self) -> bool {
-        for attr in self.get_item_attrs(CRATE_DEF_INDEX).iter() {
+    pub fn is_staged_api(&self, dep_graph: &DepGraph) -> bool {
+        for attr in self.get_item_attrs(CRATE_DEF_INDEX, dep_graph).iter() {
             if attr.path == "stable" || attr.path == "unstable" {
                 return true;
             }
@@ -278,42 +278,51 @@ impl CrateMetadata {
         false
     }
 
-    pub fn is_allocator(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn is_allocator(&self, dep_graph: &DepGraph) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, dep_graph);
         attr::contains_name(&attrs, "allocator")
     }
 
-    pub fn needs_allocator(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn needs_allocator(&self, dep_graph: &DepGraph) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, dep_graph);
         attr::contains_name(&attrs, "needs_allocator")
     }
 
-    pub fn is_panic_runtime(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn is_panic_runtime(&self, dep_graph: &DepGraph) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, dep_graph);
         attr::contains_name(&attrs, "panic_runtime")
     }
 
-    pub fn needs_panic_runtime(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn needs_panic_runtime(&self, dep_graph: &DepGraph) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, dep_graph);
         attr::contains_name(&attrs, "needs_panic_runtime")
     }
 
-    pub fn is_compiler_builtins(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn is_compiler_builtins(&self, dep_graph: &DepGraph) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, dep_graph);
         attr::contains_name(&attrs, "compiler_builtins")
     }
 
-    pub fn is_sanitizer_runtime(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn is_sanitizer_runtime(&self, dep_graph: &DepGraph) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, dep_graph);
         attr::contains_name(&attrs, "sanitizer_runtime")
     }
 
-    pub fn is_no_builtins(&self) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+    pub fn is_no_builtins(&self, dep_graph: &DepGraph) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, dep_graph);
         attr::contains_name(&attrs, "no_builtins")
     }
 
-    pub fn panic_strategy(&self) -> PanicStrategy {
-        self.root.panic_strategy.clone()
+    pub fn panic_strategy(&self, dep_graph: &DepGraph) -> PanicStrategy {
+        let def_id = DefId {
+            krate: self.cnum,
+            index: CRATE_DEF_INDEX,
+        };
+        let dep_node = DepNode::GlobalMetaData(def_id, GlobalMetaDataKind::Krate);
+
+        self.root
+            .panic_strategy
+            .get(dep_graph, dep_node)
+            .clone()
     }
 }

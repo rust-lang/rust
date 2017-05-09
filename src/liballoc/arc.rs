@@ -277,8 +277,7 @@ impl<T> Arc<T> {
         atomic::fence(Acquire);
 
         unsafe {
-            let ptr = *this.ptr;
-            let elem = ptr::read(&(*ptr).data);
+            let elem = ptr::read(&this.ptr.as_ref().data);
 
             // Make a weak pointer to clean up the implicit strong-weak reference
             let _weak = Weak { ptr: this.ptr };
@@ -306,7 +305,7 @@ impl<T> Arc<T> {
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub fn into_raw(this: Self) -> *const T {
-        let ptr = unsafe { &(**this.ptr).data as *const _ };
+        let ptr: *const T = &*this;
         mem::forget(this);
         ptr
     }
@@ -345,7 +344,7 @@ impl<T> Arc<T> {
         // `data` field from the pointer.
         let ptr = (ptr as *const u8).offset(-offset_of!(ArcInner<T>, data));
         Arc {
-            ptr: Shared::new(ptr as *const _),
+            ptr: Shared::new(ptr as *mut u8 as *mut _),
         }
     }
 }
@@ -452,17 +451,17 @@ impl<T: ?Sized> Arc<T> {
         // `ArcInner` structure itself is `Sync` because the inner data is
         // `Sync` as well, so we're ok loaning out an immutable pointer to these
         // contents.
-        unsafe { &**self.ptr }
+        unsafe { self.ptr.as_ref() }
     }
 
     // Non-inlined part of `drop`.
     #[inline(never)]
     unsafe fn drop_slow(&mut self) {
-        let ptr = self.ptr.as_mut_ptr();
+        let ptr = self.ptr.as_ptr();
 
         // Destroy the data at this time, even though we may not free the box
         // allocation itself (there may still be weak pointers lying around).
-        ptr::drop_in_place(&mut (*ptr).data);
+        ptr::drop_in_place(&mut self.ptr.as_mut().data);
 
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
@@ -488,9 +487,7 @@ impl<T: ?Sized> Arc<T> {
     /// assert!(!Arc::ptr_eq(&five, &other_five));
     /// ```
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
-        let this_ptr: *const ArcInner<T> = *this.ptr;
-        let other_ptr: *const ArcInner<T> = *other.ptr;
-        this_ptr == other_ptr
+        this.ptr.as_ptr() == other.ptr.as_ptr()
     }
 }
 
@@ -621,7 +618,7 @@ impl<T: Clone> Arc<T> {
                 // here (due to zeroing) because data is no longer accessed by
                 // other threads (due to there being no more strong refs at this
                 // point).
-                let mut swap = Arc::new(ptr::read(&(**weak.ptr).data));
+                let mut swap = Arc::new(ptr::read(&weak.ptr.as_ref().data));
                 mem::swap(this, &mut swap);
                 mem::forget(swap);
             }
@@ -634,8 +631,7 @@ impl<T: Clone> Arc<T> {
         // As with `get_mut()`, the unsafety is ok because our reference was
         // either unique to begin with, or became one upon cloning the contents.
         unsafe {
-            let inner = &mut *this.ptr.as_mut_ptr();
-            &mut inner.data
+            &mut this.ptr.as_mut().data
         }
     }
 }
@@ -677,8 +673,7 @@ impl<T: ?Sized> Arc<T> {
             // the Arc itself to be `mut`, so we're returning the only possible
             // reference to the inner data.
             unsafe {
-                let inner = &mut *this.ptr.as_mut_ptr();
-                Some(&mut inner.data)
+                Some(&mut this.ptr.as_mut().data)
             }
         } else {
             None
@@ -767,7 +762,18 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
         // > through this reference must obviously happened before), and an
         // > "acquire" operation before deleting the object.
         //
+        // In particular, while the contents of an Arc are usually immutable, it's
+        // possible to have interior writes to something like a Mutex<T>. Since a
+        // Mutex is not acquired when it is deleted, we can't rely on its
+        // synchronization logic to make writes in thread A visible to a destructor
+        // running in thread B.
+        //
+        // Also note that the Acquire fence here could probably be replaced with an
+        // Acquire load, which could improve performance in highly-contended
+        // situations. See [2].
+        //
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
+        // [2]: (https://github.com/rust-lang/rust/pull/41714)
         atomic::fence(Acquire);
 
         unsafe {
@@ -867,7 +873,7 @@ impl<T: ?Sized> Weak<T> {
     #[inline]
     fn inner(&self) -> &ArcInner<T> {
         // See comments above for why this is "safe"
-        unsafe { &**self.ptr }
+        unsafe { self.ptr.as_ref() }
     }
 }
 
@@ -951,7 +957,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// assert!(other_weak_foo.upgrade().is_none());
     /// ```
     fn drop(&mut self) {
-        let ptr = *self.ptr;
+        let ptr = self.ptr.as_ptr();
 
         // If we find out that we were the last weak pointer, then its time to
         // deallocate the data entirely. See the discussion in Arc::drop() about
@@ -1132,7 +1138,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Arc<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Pointer::fmt(&*self.ptr, f)
+        fmt::Pointer::fmt(&self.ptr, f)
     }
 }
 

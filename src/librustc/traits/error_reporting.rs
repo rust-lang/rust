@@ -484,12 +484,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         if let Some(trait_item_span) = self.tcx.hir.span_if_local(trait_item_def_id) {
             let span = self.tcx.sess.codemap().def_span(trait_item_span);
-            err.span_label(span, &format!("definition of `{}` from trait", item_name));
+            err.span_label(span, format!("definition of `{}` from trait", item_name));
         }
 
         err.span_label(
             error_span,
-            &format!("impl has extra requirement {}", requirement));
+            format!("impl has extra requirement {}", requirement));
 
         if let Some(node_id) = lint_id {
             self.tcx.sess.add_lint_diagnostic(EXTRA_REQUIREMENT_IN_IMPL,
@@ -582,7 +582,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         }
 
                         err.span_label(span,
-                                       &format!("{}the trait `{}` is not implemented for `{}`",
+                                       format!("{}the trait `{}` is not implemented for `{}`",
                                                 pre_message,
                                                 trait_ref,
                                                 trait_ref.self_ty()));
@@ -738,11 +738,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             expected_ref,
             found_ref);
 
-        err.span_label(span, &format!("{}", type_error));
+        err.span_label(span, format!("{}", type_error));
 
         if let Some(sp) = found_span {
-            err.span_label(span, &format!("requires `{}`", found_ref));
-            err.span_label(sp, &format!("implements `{}`", expected_ref));
+            err.span_label(span, format!("requires `{}`", found_ref));
+            err.span_label(sp, format!("implements `{}`", expected_ref));
         }
 
         err
@@ -765,12 +765,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             if expected == 1 { "" } else { "s" },
             if expected == 1 { "is" } else { "are" });
 
-        err.span_label(span, &format!("expected {} that takes {} argument{}",
+        err.span_label(span, format!("expected {} that takes {} argument{}",
                                       if is_closure { "closure" } else { "function" },
                                       expected,
                                       if expected == 1 { "" } else { "s" }));
         if let Some(span) = found_span {
-            err.span_label(span, &format!("takes {} argument{}",
+            err.span_label(span, format!("takes {} argument{}",
                                           found,
                                           if found == 1 { "" } else { "s" }));
         }
@@ -789,7 +789,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let mut err = struct_span_err!(self.sess, span, E0072,
                                        "recursive type `{}` has infinite size",
                                        self.item_path_str(type_def_id));
-        err.span_label(span, &format!("recursive type has infinite size"));
+        err.span_label(span, "recursive type has infinite size");
         err.help(&format!("insert indirection (e.g., a `Box`, `Rc`, or `&`) \
                            at some point to make `{}` representable",
                           self.item_path_str(type_def_id)));
@@ -808,7 +808,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.sess, span, E0038,
             "the trait `{}` cannot be made into an object",
             trait_str);
-        err.span_label(span, &format!("the trait `{}` cannot be made into an object", trait_str));
+        err.span_label(span, format!("the trait `{}` cannot be made into an object", trait_str));
 
         let mut reported_violations = FxHashSet();
         for violation in violations {
@@ -1043,7 +1043,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                        "type annotations needed");
 
         for (target_span, label_message) in labels {
-            err.span_label(target_span, &label_message);
+            err.span_label(target_span, label_message);
         }
 
         err.emit();

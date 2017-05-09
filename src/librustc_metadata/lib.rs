@@ -57,6 +57,7 @@ mod index;
 mod encoder;
 mod decoder;
 mod cstore_impl;
+mod isolated_encoder;
 mod schema;
 
 pub mod creader;

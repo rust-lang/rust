@@ -36,7 +36,10 @@ pub const LOCAL_CRATE: CrateNum = CrateNum(0);
 
 /// Virtual crate for builtin macros
 // FIXME(jseyfried): this is also used for custom derives until proc-macro crates get `CrateNum`s.
-pub const BUILTIN_MACROS_CRATE: CrateNum = CrateNum(!0);
+pub const BUILTIN_MACROS_CRATE: CrateNum = CrateNum(u32::MAX);
+
+/// A CrateNum value that indicates that something is wrong.
+pub const INVALID_CRATE: CrateNum = CrateNum(u32::MAX - 1);
 
 impl CrateNum {
     pub fn new(x: usize) -> CrateNum {

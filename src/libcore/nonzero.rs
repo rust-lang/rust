@@ -13,7 +13,7 @@
             reason = "needs an RFC to flesh out the design",
             issue = "27730")]
 
-use ops::{CoerceUnsized, Deref};
+use ops::CoerceUnsized;
 
 /// Unsafe trait to indicate what types are usable with the NonZero struct
 pub unsafe trait Zeroable {}
@@ -46,15 +46,10 @@ impl<T: Zeroable> NonZero<T> {
     pub const unsafe fn new(inner: T) -> NonZero<T> {
         NonZero(inner)
     }
-}
 
-impl<T: Zeroable> Deref for NonZero<T> {
-    type Target = T;
-
-    #[inline]
-    fn deref(&self) -> &T {
-        let NonZero(ref inner) = *self;
-        inner
+    /// Gets the inner value.
+    pub fn get(self) -> T {
+        self.0
     }
 }
 

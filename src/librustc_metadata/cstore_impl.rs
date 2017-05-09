@@ -24,7 +24,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 
-use rustc::dep_graph::DepNode;
+use rustc::dep_graph::{DepNode, GlobalMetaDataKind};
 use rustc::hir::map::{DefKey, DefPath, DisambiguatedDefPathData};
 use rustc::util::nodemap::{NodeSet, DefIdMap};
 use rustc_back::PanicStrategy;
@@ -111,7 +111,7 @@ provide! { <'tcx> tcx, def_id, cdata
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
     stability => { cdata.get_stability(def_id.index) }
     deprecation => { cdata.get_deprecation(def_id.index) }
-    item_attrs => { cdata.get_item_attrs(def_id.index) }
+    item_attrs => { cdata.get_item_attrs(def_id.index, &tcx.dep_graph) }
     // FIXME(#38501) We've skipped a `read` on the `HirBody` of
     // a `fn` when encoding, so the dep-tracking wouldn't work.
     // This is only used by rustdoc anyway, which shouldn't have
@@ -119,7 +119,10 @@ provide! { <'tcx> tcx, def_id, cdata
     fn_arg_names => { cdata.get_fn_arg_names(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
-    is_exported_symbol => { cdata.exported_symbols.contains(&def_id.index) }
+    is_exported_symbol => {
+        let dep_node = cdata.metadata_dep_node(GlobalMetaDataKind::ExportedSymbols);
+        cdata.exported_symbols.get(&tcx.dep_graph, dep_node).contains(&def_id.index)
+    }
     item_body_nested_bodies => { Rc::new(cdata.item_body_nested_bodies(def_id.index)) }
     const_is_rvalue_promotable_to_static => {
         cdata.const_is_rvalue_promotable_to_static(def_id.index)
@@ -149,7 +152,7 @@ impl CrateStore for cstore::CStore {
         }
         let mut result = vec![];
         self.iter_crate_data(|_, cdata| {
-            cdata.get_implementations_for_trait(filter, &mut result)
+            cdata.get_implementations_for_trait(filter, &self.dep_graph, &mut result)
         });
         result
     }
@@ -186,63 +189,71 @@ impl CrateStore for cstore::CStore {
         if def_id.krate == LOCAL_CRATE {
             self.dllimport_foreign_items.borrow().contains(&def_id.index)
         } else {
-            self.get_crate_data(def_id.krate).is_dllimport_foreign_item(def_id.index)
+            self.get_crate_data(def_id.krate)
+                .is_dllimport_foreign_item(def_id.index, &self.dep_graph)
         }
     }
 
     fn dylib_dependency_formats(&self, cnum: CrateNum)
                                 -> Vec<(CrateNum, LinkagePreference)>
     {
-        self.get_crate_data(cnum).get_dylib_dependency_formats()
+        self.get_crate_data(cnum).get_dylib_dependency_formats(&self.dep_graph)
     }
 
     fn dep_kind(&self, cnum: CrateNum) -> DepKind
     {
-        self.get_crate_data(cnum).dep_kind.get()
+        let data = self.get_crate_data(cnum);
+        let dep_node = data.metadata_dep_node(GlobalMetaDataKind::CrateDeps);
+        self.dep_graph.read(dep_node);
+        data.dep_kind.get()
     }
 
     fn export_macros(&self, cnum: CrateNum) {
-        if self.get_crate_data(cnum).dep_kind.get() == DepKind::UnexportedMacrosOnly {
-            self.get_crate_data(cnum).dep_kind.set(DepKind::MacrosOnly)
+        let data = self.get_crate_data(cnum);
+        let dep_node = data.metadata_dep_node(GlobalMetaDataKind::CrateDeps);
+
+        self.dep_graph.read(dep_node);
+        if data.dep_kind.get() == DepKind::UnexportedMacrosOnly {
+            data.dep_kind.set(DepKind::MacrosOnly)
         }
     }
 
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>
     {
-        self.get_crate_data(cnum).get_lang_items()
+        self.get_crate_data(cnum).get_lang_items(&self.dep_graph)
     }
 
     fn missing_lang_items(&self, cnum: CrateNum)
                           -> Vec<lang_items::LangItem>
     {
-        self.get_crate_data(cnum).get_missing_lang_items()
+        self.get_crate_data(cnum).get_missing_lang_items(&self.dep_graph)
     }
 
     fn is_staged_api(&self, cnum: CrateNum) -> bool
     {
-        self.get_crate_data(cnum).is_staged_api()
+        self.get_crate_data(cnum).is_staged_api(&self.dep_graph)
     }
 
     fn is_allocator(&self, cnum: CrateNum) -> bool
     {
-        self.get_crate_data(cnum).is_allocator()
+        self.get_crate_data(cnum).is_allocator(&self.dep_graph)
     }
 
     fn is_panic_runtime(&self, cnum: CrateNum) -> bool
     {
-        self.get_crate_data(cnum).is_panic_runtime()
+        self.get_crate_data(cnum).is_panic_runtime(&self.dep_graph)
     }
 
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool {
-        self.get_crate_data(cnum).is_compiler_builtins()
+        self.get_crate_data(cnum).is_compiler_builtins(&self.dep_graph)
     }
 
     fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool {
-        self.get_crate_data(cnum).is_sanitizer_runtime()
+        self.get_crate_data(cnum).is_sanitizer_runtime(&self.dep_graph)
     }
 
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy {
-        self.get_crate_data(cnum).panic_strategy()
+        self.get_crate_data(cnum).panic_strategy(&self.dep_graph)
     }
 
     fn crate_name(&self, cnum: CrateNum) -> Symbol
@@ -288,16 +299,16 @@ impl CrateStore for cstore::CStore {
 
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>
     {
-        self.get_crate_data(cnum).get_native_libraries()
+        self.get_crate_data(cnum).get_native_libraries(&self.dep_graph)
     }
 
     fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId>
     {
-        self.get_crate_data(cnum).get_exported_symbols()
+        self.get_crate_data(cnum).get_exported_symbols(&self.dep_graph)
     }
 
     fn is_no_builtins(&self, cnum: CrateNum) -> bool {
-        self.get_crate_data(cnum).is_no_builtins()
+        self.get_crate_data(cnum).is_no_builtins(&self.dep_graph)
     }
 
     fn retrace_path(&self,
@@ -364,7 +375,7 @@ impl CrateStore for cstore::CStore {
         let body = filemap_to_stream(&sess.parse_sess, filemap);
 
         // Mark the attrs as used
-        let attrs = data.get_item_attrs(id.index);
+        let attrs = data.get_item_attrs(id.index, &self.dep_graph);
         for attr in attrs.iter() {
             attr::mark_used(attr);
         }
@@ -446,7 +457,7 @@ impl CrateStore for cstore::CStore {
                                  reachable: &NodeSet)
                                  -> EncodedMetadata
     {
-        encoder::encode_metadata(tcx, self, link_meta, reachable)
+        encoder::encode_metadata(tcx, link_meta, reachable)
     }
 
     fn metadata_encoding_version(&self) -> &[u8]

@@ -965,10 +965,6 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.pushed == 0
-    }
-
     /// Return the "expected type" with which this coercion was
     /// constructed.  This represents the "downward propagated" type
     /// that was given to us at the start of typing whatever construct
@@ -1148,7 +1144,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         db = struct_span_err!(
                             fcx.tcx.sess, cause.span, E0069,
                             "`return;` in a function whose return type is not `()`");
-                        db.span_label(cause.span, &format!("return type is not ()"));
+                        db.span_label(cause.span, "return type is not ()");
                     }
                     _ => {
                         db = fcx.report_mismatched_types(cause, expected, found, err);

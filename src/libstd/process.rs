@@ -148,8 +148,9 @@ impl fmt::Debug for Child {
     }
 }
 
-/// A handle to a child process's stdin. This struct is used in the [`stdin`]
-/// field on [`Child`].
+/// A handle to a child process's stdin.
+///
+/// This struct is used in the [`stdin`] field on [`Child`].
 ///
 /// [`Child`]: struct.Child.html
 /// [`stdin`]: struct.Child.html#structfield.stdin
@@ -190,8 +191,9 @@ impl fmt::Debug for ChildStdin {
     }
 }
 
-/// A handle to a child process's stdout. This struct is used in the [`stdout`]
-/// field on [`Child`].
+/// A handle to a child process's stdout.
+///
+/// This struct is used in the [`stdout`] field on [`Child`].
 ///
 /// [`Child`]: struct.Child.html
 /// [`stdout`]: struct.Child.html#structfield.stdout

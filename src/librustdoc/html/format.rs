@@ -687,9 +687,9 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
             }
         }
         clean::Vector(ref t) if is_not_debug => {
-            primitive_link(f, PrimitiveType::Slice, &format!("["))?;
+            primitive_link(f, PrimitiveType::Slice, "[")?;
             fmt::Display::fmt(t, f)?;
-            primitive_link(f, PrimitiveType::Slice, &format!("]"))
+            primitive_link(f, PrimitiveType::Slice, "]")
         }
         clean::Vector(ref t) => write!(f, "[{:?}]", t),
         clean::FixedVector(ref t, ref s) if is_not_debug => {

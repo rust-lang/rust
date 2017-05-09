@@ -88,7 +88,7 @@ pub enum NestedVisitorMap<'this, 'tcx: 'this> {
     /// that are inside of an item-like.
     ///
     /// **This is the most common choice.** A very commmon pattern is
-    /// to use `tcx.visit_all_item_likes_in_krate()` as an outer loop,
+    /// to use `visit_all_item_likes()` as an outer loop,
     /// and to have the visitor that visits the contents of each item
     /// using this setting.
     OnlyBodies(&'this Map<'tcx>),
@@ -140,23 +140,6 @@ impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
 pub trait Visitor<'v> : Sized {
-    /// Invokes the suitable visitor method for the given `Node`
-    /// extracted from the hir map.
-    fn visit_hir_map_node(&mut self, node: map::Node<'v>) {
-        match node {
-            map::NodeItem(a) => self.visit_item(a),
-            map::NodeForeignItem(a) => self.visit_foreign_item(a),
-            map::NodeTraitItem(a) => self.visit_trait_item(a),
-            map::NodeImplItem(a) => self.visit_impl_item(a),
-            map::NodeExpr(a) => self.visit_expr(a),
-            map::NodeStmt(a) => self.visit_stmt(a),
-            map::NodeTy(a) => self.visit_ty(a),
-            map::NodePat(a) => self.visit_pat(a),
-            map::NodeBlock(a) => self.visit_block(a),
-            _ => bug!("Visitor::visit_hir_map_node() not yet impl for node `{:?}`", node)
-        }
-    }
-
     ///////////////////////////////////////////////////////////////////////////
     // Nested items.
 

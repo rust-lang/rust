@@ -48,7 +48,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                                          E0117,
                                          "only traits defined in the current crate can be \
                                           implemented for arbitrary types")
-                            .span_label(item.span, &format!("impl doesn't use types inside crate"))
+                            .span_label(item.span, "impl doesn't use types inside crate")
                             .note(&format!("the impl does not reference any types defined in \
                                             this crate"))
                             .note("define and implement a trait or new type instead")
@@ -153,7 +153,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                                      "cannot create default implementations for traits outside \
                                       the crate they're defined in; define a new trait instead")
                         .span_label(item_trait_ref.path.span,
-                                    &format!("`{}` trait not defined in this crate",
+                                    format!("`{}` trait not defined in this crate",
                             self.tcx.hir.node_to_pretty_string(item_trait_ref.ref_id)))
                         .emit();
                     return;

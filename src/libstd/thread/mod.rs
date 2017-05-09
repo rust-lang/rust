@@ -66,7 +66,7 @@
 //! let res = child.join();
 //! ```
 //!
-//! The [`join`] method returns a [`Result`] containing [`Ok`] of the final
+//! The [`join`] method returns a [`thread::Result`] containing [`Ok`] of the final
 //! value produced by the child thread, or [`Err`] of the value given to
 //! a call to [`panic!`] if the child panicked.
 //!
@@ -159,6 +159,7 @@
 //! [`panic!`]: ../../std/macro.panic.html
 //! [`Builder`]: ../../std/thread/struct.Builder.html
 //! [`thread::current`]: ../../std/thread/fn.current.html
+//! [`thread::Result`]: ../../std/thread/type.Result.html
 //! [`Thread`]: ../../std/thread/struct.Thread.html
 //! [`park`]: ../../std/thread/fn.park.html
 //! [`unpark`]: ../../std/thread/struct.Thread.html#method.unpark
@@ -457,6 +458,16 @@ pub fn yield_now() {
 
 /// Determines whether the current thread is unwinding because of panic.
 ///
+/// A common use of this feature is to poison shared resources when writing
+/// unsafe code, by checking `panicking` when the `drop` is called.
+///
+/// This is usually not needed when writing safe code, as [`Mutex`es][Mutex]
+/// already poison themselves when a thread panics while holding the lock.
+///
+/// This can also be used in multithreaded applications, in order to send a
+/// message to other threads warning that a thread has panicked (e.g. for
+/// monitoring purposes).
+///
 /// # Examples
 ///
 /// ```should_panic
@@ -485,6 +496,8 @@ pub fn yield_now() {
 ///     panic!()
 /// }
 /// ```
+///
+/// [Mutex]: ../../std/sync/struct.Mutex.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn panicking() -> bool {
@@ -715,21 +728,34 @@ struct Inner {
 #[stable(feature = "rust1", since = "1.0.0")]
 /// A handle to a thread.
 ///
+/// You can use it to identify a thread (by name, for example). Most of the
+/// time, there is no need to directly create a `Thread` struct using the
+/// constructor, instead you should use a function like `spawn` to create
+/// new threads, see the docs of [`Builder`] and [`spawn`] for more.
+///
 /// # Examples
 ///
-/// ```
-/// use std::thread;
+/// ```no_run
+/// # // Note that this example isn't executed by default because it causes
+/// # // deadlocks on Windows unfortunately (see #25824)
+/// use std::thread::Builder;
 ///
-/// let handler = thread::Builder::new()
-///     .name("foo".into())
-///     .spawn(|| {
-///         let thread = thread::current();
-///         println!("thread name: {}", thread.name().unwrap());
-///     })
-///     .unwrap();
-///
-/// handler.join().unwrap();
+/// for i in 0..5 {
+///     let thread_name = format!("thread_{}", i);
+///     Builder::new()
+///         .name(thread_name) // Now you can identify which thread panicked
+///                            // thanks to the handle's name
+///         .spawn(move || {
+///             if i == 3 {
+///                  panic!("I'm scared!!!");
+///             }
+///         })
+///         .unwrap();
+/// }
 /// ```
+/// [`Builder`]: ../../std/thread/struct.Builder.html
+/// [`spawn`]: ../../std/thread/fn.spawn.html
+
 pub struct Thread {
     inner: Arc<Inner>,
 }
@@ -851,9 +877,31 @@ impl fmt::Debug for Thread {
 // JoinHandle
 ////////////////////////////////////////////////////////////////////////////////
 
+/// A specialized [`Result`] type for threads.
+///
 /// Indicates the manner in which a thread exited.
 ///
 /// A thread that completes without panicking is considered to exit successfully.
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::thread;
+/// use std::fs;
+///
+/// fn copy_in_thread() -> thread::Result<()> {
+///     thread::spawn(move || { fs::copy("foo.txt", "bar.txt").unwrap(); }).join()
+/// }
+///
+/// fn main() {
+///     match copy_in_thread() {
+///         Ok(_) => println!("this is fine"),
+///         Err(_) => println!("thread panicked"),
+///     }
+/// }
+/// ```
+///
+/// [`Result`]: ../../std/result/enum.Result.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type Result<T> = ::result::Result<T, Box<Any + Send + 'static>>;
 

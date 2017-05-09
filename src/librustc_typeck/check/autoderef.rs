@@ -62,7 +62,7 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
                              E0055,
                              "reached the recursion limit while auto-dereferencing {:?}",
                              self.cur_ty)
-                .span_label(self.span, &format!("deref recursion limit reached"))
+                .span_label(self.span, "deref recursion limit reached")
                 .help(&format!(
                         "consider adding a `#[recursion_limit=\"{}\"]` attribute to your crate",
                         suggested_limit))

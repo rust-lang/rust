@@ -36,6 +36,7 @@ use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind};
 use rustc::middle::stability;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_typeck::hir_ty_to_ty;
 
 use rustc::hir;
 
@@ -1779,10 +1780,9 @@ impl Clean<Type> for hir::Ty {
             }
             TyPath(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 let mut def = Def::Err;
-                if let Some(ty) = cx.tcx.ast_ty_to_ty_cache.borrow().get(&self.id) {
-                    if let ty::TyProjection(proj) = ty.sty {
-                        def = Def::Trait(proj.trait_ref.def_id);
-                    }
+                let ty = hir_ty_to_ty(cx.tcx, self);
+                if let ty::TyProjection(proj) = ty.sty {
+                    def = Def::Trait(proj.trait_ref.def_id);
                 }
                 let trait_path = hir::Path {
                     span: self.span,

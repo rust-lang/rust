@@ -67,7 +67,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use alloc::boxed::Box;
-use alloc::heap::EMPTY;
 use alloc::raw_vec::RawVec;
 use borrow::ToOwned;
 use borrow::Cow;
@@ -1776,9 +1775,9 @@ impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
         // A common case is passing a vector into a function which immediately
         // re-collects into a vector. We can short circuit this if the IntoIter
         // has not been advanced at all.
-        if *iterator.buf == iterator.ptr as *mut T {
+        if iterator.buf.as_ptr() as *const _ == iterator.ptr {
             unsafe {
-                let vec = Vec::from_raw_parts(*iterator.buf as *mut T,
+                let vec = Vec::from_raw_parts(iterator.buf.as_ptr(),
                                               iterator.len(),
                                               iterator.cap);
                 mem::forget(iterator);
@@ -2192,7 +2191,8 @@ impl<T> Iterator for IntoIter<T> {
                     self.ptr = arith_offset(self.ptr as *const i8, 1) as *mut T;
 
                     // Use a non-null pointer value
-                    Some(ptr::read(EMPTY as *mut T))
+                    // (self.ptr might be null because of wrapping)
+                    Some(ptr::read(1 as *mut T))
                 } else {
                     let old = self.ptr;
                     self.ptr = self.ptr.offset(1);
@@ -2231,7 +2231,8 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
                     self.end = arith_offset(self.end as *const i8, -1) as *mut T;
 
                     // Use a non-null pointer value
-                    Some(ptr::read(EMPTY as *mut T))
+                    // (self.end might be null because of wrapping)
+                    Some(ptr::read(1 as *mut T))
                 } else {
                     self.end = self.end.offset(-1);
 
@@ -2269,7 +2270,7 @@ unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
         for _x in self.by_ref() {}
 
         // RawVec handles deallocation
-        let _ = unsafe { RawVec::from_raw_parts(self.buf.as_mut_ptr(), self.cap) };
+        let _ = unsafe { RawVec::from_raw_parts(self.buf.as_ptr(), self.cap) };
     }
 }
 
@@ -2334,7 +2335,7 @@ impl<'a, T> Drop for Drain<'a, T> {
 
         if self.tail_len > 0 {
             unsafe {
-                let source_vec = &mut *self.vec.as_mut_ptr();
+                let source_vec = self.vec.as_mut();
                 // memmove back untouched tail, update to new length
                 let start = source_vec.len();
                 let tail = self.tail_start;
@@ -2456,8 +2457,7 @@ impl<'a, I: Iterator> Drop for Splice<'a, I> {
 
         unsafe {
             if self.drain.tail_len == 0 {
-                let vec = &mut *self.drain.vec.as_mut_ptr();
-                vec.extend(self.replace_with.by_ref());
+                self.drain.vec.as_mut().extend(self.replace_with.by_ref());
                 return
             }
 
@@ -2498,7 +2498,7 @@ impl<'a, T> Drain<'a, T> {
     /// Fill that range as much as possible with new elements from the `replace_with` iterator.
     /// Return whether we filled the entire range. (`replace_with.next()` didn’t return `None`.)
     unsafe fn fill<I: Iterator<Item=T>>(&mut self, replace_with: &mut I) -> bool {
-        let vec = &mut *self.vec.as_mut_ptr();
+        let vec = self.vec.as_mut();
         let range_start = vec.len;
         let range_end = self.tail_start;
         let range_slice = slice::from_raw_parts_mut(
@@ -2518,7 +2518,7 @@ impl<'a, T> Drain<'a, T> {
 
     /// Make room for inserting more elements before the tail.
     unsafe fn move_tail(&mut self, extra_capacity: usize) {
-        let vec = &mut *self.vec.as_mut_ptr();
+        let vec = self.vec.as_mut();
         let used_capacity = self.tail_start + self.tail_len;
         vec.buf.reserve(used_capacity, extra_capacity);
 

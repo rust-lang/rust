@@ -402,7 +402,7 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          "lifetime parameters or bounds on method `{}` do not match the \
                           trait declaration",
                          impl_m.name)
-            .span_label(span, &format!("lifetimes do not match trait"))
+            .span_label(span, "lifetimes do not match trait")
             .emit();
         return Err(ErrorReported);
     }
@@ -534,9 +534,9 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             not in the trait",
                                            trait_m.name,
                                            self_descr);
-            err.span_label(impl_m_span, &format!("`{}` used in impl", self_descr));
+            err.span_label(impl_m_span, format!("`{}` used in impl", self_descr));
             if let Some(span) = tcx.hir.span_if_local(trait_m.def_id) {
-                err.span_label(span, &format!("trait declared without `{}`", self_descr));
+                err.span_label(span, format!("trait declared without `{}`", self_descr));
             }
             err.emit();
             return Err(ErrorReported);
@@ -552,9 +552,9 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            trait_m.name,
                                            self_descr);
             err.span_label(impl_m_span,
-                           &format!("expected `{}` in impl", self_descr));
+                           format!("expected `{}` in impl", self_descr));
             if let Some(span) = tcx.hir.span_if_local(trait_m.def_id) {
-                err.span_label(span, &format!("`{}` used in trait", self_descr));
+                err.span_label(span, format!("`{}` used in trait", self_descr));
             }
             err.emit();
             return Err(ErrorReported);
@@ -606,7 +606,7 @@ fn compare_number_of_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         if let Some(span) = trait_item_span {
             err.span_label(span,
-                           &format!("expected {}",
+                           format!("expected {}",
                                     &if num_trait_m_type_params != 1 {
                                         format!("{} type parameters", num_trait_m_type_params)
                                     } else {
@@ -617,7 +617,7 @@ fn compare_number_of_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         err.span_label(span,
-                       &format!("found {}{}",
+                       format!("found {}{}",
                                 &if num_impl_m_type_params != 1 {
                                     format!("{} type parameters", num_impl_m_type_params)
                                 } else {
@@ -696,7 +696,7 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        trait_number_args);
         if let Some(trait_span) = trait_span {
             err.span_label(trait_span,
-                           &format!("trait requires {}",
+                           format!("trait requires {}",
                                     &if trait_number_args != 1 {
                                         format!("{} parameters", trait_number_args)
                                     } else {
@@ -704,7 +704,7 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     }));
         }
         err.span_label(impl_span,
-                       &format!("expected {}, found {}",
+                       format!("expected {}, found {}",
                                 &if trait_number_args != 1 {
                                     format!("{} parameters", trait_number_args)
                                 } else {

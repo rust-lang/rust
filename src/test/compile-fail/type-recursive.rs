@@ -11,7 +11,7 @@
 struct t1 { //~ ERROR E0072
             //~| NOTE recursive type has infinite size
     foo: isize,
-    foolish: t1
+    foolish: t1  //~ NOTE recursive without indirection
 }
 
 fn main() { }

@@ -1120,3 +1120,11 @@ impl_stable_hash_for!(struct hir::def::Export {
     def,
     span
 });
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ::middle::lang_items::LangItem {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          _: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        ::std::hash::Hash::hash(self, hasher);
+    }
+}

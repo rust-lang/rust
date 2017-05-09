@@ -137,7 +137,6 @@ r##"<!DOCTYPE html>
         window.rootPath = "{root_path}";
         window.currentCrate = "{krate}";
     </script>
-    <script src="{root_path}jquery.js"></script>
     <script src="{root_path}main.js"></script>
     <script defer src="{root_path}search-index.js"></script>
 </body>

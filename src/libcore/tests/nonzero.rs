@@ -31,12 +31,12 @@ fn test_match_on_nonzero_option() {
         NonZero::new(42)
     });
     match a {
-        Some(val) => assert_eq!(*val, 42),
+        Some(val) => assert_eq!(val.get(), 42),
         None => panic!("unexpected None while matching on Some(NonZero(_))")
     }
 
     match unsafe { Some(NonZero::new(43)) } {
-        Some(val) => assert_eq!(*val, 43),
+        Some(val) => assert_eq!(val.get(), 43),
         None => panic!("unexpected None while matching on Some(NonZero(_))")
     }
 }

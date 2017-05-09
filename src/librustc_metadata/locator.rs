@@ -367,7 +367,7 @@ impl<'a> Context<'a> {
                 && self.triple != config::host_triple() {
                 err.note(&format!("the `{}` target may not be installed", self.triple));
             }
-            err.span_label(self.span, &format!("can't find crate"));
+            err.span_label(self.span, "can't find crate");
             err
         };
 

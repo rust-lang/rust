@@ -73,7 +73,7 @@ fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
 }
 
 impl<'a> StringReader<'a> {
-    fn next_token(&mut self) -> TokenAndSpan where Self: Sized {
+    fn next_token(&mut self) -> TokenAndSpan {
         let res = self.try_next_token();
         self.unwrap_or_abort(res)
     }
@@ -504,7 +504,7 @@ impl<'a> StringReader<'a> {
                     self.bump();
 
                     // line comments starting with "///" or "//!" are doc-comments
-                    let doc_comment = self.ch_is('/') || self.ch_is('!');
+                    let doc_comment = (self.ch_is('/') && !self.nextch_is('/')) || self.ch_is('!');
                     let start_bpos = self.pos - BytePos(2);
 
                     while !self.is_eof() {

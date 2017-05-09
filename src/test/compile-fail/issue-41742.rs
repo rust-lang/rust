@@ -8,17 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Ensure that capturing closures are never coerced to fns
-// Especially interesting as non-capturing closures can be.
+use std::ops::{Index, IndexMut};
+
+struct S;
+struct H;
+
+impl S {
+    fn f(&mut self) {}
+}
+
+impl Index<u32> for H {
+    type Output = S;
+    fn index(&self, index: u32) -> &S {
+        unimplemented!()
+    }
+}
+
+impl IndexMut<u32> for H {
+    fn index_mut(&mut self, index: u32) -> &mut S {
+        unimplemented!()
+    }
+}
 
 fn main() {
-    let mut a = 0u8;
-    let foo: fn(u8) -> u8 = |v: u8| { a += v; a };
-    //~^ ERROR mismatched types
-    let b = 0u8;
-    let bar: fn() -> u8 = || { b };
-    //~^ ERROR mismatched types
-    let baz: fn() -> u8 = || { b } as fn() -> u8;
-    //~^ ERROR mismatched types
-    //~^^ ERROR non-scalar cast
+    H["?"].f(); //~ ERROR mismatched types
 }

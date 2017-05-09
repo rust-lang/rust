@@ -138,7 +138,7 @@ impl<'a, 'b: 'a, 'hir: 'b> CheckItemRecursionVisitor<'a, 'b, 'hir> {
             });
             if !any_static {
                 struct_span_err!(self.sess, span, E0265, "recursive constant")
-                    .span_label(span, &format!("recursion not allowed in constant"))
+                    .span_label(span, "recursion not allowed in constant")
                     .emit();
             }
             return;

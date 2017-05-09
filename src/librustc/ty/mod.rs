@@ -15,7 +15,7 @@ pub use self::IntVarValue::*;
 pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
-use dep_graph::{self, DepNode};
+use dep_graph::DepNode;
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -55,9 +55,9 @@ use rustc_const_math::ConstInt;
 use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
+use rustc_data_structures::transitive_relation::TransitiveRelation;
 
 use hir;
-use hir::itemlikevisit::ItemLikeVisitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
 pub use self::sty::{FnSig, PolyFnSig};
@@ -307,6 +307,27 @@ pub enum Variance {
     Invariant,      // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
     Contravariant,  // T<A> <: T<B> iff B <: A -- e.g., function param type
     Bivariant,      // T<A> <: T<B>            -- e.g., unused type parameter
+}
+
+/// The crate variances map is computed during typeck and contains the
+/// variance of every item in the local crate. You should not use it
+/// directly, because to do so will make your pass dependent on the
+/// HIR of every item in the local crate. Instead, use
+/// `tcx.variances_of()` to get the variance for a *particular*
+/// item.
+pub struct CrateVariancesMap {
+    /// This relation tracks the dependencies between the variance of
+    /// various items. In particular, if `a < b`, then the variance of
+    /// `a` depends on the sources of `b`.
+    pub dependencies: TransitiveRelation<DefId>,
+
+    /// For each item with generics, maps to a vector of the variance
+    /// of its generics.  If an item has no generics, it will have no
+    /// entry.
+    pub variances: FxHashMap<DefId, Rc<Vec<ty::Variance>>>,
+
+    /// An empty vector, useful for cloning.
+    pub empty_variance: Rc<Vec<ty::Variance>>,
 }
 
 #[derive(Clone, Copy, Debug, RustcDecodable, RustcEncodable)]
@@ -1217,7 +1238,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
         match tcx.hir.find(id) {
             Some(hir_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
-                    hir::ImplItemKind::Type(_) | hir::ImplItemKind::Const(..) => {
+                    hir::ImplItemKind::Type(_) => {
                         // associated types don't have their own entry (for some reason),
                         // so for now just grab environment for the impl
                         let impl_id = tcx.hir.get_parent(id);
@@ -1226,7 +1247,8 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                                                             impl_def_id,
                                                             Some(tcx.item_extent(id)))
                     }
-                    hir::ImplItemKind::Method(_, ref body) => {
+                    hir::ImplItemKind::Const(_, body) |
+                    hir::ImplItemKind::Method(_, body) => {
                         tcx.construct_parameter_environment(
                             impl_item.span,
                             tcx.hir.local_def_id(id),
@@ -1236,56 +1258,37 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
             }
             Some(hir_map::NodeTraitItem(trait_item)) => {
                 match trait_item.node {
-                    hir::TraitItemKind::Type(..) | hir::TraitItemKind::Const(..) => {
-                        // associated types don't have their own entry (for some reason),
-                        // so for now just grab environment for the trait
-                        let trait_id = tcx.hir.get_parent(id);
-                        let trait_def_id = tcx.hir.local_def_id(trait_id);
+                    hir::TraitItemKind::Type(..) |
+                    hir::TraitItemKind::Const(_, None) |
+                    hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_))=> {
                         tcx.construct_parameter_environment(trait_item.span,
-                                                            trait_def_id,
+                                                            tcx.hir.local_def_id(id),
                                                             Some(tcx.item_extent(id)))
                     }
-                    hir::TraitItemKind::Method(_, ref body) => {
-                        // Use call-site for extent (unless this is a
-                        // trait method with no default; then fallback
-                        // to the method id).
-                        let extent = if let hir::TraitMethod::Provided(body_id) = *body {
-                            // default impl: use call_site extent as free_id_outlive bound.
-                            tcx.call_site_extent(id, body_id.node_id)
-                        } else {
-                            // no default impl: use item extent as free_id_outlive bound.
-                            tcx.item_extent(id)
-                        };
+                    hir::TraitItemKind::Const(_, Some(body)) |
+                    hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(body)) => {
                         tcx.construct_parameter_environment(
                             trait_item.span,
                             tcx.hir.local_def_id(id),
-                            Some(extent))
+                            Some(tcx.call_site_extent(id, body.node_id)))
                     }
                 }
             }
             Some(hir_map::NodeItem(item)) => {
                 match item.node {
-                    hir::ItemFn(.., body_id) => {
-                        // We assume this is a function.
-                        let fn_def_id = tcx.hir.local_def_id(id);
-
+                    hir::ItemConst(_, body) |
+                    hir::ItemStatic(.., body) |
+                    hir::ItemFn(.., body) => {
                         tcx.construct_parameter_environment(
                             item.span,
-                            fn_def_id,
-                            Some(tcx.call_site_extent(id, body_id.node_id)))
+                            tcx.hir.local_def_id(id),
+                            Some(tcx.call_site_extent(id, body.node_id)))
                     }
                     hir::ItemEnum(..) |
                     hir::ItemStruct(..) |
                     hir::ItemUnion(..) |
                     hir::ItemTy(..) |
                     hir::ItemImpl(..) |
-                    hir::ItemConst(..) |
-                    hir::ItemStatic(..) => {
-                        let def_id = tcx.hir.local_def_id(id);
-                        tcx.construct_parameter_environment(item.span,
-                                                            def_id,
-                                                            Some(tcx.item_extent(id)))
-                    }
                     hir::ItemTrait(..) => {
                         let def_id = tcx.hir.local_def_id(id);
                         tcx.construct_parameter_environment(item.span,
@@ -2525,14 +2528,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn node_scope_region(self, id: NodeId) -> Region<'tcx> {
         self.mk_region(ty::ReScope(self.node_extent(id)))
-    }
-
-    pub fn visit_all_item_likes_in_krate<V,F>(self,
-                                              dep_node_fn: F,
-                                              visitor: &mut V)
-        where F: FnMut(DefId) -> DepNode<DefId>, V: ItemLikeVisitor<'gcx>
-    {
-        dep_graph::visit_all_item_likes_in_krate(self.global_tcx(), dep_node_fn, visitor);
     }
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`

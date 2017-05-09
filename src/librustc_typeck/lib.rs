@@ -122,14 +122,14 @@ use std::iter;
 // registered before they are used.
 pub mod diagnostics;
 
-pub mod check;
-pub mod check_unused;
+mod check;
+mod check_unused;
 mod astconv;
-pub mod collect;
+mod collect;
 mod constrained_type_params;
 mod impl_wf_check;
-pub mod coherence;
-pub mod variance;
+mod coherence;
+mod variance;
 
 pub struct TypeAndSubsts<'tcx> {
     pub substs: &'tcx Substs<'tcx>,
@@ -143,7 +143,7 @@ fn require_c_abi_if_variadic(tcx: TyCtxt,
     if decl.variadic && abi != Abi::C {
         let mut err = struct_span_err!(tcx.sess, span, E0045,
                   "variadic function must have C calling convention");
-        err.span_label(span, &("variadics require C calling conventions").to_string())
+        err.span_label(span, "variadics require C calling conventions")
             .emit();
     }
 }
@@ -190,7 +190,7 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 struct_span_err!(tcx.sess, generics.span, E0131,
                                          "main function is not allowed to have type parameters")
                                     .span_label(generics.span,
-                                                &format!("main cannot have type parameters"))
+                                                "main cannot have type parameters")
                                     .emit();
                                 return;
                             }
@@ -240,7 +240,7 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             struct_span_err!(tcx.sess, ps.span, E0132,
                                 "start function is not allowed to have type parameters")
                                 .span_label(ps.span,
-                                            &format!("start function cannot have type parameters"))
+                                            "start function cannot have type parameters")
                                 .emit();
                             return;
                         }
@@ -293,6 +293,7 @@ pub fn provide(providers: &mut Providers) {
     collect::provide(providers);
     coherence::provide(providers);
     check::provide(providers);
+    variance::provide(providers);
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
@@ -307,9 +308,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
     })?;
 
-    time(time_passes, "variance inference", ||
-         variance::infer_variance(tcx));
-
     tcx.sess.track_errors(|| {
         time(time_passes, "impl wf inference", ||
              impl_wf_check::impl_wf_check(tcx));
@@ -318,6 +316,11 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     tcx.sess.track_errors(|| {
       time(time_passes, "coherence checking", ||
           coherence::check_coherence(tcx));
+    })?;
+
+    tcx.sess.track_errors(|| {
+        time(time_passes, "variance testing", ||
+             variance::test::test_variance(tcx));
     })?;
 
     time(time_passes, "wf checking", || check::check_wf_new(tcx))?;
@@ -335,6 +338,18 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     } else {
         Err(err_count)
     }
+}
+
+/// A quasi-deprecated helper used in rustdoc and save-analysis to get
+/// the type from a HIR node.
+pub fn hir_ty_to_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx> {
+    // In case there are any projections etc, find the "environment"
+    // def-id that will be used to determine the traits/predicates in
+    // scope.  This is derived from the enclosing item-like thing.
+    let env_node_id = tcx.hir.get_parent(hir_ty.id);
+    let env_def_id = tcx.hir.local_def_id(env_node_id);
+    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
+    item_cx.to_ty(hir_ty)
 }
 
 __build_diagnostic_array! { librustc_typeck, DIAGNOSTICS }
