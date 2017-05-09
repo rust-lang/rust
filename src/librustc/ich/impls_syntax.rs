@@ -19,7 +19,9 @@ use std::mem;
 use syntax::ast;
 use syntax::parse::token;
 use syntax::tokenstream;
-use syntax_pos::Span;
+use syntax_pos::{Span, FileMap};
+
+use hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
@@ -298,4 +300,80 @@ fn hash_token<'a, 'tcx, W: StableHasherResult>(token: &token::Token,
         token::Token::DocComment(val) |
         token::Token::Shebang(val) => val.hash_stable(hcx, hasher),
     }
+}
+
+impl_stable_hash_for_spanned!(::syntax::ast::NestedMetaItemKind);
+
+impl_stable_hash_for!(enum ::syntax::ast::NestedMetaItemKind {
+    MetaItem(meta_item),
+    Literal(lit)
+});
+
+impl_stable_hash_for!(struct ::syntax::ast::MetaItem {
+    name,
+    node,
+    span
+});
+
+impl_stable_hash_for!(enum ::syntax::ast::MetaItemKind {
+    Word,
+    List(nested_items),
+    NameValue(lit)
+});
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for FileMap {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let FileMap {
+            ref name,
+            name_was_remapped,
+            crate_of_origin,
+            // Do not hash the source as it is not encoded
+            src: _,
+            start_pos,
+            end_pos: _,
+            ref lines,
+            ref multibyte_chars,
+        } = *self;
+
+        name.hash_stable(hcx, hasher);
+        name_was_remapped.hash_stable(hcx, hasher);
+
+        DefId {
+            krate: CrateNum::from_u32(crate_of_origin),
+            index: CRATE_DEF_INDEX,
+        }.hash_stable(hcx, hasher);
+
+        // We only hash the relative position within this filemap
+        let lines = lines.borrow();
+        lines.len().hash_stable(hcx, hasher);
+        for &line in lines.iter() {
+            stable_byte_pos(line, start_pos).hash_stable(hcx, hasher);
+        }
+
+        // We only hash the relative position within this filemap
+        let multibyte_chars = multibyte_chars.borrow();
+        multibyte_chars.len().hash_stable(hcx, hasher);
+        for &char_pos in multibyte_chars.iter() {
+            stable_multibyte_char(char_pos, start_pos).hash_stable(hcx, hasher);
+        }
+    }
+}
+
+fn stable_byte_pos(pos: ::syntax_pos::BytePos,
+                   filemap_start: ::syntax_pos::BytePos)
+                   -> u32 {
+    pos.0 - filemap_start.0
+}
+
+fn stable_multibyte_char(mbc: ::syntax_pos::MultiByteChar,
+                         filemap_start: ::syntax_pos::BytePos)
+                         -> (u32, u32) {
+    let ::syntax_pos::MultiByteChar {
+        pos,
+        bytes,
+    } = mbc;
+
+    (pos.0 - filemap_start.0, bytes as u32)
 }
