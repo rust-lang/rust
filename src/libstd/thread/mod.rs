@@ -400,7 +400,7 @@ impl Builder {
 ///
 /// # Examples
 ///
-/// Simple thread creation.
+/// Creating a thread.
 ///
 /// ```
 /// use std::thread;
@@ -413,7 +413,7 @@ impl Builder {
 /// ```
 ///
 /// As mentionned in the module documentation, threads are usualy made to
-/// communicate using [`channel`s][`channels`], here is how it usually looks.
+/// communicate using [`channels`], here is how it usually looks.
 ///
 /// This example also shows how to use `move`, in order to give ownership
 /// of values to a thread.
