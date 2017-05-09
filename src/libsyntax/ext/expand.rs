@@ -231,7 +231,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             },
             _ => unreachable!(),
         };
-
+        self.cx.trace_macros_diag();
         krate
     }
 
@@ -1038,7 +1038,7 @@ impl<'feat> ExpansionConfig<'feat> {
         ExpansionConfig {
             crate_name: crate_name,
             features: None,
-            recursion_limit: 64,
+            recursion_limit: 1024,
             trace_mac: false,
             should_test: false,
             single_step: false,

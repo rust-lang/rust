@@ -242,9 +242,9 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                    to the crate attributes to enable");
         } else {
             self.find_drop_implementation_method_span()
-                .map(|span| err.span_label(span, &format!("destructor defined here")));
+                .map(|span| err.span_label(span, "destructor defined here"));
 
-            err.span_label(self.span, &format!("constants cannot have destructors"));
+            err.span_label(self.span, "constants cannot have destructors");
         }
 
         err.emit();
@@ -291,8 +291,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 "cannot refer to statics by value, use a constant instead"
             };
             struct_span_err!(self.tcx.sess, self.span, E0394, "{}", msg)
-                .span_label(self.span, &format!("referring to another static by value"))
-                .note(&format!("use the address-of operator or a constant instead"))
+                .span_label(self.span, "referring to another static by value")
+                .note("use the address-of operator or a constant instead")
                 .emit();
 
             // Replace STATIC with NOT_CONST to avoid further errors.
@@ -529,7 +529,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                         "raw pointers cannot be dereferenced in {}s",
                                         this.mode)
                                     .span_label(this.span,
-                                        &format!("dereference of raw pointer in constant"))
+                                        "dereference of raw pointer in constant")
                                     .emit();
                                 }
                             }
@@ -645,7 +645,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             struct_span_err!(self.tcx.sess,  self.span, E0017,
                                              "references in {}s may only refer \
                                               to immutable values", self.mode)
-                                .span_label(self.span, &format!("{}s require immutable values",
+                                .span_label(self.span, format!("{}s require immutable values",
                                                                 self.mode))
                                 .emit();
                         }
@@ -713,7 +713,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             self.mode)
                         .span_label(
                             self.span,
-                            &format!("comparing raw pointers in static"))
+                            "comparing raw pointers in static")
                         .emit();
                     }
                 }
@@ -724,7 +724,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 if self.mode != Mode::Fn {
                     struct_span_err!(self.tcx.sess, self.span, E0010,
                                      "allocations are not allowed in {}s", self.mode)
-                        .span_label(self.span, &format!("allocation not allowed in {}s", self.mode))
+                        .span_label(self.span, format!("allocation not allowed in {}s", self.mode))
                         .emit();
                 }
             }

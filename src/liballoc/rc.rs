@@ -230,7 +230,7 @@ use core::cell::Cell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::intrinsics::{abort, assume};
+use core::intrinsics::abort;
 use core::marker;
 use core::marker::Unsize;
 use core::mem::{self, align_of_val, forget, size_of, size_of_val, uninitialized};
@@ -358,7 +358,7 @@ impl<T> Rc<T> {
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub fn into_raw(this: Self) -> *const T {
-        let ptr = unsafe { &mut (*this.ptr.as_mut_ptr()).value as *const _ };
+        let ptr: *const T = &*this;
         mem::forget(this);
         ptr
     }
@@ -395,7 +395,11 @@ impl<T> Rc<T> {
     pub unsafe fn from_raw(ptr: *const T) -> Self {
         // To find the corresponding pointer to the `RcBox` we need to subtract the offset of the
         // `value` field from the pointer.
-        Rc { ptr: Shared::new((ptr as *const u8).offset(-offset_of!(RcBox<T>, value)) as *const _) }
+
+        let ptr = (ptr as *const u8).offset(-offset_of!(RcBox<T>, value));
+        Rc {
+            ptr: Shared::new(ptr as *mut u8 as *mut _)
+        }
     }
 }
 
@@ -451,7 +455,7 @@ impl<T> Rc<[T]> {
             // Free the original allocation without freeing its (moved) contents.
             box_free(Box::into_raw(value));
 
-            Rc { ptr: Shared::new(ptr as *const _) }
+            Rc { ptr: Shared::new(ptr as *mut _) }
         }
     }
 }
@@ -553,8 +557,9 @@ impl<T: ?Sized> Rc<T> {
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn get_mut(this: &mut Self) -> Option<&mut T> {
         if Rc::is_unique(this) {
-            let inner = unsafe { &mut *this.ptr.as_mut_ptr() };
-            Some(&mut inner.value)
+            unsafe {
+                Some(&mut this.ptr.as_mut().value)
+            }
         } else {
             None
         }
@@ -578,9 +583,7 @@ impl<T: ?Sized> Rc<T> {
     /// assert!(!Rc::ptr_eq(&five, &other_five));
     /// ```
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
-        let this_ptr: *const RcBox<T> = *this.ptr;
-        let other_ptr: *const RcBox<T> = *other.ptr;
-        this_ptr == other_ptr
+        this.ptr.as_ptr() == other.ptr.as_ptr()
     }
 }
 
@@ -623,7 +626,7 @@ impl<T: Clone> Rc<T> {
         } else if Rc::weak_count(this) != 0 {
             // Can just steal the data, all that's left is Weaks
             unsafe {
-                let mut swap = Rc::new(ptr::read(&(**this.ptr).value));
+                let mut swap = Rc::new(ptr::read(&this.ptr.as_ref().value));
                 mem::swap(this, &mut swap);
                 swap.dec_strong();
                 // Remove implicit strong-weak ref (no need to craft a fake
@@ -637,8 +640,9 @@ impl<T: Clone> Rc<T> {
         // reference count is guaranteed to be 1 at this point, and we required
         // the `Rc<T>` itself to be `mut`, so we're returning the only possible
         // reference to the inner value.
-        let inner = unsafe { &mut *this.ptr.as_mut_ptr() };
-        &mut inner.value
+        unsafe {
+            &mut this.ptr.as_mut().value
+        }
     }
 }
 
@@ -683,12 +687,12 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// ```
     fn drop(&mut self) {
         unsafe {
-            let ptr = self.ptr.as_mut_ptr();
+            let ptr = self.ptr.as_ptr();
 
             self.dec_strong();
             if self.strong() == 0 {
                 // destroy the contained object
-                ptr::drop_in_place(&mut (*ptr).value);
+                ptr::drop_in_place(self.ptr.as_mut());
 
                 // remove the implicit "strong weak" pointer now that we've
                 // destroyed the contents.
@@ -925,7 +929,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Rc<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Pointer::fmt(&*self.ptr, f)
+        fmt::Pointer::fmt(&self.ptr, f)
     }
 }
 
@@ -1067,7 +1071,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// ```
     fn drop(&mut self) {
         unsafe {
-            let ptr = *self.ptr;
+            let ptr = self.ptr.as_ptr();
 
             self.dec_weak();
             // the weak count starts at 1, and will only go to zero if all
@@ -1175,12 +1179,7 @@ impl<T: ?Sized> RcBoxPtr<T> for Rc<T> {
     #[inline(always)]
     fn inner(&self) -> &RcBox<T> {
         unsafe {
-            // Safe to assume this here, as if it weren't true, we'd be breaking
-            // the contract anyway.
-            // This allows the null check to be elided in the destructor if we
-            // manipulated the reference count in the same function.
-            assume(!(*(&self.ptr as *const _ as *const *const ())).is_null());
-            &(**self.ptr)
+            self.ptr.as_ref()
         }
     }
 }
@@ -1189,12 +1188,7 @@ impl<T: ?Sized> RcBoxPtr<T> for Weak<T> {
     #[inline(always)]
     fn inner(&self) -> &RcBox<T> {
         unsafe {
-            // Safe to assume this here, as if it weren't true, we'd be breaking
-            // the contract anyway.
-            // This allows the null check to be elided in the destructor if we
-            // manipulated the reference count in the same function.
-            assume(!(*(&self.ptr as *const _ as *const *const ())).is_null());
-            &(**self.ptr)
+            self.ptr.as_ref()
         }
     }
 }

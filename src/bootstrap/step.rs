@@ -307,7 +307,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                  .dep(|s| s.name("libtest"))
                  .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
                  .dep(|s| s.name("test-helpers"))
-                 .dep(|s| s.name("emulator-copy-libs"))
+                 .dep(|s| s.name("remote-copy-libs"))
                  .default(mode != "pretty") // pretty tests don't run everywhere
                  .run(move |s| {
                      check::compiletest(build, &s.compiler(), s.target, mode, dir)
@@ -346,7 +346,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
              .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
              .dep(|s| s.name("test-helpers"))
              .dep(|s| s.name("debugger-scripts"))
-             .dep(|s| s.name("emulator-copy-libs"))
+             .dep(|s| s.name("remote-copy-libs"))
              .run(move |s| check::compiletest(build, &s.compiler(), s.target,
                                          "debuginfo-gdb", "debuginfo"));
         let mut rule = rules.test("check-debuginfo", "src/test/debuginfo");
@@ -400,14 +400,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, _default) in krates("std") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("emulator-copy-libs"))
+             .dep(|s| s.name("remote-copy-libs"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Libstd, TestKind::Test,
                                         Some(&krate.name)));
     }
     rules.test("check-std-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
-         .dep(|s| s.name("emulator-copy-libs"))
+         .dep(|s| s.name("remote-copy-libs"))
          .default(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
                                     Mode::Libstd, TestKind::Test, None));
@@ -416,14 +416,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, _default) in krates("std") {
         rules.bench(&krate.bench_step, path)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("emulator-copy-libs"))
+             .dep(|s| s.name("remote-copy-libs"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Libstd, TestKind::Bench,
                                         Some(&krate.name)));
     }
     rules.bench("bench-std-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
-         .dep(|s| s.name("emulator-copy-libs"))
+         .dep(|s| s.name("remote-copy-libs"))
          .default(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
                                     Mode::Libstd, TestKind::Bench, None));
@@ -431,21 +431,21 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, _default) in krates("test") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("emulator-copy-libs"))
+             .dep(|s| s.name("remote-copy-libs"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Libtest, TestKind::Test,
                                         Some(&krate.name)));
     }
     rules.test("check-test-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
-         .dep(|s| s.name("emulator-copy-libs"))
+         .dep(|s| s.name("remote-copy-libs"))
          .default(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
                                     Mode::Libtest, TestKind::Test, None));
     for (krate, path, _default) in krates("rustc-main") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("librustc"))
-             .dep(|s| s.name("emulator-copy-libs"))
+             .dep(|s| s.name("remote-copy-libs"))
              .host(true)
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Librustc, TestKind::Test,
@@ -453,7 +453,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     }
     rules.test("check-rustc-all", "path/to/nowhere")
          .dep(|s| s.name("librustc"))
-         .dep(|s| s.name("emulator-copy-libs"))
+         .dep(|s| s.name("remote-copy-libs"))
          .default(true)
          .host(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
@@ -500,17 +500,17 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.build("openssl", "path/to/nowhere")
          .run(move |s| native::openssl(build, s.target));
 
-    // Some test suites are run inside emulators, and most of our test binaries
-    // are linked dynamically which means we need to ship the standard library
-    // and such to the emulator ahead of time. This step represents this and is
-    // a dependency of all test suites.
+    // Some test suites are run inside emulators or on remote devices, and most
+    // of our test binaries are linked dynamically which means we need to ship
+    // the standard library and such to the emulator ahead of time. This step
+    // represents this and is a dependency of all test suites.
     //
     // Most of the time this step is a noop (the `check::emulator_copy_libs`
     // only does work if necessary). For some steps such as shipping data to
     // QEMU we have to build our own tools so we've got conditional dependencies
-    // on those programs as well. Note that the QEMU client is built for the
-    // build target (us) and the server is built for the target.
-    rules.test("emulator-copy-libs", "path/to/nowhere")
+    // on those programs as well. Note that the remote test client is built for
+    // the build target (us) and the server is built for the target.
+    rules.test("remote-copy-libs", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
          .dep(move |s| {
              if build.remote_tested(s.target) {
@@ -526,7 +526,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                  Step::noop()
              }
          })
-         .run(move |s| check::emulator_copy_libs(build, &s.compiler(), s.target));
+         .run(move |s| check::remote_copy_libs(build, &s.compiler(), s.target));
 
     rules.test("check-bootstrap", "src/bootstrap")
          .default(true)

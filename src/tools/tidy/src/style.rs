@@ -101,7 +101,7 @@ pub fn check(path: &Path, bad: &mut bool) {
            filename.starts_with(".#") {
             return
         }
-        if filename == "miniz.c" || filename.contains("jquery") {
+        if filename == "miniz.c" {
             return
         }
 

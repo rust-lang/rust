@@ -161,7 +161,7 @@ impl<T> LinkedList<T> {
 
             match self.head {
                 None => self.tail = node,
-                Some(head) => (*head.as_mut_ptr()).prev = node,
+                Some(mut head) => head.as_mut().prev = node,
             }
 
             self.head = node;
@@ -173,12 +173,12 @@ impl<T> LinkedList<T> {
     #[inline]
     fn pop_front_node(&mut self) -> Option<Box<Node<T>>> {
         self.head.map(|node| unsafe {
-            let node = Box::from_raw(node.as_mut_ptr());
+            let node = Box::from_raw(node.as_ptr());
             self.head = node.next;
 
             match self.head {
                 None => self.tail = None,
-                Some(head) => (*head.as_mut_ptr()).prev = None,
+                Some(mut head) => head.as_mut().prev = None,
             }
 
             self.len -= 1;
@@ -196,7 +196,7 @@ impl<T> LinkedList<T> {
 
             match self.tail {
                 None => self.head = node,
-                Some(tail) => (*tail.as_mut_ptr()).next = node,
+                Some(mut tail) => tail.as_mut().next = node,
             }
 
             self.tail = node;
@@ -208,12 +208,12 @@ impl<T> LinkedList<T> {
     #[inline]
     fn pop_back_node(&mut self) -> Option<Box<Node<T>>> {
         self.tail.map(|node| unsafe {
-            let node = Box::from_raw(node.as_mut_ptr());
+            let node = Box::from_raw(node.as_ptr());
             self.tail = node.prev;
 
             match self.tail {
                 None => self.head = None,
-                Some(tail) => (*tail.as_mut_ptr()).next = None,
+                Some(mut tail) => tail.as_mut().next = None,
             }
 
             self.len -= 1;
@@ -285,11 +285,11 @@ impl<T> LinkedList<T> {
     pub fn append(&mut self, other: &mut Self) {
         match self.tail {
             None => mem::swap(self, other),
-            Some(tail) => {
-                if let Some(other_head) = other.head.take() {
+            Some(mut tail) => {
+                if let Some(mut other_head) = other.head.take() {
                     unsafe {
-                        (*tail.as_mut_ptr()).next = Some(other_head);
-                        (*other_head.as_mut_ptr()).prev = Some(tail);
+                        tail.as_mut().next = Some(other_head);
+                        other_head.as_mut().prev = Some(tail);
                     }
 
                     self.tail = other.tail.take();
@@ -477,7 +477,9 @@ impl<T> LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn front(&self) -> Option<&T> {
-        self.head.map(|node| unsafe { &(**node).element })
+        unsafe {
+            self.head.as_ref().map(|node| &node.as_ref().element)
+        }
     }
 
     /// Provides a mutable reference to the front element, or `None` if the list
@@ -503,7 +505,9 @@ impl<T> LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn front_mut(&mut self) -> Option<&mut T> {
-        self.head.map(|node| unsafe { &mut (*node.as_mut_ptr()).element })
+        unsafe {
+            self.head.as_mut().map(|node| &mut node.as_mut().element)
+        }
     }
 
     /// Provides a reference to the back element, or `None` if the list is
@@ -523,7 +527,9 @@ impl<T> LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back(&self) -> Option<&T> {
-        self.tail.map(|node| unsafe { &(**node).element })
+        unsafe {
+            self.tail.as_ref().map(|node| &node.as_ref().element)
+        }
     }
 
     /// Provides a mutable reference to the back element, or `None` if the list
@@ -549,7 +555,9 @@ impl<T> LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back_mut(&mut self) -> Option<&mut T> {
-        self.tail.map(|node| unsafe { &mut (*node.as_mut_ptr()).element })
+        unsafe {
+            self.tail.as_mut().map(|node| &mut node.as_mut().element)
+        }
     }
 
     /// Adds an element first in the list.
@@ -694,9 +702,9 @@ impl<T> LinkedList<T> {
         let second_part_head;
 
         unsafe {
-            second_part_head = (*split_node.unwrap().as_mut_ptr()).next.take();
-            if let Some(head) = second_part_head {
-                (*head.as_mut_ptr()).prev = None;
+            second_part_head = split_node.unwrap().as_mut().next.take();
+            if let Some(mut head) = second_part_head {
+                head.as_mut().prev = None;
             }
         }
 
@@ -788,7 +796,8 @@ impl<'a, T> Iterator for Iter<'a, T> {
             None
         } else {
             self.head.map(|node| unsafe {
-                let node = &**node;
+                // Need an unbound lifetime to get 'a
+                let node = &*node.as_ptr();
                 self.len -= 1;
                 self.head = node.next;
                 &node.element
@@ -810,7 +819,8 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
             None
         } else {
             self.tail.map(|node| unsafe {
-                let node = &**node;
+                // Need an unbound lifetime to get 'a
+                let node = &*node.as_ptr();
                 self.len -= 1;
                 self.tail = node.prev;
                 &node.element
@@ -835,7 +845,8 @@ impl<'a, T> Iterator for IterMut<'a, T> {
             None
         } else {
             self.head.map(|node| unsafe {
-                let node = &mut *node.as_mut_ptr();
+                // Need an unbound lifetime to get 'a
+                let node = &mut *node.as_ptr();
                 self.len -= 1;
                 self.head = node.next;
                 &mut node.element
@@ -857,7 +868,8 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
             None
         } else {
             self.tail.map(|node| unsafe {
-                let node = &mut *node.as_mut_ptr();
+                // Need an unbound lifetime to get 'a
+                let node = &mut *node.as_ptr();
                 self.len -= 1;
                 self.tail = node.prev;
                 &mut node.element
@@ -903,8 +915,8 @@ impl<'a, T> IterMut<'a, T> {
     pub fn insert_next(&mut self, element: T) {
         match self.head {
             None => self.list.push_back(element),
-            Some(head) => unsafe {
-                let prev = match (**head).prev {
+            Some(mut head) => unsafe {
+                let mut prev = match head.as_ref().prev {
                     None => return self.list.push_front(element),
                     Some(prev) => prev,
                 };
@@ -915,8 +927,8 @@ impl<'a, T> IterMut<'a, T> {
                     element: element,
                 })));
 
-                (*prev.as_mut_ptr()).next = node;
-                (*head.as_mut_ptr()).prev = node;
+                prev.as_mut().next = node;
+                head.as_mut().prev = node;
 
                 self.list.len += 1;
             },
@@ -948,7 +960,9 @@ impl<'a, T> IterMut<'a, T> {
         if self.len == 0 {
             None
         } else {
-            self.head.map(|node| unsafe { &mut (*node.as_mut_ptr()).element })
+            unsafe {
+                self.head.as_mut().map(|node| &mut node.as_mut().element)
+            }
         }
     }
 }
@@ -1276,21 +1290,21 @@ mod tests {
                     assert_eq!(0, list.len);
                     return;
                 }
-                Some(node) => node_ptr = &**node,
+                Some(node) => node_ptr = &*node.as_ptr(),
             }
             loop {
                 match (last_ptr, node_ptr.prev) {
                     (None, None) => {}
                     (None, _) => panic!("prev link for head"),
                     (Some(p), Some(pptr)) => {
-                        assert_eq!(p as *const Node<T>, *pptr as *const Node<T>);
+                        assert_eq!(p as *const Node<T>, pptr.as_ptr() as *const Node<T>);
                     }
                     _ => panic!("prev link is none, not good"),
                 }
                 match node_ptr.next {
                     Some(next) => {
                         last_ptr = Some(node_ptr);
-                        node_ptr = &**next;
+                        node_ptr = &*next.as_ptr();
                         len += 1;
                     }
                     None => {

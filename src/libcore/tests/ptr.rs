@@ -166,10 +166,10 @@ fn test_set_memory() {
 
 #[test]
 fn test_unsized_unique() {
-    let xs: &mut [i32] = &mut [1, 2, 3];
-    let ptr = unsafe { Unique::new(xs as *mut [i32]) };
-    let ys = unsafe { &mut **ptr };
-    let zs: &mut [i32] = &mut [1, 2, 3];
+    let xs: &[i32] = &[1, 2, 3];
+    let ptr = unsafe { Unique::new(xs as *const [i32] as *mut [i32]) };
+    let ys = unsafe { ptr.as_ref() };
+    let zs: &[i32] = &[1, 2, 3];
     assert!(ys == zs);
 }
 

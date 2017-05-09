@@ -258,7 +258,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 "refutable pattern in {}: `{}` not covered",
                 origin, pattern_string
             );
-            diag.span_label(pat.span, &format!("pattern `{}` not covered", pattern_string));
+            diag.span_label(pat.span, format!("pattern `{}` not covered", pattern_string));
             diag.emit();
         });
     }
@@ -328,7 +328,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                 let span = first_pat.0.span;
                                 struct_span_err!(cx.tcx.sess, span, E0162,
                                                 "irrefutable if-let pattern")
-                                    .span_label(span, &format!("irrefutable pattern"))
+                                    .span_label(span, "irrefutable pattern")
                                     .emit();
                                 printed_if_let_err = true;
                             }
@@ -355,7 +355,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                 1 => {
                                     struct_span_err!(cx.tcx.sess, span, E0165,
                                                      "irrefutable while-let pattern")
-                                        .span_label(span, &format!("irrefutable pattern"))
+                                        .span_label(span, "irrefutable pattern")
                                         .emit();
                                 },
                                 _ => bug!(),
@@ -369,7 +369,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                             diagnostic.set_span(pat.span);
                             // if we had a catchall pattern, hint at that
                             if let Some(catchall) = catchall {
-                                diagnostic.span_label(pat.span, &"this is an unreachable pattern");
+                                diagnostic.span_label(pat.span, "this is an unreachable pattern");
                                 diagnostic.span_note(catchall, "this pattern matches any value");
                             }
                             cx.tcx.sess.add_lint_diagnostic(lint::builtin::UNREACHABLE_PATTERNS,
@@ -426,7 +426,7 @@ fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                         "refutable pattern in `for` loop binding: \
                                 `{}` not covered",
                                 pattern_string)
-                        .span_label(sp, &format!("pattern `{}` not covered", pattern_string))
+                        .span_label(sp, format!("pattern `{}` not covered", pattern_string))
                         .emit();
                 },
                 _ => {
@@ -453,7 +453,7 @@ fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                     create_e0004(cx.tcx.sess, sp,
                                  format!("non-exhaustive patterns: {} not covered",
                                          joined_patterns))
-                        .span_label(sp, &label_text)
+                        .span_label(sp, label_text)
                         .emit();
                 },
             }
@@ -485,18 +485,18 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
         if sub.map_or(false, |p| p.contains_bindings()) {
             struct_span_err!(cx.tcx.sess, p.span, E0007,
                              "cannot bind by-move with sub-bindings")
-                .span_label(p.span, &format!("binds an already bound by-move value by moving it"))
+                .span_label(p.span, "binds an already bound by-move value by moving it")
                 .emit();
         } else if has_guard {
             struct_span_err!(cx.tcx.sess, p.span, E0008,
                       "cannot bind by-move into a pattern guard")
-                .span_label(p.span, &format!("moves value into pattern guard"))
+                .span_label(p.span, "moves value into pattern guard")
                 .emit();
         } else if by_ref_span.is_some() {
             struct_span_err!(cx.tcx.sess, p.span, E0009,
                             "cannot bind by-move and by-ref in the same pattern")
-                    .span_label(p.span, &format!("by-move pattern here"))
-                    .span_label(by_ref_span.unwrap(), &format!("both by-ref and by-move used"))
+                    .span_label(p.span, "by-move pattern here")
+                    .span_label(by_ref_span.unwrap(), "both by-ref and by-move used")
                     .emit();
         }
     };
@@ -546,7 +546,7 @@ impl<'a, 'gcx, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'gcx> {
             ty::MutBorrow => {
                 struct_span_err!(self.cx.tcx.sess, span, E0301,
                           "cannot mutably borrow in a pattern guard")
-                    .span_label(span, &format!("borrowed mutably in pattern guard"))
+                    .span_label(span, "borrowed mutably in pattern guard")
                     .emit();
             }
             ty::ImmBorrow | ty::UniqueImmBorrow => {}
@@ -557,7 +557,7 @@ impl<'a, 'gcx, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'gcx> {
         match mode {
             MutateMode::JustWrite | MutateMode::WriteAndRead => {
                 struct_span_err!(self.cx.tcx.sess, span, E0302, "cannot assign in a pattern guard")
-                    .span_label(span, &format!("assignment in pattern guard"))
+                    .span_label(span, "assignment in pattern guard")
                     .emit();
             }
             MutateMode::Init => {}
@@ -588,7 +588,7 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
                 if !self.bindings_allowed {
                     struct_span_err!(self.cx.tcx.sess, pat.span, E0303,
                                      "pattern bindings are not allowed after an `@`")
-                        .span_label(pat.span,  &format!("not allowed after `@`"))
+                        .span_label(pat.span,  "not allowed after `@`")
                         .emit();
                 }
 

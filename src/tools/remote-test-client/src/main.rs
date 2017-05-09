@@ -25,6 +25,8 @@ use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
 
+const REMOTE_ADDR_ENV: &'static str = "TEST_DEVICE_ADDR";
+
 macro_rules! t {
     ($e:expr) => (match $e {
         Ok(e) => e,
@@ -56,7 +58,11 @@ fn spawn_emulator(target: &str,
                   server: &Path,
                   tmpdir: &Path,
                   rootfs: Option<PathBuf>) {
-    if target.contains("android") {
+    let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or("127.0.0.1:12345".to_string());
+
+    if env::var(REMOTE_ADDR_ENV).is_ok() {
+        println!("Connecting to remote device {} ...", device_address);
+    } else if target.contains("android") {
         start_android_emulator(server);
     } else {
         let rootfs = rootfs.as_ref().expect("need rootfs on non-android");
@@ -66,7 +72,7 @@ fn spawn_emulator(target: &str,
     // Wait for the emulator to come online
     loop {
         let dur = Duration::from_millis(100);
-        if let Ok(mut client) = TcpStream::connect("127.0.0.1:12345") {
+        if let Ok(mut client) = TcpStream::connect(&device_address) {
             t!(client.set_read_timeout(Some(dur)));
             t!(client.set_write_timeout(Some(dur)));
             if client.write_all(b"ping").is_ok() {
@@ -162,7 +168,8 @@ fn start_qemu_emulator(rootfs: &Path, server: &Path, tmpdir: &Path) {
 }
 
 fn push(path: &Path) {
-    let client = t!(TcpStream::connect("127.0.0.1:12345"));
+    let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or("127.0.0.1:12345".to_string());
+    let client = t!(TcpStream::connect(device_address));
     let mut client = BufWriter::new(client);
     t!(client.write_all(b"push"));
     send(path, &mut client);
@@ -178,7 +185,8 @@ fn push(path: &Path) {
 }
 
 fn run(files: String, args: Vec<String>) {
-    let client = t!(TcpStream::connect("127.0.0.1:12345"));
+    let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or("127.0.0.1:12345".to_string());
+    let client = t!(TcpStream::connect(device_address));
     let mut client = BufWriter::new(client);
     t!(client.write_all(b"run "));
 

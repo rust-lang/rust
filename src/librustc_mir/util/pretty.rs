@@ -13,6 +13,7 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::*;
 use rustc::mir::transform::{MirSuite, MirPassIndex, MirSource};
 use rustc::ty::TyCtxt;
+use rustc::ty::item_path;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx};
 use std::fmt::Display;
@@ -48,7 +49,9 @@ pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return;
     }
 
-    let node_path = tcx.item_path_str(tcx.hir.local_def_id(source.item_id()));
+    let node_path = item_path::with_forced_impl_filename_line(|| { // see notes on #41697 below
+        tcx.item_path_str(tcx.hir.local_def_id(source.item_id()))
+    });
     dump_matched_mir_node(tcx, pass_num, pass_name, &node_path,
                           disambiguator, source, mir);
     for (index, promoted_mir) in mir.promoted.iter_enumerated() {
@@ -67,7 +70,9 @@ pub fn dump_enabled<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Some(ref filters) => filters,
     };
     let node_id = source.item_id();
-    let node_path = tcx.item_path_str(tcx.hir.local_def_id(node_id));
+    let node_path = item_path::with_forced_impl_filename_line(|| { // see notes on #41697 below
+        tcx.item_path_str(tcx.hir.local_def_id(node_id))
+    });
     filters.split("&")
            .any(|filter| {
                filter == "all" ||
@@ -75,6 +80,10 @@ pub fn dump_enabled<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    node_path.contains(filter)
            })
 }
+
+// #41697 -- we use `with_forced_impl_filename_line()` because
+// `item_path_str()` would otherwise trigger `type_of`, and this can
+// run while we are already attempting to evaluate `type_of`.
 
 fn dump_matched_mir_node<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    pass_num: Option<(MirSuite, MirPassIndex)>,

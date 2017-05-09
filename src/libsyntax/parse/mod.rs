@@ -261,10 +261,14 @@ pub fn char_lit(lit: &str) -> (char, isize) {
     }
 }
 
+pub fn escape_default(s: &str) -> String {
+    s.chars().map(char::escape_default).flat_map(|x| x).collect()
+}
+
 /// Parse a string representing a string literal into its final form. Does
 /// unescaping.
 pub fn str_lit(lit: &str) -> String {
-    debug!("parse_str_lit: given {}", lit.escape_default());
+    debug!("parse_str_lit: given {}", escape_default(lit));
     let mut res = String::with_capacity(lit.len());
 
     // FIXME #8372: This could be a for-loop if it didn't borrow the iterator
@@ -339,7 +343,7 @@ pub fn str_lit(lit: &str) -> String {
 /// Parse a string representing a raw string literal into its final form. The
 /// only operation this does is convert embedded CRLF into a single LF.
 pub fn raw_str_lit(lit: &str) -> String {
-    debug!("raw_str_lit: given {}", lit.escape_default());
+    debug!("raw_str_lit: given {}", escape_default(lit));
     let mut res = String::with_capacity(lit.len());
 
     // FIXME #8372: This could be a for-loop if it didn't borrow the iterator

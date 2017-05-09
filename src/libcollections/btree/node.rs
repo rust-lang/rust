@@ -152,12 +152,12 @@ impl<K, V> BoxedNode<K, V> {
     }
 
     unsafe fn from_ptr(ptr: NonZero<*const LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: Unique::new(*ptr as *mut LeafNode<K, V>) }
+        BoxedNode { ptr: Unique::new(ptr.get() as *mut LeafNode<K, V>) }
     }
 
     fn as_ptr(&self) -> NonZero<*const LeafNode<K, V>> {
         unsafe {
-            NonZero::new(*self.ptr as *const LeafNode<K, V>)
+            NonZero::new(self.ptr.as_ptr())
         }
     }
 }
@@ -241,7 +241,7 @@ impl<K, V> Root<K, V> {
     pub fn pop_level(&mut self) {
         debug_assert!(self.height > 0);
 
-        let top = *self.node.ptr as *mut u8;
+        let top = self.node.ptr.as_ptr() as *mut u8;
 
         self.node = unsafe {
             BoxedNode::from_ptr(self.as_mut()
@@ -308,7 +308,7 @@ unsafe impl<K: Send, V: Send, Type> Send
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
     fn as_internal(&self) -> &InternalNode<K, V> {
         unsafe {
-            &*(*self.node as *const InternalNode<K, V>)
+            &*(self.node.get() as *const InternalNode<K, V>)
         }
     }
 }
@@ -316,7 +316,7 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     fn as_internal_mut(&mut self) -> &mut InternalNode<K, V> {
         unsafe {
-            &mut *(*self.node as *mut InternalNode<K, V>)
+            &mut *(self.node.get() as *mut InternalNode<K, V>)
         }
     }
 }
@@ -358,7 +358,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
 
     fn as_leaf(&self) -> &LeafNode<K, V> {
         unsafe {
-            &**self.node
+            &*self.node.get()
         }
     }
 
@@ -510,7 +510,7 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 
     fn as_leaf_mut(&mut self) -> &mut LeafNode<K, V> {
         unsafe {
-            &mut *(*self.node as *mut LeafNode<K, V>)
+            &mut *(self.node.get() as *mut LeafNode<K, V>)
         }
     }
 
@@ -1253,13 +1253,13 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 }
 
                 heap::deallocate(
-                    *right_node.node as *mut u8,
+                    right_node.node.get() as *mut u8,
                     mem::size_of::<InternalNode<K, V>>(),
                     mem::align_of::<InternalNode<K, V>>()
                 );
             } else {
                 heap::deallocate(
-                    *right_node.node as *mut u8,
+                    right_node.node.get() as *mut u8,
                     mem::size_of::<LeafNode<K, V>>(),
                     mem::align_of::<LeafNode<K, V>>()
                 );

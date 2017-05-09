@@ -14,8 +14,9 @@
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "0", feature = "windows_c")]
 
-use os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort,};
-use os::raw::{c_char, c_ulonglong};
+use os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort, c_char};
+#[cfg(target_arch = "x86_64")]
+use os::raw::c_ulonglong;
 use libc::{wchar_t, size_t, c_void};
 use ptr;
 
@@ -45,7 +46,7 @@ pub type SIZE_T = usize;
 pub type WORD = u16;
 pub type CHAR = c_char;
 pub type HCRYPTPROV = LONG_PTR;
-pub type ULONG_PTR = c_ulonglong;
+pub type ULONG_PTR = usize;
 pub type ULONG = c_ulong;
 #[cfg(target_arch = "x86_64")]
 pub type ULONGLONG = u64;
@@ -935,7 +936,6 @@ extern "system" {
                           args: *const c_void)
                           -> DWORD;
     pub fn TlsAlloc() -> DWORD;
-    pub fn TlsFree(dwTlsIndex: DWORD) -> BOOL;
     pub fn TlsGetValue(dwTlsIndex: DWORD) -> LPVOID;
     pub fn TlsSetValue(dwTlsIndex: DWORD, lpTlsvalue: LPVOID) -> BOOL;
     pub fn GetLastError() -> DWORD;

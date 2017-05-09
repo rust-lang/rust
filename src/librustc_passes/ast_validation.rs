@@ -55,7 +55,7 @@ impl<'a> AstValidator<'a> {
                                            E0449,
                                            "unnecessary visibility qualifier");
             if vis == &Visibility::Public {
-                err.span_label(span, &format!("`pub` not needed here"));
+                err.span_label(span, "`pub` not needed here");
             }
             if let Some(note) = note {
                 err.note(note);
@@ -80,7 +80,7 @@ impl<'a> AstValidator<'a> {
             Constness::Const => {
                 struct_span_err!(self.session, constness.span, E0379,
                                  "trait fns cannot be declared const")
-                    .span_label(constness.span, &format!("trait fns cannot be const"))
+                    .span_label(constness.span, "trait fns cannot be const")
                     .emit();
             }
             _ => {}
@@ -272,7 +272,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                                    E0130,
                                                    "patterns aren't allowed in foreign function \
                                                     declarations");
-                    err.span_label(span, &format!("pattern not allowed in foreign function"));
+                    err.span_label(span, "pattern not allowed in foreign function");
                     if is_recent {
                         err.span_note(span,
                                       "this is a recent error, see issue #35203 for more details");

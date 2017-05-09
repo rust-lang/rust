@@ -50,7 +50,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 E0067, "invalid left-hand side expression")
             .span_label(
                 lhs_expr.span,
-                &format!("invalid expression for left-hand side"))
+                "invalid expression for left-hand side")
             .emit();
         }
         ty
@@ -203,7 +203,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                          op.node.as_str(),
                                          lhs_ty)
                             .span_label(lhs_expr.span,
-                                        &format!("cannot use `{}=` on type `{}`",
+                                        format!("cannot use `{}=` on type `{}`",
                                         op.node.as_str(), lhs_ty))
                             .emit();
                     } else {
@@ -278,7 +278,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if let TyRef(_, r_ty) = rhs_ty.sty {
                 if l_ty.ty.sty == TyStr && r_ty.ty.sty == TyStr {
                     err.span_label(expr.span,
-                        &"`+` can't be used to concatenate two `&str` strings");
+                        "`+` can't be used to concatenate two `&str` strings");
                     let codemap = self.tcx.sess.codemap();
                     let suggestion =
                         match codemap.span_to_snippet(lhs_expr.span) {

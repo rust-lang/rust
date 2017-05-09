@@ -122,7 +122,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             f(self);
             self.save_ctxt.tables = old_tables;
         } else {
-            f(self)
+            f(self);
         }
     }
 

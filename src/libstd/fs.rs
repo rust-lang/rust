@@ -2412,7 +2412,7 @@ mod tests {
 
         let tmpdir = tmpdir();
         let unicode = tmpdir.path();
-        let unicode = unicode.join(&format!("test-각丁ー再见"));
+        let unicode = unicode.join("test-각丁ー再见");
         check!(fs::create_dir(&unicode));
         assert!(unicode.exists());
         assert!(!Path::new("test/unicode-bogus-path-각丁ー再见").exists());

@@ -150,7 +150,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
 /// Run any tests/code examples in the markdown file `input`.
 pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
             mut test_args: Vec<String>, maybe_sysroot: Option<PathBuf>,
-            render_type: RenderType) -> isize {
+            render_type: RenderType, display_warnings: bool) -> isize {
     let input_str = match load_string(input) {
         Ok(s) => s,
         Err(LoadStringError::ReadFail) => return 1,
@@ -166,6 +166,7 @@ pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
     old_find_testable_code(&input_str, &mut collector, DUMMY_SP);
     find_testable_code(&input_str, &mut collector, DUMMY_SP);
     test_args.insert(0, "rustdoctest".to_string());
-    testing::test_main(&test_args, collector.tests);
+    testing::test_main(&test_args, collector.tests,
+                       testing::Options::new().display_output(display_warnings));
     0
 }

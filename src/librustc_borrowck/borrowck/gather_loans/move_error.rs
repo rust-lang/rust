@@ -94,7 +94,7 @@ fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>, errors: &Vec<Move
         }
         if let NoteClosureEnv(upvar_id) = error.move_from.note {
             err.span_label(bccx.tcx.hir.span(upvar_id.var_id),
-                           &"captured outer variable");
+                           "captured outer variable");
         }
         err.emit();
 
@@ -147,7 +147,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                              move_from.descriptive_string(bccx.tcx));
             err.span_label(
                 move_from.span,
-                &format!("cannot move out of {}", move_from.descriptive_string(bccx.tcx))
+                format!("cannot move out of {}", move_from.descriptive_string(bccx.tcx))
                 );
             err
         }
@@ -160,7 +160,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                                    "cannot move out of type `{}`, \
                                                     a non-copy array",
                                                    b.ty);
-                    err.span_label(move_from.span, &format!("cannot move out of here"));
+                    err.span_label(move_from.span, "cannot move out of here");
                     err
                 }
                 (_, Kind::Pattern) => {
@@ -177,7 +177,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                                    "cannot move out of type `{}`, \
                                                    which implements the `Drop` trait",
                                                    b.ty);
-                    err.span_label(move_from.span, &format!("cannot move out of here"));
+                    err.span_label(move_from.span, "cannot move out of here");
                     err
                 },
                 _ => {
@@ -198,12 +198,12 @@ fn note_move_destination(mut err: DiagnosticBuilder,
     if is_first_note {
         err.span_label(
             move_to_span,
-            &format!("hint: to prevent move, use `ref {0}` or `ref mut {0}`",
+            format!("hint: to prevent move, use `ref {0}` or `ref mut {0}`",
                      pat_name));
         err
     } else {
         err.span_label(move_to_span,
-                      &format!("...and here (use `ref {0}` or `ref mut {0}`)",
+                      format!("...and here (use `ref {0}` or `ref mut {0}`)",
                                pat_name));
         err
     }

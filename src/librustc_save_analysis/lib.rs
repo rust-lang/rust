@@ -27,6 +27,7 @@
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 extern crate rustc_serialize;
+extern crate rustc_typeck;
 extern crate syntax_pos;
 
 extern crate rls_data;
@@ -50,6 +51,7 @@ use rustc::hir::def_id::DefId;
 use rustc::session::config::CrateType::CrateTypeExecutable;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
+use rustc_typeck::hir_ty_to_ty;
 
 use std::env;
 use std::fs::File;
@@ -606,11 +608,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 Def::Local(def_id)
             }
 
-            Node::NodeTy(&hir::Ty { node: hir::TyPath(ref qpath), .. }) => {
-                match *qpath {
-                    hir::QPath::Resolved(_, ref path) => path.def,
-                    hir::QPath::TypeRelative(..) => {
-                        if let Some(ty) = self.tcx.ast_ty_to_ty_cache.borrow().get(&id) {
+            Node::NodeTy(ty) => {
+                if let hir::Ty { node: hir::TyPath(ref qpath), .. } = *ty {
+                    match *qpath {
+                        hir::QPath::Resolved(_, ref path) => path.def,
+                        hir::QPath::TypeRelative(..) => {
+                            let ty = hir_ty_to_ty(self.tcx, ty);
                             if let ty::TyProjection(proj) = ty.sty {
                                 for item in self.tcx.associated_items(proj.trait_ref.def_id) {
                                     if item.kind == ty::AssociatedKind::Type {
@@ -620,9 +623,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                     }
                                 }
                             }
+                            Def::Err
                         }
-                        Def::Err
                     }
+                } else {
+                    Def::Err
                 }
             }
 

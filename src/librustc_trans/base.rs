@@ -754,10 +754,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     }).max().unwrap();
 
     if kind == MetadataKind::None {
-        return (metadata_llcx, metadata_llmod, EncodedMetadata {
-            raw_data: vec![],
-            hashes: vec![],
-        });
+        return (metadata_llcx, metadata_llmod, EncodedMetadata::new());
     }
 
     let cstore = &tcx.sess.cstore;

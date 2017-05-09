@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    println!("Hello, World!");
+// ignore-tidy-linelength
+
+// aux-build:extern_crate.rs
+//[rpass1] compile-flags: -g
+//[rpass2] compile-flags: -g
+//[rpass3] compile-flags: -g -Zremap-path-prefix-from={{src-base}} -Zremap-path-prefix-to=/the/src
+
+#![feature(rustc_attrs)]
+#![crate_type="rlib"]
+
+#[inline(always)]
+pub fn inline_fn() {
+    println!("test");
 }

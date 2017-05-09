@@ -112,8 +112,10 @@ impl<'a> DiagnosticBuilder<'a> {
     /// all, and you just supplied a `Span` to create the diagnostic,
     /// then the snippet will just include that `Span`, which is
     /// called the primary span.
-    forward!(pub fn span_label(&mut self, span: Span, label: &fmt::Display)
-                               -> &mut Self);
+    pub fn span_label<T: Into<String>>(&mut self, span: Span, label: T) -> &mut Self {
+        self.diagnostic.span_label(span, label);
+        self
+    }
 
     forward!(pub fn note_expected_found(&mut self,
                                         label: &fmt::Display,

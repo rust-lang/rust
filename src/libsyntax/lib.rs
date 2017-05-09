@@ -24,20 +24,15 @@
        test(attr(deny(warnings))))]
 #![deny(warnings)]
 
-#![feature(associated_consts)]
-#![feature(const_fn)]
-#![feature(optin_builtin_traits)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(str_escape)]
 #![feature(unicode)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(specialization)]
 #![feature(i128_type)]
 
 extern crate serialize;
 #[macro_use] extern crate log;
-#[macro_use] #[no_link] extern crate rustc_bitflags;
+#[macro_use] extern crate bitflags;
 extern crate std_unicode;
 pub extern crate rustc_errors as errors;
 extern crate syntax_pos;

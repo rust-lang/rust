@@ -247,11 +247,11 @@ mod imp {
     use std::os::windows::raw::HANDLE;
     use std::path::Path;
     use std::fs::{File, OpenOptions};
-    use std::os::raw::{c_ulong, c_ulonglong, c_int};
+    use std::os::raw::{c_ulong, c_int};
 
     type DWORD = c_ulong;
     type BOOL = c_int;
-    type ULONG_PTR = c_ulonglong;
+    type ULONG_PTR = usize;
 
     type LPOVERLAPPED = *mut OVERLAPPED;
     const LOCKFILE_EXCLUSIVE_LOCK: DWORD = 0x00000002;

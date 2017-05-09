@@ -283,6 +283,16 @@ impl<CTX> HashStable<CTX> for str {
     }
 }
 
+
+impl<CTX> HashStable<CTX> for String {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        (&self[..]).hash_stable(hcx, hasher);
+    }
+}
+
 impl<CTX> HashStable<CTX> for bool {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
