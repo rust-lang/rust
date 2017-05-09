@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Ensure that capturing closures are never coerced to fns
+// Especially interesting as non-capturing closures can be.
+
 fn main() {
-    println!("Hello, World!");
+    let mut a = 0u8;
+    let foo: fn(u8) -> u8 = |v: u8| { a += v; a };
+    //~^ ERROR mismatched types
 }

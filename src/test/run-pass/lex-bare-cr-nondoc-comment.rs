@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(closure_to_fn_coercion)]
+// ignore-tidy-cr
+
+// nondoc comment with bare CR: ''
+//// nondoc comment with bare CR: ''
+/* block nondoc comment with bare CR: '' */
 
 fn main() {
-    let bar: fn(&mut u32) = |_| {};
-
-    fn foo(x: Box<Fn(&i32)>) {}
-    let bar = Box::new(|x: &i32| {}) as Box<Fn(_)>;
-    foo(bar); //~ ERROR mismatched types
-    //~| expected concrete lifetime, found bound lifetime parameter
 }

@@ -388,6 +388,14 @@ impl Handler {
     pub fn span_note_without_error<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.emit(&sp.into(), msg, Note);
     }
+    pub fn span_note_diag<'a>(&'a self,
+                              sp: Span,
+                              msg: &str)
+                              -> DiagnosticBuilder<'a> {
+        let mut db = DiagnosticBuilder::new(self, Note, msg);
+        db.set_span(sp);
+        db
+    }
     pub fn span_unimpl<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
         self.span_bug(sp, &format!("unimplemented {}", msg));
     }

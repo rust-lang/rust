@@ -1,0 +1,9 @@
+note: trace_macro
+  --> $DIR/trace-macro.rs:14:5
+   |
+14 |     println!("Hello, World!");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expands to `println! { "Hello, World!" }`
+   = note: expands to `print! { concat ! ( "Hello, World!" , "/n" ) }`
+
