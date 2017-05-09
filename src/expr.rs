@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::cmp::{Ordering, min};
-use std::borrow::Borrow;
 use std::mem::swap;
 use std::ops::Deref;
 use std::iter::ExactSizeIterator;
@@ -1638,47 +1637,75 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                          -> Result<String, Ordering>
     where R: Rewrite
 {
-    let callee = callee.borrow();
     // FIXME using byte lens instead of char lens (and probably all over the
     // place too)
-    let callee_str = match callee.rewrite(context,
-                                          Shape {
-                                              width: max_callee_width,
-                                              ..shape
-                                          }) {
-        Some(string) => {
-            if !string.contains('\n') && string.len() > max_callee_width {
-                panic!("{:?} {}", string, max_callee_width);
-            } else {
-                string
+    let callee_shape = Shape {
+        width: max_callee_width,
+        ..shape
+    };
+    let callee_str = callee
+        .rewrite(context, callee_shape)
+        .ok_or(Ordering::Greater)?;
+
+    // 4 = `(  )`, 2 = `()`
+    let paren_overhead = if context.config.spaces_within_parens {
+        4
+    } else {
+        2
+    };
+    let used_width = extra_offset(&callee_str, shape);
+    let one_line_width = shape
+        .width
+        .checked_sub(used_width + paren_overhead)
+        .ok_or(Ordering::Greater)?;
+
+    let nested_shape = match context.config.fn_call_style {
+            IndentStyle::Block => shape.block().block_left(context.config.tab_spaces),
+            // 1 = (
+            IndentStyle::Visual => {
+                shape
+                    .visual_indent(used_width + 1)
+                    .sub_width(used_width + paren_overhead)
             }
         }
-        None => return Err(Ordering::Greater),
-    };
+        .ok_or(Ordering::Greater)?;
 
     let span_lo = context.codemap.span_after(span, "(");
     let span = mk_sp(span_lo, span.hi);
 
-    let used_width = extra_offset(&callee_str, shape);
+    let list_str = rewrite_call_args(context,
+                                     args,
+                                     span,
+                                     nested_shape,
+                                     one_line_width,
+                                     force_no_trailing_comma)
+            .ok_or(Ordering::Less)?;
 
-    let nested_shape = match context.config.fn_call_style {
-        IndentStyle::Block => {
-            shape
-                .block()
-                .block_indent(context.config.tab_spaces)
-                .sub_width(context.config.tab_spaces)
+    let result = if context.config.fn_call_style == IndentStyle::Visual ||
+                    (!list_str.contains('\n') && list_str.chars().last().unwrap_or(' ') != ',') {
+        if context.config.spaces_within_parens && list_str.len() > 0 {
+            format!("{}( {} )", callee_str, list_str)
+        } else {
+            format!("{}({})", callee_str, list_str)
         }
-        // 1 = (, 2 = ().
-        IndentStyle::Visual => {
-            shape
-                .visual_indent(used_width + 1)
-                .sub_width(used_width + 2)
-        }
+    } else {
+        format!("{}(\n{}{}\n{})",
+                callee_str,
+                nested_shape.indent.to_string(context.config),
+                list_str,
+                shape.block().indent.to_string(context.config))
     };
-    let nested_shape = match nested_shape {
-        Some(s) => s,
-        None => return Err(Ordering::Greater),
-    };
+
+    Ok(result)
+}
+
+fn rewrite_call_args(context: &RewriteContext,
+                     args: &[ptr::P<ast::Expr>],
+                     span: Span,
+                     shape: Shape,
+                     one_line_width: usize,
+                     force_no_trailing_comma: bool)
+                     -> Option<String> {
     let arg_count = args.len();
 
     let items = itemize_list(context.codemap,
@@ -1686,7 +1713,7 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                              ")",
                              |item| item.span.lo,
                              |item| item.span.hi,
-                             |item| item.rewrite(context, nested_shape),
+                             |item| item.rewrite(context, shape),
                              span.lo,
                              span.hi);
     let mut item_vec: Vec<_> = items.collect();
@@ -1708,8 +1735,8 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
     // first arguments.
     if overflow_last {
         let nested_shape = Shape {
-            indent: nested_shape.indent.block_only(),
-            ..nested_shape
+            indent: shape.indent.block_only(),
+            ..shape
         };
         let rewrite = args.last().unwrap().rewrite(context, nested_shape);
 
@@ -1722,15 +1749,11 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
         }
     }
 
-    let one_line_width = shape.width.checked_sub(used_width + 2);
-    let one_line_width = match one_line_width {
-        Some(olw) => olw,
-        None => return Err(Ordering::Greater),
-    };
     let one_line_shape = Shape {
         width: one_line_width,
-        ..nested_shape
+        ..shape
     };
+
     let tactic =
         definitive_tactic(&item_vec,
                           ListTactic::LimitedHorizontalVertical(context.config.fn_call_width),
@@ -1748,12 +1771,12 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
         (false, _, _) => {}
     }
 
-    let fmt = ListFormatting {
+    let mut fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
         trailing_separator: if force_no_trailing_comma ||
                                context.config.fn_call_style == IndentStyle::Visual ||
-                               args.len() <= 1 {
+                               arg_count <= 1 {
             SeparatorTactic::Never
         } else {
             context.config.trailing_comma
@@ -1763,27 +1786,13 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
         config: context.config,
     };
 
-    let list_str = match write_list(&item_vec, &fmt) {
-        Some(str) => str,
-        None => return Err(Ordering::Less),
-    };
-
-    let result = if context.config.fn_call_style == IndentStyle::Visual ||
-                    !list_str.contains('\n') {
-        if context.config.spaces_within_parens && list_str.len() > 0 {
-            format!("{}( {} )", callee_str, list_str)
-        } else {
-            format!("{}({})", callee_str, list_str)
+    match write_list(&item_vec, &fmt) {
+        Some(ref s) if !s.contains('\n') && s.len() > one_line_width => {
+            fmt.trailing_separator = SeparatorTactic::Vertical;
+            write_list(&item_vec, &fmt)
         }
-    } else {
-        format!("{}(\n{}{}\n{})",
-                callee_str,
-                nested_shape.indent.to_string(context.config),
-                list_str,
-                shape.block().indent.to_string(context.config))
-    };
-
-    Ok(result)
+        rewrite @ _ => rewrite,
+    }
 }
 
 fn rewrite_paren(context: &RewriteContext, subexpr: &ast::Expr, shape: Shape) -> Option<String> {
