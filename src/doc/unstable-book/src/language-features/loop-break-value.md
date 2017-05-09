@@ -10,19 +10,9 @@ Documentation to be appended to section G of the book.
 
 ### Loops as expressions
 
-Like most things in Rust, loops are expressions; for example, the following is perfectly legal,
-if rather useless:
-
-```rust
-let result = for n in 1..4 {
-    println!("Hello, {}", n);
-};
-assert_eq!(result, ());
-```
-
-Until now, all the loops you have seen evaluate to either `()` or `!`, the latter being special
-syntax for "no value", meaning the loop never exits. A `loop` can instead evaluate to
-a useful value via *break with value*:
+Like most things in Rust, loops are expressions, and have a value; normally `()` unless the loop
+never exits.
+A `loop` can instead evaluate to a useful value via *break with value*:
 
 ```rust
 // Find the first square number over 1000:
