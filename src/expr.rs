@@ -1696,7 +1696,8 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
     // we format the function arguments horizontally.
     let overflow_last = match args.last().map(|x| &x.node) {
         Some(&ast::ExprKind::Closure(..)) |
-        Some(&ast::ExprKind::Block(..)) if arg_count > 1 => true,
+        Some(&ast::ExprKind::Block(..)) |
+        Some(&ast::ExprKind::Match(..)) if arg_count > 1 => true,
         _ => false,
     };
 
