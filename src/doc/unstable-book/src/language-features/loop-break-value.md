@@ -4,16 +4,13 @@ The tracking issue for this feature is: [#37339]
 
 [#37339]: https://github.com/rust-lang/rust/issues/37339
 
-Documentation to be appended to section 3.6 of the book: Loops (after "Loop Labels", or before if
-the "Break" section is moved). If this is deemed too complex a feature this early in the book, it
-could also be moved to a new section (please advise). This would allow examples breaking with
-non-primitive types, references, and discussion of coercion (probably unnecessary however).
+Documentation to be appended to section G of the book.
 
 ------------------------
 
 ### Loops as expressions
 
-Like everything else in Rust, loops are expressions; for example, the following is perfectly legal,
+Like most things in Rust, loops are expressions; for example, the following is perfectly legal,
 if rather useless:
 
 ```rust
