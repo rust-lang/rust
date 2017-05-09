@@ -20,7 +20,7 @@ program. For instance, dead code and unused `Result` values.
 A `help` message is emitted following an `error` or `warning` to give additional
 information to the user about how to solve their problem.
 
-A `note` to emitted to identify additional circumstances and parts of the code
+A `note` is emitted to identify additional circumstances and parts of the code
 that caused the warning or error. For example, the borrow checker will note any
 previous conflicting borrows.
 
