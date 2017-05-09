@@ -25,7 +25,7 @@ byteorder = { git = "https://github.com/BurntSushi/byteorder", features = ["i128
 env_logger = "0.3.3"
 log = "0.3.6"
 log_settings = "0.1.1"
-cargo_metadata = "0.1"
+cargo_metadata = "0.2"
 
 [dev-dependencies]
-compiletest_rs = "0.2.5"
+compiletest_rs = "0.2.6"
