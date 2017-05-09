@@ -988,8 +988,11 @@ impl<'a> Rewrite for ControlFlow<'a> {
 
         if let Some(else_block) = self.else_block {
             // Since this is an else block, we should not indent for the assignment preceding
-            // the original if, so set shape.offset to 0.
-            let shape = Shape { offset: 0, ..shape };
+            // the original if, so set shape.offset to shape.indent.alignment.
+            let shape = Shape {
+                offset: shape.indent.alignment,
+                ..shape
+            };
             let mut last_in_chain = false;
             let rewrite = match else_block.node {
                 // If the else expression is another if-else expression, prevent it
