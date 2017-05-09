@@ -425,15 +425,15 @@ impl Builder {
 /// let (tx, rx) = channel();
 ///
 /// let sender = thread::spawn(move || {
-///     tx.send("Hello, thread".to_owned());
+///     let _ = tx.send("Hello, thread".to_owned());
 /// });
 ///
 /// let receiver = thread::spawn(move || {
 ///     println!("{}", rx.recv().unwrap());
 /// });
 ///
-/// sender.join();
-/// receiver.join();
+/// let _ = sender.join();
+/// let _ = receiver.join();
 /// ```
 ///
 /// A thread can also return a value through its [`JoinHandle`], you can use
@@ -449,7 +449,7 @@ impl Builder {
 /// });
 ///
 /// let result = computation.join().unwrap();
-/// println!("{}", v);
+/// println!("{}", result);
 /// ```
 ///
 /// [`channels`]: ../../std/sync/mpsc/index.html
