@@ -494,7 +494,9 @@ impl Decodable for FileMap {
                 name: name,
                 name_was_remapped: name_was_remapped,
                 // `crate_of_origin` has to be set by the importer.
-                crate_of_origin: 0xEFFF_FFFF,
+                // This value matches up with rustc::hir::def_id::INVALID_CRATE.
+                // That constant is not available here unfortunately :(
+                crate_of_origin: ::std::u32::MAX - 1,
                 start_pos: start_pos,
                 end_pos: end_pos,
                 src: None,
