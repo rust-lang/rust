@@ -51,6 +51,9 @@ pub enum DepNode<D: Clone + Debug> {
     // in an extern crate.
     MetaData(D),
 
+    // Represents some piece of metadata global to its crate.
+    GlobalMetaData(D, GlobalMetaDataKind),
+
     // Represents some artifact that we save to disk. Note that these
     // do not have a def-id as part of their identifier.
     WorkProduct(Arc<WorkProductId>),
@@ -79,7 +82,6 @@ pub enum DepNode<D: Clone + Debug> {
     MirKeys,
     LateLintCheck,
     TransCrateItem(D),
-    TransInlinedItem(D),
     TransWriteMetadata,
     CrateVariances,
 
@@ -157,6 +159,7 @@ pub enum DepNode<D: Clone + Debug> {
     DefSpan(D),
     Stability(D),
     Deprecation(D),
+    FileMap(D, Arc<String>),
 }
 
 impl<D: Clone + Debug> DepNode<D> {
@@ -234,7 +237,6 @@ impl<D: Clone + Debug> DepNode<D> {
             RegionMaps(ref d) => op(d).map(RegionMaps),
             RvalueCheck(ref d) => op(d).map(RvalueCheck),
             TransCrateItem(ref d) => op(d).map(TransCrateItem),
-            TransInlinedItem(ref d) => op(d).map(TransInlinedItem),
             AssociatedItems(ref d) => op(d).map(AssociatedItems),
             ItemSignature(ref d) => op(d).map(ItemSignature),
             ItemVariances(ref d) => op(d).map(ItemVariances),
@@ -271,6 +273,8 @@ impl<D: Clone + Debug> DepNode<D> {
             DefSpan(ref d) => op(d).map(DefSpan),
             Stability(ref d) => op(d).map(Stability),
             Deprecation(ref d) => op(d).map(Deprecation),
+            GlobalMetaData(ref d, kind) => op(d).map(|d| GlobalMetaData(d, kind)),
+            FileMap(ref d, ref file_name) => op(d).map(|d| FileMap(d, file_name.clone())),
         }
     }
 }
@@ -282,3 +286,16 @@ impl<D: Clone + Debug> DepNode<D> {
 /// them even in the absence of a tcx.)
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct WorkProductId(pub String);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+pub enum GlobalMetaDataKind {
+    Krate,
+    CrateDeps,
+    DylibDependencyFormats,
+    LangItems,
+    LangItemsMissing,
+    NativeLibraries,
+    CodeMap,
+    Impls,
+    ExportedSymbols,
+}

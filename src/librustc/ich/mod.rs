@@ -19,6 +19,7 @@ mod caching_codemap_view;
 mod hcx;
 
 mod impls_const_math;
+mod impls_cstore;
 mod impls_hir;
 mod impls_mir;
 mod impls_ty;
