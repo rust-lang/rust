@@ -31,6 +31,7 @@ use rustc::hir::svh::Svh;
 use rustc_back::tempdir::TempDir;
 use rustc_back::PanicStrategy;
 use rustc_incremental::IncrementalHashesMap;
+use rustc::ty::TyCtxt;
 use context::get_reloc_model;
 use llvm;
 
@@ -188,10 +189,12 @@ pub fn remove(sess: &Session, path: &Path) {
 
 /// Perform the linkage portion of the compilation phase. This will generate all
 /// of the requested outputs for this compilation session.
-pub fn link_binary(sess: &Session,
+pub fn link_binary<'a, 'tcx: 'a>(
+                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    trans: &CrateTranslation,
                    outputs: &OutputFilenames,
                    crate_name: &str) -> Vec<PathBuf> {
+    let sess = tcx.sess;
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
         // Ignore executable crates if we have -Z no-trans, as they will error.
@@ -205,7 +208,7 @@ pub fn link_binary(sess: &Session,
            bug!("invalid output type `{:?}` for target os `{}`",
                 crate_type, sess.opts.target_triple);
         }
-        let mut out_files = link_binary_output(sess, trans, crate_type, outputs, crate_name);
+        let mut out_files = link_binary_output(tcx, trans, crate_type, outputs, crate_name);
         out_filenames.append(&mut out_files);
     }
 
@@ -362,11 +365,13 @@ fn check_file_is_writeable(file: &Path, sess: &Session) {
     }
 }
 
-fn link_binary_output(sess: &Session,
+fn link_binary_output<'a, 'tcx: 'a>(
+                      tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       trans: &CrateTranslation,
                       crate_type: config::CrateType,
                       outputs: &OutputFilenames,
                       crate_name: &str) -> Vec<PathBuf> {
+    let sess = tcx.sess;
     let objects = object_filenames(trans, outputs);
 
     for file in &objects {
@@ -394,10 +399,10 @@ fn link_binary_output(sess: &Session,
                           tmpdir.path()).build();
             }
             config::CrateTypeStaticlib => {
-                link_staticlib(sess, &objects, &out_filename, tmpdir.path());
+                link_staticlib(tcx, &objects, &out_filename, tmpdir.path());
             }
             _ => {
-                link_natively(sess, crate_type, &objects, &out_filename, trans,
+                link_natively(tcx, crate_type, &objects, &out_filename, trans,
                               outputs, tmpdir.path());
             }
         }
@@ -639,14 +644,18 @@ fn write_rlib_bytecode_object_v1(writer: &mut Write,
 // There's no need to include metadata in a static archive, so ensure to not
 // link in the metadata object file (and also don't prepare the archive with a
 // metadata file).
-fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
+fn link_staticlib<'a, 'tcx>(
+                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                  objects: &[PathBuf],
+                  out_filename: &Path,
                   tempdir: &Path) {
+    let sess = tcx.sess;
     let mut ab = link_rlib(sess, None, objects, out_filename, tempdir);
     let mut all_native_libs = vec![];
 
     each_linked_rlib(sess, &mut |cnum, path| {
-        let name = sess.cstore.crate_name(cnum);
-        let native_libs = sess.cstore.native_libraries(cnum);
+        let name = tcx.sess.cstore.crate_name(cnum);
+        let native_libs = tcx.native_libraries(cnum);
 
         // Here when we include the rlib into our staticlib we need to make a
         // decision whether to include the extra object files along the way.
@@ -667,7 +676,7 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
         });
         ab.add_rlib(path, &name.as_str(), sess.lto(), skip_object_files).unwrap();
 
-        all_native_libs.extend(sess.cstore.native_libraries(cnum));
+        all_native_libs.extend(tcx.native_libraries(cnum));
     });
 
     ab.update_symbols();
@@ -696,13 +705,16 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
 //
 // This will invoke the system linker/cc to create the resulting file. This
 // links to all upstream files as well.
-fn link_natively(sess: &Session,
+fn link_natively<'a, 'tcx: 'a>(
+                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
                  crate_type: config::CrateType,
                  objects: &[PathBuf],
                  out_filename: &Path,
                  trans: &CrateTranslation,
                  outputs: &OutputFilenames,
                  tmpdir: &Path) {
+    let sess = tcx.sess;
+
     info!("preparing {:?} from {:?} to {:?}", crate_type, objects, out_filename);
     let flavor = sess.linker_flavor();
 
@@ -735,7 +747,7 @@ fn link_natively(sess: &Session,
 
     {
         let mut linker = trans.linker_info.to_linker(cmd, &sess);
-        link_args(&mut *linker, sess, crate_type, tmpdir,
+        link_args(&mut *linker, tcx, crate_type, tmpdir,
                   objects, out_filename, outputs, trans);
         cmd = linker.finalize();
     }
@@ -856,14 +868,17 @@ fn link_natively(sess: &Session,
     }
 }
 
-fn link_args(cmd: &mut Linker,
-             sess: &Session,
+fn link_args<'a, 'tcx: 'a>(
+             cmd: &mut Linker,
+             tcx: TyCtxt<'a, 'tcx, 'tcx>,
              crate_type: config::CrateType,
              tmpdir: &Path,
              objects: &[PathBuf],
              out_filename: &Path,
              outputs: &OutputFilenames,
              trans: &CrateTranslation) {
+
+    let sess = tcx.sess;
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
@@ -964,8 +979,8 @@ fn link_args(cmd: &mut Linker,
     // in this DAG so far because they're only dylibs and dylibs can only depend
     // on other dylibs (e.g. other native deps).
     add_local_native_libraries(cmd, sess);
-    add_upstream_rust_crates(cmd, sess, crate_type, tmpdir);
-    add_upstream_native_libraries(cmd, sess, crate_type);
+    add_upstream_rust_crates(cmd, tcx, crate_type, tmpdir);
+    add_upstream_native_libraries(cmd, tcx, crate_type);
 
     // # Telling the linker what we're doing
 
@@ -1047,8 +1062,9 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
 // Rust crates are not considered at all when creating an rlib output. All
 // dependencies will be linked when producing the final output (instead of
 // the intermediate rlib version)
-fn add_upstream_rust_crates(cmd: &mut Linker,
-                            sess: &Session,
+fn add_upstream_rust_crates<'a, 'tcx: 'a>(
+                            cmd: &mut Linker,
+                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             crate_type: config::CrateType,
                             tmpdir: &Path) {
     // All of the heavy lifting has previously been accomplished by the
@@ -1058,6 +1074,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
     // Linking to a rlib involves just passing it to the linker (the linker
     // will slurp up the object files inside), and linking to a dynamic library
     // involves just passing the right -l flag.
+    let sess = tcx.sess;
 
     let formats = sess.dependency_formats.borrow();
     let data = formats.get(&crate_type).unwrap();
@@ -1086,7 +1103,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
             Linkage::NotLinked |
             Linkage::IncludedFromDylib => {}
             Linkage::Static => {
-                add_static_crate(cmd, sess, tmpdir, crate_type, cnum);
+                add_static_crate(cmd, tcx, tmpdir, crate_type, cnum);
             }
             Linkage::Dynamic => {
                 add_dynamic_crate(cmd, sess, &src.dylib.unwrap().0)
@@ -1100,7 +1117,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
     // was already "included" in a dylib (e.g. `libstd` when `-C prefer-dynamic`
     // is used)
     if let Some(cnum) = compiler_builtins {
-        add_static_crate(cmd, sess, tmpdir, crate_type, cnum);
+        add_static_crate(cmd, tcx, tmpdir, crate_type, cnum);
     }
 
     // Converts a library file-stem into a cc -l argument
@@ -1185,18 +1202,19 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
     // (aka we're making an executable), we can just pass the rlib blindly to
     // the linker (fast) because it's fine if it's not actually included as
     // we're at the end of the dependency chain.
-    fn add_static_crate(cmd: &mut Linker,
-                        sess: &Session,
+    fn add_static_crate<'a, 'tcx: 'a>(cmd: &mut Linker,
+                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         tmpdir: &Path,
                         crate_type: config::CrateType,
                         cnum: CrateNum) {
+        let sess = tcx.sess;
         let src = sess.cstore.used_crate_source(cnum);
         let cratepath = &src.rlib.unwrap().0;
 
         // See the comment above in `link_staticlib` and `link_rlib` for why if
         // there's a static library that's not relevant we skip all object
         // files.
-        let native_libs = sess.cstore.native_libraries(cnum);
+        let native_libs = tcx.native_libraries(cnum);
         let skip_native = native_libs.iter().any(|lib| {
             lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
         });
@@ -1242,7 +1260,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                 // LTO module. Note that `#![no_builtins]` is excluded from LTO,
                 // though, so we let that object file slide.
                 let skip_because_lto = sess.lto() && is_rust_object &&
-                                        !sess.cstore.is_no_builtins(cnum);
+                                        !tcx.is_no_builtins(cnum);
 
                 if skip_because_cfg_say_so || skip_because_lto {
                     archive.remove_file(&f);
@@ -1308,7 +1326,8 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
 // generic function calls a native function, then the generic function must
 // be instantiated in the target crate, meaning that the native symbol must
 // also be resolved in the target crate.
-fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session, crate_type: config::CrateType) {
+fn add_upstream_native_libraries<'a, 'tcx>(
+    cmd: &mut Linker, tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_type: config::CrateType) {
     // Be sure to use a topological sorting of crates because there may be
     // interdependencies between native libraries. When passing -nodefaultlibs,
     // for example, almost all native libraries depend on libc, so we have to
@@ -1318,12 +1337,13 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session, crate_type: c
     // This passes RequireStatic, but the actual requirement doesn't matter,
     // we're just getting an ordering of crate numbers, we're not worried about
     // the paths.
+    let sess = tcx.sess;
     let formats = sess.dependency_formats.borrow();
     let data = formats.get(&crate_type).unwrap();
 
     let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic);
     for (cnum, _) in crates {
-        for lib in sess.cstore.native_libraries(cnum) {
+        for lib in tcx.native_libraries(cnum) {
             if !relevant_lib(sess, &lib) {
                 continue
             }

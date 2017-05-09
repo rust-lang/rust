@@ -80,7 +80,7 @@ impl ExportedSymbols {
             // If this crate is a plugin and/or a custom derive crate, then
             // we're not even going to link those in so we skip those crates.
             if scx.sess().cstore.plugin_registrar_fn(cnum).is_some() ||
-               scx.sess().cstore.derive_registrar_fn(cnum).is_some() {
+               scx.tcx().derive_registrar_fn(cnum).is_some() {
                 continue;
             }
 
@@ -97,8 +97,7 @@ impl ExportedSymbols {
                 scx.sess().cstore.is_compiler_builtins(cnum);
 
             let crate_exports = scx
-                .sess()
-                .cstore
+                .tcx()
                 .exported_symbols(cnum)
                 .iter()
                 .map(|&def_id| {

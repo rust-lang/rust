@@ -50,6 +50,7 @@ pub enum DepNode<D: Clone + Debug> {
     // Represents the metadata for a given HIR node, typically found
     // in an extern crate.
     MetaData(D),
+    MetaDataByCrateNum(CrateNum),
 
     // Represents some artifact that we save to disk. Note that these
     // do not have a def-id as part of their identifier.
@@ -213,6 +214,7 @@ impl<D: Clone + Debug> DepNode<D> {
             MirKeys => Some(MirKeys),
             LateLintCheck => Some(LateLintCheck),
             TransWriteMetadata => Some(TransWriteMetadata),
+            MetaDataByCrateNum(c) => Some(MetaDataByCrateNum(c)),
 
             // work product names do not need to be mapped, because
             // they are always absolute.

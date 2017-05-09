@@ -197,10 +197,7 @@ pub trait CrateStore {
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem;
 
     // flags
-    fn is_const_fn(&self, did: DefId) -> bool;
-    fn is_default_impl(&self, impl_did: DefId) -> bool;
     fn is_foreign_item(&self, did: DefId) -> bool;
-    fn is_dllimport_foreign_item(&self, def: DefId) -> bool;
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool;
     fn is_exported_symbol(&self, def_id: DefId) -> bool;
 
@@ -226,10 +223,6 @@ pub trait CrateStore {
     fn crate_hash(&self, cnum: CrateNum) -> Svh;
     fn crate_disambiguator(&self, cnum: CrateNum) -> Symbol;
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
-    fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
-    fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>;
-    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId>;
-    fn is_no_builtins(&self, cnum: CrateNum) -> bool;
 
     // resolve
     fn retrace_path(&self,
@@ -325,10 +318,7 @@ impl CrateStore for DummyCrateStore {
         { bug!("associated_item_cloned") }
 
     // flags
-    fn is_const_fn(&self, did: DefId) -> bool { bug!("is_const_fn") }
-    fn is_default_impl(&self, impl_did: DefId) -> bool { bug!("is_default_impl") }
     fn is_foreign_item(&self, did: DefId) -> bool { bug!("is_foreign_item") }
-    fn is_dllimport_foreign_item(&self, id: DefId) -> bool { false }
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool { false }
     fn is_exported_symbol(&self, def_id: DefId) -> bool { false }
 
@@ -360,12 +350,6 @@ impl CrateStore for DummyCrateStore {
                            -> Symbol { bug!("crate_disambiguator") }
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
         { bug!("plugin_registrar_fn") }
-    fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
-        { bug!("derive_registrar_fn") }
-    fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>
-        { bug!("native_libraries") }
-    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId> { bug!("exported_symbols") }
-    fn is_no_builtins(&self, cnum: CrateNum) -> bool { bug!("is_no_builtins") }
 
     // resolve
     fn retrace_path(&self,

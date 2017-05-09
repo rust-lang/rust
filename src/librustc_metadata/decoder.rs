@@ -1018,17 +1018,6 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn is_dllimport_foreign_item(&self, id: DefIndex) -> bool {
-        self.dllimport_foreign_items.contains(&id)
-    }
-
-    pub fn is_default_impl(&self, impl_id: DefIndex) -> bool {
-        match self.entry(impl_id).kind {
-            EntryKind::DefaultImpl(_) => true,
-            _ => false,
-        }
-    }
-
     pub fn closure_kind(&self, closure_id: DefIndex) -> ty::ClosureKind {
         match self.entry(closure_id).kind {
             EntryKind::Closure(data) => data.decode(self).kind,
