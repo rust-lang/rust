@@ -244,7 +244,7 @@ impl Builder {
     /// Generates the base configuration for spawning a thread, from which
     /// configuration methods can be chained.
     ///
-    /// If the [`stack_size`][stack_size] field is not specified, the stack size
+    /// If the [`stack_size`] field is not specified, the stack size
     /// will be the `RUST_MIN_STACK` environment variable, if it is
     /// not specified either, a sensible default size will be set (2MB as
     /// of the writting of this doc).
@@ -265,7 +265,7 @@ impl Builder {
     /// handler.join().unwrap();
     /// ```
     ///
-    /// [stack_size]: ../../std/thread/struct.Builder.html#method.stack_size
+    /// [`stack_size`]: ../../std/thread/struct.Builder.html#method.stack_size
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Builder {
         Builder {
@@ -721,6 +721,8 @@ struct Inner {
 
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
+/// A handle to a thread.
+///
 /// Threads are represented via the `Thread` type, which you can get in one of
 /// two ways:
 ///
