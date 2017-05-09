@@ -708,7 +708,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .host(true)
          .only_host_build(true)
          .default(true)
-         .dep(|s| s.name("tool-rust-installer").stage(0))
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| dist::rustc(build, s.stage, s.target));
     rules.dist("dist-std", "src/libstd")
          .dep(move |s| {
@@ -723,12 +723,12 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          })
          .default(true)
          .only_host_build(true)
-         .dep(|s| s.name("tool-rust-installer").stage(0))
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| dist::std(build, &s.compiler(), s.target));
     rules.dist("dist-mingw", "path/to/nowhere")
          .default(true)
          .only_host_build(true)
-         .dep(|s| s.name("tool-rust-installer").stage(0))
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| {
              if s.target.contains("pc-windows-gnu") {
                  dist::mingw(build, s.target)
@@ -739,25 +739,25 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .host(true)
          .only_build(true)
          .only_host_build(true)
-         .dep(|s| s.name("tool-rust-installer").stage(0))
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |_| dist::rust_src(build));
     rules.dist("dist-docs", "src/doc")
          .default(true)
          .only_host_build(true)
          .dep(|s| s.name("default:doc"))
-         .dep(|s| s.name("tool-rust-installer").stage(0))
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| dist::docs(build, s.stage, s.target));
     rules.dist("dist-analysis", "analysis")
          .default(build.config.extended)
          .dep(|s| s.name("dist-std"))
          .only_host_build(true)
-         .dep(|s| s.name("tool-rust-installer").stage(0))
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| dist::analysis(build, &s.compiler(), s.target));
     rules.dist("dist-rls", "rls")
          .host(true)
          .only_host_build(true)
          .dep(|s| s.name("tool-rls"))
-         .dep(|s| s.name("tool-rust-installer").stage(0))
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| dist::rls(build, s.stage, s.target));
     rules.dist("install", "path/to/nowhere")
          .dep(|s| s.name("default:dist"))
@@ -766,7 +766,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .host(true)
          .only_host_build(true)
          .dep(|s| s.name("tool-cargo"))
-         .dep(|s| s.name("tool-rust-installer").stage(0))
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| dist::cargo(build, s.stage, s.target));
     rules.dist("dist-extended", "extended")
          .default(build.config.extended)
@@ -779,7 +779,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|d| d.name("dist-cargo"))
          .dep(|d| d.name("dist-rls"))
          .dep(|d| d.name("dist-analysis"))
-         .dep(|s| s.name("tool-rust-installer").stage(0))
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| dist::extended(build, s.stage, s.target));
 
     rules.dist("dist-sign", "hash-and-sign")
@@ -791,6 +791,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
 
     rules.verify();
     return rules;
+
+    /// Helper to depend on a stage0 build-only rust-installer tool.
+    fn tool_rust_installer<'a>(build: &'a Build, step: &Step<'a>) -> Step<'a> {
+        step.name("tool-rust-installer")
+            .host(&build.config.build)
+            .target(&build.config.build)
+            .stage(0)
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
