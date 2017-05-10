@@ -723,10 +723,11 @@ fn token_can_be_followed_by_any(tok: &quoted::TokenTree) -> bool {
 /// ANYTHING without fear of future compatibility hazards).
 fn frag_can_be_followed_by_any(frag: &str) -> bool {
     match frag {
-        "item"  | // always terminated by `}` or `;`
-        "block" | // exactly one token tree
-        "ident" | // exactly one token tree
-        "meta"  | // exactly one token tree
+        "item"     | // always terminated by `}` or `;`
+        "block"    | // exactly one token tree
+        "ident"    | // exactly one token tree
+        "meta"     | // exactly one token tree
+        "lifetime" | // exactly one token tree
         "tt" =>   // exactly one token tree
             true,
 
@@ -787,8 +788,8 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
                 TokenTree::MetaVarDecl(_, _, frag) if frag.name == "block" => Ok(true),
                 _ => Ok(false),
             },
-            "ident" => {
-                // being a single token, idents are harmless
+            "ident" | "lifetime" => {
+                // being a single token, idents and lifetimes are harmless
                 Ok(true)
             },
             "meta" | "tt" => {
@@ -838,7 +839,7 @@ fn is_legal_fragment_specifier(sess: &ParseSess,
                                frag_name: &str,
                                frag_span: Span) -> bool {
     match frag_name {
-        "item" | "block" | "stmt" | "expr" | "pat" |
+        "item" | "block" | "stmt" | "expr" | "pat" | "lifetime" |
         "path" | "ty" | "ident" | "meta" | "tt" | "" => true,
         "vis" => {
             if !features.borrow().macro_vis_matcher {
