@@ -1005,7 +1005,7 @@ unsafe impl<T: Sync + ?Sized> Sync for Unique<T> { }
 
 #[unstable(feature = "unique", issue = "27730")]
 impl<T: Sized> Unique<T> {
-    /// Creates a new `Shared` that is dangling, but well-aligned.
+    /// Creates a new `Unique` that is dangling, but well-aligned.
     ///
     /// This is useful for initializing types which lazily allocate, like
     /// `Vec::new` does.
