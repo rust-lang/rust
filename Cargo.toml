@@ -35,7 +35,7 @@ clippy_lints = { version = "0.0.131", path = "clippy_lints" }
 cargo_metadata = "0.2"
 
 [dev-dependencies]
-compiletest_rs = "0.2.5"
+compiletest_rs = "0.2.6"
 lazy_static = "0.2"
 regex = "0.2"
 serde_derive = "1.0"
