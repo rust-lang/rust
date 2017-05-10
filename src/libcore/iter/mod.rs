@@ -303,6 +303,7 @@ use cmp;
 use fmt;
 use iter_private::TrustedRandomAccess;
 use usize;
+use ops::Deref;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::iterator::Iterator;
@@ -414,13 +415,13 @@ pub struct Cloned<I> {
 }
 
 #[stable(feature = "iter_cloned", since = "1.1.0")]
-impl<'a, I, T: 'a> Iterator for Cloned<I>
-    where I: Iterator<Item=&'a T>, T: Clone
+impl<'a, I, T: 'a, U> Iterator for Cloned<I>
+    where I: Iterator<Item=U>, T: Clone, U : Deref<Target=T>
 {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        self.it.next().cloned()
+        self.it.next().map(|x| x.deref().clone())
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -430,22 +431,22 @@ impl<'a, I, T: 'a> Iterator for Cloned<I>
     fn fold<Acc, F>(self, init: Acc, mut f: F) -> Acc
         where F: FnMut(Acc, Self::Item) -> Acc,
     {
-        self.it.fold(init, move |acc, elt| f(acc, elt.clone()))
+        self.it.fold(init, move |acc, elt| f(acc, elt.deref().clone()))
     }
 }
 
 #[stable(feature = "iter_cloned", since = "1.1.0")]
-impl<'a, I, T: 'a> DoubleEndedIterator for Cloned<I>
-    where I: DoubleEndedIterator<Item=&'a T>, T: Clone
+impl<'a, I, T: 'a, U> DoubleEndedIterator for Cloned<I>
+    where I: DoubleEndedIterator<Item=U>, T: Clone, U : Deref<Target=T>
 {
     fn next_back(&mut self) -> Option<T> {
-        self.it.next_back().cloned()
+        self.it.next_back().map(|x| x.deref().clone())
     }
 }
 
 #[stable(feature = "iter_cloned", since = "1.1.0")]
-impl<'a, I, T: 'a> ExactSizeIterator for Cloned<I>
-    where I: ExactSizeIterator<Item=&'a T>, T: Clone
+impl<'a, I, T: 'a, U> ExactSizeIterator for Cloned<I>
+    where I: ExactSizeIterator<Item=U>, T: Clone, U : Deref<Target=T>
 {
     fn len(&self) -> usize {
         self.it.len()
@@ -457,13 +458,13 @@ impl<'a, I, T: 'a> ExactSizeIterator for Cloned<I>
 }
 
 #[unstable(feature = "fused", issue = "35602")]
-impl<'a, I, T: 'a> FusedIterator for Cloned<I>
-    where I: FusedIterator<Item=&'a T>, T: Clone
+impl<'a, I, T: 'a, U> FusedIterator for Cloned<I>
+    where I: FusedIterator<Item=U>, T: Clone, U : Deref<Target=T>
 {}
 
 #[doc(hidden)]
-unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
-    where I: TrustedRandomAccess<Item=&'a T>, T: Clone
+unsafe impl<'a, I, T: 'a, U> TrustedRandomAccess for Cloned<I>
+    where I: TrustedRandomAccess<Item=U>, T: Clone, U : Deref<Target=T>
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
         self.it.get_unchecked(i).clone()
@@ -474,9 +475,10 @@ unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, I, T: 'a> TrustedLen for Cloned<I>
-    where I: TrustedLen<Item=&'a T>,
-          T: Clone
+unsafe impl<'a, I, T: 'a, U> TrustedLen for Cloned<I>
+    where I: TrustedLen<Item=U>,
+          T: Clone,
+          U: Deref<Target=T>
 {}
 
 /// An iterator that repeats endlessly.

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use cmp::Ordering;
+use ops::Deref;
 
 use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, FlatMap, Fuse};
 use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, Take, TakeWhile, Rev};
@@ -1856,7 +1857,8 @@ pub trait Iterator {
 
     /// Creates an iterator which [`clone`]s all of its elements.
     ///
-    /// This is useful when you have an iterator over `&T`, but you need an
+    /// This is useful when you have an iterator over a type that implements
+    /// `Deref<Target=T>` (such as `&T` and `&mut T`), but you need an
     /// iterator over `T`.
     ///
     /// [`clone`]: ../../std/clone/trait.Clone.html#tymethod.clone
@@ -1877,8 +1879,8 @@ pub trait Iterator {
     /// assert_eq!(v_map, vec![1, 2, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn cloned<'a, T: 'a>(self) -> Cloned<Self>
-        where Self: Sized + Iterator<Item=&'a T>, T: Clone
+    fn cloned<'a, T: 'a, U>(self) -> Cloned<Self>
+        where Self: Sized + Iterator<Item=U>, T: Clone, U : Deref<Target=T>
     {
         Cloned { it: self }
     }
