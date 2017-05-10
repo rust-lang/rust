@@ -2417,7 +2417,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.global_tcx();
         let generic_predicates = tcx.predicates_of(def_id);
         let bounds = generic_predicates.instantiate(tcx, free_substs);
-        let bounds = tcx.liberate_late_bound_regions(def_id, &ty::Binder(bounds));
         let predicates = bounds.predicates;
 
         // Finally, we have to normalize the bounds in the environment, in

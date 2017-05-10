@@ -73,7 +73,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         debug!("check_closure: expr.id={:?} closure_type={:?}", expr.id, closure_type);
 
-        let fn_sig = self.tcx.liberate_late_bound_regions(expr_def_id, &sig);
+        let fn_sig = self.liberate_late_bound_regions(expr_def_id, &sig);
         let fn_sig = self.inh.normalize_associated_types_in(body.value.span,
                                                             body.value.id, &fn_sig);
 

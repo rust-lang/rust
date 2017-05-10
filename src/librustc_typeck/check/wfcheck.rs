@@ -427,7 +427,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
     {
         let free_substs = &fcx.parameter_environment.free_substs;
         let sig = fcx.instantiate_type_scheme(span, free_substs, &sig);
-        let sig = fcx.tcx.liberate_late_bound_regions(def_id, &sig);
+        let sig = fcx.liberate_late_bound_regions(def_id, &sig);
 
         for input_ty in sig.inputs() {
             fcx.register_wf_obligation(&input_ty, span, self.code.clone());
@@ -462,7 +462,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         let free_substs = &fcx.parameter_environment.free_substs;
         let method_ty = fcx.tcx.type_of(method.def_id);
         let fty = fcx.instantiate_type_scheme(span, free_substs, &method_ty);
-        let sig = fcx.tcx.liberate_late_bound_regions(method.def_id, &fty.fn_sig());
+        let sig = fcx.liberate_late_bound_regions(method.def_id, &fty.fn_sig());
 
         debug!("check_method_receiver: sig={:?}", sig);
 
@@ -478,8 +478,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             ExplicitSelf::ByBox => fcx.tcx.mk_box(self_ty)
         };
         let rcvr_ty = fcx.instantiate_type_scheme(span, free_substs, &rcvr_ty);
-        let rcvr_ty = fcx.tcx.liberate_late_bound_regions(method.def_id,
-                                                          &ty::Binder(rcvr_ty));
+        let rcvr_ty = fcx.liberate_late_bound_regions(method.def_id,
+                                                      &ty::Binder(rcvr_ty));
 
         debug!("check_method_receiver: receiver ty = {:?}", rcvr_ty);
 
