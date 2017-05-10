@@ -1794,7 +1794,7 @@ impl<B, I, St, F> FusedIterator for Scan<I, St, F>
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct FlatMap<I, U: IntoIterator, F> {
-    iter: I,
+    iter: Fuse<I>,
     f: F,
     frontiter: Option<U::IntoIter>,
     backiter: Option<U::IntoIter>,
@@ -1823,13 +1823,16 @@ impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
     fn next(&mut self) -> Option<U::Item> {
         loop {
             if let Some(ref mut inner) = self.frontiter {
-                if let Some(x) = inner.by_ref().next() {
-                    return Some(x)
+                if let elt @ Some(_) = inner.next() {
+                    return elt;
                 }
             }
-            match self.iter.next().map(&mut self.f) {
-                None => return self.backiter.as_mut().and_then(|it| it.next()),
-                next => self.frontiter = next.map(IntoIterator::into_iter),
+            self.frontiter = match self.iter.next() {
+                None => self.backiter.take(),
+                Some(next) => Some((self.f)(next).into_iter()),
+            };
+            if self.frontiter.is_none() {
+                return None;
             }
         }
     }
@@ -1856,13 +1859,16 @@ impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F> wher
     fn next_back(&mut self) -> Option<U::Item> {
         loop {
             if let Some(ref mut inner) = self.backiter {
-                if let Some(y) = inner.next_back() {
-                    return Some(y)
+                if let elt @ Some(_) = inner.next_back() {
+                    return elt;
                 }
             }
-            match self.iter.next_back().map(&mut self.f) {
-                None => return self.frontiter.as_mut().and_then(|it| it.next_back()),
-                next => self.backiter = next.map(IntoIterator::into_iter),
+            self.backiter = match self.iter.next_back() {
+                None => self.frontiter.take(),
+                Some(next) => Some((self.f)(next).into_iter()),
+            };
+            if self.backiter.is_none() {
+                return None;
             }
         }
     }

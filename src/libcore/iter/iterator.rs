@@ -940,7 +940,7 @@ pub trait Iterator {
     fn flat_map<U, F>(self, f: F) -> FlatMap<Self, U, F>
         where Self: Sized, U: IntoIterator, F: FnMut(Self::Item) -> U,
     {
-        FlatMap{iter: self, f: f, frontiter: None, backiter: None }
+        FlatMap{iter: self.fuse(), f: f, frontiter: None, backiter: None }
     }
 
     /// Creates an iterator which ends after the first [`None`].
