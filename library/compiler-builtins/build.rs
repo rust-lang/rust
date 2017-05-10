@@ -1913,8 +1913,9 @@ static TEST_CASES: &[((i128,), u64)] = &[
 fn floattidf() {
     for &((a,), b) in TEST_CASES {
         let b_ = __floattidf(a);
-        let diff = if to_u64(b_) > b { to_u64(b_) - b } else { b - to_u64(b_) };
-        assert_eq!(((a,), b, true), ((a,), b, diff <= 1));
+        let g_b = to_u64(b_);
+        let diff = if g_b > b { g_b - b } else { b - g_b };
+        assert_eq!(((a,), b, g_b, true), ((a,), b, g_b, diff <= 1));
     }
 }
 "
@@ -2245,8 +2246,9 @@ static TEST_CASES: &[((u128,), u64)] = &[
 fn floatuntidf() {
     for &((a,), b) in TEST_CASES {
         let b_ = __floatuntidf(a);
-        let diff = if to_u64(b_) > b { to_u64(b_) - b } else { b - to_u64(b_) };
-        assert_eq!(((a,), b, true), ((a,), b, diff <= 1));
+        let g_b = to_u64(b_);
+        let diff = if g_b > b { g_b - b } else { b - g_b };
+        assert_eq!(((a,), b, g_b, true), ((a,), b, g_b, diff <= 1));
     }
 }
 "
