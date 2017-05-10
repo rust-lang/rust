@@ -241,7 +241,8 @@ pub trait OpenOptionsExt {
     ///
     /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
     /// [`CreateFile2`]: https://msdn.microsoft.com/en-us/library/windows/desktop/hh449422.aspx
-    /// [Impersonation Levels]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa379572.aspx
+    /// [Impersonation Levels]:
+    ///     https://msdn.microsoft.com/en-us/library/windows/desktop/aa379572.aspx
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn security_qos_flags(&mut self, flags: u32) -> &mut OpenOptions;
 }
@@ -276,7 +277,8 @@ impl OpenOptionsExt for OpenOptions {
 /// of the [`BY_HANDLE_FILE_INFORMATION`] structure.
 ///
 /// [`fs::Metadata`]: ../../../fs/struct.Metadata.html
-/// [`BY_HANDLE_FILE_INFORMATION`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363788.aspx
+/// [`BY_HANDLE_FILE_INFORMATION`]:
+///     https://msdn.microsoft.com/en-us/library/windows/desktop/aa363788.aspx
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Returns the value of the `dwFileAttributes` field of this metadata.
@@ -299,7 +301,8 @@ pub trait MetadataExt {
     /// # }
     /// ```
     ///
-    /// [File Attribute Constants]: https://msdn.microsoft.com/en-us/library/windows/desktop/gg258117.aspx
+    /// [File Attribute Constants]:
+    ///     https://msdn.microsoft.com/en-us/library/windows/desktop/gg258117.aspx
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn file_attributes(&self) -> u32;
 
