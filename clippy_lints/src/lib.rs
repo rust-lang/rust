@@ -44,6 +44,13 @@ extern crate rustc_const_math;
 #[macro_use]
 extern crate matches as matches_macro;
 
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+
+#[macro_use]
+extern crate lazy_static;
+
 macro_rules! declare_restriction_lint {
     { pub $name:tt, $description:tt } => {
         declare_lint! { pub $name, Allow, $description }
@@ -124,7 +131,7 @@ pub mod ranges;
 pub mod reference;
 pub mod regex;
 pub mod returns;
-pub mod serde;
+pub mod serde_api;
 pub mod shadow;
 pub mod should_assert_eq;
 pub mod strings;
@@ -175,7 +182,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
             reg.sess.struct_span_err(span, err)
                     .span_note(span, "Clippy will use default configuration")
                     .emit();
-            utils::conf::Conf::default()
+            toml::from_str("").expect("we never error on empty config files")
         }
     };
 
@@ -202,7 +209,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
-    reg.register_late_lint_pass(box serde::Serde);
+    reg.register_late_lint_pass(box serde_api::Serde);
     reg.register_early_lint_pass(box utils::internal_lints::Clippy);
     reg.register_late_lint_pass(box utils::internal_lints::LintWithoutLintPass::default());
     reg.register_late_lint_pass(box utils::inspector::Pass);
@@ -266,7 +273,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box print::Pass);
     reg.register_late_lint_pass(box vec::Pass);
     reg.register_early_lint_pass(box non_expressive_names::NonExpressiveNames {
-        max_single_char_names: conf.max_single_char_names,
+        single_char_binding_names_threshold: conf.single_char_binding_names_threshold,
     });
     reg.register_late_lint_pass(box drop_forget_ref::Pass);
     reg.register_late_lint_pass(box empty_enum::EmptyEnum);
@@ -488,7 +495,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         regex::TRIVIAL_REGEX,
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
-        serde::SERDE_API_MISUSE,
+        serde_api::SERDE_API_MISUSE,
         should_assert_eq::SHOULD_ASSERT_EQ,
         strings::STRING_LIT_AS_BYTES,
         swap::ALMOST_SWAPPED,

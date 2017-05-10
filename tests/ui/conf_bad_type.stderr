@@ -1,4 +1,4 @@
-error: error reading Clippy's configuration file: `blacklisted-names` is expected to be a `Vec < String >` but is a `integer`
+error: error reading Clippy's configuration file: invalid type: integer `42`, expected a sequence
 
 error: aborting due to previous error
 
