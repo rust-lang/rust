@@ -865,12 +865,15 @@ pub struct ModuleData<'a> {
     // access the children must be preceded with a
     // `populate_module_if_necessary` call.
     populated: Cell<bool>,
+
+    /// Span of the module itself. Used for error reporting.
+    span: Span,
 }
 
 pub type Module<'a> = &'a ModuleData<'a>;
 
 impl<'a> ModuleData<'a> {
-    fn new(parent: Option<Module<'a>>, kind: ModuleKind, normal_ancestor_id: DefId) -> Self {
+    fn new(parent: Option<Module<'a>>, kind: ModuleKind, normal_ancestor_id: DefId, span: Span) -> Self {
         ModuleData {
             parent: parent,
             kind: kind,
@@ -884,6 +887,7 @@ impl<'a> ModuleData<'a> {
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
             populated: Cell::new(normal_ancestor_id.is_local()),
+            span: span,
         }
     }
 
@@ -1298,7 +1302,7 @@ impl<'a> Resolver<'a> {
         let root_module_kind = ModuleKind::Def(Def::Mod(root_def_id), keywords::Invalid.name());
         let graph_root = arenas.alloc_module(ModuleData {
             no_implicit_prelude: attr::contains_name(&krate.attrs, "no_implicit_prelude"),
-            ..ModuleData::new(None, root_module_kind, root_def_id)
+            ..ModuleData::new(None, root_module_kind, root_def_id, krate.span)
         });
         let mut module_map = FxHashMap();
         module_map.insert(DefId::local(CRATE_DEF_INDEX), graph_root);
@@ -1430,9 +1434,9 @@ impl<'a> Resolver<'a> {
         self.crate_loader.postprocess(krate);
     }
 
-    fn new_module(&self, parent: Module<'a>, kind: ModuleKind, normal_ancestor_id: DefId)
+    fn new_module(&self, parent: Module<'a>, kind: ModuleKind, normal_ancestor_id: DefId, span: Span)
                   -> Module<'a> {
-        self.arenas.alloc_module(ModuleData::new(Some(parent), kind, normal_ancestor_id))
+        self.arenas.alloc_module(ModuleData::new(Some(parent), kind, normal_ancestor_id, span))
     }
 
     fn record_use(&mut self, ident: Ident, ns: Namespace, binding: &'a NameBinding<'a>, span: Span)
@@ -1535,12 +1539,12 @@ impl<'a> Resolver<'a> {
         None
     }
 
-    fn resolve_crate_var(&mut self, crate_var_ctxt: SyntaxContext) -> Module<'a> {
+    fn resolve_crate_var(&mut self, crate_var_ctxt: SyntaxContext, span: Span) -> Module<'a> {
         let mut ctxt_data = crate_var_ctxt.data();
         while ctxt_data.prev_ctxt != SyntaxContext::empty() {
             ctxt_data = ctxt_data.prev_ctxt.data();
         }
-        let module = self.macro_def_scope(ctxt_data.outer_mark);
+        let module = self.macro_def_scope(ctxt_data.outer_mark, span);
         if module.is_local() { self.graph_root } else { module }
     }
 
@@ -2271,8 +2275,10 @@ impl<'a> Resolver<'a> {
             let name = path.last().unwrap().name;
             let candidates = this.lookup_import_candidates(name, ns, is_expected);
             if !candidates.is_empty() {
+                let mut module_span = this.current_module.span;
+                module_span.hi = module_span.lo;
                 // Report import candidates as help and proceed searching for labels.
-                show_candidates(&mut err, &candidates, def.is_some());
+                show_candidates(&mut err, module_span, &candidates, def.is_some());
             } else if is_expected(Def::Enum(DefId::local(CRATE_DEF_INDEX))) {
                 let enum_candidates = this.lookup_import_candidates(name, ns, is_enum_variant);
                 let mut enum_candidates = enum_candidates.iter()
@@ -2584,7 +2590,7 @@ impl<'a> Resolver<'a> {
                 module = Some(self.graph_root);
                 continue
             } else if i == 0 && ns == TypeNS && ident.name == "$crate" {
-                module = Some(self.resolve_crate_var(ident.ctxt));
+                module = Some(self.resolve_crate_var(ident.ctxt, DUMMY_SP));
                 continue
             }
 
@@ -3463,12 +3469,10 @@ fn import_candidate_to_paths(suggestion: &ImportSuggestion) -> (Span, String, St
 /// When an entity with a given name is not available in scope, we search for
 /// entities with that name in all crates. This method allows outputting the
 /// results of this search in a programmer-friendly way
-fn show_candidates(session: &mut DiagnosticBuilder,
+fn show_candidates(err: &mut DiagnosticBuilder,
+                   span: Span,
                    candidates: &[ImportSuggestion],
                    better: bool) {
-    // don't show more than MAX_CANDIDATES results, so
-    // we're consistent with the trait suggestions
-    const MAX_CANDIDATES: usize = 4;
 
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
@@ -3481,21 +3485,13 @@ fn show_candidates(session: &mut DiagnosticBuilder,
         1 => " is found in another module, you can import it",
         _ => "s are found in other modules, you can import them",
     };
+    let msg = format!("possible {}candidate{} into scope", better, msg_diff);
 
-    let end = cmp::min(MAX_CANDIDATES, path_strings.len());
-    session.help(&format!("possible {}candidate{} into scope:{}{}",
-                          better,
-                          msg_diff,
-                          &path_strings[0..end].iter().map(|candidate| {
-                              format!("\n  `use {};`", candidate)
-                          }).collect::<String>(),
-                          if path_strings.len() > MAX_CANDIDATES {
-                              format!("\nand {} other candidates",
-                                      path_strings.len() - MAX_CANDIDATES)
-                          } else {
-                              "".to_owned()
-                          }
-                          ));
+    for candidate in &mut path_strings {
+        *candidate = format!("use {};\n", candidate);
+    }
+
+    err.span_suggestions(span, &msg, path_strings);
 }
 
 /// A somewhat inefficient routine to obtain the name of a module.
