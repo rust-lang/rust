@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+# Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -11,23 +11,39 @@
 
 set -ex
 
-# Prep the SDK and emulator
-#
-# Note that the update process requires that we accept a bunch of licenses, and
-# we can't just pipe `yes` into it for some reason, so we take the same strategy
-# located in https://github.com/appunite/docker by just wrapping it in a script
-# which apparently magically accepts the licenses.
+URL=https://dl.google.com/android/repository
 
-mkdir sdk
-curl https://dl.google.com/android/android-sdk_r24.4-linux.tgz | \
-    tar xzf - -C sdk --strip-components=1
+download_sdk() {
+    mkdir -p /android/sdk
+    cd /android/sdk
+    curl -O $URL/$1
+    unzip -q $1
+    rm -rf $1
+}
 
-filter="platform-tools,android-18"
-filter="$filter,sys-img-armeabi-v7a-android-18"
+download_sysimage() {
+    # See https://developer.android.com/studio/tools/help/android.html
+    abi=$1
+    api=$2
 
-./accept-licenses.sh "android - update sdk -a --no-ui --filter $filter"
+    filter="platform-tools,android-$api"
+    filter="$filter,sys-img-$abi-android-$api"
 
-echo "no" | android create avd \
-                --name arm-18 \
-                --target android-18 \
-                --abi armeabi-v7a
+    # Keep printing yes to accept the licenses
+    while true; do echo yes; sleep 10; done | \
+        /android/sdk/tools/android update sdk -a --no-ui \
+            --filter "$filter"
+}
+
+create_avd() {
+    # See https://developer.android.com/studio/tools/help/android.html
+    abi=$1
+    api=$2
+
+    echo no | \
+        /android/sdk/tools/android create avd \
+            --name $abi-$api \
+            --target android-$api \
+            --abi $abi
+}
+

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+# Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -23,7 +23,7 @@ download_ndk() {
 }
 
 make_standalone_toolchain() {
-    # See https://developer.android.com/ndk/guides/standalone_toolchain.html
+    # See https://developer.android.com/ndk/guides/standalone_toolchain.htm
     python2.7 /android/ndk/ndk/build/tools/make_standalone_toolchain.py \
         --install-dir /android/ndk/$1-$2 \
         --arch $1 \
