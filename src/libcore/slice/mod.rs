@@ -203,7 +203,7 @@ pub trait SliceExt {
     #[stable(feature = "core", since = "1.6.0")]
     fn ends_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
 
-    #[unstable(feature = "slice_rotate", issue = "123456789")]
+    #[unstable(feature = "slice_rotate", issue = "41891")]
     fn rotate(&mut self, mid: usize) -> usize;
 
     #[stable(feature = "clone_from_slice", since = "1.7.0")]

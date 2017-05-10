@@ -1,7 +1,7 @@
 # `slice_rotate`
 
-The tracking issue for this feature is: [#123456789]
+The tracking issue for this feature is: [#41891]
 
-[#123456789]: https://github.com/rust-lang/rust/issues/123456789
+[#41891]: https://github.com/rust-lang/rust/issues/41891
 
 ------------------------

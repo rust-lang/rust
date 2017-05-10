@@ -1387,7 +1387,7 @@ impl<T> [T] {
     /// slide(&mut v, 6..8, 1);
     /// assert_eq!(&v, &[0, 3, 7, 4, 5, 6, 1, 2, 8, 9]);
     /// ```
-    #[unstable(feature = "slice_rotate", issue = "123456789")]
+    #[unstable(feature = "slice_rotate", issue = "41891")]
     pub fn rotate(&mut self, mid: usize) -> usize {
         core_slice::SliceExt::rotate(self, mid)
     }
