@@ -24,7 +24,7 @@ use partitioning::CodegenUnit;
 use type_::Type;
 use rustc_data_structures::base_n;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, ParameterEnvironment, Ty, TyCtxt};
 use rustc::ty::layout::{LayoutTyper, TyLayout};
 use session::config::NoDebugInfo;
 use session::Session;
@@ -79,7 +79,6 @@ impl Stats {
 pub struct SharedCrateContext<'a, 'tcx: 'a> {
     exported_symbols: NodeSet,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    empty_param_env: ty::ParameterEnvironment<'tcx>,
     check_overflow: bool,
 
     use_dll_storage_attrs: bool,
@@ -315,7 +314,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
         SharedCrateContext {
             exported_symbols: exported_symbols,
-            empty_param_env: tcx.empty_parameter_environment(),
             tcx: tcx,
             check_overflow: check_overflow,
             use_dll_storage_attrs: use_dll_storage_attrs,
@@ -323,15 +321,15 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     }
 
     pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        ty.needs_drop(self.tcx, &self.empty_param_env)
+        ty.needs_drop(self.tcx, ParameterEnvironment::empty())
     }
 
     pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx, &self.empty_param_env, DUMMY_SP)
+        ty.is_sized(self.tcx, ParameterEnvironment::empty(), DUMMY_SP)
     }
 
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(self.tcx, &self.empty_param_env, DUMMY_SP)
+        ty.is_freeze(self.tcx, ParameterEnvironment::empty(), DUMMY_SP)
     }
 
     pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {

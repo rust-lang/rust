@@ -15,28 +15,25 @@ use hir::map::DefPathData;
 use infer::InferCtxt;
 use ich::{StableHashingContext, NodeIdHashingMode};
 use traits::{self, Reveal};
-use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
+use ty::{self, Ty, TyCtxt, TypeFlags, TypeFoldable};
 use ty::ParameterEnvironment;
 use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
 use ty::subst::{Subst, Kind};
 use ty::TypeVariants::*;
 use util::common::ErrorReported;
-use util::nodemap::{FxHashMap, FxHashSet};
+use util::nodemap::FxHashSet;
 use middle::lang_items;
 
 use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
-use std::cell::RefCell;
 use std::cmp;
 use std::hash::Hash;
 use std::intrinsics;
 use syntax::ast::{self, Name};
 use syntax::attr::{self, SignedInt, UnsignedInt};
 use syntax_pos::{Span, DUMMY_SP};
-
-use hir;
 
 type Disr = ConstInt;
 
@@ -153,6 +150,17 @@ pub enum Representability {
 }
 
 impl<'tcx> ParameterEnvironment<'tcx> {
+    /// Construct a trait environment suitable for contexts where
+    /// there are no where clauses in scope.
+    pub fn empty() -> Self {
+        Self::new(ty::Slice::empty())
+    }
+
+    /// Construct a trait environment with the given set of predicates.
+    pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>) -> Self {
+        ty::ParameterEnvironment { caller_bounds }
+    }
+
     pub fn can_type_implement_copy<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        self_type: Ty<'tcx>, span: Span)
                                        -> Result<(), CopyImplementationError> {
@@ -711,152 +719,40 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
 }
 
 impl<'a, 'tcx> ty::TyS<'tcx> {
-    fn impls_bound(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                   param_env: &ParameterEnvironment<'tcx>,
-                   def_id: DefId,
-                   cache: &RefCell<FxHashMap<Ty<'tcx>, bool>>,
-                   span: Span) -> bool
+    pub fn moves_by_default(&'tcx self,
+                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            param_env: ParameterEnvironment<'tcx>,
+                            span: Span)
+                            -> bool {
+        if self.has_param_types() || self.has_self_ty() {
+            !tcx.at(span).is_copy_raw(param_env.and(self))
+        } else {
+            !tcx.is_copy_raw(ParameterEnvironment::empty().and(self))
+        }
+    }
+
+    pub fn is_sized(&'tcx self,
+                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    param_env: ParameterEnvironment<'tcx>,
+                    span: Span)-> bool
     {
         if self.has_param_types() || self.has_self_ty() {
-            if let Some(result) = cache.borrow().get(self) {
-                return *result;
-            }
+            tcx.at(span).is_sized_raw(param_env.and(self))
+        } else {
+            tcx.is_sized_raw(ParameterEnvironment::empty().and(self))
         }
-        let result =
-            tcx.infer_ctxt(param_env.clone(), Reveal::UserFacing)
-            .enter(|infcx| {
-                traits::type_known_to_meet_bound(&infcx, self, def_id, span)
-            });
+    }
+
+    pub fn is_freeze(&'tcx self,
+                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                     param_env: ParameterEnvironment<'tcx>,
+                     span: Span)-> bool
+    {
         if self.has_param_types() || self.has_self_ty() {
-            cache.borrow_mut().insert(self, result);
+            tcx.at(span).is_freeze_raw(param_env.and(self))
+        } else {
+            tcx.is_freeze_raw(ParameterEnvironment::empty().and(self))
         }
-        return result;
-    }
-
-    // FIXME (@jroesch): I made this public to use it, not sure if should be private
-    pub fn moves_by_default(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            param_env: &ParameterEnvironment<'tcx>,
-                            span: Span) -> bool {
-        if self.flags.get().intersects(TypeFlags::MOVENESS_CACHED) {
-            return self.flags.get().intersects(TypeFlags::MOVES_BY_DEFAULT);
-        }
-
-        assert!(!self.needs_infer());
-
-        // Fast-path for primitive types
-        let result = match self.sty {
-            TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) | TyNever |
-            TyRawPtr(..) | TyFnDef(..) | TyFnPtr(_) | TyRef(_, TypeAndMut {
-                mutbl: hir::MutImmutable, ..
-            }) => Some(false),
-
-            TyStr | TyRef(_, TypeAndMut {
-                mutbl: hir::MutMutable, ..
-            }) => Some(true),
-
-            TyArray(..) | TySlice(..) | TyDynamic(..) | TyTuple(..) |
-            TyClosure(..) | TyAdt(..) | TyAnon(..) |
-            TyProjection(..) | TyParam(..) | TyInfer(..) | TyError => None
-        }.unwrap_or_else(|| {
-            !self.impls_bound(tcx, param_env,
-                              tcx.require_lang_item(lang_items::CopyTraitLangItem),
-                              &param_env.is_copy_cache, span) });
-
-        if !self.has_param_types() && !self.has_self_ty() {
-            self.flags.set(self.flags.get() | if result {
-                TypeFlags::MOVENESS_CACHED | TypeFlags::MOVES_BY_DEFAULT
-            } else {
-                TypeFlags::MOVENESS_CACHED
-            });
-        }
-
-        result
-    }
-
-    #[inline]
-    pub fn is_sized(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    param_env: &ParameterEnvironment<'tcx>,
-                    span: Span) -> bool
-    {
-        if self.flags.get().intersects(TypeFlags::SIZEDNESS_CACHED) {
-            return self.flags.get().intersects(TypeFlags::IS_SIZED);
-        }
-
-        self.is_sized_uncached(tcx, param_env, span)
-    }
-
-    fn is_sized_uncached(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         param_env: &ParameterEnvironment<'tcx>,
-                         span: Span) -> bool {
-        assert!(!self.needs_infer());
-
-        // Fast-path for primitive types
-        let result = match self.sty {
-            TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-            TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
-            TyArray(..) | TyTuple(..) | TyClosure(..) | TyNever => Some(true),
-
-            TyStr | TyDynamic(..) | TySlice(_) => Some(false),
-
-            TyAdt(..) | TyProjection(..) | TyParam(..) |
-            TyInfer(..) | TyAnon(..) | TyError => None
-        }.unwrap_or_else(|| {
-            self.impls_bound(tcx, param_env, tcx.require_lang_item(lang_items::SizedTraitLangItem),
-                              &param_env.is_sized_cache, span) });
-
-        if !self.has_param_types() && !self.has_self_ty() {
-            self.flags.set(self.flags.get() | if result {
-                TypeFlags::SIZEDNESS_CACHED | TypeFlags::IS_SIZED
-            } else {
-                TypeFlags::SIZEDNESS_CACHED
-            });
-        }
-
-        result
-    }
-
-    /// Returns `true` if and only if there are no `UnsafeCell`s
-    /// nested within the type (ignoring `PhantomData` or pointers).
-    #[inline]
-    pub fn is_freeze(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                     param_env: &ParameterEnvironment<'tcx>,
-                     span: Span) -> bool
-    {
-        if self.flags.get().intersects(TypeFlags::FREEZENESS_CACHED) {
-            return self.flags.get().intersects(TypeFlags::IS_FREEZE);
-        }
-
-        self.is_freeze_uncached(tcx, param_env, span)
-    }
-
-    fn is_freeze_uncached(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          param_env: &ParameterEnvironment<'tcx>,
-                          span: Span) -> bool {
-        assert!(!self.needs_infer());
-
-        // Fast-path for primitive types
-        let result = match self.sty {
-            TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-            TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
-            TyStr | TyNever => Some(true),
-
-            TyArray(..) | TySlice(_) |
-            TyTuple(..) | TyClosure(..) | TyAdt(..) |
-            TyDynamic(..) | TyProjection(..) | TyParam(..) |
-            TyInfer(..) | TyAnon(..) | TyError => None
-        }.unwrap_or_else(|| {
-            self.impls_bound(tcx, param_env, tcx.require_lang_item(lang_items::FreezeTraitLangItem),
-                              &param_env.is_freeze_cache, span) });
-
-        if !self.has_param_types() && !self.has_self_ty() {
-            self.flags.set(self.flags.get() | if result {
-                TypeFlags::FREEZENESS_CACHED | TypeFlags::IS_FREEZE
-            } else {
-                TypeFlags::FREEZENESS_CACHED
-            });
-        }
-
-        result
     }
 
     /// If `ty.needs_drop(...)` returns `true`, then `ty` is definitely
@@ -866,8 +762,10 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     /// (Note that this implies that if `ty` has a destructor attached,
     /// then `needs_drop` will definitely return `true` for `ty`.)
     #[inline]
-    pub fn needs_drop(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    param_env: &ty::ParameterEnvironment<'tcx>) -> bool {
+    pub fn needs_drop(&'tcx self,
+                      tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                      param_env: ty::ParameterEnvironment<'tcx>)
+                      -> bool {
         if self.flags.get().intersects(TypeFlags::NEEDS_DROP_CACHED) {
             return self.flags.get().intersects(TypeFlags::NEEDS_DROP);
         }
@@ -877,7 +775,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
     fn needs_drop_inner(&'tcx self,
                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        param_env: &ty::ParameterEnvironment<'tcx>,
+                        param_env: ty::ParameterEnvironment<'tcx>,
                         stack: &mut FxHashSet<Ty<'tcx>>)
                         -> bool {
         if self.flags.get().intersects(TypeFlags::NEEDS_DROP_CACHED) {
@@ -902,7 +800,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
     fn needs_drop_uncached(&'tcx self,
                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           param_env: &ty::ParameterEnvironment<'tcx>,
+                           param_env: ty::ParameterEnvironment<'tcx>,
                            stack: &mut FxHashSet<Ty<'tcx>>)
                            -> bool {
         assert!(!self.needs_infer());
@@ -1157,4 +1055,43 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         debug!("is_type_representable: {:?} is {:?}", self, r);
         r
     }
+}
+
+fn is_copy_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         query: ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>)
+                         -> bool
+{
+    let (param_env, ty) = query.into_parts();
+    let trait_def_id = tcx.require_lang_item(lang_items::CopyTraitLangItem);
+    tcx.infer_ctxt(param_env, Reveal::UserFacing)
+       .enter(|infcx| traits::type_known_to_meet_bound(&infcx, ty, trait_def_id, DUMMY_SP))
+}
+
+fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          query: ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>)
+                          -> bool
+{
+    let (param_env, ty) = query.into_parts();
+    let trait_def_id = tcx.require_lang_item(lang_items::SizedTraitLangItem);
+    tcx.infer_ctxt(param_env, Reveal::UserFacing)
+       .enter(|infcx| traits::type_known_to_meet_bound(&infcx, ty, trait_def_id, DUMMY_SP))
+}
+
+fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           query: ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>)
+                           -> bool
+{
+    let (param_env, ty) = query.into_parts();
+    let trait_def_id = tcx.require_lang_item(lang_items::FreezeTraitLangItem);
+    tcx.infer_ctxt(param_env, Reveal::UserFacing)
+       .enter(|infcx| traits::type_known_to_meet_bound(&infcx, ty, trait_def_id, DUMMY_SP))
+}
+
+pub fn provide(providers: &mut ty::maps::Providers) {
+    *providers = ty::maps::Providers {
+        is_copy_raw,
+        is_sized_raw,
+        is_freeze_raw,
+        ..*providers
+    };
 }

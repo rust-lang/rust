@@ -38,7 +38,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::mir::transform::MirSource;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, ParameterEnvironment, Ty, TyCtxt};
 use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeSet;
@@ -85,11 +85,11 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
 
     // Adds the worst effect out of all the values of one type.
     fn add_type(&mut self, ty: Ty<'gcx>) {
-        if !ty.is_freeze(self.tcx, &self.param_env, DUMMY_SP) {
+        if !ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {
             self.promotable = false;
         }
 
-        if ty.needs_drop(self.tcx, &self.param_env) {
+        if ty.needs_drop(self.tcx, self.param_env) {
             self.promotable = false;
         }
     }
@@ -466,7 +466,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         in_fn: false,
         promotable: false,
         mut_rvalue_borrows: NodeSet(),
-        param_env: tcx.empty_parameter_environment(),
+        param_env: ParameterEnvironment::empty(),
     }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }

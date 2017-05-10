@@ -108,6 +108,9 @@ pub enum DepNode<D: Clone + Debug> {
     SymbolName(D),
     SpecializationGraph(D),
     ObjectSafety(D),
+    IsCopy(D),
+    IsSized(D),
+    IsFreeze(D),
 
     // The set of impls for a given trait. Ultimately, it would be
     // nice to get more fine-grained here (e.g., to include a
@@ -233,6 +236,9 @@ impl<D: Clone + Debug> DepNode<D> {
             // they are always absolute.
             WorkProduct(ref id) => Some(WorkProduct(id.clone())),
 
+            IsCopy(ref d) => op(d).map(IsCopy),
+            IsSized(ref d) => op(d).map(IsSized),
+            IsFreeze(ref d) => op(d).map(IsFreeze),
             Hir(ref d) => op(d).map(Hir),
             HirBody(ref d) => op(d).map(HirBody),
             MetaData(ref d) => op(d).map(MetaData),

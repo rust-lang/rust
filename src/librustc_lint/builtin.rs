@@ -527,13 +527,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
         if def.has_dtor(cx.tcx) {
             return;
         }
-        let parameter_environment = cx.tcx.empty_parameter_environment();
-        // FIXME (@jroesch) should probably inver this so that the parameter env still impls this
-        // method
-        if !ty.moves_by_default(cx.tcx, &parameter_environment, item.span) {
+        let param_env = ty::ParameterEnvironment::empty();
+        if !ty.moves_by_default(cx.tcx, param_env, item.span) {
             return;
         }
-        if parameter_environment.can_type_implement_copy(cx.tcx, ty, item.span).is_ok() {
+        if param_env.can_type_implement_copy(cx.tcx, ty, item.span).is_ok() {
             cx.span_lint(MISSING_COPY_IMPLEMENTATIONS,
                          item.span,
                          "type could implement `Copy`; consider adding `impl \
@@ -1258,7 +1256,8 @@ impl LintPass for UnionsWithDropFields {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
     fn check_item(&mut self, ctx: &LateContext, item: &hir::Item) {
         if let hir::ItemUnion(ref vdata, _) = item.node {
-            let param_env = &ctx.tcx.parameter_environment(ctx.tcx.hir.local_def_id(item.id));
+            let item_def_id = ctx.tcx.hir.local_def_id(item.id);
+            let param_env = ctx.tcx.parameter_environment(item_def_id);
             for field in vdata.fields() {
                 let field_ty = ctx.tcx.type_of(ctx.tcx.hir.local_def_id(field.id));
                 if field_ty.needs_drop(ctx.tcx, param_env) {

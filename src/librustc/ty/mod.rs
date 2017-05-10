@@ -35,7 +35,7 @@ use util::common::ErrorReported;
 use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
 
 use serialize::{self, Encodable, Encoder};
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::cmp;
 use std::fmt;
@@ -507,8 +507,6 @@ bitflags! {
         // Caches for type_is_sized, type_moves_by_default
         const SIZEDNESS_CACHED  = 1 << 16,
         const IS_SIZED          = 1 << 17,
-        const MOVENESS_CACHED   = 1 << 18,
-        const MOVES_BY_DEFAULT  = 1 << 19,
         const FREEZENESS_CACHED = 1 << 20,
         const IS_FREEZE         = 1 << 21,
         const NEEDS_DROP_CACHED = 1 << 22,
@@ -1250,45 +1248,34 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 }
 
 /// When type checking, we use the `ParameterEnvironment` to track
-/// details about the type/lifetime parameters that are in scope.
-/// It primarily stores the bounds information.
-///
-/// Note: This information might seem to be redundant with the data in
-/// `tcx.ty_param_defs`, but it is not. That table contains the
-/// parameter definitions from an "outside" perspective, but this
-/// struct will contain the bounds for a parameter as seen from inside
-/// the function body. Currently the only real distinction is that
-/// bound lifetime parameters are replaced with free ones, but in the
-/// future I hope to refine the representation of types so as to make
-/// more distinctions clearer.
-#[derive(Clone)]
+/// details about the set of where-clauses that are in scope at this
+/// particular point.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ParameterEnvironment<'tcx> {
     /// Obligations that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
     /// into Obligations, and elaborated and normalized.
-    pub caller_bounds: &'tcx [ty::Predicate<'tcx>],
-
-    /// A cache for `moves_by_default`.
-    pub is_copy_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
-
-    /// A cache for `type_is_sized`
-    pub is_sized_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
-
-    /// A cache for `type_is_freeze`
-    pub is_freeze_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
+    pub caller_bounds: &'tcx Slice<ty::Predicate<'tcx>>,
 }
 
-impl<'a, 'tcx> ParameterEnvironment<'tcx> {
-    pub fn with_caller_bounds(&self,
-                              caller_bounds: &'tcx [ty::Predicate<'tcx>])
-                              -> ParameterEnvironment<'tcx>
-    {
-        ParameterEnvironment {
-            caller_bounds: caller_bounds,
-            is_copy_cache: RefCell::new(FxHashMap()),
-            is_sized_cache: RefCell::new(FxHashMap()),
-            is_freeze_cache: RefCell::new(FxHashMap()),
+impl<'tcx> ParameterEnvironment<'tcx> {
+    pub fn and<T>(self, value: T) -> ParameterEnvironmentAnd<'tcx, T> {
+        ParameterEnvironmentAnd {
+            param_env: self,
+            value: value,
         }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ParameterEnvironmentAnd<'tcx, T> {
+    pub param_env: ParameterEnvironment<'tcx>,
+    pub value: T,
+}
+
+impl<'tcx, T> ParameterEnvironmentAnd<'tcx, T> {
+    pub fn into_parts(self) -> (ParameterEnvironment<'tcx>, T) {
+        (self.param_env, self.value)
     }
 }
 
@@ -2357,17 +2344,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Construct a parameter environment suitable for static contexts or other contexts where there
-    /// are no free type/lifetime parameters in scope.
-    pub fn empty_parameter_environment(self) -> ParameterEnvironment<'tcx> {
-        ty::ParameterEnvironment {
-            caller_bounds: Slice::empty(),
-            is_copy_cache: RefCell::new(FxHashMap()),
-            is_sized_cache: RefCell::new(FxHashMap()),
-            is_freeze_cache: RefCell::new(FxHashMap()),
-        }
-    }
-
     /// See `ParameterEnvironment` struct def'n for details.
     pub fn parameter_environment(self, def_id: DefId) -> ParameterEnvironment<'gcx> {
         //
@@ -2391,12 +2367,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // sure that this will succeed without errors anyway.
         //
 
-        let unnormalized_env = ty::ParameterEnvironment {
-            caller_bounds: tcx.intern_predicates(&predicates),
-            is_copy_cache: RefCell::new(FxHashMap()),
-            is_sized_cache: RefCell::new(FxHashMap()),
-            is_freeze_cache: RefCell::new(FxHashMap()),
-        };
+        let unnormalized_env = ty::ParameterEnvironment::new(tcx.intern_predicates(&predicates));
 
         let body_id = self.hir.as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
             self.hir.maybe_body_owned_by(id).map_or(id, |body| body.node_id)
@@ -2566,6 +2537,7 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
 
 
 pub fn provide(providers: &mut ty::maps::Providers) {
+    util::provide(providers);
     *providers = ty::maps::Providers {
         associated_item,
         associated_item_def_ids,

@@ -28,7 +28,7 @@ use middle::lang_items;
 use mir::tcx::LvalueTy;
 use ty::subst::{Kind, Subst, Substs};
 use ty::{TyVid, IntVid, FloatVid};
-use ty::{self, Ty, TyCtxt};
+use ty::{self, ParameterEnvironment, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::relate::{Relate, RelateResult, TypeRelation};
@@ -526,9 +526,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         let tables = tables.map(InferTables::Interned).unwrap_or_else(|| {
             fresh_tables.as_ref().map_or(InferTables::Missing, InferTables::InProgress)
         });
-        let param_env = param_env.take().unwrap_or_else(|| {
-            global_tcx.empty_parameter_environment()
-        });
+        let param_env = param_env.take().unwrap_or_else(|| ParameterEnvironment::empty());
         global_tcx.enter_local(arena, |tcx| f(InferCtxt {
             tcx: tcx,
             tables: tables,
@@ -650,7 +648,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     }
 
     pub fn normalize_associated_type_in_env<T>(
-        self, value: &T, env: &'a ty::ParameterEnvironment<'tcx>
+        self, value: &T, env: ty::ParameterEnvironment<'tcx>
     ) -> T
         where T: TransNormalize<'tcx>
     {
@@ -662,7 +660,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return value;
         }
 
-        self.infer_ctxt(env.clone(), Reveal::All).enter(|infcx| {
+        self.infer_ctxt(env, Reveal::All).enter(|infcx| {
             value.trans_normalize(&infcx)
        })
     }
@@ -1674,8 +1672,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tables.borrow().upvar_capture_map.get(&upvar_id).cloned()
     }
 
-    pub fn param_env(&self) -> &ty::ParameterEnvironment<'gcx> {
-        &self.parameter_environment
+    pub fn param_env(&self) -> ty::ParameterEnvironment<'gcx> {
+        self.parameter_environment
     }
 
     pub fn closure_kind(&self,

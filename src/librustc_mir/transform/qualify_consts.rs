@@ -78,7 +78,7 @@ impl<'a, 'tcx> Qualif {
     /// Remove flags which are impossible for the given type.
     fn restrict(&mut self, ty: Ty<'tcx>,
                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                param_env: &ty::ParameterEnvironment<'tcx>) {
+                param_env: ty::ParameterEnvironment<'tcx>) {
         if ty.is_freeze(tcx, param_env, DUMMY_SP) {
             *self = *self - Qualif::MUTABLE_INTERIOR;
         }
@@ -193,7 +193,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     /// Add the given type's qualification to self.qualif.
     fn add_type(&mut self, ty: Ty<'tcx>) {
         self.add(Qualif::MUTABLE_INTERIOR | Qualif::NEEDS_DROP);
-        self.qualif.restrict(ty, self.tcx, &self.param_env);
+        self.qualif.restrict(ty, self.tcx, self.param_env);
     }
 
     /// Within the provided closure, self.qualif will start
@@ -544,7 +544,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                            static, use a constant instead");
                             }
                             let ty = lvalue.ty(this.mir, this.tcx).to_ty(this.tcx);
-                            this.qualif.restrict(ty, this.tcx, &this.param_env);
+                            this.qualif.restrict(ty, this.tcx, this.param_env);
                         }
 
                         ProjectionElem::ConstantIndex {..} |
