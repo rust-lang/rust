@@ -28,7 +28,7 @@
 //! one function. Currently, the actual symbol is declared in the standard
 //! library, but the location of this may change over time.
 
-#![allow(dead_code, missing_docs)]
+#![allow(dead_code, missing_docs, unused_variables)]
 #![unstable(feature = "core_panic",
             reason = "internal details of the implementation of the `panic!` \
                       and related macros",
@@ -65,6 +65,11 @@ pub fn panic_fmt(fmt: fmt::Arguments, file_line: &(&'static str, u32)) -> ! {
         #[unwind]
         fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: u32) -> !;
     }
-    let (file, line) = *file_line;
-    unsafe { panic_impl(fmt, file, line) }
+
+    if cfg!(feature = "mask_fileinfo_from_panic") {
+        unsafe { panic_impl(fmt, "", 0) }
+    } else {
+        let (file, line) = *file_line;
+        unsafe { panic_impl(fmt, file, line) }
+    }
 }
