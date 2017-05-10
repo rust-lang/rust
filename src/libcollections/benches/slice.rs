@@ -290,3 +290,28 @@ sort!(sort_unstable, sort_unstable_large_random, gen_random, 10000);
 sort!(sort_unstable, sort_unstable_large_big_random, gen_big_random, 10000);
 sort!(sort_unstable, sort_unstable_large_strings, gen_strings, 10000);
 sort_expensive!(sort_unstable_by, sort_unstable_large_random_expensive, gen_random, 10000);
+
+macro_rules! reverse {
+    ($name:ident, $ty:ty, $f:expr) => {
+        #[bench]
+        fn $name(b: &mut Bencher) {
+            // odd length and offset by 1 to be as unaligned as possible
+            let n = 0xFFFFF;
+            let mut v: Vec<_> =
+                (0..1+(n / mem::size_of::<$ty>() as u64))
+                .map($f)
+                .collect();
+            b.iter(|| black_box(&mut v[1..]).reverse());
+            b.bytes = n;
+        }
+    }
+}
+
+reverse!(reverse_u8, u8, |x| x as u8);
+reverse!(reverse_u16, u16, |x| x as u16);
+reverse!(reverse_u8x3, [u8;3], |x| [x as u8, (x>>8) as u8, (x>>16) as u8]);
+reverse!(reverse_u32, u32, |x| x as u32);
+reverse!(reverse_u64, u64, |x| x as u64);
+reverse!(reverse_u128, u128, |x| x as u128);
+#[repr(simd)] struct F64x4(f64, f64, f64, f64);
+reverse!(reverse_simd_f64x4, F64x4, |x| { let x = x as f64; F64x4(x,x,x,x) });
