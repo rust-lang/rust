@@ -524,6 +524,7 @@ pub enum Nonterminal {
     NtGenerics(ast::Generics),
     NtWhereClause(ast::WhereClause),
     NtArg(ast::Arg),
+    NtLifetime(ast::Lifetime),
 }
 
 impl fmt::Debug for Nonterminal {
@@ -546,6 +547,7 @@ impl fmt::Debug for Nonterminal {
             NtWhereClause(..) => f.pad("NtWhereClause(..)"),
             NtArg(..) => f.pad("NtArg(..)"),
             NtVis(..) => f.pad("NtVis(..)"),
+            NtLifetime(..) => f.pad("NtLifetime(..)"),
         }
     }
 }

@@ -279,6 +279,7 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtWhereClause(ref e) => where_clause_to_string(e),
             token::NtArg(ref e)         => arg_to_string(e),
             token::NtVis(ref e)         => vis_to_string(e),
+            token::NtLifetime(ref e)    => lifetime_to_string(e),
         }
     }
 }
