@@ -141,22 +141,22 @@ features = ["c"]
 - [x] divsi3.c
 - [ ] extendhfsf2.c
 - [ ] extendsfdf2.c
-- [ ] fixdfdi.c
-- [ ] fixdfsi.c
-- [ ] fixsfdi.c
-- [ ] fixsfsi.c
-- [ ] fixunsdfdi.c
-- [ ] fixunsdfsi.c
-- [ ] fixunssfdi.c
-- [ ] fixunssfsi.c
-- [ ] floatdidf.c
+- [x] fixdfdi.c
+- [x] fixdfsi.c
+- [x] fixsfdi.c
+- [x] fixsfsi.c
+- [x] fixunsdfdi.c
+- [x] fixunsdfsi.c
+- [x] fixunssfdi.c
+- [x] fixunssfsi.c
+- [x] floatdidf.c
 - [ ] floatdisf.c
-- [ ] floatsidf.c
-- [ ] floatsisf.c
-- [ ] floatundidf.c
+- [x] floatsidf.c
+- [x] floatsisf.c
+- [x] floatundidf.c
 - [ ] floatundisf.c
-- [ ] floatunsidf.c
-- [ ] floatunsisf.c
+- [x] floatunsidf.c
+- [x] floatunsisf.c
 - [ ] i386/ashldi3.S
 - [ ] i386/ashrdi3.S
 - [ ] i386/chkstk.S
@@ -196,14 +196,14 @@ These builtins are needed to support 128-bit integers, which are in the process 
 - [x] ashlti3.c
 - [x] ashrti3.c
 - [x] divti3.c
-- [ ] fixdfti.c
-- [ ] fixsfti.c
-- [ ] fixunsdfti.c
-- [ ] fixunssfti.c
-- [ ] floattidf.c
-- [ ] floattisf.c
-- [ ] floatuntidf.c
-- [ ] floatuntisf.c
+- [x] fixdfti.c
+- [x] fixsfti.c
+- [x] fixunsdfti.c
+- [x] fixunssfti.c
+- [x] floattidf.c
+- [x] floattisf.c
+- [x] floatuntidf.c
+- [x] floatuntisf.c
 - [x] lshrti3.c
 - [x] modti3.c
 - [x] muloti4.c

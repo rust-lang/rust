@@ -63,7 +63,7 @@ macro_rules! int_impl {
 
             fn extract_sign(self) -> (bool, $uty) {
                 if self < 0 {
-                    (true, !(self as $uty) + 1)
+                    (true, (!(self as $uty)).wrapping_add(1))
                 } else {
                     (false, self as $uty)
                 }
