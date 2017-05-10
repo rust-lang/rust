@@ -56,13 +56,10 @@ fn pred_test() {
     // inside a closure that the condition is using.  same principle applies.  add some extra
     // expressions to make sure linter isn't confused by them.
     if v == 3 && sky == "blue" && predicate(|x| { let target = 3; x == target }, v) {
-
     }
 
     if predicate(|x| { let target = 3; x == target }, v) {
-
     }
-
 }
 
 fn condition_is_normal() -> i32 {
