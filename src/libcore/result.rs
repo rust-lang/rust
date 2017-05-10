@@ -856,7 +856,7 @@ impl<T: Default, E> Result<T, E> {
 #[inline(never)]
 #[cold]
 fn unwrap_failed<E: fmt::Debug>(msg: &str, error: E) -> ! {
-    panic!("{}: {:?}", msg, error)
+    panic!("{}: {:#?}", msg, error)
 }
 
 /////////////////////////////////////////////////////////////////////////////
