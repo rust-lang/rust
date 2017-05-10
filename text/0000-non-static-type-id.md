@@ -1,7 +1,7 @@
 - Feature Name: non_static_type_id
 - Start Date: 2017-01-08
-- RFC PR: 
-- Rust Issue: 
+- RFC PR: [rust-lang/rfcs#1849](https://github.com/rust-lang/rfcs/pull/1849)
+- Rust Issue: [rust-lang/rust#41875](https://github.com/rust-lang/rust/issues/41875)
 
 # Summary
 [summary]: #summary
