@@ -20,9 +20,7 @@ Note that if you're on Unix you should be able to execute the script directly:
 
 The script accepts commands, flags, and arguments to determine what to do:
 
-* `build` - a general purpose command for compiling code. Alone `build` will
-  bootstrap the entire compiler, and otherwise arguments passed indicate what to
-  build. For example:
+* `build` - a general purpose command for compiling code. Examples:
 
   ```
   # build the whole compiler
@@ -47,9 +45,7 @@ The script accepts commands, flags, and arguments to determine what to do:
   ./x.py build --keep-stage 0 --stage 1
   ```
 
-* `test` - a command for executing unit tests. Like the `build` command this
-  will execute the entire test suite by default, and otherwise it can be used to
-  select which test suite is run:
+* `test` - a command for executing unit tests. Examples:
 
   ```
   # run all unit tests
