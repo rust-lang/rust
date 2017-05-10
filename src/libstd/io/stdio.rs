@@ -292,6 +292,9 @@ impl fmt::Debug for Stdin {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        // Flush stdout so that weird issues like a print!'d prompt not being
+        // shown until after the user hits enter.
+        drop(stdout().flush());
         self.lock().read(buf)
     }
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
