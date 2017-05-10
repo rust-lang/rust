@@ -11,7 +11,7 @@
 use std::fmt;
 use rustc::hir;
 use rustc::mir::*;
-use rustc::middle::const_val::ConstInt;
+use rustc::middle::const_val::{ConstInt, ConstVal};
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::{Kind, Substs};
@@ -535,6 +535,114 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         })
     }
 
+    /// create a loop that drops an array:
+    ///
+    /// loop-block:
+    ///    can_go = index < len
+    ///    if can_go then drop-block else succ
+    /// drop-block:
+    ///    ptr = &mut LV[len]
+    ///    index = index + 1
+    ///    drop(ptr)
+    fn drop_loop(&mut self,
+                 unwind: Option<BasicBlock>,
+                 succ: BasicBlock,
+                 index: &Lvalue<'tcx>,
+                 length: &Lvalue<'tcx>,
+                 ety: Ty<'tcx>,
+                 is_cleanup: bool)
+                 -> BasicBlock
+    {
+        let use_ = |lv: &Lvalue<'tcx>| Operand::Consume(lv.clone());
+        let tcx = self.tcx();
+
+        let ref_ty = tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
+            ty: ety,
+            mutbl: hir::Mutability::MutMutable
+        });
+        let ptr = &Lvalue::Local(self.new_temp(ref_ty));
+        let can_go = &Lvalue::Local(self.new_temp(tcx.types.bool));
+
+        let one = self.constant_usize(1);
+        let drop_block = self.elaborator.patch().new_block(BasicBlockData {
+            statements: vec![
+                Statement { source_info: self.source_info, kind: StatementKind::Assign(
+                    ptr.clone(), Rvalue::Ref(
+                        tcx.types.re_erased, BorrowKind::Mut,
+                        self.lvalue.clone().index(use_(index))
+                    ),
+                )},
+                Statement { source_info: self.source_info, kind: StatementKind::Assign(
+                    index.clone(), Rvalue::BinaryOp(BinOp::Add, use_(index), one)
+                )},
+            ],
+            is_cleanup,
+            terminator: Some(Terminator {
+                source_info: self.source_info,
+                kind: TerminatorKind::Resume,
+            })
+        });
+
+        let loop_block = self.elaborator.patch().new_block(BasicBlockData {
+            statements: vec![
+                Statement { source_info: self.source_info, kind: StatementKind::Assign(
+                    can_go.clone(), Rvalue::BinaryOp(BinOp::Lt, use_(index), use_(length))
+                )},
+            ],
+            is_cleanup,
+            terminator: Some(Terminator {
+                source_info: self.source_info,
+                kind: TerminatorKind::if_(tcx, use_(can_go), drop_block, succ)
+            })
+        });
+
+        self.elaborator.patch().patch_terminator(drop_block, TerminatorKind::Drop {
+            location: ptr.clone().deref(),
+            target: loop_block,
+            unwind: unwind
+        });
+
+        loop_block
+    }
+
+    fn open_drop_for_array(&mut self, ety: Ty<'tcx>) -> BasicBlock {
+        debug!("open_drop_for_array({:?})", ety);
+        // FIXME: using an index instead of a pointer to avoid
+        // special-casing ZSTs.
+        let tcx = self.tcx();
+        let index = &Lvalue::Local(self.new_temp(tcx.types.usize));
+        let length = &Lvalue::Local(self.new_temp(tcx.types.usize));
+
+        let unwind = self.unwind.map(|unwind| {
+            self.drop_loop(None, unwind, index, length, ety, true)
+        });
+
+        let is_cleanup = self.is_cleanup;
+        let succ = self.succ; // FIXME(#6393)
+        let loop_block = self.drop_loop(unwind, succ, index, length, ety, is_cleanup);
+
+        let zero = self.constant_usize(0);
+        let drop_block = self.elaborator.patch().new_block(BasicBlockData {
+            statements: vec![
+                Statement { source_info: self.source_info, kind: StatementKind::Assign(
+                    length.clone(), Rvalue::Len(self.lvalue.clone())
+                )},
+                Statement { source_info: self.source_info, kind: StatementKind::Assign(
+                    index.clone(), Rvalue::Use(zero),
+                )},
+            ],
+            is_cleanup,
+            terminator: Some(Terminator {
+                source_info: self.source_info,
+                kind: TerminatorKind::Goto { target: loop_block }
+            })
+        });
+
+        // FIXME(#34708): handle partially-dropped array/slice elements.
+        self.drop_flag_test_and_reset_block(
+            is_cleanup, Some(DropFlagMode::Deep), drop_block, succ)
+    }
+
     /// The slow-path - create an "open", elaborated drop for a type
     /// which is moved-out-of only partially, and patch `bb` to a jump
     /// to it. This must not be called on ADTs with a destructor,
@@ -564,10 +672,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             ty::TyDynamic(..) => {
                 self.complete_drop(is_cleanup, Some(DropFlagMode::Deep), succ)
             }
-            ty::TyArray(..) | ty::TySlice(..) => {
-                // FIXME(#34708): handle partially-dropped
-                // array/slice elements.
-                self.complete_drop(is_cleanup, Some(DropFlagMode::Deep), succ)
+            ty::TyArray(ety, _) | ty::TySlice(ety) => {
+                self.open_drop_for_array(ety)
             }
             _ => bug!("open drop from non-ADT `{:?}`", ty)
         }
@@ -588,6 +694,17 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         debug!("complete_drop({:?},{:?})", self, drop_mode);
 
         let drop_block = self.drop_block(is_cleanup, succ);
+        self.drop_flag_test_and_reset_block(is_cleanup, drop_mode, drop_block, succ)
+    }
+
+    fn drop_flag_test_and_reset_block(&mut self,
+                                      is_cleanup: bool,
+                                      drop_mode: Option<DropFlagMode>,
+                                      drop_block: BasicBlock,
+                                      succ: BasicBlock) -> BasicBlock
+    {
+        debug!("drop_flag_test_and_reset_block({:?},{:?})", self, drop_mode);
+
         if let Some(mode) = drop_mode {
             let block_start = Location { block: drop_block, statement_index: 0 };
             self.elaborator.clear_drop_flag(block_start, self.path, mode);
@@ -690,5 +807,13 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn terminator_loc(&mut self, bb: BasicBlock) -> Location {
         let mir = self.elaborator.mir();
         self.elaborator.patch().terminator_loc(mir, bb)
+    }
+
+    fn constant_usize(&self, val: usize) -> Operand<'tcx> {
+        Operand::Constant(box Constant {
+            span: self.source_info.span,
+            ty: self.tcx().types.usize,
+            literal: Literal::Value { value: ConstVal::Integral(self.tcx().const_usize(val)) }
+        })
     }
 }

@@ -125,6 +125,14 @@ fn union1(a: &Allocator) {
     }
 }
 
+fn array_simple(a: &Allocator) {
+    let _x = [a.alloc(), a.alloc(), a.alloc(), a.alloc()];
+}
+
+fn vec_simple(a: &Allocator) {
+    let _x = vec![a.alloc(), a.alloc(), a.alloc(), a.alloc()];
+}
+
 fn run_test<F>(mut f: F)
     where F: FnMut(&Allocator)
 {
@@ -170,6 +178,9 @@ fn main() {
 
     run_test(|a| assignment1(a, false));
     run_test(|a| assignment1(a, true));
+
+    run_test(|a| array_simple(a));
+    run_test(|a| vec_simple(a));
 
     run_test_nopanic(|a| union1(a));
 }

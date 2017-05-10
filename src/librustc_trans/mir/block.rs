@@ -20,13 +20,12 @@ use base::{self, Lifetime};
 use callee;
 use builder::Builder;
 use common::{self, Funclet};
-use common::{C_bool, C_str_slice, C_struct, C_u32, C_uint, C_undef};
+use common::{C_bool, C_str_slice, C_struct, C_u32, C_undef};
 use consts;
 use machine::llalign_of_min;
 use meth;
 use monomorphize;
 use type_of;
-use tvec;
 use type_::Type;
 
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -222,34 +221,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let (drop_fn, need_extra) = match ty.sty {
                     ty::TyDynamic(..) => (meth::DESTRUCTOR.get_fn(&bcx, lvalue.llextra),
                                           false),
-                    ty::TyArray(ety, _) | ty::TySlice(ety) => {
-                        // FIXME: handle panics
-                        let drop_fn = monomorphize::resolve_drop_in_place(
-                            bcx.ccx.shared(), ety);
-                        let drop_fn = callee::get_fn(bcx.ccx, drop_fn);
-                        let bcx = tvec::slice_for_each(
-                            &bcx,
-                            lvalue.project_index(&bcx, C_uint(bcx.ccx, 0u64)),
-                            ety,
-                            lvalue.len(bcx.ccx),
-                            |bcx, llval, loop_bb| {
-                                self.set_debug_loc(&bcx, terminator.source_info);
-                                if let Some(unwind) = unwind {
-                                    bcx.invoke(
-                                        drop_fn,
-                                        &[llval],
-                                        loop_bb,
-                                        llblock(self, unwind),
-                                        cleanup_bundle
-                                    );
-                                } else {
-                                    bcx.call(drop_fn, &[llval], cleanup_bundle);
-                                    bcx.br(loop_bb);
-                                }
-                            });
-                        funclet_br(self, bcx, target);
-                        return
-                    }
                     _ => (callee::get_fn(bcx.ccx, drop_fn), lvalue.has_extra())
                 };
                 let args = &[lvalue.llval, lvalue.llextra][..1 + need_extra as usize];

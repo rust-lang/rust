@@ -612,17 +612,7 @@ fn visit_instance_use<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                 output.push(create_fn_trans_item(instance));
             }
         }
-        ty::InstanceDef::DropGlue(_, Some(ty)) => {
-            match ty.sty {
-                ty::TyArray(ety, _) |
-                ty::TySlice(ety)
-                    if is_direct_call =>
-                {
-                    // drop of arrays/slices is translated in-line.
-                    visit_drop_use(scx, ety, false, output);
-                }
-                _ => {}
-            };
+        ty::InstanceDef::DropGlue(_, Some(_)) => {
             output.push(create_fn_trans_item(instance));
         }
         ty::InstanceDef::ClosureOnceShim { .. } |
