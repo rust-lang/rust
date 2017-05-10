@@ -60,6 +60,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                          decl,
                                          Abi::RustCall,
                                          expected_sig);
+        // `deduce_expectations_from_expected_type` introduces late-bound
+        // lifetimes defined elsewhere, which we need to anonymize away.
+        let sig = self.tcx.anonymize_late_bound_regions(&sig);
 
         // Create type variables (for now) to represent the transformed
         // types of upvars. These will be unified during the upvar

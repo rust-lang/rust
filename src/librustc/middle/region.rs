@@ -198,6 +198,14 @@ impl CodeExtentData {
 
 /// The region maps encode information about region relationships.
 pub struct RegionMaps<'tcx> {
+    /// If not empty, this body is the root of this region hierarchy.
+    root_body: Option<hir::BodyId>,
+
+    /// The parent of the root body owner, if the latter is an
+    /// an associated const or method, as impls/traits can also
+    /// have lifetime parameters free in this body.
+    root_parent: Option<ast::NodeId>,
+
     /// `scope_map` maps from a scope id to the enclosing scope id;
     /// this is usually corresponding to the lexical nesting, though
     /// in the case of closures the parent scope is the innermost
@@ -295,6 +303,8 @@ struct RegionResolutionVisitor<'a, 'tcx: 'a> {
 impl<'tcx> RegionMaps<'tcx> {
     pub fn new() -> Self {
         RegionMaps {
+            root_body: None,
+            root_parent: None,
             scope_map: FxHashMap(),
             destruction_scopes: FxHashMap(),
             var_map: NodeMap(),
@@ -600,8 +610,39 @@ impl<'tcx> RegionMaps<'tcx> {
     /// returns the outermost `CodeExtent` that the region outlives.
     pub fn free_extent<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, fr: &ty::FreeRegion)
                                  -> CodeExtent<'tcx> {
-        let scope_id = tcx.hir.as_local_node_id(fr.scope).unwrap();
-        tcx.call_site_extent(scope_id)
+        let param_owner = match fr.bound_region {
+            ty::BoundRegion::BrNamed(def_id, _) => {
+                tcx.parent_def_id(def_id).unwrap()
+            }
+            _ => fr.scope
+        };
+
+        let param_owner_id = tcx.hir.as_local_node_id(param_owner).unwrap();
+        let body_id = tcx.hir.maybe_body_owned_by(param_owner_id)
+        .map(|body| {
+            assert_eq!(param_owner, fr.scope);
+            body
+        })
+        .unwrap_or_else(|| {
+            let root = tcx.hir.as_local_node_id(fr.scope).unwrap();
+
+            assert_eq!(Some(param_owner_id), self.root_parent,
+                       "free_extent: {:?} not recognized by the region maps for {:?}",
+                       param_owner, fr.scope);
+
+            let root_body = tcx.hir.body_owned_by(root);
+
+            assert!(Some(root_body) == self.root_body,
+                    "free_extent: {:?} not inside {:?}",
+                    param_owner, self.root_body.map(|body| tcx.hir.body_owner_def_id(body)));
+
+            root_body
+        });
+
+        tcx.intern_code_extent(CodeExtentData::CallSiteScope {
+            fn_id: tcx.hir.body_owner(body_id),
+            body_id: body_id.node_id
+        })
     }
 }
 
@@ -1167,6 +1208,19 @@ fn region_maps<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
 
     let id = tcx.hir.as_local_node_id(def_id).unwrap();
     if let Some(body) = tcx.hir.maybe_body_owned_by(id) {
+        maps.root_body = Some(body);
+
+        // If the item is an associated const or a method,
+        // record its impl/trait parent, as it can also have
+        // lifetime parameters free in this body.
+        match tcx.hir.get(id) {
+            hir::map::NodeImplItem(_) |
+            hir::map::NodeTraitItem(_) => {
+                maps.root_parent = Some(tcx.hir.get_parent(id));
+            }
+            _ => {}
+        }
+
         let mut visitor = RegionResolutionVisitor {
             tcx: tcx,
             region_maps: &mut maps,

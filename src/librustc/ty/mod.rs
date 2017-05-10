@@ -2386,11 +2386,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// free parameters. Since we currently represent bound/free type
     /// parameters in the same way, this only has an effect on regions.
     pub fn construct_free_substs(self, def_id: DefId) -> &'gcx Substs<'gcx> {
-
+        let scope = self.closure_base_def_id(def_id);
         let substs = Substs::for_item(self.global_tcx(), def_id, |def, _| {
             // map bound 'a => free 'a
             self.global_tcx().mk_region(ReFree(FreeRegion {
-                scope: def_id,
+                scope,
                 bound_region: def.to_bound_region()
             }))
         }, |def, _| {
