@@ -38,8 +38,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             // do something like 0.0/(2.0 - 2.0), but it would be nice to warn on that case too.
             let Some(Constant::Float(ref lhs_value, lhs_width)) = constant_simple(cx, left),
             let Some(Constant::Float(ref rhs_value, rhs_width)) = constant_simple(cx, right),
-            let Ok(0.0) = lhs_value.parse(),
-            let Ok(0.0) = rhs_value.parse()
+            Ok(0.0) == lhs_value.parse(),
+            Ok(0.0) == rhs_value.parse()
         ], {
             // since we're about to suggest a use of std::f32::NaN or std::f64::NaN,
             // match the precision of the literals that are given.
