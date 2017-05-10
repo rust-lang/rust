@@ -424,8 +424,10 @@ impl<'a> Resolver<'a> {
     fn build_reduced_graph_for_block(&mut self, block: &Block) {
         let parent = self.current_module;
         if self.block_needs_anonymous_module(block) {
-            let module =
-                self.new_module(parent, ModuleKind::Block(block.id), parent.normal_ancestor_id, block.span);
+            let module = self.new_module(parent,
+                                         ModuleKind::Block(block.id),
+                                         parent.normal_ancestor_id,
+                                         block.span);
             self.block_map.insert(block.id, module);
             self.current_module = module; // Descend into the block.
         }
