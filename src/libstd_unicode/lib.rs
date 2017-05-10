@@ -36,9 +36,11 @@
 #![feature(core_char_ext)]
 #![feature(decode_utf8)]
 #![feature(fused)]
+#![feature(fn_traits)]
 #![feature(lang_items)]
 #![feature(staged_api)]
 #![feature(try_from)]
+#![feature(unboxed_closures)]
 
 mod tables;
 mod u_str;
