@@ -77,9 +77,9 @@ pub fn docs(build: &Build, stage: u32, host: &str) {
        .arg("--product-name=Rust-Documentation")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Rust-documentation-is-installed.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
        .arg(format!("--package-name={}-{}", name, host))
        .arg("--component-name=rust-docs")
        .arg("--legacy-manifest-dirs=rustlib,cargo")
@@ -127,9 +127,9 @@ pub fn mingw(build: &Build, host: &str) {
        .arg("--product-name=Rust-MinGW")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Rust-MinGW-is-installed.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
        .arg(format!("--package-name={}-{}", name, host))
        .arg("--component-name=rust-mingw")
        .arg("--legacy-manifest-dirs=rustlib,cargo");
@@ -193,10 +193,10 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Rust-is-ready-to-roll.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
-       .arg(format!("--non-installed-overlay={}", sanitize_sh(&overlay)))
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
+       .arg("--non-installed-overlay").arg(&overlay)
        .arg(format!("--package-name={}-{}", name, host))
        .arg("--component-name=rustc")
        .arg("--legacy-manifest-dirs=rustlib,cargo");
@@ -303,9 +303,9 @@ pub fn std(build: &Build, compiler: &Compiler, target: &str) {
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=std-is-standing-at-the-ready.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
        .arg(format!("--package-name={}-{}", name, target))
        .arg(format!("--component-name=rust-std-{}", target))
        .arg("--legacy-manifest-dirs=rustlib,cargo");
@@ -359,9 +359,9 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=save-analysis-saved.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
        .arg(format!("--package-name={}-{}", name, target))
        .arg(format!("--component-name=rust-analysis-{}", target))
        .arg("--legacy-manifest-dirs=rustlib,cargo");
@@ -478,7 +478,7 @@ pub fn rust_src(build: &Build) {
     let mut cmd = rust_installer(build);
     cmd.arg("tarball")
        .arg("--input").arg(&plain_name)
-       .arg("--output").arg(sanitize_sh(&tarball))
+       .arg("--output").arg(&tarball)
        .arg("--work-dir=.")
        .current_dir(tmpdir(build));
     build.run(&mut cmd);
@@ -528,9 +528,9 @@ pub fn rust_src(build: &Build) {
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Awesome-Source.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
        .arg(format!("--package-name={}", name))
        .arg("--component-name=rust-src")
        .arg("--legacy-manifest-dirs=rustlib,cargo");
@@ -629,10 +629,10 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Rust-is-ready-to-roll.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
-       .arg(format!("--non-installed-overlay={}", sanitize_sh(&overlay)))
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
+       .arg("--non-installed-overlay").arg(&overlay)
        .arg(format!("--package-name={}-{}", name, target))
        .arg("--component-name=cargo")
        .arg("--legacy-manifest-dirs=rustlib,cargo");
@@ -678,10 +678,10 @@ pub fn rls(build: &Build, stage: u32, target: &str) {
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=RLS-ready-to-serve.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
-       .arg(format!("--non-installed-overlay={}", sanitize_sh(&overlay)))
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
+       .arg("--non-installed-overlay").arg(&overlay)
        .arg(format!("--package-name={}-{}", name, target))
        .arg("--component-name=rls")
        .arg("--legacy-manifest-dirs=rustlib,cargo");
@@ -732,16 +732,15 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
     // upgrades rustc was upgraded before rust-std. To avoid rustc clobbering
     // the std files during uninstall. To do this ensure that rustc comes
     // before rust-std in the list below.
-    let mut input_tarballs = format!("{},{},{},{},{},{}",
-                                     sanitize_sh(&rustc_installer),
-                                     sanitize_sh(&cargo_installer),
-                                     sanitize_sh(&rls_installer),
-                                     sanitize_sh(&analysis_installer),
-                                     sanitize_sh(&docs_installer),
-                                     sanitize_sh(&std_installer));
+    let mut tarballs = vec![rustc_installer, cargo_installer, rls_installer,
+                            analysis_installer, docs_installer, std_installer];
     if target.contains("pc-windows-gnu") {
-        input_tarballs.push_str(",");
-        input_tarballs.push_str(&sanitize_sh(&mingw_installer));
+        tarballs.push(mingw_installer);
+    }
+    let mut input_tarballs = tarballs[0].as_os_str().to_owned();
+    for tarball in &tarballs[1..] {
+        input_tarballs.push(",");
+        input_tarballs.push(tarball);
     }
 
     let mut cmd = rust_installer(build);
@@ -749,12 +748,12 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Rust-is-ready-to-roll.")
-       .arg(format!("--work-dir={}", sanitize_sh(&work)))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg("--work-dir").arg(&work)
+       .arg("--output-dir").arg(&distdir(build))
        .arg(format!("--package-name={}-{}", pkgname(build, "rust"), target))
        .arg("--legacy-manifest-dirs=rustlib,cargo")
-       .arg(format!("--input-tarballs={}", input_tarballs))
-       .arg(format!("--non-installed-overlay={}", sanitize_sh(&overlay)));
+       .arg("--input-tarballs").arg(input_tarballs)
+       .arg("--non-installed-overlay").arg(&overlay);
     build.run(&mut cmd);
 
     let mut license = String::new();
