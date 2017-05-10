@@ -539,6 +539,55 @@ impl<T> SliceExt for [T] {
     fn reverse(&mut self) {
         let mut i: usize = 0;
         let ln = self.len();
+
+        // For very small types, all the individual reads in the normal
+        // path perform poorly.  We can do better, given efficient unaligned
+        // load/store, by loading a larger chunk and reversing a register.
+
+        // Ideally LLVM would do this for us, as it knows better than we do
+        // whether unaligned reads are efficient (since that changes between
+        // different ARM versions, for example) and what the best chunk size
+        // would be.  Unfortunately, as of LLVM 4.0 (2017-05) it only unrolls
+        // the loop, so we need to do this ourselves.  (Hypothesis: reverse
+        // is troublesome because the sides can be aligned differently --
+        // will be, when the length is odd -- so there's no way of emitting
+        // pre- and postludes to use fully-aligned SIMD in the middle.)
+
+        let fast_unaligned =
+            cfg!(any(target_arch = "x86", target_arch = "x86_64"));
+
+        if fast_unaligned && mem::size_of::<T>() == 1 {
+            // Use the llvm.bswap intrinsic to reverse u8s in a usize
+            let chunk = mem::size_of::<usize>();
+            while i + chunk - 1 < ln / 2 {
+                unsafe {
+                    let pa: *mut T = self.get_unchecked_mut(i);
+                    let pb: *mut T = self.get_unchecked_mut(ln - i - chunk);
+                    let va = ptr::read_unaligned(pa as *mut usize);
+                    let vb = ptr::read_unaligned(pb as *mut usize);
+                    ptr::write_unaligned(pa as *mut usize, vb.swap_bytes());
+                    ptr::write_unaligned(pb as *mut usize, va.swap_bytes());
+                }
+                i += chunk;
+            }
+        }
+
+        if fast_unaligned && mem::size_of::<T>() == 2 {
+            // Use rotate-by-16 to reverse u16s in a u32
+            let chunk = mem::size_of::<u32>() / 2;
+            while i + chunk - 1 < ln / 2 {
+                unsafe {
+                    let pa: *mut T = self.get_unchecked_mut(i);
+                    let pb: *mut T = self.get_unchecked_mut(ln - i - chunk);
+                    let va = ptr::read_unaligned(pa as *mut u32);
+                    let vb = ptr::read_unaligned(pb as *mut u32);
+                    ptr::write_unaligned(pa as *mut u32, vb.rotate_left(16));
+                    ptr::write_unaligned(pb as *mut u32, va.rotate_left(16));
+                }
+                i += chunk;
+            }
+        }
+
         while i < ln / 2 {
             // Unsafe swap to avoid the bounds check in safe swap.
             unsafe {
