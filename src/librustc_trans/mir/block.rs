@@ -53,7 +53,23 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             _ => funclets[bb].as_ref(),
         };
 
+        for statement in &data.statements {
+            bcx = self.trans_statement(bcx, statement);
+        }
+
+        self.trans_terminator(bcx, bb, data.terminator(), funclet);
+    }
+
+    fn trans_terminator(&mut self,
+                        mut bcx: Builder<'a, 'tcx>,
+                        bb: mir::BasicBlock,
+                        terminator: &mir::Terminator<'tcx>,
+                        funclet: Option<&Funclet>)
+    {
+        debug!("trans_terminator: {:?}", terminator);
+
         // Create the cleanup bundle, if needed.
+        let tcx = bcx.tcx();
         let cleanup_pad = funclet.map(|lp| lp.cleanuppad());
         let cleanup_bundle = funclet.map(|l| l.bundle());
 
@@ -104,12 +120,53 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
         };
 
-        for statement in &data.statements {
-            bcx = self.trans_statement(bcx, statement);
-        }
+        let do_call = |
+            this: &mut Self,
+            bcx: Builder<'a, 'tcx>,
+            fn_ty: FnType<'tcx>,
+            fn_ptr: ValueRef,
+            llargs: &[ValueRef],
+            destination: Option<(ReturnDest, ty::Ty<'tcx>, mir::BasicBlock)>,
+            cleanup: Option<mir::BasicBlock>
+        | {
+            if let Some(cleanup) = cleanup {
+                let ret_bcx = if let Some((_, _, target)) = destination {
+                    this.blocks[target]
+                } else {
+                    this.unreachable_block()
+                };
+                let invokeret = bcx.invoke(fn_ptr,
+                                           &llargs,
+                                           ret_bcx,
+                                           llblock(this, cleanup),
+                                           cleanup_bundle);
+                fn_ty.apply_attrs_callsite(invokeret);
 
-        let terminator = data.terminator();
-        debug!("trans_block: terminator: {:?}", terminator);
+                if let Some((ret_dest, ret_ty, target)) = destination {
+                    let ret_bcx = this.get_builder(target);
+                    this.set_debug_loc(&ret_bcx, terminator.source_info);
+                    let op = OperandRef {
+                        val: Immediate(invokeret),
+                        ty: ret_ty,
+                    };
+                    this.store_return(&ret_bcx, ret_dest, &fn_ty.ret, op);
+                }
+            } else {
+                let llret = bcx.call(fn_ptr, &llargs, cleanup_bundle);
+                fn_ty.apply_attrs_callsite(llret);
+
+                if let Some((ret_dest, ret_ty, target)) = destination {
+                    let op = OperandRef {
+                        val: Immediate(llret),
+                        ty: ret_ty,
+                    };
+                    this.store_return(&bcx, ret_dest, &fn_ty.ret, op);
+                    funclet_br(this, bcx, target);
+                } else {
+                    bcx.unreachable();
+                }
+            }
+        };
 
         let span = terminator.source_info.span;
         self.set_debug_loc(&bcx, terminator.source_info);
@@ -218,24 +275,16 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 }
 
                 let lvalue = self.trans_lvalue(&bcx, location);
+                let fn_ty = FnType::of_instance(bcx.ccx, &drop_fn);
                 let (drop_fn, need_extra) = match ty.sty {
                     ty::TyDynamic(..) => (meth::DESTRUCTOR.get_fn(&bcx, lvalue.llextra),
                                           false),
                     _ => (callee::get_fn(bcx.ccx, drop_fn), lvalue.has_extra())
                 };
                 let args = &[lvalue.llval, lvalue.llextra][..1 + need_extra as usize];
-                if let Some(unwind) = unwind {
-                    bcx.invoke(
-                        drop_fn,
-                        args,
-                        self.blocks[target],
-                        llblock(self, unwind),
-                        cleanup_bundle
-                    );
-                } else {
-                    bcx.call(drop_fn, args, cleanup_bundle);
-                    funclet_br(self, bcx, target);
-                }
+                do_call(self, bcx, fn_ty, drop_fn, args,
+                        Some((ReturnDest::Nothing, tcx.mk_nil(), target)),
+                        unwind);
             }
 
             mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
@@ -342,26 +391,18 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // Obtain the panic entry point.
                 let def_id = common::langcall(bcx.tcx(), Some(span), "", lang_item);
                 let instance = ty::Instance::mono(bcx.tcx(), def_id);
+                let fn_ty = FnType::of_instance(bcx.ccx, &instance);
                 let llfn = callee::get_fn(bcx.ccx, instance);
 
                 // Translate the actual panic invoke/call.
-                if let Some(unwind) = cleanup {
-                    bcx.invoke(llfn,
-                               &args,
-                               self.unreachable_block(),
-                               llblock(self, unwind),
-                               cleanup_bundle);
-                } else {
-                    bcx.call(llfn, &args, cleanup_bundle);
-                    bcx.unreachable();
-                }
+                do_call(self, bcx, fn_ty, llfn, &args, None, cleanup);
             }
 
             mir::TerminatorKind::DropAndReplace { .. } => {
-                bug!("undesugared DropAndReplace in trans: {:?}", data);
+                bug!("undesugared DropAndReplace in trans: {:?}", terminator);
             }
 
-            mir::TerminatorKind::Call { ref func, ref args, ref destination, ref cleanup } => {
+            mir::TerminatorKind::Call { ref func, ref args, ref destination, cleanup } => {
                 // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
                 let callee = self.trans_operand(&bcx, func);
 
@@ -514,43 +555,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     _ => span_bug!(span, "no llfn for call"),
                 };
 
-                // Many different ways to call a function handled here
-                if let &Some(cleanup) = cleanup {
-                    let ret_bcx = if let Some((_, target)) = *destination {
-                        self.blocks[target]
-                    } else {
-                        self.unreachable_block()
-                    };
-                    let invokeret = bcx.invoke(fn_ptr,
-                                               &llargs,
-                                               ret_bcx,
-                                               llblock(self, cleanup),
-                                               cleanup_bundle);
-                    fn_ty.apply_attrs_callsite(invokeret);
-
-                    if let Some((_, target)) = *destination {
-                        let ret_bcx = self.get_builder(target);
-                        self.set_debug_loc(&ret_bcx, terminator.source_info);
-                        let op = OperandRef {
-                            val: Immediate(invokeret),
-                            ty: sig.output(),
-                        };
-                        self.store_return(&ret_bcx, ret_dest, &fn_ty.ret, op);
-                    }
-                } else {
-                    let llret = bcx.call(fn_ptr, &llargs, cleanup_bundle);
-                    fn_ty.apply_attrs_callsite(llret);
-                    if let Some((_, target)) = *destination {
-                        let op = OperandRef {
-                            val: Immediate(llret),
-                            ty: sig.output(),
-                        };
-                        self.store_return(&bcx, ret_dest, &fn_ty.ret, op);
-                        funclet_br(self, bcx, target);
-                    } else {
-                        bcx.unreachable();
-                    }
-                }
+                do_call(self, bcx, fn_ty, fn_ptr, &llargs,
+                        destination.as_ref().map(|&(_, target)| (ret_dest, sig.output(), target)),
+                        cleanup);
             }
         }
     }
