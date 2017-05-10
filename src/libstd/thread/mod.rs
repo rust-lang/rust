@@ -287,6 +287,8 @@ impl Builder {
     /// thread finishes). The join handle can be used to block on
     /// termination of the child thread, including recovering its panics.
     ///
+    /// For a more complete documentation see [`thread::spawn`][`spawn`].
+    ///
     /// # Errors
     ///
     /// Unlike the [`spawn`] free function, this method yields an
@@ -361,18 +363,18 @@ impl Builder {
 /// panics, [`join`] will return an [`Err`] containing the argument given to
 /// [`panic`].
 ///
+/// This will create a thread using default parameters of [`Builder`], if you
+/// want to specify the stack size or the name of the thread, use this API
+/// instead.
+///
 /// # Panics
 ///
 /// Panics if the OS fails to create a thread; use [`Builder::spawn`]
 /// to recover from such errors.
 ///
-/// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
-/// [`join`]: ../../std/thread/struct.JoinHandle.html#method.join
-/// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-/// [`panic`]: ../../std/macro.panic.html
-/// [`Builder::spawn`]: ../../std/thread/struct.Builder.html#method.spawn
-///
 /// # Examples
+///
+/// Creating a thread.
 ///
 /// ```
 /// use std::thread;
@@ -383,6 +385,54 @@ impl Builder {
 ///
 /// handler.join().unwrap();
 /// ```
+///
+/// As mentioned in the module documentation, threads are usually made to
+/// communicate using [`channels`], here is how it usually looks.
+///
+/// This example also shows how to use `move`, in order to give ownership
+/// of values to a thread.
+///
+/// ```
+/// use std::thread;
+/// use std::sync::mpsc::channel;
+///
+/// let (tx, rx) = channel();
+///
+/// let sender = thread::spawn(move || {
+///     let _ = tx.send("Hello, thread".to_owned());
+/// });
+///
+/// let receiver = thread::spawn(move || {
+///     println!("{}", rx.recv().unwrap());
+/// });
+///
+/// let _ = sender.join();
+/// let _ = receiver.join();
+/// ```
+///
+/// A thread can also return a value through its [`JoinHandle`], you can use
+/// this to make asynchronous computations (futures might be more appropriate
+/// though).
+///
+/// ```
+/// use std::thread;
+///
+/// let computation = thread::spawn(|| {
+///     // Some expensive computation.
+///     42
+/// });
+///
+/// let result = computation.join().unwrap();
+/// println!("{}", result);
+/// ```
+///
+/// [`channels`]: ../../std/sync/mpsc/index.html
+/// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
+/// [`join`]: ../../std/thread/struct.JoinHandle.html#method.join
+/// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+/// [`panic`]: ../../std/macro.panic.html
+/// [`Builder::spawn`]: ../../std/thread/struct.Builder.html#method.spawn
+/// [`Builder`]: ../../std/thread/struct.Builder.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
     F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
