@@ -412,7 +412,7 @@ impl Builder {
 /// handler.join().unwrap();
 /// ```
 ///
-/// As mentionned in the module documentation, threads are usualy made to
+/// As mentioned in the module documentation, threads are usually made to
 /// communicate using [`channels`], here is how it usually looks.
 ///
 /// This example also shows how to use `move`, in order to give ownership
