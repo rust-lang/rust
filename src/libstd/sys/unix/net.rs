@@ -73,6 +73,15 @@ impl Socket {
     }
 
     pub fn new_raw(fam: c_int, ty: c_int) -> io::Result<Socket> {
+        Socket::new_raw_impl(fam, ty).and_then(|s| {
+            if fam == libc::AF_INET6 {
+                setsockopt(&s, libc::IPPROTO_IPV6, libc::IPV6_V6ONLY, true as c_int)?;
+            }
+            Ok(s)
+        })
+    }
+
+    fn new_raw_impl(fam: c_int, ty: c_int) -> io::Result<Socket> {
         unsafe {
             // On linux we first attempt to pass the SOCK_CLOEXEC flag to
             // atomically create the socket and set it as CLOEXEC. Support for
