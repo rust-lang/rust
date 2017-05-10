@@ -150,7 +150,7 @@ impl<'a> Resolver<'a> {
                                           view_path.span,
                                           ResolutionError::SelfImportsOnlyAllowedWithin);
                         } else if source_name == "$crate" && full_path.segments.len() == 1 {
-                            let crate_root = self.resolve_crate_var(source.ctxt);
+                            let crate_root = self.resolve_crate_var(source.ctxt, item.span);
                             let crate_name = match crate_root.kind {
                                 ModuleKind::Def(_, name) => name,
                                 ModuleKind::Block(..) => unreachable!(),
@@ -247,7 +247,7 @@ impl<'a> Resolver<'a> {
 
                 // n.b. we don't need to look at the path option here, because cstore already did
                 let crate_id = self.session.cstore.extern_mod_stmt_cnum(item.id).unwrap();
-                let module = self.get_extern_crate_root(crate_id);
+                let module = self.get_extern_crate_root(crate_id, item.span);
                 self.populate_module_if_necessary(module);
                 let used = self.process_legacy_macro_imports(item, module, expansion);
                 let binding =
@@ -279,7 +279,7 @@ impl<'a> Resolver<'a> {
                     no_implicit_prelude: parent.no_implicit_prelude || {
                         attr::contains_name(&item.attrs, "no_implicit_prelude")
                     },
-                    ..ModuleData::new(Some(parent), module_kind, def_id)
+                    ..ModuleData::new(Some(parent), module_kind, def_id, item.span)
                 });
                 self.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.module_map.insert(def_id, module);
@@ -314,7 +314,10 @@ impl<'a> Resolver<'a> {
             ItemKind::Enum(ref enum_definition, _) => {
                 let def = Def::Enum(self.definitions.local_def_id(item.id));
                 let module_kind = ModuleKind::Def(def, ident.name);
-                let module = self.new_module(parent, module_kind, parent.normal_ancestor_id);
+                let module = self.new_module(parent,
+                                             module_kind,
+                                             parent.normal_ancestor_id,
+                                             item.span);
                 self.define(parent, ident, TypeNS, (module, vis, sp, expansion));
 
                 for variant in &(*enum_definition).variants {
@@ -370,7 +373,10 @@ impl<'a> Resolver<'a> {
 
                 // Add all the items within to a new module.
                 let module_kind = ModuleKind::Def(Def::Trait(def_id), ident.name);
-                let module = self.new_module(parent, module_kind, parent.normal_ancestor_id);
+                let module = self.new_module(parent,
+                                             module_kind,
+                                             parent.normal_ancestor_id,
+                                             item.span);
                 self.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.current_module = module;
             }
@@ -419,7 +425,7 @@ impl<'a> Resolver<'a> {
         let parent = self.current_module;
         if self.block_needs_anonymous_module(block) {
             let module =
-                self.new_module(parent, ModuleKind::Block(block.id), parent.normal_ancestor_id);
+                self.new_module(parent, ModuleKind::Block(block.id), parent.normal_ancestor_id, block.span);
             self.block_map.insert(block.id, module);
             self.current_module = module; // Descend into the block.
         }
@@ -431,10 +437,14 @@ impl<'a> Resolver<'a> {
         let def = child.def;
         let def_id = def.def_id();
         let vis = self.session.cstore.visibility(def_id);
+        let span = child.span;
 
         match def {
             Def::Mod(..) | Def::Enum(..) => {
-                let module = self.new_module(parent, ModuleKind::Def(def, ident.name), def_id);
+                let module = self.new_module(parent,
+                                             ModuleKind::Def(def, ident.name),
+                                             def_id,
+                                             span);
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, Mark::root()));
             }
             Def::Variant(..) | Def::TyAlias(..) => {
@@ -454,7 +464,10 @@ impl<'a> Resolver<'a> {
             }
             Def::Trait(..) => {
                 let module_kind = ModuleKind::Def(def, ident.name);
-                let module = self.new_module(parent, module_kind, parent.normal_ancestor_id);
+                let module = self.new_module(parent,
+                                             module_kind,
+                                             parent.normal_ancestor_id,
+                                             span);
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, Mark::root()));
 
                 for child in self.session.cstore.item_children(def_id) {
@@ -483,18 +496,18 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn get_extern_crate_root(&mut self, cnum: CrateNum) -> Module<'a> {
+    fn get_extern_crate_root(&mut self, cnum: CrateNum, span: Span) -> Module<'a> {
         let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
         let name = self.session.cstore.crate_name(cnum);
         let macros_only = self.session.cstore.dep_kind(cnum).macros_only();
         let module_kind = ModuleKind::Def(Def::Mod(def_id), name);
         let arenas = self.arenas;
         *self.extern_crate_roots.entry((cnum, macros_only)).or_insert_with(|| {
-            arenas.alloc_module(ModuleData::new(None, module_kind, def_id))
+            arenas.alloc_module(ModuleData::new(None, module_kind, def_id, span))
         })
     }
 
-    pub fn macro_def_scope(&mut self, expansion: Mark) -> Module<'a> {
+    pub fn macro_def_scope(&mut self, expansion: Mark, span: Span) -> Module<'a> {
         let def_id = self.macro_defs[&expansion];
         if let Some(id) = self.definitions.as_local_node_id(def_id) {
             self.local_macro_def_scopes[&id]
@@ -503,7 +516,7 @@ impl<'a> Resolver<'a> {
             self.graph_root
         } else {
             let module_def_id = ty::DefIdTree::parent(&*self, def_id).unwrap();
-            self.get_extern_crate_root(module_def_id.krate)
+            self.get_extern_crate_root(module_def_id.krate, span)
         }
     }
 

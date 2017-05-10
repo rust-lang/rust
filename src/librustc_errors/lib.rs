@@ -183,7 +183,10 @@ impl CodeSuggestion {
             prev_line = fm.get_line(prev_hi.line - 1);
         }
         for buf in &mut bufs {
-            push_trailing(buf, prev_line, &prev_hi, None);
+            // if the replacement already ends with a newline, don't print the next line
+            if !buf.ends_with('\n') {
+                push_trailing(buf, prev_line, &prev_hi, None);
+            }
             // remove trailing newline
             buf.pop();
         }

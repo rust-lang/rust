@@ -81,6 +81,10 @@ impl Emitter for EmitterWriter {
 
 /// maximum number of lines we will print for each error; arbitrary.
 pub const MAX_HIGHLIGHT_LINES: usize = 6;
+/// maximum number of suggestions to be shown
+///
+/// Arbitrary, but taken from trait import suggestion limit
+pub const MAX_SUGGESTIONS: usize = 4;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ColorConfig {
@@ -1077,20 +1081,22 @@ impl EmitterWriter {
 
             assert!(!lines.lines.is_empty());
 
-            for complete in suggestion.splice_lines(cm.borrow()) {
-                buffer.append(0, &level.to_string(), Style::Level(level.clone()));
-                buffer.append(0, ": ", Style::HeaderMsg);
-                self.msg_to_buffer(&mut buffer,
-                                &[(suggestion.msg.to_owned(), Style::NoStyle)],
-                                max_line_num_len,
-                                "suggestion",
-                                Some(Style::HeaderMsg));
+            buffer.append(0, &level.to_string(), Style::Level(level.clone()));
+            buffer.append(0, ": ", Style::HeaderMsg);
+            self.msg_to_buffer(&mut buffer,
+                            &[(suggestion.msg.to_owned(), Style::NoStyle)],
+                            max_line_num_len,
+                            "suggestion",
+                            Some(Style::HeaderMsg));
+
+            let suggestions = suggestion.splice_lines(cm.borrow());
+            let mut row_num = 1;
+            for complete in suggestions.iter().take(MAX_SUGGESTIONS) {
 
                 // print the suggestion without any line numbers, but leave
                 // space for them. This helps with lining up with previous
                 // snippets from the actual error being reported.
                 let mut lines = complete.lines();
-                let mut row_num = 1;
                 for line in lines.by_ref().take(MAX_HIGHLIGHT_LINES) {
                     draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
                     buffer.append(row_num, line, Style::NoStyle);
@@ -1101,6 +1107,10 @@ impl EmitterWriter {
                 if let Some(_) = lines.next() {
                     buffer.append(row_num, "...", Style::NoStyle);
                 }
+            }
+            if suggestions.len() > MAX_SUGGESTIONS {
+                let msg = format!("and {} other candidates", suggestions.len() - MAX_SUGGESTIONS);
+                buffer.append(row_num, &msg, Style::NoStyle);
             }
             emit_to_destination(&buffer.render(), level, &mut self.dst)?;
         }

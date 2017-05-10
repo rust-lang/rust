@@ -123,14 +123,14 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item> {
-        struct EliminateCrateVar<'b, 'a: 'b>(&'b mut Resolver<'a>);
+        struct EliminateCrateVar<'b, 'a: 'b>(&'b mut Resolver<'a>, Span);
 
         impl<'a, 'b> Folder for EliminateCrateVar<'a, 'b> {
             fn fold_path(&mut self, mut path: ast::Path) -> ast::Path {
                 let ident = path.segments[0].identifier;
                 if ident.name == "$crate" {
                     path.segments[0].identifier.name = keywords::CrateRoot.name();
-                    let module = self.0.resolve_crate_var(ident.ctxt);
+                    let module = self.0.resolve_crate_var(ident.ctxt, self.1);
                     if !module.is_local() {
                         let span = path.segments[0].span;
                         path.segments.insert(1, match module.kind {
@@ -149,7 +149,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             }
         }
 
-        EliminateCrateVar(self).fold_item(item).expect_one("")
+        EliminateCrateVar(self, item.span).fold_item(item).expect_one("")
     }
 
     fn is_whitelisted_legacy_custom_derive(&self, name: Name) -> bool {
