@@ -93,11 +93,47 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
     Ok(())
 }
 
-fn filter_frames(_frames: &[Frame],
-                 _format: PrintFormat,
-                 _context: &BacktraceContext) -> (usize, usize)
+/// Returns a number of frames to remove at the beginning and at the end of the
+/// backtrace, according to the backtrace format.
+fn filter_frames(frames: &[Frame],
+                 format: PrintFormat,
+                 context: &BacktraceContext) -> (usize, usize)
 {
-    (0, 0)
+    if format == PrintFormat::Full {
+        return (0, 0);
+    }
+
+    let skipped_before = 0;
+
+    let skipped_after = frames.len() - frames.iter().position(|frame| {
+        let mut is_marker = false;
+        let _ = resolve_symname(*frame, |symname| {
+            if let Some(mangled_symbol_name) = symname {
+                // Use grep to find the concerned functions
+                if mangled_symbol_name.contains("__rust_begin_short_backtrace") {
+                    is_marker = true;
+                }
+            }
+            Ok(())
+        }, context);
+        is_marker
+    }).unwrap_or(frames.len());
+
+    if skipped_before + skipped_after >= frames.len() {
+        // Avoid showing completely empty backtraces
+        return (0, 0);
+    }
+
+    (skipped_before, skipped_after)
+}
+
+
+/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
+#[inline(never)]
+pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
+    where F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
+{
+    f()
 }
 
 /// Controls how the backtrace should be formated.
