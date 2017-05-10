@@ -45,7 +45,7 @@ use std::collections::BTreeMap;
 
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $cdata:ident $($name:ident => $compute:block)*) => {
-        pub fn provide<$lt>(providers: &mut Providers<$lt>) {
+        pub fn provide_extern<$lt>(providers: &mut Providers<$lt>) {
             $(fn $name<'a, $lt:$lt>($tcx: TyCtxt<'a, $lt, $lt>, $def_id: DefId)
                                     -> <ty::queries::$name<$lt> as
                                         DepTrackingMapConfig>::Value {
@@ -136,8 +136,24 @@ provide! { <'tcx> tcx, def_id, cdata
         }
     }
     is_dllimport_foreign_item => {
+        // extern case
         cdata.dllimport_foreign_items.contains(&def_id.index)
     }
+}
+
+pub fn provide_local(providers: &mut ty::maps::Providers) {
+    providers.is_dllimport_foreign_item = is_dllimport_foreign_item;
+}
+
+fn is_dllimport_foreign_item_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+    tcx.dep_graph.read(DepNode::MetaData(def_id));
+
+    let cdata = tcx.sess.cstore.crate_data_as_rc_any(def_id.krate);
+    let cdata = cdata.downcast_ref::<cstore::CrateMetadata>()
+        .expect("CrateStore crated ata is not a CrateMetadata");
+
+    cdata.get_crate_data(def_id.krate)
+        .is_dllimport_foreign_item(def_id.index, &cdata.dep_graph)
 }
 
 impl CrateStore for cstore::CStore {
@@ -220,15 +236,6 @@ impl CrateStore for cstore::CStore {
         data.exported_symbols
             .get(&self.dep_graph, dep_node)
             .contains(&def_id.index)
-    }
-
-    fn is_dllimport_foreign_item(&self, def_id: DefId) -> bool {
-        if def_id.krate == LOCAL_CRATE {
-            self.dllimport_foreign_items.borrow().contains(&def_id.index)
-        } else {
-            self.get_crate_data(def_id.krate)
-                .is_dllimport_foreign_item(def_id.index, &self.dep_graph)
-        }
     }
 
     fn dylib_dependency_formats(&self, cnum: CrateNum)
