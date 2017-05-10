@@ -1217,6 +1217,15 @@ impl<T> Vec<T> {
         }
         other
     }
+    
+    pub fn remove_item<T: PartialEq>(&mut self, item: T) {
+    	    let pos = match self.iter().position(|ref x| **x == item) {
+    		    Some(x) => x,
+    		    None => panic!("Item not found."), //is this how im supposed to do error handling?
+    	    };
+    
+    	    self.remove(pos);
+        }
 }
 
 impl<T: Clone> Vec<T> {
