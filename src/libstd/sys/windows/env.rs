@@ -16,4 +16,5 @@ pub mod os {
     pub const DLL_EXTENSION: &'static str = "dll";
     pub const EXE_SUFFIX: &'static str = ".exe";
     pub const EXE_EXTENSION: &'static str = "exe";
+    pub const BATCH_EXTENSIONS: &'static str = vec!["bat", "cmd"];
 }
