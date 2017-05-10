@@ -16,7 +16,9 @@ use cmp;
 use error;
 use fmt;
 use io::{self, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom};
+use mem;
 use memchr;
+use ptr;
 
 /// The `BufReader` struct adds buffering to any reader.
 ///
@@ -308,7 +310,7 @@ impl<R: Seek> Seek for BufReader<R> {
 /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufWriter<W: Write> {
-    inner: Option<W>,
+    inner: W,
     buf: Vec<u8>,
     // #30888: If the inner writer panics in a call to write, we don't want to
     // write the buffered data a second time in BufWriter's destructor. This
@@ -376,7 +378,7 @@ impl<W: Write> BufWriter<W> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(cap: usize, inner: W) -> BufWriter<W> {
         BufWriter {
-            inner: Some(inner),
+            inner: inner,
             buf: Vec::with_capacity(cap),
             panicked: false,
         }
@@ -388,7 +390,7 @@ impl<W: Write> BufWriter<W> {
         let mut ret = Ok(());
         while written < len {
             self.panicked = true;
-            let r = self.inner.as_mut().unwrap().write(&self.buf[written..]);
+            let r = self.inner.write(&self.buf[written..]);
             self.panicked = false;
 
             match r {
@@ -423,7 +425,7 @@ impl<W: Write> BufWriter<W> {
     /// let reference = buffer.get_ref();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get_ref(&self) -> &W { self.inner.as_ref().unwrap() }
+    pub fn get_ref(&self) -> &W { &self.inner }
 
     /// Gets a mutable reference to the underlying writer.
     ///
@@ -441,7 +443,7 @@ impl<W: Write> BufWriter<W> {
     /// let reference = buffer.get_mut();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get_mut(&mut self) -> &mut W { self.inner.as_mut().unwrap() }
+    pub fn get_mut(&mut self) -> &mut W { &mut self.inner }
 
     /// Unwraps this `BufWriter`, returning the underlying writer.
     ///
@@ -462,7 +464,14 @@ impl<W: Write> BufWriter<W> {
     pub fn into_inner(mut self) -> Result<W, IntoInnerError<BufWriter<W>>> {
         match self.flush_buf() {
             Err(e) => Err(IntoInnerError(self, e)),
-            Ok(()) => Ok(self.inner.take().unwrap())
+            Ok(()) => unsafe {
+                // use `ptr::read` to extract the inner writer and circumvent
+                // our `Drop` implementation
+                mem::replace(&mut self.buf, Vec::new());
+                let inner = ptr::read(&self.inner);
+                mem::forget(self);
+                Ok(inner)
+            },
         }
     }
 }
@@ -475,7 +484,7 @@ impl<W: Write> Write for BufWriter<W> {
         }
         if buf.len() >= self.buf.capacity() {
             self.panicked = true;
-            let r = self.inner.as_mut().unwrap().write(buf);
+            let r = self.inner.write(buf);
             self.panicked = false;
             r
         } else {
@@ -491,7 +500,7 @@ impl<W: Write> Write for BufWriter<W> {
 impl<W: Write> fmt::Debug for BufWriter<W> where W: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("BufWriter")
-            .field("writer", &self.inner.as_ref().unwrap())
+            .field("writer", &self.inner)
             .field("buffer", &format_args!("{}/{}", self.buf.len(), self.buf.capacity()))
             .finish()
     }
@@ -510,7 +519,7 @@ impl<W: Write + Seek> Seek for BufWriter<W> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W: Write> Drop for BufWriter<W> {
     fn drop(&mut self) {
-        if self.inner.is_some() && !self.panicked {
+        if !self.panicked {
             // dtors should not panic, so we ignore a failed flush
             let _r = self.flush_buf();
         }
