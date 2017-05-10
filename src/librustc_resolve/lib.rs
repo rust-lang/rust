@@ -873,7 +873,10 @@ pub struct ModuleData<'a> {
 pub type Module<'a> = &'a ModuleData<'a>;
 
 impl<'a> ModuleData<'a> {
-    fn new(parent: Option<Module<'a>>, kind: ModuleKind, normal_ancestor_id: DefId, span: Span) -> Self {
+    fn new(parent: Option<Module<'a>>,
+           kind: ModuleKind,
+           normal_ancestor_id: DefId,
+           span: Span) -> Self {
         ModuleData {
             parent: parent,
             kind: kind,
@@ -1434,8 +1437,13 @@ impl<'a> Resolver<'a> {
         self.crate_loader.postprocess(krate);
     }
 
-    fn new_module(&self, parent: Module<'a>, kind: ModuleKind, normal_ancestor_id: DefId, span: Span)
-                  -> Module<'a> {
+    fn new_module(
+        &self,
+        parent: Module<'a>,
+        kind: ModuleKind,
+        normal_ancestor_id: DefId,
+        span: Span,
+    ) -> Module<'a> {
         self.arenas.alloc_module(ModuleData::new(Some(parent), kind, normal_ancestor_id, span))
     }
 
