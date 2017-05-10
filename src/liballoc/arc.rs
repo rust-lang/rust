@@ -54,15 +54,32 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// exception. If you need to mutate through an `Arc`, use [`Mutex`][mutex],
 /// [`RwLock`][rwlock], or one of the [`Atomic`][atomic] types.
 ///
-/// `Arc` uses atomic operations for reference counting, so `Arc`s can be
-/// sent between threads. In other words, `Arc<T>` implements [`Send`]
-/// as long as `T` implements [`Send`] and [`Sync`][sync]. The disadvantage is
-/// that atomic operations are more expensive than ordinary memory accesses.
-/// If you are not sharing reference-counted values between threads, consider
-/// using [`rc::Rc`][`Rc`] for lower overhead. [`Rc`] is a safe default, because
-/// the compiler will catch any attempt to send an [`Rc`] between threads.
-/// However, a library might choose `Arc` in order to give library consumers
+/// ## Thread Safety
+///
+/// Unlike [`Rc<T>`], `Arc<T>` uses atomic operations for its reference
+/// counting  This means that it is thread-safe. The disadvantage is that
+/// atomic operations are more expensive than ordinary memory accesses. If you
+/// are not sharing reference-counted values between threads, consider using
+/// [`Rc<T>`] for lower overhead. [`Rc<T>`] is a safe default, because the
+/// compiler will catch any attempt to send an [`Rc<T>`] between threads.
+/// However, a library might choose `Arc<T>` in order to give library consumers
 /// more flexibility.
+///
+/// `Arc<T>` will implement [`Send`] and [`Sync`] as long as the `T` implements
+/// [`Send`] and [`Sync`]. Why can't you put a non-thread-safe type `T` in an
+/// `Arc<T>` to make it thread-safe? This may be a bit counter-intuitive at
+/// first: after all, isn't the point of `Arc<T>` thread safety? The key is
+/// this: `Arc<T>` makes it thread safe to have multiple ownership of the same
+/// data, but it  doesn't add thread safety to its data. Consider
+/// `Arc<RefCell<T>>`. `RefCell<T>` isn't [`Sync`], and if `Arc<T>` was always
+/// [`Send`], `Arc<RefCell<T>>` would be as well. But then we'd have a problem:
+/// `RefCell<T>` is not thread safe; it keeps track of the borrowing count using
+/// non-atomic operations.
+///
+/// In the end, this means that you may need to pair `Arc<T>` with some sort of
+/// `std::sync` type, usually `Mutex<T>`.
+///
+/// ## Breaking cycles with `Weak`
 ///
 /// The [`downgrade`][downgrade] method can be used to create a non-owning
 /// [`Weak`][weak] pointer. A [`Weak`][weak] pointer can be [`upgrade`][upgrade]d
@@ -73,6 +90,8 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// [`Weak`][weak] is used to break cycles. For example, a tree could have
 /// strong `Arc` pointers from parent nodes to children, and [`Weak`][weak]
 /// pointers from children back to their parents.
+///
+/// ## `Deref` behavior
 ///
 /// `Arc<T>` automatically dereferences to `T` (via the [`Deref`][deref] trait),
 /// so you can call `T`'s methods on a value of type `Arc<T>`. To avoid name
@@ -91,13 +110,13 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 ///
 /// [arc]: struct.Arc.html
 /// [weak]: struct.Weak.html
-/// [`Rc`]: ../../std/rc/struct.Rc.html
+/// [`Rc<T>`]: ../../std/rc/struct.Rc.html
 /// [clone]: ../../std/clone/trait.Clone.html#tymethod.clone
 /// [mutex]: ../../std/sync/struct.Mutex.html
 /// [rwlock]: ../../std/sync/struct.RwLock.html
 /// [atomic]: ../../std/sync/atomic/index.html
 /// [`Send`]: ../../std/marker/trait.Send.html
-/// [sync]: ../../std/marker/trait.Sync.html
+/// [`Sync`]: ../../std/marker/trait.Sync.html
 /// [deref]: ../../std/ops/trait.Deref.html
 /// [downgrade]: struct.Arc.html#method.downgrade
 /// [upgrade]: struct.Weak.html#method.upgrade
