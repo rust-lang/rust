@@ -492,6 +492,8 @@ impl UdpSocket {
         self.0.ttl()
     }
 
+    /// Specify an IPv4 multicast group for this socket to join.
+    ///
     /// Executes an operation of the `IP_ADD_MEMBERSHIP` type.
     ///
     /// This function specifies a new multicast group for this socket to join.
@@ -499,16 +501,68 @@ impl UdpSocket {
     /// address of the local interface with which the system should join the
     /// multicast group. If it's equal to `INADDR_ANY` then an appropriate
     /// interface is chosen by the system.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::str;
+    /// use std::net::{UdpSocket, Ipv4Addr};
+    ///
+    /// let multiaddr = Ipv4Addr::new(239, 0, 0, 1);
+    /// let inaddr_any = Ipv4Addr::new(0, 0, 0, 0);
+    ///
+    /// let broadcaster = UdpSocket::bind("0.0.0.0:8000").expect("couldn't bind to address");
+    /// let sock = UdpSocket::bind("0.0.0.0:12345").expect("couldn't bind to address");
+    ///
+    /// sock.join_multicast_v4(&multiaddr, &inaddr_any).expect("join_multicast_v4 failed");
+    ///
+    /// broadcaster.send_to(b"world", (multiaddr, 12345)).expect("send_to failed");
+    ///
+    /// let mut buf = [0; 5];
+    /// sock.recv_from(&mut buf).expect("recv_from failed");
+    /// println!("hello {}", &str::from_utf8(&buf).unwrap());
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         self.0.join_multicast_v4(multiaddr, interface)
     }
 
+    /// Specify an IPv6 multicast group for this socket to join.
+    ///
     /// Executes an operation of the `IPV6_ADD_MEMBERSHIP` type.
     ///
     /// This function specifies a new multicast group for this socket to join.
     /// The address must be a valid multicast address, and `interface` is the
     /// index of the interface to join/leave (or 0 to indicate any interface).
+    ///
+    /// # Note
+    ///
+    /// The `interface` argument is not an `Ipv6Addr` but a `u32`, which
+    /// represents the index of the network interface to use when joining
+    /// the multicast network. This corresponds to `ipv6mr_interface`, the
+    /// underlying field of `ipv6_mreq` used by `setsockopt`. An index of `0`
+    /// tells the operating system to select a default multicast interface.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::str;
+    /// use std::net::{UdpSocket, Ipv6Addr};
+    ///
+    /// let multiaddr = Ipv6Addr::new(0xff01, 0, 0, 0, 0, 0, 0, 1);
+    /// let inaddr_any = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0);
+    ///
+    /// let broadcaster = UdpSocket::bind((inaddr_any, 8000)).expect("couldn't bind to address");
+    /// let sock = UdpSocket::bind((inaddr_any, 12345)).expect("couldn't bind to address");
+    ///
+    /// sock.join_multicast_v6(&multiaddr, 0).expect("join_multicast_v6 failed");
+    ///
+    /// broadcaster.send_to(b"world", (multiaddr, 12345)).expect("send_to failed");
+    ///
+    /// let mut buf = [0; 5];
+    /// sock.recv_from(&mut buf).expect("recv_from failed");
+    /// println!("hello {}", &str::from_utf8(&buf).unwrap());
+    /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         self.0.join_multicast_v6(multiaddr, interface)
@@ -697,6 +751,7 @@ mod tests {
     use io::ErrorKind;
     use net::*;
     use net::test::{next_test_ip4, next_test_ip6};
+    use net::test::{next_test_inaddr_any_ip4, next_test_inaddr_any_ip6};
     use sync::mpsc::channel;
     use sys_common::AsInner;
     use time::{Instant, Duration};
@@ -1018,5 +1073,47 @@ mod tests {
                 Err(e) => panic!("unexpected error {}", e),
             }
         })
+    }
+
+    #[test]
+    fn join_multicast_v4() {
+        let addr1 = next_test_inaddr_any_ip4();
+        let addr2 = next_test_inaddr_any_ip4();
+
+        let broadcaster = t!(UdpSocket::bind(&addr1));
+        let socket = t!(UdpSocket::bind(&addr2));
+
+        let multiaddr = Ipv4Addr::new(239, 0, 0, 1);
+        let inaddr_any = Ipv4Addr::new(0, 0, 0, 0);
+        t!(socket.join_multicast_v4(&multiaddr, &inaddr_any));
+
+        let port = t!(socket.local_addr()).port();
+        t!(broadcaster.send_to(b"foo", (multiaddr, port)));
+
+        let mut buf = [0; 3];
+        let (size, _) = t!(socket.recv_from(&mut buf));
+        assert_eq!(b"foo", &buf[..]);
+        assert_eq!(size, 3);
+    }
+
+    #[test]
+    fn join_multicast_v6() {
+        let addr1 = next_test_inaddr_any_ip6();
+        let addr2 = next_test_inaddr_any_ip6();
+
+        let broadcaster = t!(UdpSocket::bind(&addr1));
+        let socket = t!(UdpSocket::bind(&addr2));
+
+        let multiaddr = Ipv6Addr::new(0xff01, 0, 0, 0, 0, 0, 0, 1);
+        let inaddr_any = 0;
+        t!(socket.join_multicast_v6(&multiaddr, inaddr_any));
+
+        let port = t!(socket.local_addr()).port();
+        t!(broadcaster.send_to(b"foo", (multiaddr, port)));
+
+        let mut buf = [0; 3];
+        let (size, _) = t!(socket.recv_from(&mut buf));
+        assert_eq!(b"foo", &buf[..]);
+        assert_eq!(size, 3);
     }
 }
