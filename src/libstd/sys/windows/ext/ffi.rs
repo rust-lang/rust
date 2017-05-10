@@ -14,6 +14,7 @@
 
 use ffi::{OsString, OsStr};
 use sys::os_str::Buf;
+use slice;
 use sys_common::wtf8::Wtf8Buf;
 use sys_common::{FromInner, AsInner};
 
@@ -30,6 +31,20 @@ pub trait OsStringExt {
     /// will always return the original code units.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn from_wide(wide: &[u16]) -> Self;
+
+    /// Creates an `OsString` from a potentially ill-formed null-terminated
+    /// UTF-16 pointer.
+    ///
+    /// This is lossless: calling `.encode_wide()` on the resulting string
+    /// will always return the original code units.
+    #[unstable(feature = "from_wide_null", issue = "0")]
+    unsafe fn from_wide_null(ptr: *const u16) -> OsString {
+        let mut len = 0;
+        while *ptr.offset(len) != 0 {
+            len += 1;
+        }
+        OsStringExt::from_wide(slice::from_raw_parts(ptr, len as usize))
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
