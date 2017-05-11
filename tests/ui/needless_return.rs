@@ -9,44 +9,25 @@ fn test_end_of_fn() -> bool {
         return true;
     }
     return true;
-
-
-
 }
 
 fn test_no_semicolon() -> bool {
     return true
-
-
-
 }
 
 fn test_if_block() -> bool {
     if true {
         return true;
-
-
-
     } else {
         return false;
-
-
-
     }
 }
 
 fn test_match(x: bool) -> bool {
     match x {
         true => return false,
-
-
-
-
         false => {
             return true;
-
-
-
         }
     }
 }
@@ -54,14 +35,8 @@ fn test_match(x: bool) -> bool {
 fn test_closure() {
     let _ = || {
         return true;
-
-
-
     };
     let _ = || return true;
-
-
-
 }
 
 fn main() {
