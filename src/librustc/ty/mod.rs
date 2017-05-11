@@ -2360,7 +2360,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if let Some(id) = self.hir.as_local_node_id(did) {
             Attributes::Borrowed(self.hir.attrs(id))
         } else {
-            Attributes::Owned(self.sess.cstore.item_attrs(did))
+            Attributes::Owned(self.item_attrs(did))
         }
     }
 
@@ -2396,7 +2396,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let trait_ref = self.impl_trait_ref(impl_def_id).unwrap();
 
             // Record the trait->implementation mapping.
-            let parent = self.sess.cstore.impl_parent(impl_def_id).unwrap_or(trait_id);
+            let parent = self.impl_parent(impl_def_id).unwrap_or(trait_id);
             def.record_remote_impl(self, impl_def_id, trait_ref, parent);
         }
 
@@ -2431,22 +2431,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
             None => None
         }
-    }
-
-    /// If the given def ID describes an item belonging to a trait,
-    /// return the ID of the trait that the trait item belongs to.
-    /// Otherwise, return `None`.
-    pub fn trait_of_item(self, def_id: DefId) -> Option<DefId> {
-        if def_id.krate != LOCAL_CRATE {
-            return self.sess.cstore.trait_of_item(def_id);
-        }
-        self.opt_associated_item(def_id)
-            .and_then(|associated_item| {
-                match associated_item.container {
-                    TraitContainer(def_id) => Some(def_id),
-                    ImplContainer(_) => None
-                }
-            })
     }
 
     /// Construct a parameter environment suitable for static contexts or other contexts where there
@@ -2688,6 +2672,20 @@ fn def_span<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Span {
     tcx.hir.span_if_local(def_id).unwrap()
 }
 
+/// If the given def ID describes an item belonging to a trait,
+/// return the ID of the trait that the trait item belongs to.
+/// Otherwise, return `None`.
+fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option<DefId> {
+    tcx.opt_associated_item(def_id)
+        .and_then(|associated_item| {
+            match associated_item.container {
+                TraitContainer(def_id) => Some(def_id),
+                ImplContainer(_) => None
+            }
+        })
+}
+
+
 pub fn provide(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
         associated_item,
@@ -2695,6 +2693,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         adt_sized_constraint,
         adt_dtorck_constraint,
         def_span,
+        trait_of_item,
         ..*providers
     };
 }
