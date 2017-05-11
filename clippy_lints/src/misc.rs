@@ -456,26 +456,16 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
         return;
     }
 
-    if left {
-        span_lint(cx,
-                  CMP_OWNED,
-                  expr.span,
-                  &format!("this creates an owned instance just for comparison. Consider using `{} {} {}` to \
-                            compare without allocation",
-                           snip,
-                           snippet(cx, op, "=="),
-                           snippet(cx, other.span, "..")));
-    } else {
-        span_lint(cx,
-                  CMP_OWNED,
-                  expr.span,
-                  &format!("this creates an owned instance just for comparison. Consider using `{} {} {}` to \
-                            compare without allocation",
-                           snippet(cx, other.span, ".."),
-                           snippet(cx, op, "=="),
-                           snip));
-    }
-
+    let other = snippet(cx, other.span, "..");
+    let (snip, other) = if left { (snip, other) } else { (other, snip) };
+    span_lint(cx,
+                CMP_OWNED,
+                expr.span,
+                &format!("this creates an owned instance just for comparison. Consider using `{} {} {}` to \
+                        compare without allocation",
+                        snip,
+                        snippet(cx, op, "=="),
+                        other));
 }
 
 fn is_str_arg(cx: &LateContext, args: &[Expr]) -> bool {
