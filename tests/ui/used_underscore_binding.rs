@@ -20,10 +20,7 @@ fn prefix_underscore(_foo: u32) -> u32 {
 /// Test that we lint if we use a `_`-variable defined outside within a macro expansion
 fn in_macro(_foo: u32) {
     println!("{}", _foo);
-
     assert_eq!(_foo, _foo);
-
-
 
     test_macro!() + 1;
 }
