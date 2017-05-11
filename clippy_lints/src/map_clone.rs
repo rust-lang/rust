@@ -1,5 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
+use rustc::ty;
 use syntax::ast;
 use utils::{is_adjusted, match_path, match_trait_method, match_type, remove_blocks, paths, snippet, span_help_and_lint,
             walk_ptrs_ty, walk_ptrs_ty_depth, iter_input_pats};
@@ -33,6 +34,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     ExprClosure(_, ref decl, closure_eid, _) => {
                         let body = cx.tcx.hir.body(closure_eid);
                         let closure_expr = remove_blocks(&body.value);
+                        let ty = cx.tables.pat_ty(&body.arguments[0].pat);
                         if_let_chain! {[
                             // nothing special in the argument, besides reference bindings
                             // (e.g. .map(|&x| x) )
@@ -46,10 +48,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                 // .cloned() only removes one level of indirection, don't lint on more
                                 walk_ptrs_ty_depth(cx.tables.pat_ty(&first_arg.pat)).1 == 1
                             {
-                                span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
-                                    "you seem to be using .map() to clone the contents of an {}, consider \
-                                    using `.cloned()`", type_name),
-                                    &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
+                                // the argument is not an &mut T
+                                if let ty::TyRef(_, tam) = ty.sty {
+                                    if tam.mutbl == MutImmutable {
+                                        span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
+                                            "you seem to be using .map() to clone the contents of an {}, consider \
+                                            using `.cloned()`", type_name),
+                                            &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
+                                    }
+                                }
                             }
                             // explicit clone() calls ( .map(|x| x.clone()) )
                             else if let ExprMethodCall(clone_call, _, ref clone_args) = closure_expr.node {
