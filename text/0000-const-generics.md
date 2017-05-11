@@ -195,7 +195,7 @@ definition of equality used by match today is good enough for our purposes.
 Because consts must have the structural match property, and this property
 cannot be enforced for a type variable, it is not possible to introduce a const
 parameter which is ascribed to a type variable (`Foo<T, const N: T>` is not
-valid)>
+valid).
 
 ### Equality of two abstract const expressions
 
