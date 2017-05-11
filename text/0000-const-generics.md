@@ -188,7 +188,7 @@ guarantee that the equality is *reflexive*, so that a type is always the same
 type as itself. (The standard definition of equality for floating point numbers
 is not reflexive.)
 
-This may diverse someday from the definition used by match; it is not necessary
+This may diverge someday from the definition used by match; it is not necessary
 that matching and const parameters use the same definition of equality, but the
 definition of equality used by match today is good enough for our purposes.
 
