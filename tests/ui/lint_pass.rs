@@ -11,7 +11,6 @@ use rustc::lint::{LintPass, LintArray};
 declare_lint! { GOOD_LINT, Warn, "good lint" }
 declare_lint! { MISSING_LINT, Warn, "missing lint" }
 
-
 pub struct Pass;
 
 impl LintPass for Pass {
@@ -23,5 +22,3 @@ impl LintPass for Pass {
 fn main() {
     let _ = MISSING_LINT;
 }
-
-
