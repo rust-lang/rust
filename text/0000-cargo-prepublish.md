@@ -6,17 +6,17 @@
 # Summary
 [summary]: #summary
 
-This RFC proposes the concept of *prepublication dependencies* for Cargo. These
-dependencies augment a crate index (like crates.io) with new versions of crates
-that have not yet been published to the index. Dependency resolution then works
-*as if* those prepublished versions actually existed in the
-index. Prepublication dependencies thus act as a kind of "staging index".
+This RFC proposes the concept of *augmenting sources* for Cargo. Sources can be
+enhanced with new versions of a crate that did not exist or have existing
+versions replaced. Dependency resolution will work *as if* these additional
+crates actually existed in the original source.
 
-Prepublication makes it possible to perform integration testing within a large
-crate graph before publishing anything to crates.io, and without requiring
-dependencies to be switched from the crates.io index to git branches. It can, to
-a degree, simulate an "atomic" change across a large number of crates and
-repositories, which can then actually be landed in a piecemeal, non-atomic
+One primary feature enabled by this is the ability to "prepublish" a crate to
+crates.io. Prepublication makes it possible to perform integration testing
+within a large crate graph before publishing anything to crates.io, and without
+requiring dependencies to be switched from the crates.io index to git branches.
+It can, to a degree, simulate an "atomic" change across a large number of crates
+and repositories, which can then actually be landed in a piecemeal, non-atomic
 fashion.
 
 # Motivation
@@ -74,26 +74,34 @@ publication to crates.io.
 [design]: #detailed-design
 
 The design itself is relatively straightforward. The Cargo.toml file will
-support a new section for prepublication:
+support a new section for augmenting a source of crates:
 
 ```toml
-[prepublish]
+[augment.crates-io]
 xml-rs = { path = "path/to/fork" }
 ```
 
-The listed dependencies must be path or git dependencies (though see
-[Unresolved Questions][unresolved] for the multi-index case). Cargo will load
-the crates and extract version information, supplementing the ambient index with
-the version it finds. If the same version *already* exists in the ambient index,
-the prepublication will act just like `[replace]`, replacing its source with the
-one specified in the `[prepublish]` section. However, unlike `[replace]`,
-Cargo will issue a warning in this case, since this situation is an indication
-that the prepublication is ready to be removed.
+The listed dependencies have the same syntax as the normal `[dependencies]`
+section, but they must all come form a different source than the source being
+augmented. For example you can't augment crates.io with other crates from
+crates.io! Cargo will load the crates and extract the version information for
+each dependency's name, supplementing the source specified with the version it
+finds. If the same name/version pair *already* exists in the source being
+augmented, then this will act just like `[replace]`, replacing its source with
+the one specified in the `[augment]` section.
 
-Like `[replace]`, the `[prepublish]` section is only taken into account for the
-root crate; allowing it to accumulate anywhere in the crate dependency graph
-creates intractable problems for dependency resolution. Cargo will also refuse
-to publish crates containing a `[prepublish]` section to crates.io
+Like `[replace]`, the `[augment]` section is only taken into account for the
+root crate (or workspace root); allowing it to accumulate anywhere in the crate
+dependency graph creates intractable problems for dependency resolution.
+
+The sub-table of `[augment]` (where `crates-io` is used above) is used to
+specify the source that's being augmented. Cargo will know ahead of time one
+identifier, literally `crates-io`, but otherwise this field will currently be
+interpreted as a URL of a source. The name `crates-io` will correspond to the
+crates.io index, and other urls, such as git repositories, may also be specified
+for augmentation. Eventually it's intended we'll grow support for multiple
+registries here with their own identifiers, but for now just literally
+`crates-io` and other URLs are allowed.
 
 ## Examples
 
@@ -112,6 +120,30 @@ With this setup, the dependency graph for Servo will contain *two* versions of
 `0.9.1` is considered a minor release against `0.9.0`, while `0.9.0` and `0.8.0`
 are incompatible.
 
+### Scenario: augmenting with a bugfix
+
+Let's say that while developing `foo` we've got a lock file pointing to `xml-rs`
+`0.8.0`, and there's an `0.8.0` branch of `xml-rs` that hasn't been touched
+since it was published. We then find a bug in the 0.8.0 publication of `xml-rs`
+which we'd like to fix.
+
+First we'll check out `foo` locally and implement what we believe is a fix for
+this bug, and next, we change `Cargo.toml` for `foo`:
+
+```toml
+[augment.crates-io]
+xml-rs = { path = "../xml-rs" }
+```
+
+When compiling `foo`, Cargo will resolve the `xml-rs` dependency to `0.8.0`,
+as it did before, but that version's been replaced with our local copy. The
+local path dependency, which has version 0.8.0, takes precedence over the
+version found in the registry.
+
+Once we've confirmed a fix bug we then continue to run tests in `xml-rs` itself,
+and then we'll send a PR to the main `xml-rs` repo. This then leads us to the
+next section where a new version of `xml-rs` comes into play!
+
 ### Scenario: prepublishing a new minor version
 
 Now, suppose that `foo` needs some changes to `xml-rs`, but we want to check
@@ -120,7 +152,7 @@ that all of Servo compiles before pushing the changes through.
 First, we change `Cargo.toml` for `foo`:
 
 ```toml
-[prepublish]
+[augment.crates-io]
 xml-rs = { git = "https://github.com/aturon/xml-rs", branch = "0.9.2" }
 
 [dependencies]
@@ -132,7 +164,7 @@ or introduce any `xml-rs` dependencies; it's enough to be using the fork of
 `foo`, which we would be anyway:
 
 ```toml
-[prepublish]
+[augment.crates-io]
 xml-rs = { git = "https://github.com/aturon/xml-rs", branch = "0.9.2" }
 
 [dependencies]
@@ -154,7 +186,7 @@ want to do integration testing for (`servo`); no sibling crates needed to be
 changed.
 
 Once `xml-rs` version `0.9.2` is actually published, we can remove the
-`[prepublish]` sections, and Cargo will warn us that this needs to be done.
+`[augment]` sections, and Cargo will warn us that this needs to be done.
 
 ### Scenario: prepublishing a new major version
 
@@ -162,7 +194,7 @@ What happens if `foo` instead needs to make a breaking change to `xml-rs`? The
 workflow is identical. For `foo`:
 
 ```toml
-[prepublish]
+[augment.crates-io]
 xml-rs = { git = "https://github.com/aturon/xml-rs", branch = "0.10.0" }
 
 [dependencies]
@@ -172,7 +204,7 @@ xml-rs = "0.10.0"
 For `servo`:
 
 ```toml
-[prepublish]
+[augment.crates-io]
 xml-rs = { git = "https://github.com/aturon/xml-rs", branch = "0.10.0" }
 
 [dependencies]
@@ -191,12 +223,118 @@ prepublication version of `xml-rs`.
 would help catch this issue at the Cargo level and give a maximally informative
 error message).
 
+## Impact on `Cargo.lock`
+
+Usage of `[augment]` will perform backwards-incompatible modifications to
+`Cargo.lock`, meaning that usage of `[augment]` will prevent previous versions
+of Cargo from interpreting the lock file. Cargo will unconditionally resolve all
+entries in the `[augment]` section to precise dependencies, encoding them all in
+the lock file whether they're used or not.
+
+Dependencies formed on crates listed in `[augment]` will then be listed directly
+in Cargo.lock, eschewing the actual dependency entirely. For example let's say
+we depend on `env_logger` but we're using `[augment]` to depend on a git version
+of the `log` crate, a dependency of `env_logger`. First we'll have our
+`Cargo.toml` including:
+
+```toml
+# Cargo.toml
+[dependencies]
+env_logger = "0.4"
+```
+
+With that we'll find this in `Cargo.lock`, notably everything comes from
+crates.io
+
+```toml
+# Cargo.lock
+[[package]]
+name = "env_logger"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "log"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+```
+
+Next up we'll add our `[augment]` section to crates.io:
+
+```toml
+# Cargo.toml
+[augment.crates-io]
+log = { git = 'https://github.com/rust-lang-nursery/log' }
+```
+
+and that will generate a lock file that looks (roughly) like:
+
+```toml
+# Cargo.lock
+[[package]]
+name = "env_logger"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "log 0.3.7 (git+https://github.com/rust-lang-nursery/log)",
+]
+
+[[package]]
+name = "log"
+version = "0.3.7"
+source = "git+https://github.com/rust-lang-nursery/log#cb9fa28812ac27c9cadc4e7b18c221b561277289"
+```
+
+Notably `log` from crates.io *is not mentioned at all here*, and crucially so!
+Additionally Cargo has the fully resolved version of the `log` augmentation
+available to it, down to the sha of what to check out.
+
+When Cargo rebuilds from this `Cargo.lock` it will not query the registry for
+versions of `log`, instead seeing that there's an exact dependency on the git
+repository (from the `Cargo.lock`) and the repository is listed as an
+augmentation, so it'll follow that pointer.
+
+## Impact on `[replace]`
+
+The `[augment]` section in the manifest can in many ways be seen as a "replace
+2.0". It is, in fact, strictly more expressive than the current `[replace]`
+section! For example these two sections are equivalent:
+
+```toml
+[replace]
+'log:0.3.7' = { git = 'https://github.com/rust-lang-nursery/log' }
+
+# is the same as...
+
+[augment.crates-io]
+log = { git = 'https://github.com/rust-lang-nursery/log' }
+```
+
+This is not accidental! The intial development of the `[augment]` feature was
+actually focused on prepublishing dependencies and was called `[prepublish]`,
+but while discussing it a conclusion was reached that `[prepublish]` already
+allowed replacing existing versions in a registry, but issued a warning when
+doing so. It turned out that without a warning we ended up having a full-on
+`[replace]` replacement!
+
+At this time, though, it is not planned to deprecate the `[replace]` section,
+nor remove it. After the `[augment]` section is implemented, if it ends up
+working out this may change. If after a few cycles on stable the `[augment]`
+section seems to be working well we can issue an official deprecation for
+`[replace]`, printing a warning if it's still used.
+
+Documentation, however, will immediately being to recommend `[augment]` over
+`[replace]`.
+
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
-Prepublication is a feature intended for large-scale projects spanning many
-repos and crates, where you want to make something like an atomic change across
-the repos. As such, it should likely be explained in a dedicated section for
+Augmentation is a feature intended for large-scale projects spanning many repos
+and crates, where you want to make something like an atomic change across the
+repos. As such, it should likely be explained in a dedicated section for
 large-scale Cargo usage, which would also include build system integration and
 other related topics.
 
@@ -204,18 +342,25 @@ The mechanism itself is straightforward enough that a handful of examples (as in
 this RFC) is generally enough to explain it. In the docs, these examples should
 be spelled out in greater detail.
 
+Most notably, however, the [overriding dependenices][over] section of Cargo's
+documentation will be rewritten to primarily mention `[augment]`, but
+`[replace]` will be mentioned still with a recommendation to use `[augment]`
+instead if possible.
+
+[over]: http://doc.crates.io/specifying-dependencies.html#overriding-dependencies
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
 This feature adds yet another knob around where, exactly, Cargo is getting its
-source and version information. In particular, its similarity to `[replace]`
-means the two features are likely to be confused. One saving grace is that
-`[replace]` emphatically does not allow version numbers to be changed; it's very
-tailored to surgical patches.
+source and version information. In particular, it's basically deprecating
+`[replace]` if it works out, and it's typically a shame to deprecate major
+stable features.
 
-Fortunately, because both features are rarely used, are only used for very large
-projects, and cannot be published to crates.io, the knobs are largely invisible
-to the vast majority of Cargo users, who are unaffected by them.
+Fortunately, because these features are intended to be relatively rarely used,
+checked in even more rarely, are only used for very large projects, and cannot
+be published to crates.io, the knobs are largely invisible to the vast majority
+of Cargo users, who are unaffected by them.
 
 # Alternatives
 [alternatives]: #alternatives
@@ -244,14 +389,7 @@ address the desired workflow, for a few reasons:
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-There are two unresolved questions, both about possible future extensions.
-
-First: it would be extremely helpful to provide a first-class workflow for
-forking a dependency and making the necessary changes to Cargo.toml for
-prepublication, and for fixing things up when publication actually occurs. That
-shouldn't be hard to do, but is out of scope for this RFC.
-
-Second: we may eventually want to use multiple crate indexes within a Cargo.toml
-file, and we'll need some way to express *which* we're talking about with
-prepublication. However, this will also be the case for standard dependencies,
-so this RFC assumes that any solution will cover both cases.
+- It would be extremely helpful to provide a first-class workflow for forking a
+  dependency and making the necessary changes to Cargo.toml for prepublication,
+  and for fixing things up when publication actually occurs. That shouldn't be
+  hard to do, but is out of scope for this RFC.
