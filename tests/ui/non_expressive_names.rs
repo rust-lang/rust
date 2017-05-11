@@ -1,17 +1,6 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 #![deny(clippy,similar_names)]
-
-
-
-
-
-
-
-
-
-
-
 #![allow(unused)]
 
 
@@ -129,18 +118,15 @@ fn bla() {
         }
         {
             let e: i32;
-
         }
         {
             let e: i32;
-
             let f: i32;
 
         }
         match 5 {
             1 => println!(""),
             e => panic!(),
-
         }
         match 5 {
             1 => println!(""),
