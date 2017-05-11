@@ -1,7 +1,7 @@
 error: you should consider deriving a `Default` implementation for `Foo`
-  --> $DIR/new_without_default.rs:13:5
+  --> $DIR/new_without_default.rs:10:5
    |
-13 |     pub fn new() -> Foo { Foo }
+10 |     pub fn new() -> Foo { Foo }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -14,9 +14,9 @@ help: try this
    | pub struct Foo;
 
 error: you should consider deriving a `Default` implementation for `Bar`
-  --> $DIR/new_without_default.rs:23:5
+  --> $DIR/new_without_default.rs:16:5
    |
-23 |     pub fn new() -> Self { Bar }
+16 |     pub fn new() -> Self { Bar }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: try this
@@ -24,9 +24,9 @@ help: try this
    | pub struct Bar;
 
 error: you should consider adding a `Default` implementation for `LtKo<'c>`
-  --> $DIR/new_without_default.rs:72:5
+  --> $DIR/new_without_default.rs:64:5
    |
-72 |     pub fn new() -> LtKo<'c> { unimplemented!() }
+64 |     pub fn new() -> LtKo<'c> { unimplemented!() }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here

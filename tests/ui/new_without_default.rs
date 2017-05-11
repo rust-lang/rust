@@ -6,22 +6,14 @@
 
 pub struct Foo;
 
-
-
-
 impl Foo {
     pub fn new() -> Foo { Foo }
-
 }
 
 pub struct Bar;
 
-
-
-
 impl Bar {
     pub fn new() -> Self { Bar }
-
 }
 
 pub struct Ok;
@@ -70,13 +62,6 @@ pub struct LtKo<'a> {
 
 impl<'c> LtKo<'c> {
     pub fn new() -> LtKo<'c> { unimplemented!() }
-
-
-
-
-
-
-
     // FIXME: that suggestion is missing lifetimes
 }
 
