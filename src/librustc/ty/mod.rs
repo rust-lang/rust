@@ -2344,38 +2344,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// See `ParameterEnvironment` struct def'n for details.
-    pub fn parameter_environment(self, def_id: DefId) -> ParameterEnvironment<'gcx> {
-        //
-        // Compute the bounds on Self and the type parameters.
-        //
-
-        let tcx = self.global_tcx();
-        let bounds = tcx.predicates_of(def_id).instantiate_identity(tcx);
-        let predicates = bounds.predicates;
-
-        // Finally, we have to normalize the bounds in the environment, in
-        // case they contain any associated type projections. This process
-        // can yield errors if the put in illegal associated types, like
-        // `<i32 as Foo>::Bar` where `i32` does not implement `Foo`. We
-        // report these errors right here; this doesn't actually feel
-        // right to me, because constructing the environment feels like a
-        // kind of a "idempotent" action, but I'm not sure where would be
-        // a better place. In practice, we construct environments for
-        // every fn once during type checking, and we'll abort if there
-        // are any errors at that point, so after type checking you can be
-        // sure that this will succeed without errors anyway.
-        //
-
-        let unnormalized_env = ty::ParameterEnvironment::new(tcx.intern_predicates(&predicates));
-
-        let body_id = self.hir.as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
-            self.hir.maybe_body_owned_by(id).map_or(id, |body| body.node_id)
-        });
-        let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
-        traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
-    }
-
     pub fn node_scope_region(self, id: NodeId) -> Region<'tcx> {
         self.mk_region(ty::ReScope(CodeExtent::Misc(id)))
     }
@@ -2535,6 +2503,35 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
         })
 }
 
+/// See `ParameterEnvironment` struct def'n for details.
+fn parameter_environment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   def_id: DefId)
+                                   -> ParameterEnvironment<'tcx> {
+    // Compute the bounds on Self and the type parameters.
+
+    let bounds = tcx.predicates_of(def_id).instantiate_identity(tcx);
+    let predicates = bounds.predicates;
+
+    // Finally, we have to normalize the bounds in the environment, in
+    // case they contain any associated type projections. This process
+    // can yield errors if the put in illegal associated types, like
+    // `<i32 as Foo>::Bar` where `i32` does not implement `Foo`. We
+    // report these errors right here; this doesn't actually feel
+    // right to me, because constructing the environment feels like a
+    // kind of a "idempotent" action, but I'm not sure where would be
+    // a better place. In practice, we construct environments for
+    // every fn once during type checking, and we'll abort if there
+    // are any errors at that point, so after type checking you can be
+    // sure that this will succeed without errors anyway.
+
+    let unnormalized_env = ty::ParameterEnvironment::new(tcx.intern_predicates(&predicates));
+
+    let body_id = tcx.hir.as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
+        tcx.hir.maybe_body_owned_by(id).map_or(id, |body| body.node_id)
+    });
+    let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
+    traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
+}
 
 pub fn provide(providers: &mut ty::maps::Providers) {
     util::provide(providers);
@@ -2544,6 +2541,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         adt_sized_constraint,
         adt_dtorck_constraint,
         def_span,
+        parameter_environment,
         trait_of_item,
         trait_impls_of: trait_def::trait_impls_of_provider,
         relevant_trait_impls_for: trait_def::relevant_trait_impls_provider,
@@ -2557,6 +2555,7 @@ pub fn provide_extern(providers: &mut ty::maps::Providers) {
         adt_dtorck_constraint,
         trait_impls_of: trait_def::trait_impls_of_provider,
         relevant_trait_impls_for: trait_def::relevant_trait_impls_provider,
+        parameter_environment,
         ..*providers
     };
 }
