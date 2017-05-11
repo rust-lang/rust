@@ -79,7 +79,11 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
 
             DepNode::FileMap(def_id, ref name) => {
                 if def_id.is_local() {
-                    Some(self.incremental_hashes_map[dep_node])
+                    // We will have been able to retrace the DefId (which is
+                    // always the local CRATE_DEF_INDEX), but the file with the
+                    // given name might have been removed, so we use get() in
+                    // order to allow for that case.
+                    self.incremental_hashes_map.get(dep_node).map(|x| *x)
                 } else {
                     Some(self.metadata_hash(DepNode::FileMap(def_id, name.clone()),
                                             def_id.krate,
