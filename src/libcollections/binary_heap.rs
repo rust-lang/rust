@@ -268,7 +268,7 @@ impl<'a, T: Ord> DerefMut for PeekMut<'a, T> {
 
 impl<'a, T: Ord> PeekMut<'a, T> {
     /// Removes the peeked value from the heap and returns it.
-    #[unstable(feature = "binary_heap_peek_mut_pop", issue = "38863")]
+    #[stable(feature = "binary_heap_peek_mut_pop", since = "1.18.0")]
     pub fn pop(mut this: PeekMut<'a, T>) -> T {
         let value = this.heap.pop().unwrap();
         this.sift = false;
