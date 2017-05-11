@@ -451,7 +451,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 // So peel off one-level, turning the &T into T.
                 match base_ty.builtin_deref(false, ty::NoPreference) {
                     Some(t) => t.ty,
-                    None => { return Err(()); }
+                    None => {
+                        debug!("By-ref binding of non-derefable type {:?}", base_ty);
+                        return Err(());
+                    }
                 }
             }
             _ => base_ty,
@@ -1039,6 +1042,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 match base_cmt.ty.builtin_index() {
                     Some(ty) => (ty, ElementKind::VecElement),
                     None => {
+                        debug!("Explicit index of non-indexable type {:?}", base_cmt);
                         return Err(());
                     }
                 }
@@ -1154,7 +1158,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             PatKind::TupleStruct(hir::QPath::Resolved(_, ref path), ..) |
             PatKind::Struct(hir::QPath::Resolved(_, ref path), ..) => {
                 match path.def {
-                    Def::Err => return Err(()),
+                    Def::Err => {
+                        debug!("access to unresolvable pattern {:?}", pat);
+                        return Err(())
+                    }
                     Def::Variant(variant_did) |
                     Def::VariantCtor(variant_did, ..) => {
                         // univariant enums do not need downcasts
