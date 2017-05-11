@@ -2,12 +2,12 @@ error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:9:5
    |
 9  | /     loop {
-10 | |
-11 | |
-12 | |
-...  |
-17 | |         }
-18 | |     }
+10 | |         if let Some(_x) = y {
+11 | |             let _v = 1;
+12 | |         } else {
+13 | |             break
+14 | |         }
+15 | |     }
    | |_____^ help: try `while let Some(_x) = y { .. }`
    |
 note: lint level defined here
@@ -17,62 +17,58 @@ note: lint level defined here
    |         ^^^^^^^^^^^^^^
 
 error: this loop could be written as a `while let` loop
-  --> $DIR/while_loop.rs:25:5
+  --> $DIR/while_loop.rs:22:5
    |
-25 | /     loop {
-26 | |
-27 | |
-28 | |
-...  |
-32 | |         };
-33 | |     }
+22 | /     loop {
+23 | |         match y {
+24 | |             Some(_x) => true,
+25 | |             None => break
+26 | |         };
+27 | |     }
    | |_____^ help: try `while let Some(_x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
-  --> $DIR/while_loop.rs:34:5
+  --> $DIR/while_loop.rs:28:5
    |
-34 | /     loop {
-35 | |
-36 | |
-37 | |
+28 | /     loop {
+29 | |         let x = match y {
+30 | |             Some(x) => x,
+31 | |             None => break
 ...  |
-43 | |         let _str = "foo";
-44 | |     }
+34 | |         let _str = "foo";
+35 | |     }
    | |_____^ help: try `while let Some(x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
-  --> $DIR/while_loop.rs:45:5
+  --> $DIR/while_loop.rs:36:5
    |
-45 | /     loop {
-46 | |
-47 | |
-48 | |
+36 | /     loop {
+37 | |         let x = match y {
+38 | |             Some(x) => x,
+39 | |             None => break,
 ...  |
-54 | |         { let _b = "foobar"; }
-55 | |     }
+42 | |         { let _b = "foobar"; }
+43 | |     }
    | |_____^ help: try `while let Some(x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
-  --> $DIR/while_loop.rs:70:5
+  --> $DIR/while_loop.rs:58:5
    |
-70 | /     loop {
-71 | |
-72 | |
-73 | |
+58 | /     loop {
+59 | |         let (e, l) = match "".split_whitespace().next() {
+60 | |             Some(word) => (word.is_empty(), word.len()),
+61 | |             None => break
 ...  |
-79 | |         let _ = (e, l);
-80 | |     }
+64 | |         let _ = (e, l);
+65 | |     }
    | |_____^ help: try `while let Some(word) = "".split_whitespace().next() { .. }`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_loop.rs:83:5
+  --> $DIR/while_loop.rs:68:5
    |
-83 | /     while let Option::Some(x) = iter.next() {
-84 | |
-85 | |
-86 | |
-87 | |         println!("{}", x);
-88 | |     }
+68 | /     while let Option::Some(x) = iter.next() {
+69 | |         println!("{}", x);
+70 | |     }
    | |_____^ help: try `for x in iter { .. }`
    |
 note: lint level defined here
@@ -82,38 +78,35 @@ note: lint level defined here
    |                                     ^^^^^^^^^^^^^^^^^^^^^
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_loop.rs:91:5
+  --> $DIR/while_loop.rs:73:5
    |
-91 | /     while let Some(x) = iter.next() {
-92 | |
-93 | |
-94 | |
-95 | |         println!("{}", x);
-96 | |     }
+73 | /     while let Some(x) = iter.next() {
+74 | |         println!("{}", x);
+75 | |     }
    | |_____^ help: try `for x in iter { .. }`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_loop.rs:99:5
+  --> $DIR/while_loop.rs:78:5
    |
-99 |     while let Some(_) = iter.next() {}
+78 |     while let Some(_) = iter.next() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `for _ in iter { .. }`
 
 error: this loop could be written as a `while let` loop
-   --> $DIR/while_loop.rs:142:5
+   --> $DIR/while_loop.rs:118:5
     |
-142 | /     loop {
-143 | |
-144 | |
-145 | |
-...   |
-150 | |         loop {}
-151 | |     }
+118 | /     loop {
+119 | |         let _ = match iter.next() {
+120 | |             Some(ele) => ele,
+121 | |             None => break
+122 | |         };
+123 | |         loop {}
+124 | |     }
     | |_____^ help: try `while let Some(ele) = iter.next() { .. }`
 
 error: empty `loop {}` detected. You may want to either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
-   --> $DIR/while_loop.rs:150:9
+   --> $DIR/while_loop.rs:123:9
     |
-150 |         loop {}
+123 |         loop {}
     |         ^^^^^^^
     |
 note: lint level defined here
