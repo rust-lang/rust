@@ -17,7 +17,7 @@ use io::{self, BufReader, LineWriter};
 use sync::{Arc, Mutex, MutexGuard};
 use sys::stdio;
 use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
-use thread::LocalKeyState;
+use thread::{LocalKey, LocalKeyState};
 
 /// Stdout used by print! and println! macros
 thread_local! {
@@ -659,39 +659,54 @@ pub fn set_print(sink: Option<Box<Write + Send>>) -> Option<Box<Write + Send>> {
     })
 }
 
-#[unstable(feature = "print",
-           reason = "implementation detail which may disappear or be replaced at any time",
-           issue = "0")]
-#[doc(hidden)]
-pub fn _print(args: fmt::Arguments) {
-    // As an implementation of the `println!` macro, we want to try our best to
-    // not panic wherever possible and get the output somewhere. There are
-    // currently two possible vectors for panics we take care of here:
-    //
-    // 1. If the TLS key for the local stdout has been destroyed, accessing it
-    //    would cause a panic. Note that we just lump in the uninitialized case
-    //    here for convenience, we're not trying to avoid a panic.
-    // 2. If the local stdout is currently in use (e.g. we're in the middle of
-    //    already printing) then accessing again would cause a panic.
-    //
-    // If, however, the actual I/O causes an error, we do indeed panic.
-    let result = match LOCAL_STDOUT.state() {
+/// Write `args` to output stream `local_s` if possible, `global_s`
+/// otherwise. `label` identifies the stream in a panic message.
+///
+/// This function is used to print error messages, so it takes extra
+/// care to avoid causing a panic when `local_stream` is unusable.
+/// For instance, if the TLS key for the local stream is uninitialized
+/// or already destroyed, or if the local stream is locked by another
+/// thread, it will just fall back to the global stream.
+///
+/// However, if the actual I/O causes an error, this function does panic.
+fn print_to<T>(args: fmt::Arguments,
+               local_s: &'static LocalKey<RefCell<Option<Box<Write+Send>>>>,
+               global_s: fn() -> T,
+               label: &str) where T: Write {
+    let result = match local_s.state() {
         LocalKeyState::Uninitialized |
-        LocalKeyState::Destroyed => stdout().write_fmt(args),
+        LocalKeyState::Destroyed => global_s().write_fmt(args),
         LocalKeyState::Valid => {
-            LOCAL_STDOUT.with(|s| {
+            local_s.with(|s| {
                 if let Ok(mut borrowed) = s.try_borrow_mut() {
                     if let Some(w) = borrowed.as_mut() {
                         return w.write_fmt(args);
                     }
                 }
-                stdout().write_fmt(args)
+                global_s().write_fmt(args)
             })
         }
     };
     if let Err(e) = result {
-        panic!("failed printing to stdout: {}", e);
+        panic!("failed printing to {}: {}", label, e);
     }
+}
+
+#[unstable(feature = "print_internals",
+           reason = "implementation detail which may disappear or be replaced at any time",
+           issue = "0")]
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    print_to(args, &LOCAL_STDOUT, stdout, "stdout");
+}
+
+#[unstable(feature = "print_internals",
+           reason = "implementation detail which may disappear or be replaced at any time",
+           issue = "0")]
+#[doc(hidden)]
+pub fn _eprint(args: fmt::Arguments) {
+    use panicking::LOCAL_STDERR;
+    print_to(args, &LOCAL_STDERR, stderr, "stderr");
 }
 
 #[cfg(test)]
