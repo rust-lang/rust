@@ -11,23 +11,25 @@
 
 set -ex
 
-cpgdb() {
-  cp android-ndk-r11c/prebuilt/linux-x86_64/bin/gdb /android/$1/bin/$2-gdb
-  cp android-ndk-r11c/prebuilt/linux-x86_64/bin/gdb-orig /android/$1/bin/gdb-orig
-  cp -r android-ndk-r11c/prebuilt/linux-x86_64/share /android/$1/share
+URL=https://dl.google.com/android/repository
+
+download_ndk() {
+    mkdir -p /android/ndk
+    cd /android/ndk
+    curl -O $URL/$1
+    unzip -q $1
+    rm $1
+    mv android-ndk-* ndk
 }
 
-# Prep the Android NDK
-#
-# See https://github.com/servo/servo/wiki/Building-for-Android
-curl -O https://dl.google.com/android/repository/android-ndk-r11c-linux-x86_64.zip
-unzip -q android-ndk-r11c-linux-x86_64.zip
-bash android-ndk-r11c/build/tools/make-standalone-toolchain.sh \
-        --platform=android-9 \
-        --toolchain=arm-linux-androideabi-4.9 \
-        --install-dir=/android/ndk-arm-9 \
-        --ndk-dir=/android/android-ndk-r11c \
-        --arch=arm
-cpgdb ndk-arm-9 arm-linux-androideabi
+make_standalone_toolchain() {
+    # See https://developer.android.com/ndk/guides/standalone_toolchain.html
+    python2.7 /android/ndk/ndk/build/tools/make_standalone_toolchain.py \
+        --install-dir /android/ndk/$1-$2 \
+        --arch $1 \
+        --api $2
+}
 
-rm -rf ./android-ndk-r11c-linux-x86_64.zip ./android-ndk-r11c
+remove_ndk() {
+    rm -rf /android/ndk/ndk
+}
