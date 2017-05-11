@@ -14,5 +14,11 @@ set -ex
 # Setting SHELL to a file instead on a symlink helps android
 # emulator identify the system
 export SHELL=/bin/bash
-nohup nohup emulator @arm-18 -no-window -partition-size 2047 0<&- &>/dev/null &
+echo "PRE_EM: $LD_PRELOAD"
+stat "$LD_PRELOAD"
+stat /usr/lib/i386-linux-gnu/libeatmydata.so
+file $(which emulator)
+LD_PRELOAD="/usr/lib/i386-linux-gnu/libeatmydata.so $LD_PRELOAD" nohup nohup emulator @arm-18 -no-window -partition-size 2047 0<&- &>/dev/null &
+sleep 3
+ps aux
 exec "$@"

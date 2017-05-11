@@ -19,6 +19,7 @@ if [ "$NO_CHANGE_USER" = "" ]; then
     exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
   fi
 fi
+echo "PRE: $LD_PRELOAD"
 
 ci_dir=`cd $(dirname $0) && pwd`
 source "$ci_dir/shared.sh"

@@ -12,7 +12,7 @@ matrix:
   fast_finish: true
   include:
     # Linux builders, all docker images
-    - env: IMAGE=arm-android
+    - env: IMAGE=arm-android ALLOW_PR=1
     - env: IMAGE=armhf-gnu
     - env: IMAGE=cross DEPLOY=1
     - env: IMAGE=dist-aarch64-linux DEPLOY=1
@@ -44,7 +44,7 @@ matrix:
     - env: IMAGE=x86_64-gnu-aux
     - env: IMAGE=x86_64-gnu-debug
     - env: IMAGE=x86_64-gnu-nopt
-    - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1 RUST_BACKTRACE=1
+    - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR= RUST_BACKTRACE=1
     - env: IMAGE=x86_64-gnu-distcheck
     - env: IMAGE=x86_64-gnu-incremental
 
@@ -136,6 +136,7 @@ matrix:
 
 env:
   global:
+    - LD_PRELOAD=/usr/lib/libeatmydata/libeatmydata.so
     - SCCACHE_BUCKET=rust-lang-ci-sccache
     - AWS_ACCESS_KEY_ID=AKIAIMX7VLAS3PZAVLUQ
     # AWS_SECRET_ACCESS_KEY=...
