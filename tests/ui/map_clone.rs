@@ -97,7 +97,9 @@ fn map_clone_deref() {
     let _: Option<i32> = x.as_ref().map(|y| **y);
 }
 
-fn main() {
-    // used to be a false positive
-    vec![1].iter_mut().map(|x| *x);
+// stuff that used to be a false positive
+fn former_false_positive() {
+    vec![1].iter_mut().map(|x| *x); // #443
 }
+
+fn main() { }
