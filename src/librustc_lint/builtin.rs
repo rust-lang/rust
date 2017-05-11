@@ -718,7 +718,6 @@ fn fl_lit_check_expr(cx: &EarlyContext, expr: &ast::Expr) {
                     cx.span_lint(ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
                                  l.span,
                                  "floating-point literals cannot be used in patterns");
-                    error!("span mc spanspam");
                     },
                 _ => (),
             }
