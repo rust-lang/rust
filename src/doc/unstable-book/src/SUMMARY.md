@@ -178,7 +178,7 @@
     - [peek](library-features/peek.md)
     - [placement_in](library-features/placement-in.md)
     - [placement_new_protocol](library-features/placement-new-protocol.md)
-    - [print](library-features/print.md)
+    - [print_internals](library-features/print-internals.md)
     - [proc_macro_internals](library-features/proc-macro-internals.md)
     - [process_try_wait](library-features/process-try-wait.md)
     - [question_mark_carrier](library-features/question-mark-carrier.md)
