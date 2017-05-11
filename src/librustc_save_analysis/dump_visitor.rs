@@ -1211,7 +1211,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 }
 
 impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll, D> {
-    fn visit_mod(&mut self, m: &'l ast::Mod, span: Span, id: NodeId) {
+    fn visit_mod(&mut self, m: &'l ast::Mod, span: Span, attrs: &[ast::Attribute], id: NodeId) {
         // Since we handle explicit modules ourselves in visit_item, this should
         // only get called for the root module of a crate.
         assert_eq!(id, ast::CRATE_NODE_ID);
@@ -1229,11 +1229,9 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
             filename: filename,
             items: m.items.iter().map(|i| i.id).collect(),
             visibility: Visibility::Public,
-            // TODO Visitor doesn't pass us the attibutes.
-            docs: String::new(),
+            docs: docs_for_attrs(attrs),
             sig: None,
-            // TODO Visitor doesn't pass us the attibutes.
-            attributes: vec![],
+            attributes: attrs.to_owned(),
         }.lower(self.tcx));
         self.nest_scope(id, |v| visit::walk_mod(v, m));
     }
