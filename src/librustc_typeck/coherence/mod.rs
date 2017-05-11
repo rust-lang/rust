@@ -46,8 +46,6 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
         }
 
         enforce_trait_manually_implementable(tcx, impl_def_id, trait_ref.def_id);
-        let trait_def = tcx.trait_def(trait_ref.def_id);
-        trait_def.record_local_impl(tcx, impl_def_id, trait_ref);
     }
 }
 
@@ -117,8 +115,6 @@ pub fn provide(providers: &mut Providers) {
 
 fn coherent_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             (_, def_id): (CrateNum, DefId)) {
-    tcx.populate_implementations_for_trait_if_necessary(def_id);
-
     let impls = tcx.hir.trait_impls(def_id);
     for &impl_id in impls {
         check_impl(tcx, impl_id);

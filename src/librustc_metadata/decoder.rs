@@ -505,16 +505,11 @@ impl<'a, 'tcx> CrateMetadata {
             _ => bug!(),
         };
 
-        let def = ty::TraitDef::new(self.local_def_id(item_id),
-                                    data.unsafety,
-                                    data.paren_sugar,
-                                    self.def_path_table.def_path_hash(item_id));
-
-        if data.has_default_impl {
-            def.record_has_default_impl();
-        }
-
-        def
+        ty::TraitDef::new(self.local_def_id(item_id),
+                          data.unsafety,
+                          data.paren_sugar,
+                          data.has_default_impl,
+                          self.def_path_table.def_path_hash(item_id))
     }
 
     fn get_variant(&self, item: &Entry, index: DefIndex) -> ty::VariantDef {

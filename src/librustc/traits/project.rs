@@ -1320,23 +1320,10 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
     let trait_def_id = selcx.tcx().impl_trait_ref(impl_def_id).unwrap().def_id;
     let trait_def = selcx.tcx().trait_def(trait_def_id);
 
-    if !trait_def.is_complete(selcx.tcx()) {
-        let impl_node = specialization_graph::Node::Impl(impl_def_id);
-        for item in impl_node.items(selcx.tcx()) {
-            if item.kind == ty::AssociatedKind::Type && item.name == assoc_ty_name {
-                return Some(specialization_graph::NodeItem {
-                    node: specialization_graph::Node::Impl(impl_def_id),
-                    item: item,
-                });
-            }
-        }
-        None
-    } else {
-        trait_def
-            .ancestors(impl_def_id)
-            .defs(selcx.tcx(), assoc_ty_name, ty::AssociatedKind::Type)
-            .next()
-    }
+    trait_def
+        .ancestors(selcx.tcx(), impl_def_id)
+        .defs(selcx.tcx(), assoc_ty_name, ty::AssociatedKind::Type)
+        .next()
 }
 
 // # Cache

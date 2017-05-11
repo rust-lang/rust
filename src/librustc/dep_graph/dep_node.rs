@@ -106,6 +106,8 @@ pub enum DepNode<D: Clone + Debug> {
     UsedTraitImports(D),
     ConstEval(D),
     SymbolName(D),
+    SpecializationGraph(D),
+    ObjectSafety(D),
 
     // The set of impls for a given trait. Ultimately, it would be
     // nice to get more fine-grained here (e.g., to include a
@@ -264,6 +266,8 @@ impl<D: Clone + Debug> DepNode<D> {
             UsedTraitImports(ref d) => op(d).map(UsedTraitImports),
             ConstEval(ref d) => op(d).map(ConstEval),
             SymbolName(ref d) => op(d).map(SymbolName),
+            SpecializationGraph(ref d) => op(d).map(SpecializationGraph),
+            ObjectSafety(ref d) => op(d).map(ObjectSafety),
             TraitImpls(ref d) => op(d).map(TraitImpls),
             AllLocalTraitImpls => Some(AllLocalTraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),
