@@ -32,7 +32,7 @@ pub use rustc_const_eval::pattern::{BindingMode, Pattern, PatternKind, FieldPatt
 #[derive(Clone, Debug)]
 pub struct Block<'tcx> {
     pub targeted_by_break: bool,
-    pub extent: CodeExtent<'tcx>,
+    pub extent: CodeExtent,
     pub span: Span,
     pub stmts: Vec<StmtRef<'tcx>>,
     pub expr: Option<ExprRef<'tcx>>,
@@ -53,7 +53,7 @@ pub struct Stmt<'tcx> {
 pub enum StmtKind<'tcx> {
     Expr {
         /// scope for this statement; may be used as lifetime of temporaries
-        scope: CodeExtent<'tcx>,
+        scope: CodeExtent,
 
         /// expression being evaluated in this statement
         expr: ExprRef<'tcx>,
@@ -62,11 +62,11 @@ pub enum StmtKind<'tcx> {
     Let {
         /// scope for variables bound in this let; covers this and
         /// remaining statements in block
-        remainder_scope: CodeExtent<'tcx>,
+        remainder_scope: CodeExtent,
 
         /// scope for the initialization itself; might be used as
         /// lifetime of temporaries
-        init_scope: CodeExtent<'tcx>,
+        init_scope: CodeExtent,
 
         /// let <PAT> = ...
         pattern: Pattern<'tcx>,
@@ -97,7 +97,7 @@ pub struct Expr<'tcx> {
 
     /// lifetime of this expression if it should be spilled into a
     /// temporary; should be None only if in a constant context
-    pub temp_lifetime: Option<CodeExtent<'tcx>>,
+    pub temp_lifetime: Option<CodeExtent>,
 
     /// whether this temp lifetime was shrunk by #36082.
     pub temp_lifetime_was_shrunk: bool,
@@ -112,12 +112,12 @@ pub struct Expr<'tcx> {
 #[derive(Clone, Debug)]
 pub enum ExprKind<'tcx> {
     Scope {
-        extent: CodeExtent<'tcx>,
+        extent: CodeExtent,
         value: ExprRef<'tcx>,
     },
     Box {
         value: ExprRef<'tcx>,
-        value_extents: CodeExtent<'tcx>,
+        value_extents: CodeExtent,
     },
     Call {
         ty: ty::Ty<'tcx>,
@@ -210,11 +210,11 @@ pub enum ExprKind<'tcx> {
         arg: ExprRef<'tcx>,
     },
     Break {
-        label: CodeExtent<'tcx>,
+        label: CodeExtent,
         value: Option<ExprRef<'tcx>>,
     },
     Continue {
-        label: CodeExtent<'tcx>,
+        label: CodeExtent,
     },
     Return {
         value: Option<ExprRef<'tcx>>,

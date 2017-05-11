@@ -271,7 +271,7 @@ enum PassArgs {
 
 impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     pub fn new(delegate: &'a mut (Delegate<'tcx>+'a),
-               region_maps: &'a RegionMaps<'tcx>,
+               region_maps: &'a RegionMaps,
                infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
                -> Self
     {
@@ -283,7 +283,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
     pub fn with_options(delegate: &'a mut (Delegate<'tcx>+'a),
                         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-                        region_maps: &'a RegionMaps<'tcx>,
+                        region_maps: &'a RegionMaps,
                         options: mc::MemCategorizationOptions)
                -> Self
     {

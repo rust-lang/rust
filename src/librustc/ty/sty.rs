@@ -684,7 +684,7 @@ pub struct DebruijnIndex {
     pub depth: u32,
 }
 
-pub type Region<'tcx> = &'tcx RegionKind<'tcx>;
+pub type Region<'tcx> = &'tcx RegionKind;
 
 /// Representation of regions.
 ///
@@ -743,7 +743,7 @@ pub type Region<'tcx> = &'tcx RegionKind<'tcx>;
 /// [1] http://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2] http://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 #[derive(Clone, PartialEq, Eq, Hash, Copy, RustcEncodable, RustcDecodable)]
-pub enum RegionKind<'tcx> {
+pub enum RegionKind {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
     // parameters are substituted.
@@ -761,7 +761,7 @@ pub enum RegionKind<'tcx> {
     /// A concrete region naming some statically determined extent
     /// (e.g. an expression or sequence of statements) within the
     /// current function.
-    ReScope(region::CodeExtent<'tcx>),
+    ReScope(region::CodeExtent),
 
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
     ReStatic,
@@ -906,7 +906,7 @@ impl DebruijnIndex {
 }
 
 /// Region utilities
-impl<'tcx> RegionKind<'tcx> {
+impl RegionKind {
     pub fn is_late_bound(&self) -> bool {
         match *self {
             ty::ReLateBound(..) => true,
@@ -929,7 +929,7 @@ impl<'tcx> RegionKind<'tcx> {
     }
 
     /// Returns the depth of `self` from the (1-based) binding level `depth`
-    pub fn from_depth(&self, depth: u32) -> RegionKind<'tcx> {
+    pub fn from_depth(&self, depth: u32) -> RegionKind {
         match *self {
             ty::ReLateBound(debruijn, r) => ty::ReLateBound(DebruijnIndex {
                 depth: debruijn.depth - (depth - 1)

@@ -290,7 +290,7 @@ impl ast_node for hir::Pat {
 #[derive(Clone)]
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    pub region_maps: &'a RegionMaps<'tcx>,
+    pub region_maps: &'a RegionMaps,
     options: MemCategorizationOptions,
 }
 
@@ -406,7 +406,7 @@ impl MutabilityCategory {
 impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     /// Context should be the `DefId` we use to fetch region-maps.
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-               region_maps: &'a RegionMaps<'tcx>)
+               region_maps: &'a RegionMaps)
                -> MemCategorizationContext<'a, 'gcx, 'tcx> {
         MemCategorizationContext::with_options(infcx,
                                                region_maps,
@@ -414,7 +414,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     }
 
     pub fn with_options(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-                        region_maps: &'a RegionMaps<'tcx>,
+                        region_maps: &'a RegionMaps,
                         options: MemCategorizationOptions)
                         -> MemCategorizationContext<'a, 'gcx, 'tcx> {
         MemCategorizationContext {
@@ -839,7 +839,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn temporary_scope(&self, id: ast::NodeId) -> (ty::Region<'tcx>, ty::Region<'tcx>)
     {
         let (scope, old_scope) =
-            self.region_maps.old_and_new_temporary_scope(self.tcx(), id);
+            self.region_maps.old_and_new_temporary_scope(id);
         (self.tcx().mk_region(match scope {
             Some(scope) => ty::ReScope(scope),
             None => ty::ReStatic

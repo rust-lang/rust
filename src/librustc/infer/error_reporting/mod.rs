@@ -151,19 +151,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         return;
                     }
                 };
-                let scope_decorated_tag = match *scope {
-                    region::CodeExtentData::Misc(_) => tag,
-                    region::CodeExtentData::CallSiteScope(_) => {
+                let scope_decorated_tag = match scope {
+                    region::CodeExtent::Misc(_) => tag,
+                    region::CodeExtent::CallSiteScope(_) => {
                         "scope of call-site for function"
                     }
-                    region::CodeExtentData::ParameterScope(_) => {
+                    region::CodeExtent::ParameterScope(_) => {
                         "scope of function body"
                     }
-                    region::CodeExtentData::DestructionScope(_) => {
+                    region::CodeExtent::DestructionScope(_) => {
                         new_string = format!("destruction scope surrounding {}", tag);
                         &new_string[..]
                     }
-                    region::CodeExtentData::Remainder(r) => {
+                    region::CodeExtent::Remainder(r) => {
                         new_string = format!("block suffix following statement {}",
                                              r.first_statement_index);
                         &new_string[..]

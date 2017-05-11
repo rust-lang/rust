@@ -270,7 +270,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     rcx: &mut RegionCtxt<'a, 'gcx, 'tcx>,
     ty: ty::Ty<'tcx>,
     span: Span,
-    scope: region::CodeExtent<'tcx>)
+    scope: region::CodeExtent)
     -> Result<(), ErrorReported>
 {
     debug!("check_safety_of_destructor_if_necessary typ: {:?} scope: {:?}",

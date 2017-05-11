@@ -39,7 +39,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// The operand is known to be live until the end of `scope`.
     pub fn as_operand<M>(&mut self,
                          block: BasicBlock,
-                         scope: Option<CodeExtent<'tcx>>,
+                         scope: Option<CodeExtent>,
                          expr: M) -> BlockAnd<Operand<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
@@ -49,7 +49,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn expr_as_operand(&mut self,
                        mut block: BasicBlock,
-                       scope: Option<CodeExtent<'tcx>>,
+                       scope: Option<CodeExtent>,
                        expr: Expr<'tcx>)
                        -> BlockAnd<Operand<'tcx>> {
         debug!("expr_as_operand(block={:?}, expr={:?})", block, expr);

@@ -21,7 +21,6 @@ use hir::map as hir_map;
 use hir::map::DisambiguatedDefPathData;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
-use middle::region::{CodeExtent, CodeExtentData};
 use middle::resolve_lifetime;
 use middle::stability;
 use mir::Mir;
@@ -99,7 +98,7 @@ pub struct CtxtInterners<'tcx> {
     type_: RefCell<FxHashSet<Interned<'tcx, TyS<'tcx>>>>,
     type_list: RefCell<FxHashSet<Interned<'tcx, Slice<Ty<'tcx>>>>>,
     substs: RefCell<FxHashSet<Interned<'tcx, Substs<'tcx>>>>,
-    region: RefCell<FxHashSet<Interned<'tcx, RegionKind<'tcx>>>>,
+    region: RefCell<FxHashSet<Interned<'tcx, RegionKind>>>,
     existential_predicates: RefCell<FxHashSet<Interned<'tcx, Slice<ExistentialPredicate<'tcx>>>>>,
     predicates: RefCell<FxHashSet<Interned<'tcx, Slice<Predicate<'tcx>>>>>,
 }
@@ -548,8 +547,6 @@ pub struct GlobalCtxt<'tcx> {
 
     layout_interner: RefCell<FxHashSet<&'tcx Layout>>,
 
-    code_extent_interner: RefCell<FxHashSet<CodeExtent<'tcx>>>,
-
     /// A vector of every trait accessible in the whole crate
     /// (i.e. including those from subcrates). This is used only for
     /// error reporting, and so is lazily initialised and generally
@@ -651,32 +648,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         interned
     }
 
-    pub fn node_extent(self, n: ast::NodeId) -> CodeExtent<'gcx> {
-        self.intern_code_extent(CodeExtentData::Misc(n))
-    }
-
-    pub fn call_site_extent(self, fn_id: ast::NodeId) -> CodeExtent<'gcx> {
-        self.intern_code_extent(CodeExtentData::CallSiteScope(
-            self.hir.body_owned_by(fn_id)))
-    }
-
-    pub fn parameter_extent(self, fn_id: ast::NodeId) -> CodeExtent<'gcx> {
-        self.intern_code_extent(CodeExtentData::ParameterScope(
-            self.hir.body_owned_by(fn_id)))
-    }
-
-    pub fn intern_code_extent(self, data: CodeExtentData) -> CodeExtent<'gcx> {
-        if let Some(st) = self.code_extent_interner.borrow().get(&data) {
-            return st;
-        }
-
-        let interned = self.global_interners.arena.alloc(data);
-        if let Some(prev) = self.code_extent_interner.borrow_mut().replace(interned) {
-            bug!("Tried to overwrite interned code-extent: {:?}", prev)
-        }
-        interned
-    }
-
     pub fn intern_layout(self, layout: Layout) -> &'gcx Layout {
         if let Some(layout) = self.layout_interner.borrow().get(&layout) {
             return layout;
@@ -764,7 +735,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data_layout: data_layout,
             layout_cache: RefCell::new(FxHashMap()),
             layout_interner: RefCell::new(FxHashSet()),
-            code_extent_interner: RefCell::new(FxHashSet()),
             layout_depth: Cell::new(0),
             derive_macros: RefCell::new(NodeMap()),
             stability_interner: RefCell::new(FxHashSet()),
@@ -1106,8 +1076,8 @@ impl<'tcx: 'lcx, 'lcx> Borrow<[Kind<'lcx>]> for Interned<'tcx, Substs<'tcx>> {
     }
 }
 
-impl<'tcx> Borrow<RegionKind<'tcx>> for Interned<'tcx, RegionKind<'tcx>> {
-    fn borrow<'a>(&'a self) -> &'a RegionKind<'tcx> {
+impl<'tcx> Borrow<RegionKind> for Interned<'tcx, RegionKind> {
+    fn borrow<'a>(&'a self) -> &'a RegionKind {
         &self.0
     }
 }
@@ -1206,7 +1176,7 @@ direct_interners!('tcx,
             &ty::ReVar(_) | &ty::ReSkolemized(..) => true,
             _ => false
         }
-    }) -> RegionKind<'tcx>
+    }) -> RegionKind
 );
 
 macro_rules! slice_interners {

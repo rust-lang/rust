@@ -24,7 +24,7 @@ use syntax_pos::Span;
 type R = Result<(),()>;
 
 pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                    item_scope: region::CodeExtent<'tcx>,
+                                    item_scope: region::CodeExtent,
                                     span: Span,
                                     cause: euv::LoanCause,
                                     cmt: mc::cmt<'tcx>,
@@ -52,7 +52,7 @@ struct GuaranteeLifetimeContext<'a, 'tcx: 'a> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
 
     // the scope of the function body for the enclosing item
-    item_scope: region::CodeExtent<'tcx>,
+    item_scope: region::CodeExtent,
 
     span: Span,
     cause: euv::LoanCause,

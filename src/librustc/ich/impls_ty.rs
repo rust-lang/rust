@@ -39,7 +39,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::subst::Kind<'t
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::RegionKind<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::RegionKind {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -428,24 +428,24 @@ impl_stable_hash_for!(enum ty::cast::CastKind {
     FnPtrAddrCast
 });
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ::middle::region::CodeExtentData
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ::middle::region::CodeExtent
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        use middle::region::CodeExtentData;
+        use middle::region::CodeExtent;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            CodeExtentData::Misc(node_id) |
-            CodeExtentData::DestructionScope(node_id) => {
+            CodeExtent::Misc(node_id) |
+            CodeExtent::DestructionScope(node_id) => {
                 node_id.hash_stable(hcx, hasher);
             }
-            CodeExtentData::CallSiteScope(body_id) |
-            CodeExtentData::ParameterScope(body_id) => {
+            CodeExtent::CallSiteScope(body_id) |
+            CodeExtent::ParameterScope(body_id) => {
                 body_id.hash_stable(hcx, hasher);
             }
-            CodeExtentData::Remainder(block_remainder) => {
+            CodeExtent::Remainder(block_remainder) => {
                 block_remainder.hash_stable(hcx, hasher);
             }
         }

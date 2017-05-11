@@ -21,7 +21,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// up rvalues so as to freeze the value that will be consumed.
     pub fn as_temp<M>(&mut self,
                       block: BasicBlock,
-                      temp_lifetime: Option<CodeExtent<'tcx>>,
+                      temp_lifetime: Option<CodeExtent>,
                       expr: M)
                       -> BlockAnd<Lvalue<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
@@ -32,7 +32,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn expr_as_temp(&mut self,
                     mut block: BasicBlock,
-                    temp_lifetime: Option<CodeExtent<'tcx>>,
+                    temp_lifetime: Option<CodeExtent>,
                     expr: Expr<'tcx>)
                     -> BlockAnd<Lvalue<'tcx>> {
         debug!("expr_as_temp(block={:?}, expr={:?})", block, expr);

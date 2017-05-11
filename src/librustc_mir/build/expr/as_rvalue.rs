@@ -38,7 +38,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     /// Compile `expr`, yielding an rvalue.
-    pub fn as_rvalue<M>(&mut self, block: BasicBlock, scope: Option<CodeExtent<'tcx>>, expr: M)
+    pub fn as_rvalue<M>(&mut self, block: BasicBlock, scope: Option<CodeExtent>, expr: M)
                         -> BlockAnd<Rvalue<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
@@ -48,7 +48,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn expr_as_rvalue(&mut self,
                       mut block: BasicBlock,
-                      scope: Option<CodeExtent<'tcx>>,
+                      scope: Option<CodeExtent>,
                       expr: Expr<'tcx>)
                       -> BlockAnd<Rvalue<'tcx>> {
         debug!("expr_as_rvalue(block={:?}, expr={:?})", block, expr);

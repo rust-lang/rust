@@ -536,7 +536,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 // regions. See comment on `shift_regions_through_binders` method in
 // `subst.rs` for more details.
 
-pub fn shift_region<'tcx>(region: ty::RegionKind<'tcx>, amount: u32) -> ty::RegionKind<'tcx> {
+pub fn shift_region(region: ty::RegionKind, amount: u32) -> ty::RegionKind {
     match region {
         ty::ReLateBound(debruijn, br) => {
             ty::ReLateBound(debruijn.shifted(amount), br)

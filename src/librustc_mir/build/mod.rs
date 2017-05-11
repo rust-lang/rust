@@ -338,8 +338,8 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let span = tcx.hir.span(fn_id);
     let mut builder = Builder::new(hir.clone(), span, arguments.len(), return_ty);
 
-    let call_site_extent = tcx.call_site_extent(fn_id);
-    let arg_extent = tcx.parameter_extent(fn_id);
+    let call_site_extent = CodeExtent::CallSiteScope(body.id());
+    let arg_extent = CodeExtent::ParameterScope(body.id());
     let mut block = START_BLOCK;
     unpack!(block = builder.in_scope(call_site_extent, block, |builder| {
         unpack!(block = builder.in_scope(arg_extent, block, |builder| {
@@ -480,7 +480,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn args_and_body(&mut self,
                      mut block: BasicBlock,
                      arguments: &[(Ty<'gcx>, Option<&'gcx hir::Pat>)],
-                     argument_extent: CodeExtent<'tcx>,
+                     argument_extent: CodeExtent,
                      ast_body: &'gcx hir::Expr)
                      -> BlockAnd<()>
     {

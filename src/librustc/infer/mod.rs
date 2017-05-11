@@ -1324,7 +1324,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn resolve_regions_and_report_errors(&self,
                                              region_context: DefId,
-                                             region_map: &RegionMaps<'tcx>,
+                                             region_map: &RegionMaps,
                                              free_regions: &FreeRegionMap<'tcx>) {
         let region_rels = RegionRelations::new(self.tcx,
                                                region_context,

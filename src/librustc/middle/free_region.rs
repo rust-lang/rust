@@ -35,7 +35,7 @@ pub struct RegionRelations<'a, 'gcx: 'tcx, 'tcx: 'a> {
     pub context: DefId,
 
     /// region maps for the given context
-    pub region_maps: &'a RegionMaps<'tcx>,
+    pub region_maps: &'a RegionMaps,
 
     /// free-region relationships
     pub free_regions: &'a FreeRegionMap<'tcx>,
@@ -45,7 +45,7 @@ impl<'a, 'gcx, 'tcx> RegionRelations<'a, 'gcx, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         context: DefId,
-        region_maps: &'a RegionMaps<'tcx>,
+        region_maps: &'a RegionMaps,
         free_regions: &'a FreeRegionMap<'tcx>,
     ) -> Self {
         Self {

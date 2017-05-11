@@ -820,7 +820,7 @@ impl Clean<Lifetime> for ty::RegionParameterDef {
     }
 }
 
-impl<'tcx> Clean<Option<Lifetime>> for ty::RegionKind<'tcx> {
+impl Clean<Option<Lifetime>> for ty::RegionKind {
     fn clean(&self, cx: &DocContext) -> Option<Lifetime> {
         match *self {
             ty::ReStatic => Some(Lifetime::statik()),

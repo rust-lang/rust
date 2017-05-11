@@ -17,7 +17,6 @@ use rustc_resolve::MakeGlobMap;
 use rustc::middle::lang_items;
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::region::{CodeExtent, RegionMaps};
-use rustc::middle::region::CodeExtentData;
 use rustc::middle::resolve_lifetime;
 use rustc::middle::stability;
 use rustc::ty::subst::{Kind, Subst};
@@ -45,7 +44,7 @@ use rustc::hir;
 
 struct Env<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a infer::InferCtxt<'a, 'gcx, 'tcx>,
-    region_maps: &'a mut RegionMaps<'tcx>,
+    region_maps: &'a mut RegionMaps,
 }
 
 struct RH<'a> {
@@ -168,8 +167,8 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn create_region_hierarchy(&mut self, rh: &RH, parent: CodeExtent<'tcx>) {
-        let me = self.tcx().intern_code_extent(CodeExtentData::Misc(rh.id));
+    pub fn create_region_hierarchy(&mut self, rh: &RH, parent: CodeExtent) {
+        let me = CodeExtent::Misc(rh.id);
         self.region_maps.record_code_extent(me, Some(parent));
         for child_rh in rh.sub {
             self.create_region_hierarchy(child_rh, me);
@@ -181,7 +180,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         // children of 1, etc
 
         let node = ast::NodeId::from_u32;
-        let dscope = self.tcx().intern_code_extent(CodeExtentData::DestructionScope(node(1)));
+        let dscope = CodeExtent::DestructionScope(node(1));
         self.region_maps.record_code_extent(dscope, None);
         self.create_region_hierarchy(&RH {
                                          id: node(1),
@@ -327,7 +326,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_rptr_scope(&self, id: u32) -> Ty<'tcx> {
-        let r = ty::ReScope(self.tcx().node_extent(ast::NodeId::from_u32(id)));
+        let r = ty::ReScope(CodeExtent::Misc(ast::NodeId::from_u32(id)));
         self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
     }
 

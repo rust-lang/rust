@@ -124,20 +124,20 @@ struct ConstraintGraph<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     graph_name: String,
     region_rels: &'a RegionRelations<'a, 'gcx, 'tcx>,
     map: &'a FxHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
-    node_ids: FxHashMap<Node<'tcx>, usize>,
+    node_ids: FxHashMap<Node, usize>,
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug, Copy)]
-enum Node<'tcx> {
+enum Node {
     RegionVid(ty::RegionVid),
-    Region(ty::RegionKind<'tcx>),
+    Region(ty::RegionKind),
 }
 
 // type Edge = Constraint;
 #[derive(Clone, PartialEq, Eq, Debug, Copy)]
 enum Edge<'tcx> {
     Constraint(Constraint<'tcx>),
-    EnclScope(CodeExtent<'tcx>, CodeExtent<'tcx>),
+    EnclScope(CodeExtent, CodeExtent),
 }
 
 impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
@@ -176,7 +176,7 @@ impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
-    type Node = Node<'tcx>;
+    type Node = Node;
     type Edge = Edge<'tcx>;
     fn graph_id(&self) -> dot::Id {
         dot::Id::new(&*self.graph_name).unwrap()
@@ -209,7 +209,7 @@ impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     }
 }
 
-fn constraint_to_nodes<'tcx>(c: &Constraint<'tcx>) -> (Node<'tcx>, Node<'tcx>) {
+fn constraint_to_nodes(c: &Constraint) -> (Node, Node) {
     match *c {
         Constraint::ConstrainVarSubVar(rv_1, rv_2) =>
             (Node::RegionVid(rv_1), Node::RegionVid(rv_2)),
@@ -222,7 +222,7 @@ fn constraint_to_nodes<'tcx>(c: &Constraint<'tcx>) -> (Node<'tcx>, Node<'tcx>) {
     }
 }
 
-fn edge_to_nodes<'tcx>(e: &Edge<'tcx>) -> (Node<'tcx>, Node<'tcx>) {
+fn edge_to_nodes(e: &Edge) -> (Node, Node) {
     match *e {
         Edge::Constraint(ref c) => constraint_to_nodes(c),
         Edge::EnclScope(sub, sup) => {
@@ -233,9 +233,9 @@ fn edge_to_nodes<'tcx>(e: &Edge<'tcx>) -> (Node<'tcx>, Node<'tcx>) {
 }
 
 impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
-    type Node = Node<'tcx>;
+    type Node = Node;
     type Edge = Edge<'tcx>;
-    fn nodes(&self) -> dot::Nodes<Node<'tcx>> {
+    fn nodes(&self) -> dot::Nodes<Node> {
         let mut set = FxHashSet();
         for node in self.node_ids.keys() {
             set.insert(*node);
@@ -250,12 +250,12 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
         debug!("region graph has {} edges", v.len());
         Cow::Owned(v)
     }
-    fn source(&self, edge: &Edge<'tcx>) -> Node<'tcx> {
+    fn source(&self, edge: &Edge<'tcx>) -> Node {
         let (n1, _) = edge_to_nodes(edge);
         debug!("edge {:?} has source {:?}", edge, n1);
         n1
     }
-    fn target(&self, edge: &Edge<'tcx>) -> Node<'tcx> {
+    fn target(&self, edge: &Edge<'tcx>) -> Node {
         let (_, n2) = edge_to_nodes(edge);
         debug!("edge {:?} has target {:?}", edge, n2);
         n2

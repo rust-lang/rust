@@ -70,7 +70,7 @@ struct MatchVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: &'a ty::ParameterEnvironment<'tcx>,
-    region_maps: &'a RegionMaps<'tcx>,
+    region_maps: &'a RegionMaps,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {

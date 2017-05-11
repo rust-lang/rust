@@ -208,7 +208,7 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     // Some in `borrowck_fn` and cleared later
     tables: &'a ty::TypeckTables<'tcx>,
 
-    region_maps: Rc<RegionMaps<'tcx>>,
+    region_maps: Rc<RegionMaps>,
 
     owner_def_id: DefId,
 }
@@ -228,13 +228,13 @@ pub struct Loan<'tcx> {
     /// cases, notably method arguments, the loan may be introduced
     /// only later, once it comes into scope.  See also
     /// `GatherLoanCtxt::compute_gen_scope`.
-    gen_scope: region::CodeExtent<'tcx>,
+    gen_scope: region::CodeExtent,
 
     /// kill_scope indicates when the loan goes out of scope.  This is
     /// either when the lifetime expires or when the local variable
     /// which roots the loan-path goes out of scope, whichever happens
     /// faster. See also `GatherLoanCtxt::compute_kill_scope`.
-    kill_scope: region::CodeExtent<'tcx>,
+    kill_scope: region::CodeExtent,
     span: Span,
     cause: euv::LoanCause,
 }
@@ -334,12 +334,12 @@ pub fn closure_to_block(closure_id: ast::NodeId,
 }
 
 impl<'a, 'tcx> LoanPath<'tcx> {
-    pub fn kill_scope(&self, bccx: &BorrowckCtxt<'a, 'tcx>) -> region::CodeExtent<'tcx> {
+    pub fn kill_scope(&self, bccx: &BorrowckCtxt<'a, 'tcx>) -> region::CodeExtent {
         match self.kind {
             LpVar(local_id) => bccx.region_maps.var_scope(local_id),
             LpUpvar(upvar_id) => {
                 let block_id = closure_to_block(upvar_id.closure_expr_id, bccx.tcx);
-                bccx.tcx.node_extent(block_id)
+                region::CodeExtent::Misc(block_id)
             }
             LpDowncast(ref base, _) |
             LpExtend(ref base, ..) => base.kill_scope(bccx),

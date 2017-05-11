@@ -458,7 +458,7 @@ impl fmt::Debug for ty::BoundRegion {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::RegionKind<'tcx> {
+impl fmt::Debug for ty::RegionKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ty::ReEarlyBound(ref data) => {
@@ -510,7 +510,7 @@ impl<'tcx> fmt::Debug for ty::ParameterEnvironment<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Display for ty::RegionKind<'tcx> {
+impl<'tcx> fmt::Display for ty::RegionKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if verbose() {
             return write!(f, "{:?}", *self);

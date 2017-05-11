@@ -24,6 +24,7 @@ use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::privacy::AccessLevels;
 use middle::resolve_lifetime::ObjectLifetimeDefault;
+use middle::region::CodeExtent;
 use mir::Mir;
 use traits;
 use ty;
@@ -2435,7 +2436,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn node_scope_region(self, id: NodeId) -> Region<'tcx> {
-        self.mk_region(ty::ReScope(self.node_extent(id)))
+        self.mk_region(ty::ReScope(CodeExtent::Misc(id)))
     }
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`
