@@ -36,5 +36,11 @@ fn test_nowarn_3() -> (i32, i32) {
     (x, y)
 }
 
+fn test_nowarn_4() -> i32 {
+    // this should technically warn, but not b/c of let_and_return, but b/c of useless type
+    let x: i32 = 5;
+    x
+}
+
 fn main() {
 }

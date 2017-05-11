@@ -111,6 +111,8 @@ impl ReturnPass {
             let ast::StmtKind::Expr(ref retexpr) = retexpr.node,
             let Some(stmt) = it.next_back(),
             let ast::StmtKind::Local(ref local) = stmt.node,
+            // don't lint in the presence of type inference
+            local.ty.is_none(),
             !local.attrs.iter().any(attr_is_cfg),
             let Some(ref initexpr) = local.init,
             let ast::PatKind::Ident(_, Spanned { node: id, .. }, _) = local.pat.node,
