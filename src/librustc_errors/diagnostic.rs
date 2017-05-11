@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use CodeSuggestion;
+use Substitution;
 use Level;
 use RenderSpan;
 use std::fmt;
@@ -205,7 +206,10 @@ impl Diagnostic {
     /// See `diagnostic::CodeSuggestion` for more information.
     pub fn span_suggestion(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
-            substitutes: vec![(sp, vec![suggestion])],
+            substitution_parts: vec![Substitution {
+                span: sp,
+                substitutions: vec![suggestion],
+            }],
             msg: msg.to_owned(),
         });
         self
@@ -213,7 +217,10 @@ impl Diagnostic {
 
     pub fn span_suggestions(&mut self, sp: Span, msg: &str, suggestions: Vec<String>) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
-            substitutes: vec![(sp, suggestions)],
+            substitution_parts: vec![Substitution {
+                span: sp,
+                substitutions: suggestions,
+            }],
             msg: msg.to_owned(),
         });
         self

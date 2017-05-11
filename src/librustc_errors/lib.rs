@@ -23,6 +23,7 @@
 #![feature(staged_api)]
 #![feature(range_contains)]
 #![feature(libc)]
+#![feature(conservative_impl_trait)]
 
 extern crate term;
 extern crate libc;
@@ -83,8 +84,15 @@ pub struct CodeSuggestion {
     /// ```
     /// vec![(0..7, vec!["a.b", "x.y"])]
     /// ```
-    pub substitutes: Vec<(Span, Vec<String>)>,
+    pub substitution_parts: Vec<Substitution>,
     pub msg: String,
+}
+
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+/// See the docs on `CodeSuggestion::substitutions`
+pub struct Substitution {
+    pub span: Span,
+    pub substitutions: Vec<String>,
 }
 
 pub trait CodeMapper {
@@ -96,6 +104,16 @@ pub trait CodeMapper {
 }
 
 impl CodeSuggestion {
+    /// Returns the number of substitutions
+    fn substitutions(&self) -> usize {
+        self.substitution_parts[0].substitutions.len()
+    }
+
+    /// Returns the number of substitutions
+    pub fn substitution_spans<'a>(&'a self) -> impl Iterator<Item = Span> + 'a {
+        self.substitution_parts.iter().map(|sub| sub.span)
+    }
+
     /// Returns the assembled code suggestions.
     pub fn splice_lines(&self, cm: &CodeMapper) -> Vec<String> {
         use syntax_pos::{CharPos, Loc, Pos};
@@ -119,13 +137,13 @@ impl CodeSuggestion {
             }
         }
 
-        if self.substitutes.is_empty() {
+        if self.substitution_parts.is_empty() {
             return vec![String::new()];
         }
 
-        let mut primary_spans: Vec<_> = self.substitutes
+        let mut primary_spans: Vec<_> = self.substitution_parts
             .iter()
-            .map(|&(sp, ref sub)| (sp, sub))
+            .map(|sub| (sub.span, &sub.substitutions))
             .collect();
 
         // Assumption: all spans are in the same file, and all spans
@@ -157,7 +175,7 @@ impl CodeSuggestion {
         prev_hi.col = CharPos::from_usize(0);
 
         let mut prev_line = fm.get_line(lines.lines[0].line_index);
-        let mut bufs = vec![String::new(); self.substitutes[0].1.len()];
+        let mut bufs = vec![String::new(); self.substitutions()];
 
         for (sp, substitutes) in primary_spans {
             let cur_lo = cm.lookup_char_pos(sp.lo);

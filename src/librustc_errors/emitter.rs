@@ -35,38 +35,32 @@ impl Emitter for EmitterWriter {
         let mut primary_span = db.span.clone();
         let mut children = db.children.clone();
 
-        if db.suggestions.len() == 1 {
-            let sugg = &db.suggestions[0];
-            // don't display multispans as labels
-            if sugg.substitutes.len() == 1 &&
+        if let Some((sugg, rest)) = db.suggestions.split_first() {
+            if rest.is_empty() &&
+               // don't display multipart suggestions as labels
+               sugg.substitution_parts.len() == 1 &&
                // don't display multi-suggestions as labels
-               sugg.substitutes[0].1.len() == 1 &&
+               sugg.substitutions() == 1 &&
                // don't display long messages as labels
                sugg.msg.split_whitespace().count() < 10 &&
                // don't display multiline suggestions as labels
-               sugg.substitutes[0].1[0].find('\n').is_none() {
-                let msg = format!("help: {} `{}`", sugg.msg, sugg.substitutes[0].1[0]);
-                primary_span.push_span_label(sugg.substitutes[0].0, msg);
+               sugg.substitution_parts[0].substitutions[0].find('\n').is_none() {
+                let substitution = &sugg.substitution_parts[0].substitutions[0];
+                let msg = format!("help: {} `{}`", sugg.msg, substitution);
+                primary_span.push_span_label(sugg.substitution_spans().next().unwrap(), msg);
             } else {
-                children.push(SubDiagnostic {
-                    level: Level::Help,
-                    message: Vec::new(),
-                    span: MultiSpan::new(),
-                    render_span: Some(Suggestion(sugg.clone())),
-                });
-            }
-        } else {
-            // if there are multiple suggestions, print them all in full
-            // to be consistent. We could try to figure out if we can
-            // make one (or the first one) inline, but that would give
-            // undue importance to a semi-random suggestion
-            for sugg in &db.suggestions {
-                children.push(SubDiagnostic {
-                    level: Level::Help,
-                    message: Vec::new(),
-                    span: MultiSpan::new(),
-                    render_span: Some(Suggestion(sugg.clone())),
-                });
+                // if there are multiple suggestions, print them all in full
+                // to be consistent. We could try to figure out if we can
+                // make one (or the first one) inline, but that would give
+                // undue importance to a semi-random suggestion
+                for sugg in &db.suggestions {
+                    children.push(SubDiagnostic {
+                        level: Level::Help,
+                        message: Vec::new(),
+                        span: MultiSpan::new(),
+                        render_span: Some(Suggestion(sugg.clone())),
+                    });
+                }
             }
         }
 
@@ -1073,7 +1067,7 @@ impl EmitterWriter {
                                -> io::Result<()> {
         use std::borrow::Borrow;
 
-        let primary_span = suggestion.substitutes[0].0;
+        let primary_span = suggestion.substitution_spans().next().unwrap();
         if let Some(ref cm) = self.cm {
             let mut buffer = StyledBuffer::new();
 

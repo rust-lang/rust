@@ -279,12 +279,12 @@ impl DiagnosticSpan {
 
     fn from_suggestion(suggestion: &CodeSuggestion, je: &JsonEmitter)
                        -> Vec<DiagnosticSpan> {
-        suggestion.substitutes
+        suggestion.substitution_parts
                       .iter()
-                      .flat_map(|&(span, ref suggestion)| {
-                          suggestion.iter().map(move |suggestion| {
+                      .flat_map(|substitution| {
+                          substitution.substitutions.iter().map(move |suggestion| {
                               let span_label = SpanLabel {
-                                  span,
+                                  span: substitution.span,
                                   is_primary: true,
                                   label: None,
                               };
@@ -301,7 +301,7 @@ impl DiagnosticSpan {
             RenderSpan::FullSpan(ref msp) =>
                 DiagnosticSpan::from_multispan(msp, je),
             // regular diagnostics don't produce this anymore
-            // will be removed in a later commit
+            // FIXME(oli_obk): remove it entirely
             RenderSpan::Suggestion(_) => unreachable!(),
         }
     }
