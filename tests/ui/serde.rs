@@ -37,7 +37,6 @@ impl<'de> serde::de::Visitor<'de> for B {
     }
 
     fn visit_string<E>(self, _v: String) -> Result<Self::Value, E>
-
         where E: serde::de::Error,
     {
         unimplemented!()
