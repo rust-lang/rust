@@ -44,6 +44,7 @@ macro_rules! expansions {
             $(.$visit:ident)*  $(lift .$visit_elt:ident)*;)*) => {
         #[derive(Copy, Clone, PartialEq, Eq)]
         pub enum ExpansionKind { OptExpr, $( $kind, )*  }
+        #[derive(Clone)]
         pub enum Expansion { OptExpr(Option<P<ast::Expr>>), $( $kind($ty), )* }
 
         impl ExpansionKind {
@@ -188,12 +189,30 @@ impl Invocation {
 
 pub struct MacroExpander<'a, 'b:'a> {
     pub cx: &'a mut ExtCtxt<'b>,
+    partial_expansions: HashMap<Mark, PartialExpansion>,
+    full_expansions: HashMap<Mark, FullExpansion>,
     monotonic: bool, // c.f. `cx.monotonic_expander()`
+}
+
+struct PartialExpansion {
+    expansion: Expansion,
+    derives: Vec<(Mark, Path)>,
+    expansion_kind: ExpansionKind,
+    expansion_data: ExpansionData,
+    unexpanded_children: usize,
+}
+
+pub struct FullExpansion {
+    pub expansion: Expansion,
+    pub derives: Vec<Mark>,
 }
 
 impl<'a, 'b> MacroExpander<'a, 'b> {
     pub fn new(cx: &'a mut ExtCtxt<'b>, monotonic: bool) -> Self {
-        MacroExpander { cx: cx, monotonic: monotonic }
+        MacroExpander {
+            cx: cx, monotonic: monotonic,
+            partial_expansions: HashMap::new(), full_expansions: HashMap::new(),
+        }
     }
 
     pub fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
@@ -240,12 +259,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let orig_expansion_data = self.cx.current_expansion.clone();
         self.cx.current_expansion.depth = 0;
 
-        let (expansion, mut invocations) = self.collect_invocations(expansion, &[]);
+        let mark = self.cx.current_expansion.mark;
+        let mut invocations =
+            self.collect_invocations(mark, expansion, Vec::new(), ExpansionKind::Items);
         self.resolve_imports();
         invocations.reverse();
 
-        let mut expansions = Vec::new();
-        let mut derives = HashMap::new();
         let mut undetermined_invocations = Vec::new();
         let (mut progress, mut force) = (false, !self.monotonic);
         loop {
@@ -259,8 +278,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 continue
             };
 
-            let scope =
-                if self.monotonic { invoc.expansion_data.mark } else { orig_expansion_data.mark };
+            let mark = invoc.expansion_data.mark;
+            let scope = if self.monotonic { mark } else { orig_expansion_data.mark };
             let ext = match self.cx.resolver.resolve_invoc(&mut invoc, scope, force) {
                 Ok(ext) => Some(ext),
                 Err(Determinacy::Determined) => None,
@@ -271,72 +290,44 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             };
 
             progress = true;
-            let ExpansionData { depth, mark, .. } = invoc.expansion_data;
             self.cx.current_expansion = invoc.expansion_data.clone();
 
             self.cx.current_expansion.mark = scope;
-            // FIXME(jseyfried): Refactor out the following logic
-            let (expansion, new_invocations) = if let Some(ext) = ext {
+            let new_invocations = if let Some(ext) = ext {
                 if let Some(ext) = ext {
+                    let expansion_kind = invoc.expansion_kind;
                     let expansion = self.expand_invoc(invoc, ext);
-                    self.collect_invocations(expansion, &[])
+                    self.collect_invocations(mark, expansion, Vec::new(), expansion_kind)
                 } else if let InvocationKind::Attr { attr: None, traits, item } = invoc.kind {
                     let item = item
                         .map_attrs(|mut attrs| { attrs.retain(|a| a.path != "derive"); attrs });
-                    let item_with_markers =
-                        add_derived_markers(&mut self.cx, item.span(), &traits, item.clone());
-                    let derives = derives.entry(invoc.expansion_data.mark).or_insert_with(Vec::new);
-
-                    for path in &traits {
-                        let mark = Mark::fresh();
-                        derives.push(mark);
-                        let item = match self.cx.resolver.resolve_macro(
-                                Mark::root(), path, MacroKind::Derive, false) {
-                            Ok(ext) => match *ext {
-                                SyntaxExtension::BuiltinDerive(..) => item_with_markers.clone(),
-                                _ => item.clone(),
-                            },
-                            _ => item.clone(),
-                        };
-                        invocations.push(Invocation {
-                            kind: InvocationKind::Derive { path: path.clone(), item: item },
-                            expansion_kind: invoc.expansion_kind,
-                            expansion_data: ExpansionData {
-                                mark: mark,
-                                ..invoc.expansion_data.clone()
-                            },
-                        });
-                    }
+                    let item = add_derived_markers(&mut self.cx, item.span(), &traits, item);
                     let expansion = invoc.expansion_kind
-                        .expect_from_annotatables(::std::iter::once(item_with_markers));
-                    self.collect_invocations(expansion, derives)
+                        .expect_from_annotatables(::std::iter::once(item));
+                    self.collect_invocations(mark, expansion, traits, invoc.expansion_kind)
                 } else {
                     unreachable!()
                 }
             } else {
-                self.collect_invocations(invoc.expansion_kind.dummy(invoc.span()), &[])
+                let dummy = invoc.expansion_kind.dummy(invoc.span());
+                self.collect_invocations(mark, dummy, Vec::new(), invoc.expansion_kind)
             };
 
-            if expansions.len() < depth {
-                expansions.push(Vec::new());
-            }
-            expansions[depth - 1].push((mark, expansion));
             if !self.cx.ecfg.single_step {
                 invocations.extend(new_invocations.into_iter().rev());
             }
         }
 
         self.cx.current_expansion = orig_expansion_data;
+        self.placeholder_expander().remove(NodeId::placeholder_from_mark(mark))
+    }
 
-        let mut placeholder_expander = PlaceholderExpander::new(self.cx, self.monotonic);
-        while let Some(expansions) = expansions.pop() {
-            for (mark, expansion) in expansions.into_iter().rev() {
-                let derives = derives.remove(&mark).unwrap_or_else(Vec::new);
-                placeholder_expander.add(NodeId::placeholder_from_mark(mark), expansion, derives);
-            }
+    fn placeholder_expander<'c>(&'c mut self) -> PlaceholderExpander<'c, 'b> {
+        PlaceholderExpander {
+            cx: self.cx,
+            expansions: &mut self.full_expansions,
+            monotonic: self.monotonic,
         }
-
-        expansion.fold_with(&mut placeholder_expander)
     }
 
     fn resolve_imports(&mut self) {
@@ -347,9 +338,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
-    fn collect_invocations(&mut self, expansion: Expansion, derives: &[Mark])
-                           -> (Expansion, Vec<Invocation>) {
-        let result = {
+    fn collect_invocations(&mut self,
+                           mut mark: Mark,
+                           expansion: Expansion,
+                           traits: Vec<Path>,
+                           expansion_kind: ExpansionKind)
+                           -> Vec<Invocation> {
+        let (expansion, mut invocations) = {
             let mut collector = InvocationCollector {
                 cfg: StripUnconfigured {
                     should_test: self.cx.ecfg.should_test,
@@ -357,20 +352,77 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     features: self.cx.ecfg.features,
                 },
                 cx: self.cx,
+                mark: mark,
                 invocations: Vec::new(),
                 monotonic: self.monotonic,
             };
             (expansion.fold_with(&mut collector), collector.invocations)
         };
 
+        let mark_parent = mark.parent();
+        let derives: Vec<_> =
+            traits.into_iter().map(|path| (Mark::fresh(mark_parent), path)).collect();
+        if derives.len() > 0 {
+            self.partial_expansions.get_mut(&mark_parent).unwrap().unexpanded_children +=
+                derives.len();
+        }
+
         if self.monotonic {
             let err_count = self.cx.parse_sess.span_diagnostic.err_count();
             let mark = self.cx.current_expansion.mark;
-            self.cx.resolver.visit_expansion(mark, &result.0, derives);
+            self.cx.resolver.visit_expansion(mark, &expansion, &derives);
             self.cx.resolve_err_count += self.cx.parse_sess.span_diagnostic.err_count() - err_count;
         }
 
-        result
+        self.partial_expansions.insert(mark, PartialExpansion {
+            expansion: expansion, derives: derives, expansion_kind: expansion_kind,
+            expansion_data: self.cx.current_expansion.clone(),
+            unexpanded_children: invocations.len(),
+        });
+
+        if !invocations.is_empty() {
+            return invocations;
+        }
+
+        loop {
+            let partial_expansion = self.partial_expansions.remove(&mark).unwrap();
+            let expansion = partial_expansion.expansion.fold_with(&mut self.placeholder_expander());
+
+            let PartialExpansion { expansion_kind, ref expansion_data, .. } = partial_expansion;
+            let derives = partial_expansion.derives.into_iter().map(|(mark, path)| {
+                let item = match expansion.clone() {
+                    Expansion::Items(mut items) => Annotatable::Item(items.pop().unwrap()),
+                    Expansion::TraitItems(mut items) =>
+                        Annotatable::TraitItem(P(items.pop().unwrap())),
+                    Expansion::ImplItems(mut items) =>
+                        Annotatable::ImplItem(P(items.pop().unwrap())),
+                    _ => panic!("expected item"),
+                };
+                invocations.push(Invocation {
+                    kind: InvocationKind::Derive { path: path, item: item },
+                    expansion_kind: expansion_kind,
+                    expansion_data: ExpansionData { mark: mark, ..expansion_data.clone() },
+                });
+                mark
+            }).collect();
+
+            self.full_expansions
+                .insert(mark, FullExpansion { expansion: expansion, derives: derives });
+
+            if mark == Mark::root() {
+                break
+            }
+            mark = mark.parent();
+            if let Some(partial_expansion) = self.partial_expansions.get_mut(&mark) {
+                partial_expansion.unexpanded_children -= 1;
+                if partial_expansion.unexpanded_children == 0 {
+                    continue
+                }
+            }
+            break
+        }
+
+        invocations
     }
 
     fn expand_invoc(&mut self, invoc: Invocation, ext: Rc<SyntaxExtension>) -> Expansion {
@@ -671,6 +723,7 @@ impl<'a> Parser<'a> {
 
 struct InvocationCollector<'a, 'b: 'a> {
     cx: &'a mut ExtCtxt<'b>,
+    mark: Mark,
     cfg: StripUnconfigured<'a>,
     invocations: Vec<Invocation>,
     monotonic: bool,
@@ -687,7 +740,7 @@ macro_rules! fully_configure {
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect(&mut self, expansion_kind: ExpansionKind, kind: InvocationKind) -> Expansion {
-        let mark = Mark::fresh();
+        let mark = Mark::fresh(self.mark);
         self.invocations.push(Invocation {
             kind: kind,
             expansion_kind: expansion_kind,
@@ -1002,7 +1055,6 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
     fn new_id(&mut self, id: ast::NodeId) -> ast::NodeId {
         if self.monotonic {
-            assert_eq!(id, ast::DUMMY_NODE_ID);
             self.cx.resolver.next_node_id()
         } else {
             id

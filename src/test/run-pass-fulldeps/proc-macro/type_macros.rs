@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(concat_idents)]
+// aux-build:type_macros_example.rs
 
-#[derive(Debug)] //~ NOTE in this expansion
-struct Baz<T>(
-    concat_idents!(Foo, Bar) //~ ERROR `derive` cannot be used on items with type macros
-);
+#![feature(proc_macro)]
+
+extern crate type_macros_example;
+
+use type_macros_example::Example;
+
+macro_rules! m { () => { i32 } }
+
+#[derive(Example)]
+struct S {
+    x: m!(),
+}
 
 fn main() {}

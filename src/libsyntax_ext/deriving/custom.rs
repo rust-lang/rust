@@ -13,7 +13,7 @@ use std::panic;
 use errors::FatalError;
 use proc_macro::{TokenStream, __internal};
 use syntax::ast::{self, ItemKind, Attribute, Mac};
-use syntax::attr::{mark_used, mark_known};
+use syntax::attr::{HasAttrs, mark_used, mark_known};
 use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::fold::Folder;
@@ -70,6 +70,11 @@ impl MultiItemModifier for ProcMacroDerive {
                 return Vec::new()
             }
         }
+
+        let item = item.map_attrs(|mut attrs| {
+            attrs.retain(|a| a.path != "structural_match" && a.path != "rustc_copy_clone_marker");
+            attrs
+        });
 
         // Mark attributes as known, and used.
         MarkAttrs(&self.attrs).visit_item(&item);

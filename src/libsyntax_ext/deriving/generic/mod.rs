@@ -347,21 +347,15 @@ pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
 /// This method helps to extract all the type parameters referenced from a
 /// type. For a type parameter `<T>`, it looks for either a `TyPath` that
 /// is not global and starts with `T`, or a `TyQPath`.
-fn find_type_parameters(ty: &ast::Ty,
-                        ty_param_names: &[ast::Name],
-                        span: Span,
-                        cx: &ExtCtxt)
-                        -> Vec<P<ast::Ty>> {
+fn find_type_parameters(ty: &ast::Ty, ty_param_names: &[ast::Name]) -> Vec<P<ast::Ty>> {
     use syntax::visit;
 
-    struct Visitor<'a, 'b: 'a> {
-        cx: &'a ExtCtxt<'b>,
-        span: Span,
+    struct Visitor<'a> {
         ty_param_names: &'a [ast::Name],
         types: Vec<P<ast::Ty>>,
     }
 
-    impl<'a, 'b> visit::Visitor<'a> for Visitor<'a, 'b> {
+    impl<'a> visit::Visitor<'a> for Visitor<'a> {
         fn visit_ty(&mut self, ty: &'a ast::Ty) {
             if let ast::TyKind::Path(_, ref path) = ty.node {
                 if let Some(segment) = path.segments.first() {
@@ -373,18 +367,11 @@ fn find_type_parameters(ty: &ast::Ty,
 
             visit::walk_ty(self, ty)
         }
-
-        fn visit_mac(&mut self, mac: &ast::Mac) {
-            let span = Span { ctxt: self.span.ctxt, ..mac.span };
-            self.cx.span_err(span, "`derive` cannot be used on items with type macros");
-        }
     }
 
     let mut visitor = Visitor {
         ty_param_names: ty_param_names,
         types: Vec::new(),
-        span: span,
-        cx: cx,
     };
 
     visit::Visitor::visit_ty(&mut visitor, ty);
@@ -571,7 +558,7 @@ impl<'a> TraitDef<'a> {
 
             let mut processed_field_types = HashSet::new();
             for field_ty in field_tys {
-                let tys = find_type_parameters(&field_ty, &ty_param_names, self.span, cx);
+                let tys = find_type_parameters(&field_ty, &ty_param_names);
 
                 for ty in tys {
                     // if we have already handled this type, skip it

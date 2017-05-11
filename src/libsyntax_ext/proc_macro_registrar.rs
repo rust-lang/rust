@@ -361,7 +361,7 @@ fn mk_registrar(cx: &mut ExtCtxt,
                 custom_derives: &[ProcMacroDerive],
                 custom_attrs: &[ProcMacroDef],
                 custom_macros: &[ProcMacroDef]) -> P<ast::Item> {
-    let mark = Mark::fresh();
+    let mark = Mark::fresh(Mark::root());
     mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
