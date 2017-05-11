@@ -166,7 +166,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                           .map(|f| unpack!(block = this.as_operand(block, scope, f)))
                           .collect();
 
-                block.and(Rvalue::Aggregate(AggregateKind::Array(el_ty), fields))
+                block.and(Rvalue::Aggregate(box AggregateKind::Array(el_ty), fields))
             }
             ExprKind::Tuple { fields } => { // see (*) above
                 // first process the set of fields
@@ -175,14 +175,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                           .map(|f| unpack!(block = this.as_operand(block, scope, f)))
                           .collect();
 
-                block.and(Rvalue::Aggregate(AggregateKind::Tuple, fields))
+                block.and(Rvalue::Aggregate(box AggregateKind::Tuple, fields))
             }
             ExprKind::Closure { closure_id, substs, upvars } => { // see (*) above
                 let upvars =
                     upvars.into_iter()
                           .map(|upvar| unpack!(block = this.as_operand(block, scope, upvar)))
                           .collect();
-                block.and(Rvalue::Aggregate(AggregateKind::Closure(closure_id, substs), upvars))
+                block.and(Rvalue::Aggregate(box AggregateKind::Closure(closure_id, substs), upvars))
             }
             ExprKind::Adt {
                 adt_def, variant_index, substs, fields, base
@@ -215,7 +215,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     field_names.iter().filter_map(|n| fields_map.get(n).cloned()).collect()
                 };
 
-                let adt = AggregateKind::Adt(adt_def, variant_index, substs, active_field_index);
+                let adt =
+                    box AggregateKind::Adt(adt_def, variant_index, substs, active_field_index);
                 block.and(Rvalue::Aggregate(adt, fields))
             }
             ExprKind::Assign { .. } |

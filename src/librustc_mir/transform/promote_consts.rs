@@ -230,7 +230,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 (if self.keep_original {
                     rhs.clone()
                 } else {
-                    let unit = Rvalue::Aggregate(AggregateKind::Tuple, vec![]);
+                    let unit = Rvalue::Aggregate(box AggregateKind::Tuple, vec![]);
                     mem::replace(rhs, unit)
                 }, statement.source_info)
             };
@@ -288,7 +288,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
     fn promote_candidate(mut self, candidate: Candidate) {
         let span = self.promoted.span;
-        let new_operand = Operand::Constant(Constant {
+        let new_operand = Operand::Constant(box Constant {
             span: span,
             ty: self.promoted.return_ty,
             literal: Literal::Promoted {
