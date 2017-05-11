@@ -18,9 +18,6 @@ fn main() {
 
     match (42, Some(1337), Some(0)) {
         (toto, Some(tata), titi @ Some(_)) => (),
-
-
-
         _ => (),
     }
 }
