@@ -316,7 +316,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstantPropagationVisitor<'tcx> {
             _ => return,
         }
 
-        *operand = Operand::Constant(self.constant.clone());
+        *operand = Operand::Constant(box self.constant.clone());
         self.uses_replaced += 1
     }
 }
