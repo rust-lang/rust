@@ -350,8 +350,14 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
             // (e.g. #41849).
             relate::relate_substs(self, None, a_subst, b_subst)
         } else {
-            let opt_variances = self.tcx().variances_of(item_def_id);
-            relate::relate_substs(self, Some(&opt_variances), a_subst, b_subst)
+            let variances;
+            let opt_variances = if self.tcx().variance_computed.get() {
+                variances = self.tcx().item_variances(item_def_id);
+                Some(&*variances)
+            } else {
+                None
+            };
+            relate::relate_substs(self, opt_variances, a_subst, b_subst)
         }
     }
 
