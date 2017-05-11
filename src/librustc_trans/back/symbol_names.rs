@@ -223,7 +223,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
             _ => false
         }
     } else {
-        tcx.sess.cstore.is_foreign_item(def_id)
+        tcx.is_foreign_item(def_id)
     };
 
     if let Some(name) = weak_lang_items::link_name(&attrs) {

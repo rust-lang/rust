@@ -96,41 +96,6 @@
 //! The [`thread::current`] function is available even for threads not spawned
 //! by the APIs of this module.
 //!
-//! ## Blocking support: park and unpark
-//!
-//! Every thread is equipped with some basic low-level blocking support, via the
-//! [`thread::park`][`park`] function and [`thread::Thread::unpark()`][`unpark`]
-//! method. [`park`] blocks the current thread, which can then be resumed from
-//! another thread by calling the [`unpark`] method on the blocked thread's handle.
-//!
-//! Conceptually, each [`Thread`] handle has an associated token, which is
-//! initially not present:
-//!
-//! * The [`thread::park`][`park`] function blocks the current thread unless or until
-//!   the token is available for its thread handle, at which point it atomically
-//!   consumes the token. It may also return *spuriously*, without consuming the
-//!   token. [`thread::park_timeout`] does the same, but allows specifying a
-//!   maximum time to block the thread for.
-//!
-//! * The [`unpark`] method on a [`Thread`] atomically makes the token available
-//!   if it wasn't already.
-//!
-//! In other words, each [`Thread`] acts a bit like a semaphore with initial count
-//! 0, except that the semaphore is *saturating* (the count cannot go above 1),
-//! and can return spuriously.
-//!
-//! The API is typically used by acquiring a handle to the current thread,
-//! placing that handle in a shared data structure so that other threads can
-//! find it, and then `park`ing. When some desired condition is met, another
-//! thread calls [`unpark`] on the handle.
-//!
-//! The motivation for this design is twofold:
-//!
-//! * It avoids the need to allocate mutexes and condvars when building new
-//!   synchronization primitives; the threads already provide basic blocking/signaling.
-//!
-//! * It can be implemented very efficiently on many platforms.
-//!
 //! ## Thread-local storage
 //!
 //! This module also provides an implementation of thread-local storage for Rust
@@ -322,6 +287,8 @@ impl Builder {
     /// thread finishes). The join handle can be used to block on
     /// termination of the child thread, including recovering its panics.
     ///
+    /// For a more complete documentation see [`thread::spawn`][`spawn`].
+    ///
     /// # Errors
     ///
     /// Unlike the [`spawn`] free function, this method yields an
@@ -396,18 +363,18 @@ impl Builder {
 /// panics, [`join`] will return an [`Err`] containing the argument given to
 /// [`panic`].
 ///
+/// This will create a thread using default parameters of [`Builder`], if you
+/// want to specify the stack size or the name of the thread, use this API
+/// instead.
+///
 /// # Panics
 ///
 /// Panics if the OS fails to create a thread; use [`Builder::spawn`]
 /// to recover from such errors.
 ///
-/// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
-/// [`join`]: ../../std/thread/struct.JoinHandle.html#method.join
-/// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-/// [`panic`]: ../../std/macro.panic.html
-/// [`Builder::spawn`]: ../../std/thread/struct.Builder.html#method.spawn
-///
 /// # Examples
+///
+/// Creating a thread.
 ///
 /// ```
 /// use std::thread;
@@ -418,6 +385,54 @@ impl Builder {
 ///
 /// handler.join().unwrap();
 /// ```
+///
+/// As mentioned in the module documentation, threads are usually made to
+/// communicate using [`channels`], here is how it usually looks.
+///
+/// This example also shows how to use `move`, in order to give ownership
+/// of values to a thread.
+///
+/// ```
+/// use std::thread;
+/// use std::sync::mpsc::channel;
+///
+/// let (tx, rx) = channel();
+///
+/// let sender = thread::spawn(move || {
+///     let _ = tx.send("Hello, thread".to_owned());
+/// });
+///
+/// let receiver = thread::spawn(move || {
+///     println!("{}", rx.recv().unwrap());
+/// });
+///
+/// let _ = sender.join();
+/// let _ = receiver.join();
+/// ```
+///
+/// A thread can also return a value through its [`JoinHandle`], you can use
+/// this to make asynchronous computations (futures might be more appropriate
+/// though).
+///
+/// ```
+/// use std::thread;
+///
+/// let computation = thread::spawn(|| {
+///     // Some expensive computation.
+///     42
+/// });
+///
+/// let result = computation.join().unwrap();
+/// println!("{}", result);
+/// ```
+///
+/// [`channels`]: ../../std/sync/mpsc/index.html
+/// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
+/// [`join`]: ../../std/thread/struct.JoinHandle.html#method.join
+/// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+/// [`panic`]: ../../std/macro.panic.html
+/// [`Builder::spawn`]: ../../std/thread/struct.Builder.html#method.spawn
+/// [`Builder`]: ../../std/thread/struct.Builder.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
     F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
@@ -568,23 +583,72 @@ pub fn sleep(dur: Duration) {
 
 /// Blocks unless or until the current thread's token is made available.
 ///
-/// Every thread is equipped with some basic low-level blocking support, via
-/// the `park()` function and the [`unpark`][unpark] method. These can be
-/// used as a more CPU-efficient implementation of a spinlock.
-///
-/// [unpark]: struct.Thread.html#method.unpark
-///
-/// The API is typically used by acquiring a handle to the current thread,
-/// placing that handle in a shared data structure so that other threads can
-/// find it, and then parking (in a loop with a check for the token actually
-/// being acquired).
-///
 /// A call to `park` does not guarantee that the thread will remain parked
 /// forever, and callers should be prepared for this possibility.
 ///
-/// See the [module documentation][thread] for more detail.
+/// # park and unpark
 ///
-/// [thread]: index.html
+/// Every thread is equipped with some basic low-level blocking support, via the
+/// [`thread::park`][`park`] function and [`thread::Thread::unpark`][`unpark`]
+/// method. [`park`] blocks the current thread, which can then be resumed from
+/// another thread by calling the [`unpark`] method on the blocked thread's
+/// handle.
+///
+/// Conceptually, each [`Thread`] handle has an associated token, which is
+/// initially not present:
+///
+/// * The [`thread::park`][`park`] function blocks the current thread unless or
+///   until the token is available for its thread handle, at which point it
+///   atomically consumes the token. It may also return *spuriously*, without
+///   consuming the token. [`thread::park_timeout`] does the same, but allows
+///   specifying a maximum time to block the thread for.
+///
+/// * The [`unpark`] method on a [`Thread`] atomically makes the token available
+///   if it wasn't already.
+///
+/// In other words, each [`Thread`] acts a bit like a spinlock that can be
+/// locked and unlocked using `park` and `unpark`.
+///
+/// The API is typically used by acquiring a handle to the current thread,
+/// placing that handle in a shared data structure so that other threads can
+/// find it, and then `park`ing. When some desired condition is met, another
+/// thread calls [`unpark`] on the handle.
+///
+/// The motivation for this design is twofold:
+///
+/// * It avoids the need to allocate mutexes and condvars when building new
+///   synchronization primitives; the threads already provide basic
+///   blocking/signaling.
+///
+/// * It can be implemented very efficiently on many platforms.
+///
+/// # Examples
+///
+/// ```
+/// use std::thread;
+/// use std::time::Duration;
+///
+/// let parked_thread = thread::Builder::new()
+///     .spawn(|| {
+///         println!("Parking thread");
+///         thread::park();
+///         println!("Thread unparked");
+///     })
+///     .unwrap();
+///
+/// // Let some time pass for the thread to be spawned.
+/// thread::sleep(Duration::from_millis(10));
+///
+/// println!("Unpark the thread");
+/// parked_thread.thread().unpark();
+///
+/// parked_thread.join().unwrap();
+/// ```
+///
+/// [`Thread`]: ../../std/thread/struct.Thread.html
+/// [`park`]: ../../std/thread/fn.park.html
+/// [`unpark`]: ../../std/thread/struct.Thread.html#method.unpark
+/// [`thread::park_timeout`]: ../../std/thread/fn.park_timeout.html
 //
 // The implementation currently uses the trivial strategy of a Mutex+Condvar
 // with wakeup flag, which does not actually allow spurious wakeups. In the
@@ -601,21 +665,21 @@ pub fn park() {
     *guard = false;
 }
 
-/// Use [park_timeout].
+/// Use [`park_timeout`].
 ///
 /// Blocks unless or until the current thread's token is made available or
 /// the specified duration has been reached (may wake spuriously).
 ///
-/// The semantics of this function are equivalent to `park()` except that the
-/// thread will be blocked for roughly no longer than `ms`. This method
-/// should not be used for precise timing due to anomalies such as
+/// The semantics of this function are equivalent to [`park`] except
+/// that the thread will be blocked for roughly no longer than `dur`. This
+/// method should not be used for precise timing due to anomalies such as
 /// preemption or platform differences that may not cause the maximum
 /// amount of time waited to be precisely `ms` long.
 ///
-/// See the [module documentation][thread] for more detail.
+/// See the [park documentation][`park`] for more detail.
 ///
-/// [thread]: index.html
-/// [park_timeout]: fn.park_timeout.html
+/// [`park_timeout`]: fn.park_timeout.html
+/// [`park`]: ../../std/thread/fn.park.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::thread::park_timeout`")]
 pub fn park_timeout_ms(ms: u32) {
@@ -625,13 +689,13 @@ pub fn park_timeout_ms(ms: u32) {
 /// Blocks unless or until the current thread's token is made available or
 /// the specified duration has been reached (may wake spuriously).
 ///
-/// The semantics of this function are equivalent to `park()` except that the
-/// thread will be blocked for roughly no longer than `dur`. This method
-/// should not be used for precise timing due to anomalies such as
+/// The semantics of this function are equivalent to [`park`][park] except
+/// that the thread will be blocked for roughly no longer than `dur`. This
+/// method should not be used for precise timing due to anomalies such as
 /// preemption or platform differences that may not cause the maximum
 /// amount of time waited to be precisely `dur` long.
 ///
-/// See the module doc for more detail.
+/// See the [park dococumentation][park] for more details.
 ///
 /// # Platform behavior
 ///
@@ -656,6 +720,8 @@ pub fn park_timeout_ms(ms: u32) {
 ///     park_timeout(timeout);
 /// }
 /// ```
+///
+/// [park]: fn.park.html
 #[stable(feature = "park_timeout", since = "1.4.0")]
 pub fn park_timeout(dur: Duration) {
     let thread = current();
@@ -777,22 +843,36 @@ impl Thread {
 
     /// Atomically makes the handle's token available if it is not already.
     ///
-    /// See the module doc for more detail.
+    /// Every thread is equipped with some basic low-level blocking support, via
+    /// the [`park`][park] function and the `unpark()` method. These can be
+    /// used as a more CPU-efficient implementation of a spinlock.
+    ///
+    /// See the [park documentation][park] for more details.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::thread;
+    /// use std::time::Duration;
     ///
-    /// let handler = thread::Builder::new()
+    /// let parked_thread = thread::Builder::new()
     ///     .spawn(|| {
-    ///         let thread = thread::current();
-    ///         thread.unpark();
+    ///         println!("Parking thread");
+    ///         thread::park();
+    ///         println!("Thread unparked");
     ///     })
     ///     .unwrap();
     ///
-    /// handler.join().unwrap();
+    /// // Let some time pass for the thread to be spawned.
+    /// thread::sleep(Duration::from_millis(10));
+    ///
+    /// println!("Unpark the thread");
+    /// parked_thread.thread().unpark();
+    ///
+    /// parked_thread.join().unwrap();
     /// ```
+    ///
+    /// [park]: fn.park.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unpark(&self) {
         let mut guard = self.inner.lock.lock().unwrap();

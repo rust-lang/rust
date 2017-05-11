@@ -570,7 +570,7 @@ actual:\n\
                          format!("-command={}", debugger_script.to_str().unwrap())];
 
                 let mut gdb_path = tool_path;
-                gdb_path.push_str(&format!("/bin/{}-gdb", self.config.target));
+                gdb_path.push_str("/bin/gdb");
                 let procsrv::Result {
                     out,
                     err,
@@ -646,6 +646,11 @@ actual:\n\
                 script_str.push_str(&format!("file {}\n",
                                              exe_file.to_str().unwrap()
                                              .replace(r"\", r"\\")));
+
+                // Force GDB to print values in the Rust format.
+                if self.config.gdb_native_rust {
+                    script_str.push_str("set language rust\n");
+                }
 
                 // Add line breakpoints
                 for line in &breakpoint_lines {
