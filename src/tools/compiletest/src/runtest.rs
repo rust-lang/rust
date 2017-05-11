@@ -647,6 +647,11 @@ actual:\n\
                                              exe_file.to_str().unwrap()
                                              .replace(r"\", r"\\")));
 
+                // Force GDB to print values in the Rust format.
+                if self.config.gdb_native_rust {
+                    script_str.push_str("set language rust\n");
+                }
+
                 // Add line breakpoints
                 for line in &breakpoint_lines {
                     script_str.push_str(&format!("break '{}':{}\n",
