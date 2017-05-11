@@ -28,8 +28,6 @@ impl T {
     fn to_something(self) -> u32 { 0 }
 
     fn new(self) {}
-
-
 }
 
 struct Lt<'a> {
@@ -195,8 +193,6 @@ fn filter_next() {
     // check single-line case
     let _ = v.iter().filter(|&x| *x < 0).next();
 
-
-
     // check multi-line case
     let _ = v.iter().filter(|&x| {
                                 *x < 0
@@ -215,8 +211,6 @@ fn search_is_some() {
     // check `find().is_some()`, single-line
     let _ = v.iter().find(|&x| *x < 0).is_some();
 
-
-
     // check `find().is_some()`, multi-line
     let _ = v.iter().find(|&x| {
                               *x < 0
@@ -226,8 +220,6 @@ fn search_is_some() {
     // check `position().is_some()`, single-line
     let _ = v.iter().position(|&x| x < 0).is_some();
 
-
-
     // check `position().is_some()`, multi-line
     let _ = v.iter().position(|&x| {
                                   x < 0
@@ -236,8 +228,6 @@ fn search_is_some() {
 
     // check `rposition().is_some()`, single-line
     let _ = v.iter().rposition(|&x| x < 0).is_some();
-
-
 
     // check `rposition().is_some()`, multi-line
     let _ = v.iter().rposition(|&x| {
@@ -277,74 +267,40 @@ fn or_fun_call() {
     let with_constructor = Some(vec![1]);
     with_constructor.unwrap_or(make());
 
-
-
-
     let with_new = Some(vec![1]);
     with_new.unwrap_or(Vec::new());
-
-
-
 
     let with_const_args = Some(vec![1]);
     with_const_args.unwrap_or(Vec::with_capacity(12));
 
-
-
-
     let with_err : Result<_, ()> = Ok(vec![1]);
     with_err.unwrap_or(make());
-
-
-
 
     let with_err_args : Result<_, ()> = Ok(vec![1]);
     with_err_args.unwrap_or(Vec::with_capacity(12));
 
-
-
-
     let with_default_trait = Some(1);
     with_default_trait.unwrap_or(Default::default());
-
-
-
 
     let with_default_type = Some(1);
     with_default_type.unwrap_or(u64::default());
 
-
-
-
     let with_vec = Some(vec![1]);
     with_vec.unwrap_or(vec![]);
-
 
     // FIXME #944: ~|SUGGESTION with_vec.unwrap_or_else(|| vec![]);
 
     let without_default = Some(Foo);
     without_default.unwrap_or(Foo::new());
 
-
-
-
     let mut map = HashMap::<u64, String>::new();
     map.entry(42).or_insert(String::new());
-
-
-
 
     let mut btree = BTreeMap::<u64, String>::new();
     btree.entry(42).or_insert(String::new());
 
-
-
-
     let stringy = Some(String::from(""));
     let _ = stringy.unwrap_or("".to_owned());
-
-
-
 }
 
 /// Checks implementation of `ITER_NTH` lint
@@ -356,27 +312,20 @@ fn iter_nth() {
     {
         // Make sure we lint `.iter()` for relevant types
         let bad_vec = some_vec.iter().nth(3);
-
         let bad_slice = &some_vec[..].iter().nth(3);
-
         let bad_boxed_slice = boxed_slice.iter().nth(3);
-
         let bad_vec_deque = some_vec_deque.iter().nth(3);
-
     }
 
     {
         // Make sure we lint `.iter_mut()` for relevant types
         let bad_vec = some_vec.iter_mut().nth(3);
-
     }
     {
         let bad_slice = &some_vec[..].iter_mut().nth(3);
-
     }
     {
         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
-
     }
 
     // Make sure we don't lint for non-relevant types
@@ -388,19 +337,10 @@ fn iter_nth() {
 /// Checks implementation of `ITER_SKIP_NEXT` lint
 fn iter_skip_next() {
     let mut some_vec = vec![0, 1, 2, 3];
-
     let _ = some_vec.iter().skip(42).next();
-
-
     let _ = some_vec.iter().cycle().skip(42).next();
-
-
     let _ = (1..10).skip(10).next();
-
-
     let _ = &some_vec[..].iter().skip(3).next();
-
-
     let foo = IteratorFalsePositives { foo : 0 };
     let _ = foo.skip(42).next();
     let _ = foo.filter().skip(42).next();
@@ -427,51 +367,19 @@ fn get_unwrap() {
 
     { // Test `get().unwrap()`
         let _ = boxed_slice.get(1).unwrap();
-
-
-
         let _ = some_slice.get(0).unwrap();
-
-
-
         let _ = some_vec.get(0).unwrap();
-
-
-
         let _ = some_vecdeque.get(0).unwrap();
-
-
-
         let _ = some_hashmap.get(&1).unwrap();
-
-
-
         let _ = some_btreemap.get(&1).unwrap();
-
-
-
-
         let _ = false_positive.get(0).unwrap();
     }
 
     { // Test `get_mut().unwrap()`
         *boxed_slice.get_mut(0).unwrap() = 1;
-
-
-
         *some_slice.get_mut(0).unwrap() = 1;
-
-
-
         *some_vec.get_mut(0).unwrap() = 1;
-
-
-
         *some_vecdeque.get_mut(0).unwrap() = 1;
-
-
-
-
         // Check false positives
         *some_hashmap.get_mut(&1).unwrap() = 'b';
         *some_btreemap.get_mut(&1).unwrap() = 'b';
@@ -515,14 +423,7 @@ struct MyErrorWithParam<T> {
 #[allow(unnecessary_operation)]
 fn starts_with() {
     "".chars().next() == Some(' ');
-
-
-
-
     Some(' ') != "".chars().next();
-
-
-
 }
 
 fn str_extend_chars() {
@@ -533,20 +434,11 @@ fn str_extend_chars() {
     s.push_str(abc);
     s.extend(abc.chars());
 
-
-
-
     s.push_str("abc");
     s.extend("abc".chars());
 
-
-
-
     s.push_str(&def);
     s.extend(def.chars());
-
-
-
 
     s.extend(abc.chars().skip(1));
     s.extend("abc".chars().skip(1));
@@ -559,21 +451,15 @@ fn str_extend_chars() {
 fn clone_on_copy() {
     42.clone();
 
-
     vec![1].clone(); // ok, not a Copy type
     Some(vec![1]).clone(); // ok, not a Copy type
     (&42).clone();
-
-
 }
 
 fn clone_on_copy_generic<T: Copy>(t: T) {
     t.clone();
 
-
     Some(t).clone();
-
-
 }
 
 fn clone_on_double_ref() {
@@ -581,24 +467,17 @@ fn clone_on_double_ref() {
     let y = &&x;
     let z: &Vec<_> = y.clone();
 
-
     println!("{:p} {:p}",*y, z);
 }
 
 fn single_char_pattern() {
     let x = "foo";
     x.split("x");
-
-
-
-
     x.split("xx");
-
     x.split('x');
 
     let y = "x";
     x.split(y);
-
     // Not yet testing for multi-byte characters
     // Changing `r.len() == 1` to `r.chars().count() == 1` in `lint_single_char_pattern`
     // should have done this but produced an ICE
@@ -610,71 +489,22 @@ fn single_char_pattern() {
     x.split("💣");
     // Can't use this lint for unicode code points which don't fit in a char
     x.split("❤️");
-
     x.contains("x");
-
-
-
     x.starts_with("x");
-
-
-
     x.ends_with("x");
-
-
-
     x.find("x");
-
-
-
     x.rfind("x");
-
-
-
     x.rsplit("x");
-
-
-
     x.split_terminator("x");
-
-
-
     x.rsplit_terminator("x");
-
-
-
     x.splitn(0, "x");
-
-
-
     x.rsplitn(0, "x");
-
-
-
     x.matches("x");
-
-
-
     x.rmatches("x");
-
-
-
     x.match_indices("x");
-
-
-
     x.rmatch_indices("x");
-
-
-
     x.trim_left_matches("x");
-
-
-
     x.trim_right_matches("x");
-
-
-
 
     let h = HashSet::<String>::new();
     h.contains("X"); // should not warn
@@ -685,15 +515,11 @@ fn temporary_cstring() {
     use std::ffi::CString;
 
     CString::new("foo").unwrap().as_ptr();
-
-
-
 }
 
 fn iter_clone_collect() {
     let v = [1,2,3,4,5];
     let v2 : Vec<isize> = v.iter().cloned().collect();
-
     let v3 : HashSet<isize> = v.iter().cloned().collect();
     let v4 : VecDeque<isize> = v.iter().cloned().collect();
 }
