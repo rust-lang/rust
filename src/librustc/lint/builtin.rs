@@ -77,6 +77,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub UNUSED_MACROS,
+    Warn,
+    "detects macros that were not used"
+}
+
+declare_lint! {
     pub WARNINGS,
     Warn,
     "mass-change the level for lints which produce warnings"
@@ -259,6 +265,7 @@ impl LintPass for HardwiredLints {
             DEAD_CODE,
             UNREACHABLE_CODE,
             UNREACHABLE_PATTERNS,
+            UNUSED_MACROS,
             WARNINGS,
             UNUSED_FEATURES,
             STABLE_FEATURES,

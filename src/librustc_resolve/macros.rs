@@ -16,7 +16,7 @@ use resolve_imports::ImportResolver;
 use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex};
 use rustc::hir::def::{Def, Export};
 use rustc::hir::map::{self, DefCollector};
-use rustc::ty;
+use rustc::{ty, lint};
 use syntax::ast::{self, Name, Ident};
 use syntax::attr::{self, HasAttrs};
 use syntax::errors::DiagnosticBuilder;
@@ -291,12 +291,35 @@ impl<'a> base::Resolver for Resolver<'a> {
             },
         };
         self.macro_defs.insert(invoc.expansion_data.mark, def.def_id());
+        self.unused_macros.get_mut(&def.def_id()).map(|m| *m = false);
         Ok(Some(self.get_macro(def)))
     }
 
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy> {
-        self.resolve_macro_to_def(scope, path, kind, force).map(|def| self.get_macro(def))
+        self.resolve_macro_to_def(scope, path, kind, force).map(|def| {
+            self.unused_macros.get_mut(&def.def_id()).map(|m| *m = false);
+            self.get_macro(def)
+        })
+    }
+
+    fn check_unused_macros(&self) {
+        for (did, _) in self.unused_macros.iter().filter(|&(_, b)| *b) {
+            let span = match *self.macro_map[did] {
+                           SyntaxExtension::NormalTT(_, sp, _) => sp,
+                           SyntaxExtension::IdentTT(_, sp, _) => sp,
+                           _ => None
+                       };
+            if let Some(span) = span {
+                let lint = lint::builtin::UNUSED_MACROS;
+                let msg = "unused macro".to_string();
+                // We are using CRATE_NODE_ID here even though its inaccurate, as we
+                // sadly don't have the NodeId of the macro definition.
+                self.session.add_lint(lint, ast::CRATE_NODE_ID, span, msg);
+            } else {
+                bug!("attempted to create unused macro error, but span not available");
+            }
+        }
     }
 }
 
@@ -687,6 +710,8 @@ impl<'a> Resolver<'a> {
         if attr::contains_name(&item.attrs, "macro_export") {
             let def = Def::Macro(def_id, MacroKind::Bang);
             self.macro_exports.push(Export { name: ident.name, def: def, span: item.span });
+        } else {
+            self.unused_macros.insert(def_id, true);
         }
     }
 
