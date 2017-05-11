@@ -128,16 +128,10 @@ impl HasWrongIsEmpty {
 fn main() {
     let x = [1, 2];
     if x.len() == 0 {
-
-
-
         println!("This should not happen!");
     }
 
     if "".len() == 0 {
-
-
-
     }
 
     let y = One;
@@ -152,30 +146,18 @@ fn main() {
 
     let has_is_empty = HasIsEmpty;
     if has_is_empty.len() == 0 {
-
-
-
         println!("Or this!");
     }
     if has_is_empty.len() != 0 {
-
-
-
         println!("Or this!");
     }
     if has_is_empty.len() > 0 {
-
-
-
         println!("Or this!");
     }
     assert!(!has_is_empty.is_empty());
 
     let with_is_empty: &WithIsEmpty = &Wither;
     if with_is_empty.len() == 0 {
-
-
-
         println!("Or this!");
     }
     assert!(!with_is_empty.is_empty());
