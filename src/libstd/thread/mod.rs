@@ -245,8 +245,8 @@ impl Builder {
     /// configuration methods can be chained.
     ///
     /// If the [`stack_size`] field is not specified, the stack size
-    /// will be the `RUST_MIN_STACK` environment variable, if it is
-    /// not specified either, a sensible default size will be set (2MB as
+    /// will be the `RUST_MIN_STACK` environment variable.  If it is
+    /// not specified either, a sensible default will be set (2MB as
     /// of the writting of this doc).
     ///
     /// # Examples
