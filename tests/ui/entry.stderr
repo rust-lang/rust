@@ -11,39 +11,39 @@ note: lint level defined here
    |         ^^^^^^^^^
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:20:5
+  --> $DIR/entry.rs:17:5
    |
-20 |     if !m.contains_key(&k) { foo(); m.insert(k, v); }
+17 |     if !m.contains_key(&k) { foo(); m.insert(k, v); }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `m.entry(k)`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:27:5
+  --> $DIR/entry.rs:21:5
    |
-27 |     if !m.contains_key(&k) { m.insert(k, v) } else { None };
+21 |     if !m.contains_key(&k) { m.insert(k, v) } else { None };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `m.entry(k)`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:34:5
+  --> $DIR/entry.rs:25:5
    |
-34 |     if m.contains_key(&k) { None } else { m.insert(k, v) };
+25 |     if m.contains_key(&k) { None } else { m.insert(k, v) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `m.entry(k)`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:41:5
+  --> $DIR/entry.rs:29:5
    |
-41 |     if !m.contains_key(&k) { foo(); m.insert(k, v) } else { None };
+29 |     if !m.contains_key(&k) { foo(); m.insert(k, v) } else { None };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `m.entry(k)`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:48:5
+  --> $DIR/entry.rs:33:5
    |
-48 |     if m.contains_key(&k) { None } else { foo(); m.insert(k, v) };
+33 |     if m.contains_key(&k) { None } else { foo(); m.insert(k, v) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `m.entry(k)`
 
 error: usage of `contains_key` followed by `insert` on a `BTreeMap`
-  --> $DIR/entry.rs:55:5
+  --> $DIR/entry.rs:37:5
    |
-55 |     if !m.contains_key(&k) { foo(); m.insert(k, v) } else { None };
+37 |     if !m.contains_key(&k) { foo(); m.insert(k, v) } else { None };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `m.entry(k)`
 
 error: aborting due to 7 previous errors

@@ -6,6 +6,5 @@
 
 enum Empty {}
 
-
 fn main() {
 }
