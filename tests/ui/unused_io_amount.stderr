@@ -25,25 +25,25 @@ error: handle written amount returned or use `Write::write_all` instead
    = note: #[deny(unused_io_amount)] on by default
 
 error: handle read amount returned or use `Read::read_exact` instead
-  --> $DIR/unused_io_amount.rs:20:5
+  --> $DIR/unused_io_amount.rs:19:5
    |
-20 |     s.read(&mut buf)?;
+19 |     s.read(&mut buf)?;
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(unused_io_amount)] on by default
 
 error: handle written amount returned or use `Write::write_all` instead
-  --> $DIR/unused_io_amount.rs:26:5
+  --> $DIR/unused_io_amount.rs:24:5
    |
-26 |     s.write(b"test").unwrap();
+24 |     s.write(b"test").unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(unused_io_amount)] on by default
 
 error: handle read amount returned or use `Read::read_exact` instead
-  --> $DIR/unused_io_amount.rs:29:5
+  --> $DIR/unused_io_amount.rs:26:5
    |
-29 |     s.read(&mut buf).unwrap();
+26 |     s.read(&mut buf).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(unused_io_amount)] on by default
