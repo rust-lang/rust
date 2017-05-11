@@ -68,6 +68,9 @@ macro_rules! panic {
 /// necessary to use `io::stdout().flush()` to ensure the output is emitted
 /// immediately.
 ///
+/// Use `print!` only for the primary output of your program.  Use
+/// `eprint!` instead to print error and progress messages.
+///
 /// # Panics
 ///
 /// Panics if writing to `io::stdout()` fails.
@@ -105,9 +108,12 @@ macro_rules! print {
 /// Use the `format!` syntax to write data to the standard output.
 /// See `std::fmt` for more information.
 ///
+/// Use `println!` only for the primary output of your program.  Use
+/// `eprintln!` instead to print error and progress messages.
+///
 /// # Panics
 ///
-/// Panics if writing to `io::stdout()` fails.
+/// Panics if writing to `io::stdout` fails.
 ///
 /// # Examples
 ///
@@ -122,6 +128,45 @@ macro_rules! println {
     () => (print!("\n"));
     ($fmt:expr) => (print!(concat!($fmt, "\n")));
     ($fmt:expr, $($arg:tt)*) => (print!(concat!($fmt, "\n"), $($arg)*));
+}
+
+/// Macro for printing to the standard error.
+///
+/// Equivalent to the `print!` macro, except that output goes to
+/// `io::stderr` instead of `io::stdout`.  See `print!` for
+/// example usage.
+///
+/// Use `eprint!` only for error and progress messages.  Use `print!`
+/// instead for the primary output of your program.
+///
+/// # Panics
+///
+/// Panics if writing to `io::stderr` fails.
+#[macro_export]
+#[stable(feature = "eprint", since="1.18.0")]
+#[allow_internal_unstable]
+macro_rules! eprint {
+    ($($arg:tt)*) => ($crate::io::_eprint(format_args!($($arg)*)));
+}
+
+/// Macro for printing to the standard error, with a newline.
+///
+/// Equivalent to the `println!` macro, except that output goes to
+/// `io::stderr` instead of `io::stdout`.  See `println!` for
+/// example usage.
+///
+/// Use `eprintln!` only for error and progress messages.  Use `println!`
+/// instead for the primary output of your program.
+///
+/// # Panics
+///
+/// Panics if writing to `io::stderr` fails.
+#[macro_export]
+#[stable(feature = "eprint", since="1.18.0")]
+macro_rules! eprintln {
+    () => (eprint!("\n"));
+    ($fmt:expr) => (eprint!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => (eprint!(concat!($fmt, "\n"), $($arg)*));
 }
 
 /// A macro to select an event from a number of receivers.

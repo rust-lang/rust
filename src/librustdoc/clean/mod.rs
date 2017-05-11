@@ -1180,7 +1180,7 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
         let mut names = if cx.tcx.hir.as_local_node_id(did).is_some() {
             vec![].into_iter()
         } else {
-            cx.tcx.sess.cstore.fn_arg_names(did).into_iter()
+            cx.tcx.fn_arg_names(did).into_iter()
         }.peekable();
         FnDecl {
             output: Return(sig.skip_binder().output().clean(cx)),

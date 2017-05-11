@@ -34,6 +34,7 @@ use std::ops::Deref;
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::attr;
+use syntax::ast;
 use syntax::symbol::Symbol;
 
 pub trait Key: Clone + Hash + Eq + Debug {
@@ -337,6 +338,36 @@ impl<'tcx> QueryDescription for queries::stability<'tcx> {
 impl<'tcx> QueryDescription for queries::deprecation<'tcx> {
     fn describe(_: TyCtxt, _: DefId) -> String {
         bug!("deprecation")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::item_attrs<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        bug!("item_attrs")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_exported_symbol<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        bug!("is_exported_symbol")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::fn_arg_names<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        bug!("fn_arg_names")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::impl_parent<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        bug!("impl_parent")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::trait_of_item<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        bug!("trait_of_item")
     }
 }
 
@@ -781,9 +812,14 @@ define_maps! { <'tcx>
     [] def_span: DefSpan(DefId) -> Span,
     [] stability: Stability(DefId) -> Option<attr::Stability>,
     [] deprecation: Deprecation(DefId) -> Option<attr::Deprecation>,
-    [] item_body_nested_bodies: metadata_dep_node(DefId) -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
-    [] const_is_rvalue_promotable_to_static: metadata_dep_node(DefId) -> bool,
-    [] is_mir_available: metadata_dep_node(DefId) -> bool,
+    [] item_attrs: ItemAttrs(DefId) -> Rc<[ast::Attribute]>,
+    [] fn_arg_names: FnArgNames(DefId) -> Vec<ast::Name>,
+    [] impl_parent: ImplParent(DefId) -> Option<DefId>,
+    [] trait_of_item: TraitOfItem(DefId) -> Option<DefId>,
+    [] is_exported_symbol: IsExportedSymbol(DefId) -> bool,
+    [] item_body_nested_bodies: ItemBodyNestedBodies(DefId) -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
+    [] const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
+    [] is_mir_available: IsMirAvailable(DefId) -> bool,
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -796,10 +832,6 @@ fn crate_inherent_impls_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn reachability_dep_node(_: CrateNum) -> DepNode<DefId> {
     DepNode::Reachability
-}
-
-fn metadata_dep_node(def_id: DefId) -> DepNode<DefId> {
-    DepNode::MetaData(def_id)
 }
 
 fn mir_shim_dep_node(instance: ty::InstanceDef) -> DepNode<DefId> {
