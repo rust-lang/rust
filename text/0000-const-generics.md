@@ -91,9 +91,9 @@ well all idents - e.g. `3`, `"Hello, world"`, `foo_bar`.
 
 ## Declaring a const parameter
 
-In any sequence of type parameter declarations - such as in the definition of a
-type or on the `impl` header of an impl block - const parameters can also be
-declared. Const parameters always come after type parameters, and their
+In any sequence of type parameter declarations -- such as in the definition of
+a  type or on the `impl` header of an impl block -- const parameters can also
+be declared. Const parameters always come after type parameters, and their
 declarations take the form `const $ident: $ty`, as in:
 
 ```rust
