@@ -107,11 +107,11 @@ pub enum CodeExtentData {
 
     // extent of the call-site for a function or closure (outlives
     // the parameters as well as the body).
-    CallSiteScope { fn_id: ast::NodeId, body_id: ast::NodeId },
+    CallSiteScope(hir::BodyId),
 
     // extent of parameters passed to a function or closure (they
     // outlive its body)
-    ParameterScope { fn_id: ast::NodeId, body_id: ast::NodeId },
+    ParameterScope(hir::BodyId),
 
     // extent of destructors for temporaries of node-id
     DestructionScope(ast::NodeId),
@@ -157,8 +157,8 @@ impl CodeExtentData {
             // precise extent denoted by `self`.
             CodeExtentData::Remainder(br) => br.block,
             CodeExtentData::DestructionScope(node_id) => node_id,
-            CodeExtentData::CallSiteScope { fn_id: _, body_id } |
-            CodeExtentData::ParameterScope { fn_id: _, body_id } => body_id,
+            CodeExtentData::CallSiteScope(body_id) |
+            CodeExtentData::ParameterScope(body_id) => body_id.node_id,
         }
     }
 
@@ -169,8 +169,8 @@ impl CodeExtentData {
         match hir_map.find(self.node_id()) {
             Some(hir_map::NodeBlock(ref blk)) => {
                 match *self {
-                    CodeExtentData::CallSiteScope { .. } |
-                    CodeExtentData::ParameterScope { .. } |
+                    CodeExtentData::CallSiteScope(_) |
+                    CodeExtentData::ParameterScope(_) |
                     CodeExtentData::Misc(_) |
                     CodeExtentData::DestructionScope(_) => Some(blk.span),
 
@@ -627,10 +627,7 @@ impl<'tcx> RegionMaps<'tcx> {
             self.root_body.unwrap()
         });
 
-        tcx.intern_code_extent(CodeExtentData::CallSiteScope {
-            fn_id: tcx.hir.body_owner(body_id),
-            body_id: body_id.node_id
-        })
+        tcx.intern_code_extent(CodeExtentData::CallSiteScope(body_id))
     }
 
     /// Assuming that the provided region was defined within this `RegionMaps`,
@@ -651,10 +648,7 @@ impl<'tcx> RegionMaps<'tcx> {
         let param_owner_id = tcx.hir.as_local_node_id(param_owner).unwrap();
         let body_id = tcx.hir.body_owned_by(param_owner_id);
 
-        tcx.intern_code_extent(CodeExtentData::CallSiteScope {
-            fn_id: tcx.hir.body_owner(body_id),
-            body_id: body_id.node_id
-        })
+        tcx.intern_code_extent(CodeExtentData::CallSiteScope(body_id))
     }
 }
 
@@ -1172,9 +1166,9 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
         self.cx.root_id = Some(body_id.node_id);
 
         self.cx.parent = Some(self.new_code_extent(
-            CodeExtentData::CallSiteScope { fn_id: owner_id, body_id: body_id.node_id }));
+            CodeExtentData::CallSiteScope(body_id)));
         self.cx.parent = Some(self.new_code_extent(
-            CodeExtentData::ParameterScope { fn_id: owner_id, body_id: body_id.node_id }));
+            CodeExtentData::ParameterScope(body_id)));
 
         // The arguments and `self` are parented to the fn.
         self.cx.var_parent = self.cx.parent.take();

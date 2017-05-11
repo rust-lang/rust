@@ -441,9 +441,8 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ::middle::region::
             CodeExtentData::DestructionScope(node_id) => {
                 node_id.hash_stable(hcx, hasher);
             }
-            CodeExtentData::CallSiteScope { fn_id, body_id } |
-            CodeExtentData::ParameterScope { fn_id, body_id } => {
-                fn_id.hash_stable(hcx, hasher);
+            CodeExtentData::CallSiteScope(body_id) |
+            CodeExtentData::ParameterScope(body_id) => {
                 body_id.hash_stable(hcx, hasher);
             }
             CodeExtentData::Remainder(block_remainder) => {

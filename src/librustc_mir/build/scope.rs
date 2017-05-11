@@ -416,7 +416,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // We want `scopes[1]`, which is the `ParameterScope`.
         assert!(self.scopes.len() >= 2);
         assert!(match *self.scopes[1].extent {
-            CodeExtentData::ParameterScope { .. } => true,
+            CodeExtentData::ParameterScope(_) => true,
             _ => false,
         });
         self.scopes[1].extent

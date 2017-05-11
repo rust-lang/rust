@@ -153,10 +153,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 };
                 let scope_decorated_tag = match *scope {
                     region::CodeExtentData::Misc(_) => tag,
-                    region::CodeExtentData::CallSiteScope { .. } => {
+                    region::CodeExtentData::CallSiteScope(_) => {
                         "scope of call-site for function"
                     }
-                    region::CodeExtentData::ParameterScope { .. } => {
+                    region::CodeExtentData::ParameterScope(_) => {
                         "scope of function body"
                     }
                     region::CodeExtentData::DestructionScope(_) => {
