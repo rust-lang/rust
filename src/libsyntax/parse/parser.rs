@@ -2031,7 +2031,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse single lifetime 'a or panic.
-    fn expect_lifetime(&mut self) -> Lifetime {
+    pub fn expect_lifetime(&mut self) -> Lifetime {
         match self.token {
             token::Lifetime(ident) => {
                 let ident_span = self.span;
