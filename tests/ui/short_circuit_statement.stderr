@@ -11,16 +11,16 @@ note: lint level defined here
   |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
-  --> $DIR/short_circuit_statement.rs:11:5
-   |
-11 |     f() || g();
-   |     ^^^^^^^^^^^ help: replace it with `if !f() { g(); }`
+ --> $DIR/short_circuit_statement.rs:8:5
+  |
+8 |     f() || g();
+  |     ^^^^^^^^^^^ help: replace it with `if !f() { g(); }`
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
-  --> $DIR/short_circuit_statement.rs:15:5
-   |
-15 |     1 == 2 || g();
-   |     ^^^^^^^^^^^^^^ help: replace it with `if !(1 == 2) { g(); }`
+ --> $DIR/short_circuit_statement.rs:9:5
+  |
+9 |     1 == 2 || g();
+  |     ^^^^^^^^^^^^^^ help: replace it with `if !(1 == 2) { g(); }`
 
 error: aborting due to 3 previous errors
 
