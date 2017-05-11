@@ -20,25 +20,25 @@ error: `ref` on an entire `let` pattern is discouraged, take a reference with `&
    = note: #[deny(toplevel_ref_arg)] implied by #[deny(clippy)]
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:23:7
+  --> $DIR/toplevel_ref_arg.rs:20:7
    |
-23 |   let ref y: (&_, u8) = (&1, 2);
+20 |   let ref y: (&_, u8) = (&1, 2);
    |   ----^^^^^--------------------- help: try `let y: &(&_, u8) = &(&1, 2);`
    |
    = note: #[deny(toplevel_ref_arg)] implied by #[deny(clippy)]
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:28:7
+  --> $DIR/toplevel_ref_arg.rs:22:7
    |
-28 |   let ref z = 1 + 2;
+22 |   let ref z = 1 + 2;
    |   ----^^^^^--------- help: try `let z = &(1 + 2);`
    |
    = note: #[deny(toplevel_ref_arg)] implied by #[deny(clippy)]
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:33:7
+  --> $DIR/toplevel_ref_arg.rs:24:7
    |
-33 |   let ref mut z = 1 + 2;
+24 |   let ref mut z = 1 + 2;
    |   ----^^^^^^^^^--------- help: try `let z = &mut (1 + 2);`
    |
    = note: #[deny(toplevel_ref_arg)] implied by #[deny(clippy)]
