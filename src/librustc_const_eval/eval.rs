@@ -74,7 +74,7 @@ pub fn lookup_const_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 // constants, we only try to find the expression for a
                 // trait-associated const if the caller gives us the
                 // substitutions for the reference to it.
-                if tcx.sess.cstore.trait_of_item(def_id).is_some() {
+                if tcx.trait_of_item(def_id).is_some() {
                     resolve_trait_associated_const(tcx, def_id, substs)
                 } else {
                     Some((def_id, substs))
