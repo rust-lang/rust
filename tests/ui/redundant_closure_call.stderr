@@ -1,7 +1,7 @@
 error: Closure called just once immediately after it was declared
-  --> $DIR/redundant_closure_call.rs:18:2
+  --> $DIR/redundant_closure_call.rs:15:2
    |
-18 | \ti = closure();
+15 | \ti = closure();
    | \t^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -11,9 +11,9 @@ note: lint level defined here
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: Closure called just once immediately after it was declared
-  --> $DIR/redundant_closure_call.rs:21:2
+  --> $DIR/redundant_closure_call.rs:18:2
    |
-21 | \ti = closure(3);
+18 | \ti = closure(3);
    | \t^^^^^^^^^^^^^^
 
 error: Try not to call a closure in the expression where it is declared.
@@ -23,15 +23,15 @@ error: Try not to call a closure in the expression where it is declared.
   | \t        ^^^^^^^^^ help: Try doing something like:  `42`
 
 error: Try not to call a closure in the expression where it is declared.
-  --> $DIR/redundant_closure_call.rs:13:10
+  --> $DIR/redundant_closure_call.rs:10:10
    |
-13 | \tlet k = (|m| m+1)(i);
+10 | \tlet k = (|m| m+1)(i);
    | \t        ^^^^^^^^^^^^
 
 error: Try not to call a closure in the expression where it is declared.
-  --> $DIR/redundant_closure_call.rs:15:6
+  --> $DIR/redundant_closure_call.rs:12:6
    |
-15 | \tk = (|a,b| a*b)(1,5);
+12 | \tk = (|a,b| a*b)(1,5);
    | \t    ^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
