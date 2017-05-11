@@ -16,10 +16,40 @@ fn main() {
 
     x != "foo".to_owned();
 
-    // removed String::from_str(..), as it has finally been removed in 1.4.0
-    // as of 2015-08-14
-
     x != String::from("foo");
 
     42.to_string() == "42";
+
+    Foo.to_owned() == Foo;
+}
+
+struct Foo;
+
+impl PartialEq for Foo {
+    fn eq(&self, other: &Self) -> bool {
+        self.to_owned() == *other
+    }
+}
+
+impl ToOwned for Foo {
+    type Owned = Bar;
+    fn to_owned(&self) -> Bar {
+        Bar
+    }
+}
+
+#[derive(PartialEq)]
+struct Bar;
+
+impl PartialEq<Foo> for Bar {
+    fn eq(&self, _: &Foo) -> bool {
+        true
+    }
+}
+
+impl std::borrow::Borrow<Foo> for Bar {
+    fn borrow(&self) -> &Foo {
+        static FOO: Foo = Foo;
+        &FOO
+    }
 }
