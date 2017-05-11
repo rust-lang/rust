@@ -23,51 +23,51 @@ error: this if-then-else expression returns a bool literal
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to `x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:15:5
+  --> $DIR/needless_bool.rs:12:5
    |
-15 |     if x { false } else { true };
+12 |     if x { false } else { true };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to `!x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:19:5
+  --> $DIR/needless_bool.rs:13:5
    |
-19 |     if x && y { false } else { true };
+13 |     if x && y { false } else { true };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to `!(x && y)`
 
 error: this if-then-else expression will always return true
-  --> $DIR/needless_bool.rs:34:5
+  --> $DIR/needless_bool.rs:25:5
    |
-34 |     if x { return true } else { return true };
+25 |     if x { return true } else { return true };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this if-then-else expression will always return false
-  --> $DIR/needless_bool.rs:40:5
+  --> $DIR/needless_bool.rs:30:5
    |
-40 |     if x { return false } else { return false };
+30 |     if x { return false } else { return false };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:46:5
+  --> $DIR/needless_bool.rs:35:5
    |
-46 |     if x { return true } else { return false };
+35 |     if x { return true } else { return false };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to `return x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:54:5
+  --> $DIR/needless_bool.rs:40:5
    |
-54 |     if x && y { return true } else { return false };
+40 |     if x && y { return true } else { return false };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to `return x && y`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:62:5
+  --> $DIR/needless_bool.rs:45:5
    |
-62 |     if x { return false } else { return true };
+45 |     if x { return false } else { return true };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to `return !x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:70:5
+  --> $DIR/needless_bool.rs:50:5
    |
-70 |     if x && y { return false } else { return true };
+50 |     if x && y { return false } else { return true };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to `return !(x && y)`
 
 error: aborting due to 11 previous errors
