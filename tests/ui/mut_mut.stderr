@@ -11,9 +11,9 @@ note: lint level defined here
    |         ^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:25:17
+  --> $DIR/mut_mut.rs:24:17
    |
-25 |     let mut x = &mut &mut 1u32;
+24 |     let mut x = &mut &mut 1u32;
    |                 ^^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
@@ -22,67 +22,67 @@ error: generally you want to avoid `&mut &mut _` if possible
 19 |     ($p:expr) => { &mut $p }
    |                    ^^^^^^^
 ...
-49 |     let mut z = mut_ptr!(&mut 3u32);
+39 |     let mut z = mut_ptr!(&mut 3u32);
    |                 ------------------- in this macro invocation
 
 error: this expression mutably borrows a mutable reference. Consider reborrowing
-  --> $DIR/mut_mut.rs:27:21
+  --> $DIR/mut_mut.rs:26:21
    |
-27 |         let mut y = &mut x;
+26 |         let mut y = &mut x;
    |                     ^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:31:17
+  --> $DIR/mut_mut.rs:30:17
    |
-31 |         let y : &mut &mut u32 = &mut &mut 2;
+30 |         let y : &mut &mut u32 = &mut &mut 2;
    |                 ^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:31:33
+  --> $DIR/mut_mut.rs:30:33
    |
-31 |         let y : &mut &mut u32 = &mut &mut 2;
+30 |         let y : &mut &mut u32 = &mut &mut 2;
    |                                 ^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:31:17
+  --> $DIR/mut_mut.rs:30:17
    |
-31 |         let y : &mut &mut u32 = &mut &mut 2;
+30 |         let y : &mut &mut u32 = &mut &mut 2;
    |                 ^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:39:17
+  --> $DIR/mut_mut.rs:35:17
    |
-39 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
+35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
    |                 ^^^^^^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:39:22
+  --> $DIR/mut_mut.rs:35:22
    |
-39 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
+35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
    |                      ^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:39:38
+  --> $DIR/mut_mut.rs:35:38
    |
-39 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
+35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
    |                                      ^^^^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:39:17
+  --> $DIR/mut_mut.rs:35:17
    |
-39 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
+35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
    |                 ^^^^^^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:39:22
+  --> $DIR/mut_mut.rs:35:22
    |
-39 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
+35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
    |                      ^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:39:22
+  --> $DIR/mut_mut.rs:35:22
    |
-39 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
+35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
    |                      ^^^^^^^^^^^^^
 
 error: aborting due to 13 previous errors

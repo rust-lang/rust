@@ -17,21 +17,21 @@ error: used binding `_foo` which is prefixed with an underscore. A leading under
    |                    ^^^^
 
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
-  --> $DIR/used_underscore_binding.rs:24:16
+  --> $DIR/used_underscore_binding.rs:23:16
    |
-24 |     assert_eq!(_foo, _foo);
+23 |     assert_eq!(_foo, _foo);
    |                ^^^^
 
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
-  --> $DIR/used_underscore_binding.rs:24:22
+  --> $DIR/used_underscore_binding.rs:23:22
    |
-24 |     assert_eq!(_foo, _foo);
+23 |     assert_eq!(_foo, _foo);
    |                      ^^^^
 
 error: used binding `_underscore_field` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
-  --> $DIR/used_underscore_binding.rs:39:5
+  --> $DIR/used_underscore_binding.rs:36:5
    |
-39 |     s._underscore_field += 1;
+36 |     s._underscore_field += 1;
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors

@@ -41,9 +41,9 @@ error: casting u64 to f64 causes a loss of precision (u64 is 64 bits wide, but f
    |     ^^^^^^^^^^^
 
 error: casting f32 to i32 may truncate the value
-  --> $DIR/cast.rs:18:5
+  --> $DIR/cast.rs:17:5
    |
-18 |     1f32 as i32;
+17 |     1f32 as i32;
    |     ^^^^^^^^^^^
    |
 note: lint level defined here
@@ -53,15 +53,15 @@ note: lint level defined here
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting f32 to u32 may truncate the value
-  --> $DIR/cast.rs:19:5
+  --> $DIR/cast.rs:18:5
    |
-19 |     1f32 as u32;
+18 |     1f32 as u32;
    |     ^^^^^^^^^^^
 
 error: casting f32 to u32 may lose the sign of the value
-  --> $DIR/cast.rs:19:5
+  --> $DIR/cast.rs:18:5
    |
-19 |     1f32 as u32;
+18 |     1f32 as u32;
    |     ^^^^^^^^^^^
    |
 note: lint level defined here
@@ -71,51 +71,51 @@ note: lint level defined here
    |                                                       ^^^^^^^^^^^^^^
 
 error: casting f64 to f32 may truncate the value
-  --> $DIR/cast.rs:21:5
+  --> $DIR/cast.rs:19:5
    |
-21 |     1f64 as f32;
+19 |     1f64 as f32;
    |     ^^^^^^^^^^^
 
 error: casting i32 to i8 may truncate the value
-  --> $DIR/cast.rs:22:5
+  --> $DIR/cast.rs:20:5
    |
-22 |     1i32 as i8;
+20 |     1i32 as i8;
    |     ^^^^^^^^^^
 
 error: casting i32 to u8 may lose the sign of the value
-  --> $DIR/cast.rs:23:5
+  --> $DIR/cast.rs:21:5
    |
-23 |     1i32 as u8;
+21 |     1i32 as u8;
    |     ^^^^^^^^^^
 
 error: casting i32 to u8 may truncate the value
-  --> $DIR/cast.rs:23:5
+  --> $DIR/cast.rs:21:5
    |
-23 |     1i32 as u8;
+21 |     1i32 as u8;
    |     ^^^^^^^^^^
 
 error: casting f64 to isize may truncate the value
-  --> $DIR/cast.rs:25:5
+  --> $DIR/cast.rs:22:5
    |
-25 |     1f64 as isize;
+22 |     1f64 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting f64 to usize may truncate the value
-  --> $DIR/cast.rs:26:5
+  --> $DIR/cast.rs:23:5
    |
-26 |     1f64 as usize;
+23 |     1f64 as usize;
    |     ^^^^^^^^^^^^^
 
 error: casting f64 to usize may lose the sign of the value
-  --> $DIR/cast.rs:26:5
+  --> $DIR/cast.rs:23:5
    |
-26 |     1f64 as usize;
+23 |     1f64 as usize;
    |     ^^^^^^^^^^^^^
 
 error: casting u8 to i8 may wrap around the value
-  --> $DIR/cast.rs:30:5
+  --> $DIR/cast.rs:25:5
    |
-30 |     1u8 as i8;
+25 |     1u8 as i8;
    |     ^^^^^^^^^
    |
 note: lint level defined here
@@ -125,175 +125,175 @@ note: lint level defined here
    |                                                                       ^^^^^^^^^^^^^^^^^^
 
 error: casting u16 to i16 may wrap around the value
-  --> $DIR/cast.rs:31:5
+  --> $DIR/cast.rs:26:5
    |
-31 |     1u16 as i16;
+26 |     1u16 as i16;
    |     ^^^^^^^^^^^
 
 error: casting u32 to i32 may wrap around the value
-  --> $DIR/cast.rs:32:5
+  --> $DIR/cast.rs:27:5
    |
-32 |     1u32 as i32;
+27 |     1u32 as i32;
    |     ^^^^^^^^^^^
 
 error: casting u64 to i64 may wrap around the value
-  --> $DIR/cast.rs:33:5
+  --> $DIR/cast.rs:28:5
    |
-33 |     1u64 as i64;
+28 |     1u64 as i64;
    |     ^^^^^^^^^^^
 
 error: casting usize to isize may wrap around the value
-  --> $DIR/cast.rs:34:5
+  --> $DIR/cast.rs:29:5
    |
-34 |     1usize as isize;
+29 |     1usize as isize;
    |     ^^^^^^^^^^^^^^^
 
 error: casting i32 to u32 may lose the sign of the value
-  --> $DIR/cast.rs:37:5
+  --> $DIR/cast.rs:31:5
    |
-37 |     1i32 as u32;
+31 |     1i32 as u32;
    |     ^^^^^^^^^^^
 
 error: casting isize to usize may lose the sign of the value
-  --> $DIR/cast.rs:38:5
+  --> $DIR/cast.rs:32:5
    |
-38 |     1isize as usize;
+32 |     1isize as usize;
    |     ^^^^^^^^^^^^^^^
 
 error: casting isize to i8 may truncate the value
-  --> $DIR/cast.rs:42:5
+  --> $DIR/cast.rs:35:5
    |
-42 |     1isize as i8;
+35 |     1isize as i8;
    |     ^^^^^^^^^^^^
 
 error: casting isize to f64 causes a loss of precision on targets with 64-bit wide pointers (isize is 64 bits wide, but f64's mantissa is only 52 bits wide)
-  --> $DIR/cast.rs:43:5
+  --> $DIR/cast.rs:36:5
    |
-43 |     1isize as f64;
+36 |     1isize as f64;
    |     ^^^^^^^^^^^^^
 
 error: casting usize to f64 causes a loss of precision on targets with 64-bit wide pointers (usize is 64 bits wide, but f64's mantissa is only 52 bits wide)
-  --> $DIR/cast.rs:44:5
+  --> $DIR/cast.rs:37:5
    |
-44 |     1usize as f64;
+37 |     1usize as f64;
    |     ^^^^^^^^^^^^^
 
 error: casting isize to f32 causes a loss of precision (isize is 32 or 64 bits wide, but f32's mantissa is only 23 bits wide)
-  --> $DIR/cast.rs:45:5
+  --> $DIR/cast.rs:38:5
    |
-45 |     1isize as f32;
+38 |     1isize as f32;
    |     ^^^^^^^^^^^^^
 
 error: casting usize to f32 causes a loss of precision (usize is 32 or 64 bits wide, but f32's mantissa is only 23 bits wide)
-  --> $DIR/cast.rs:46:5
+  --> $DIR/cast.rs:39:5
    |
-46 |     1usize as f32;
+39 |     1usize as f32;
    |     ^^^^^^^^^^^^^
 
 error: casting isize to i32 may truncate the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:47:5
+  --> $DIR/cast.rs:40:5
    |
-47 |     1isize as i32;
+40 |     1isize as i32;
    |     ^^^^^^^^^^^^^
 
 error: casting isize to u32 may lose the sign of the value
-  --> $DIR/cast.rs:48:5
+  --> $DIR/cast.rs:41:5
    |
-48 |     1isize as u32;
+41 |     1isize as u32;
    |     ^^^^^^^^^^^^^
 
 error: casting isize to u32 may truncate the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:48:5
+  --> $DIR/cast.rs:41:5
    |
-48 |     1isize as u32;
+41 |     1isize as u32;
    |     ^^^^^^^^^^^^^
 
 error: casting usize to u32 may truncate the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:50:5
+  --> $DIR/cast.rs:42:5
    |
-50 |     1usize as u32;
+42 |     1usize as u32;
    |     ^^^^^^^^^^^^^
 
 error: casting usize to i32 may truncate the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:51:5
+  --> $DIR/cast.rs:43:5
    |
-51 |     1usize as i32;
+43 |     1usize as i32;
    |     ^^^^^^^^^^^^^
 
 error: casting usize to i32 may wrap around the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:51:5
+  --> $DIR/cast.rs:43:5
    |
-51 |     1usize as i32;
+43 |     1usize as i32;
    |     ^^^^^^^^^^^^^
 
 error: casting i64 to isize may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:54:5
+  --> $DIR/cast.rs:45:5
    |
-54 |     1i64 as isize;
+45 |     1i64 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting i64 to usize may lose the sign of the value
-  --> $DIR/cast.rs:55:5
+  --> $DIR/cast.rs:46:5
    |
-55 |     1i64 as usize;
+46 |     1i64 as usize;
    |     ^^^^^^^^^^^^^
 
 error: casting i64 to usize may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:55:5
+  --> $DIR/cast.rs:46:5
    |
-55 |     1i64 as usize;
+46 |     1i64 as usize;
    |     ^^^^^^^^^^^^^
 
 error: casting u64 to isize may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:57:5
+  --> $DIR/cast.rs:47:5
    |
-57 |     1u64 as isize;
+47 |     1u64 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting u64 to isize may wrap around the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:57:5
+  --> $DIR/cast.rs:47:5
    |
-57 |     1u64 as isize;
+47 |     1u64 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting u64 to usize may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:59:5
+  --> $DIR/cast.rs:48:5
    |
-59 |     1u64 as usize;
+48 |     1u64 as usize;
    |     ^^^^^^^^^^^^^
 
 error: casting u32 to isize may wrap around the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:60:5
+  --> $DIR/cast.rs:49:5
    |
-60 |     1u32 as isize;
+49 |     1u32 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting i32 to usize may lose the sign of the value
-  --> $DIR/cast.rs:63:5
+  --> $DIR/cast.rs:52:5
    |
-63 |     1i32 as usize;
+52 |     1i32 as usize;
    |     ^^^^^^^^^^^^^
 
 warning: casting to the same type is unnecessary (`i32` -> `i32`)
-  --> $DIR/cast.rs:66:5
+  --> $DIR/cast.rs:54:5
    |
-66 |     1i32 as i32;
+54 |     1i32 as i32;
    |     ^^^^^^^^^^^
    |
    = note: #[warn(unnecessary_cast)] on by default
 
 warning: casting to the same type is unnecessary (`f32` -> `f32`)
-  --> $DIR/cast.rs:67:5
+  --> $DIR/cast.rs:55:5
    |
-67 |     1f32 as f32;
+55 |     1f32 as f32;
    |     ^^^^^^^^^^^
    |
    = note: #[warn(unnecessary_cast)] on by default
 
 warning: casting to the same type is unnecessary (`bool` -> `bool`)
-  --> $DIR/cast.rs:68:5
+  --> $DIR/cast.rs:56:5
    |
-68 |     false as bool;
+56 |     false as bool;
    |     ^^^^^^^^^^^^^
    |
    = note: #[warn(unnecessary_cast)] on by default

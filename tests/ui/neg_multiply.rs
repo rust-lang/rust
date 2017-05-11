@@ -29,9 +29,7 @@ fn main() {
 
     x * -1;
 
-
     -1 * x;
-
 
     -1 * -1; // should be ok
 

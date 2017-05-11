@@ -11,33 +11,33 @@ note: lint level defined here
    |         ^^^^^^^^^^^
 
 error: useless use of `vec!`
+  --> $DIR/vec.rs:27:14
+   |
+27 |     on_slice(&vec![1, 2]);
+   |              ^^^^^^^^^^^ help: you can use a slice directly `&[1, 2]`
+
+error: useless use of `vec!`
   --> $DIR/vec.rs:30:14
    |
-30 |     on_slice(&vec![1, 2]);
+30 |     on_slice(&vec ![1, 2]);
+   |              ^^^^^^^^^^^^ help: you can use a slice directly `&[1, 2]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:33:14
+   |
+33 |     on_slice(&vec!(1, 2));
    |              ^^^^^^^^^^^ help: you can use a slice directly `&[1, 2]`
 
 error: useless use of `vec!`
   --> $DIR/vec.rs:36:14
    |
-36 |     on_slice(&vec ![1, 2]);
-   |              ^^^^^^^^^^^^ help: you can use a slice directly `&[1, 2]`
-
-error: useless use of `vec!`
-  --> $DIR/vec.rs:42:14
-   |
-42 |     on_slice(&vec!(1, 2));
-   |              ^^^^^^^^^^^ help: you can use a slice directly `&[1, 2]`
-
-error: useless use of `vec!`
-  --> $DIR/vec.rs:48:14
-   |
-48 |     on_slice(&vec![1; 2]);
+36 |     on_slice(&vec![1; 2]);
    |              ^^^^^^^^^^^ help: you can use a slice directly `&[1; 2]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:64:14
+  --> $DIR/vec.rs:49:14
    |
-64 |     for a in vec![1, 2, 3] {
+49 |     for a in vec![1, 2, 3] {
    |              ^^^^^^^^^^^^^ help: you can use a slice directly `&[1, 2, 3]`
 
 error: aborting due to 6 previous errors

@@ -7,9 +7,6 @@
 fn main() {
     let y = Some(true);
     loop {
-
-
-
         if let Some(_x) = y {
             let _v = 1;
         } else {
@@ -23,18 +20,12 @@ fn main() {
         break;
     }
     loop {
-
-
-
         match y {
             Some(_x) => true,
             None => break
         };
     }
     loop {
-
-
-
         let x = match y {
             Some(x) => x,
             None => break
@@ -43,9 +34,6 @@ fn main() {
         let _str = "foo";
     }
     loop {
-
-
-
         let x = match y {
             Some(x) => x,
             None => break,
@@ -68,9 +56,6 @@ fn main() {
 
     // #675, this used to have a wrong suggestion
     loop {
-
-
-
         let (e, l) = match "".split_whitespace().next() {
             Some(word) => (word.is_empty(), word.len()),
             None => break
@@ -81,25 +66,16 @@ fn main() {
 
     let mut iter = 1..20;
     while let Option::Some(x) = iter.next() {
-
-
-
         println!("{}", x);
     }
 
     let mut iter = 1..20;
     while let Some(x) = iter.next() {
-
-
-
         println!("{}", x);
     }
 
     let mut iter = 1..20;
     while let Some(_) = iter.next() {}
-
-
-
 
     let mut iter = 1..20;
     while let None = iter.next() {} // this is fine (if nonsensical)
@@ -140,9 +116,6 @@ fn main() {
 fn no_panic<T>(slice: &[T]) {
     let mut iter = slice.iter();
     loop {
-
-
-
         let _ = match iter.next() {
             Some(ele) => ele,
             None => break

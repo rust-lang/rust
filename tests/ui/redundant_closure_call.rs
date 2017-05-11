@@ -6,9 +6,6 @@
 fn main() {
 	let a = (|| 42)();
 
-
-
-
 	let mut i = 1;
 	let k = (|m| m+1)(i);
 
@@ -22,4 +19,3 @@ fn main() {
 
 	i = closure(4);
 }
-

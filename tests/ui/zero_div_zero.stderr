@@ -20,49 +20,49 @@ note: lint level defined here
   = help: Consider using `std::f32::NAN` if you would like a constant representing NaN
 
 warning: equal expressions as operands to `/`
- --> $DIR/zero_div_zero.rs:9:19
+ --> $DIR/zero_div_zero.rs:8:19
   |
-9 |     let f64_nan = 0.0 / 0.0f64;
+8 |     let f64_nan = 0.0 / 0.0f64;
   |                   ^^^^^^^^^^^^
   |
   = note: #[warn(eq_op)] on by default
 
 error: constant division of 0.0 with 0.0 will always result in NaN
- --> $DIR/zero_div_zero.rs:9:19
+ --> $DIR/zero_div_zero.rs:8:19
   |
-9 |     let f64_nan = 0.0 / 0.0f64;
+8 |     let f64_nan = 0.0 / 0.0f64;
   |                   ^^^^^^^^^^^^
   |
   = help: Consider using `std::f64::NAN` if you would like a constant representing NaN
 
 warning: equal expressions as operands to `/`
-  --> $DIR/zero_div_zero.rs:11:25
-   |
-11 |     let other_f64_nan = 0.0f64 / 0.0;
-   |                         ^^^^^^^^^^^^
-   |
-   = note: #[warn(eq_op)] on by default
+ --> $DIR/zero_div_zero.rs:9:25
+  |
+9 |     let other_f64_nan = 0.0f64 / 0.0;
+  |                         ^^^^^^^^^^^^
+  |
+  = note: #[warn(eq_op)] on by default
 
 error: constant division of 0.0 with 0.0 will always result in NaN
-  --> $DIR/zero_div_zero.rs:11:25
-   |
-11 |     let other_f64_nan = 0.0f64 / 0.0;
-   |                         ^^^^^^^^^^^^
-   |
-   = help: Consider using `std::f64::NAN` if you would like a constant representing NaN
+ --> $DIR/zero_div_zero.rs:9:25
+  |
+9 |     let other_f64_nan = 0.0f64 / 0.0;
+  |                         ^^^^^^^^^^^^
+  |
+  = help: Consider using `std::f64::NAN` if you would like a constant representing NaN
 
 warning: equal expressions as operands to `/`
-  --> $DIR/zero_div_zero.rs:13:28
+  --> $DIR/zero_div_zero.rs:10:28
    |
-13 |     let one_more_f64_nan = 0.0f64/0.0f64;
+10 |     let one_more_f64_nan = 0.0f64/0.0f64;
    |                            ^^^^^^^^^^^^^
    |
    = note: #[warn(eq_op)] on by default
 
 error: constant division of 0.0 with 0.0 will always result in NaN
-  --> $DIR/zero_div_zero.rs:13:28
+  --> $DIR/zero_div_zero.rs:10:28
    |
-13 |     let one_more_f64_nan = 0.0f64/0.0f64;
+10 |     let one_more_f64_nan = 0.0f64/0.0f64;
    |                            ^^^^^^^^^^^^^
    |
    = help: Consider using `std::f64::NAN` if you would like a constant representing NaN

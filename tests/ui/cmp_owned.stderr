@@ -11,21 +11,21 @@ note: lint level defined here
   |        ^^^^^^^^^
 
 error: this creates an owned instance just for comparison. Consider using `"foo" != x` to compare without allocation
-  --> $DIR/cmp_owned.rs:11:9
+  --> $DIR/cmp_owned.rs:10:9
    |
-11 |         "foo".to_string() != x;
+10 |         "foo".to_string() != x;
    |         ^^^^^^^^^^^^^^^^^
 
 error: this creates an owned instance just for comparison. Consider using `x != "foo"` to compare without allocation
-  --> $DIR/cmp_owned.rs:19:10
+  --> $DIR/cmp_owned.rs:17:10
    |
-19 |     x != "foo".to_owned();
+17 |     x != "foo".to_owned();
    |          ^^^^^^^^^^^^^^^^
 
 error: this creates an owned instance just for comparison. Consider using `x != "foo"` to compare without allocation
-  --> $DIR/cmp_owned.rs:24:10
+  --> $DIR/cmp_owned.rs:22:10
    |
-24 |     x != String::from("foo");
+22 |     x != String::from("foo");
    |          ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors

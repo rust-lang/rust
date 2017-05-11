@@ -41,47 +41,20 @@ fn main() {
     ZERO + ZERO != 1.0; //no error, comparison with zero is ok
 
     ONE == 1f32;
-
-
-
     ONE == 1.0 + 0.0;
-
-
-
-
     ONE + ONE == ZERO + ONE + ONE;
-
-
-
-
     ONE != 2.0;
-
-
-
     ONE != 0.0; // no error, comparison with zero is ok
     twice(ONE) != ONE;
-
-
-
     ONE as f64 != 2.0;
-
-
-
     ONE as f64 != 0.0; // no error, comparison with zero is ok
 
     let x : f64 = 1.0;
 
     x == 1.0;
-
-
-
     x != 0f64; // no error, comparison with zero is ok
 
     twice(x) != twice(ONE as f64);
-
-
-
-
 
     x < 0.0; // no errors, lower or greater comparisons need no fuzzyness
     x > 0.0;

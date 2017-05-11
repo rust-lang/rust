@@ -14,45 +14,30 @@ fn for_loop_over_option_and_result() {
     let v = vec![0,1,2];
 
     // check FOR_LOOP_OVER_OPTION lint
-
     for x in option {
-
-
         println!("{}", x);
     }
 
     // check FOR_LOOP_OVER_RESULT lint
-
     for x in result {
-
-
         println!("{}", x);
     }
 
     for x in option.ok_or("x not found") {
-
-
         println!("{}", x);
     }
 
     // make sure LOOP_OVER_NEXT lint takes precedence when next() is the last call in the chain
-
     for x in v.iter().next() {
-
         println!("{}", x);
     }
 
     // make sure we lint when next() is not the last call in the chain
-
     for x in v.iter().next().and(Some(0)) {
-
-
         println!("{}", x);
     }
 
     for x in v.iter().next().ok_or("x not found") {
-
-
         println!("{}", x);
     }
 
@@ -97,47 +82,26 @@ fn main() {
     let mut vec = vec![1, 2, 3, 4];
     let vec2 = vec![1, 2, 3, 4];
     for i in 0..vec.len() {
-
-
-
-
         println!("{}", vec[i]);
     }
 
     for i in 0..vec.len() {
-
         let i = 42; // make a different `i`
         println!("{}", vec[i]); // ok, not the `i` of the for-loop
     }
 
     for i in 0..vec.len() { let _ = vec[i]; }
 
-
-
-
-
     // ICE #746
     for j in 0..4 {
-
-
-
-
         println!("{:?}", STATIC[j]);
     }
 
     for j in 0..4 {
-
-
-
-
         println!("{:?}", CONST[j]);
     }
 
     for i in 0..vec.len() {
-
-
-
-
         println!("{} {}", vec[i], i);
     }
     for i in 0..vec.len() {      // not an error, indexing more than one variable
@@ -145,86 +109,46 @@ fn main() {
     }
 
     for i in 0..vec.len() {
-
-
-
-
         println!("{}", vec2[i]);
     }
 
     for i in 5..vec.len() {
-
-
-
-
         println!("{}", vec[i]);
     }
 
     for i in 0..MAX_LEN {
-
-
-
-
         println!("{}", vec[i]);
     }
 
     for i in 0...MAX_LEN {
-
-
-
-
         println!("{}", vec[i]);
     }
 
     for i in 5..10 {
-
-
-
-
         println!("{}", vec[i]);
     }
 
     for i in 5...10 {
-
-
-
-
         println!("{}", vec[i]);
     }
 
     for i in 5..vec.len() {
-
-
-
-
         println!("{} {}", vec[i], i);
     }
 
     for i in 5..10 {
-
-
-
-
         println!("{} {}", vec[i], i);
     }
 
     for i in 10..0 {
-
-
-
         println!("{}", i);
     }
 
     for i in 10...0 {
-
-
-
         println!("{}", i);
     }
 
     for i in MAX_LEN..0 {
-
-
         println!("{}", i);
     }
 
@@ -250,16 +174,10 @@ fn main() {
 
     // testing that the empty range lint folds constants
     for i in 10..5+4 {
-
-
-
         println!("{}", i);
     }
 
     for i in (5+2)..(3-1) {
-
-
-
         println!("{}", i);
     }
 
@@ -288,19 +206,10 @@ fn main() {
 
     for _v in vec.iter() { }
 
-
-
-
     for _v in vec.iter_mut() { }
-
-
-
 
     let out_vec = vec![1,2,3];
     for _v in out_vec.into_iter() { }
-
-
-
 
     let array = [1, 2, 3];
     for _v in array.into_iter() {}
@@ -310,60 +219,32 @@ fn main() {
 
     for _v in [1, 2, 3].iter() { }
 
-
-
-
     for _v in (&mut [1, 2, 3]).iter() { } // no error
 
     for _v in [0; 32].iter() {}
-
-
-
 
     for _v in [0; 33].iter() {} // no error
 
     let ll: LinkedList<()> = LinkedList::new();
     for _v in ll.iter() { }
 
-
-
-
     let vd: VecDeque<()> = VecDeque::new();
     for _v in vd.iter() { }
-
-
-
 
     let bh: BinaryHeap<()> = BinaryHeap::new();
     for _v in bh.iter() { }
 
-
-
-
     let hm: HashMap<(), ()> = HashMap::new();
     for _v in hm.iter() { }
-
-
-
 
     let bt: BTreeMap<(), ()> = BTreeMap::new();
     for _v in bt.iter() { }
 
-
-
-
     let hs: HashSet<()> = HashSet::new();
     for _v in hs.iter() { }
 
-
-
-
     let bs: BTreeSet<()> = BTreeSet::new();
     for _v in bs.iter() { }
-
-
-
-
 
     for _v in vec.iter().next() { }
 
@@ -442,19 +323,11 @@ fn main() {
 
     let m : HashMap<u64, u64> = HashMap::new();
     for (_, v) in &m {
-
-
-
-
         let _v = v;
     }
 
     let m : Rc<HashMap<u64, u64>> = Rc::new(HashMap::new());
     for (_, v) in &*m {
-
-
-
-
         let _v = v;
         // Here the `*` is not actually necesarry, but the test tests that we don't suggest
         // `in *m.values()` as we used to
@@ -462,29 +335,17 @@ fn main() {
 
     let mut m : HashMap<u64, u64> = HashMap::new();
     for (_, v) in &mut m {
-
-
-
-
         let _v = v;
     }
 
     let m: &mut HashMap<u64, u64> = &mut HashMap::new();
     for (_, v) in &mut *m {
-
-
-
-
         let _v = v;
     }
 
     let m : HashMap<u64, u64> = HashMap::new();
     let rm = &m;
     for (k, _value) in rm {
-
-
-
-
         let _k = k;
     }
 

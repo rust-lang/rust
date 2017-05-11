@@ -17,7 +17,6 @@ fn less_fun(x : *mut *mut u32) {
 
 macro_rules! mut_ptr {
     ($p:expr) => { &mut $p }
-
 }
 
 #[allow(unused_mut, unused_variables)]
@@ -29,25 +28,15 @@ fn main() {
 
     if fun(x) {
         let y : &mut &mut u32 = &mut &mut 2;
-
-
-
         **y + **x;
     }
 
     if fun(x) {
         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
-
-
-
-
-
-
         ***y + **x;
     }
 
     let mut z = mut_ptr!(&mut 3u32);
-
 }
 
 fn issue939() {

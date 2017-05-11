@@ -5,20 +5,10 @@
 
 fn main() {
     let a = Some(1u8).map(|a| foo(a));
-
-
-
     meta(|a| foo(a));
-
-
-
     let c = Some(1u8).map(|a| {1+2; foo}(a));
-
-
-
     let d = Some(1u8).map(|a| foo((|b| foo2(b))(a))); //is adjusted?
     all(&[1, 2, 3], &&2, |x, y| below(x, y)); //is adjusted
-
     unsafe {
         Some(1u8).map(|a| unsafe_fn(a)); // unsafe fn
     }
@@ -26,11 +16,7 @@ fn main() {
     // See #815
     let e = Some(1u8).map(|a| divergent(a));
     let e = Some(1u8).map(|a| generic(a));
-
-
-
     let e = Some(1u8).map(generic);
-
     // See #515
     let a: Option<Box<::std::ops::Deref<Target = [i32]>>> =
         Some(vec![1i32, 2]).map(|v| -> Box<::std::ops::Deref<Target = [i32]>> { Box::new(v) });
@@ -41,7 +27,6 @@ fn meta<F>(f: F) where F: Fn(u8) {
 }
 
 fn foo(_: u8) {
-
 }
 
 fn foo2(_: u8) -> u8 {

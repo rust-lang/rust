@@ -16,39 +16,39 @@ note: whether read occurs before this write depends on evaluation order
   |               ^^^^^
 
 error: unsequenced read of a variable
-  --> $DIR/eval_order_dependence.rs:12:5
+  --> $DIR/eval_order_dependence.rs:11:5
    |
-12 |     x += { x = 20; 2 };
+11 |     x += { x = 20; 2 };
    |     ^
    |
 note: whether read occurs before this write depends on evaluation order
-  --> $DIR/eval_order_dependence.rs:12:12
+  --> $DIR/eval_order_dependence.rs:11:12
    |
-12 |     x += { x = 20; 2 };
+11 |     x += { x = 20; 2 };
    |            ^^^^^^
 
 error: unsequenced read of a variable
-  --> $DIR/eval_order_dependence.rs:18:24
+  --> $DIR/eval_order_dependence.rs:17:24
    |
-18 |     let foo = Foo { a: x, .. { x = 6; base } };
+17 |     let foo = Foo { a: x, .. { x = 6; base } };
    |                        ^
    |
 note: whether read occurs before this write depends on evaluation order
-  --> $DIR/eval_order_dependence.rs:18:32
+  --> $DIR/eval_order_dependence.rs:17:32
    |
-18 |     let foo = Foo { a: x, .. { x = 6; base } };
+17 |     let foo = Foo { a: x, .. { x = 6; base } };
    |                                ^^^^^
 
 error: unsequenced read of a variable
-  --> $DIR/eval_order_dependence.rs:23:9
+  --> $DIR/eval_order_dependence.rs:21:9
    |
-23 |         x += { x = 20; 2 };
+21 |         x += { x = 20; 2 };
    |         ^
    |
 note: whether read occurs before this write depends on evaluation order
-  --> $DIR/eval_order_dependence.rs:23:16
+  --> $DIR/eval_order_dependence.rs:21:16
    |
-23 |         x += { x = 20; 2 };
+21 |         x += { x = 20; 2 };
    |                ^^^^^^
 
 error: aborting due to 4 previous errors

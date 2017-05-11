@@ -6,54 +6,36 @@ fn main() {
     let x = "hello";
     let y = "world";
     if x == "hello" {
-
-
-
         if y == "world" {
             println!("Hello world!");
         }
     }
 
     if x == "hello" || x == "world" {
-
-
-
         if y == "world" || y == "hello" {
             println!("Hello world!");
         }
     }
 
     if x == "hello" && x == "world" {
-
-
-
         if y == "world" || y == "hello" {
             println!("Hello world!");
         }
     }
 
     if x == "hello" || x == "world" {
-
-
-
         if y == "world" && y == "hello" {
             println!("Hello world!");
         }
     }
 
     if x == "hello" && x == "world" {
-
-
-
         if y == "world" && y == "hello" {
             println!("Hello world!");
         }
     }
 
     if 42 == 1337 {
-
-
-
         if 'a' != 'A' {
             println!("world!")
         }
@@ -63,9 +45,6 @@ fn main() {
     if x == "hello" {
         print!("Hello ");
     } else {
-
-
-
         if y == "world" {
             println!("world!")
         }
@@ -74,9 +53,6 @@ fn main() {
     if x == "hello" {
         print!("Hello ");
     } else {
-
-
-
         if let Some(42) = Some(42) {
             println!("world!")
         }
@@ -85,9 +61,6 @@ fn main() {
     if x == "hello" {
         print!("Hello ");
     } else {
-
-
-
         if y == "world" {
             println!("world")
         }
@@ -99,9 +72,6 @@ fn main() {
     if x == "hello" {
         print!("Hello ");
     } else {
-
-
-
         if let Some(42) = Some(42) {
             println!("world")
         }
@@ -113,9 +83,6 @@ fn main() {
     if let Some(42) = Some(42) {
         print!("Hello ");
     } else {
-
-
-
         if let Some(42) = Some(42) {
             println!("world")
         }
@@ -127,9 +94,6 @@ fn main() {
     if let Some(42) = Some(42) {
         print!("Hello ");
     } else {
-
-
-
         if x == "hello" {
             println!("world")
         }
@@ -141,9 +105,6 @@ fn main() {
     if let Some(42) = Some(42) {
         print!("Hello ");
     } else {
-
-
-
         if let Some(42) = Some(42) {
             println!("world")
         }

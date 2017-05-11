@@ -11,29 +11,29 @@ note: lint level defined here
   |         ^^^^^^^^^^^^^^^^^
 
 error: redundant closure found
-  --> $DIR/eta.rs:11:10
-   |
-11 |     meta(|a| foo(a));
-   |          ^^^^^^^^^^ help: remove closure as shown: `foo`
+ --> $DIR/eta.rs:8:10
+  |
+8 |     meta(|a| foo(a));
+  |          ^^^^^^^^^^ help: remove closure as shown: `foo`
 
 error: redundant closure found
-  --> $DIR/eta.rs:15:27
-   |
-15 |     let c = Some(1u8).map(|a| {1+2; foo}(a));
-   |                           ^^^^^^^^^^^^^^^^^ help: remove closure as shown: `{1+2; foo}`
+ --> $DIR/eta.rs:9:27
+  |
+9 |     let c = Some(1u8).map(|a| {1+2; foo}(a));
+  |                           ^^^^^^^^^^^^^^^^^ help: remove closure as shown: `{1+2; foo}`
 
 warning: this expression borrows a reference that is immediately dereferenced by the compiler
-  --> $DIR/eta.rs:20:21
+  --> $DIR/eta.rs:11:21
    |
-20 |     all(&[1, 2, 3], &&2, |x, y| below(x, y)); //is adjusted
+11 |     all(&[1, 2, 3], &&2, |x, y| below(x, y)); //is adjusted
    |                     ^^^
    |
    = note: #[warn(needless_borrow)] on by default
 
 error: redundant closure found
-  --> $DIR/eta.rs:28:27
+  --> $DIR/eta.rs:18:27
    |
-28 |     let e = Some(1u8).map(|a| generic(a));
+18 |     let e = Some(1u8).map(|a| generic(a));
    |                           ^^^^^^^^^^^^^^ help: remove closure as shown: `generic`
 
 error: aborting due to 4 previous errors

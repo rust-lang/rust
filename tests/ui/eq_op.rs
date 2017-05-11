@@ -21,9 +21,6 @@ fn main() {
     // unary and binary operators
     (-(2) < -(2));
     ((1 + 1) & (1 + 1) == (1 + 1) & (1 + 1));
-
-
-
     (1 * 2) + (3 * 4) == 1 * 2 + 3 * 4;
 
     // various other things
@@ -34,7 +31,6 @@ fn main() {
     // const folding
     1 + 1 == 2;
     1 - 1 == 0;
-
 
     1 - 1;
     1 / 1;
@@ -47,13 +43,9 @@ fn main() {
     let b: u32 = 0;
 
     a == b && b == a;
-
     a != b && b != a;
-
     a < b && b > a;
-
     a <= b && b >= a;
-
 
     let mut a = vec![1];
     a == a;

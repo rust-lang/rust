@@ -28,11 +28,6 @@ fn main() {
     let ok10 = 0_i64;
     let fail8 = 0123;
 
-
-
-
-
-
     let ok11 = 0o123;
     let ok12 = 0b101010;
 }

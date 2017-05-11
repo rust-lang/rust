@@ -19,9 +19,6 @@ fn main() {
             let t = &thingy;
 
             match t.$idx { Foo::A(ref val) => { println!("42"); }, _ => {} }
-
-
-
         }}
     }
 

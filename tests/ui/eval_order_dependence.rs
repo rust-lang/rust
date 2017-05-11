@@ -7,7 +7,6 @@ fn main() {
     let mut x = 0;
     let a = { x = 1; 1 } + x;
 
-
     // Example from iss#277
     x += { x = 20; 2 };
 
@@ -16,7 +15,6 @@ fn main() {
     struct Foo { a: i32, b: i32 };
     let base = Foo { a: 4, b: 5 };
     let foo = Foo { a: x, .. { x = 6; base } };
-
     // ...inside a closure?
     let closure = || {
         let mut x = 0;

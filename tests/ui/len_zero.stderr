@@ -59,39 +59,39 @@ note: lint level defined here
     |                               ^^^^^^^^
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:137:8
+   --> $DIR/len_zero.rs:134:8
     |
-137 |     if "".len() == 0 {
+134 |     if "".len() == 0 {
     |        ^^^^^^^^^^^^^ help: using `is_empty` is more concise: `"".is_empty()`
+
+error: length comparison to zero
+   --> $DIR/len_zero.rs:148:8
+    |
+148 |     if has_is_empty.len() == 0 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `has_is_empty.is_empty()`
+
+error: length comparison to zero
+   --> $DIR/len_zero.rs:151:8
+    |
+151 |     if has_is_empty.len() != 0 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
 
 error: length comparison to zero
    --> $DIR/len_zero.rs:154:8
     |
-154 |     if has_is_empty.len() == 0 {
-    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `has_is_empty.is_empty()`
+154 |     if has_is_empty.len() > 0 {
+    |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
 
 error: length comparison to zero
    --> $DIR/len_zero.rs:160:8
     |
-160 |     if has_is_empty.len() != 0 {
-    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
-
-error: length comparison to zero
-   --> $DIR/len_zero.rs:166:8
-    |
-166 |     if has_is_empty.len() > 0 {
-    |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
-
-error: length comparison to zero
-   --> $DIR/len_zero.rs:175:8
-    |
-175 |     if with_is_empty.len() == 0 {
+160 |     if with_is_empty.len() == 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `with_is_empty.is_empty()`
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:190:8
+   --> $DIR/len_zero.rs:172:8
     |
-190 |     if b.len() != 0 {
+172 |     if b.len() != 0 {
     |        ^^^^^^^^^^^^ help: using `is_empty` is more concise: `!b.is_empty()`
 
 error: aborting due to 11 previous errors

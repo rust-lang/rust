@@ -11,45 +11,45 @@ note: lint level defined here
    |         ^^^^^^^^^^^^^^^
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:18:5
+  --> $DIR/needless_return.rs:15:5
    |
-18 |     return true
+15 |     return true
    |     ^^^^^^^^^^^ help: remove `return` as shown: `true`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:26:9
+  --> $DIR/needless_return.rs:20:9
    |
-26 |         return true;
+20 |         return true;
    |         ^^^^^^^^^^^^ help: remove `return` as shown: `true`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:31:9
+  --> $DIR/needless_return.rs:22:9
    |
-31 |         return false;
+22 |         return false;
    |         ^^^^^^^^^^^^^ help: remove `return` as shown: `false`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:40:17
+  --> $DIR/needless_return.rs:28:17
    |
-40 |         true => return false,
+28 |         true => return false,
    |                 ^^^^^^^^^^^^ help: remove `return` as shown: `false`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:46:13
+  --> $DIR/needless_return.rs:30:13
    |
-46 |             return true;
+30 |             return true;
    |             ^^^^^^^^^^^^ help: remove `return` as shown: `true`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:56:9
+  --> $DIR/needless_return.rs:37:9
    |
-56 |         return true;
+37 |         return true;
    |         ^^^^^^^^^^^^ help: remove `return` as shown: `true`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:61:16
+  --> $DIR/needless_return.rs:39:16
    |
-61 |     let _ = || return true;
+39 |     let _ = || return true;
    |                ^^^^^^^^^^^ help: remove `return` as shown: `true`
 
 error: aborting due to 8 previous errors

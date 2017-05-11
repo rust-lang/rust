@@ -16,87 +16,87 @@ note: std::f32::EPSILON and std::f64::EPSILON are available.
    |     ^^^^^^^^^^^
 
 error: strict comparison of f32 or f64
-  --> $DIR/float_cmp.rs:47:5
+  --> $DIR/float_cmp.rs:44:5
    |
-47 |     ONE == 1.0 + 0.0;
+44 |     ONE == 1.0 + 0.0;
    |     ^^^^^^^^^^^^^^^^ help: consider comparing them within some error `(ONE - (1.0 + 0.0)).abs() < error`
    |
 note: std::f32::EPSILON and std::f64::EPSILON are available.
-  --> $DIR/float_cmp.rs:47:5
+  --> $DIR/float_cmp.rs:44:5
    |
-47 |     ONE == 1.0 + 0.0;
+44 |     ONE == 1.0 + 0.0;
    |     ^^^^^^^^^^^^^^^^
 
 error: strict comparison of f32 or f64
-  --> $DIR/float_cmp.rs:52:5
+  --> $DIR/float_cmp.rs:45:5
    |
-52 |     ONE + ONE == ZERO + ONE + ONE;
+45 |     ONE + ONE == ZERO + ONE + ONE;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider comparing them within some error `(ONE + ONE - (ZERO + ONE + ONE)).abs() < error`
    |
 note: std::f32::EPSILON and std::f64::EPSILON are available.
-  --> $DIR/float_cmp.rs:52:5
+  --> $DIR/float_cmp.rs:45:5
    |
-52 |     ONE + ONE == ZERO + ONE + ONE;
+45 |     ONE + ONE == ZERO + ONE + ONE;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: strict comparison of f32 or f64
-  --> $DIR/float_cmp.rs:57:5
+  --> $DIR/float_cmp.rs:46:5
    |
-57 |     ONE != 2.0;
+46 |     ONE != 2.0;
    |     ^^^^^^^^^^ help: consider comparing them within some error `(ONE - 2.0).abs() < error`
    |
 note: std::f32::EPSILON and std::f64::EPSILON are available.
-  --> $DIR/float_cmp.rs:57:5
+  --> $DIR/float_cmp.rs:46:5
    |
-57 |     ONE != 2.0;
+46 |     ONE != 2.0;
    |     ^^^^^^^^^^
 
 error: strict comparison of f32 or f64
-  --> $DIR/float_cmp.rs:62:5
+  --> $DIR/float_cmp.rs:48:5
    |
-62 |     twice(ONE) != ONE;
+48 |     twice(ONE) != ONE;
    |     ^^^^^^^^^^^^^^^^^ help: consider comparing them within some error `(twice(ONE) - ONE).abs() < error`
    |
 note: std::f32::EPSILON and std::f64::EPSILON are available.
-  --> $DIR/float_cmp.rs:62:5
+  --> $DIR/float_cmp.rs:48:5
    |
-62 |     twice(ONE) != ONE;
+48 |     twice(ONE) != ONE;
    |     ^^^^^^^^^^^^^^^^^
 
 error: strict comparison of f32 or f64
-  --> $DIR/float_cmp.rs:66:5
+  --> $DIR/float_cmp.rs:49:5
    |
-66 |     ONE as f64 != 2.0;
+49 |     ONE as f64 != 2.0;
    |     ^^^^^^^^^^^^^^^^^ help: consider comparing them within some error `(ONE as f64 - 2.0).abs() < error`
    |
 note: std::f32::EPSILON and std::f64::EPSILON are available.
-  --> $DIR/float_cmp.rs:66:5
+  --> $DIR/float_cmp.rs:49:5
    |
-66 |     ONE as f64 != 2.0;
+49 |     ONE as f64 != 2.0;
    |     ^^^^^^^^^^^^^^^^^
 
 error: strict comparison of f32 or f64
-  --> $DIR/float_cmp.rs:74:5
+  --> $DIR/float_cmp.rs:54:5
    |
-74 |     x == 1.0;
+54 |     x == 1.0;
    |     ^^^^^^^^ help: consider comparing them within some error `(x - 1.0).abs() < error`
    |
 note: std::f32::EPSILON and std::f64::EPSILON are available.
-  --> $DIR/float_cmp.rs:74:5
+  --> $DIR/float_cmp.rs:54:5
    |
-74 |     x == 1.0;
+54 |     x == 1.0;
    |     ^^^^^^^^
 
 error: strict comparison of f32 or f64
-  --> $DIR/float_cmp.rs:80:5
+  --> $DIR/float_cmp.rs:57:5
    |
-80 |     twice(x) != twice(ONE as f64);
+57 |     twice(x) != twice(ONE as f64);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider comparing them within some error `(twice(x) - twice(ONE as f64)).abs() < error`
    |
 note: std::f32::EPSILON and std::f64::EPSILON are available.
-  --> $DIR/float_cmp.rs:80:5
+  --> $DIR/float_cmp.rs:57:5
    |
-80 |     twice(x) != twice(ONE as f64);
+57 |     twice(x) != twice(ONE as f64);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 8 previous errors

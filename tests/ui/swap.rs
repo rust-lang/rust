@@ -12,9 +12,6 @@ fn array() {
     foo[0] = foo[1];
     foo[1] = temp;
 
-
-
-
     foo.swap(0, 1);
 }
 
@@ -24,9 +21,6 @@ fn slice() {
     foo[0] = foo[1];
     foo[1] = temp;
 
-
-
-
     foo.swap(0, 1);
 }
 
@@ -35,9 +29,6 @@ fn vec() {
     let temp = foo[0];
     foo[0] = foo[1];
     foo[1] = temp;
-
-
-
 
     foo.swap(0, 1);
 }
@@ -53,32 +44,16 @@ fn main() {
     a = b;
     b = a;
 
-
-
-
-
     ; let t = a;
     a = b;
     b = t;
-
-
-
-
 
     let mut c = Foo(42);
 
     c.0 = a;
     a = c.0;
 
-
-
-
-
     ; let t = c.0;
     c.0 = a;
     a = t;
-
-
-
-
 }

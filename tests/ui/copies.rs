@@ -28,7 +28,6 @@ pub enum Abc {
 #[deny(match_same_arms)]
 fn if_same_then_else() -> Result<&'static str, ()> {
     if true {
-
         Foo { bar: 42 };
         0..10;
         ..;
@@ -78,8 +77,6 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     let _ = match 42 {
         42 => {
-
-
             foo();
             let mut a = 42 + [23].len() as i32;
             if true {
@@ -101,8 +98,6 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     let _ = match Abc::A {
         Abc::A => 0,
-
-
         Abc::B => 1,
         _ => 0,
     };
@@ -112,7 +107,6 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     let _ = if true {
-
         42
     }
     else {
@@ -120,7 +114,6 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     };
 
     if true {
-
         for _ in &[42] {
             let foo: &Option<_> = &Some::<u8>(42);
             if true {
@@ -142,7 +135,6 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
-
         let bar = if true {
             42
         }
@@ -166,7 +158,6 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
-
         let _ = match 42 {
             42 => 1,
             a if a > 0 => 2,
@@ -187,7 +178,6 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
-
         if let Some(a) = Some(42) {}
     }
     else {
@@ -195,7 +185,6 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
-
         if let (1, .., 3) = (1, 2, 3) {}
     }
     else {
@@ -253,16 +242,12 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     let _ = match 42 {
         42 => foo(),
-
-
         51 => foo(),
         _ => true,
     };
 
     let _ = match Some(42) {
         Some(_) => 24,
-
-
         None => 24,
     };
 
@@ -285,37 +270,29 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     match (Some(42), Some(42)) {
         (Some(a), None) => bar(a),
-
-
         (None, Some(a)) => bar(a),
         _ => (),
     }
 
     match (Some(42), Some(42)) {
         (Some(a), ..) => bar(a),
-
-
         (.., Some(a)) => bar(a),
         _ => (),
     }
 
     match (1, 2, 3) {
         (1, .., 3) => 42,
-
-
         (.., 3) => 42,
         _ => 0,
     };
 
     let _ = if true {
-
         0.0
     } else {
         0.0
     };
 
     let _ = if true {
-
         -0.0
     } else {
         -0.0
@@ -336,7 +313,6 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     // Same NaNs
     let _ = if true {
-
         std::f32::NAN
     } else {
         std::f32::NAN
@@ -354,7 +330,6 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
-
         try!(Ok("foo"));
     }
     else {
@@ -362,7 +337,6 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
-
         let foo = "";
         return Ok(&foo[0..]);
     }
@@ -383,19 +357,16 @@ fn ifs_same_cond() {
     let b = false;
 
     if b {
-
     }
     else if b {
     }
 
     if a == 1 {
-
     }
     else if a == 1 {
     }
 
     if 2*a == 1 {
-
     }
     else if 2*a == 2 {
     }

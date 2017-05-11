@@ -24,9 +24,6 @@ fn dummy() {
 
 fn unwrap_addr() -> Option<&'static ExprNode> {
     match ExprNode::Butterflies {
-
-
-
         ExprNode::ExprAddrOf => Some(&NODE),
         _ => { let x = 5; None },
     }
@@ -36,18 +33,12 @@ fn single_match(){
     let x = Some(1u8);
 
     match x {
-
-
-
         Some(y) => { println!("{:?}", y); }
         _ => ()
     };
 
     let z = (1u8,1u8);
     match z {
-
-
-
         (2...3, 7...9) => dummy(),
         _ => {}
     };
@@ -70,17 +61,11 @@ fn single_match_know_enum() {
     let y : Result<_, i8> = Ok(1i8);
 
     match x {
-
-
-
         Some(y) => dummy(),
         None => ()
     };
 
     match y {
-
-
-
         Ok(y) => dummy(),
         Err(..) => ()
     };
@@ -88,9 +73,6 @@ fn single_match_know_enum() {
     let c = Cow::Borrowed("");
 
     match c {
-
-
-
         Cow::Borrowed(..) => dummy(),
         Cow::Owned(..) => (),
     };
@@ -112,51 +94,32 @@ fn match_bool() {
     let test: bool = true;
 
     match test {
-
-
-
         true => 0,
         false => 42,
     };
 
     let option = 1;
     match option == 1 {
-
-
-
         true => 1,
         false => 0,
     };
 
     match test {
-
-
-
         true => (),
         false => { println!("Noooo!"); }
     };
 
     match test {
-
-
-
         false => { println!("Noooo!"); }
         _ => (),
     };
 
     match test && test {
-
-
-
-
         false => { println!("Noooo!"); }
         _ => (),
     };
 
     match test {
-
-
-
         false => { println!("Noooo!"); }
         true => { println!("Yes!"); }
     };
@@ -173,9 +136,6 @@ fn ref_pats() {
     {
         let v = &Some(0);
         match v {
-
-
-
             &Some(v) => println!("{:?}", v),
             &None => println!("none"),
         }
@@ -186,18 +146,12 @@ fn ref_pats() {
     }
     let tup =& (1, 2);
     match tup {
-
-
-
         &(v, 1) => println!("{}", v),
         _ => println!("none"),
     }
     // special case: using & both in expr and pats
     let w = Some(0);
     match &w {
-
-
-
         &Some(v) => println!("{:?}", v),
         &None => println!("none"),
     }
@@ -209,17 +163,11 @@ fn ref_pats() {
 
     let a = &Some(0);
     if let &None = a {
-
-
-
         println!("none");
     }
 
     let b = Some(0);
     if let &None = &b {
-
-
-
         println!("none");
     }
 }

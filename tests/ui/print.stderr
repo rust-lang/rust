@@ -11,9 +11,9 @@ note: lint level defined here
    |                       ^^^^^^^^^
 
 error: use of `println!`
-  --> $DIR/print.rs:25:5
+  --> $DIR/print.rs:24:5
    |
-25 |     println!("Hello");
+24 |     println!("Hello");
    |     ^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -23,39 +23,39 @@ note: lint level defined here
    |         ^^^^^^^^^^^^
 
 error: use of `print!`
-  --> $DIR/print.rs:26:5
+  --> $DIR/print.rs:25:5
    |
-26 |     print!("Hello");
+25 |     print!("Hello");
    |     ^^^^^^^^^^^^^^^^
 
 error: use of `print!`
-  --> $DIR/print.rs:28:5
+  --> $DIR/print.rs:27:5
    |
-28 |     print!("Hello {}", "World");
+27 |     print!("Hello {}", "World");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `print!`
-  --> $DIR/print.rs:30:5
+  --> $DIR/print.rs:29:5
    |
-30 |     print!("Hello {:?}", "World");
+29 |     print!("Hello {:?}", "World");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `Debug`-based formatting
-  --> $DIR/print.rs:30:26
+  --> $DIR/print.rs:29:26
    |
-30 |     print!("Hello {:?}", "World");
+29 |     print!("Hello {:?}", "World");
    |                          ^^^^^^^
 
 error: use of `print!`
-  --> $DIR/print.rs:34:5
+  --> $DIR/print.rs:31:5
    |
-34 |     print!("Hello {:#?}", "#orld");
+31 |     print!("Hello {:#?}", "#orld");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `Debug`-based formatting
-  --> $DIR/print.rs:34:27
+  --> $DIR/print.rs:31:27
    |
-34 |     print!("Hello {:#?}", "#orld");
+31 |     print!("Hello {:#?}", "#orld");
    |                           ^^^^^^^
 
 error: aborting due to 8 previous errors
