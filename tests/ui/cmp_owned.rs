@@ -7,9 +7,7 @@ fn main() {
     fn with_to_string(x : &str) {
         x != "foo".to_string();
 
-
         "foo".to_string() != x;
-
     }
 
     let x = "oh";
