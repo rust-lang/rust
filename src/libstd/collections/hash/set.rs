@@ -116,8 +116,6 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// [`HashMap`]: struct.HashMap.html
 /// [`PartialEq`]: ../../std/cmp/trait.PartialEq.html
 /// [`RefCell`]: ../../std/cell/struct.RefCell.html
-
-
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashSet<T, S = RandomState> {
@@ -658,7 +656,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// #![feature(retain_hash_collection)]
     /// use std::collections::HashSet;
     ///
     /// let xs = [1,2,3,4,5,6];
@@ -666,7 +663,7 @@ impl<T, S> HashSet<T, S>
     /// set.retain(|&k| k % 2 == 0);
     /// assert_eq!(set.len(), 3);
     /// ```
-    #[unstable(feature = "retain_hash_collection", issue = "36648")]
+    #[stable(feature = "retain_hash_collection", since = "1.18.0")]
     pub fn retain<F>(&mut self, mut f: F)
         where F: FnMut(&T) -> bool
     {
@@ -1041,9 +1038,7 @@ impl<'a, K> FusedIterator for Iter<'a, K> {}
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, K: fmt::Debug> fmt::Debug for Iter<'a, K> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_list()
-            .entries(self.clone())
-            .finish()
+        f.debug_list().entries(self.clone()).finish()
     }
 }
 
@@ -1070,10 +1065,11 @@ impl<K> FusedIterator for IntoIter<K> {}
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<K: fmt::Debug> fmt::Debug for IntoIter<K> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let entries_iter = self.iter.inner.iter().map(|(k, _)| k);
-        f.debug_list()
-            .entries(entries_iter)
-            .finish()
+        let entries_iter = self.iter
+            .inner
+            .iter()
+            .map(|(k, _)| k);
+        f.debug_list().entries(entries_iter).finish()
     }
 }
 
@@ -1100,10 +1096,11 @@ impl<'a, K> FusedIterator for Drain<'a, K> {}
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, K: fmt::Debug> fmt::Debug for Drain<'a, K> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let entries_iter = self.iter.inner.iter().map(|(k, _)| k);
-        f.debug_list()
-            .entries(entries_iter)
-            .finish()
+        let entries_iter = self.iter
+            .inner
+            .iter()
+            .map(|(k, _)| k);
+        f.debug_list().entries(entries_iter).finish()
     }
 }
 
@@ -1143,12 +1140,10 @@ impl<'a, T, S> Iterator for Intersection<'a, T, S>
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, T, S> fmt::Debug for Intersection<'a, T, S>
     where T: fmt::Debug + Eq + Hash,
-          S: BuildHasher,
+          S: BuildHasher
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_list()
-            .entries(self.clone())
-            .finish()
+        f.debug_list().entries(self.clone()).finish()
     }
 }
 
@@ -1202,12 +1197,10 @@ impl<'a, T, S> FusedIterator for Difference<'a, T, S>
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, T, S> fmt::Debug for Difference<'a, T, S>
     where T: fmt::Debug + Eq + Hash,
-          S: BuildHasher,
+          S: BuildHasher
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_list()
-            .entries(self.clone())
-            .finish()
+        f.debug_list().entries(self.clone()).finish()
     }
 }
 
@@ -1243,12 +1236,10 @@ impl<'a, T, S> FusedIterator for SymmetricDifference<'a, T, S>
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, T, S> fmt::Debug for SymmetricDifference<'a, T, S>
     where T: fmt::Debug + Eq + Hash,
-          S: BuildHasher,
+          S: BuildHasher
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_list()
-            .entries(self.clone())
-            .finish()
+        f.debug_list().entries(self.clone()).finish()
     }
 }
 
@@ -1269,12 +1260,10 @@ impl<'a, T, S> FusedIterator for Union<'a, T, S>
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, T, S> fmt::Debug for Union<'a, T, S>
     where T: fmt::Debug + Eq + Hash,
-          S: BuildHasher,
+          S: BuildHasher
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_list()
-            .entries(self.clone())
-            .finish()
+        f.debug_list().entries(self.clone()).finish()
     }
 }
 
@@ -1698,7 +1687,7 @@ mod test_set {
 
     #[test]
     fn test_retain() {
-        let xs = [1,2,3,4,5,6];
+        let xs = [1, 2, 3, 4, 5, 6];
         let mut set: HashSet<isize> = xs.iter().cloned().collect();
         set.retain(|&k| k % 2 == 0);
         assert_eq!(set.len(), 3);
