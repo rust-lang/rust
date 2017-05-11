@@ -11,9 +11,12 @@
 use super::combine::{CombineFields, RelationDir};
 use super::{Subtype};
 
+use hir::def_id::DefId;
+
 use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
-use ty::relate::{Relate, RelateResult, TypeRelation};
+use ty::subst::Substs;
+use ty::relate::{self, Relate, RelateResult, TypeRelation};
 
 /// Ensures `a` is made equal to `b`. Returns `a` on success.
 pub struct Equate<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
@@ -37,6 +40,22 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
     fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.a_is_expected }
+
+    fn relate_item_substs(&mut self,
+                          _item_def_id: DefId,
+                          a_subst: &'tcx Substs<'tcx>,
+                          b_subst: &'tcx Substs<'tcx>)
+                          -> RelateResult<'tcx, &'tcx Substs<'tcx>>
+    {
+        // NB: Once we are equating types, we don't care about
+        // variance, so don't try to lookup the variance here. This
+        // also avoids some cycles (e.g. #41849) since looking up
+        // variance requires computing types which can require
+        // performing trait matching (which then performs equality
+        // unification).
+
+        relate::relate_substs(self, None, a_subst, b_subst)
+    }
 
     fn relate_with_variance<T: Relate<'tcx>>(&mut self,
                                              _: ty::Variance,
