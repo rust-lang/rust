@@ -4768,8 +4768,8 @@ impl<'a> Parser<'a> {
                 } else {
                     let mut err = self.diagnostic()
                         .struct_span_err(sp, "can't qualify macro invocation with `pub`");
-                    err.help(concat!("try adjusting the macro to put `pub` inside the invocation.",
-                        "If you do not intend to write a macro: Are missing a keyword like `fn`, `struct` or `enum`?"));
+                    err.help("try adjusting the macro to put `pub` inside the invocation.
+If you do not intend to write a macro: Are missing a keyword like `fn`, `struct` or `enum`?"));
                     Err(err)
                 }
             }
