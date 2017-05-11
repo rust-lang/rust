@@ -12,25 +12,25 @@ note: lint level defined here
   |         ^^^^^^
 
 error: redundant pattern matching, consider using `is_err()`
-  --> $DIR/if_let_redundant_pattern_matching.rs:14:12
+  --> $DIR/if_let_redundant_pattern_matching.rs:11:12
    |
-14 |     if let Err(_) = Err::<i32, i32>(42) {
+11 |     if let Err(_) = Err::<i32, i32>(42) {
    |     -------^^^^^^---------------------- help: try this `if Err::<i32, i32>(42).is_err()`
    |
    = note: #[deny(if_let_redundant_pattern_matching)] implied by #[deny(clippy)]
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/if_let_redundant_pattern_matching.rs:20:12
+  --> $DIR/if_let_redundant_pattern_matching.rs:14:12
    |
-20 |     if let None = None::<()> {
+14 |     if let None = None::<()> {
    |     -------^^^^------------- help: try this `if None::<()>.is_none()`
    |
    = note: #[deny(if_let_redundant_pattern_matching)] implied by #[deny(clippy)]
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/if_let_redundant_pattern_matching.rs:26:12
+  --> $DIR/if_let_redundant_pattern_matching.rs:17:12
    |
-26 |     if let Some(_) = Some(42) {
+17 |     if let Some(_) = Some(42) {
    |     -------^^^^^^^----------- help: try this `if Some(42).is_some()`
    |
    = note: #[deny(if_let_redundant_pattern_matching)] implied by #[deny(clippy)]
