@@ -264,11 +264,9 @@ struct RegionResolutionVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Generated maps:
-    region_maps: &'a mut RegionMaps,
+    region_maps: RegionMaps,
 
     cx: Context,
-
-    map: &'a hir_map::Map<'tcx>,
 
     /// `terminating_scopes` is a set containing the ids of each
     /// statement, or conditional/repeating expression. These scopes
@@ -1105,7 +1103,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 
     fn visit_body(&mut self, body: &'tcx hir::Body) {
         let body_id = body.id();
-        let owner_id = self.map.body_owner(body_id);
+        let owner_id = self.tcx.hir.body_owner(body_id);
 
         debug!("visit_body(id={:?}, span={:?}, body.id={:?}, cx.parent={:?})",
                owner_id,
@@ -1170,27 +1168,11 @@ fn region_maps<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         return tcx.region_maps(closure_base_def_id);
     }
 
-    let mut maps = RegionMaps::new();
-
     let id = tcx.hir.as_local_node_id(def_id).unwrap();
-    if let Some(body) = tcx.hir.maybe_body_owned_by(id) {
-        maps.root_body = Some(body);
-
-        // If the item is an associated const or a method,
-        // record its impl/trait parent, as it can also have
-        // lifetime parameters free in this body.
-        match tcx.hir.get(id) {
-            hir::map::NodeImplItem(_) |
-            hir::map::NodeTraitItem(_) => {
-                maps.root_parent = Some(tcx.hir.get_parent(id));
-            }
-            _ => {}
-        }
-
+    let maps = if let Some(body) = tcx.hir.maybe_body_owned_by(id) {
         let mut visitor = RegionResolutionVisitor {
-            tcx: tcx,
-            region_maps: &mut maps,
-            map: &tcx.hir,
+            tcx,
+            region_maps: RegionMaps::new(),
             cx: Context {
                 root_id: None,
                 parent: None,
@@ -1199,8 +1181,25 @@ fn region_maps<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
             terminating_scopes: NodeSet(),
         };
 
+        visitor.region_maps.root_body = Some(body);
+
+        // If the item is an associated const or a method,
+        // record its impl/trait parent, as it can also have
+        // lifetime parameters free in this body.
+        match tcx.hir.get(id) {
+            hir::map::NodeImplItem(_) |
+            hir::map::NodeTraitItem(_) => {
+                visitor.region_maps.root_parent = Some(tcx.hir.get_parent(id));
+            }
+            _ => {}
+        }
+
         visitor.visit_body(tcx.hir.body(body));
-    }
+
+        visitor.region_maps
+    } else {
+        RegionMaps::new()
+    };
 
     Rc::new(maps)
 }
