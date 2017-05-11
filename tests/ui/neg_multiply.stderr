@@ -11,9 +11,9 @@ note: lint level defined here
    |         ^^^^^^^^^^^^
 
 error: Negation by multiplying with -1
-  --> $DIR/neg_multiply.rs:33:5
+  --> $DIR/neg_multiply.rs:32:5
    |
-33 |     -1 * x;
+32 |     -1 * x;
    |     ^^^^^^
 
 error: aborting due to 2 previous errors
