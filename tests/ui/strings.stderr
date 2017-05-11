@@ -65,9 +65,9 @@ note: lint level defined here
    |        ^^^^^^^^^^^^^^^^^^^
 
 warning: manual implementation of an assign operation
-  --> $DIR/strings.rs:68:7
+  --> $DIR/strings.rs:65:7
    |
-68 |     ; x = x + 1;
+65 |     ; x = x + 1;
    |       ^^^^^^^^^ help: replace it with `x += 1`
    |
    = note: #[warn(assign_op_pattern)] on by default

@@ -49,9 +49,6 @@ fn both() {
 fn str_lit_as_bytes() {
     let bs = "hello there".as_bytes();
 
-
-
-
     // no warning, because this cannot be written as a byte string literal:
     let ubs = "☃".as_bytes();
 
@@ -66,8 +63,5 @@ fn main() {
     // the add is only caught for `String`
     let mut x = 1;
     ; x = x + 1;
-
-
-
     assert_eq!(2, x);
 }
