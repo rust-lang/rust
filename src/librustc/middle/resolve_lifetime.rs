@@ -894,7 +894,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         };
 
         if let Some(mut def) = result {
-            if let Some(body_id) = outermost_body {
+            if let Region::EarlyBound(..) = def {
+                // Do not free early-bound regions, only late-bound ones.
+            } else if let Some(body_id) = outermost_body {
                 let fn_id = self.hir_map.body_owner(body_id);
                 match self.hir_map.get(fn_id) {
                     hir::map::NodeItem(&hir::Item {

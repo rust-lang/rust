@@ -1271,7 +1271,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         let param_env = tcx.parameter_environment(def.did);
                         let fields = &def.variants[0].fields;
                         let last_field = &fields[fields.len()-1];
-                        let always_sized = last_field.ty(tcx, param_env.free_substs)
+                        let always_sized = tcx.type_of(last_field.did)
                           .is_sized(tcx, &param_env, DUMMY_SP);
                         if !always_sized { StructKind::MaybeUnsizedUnivariant }
                         else { StructKind::AlwaysSizedUnivariant }

@@ -818,8 +818,6 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             // Compute the fty from point of view of inside fn.
             let fn_sig =
-                fn_sig.subst(inh.tcx, &inh.parameter_environment.free_substs);
-            let fn_sig =
                 inh.liberate_late_bound_regions(def_id, &fn_sig);
             let fn_sig =
                 inh.normalize_associated_types_in(body.value.span, body_id.node_id, &fn_sig);
@@ -1554,10 +1552,6 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
-
-    fn get_free_substs(&self) -> Option<&Substs<'tcx>> {
-        Some(&self.parameter_environment.free_substs)
-    }
 
     fn get_type_parameter_bounds(&self, _: Span, def_id: DefId)
                                  -> ty::GenericPredicates<'tcx>

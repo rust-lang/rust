@@ -180,9 +180,7 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // create a parameter environment corresponding to a (skolemized) instantiation of impl1
     let penv = tcx.parameter_environment(impl1_def_id);
-    let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id)
-                             .unwrap()
-                             .subst(tcx, &penv.free_substs);
+    let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap();
 
     // Create a infcx, taking the predicates of impl1 as assumptions:
     let result = tcx.infer_ctxt(penv, Reveal::UserFacing).enter(|infcx| {

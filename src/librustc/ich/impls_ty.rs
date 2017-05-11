@@ -54,7 +54,8 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::RegionKind<'tc
                 db.depth.hash_stable(hcx, hasher);
                 i.hash_stable(hcx, hasher);
             }
-            ty::ReEarlyBound(ty::EarlyBoundRegion { index, name }) => {
+            ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index, name }) => {
+                def_id.hash_stable(hcx, hasher);
                 index.hash_stable(hcx, hasher);
                 name.hash_stable(hcx, hasher);
             }

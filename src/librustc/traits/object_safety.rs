@@ -206,9 +206,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Search for a predicate like `Self : Sized` amongst the trait bounds.
-        let free_substs = self.construct_free_substs(def_id);
         let predicates = self.predicates_of(def_id);
-        let predicates = predicates.instantiate(self, free_substs).predicates;
+        let predicates = predicates.instantiate_identity(self).predicates;
         elaborate_predicates(self, predicates)
             .any(|predicate| {
                 match predicate {

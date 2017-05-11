@@ -731,11 +731,18 @@ pub struct RegionParameterDef {
 impl RegionParameterDef {
     pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
         ty::EarlyBoundRegion {
+            def_id: self.def_id,
             index: self.index,
             name: self.name,
         }
     }
 
+    pub fn to_bound_region(&self) -> ty::BoundRegion {
+        self.to_early_bound_region_data().to_bound_region()
+    }
+}
+
+impl ty::EarlyBoundRegion {
     pub fn to_bound_region(&self) -> ty::BoundRegion {
         ty::BoundRegion::BrNamed(self.def_id, self.name)
     }
@@ -813,6 +820,21 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
             tcx.predicates_of(def_id).instantiate_into(tcx, instantiated, substs);
         }
         instantiated.predicates.extend(self.predicates.iter().map(|p| p.subst(tcx, substs)))
+    }
+
+    pub fn instantiate_identity(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
+                                -> InstantiatedPredicates<'tcx> {
+        let mut instantiated = InstantiatedPredicates::empty();
+        self.instantiate_identity_into(tcx, &mut instantiated);
+        instantiated
+    }
+
+    fn instantiate_identity_into(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                 instantiated: &mut InstantiatedPredicates<'tcx>) {
+        if let Some(def_id) = self.parent {
+            tcx.predicates_of(def_id).instantiate_identity_into(tcx, instantiated);
+        }
+        instantiated.predicates.extend(&self.predicates)
     }
 
     pub fn instantiate_supertrait(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -1240,9 +1262,6 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// more distinctions clearer.
 #[derive(Clone)]
 pub struct ParameterEnvironment<'tcx> {
-    /// See `construct_free_substs` for details.
-    pub free_substs: &'tcx Substs<'tcx>,
-
     /// Obligations that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
     /// into Obligations, and elaborated and normalized.
@@ -1264,7 +1283,6 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                               -> ParameterEnvironment<'tcx>
     {
         ParameterEnvironment {
-            free_substs: self.free_substs,
             caller_bounds: caller_bounds,
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),
@@ -2372,7 +2390,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// are no free type/lifetime parameters in scope.
     pub fn empty_parameter_environment(self) -> ParameterEnvironment<'tcx> {
         ty::ParameterEnvironment {
-            free_substs: self.intern_substs(&[]),
             caller_bounds: Slice::empty(),
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),
@@ -2380,43 +2397,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Constructs and returns a substitution that can be applied to move from
-    /// the "outer" view of a type or method to the "inner" view.
-    /// In general, this means converting from bound parameters to
-    /// free parameters. Since we currently represent bound/free type
-    /// parameters in the same way, this only has an effect on regions.
-    pub fn construct_free_substs(self, def_id: DefId) -> &'gcx Substs<'gcx> {
-        let scope = self.closure_base_def_id(def_id);
-        let substs = Substs::for_item(self.global_tcx(), def_id, |def, _| {
-            // map bound 'a => free 'a
-            self.global_tcx().mk_region(ReFree(FreeRegion {
-                scope,
-                bound_region: def.to_bound_region()
-            }))
-        }, |def, _| {
-            // map T => T
-            self.global_tcx().mk_param_from_def(def)
-        });
-
-        debug!("parameter_environment: {:?}", substs);
-        substs
-    }
-
     /// See `ParameterEnvironment` struct def'n for details.
     pub fn parameter_environment(self, def_id: DefId) -> ParameterEnvironment<'gcx> {
-        //
-        // Construct the free substs.
-        //
-
-        let free_substs = self.construct_free_substs(def_id);
-
         //
         // Compute the bounds on Self and the type parameters.
         //
 
         let tcx = self.global_tcx();
-        let generic_predicates = tcx.predicates_of(def_id);
-        let bounds = generic_predicates.instantiate(tcx, free_substs);
+        let bounds = tcx.predicates_of(def_id).instantiate_identity(tcx);
         let predicates = bounds.predicates;
 
         // Finally, we have to normalize the bounds in the environment, in
@@ -2433,7 +2421,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         //
 
         let unnormalized_env = ty::ParameterEnvironment {
-            free_substs,
             caller_bounds: tcx.intern_predicates(&predicates),
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),

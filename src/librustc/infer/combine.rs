@@ -423,15 +423,6 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                 return Ok(r);
             }
 
-            // Early-bound regions should really have been substituted away before
-            // we get to this point.
-            ty::ReEarlyBound(..) => {
-                span_bug!(
-                    self.span,
-                    "Encountered early bound region when generalizing: {:?}",
-                    r);
-            }
-
             // Always make a fresh region variable for skolemized regions;
             // the higher-ranked decision procedures rely on this.
             ty::ReSkolemized(..) => { }
@@ -442,6 +433,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
             ty::ReStatic |
             ty::ReScope(..) |
             ty::ReVar(..) |
+            ty::ReEarlyBound(..) |
             ty::ReFree(..) => {
                 match self.ambient_variance {
                     ty::Invariant => return Ok(r),

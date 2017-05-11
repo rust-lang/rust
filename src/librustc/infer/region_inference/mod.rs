@@ -29,7 +29,6 @@ use ty::{ReEmpty, ReStatic, ReFree, ReEarlyBound, ReErased};
 use ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
 
 use std::cell::{Cell, RefCell};
-use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::fmt;
 use std::mem;
 use std::u32;
@@ -127,7 +126,7 @@ pub enum UndoLogEntry<'tcx> {
     AddVerify(usize),
 
     /// We added the given `given`
-    AddGiven(ty::FreeRegion, ty::RegionVid),
+    AddGiven(Region<'tcx>, ty::RegionVid),
 
     /// We added a GLB/LUB "combinaton variable"
     AddCombination(CombineMapType, TwoRegions<'tcx>),
@@ -213,7 +212,7 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // record the fact that `'a <= 'b` is implied by the fn signature,
     // and then ignore the constraint when solving equations. This is
     // a bit of a hack but seems to work.
-    givens: RefCell<FxHashSet<(ty::FreeRegion, ty::RegionVid)>>,
+    givens: RefCell<FxHashSet<(Region<'tcx>, ty::RegionVid)>>,
 
     lubs: RefCell<CombineMap<'tcx>>,
     glbs: RefCell<CombineMap<'tcx>>,
@@ -309,8 +308,7 @@ impl<'a, 'gcx, 'tcx> TaintSet<'tcx> {
                         self.add_edge(a, b);
                     }
                     &AddGiven(a, b) => {
-                        self.add_edge(tcx.mk_region(ReFree(a)),
-                                      tcx.mk_region(ReVar(b)));
+                        self.add_edge(a, tcx.mk_region(ReVar(b)));
                     }
                     &AddVerify(i) => {
                         verifys[i].bound.for_each_region(&mut |b| {
@@ -661,7 +659,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn add_given(&self, sub: ty::FreeRegion, sup: ty::RegionVid) {
+    pub fn add_given(&self, sub: Region<'tcx>, sup: ty::RegionVid) {
         // cannot add givens once regions are resolved
         assert!(self.values_are_none());
 
@@ -702,9 +700,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                origin);
 
         match (sub, sup) {
-            (&ReEarlyBound(..), _) |
             (&ReLateBound(..), _) |
-            (_, &ReEarlyBound(..)) |
             (_, &ReLateBound(..)) => {
                 span_bug!(origin.span(),
                           "cannot relate bound region: {:?} <= {:?}",
@@ -908,8 +904,6 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         match (a, b) {
             (&ReLateBound(..), _) |
             (_, &ReLateBound(..)) |
-            (&ReEarlyBound(..), _) |
-            (_, &ReEarlyBound(..)) |
             (&ReErased, _) |
             (_, &ReErased) => {
                 bug!("cannot relate region: LUB({:?}, {:?})", a, b);
@@ -931,18 +925,32 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                           b);
             }
 
-            (&ReFree(ref fr), &ReScope(s_id)) |
-            (&ReScope(s_id), &ReFree(ref fr)) => {
+            (&ReEarlyBound(_), &ReScope(s_id)) |
+            (&ReScope(s_id), &ReEarlyBound(_)) |
+            (&ReFree(_), &ReScope(s_id)) |
+            (&ReScope(s_id), &ReFree(_)) => {
                 // A "free" region can be interpreted as "some region
                 // at least as big as fr.scope".  So, we can
                 // reasonably compare free regions and scopes:
-                let fr_scope = region_rels.region_maps.free_extent(self.tcx, fr);
+                let fr_scope = match (a, b) {
+                    (&ReEarlyBound(ref br), _) | (_, &ReEarlyBound(ref br)) => {
+                        region_rels.region_maps.early_free_extent(self.tcx, br)
+                    }
+                    (&ReFree(ref fr), _) | (_, &ReFree(ref fr)) => {
+                        region_rels.region_maps.free_extent(self.tcx, fr)
+                    }
+                    _ => bug!()
+                };
                 let r_id = region_rels.region_maps.nearest_common_ancestor(fr_scope, s_id);
                 if r_id == fr_scope {
                     // if the free region's scope `fr.scope` is bigger than
                     // the scope region `s_id`, then the LUB is the free
                     // region itself:
-                    return self.tcx.mk_region(ReFree(*fr));
+                    match (a, b) {
+                        (_, &ReScope(_)) => return a,
+                        (&ReScope(_), _) => return b,
+                        _ => bug!()
+                    }
                 }
 
                 // otherwise, we don't know what the free region is,
@@ -958,6 +966,9 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 self.tcx.mk_region(ReScope(lub))
             }
 
+            (&ReEarlyBound(_), &ReEarlyBound(_)) |
+            (&ReFree(_), &ReEarlyBound(_)) |
+            (&ReEarlyBound(_), &ReFree(_)) |
             (&ReFree(_), &ReFree(_)) => {
                 region_rels.lub_free_regions(a, b)
             }
@@ -1040,13 +1051,13 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
         let mut givens = self.givens.borrow_mut();
         let seeds: Vec<_> = givens.iter().cloned().collect();
-        for (fr, vid) in seeds {
+        for (r, vid) in seeds {
             let seed_index = NodeIndex(vid.index as usize);
             for succ_index in graph.depth_traverse(seed_index, OUTGOING) {
                 let succ_index = succ_index.0 as u32;
                 if succ_index < self.num_vars() {
                     let succ_vid = RegionVid { index: succ_index };
-                    givens.insert((fr, succ_vid));
+                    givens.insert((r, succ_vid));
                 }
             }
         }
@@ -1095,8 +1106,9 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
         // Check if this relationship is implied by a given.
         match *a_region {
-            ty::ReFree(fr) => {
-                if self.givens.borrow().contains(&(fr, b_vid)) {
+            ty::ReEarlyBound(_) |
+            ty::ReFree(_) => {
+                if self.givens.borrow().contains(&(a_region, b_vid)) {
                     debug!("given");
                     return false;
                 }
@@ -1332,16 +1344,15 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         // We place free regions first because we are special casing
         // SubSupConflict(ReFree, ReFree) when reporting error, and so
         // the user will more likely get a specific suggestion.
-        fn free_regions_first(a: &RegionAndOrigin, b: &RegionAndOrigin) -> Ordering {
-            match (a.region, b.region) {
-                (&ReFree(..), &ReFree(..)) => Equal,
-                (&ReFree(..), _) => Less,
-                (_, &ReFree(..)) => Greater,
-                (..) => Equal,
+        fn region_order_key(x: &RegionAndOrigin) -> u8 {
+            match *x.region {
+                ReEarlyBound(_) => 0,
+                ReFree(_) => 1,
+                _ => 2
             }
         }
-        lower_bounds.sort_by(|a, b| free_regions_first(a, b));
-        upper_bounds.sort_by(|a, b| free_regions_first(a, b));
+        lower_bounds.sort_by_key(region_order_key);
+        upper_bounds.sort_by_key(region_order_key);
 
         for lower_bound in &lower_bounds {
             for upper_bound in &upper_bounds {

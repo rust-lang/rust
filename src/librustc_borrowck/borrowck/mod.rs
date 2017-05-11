@@ -513,6 +513,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         match (&err.code, &err.cause) {
             (&err_out_of_scope(&ty::ReScope(_), &ty::ReStatic, _),
              &BorrowViolation(euv::ClosureCapture(span))) |
+            (&err_out_of_scope(&ty::ReScope(_), &ty::ReEarlyBound(..), _),
+             &BorrowViolation(euv::ClosureCapture(span))) |
             (&err_out_of_scope(&ty::ReScope(_), &ty::ReFree(..), _),
              &BorrowViolation(euv::ClosureCapture(span))) => {
                 return self.report_out_of_scope_escaping_closure_capture(&err, span);

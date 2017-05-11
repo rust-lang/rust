@@ -790,6 +790,7 @@ impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct EarlyBoundRegion {
+    pub def_id: DefId,
     pub index: u32,
     pub name: Name,
 }
@@ -906,9 +907,8 @@ impl DebruijnIndex {
 
 /// Region utilities
 impl<'tcx> RegionKind<'tcx> {
-    pub fn is_bound(&self) -> bool {
+    pub fn is_late_bound(&self) -> bool {
         match *self {
-            ty::ReEarlyBound(..) => true,
             ty::ReLateBound(..) => true,
             _ => false,
         }

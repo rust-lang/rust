@@ -172,19 +172,35 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 explain_span(self, scope_decorated_tag, span)
             }
 
-            ty::ReFree(ref fr) => {
-                let prefix = match fr.bound_region {
-                    ty::BrAnon(idx) => {
-                        format!("the anonymous lifetime #{} defined on", idx + 1)
+            ty::ReEarlyBound(_) |
+            ty::ReFree(_) => {
+                let scope = match *region {
+                    ty::ReEarlyBound(ref br) => {
+                        self.parent_def_id(br.def_id).unwrap()
                     }
-                    ty::BrFresh(_) => "an anonymous lifetime defined on".to_owned(),
-                    _ => {
-                        format!("the lifetime {} as defined on",
-                                fr.bound_region)
+                    ty::ReFree(ref fr) => fr.scope,
+                    _ => bug!()
+                };
+                let prefix = match *region {
+                    ty::ReEarlyBound(ref br) => {
+                        format!("the lifetime {} as defined on", br.name)
                     }
+                    ty::ReFree(ref fr) => {
+                        match fr.bound_region {
+                            ty::BrAnon(idx) => {
+                                format!("the anonymous lifetime #{} defined on", idx + 1)
+                            }
+                            ty::BrFresh(_) => "an anonymous lifetime defined on".to_owned(),
+                            _ => {
+                                format!("the lifetime {} as defined on",
+                                        fr.bound_region)
+                            }
+                        }
+                    }
+                    _ => bug!()
                 };
 
-                let node = self.hir.as_local_node_id(fr.scope)
+                let node = self.hir.as_local_node_id(scope)
                                    .unwrap_or(DUMMY_NODE_ID);
                 let unknown;
                 let tag = match self.hir.find(node) {
@@ -199,12 +215,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     Some(_) => {
                         unknown = format!("unexpected node ({}) for scope {:?}.  \
                                            Please report a bug.",
-                                          self.hir.node_to_string(node), fr.scope);
+                                          self.hir.node_to_string(node), scope);
                         &unknown
                     }
                     None => {
                         unknown = format!("unknown node for scope {:?}.  \
-                                           Please report a bug.", fr.scope);
+                                           Please report a bug.", scope);
                         &unknown
                     }
                 };
@@ -215,8 +231,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::ReStatic => ("the static lifetime".to_owned(), None),
 
             ty::ReEmpty => ("the empty lifetime".to_owned(), None),
-
-            ty::ReEarlyBound(ref data) => (data.name.to_string(), None),
 
             // FIXME(#13998) ReSkolemized should probably print like
             // ReFree rather than dumping Debug output on the user.
@@ -797,6 +811,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         let mut err = match *sub {
+            ty::ReEarlyBound(_) |
             ty::ReFree(ty::FreeRegion {bound_region: ty::BrNamed(..), ..}) => {
                 // Does the required lifetime have a nice name we can print?
                 let mut err = struct_span_err!(self.tcx.sess,

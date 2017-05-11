@@ -85,7 +85,6 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
         let mut fulfillment_cx = traits::FulfillmentContext::new();
 
         let named_type = tcx.type_of(self_type_did);
-        let named_type = named_type.subst(tcx, &infcx.parameter_environment.free_substs);
 
         let drop_impl_span = tcx.def_span(drop_impl_did);
         let fresh_impl_substs =

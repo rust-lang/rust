@@ -506,11 +506,7 @@ impl<'tcx> fmt::Debug for ty::ClosureUpvar<'tcx> {
 
 impl<'tcx> fmt::Debug for ty::ParameterEnvironment<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ParameterEnvironment(\
-            free_substs={:?}, \
-            caller_bounds={:?})",
-            self.free_substs,
-            self.caller_bounds)
+        write!(f, "ParameterEnvironment({:?})", self.caller_bounds)
     }
 }
 

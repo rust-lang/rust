@@ -19,7 +19,6 @@ use rustc::traits::{self, ObligationCause, Reveal};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::TypeFoldable;
 use rustc::ty::adjustment::CoerceUnsizedInfo;
-use rustc::ty::subst::Subst;
 use rustc::ty::util::CopyImplementationError;
 use rustc::infer;
 
@@ -107,7 +106,6 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let span = tcx.hir.span(impl_node_id);
     let param_env = tcx.parameter_environment(impl_did);
-    let self_type = self_type.subst(tcx, &param_env.free_substs);
     assert!(!self_type.has_escaping_regions());
 
     debug!("visit_implementation_of_copy: self_type={:?} (free)",
@@ -202,8 +200,6 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let span = tcx.hir.span(impl_node_id);
     let param_env = tcx.parameter_environment(impl_did);
-    let source = source.subst(tcx, &param_env.free_substs);
-    let target = target.subst(tcx, &param_env.free_substs);
     assert!(!source.has_escaping_regions());
 
     let err_info = CoerceUnsizedInfo { custom_kind: None };

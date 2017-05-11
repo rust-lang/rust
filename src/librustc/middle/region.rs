@@ -608,6 +608,33 @@ impl<'tcx> RegionMaps<'tcx> {
 
     /// Assuming that the provided region was defined within this `RegionMaps`,
     /// returns the outermost `CodeExtent` that the region outlives.
+    pub fn early_free_extent<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                       br: &ty::EarlyBoundRegion)
+                                       -> CodeExtent<'tcx> {
+        let param_owner = tcx.parent_def_id(br.def_id).unwrap();
+
+        let param_owner_id = tcx.hir.as_local_node_id(param_owner).unwrap();
+        let body_id = tcx.hir.maybe_body_owned_by(param_owner_id).unwrap_or_else(|| {
+            // The lifetime was defined on node that doesn't own a body,
+            // which in practice can only mean a trait or an impl, that
+            // is the parent of a method, and that is enforced below.
+            assert_eq!(Some(param_owner_id), self.root_parent,
+                       "free_extent: {:?} not recognized by the region maps for {:?}",
+                       param_owner,
+                       self.root_body.map(|body| tcx.hir.body_owner_def_id(body)));
+
+            // The trait/impl lifetime is in scope for the method's body.
+            self.root_body.unwrap()
+        });
+
+        tcx.intern_code_extent(CodeExtentData::CallSiteScope {
+            fn_id: tcx.hir.body_owner(body_id),
+            body_id: body_id.node_id
+        })
+    }
+
+    /// Assuming that the provided region was defined within this `RegionMaps`,
+    /// returns the outermost `CodeExtent` that the region outlives.
     pub fn free_extent<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, fr: &ty::FreeRegion)
                                  -> CodeExtent<'tcx> {
         let param_owner = match fr.bound_region {
@@ -617,27 +644,12 @@ impl<'tcx> RegionMaps<'tcx> {
             _ => fr.scope
         };
 
+        // Ensure that the named late-bound lifetimes were defined
+        // on the same function that they ended up being freed in.
+        assert_eq!(param_owner, fr.scope);
+
         let param_owner_id = tcx.hir.as_local_node_id(param_owner).unwrap();
-        let body_id = tcx.hir.maybe_body_owned_by(param_owner_id)
-        .map(|body| {
-            assert_eq!(param_owner, fr.scope);
-            body
-        })
-        .unwrap_or_else(|| {
-            let root = tcx.hir.as_local_node_id(fr.scope).unwrap();
-
-            assert_eq!(Some(param_owner_id), self.root_parent,
-                       "free_extent: {:?} not recognized by the region maps for {:?}",
-                       param_owner, fr.scope);
-
-            let root_body = tcx.hir.body_owned_by(root);
-
-            assert!(Some(root_body) == self.root_body,
-                    "free_extent: {:?} not inside {:?}",
-                    param_owner, self.root_body.map(|body| tcx.hir.body_owner_def_id(body)));
-
-            root_body
-        });
+        let body_id = tcx.hir.body_owned_by(param_owner_id);
 
         tcx.intern_code_extent(CodeExtentData::CallSiteScope {
             fn_id: tcx.hir.body_owner(body_id),

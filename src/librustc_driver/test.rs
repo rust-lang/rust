@@ -296,8 +296,9 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     pub fn re_early_bound(&self, index: u32, name: &'static str) -> ty::Region<'tcx> {
         let name = Symbol::intern(name);
         self.infcx.tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
-            index: index,
-            name: name,
+            def_id: self.infcx.tcx.hir.local_def_id(ast::CRATE_NODE_ID),
+            index,
+            name,
         }))
     }
 

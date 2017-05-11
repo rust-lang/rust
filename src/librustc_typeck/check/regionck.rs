@@ -397,9 +397,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             for implication in implied_bounds {
                 debug!("implication: {:?}", implication);
                 match implication {
-                    ImpliedBound::RegionSubRegion(&ty::ReFree(free_a),
+                    ImpliedBound::RegionSubRegion(r_a @ &ty::ReEarlyBound(_),
+                                                  &ty::ReVar(vid_b)) |
+                    ImpliedBound::RegionSubRegion(r_a @ &ty::ReFree(_),
                                                   &ty::ReVar(vid_b)) => {
-                        self.add_given(free_a, vid_b);
+                        self.add_given(r_a, vid_b);
                     }
                     ImpliedBound::RegionSubParam(r_a, param_b) => {
                         self.region_bound_pairs.push((r_a, GenericKind::Param(param_b)));
@@ -1664,7 +1666,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         }
 
         let mut regions = ty.regions();
-        regions.retain(|r| !r.is_bound()); // ignore late-bound regions
+        regions.retain(|r| !r.is_late_bound()); // ignore late-bound regions
         bounds.push(VerifyBound::AllRegions(regions));
 
         // remove bounds that must hold, since they are not interesting

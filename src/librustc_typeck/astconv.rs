@@ -41,12 +41,6 @@ pub trait AstConv<'gcx, 'tcx> {
     fn get_type_parameter_bounds(&self, span: Span, def_id: DefId)
                                  -> ty::GenericPredicates<'tcx>;
 
-    /// Return an (optional) substitution to convert bound type parameters that
-    /// are in scope into free ones. This function should only return Some
-    /// within a fn body.
-    /// See ParameterEnvironment::free_substs for more information.
-    fn get_free_substs(&self) -> Option<&Substs<'tcx>>;
-
     /// What lifetime should we use when a lifetime is omitted (and not elided)?
     fn re_infer(&self, span: Span, _def: Option<&ty::RegionParameterDef>)
                 -> Option<ty::Region<'tcx>>;
@@ -121,6 +115,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             Some(&rl::Region::EarlyBound(index, id)) => {
                 let name = tcx.hir.name(id);
                 tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
+                    def_id: tcx.hir.local_def_id(id),
                     index: index,
                     name: name
                 }))
@@ -857,12 +852,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     }
                 };
 
-                let trait_ref = if let Some(free_substs) = self.get_free_substs() {
-                    trait_ref.subst(tcx, free_substs)
-                } else {
-                    trait_ref
-                };
-
                 let candidates =
                     traits::supertraits(tcx, ty::Binder(trait_ref))
                     .filter(|r| self.trait_defines_associated_type_named(r.def_id(),
@@ -1020,12 +1009,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_type_params(&path.segments);
 
-                let ty = tcx.at(span).type_of(def_id);
-                if let Some(free_substs) = self.get_free_substs() {
-                    ty.subst(tcx, free_substs)
-                } else {
-                    ty
-                }
+                tcx.at(span).type_of(def_id)
             }
             Def::SelfTy(Some(_), None) => {
                 // Self in trait.

@@ -15,6 +15,7 @@ use super::{check_fn, Expectation, FnCtxt};
 use astconv::AstConv;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::ty::{self, ToPolyTraitRef, Ty};
+use rustc::ty::subst::Substs;
 use std::cmp;
 use std::iter;
 use syntax::abi::Abi;
@@ -67,8 +68,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Create type variables (for now) to represent the transformed
         // types of upvars. These will be unified during the upvar
         // inference phase (`upvar.rs`).
+        let base_substs = Substs::identity_for_item(self.tcx,
+            self.tcx.closure_base_def_id(expr_def_id));
         let closure_type = self.tcx.mk_closure(expr_def_id,
-            self.parameter_environment.free_substs.extend_to(self.tcx, expr_def_id,
+            base_substs.extend_to(self.tcx, expr_def_id,
                 |_, _| span_bug!(expr.span, "closure has region param"),
                 |_, _| self.infcx.next_ty_var(TypeVariableOrigin::TransformedUpvar(expr.span))
             )

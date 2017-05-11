@@ -353,6 +353,10 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                 let loan_scope = match *loan_region {
                     ty::ReScope(scope) => scope,
 
+                    ty::ReEarlyBound(ref br) => {
+                        self.bccx.region_maps.early_free_extent(self.tcx(), br)
+                    }
+
                     ty::ReFree(ref fr) => {
                         self.bccx.region_maps.free_extent(self.tcx(), fr)
                     }
@@ -361,7 +365,6 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
 
                     ty::ReEmpty |
                     ty::ReLateBound(..) |
-                    ty::ReEarlyBound(..) |
                     ty::ReVar(..) |
                     ty::ReSkolemized(..) |
                     ty::ReErased => {
