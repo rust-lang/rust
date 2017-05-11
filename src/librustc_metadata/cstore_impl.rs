@@ -41,8 +41,6 @@ use rustc::hir::svh::Svh;
 use rustc_back::target::Target;
 use rustc::hir;
 
-use std::collections::BTreeMap;
-
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $cdata:ident $($name:ident => $compute:block)*) => {
         pub fn provide<$lt>(providers: &mut Providers<$lt>) {
@@ -113,21 +111,23 @@ provide! { <'tcx> tcx, def_id, cdata
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
     stability => { cdata.get_stability(def_id.index) }
     deprecation => { cdata.get_deprecation(def_id.index) }
-    item_body_nested_bodies => {
-        let map: BTreeMap<_, _> = cdata.entry(def_id.index).ast.into_iter().flat_map(|ast| {
-            ast.decode(cdata).nested_bodies.decode(cdata).map(|body| (body.id(), body))
-        }).collect();
-
-        Rc::new(map)
+    item_attrs => { cdata.get_item_attrs(def_id.index, &tcx.dep_graph) }
+    // FIXME(#38501) We've skipped a `read` on the `HirBody` of
+    // a `fn` when encoding, so the dep-tracking wouldn't work.
+    // This is only used by rustdoc anyway, which shouldn't have
+    // incremental recompilation ever enabled.
+    fn_arg_names => { cdata.get_fn_arg_names(def_id.index) }
+    impl_parent => { cdata.get_parent_impl(def_id.index) }
+    trait_of_item => { cdata.get_trait_of_item(def_id.index) }
+    is_exported_symbol => {
+        let dep_node = cdata.metadata_dep_node(GlobalMetaDataKind::ExportedSymbols);
+        cdata.exported_symbols.get(&tcx.dep_graph, dep_node).contains(&def_id.index)
     }
+    item_body_nested_bodies => { Rc::new(cdata.item_body_nested_bodies(def_id.index)) }
     const_is_rvalue_promotable_to_static => {
-        cdata.entry(def_id.index).ast.expect("const item missing `ast`")
-            .decode(cdata).rvalue_promotable_to_static
+        cdata.const_is_rvalue_promotable_to_static(def_id.index)
     }
-    is_mir_available => {
-        !cdata.is_proc_macro(def_id.index) &&
-        cdata.maybe_entry(def_id.index).and_then(|item| item.decode(cdata).mir).is_some()
-    }
+    is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 }
 
 impl CrateStore for cstore::CStore {
@@ -143,22 +143,6 @@ impl CrateStore for cstore::CStore {
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics {
         self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).get_generics(def.index)
-    }
-
-    fn item_attrs(&self, def_id: DefId) -> Rc<[ast::Attribute]>
-    {
-        self.get_crate_data(def_id.krate)
-            .get_item_attrs(def_id.index, &self.dep_graph)
-    }
-
-    fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name>
-    {
-        // FIXME(#38501) We've skipped a `read` on the `HirBody` of
-        // a `fn` when encoding, so the dep-tracking wouldn't work.
-        // This is only used by rustdoc anyway, which shouldn't have
-        // incremental recompilation ever enabled.
-        assert!(!self.dep_graph.is_fully_enabled());
-        self.get_crate_data(did.krate).get_fn_arg_names(did.index)
     }
 
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>
@@ -179,16 +163,6 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(def.krate).get_impl_defaultness(def.index)
     }
 
-    fn impl_parent(&self, impl_def: DefId) -> Option<DefId> {
-        self.dep_graph.read(DepNode::MetaData(impl_def));
-        self.get_crate_data(impl_def.krate).get_parent_impl(impl_def.index)
-    }
-
-    fn trait_of_item(&self, def_id: DefId) -> Option<DefId> {
-        self.dep_graph.read(DepNode::MetaData(def_id));
-        self.get_crate_data(def_id.krate).get_trait_of_item(def_id.index)
-    }
-
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem
     {
         self.dep_graph.read(DepNode::MetaData(def));
@@ -206,21 +180,9 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(impl_did.krate).is_default_impl(impl_did.index)
     }
 
-    fn is_foreign_item(&self, did: DefId) -> bool {
-        self.get_crate_data(did.krate).is_foreign_item(did.index)
-    }
-
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool
     {
         self.do_is_statically_included_foreign_item(def_id)
-    }
-
-    fn is_exported_symbol(&self, def_id: DefId) -> bool {
-        let data = self.get_crate_data(def_id.krate);
-        let dep_node = data.metadata_dep_node(GlobalMetaDataKind::ExportedSymbols);
-        data.exported_symbols
-            .get(&self.dep_graph, dep_node)
-            .contains(&def_id.index)
     }
 
     fn is_dllimport_foreign_item(&self, def_id: DefId) -> bool {

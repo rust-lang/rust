@@ -186,7 +186,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                 llvm::set_thread_local(g, true);
             }
         }
-        if ccx.use_dll_storage_attrs() && !ccx.sess().cstore.is_foreign_item(def_id) {
+        if ccx.use_dll_storage_attrs() && !ccx.tcx().is_foreign_item(def_id) {
             // This item is external but not foreign, i.e. it originates from an external Rust
             // crate. Since we don't know whether this crate will be linked dynamically or
             // statically in the final application, we always mark such symbols as 'dllimport'.

@@ -210,27 +210,21 @@ pub trait CrateStore {
     fn visibility(&self, def: DefId) -> ty::Visibility;
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>>;
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics;
-    fn item_attrs(&self, def_id: DefId) -> Rc<[ast::Attribute]>;
-    fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name>;
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>;
 
     // impl info
     fn impl_defaultness(&self, def: DefId) -> hir::Defaultness;
-    fn impl_parent(&self, impl_def_id: DefId) -> Option<DefId>;
 
     // trait/impl-item info
-    fn trait_of_item(&self, def_id: DefId) -> Option<DefId>;
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem;
 
     // flags
     fn is_const_fn(&self, did: DefId) -> bool;
     fn is_default_impl(&self, impl_did: DefId) -> bool;
-    fn is_foreign_item(&self, did: DefId) -> bool;
     fn is_dllimport_foreign_item(&self, def: DefId) -> bool;
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool;
-    fn is_exported_symbol(&self, def_id: DefId) -> bool;
 
     // crate metadata
     fn dylib_dependency_formats(&self, cnum: CrateNum)
@@ -337,28 +331,22 @@ impl CrateStore for DummyCrateStore {
     }
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics
         { bug!("item_generics_cloned") }
-    fn item_attrs(&self, def_id: DefId) -> Rc<[ast::Attribute]> { bug!("item_attrs") }
-    fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name> { bug!("fn_arg_names") }
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId> { vec![] }
 
     // impl info
     fn impl_defaultness(&self, def: DefId) -> hir::Defaultness { bug!("impl_defaultness") }
-    fn impl_parent(&self, def: DefId) -> Option<DefId> { bug!("impl_parent") }
 
     // trait/impl-item info
-    fn trait_of_item(&self, def_id: DefId) -> Option<DefId> { bug!("trait_of_item") }
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem
         { bug!("associated_item_cloned") }
 
     // flags
     fn is_const_fn(&self, did: DefId) -> bool { bug!("is_const_fn") }
     fn is_default_impl(&self, impl_did: DefId) -> bool { bug!("is_default_impl") }
-    fn is_foreign_item(&self, did: DefId) -> bool { bug!("is_foreign_item") }
     fn is_dllimport_foreign_item(&self, id: DefId) -> bool { false }
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool { false }
-    fn is_exported_symbol(&self, def_id: DefId) -> bool { false }
 
     // crate metadata
     fn dylib_dependency_formats(&self, cnum: CrateNum)
