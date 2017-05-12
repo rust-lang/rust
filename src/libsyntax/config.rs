@@ -123,7 +123,7 @@ impl<'a> StripUnconfigured<'a> {
                 return false;
             }
 
-            let mis = if !is_cfg(&attr) {
+            let mis = if !is_cfg(attr) {
                 return true;
             } else if let Some(mis) = attr.meta_item_list() {
                 mis
@@ -150,7 +150,7 @@ impl<'a> StripUnconfigured<'a> {
         // flag the offending attributes
         for attr in attrs.iter() {
             if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
-                let mut err = feature_err(&self.sess,
+                let mut err = feature_err(self.sess,
                                           "stmt_expr_attributes",
                                           attr.span,
                                           GateIssue::Language,
@@ -258,7 +258,7 @@ impl<'a> StripUnconfigured<'a> {
     pub fn configure_struct_expr_field(&mut self, field: ast::Field) -> Option<ast::Field> {
         if !self.features.map(|features| features.struct_field_attributes).unwrap_or(true) {
             if !field.attrs.is_empty() {
-                let mut err = feature_err(&self.sess,
+                let mut err = feature_err(self.sess,
                                           "struct_field_attributes",
                                           field.span,
                                           GateIssue::Language,
@@ -290,7 +290,7 @@ impl<'a> StripUnconfigured<'a> {
         for attr in attrs.iter() {
             if !self.features.map(|features| features.struct_field_attributes).unwrap_or(true) {
                 let mut err = feature_err(
-                    &self.sess,
+                    self.sess,
                     "struct_field_attributes",
                     attr.span,
                     GateIssue::Language,

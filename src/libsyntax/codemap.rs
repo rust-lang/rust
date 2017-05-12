@@ -485,7 +485,7 @@ impl CodeMap {
         match self.span_to_snippet(sp) {
             Ok(snippet) => {
                 let snippet = snippet.split(c).nth(0).unwrap_or("").trim_right();
-                if snippet.len() > 0 && !snippet.contains('\n') {
+                if !snippet.is_empty() && !snippet.contains('\n') {
                     Span { hi: BytePos(sp.lo.0 + snippet.len() as u32), ..sp }
                 } else {
                     sp
@@ -502,7 +502,7 @@ impl CodeMap {
     pub fn get_filemap(&self, filename: &str) -> Option<Rc<FileMap>> {
         for fm in self.files.borrow().iter() {
             if filename == fm.name {
-               (self.dep_tracking_callback.borrow())(&fm);
+               (self.dep_tracking_callback.borrow())(fm);
                 return Some(fm.clone());
             }
         }

@@ -111,7 +111,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
     // overflow the maximum line width.
     description.map(|raw_msg| {
         let msg = raw_msg.as_str();
-        if !msg.starts_with("\n") || !msg.ends_with("\n") {
+        if !msg.starts_with('\n') || !msg.ends_with('\n') {
             ecx.span_err(span, &format!(
                 "description for error code {} doesn't start and end with a newline",
                 code
@@ -177,7 +177,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
             if let Err(e) = output_metadata(ecx,
                                             &target_triple,
                                             &crate_name.name.as_str(),
-                                            &diagnostics) {
+                                            diagnostics) {
                 ecx.span_bug(span, &format!(
                     "error writing metadata for triple `{}` and crate `{}`, error: {}, \
                      cause: {:?}",
@@ -227,7 +227,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
 
     MacEager::items(SmallVector::many(vec![
         P(ast::Item {
-            ident: name.clone(),
+            ident: *name,
             attrs: Vec::new(),
             id: ast::DUMMY_NODE_ID,
             node: ast::ItemKind::Const(

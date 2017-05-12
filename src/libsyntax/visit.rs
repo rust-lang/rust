@@ -343,9 +343,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
             visitor.visit_ty(ty);
             visitor.visit_expr(expression)
         }
-        TyKind::TraitObject(ref bounds) => {
-            walk_list!(visitor, visit_ty_param_bound, bounds);
-        }
+        TyKind::TraitObject(ref bounds) |
         TyKind::ImplTrait(ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
@@ -540,7 +538,7 @@ pub fn walk_fn<'a, V>(visitor: &mut V, kind: FnKind<'a>, declaration: &'a FnDecl
             walk_fn_decl(visitor, declaration);
             visitor.visit_block(body);
         }
-        FnKind::Method(_, ref sig, _, body) => {
+        FnKind::Method(_, sig, _, body) => {
             visitor.visit_generics(&sig.generics);
             walk_fn_decl(visitor, declaration);
             visitor.visit_block(body);
@@ -776,7 +774,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         }
         ExprKind::InlineAsm(ref ia) => {
             for &(_, ref input) in &ia.inputs {
-                visitor.visit_expr(&input)
+                visitor.visit_expr(input)
             }
             for output in &ia.outputs {
                 visitor.visit_expr(&output.expr)

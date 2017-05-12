@@ -330,7 +330,7 @@ impl DiagnosticSpanLine {
                       })
                      .collect()
              })
-            .unwrap_or(vec![])
+            .unwrap_or_else(|_| vec![])
     }
 }
 

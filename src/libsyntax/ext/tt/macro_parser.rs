@@ -39,40 +39,40 @@
 //! Example: Start parsing `a a a a b` against [· a $( a )* a b].
 //!
 //! Remaining input: `a a a a b`
-//! next_eis: [· a $( a )* a b]
+//! `next_eis`: `[· a $( a )* a b]`
 //!
 //! - - - Advance over an `a`. - - -
 //!
 //! Remaining input: `a a a b`
-//! cur: [a · $( a )* a b]
+//! cur: `[a · $( a )* a b]`
 //! Descend/Skip (first item).
-//! next: [a $( · a )* a b]  [a $( a )* · a b].
+//! next: `[a $( · a )* a b]  [a $( a )* · a b]`.
 //!
 //! - - - Advance over an `a`. - - -
 //!
 //! Remaining input: `a a b`
-//! cur: [a $( a · )* a b]  next: [a $( a )* a · b]
+//! cur: `[a $( a · )* a b]`  next: `[a $( a )* a · b]`
 //! Finish/Repeat (first item)
-//! next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
+//! next: `[a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]`
 //!
 //! - - - Advance over an `a`. - - - (this looks exactly like the last step)
 //!
 //! Remaining input: `a b`
-//! cur: [a $( a · )* a b]  next: [a $( a )* a · b]
+//! cur: `[a $( a · )* a b]`  next: `[a $( a )* a · b]`
 //! Finish/Repeat (first item)
-//! next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
+//! next: `[a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]`
 //!
 //! - - - Advance over an `a`. - - - (this looks exactly like the last step)
 //!
 //! Remaining input: `b`
-//! cur: [a $( a · )* a b]  next: [a $( a )* a · b]
+//! cur: `[a $( a · )* a b]`  next: `[a $( a )* a · b]`
 //! Finish/Repeat (first item)
-//! next: [a $( a )* · a b]  [a $( · a )* a b]
+//! next: `[a $( a )* · a b]  [a $( · a )* a b]`
 //!
 //! - - - Advance over a `b`. - - -
 //!
 //! Remaining input: ``
-//! eof: [a $( a )* a b ·]
+//! eof: `[a $( a )* a b ·]`
 
 pub use self::NamedMatch::*;
 pub use self::ParseResult::*;
@@ -178,20 +178,20 @@ fn initial_matcher_pos(ms: Vec<TokenTree>, lo: BytePos) -> Box<MatcherPos> {
     })
 }
 
-/// NamedMatch is a pattern-match result for a single token::MATCH_NONTERMINAL:
+/// `NamedMatch` is a pattern-match result for a single `token::MATCH_NONTERMINAL`:
 /// so it is associated with a single ident in a parse, and all
-/// `MatchedNonterminal`s in the NamedMatch have the same nonterminal type
-/// (expr, item, etc). Each leaf in a single NamedMatch corresponds to a
-/// single token::MATCH_NONTERMINAL in the TokenTree that produced it.
+/// `MatchedNonterminal`s in the `NamedMatch` have the same nonterminal type
+/// (expr, item, etc). Each leaf in a single `NamedMatch` corresponds to a
+/// single `token::MATCH_NONTERMINAL` in the `TokenTree` that produced it.
 ///
-/// The in-memory structure of a particular NamedMatch represents the match
+/// The in-memory structure of a particular `NamedMatch` represents the match
 /// that occurred when a particular subset of a matcher was applied to a
 /// particular token tree.
 ///
-/// The width of each MatchedSeq in the NamedMatch, and the identity of the
-/// `MatchedNonterminal`s, will depend on the token tree it was applied to:
-/// each MatchedSeq corresponds to a single TTSeq in the originating
-/// token tree. The depth of the NamedMatch structure will therefore depend
+/// The width of each `MatchedSeq` in the `NamedMatch`, and the identity of
+/// the `MatchedNonterminal`s, will depend on the token tree it was applied
+/// to: each `MatchedSeq` corresponds to a single `TTSeq` in the originating
+/// token tree. The depth of the `NamedMatch` structure will therefore depend
 /// only on the nesting depth of `ast::TTSeq`s in the originating
 /// token tree it was derived from.
 
@@ -334,7 +334,7 @@ fn inner_parse_loop(sess: &ParseSess,
                 // Check if we need a separator
                 if idx == len && ei.sep.is_some() {
                     // We have a separator, and it is the current token.
-                    if ei.sep.as_ref().map(|ref sep| token_name_eq(&token, sep)).unwrap_or(false) {
+                    if ei.sep.as_ref().map(|sep| token_name_eq(token, sep)).unwrap_or(false) {
                         ei.idx += 1;
                         next_eis.push(ei);
                     }
@@ -401,7 +401,7 @@ fn inner_parse_loop(sess: &ParseSess,
                     cur_eis.push(ei);
                 }
                 TokenTree::Token(_, ref t) => {
-                    if token_name_eq(t, &token) {
+                    if token_name_eq(t, token) {
                         ei.idx += 1;
                         next_eis.push(ei);
                     }
@@ -485,11 +485,8 @@ pub fn parse(sess: &ParseSess, tts: TokenStream, ms: &[TokenTree], directory: Op
 }
 
 fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
-    match name {
-        "tt" => {
-            return token::NtTT(p.parse_token_tree());
-        }
-        _ => {}
+    if let "tt" = name {
+        return token::NtTT(p.parse_token_tree());
     }
     // check at the beginning and the parser checks after each bump
     p.process_potential_macro_variable();

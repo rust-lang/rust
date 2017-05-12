@@ -150,7 +150,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenT
             cx.span_err(sp,
                         &format!("{} wasn't a utf-8 file",
                                 file.display()));
-            return DummyResult::expr(sp);
+            DummyResult::expr(sp)
         }
     }
 }
@@ -167,7 +167,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
         Err(e) => {
             cx.span_err(sp,
                         &format!("couldn't read {}: {}", file.display(), e));
-            return DummyResult::expr(sp);
+            DummyResult::expr(sp)
         }
         Ok(..) => {
             // Add this input file to the code map to make it available as

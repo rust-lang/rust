@@ -636,7 +636,7 @@ pub struct ExpansionData {
 
 /// One of these is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the backtrace()
-/// -> expn_info of their expansion context stored into their span.
+/// -> `expn_info` of their expansion context stored into their span.
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,
@@ -709,7 +709,7 @@ impl<'a> ExtCtxt<'a> {
                 }
                 ctxt = info.call_site.ctxt;
                 last_macro = Some(info.call_site);
-                return Some(());
+                Some(())
             }).is_none() {
                 break
             }
@@ -770,9 +770,9 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn trace_macros_diag(&self) {
         for (sp, notes) in self.expansions.iter() {
-            let mut db = self.parse_sess.span_diagnostic.span_note_diag(*sp, &"trace_macro");
+            let mut db = self.parse_sess.span_diagnostic.span_note_diag(*sp, "trace_macro");
             for note in notes {
-                db.note(&note);
+                db.note(note);
             }
             db.emit();
         }
@@ -795,7 +795,7 @@ impl<'a> ExtCtxt<'a> {
             v.push(self.ident_of(s));
         }
         v.extend(components.iter().map(|s| self.ident_of(s)));
-        return v
+        v
     }
     pub fn name_of(&self, st: &str) -> ast::Name {
         Symbol::intern(st)

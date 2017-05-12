@@ -96,6 +96,17 @@ impl TokenTree {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        match *self {
+            TokenTree::Delimited(_, ref delimed) => match delimed.delim {
+                token::NoDelim => delimed.tts.is_empty(),
+                _ => false,
+            },
+            TokenTree::Sequence(_, ref seq) => seq.tts.is_empty(),
+            _ => true,
+        }
+    }
+
     pub fn get_tt(&self, index: usize) -> TokenTree {
         match (self, index) {
             (&TokenTree::Delimited(_, ref delimed), _) if delimed.delim == token::NoDelim => {
@@ -144,9 +155,9 @@ pub fn parse(input: tokenstream::TokenStream, expect_matchers: bool, sess: &Pars
                             }
                             _ => end_sp,
                         },
-                        tree @ _ => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
+                        tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
                     },
-                    tree @ _ => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp),
+                    tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp),
                 };
                 sess.missing_fragment_specifiers.borrow_mut().insert(span);
                 result.push(TokenTree::MetaVarDecl(span, ident, keywords::Invalid.ident()));
@@ -228,10 +239,10 @@ fn parse_sep_and_kleene_op<I>(input: &mut I, span: Span, sess: &ParseSess)
                     Some(op) => return (Some(tok), op),
                     None => span,
                 },
-                tree @ _ => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
+                tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
             }
         },
-        tree @ _ => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
+        tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
     };
 
     sess.span_diagnostic.span_err(span, "expected `*` or `+`");
