@@ -465,8 +465,13 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr) {
         return;
     }
 
-    span_lint_and_then(cx, CMP_OWNED, expr.span, "this creates an owned instance just for comparison", |db| {
-        // this is as good as our recursion check can get, we can't prove that the current function is called by
+    span_lint_and_then(cx,
+                       CMP_OWNED,
+                       expr.span,
+                       "this creates an owned instance just for comparison",
+                       |db| {
+        // this is as good as our recursion check can get, we can't prove that the current function is
+        // called by
         // PartialEq::eq, but we can at least ensure that this code is not part of it
         let parent_fn = cx.tcx.hir.get_parent(expr.id);
         let parent_impl = cx.tcx.hir.get_parent(parent_fn);
@@ -474,7 +479,8 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr) {
             if let map::NodeItem(item) = cx.tcx.hir.get(parent_impl) {
                 if let ItemImpl(.., Some(ref trait_ref), _, _) = item.node {
                     if trait_ref.path.def.def_id() == partial_eq_trait_id {
-                        // we are implementing PartialEq, don't suggest not doing `to_owned`, otherwise we go into recursion
+                        // we are implementing PartialEq, don't suggest not doing `to_owned`, otherwise we go into
+                        // recursion
                         db.span_label(expr.span, "try calling implementing the comparison without allocating");
                         return;
                     }

@@ -716,7 +716,7 @@ impl<'a, 'tcx> TypeComplexityPass {
 }
 
 /// Walks a type and assigns a complexity score to it.
-struct TypeComplexityVisitor{
+struct TypeComplexityVisitor {
     /// total complexity score of the type
     score: u64,
     /// current nesting level

@@ -218,7 +218,7 @@ pub fn read(path: Option<&path::Path>) -> (Conf, Vec<Error>) {
     let path = if let Some(path) = path {
         path
     } else {
-        return default(Vec::new())
+        return default(Vec::new());
     };
 
     let file = match fs::File::open(path) {
@@ -226,7 +226,7 @@ pub fn read(path: Option<&path::Path>) -> (Conf, Vec<Error>) {
             let mut buf = String::new();
 
             if let Err(err) = file.read_to_string(&mut buf) {
-                return default(vec![err.into()])
+                return default(vec![err.into()]);
             }
 
             buf
