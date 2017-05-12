@@ -13,8 +13,9 @@ use codemap::SpanUtils;
 use config::{IndentStyle, MultilineStyle};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{wrap_str, format_mutability};
-use lists::{DefinitiveListTactic, format_item_list, itemize_list, ListItem, struct_lit_shape,
-            struct_lit_tactic, shape_for_tactic, struct_lit_formatting, write_list};
+use lists::{DefinitiveListTactic, SeparatorTactic, format_item_list, itemize_list, ListItem,
+            struct_lit_shape, struct_lit_tactic, shape_for_tactic, struct_lit_formatting,
+            write_list};
 use expr::{rewrite_unary_prefix, rewrite_pair};
 use types::{rewrite_path, PathContext};
 use super::Spanned;
@@ -134,6 +135,7 @@ fn rewrite_struct_pat(path: &ast::Path,
                       context: &RewriteContext,
                       shape: Shape)
                       -> Option<String> {
+    // 2 =  ` {`
     let path_shape = try_opt!(shape.sub_width(2));
     let path_str = try_opt!(rewrite_path(context, PathContext::Expr, None, path, path_shape));
 
@@ -165,6 +167,10 @@ fn rewrite_struct_pat(path: &ast::Path,
 
     if elipses {
         if fields_str.contains('\n') {
+            // Add a missing trailing comma.
+            if fmt.trailing_separator == SeparatorTactic::Never {
+                fields_str.push_str(",");
+            }
             fields_str.push_str("\n");
             fields_str.push_str(&nested_shape.indent.to_string(context.config));
             fields_str.push_str("..");
