@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![crate_name = "rustc_metadata"]
-#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -24,10 +23,12 @@
 #![feature(proc_macro_internals)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(rustc_private)]
 #![feature(specialization)]
-#![feature(staged_api)]
 #![feature(discriminant_value)]
+#![feature(rustc_private)]
+
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(staged_api))]
 
 #[macro_use]
 extern crate log;

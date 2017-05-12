@@ -72,7 +72,7 @@
 //! }
 //! ```
 #![crate_name = "proc_macro_plugin"]
-#![unstable(feature = "rustc_private", issue = "27812")]
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
 #![feature(plugin_registrar)]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
@@ -81,9 +81,9 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
-#![feature(staged_api)]
+#![cfg_attr(stage0, feature(staged_api))]
 #![feature(rustc_diagnostic_macros)]
-#![feature(rustc_private)]
+#![cfg_attr(stage0, feature(rustc_private))]
 
 extern crate rustc_plugin;
 extern crate syntax;

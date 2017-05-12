@@ -11,7 +11,6 @@
 //! Support for serializing the dep-graph and reloading it.
 
 #![crate_name = "rustc_incremental"]
-#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -19,11 +18,13 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
-#![feature(rustc_private)]
-#![feature(staged_api)]
 #![feature(rand)]
 #![feature(conservative_impl_trait)]
 #![feature(sort_unstable)]
+
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(rustc_private))]
+#![cfg_attr(stage0, feature(staged_api))]
 
 extern crate graphviz;
 #[macro_use] extern crate rustc;
