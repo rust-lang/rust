@@ -31,7 +31,7 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_ident(self, span, ident);
     }
-    fn visit_mod(&mut self, m: &Mod, _s: Span, _n: NodeId) {
+    fn visit_mod(&mut self, m: &Mod, _s: Span, _a: &[Attribute], _n: NodeId) {
         self.count += 1;
         walk_mod(self, m)
     }

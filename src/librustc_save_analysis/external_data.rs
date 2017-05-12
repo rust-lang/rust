@@ -392,7 +392,7 @@ pub struct ModData {
     pub items: Vec<DefId>,
     pub visibility: Visibility,
     pub docs: String,
-    pub sig: Signature,
+    pub sig: Option<Signature>,
     pub attributes: Vec<Attribute>,
 }
 
@@ -410,7 +410,7 @@ impl Lower for data::ModData {
             items: self.items.into_iter().map(|id| make_def_id(id, &tcx.hir)).collect(),
             visibility: self.visibility,
             docs: self.docs,
-            sig: self.sig.lower(tcx),
+            sig: self.sig.map(|s| s.lower(tcx)),
             attributes: self.attributes.lower(tcx),
         }
     }
