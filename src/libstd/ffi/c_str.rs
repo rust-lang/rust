@@ -30,12 +30,10 @@ use str::{self, Utf8Error};
 /// type is a static guarantee that the underlying bytes contain no interior 0
 /// bytes and the final byte is 0.
 ///
-/// A `CString` is created from either a byte slice or a byte vector. After
-/// being created, a `CString` predominately inherits all of its methods from
-/// the `Deref` implementation to `[c_char]`. Note that the underlying array
-/// is represented as an array of `c_char` as opposed to `u8`. A `u8` slice
-/// can be obtained with the `as_bytes` method.  Slices produced from a `CString`
-/// do *not* contain the trailing nul terminator unless otherwise specified.
+/// A `CString` is created from either a byte slice or a byte vector.  A `u8`
+/// slice can be obtained with the `as_bytes` method.  Slices produced from a
+/// `CString` do *not* contain the trailing nul terminator unless otherwise
+/// specified.
 ///
 /// # Examples
 ///
