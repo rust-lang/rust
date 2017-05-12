@@ -138,7 +138,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             let flags = super::flags::FlagComputation::for_sty(&st);
             let ty_struct = TyS {
                 sty: st,
-                flags: Cell::new(flags.flags),
+                flags: flags.flags,
                 region_depth: flags.depth,
             };
 
@@ -978,8 +978,8 @@ macro_rules! sty_debug_print {
                         ty::TyError => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
-                    let region = t.flags.get().intersects(ty::TypeFlags::HAS_RE_INFER);
-                    let ty = t.flags.get().intersects(ty::TypeFlags::HAS_TY_INFER);
+                    let region = t.flags.intersects(ty::TypeFlags::HAS_RE_INFER);
+                    let ty = t.flags.intersects(ty::TypeFlags::HAS_TY_INFER);
 
                     variant.total += 1;
                     total.total += 1;

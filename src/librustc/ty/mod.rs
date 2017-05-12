@@ -35,7 +35,6 @@ use util::common::ErrorReported;
 use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
 
 use serialize::{self, Encodable, Encoder};
-use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::cmp;
 use std::fmt;
@@ -516,7 +515,7 @@ bitflags! {
 
 pub struct TyS<'tcx> {
     pub sty: TypeVariants<'tcx>,
-    pub flags: Cell<TypeFlags>,
+    pub flags: TypeFlags,
 
     // the maximal depth of any bound regions appearing in this type.
     region_depth: u32,
