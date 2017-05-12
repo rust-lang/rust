@@ -241,6 +241,7 @@ mod inner {
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 mod inner {
     use fmt;
+    use io;
     use libc;
     use sys::cvt;
     use time::Duration;
@@ -267,8 +268,31 @@ mod inner {
     };
 
     impl Instant {
+        // CLOCK_MONOTONIC_RAW is a better choice than CLOCK_MONOTONIC since
+        // it isn't affected by time adjustments, but it isn't available on
+        // old Linux versions.
+        #[cfg(target_os = "linux")]
         pub fn now() -> Instant {
-            Instant { t: now(libc::CLOCK_MONOTONIC) }
+            use sync::atomic::{AtomicBool, Ordering};
+
+            static TRY_RAW: AtomicBool = AtomicBool::new(true);
+
+            if TRY_RAW.load(Ordering::Relaxed) {
+                match now(libc::CLOCK_MONOTONIC_RAW) {
+                    Ok(t) => return Instant { t: t },
+                    Err(ref e) if e.raw_os_error() == Some(libc::EINVAL) => {
+                        TRY_RAW.store(false, Ordering::Relaxed);
+                    }
+                    Err(e) => panic!("{}", e),
+                }
+            }
+
+            Instant { t: now(libc::CLOCK_MONOTONIC).unwrap() }
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        pub fn now() -> Instant {
+            Instant { t: now(libc::CLOCK_MONOTONIC).unwrap() }
         }
 
         pub fn sub_instant(&self, other: &Instant) -> Duration {
@@ -297,7 +321,7 @@ mod inner {
 
     impl SystemTime {
         pub fn now() -> SystemTime {
-            SystemTime { t: now(libc::CLOCK_REALTIME) }
+            SystemTime { t: now(libc::CLOCK_REALTIME).unwrap() }
         }
 
         pub fn sub_time(&self, other: &SystemTime)
@@ -334,7 +358,7 @@ mod inner {
     #[cfg(target_os = "dragonfly")]
     pub type clock_t = libc::c_ulong;
 
-    fn now(clock: clock_t) -> Timespec {
+    fn now(clock: clock_t) -> io::Result<Timespec> {
         let mut t = Timespec {
             t: libc::timespec {
                 tv_sec: 0,
@@ -343,7 +367,6 @@ mod inner {
         };
         cvt(unsafe {
             libc::clock_gettime(clock, &mut t.t)
-        }).unwrap();
-        t
+        }).map(|_| t)
     }
 }
