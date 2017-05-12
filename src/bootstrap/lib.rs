@@ -475,12 +475,30 @@ impl Build {
              .env("RUSTDOC_REAL", self.rustdoc(compiler))
              .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
 
-        // Tools don't get debuginfo right now, e.g. cargo and rls don't get
-        // compiled with debuginfo.
         if mode != Mode::Tool {
-             cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
-                  .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string())
-                  .env("RUSTC_FORCE_UNSTABLE", "1");
+            // Tools don't get debuginfo right now, e.g. cargo and rls don't
+            // get compiled with debuginfo.
+            cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
+                 .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string())
+                 .env("RUSTC_FORCE_UNSTABLE", "1");
+
+            // Currently the compiler depends on crates from crates.io, and
+            // then other crates can depend on the compiler (e.g. proc-macro
+            // crates). Let's say, for example that rustc itself depends on the
+            // bitflags crate. If an external crate then depends on the
+            // bitflags crate as well, we need to make sure they don't
+            // conflict, even if they pick the same verison of bitflags. We'll
+            // want to make sure that e.g. a plugin and rustc each get their
+            // own copy of bitflags.
+
+            // Cargo ensures that this works in general through the -C metadata
+            // flag. This flag will frob the symbols in the binary to make sure
+            // they're different, even though the source code is the exact
+            // same. To solve this problem for the compiler we extend Cargo's
+            // already-passed -C metadata flag with our own. Our rustc.rs
+            // wrapper around the actual rustc will detect -C metadata being
+            // passed and frob it with this extra string we're passing in.
+            cargo.env("RUSTC_METADATA_SUFFIX", "rustc");
         }
 
         // Enable usage of unstable features
