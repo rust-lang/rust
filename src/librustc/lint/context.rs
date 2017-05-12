@@ -1055,7 +1055,7 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
         run_lints!(self, check_ident, early_passes, sp, id);
     }
 
-    fn visit_mod(&mut self, m: &'a ast::Mod, s: Span, n: ast::NodeId) {
+    fn visit_mod(&mut self, m: &'a ast::Mod, s: Span, _a: &[ast::Attribute], n: ast::NodeId) {
         run_lints!(self, check_mod, early_passes, m, s, n);
         ast_visit::walk_mod(self, m);
         run_lints!(self, check_mod_post, early_passes, m, s, n);
