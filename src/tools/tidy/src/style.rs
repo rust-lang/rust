@@ -107,6 +107,11 @@ pub fn check(path: &Path, bad: &mut bool) {
 
         contents.truncate(0);
         t!(t!(File::open(file), file).read_to_string(&mut contents));
+
+        if contents.is_empty() {
+            tidy_error!(bad, "{}: empty file", file.display());
+        }
+
         let skip_cr = contents.contains("ignore-tidy-cr");
         let skip_tab = contents.contains("ignore-tidy-tab");
         let skip_length = contents.contains("ignore-tidy-linelength");
