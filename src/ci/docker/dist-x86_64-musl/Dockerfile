@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   pkg-config
 
 WORKDIR /build/
-COPY build-musl.sh /build/
+COPY dist-x86_64-musl/build-musl.sh /build/
 RUN sh /build/build-musl.sh && rm -rf /build
 
 RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \

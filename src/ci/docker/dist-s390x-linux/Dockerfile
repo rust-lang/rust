@@ -56,8 +56,8 @@ RUN mkdir /x-tools && chown rustbuild:rustbuild /x-tools
 USER rustbuild
 WORKDIR /tmp
 
-COPY patches/ /tmp/patches/
-COPY s390x-linux-gnu.config build-s390x-toolchain.sh /tmp/
+COPY dist-s390x-linux/patches/ /tmp/patches/
+COPY dist-s390x-linux/s390x-linux-gnu.config dist-s390x-linux/build-s390x-toolchain.sh /tmp/
 RUN ./build-s390x-toolchain.sh
 
 USER root

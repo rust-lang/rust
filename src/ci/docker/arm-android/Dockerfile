@@ -2,52 +2,44 @@ FROM ubuntu:16.04
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-  g++ \
-  make \
-  file \
-  curl \
   ca-certificates \
-  python2.7 \
-  git \
   cmake \
-  unzip \
-  sudo \
-  xz-utils \
+  curl \
+  file \
+  g++ \
+  git \
   libssl-dev \
-  pkg-config
+  make \
+  pkg-config \
+  python2.7 \
+  sudo \
+  unzip \
+  xz-utils
 
-RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
-    dpkg -i dumb-init_*.deb && \
-    rm dumb-init_*.deb
+# dumb-init
+COPY dumb-init.sh /scripts/
+RUN sh /scripts/dumb-init.sh
 
-RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
-    chmod +x /usr/local/bin/sccache
+# ndk
+COPY android-ndk.sh /scripts/
+RUN . /scripts/android-ndk.sh && \
+    download_and_make_toolchain android-ndk-r13b-linux-x86_64.zip arm 9
 
-# Install NDK
-COPY install-ndk.sh /tmp
-RUN . /tmp/install-ndk.sh && \
-    download_ndk android-ndk-r13b-linux-x86_64.zip && \
-    make_standalone_toolchain arm 9 && \
-    remove_ndk
-
-# Install SDK
+# sdk
 RUN dpkg --add-architecture i386 && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-  openjdk-9-jre-headless \
-  tzdata \
-  libstdc++6:i386 \
   libgl1-mesa-glx \
-  libpulse0
+  libpulse0 \
+  libstdc++6:i386 \
+  openjdk-9-jre-headless \
+  tzdata
 
-COPY install-sdk.sh /tmp
-RUN . /tmp/install-sdk.sh && \
-    download_sdk tools_r25.2.5-linux.zip && \
-    download_sysimage armeabi-v7a 18 && \
-    create_avd armeabi-v7a 18
+COPY android-sdk.sh /scripts/
+RUN . /scripts/android-sdk.sh && \
+    download_and_create_avd tools_r25.2.5-linux.zip armeabi-v7a 18
 
-# Setup env
+# env
 ENV PATH=$PATH:/android/sdk/tools
 ENV PATH=$PATH:/android/sdk/platform-tools
 
@@ -57,8 +49,12 @@ ENV RUST_CONFIGURE_ARGS \
       --target=$TARGETS \
       --arm-linux-androideabi-ndk=/android/ndk/arm-9
 
-ENV SCRIPT python2.7 ../x.py test --target $TARGETS --verbose
+ENV SCRIPT python2.7 ../x.py test --target $TARGETS
 
-# Entrypoint
-COPY start-emulator.sh /android/
-ENTRYPOINT ["/usr/bin/dumb-init", "--", "/android/start-emulator.sh"]
+# sccache
+COPY sccache.sh /scripts/
+RUN sh /scripts/sccache.sh
+
+# init
+COPY android-start-emulator.sh /scripts/
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "/scripts/android-start-emulator.sh"]
