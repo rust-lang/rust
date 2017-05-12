@@ -1947,19 +1947,25 @@ fn rewrite_field(context: &RewriteContext, field: &ast::Field, shape: Shape) -> 
         expr_shape.offset += overhead;
         let expr = field.expr.rewrite(context, expr_shape);
 
+        let mut attrs_str = try_opt!((*field.attrs).rewrite(context, shape));
+        if !attrs_str.is_empty() {
+            attrs_str.push_str(&format!("\n{}", shape.indent.to_string(context.config)));
+        };
+
         match expr {
-            Some(e) => Some(format!("{}{}{}", name, separator, e)),
+            Some(e) => Some(format!("{}{}{}{}", attrs_str, name, separator, e)),
             None => {
                 let expr_offset = shape.indent.block_indent(context.config);
                 let expr = field
                     .expr
-                    .rewrite(context,
-                             Shape::legacy(try_opt!(context
-                                                        .config
-                                                        .max_width
-                                                        .checked_sub(expr_offset.width())),
-                                           expr_offset));
-                expr.map(|s| format!("{}:\n{}{}", name, expr_offset.to_string(&context.config), s))
+                    .rewrite(context, Shape::indented(expr_offset, context.config));
+                expr.map(|s| {
+                             format!("{}{}:\n{}{}",
+                                     attrs_str,
+                                     name,
+                                     expr_offset.to_string(&context.config),
+                                     s)
+                         })
             }
         }
     }
