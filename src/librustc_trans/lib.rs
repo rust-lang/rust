@@ -86,9 +86,6 @@ pub mod back {
 
 pub mod diagnostics;
 
-#[macro_use]
-mod macros;
-
 mod abi;
 mod adt;
 mod asm;
