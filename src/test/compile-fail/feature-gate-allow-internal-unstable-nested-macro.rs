@@ -10,6 +10,8 @@
 
 // gate-test-allow_internal_unstable
 
+#![allow(unused_macros)]
+
 macro_rules! bar {
     () => {
         // more layers don't help:

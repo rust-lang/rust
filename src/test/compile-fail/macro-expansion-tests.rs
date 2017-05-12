@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_macros)]
+
 mod macros_cant_escape_fns {
     fn f() {
         macro_rules! m { () => { 3 + 4 } }
