@@ -608,7 +608,8 @@ impl<'a> Resolver<'a> {
         } else {
             for (name, span) in legacy_imports.imports {
                 let ident = Ident::with_empty_ctxt(name);
-                let result = self.resolve_ident_in_module(module, ident, MacroNS, false, None);
+                let result = self.resolve_ident_in_module(module, ident, MacroNS,
+                                                          false, false, span);
                 if let Ok(binding) = result {
                     let directive = macro_use_directive(span);
                     self.potentially_unused_imports.push(directive);
@@ -622,7 +623,7 @@ impl<'a> Resolver<'a> {
         for (name, span) in legacy_imports.reexports {
             self.session.cstore.export_macros(module.def_id().unwrap().krate);
             let ident = Ident::with_empty_ctxt(name);
-            let result = self.resolve_ident_in_module(module, ident, MacroNS, false, None);
+            let result = self.resolve_ident_in_module(module, ident, MacroNS, false, false, span);
             if let Ok(binding) = result {
                 self.macro_exports.push(Export { name: name, def: binding.def(), span: span });
             } else {

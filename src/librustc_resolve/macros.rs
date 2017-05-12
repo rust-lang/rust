@@ -379,7 +379,7 @@ impl<'a> Resolver<'a> {
                 return Err(Determinacy::Determined);
             }
 
-            let def = match self.resolve_path(&path, Some(MacroNS), None) {
+            let def = match self.resolve_path(&path, Some(MacroNS), false, span) {
                 PathResult::NonModule(path_res) => match path_res.base_def() {
                     Def::Err => Err(Determinacy::Determined),
                     def @ _ => Ok(def),
@@ -401,7 +401,7 @@ impl<'a> Resolver<'a> {
         let result = if let Some(MacroBinding::Legacy(binding)) = legacy_resolution {
             Ok(Def::Macro(binding.def_id, MacroKind::Bang))
         } else {
-            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, None) {
+            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, false, span) {
                 Ok(binding) => Ok(binding.binding().def_ignoring_ambiguity()),
                 Err(Determinacy::Undetermined) if !force => return Err(Determinacy::Undetermined),
                 Err(_) => {
@@ -421,18 +421,19 @@ impl<'a> Resolver<'a> {
     pub fn resolve_lexical_macro_path_segment(&mut self,
                                               ident: Ident,
                                               ns: Namespace,
-                                              record_used: Option<Span>)
+                                              record_used: bool,
+                                              path_span: Span)
                                               -> Result<MacroBinding<'a>, Determinacy> {
         let mut module = Some(self.current_module);
         let mut potential_illegal_shadower = Err(Determinacy::Determined);
         let determinacy =
-            if record_used.is_some() { Determinacy::Determined } else { Determinacy::Undetermined };
+            if record_used { Determinacy::Determined } else { Determinacy::Undetermined };
         loop {
             let result = if let Some(module) = module {
                 // Since expanded macros may not shadow the lexical scope and
                 // globs may not shadow global macros (both enforced below),
                 // we resolve with restricted shadowing (indicated by the penultimate argument).
-                self.resolve_ident_in_module(module, ident, ns, true, record_used)
+                self.resolve_ident_in_module(module, ident, ns, true, record_used, path_span)
                     .map(MacroBinding::Modern)
             } else {
                 self.global_macros.get(&ident.name).cloned().ok_or(determinacy)
@@ -441,15 +442,18 @@ impl<'a> Resolver<'a> {
 
             match result.map(MacroBinding::binding) {
                 Ok(binding) => {
-                    let span = match record_used {
-                        Some(span) => span,
-                        None => return result,
-                    };
+                    if !record_used {
+                        return result;
+                    }
                     if let Ok(MacroBinding::Modern(shadower)) = potential_illegal_shadower {
                         if shadower.def() != binding.def() {
                             let name = ident.name;
                             self.ambiguity_errors.push(AmbiguityError {
-                                span: span, name: name, b1: shadower, b2: binding, lexical: true,
+                                span: path_span,
+                                name: name,
+                                b1: shadower,
+                                b2: binding,
+                                lexical: true,
                                 legacy: false,
                             });
                             return potential_illegal_shadower;
@@ -543,7 +547,7 @@ impl<'a> Resolver<'a> {
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
         for &(ref path, span) in module.macro_resolutions.borrow().iter() {
-            match self.resolve_path(path, Some(MacroNS), Some(span)) {
+            match self.resolve_path(path, Some(MacroNS), true, span) {
                 PathResult::NonModule(_) => {},
                 PathResult::Failed(msg, _) => {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
@@ -555,7 +559,7 @@ impl<'a> Resolver<'a> {
         for &(mark, ident, span, kind) in module.legacy_macro_resolutions.borrow().iter() {
             let legacy_scope = &self.invocations[&mark].legacy_scope;
             let legacy_resolution = self.resolve_legacy_scope(legacy_scope, ident.name, true);
-            let resolution = self.resolve_lexical_macro_path_segment(ident, MacroNS, Some(span));
+            let resolution = self.resolve_lexical_macro_path_segment(ident, MacroNS, true, span);
             match (legacy_resolution, resolution) {
                 (Some(MacroBinding::Legacy(legacy_binding)), Ok(MacroBinding::Modern(binding))) => {
                     let msg1 = format!("`{}` could refer to the macro defined here", ident);
@@ -579,7 +583,7 @@ impl<'a> Resolver<'a> {
                             format!("cannot find derive macro `{}` in this scope", ident),
                     };
                     let mut err = self.session.struct_span_err(span, &msg);
-                    self.suggest_macro_name(&ident.name.as_str(), kind, &mut err);
+                    self.suggest_macro_name(&ident.name.as_str(), kind, &mut err, span);
                     err.emit();
                 },
                 _ => {},
@@ -588,7 +592,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn suggest_macro_name(&mut self, name: &str, kind: MacroKind,
-                          err: &mut DiagnosticBuilder<'a>) {
+                          err: &mut DiagnosticBuilder<'a>, span: Span) {
         // First check if this is a locally-defined bang macro.
         let suggestion = if let MacroKind::Bang = kind {
             find_best_match_for_name(self.macro_names.iter(), name, None)
@@ -619,7 +623,7 @@ impl<'a> Resolver<'a> {
                 }
             };
             let ident = Ident::from_str(name);
-            self.lookup_typo_candidate(&vec![ident], MacroNS, is_macro)
+            self.lookup_typo_candidate(&vec![ident], MacroNS, is_macro, span)
         });
 
         if let Some(suggestion) = suggestion {
