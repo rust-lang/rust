@@ -724,11 +724,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                             param_env: ParameterEnvironment<'tcx>,
                             span: Span)
                             -> bool {
-        if self.has_param_types() || self.has_self_ty() {
-            !tcx.at(span).is_copy_raw(param_env.and(self))
-        } else {
-            !tcx.is_copy_raw(ParameterEnvironment::empty().and(self))
-        }
+        !tcx.at(span).is_copy_raw(param_env.and(self))
     }
 
     pub fn is_sized(&'tcx self,
@@ -736,11 +732,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                     param_env: ParameterEnvironment<'tcx>,
                     span: Span)-> bool
     {
-        if self.has_param_types() || self.has_self_ty() {
-            tcx.at(span).is_sized_raw(param_env.and(self))
-        } else {
-            tcx.is_sized_raw(ParameterEnvironment::empty().and(self))
-        }
+        tcx.at(span).is_sized_raw(param_env.and(self))
     }
 
     pub fn is_freeze(&'tcx self,
@@ -748,11 +740,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                      param_env: ParameterEnvironment<'tcx>,
                      span: Span)-> bool
     {
-        if self.has_param_types() || self.has_self_ty() {
-            tcx.at(span).is_freeze_raw(param_env.and(self))
-        } else {
-            tcx.is_freeze_raw(ParameterEnvironment::empty().and(self))
-        }
+        tcx.at(span).is_freeze_raw(param_env.and(self))
     }
 
     /// If `ty.needs_drop(...)` returns `true`, then `ty` is definitely

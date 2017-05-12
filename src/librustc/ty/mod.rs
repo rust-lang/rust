@@ -1259,10 +1259,33 @@ pub struct ParameterEnvironment<'tcx> {
 }
 
 impl<'tcx> ParameterEnvironment<'tcx> {
-    pub fn and<T>(self, value: T) -> ParameterEnvironmentAnd<'tcx, T> {
-        ParameterEnvironmentAnd {
-            param_env: self,
-            value: value,
+    /// Creates a suitable environment in which to perform trait
+    /// queries on the given value. This will either be `self` *or*
+    /// the empty environment, depending on whether `value` references
+    /// type parameters that are in scope. (If it doesn't, then any
+    /// judgements should be completely independent of the context,
+    /// and hence we can safely use the empty environment so as to
+    /// enable more sharing across functions.)
+    ///
+    /// NB: This is a mildly dubious thing to do, in that a function
+    /// (or other environment) might have wacky where-clauses like
+    /// `where Box<u32>: Copy`, which are clearly never
+    /// satisfiable. The code will at present ignore these,
+    /// effectively, when type-checking the body of said
+    /// function. This preserves existing behavior in any
+    /// case. --nmatsakis
+    pub fn and<T: TypeFoldable<'tcx>>(self, value: T) -> ParameterEnvironmentAnd<'tcx, T> {
+        assert!(!value.needs_infer());
+        if value.has_param_types() || value.has_self_ty() {
+            ParameterEnvironmentAnd {
+                param_env: self,
+                value: value,
+            }
+        } else {
+            ParameterEnvironmentAnd {
+                param_env: ParameterEnvironment::empty(),
+                value: value,
+            }
         }
     }
 }
