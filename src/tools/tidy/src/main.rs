@@ -81,12 +81,12 @@ fn filter_dirs(path: &Path) -> bool {
         "src/libbacktrace",
         "src/compiler-rt",
         "src/rustllvm",
-        "src/rust-installer",
         "src/liblibc",
         "src/vendor",
         "src/rt/hoedown",
         "src/tools/cargo",
         "src/tools/rls",
+        "src/tools/rust-installer",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }
