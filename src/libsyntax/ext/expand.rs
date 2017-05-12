@@ -469,7 +469,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     call_site: span,
                     callee: NameAndSpan {
                         format: MacroBang(Symbol::intern(&format!("{}", path))),
-                        span: exp_span,
+                        span: exp_span.map(|(_, s)| s),
                         allow_internal_unstable: allow_internal_unstable,
                     },
                 });

@@ -305,17 +305,14 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn check_unused_macros(&self) {
         for (did, _) in self.unused_macros.iter().filter(|&(_, b)| *b) {
-            let span = match *self.macro_map[did] {
-                           SyntaxExtension::NormalTT(_, sp, _) => sp,
-                           SyntaxExtension::IdentTT(_, sp, _) => sp,
+            let id_span = match *self.macro_map[did] {
+                           SyntaxExtension::NormalTT(_, isp, _) => isp,
                            _ => None
                        };
-            if let Some(span) = span {
+            if let Some((id, span)) = id_span {
                 let lint = lint::builtin::UNUSED_MACROS;
-                let msg = "unused macro".to_string();
-                // We are using CRATE_NODE_ID here even though its inaccurate, as we
-                // sadly don't have the NodeId of the macro definition.
-                self.session.add_lint(lint, ast::CRATE_NODE_ID, span, msg);
+                let msg = "unused macro definition".to_string();
+                self.session.add_lint(lint, id, span, msg);
             } else {
                 bug!("attempted to create unused macro error, but span not available");
             }

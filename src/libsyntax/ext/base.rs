@@ -535,7 +535,7 @@ pub enum SyntaxExtension {
     ///
     /// The `bool` dictates whether the contents of the macro can
     /// directly use `#[unstable]` things (true == yes).
-    NormalTT(Box<TTMacroExpander>, Option<Span>, bool),
+    NormalTT(Box<TTMacroExpander>, Option<(ast::NodeId, Span)>, bool),
 
     /// A function-like syntax extension that has an extra ident before
     /// the block.
