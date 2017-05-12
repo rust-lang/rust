@@ -384,10 +384,13 @@ impl<'a> FmtVisitor<'a> {
                 // FIXME(#1157): format union definitions.
             }
             ast::ItemKind::GlobalAsm(..) => {
-                // FIXME(#1538): format GlobalAsm
+                let snippet = Some(self.snippet(item.span));
+                self.push_rewrite(item.span, snippet);
             }
             ast::ItemKind::MacroDef(..) => {
                 // FIXME(#1539): macros 2.0
+                let snippet = Some(self.snippet(item.span));
+                self.push_rewrite(item.span, snippet);
             }
         }
     }
