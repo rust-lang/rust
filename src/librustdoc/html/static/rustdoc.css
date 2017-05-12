@@ -193,6 +193,7 @@ nav.sub {
 	font-size: 17px;
 	margin: 30px 0 20px 0;
 	text-align: center;
+	word-wrap: break-word;
 }
 
 .location:empty {
