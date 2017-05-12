@@ -1784,7 +1784,8 @@ fn rewrite_call_args(context: &RewriteContext,
         // and not rewriting macro.
         Some(ref s) if context.config.fn_call_style == IndentStyle::Block &&
                        !force_no_trailing_comma &&
-                       (!s.contains('\n') && s.len() > one_line_width) => {
+                       (!s.contains('\n') &&
+                        (s.len() > one_line_width || s.len() > context.config.fn_call_width)) => {
             fmt.trailing_separator = SeparatorTactic::Vertical;
             write_list(&item_vec, &fmt)
         }
