@@ -25,12 +25,6 @@ macro_rules! pathvec {
     )
 }
 
-macro_rules! path {
-    ($($x:tt)*) => (
-        ::ext::deriving::generic::ty::Path::new( pathvec![ $($x)* ] )
-    )
-}
-
 macro_rules! path_local {
     ($x:ident) => (
         ::deriving::generic::ty::Path::new_local(stringify!($x))
