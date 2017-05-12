@@ -534,7 +534,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn is_box_free(&self, operand: &Operand<'tcx>) -> bool {
         match operand {
-            &Operand::Constant(Constant {
+            &Operand::Constant(box Constant {
                 literal: Literal::Value {
                     value: ConstVal::Function(def_id, _), ..
                 }, ..

@@ -108,7 +108,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                              location: Location) {
         match *kind {
             mir::TerminatorKind::Call {
-                func: mir::Operand::Constant(mir::Constant {
+                func: mir::Operand::Constant(box mir::Constant {
                     literal: Literal::Value {
                         value: ConstVal::Function(def_id, _), ..
                     }, ..

@@ -129,7 +129,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 this.cfg.push(block, Statement {
                     source_info: source_info,
                     kind: StatementKind::InlineAsm {
-                        asm: asm.clone(),
+                        asm: box asm.clone(),
                         outputs: outputs,
                         inputs: inputs
                     },

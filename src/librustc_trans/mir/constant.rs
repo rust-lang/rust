@@ -540,7 +540,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 }
                 failure?;
 
-                match *kind {
+                match **kind {
                     mir::AggregateKind::Array(_) => {
                         self.const_array(dest_ty, &fields)
                     }
