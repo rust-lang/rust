@@ -42,9 +42,8 @@ use super::{MiscVariable, TypeTrace};
 use ty::{IntType, UintType};
 use ty::{self, Ty, TyCtxt};
 use ty::error::TypeError;
-use ty::fold::TypeFoldable;
-use ty::relate::{RelateResult, TypeRelation};
-use traits::PredicateObligations;
+use ty::relate::{self, Relate, RelateResult, TypeRelation};
+use traits::{Obligation, PredicateObligations};
 
 use syntax::ast;
 use syntax_pos::Span;
@@ -207,10 +206,15 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         // `'?2` and `?3` are fresh region/type inference
         // variables. (Down below, we will relate `a_ty <: b_ty`,
         // adding constraints like `'x: '?2` and `?1 <: ?3`.)
-        let b_ty = self.generalize(a_ty, b_vid, dir == EqTo)?;
+        let Generalization { ty: b_ty, needs_wf } = self.generalize(a_ty, b_vid, dir)?;
         debug!("instantiate(a_ty={:?}, dir={:?}, b_vid={:?}, generalized b_ty={:?})",
                a_ty, dir, b_vid, b_ty);
         self.infcx.type_variables.borrow_mut().instantiate(b_vid, b_ty);
+
+        if needs_wf {
+            self.obligations.push(Obligation::new(self.trace.cause.clone(),
+                                                  ty::Predicate::WellFormed(b_ty)));
+        }
 
         // Finally, relate `b_ty` to `a_ty`, as described in previous comment.
         //
@@ -230,10 +234,9 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
 
     /// Attempts to generalize `ty` for the type variable `for_vid`.
     /// This checks for cycle -- that is, whether the type `ty`
-    /// references `for_vid`. If `is_eq_relation` is false, it will
-    /// also replace all regions/unbound-type-variables with fresh
-    /// variables. Returns `TyError` in the case of a cycle, `Ok`
-    /// otherwise.
+    /// references `for_vid`. The `dir` is the "direction" for which we
+    /// a performing the generalization (i.e., are we producing a type
+    /// that can be used as a supertype etc).
     ///
     /// Preconditions:
     ///
@@ -241,22 +244,33 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
     fn generalize(&self,
                   ty: Ty<'tcx>,
                   for_vid: ty::TyVid,
-                  is_eq_relation: bool)
-                  -> RelateResult<'tcx, Ty<'tcx>>
+                  dir: RelationDir)
+                  -> RelateResult<'tcx, Generalization<'tcx>>
     {
+        // Determine the ambient variance within which `ty` appears.
+        // The surrounding equation is:
+        //
+        //     ty [op] ty2
+        //
+        // where `op` is either `==`, `<:`, or `:>`. This maps quite
+        // naturally.
+        let ambient_variance = match dir {
+            RelationDir::EqTo => ty::Invariant,
+            RelationDir::SubtypeOf => ty::Covariant,
+            RelationDir::SupertypeOf => ty::Contravariant,
+        };
+
         let mut generalize = Generalizer {
             infcx: self.infcx,
             span: self.trace.cause.span,
             for_vid_sub_root: self.infcx.type_variables.borrow_mut().sub_root_var(for_vid),
-            is_eq_relation: is_eq_relation,
-            cycle_detected: false
+            ambient_variance: ambient_variance,
+            needs_wf: false,
         };
-        let u = ty.fold_with(&mut generalize);
-        if generalize.cycle_detected {
-            Err(TypeError::CyclicTy)
-        } else {
-            Ok(u)
-        }
+
+        let ty = generalize.relate(&ty, &ty)?;
+        let needs_wf = generalize.needs_wf;
+        Ok(Generalization { ty, needs_wf })
     }
 }
 
@@ -264,16 +278,81 @@ struct Generalizer<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
     span: Span,
     for_vid_sub_root: ty::TyVid,
-    is_eq_relation: bool,
-    cycle_detected: bool,
+    ambient_variance: ty::Variance,
+    needs_wf: bool, // see the field `needs_wf` in `Generalization`
 }
 
-impl<'cx, 'gcx, 'tcx> ty::fold::TypeFolder<'gcx, 'tcx> for Generalizer<'cx, 'gcx, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx> {
+/// Result from a generalization operation. This includes
+/// not only the generalized type, but also a bool flag
+/// indicating whether further WF checks are needed.q
+struct Generalization<'tcx> {
+    ty: Ty<'tcx>,
+
+    /// If true, then the generalized type may not be well-formed,
+    /// even if the source type is well-formed, so we should add an
+    /// additional check to enforce that it is. This arises in
+    /// particular around 'bivariant' type parameters that are only
+    /// constrained by a where-clause. As an example, imagine a type:
+    ///
+    ///     struct Foo<A, B> where A: Iterator<Item=B> {
+    ///         data: A
+    ///     }
+    ///
+    /// here, `A` will be covariant, but `B` is
+    /// unconstrained. However, whatever it is, for `Foo` to be WF, it
+    /// must be equal to `A::Item`. If we have an input `Foo<?A, ?B>`,
+    /// then after generalization we will wind up with a type like
+    /// `Foo<?C, ?D>`. When we enforce that `Foo<?A, ?B> <: Foo<?C,
+    /// ?D>` (or `>:`), we will wind up with the requirement that `?A
+    /// <: ?C`, but no particular relationship between `?B` and `?D`
+    /// (after all, we do not know the variance of the normalized form
+    /// of `A::Item` with respect to `A`). If we do nothing else, this
+    /// may mean that `?D` goes unconstrained (as in #41677).  So, in
+    /// this scenario where we create a new type variable in a
+    /// bivariant context, we set the `needs_wf` flag to true. This
+    /// will force the calling code to check that `WF(Foo<?C, ?D>)`
+    /// holds, which in turn implies that `?C::Item == ?D`. So once
+    /// `?C` is constrained, that should suffice to restrict `?D`.
+    needs_wf: bool,
+}
+
+impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn tag(&self) -> &'static str {
+        "Generalizer"
+    }
+
+    fn a_is_expected(&self) -> bool {
+        true
+    }
+
+    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
+                  -> RelateResult<'tcx, ty::Binder<T>>
+        where T: Relate<'tcx>
+    {
+        Ok(ty::Binder(self.relate(a.skip_binder(), b.skip_binder())?))
+    }
+
+    fn relate_with_variance<T: Relate<'tcx>>(&mut self,
+                                             variance: ty::Variance,
+                                             a: &T,
+                                             b: &T)
+                                             -> RelateResult<'tcx, T>
+    {
+        let old_ambient_variance = self.ambient_variance;
+        self.ambient_variance = self.ambient_variance.xform(variance);
+
+        let result = self.relate(a, b);
+        self.ambient_variance = old_ambient_variance;
+        result
+    }
+
+    fn tys(&mut self, t: Ty<'tcx>, t2: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        assert_eq!(t, t2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
+
         // Check to see whether the type we are genealizing references
         // any other type variable related to `vid` via
         // subtyping. This is basically our "occurs check", preventing
@@ -286,41 +365,63 @@ impl<'cx, 'gcx, 'tcx> ty::fold::TypeFolder<'gcx, 'tcx> for Generalizer<'cx, 'gcx
                 if sub_vid == self.for_vid_sub_root {
                     // If sub-roots are equal, then `for_vid` and
                     // `vid` are related via subtyping.
-                    self.cycle_detected = true;
-                    self.tcx().types.err
+                    return Err(TypeError::CyclicTy);
                 } else {
                     match variables.probe_root(vid) {
                         Some(u) => {
                             drop(variables);
-                            self.fold_ty(u)
+                            self.relate(&u, &u)
                         }
                         None => {
-                            if !self.is_eq_relation {
-                                let origin = variables.origin(vid);
-                                let new_var_id = variables.new_var(false, origin, None);
-                                let u = self.tcx().mk_var(new_var_id);
-                                debug!("generalize: replacing original vid={:?} with new={:?}",
-                                       vid, u);
-                                u
-                            } else {
-                                t
+                            match self.ambient_variance {
+                                // Invariant: no need to make a fresh type variable.
+                                ty::Invariant => return Ok(t),
+
+                                // Bivariant: make a fresh var, but we
+                                // may need a WF predicate. See
+                                // comment on `needs_wf` field for
+                                // more info.
+                                ty::Bivariant => self.needs_wf = true,
+
+                                // Co/contravariant: this will be
+                                // sufficiently constrained later on.
+                                ty::Covariant | ty::Contravariant => (),
                             }
+
+                            let origin = variables.origin(vid);
+                            let new_var_id = variables.new_var(false, origin, None);
+                            let u = self.tcx().mk_var(new_var_id);
+                            debug!("generalize: replacing original vid={:?} with new={:?}",
+                                   vid, u);
+                            return Ok(u);
                         }
                     }
                 }
             }
+            ty::TyInfer(ty::IntVar(_)) |
+            ty::TyInfer(ty::FloatVar(_)) => {
+                // No matter what mode we are in,
+                // integer/floating-point types must be equal to be
+                // relatable.
+                Ok(t)
+            }
             _ => {
-                t.super_fold_with(self)
+                relate::super_relate_tys(self, t, t)
             }
         }
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn regions(&mut self, r: ty::Region<'tcx>, r2: ty::Region<'tcx>)
+               -> RelateResult<'tcx, ty::Region<'tcx>> {
+        assert_eq!(r, r2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
+
         match *r {
             // Never make variables for regions bound within the type itself,
             // nor for erased regions.
             ty::ReLateBound(..) |
-            ty::ReErased => { return r; }
+            ty::ReErased => {
+                return Ok(r);
+            }
 
             // Early-bound regions should really have been substituted away before
             // we get to this point.
@@ -342,15 +443,16 @@ impl<'cx, 'gcx, 'tcx> ty::fold::TypeFolder<'gcx, 'tcx> for Generalizer<'cx, 'gcx
             ty::ReScope(..) |
             ty::ReVar(..) |
             ty::ReFree(..) => {
-                if self.is_eq_relation {
-                    return r;
+                match self.ambient_variance {
+                    ty::Invariant => return Ok(r),
+                    ty::Bivariant | ty::Covariant | ty::Contravariant => (),
                 }
             }
         }
 
         // FIXME: This is non-ideal because we don't give a
         // very descriptive origin for this region variable.
-        self.infcx.next_region_var(MiscVariable(self.span))
+        Ok(self.infcx.next_region_var(MiscVariable(self.span)))
     }
 }
 
