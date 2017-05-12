@@ -329,7 +329,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         visit::walk_item(self, item);
     }
 
-    fn visit_mod(&mut self, m: &'a ast::Mod, _s: Span, id: NodeId) {
+    fn visit_mod(&mut self, m: &'a ast::Mod, _s: Span, _a: &[ast::Attribute], id: NodeId) {
         let mut prev_in_root = self.in_root;
         if id != ast::CRATE_NODE_ID {
             prev_in_root = mem::replace(&mut self.in_root, false);
