@@ -1779,7 +1779,12 @@ fn rewrite_call_args(context: &RewriteContext,
     };
 
     match write_list(&item_vec, &fmt) {
-        Some(ref s) if !s.contains('\n') && s.len() > one_line_width => {
+        // If arguments do not fit in a single line and do not contain newline,
+        // try to put it on the next line. Try this only when we are in block mode
+        // and not rewriting macro.
+        Some(ref s) if context.config.fn_call_style == IndentStyle::Block &&
+                       !force_no_trailing_comma &&
+                       (!s.contains('\n') && s.len() > one_line_width) => {
             fmt.trailing_separator = SeparatorTactic::Vertical;
             write_list(&item_vec, &fmt)
         }
