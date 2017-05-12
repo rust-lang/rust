@@ -124,8 +124,8 @@ install:
   - set PATH=C:\Python27;%PATH%
 
   # Download and install sccache
-  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-04-29-sccache-x86_64-pc-windows-msvc
-  - mv 2017-04-29-sccache-x86_64-pc-windows-msvc sccache.exe
+  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-pc-windows-msvc
+  - mv 2017-05-12-sccache-x86_64-pc-windows-msvc sccache.exe
   - set PATH=%PATH%;%CD%
 
   # Download and install ninja
