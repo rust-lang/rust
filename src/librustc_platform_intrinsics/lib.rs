@@ -9,10 +9,10 @@
 // except according to those terms.
 
 #![crate_name = "rustc_platform_intrinsics"]
-#![unstable(feature = "rustc_private", issue = "27812")]
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
-#![feature(staged_api)]
+#![cfg_attr(stage0, feature(staged_api))]
 #![deny(warnings)]
 #![allow(bad_style)]
 

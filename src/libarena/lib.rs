@@ -19,7 +19,7 @@
 //! objects of a single type.
 
 #![crate_name = "arena"]
-#![unstable(feature = "rustc_private", issue = "27812")]
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -32,7 +32,7 @@
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(generic_param_attrs)]
-#![feature(staged_api)]
+#![cfg_attr(stage0, feature(staged_api))]
 #![cfg_attr(test, feature(test))]
 
 #![allow(deprecated)]

@@ -882,7 +882,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
               "static item recursion checking",
               || static_recursion::check_crate(sess, &hir_map))?;
 
-    let index = stability::Index::new(&hir_map);
+    let index = stability::Index::new(&sess);
 
     let mut local_providers = ty::maps::Providers::default();
     borrowck::provide(&mut local_providers);

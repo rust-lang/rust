@@ -194,6 +194,8 @@ fn main() {
                 // do that we pass a weird flag to the compiler to get it to do
                 // so. Note that this is definitely a hack, and we should likely
                 // flesh out rpath support more fully in the future.
+                //
+                // FIXME: remove condition after next stage0
                 if stage != "0" {
                     cmd.arg("-Z").arg("osx-rpath-install-name");
                 }
@@ -217,6 +219,17 @@ fn main() {
         if target.contains("pc-windows-msvc") {
             cmd.arg("-Z").arg("unstable-options");
             cmd.arg("-C").arg("target-feature=+crt-static");
+        }
+
+        // Force all crates compiled by this compiler to (a) be unstable and (b)
+        // allow the `rustc_private` feature to link to other unstable crates
+        // also in the sysroot.
+        //
+        // FIXME: remove condition after next stage0
+        if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
+            if stage != "0" {
+                cmd.arg("-Z").arg("force-unstable-if-unmarked");
+            }
         }
     }
 
