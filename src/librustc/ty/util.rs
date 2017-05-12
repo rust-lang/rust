@@ -15,14 +15,13 @@ use hir::map::DefPathData;
 use infer::InferCtxt;
 use ich::{StableHashingContext, NodeIdHashingMode};
 use traits::{self, Reveal};
-use ty::{self, Ty, TyCtxt, TypeFlags, TypeFoldable};
+use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::ParameterEnvironment;
 use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
 use ty::subst::{Subst, Kind};
 use ty::TypeVariants::*;
 use util::common::ErrorReported;
-use util::nodemap::FxHashSet;
 use middle::lang_items;
 
 use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
@@ -754,110 +753,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       param_env: ty::ParameterEnvironment<'tcx>)
                       -> bool {
-        if self.flags.get().intersects(TypeFlags::NEEDS_DROP_CACHED) {
-            return self.flags.get().intersects(TypeFlags::NEEDS_DROP);
-        }
-
-        self.needs_drop_uncached(tcx, param_env, &mut FxHashSet())
-    }
-
-    fn needs_drop_inner(&'tcx self,
-                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        param_env: ty::ParameterEnvironment<'tcx>,
-                        stack: &mut FxHashSet<Ty<'tcx>>)
-                        -> bool {
-        if self.flags.get().intersects(TypeFlags::NEEDS_DROP_CACHED) {
-            return self.flags.get().intersects(TypeFlags::NEEDS_DROP);
-        }
-
-        // This should be reported as an error by `check_representable`.
-        //
-        // Consider the type as not needing drop in the meanwhile to avoid
-        // further errors.
-        if let Some(_) = stack.replace(self) {
-            return false;
-        }
-
-        let needs_drop = self.needs_drop_uncached(tcx, param_env, stack);
-
-        // "Pop" the cycle detection "stack".
-        stack.remove(self);
-
-        needs_drop
-    }
-
-    fn needs_drop_uncached(&'tcx self,
-                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           param_env: ty::ParameterEnvironment<'tcx>,
-                           stack: &mut FxHashSet<Ty<'tcx>>)
-                           -> bool {
-        assert!(!self.needs_infer());
-
-        let result = match self.sty {
-            // Fast-path for primitive types
-            ty::TyInfer(ty::FreshIntTy(_)) | ty::TyInfer(ty::FreshFloatTy(_)) |
-            ty::TyBool | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) | ty::TyNever |
-            ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyChar |
-            ty::TyRawPtr(_) | ty::TyRef(..) | ty::TyStr => false,
-
-            // Issue #22536: We first query type_moves_by_default.  It sees a
-            // normalized version of the type, and therefore will definitely
-            // know whether the type implements Copy (and thus needs no
-            // cleanup/drop/zeroing) ...
-            _ if !self.moves_by_default(tcx, param_env, DUMMY_SP) => false,
-
-            // ... (issue #22536 continued) but as an optimization, still use
-            // prior logic of asking for the structural "may drop".
-
-            // FIXME(#22815): Note that this is a conservative heuristic;
-            // it may report that the type "may drop" when actual type does
-            // not actually have a destructor associated with it. But since
-            // the type absolutely did not have the `Copy` bound attached
-            // (see above), it is sound to treat it as having a destructor.
-
-            // User destructors are the only way to have concrete drop types.
-            ty::TyAdt(def, _) if def.has_dtor(tcx) => true,
-
-            // Can refer to a type which may drop.
-            // FIXME(eddyb) check this against a ParameterEnvironment.
-            ty::TyDynamic(..) | ty::TyProjection(..) | ty::TyParam(_) |
-            ty::TyAnon(..) | ty::TyInfer(_) | ty::TyError => true,
-
-            // Structural recursion.
-            ty::TyArray(ty, _) | ty::TySlice(ty) => {
-                ty.needs_drop_inner(tcx, param_env, stack)
-            }
-
-            ty::TyClosure(def_id, ref substs) => {
-                substs.upvar_tys(def_id, tcx)
-                    .any(|ty| ty.needs_drop_inner(tcx, param_env, stack))
-            }
-
-            ty::TyTuple(ref tys, _) => {
-                tys.iter().any(|ty| ty.needs_drop_inner(tcx, param_env, stack))
-            }
-
-            // unions don't have destructors regardless of the child types
-            ty::TyAdt(def, _) if def.is_union() => false,
-
-            ty::TyAdt(def, substs) => {
-                def.variants.iter().any(|v| {
-                    v.fields.iter().any(|f| {
-                        f.ty(tcx, substs).needs_drop_inner(tcx, param_env, stack)
-                    })
-                })
-            }
-        };
-
-        if !self.has_param_types() && !self.has_self_ty() {
-            self.flags.set(self.flags.get() | if result {
-                TypeFlags::NEEDS_DROP_CACHED | TypeFlags::NEEDS_DROP
-            } else {
-                TypeFlags::NEEDS_DROP_CACHED
-            });
-        }
-
-        result
+        tcx.needs_drop_raw(param_env.and(self))
     }
 
     #[inline]
@@ -1075,11 +971,81 @@ fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
        .enter(|infcx| traits::type_known_to_meet_bound(&infcx, ty, trait_def_id, DUMMY_SP))
 }
 
+fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            query: ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>)
+                            -> bool
+{
+    let (param_env, ty) = query.into_parts();
+
+    let needs_drop = |ty: Ty<'tcx>| -> bool {
+        match ty::queries::needs_drop_raw::try_get(tcx, DUMMY_SP, param_env.and(ty)) {
+            Ok(v) => v,
+            Err(_) => {
+                // Cycles should be reported as an error by `check_representable`.
+                //
+                // Consider the type as not needing drop in the meanwhile to avoid
+                // further errors.
+                false
+            }
+        }
+    };
+
+    assert!(!ty.needs_infer());
+
+    match ty.sty {
+        // Fast-path for primitive types
+        ty::TyInfer(ty::FreshIntTy(_)) | ty::TyInfer(ty::FreshFloatTy(_)) |
+        ty::TyBool | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) | ty::TyNever |
+        ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyChar |
+        ty::TyRawPtr(_) | ty::TyRef(..) | ty::TyStr => false,
+
+        // Issue #22536: We first query type_moves_by_default.  It sees a
+        // normalized version of the type, and therefore will definitely
+        // know whether the type implements Copy (and thus needs no
+        // cleanup/drop/zeroing) ...
+        _ if !ty.moves_by_default(tcx, param_env, DUMMY_SP) => false,
+
+        // ... (issue #22536 continued) but as an optimization, still use
+        // prior logic of asking for the structural "may drop".
+
+        // FIXME(#22815): Note that this is a conservative heuristic;
+        // it may report that the type "may drop" when actual type does
+        // not actually have a destructor associated with it. But since
+        // the type absolutely did not have the `Copy` bound attached
+        // (see above), it is sound to treat it as having a destructor.
+
+        // User destructors are the only way to have concrete drop types.
+        ty::TyAdt(def, _) if def.has_dtor(tcx) => true,
+
+        // Can refer to a type which may drop.
+        // FIXME(eddyb) check this against a ParameterEnvironment.
+        ty::TyDynamic(..) | ty::TyProjection(..) | ty::TyParam(_) |
+        ty::TyAnon(..) | ty::TyInfer(_) | ty::TyError => true,
+
+        // Structural recursion.
+        ty::TyArray(ty, _) | ty::TySlice(ty) => needs_drop(ty),
+
+        ty::TyClosure(def_id, ref substs) => substs.upvar_tys(def_id, tcx).any(needs_drop),
+
+        ty::TyTuple(ref tys, _) => tys.iter().cloned().any(needs_drop),
+
+        // unions don't have destructors regardless of the child types
+        ty::TyAdt(def, _) if def.is_union() => false,
+
+        ty::TyAdt(def, substs) =>
+            def.variants.iter().any(
+                |variant| variant.fields.iter().any(
+                    |field| needs_drop(field.ty(tcx, substs)))),
+    }
+}
+
+
 pub fn provide(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
         is_copy_raw,
         is_sized_raw,
         is_freeze_raw,
+        needs_drop_raw,
         ..*providers
     };
 }

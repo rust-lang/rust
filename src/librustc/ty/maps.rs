@@ -271,6 +271,12 @@ impl<'tcx> QueryDescription for queries::is_freeze_raw<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::needs_drop_raw<'tcx> {
+    fn describe(_tcx: TyCtxt, env: ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>) -> String {
+        format!("computing whether `{}` needs drop", env.value)
+    }
+}
+
 impl<'tcx> QueryDescription for queries::super_predicates_of<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("computing the supertraits of `{}`",
@@ -891,6 +897,7 @@ define_maps! { <'tcx>
     [] is_copy_raw: is_copy_dep_node(ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>) -> bool,
     [] is_sized_raw: is_sized_dep_node(ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>) -> bool,
     [] is_freeze_raw: is_freeze_dep_node(ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>) -> bool,
+    [] needs_drop_raw: needs_drop_dep_node(ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>) -> bool,
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -948,4 +955,9 @@ fn is_sized_dep_node<'tcx>(_: ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>) -> De
 fn is_freeze_dep_node<'tcx>(_: ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
     let krate_def_id = DefId::local(CRATE_DEF_INDEX);
     DepNode::IsSized(krate_def_id)
+}
+
+fn needs_drop_dep_node<'tcx>(_: ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
+    let krate_def_id = DefId::local(CRATE_DEF_INDEX);
+    DepNode::NeedsDrop(krate_def_id)
 }
