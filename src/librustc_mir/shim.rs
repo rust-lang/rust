@@ -323,7 +323,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     let (callee, mut args) = match call_kind {
         CallKind::Indirect => (rcvr, vec![]),
         CallKind::Direct(def_id) => (
-            Operand::Constant(Constant {
+            Operand::Constant(box Constant {
                 span: span,
                 ty: tcx.type_of(def_id).subst(tcx, param_env.free_substs),
                 literal: Literal::Value {
@@ -449,7 +449,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
             kind: StatementKind::Assign(
                 Lvalue::Local(RETURN_POINTER),
                 Rvalue::Aggregate(
-                    AggregateKind::Adt(adt_def, variant_no, substs, None),
+                    box AggregateKind::Adt(adt_def, variant_no, substs, None),
                     (1..sig.inputs().len()+1).map(|i| {
                         Operand::Consume(Lvalue::Local(Local::new(i)))
                     }).collect()

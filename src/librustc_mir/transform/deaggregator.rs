@@ -49,8 +49,8 @@ impl MirPass for Deaggregator {
                     &Rvalue::Aggregate(ref agg_kind, ref operands) => (agg_kind, operands),
                     _ => span_bug!(src_info.span, "expected aggregate, not {:?}", rhs),
                 };
-                let (adt_def, variant, substs) = match agg_kind {
-                    &AggregateKind::Adt(adt_def, variant, substs, None)
+                let (adt_def, variant, substs) = match **agg_kind {
+                    AggregateKind::Adt(adt_def, variant, substs, None)
                         => (adt_def, variant, substs),
                     _ => span_bug!(src_info.span, "expected struct, not {:?}", rhs),
                 };
@@ -114,8 +114,8 @@ fn get_aggregate_statement_index<'a, 'tcx, 'b>(start: usize,
             &Rvalue::Aggregate(ref kind, ref operands) => (kind, operands),
             _ => continue,
         };
-        let (adt_def, variant) = match kind {
-            &AggregateKind::Adt(adt_def, variant, _, None) => (adt_def, variant),
+        let (adt_def, variant) = match **kind {
+            AggregateKind::Adt(adt_def, variant, _, None) => (adt_def, variant),
             _ => continue,
         };
         if operands.len() == 0 {
