@@ -1,8 +1,8 @@
-error: this creates an owned instance just for comparison. Consider using `x != "foo"` to compare without allocation
+error: this creates an owned instance just for comparison
  --> $DIR/cmp_owned.rs:8:14
   |
 8 |         x != "foo".to_string();
-  |              ^^^^^^^^^^^^^^^^^
+  |              ^^^^^^^^^^^^^^^^^ help: try `"foo"`
   |
 note: lint level defined here
  --> $DIR/cmp_owned.rs:4:8
@@ -10,23 +10,37 @@ note: lint level defined here
 4 | #[deny(cmp_owned)]
   |        ^^^^^^^^^
 
-error: this creates an owned instance just for comparison. Consider using `"foo" != x` to compare without allocation
+error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:10:9
    |
 10 |         "foo".to_string() != x;
-   |         ^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^ help: try `"foo"`
 
-error: this creates an owned instance just for comparison. Consider using `x != "foo"` to compare without allocation
+error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:17:10
    |
 17 |     x != "foo".to_owned();
-   |          ^^^^^^^^^^^^^^^^
+   |          ^^^^^^^^^^^^^^^^ help: try `"foo"`
 
-error: this creates an owned instance just for comparison. Consider using `x != "foo"` to compare without allocation
-  --> $DIR/cmp_owned.rs:22:10
+error: this creates an owned instance just for comparison
+  --> $DIR/cmp_owned.rs:19:10
    |
-22 |     x != String::from("foo");
-   |          ^^^^^^^^^^^^^^^^^^^
+19 |     x != String::from("foo");
+   |          ^^^^^^^^^^^^^^^^^^^ help: try `"foo"`
 
-error: aborting due to 4 previous errors
+error: this creates an owned instance just for comparison
+  --> $DIR/cmp_owned.rs:23:5
+   |
+23 |     Foo.to_owned() == Foo;
+   |     ^^^^^^^^^^^^^^ help: try `Foo`
+
+warning: this creates an owned instance just for comparison
+  --> $DIR/cmp_owned.rs:30:9
+   |
+30 |         self.to_owned() == *other
+   |         ^^^^^^^^^^^^^^^ try calling implementing the comparison without allocating
+   |
+   = note: #[warn(cmp_owned)] on by default
+
+error: aborting due to 5 previous errors
 

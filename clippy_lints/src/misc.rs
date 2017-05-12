@@ -6,11 +6,12 @@ use rustc::middle::const_val::ConstVal;
 use rustc::ty;
 use rustc_const_eval::ConstContext;
 use rustc_const_math::ConstFloat;
-use syntax::codemap::{Span, Spanned, ExpnFormat};
+use syntax::codemap::{Span, ExpnFormat};
 use utils::{get_item_name, get_parent_expr, implements_trait, in_macro, is_integer_literal, match_path, snippet,
-            span_lint, span_lint_and_then, walk_ptrs_ty, last_path_segment, iter_input_pats, in_constant};
+            span_lint, span_lint_and_then, walk_ptrs_ty, last_path_segment, iter_input_pats, in_constant,
+            match_trait_method, paths};
 use utils::sugg::Sugg;
-use syntax::ast::LitKind;
+use syntax::ast::{LitKind, CRATE_NODE_ID};
 
 /// **What it does:** Checks for function arguments and let bindings denoted as `ref`.
 ///
@@ -297,8 +298,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     if let ExprPath(QPath::Resolved(_, ref path)) = right.node {
                         check_nan(cx, path, expr);
                     }
-                    check_to_owned(cx, left, right, true, cmp.span);
-                    check_to_owned(cx, right, left, false, cmp.span)
+                    check_to_owned(cx, left, right);
+                    check_to_owned(cx, right, left);
                 }
                 if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
                     if is_allowed(cx, left) || is_allowed(cx, right) {
@@ -422,12 +423,11 @@ fn is_float(cx: &LateContext, expr: &Expr) -> bool {
     matches!(walk_ptrs_ty(cx.tables.expr_ty(expr)).sty, ty::TyFloat(_))
 }
 
-fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: Span) {
+fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr) {
     let (arg_ty, snip) = match expr.node {
-        ExprMethodCall(Spanned { node: ref name, .. }, _, ref args) if args.len() == 1 => {
-            let name = name.as_str();
-            if name == "to_string" || name == "to_owned" && is_str_arg(cx, args) {
-                (cx.tables.expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
+        ExprMethodCall(.., ref args) if args.len() == 1 => {
+            if match_trait_method(cx, expr, &paths::TO_STRING) || match_trait_method(cx, expr, &paths::TO_OWNED) {
+                (cx.tables.expr_ty_adjusted(&args[0]), snippet(cx, args[0].span, ".."))
             } else {
                 return;
             }
@@ -435,7 +435,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
         ExprCall(ref path, ref v) if v.len() == 1 => {
             if let ExprPath(ref path) = path.node {
                 if match_path(path, &["String", "from_str"]) || match_path(path, &["String", "from"]) {
-                    (cx.tables.expr_ty(&v[0]), snippet(cx, v[0].span, ".."))
+                    (cx.tables.expr_ty_adjusted(&v[0]), snippet(cx, v[0].span, ".."))
                 } else {
                     return;
                 }
@@ -446,40 +446,43 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
         _ => return,
     };
 
-    let other_ty = cx.tables.expr_ty(other);
+    let other_ty = cx.tables.expr_ty_adjusted(other);
     let partial_eq_trait_id = match cx.tcx.lang_items.eq_trait() {
         Some(id) => id,
         None => return,
     };
 
-    if !implements_trait(cx, arg_ty, partial_eq_trait_id, &[other_ty], None) {
+    // *arg impls PartialEq<other>
+    if !arg_ty
+        .builtin_deref(true, ty::LvaluePreference::NoPreference)
+        .map_or(false, |tam| implements_trait(cx, tam.ty, partial_eq_trait_id, &[other_ty], None))
+        // arg impls PartialEq<*other>
+        && !other_ty
+        .builtin_deref(true, ty::LvaluePreference::NoPreference)
+        .map_or(false, |tam| implements_trait(cx, arg_ty, partial_eq_trait_id, &[tam.ty], None))
+        // arg impls PartialEq<other>
+        && !implements_trait(cx, arg_ty, partial_eq_trait_id, &[other_ty], None) {
         return;
     }
 
-    if left {
-        span_lint(cx,
-                  CMP_OWNED,
-                  expr.span,
-                  &format!("this creates an owned instance just for comparison. Consider using `{} {} {}` to \
-                            compare without allocation",
-                           snip,
-                           snippet(cx, op, "=="),
-                           snippet(cx, other.span, "..")));
-    } else {
-        span_lint(cx,
-                  CMP_OWNED,
-                  expr.span,
-                  &format!("this creates an owned instance just for comparison. Consider using `{} {} {}` to \
-                            compare without allocation",
-                           snippet(cx, other.span, ".."),
-                           snippet(cx, op, "=="),
-                           snip));
-    }
-
-}
-
-fn is_str_arg(cx: &LateContext, args: &[Expr]) -> bool {
-    args.len() == 1 && matches!(walk_ptrs_ty(cx.tables.expr_ty(&args[0])).sty, ty::TyStr)
+    span_lint_and_then(cx, CMP_OWNED, expr.span, "this creates an owned instance just for comparison", |db| {
+        // this is as good as our recursion check can get, we can't prove that the current function is called by
+        // PartialEq::eq, but we can at least ensure that this code is not part of it
+        let parent_fn = cx.tcx.hir.get_parent(expr.id);
+        let parent_impl = cx.tcx.hir.get_parent(parent_fn);
+        if parent_impl != CRATE_NODE_ID {
+            if let map::NodeItem(item) = cx.tcx.hir.get(parent_impl) {
+                if let ItemImpl(.., Some(ref trait_ref), _, _) = item.node {
+                    if trait_ref.path.def.def_id() == partial_eq_trait_id {
+                        // we are implementing PartialEq, don't suggest not doing `to_owned`, otherwise we go into recursion
+                        db.span_label(expr.span, "try calling implementing the comparison without allocating");
+                        return;
+                    }
+                }
+            }
+        }
+        db.span_suggestion(expr.span, "try", snip.to_string());
+    });
 }
 
 /// Heuristic to see if an expression is used. Should be compatible with `unused_variables`'s idea
