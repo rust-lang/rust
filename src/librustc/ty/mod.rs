@@ -504,8 +504,6 @@ bitflags! {
                                   TypeFlags::KEEP_IN_LOCAL_TCX.bits,
 
         // Caches for type_is_sized, type_moves_by_default
-        const SIZEDNESS_CACHED  = 1 << 16,
-        const IS_SIZED          = 1 << 17,
         const FREEZENESS_CACHED = 1 << 20,
         const IS_FREEZE         = 1 << 21,
         const NEEDS_DROP_CACHED = 1 << 22,
