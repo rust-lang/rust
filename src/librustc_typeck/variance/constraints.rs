@@ -27,7 +27,6 @@ use rustc_data_structures::transitive_relation::TransitiveRelation;
 
 use super::terms::*;
 use super::terms::VarianceTerm::*;
-use super::xform::*;
 
 pub struct ConstraintContext<'a, 'tcx: 'a> {
     pub terms_cx: TermsContext<'a, 'tcx>,
