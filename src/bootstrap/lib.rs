@@ -479,7 +479,8 @@ impl Build {
         // compiled with debuginfo.
         if mode != Mode::Tool {
              cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
-                  .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string());
+                  .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string())
+                  .env("RUSTC_FORCE_UNSTABLE", "1");
         }
 
         // Enable usage of unstable features
@@ -524,7 +525,9 @@ impl Build {
         // the comipiler, libs, and tests are stable and we don't want to make
         // their deps unstable (since this would break the first invariant
         // above).
-        if mode != Mode::Tool {
+        //
+        // FIXME: remove this after next stage0
+        if mode != Mode::Tool && stage == 0 {
             cargo.env("RUSTBUILD_UNSTABLE", "1");
         }
 
