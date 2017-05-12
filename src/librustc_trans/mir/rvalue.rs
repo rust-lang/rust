@@ -104,7 +104,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
-                match *kind {
+                match **kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, substs, active_field_index) => {
                         let discr = adt_def.discriminant_for_variant(bcx.tcx(), variant_index)
                            .to_u128_unchecked() as u64;

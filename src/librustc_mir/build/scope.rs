@@ -786,7 +786,7 @@ fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
     let substs = tcx.intern_substs(&[Kind::from(data.item_ty)]);
     TerminatorKind::Call {
-        func: Operand::Constant(Constant {
+        func: Operand::Constant(box Constant {
             span: data.span,
             ty: tcx.type_of(free_func).subst(tcx, substs),
             literal: Literal::Value {
