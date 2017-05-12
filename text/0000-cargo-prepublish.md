@@ -7,9 +7,10 @@
 [summary]: #summary
 
 This RFC proposes the concept of *augmenting sources* for Cargo. Sources can be
-enhanced with new versions of a crate that did not exist or have existing
-versions replaced. Dependency resolution will work *as if* these additional
-crates actually existed in the original source.
+have their existing versions of crates replaced with different copies, and
+sources can also have "prepublished" crates by adding versions of a crate which
+do not currently exist in the source. Dependency resolution will work *as if*
+these additional or replacement crates actually existed in the original source.
 
 One primary feature enabled by this is the ability to "prepublish" a crate to
 crates.io. Prepublication makes it possible to perform integration testing
@@ -47,9 +48,9 @@ graph (say, `xml-rs`), they face a couple of related challenges:
 
 ## The Goldilocks problem
 
-It's likely the a couple of Cargo's existing features have already come to mind
-as potential solutions to the challenges above. But the existing features suffer
-from a Goldilocks problem:
+It's likely that a couple of Cargo's existing features have already come to
+mind as potential solutions to the challenges above. But the existing features
+suffer from a Goldilocks problem:
 
 - You might reach for git (or even path) dependencies. That would mean, for
   example, switching an `xml-rs` dependency in your crate graph from crates.io
@@ -123,7 +124,7 @@ are incompatible.
 ### Scenario: augmenting with a bugfix
 
 Let's say that while developing `foo` we've got a lock file pointing to `xml-rs`
-`0.8.0`, and there's an `0.8.0` branch of `xml-rs` that hasn't been touched
+`0.8.0`, and we found the `0.8.0` branch of `xml-rs` that hasn't been touched
 since it was published. We then find a bug in the 0.8.0 publication of `xml-rs`
 which we'd like to fix.
 
@@ -166,6 +167,14 @@ or introduce any `xml-rs` dependencies; it's enough to be using the fork of
 ```toml
 [augment.crates-io]
 xml-rs = { git = "https://github.com/aturon/xml-rs", branch = "0.9.2" }
+foo = { git = "https://github.com/aturon/foo", branch = "fix-xml" }
+```
+
+Note that if Servo depended directly on `foo` it would also be valid to do:
+
+```toml
+[augment.crates-io]
+xml-rs = { git = "https://github.com/aturon/xml-rs", branch = "0.9.2" }
 
 [dependencies]
 foo = { git = "https://github.com/aturon/foo", branch = "fix-xml" }
@@ -173,22 +182,26 @@ foo = { git = "https://github.com/aturon/foo", branch = "fix-xml" }
 
 With this setup:
 
-- When compiling `foo`, Cargo will resolve the `xml-rs` dependency to `0.9.2`, and
-retrieve the source from the specified git branch.
+- When compiling `foo`, Cargo will resolve the `xml-rs` dependency to `0.9.2`,
+  and retrieve the source from the specified git branch.
 
 - When compiling `servo`, Cargo will again resolve *two* versions of `xml-rs`,
-this time `0.9.2` and `0.8.0`, and for the former it will use the source from
-the git branch.
+  this time `0.9.2` and `0.8.0`, and for the former it will use the source from
+  the git branch.
 
 The Cargo.toml files that needed to be changed here span from the crate that
 actually cares about the new version (`foo`) upward to the root of the crate we
 want to do integration testing for (`servo`); no sibling crates needed to be
 changed.
 
-Once `xml-rs` version `0.9.2` is actually published, we can remove the
-`[augment]` sections, and Cargo will warn us that this needs to be done.
+Once `xml-rs` version `0.9.2` is actually published, we will likely be able to
+remove the `[augment]` sections. This is a discrete step that must be taken by
+crate authors, however (e.g. doesn't happen automatically) because the actual
+published 0.9.2 may not be precisely what we thought it was going to be. For
+example more changes could have been merged, it may not actually fix the bug,
+etc.
 
-### Scenario: prepublishing a new major version
+### Scenario: prepublishing a breaking change
 
 What happens if `foo` instead needs to make a breaking change to `xml-rs`? The
 workflow is identical. For `foo`:
@@ -232,10 +245,23 @@ entries in the `[augment]` section to precise dependencies, encoding them all in
 the lock file whether they're used or not.
 
 Dependencies formed on crates listed in `[augment]` will then be listed directly
-in Cargo.lock, eschewing the actual dependency entirely. For example let's say
-we depend on `env_logger` but we're using `[augment]` to depend on a git version
-of the `log` crate, a dependency of `env_logger`. First we'll have our
-`Cargo.toml` including:
+in Cargo.lock, and the original listed crate will not be listed. In our example
+above we had:
+
+- Crate `foo` lists dependency `xml-rs = "0.9.0"`
+- Crate `bar` lists dependency `xml-rs = "0.9.1"`
+- Crate `baz` lists dependency `xml-rs = "0.8.0"`
+
+We then update the crate `foo` to have a dependency of `xml-rs = "0.10.0"`. This
+causes Cargo to encode in the lock file that `foo` depends directly on the git
+repository of `xml-rs` containing `0.10.0`, but it does **not** mention that
+`foo` depends on the crates.io version of `xml-rs-0.10.0` (it doesn't exist!).
+Note, however, that the lock file will still mention `xml-rs-0.8.0` and
+`xml-rs-0.9.1` because `bar` and `baz` depend on it.
+
+To help put some TOML where our mouth is let's say we depend on `env_logger` but
+we're using `[augment]` to depend on a git version of the `log` crate, a
+dependency of `env_logger`. First we'll have our `Cargo.toml` including:
 
 ```toml
 # Cargo.toml
@@ -326,7 +352,7 @@ working out this may change. If after a few cycles on stable the `[augment]`
 section seems to be working well we can issue an official deprecation for
 `[replace]`, printing a warning if it's still used.
 
-Documentation, however, will immediately being to recommend `[augment]` over
+Documentation, however, will immediately begin to recommend `[augment]` over
 `[replace]`.
 
 # How We Teach This
@@ -377,14 +403,15 @@ address the desired workflow, for a few reasons:
   which could have the effect of masking important *behavioral* breaking changes
   (that still allow the crates to compile).
 
-- It does not provide an easy-to-understand picture of what the crates will look
-  like after the relevant dependencies are published. In particular, you can't
-  use the usual resolution algorithm to understand what's going on with version
-  resolution.
-
-- It does not provide any warning when the replaced crate has actually been
-  published to the index, which could lead to silent divergences depending on
-  which root crate you're compiling.
+- It does not provide an easy-to-understand picture of what the crates will
+  likely look like after the relevant dependencies are published. In particular,
+  you can't use the usual resolution algorithm to understand what's going on
+  with version resolution. A good example of this is the "breaking change"
+  example above where we ended up with three versions of `xml-rs` after our
+  prepublished version. It's crucial that 0.9.1 was still in the lock file
+  because we hadn't updated that dependency on 0.9.1 yet, so it wasn't ready for
+  0.10.0. With `[replace]`, however, we would only possibly be able to replace
+  all usage of 0.9.1 with 0.10.0, not having an incremental solution.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
