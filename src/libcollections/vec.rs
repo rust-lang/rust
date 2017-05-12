@@ -76,8 +76,6 @@ use core::hash::{self, Hash};
 use core::intrinsics::{arith_offset, assume};
 use core::iter::{FromIterator, FusedIterator, TrustedLen};
 use core::mem;
-#[cfg(not(test))]
-use core::num::Float;
 use core::ops::{InPlace, Index, IndexMut, Place, Placer};
 use core::ops;
 use core::ptr;
@@ -1394,58 +1392,60 @@ impl<T: Clone> SpecFromElem for T {
     }
 }
 
-impl SpecFromElem for u8 {
-    #[inline]
-    fn from_elem(elem: u8, n: usize) -> Vec<u8> {
-        if elem == 0 {
+// Computes the bitwise OR of the input, reinterpreted as [U].
+// Assumes that U is a primitive integer type and that `T` can be
+// represented exactly as a slice of elements of type `U`, i.e.
+// `mem::size_of::<T>() % mem::size_of::<U>() == 0`
+unsafe fn chunked_or<T, U: ops::BitOr<Output = U> + Copy>(x: T) -> U {
+    let p = &x as *const T as *const U;
+    let len = mem::size_of::<T>() / mem::size_of::<U>();
+    slice::from_raw_parts(p, len).iter().fold(mem::zeroed(), |state, &x| state | x)
+}
+
+// Checks if the raw representation of the input is only binary zeroes.
+// Instead of comparing each byte with 0, the whole memory region is
+// OR-ed together and the result is compared to 0.
+fn is_zero<T: Copy>(x: T) -> bool {
+    // Find the greatest alignment that can be used to scan x, as that
+    // leads to less code and better performance.
+    // If the alignment is greater than 16, compute the OR using u128,
+    // as no bigger native integers are available.
+    // The calls to chunked_or() are safe because mem::size_of::<T>()
+    // is guaranteed to be a multiple of mem::align_of::<T>().
+    unsafe {
+        match mem::align_of::<T>() {
+            n if n % 16 == 0 => 0u128 == chunked_or(x),
+            n if n % 8 == 0 => 0u64 == chunked_or(x),
+            n if n % 4 == 0 => 0u32 == chunked_or(x),
+            n if n % 2 == 0 => 0u16 == chunked_or(x),
+            _ => 0u8 == chunked_or(x),
+        }
+    }
+}
+
+impl<T: Copy> SpecFromElem for T {
+    default fn from_elem(elem: Self, n: usize) -> Vec<Self> {
+        if is_zero(elem) {
             return Vec {
                 buf: RawVec::with_capacity_zeroed(n),
                 len: n,
             }
         }
-        unsafe {
-            let mut v = Vec::with_capacity(n);
-            ptr::write_bytes(v.as_mut_ptr(), elem, n);
-            v.set_len(n);
-            v
+
+        let mut v = Vec::with_capacity(n);
+        if mem::size_of::<T>() == 1 {
+            unsafe {
+                // let elem: u8 = mem::transmute(elem);
+                let elem: u8 = *(&elem as *const T as *const u8);
+                ptr::write_bytes(v.as_mut_ptr(), elem, n);
+                v.set_len(n);
+            }
+        } else {
+            v.extend_with_element(n, elem);
         }
+        v
     }
 }
-
-macro_rules! impl_spec_from_elem {
-    ($t: ty, $is_zero: expr) => {
-        impl SpecFromElem for $t {
-            #[inline]
-            fn from_elem(elem: $t, n: usize) -> Vec<$t> {
-                if $is_zero(elem) {
-                    return Vec {
-                        buf: RawVec::with_capacity_zeroed(n),
-                        len: n,
-                    }
-                }
-                let mut v = Vec::with_capacity(n);
-                v.extend_with_element(n, elem);
-                v
-            }
-        }
-    };
-}
-
-impl_spec_from_elem!(i8, |x| x == 0);
-impl_spec_from_elem!(i16, |x| x == 0);
-impl_spec_from_elem!(i32, |x| x == 0);
-impl_spec_from_elem!(i64, |x| x == 0);
-impl_spec_from_elem!(i128, |x| x == 0);
-impl_spec_from_elem!(isize, |x| x == 0);
-
-impl_spec_from_elem!(u16, |x| x == 0);
-impl_spec_from_elem!(u32, |x| x == 0);
-impl_spec_from_elem!(u64, |x| x == 0);
-impl_spec_from_elem!(u128, |x| x == 0);
-impl_spec_from_elem!(usize, |x| x == 0);
-
-impl_spec_from_elem!(f32, |x: f32| x == 0. && x.is_sign_positive());
-impl_spec_from_elem!(f64, |x: f64| x == 0. && x.is_sign_positive());
 
 ////////////////////////////////////////////////////////////////////////////////
 // Common trait implementations for Vec

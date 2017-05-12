@@ -35,7 +35,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![cfg_attr(not(test), feature(char_escape_debug))]
-#![cfg_attr(not(test), feature(core_float))]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
