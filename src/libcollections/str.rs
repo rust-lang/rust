@@ -176,18 +176,6 @@ impl<'a> Iterator for EncodeUtf16<'a> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a> FusedIterator for EncodeUtf16<'a> {}
 
-// Return the initial codepoint accumulator for the first byte.
-// The first byte is special, only want bottom 5 bits for width 2, 4 bits
-// for width 3, and 3 bits for width 4
-macro_rules! utf8_first_byte {
-    ($byte:expr, $width:expr) => (($byte & (0x7F >> $width)) as u32)
-}
-
-// return the value of $ch updated with continuation byte $byte
-macro_rules! utf8_acc_cont_byte {
-    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63) as u32)
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Borrow<str> for String {
     #[inline]
