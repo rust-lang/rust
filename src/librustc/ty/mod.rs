@@ -502,10 +502,6 @@ bitflags! {
                                   TypeFlags::HAS_TY_CLOSURE.bits |
                                   TypeFlags::HAS_LOCAL_NAMES.bits |
                                   TypeFlags::KEEP_IN_LOCAL_TCX.bits,
-
-        // Caches for type_is_sized, type_moves_by_default
-        const NEEDS_DROP_CACHED = 1 << 22,
-        const NEEDS_DROP        = 1 << 23,
     }
 }
 
