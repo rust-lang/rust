@@ -183,7 +183,7 @@ impl<'tcx> Rvalue<'tcx> {
                 tcx.mk_box(t)
             }
             Rvalue::Aggregate(ref ak, ref ops) => {
-                match *ak {
+                match **ak {
                     AggregateKind::Array(ty) => {
                         tcx.mk_array(ty, ops.len())
                     }

@@ -40,7 +40,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                            ty: Ty<'tcx>,
                            literal: Literal<'tcx>)
                            -> Operand<'tcx> {
-        let constant = Constant {
+        let constant = box Constant {
             span: span,
             ty: ty,
             literal: literal,
@@ -49,7 +49,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub fn unit_rvalue(&mut self) -> Rvalue<'tcx> {
-        Rvalue::Aggregate(AggregateKind::Tuple, vec![])
+        Rvalue::Aggregate(box AggregateKind::Tuple, vec![])
     }
 
     // Returns a zero literal operand for the appropriate type, works for
