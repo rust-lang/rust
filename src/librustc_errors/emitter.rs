@@ -95,21 +95,6 @@ struct FileWithAnnotatedLines {
     multiline_depth: usize,
 }
 
-
-/// Do not use this for messages that end in `\n` – use `println_maybe_styled` instead. See
-/// `EmitterWriter::print_maybe_styled` for details.
-macro_rules! print_maybe_styled {
-    ($dst: expr, $style: expr, $($arg: tt)*) => {
-        $dst.print_maybe_styled(format_args!($($arg)*), $style, false)
-    }
-}
-
-macro_rules! println_maybe_styled {
-    ($dst: expr, $style: expr, $($arg: tt)*) => {
-        $dst.print_maybe_styled(format_args!($($arg)*), $style, true)
-    }
-}
-
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig, code_map: Option<Rc<CodeMapper>>) -> EmitterWriter {
         if color_config.use_color() {
