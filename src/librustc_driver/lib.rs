@@ -635,11 +635,24 @@ impl RustcDefaultCalls {
                             node: ast::MetaItemKind::Word,
                             span: DUMMY_SP,
                         });
-                        if !allow_unstable_cfg && gated_cfg.is_some() {
-                            continue;
+
+                        // Note that crt-static is a specially recognized cfg
+                        // directive that's printed out here as part of
+                        // rust-lang/rust#37406, but in general the
+                        // `target_feature` cfg is gated under
+                        // rust-lang/rust#29717. For now this is just
+                        // specifically allowing the crt-static cfg and that's
+                        // it, this is intended to get into Cargo and then go
+                        // through to build scripts.
+                        let value = value.as_ref().map(|s| s.as_str());
+                        let value = value.as_ref().map(|s| s.as_ref());
+                        if name != "target_feature" || value != Some("crt-static") {
+                            if !allow_unstable_cfg && gated_cfg.is_some() {
+                                continue;
+                            }
                         }
 
-                        cfgs.push(if let &Some(ref value) = value {
+                        cfgs.push(if let Some(value) = value {
                             format!("{}=\"{}\"", name, value)
                         } else {
                             format!("{}", name)

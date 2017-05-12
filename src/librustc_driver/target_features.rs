@@ -12,7 +12,6 @@ use syntax::ast;
 use llvm::LLVMRustHasFeature;
 use rustc::session::Session;
 use rustc_trans::back::write::create_target_machine;
-use syntax::feature_gate::UnstableFeatures;
 use syntax::symbol::Symbol;
 use libc::c_char;
 
@@ -53,8 +52,6 @@ pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
     }
 
     let requested_features = sess.opts.cg.target_feature.split(',');
-    let unstable_options = sess.opts.debugging_opts.unstable_options;
-    let is_nightly = UnstableFeatures::from_environment().is_nightly_build();
     let found_negative = requested_features.clone().any(|r| r == "-crt-static");
     let found_positive = requested_features.clone().any(|r| r == "+crt-static");
 
@@ -67,14 +64,6 @@ pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
     } else {
         found_positive
     };
-
-    // If we switched from the default then that's only allowed on nightly, so
-    // gate that here.
-    if (found_positive || found_negative) && (!is_nightly || !unstable_options) {
-        sess.fatal("specifying the `crt-static` target feature is only allowed \
-                    on the nightly channel with `-Z unstable-options` passed \
-                    as well");
-    }
 
     if crt_static {
         cfg.insert((tf, Some(Symbol::intern("crt-static"))));
