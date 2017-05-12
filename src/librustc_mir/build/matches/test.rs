@@ -308,7 +308,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let eq_block = self.cfg.start_new_block();
                     let cleanup = self.diverge_cleanup();
                     self.cfg.terminate(block, source_info, TerminatorKind::Call {
-                        func: Operand::Constant(Constant {
+                        func: Operand::Constant(box Constant {
                             span: test.span,
                             ty: mty,
                             literal: method
