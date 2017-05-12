@@ -67,8 +67,8 @@ pub enum BoundRegion {
     /// Fresh bound identifiers created during GLB computations.
     BrFresh(u32),
 
-    // Anonymous region for the implicit env pointer parameter
-    // to a closure
+    /// Anonymous region for the implicit env pointer parameter
+    /// to a closure
     BrEnv,
 }
 
@@ -95,8 +95,8 @@ pub struct Issue32330 {
     pub region_name: ast::Name,
 }
 
-// NB: If you change this, you'll probably want to change the corresponding
-// AST structure in libsyntax/ast.rs as well.
+/// NB: If you change this, you'll probably want to change the corresponding
+/// AST structure in libsyntax/ast.rs as well.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum TypeVariants<'tcx> {
     /// The primitive boolean type. Written as `bool`.
@@ -283,11 +283,11 @@ impl<'a, 'gcx, 'acx, 'tcx> ClosureSubsts<'tcx> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum ExistentialPredicate<'tcx> {
-    // e.g. Iterator
+    /// e.g. Iterator
     Trait(ExistentialTraitRef<'tcx>),
-    // e.g. Iterator::Item = T
+    /// e.g. Iterator::Item = T
     Projection(ExistentialProjection<'tcx>),
-    // e.g. Send
+    /// e.g. Send
     AutoTrait(DefId),
 }
 
@@ -683,8 +683,8 @@ impl<'a, 'gcx, 'tcx> ParamTy {
 /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub struct DebruijnIndex {
-    // We maintain the invariant that this is never 0. So 1 indicates
-    // the innermost binder. To ensure this, create with `DebruijnIndex::new`.
+    /// We maintain the invariant that this is never 0. So 1 indicates
+    /// the innermost binder. To ensure this, create with `DebruijnIndex::new`.
     pub depth: u32,
 }
 
@@ -908,7 +908,7 @@ impl DebruijnIndex {
     }
 }
 
-// Region utilities
+/// Region utilities
 impl<'tcx> RegionKind<'tcx> {
     pub fn is_bound(&self) -> bool {
         match *self {
@@ -972,7 +972,7 @@ impl<'tcx> RegionKind<'tcx> {
     }
 }
 
-// Type utilities
+/// Type utilities
 impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn as_opt_param_ty(&self) -> Option<ty::ParamTy> {
         match self.sty {
@@ -995,8 +995,8 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    // Test whether this is a `()` which was produced by defaulting a
-    // diverging type variable with feature(never_type) disabled.
+    /// Test whether this is a `()` which was produced by defaulting a
+    /// diverging type variable with feature(never_type) disabled.
     pub fn is_defaulted_unit(&self) -> bool {
         match self.sty {
             TyTuple(_, true) => true,
@@ -1171,6 +1171,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    /// panics if called on any type other than `Box<T>`
     pub fn boxed_ty(&self) -> Ty<'tcx> {
         match self.sty {
             TyAdt(def, substs) if def.is_box() => substs.type_at(0),
@@ -1178,11 +1179,9 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    /*
-     A scalar type is one that denotes an atomic datum, with no sub-components.
-     (A TyRawPtr is scalar because it represents a non-managed pointer, so its
-     contents are abstract to rustc.)
-    */
+    /// A scalar type is one that denotes an atomic datum, with no sub-components.
+    /// (A TyRawPtr is scalar because it represents a non-managed pointer, so its
+    /// contents are abstract to rustc.)
     pub fn is_scalar(&self) -> bool {
         match self.sty {
             TyBool | TyChar | TyInt(_) | TyFloat(_) | TyUint(_) |
@@ -1278,10 +1277,10 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    // Returns the type and mutability of *ty.
-    //
-    // The parameter `explicit` indicates if this is an *explicit* dereference.
-    // Some types---notably unsafe ptrs---can only be dereferenced explicitly.
+    /// Returns the type and mutability of *ty.
+    ///
+    /// The parameter `explicit` indicates if this is an *explicit* dereference.
+    /// Some types---notably unsafe ptrs---can only be dereferenced explicitly.
     pub fn builtin_deref(&self, explicit: bool, pref: ty::LvaluePreference)
         -> Option<TypeAndMut<'tcx>>
     {
@@ -1302,7 +1301,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    // Returns the type of ty[i]
+    /// Returns the type of ty[i]
     pub fn builtin_index(&self) -> Option<Ty<'tcx>> {
         match self.sty {
             TyArray(ty, _) | TySlice(ty) => Some(ty),
@@ -1317,7 +1316,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    // Type accessors for substructures of types
+    /// Type accessors for substructures of types
     pub fn fn_args(&self) -> ty::Binder<&'tcx [Ty<'tcx>]> {
         self.fn_sig().inputs()
     }
