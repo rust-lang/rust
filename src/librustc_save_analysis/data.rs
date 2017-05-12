@@ -267,7 +267,7 @@ pub struct ModData {
     pub items: Vec<NodeId>,
     pub visibility: Visibility,
     pub docs: String,
-    pub sig: Signature,
+    pub sig: Option<Signature>,
     pub attributes: Vec<Attribute>,
 }
 

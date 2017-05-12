@@ -119,7 +119,7 @@ pub trait Iterator {
     /// // exactly wouldn't be possible without executing filter().
     /// assert_eq!((0, Some(10)), iter.size_hint());
     ///
-    /// // Let's add one five more numbers with chain()
+    /// // Let's add five more numbers with chain()
     /// let iter = (0..10).filter(|x| x % 2 == 0).chain(15..20);
     ///
     /// // now both bounds are increased by five
