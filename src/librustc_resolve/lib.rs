@@ -2604,7 +2604,7 @@ impl<'a> Resolver<'a> {
                 module = Some(self.graph_root);
                 continue
             } else if i == 0 && ns == TypeNS && ident.name == "$crate" {
-                module = Some(self.resolve_crate_var(ident.ctxt, DUMMY_SP));
+                module = Some(self.resolve_crate_var(ident.ctxt, path_span));
                 continue
             }
 
