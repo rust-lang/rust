@@ -415,8 +415,11 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                           Value(base));
                             }
                             if projected_ty.is_bool() {
-                                unsafe {
-                                    val = llvm::LLVMConstTrunc(val, Type::i1(self.ccx).to_ref());
+                                let i1_type = Type::i1(self.ccx);
+                                if val_ty(val) != i1_type {
+                                    unsafe {
+                                        val = llvm::LLVMConstTrunc(val, i1_type.to_ref());
+                                    }
                                 }
                             }
                             (Base::Value(val), extra)
