@@ -585,7 +585,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    pub fn const_usize(&self, val: usize) -> ConstInt {
+    pub fn const_usize(&self, val: u16) -> ConstInt {
         match self.sess.target.uint_type {
             ast::UintTy::U16 => ConstInt::Usize(ConstUsize::Us16(val as u16)),
             ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32(val as u32)),

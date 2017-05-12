@@ -198,11 +198,10 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             elaborate_drops::elaborate_drop(
                 &mut elaborator,
                 source_info,
-                false,
                 &dropee,
                 (),
                 return_block,
-                Some(resume_block),
+                elaborate_drops::Unwind::To(resume_block),
                 START_BLOCK
             );
             elaborator.patch
