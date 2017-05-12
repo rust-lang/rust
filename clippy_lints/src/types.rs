@@ -693,7 +693,7 @@ impl<'a, 'tcx> TypeComplexityPass {
         }
     }
 
-    fn check_type(&self, cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty) {
+    fn check_type(&self, cx: &LateContext, ty: &Ty) {
         if in_macro(ty.span) {
             return;
         }
@@ -701,7 +701,6 @@ impl<'a, 'tcx> TypeComplexityPass {
             let mut visitor = TypeComplexityVisitor {
                 score: 0,
                 nest: 1,
-                cx: cx,
             };
             visitor.visit_ty(ty);
             visitor.score
@@ -717,15 +716,14 @@ impl<'a, 'tcx> TypeComplexityPass {
 }
 
 /// Walks a type and assigns a complexity score to it.
-struct TypeComplexityVisitor<'a, 'tcx: 'a> {
+struct TypeComplexityVisitor{
     /// total complexity score of the type
     score: u64,
     /// current nesting level
     nest: u64,
-    cx: &'a LateContext<'a, 'tcx>,
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for TypeComplexityVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
     fn visit_ty(&mut self, ty: &'tcx Ty) {
         let (add_score, sub_nest) = match ty.node {
             // _, &x and *x have only small overhead; don't mess with nesting level
@@ -757,7 +755,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for TypeComplexityVisitor<'a, 'tcx> {
         self.nest -= sub_nest;
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.hir)
+        NestedVisitorMap::None
     }
 }
 

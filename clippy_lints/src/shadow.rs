@@ -251,7 +251,7 @@ fn lint_shadow<'a, 'tcx: 'a>(
                                         snippet(cx, pattern_span, "_"),
                                         snippet(cx, expr.span, "..")),
                                |db| { db.span_note(prev_span, "previous binding is here"); });
-        } else if contains_self(cx, name, expr) {
+        } else if contains_self(name, expr) {
             span_lint_and_then(cx,
                                SHADOW_REUSE,
                                pattern_span,
@@ -369,28 +369,26 @@ fn path_eq_name(name: Name, path: &Path) -> bool {
     !path.is_global() && path.segments.len() == 1 && path.segments[0].name.as_str() == name.as_str()
 }
 
-struct ContainsSelf<'a, 'tcx: 'a> {
+struct ContainsSelf {
     name: Name,
     result: bool,
-    cx: &'a LateContext<'a, 'tcx>,
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for ContainsSelf<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ContainsSelf {
     fn visit_name(&mut self, _: Span, name: Name) {
         if self.name == name {
             self.result = true;
         }
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.hir)
+        NestedVisitorMap::None
     }
 }
 
-fn contains_self<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, name: Name, expr: &'tcx Expr) -> bool {
+fn contains_self(name: Name, expr: &Expr) -> bool {
     let mut cs = ContainsSelf {
         name: name,
         result: false,
-        cx: cx,
     };
     cs.visit_expr(expr);
     cs.result

@@ -146,7 +146,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
         hir::intravisit::walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> hir::intravisit::NestedVisitorMap<'this, 'tcx> {
-        hir::intravisit::NestedVisitorMap::All(&self.cx.tcx.hir)
+        hir::intravisit::NestedVisitorMap::None
     }
 }
 

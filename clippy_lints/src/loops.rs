@@ -799,8 +799,8 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
             let (new_pat_span, kind, ty, mutbl) = match cx.tables.expr_ty(arg).sty {
                 ty::TyRef(_, ref tam) => {
                     match (&pat[0].node, &pat[1].node) {
-                        (key, _) if pat_is_wild(cx, key, body) => (pat[1].span, "value", tam.ty, tam.mutbl),
-                        (_, value) if pat_is_wild(cx, value, body) => (pat[0].span, "key", tam.ty, MutImmutable),
+                        (key, _) if pat_is_wild(key, body) => (pat[1].span, "value", tam.ty, tam.mutbl),
+                        (_, value) if pat_is_wild(value, body) => (pat[0].span, "key", tam.ty, MutImmutable),
                         _ => return,
                     }
                 },
@@ -834,14 +834,13 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
 }
 
 /// Return true if the pattern is a `PatWild` or an ident prefixed with `'_'`.
-fn pat_is_wild<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, pat: &'tcx PatKind, body: &'tcx Expr) -> bool {
+fn pat_is_wild<'tcx>(pat: &'tcx PatKind, body: &'tcx Expr) -> bool {
     match *pat {
         PatKind::Wild => true,
         PatKind::Binding(_, _, ident, None) if ident.node.as_str().starts_with('_') => {
             let mut visitor = UsedVisitor {
                 var: ident.node,
                 used: false,
-                cx: cx,
             };
             walk_expr(&mut visitor, body);
             !visitor.used
@@ -850,13 +849,12 @@ fn pat_is_wild<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, pat: &'tcx PatKind, bod
     }
 }
 
-struct UsedVisitor<'a, 'tcx: 'a> {
+struct UsedVisitor {
     var: ast::Name, // var to look for
     used: bool, // has the var been used otherwise?
-    cx: &'a LateContext<'a, 'tcx>,
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for UsedVisitor {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         if let ExprPath(QPath::Resolved(None, ref path)) = expr.node {
             if path.segments.len() == 1 && path.segments[0].name == self.var {
@@ -868,7 +866,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.hir)
+        NestedVisitorMap::None
     }
 }
 
@@ -920,7 +918,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.hir)
+        NestedVisitorMap::None
     }
 }
 
@@ -962,7 +960,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.hir)
+        NestedVisitorMap::None
     }
 }
 
@@ -1105,7 +1103,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.hir)
+        NestedVisitorMap::None
     }
 }
 
@@ -1192,7 +1190,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::All(&self.cx.tcx.hir)
+        NestedVisitorMap::None
     }
 }
 

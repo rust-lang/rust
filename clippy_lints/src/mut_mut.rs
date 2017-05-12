@@ -91,6 +91,6 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
         intravisit::walk_ty(self, ty);
     }
     fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
-        intravisit::NestedVisitorMap::All(&self.cx.tcx.hir)
+        intravisit::NestedVisitorMap::None
     }
 }

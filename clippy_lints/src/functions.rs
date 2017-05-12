@@ -200,7 +200,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
         hir::intravisit::walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
-        intravisit::NestedVisitorMap::All(&self.cx.tcx.hir)
+        intravisit::NestedVisitorMap::None
     }
 }
 
