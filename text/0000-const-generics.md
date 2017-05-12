@@ -177,7 +177,7 @@ there are some particular caveats.
 ### Structural equality
 
 Const equality is determined according to the definition of structural equality
-defined in [RFC 1445][1445]. Only types which  have the "structural match"
+defined in [RFC 1445][1445]. Only types which have the "structural match"
 property can be used as const parameters. This would exclude floats, for
 example.
 
@@ -201,7 +201,7 @@ valid).
 
 When comparing the equality of two abstract const expressions (that is, those
 that depend on a variable) we cannot compare the equality of their values
-because their values are determined by an const variable, the value of which is
+because their values are determined by a const variable, the value of which is
 unknown prior to monomorphization.
 
 For this reason we will (initially, at least) treat the return value of const
@@ -220,7 +220,7 @@ is equal to `{N + 1}`, but we don't know whether or not it is equal to
 #### Future extensions
 
 Someday we could introduce knowledge of the basic properties of some operations
-- such as the commutitivity of addition and multiplication - to begin making
+- such as the commutativity of addition and multiplication - to begin making
 smarter judgments on the equality of const projections. However, this RFC does
 not proposing building any knowledge of that sort into the language and doing
 so would require a future RFC.
