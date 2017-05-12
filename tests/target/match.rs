@@ -326,11 +326,10 @@ fn issue1371() {
              sfEvtGainedFocus => GainedFocus,
              sfEvtTextEntered => {
                  TextEntered {
-                     unicode:
-                         unsafe {
-                             ::std::char::from_u32((*event.text.as_ref()).unicode)
-                                 .expect("Invalid unicode encountered on TextEntered event")
-                         },
+                     unicode: unsafe {
+                         ::std::char::from_u32((*event.text.as_ref()).unicode)
+                             .expect("Invalid unicode encountered on TextEntered event")
+                     },
                  }
              }
              sfEvtKeyPressed => {
