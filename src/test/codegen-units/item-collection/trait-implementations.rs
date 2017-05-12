@@ -78,5 +78,3 @@ fn main() {
    //~ TRANS_ITEM fn trait_implementations::{{impl}}[3]::bar[0]<&str, &str>
    0f32.bar("&str", "&str");
 }
-
-//~ TRANS_ITEM drop-glue i8

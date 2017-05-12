@@ -20,7 +20,7 @@ use std::env;
 use std::mem;
 use std::path::PathBuf;
 use syntax::ast;
-use syntax_pos::{Span, COMMAND_LINE_SP};
+use syntax_pos::{Span, DUMMY_SP};
 
 /// Pointer to a registrar function.
 pub type PluginRegistrarFun =
@@ -81,7 +81,7 @@ pub fn load_plugins(sess: &Session,
 
     if let Some(plugins) = addl_plugins {
         for plugin in plugins {
-            loader.load_plugin(COMMAND_LINE_SP, &plugin, vec![]);
+            loader.load_plugin(DUMMY_SP, &plugin, vec![]);
         }
     }
 
@@ -100,8 +100,8 @@ impl<'a> PluginLoader<'a> {
     fn load_plugin(&mut self, span: Span, name: &str, args: Vec<ast::NestedMetaItem>) {
         let registrar = self.reader.find_plugin_registrar(span, name);
 
-        if let Some((lib, svh, index)) = registrar {
-            let symbol = self.sess.generate_plugin_registrar_symbol(&svh, index);
+        if let Some((lib, disambiguator, index)) = registrar {
+            let symbol = self.sess.generate_plugin_registrar_symbol(disambiguator, index);
             let fun = self.dylink_registrar(span, lib, symbol);
             self.plugins.push(PluginRegistrar {
                 fun: fun,
@@ -126,19 +126,19 @@ impl<'a> PluginLoader<'a> {
             // inside this crate, so continue would spew "macro undefined"
             // errors
             Err(err) => {
-                self.sess.span_fatal(span, &err[..])
+                self.sess.span_fatal(span, &err)
             }
         };
 
         unsafe {
             let registrar =
-                match lib.symbol(&symbol[..]) {
+                match lib.symbol(&symbol) {
                     Ok(registrar) => {
                         mem::transmute::<*mut u8,PluginRegistrarFun>(registrar)
                     }
                     // again fatal if we can't register macros
                     Err(err) => {
-                        self.sess.span_fatal(span, &err[..])
+                        self.sess.span_fatal(span, &err)
                     }
                 };
 

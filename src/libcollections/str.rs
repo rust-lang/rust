@@ -10,8 +10,27 @@
 
 //! Unicode string slices.
 //!
+//! The `&str` type is one of the two main string types, the other being `String`.
+//! Unlike its `String` counterpart, its contents are borrowed.
+//!
+//! # Basic Usage
+//!
+//! A basic string declaration of `&str` type:
+//!
+//! ```
+//! let hello_world = "Hello, World!";
+//! ```
+//!
+//! Here we have declared a string literal, also known as a string slice.
+//! String literals have a static lifetime, which means the string `hello_world`
+//! is guaranteed to be valid for the duration of the entire program.
+//! We can explicitly specify `hello_world`'s lifetime as well:
+//!
+//! ```
+//! let hello_world: &'static str = "Hello, world!";
+//! ```
+//!
 //! *[See also the `str` primitive type](../../std/primitive.str.html).*
-
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -19,6 +38,7 @@
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![allow(unused_imports)]
 
+use core::fmt;
 use core::str as core_str;
 use core::str::pattern::Pattern;
 use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
@@ -31,7 +51,7 @@ use borrow::{Borrow, ToOwned};
 use string::String;
 use std_unicode;
 use vec::Vec;
-use slice::SliceConcatExt;
+use slice::{SliceConcatExt, SliceIndex};
 use boxed::Box;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -50,13 +70,16 @@ pub use core::str::{Matches, RMatches};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{MatchIndices, RMatchIndices};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{from_utf8, Chars, CharIndices, Bytes};
+pub use core::str::{from_utf8, from_utf8_mut, Chars, CharIndices, Bytes};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{from_utf8_unchecked, ParseBoolError};
+pub use core::str::{from_utf8_unchecked, from_utf8_unchecked_mut, ParseBoolError};
+#[unstable(feature = "str_box_extras", issue = "41119")]
+pub use alloc::str::from_boxed_utf8_unchecked;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use std_unicode::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
+
 
 #[unstable(feature = "slice_concat_ext",
            reason = "trait should not have to exist",
@@ -113,13 +136,26 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
     }
 }
 
-/// External iterator for a string's UTF-16 code units.
+/// An iterator of [`u16`] over the string encoded as UTF-16.
 ///
-/// For use with the `std::iter` module.
+/// [`u16`]: ../../std/primitive.u16.html
+///
+/// This struct is created by the [`encode_utf16`] method on [`str`].
+/// See its documentation for more.
+///
+/// [`encode_utf16`]: ../../std/primitive.str.html#method.encode_utf16
+/// [`str`]: ../../std/primitive.str.html
 #[derive(Clone)]
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub struct EncodeUtf16<'a> {
     encoder: Utf16Encoder<Chars<'a>>,
+}
+
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<'a> fmt::Debug for EncodeUtf16<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("EncodeUtf16 { .. }")
+    }
 }
 
 #[stable(feature = "encode_utf16", since = "1.8.0")]
@@ -166,6 +202,12 @@ impl ToOwned for str {
     fn to_owned(&self) -> String {
         unsafe { String::from_utf8_unchecked(self.as_bytes().to_owned()) }
     }
+
+    fn clone_into(&self, target: &mut String) {
+        let mut b = mem::replace(target, String::new()).into_bytes();
+        self.as_bytes().clone_into(&mut b);
+        *target = unsafe { String::from_utf8_unchecked(b) }
+    }
 }
 
 /// Methods for string slices.
@@ -196,7 +238,7 @@ impl str {
         core_str::StrExt::len(self)
     }
 
-    /// Returns true if this slice has a length of zero bytes.
+    /// Returns `true` if `self` has a length of zero bytes.
     ///
     /// # Examples
     ///
@@ -261,6 +303,13 @@ impl str {
         core_str::StrExt::as_bytes(self)
     }
 
+    /// Converts a mutable string slice to a mutable byte slice.
+    #[unstable(feature = "str_mut_extras", issue = "41119")]
+    #[inline(always)]
+    pub unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
+        core_str::StrExt::as_bytes_mut(self)
+    }
+
     /// Converts a string slice to a raw pointer.
     ///
     /// As string slices are a slice of bytes, the raw pointer points to a
@@ -283,6 +332,118 @@ impl str {
         core_str::StrExt::as_ptr(self)
     }
 
+    /// Returns a subslice of `str`.
+    ///
+    /// This is the non-panicking alternative to indexing the `str`. Returns
+    /// [`None`] whenever equivalent indexing operation would panic.
+    ///
+    /// [`None`]: option/enum.Option.html#variant.None
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(str_checked_slicing)]
+    /// let v = "🗻∈🌏";
+    /// assert_eq!(Some("🗻"), v.get(0..4));
+    /// assert!(v.get(1..).is_none());
+    /// assert!(v.get(..8).is_none());
+    /// assert!(v.get(..42).is_none());
+    /// ```
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[inline]
+    pub fn get<I: SliceIndex<str>>(&self, i: I) -> Option<&I::Output> {
+        core_str::StrExt::get(self, i)
+    }
+
+    /// Returns a mutable subslice of `str`.
+    ///
+    /// This is the non-panicking alternative to indexing the `str`. Returns
+    /// [`None`] whenever equivalent indexing operation would panic.
+    ///
+    /// [`None`]: option/enum.Option.html#variant.None
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(str_checked_slicing)]
+    /// let mut v = String::from("🗻∈🌏");
+    /// assert_eq!(Some("🗻"), v.get_mut(0..4).map(|v| &*v));
+    /// assert!(v.get_mut(1..).is_none());
+    /// assert!(v.get_mut(..8).is_none());
+    /// assert!(v.get_mut(..42).is_none());
+    /// ```
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[inline]
+    pub fn get_mut<I: SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output> {
+        core_str::StrExt::get_mut(self, i)
+    }
+
+    /// Returns a unchecked subslice of `str`.
+    ///
+    /// This is the unchecked alternative to indexing the `str`.
+    ///
+    /// # Safety
+    ///
+    /// Callers of this function are responsible that these preconditions are
+    /// satisfied:
+    ///
+    /// * The starting index must come before the ending index;
+    /// * Indexes must be within bounds of the original slice;
+    /// * Indexes must lie on UTF-8 sequence boundaries.
+    ///
+    /// Failing that, the returned string slice may reference invalid memory or
+    /// violate the invariants communicated by the `str` type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(str_checked_slicing)]
+    /// let v = "🗻∈🌏";
+    /// unsafe {
+    ///     assert_eq!("🗻", v.get_unchecked(0..4));
+    ///     assert_eq!("∈", v.get_unchecked(4..7));
+    ///     assert_eq!("🌏", v.get_unchecked(7..11));
+    /// }
+    /// ```
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[inline]
+    pub unsafe fn get_unchecked<I: SliceIndex<str>>(&self, i: I) -> &I::Output {
+        core_str::StrExt::get_unchecked(self, i)
+    }
+
+    /// Returns a mutable, unchecked subslice of `str`.
+    ///
+    /// This is the unchecked alternative to indexing the `str`.
+    ///
+    /// # Safety
+    ///
+    /// Callers of this function are responsible that these preconditions are
+    /// satisfied:
+    ///
+    /// * The starting index must come before the ending index;
+    /// * Indexes must be within bounds of the original slice;
+    /// * Indexes must lie on UTF-8 sequence boundaries.
+    ///
+    /// Failing that, the returned string slice may reference invalid memory or
+    /// violate the invariants communicated by the `str` type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(str_checked_slicing)]
+    /// let mut v = String::from("🗻∈🌏");
+    /// unsafe {
+    ///     assert_eq!("🗻", v.get_unchecked_mut(0..4));
+    ///     assert_eq!("∈", v.get_unchecked_mut(4..7));
+    ///     assert_eq!("🌏", v.get_unchecked_mut(7..11));
+    /// }
+    /// ```
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[inline]
+    pub unsafe fn get_unchecked_mut<I: SliceIndex<str>>(&mut self, i: I) -> &mut I::Output {
+        core_str::StrExt::get_unchecked_mut(self, i)
+    }
+
     /// Creates a string slice from another string slice, bypassing safety
     /// checks.
     ///
@@ -290,9 +451,9 @@ impl str {
     /// excluding `end`.
     ///
     /// To get a mutable string slice instead, see the
-    /// [`slice_mut_unchecked()`] method.
+    /// [`slice_mut_unchecked`] method.
     ///
-    /// [`slice_mut_unchecked()`]: #method.slice_mut_unchecked
+    /// [`slice_mut_unchecked`]: #method.slice_mut_unchecked
     ///
     /// # Safety
     ///
@@ -333,9 +494,9 @@ impl str {
     /// excluding `end`.
     ///
     /// To get an immutable string slice instead, see the
-    /// [`slice_unchecked()`] method.
+    /// [`slice_unchecked`] method.
     ///
-    /// [`slice_unchecked()`]: #method.slice_unchecked
+    /// [`slice_unchecked`]: #method.slice_unchecked
     ///
     /// # Safety
     ///
@@ -359,10 +520,10 @@ impl str {
     /// The two slices returned go from the start of the string slice to `mid`,
     /// and from `mid` to the end of the string slice.
     ///
-    /// To get mutable string slices instead, see the [`split_at_mut()`]
+    /// To get mutable string slices instead, see the [`split_at_mut`]
     /// method.
     ///
-    /// [`split_at_mut()`]: #method.split_at_mut
+    /// [`split_at_mut`]: #method.split_at_mut
     ///
     /// # Panics
     ///
@@ -395,9 +556,9 @@ impl str {
     /// The two slices returned go from the start of the string slice to `mid`,
     /// and from `mid` to the end of the string slice.
     ///
-    /// To get immutable string slices instead, see the [`split_at()`] method.
+    /// To get immutable string slices instead, see the [`split_at`] method.
     ///
-    /// [`split_at()`]: #method.split_at
+    /// [`split_at`]: #method.split_at
     ///
     /// # Panics
     ///
@@ -422,7 +583,7 @@ impl str {
         core_str::StrExt::split_at_mut(self, mid)
     }
 
-    /// Returns an iterator over the `char`s of a string slice.
+    /// Returns an iterator over the [`char`]s of a string slice.
     ///
     /// As a string slice consists of valid UTF-8, we can iterate through a
     /// string slice by [`char`]. This method returns such an iterator.
@@ -816,10 +977,10 @@ impl str {
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
     ///
     /// If the pattern allows a reverse search but its results might differ
-    /// from a forward search, the [`rsplit()`] method can be used.
+    /// from a forward search, the [`rsplit`] method can be used.
     ///
     /// [`char`]: primitive.char.html
-    /// [`rsplit()`]: #method.rsplit
+    /// [`rsplit`]: #method.rsplit
     ///
     /// # Examples
     ///
@@ -904,9 +1065,9 @@ impl str {
     /// assert_eq!(d, &["a", "b", "c"]);
     /// ```
     ///
-    /// Use [`split_whitespace()`] for this behavior.
+    /// Use [`split_whitespace`] for this behavior.
     ///
-    /// [`split_whitespace()`]: #method.split_whitespace
+    /// [`split_whitespace`]: #method.split_whitespace
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
         core_str::StrExt::split(self, pat)
@@ -928,9 +1089,9 @@ impl str {
     ///
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
     ///
-    /// For iterating from the front, the [`split()`] method can be used.
+    /// For iterating from the front, the [`split`] method can be used.
     ///
-    /// [`split()`]: #method.split
+    /// [`split`]: #method.split
     ///
     /// # Examples
     ///
@@ -969,10 +1130,10 @@ impl str {
     /// The pattern can be a `&str`, [`char`], or a closure that determines the
     /// split.
     ///
-    /// Equivalent to [`split()`], except that the trailing substring
+    /// Equivalent to [`split`], except that the trailing substring
     /// is skipped if empty.
     ///
-    /// [`split()`]: #method.split
+    /// [`split`]: #method.split
     ///
     /// This method can be used for string data that is _terminated_,
     /// rather than _separated_ by a pattern.
@@ -987,9 +1148,9 @@ impl str {
     /// [`char`]: primitive.char.html
     ///
     /// If the pattern allows a reverse search but its results might differ
-    /// from a forward search, the [`rsplit_terminator()`] method can be used.
+    /// from a forward search, the [`rsplit_terminator`] method can be used.
     ///
-    /// [`rsplit_terminator()`]: #method.rsplit_terminator
+    /// [`rsplit_terminator`]: #method.rsplit_terminator
     ///
     /// # Examples
     ///
@@ -1017,10 +1178,10 @@ impl str {
     ///
     /// [`char`]: primitive.char.html
     ///
-    /// Equivalent to [`split()`], except that the trailing substring is
+    /// Equivalent to [`split`], except that the trailing substring is
     /// skipped if empty.
     ///
-    /// [`split()`]: #method.split
+    /// [`split`]: #method.split
     ///
     /// This method can be used for string data that is _terminated_,
     /// rather than _separated_ by a pattern.
@@ -1031,10 +1192,10 @@ impl str {
     /// reverse search, and it will be double ended if a forward/reverse
     /// search yields the same elements.
     ///
-    /// For iterating from the front, the [`split_terminator()`] method can be
+    /// For iterating from the front, the [`split_terminator`] method can be
     /// used.
     ///
-    /// [`split_terminator()`]: #method.split_terminator
+    /// [`split_terminator`]: #method.split_terminator
     ///
     /// # Examples
     ///
@@ -1068,10 +1229,10 @@ impl str {
     /// The returned iterator will not be double ended, because it is
     /// not efficient to support.
     ///
-    /// If the pattern allows a reverse search, the [`rsplitn()`] method can be
+    /// If the pattern allows a reverse search, the [`rsplitn`] method can be
     /// used.
     ///
-    /// [`rsplitn()`]: #method.rsplitn
+    /// [`rsplitn`]: #method.rsplitn
     ///
     /// # Examples
     ///
@@ -1119,9 +1280,9 @@ impl str {
     /// The returned iterator will not be double ended, because it is not
     /// efficient to support.
     ///
-    /// For splitting from the front, the [`splitn()`] method can be used.
+    /// For splitting from the front, the [`splitn`] method can be used.
     ///
-    /// [`splitn()`]: #method.splitn
+    /// [`splitn`]: #method.splitn
     ///
     /// # Examples
     ///
@@ -1169,9 +1330,9 @@ impl str {
     /// [`char`]: primitive.char.html
     ///
     /// If the pattern allows a reverse search but its results might differ
-    /// from a forward search, the [`rmatches()`] method can be used.
+    /// from a forward search, the [`rmatches`] method can be used.
     ///
-    /// [`rmatches()`]: #method.rmatches
+    /// [`rmatches`]: #method.rmatches
     ///
     /// # Examples
     ///
@@ -1205,9 +1366,9 @@ impl str {
     ///
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
     ///
-    /// For iterating from the front, the [`matches()`] method can be used.
+    /// For iterating from the front, the [`matches`] method can be used.
     ///
-    /// [`matches()`]: #method.matches
+    /// [`matches`]: #method.matches
     ///
     /// # Examples
     ///
@@ -1247,9 +1408,9 @@ impl str {
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
     ///
     /// If the pattern allows a reverse search but its results might differ
-    /// from a forward search, the [`rmatch_indices()`] method can be used.
+    /// from a forward search, the [`rmatch_indices`] method can be used.
     ///
-    /// [`rmatch_indices()`]: #method.rmatch_indices
+    /// [`rmatch_indices`]: #method.rmatch_indices
     ///
     /// # Examples
     ///
@@ -1289,9 +1450,9 @@ impl str {
     ///
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
     ///
-    /// For iterating from the front, the [`match_indices()`] method can be used.
+    /// For iterating from the front, the [`match_indices`] method can be used.
     ///
-    /// [`match_indices()`]: #method.match_indices
+    /// [`match_indices`]: #method.match_indices
     ///
     /// # Examples
     ///
@@ -1509,13 +1670,13 @@ impl str {
 
     /// Parses this string slice into another type.
     ///
-    /// Because `parse()` is so general, it can cause problems with type
-    /// inference. As such, `parse()` is one of the few times you'll see
+    /// Because `parse` is so general, it can cause problems with type
+    /// inference. As such, `parse` is one of the few times you'll see
     /// the syntax affectionately known as the 'turbofish': `::<>`. This
     /// helps the inference algorithm understand specifically which type
     /// you're trying to parse into.
     ///
-    /// `parse()` can parse any type that implements the [`FromStr`] trait.
+    /// `parse` can parse any type that implements the [`FromStr`] trait.
     ///
     /// [`FromStr`]: str/trait.FromStr.html
     ///
@@ -1555,6 +1716,12 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn parse<F: FromStr>(&self) -> Result<F, F::Err> {
         core_str::StrExt::parse(self)
+    }
+
+    /// Converts a `Box<str>` into a `Box<[u8]>` without copying or allocating.
+    #[unstable(feature = "str_box_extras", issue = "41119")]
+    pub fn into_boxed_bytes(self: Box<str>) -> Box<[u8]> {
+        self.into()
     }
 
     /// Replaces all matches of a pattern with another string.
@@ -1598,7 +1765,7 @@ impl str {
     ///
     /// `replacen` creates a new [`String`], and copies the data from this string slice into it.
     /// While doing so, it attempts to find matches of a pattern. If it finds any, it
-    /// replaces them with the replacement string slice at most `N` times.
+    /// replaces them with the replacement string slice at most `count` times.
     ///
     /// [`String`]: string/struct.String.html
     ///
@@ -1607,7 +1774,6 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// # #![feature(str_replacen)]
     /// let s = "foo foo 123 foo";
     /// assert_eq!("new new 123 foo", s.replacen("foo", "new", 2));
     /// assert_eq!("faa fao 123 foo", s.replacen('o', "a", 3));
@@ -1617,13 +1783,10 @@ impl str {
     /// When the pattern doesn't match:
     ///
     /// ```
-    /// # #![feature(str_replacen)]
     /// let s = "this is old";
     /// assert_eq!(s, s.replacen("cookie monster", "little lamb", 10));
     /// ```
-    #[unstable(feature = "str_replacen",
-               issue = "36436",
-               reason = "only need to replace first N matches")]
+    #[stable(feature = "str_replacen", since = "1.16.0")]
     pub fn replacen<'a, P: Pattern<'a>>(&'a self, pat: P, to: &str, count: usize) -> String {
         // Hope to reduce the times of re-allocation
         let mut result = String::with_capacity(32);
@@ -1641,6 +1804,10 @@ impl str {
     ///
     /// 'Lowercase' is defined according to the terms of the Unicode Derived Core Property
     /// `Lowercase`.
+    ///
+    /// Since some characters can expand into multiple characters when changing
+    /// the case, this function returns a [`String`] instead of modifying the
+    /// parameter in-place.
     ///
     /// [`String`]: string/struct.String.html
     ///
@@ -1714,6 +1881,10 @@ impl str {
     /// 'Uppercase' is defined according to the terms of the Unicode Derived Core Property
     /// `Uppercase`.
     ///
+    /// Since some characters can expand into multiple characters when changing
+    /// the case, this function returns a [`String`] instead of modifying the
+    /// parameter in-place.
+    ///
     /// [`String`]: string/struct.String.html
     ///
     /// # Examples
@@ -1740,7 +1911,9 @@ impl str {
         return s;
     }
 
-    /// Escapes each char in `s` with `char::escape_debug`.
+    /// Escapes each char in `s` with [`char::escape_debug`].
+    ///
+    /// [`char::escape_debug`]: primitive.char.html#method.escape_debug
     #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator",
                issue = "27791")]
@@ -1748,7 +1921,9 @@ impl str {
         self.chars().flat_map(|c| c.escape_debug()).collect()
     }
 
-    /// Escapes each char in `s` with `char::escape_default`.
+    /// Escapes each char in `s` with [`char::escape_default`].
+    ///
+    /// [`char::escape_default`]: primitive.char.html#method.escape_default
     #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator",
                issue = "27791")]
@@ -1756,7 +1931,9 @@ impl str {
         self.chars().flat_map(|c| c.escape_default()).collect()
     }
 
-    /// Escapes each char in `s` with `char::escape_unicode`.
+    /// Escapes each char in `s` with [`char::escape_unicode`].
+    ///
+    /// [`char::escape_unicode`]: primitive.char.html#method.escape_unicode
     #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator",
                issue = "27791")]
@@ -1764,9 +1941,10 @@ impl str {
         self.chars().flat_map(|c| c.escape_unicode()).collect()
     }
 
-    /// Converts a `Box<str>` into a [`String`] without copying or allocating.
+    /// Converts a [`Box<str>`] into a [`String`] without copying or allocating.
     ///
     /// [`String`]: string/struct.String.html
+    /// [`Box<str>`]: boxed/struct.Box.html
     ///
     /// # Examples
     ///
@@ -1795,11 +1973,9 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(repeat_str)]
-    ///
     /// assert_eq!("abc".repeat(4), String::from("abcabcabcabc"));
     /// ```
-    #[unstable(feature = "repeat_str", issue = "37079")]
+    #[stable(feature = "repeat_str", since = "1.16.0")]
     pub fn repeat(&self, n: usize) -> String {
         let mut s = String::with_capacity(self.len() * n);
         s.extend((0..n).map(|_| self));

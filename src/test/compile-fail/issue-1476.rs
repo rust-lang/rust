@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    println!("{}", x); //~ ERROR unresolved value `x`
+    println!("{}", x); //~ ERROR cannot find value `x` in this scope
 }

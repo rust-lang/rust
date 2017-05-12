@@ -4,10 +4,6 @@ This is an in-progress README which is targeted at helping to explain how Rust
 is bootstrapped and in general some of the technical details of the build
 system.
 
-> **Note**: This build system is currently under active development and is not
-> intended to be the primarily used one just yet. The makefiles are currently
-> the ones that are still "guaranteed to work" as much as possible at least.
-
 ## Using rustbuild
 
 The rustbuild build system has a primary entry point, a top level `x.py` script:
@@ -267,8 +263,8 @@ build/
 The current build is unfortunately not quite as simple as `cargo build` in a
 directory, but rather the compiler is split into three different Cargo projects:
 
-* `src/rustc/std_shim` - a project which builds and compiles libstd
-* `src/rustc/test_shim` - a project which builds and compiles libtest
+* `src/libstd` - the standard library
+* `src/libtest` - testing support, depends on libstd
 * `src/rustc` - the actual compiler itself
 
 Each "project" has a corresponding Cargo.lock file with all dependencies, and

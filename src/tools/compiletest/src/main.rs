@@ -12,7 +12,6 @@
 
 #![feature(box_syntax)]
 #![feature(rustc_private)]
-#![feature(static_in_const)]
 #![feature(test)]
 #![feature(libc)]
 
@@ -21,17 +20,12 @@
 extern crate libc;
 extern crate test;
 extern crate getopts;
-
-#[cfg(cargobuild)]
 extern crate rustc_serialize;
-#[cfg(not(cargobuild))]
-extern crate serialize as rustc_serialize;
-
 #[macro_use]
 extern crate log;
-
-#[cfg(cargobuild)]
 extern crate env_logger;
+extern crate filetime;
+extern crate diff;
 
 use std::env;
 use std::ffi::OsString;
@@ -39,6 +33,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use filetime::FileTime;
 use getopts::{optopt, optflag, reqopt};
 use common::Config;
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Mode};
@@ -55,14 +50,9 @@ pub mod runtest;
 pub mod common;
 pub mod errors;
 mod raise_fd_limit;
-mod uidiff;
 
 fn main() {
-    #[cfg(cargobuild)]
-    fn log_init() { env_logger::init().unwrap(); }
-    #[cfg(not(cargobuild))]
-    fn log_init() {}
-    log_init();
+    env_logger::init().unwrap();
 
     let config = parse_config(env::args().collect());
 
@@ -116,6 +106,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           reqopt("", "llvm-components", "list of LLVM components built in", "LIST"),
           reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS"),
           optopt("", "nodejs", "the name of nodejs", "PATH"),
+          optopt("", "remote-test-client", "path to the remote test client", "PATH"),
           optflag("h", "help", "show this message")];
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -186,9 +177,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         llvm_version: matches.opt_str("llvm-version"),
         android_cross_path: opt_path(matches, "android-cross-path"),
         adb_path: opt_str2(matches.opt_str("adb-path")),
-        adb_test_dir: format!("{}/{}",
-            opt_str2(matches.opt_str("adb-test-dir")),
-            opt_str2(matches.opt_str("target"))),
+        adb_test_dir: opt_str2(matches.opt_str("adb-test-dir")),
         adb_device_status:
             opt_str2(matches.opt_str("target")).contains("android") &&
             "(none)" != opt_str2(matches.opt_str("adb-test-dir")) &&
@@ -196,6 +185,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
         quiet: matches.opt_present("quiet"),
+        remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
 
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
@@ -260,27 +250,14 @@ pub fn run_tests(config: &Config) {
         if let DebugInfoGdb = config.mode {
             println!("{} debug-info test uses tcp 5039 port.\
                      please reserve it", config.target);
-        }
 
-        // android debug-info test uses remote debugger
-        // so, we test 1 thread at once.
-        // also trying to isolate problems with adb_run_wrapper.sh ilooping
-        match config.mode {
-            // These tests don't actually run code or don't run for android, so
-            // we don't need to limit ourselves there
-            Mode::Ui |
-            Mode::CompileFail |
-            Mode::ParseFail |
-            Mode::RunMake |
-            Mode::Codegen |
-            Mode::CodegenUnits |
-            Mode::Pretty |
-            Mode::Rustdoc => {}
-
-            _ => {
-                env::set_var("RUST_TEST_THREADS", "1");
-            }
-
+            // android debug-info test uses remote debugger so, we test 1 thread
+            // at once as they're all sharing the same TCP port to communicate
+            // over.
+            //
+            // we should figure out how to lift this restriction! (run them all
+            // on different ports allocated dynamically).
+            env::set_var("RUST_TEST_THREADS", "1");
         }
     }
 
@@ -302,6 +279,15 @@ pub fn run_tests(config: &Config) {
             // time.
             env::set_var("RUST_TEST_THREADS", "1");
         }
+
+        DebugInfoGdb => {
+            if config.remote_test_client.is_some() &&
+               !config.target.contains("android"){
+                println!("WARNING: debuginfo tests are not available when \
+                          testing with remote");
+                return
+            }
+        }
         _ => { /* proceed */ }
     }
 
@@ -319,6 +305,10 @@ pub fn run_tests(config: &Config) {
     // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
     // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
     env::set_var("__COMPAT_LAYER", "RunAsInvoker");
+
+    // Let tests know which target they're running as
+    env::set_var("TARGET", &config.target);
+
     let res = test::run_tests_console(&opts, tests.into_iter().collect());
     match res {
         Ok(true) => {}
@@ -346,6 +336,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         test_threads: None,
         skip: vec![],
         list: false,
+        options: test::Options::new(),
     }
 }
 
@@ -464,7 +455,7 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
     };
 
     // Debugging emscripten code doesn't make sense today
-    let mut ignore = early_props.ignore;
+    let mut ignore = early_props.ignore || !up_to_date(config, testpaths, &early_props);
     if (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb) &&
         config.target.contains("emscripten") {
         ignore = true;
@@ -478,6 +469,40 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
         },
         testfn: make_test_closure(config, testpaths),
     }
+}
+
+fn stamp(config: &Config, testpaths: &TestPaths) -> PathBuf {
+    let stamp_name = format!("{}-{}.stamp",
+                             testpaths.file.file_name().unwrap()
+                                           .to_str().unwrap(),
+                             config.stage_id);
+    config.build_base.canonicalize()
+          .unwrap_or(config.build_base.clone())
+          .join(stamp_name)
+}
+
+fn up_to_date(config: &Config, testpaths: &TestPaths, props: &EarlyProps) -> bool {
+    let stamp = mtime(&stamp(config, testpaths));
+    let mut inputs = vec![
+        mtime(&testpaths.file),
+        mtime(&config.rustc_path),
+    ];
+    for aux in props.aux.iter() {
+        inputs.push(mtime(&testpaths.file.parent().unwrap()
+                                         .join("auxiliary")
+                                         .join(aux)));
+    }
+    for lib in config.run_lib_path.read_dir().unwrap() {
+        let lib = lib.unwrap();
+        inputs.push(mtime(&lib.path()));
+    }
+    inputs.iter().any(|input| *input > stamp)
+}
+
+fn mtime(path: &Path) -> FileTime {
+    fs::metadata(path).map(|f| {
+        FileTime::from_last_modification_time(&f)
+    }).unwrap_or(FileTime::zero())
 }
 
 pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName {
@@ -587,7 +612,6 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
         return Some(((major * 1000) + minor) * 1000 + patch);
     }
 
-    println!("Could not extract GDB version from line '{}'", full_version_line);
     None
 }
 
@@ -624,8 +648,6 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
                 }).collect::<String>();
                 if !vers.is_empty() { return Some(vers) }
             }
-            println!("Could not extract LLDB version from line '{}'",
-                     full_version_line);
         }
     }
     None

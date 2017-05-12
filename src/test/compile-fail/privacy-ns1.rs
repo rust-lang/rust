@@ -57,8 +57,8 @@ pub mod foo3 {
 fn test_glob3() {
     use foo3::*;
 
-    Bar();  //~ ERROR unresolved function `Bar`
-    let _x: Box<Bar>;  //~ ERROR unresolved type `Bar`
+    Bar();  //~ ERROR cannot find function `Bar` in this scope
+    let _x: Box<Bar>;  //~ ERROR cannot find type `Bar` in this scope
 }
 
 fn main() {

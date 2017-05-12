@@ -16,11 +16,12 @@ use std::mem;
 use syntax::abi;
 use syntax::ast;
 use syntax::attr;
+use syntax::tokenstream::TokenStream;
 use syntax_pos::Span;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::def::Def;
-use rustc::hir::def_id::LOCAL_CRATE;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::LoadedMacro;
 use rustc::middle::privacy::AccessLevel;
 use rustc::util::nodemap::FxHashSet;
@@ -47,6 +48,7 @@ pub struct RustdocVisitor<'a, 'tcx: 'a> {
     inlining: bool,
     /// Is the current module and all of its parents public?
     inside_public_path: bool,
+    reexported_macros: FxHashSet<DefId>,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
@@ -61,16 +63,17 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             view_item_stack: stack,
             inlining: false,
             inside_public_path: true,
+            reexported_macros: FxHashSet(),
         }
     }
 
     fn stability(&self, id: ast::NodeId) -> Option<attr::Stability> {
-        self.cx.tcx.map.opt_local_def_id(id)
+        self.cx.tcx.hir.opt_local_def_id(id)
             .and_then(|def_id| self.cx.tcx.lookup_stability(def_id)).cloned()
     }
 
     fn deprecation(&self, id: ast::NodeId) -> Option<attr::Deprecation> {
-        self.cx.tcx.map.opt_local_def_id(id)
+        self.cx.tcx.hir.opt_local_def_id(id)
             .and_then(|def_id| self.cx.tcx.lookup_deprecation(def_id))
     }
 
@@ -193,25 +196,31 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let orig_inside_public_path = self.inside_public_path;
         self.inside_public_path &= vis == hir::Public;
         for i in &m.item_ids {
-            let item = self.cx.tcx.map.expect_item(i.id);
+            let item = self.cx.tcx.hir.expect_item(i.id);
             self.visit_item(item, None, &mut om);
         }
         self.inside_public_path = orig_inside_public_path;
-        if let Some(exports) = self.cx.export_map.get(&id) {
+        if let Some(exports) = self.cx.tcx.export_map.get(&id) {
             for export in exports {
-                if let Def::Macro(def_id) = export.def {
-                    if def_id.krate == LOCAL_CRATE {
+                if let Def::Macro(def_id, ..) = export.def {
+                    if def_id.krate == LOCAL_CRATE || self.reexported_macros.contains(&def_id) {
                         continue // These are `krate.exported_macros`, handled in `self.visit()`.
                     }
+
                     let imported_from = self.cx.sess().cstore.original_crate_name(def_id.krate);
                     let def = match self.cx.sess().cstore.load_macro(def_id, self.cx.sess()) {
-                        LoadedMacro::MacroRules(macro_rules) => macro_rules,
+                        LoadedMacro::MacroDef(macro_def) => macro_def,
                         // FIXME(jseyfried): document proc macro reexports
                         LoadedMacro::ProcMacro(..) => continue,
                     };
 
-                    // FIXME(jseyfried) merge with `self.visit_macro()`
-                    let matchers = def.body.chunks(4).map(|arm| arm[0].get_span()).collect();
+                    let matchers = if let ast::ItemKind::MacroDef(ref tokens) = def.node {
+                        let tts: Vec<_> = TokenStream::from(tokens.clone()).into_trees().collect();
+                        tts.chunks(4).map(|arm| arm[0].span()).collect()
+                    } else {
+                        unreachable!()
+                    };
+
                     om.macros.push(Macro {
                         def_id: def_id,
                         attrs: def.attrs.clone().into(),
@@ -246,9 +255,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                           please_inline: bool) -> bool {
 
         fn inherits_doc_hidden(cx: &core::DocContext, mut node: ast::NodeId) -> bool {
-            while let Some(id) = cx.tcx.map.get_enclosing_scope(node) {
+            while let Some(id) = cx.tcx.hir.get_enclosing_scope(node) {
                 node = id;
-                if cx.tcx.map.attrs(node).lists("doc").has_word("hidden") {
+                if cx.tcx.hir.attrs(node).lists("doc").has_word("hidden") {
                     return true;
                 }
                 if node == ast::CRATE_NODE_ID {
@@ -258,16 +267,29 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             false
         }
 
+        debug!("maybe_inline_local def: {:?}", def);
+
         let tcx = self.cx.tcx;
         if def == Def::Err {
             return false;
         }
         let def_did = def.def_id();
 
-        let use_attrs = tcx.map.attrs(id);
+        let use_attrs = tcx.hir.attrs(id);
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let is_no_inline = use_attrs.lists("doc").has_word("no_inline") ||
                            use_attrs.lists("doc").has_word("hidden");
+
+        // Memoize the non-inlined `pub use`'d macros so we don't push an extra
+        // declaration in `visit_mod_contents()`
+        if !def_did.is_local() {
+            if let Def::Macro(did, _) = def {
+                if please_inline { return true }
+                debug!("memoizing non-inlined macro export: {:?}", def);
+                self.reexported_macros.insert(did);
+                return false;
+            }
+        }
 
         // For cross-crate impl inlining we need to know whether items are
         // reachable in documentation - a previously nonreachable item can be
@@ -289,10 +311,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 },
                 _ => {},
             }
+
             return false
         }
 
-        let def_node_id = match tcx.map.as_local_node_id(def_did) {
+        let def_node_id = match tcx.hir.as_local_node_id(def_did) {
             Some(n) => n, None => return false
         };
 
@@ -306,14 +329,14 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
         if !self.view_item_stack.insert(def_node_id) { return false }
 
-        let ret = match tcx.map.get(def_node_id) {
+        let ret = match tcx.hir.get(def_node_id) {
             hir_map::NodeItem(it) => {
                 let prev = mem::replace(&mut self.inlining, true);
                 if glob {
                     match it.node {
                         hir::ItemMod(ref m) => {
                             for i in &m.item_ids {
-                                let i = self.cx.tcx.map.expect_item(i.id);
+                                let i = self.cx.tcx.hir.expect_item(i.id);
                                 self.visit_item(i, None, om);
                             }
                         }
@@ -350,6 +373,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
             // If we're inlining, skip private items.
             _ if self.inlining && item.vis != hir::Public => {}
+            hir::ItemGlobalAsm(..) => {}
             hir::ItemExternCrate(ref p) => {
                 let cstore = &self.cx.sess().cstore;
                 om.extern_crates.push(ExternCrate {
@@ -371,7 +395,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 if item.vis == hir::Public && self.inside_public_path {
                     let please_inline = item.attrs.iter().any(|item| {
                         match item.meta_item_list() {
-                            Some(list) if item.check_name("doc") => {
+                            Some(ref list) if item.check_name("doc") => {
                                 list.iter().any(|i| i.check_name("inline"))
                             }
                             _ => false,
@@ -460,7 +484,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             },
             hir::ItemTrait(unsafety, ref gen, ref b, ref item_ids) => {
                 let items = item_ids.iter()
-                                    .map(|ti| self.cx.tcx.map.trait_item(ti.id).clone())
+                                    .map(|ti| self.cx.tcx.hir.trait_item(ti.id).clone())
                                     .collect();
                 let t = Trait {
                     unsafety: unsafety,
@@ -478,16 +502,23 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.traits.push(t);
             },
 
-            hir::ItemImpl(unsafety, polarity, ref gen, ref tr, ref ty, ref item_ids) => {
+            hir::ItemImpl(unsafety,
+                          polarity,
+                          defaultness,
+                          ref gen,
+                          ref tr,
+                          ref ty,
+                          ref item_ids) => {
                 // Don't duplicate impls when inlining, we'll pick them up
                 // regardless of where they're located.
                 if !self.inlining {
                     let items = item_ids.iter()
-                                        .map(|ii| self.cx.tcx.map.impl_item(ii.id).clone())
+                                        .map(|ii| self.cx.tcx.hir.impl_item(ii.id).clone())
                                         .collect();
                     let i = Impl {
                         unsafety: unsafety,
                         polarity: polarity,
+                        defaultness: defaultness,
                         generics: gen.clone(),
                         trait_: tr.clone(),
                         for_: ty.clone(),
@@ -520,11 +551,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     // convert each exported_macro into a doc item
     fn visit_local_macro(&self, def: &hir::MacroDef) -> Macro {
+        let tts = def.body.trees().collect::<Vec<_>>();
         // Extract the spans of all matchers. They represent the "interface" of the macro.
-        let matchers = def.body.chunks(4).map(|arm| arm[0].get_span()).collect();
+        let matchers = tts.chunks(4).map(|arm| arm[0].span()).collect();
 
         Macro {
-            def_id: self.cx.tcx.map.local_def_id(def.id),
+            def_id: self.cx.tcx.hir.local_def_id(def.id),
             attrs: def.attrs.clone(),
             name: def.name,
             whence: def.span,

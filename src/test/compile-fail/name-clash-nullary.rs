@@ -13,6 +13,6 @@ use std::option::*;
 fn main() {
   let None: isize = 42; //~ ERROR let bindings cannot shadow unit variants
   log(debug, None);
-  //~^ ERROR unresolved function `log`
-  //~| ERROR unresolved value `debug`
+  //~^ ERROR cannot find function `log` in this scope
+  //~| ERROR cannot find value `debug` in this scope
 }

@@ -33,5 +33,5 @@ pub fn for_stdin<'a>() -> Container<'a> {
 fn main() {
     let mut c = for_stdin();
     let mut v = Vec::new();
-    c.read_to(v); //~ ERROR mismatched types
+    c.read_to(v); //~ ERROR E0308
 }

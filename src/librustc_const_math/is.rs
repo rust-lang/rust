@@ -10,7 +10,6 @@
 
 use syntax::ast;
 use super::err::*;
-use rustc_i128::i128;
 
 /// Depending on the target only one variant is ever used in a compilation.
 /// Anything else is an error. This invariant is checked at several locations

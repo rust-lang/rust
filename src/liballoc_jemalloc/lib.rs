@@ -16,7 +16,7 @@
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
             issue = "27783")]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 #![feature(allocator)]
 #![feature(libc)]
 #![feature(staged_api)]
@@ -30,47 +30,37 @@ pub use imp::*;
 mod imp {
     use libc::{c_int, c_void, size_t};
 
-    // Linkage directives to pull in jemalloc and its dependencies.
-    //
-    // On some platforms we need to be sure to link in `pthread` which jemalloc
-    // depends on, and specifically on android we need to also link to libgcc.
-    // Currently jemalloc is compiled with gcc which will generate calls to
-    // intrinsics that are libgcc specific (e.g. those intrinsics aren't present in
-    // libcompiler-rt), so link that in to get that support.
-    #[link(name = "jemalloc", kind = "static")]
-    #[cfg_attr(target_os = "android", link(name = "gcc"))]
-    #[cfg_attr(all(not(windows),
-                   not(target_os = "android"),
-                   not(target_env = "musl")),
-               link(name = "pthread"))]
-    #[cfg(not(cargobuild))]
-    extern "C" {}
-
-    // Note that the symbols here are prefixed by default on OSX and Windows (we
+    // Note that the symbols here are prefixed by default on macOS and Windows (we
     // don't explicitly request it), and on Android and DragonFly we explicitly
     // request it as unprefixing cause segfaults (mismatches in allocators).
     extern "C" {
         #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
-                       target_os = "dragonfly", target_os = "windows"),
+                       target_os = "dragonfly", target_os = "windows", target_env = "musl"),
                    link_name = "je_mallocx")]
         fn mallocx(size: size_t, flags: c_int) -> *mut c_void;
         #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
-                       target_os = "dragonfly", target_os = "windows"),
+                       target_os = "dragonfly", target_os = "windows", target_env = "musl"),
+                   link_name = "je_calloc")]
+        fn calloc(size: size_t, flags: c_int) -> *mut c_void;
+        #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
+                       target_os = "dragonfly", target_os = "windows", target_env = "musl"),
                    link_name = "je_rallocx")]
         fn rallocx(ptr: *mut c_void, size: size_t, flags: c_int) -> *mut c_void;
         #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
-                       target_os = "dragonfly", target_os = "windows"),
+                       target_os = "dragonfly", target_os = "windows", target_env = "musl"),
                    link_name = "je_xallocx")]
         fn xallocx(ptr: *mut c_void, size: size_t, extra: size_t, flags: c_int) -> size_t;
         #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
-                       target_os = "dragonfly", target_os = "windows"),
+                       target_os = "dragonfly", target_os = "windows", target_env = "musl"),
                    link_name = "je_sdallocx")]
         fn sdallocx(ptr: *mut c_void, size: size_t, flags: c_int);
         #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
-                       target_os = "dragonfly", target_os = "windows"),
+                       target_os = "dragonfly", target_os = "windows", target_env = "musl"),
                    link_name = "je_nallocx")]
         fn nallocx(size: size_t, flags: c_int) -> size_t;
     }
+
+    const MALLOCX_ZERO: c_int = 0x40;
 
     // The minimum alignment guaranteed by the architecture. This value is used to
     // add fast paths for low alignment values. In practice, the alignment is a
@@ -108,6 +98,16 @@ mod imp {
     }
 
     #[no_mangle]
+    pub extern "C" fn __rust_allocate_zeroed(size: usize, align: usize) -> *mut u8 {
+        if align <= MIN_ALIGN {
+            unsafe { calloc(size as size_t, 1) as *mut u8 }
+        } else {
+            let flags = align_to_flags(align) | MALLOCX_ZERO;
+            unsafe { mallocx(size as size_t, flags) as *mut u8 }
+        }
+    }
+
+    #[no_mangle]
     pub extern "C" fn __rust_reallocate(ptr: *mut u8,
                                         _old_size: usize,
                                         size: usize,
@@ -138,18 +138,6 @@ mod imp {
         let flags = align_to_flags(align);
         unsafe { nallocx(size as size_t, flags) as usize }
     }
-
-    // These symbols are used by jemalloc on android but the really old android
-    // we're building on doesn't have them defined, so just make sure the symbols
-    // are available.
-    #[no_mangle]
-    #[cfg(target_os = "android")]
-    pub extern "C" fn pthread_atfork(_prefork: *mut u8,
-                                     _postfork_parent: *mut u8,
-                                     _postfork_child: *mut u8)
-                                     -> i32 {
-        0
-    }
 }
 
 #[cfg(dummy_jemalloc)]
@@ -160,6 +148,11 @@ mod imp {
 
     #[no_mangle]
     pub extern "C" fn __rust_allocate(_size: usize, _align: usize) -> *mut u8 {
+        bogus()
+    }
+
+    #[no_mangle]
+    pub extern "C" fn __rust_allocate_zeroed(_size: usize, _align: usize) -> *mut u8 {
         bogus()
     }
 

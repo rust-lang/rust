@@ -47,7 +47,7 @@ fn template(me: &str) -> Command {
 }
 
 fn expected(fn_name: &str) -> String {
-    format!(" - backtrace::{}", fn_name)
+    format!(" backtrace::{}", fn_name)
 }
 
 fn runtest(me: &str) {
@@ -58,6 +58,7 @@ fn runtest(me: &str) {
     let s = str::from_utf8(&out.stderr).unwrap();
     assert!(s.contains("stack backtrace") && s.contains(&expected("foo")),
             "bad output: {}", s);
+    assert!(s.contains(" 0:"), "the frame number should start at 0");
 
     // Make sure the stack trace is *not* printed
     // (Remove RUST_BACKTRACE from our own environment, in case developer
@@ -104,10 +105,6 @@ fn runtest(me: &str) {
 }
 
 fn main() {
-    if cfg!(windows) && cfg!(target_env = "gnu") {
-        return
-    }
-
     let args: Vec<String> = env::args().collect();
     if args.len() >= 2 && args[1] == "fail" {
         foo();

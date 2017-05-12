@@ -18,39 +18,31 @@
 /// simple to use it should be used only on iOS devices as the only viable
 /// option.
 
-use io::prelude::*;
 use io;
 use libc;
-use mem;
-use sys::mutex::Mutex;
+use sys::backtrace::BacktraceContext;
+use sys_common::backtrace::Frame;
 
-use super::super::printing::print;
-
-#[inline(never)]
-pub fn write(w: &mut Write) -> io::Result<()> {
-    extern {
-        fn backtrace(buf: *mut *mut libc::c_void,
-                     sz: libc::c_int) -> libc::c_int;
+#[inline(never)] // if we know this is a function call, we can skip it when
+                 // tracing
+pub fn unwind_backtrace(frames: &mut [Frame])
+    -> io::Result<(usize, BacktraceContext)>
+{
+    const FRAME_LEN: usize = 100;
+    assert!(FRAME_LEN >= frames.len());
+    let mut raw_frames = [::ptr::null_mut(); FRAME_LEN];
+    let nb_frames = unsafe {
+        backtrace(raw_frames.as_mut_ptr(), raw_frames.len() as libc::c_int)
+    } as usize;
+    for (from, to) in raw_frames.iter().zip(frames.iter_mut()).take(nb_frames) {
+        *to = Frame {
+            exact_position: *from,
+            symbol_addr: *from,
+        };
     }
+    Ok((nb_frames as usize, BacktraceContext))
+}
 
-    // while it doesn't requires lock for work as everything is
-    // local, it still displays much nicer backtraces when a
-    // couple of threads panic simultaneously
-    static LOCK: Mutex = Mutex::new();
-    unsafe {
-        LOCK.lock();
-
-        writeln!(w, "stack backtrace:")?;
-        // 100 lines should be enough
-        const SIZE: usize = 100;
-        let mut buf: [*mut libc::c_void; SIZE] = mem::zeroed();
-        let cnt = backtrace(buf.as_mut_ptr(), SIZE as libc::c_int) as usize;
-
-        // skipping the first one as it is write itself
-        for i in 1..cnt {
-            print(w, i as isize, buf[i], buf[i])?
-        }
-        LOCK.unlock();
-    }
-    Ok(())
+extern {
+    fn backtrace(buf: *mut *mut libc::c_void, sz: libc::c_int) -> libc::c_int;
 }

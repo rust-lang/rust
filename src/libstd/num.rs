@@ -17,9 +17,6 @@
 #![allow(missing_docs)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-pub use core::num::{Zero, One};
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::num::{FpCategory, ParseIntError, ParseFloatError, TryFromIntError};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::num::Wrapping;
@@ -172,6 +169,7 @@ mod tests {
 
     macro_rules! test_checked_next_power_of_two {
         ($test_name:ident, $T:ident) => (
+            #[cfg_attr(target_os = "emscripten", ignore)] // FIXME(#39119)
             fn $test_name() {
                 #![test]
                 assert_eq!((0 as $T).checked_next_power_of_two(), Some(1));

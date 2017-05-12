@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub struct Foo<Bar=Bar>; //~ ERROR E0128
-                         //~| NOTE defaulted type parameters cannot be forward declared
+pub struct Foo<Bar=Bar>(Bar); //~ ERROR E0128
+                              //~| NOTE defaulted type parameters cannot be forward declared
 pub struct Baz(Foo);
 fn main() {}

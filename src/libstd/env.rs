@@ -10,7 +10,7 @@
 
 //! Inspection and manipulation of the process's environment.
 //!
-//! This module contains methods to inspect various aspects such as
+//! This module contains functions to inspect various aspects such as
 //! environment variables, process arguments, the current directory, and various
 //! other important directories.
 
@@ -24,15 +24,18 @@ use path::{Path, PathBuf};
 use sys;
 use sys::os as os_imp;
 
-/// Returns the current working directory as a `PathBuf`.
+/// Returns the current working directory as a [`PathBuf`].
 ///
 /// # Errors
 ///
-/// Returns an `Err` if the current working directory value is invalid.
+/// Returns an [`Err`] if the current working directory value is invalid.
 /// Possible cases:
 ///
 /// * Current directory does not exist.
 /// * There are insufficient permissions to access the current directory.
+///
+/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
+/// [`Err`]: ../../std/result/enum.Result.html#method.err
 ///
 /// # Examples
 ///
@@ -68,15 +71,17 @@ pub fn set_current_dir<P: AsRef<Path>>(p: P) -> io::Result<()> {
 
 /// An iterator over a snapshot of the environment variables of this process.
 ///
-/// This iterator is created through `std::env::vars()` and yields `(String,
-/// String)` pairs.
+/// This structure is created through the [`std::env::vars`] function.
+///
+/// [`std::env::vars`]: fn.vars.html
 #[stable(feature = "env", since = "1.0.0")]
 pub struct Vars { inner: VarsOs }
 
 /// An iterator over a snapshot of the environment variables of this process.
 ///
-/// This iterator is created through `std::env::vars_os()` and yields
-/// `(OsString, OsString)` pairs.
+/// This structure is created through the [`std::env::vars_os`] function.
+///
+/// [`std::env::vars_os`]: fn.vars_os.html
 #[stable(feature = "env", since = "1.0.0")]
 pub struct VarsOs { inner: os_imp::Env }
 
@@ -91,7 +96,9 @@ pub struct VarsOs { inner: os_imp::Env }
 ///
 /// While iterating, the returned iterator will panic if any key or value in the
 /// environment is not valid unicode. If this is not desired, consider using the
-/// `env::vars_os` function.
+/// [`env::vars_os`] function.
+///
+/// [`env::vars_os`]: fn.vars_os.html
 ///
 /// # Examples
 ///
@@ -143,7 +150,7 @@ impl Iterator for Vars {
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Vars {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Vars { .. }")
@@ -157,7 +164,7 @@ impl Iterator for VarsOs {
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for VarsOs {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("VarsOs { .. }")
@@ -166,9 +173,12 @@ impl fmt::Debug for VarsOs {
 
 /// Fetches the environment variable `key` from the current process.
 ///
-/// The returned result is `Ok(s)` if the environment variable is present and is
+/// The returned result is [`Ok(s)`] if the environment variable is present and is
 /// valid unicode. If the environment variable is not present, or it is not
-/// valid unicode, then `Err` will be returned.
+/// valid unicode, then [`Err`] will be returned.
+///
+/// [`Ok(s)`]: ../result/enum.Result.html#variant.Ok
+/// [`Err`]: ../result/enum.Result.html#variant.Err
 ///
 /// # Examples
 ///
@@ -194,7 +204,9 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 }
 
 /// Fetches the environment variable `key` from the current process, returning
-/// `None` if the variable isn't set.
+/// [`None`] if the variable isn't set.
+///
+/// [`None`]: ../option/enum.Option.html#variant.None
 ///
 /// # Examples
 ///
@@ -218,7 +230,9 @@ fn _var_os(key: &OsStr) -> Option<OsString> {
     })
 }
 
-/// Possible errors from the `env::var` method.
+/// Possible errors from the [`env::var`] function.
+///
+/// [`env::var`]: fn.var.html
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[stable(feature = "env", since = "1.0.0")]
 pub enum VarError {
@@ -378,7 +392,7 @@ impl<'a> Iterator for SplitPaths<'a> {
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a> fmt::Debug for SplitPaths<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("SplitPaths { .. }")
@@ -393,14 +407,18 @@ pub struct JoinPathsError {
     inner: os_imp::JoinPathsError
 }
 
-/// Joins a collection of `Path`s appropriately for the `PATH`
+/// Joins a collection of [`Path`]s appropriately for the `PATH`
 /// environment variable.
 ///
-/// Returns an `OsString` on success.
+/// Returns an [`OsString`] on success.
 ///
-/// Returns an `Err` (containing an error message) if one of the input
-/// `Path`s contains an invalid character for constructing the `PATH`
+/// Returns an [`Err`][err] (containing an error message) if one of the input
+/// [`Path`]s contains an invalid character for constructing the `PATH`
 /// variable (a double quote on Windows or a colon on Unix).
+///
+/// [`Path`]: ../../std/path/struct.Path.html
+/// [`OsString`]: ../../std/ffi/struct.OsString.html
+/// [err]: ../../std/result/enum.Result.html#variant.Err
 ///
 /// # Examples
 ///
@@ -493,7 +511,7 @@ pub fn home_dir() -> Option<PathBuf> {
 /// let mut dir = env::temp_dir();
 /// dir.push("foo.txt");
 ///
-/// let f = try!(File::create(dir));
+/// let f = File::create(dir)?;
 /// # Ok(())
 /// # }
 /// ```
@@ -570,7 +588,11 @@ pub fn current_exe() -> io::Result<PathBuf> {
 /// An iterator over the arguments of a process, yielding a [`String`] value
 /// for each argument.
 ///
-/// This structure is created through the [`std::env::args`] method.
+/// This structure is created through the [`std::env::args`] function.
+///
+/// The first element is traditionally the path of the executable, but it can be
+/// set to arbitrary text, and may not even exist. This means this property should
+/// not be relied upon for security purposes.
 ///
 /// [`String`]: ../string/struct.String.html
 /// [`std::env::args`]: ./fn.args.html
@@ -580,7 +602,11 @@ pub struct Args { inner: ArgsOs }
 /// An iterator over the arguments of a process, yielding an [`OsString`] value
 /// for each argument.
 ///
-/// This structure is created through the [`std::env::args_os`] method.
+/// This structure is created through the [`std::env::args_os`] function.
+///
+/// The first element is traditionally the path of the executable, but it can be
+/// set to arbitrary text, and may not even exist. This means this property should
+/// not be relied upon for security purposes.
 ///
 /// [`OsString`]: ../ffi/struct.OsString.html
 /// [`std::env::args_os`]: ./fn.args_os.html
@@ -661,7 +687,7 @@ impl DoubleEndedIterator for Args {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Args { .. }")
@@ -686,7 +712,7 @@ impl DoubleEndedIterator for ArgsOs {
     fn next_back(&mut self) -> Option<OsString> { self.inner.next_back() }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ArgsOs {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("ArgsOs { .. }")

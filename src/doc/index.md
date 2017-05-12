@@ -6,32 +6,49 @@ nav {
 }
 </style>
 
-This is an index of the documentation included with the Rust
-compiler. For more comprehensive documentation see [the
-website](https://www.rust-lang.org).
+This page is an overview of the documentation included with your Rust install.
+Other unofficial documentation may exist elsewhere; for example, the [Rust
+Learning] project collects documentation from the community, and [Docs.rs]
+builds documentation for individual Rust packages.
 
-[**The Rust Programming Language**][book]. Also known as "The Book",
-The Rust Programming Language is the most comprehensive resource for
-all topics related to Rust, and is the primary official document of
-the language.
+# API Documentation
 
-[**The Rust Reference**][ref]. While Rust does not have a
-specification, the reference tries to describe its working in
-detail. It is accurate, but not necessarily complete.
+Rust provides a standard library with a number of features; [we host its
+documentation here][api].
 
-[**Standard Library API Reference**][api]. Documentation for the
-standard library.
+# Extended Error Documentation
 
-[**The Rustonomicon**][nomicon]. An entire book dedicated to
-explaining how to write unsafe Rust code. It is for advanced Rust
-programmers.
+Many of Rust's errors come with error codes, and you can request extended
+diagnostics from the compiler on those errors. We also [have the text of those
+extended errors on the web][err], if you prefer to read them that way.
 
-[**Compiler Error Index**][err]. Extended explanations of
-the errors produced by the Rust compiler.
+# The Rust Bookshelf
 
-[book]: book/index.html
-[ref]: reference.html
+Rust provides a number of book-length sets of documentation, collectively
+nicknamed 'The Rust Bookshelf.'
+
+* [The Rust Programming Language][book] teaches you how to program in Rust.
+* [The Unstable Book][unstable-book] has documentation for unstable features.
+* [The Rustonomicon][nomicon] is your guidebook to the dark arts of unsafe Rust.
+* [The Reference][ref] is not a formal spec, but is more detailed and comprehensive than the book.
+
+Initially, documentation lands in the Unstable Book, and then, as part of the
+stabilization process, is moved into the Book, Nomicon, or Reference.
+
+Another few words about the reference: it is guaranteed to be accurate, but not
+complete. We have a policy that features must have documentation to be stabilized,
+but we did not always have this policy, and so there are some stable things that
+are not yet in the reference. We're working on back-filling things that landed
+before this policy was put into place. That work is being tracked
+[here][refchecklist].
+
+[Rust Learning]: https://github.com/ctjhoa/rust-learning
+[Docs.rs]: https://docs.rs/
 [api]: std/index.html
-[nomicon]: nomicon/index.html
+[ref]: reference/index.html
+[refchecklist]: https://github.com/rust-lang-nursery/reference/issues/9
 [err]: error-index.html
+[book]: book/index.html
+[nomicon]: nomicon/index.html
+[unstable-book]: unstable-book/index.html
 

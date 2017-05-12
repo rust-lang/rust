@@ -20,7 +20,7 @@ use std::fs::File;
 use std::path::Path;
 
 pub fn check(path: &Path, bad: &mut bool) {
-    if path.ends_with("vendor") {
+    if !super::filter_dirs(path) {
         return
     }
     for entry in t!(path.read_dir(), path).map(|e| t!(e)) {
@@ -100,9 +100,8 @@ fn verify(tomlfile: &Path, libfile: &Path, bad: &mut bool) {
         }
 
         if !librs.contains(&format!("extern crate {}", krate)) {
-            println!("{} doesn't have `extern crate {}`, but Cargo.toml \
-                      depends on it", libfile.display(), krate);
-            *bad = true;
+            tidy_error!(bad, "{} doesn't have `extern crate {}`, but Cargo.toml \
+                              depends on it", libfile.display(), krate);
         }
     }
 }

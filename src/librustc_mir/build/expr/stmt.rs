@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use build::{BlockAnd, BlockAndExtension, Builder};
-use build::scope::LoopScope;
+use build::scope::BreakableScope;
 use hair::*;
 use rustc::mir::*;
 
@@ -38,14 +38,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // Generate better code for things that don't need to be
                 // dropped.
                 if this.hir.needs_drop(lhs.ty) {
-                    let rhs = unpack!(block = this.as_operand(block, rhs));
+                    let rhs = unpack!(block = this.as_local_operand(block, rhs));
                     let lhs = unpack!(block = this.as_lvalue(block, lhs));
                     unpack!(block = this.build_drop_and_replace(
                         block, lhs_span, lhs, rhs
                     ));
                     block.unit()
                 } else {
-                    let rhs = unpack!(block = this.as_rvalue(block, rhs));
+                    let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
                     let lhs = unpack!(block = this.as_lvalue(block, lhs));
                     this.cfg.push_assign(block, source_info, &lhs, rhs);
                     block.unit()
@@ -64,7 +64,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let lhs_ty = lhs.ty;
 
                 // As above, RTL.
-                let rhs = unpack!(block = this.as_operand(block, rhs));
+                let rhs = unpack!(block = this.as_local_operand(block, rhs));
                 let lhs = unpack!(block = this.as_lvalue(block, lhs));
 
                 // we don't have to drop prior contents or anything
@@ -77,19 +77,21 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.unit()
             }
             ExprKind::Continue { label } => {
-                let LoopScope { continue_block, extent, .. } =
-                    *this.find_loop_scope(expr_span, label);
+                let BreakableScope { continue_block, extent, .. } =
+                    *this.find_breakable_scope(expr_span, label);
+                let continue_block = continue_block.expect(
+                    "Attempted to continue in non-continuable breakable block");
                 this.exit_scope(expr_span, extent, block, continue_block);
                 this.cfg.start_new_block().unit()
             }
             ExprKind::Break { label, value } => {
                 let (break_block, extent, destination) = {
-                    let LoopScope {
+                    let BreakableScope {
                         break_block,
                         extent,
                         ref break_destination,
                         ..
-                    } = *this.find_loop_scope(expr_span, label);
+                    } = *this.find_breakable_scope(expr_span, label);
                     (break_block, extent, break_destination.clone())
                 };
                 if let Some(value) = value {
@@ -117,9 +119,26 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 this.exit_scope(expr_span, extent, block, return_block);
                 this.cfg.start_new_block().unit()
             }
+            ExprKind::InlineAsm { asm, outputs, inputs } => {
+                let outputs = outputs.into_iter().map(|output| {
+                    unpack!(block = this.as_lvalue(block, output))
+                }).collect();
+                let inputs = inputs.into_iter().map(|input| {
+                    unpack!(block = this.as_local_operand(block, input))
+                }).collect();
+                this.cfg.push(block, Statement {
+                    source_info: source_info,
+                    kind: StatementKind::InlineAsm {
+                        asm: asm.clone(),
+                        outputs: outputs,
+                        inputs: inputs
+                    },
+                });
+                block.unit()
+            }
             _ => {
                 let expr_ty = expr.ty;
-                let temp = this.temp(expr.ty.clone());
+                let temp = this.temp(expr.ty.clone(), expr_span);
                 unpack!(block = this.into(&temp, block, expr));
                 unpack!(block = this.build_drop(block, expr_span, temp, expr_ty));
                 block.unit()

@@ -8,165 +8,69 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir::map as ast_map;
+use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 
-use rustc::hir::intravisit::{Visitor, IdRangeComputingVisitor, IdRange, NestedVisitorMap};
-
-use cstore::CrateMetadata;
-use encoder::EncodeContext;
+use isolated_encoder::IsolatedEncoder;
 use schema::*;
 
 use rustc::hir;
-use rustc::hir::def::Def;
-use rustc::hir::def_id::DefId;
-use rustc::ty::{self, TyCtxt, Ty};
-
-use syntax::ast;
-
-use rustc_serialize::Encodable;
+use rustc::ty;
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Ast<'tcx> {
-    id_range: IdRange,
-    body: Lazy<hir::Body>,
-    side_tables: LazySeq<(ast::NodeId, TableEntry<'tcx>)>,
+    pub body: Lazy<hir::Body>,
+    pub tables: Lazy<ty::TypeckTables<'tcx>>,
     pub nested_bodies: LazySeq<hir::Body>,
     pub rvalue_promotable_to_static: bool,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
-enum TableEntry<'tcx> {
-    TypeRelativeDef(Def),
-    NodeType(Ty<'tcx>),
-    ItemSubsts(ty::ItemSubsts<'tcx>),
-    Adjustment(ty::adjustment::Adjustment<'tcx>),
-}
+impl_stable_hash_for!(struct Ast<'tcx> {
+    body,
+    tables,
+    nested_bodies,
+    rvalue_promotable_to_static
+});
 
-impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-    pub fn encode_body(&mut self, body: hir::BodyId) -> Lazy<Ast<'tcx>> {
-        let body = self.tcx.map.body(body);
+impl<'a, 'b, 'tcx> IsolatedEncoder<'a, 'b, 'tcx> {
+    pub fn encode_body(&mut self, body_id: hir::BodyId) -> Lazy<Ast<'tcx>> {
+        let body = self.tcx.hir.body(body_id);
+        let lazy_body = self.lazy(body);
 
-        let mut id_visitor = IdRangeComputingVisitor::new(&self.tcx.map);
-        id_visitor.visit_body(body);
+        let tables = self.tcx.body_tables(body_id);
+        let lazy_tables = self.lazy(tables);
 
-        let body_pos = self.position();
-        body.encode(self).unwrap();
-
-        let tables_pos = self.position();
-        let tables_count = {
-            let mut visitor = SideTableEncodingIdVisitor {
-                ecx: self,
-                count: 0,
-            };
-            visitor.visit_body(body);
-            visitor.count
+        let mut visitor = NestedBodyCollector {
+            tcx: self.tcx,
+            bodies_found: Vec::new(),
         };
-
-        let nested_pos = self.position();
-        let nested_count = {
-            let mut visitor = NestedBodyEncodingVisitor {
-                ecx: self,
-                count: 0,
-            };
-            visitor.visit_body(body);
-            visitor.count
-        };
+        visitor.visit_body(body);
+        let lazy_nested_bodies = self.lazy_seq_ref_from_slice(&visitor.bodies_found);
 
         let rvalue_promotable_to_static =
             self.tcx.rvalue_promotable_to_static.borrow()[&body.value.id];
 
         self.lazy(&Ast {
-            id_range: id_visitor.result(),
-            body: Lazy::with_position(body_pos),
-            side_tables: LazySeq::with_position_and_length(tables_pos, tables_count),
-            nested_bodies: LazySeq::with_position_and_length(nested_pos, nested_count),
+            body: lazy_body,
+            tables: lazy_tables,
+            nested_bodies: lazy_nested_bodies,
             rvalue_promotable_to_static: rvalue_promotable_to_static
         })
     }
 }
 
-struct SideTableEncodingIdVisitor<'a, 'b: 'a, 'tcx: 'b> {
-    ecx: &'a mut EncodeContext<'b, 'tcx>,
-    count: usize,
+struct NestedBodyCollector<'a, 'tcx: 'a> {
+    tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+    bodies_found: Vec<&'tcx hir::Body>,
 }
 
-impl<'a, 'b, 'tcx> Visitor<'tcx> for SideTableEncodingIdVisitor<'a, 'b, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.ecx.tcx.map)
-    }
-
-    fn visit_id(&mut self, id: ast::NodeId) {
-        debug!("Encoding side tables for id {}", id);
-
-        let tcx = self.ecx.tcx;
-        let mut encode = |entry: Option<TableEntry>| {
-            if let Some(entry) = entry {
-                (id, entry).encode(self.ecx).unwrap();
-                self.count += 1;
-            }
-        };
-
-        encode(tcx.tables().type_relative_path_defs.get(&id).cloned()
-                  .map(TableEntry::TypeRelativeDef));
-        encode(tcx.tables().node_types.get(&id).cloned().map(TableEntry::NodeType));
-        encode(tcx.tables().item_substs.get(&id).cloned().map(TableEntry::ItemSubsts));
-        encode(tcx.tables().adjustments.get(&id).cloned().map(TableEntry::Adjustment));
-    }
-}
-
-struct NestedBodyEncodingVisitor<'a, 'b: 'a, 'tcx: 'b> {
-    ecx: &'a mut EncodeContext<'b, 'tcx>,
-    count: usize,
-}
-
-impl<'a, 'b, 'tcx> Visitor<'tcx> for NestedBodyEncodingVisitor<'a, 'b, 'tcx> {
+impl<'a, 'tcx: 'a> Visitor<'tcx> for NestedBodyCollector<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
-        let body = self.ecx.tcx.map.body(body);
-        body.encode(self.ecx).unwrap();
-        self.count += 1;
-
+        let body = self.tcx.hir.body(body);
+        self.bodies_found.push(body);
         self.visit_body(body);
     }
-}
-
-/// Decodes an item's body from its AST in the cdata's metadata and adds it to the
-/// ast-map.
-pub fn decode_body<'a, 'tcx>(cdata: &CrateMetadata,
-                             tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             def_id: DefId,
-                             ast: Ast<'tcx>)
-                             -> &'tcx hir::Body {
-    debug!("> Decoding inlined fn: {}", tcx.item_path_str(def_id));
-
-    let cnt = ast.id_range.max.as_usize() - ast.id_range.min.as_usize();
-    let start = tcx.sess.reserve_node_ids(cnt);
-    let id_ranges = [ast.id_range,
-                     IdRange {
-                         min: start,
-                         max: ast::NodeId::new(start.as_usize() + cnt),
-                     }];
-
-    for (id, entry) in ast.side_tables.decode((cdata, tcx, id_ranges)) {
-        match entry {
-            TableEntry::TypeRelativeDef(def) => {
-                tcx.tables.borrow_mut().type_relative_path_defs.insert(id, def);
-            }
-            TableEntry::NodeType(ty) => {
-                tcx.tables.borrow_mut().node_types.insert(id, ty);
-            }
-            TableEntry::ItemSubsts(item_substs) => {
-                tcx.tables.borrow_mut().item_substs.insert(id, item_substs);
-            }
-            TableEntry::Adjustment(adj) => {
-                tcx.tables.borrow_mut().adjustments.insert(id, adj);
-            }
-        }
-    }
-
-    let body = ast.body.decode((cdata, tcx, id_ranges));
-    ast_map::map_decoded_body(&tcx.map, def_id, body, tcx.sess.next_node_id())
 }

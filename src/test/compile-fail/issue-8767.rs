@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-impl B { //~ ERROR unresolved type `B`
+impl B { //~ ERROR cannot find type `B` in this scope
 }
 
 fn main() {

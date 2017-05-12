@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-link_cfg
+
 #[link(name = "foo", cfg(foo))]
 //~^ ERROR: is feature gated
 extern {}

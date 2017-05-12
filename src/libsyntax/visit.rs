@@ -58,6 +58,7 @@ pub trait Visitor<'ast>: Sized {
     }
     fn visit_mod(&mut self, m: &'ast Mod, _s: Span, _n: NodeId) { walk_mod(self, m) }
     fn visit_foreign_item(&mut self, i: &'ast ForeignItem) { walk_foreign_item(self, i) }
+    fn visit_global_asm(&mut self, ga: &'ast GlobalAsm) { walk_global_asm(self, ga) }
     fn visit_item(&mut self, i: &'ast Item) { walk_item(self, i) }
     fn visit_local(&mut self, l: &'ast Local) { walk_local(self, l) }
     fn visit_block(&mut self, b: &'ast Block) { walk_block(self, b) }
@@ -68,6 +69,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_expr_post(&mut self, _ex: &'ast Expr) { }
     fn visit_ty(&mut self, t: &'ast Ty) { walk_ty(self, t) }
     fn visit_generics(&mut self, g: &'ast Generics) { walk_generics(self, g) }
+    fn visit_where_predicate(&mut self, p: &'ast WherePredicate) {
+        walk_where_predicate(self, p)
+    }
     fn visit_fn(&mut self, fk: FnKind<'ast>, fd: &'ast FnDecl, s: Span, _: NodeId) {
         walk_fn(self, fk, fd, s)
     }
@@ -122,9 +126,6 @@ pub trait Visitor<'ast>: Sized {
         walk_assoc_type_binding(self, type_binding)
     }
     fn visit_attribute(&mut self, _attr: &'ast Attribute) {}
-    fn visit_macro_def(&mut self, macro_def: &'ast MacroDef) {
-        walk_macro_def(self, macro_def)
-    }
     fn visit_vis(&mut self, vis: &'ast Visibility) {
         walk_vis(self, vis)
     }
@@ -173,12 +174,6 @@ pub fn walk_ident<'a, V: Visitor<'a>>(visitor: &mut V, span: Span, ident: Ident)
 pub fn walk_crate<'a, V: Visitor<'a>>(visitor: &mut V, krate: &'a Crate) {
     visitor.visit_mod(&krate.module, krate.span, CRATE_NODE_ID);
     walk_list!(visitor, visit_attribute, &krate.attrs);
-    walk_list!(visitor, visit_macro_def, &krate.exported_macros);
-}
-
-pub fn walk_macro_def<'a, V: Visitor<'a>>(visitor: &mut V, macro_def: &'a MacroDef) {
-    visitor.visit_ident(macro_def.span, macro_def.ident);
-    walk_list!(visitor, visit_attribute, &macro_def.attrs);
 }
 
 pub fn walk_mod<'a, V: Visitor<'a>>(visitor: &mut V, module: &'a Mod) {
@@ -259,6 +254,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         ItemKind::ForeignMod(ref foreign_module) => {
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }
+        ItemKind::GlobalAsm(ref ga) => visitor.visit_global_asm(ga),
         ItemKind::Ty(ref typ, ref type_parameters) => {
             visitor.visit_ty(typ);
             visitor.visit_generics(type_parameters)
@@ -270,7 +266,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         ItemKind::DefaultImpl(_, ref trait_ref) => {
             visitor.visit_trait_ref(trait_ref)
         }
-        ItemKind::Impl(_, _,
+        ItemKind::Impl(_, _, _,
                  ref type_parameters,
                  ref opt_trait_reference,
                  ref typ,
@@ -292,6 +288,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             walk_list!(visitor, visit_trait_item, methods);
         }
         ItemKind::Mac(ref mac) => visitor.visit_mac(mac),
+        ItemKind::MacroDef(..) => {},
     }
     walk_list!(visitor, visit_attribute, &item.attrs);
 }
@@ -342,15 +339,11 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
             }
             visitor.visit_path(path, typ.id);
         }
-        TyKind::ObjectSum(ref ty, ref bounds) => {
-            visitor.visit_ty(ty);
-            walk_list!(visitor, visit_ty_param_bound, bounds);
-        }
         TyKind::Array(ref ty, ref expression) => {
             visitor.visit_ty(ty);
             visitor.visit_expr(expression)
         }
-        TyKind::PolyTraitRef(ref bounds) => {
+        TyKind::TraitObject(ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
         TyKind::ImplTrait(ref bounds) => {
@@ -359,7 +352,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
         TyKind::Typeof(ref expression) => {
             visitor.visit_expr(expression)
         }
-        TyKind::Infer | TyKind::ImplicitSelf => {}
+        TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err => {}
         TyKind::Mac(ref mac) => {
             visitor.visit_mac(mac)
         }
@@ -427,6 +420,7 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
         PatKind::Struct(ref path, ref fields, _) => {
             visitor.visit_path(path, pattern.id);
             for field in fields {
+                walk_list!(visitor, visit_attribute, field.node.attrs.iter());
                 visitor.visit_ident(field.span, field.node.ident);
                 visitor.visit_pat(&field.node.pat)
             }
@@ -443,9 +437,9 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
             walk_list!(visitor, visit_pat, optional_subpattern);
         }
         PatKind::Lit(ref expression) => visitor.visit_expr(expression),
-        PatKind::Range(ref lower_bound, ref upper_bound) => {
+        PatKind::Range(ref lower_bound, ref upper_bound, _) => {
             visitor.visit_expr(lower_bound);
-            visitor.visit_expr(upper_bound)
+            visitor.visit_expr(upper_bound);
         }
         PatKind::Wild => (),
         PatKind::Slice(ref prepatterns, ref slice_pattern, ref postpatterns) => {
@@ -472,6 +466,10 @@ pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, foreign_item: &'a 
     walk_list!(visitor, visit_attribute, &foreign_item.attrs);
 }
 
+pub fn walk_global_asm<'a, V: Visitor<'a>>(_: &mut V, _: &'a GlobalAsm) {
+    // Empty!
+}
+
 pub fn walk_ty_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a TyParamBound) {
     match *bound {
         TraitTyParamBound(ref typ, ref modifier) => {
@@ -491,29 +489,30 @@ pub fn walk_generics<'a, V: Visitor<'a>>(visitor: &mut V, generics: &'a Generics
         walk_list!(visitor, visit_attribute, &*param.attrs);
     }
     walk_list!(visitor, visit_lifetime_def, &generics.lifetimes);
-    for predicate in &generics.where_clause.predicates {
-        match *predicate {
-            WherePredicate::BoundPredicate(WhereBoundPredicate{ref bounded_ty,
-                                                               ref bounds,
-                                                               ref bound_lifetimes,
-                                                               ..}) => {
-                visitor.visit_ty(bounded_ty);
-                walk_list!(visitor, visit_ty_param_bound, bounds);
-                walk_list!(visitor, visit_lifetime_def, bound_lifetimes);
-            }
-            WherePredicate::RegionPredicate(WhereRegionPredicate{ref lifetime,
-                                                                 ref bounds,
-                                                                 ..}) => {
-                visitor.visit_lifetime(lifetime);
-                walk_list!(visitor, visit_lifetime, bounds);
-            }
-            WherePredicate::EqPredicate(WhereEqPredicate{id,
-                                                         ref path,
-                                                         ref ty,
-                                                         ..}) => {
-                visitor.visit_path(path, id);
-                visitor.visit_ty(ty);
-            }
+    walk_list!(visitor, visit_where_predicate, &generics.where_clause.predicates);
+}
+
+pub fn walk_where_predicate<'a, V: Visitor<'a>>(visitor: &mut V, predicate: &'a WherePredicate) {
+    match *predicate {
+        WherePredicate::BoundPredicate(WhereBoundPredicate{ref bounded_ty,
+                                                           ref bounds,
+                                                           ref bound_lifetimes,
+                                                           ..}) => {
+            visitor.visit_ty(bounded_ty);
+            walk_list!(visitor, visit_ty_param_bound, bounds);
+            walk_list!(visitor, visit_lifetime_def, bound_lifetimes);
+        }
+        WherePredicate::RegionPredicate(WhereRegionPredicate{ref lifetime,
+                                                             ref bounds,
+                                                             ..}) => {
+            visitor.visit_lifetime(lifetime);
+            walk_list!(visitor, visit_lifetime, bounds);
+        }
+        WherePredicate::EqPredicate(WhereEqPredicate{ref lhs_ty,
+                                                     ref rhs_ty,
+                                                     ..}) => {
+            visitor.visit_ty(lhs_ty);
+            visitor.visit_ty(rhs_ty);
         }
     }
 }
@@ -649,7 +648,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(place);
             visitor.visit_expr(subexpression)
         }
-        ExprKind::Vec(ref subexpressions) => {
+        ExprKind::Array(ref subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
         ExprKind::Repeat(ref element, ref count) => {
@@ -659,6 +658,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Struct(ref path, ref fields, ref optional_base) => {
             visitor.visit_path(path, expression.id);
             for field in fields {
+                walk_list!(visitor, visit_attribute, field.attrs.iter());
                 visitor.visit_ident(field.ident.span, field.ident.node);
                 visitor.visit_expr(&field.expr)
             }
@@ -784,6 +784,9 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         }
         ExprKind::Try(ref subexpression) => {
             visitor.visit_expr(subexpression)
+        }
+        ExprKind::Catch(ref body) => {
+            visitor.visit_block(body)
         }
     }
 

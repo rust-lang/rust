@@ -34,7 +34,13 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_custom_derive(
         Symbol::intern("derive_TotalSum"),
         MultiDecorator(box expand));
+
+    reg.register_custom_derive(
+        Symbol::intern("derive_Nothing"),
+        MultiDecorator(box noop));
 }
+
+fn noop(_: &mut ExtCtxt, _: Span, _: &ast::MetaItem, _: &Annotatable, _: &mut FnMut(Annotatable)) {}
 
 fn expand(cx: &mut ExtCtxt,
           span: Span,

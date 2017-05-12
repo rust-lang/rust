@@ -1,0 +1,11 @@
+error[E0308]: mismatched method receiver
+  --> $DIR/issue-27522.rs:16:22
+   |
+16 |     fn handler(self: &SomeType);
+   |                      ^^^^^^^^^ expected Self, found struct `SomeType`
+   |
+   = note: expected type `&Self`
+              found type `&SomeType`
+
+error: aborting due to previous error
+

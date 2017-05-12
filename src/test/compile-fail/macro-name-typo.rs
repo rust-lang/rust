@@ -9,6 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    printlx!("oh noes!"); //~ ERROR macro undefined
-    //~^ HELP did you mean `println!`?
+    printlx!("oh noes!");
+    //~^ ERROR cannot find macro
+    //~^^ HELP did you mean `println!`?
 }

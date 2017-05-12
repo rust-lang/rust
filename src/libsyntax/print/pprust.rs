@@ -11,26 +11,24 @@
 pub use self::AnnNode::*;
 
 use abi::{self, Abi};
-use ast::{self, BlockCheckMode, PatKind};
+use ast::{self, BlockCheckMode, PatKind, RangeEnd};
 use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Attribute;
 use util::parser::AssocOp;
 use attr;
 use codemap::{self, CodeMap};
 use syntax_pos::{self, BytePos};
-use errors;
 use parse::token::{self, BinOpToken, Token};
 use parse::lexer::comments;
-use parse;
+use parse::{self, ParseSess};
 use print::pp::{self, break_offset, word, space, zerobreak, hardbreak};
 use print::pp::{Breaks, eof};
 use print::pp::Breaks::{Consistent, Inconsistent};
 use ptr::P;
 use std_inject;
 use symbol::{Symbol, keywords};
-use tokenstream::{self, TokenTree};
-
-use rustc_i128::i128;
+use syntax_pos::DUMMY_SP;
+use tokenstream::{self, TokenStream, TokenTree};
 
 use std::ascii;
 use std::io::{self, Write, Read};
@@ -101,20 +99,15 @@ pub const DEFAULT_COLUMNS: usize = 78;
 /// it can scan the input text for comments and literals to
 /// copy forward.
 pub fn print_crate<'a>(cm: &'a CodeMap,
-                       span_diagnostic: &errors::Handler,
+                       sess: &ParseSess,
                        krate: &ast::Crate,
                        filename: String,
                        input: &mut Read,
                        out: Box<Write+'a>,
                        ann: &'a PpAnn,
                        is_expanded: bool) -> io::Result<()> {
-    let mut s = State::new_from_input(cm,
-                                      span_diagnostic,
-                                      filename,
-                                      input,
-                                      out,
-                                      ann,
-                                      is_expanded);
+    let mut s = State::new_from_input(cm, sess, filename, input, out, ann, is_expanded);
+
     if is_expanded && !std_inject::injected_crate_name(krate).is_none() {
         // We need to print `#![no_std]` (and its feature gate) so that
         // compiling pretty-printed source won't inject libstd again.
@@ -124,12 +117,12 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
         // #![feature(prelude_import)]
         let prelude_import_meta = attr::mk_list_word_item(Symbol::intern("prelude_import"));
         let list = attr::mk_list_item(Symbol::intern("feature"), vec![prelude_import_meta]);
-        let fake_attr = attr::mk_attr_inner(attr::mk_attr_id(), list);
+        let fake_attr = attr::mk_attr_inner(DUMMY_SP, attr::mk_attr_id(), list);
         s.print_attribute(&fake_attr)?;
 
         // #![no_std]
         let no_std_meta = attr::mk_word_item(Symbol::intern("no_std"));
-        let fake_attr = attr::mk_attr_inner(attr::mk_attr_id(), no_std_meta);
+        let fake_attr = attr::mk_attr_inner(DUMMY_SP, attr::mk_attr_id(), no_std_meta);
         s.print_attribute(&fake_attr)?;
     }
 
@@ -140,16 +133,13 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
 
 impl<'a> State<'a> {
     pub fn new_from_input(cm: &'a CodeMap,
-                          span_diagnostic: &errors::Handler,
+                          sess: &ParseSess,
                           filename: String,
                           input: &mut Read,
                           out: Box<Write+'a>,
                           ann: &'a PpAnn,
                           is_expanded: bool) -> State<'a> {
-        let (cmnts, lits) = comments::gather_comments_and_literals(
-            span_diagnostic,
-            filename,
-            input);
+        let (cmnts, lits) = comments::gather_comments_and_literals(sess, filename, input);
 
         State::new(
             cm,
@@ -281,7 +271,6 @@ pub fn token_to_string(tok: &Token) -> String {
         /* Other */
         token::DocComment(s)        => s.to_string(),
         token::SubstNt(s)           => format!("${}", s),
-        token::MatchNt(s, t)        => format!("${}:{}", s, t),
         token::Eof                  => "<eof>".to_string(),
         token::Whitespace           => " ".to_string(),
         token::Comment              => "/* */".to_string(),
@@ -297,13 +286,14 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtStmt(ref e)        => stmt_to_string(&e),
             token::NtPat(ref e)         => pat_to_string(&e),
             token::NtIdent(ref e)       => ident_to_string(e.node),
-            token::NtTT(ref e)          => tt_to_string(&e),
+            token::NtTT(ref tree)       => tt_to_string(tree.clone()),
             token::NtArm(ref e)         => arm_to_string(&e),
             token::NtImplItem(ref e)    => impl_item_to_string(&e),
             token::NtTraitItem(ref e)   => trait_item_to_string(&e),
             token::NtGenerics(ref e)    => generics_to_string(&e),
             token::NtWhereClause(ref e) => where_clause_to_string(&e),
             token::NtArg(ref e)         => arg_to_string(&e),
+            token::NtVis(ref e)         => vis_to_string(&e),
         }
     }
 }
@@ -332,12 +322,16 @@ pub fn lifetime_to_string(e: &ast::Lifetime) -> String {
     to_string(|s| s.print_lifetime(e))
 }
 
-pub fn tt_to_string(tt: &tokenstream::TokenTree) -> String {
+pub fn tt_to_string(tt: tokenstream::TokenTree) -> String {
     to_string(|s| s.print_tt(tt))
 }
 
 pub fn tts_to_string(tts: &[tokenstream::TokenTree]) -> String {
-    to_string(|s| s.print_tts(tts))
+    to_string(|s| s.print_tts(tts.iter().cloned().collect()))
+}
+
+pub fn tokens_to_string(tokens: TokenStream) -> String {
+    to_string(|s| s.print_tts(tokens))
 }
 
 pub fn stmt_to_string(stmt: &ast::Stmt) -> String {
@@ -378,6 +372,10 @@ pub fn path_to_string(p: &ast::Path) -> String {
 
 pub fn ident_to_string(id: ast::Ident) -> String {
     to_string(|s| s.print_ident(id))
+}
+
+pub fn vis_to_string(v: &ast::Visibility) -> String {
+    to_string(|s| s.print_visibility(v))
 }
 
 pub fn fun_to_string(decl: &ast::FnDecl,
@@ -434,13 +432,7 @@ pub fn mac_to_string(arg: &ast::Mac) -> String {
 }
 
 pub fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
-    match *vis {
-        ast::Visibility::Public => format!("pub {}", s),
-        ast::Visibility::Crate(_) => format!("pub(crate) {}", s),
-        ast::Visibility::Restricted { ref path, .. } =>
-            format!("pub({}) {}", to_string(|s| s.print_path(path, false, 0, true)), s),
-        ast::Visibility::Inherited => s.to_string()
-    }
+    format!("{}{}", to_string(|s| s.print_visibility(vis)), s)
 }
 
 fn needs_parentheses(expr: &ast::Expr) -> bool {
@@ -685,7 +677,7 @@ pub trait PrintState<'a> {
                     style: ast::StrStyle) -> io::Result<()> {
         let st = match style {
             ast::StrStyle::Cooked => {
-                (format!("\"{}\"", st.escape_default()))
+                (format!("\"{}\"", parse::escape_default(st)))
             }
             ast::StrStyle::Raw(n) => {
                 (format!("r{delim}\"{string}\"{delim}",
@@ -761,7 +753,21 @@ pub trait PrintState<'a> {
                 ast::AttrStyle::Inner => word(self.writer(), "#![")?,
                 ast::AttrStyle::Outer => word(self.writer(), "#[")?,
             }
-            self.print_meta_item(&attr.meta())?;
+            if let Some(mi) = attr.meta() {
+                self.print_meta_item(&mi)?
+            } else {
+                for (i, segment) in attr.path.segments.iter().enumerate() {
+                    if i > 0 {
+                        word(self.writer(), "::")?
+                    }
+                    if segment.identifier.name != keywords::CrateRoot.name() &&
+                       segment.identifier.name != "$crate" {
+                        word(self.writer(), &segment.identifier.name.as_str())?;
+                    }
+                }
+                space(self.writer())?;
+                self.print_tts(attr.tokens.clone())?;
+            }
             word(self.writer(), "]")
         }
     }
@@ -796,6 +802,45 @@ pub trait PrintState<'a> {
                               |s, i| s.print_meta_list_item(&i))?;
                 self.pclose()?;
             }
+        }
+        self.end()
+    }
+
+    /// This doesn't deserve to be called "pretty" printing, but it should be
+    /// meaning-preserving. A quick hack that might help would be to look at the
+    /// spans embedded in the TTs to decide where to put spaces and newlines.
+    /// But it'd be better to parse these according to the grammar of the
+    /// appropriate macro, transcribe back into the grammar we just parsed from,
+    /// and then pretty-print the resulting AST nodes (so, e.g., we print
+    /// expression arguments as expressions). It can be done! I think.
+    fn print_tt(&mut self, tt: tokenstream::TokenTree) -> io::Result<()> {
+        match tt {
+            TokenTree::Token(_, ref tk) => {
+                word(self.writer(), &token_to_string(tk))?;
+                match *tk {
+                    parse::token::DocComment(..) => {
+                        hardbreak(self.writer())
+                    }
+                    _ => Ok(())
+                }
+            }
+            TokenTree::Delimited(_, ref delimed) => {
+                word(self.writer(), &token_to_string(&delimed.open_token()))?;
+                space(self.writer())?;
+                self.print_tts(delimed.stream())?;
+                space(self.writer())?;
+                word(self.writer(), &token_to_string(&delimed.close_token()))
+            },
+        }
+    }
+
+    fn print_tts(&mut self, tts: tokenstream::TokenStream) -> io::Result<()> {
+        self.ibox(0)?;
+        for (i, tt) in tts.into_trees().enumerate() {
+            if i != 0 {
+                space(self.writer())?;
+            }
+            self.print_tt(tt)?;
         }
         self.end()
     }
@@ -1009,7 +1054,7 @@ impl<'a> State<'a> {
             ast::TyKind::BareFn(ref f) => {
                 let generics = ast::Generics {
                     lifetimes: f.lifetimes.clone(),
-                    ty_params: P::new(),
+                    ty_params: Vec::new(),
                     where_clause: ast::WhereClause {
                         id: ast::DUMMY_NODE_ID,
                         predicates: Vec::new(),
@@ -1028,11 +1073,7 @@ impl<'a> State<'a> {
             ast::TyKind::Path(Some(ref qself), ref path) => {
                 self.print_qpath(path, qself, false)?
             }
-            ast::TyKind::ObjectSum(ref ty, ref bounds) => {
-                self.print_type(&ty)?;
-                self.print_bounds("+", &bounds[..])?;
-            }
-            ast::TyKind::PolyTraitRef(ref bounds) => {
+            ast::TyKind::TraitObject(ref bounds) => {
                 self.print_bounds("", &bounds[..])?;
             }
             ast::TyKind::ImplTrait(ref bounds) => {
@@ -1052,6 +1093,9 @@ impl<'a> State<'a> {
             }
             ast::TyKind::Infer => {
                 word(&mut self.s, "_")?;
+            }
+            ast::TyKind::Err => {
+                word(&mut self.s, "?")?;
             }
             ast::TyKind::ImplicitSelf => {
                 word(&mut self.s, "Self")?;
@@ -1222,6 +1266,11 @@ impl<'a> State<'a> {
                 self.print_foreign_mod(nmod, &item.attrs)?;
                 self.bclose(item.span)?;
             }
+            ast::ItemKind::GlobalAsm(ref ga) => {
+                self.head(&visibility_qualified(&item.vis, "global_asm!"))?;
+                word(&mut self.s, &ga.asm.as_str())?;
+                self.end()?;
+            }
             ast::ItemKind::Ty(ref ty, ref params) => {
                 self.ibox(INDENT_UNIT)?;
                 self.ibox(0)?;
@@ -1268,12 +1317,14 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::Impl(unsafety,
                           polarity,
+                          defaultness,
                           ref generics,
                           ref opt_trait,
                           ref ty,
                           ref impl_items) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
+                self.print_defaultness(defaultness)?;
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("impl")?;
 
@@ -1333,13 +1384,22 @@ impl<'a> State<'a> {
                 self.bclose(item.span)?;
             }
             ast::ItemKind::Mac(codemap::Spanned { ref node, .. }) => {
-                self.print_visibility(&item.vis)?;
                 self.print_path(&node.path, false, 0, false)?;
                 word(&mut self.s, "! ")?;
                 self.print_ident(item.ident)?;
                 self.cbox(INDENT_UNIT)?;
                 self.popen()?;
-                self.print_tts(&node.tts[..])?;
+                self.print_tts(node.stream())?;
+                self.pclose()?;
+                word(&mut self.s, ";")?;
+                self.end()?;
+            }
+            ast::ItemKind::MacroDef(ref tts) => {
+                word(&mut self.s, "macro_rules! ")?;
+                self.print_ident(item.ident)?;
+                self.cbox(INDENT_UNIT)?;
+                self.popen()?;
+                self.print_tts(tts.clone().into())?;
                 self.pclose()?;
                 word(&mut self.s, ";")?;
                 self.end()?;
@@ -1409,10 +1469,21 @@ impl<'a> State<'a> {
             ast::Visibility::Crate(_) => self.word_nbsp("pub(crate)"),
             ast::Visibility::Restricted { ref path, .. } => {
                 let path = to_string(|s| s.print_path(path, false, 0, true));
-                self.word_nbsp(&format!("pub({})", path))
+                if path == "self" || path == "super" {
+                    self.word_nbsp(&format!("pub({})", path))
+                } else {
+                    self.word_nbsp(&format!("pub(in {})", path))
+                }
             }
             ast::Visibility::Inherited => Ok(())
         }
+    }
+
+    pub fn print_defaultness(&mut self, defatulness: ast::Defaultness) -> io::Result<()> {
+        if let ast::Defaultness::Default = defatulness {
+            try!(self.word_nbsp("default"));
+        }
+        Ok(())
     }
 
     pub fn print_struct(&mut self,
@@ -1462,59 +1533,6 @@ impl<'a> State<'a> {
 
             self.bclose(span)
         }
-    }
-
-    /// This doesn't deserve to be called "pretty" printing, but it should be
-    /// meaning-preserving. A quick hack that might help would be to look at the
-    /// spans embedded in the TTs to decide where to put spaces and newlines.
-    /// But it'd be better to parse these according to the grammar of the
-    /// appropriate macro, transcribe back into the grammar we just parsed from,
-    /// and then pretty-print the resulting AST nodes (so, e.g., we print
-    /// expression arguments as expressions). It can be done! I think.
-    pub fn print_tt(&mut self, tt: &tokenstream::TokenTree) -> io::Result<()> {
-        match *tt {
-            TokenTree::Token(_, ref tk) => {
-                word(&mut self.s, &token_to_string(tk))?;
-                match *tk {
-                    parse::token::DocComment(..) => {
-                        hardbreak(&mut self.s)
-                    }
-                    _ => Ok(())
-                }
-            }
-            TokenTree::Delimited(_, ref delimed) => {
-                word(&mut self.s, &token_to_string(&delimed.open_token()))?;
-                space(&mut self.s)?;
-                self.print_tts(&delimed.tts)?;
-                space(&mut self.s)?;
-                word(&mut self.s, &token_to_string(&delimed.close_token()))
-            },
-            TokenTree::Sequence(_, ref seq) => {
-                word(&mut self.s, "$(")?;
-                for tt_elt in &seq.tts {
-                    self.print_tt(tt_elt)?;
-                }
-                word(&mut self.s, ")")?;
-                if let Some(ref tk) = seq.separator {
-                    word(&mut self.s, &token_to_string(tk))?;
-                }
-                match seq.op {
-                    tokenstream::KleeneOp::ZeroOrMore => word(&mut self.s, "*"),
-                    tokenstream::KleeneOp::OneOrMore => word(&mut self.s, "+"),
-                }
-            }
-        }
-    }
-
-    pub fn print_tts(&mut self, tts: &[tokenstream::TokenTree]) -> io::Result<()> {
-        self.ibox(0)?;
-        for (i, tt) in tts.iter().enumerate() {
-            if i != 0 {
-                space(&mut self.s)?;
-            }
-            self.print_tt(tt)?;
-        }
-        self.end()
     }
 
     pub fn print_variant(&mut self, v: &ast::Variant) -> io::Result<()> {
@@ -1579,7 +1597,7 @@ impl<'a> State<'a> {
                 word(&mut self.s, "! ")?;
                 self.cbox(INDENT_UNIT)?;
                 self.popen()?;
-                self.print_tts(&node.tts[..])?;
+                self.print_tts(node.stream())?;
                 self.pclose()?;
                 word(&mut self.s, ";")?;
                 self.end()?
@@ -1593,9 +1611,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol()?;
         self.maybe_print_comment(ii.span.lo)?;
         self.print_outer_attributes(&ii.attrs)?;
-        if let ast::Defaultness::Default = ii.defaultness {
-            self.word_nbsp("default")?;
-        }
+        self.print_defaultness(ii.defaultness)?;
         match ii.node {
             ast::ImplItemKind::Const(ref ty, ref expr) => {
                 self.print_associated_const(ii.ident, &ty, Some(&expr), &ii.vis)?;
@@ -1615,7 +1631,7 @@ impl<'a> State<'a> {
                 word(&mut self.s, "! ")?;
                 self.cbox(INDENT_UNIT)?;
                 self.popen()?;
-                self.print_tts(&node.tts[..])?;
+                self.print_tts(node.stream())?;
                 self.pclose()?;
                 word(&mut self.s, ";")?;
                 self.end()?
@@ -1808,7 +1824,7 @@ impl<'a> State<'a> {
             }
             token::NoDelim => {}
         }
-        self.print_tts(&m.node.tts)?;
+        self.print_tts(m.node.stream())?;
         match delim {
             token::Paren => self.pclose(),
             token::Bracket => word(&mut self.s, "]"),
@@ -2018,7 +2034,7 @@ impl<'a> State<'a> {
             ast::ExprKind::InPlace(ref place, ref expr) => {
                 self.print_expr_in_place(place, expr)?;
             }
-            ast::ExprKind::Vec(ref exprs) => {
+            ast::ExprKind::Array(ref exprs) => {
                 self.print_expr_vec(&exprs[..], attrs)?;
             }
             ast::ExprKind::Repeat(ref element, ref count) => {
@@ -2299,6 +2315,11 @@ impl<'a> State<'a> {
                 self.print_expr(e)?;
                 word(&mut self.s, "?")?
             }
+            ast::ExprKind::Catch(ref blk) => {
+                self.head("do catch")?;
+                space(&mut self.s)?;
+                self.print_block_with_attrs(&blk, attrs)?
+            }
         }
         self.ann.post(self, NodeExpr(expr))?;
         self.end()
@@ -2557,10 +2578,13 @@ impl<'a> State<'a> {
                 self.print_pat(&inner)?;
             }
             PatKind::Lit(ref e) => self.print_expr(&**e)?,
-            PatKind::Range(ref begin, ref end) => {
+            PatKind::Range(ref begin, ref end, ref end_kind) => {
                 self.print_expr(&begin)?;
                 space(&mut self.s)?;
-                word(&mut self.s, "...")?;
+                match *end_kind {
+                    RangeEnd::Included => word(&mut self.s, "...")?,
+                    RangeEnd::Excluded => word(&mut self.s, "..")?,
+                }
                 self.print_expr(&end)?;
             }
             PatKind::Slice(ref before, ref slice, ref after) => {
@@ -2849,11 +2873,13 @@ impl<'a> State<'a> {
                                                                                ..}) => {
                     self.print_lifetime_bounds(lifetime, bounds)?;
                 }
-                ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref path, ref ty, ..}) => {
-                    self.print_path(path, false, 0, false)?;
+                ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref lhs_ty,
+                                                                       ref rhs_ty,
+                                                                       ..}) => {
+                    self.print_type(lhs_ty)?;
                     space(&mut self.s)?;
                     self.word_space("=")?;
-                    self.print_type(&ty)?;
+                    self.print_type(rhs_ty)?;
                 }
             }
         }
@@ -2975,7 +3001,7 @@ impl<'a> State<'a> {
         }
         let generics = ast::Generics {
             lifetimes: Vec::new(),
-            ty_params: P::new(),
+            ty_params: Vec::new(),
             where_clause: ast::WhereClause {
                 id: ast::DUMMY_NODE_ID,
                 predicates: Vec::new(),

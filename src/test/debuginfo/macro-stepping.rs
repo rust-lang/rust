@@ -44,6 +44,17 @@ extern crate macro_stepping; // exports new_scope!()
 // gdb-command:frame
 // gdb-check:[...]#loc6[...]
 
+// gdb-command:continue
+// gdb-command:step
+// gdb-command:frame
+// gdb-check:[...]#inc-loc1[...]
+// gdb-command:next
+// gdb-command:frame
+// gdb-check:[...]#inc-loc2[...]
+// gdb-command:next
+// gdb-command:frame
+// gdb-check:[...]#inc-loc3[...]
+
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:set set stop-line-count-before 0
@@ -67,6 +78,17 @@ extern crate macro_stepping; // exports new_scope!()
 // lldb-command:next
 // lldb-command:frame select
 // lldb-check:[...]#loc5[...]
+
+// lldb-command:continue
+// lldb-command:step
+// lldb-command:frame select
+// lldb-check:[...]#inc-loc1[...]
+// lldb-command:next
+// lldb-command:frame select
+// lldb-check:[...]#inc-loc2[...]
+// lldb-command:next
+// lldb-command:frame select
+// lldb-check:[...]#inc-loc3[...]
 
 macro_rules! foo {
     () => {
@@ -99,6 +121,10 @@ fn main() {
              "world");
 
     zzz(); // #loc6
+
+    included(); // #break
 }
 
 fn zzz() {()}
+
+include!("macro-stepping.inc");

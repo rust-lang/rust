@@ -21,17 +21,15 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-
+#![deny(warnings)]
 
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(const_fn)]
+#![feature(i128)]
+#![feature(i128_type)]
 
-#[macro_use] extern crate log;
-#[macro_use] extern crate syntax;
-
-// SNAP: remove use of this crate
-extern crate rustc_i128;
+extern crate syntax;
 
 extern crate serialize as rustc_serialize; // used by deriving
 

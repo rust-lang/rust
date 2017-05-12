@@ -212,7 +212,7 @@ fn mk_generics(lifetimes: Vec<ast::LifetimeDef>, ty_params: Vec<ast::TyParam>, s
                -> Generics {
     Generics {
         lifetimes: lifetimes,
-        ty_params: P::from_vec(ty_params),
+        ty_params: ty_params,
         where_clause: ast::WhereClause {
             id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),

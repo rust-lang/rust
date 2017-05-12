@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let x; //~ ERROR unable to infer enough type information
+    let x; //~ ERROR type annotations needed
 }

@@ -1,0 +1,8 @@
+[package]
+name = "build-manifest"
+version = "0.1.0"
+authors = ["Alex Crichton <alex@alexcrichton.com>"]
+
+[dependencies]
+toml = "0.1"
+rustc-serialize = "0.3"

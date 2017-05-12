@@ -11,11 +11,9 @@
 // compile-flags: -O -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-#![feature(rustc_attrs)]
 
 // CHECK-LABEL: @test
 #[no_mangle]
-#[rustc_mir] // FIXME #27840 MIR has different codegen.
 pub fn test() {
     let a = 0;
     &a; // keep variable in an alloca
@@ -33,11 +31,11 @@ pub fn test() {
 // CHECK: [[S__5:%[0-9]+]] = bitcast %"core::option::Option<i32>"* %_5 to i8*
 // CHECK: call void @llvm.lifetime.start(i{{[0-9 ]+}}, i8* [[S__5]])
 
-// CHECK: [[E__5:%[0-9]+]] = bitcast %"core::option::Option<i32>"* %_5 to i8*
-// CHECK: call void @llvm.lifetime.end(i{{[0-9 ]+}}, i8* [[E__5]])
-
 // CHECK: [[E_b:%[0-9]+]] = bitcast %"core::option::Option<i32>"** %b to i8*
 // CHECK: call void @llvm.lifetime.end(i{{[0-9 ]+}}, i8* [[E_b]])
+
+// CHECK: [[E__5:%[0-9]+]] = bitcast %"core::option::Option<i32>"* %_5 to i8*
+// CHECK: call void @llvm.lifetime.end(i{{[0-9 ]+}}, i8* [[E__5]])
     }
 
     let c = 1;

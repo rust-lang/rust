@@ -14,8 +14,6 @@
 trait Foo {}
 impl<'a> Foo for &'a [u8] {}
 
-// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-
 fn a(v: &[u8]) -> Box<Foo + 'static> {
     let x: Box<Foo + 'static> = Box::new(v);
     //~^ ERROR cannot infer an appropriate lifetime due to conflicting

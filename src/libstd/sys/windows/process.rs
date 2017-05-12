@@ -257,26 +257,27 @@ impl Stdio {
             // INVALID_HANDLE_VALUE.
             Stdio::Inherit => {
                 match stdio::get(stdio_id) {
-                    Ok(io) => io.handle().duplicate(0, true,
-                                                    c::DUPLICATE_SAME_ACCESS),
+                    Ok(io) => {
+                        let io = Handle::new(io.handle());
+                        let ret = io.duplicate(0, true,
+                                               c::DUPLICATE_SAME_ACCESS);
+                        io.into_raw();
+                        return ret
+                    }
                     Err(..) => Ok(Handle::new(c::INVALID_HANDLE_VALUE)),
                 }
             }
 
             Stdio::MakePipe => {
-                let (reader, writer) = pipe::anon_pipe()?;
-                let (ours, theirs) = if stdio_id == c::STD_INPUT_HANDLE {
-                    (writer, reader)
-                } else {
-                    (reader, writer)
-                };
-                *pipe = Some(ours);
+                let ours_readable = stdio_id != c::STD_INPUT_HANDLE;
+                let pipes = pipe::anon_pipe(ours_readable)?;
+                *pipe = Some(pipes.ours);
                 cvt(unsafe {
-                    c::SetHandleInformation(theirs.handle().raw(),
+                    c::SetHandleInformation(pipes.theirs.handle().raw(),
                                             c::HANDLE_FLAG_INHERIT,
                                             c::HANDLE_FLAG_INHERIT)
                 })?;
-                Ok(theirs.into_handle())
+                Ok(pipes.theirs.into_handle())
             }
 
             Stdio::Handle(ref handle) => {
@@ -341,6 +342,21 @@ impl Process {
             let mut status = 0;
             cvt(c::GetExitCodeProcess(self.handle.raw(), &mut status))?;
             Ok(ExitStatus(status))
+        }
+    }
+
+    pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
+        unsafe {
+            match c::WaitForSingleObject(self.handle.raw(), 0) {
+                c::WAIT_OBJECT_0 => {}
+                c::WAIT_TIMEOUT => {
+                    return Ok(None);
+                }
+                _ => return Err(io::Error::last_os_error()),
+            }
+            let mut status = 0;
+            cvt(c::GetExitCodeProcess(self.handle.raw(), &mut status))?;
+            Ok(Some(ExitStatus(status)))
         }
     }
 

@@ -17,7 +17,8 @@ use core::ops::Index;
 use core::{fmt, intrinsics, mem, ptr};
 
 use borrow::Borrow;
-use Bound::{self, Excluded, Included, Unbounded};
+use Bound::{Excluded, Included, Unbounded};
+use range::RangeArgument;
 
 use super::node::{self, Handle, NodeRef, marker};
 use super::search;
@@ -137,12 +138,10 @@ pub struct BTreeMap<K, V> {
 }
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
-impl<K, V> Drop for BTreeMap<K, V> {
-    #[unsafe_destructor_blind_to_params]
+unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
     fn drop(&mut self) {
         unsafe {
-            for _ in ptr::read(self).into_iter() {
-            }
+            drop(ptr::read(self).into_iter());
         }
     }
 }
@@ -263,21 +262,47 @@ impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
     }
 }
 
-/// An iterator over a BTreeMap's entries.
+/// An iterator over the entries of a `BTreeMap`.
+///
+/// This `struct` is created by the [`iter`] method on [`BTreeMap`]. See its
+/// documentation for more.
+///
+/// [`iter`]: struct.BTreeMap.html#method.iter
+/// [`BTreeMap`]: struct.BTreeMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a, V: 'a> {
     range: Range<'a, K, V>,
     length: usize,
 }
 
-/// A mutable iterator over a BTreeMap's entries.
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Iter<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.clone()).finish()
+    }
+}
+
+/// A mutable iterator over the entries of a `BTreeMap`.
+///
+/// This `struct` is created by the [`iter_mut`] method on [`BTreeMap`]. See its
+/// documentation for more.
+///
+/// [`iter_mut`]: struct.BTreeMap.html#method.iter_mut
+/// [`BTreeMap`]: struct.BTreeMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct IterMut<'a, K: 'a, V: 'a> {
     range: RangeMut<'a, K, V>,
     length: usize,
 }
 
-/// An owning iterator over a BTreeMap's entries.
+/// An owning iterator over the entries of a `BTreeMap`.
+///
+/// This `struct` is created by the [`into_iter`] method on [`BTreeMap`][`BTreeMap`]
+/// (provided by the `IntoIterator` trait). See its documentation for more.
+///
+/// [`into_iter`]: struct.BTreeMap.html#method.into_iter
+/// [`BTreeMap`]: struct.BTreeMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K, V> {
     front: Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge>,
@@ -285,31 +310,96 @@ pub struct IntoIter<K, V> {
     length: usize,
 }
 
-/// An iterator over a BTreeMap's keys.
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IntoIter<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let range = Range {
+            front: self.front.reborrow(),
+            back: self.back.reborrow(),
+        };
+        f.debug_list().entries(range).finish()
+    }
+}
+
+/// An iterator over the keys of a `BTreeMap`.
+///
+/// This `struct` is created by the [`keys`] method on [`BTreeMap`]. See its
+/// documentation for more.
+///
+/// [`keys`]: struct.BTreeMap.html#method.keys
+/// [`BTreeMap`]: struct.BTreeMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
 }
 
-/// An iterator over a BTreeMap's values.
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Keys<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.inner.clone()).finish()
+    }
+}
+
+/// An iterator over the values of a `BTreeMap`.
+///
+/// This `struct` is created by the [`values`] method on [`BTreeMap`]. See its
+/// documentation for more.
+///
+/// [`values`]: struct.BTreeMap.html#method.values
+/// [`BTreeMap`]: struct.BTreeMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
 }
 
-/// A mutable iterator over a BTreeMap's values.
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Values<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.inner.clone()).finish()
+    }
+}
+
+/// A mutable iterator over the values of a `BTreeMap`.
+///
+/// This `struct` is created by the [`values_mut`] method on [`BTreeMap`]. See its
+/// documentation for more.
+///
+/// [`values_mut`]: struct.BTreeMap.html#method.values_mut
+/// [`BTreeMap`]: struct.BTreeMap.html
 #[stable(feature = "map_values_mut", since = "1.10.0")]
+#[derive(Debug)]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
 }
 
-/// An iterator over a sub-range of BTreeMap's entries.
+/// An iterator over a sub-range of entries in a `BTreeMap`.
+///
+/// This `struct` is created by the [`range`] method on [`BTreeMap`]. See its
+/// documentation for more.
+///
+/// [`range`]: struct.BTreeMap.html#method.range
+/// [`BTreeMap`]: struct.BTreeMap.html
+#[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, K: 'a, V: 'a> {
     front: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
     back: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
 }
 
-/// A mutable iterator over a sub-range of BTreeMap's entries.
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Range<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.clone()).finish()
+    }
+}
+
+/// A mutable iterator over a sub-range of entries in a `BTreeMap`.
+///
+/// This `struct` is created by the [`range_mut`] method on [`BTreeMap`]. See its
+/// documentation for more.
+///
+/// [`range_mut`]: struct.BTreeMap.html#method.range_mut
+/// [`BTreeMap`]: struct.BTreeMap.html
+#[stable(feature = "btree_range", since = "1.17.0")]
 pub struct RangeMut<'a, K: 'a, V: 'a> {
     front: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
     back: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
@@ -318,19 +408,31 @@ pub struct RangeMut<'a, K: 'a, V: 'a> {
     _marker: PhantomData<&'a mut (K, V)>,
 }
 
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for RangeMut<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let range = Range {
+            front: self.front.reborrow(),
+            back: self.back.reborrow(),
+        };
+        f.debug_list().entries(range).finish()
+    }
+}
+
 /// A view into a single entry in a map, which may either be vacant or occupied.
-/// This enum is constructed from the [`entry`] method on [`BTreeMap`].
+///
+/// This `enum` is constructed from the [`entry`] method on [`BTreeMap`].
 ///
 /// [`BTreeMap`]: struct.BTreeMap.html
 /// [`entry`]: struct.BTreeMap.html#method.entry
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Entry<'a, K: 'a, V: 'a> {
-    /// A vacant Entry
+    /// A vacant entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     Vacant(#[stable(feature = "rust1", since = "1.0.0")]
            VacantEntry<'a, K, V>),
 
-    /// An occupied Entry
+    /// An occupied entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     Occupied(#[stable(feature = "rust1", since = "1.0.0")]
              OccupiedEntry<'a, K, V>),
@@ -350,7 +452,8 @@ impl<'a, K: 'a + Debug + Ord, V: 'a + Debug> Debug for Entry<'a, K, V> {
     }
 }
 
-/// A vacant Entry. It is part of the [`Entry`] enum.
+/// A view into a vacant entry in a `BTreeMap`.
+/// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -372,7 +475,8 @@ impl<'a, K: 'a + Debug + Ord, V: 'a> Debug for VacantEntry<'a, K, V> {
     }
 }
 
-/// An occupied Entry. It is part of the [`Entry`] enum.
+/// A view into an occupied entry in a `BTreeMap`.
+/// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -472,7 +576,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
-    /// Returns true if the map contains a value for the specified key.
+    /// Returns `true` if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
@@ -655,189 +759,86 @@ impl<K: Ord, V> BTreeMap<K, V> {
         self.fix_right_edge();
     }
 
-    /// Constructs a double-ended iterator over a sub-range of elements in the map, starting
-    /// at min, and ending at max. If min is `Unbounded`, then it will be treated as "negative
-    /// infinity", and if max is `Unbounded`, then it will be treated as "positive infinity".
-    /// Thus range(Unbounded, Unbounded) will yield the whole collection.
+    /// Constructs a double-ended iterator over a sub-range of elements in the map.
+    /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
+    /// yield elements from min (inclusive) to max (exclusive).
+    /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
+    /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
+    /// range from 4 to 10.
+    ///
+    /// # Panics
+    ///
+    /// Panics if range `start > end`.
+    /// Panics if range `start == end` and both bounds are `Excluded`.
     ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(btree_range, collections_bound)]
-    ///
     /// use std::collections::BTreeMap;
-    /// use std::collections::Bound::{Included, Unbounded};
+    /// use std::collections::Bound::Included;
     ///
     /// let mut map = BTreeMap::new();
     /// map.insert(3, "a");
     /// map.insert(5, "b");
     /// map.insert(8, "c");
-    /// for (&key, &value) in map.range(Included(&4), Included(&8)) {
+    /// for (&key, &value) in map.range((Included(&4), Included(&8))) {
     ///     println!("{}: {}", key, value);
     /// }
-    /// assert_eq!(Some((&5, &"b")), map.range(Included(&4), Unbounded).next());
+    /// assert_eq!(Some((&5, &"b")), map.range(4..).next());
     /// ```
-    #[unstable(feature = "btree_range",
-               reason = "matches collection reform specification, waiting for dust to settle",
-               issue = "27787")]
-    pub fn range<Min: ?Sized + Ord, Max: ?Sized + Ord>(&self,
-                                                       min: Bound<&Min>,
-                                                       max: Bound<&Max>)
-                                                       -> Range<K, V>
-        where K: Borrow<Min> + Borrow<Max>
+    #[stable(feature = "btree_range", since = "1.17.0")]
+    pub fn range<T: ?Sized, R>(&self, range: R) -> Range<K, V>
+        where T: Ord, K: Borrow<T>, R: RangeArgument<T>
     {
-        let front = match min {
-            Included(key) => {
-                match search::search_tree(self.root.as_ref(), key) {
-                    Found(kv_handle) => {
-                        match kv_handle.left_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => last_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Excluded(key) => {
-                match search::search_tree(self.root.as_ref(), key) {
-                    Found(kv_handle) => {
-                        match kv_handle.right_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => first_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Unbounded => first_leaf_edge(self.root.as_ref()),
-        };
+        let root1 = self.root.as_ref();
+        let root2 = self.root.as_ref();
+        let (f, b) = range_search(root1, root2, range);
 
-        let back = match max {
-            Included(key) => {
-                match search::search_tree(self.root.as_ref(), key) {
-                    Found(kv_handle) => {
-                        match kv_handle.right_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => first_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Excluded(key) => {
-                match search::search_tree(self.root.as_ref(), key) {
-                    Found(kv_handle) => {
-                        match kv_handle.left_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => last_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Unbounded => last_leaf_edge(self.root.as_ref()),
-        };
-
-        Range {
-            front: front,
-            back: back,
-        }
+        Range { front: f, back: b}
     }
 
-    /// Constructs a mutable double-ended iterator over a sub-range of elements in the map, starting
-    /// at min, and ending at max. If min is `Unbounded`, then it will be treated as "negative
-    /// infinity", and if max is `Unbounded`, then it will be treated as "positive infinity".
-    /// Thus range(Unbounded, Unbounded) will yield the whole collection.
+    /// Constructs a mutable double-ended iterator over a sub-range of elements in the map.
+    /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
+    /// yield elements from min (inclusive) to max (exclusive).
+    /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
+    /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
+    /// range from 4 to 10.
+    ///
+    /// # Panics
+    ///
+    /// Panics if range `start > end`.
+    /// Panics if range `start == end` and both bounds are `Excluded`.
     ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(btree_range, collections_bound)]
-    ///
     /// use std::collections::BTreeMap;
-    /// use std::collections::Bound::{Included, Excluded};
     ///
     /// let mut map: BTreeMap<&str, i32> = ["Alice", "Bob", "Carol", "Cheryl"].iter()
     ///                                                                       .map(|&s| (s, 0))
     ///                                                                       .collect();
-    /// for (_, balance) in map.range_mut(Included("B"), Excluded("Cheryl")) {
+    /// for (_, balance) in map.range_mut("B".."Cheryl") {
     ///     *balance += 100;
     /// }
     /// for (name, balance) in &map {
     ///     println!("{} => {}", name, balance);
     /// }
     /// ```
-    #[unstable(feature = "btree_range",
-               reason = "matches collection reform specification, waiting for dust to settle",
-               issue = "27787")]
-    pub fn range_mut<Min: ?Sized + Ord, Max: ?Sized + Ord>(&mut self,
-                                                           min: Bound<&Min>,
-                                                           max: Bound<&Max>)
-                                                           -> RangeMut<K, V>
-        where K: Borrow<Min> + Borrow<Max>
+    #[stable(feature = "btree_range", since = "1.17.0")]
+    pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<K, V>
+        where T: Ord, K: Borrow<T>, R: RangeArgument<T>
     {
         let root1 = self.root.as_mut();
         let root2 = unsafe { ptr::read(&root1) };
-
-        let front = match min {
-            Included(key) => {
-                match search::search_tree(root1, key) {
-                    Found(kv_handle) => {
-                        match kv_handle.left_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => last_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Excluded(key) => {
-                match search::search_tree(root1, key) {
-                    Found(kv_handle) => {
-                        match kv_handle.right_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => first_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Unbounded => first_leaf_edge(root1),
-        };
-
-        let back = match max {
-            Included(key) => {
-                match search::search_tree(root2, key) {
-                    Found(kv_handle) => {
-                        match kv_handle.right_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => first_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Excluded(key) => {
-                match search::search_tree(root2, key) {
-                    Found(kv_handle) => {
-                        match kv_handle.left_edge().force() {
-                            Leaf(bottom) => bottom,
-                            Internal(internal) => last_leaf_edge(internal.descend()),
-                        }
-                    }
-                    GoDown(bottom) => bottom,
-                }
-            }
-            Unbounded => last_leaf_edge(root2),
-        };
+        let (f, b) = range_search(root1, root2, range);
 
         RangeMut {
-            front: front,
-            back: back,
+            front: f,
+            back: b,
             _marker: PhantomData,
         }
     }
@@ -1441,6 +1442,7 @@ impl<'a, K, V> Clone for Values<'a, K, V> {
     }
 }
 
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> Iterator for Range<'a, K, V> {
     type Item = (&'a K, &'a V);
 
@@ -1516,6 +1518,7 @@ impl<'a, K, V> Range<'a, K, V> {
     }
 }
 
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for Range<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a V)> {
         if self.front == self.back {
@@ -1561,6 +1564,7 @@ impl<'a, K, V> Range<'a, K, V> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K, V> FusedIterator for Range<'a, K, V> {}
 
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> Clone for Range<'a, K, V> {
     fn clone(&self) -> Range<'a, K, V> {
         Range {
@@ -1570,6 +1574,7 @@ impl<'a, K, V> Clone for Range<'a, K, V> {
     }
 }
 
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
@@ -1614,6 +1619,7 @@ impl<'a, K, V> RangeMut<'a, K, V> {
     }
 }
 
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {
         if self.front == self.back {
@@ -1771,6 +1777,80 @@ fn last_leaf_edge<BorrowType, K, V>
                 node = internal.last_edge().descend();
             }
         }
+    }
+}
+
+fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeArgument<Q>>(
+    root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
+    root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
+    range: R
+)-> (Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
+     Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>)
+        where Q: Ord, K: Borrow<Q>
+{
+    match (range.start(), range.end()) {
+        (Excluded(s), Excluded(e)) if s==e =>
+            panic!("range start and end are equal and excluded in BTreeMap"),
+        (Included(s), Included(e)) |
+        (Included(s), Excluded(e)) |
+        (Excluded(s), Included(e)) |
+        (Excluded(s), Excluded(e)) if s>e =>
+            panic!("range start is greater than range end in BTreeMap"),
+        _ => {},
+    };
+
+    let mut min_node = root1;
+    let mut max_node = root2;
+    let mut min_found = false;
+    let mut max_found = false;
+    let mut diverged = false;
+
+    loop {
+        let min_edge = match (min_found, range.start()) {
+            (false, Included(key)) => match search::search_linear(&min_node, key) {
+                (i, true) => { min_found = true; i },
+                (i, false) => i,
+            },
+            (false, Excluded(key)) => match search::search_linear(&min_node, key) {
+                (i, true) => { min_found = true; i+1 },
+                (i, false) => i,
+            },
+            (_, Unbounded) => 0,
+            (true, Included(_)) => min_node.keys().len(),
+            (true, Excluded(_)) => 0,
+        };
+
+        let max_edge = match (max_found, range.end()) {
+            (false, Included(key)) => match search::search_linear(&max_node, key) {
+                (i, true) => { max_found = true; i+1 },
+                (i, false) => i,
+            },
+            (false, Excluded(key)) => match search::search_linear(&max_node, key) {
+                (i, true) => { max_found = true; i },
+                (i, false) => i,
+            },
+            (_, Unbounded) => max_node.keys().len(),
+            (true, Included(_)) => 0,
+            (true, Excluded(_)) => max_node.keys().len(),
+        };
+
+        if !diverged {
+            if max_edge < min_edge { panic!("Ord is ill-defined in BTreeMap range") }
+            if min_edge != max_edge { diverged = true; }
+        }
+
+        let front = Handle::new_edge(min_node, min_edge);
+        let back = Handle::new_edge(max_node, max_edge);
+        match (front.force(), back.force()) {
+            (Leaf(f), Leaf(b)) => {
+                return (f, b);
+            },
+            (Internal(min_int), Internal(max_int)) => {
+                min_node = min_int.descend();
+                max_node = max_int.descend();
+            },
+            _ => unreachable!("BTreeMap has different depths"),
+        };
     }
 }
 
@@ -1940,7 +2020,7 @@ impl<K, V> BTreeMap<K, V> {
         self.length
     }
 
-    /// Returns true if the map contains no elements.
+    /// Returns `true` if the map contains no elements.
     ///
     /// # Examples
     ///
@@ -1991,11 +2071,11 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<&str, String> = BTreeMap::new();
-    /// let s = "hoho".to_owned();
+    /// let s = "hoho".to_string();
     ///
     /// map.entry("poneyland").or_insert_with(|| s);
     ///
-    /// assert_eq!(map["poneyland"], "hoho".to_owned());
+    /// assert_eq!(map["poneyland"], "hoho".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
@@ -2135,13 +2215,6 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
         self.handle.reborrow().into_kv().0
-    }
-
-    /// Deprecated, renamed to `remove_entry`
-    #[unstable(feature = "map_entry_recover_keys", issue = "34285")]
-    #[rustc_deprecated(since = "1.12.0", reason = "renamed to `remove_entry`")]
-    pub fn remove_pair(self) -> (K, V) {
-        self.remove_entry()
     }
 
     /// Take ownership of the key and value from the map.

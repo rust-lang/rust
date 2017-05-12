@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-dropck_eyepatch
+
 // Check that `may_dangle` is rejected if `dropck_eyepatch` feature gate is absent.
 
 #![feature(generic_param_attrs)]

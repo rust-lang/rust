@@ -10,11 +10,11 @@ note: unclosed delimiter
 14 |     if foo {
    |            ^
 
-error[E0425]: unresolved value `foo`
+error[E0425]: cannot find value `foo` in this scope
   --> $DIR/token-error-correct-2.rs:14:8
    |
 14 |     if foo {
-   |        ^^^ no resolution found
+   |        ^^^ not found in this scope
 
 error: aborting due to 2 previous errors
 

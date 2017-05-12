@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-trace_macros
 
 fn main() {
     trace_macros!(true); //~ ERROR: `trace_macros` is not stable

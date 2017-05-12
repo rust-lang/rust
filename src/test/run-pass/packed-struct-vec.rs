@@ -8,13 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::fmt;
 use std::mem;
 
 #[repr(packed)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 struct Foo {
     bar: u8,
     baz: u64
+}
+
+impl PartialEq for Foo {
+    fn eq(&self, other: &Foo) -> bool {
+        self.bar == other.bar && self.baz == other.baz
+    }
+}
+
+impl fmt::Debug for Foo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let bar = self.bar;
+        let baz = self.baz;
+
+        f.debug_struct("Foo")
+            .field("bar", &bar)
+            .field("baz", &baz)
+            .finish()
+    }
 }
 
 pub fn main() {

@@ -16,16 +16,17 @@
 //! compiler. This module is also responsible for assembling the sysroot as it
 //! goes along from the output of the previous stage.
 
-use std::cmp;
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::env;
 
-use build_helper::output;
+use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
 
-use util::{exe, libdir, mtime, is_dylib, copy};
+use channel::GitInfo;
+use util::{exe, libdir, is_dylib, copy};
 use {Build, Compiler, Mode};
 
 /// Build the standard library.
@@ -43,9 +44,34 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
     build.clear_if_dirty(&out_dir, &build.compiler_path(compiler));
     let mut cargo = build.cargo(compiler, Mode::Libstd, target, "build");
-    cargo.arg("--features").arg(build.std_features())
+    let mut features = build.std_features();
+
+    if let Ok(target) = env::var("MACOSX_STD_DEPLOYMENT_TARGET") {
+        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
+    }
+
+    // When doing a local rebuild we tell cargo that we're stage1 rather than
+    // stage0. This works fine if the local rust and being-built rust have the
+    // same view of what the default allocator is, but fails otherwise. Since
+    // we don't have a way to express an allocator preference yet, work
+    // around the issue in the case of a local rebuild with jemalloc disabled.
+    if compiler.stage == 0 && build.local_rebuild && !build.config.use_jemalloc {
+        features.push_str(" force_alloc_system");
+    }
+
+    if compiler.stage != 0 && build.config.sanitizers {
+        // This variable is used by the sanitizer runtime crates, e.g.
+        // rustc_lsan, to build the sanitizer runtime from C code
+        // When this variable is missing, those crates won't compile the C code,
+        // so we don't set this variable during stage0 where llvm-config is
+        // missing
+        // We also only build the runtimes when --enable-sanitizers (or its
+        // config.toml equivalent) is used
+        cargo.env("LLVM_CONFIG", build.llvm_config(target));
+    }
+    cargo.arg("--features").arg(features)
          .arg("--manifest-path")
-         .arg(build.src.join("src/rustc/std_shim/Cargo.toml"));
+         .arg(build.src.join("src/libstd/Cargo.toml"));
 
     if let Some(target) = build.config.target_config.get(target) {
         if let Some(ref jemalloc) = target.jemalloc {
@@ -59,7 +85,7 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     }
 
     build.run(&mut cargo);
-    update_mtime(&libstd_stamp(build, &compiler, target));
+    update_mtime(build, &libstd_stamp(build, &compiler, target));
 }
 
 /// Link all libstd rlibs/dylibs into the sysroot location.
@@ -89,6 +115,13 @@ pub fn std_link(build: &Build,
     if target.contains("musl") && !target.contains("mips") {
         copy_musl_third_party_objects(build, target, &libdir);
     }
+
+    if build.config.sanitizers && compiler.stage != 0 && target == "x86_64-apple-darwin" {
+        // The sanitizers are only built in stage1 or above, so the dylibs will
+        // be missing in stage0 and causes panic. See the `std()` function above
+        // for reason why the sanitizers are not built in stage0.
+        copy_apple_sanitizer_dylibs(&build.native_dir(target), "osx", &libdir);
+    }
 }
 
 /// Copies the crt(1,i,n).o startup objects
@@ -97,6 +130,18 @@ pub fn std_link(build: &Build,
 fn copy_musl_third_party_objects(build: &Build, target: &str, into: &Path) {
     for &obj in &["crt1.o", "crti.o", "crtn.o"] {
         copy(&build.musl_root(target).unwrap().join("lib").join(obj), &into.join(obj));
+    }
+}
+
+fn copy_apple_sanitizer_dylibs(native_dir: &Path, platform: &str, into: &Path) {
+    for &sanitizer in &["asan", "tsan"] {
+        let filename = format!("libclang_rt.{}_{}_dynamic.dylib", sanitizer, platform);
+        let mut src_path = native_dir.join(sanitizer);
+        src_path.push("build");
+        src_path.push("lib");
+        src_path.push("darwin");
+        src_path.push(&filename);
+        copy(&src_path, &into.join(filename));
     }
 }
 
@@ -113,21 +158,30 @@ pub fn build_startup_objects(build: &Build, for_compiler: &Compiler, target: &st
 
     let compiler = Compiler::new(0, &build.config.build);
     let compiler_path = build.compiler_path(&compiler);
-    let into = build.sysroot_libdir(for_compiler, target);
-    t!(fs::create_dir_all(&into));
+    let src_dir = &build.src.join("src/rtstartup");
+    let dst_dir = &build.native_dir(target).join("rtstartup");
+    let sysroot_dir = &build.sysroot_libdir(for_compiler, target);
+    t!(fs::create_dir_all(dst_dir));
+    t!(fs::create_dir_all(sysroot_dir));
 
-    for file in t!(fs::read_dir(build.src.join("src/rtstartup"))) {
-        let file = t!(file);
-        let mut cmd = Command::new(&compiler_path);
-        build.run(cmd.env("RUSTC_BOOTSTRAP", "1")
-                     .arg("--target").arg(target)
-                     .arg("--emit=obj")
-                     .arg("--out-dir").arg(&into)
-                     .arg(file.path()));
+    for file in &["rsbegin", "rsend"] {
+        let src_file = &src_dir.join(file.to_string() + ".rs");
+        let dst_file = &dst_dir.join(file.to_string() + ".o");
+        if !up_to_date(src_file, dst_file) {
+            let mut cmd = Command::new(&compiler_path);
+            build.run(cmd.env("RUSTC_BOOTSTRAP", "1")
+                        .arg("--cfg").arg(format!("stage{}", compiler.stage))
+                        .arg("--target").arg(target)
+                        .arg("--emit=obj")
+                        .arg("--out-dir").arg(dst_dir)
+                        .arg(src_file));
+        }
+
+        copy(dst_file, &sysroot_dir.join(file.to_string() + ".o"));
     }
 
     for obj in ["crt2.o", "dllcrt2.o"].iter() {
-        copy(&compiler_file(build.cc(target), obj), &into.join(obj));
+        copy(&compiler_file(build.cc(target), obj), &sysroot_dir.join(obj));
     }
 }
 
@@ -142,10 +196,13 @@ pub fn test(build: &Build, target: &str, compiler: &Compiler) {
     let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
     build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
     let mut cargo = build.cargo(compiler, Mode::Libtest, target, "build");
+    if let Ok(target) = env::var("MACOSX_STD_DEPLOYMENT_TARGET") {
+        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
+    }
     cargo.arg("--manifest-path")
-         .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
+         .arg(build.src.join("src/libtest/Cargo.toml"));
     build.run(&mut cargo);
-    update_mtime(&libtest_stamp(build, compiler, target));
+    update_mtime(build, &libtest_stamp(build, compiler, target));
 }
 
 /// Same as `std_link`, only for libtest
@@ -183,19 +240,32 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
 
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
-    cargo.env("CFG_RELEASE", &build.release)
+    cargo.env("CFG_RELEASE", build.rust_release())
          .env("CFG_RELEASE_CHANNEL", &build.config.channel)
-         .env("CFG_VERSION", &build.version)
-         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(String::new()))
-         .env("CFG_LIBDIR_RELATIVE", "lib");
+         .env("CFG_VERSION", build.rust_version())
+         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(PathBuf::new()));
 
-    if let Some(ref ver_date) = build.ver_date {
+    if compiler.stage == 0 {
+        cargo.env("CFG_LIBDIR_RELATIVE", "lib");
+    } else {
+        let libdir_relative = build.config.libdir_relative.clone().unwrap_or(PathBuf::from("lib"));
+        cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
+    }
+
+    // If we're not building a compiler with debugging information then remove
+    // these two env vars which would be set otherwise.
+    if build.config.rust_debuginfo_only_std {
+        cargo.env_remove("RUSTC_DEBUGINFO");
+        cargo.env_remove("RUSTC_DEBUGINFO_LINES");
+    }
+
+    if let Some(ref ver_date) = build.rust_info.commit_date() {
         cargo.env("CFG_VER_DATE", ver_date);
     }
-    if let Some(ref ver_hash) = build.ver_hash {
+    if let Some(ref ver_hash) = build.rust_info.sha() {
         cargo.env("CFG_VER_HASH", ver_hash);
     }
-    if !build.unstable_features {
+    if !build.unstable_features() {
         cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
     }
     // Flag that rust llvm is in use
@@ -207,7 +277,11 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
     if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
         cargo.env("CFG_LLVM_ROOT", s);
     }
-    if build.config.llvm_static_stdcpp {
+    // Building with a static libstdc++ is only supported on linux right now,
+    // not for MSVC or macOS
+    if build.config.llvm_static_stdcpp &&
+       !target.contains("windows") &&
+       !target.contains("apple") {
         cargo.env("LLVM_STATIC_STDCPP",
                   compiler_file(build.cxx(target), "libstdc++.a"));
     }
@@ -221,6 +295,7 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
         cargo.env("CFG_DEFAULT_AR", s);
     }
     build.run(&mut cargo);
+    update_mtime(build, &librustc_stamp(build, compiler, target));
 }
 
 /// Same as `std_link`, only for librustc
@@ -249,6 +324,12 @@ fn libstd_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
 /// compiler for the specified target.
 fn libtest_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
     build.cargo_out(compiler, Mode::Libtest, target).join(".libtest.stamp")
+}
+
+/// Cargo's output path for librustc in a given stage, compiled by a particular
+/// compiler for the specified target.
+fn librustc_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
+    build.cargo_out(compiler, Mode::Librustc, target).join(".librustc.stamp")
 }
 
 fn compiler_file(compiler: &Path, file: &str) -> PathBuf {
@@ -357,52 +438,92 @@ fn add_to_sysroot(out_dir: &Path, sysroot_dst: &Path) {
 ///
 /// This will build the specified tool with the specified `host` compiler in
 /// `stage` into the normal cargo output directory.
-pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
-    println!("Building stage{} tool {} ({})", stage, tool, host);
+pub fn maybe_clean_tools(build: &Build, stage: u32, target: &str, mode: Mode) {
+    let compiler = Compiler::new(stage, &build.config.build);
 
-    let compiler = Compiler::new(stage, host);
+    let stamp = match mode {
+        Mode::Libstd => libstd_stamp(build, &compiler, target),
+        Mode::Libtest => libtest_stamp(build, &compiler, target),
+        Mode::Librustc => librustc_stamp(build, &compiler, target),
+        _ => panic!(),
+    };
+    let out_dir = build.cargo_out(&compiler, Mode::Tool, target);
+    build.clear_if_dirty(&out_dir, &stamp);
+}
 
-    // FIXME: need to clear out previous tool and ideally deps, may require
-    //        isolating output directories or require a pseudo shim step to
-    //        clear out all the info.
-    //
-    //        Maybe when libstd is compiled it should clear out the rustc of the
-    //        corresponding stage?
-    // let out_dir = build.cargo_out(stage, &host, Mode::Librustc, target);
-    // build.clear_if_dirty(&out_dir, &libstd_stamp(build, stage, &host, target));
+/// Build a tool in `src/tools`
+///
+/// This will build the specified tool with the specified `host` compiler in
+/// `stage` into the normal cargo output directory.
+pub fn tool(build: &Build, stage: u32, target: &str, tool: &str) {
+    println!("Building stage{} tool {} ({})", stage, tool, target);
 
-    let mut cargo = build.cargo(&compiler, Mode::Tool, host, "build");
-    cargo.arg("--manifest-path")
-         .arg(build.src.join(format!("src/tools/{}/Cargo.toml", tool)));
+    let compiler = Compiler::new(stage, &build.config.build);
+
+    let mut cargo = build.cargo(&compiler, Mode::Tool, target, "build");
+    let dir = build.src.join("src/tools").join(tool);
+    cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
     // We don't want to build tools dynamically as they'll be running across
     // stages and such and it's just easier if they're not dynamically linked.
     cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
 
+    if let Some(dir) = build.openssl_install_dir(target) {
+        cargo.env("OPENSSL_STATIC", "1");
+        cargo.env("OPENSSL_DIR", dir);
+        cargo.env("LIBZ_SYS_STATIC", "1");
+    }
+
+    cargo.env("CFG_RELEASE_CHANNEL", &build.config.channel);
+
+    let info = GitInfo::new(&dir);
+    if let Some(sha) = info.sha() {
+        cargo.env("CFG_COMMIT_HASH", sha);
+    }
+    if let Some(sha_short) = info.sha_short() {
+        cargo.env("CFG_SHORT_COMMIT_HASH", sha_short);
+    }
+    if let Some(date) = info.commit_date() {
+        cargo.env("CFG_COMMIT_DATE", date);
+    }
+
     build.run(&mut cargo);
 }
 
 /// Updates the mtime of a stamp file if necessary, only changing it if it's
-/// older than some other file in the same directory.
+/// older than some other library file in the same directory.
 ///
 /// We don't know what file Cargo is going to output (because there's a hash in
 /// the file name) but we know where it's going to put it. We use this helper to
 /// detect changes to that output file by looking at the modification time for
 /// all files in a directory and updating the stamp if any are newer.
-fn update_mtime(path: &Path) {
-    let mut max = None;
-    if let Ok(entries) = path.parent().unwrap().join("deps").read_dir() {
-        for entry in entries.map(|e| t!(e)) {
-            if t!(entry.file_type()).is_file() {
-                let meta = t!(entry.metadata());
-                let time = FileTime::from_last_modification_time(&meta);
-                max = cmp::max(max, Some(time));
-            }
-        }
-    }
+///
+/// Note that we only consider Rust libraries as that's what we're interested in
+/// propagating changes from. Files like executables are tracked elsewhere.
+fn update_mtime(build: &Build, path: &Path) {
+    let entries = match path.parent().unwrap().join("deps").read_dir() {
+        Ok(entries) => entries,
+        Err(_) => return,
+    };
+    let files = entries.map(|e| t!(e)).filter(|e| t!(e.file_type()).is_file());
+    let files = files.filter(|e| {
+        let filename = e.file_name();
+        let filename = filename.to_str().unwrap();
+        filename.ends_with(".rlib") ||
+            filename.ends_with(".lib") ||
+            is_dylib(&filename)
+    });
+    let max = files.max_by_key(|entry| {
+        let meta = t!(entry.metadata());
+        FileTime::from_last_modification_time(&meta)
+    });
+    let max = match max {
+        Some(max) => max,
+        None => return,
+    };
 
-    if !max.is_none() && max <= Some(mtime(path)) {
-        return
+    if mtime(&max.path()) > mtime(path) {
+        build.verbose(&format!("updating {:?} as {:?} changed", path, max.path()));
+        t!(File::create(path));
     }
-    t!(File::create(path));
 }

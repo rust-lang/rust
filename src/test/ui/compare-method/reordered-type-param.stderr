@@ -8,7 +8,7 @@ error[E0053]: method `b` has an incompatible type for trait
    |                              ^ expected type parameter, found a different type parameter
    |
    = note: expected type `fn(&E, F) -> F`
-   = note:    found type `fn(&E, G) -> G`
+              found type `fn(&E, G) -> G`
 
 error: aborting due to previous error
 

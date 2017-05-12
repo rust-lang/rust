@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-box_patterns
+
 fn main() {
     let box x = Box::new('c'); //~ ERROR box pattern syntax is experimental
     println!("x: {}", x);

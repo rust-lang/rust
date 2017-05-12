@@ -15,8 +15,10 @@
 
 use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId};
-use syntax::ast::{self, NodeId};
+use syntax::ast::{self, Attribute, NodeId};
 use syntax_pos::Span;
+
+use rls_data::ExternalCrateData;
 
 pub struct CrateData {
     pub name: String,
@@ -26,7 +28,7 @@ pub struct CrateData {
 
 /// Data for any entity in the Rust language. The actual data contained varies
 /// with the kind of entity being queried. See the nested structs for details.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub enum Data {
     /// Data for Enums.
     EnumData(EnumData),
@@ -77,7 +79,7 @@ pub enum Data {
     VariableRefData(VariableRefData),
 }
 
-#[derive(Eq, PartialEq, Clone, Copy, Debug, RustcEncodable)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub enum Visibility {
     Public,
     Restricted,
@@ -107,7 +109,7 @@ impl<'a> From<&'a hir::Visibility> for Visibility {
 }
 
 /// Data for the prelude of a crate.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct CratePreludeData {
     pub crate_name: String,
     pub crate_root: String,
@@ -115,16 +117,8 @@ pub struct CratePreludeData {
     pub span: Span,
 }
 
-/// Data for external crates in the prelude of a crate.
-#[derive(Debug, RustcEncodable)]
-pub struct ExternalCrateData {
-    pub name: String,
-    pub num: CrateNum,
-    pub file_name: String,
-}
-
 /// Data for enum declarations.
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct EnumData {
     pub id: NodeId,
     pub name: String,
@@ -136,10 +130,11 @@ pub struct EnumData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 /// Data for extern crates.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct ExternCrateData {
     pub id: NodeId,
     pub name: String,
@@ -150,7 +145,7 @@ pub struct ExternCrateData {
 }
 
 /// Data about a function call.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct FunctionCallData {
     pub span: Span,
     pub scope: NodeId,
@@ -158,7 +153,7 @@ pub struct FunctionCallData {
 }
 
 /// Data for all kinds of functions and methods.
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct FunctionData {
     pub id: NodeId,
     pub name: String,
@@ -171,17 +166,18 @@ pub struct FunctionData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 /// Data about a function call.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct FunctionRefData {
     pub span: Span,
     pub scope: NodeId,
     pub ref_id: DefId,
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct ImplData {
     pub id: NodeId,
     pub span: Span,
@@ -190,7 +186,7 @@ pub struct ImplData {
     pub self_ref: Option<DefId>,
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 // FIXME: this struct should not exist. However, removing it requires heavy
 // refactoring of dump_visitor.rs. See PR 31838 for more info.
 pub struct ImplData2 {
@@ -204,7 +200,7 @@ pub struct ImplData2 {
     pub self_ref: Option<TypeRefData>,
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct InheritanceData {
     pub span: Span,
     pub base_id: DefId,
@@ -212,7 +208,7 @@ pub struct InheritanceData {
 }
 
 /// Data about a macro declaration.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct MacroData {
     pub span: Span,
     pub name: String,
@@ -221,7 +217,7 @@ pub struct MacroData {
 }
 
 /// Data about a macro use.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct MacroUseData {
     pub span: Span,
     pub name: String,
@@ -234,7 +230,7 @@ pub struct MacroUseData {
 }
 
 /// Data about a method call.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct MethodCallData {
     pub span: Span,
     pub scope: NodeId,
@@ -243,7 +239,7 @@ pub struct MethodCallData {
 }
 
 /// Data for method declarations (methods with a body are treated as functions).
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct MethodData {
     pub id: NodeId,
     pub name: String,
@@ -256,10 +252,11 @@ pub struct MethodData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 /// Data for modules.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct ModData {
     pub id: NodeId,
     pub name: String,
@@ -271,10 +268,11 @@ pub struct ModData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 /// Data for a reference to a module.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct ModRefData {
     pub span: Span,
     pub scope: NodeId,
@@ -282,7 +280,7 @@ pub struct ModRefData {
     pub qualname: String
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct StructData {
     pub span: Span,
     pub name: String,
@@ -295,9 +293,10 @@ pub struct StructData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct StructVariantData {
     pub span: Span,
     pub name: String,
@@ -309,9 +308,10 @@ pub struct StructVariantData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct TraitData {
     pub span: Span,
     pub id: NodeId,
@@ -323,9 +323,10 @@ pub struct TraitData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct TupleVariantData {
     pub span: Span,
     pub id: NodeId,
@@ -337,10 +338,11 @@ pub struct TupleVariantData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 /// Data for a typedef.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct TypeDefData {
     pub id: NodeId,
     pub name: String,
@@ -351,10 +353,11 @@ pub struct TypeDefData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Option<Signature>,
+    pub attributes: Vec<Attribute>,
 }
 
 /// Data for a reference to a type or trait.
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct TypeRefData {
     pub span: Span,
     pub scope: NodeId,
@@ -362,7 +365,7 @@ pub struct TypeRefData {
     pub qualname: String,
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct UseData {
     pub id: NodeId,
     pub span: Span,
@@ -372,7 +375,7 @@ pub struct UseData {
     pub visibility: Visibility,
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct UseGlobData {
     pub id: NodeId,
     pub span: Span,
@@ -382,7 +385,7 @@ pub struct UseGlobData {
 }
 
 /// Data for local and global variables (consts and statics).
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct VariableData {
     pub id: NodeId,
     pub kind: VariableKind,
@@ -396,9 +399,10 @@ pub struct VariableData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Option<Signature>,
+    pub attributes: Vec<Attribute>,
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub enum VariableKind {
     Static,
     Const,
@@ -408,7 +412,7 @@ pub enum VariableKind {
 
 /// Data for the use of some item (e.g., the use of a local variable, which
 /// will refer to that variables declaration (by ref_id)).
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct VariableRefData {
     pub name: String,
     pub span: Span,
@@ -420,7 +424,7 @@ pub struct VariableRefData {
 /// Encodes information about the signature of a definition. This should have
 /// enough information to create a nice display about a definition without
 /// access to the source code.
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct Signature {
     pub span: Span,
     pub text: String,
@@ -434,7 +438,7 @@ pub struct Signature {
 
 /// An element of a signature. `start` and `end` are byte offsets into the `text`
 /// of the parent `Signature`.
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct SigElement {
     pub id: DefId,
     pub start: usize,

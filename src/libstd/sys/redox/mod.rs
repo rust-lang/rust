@@ -13,7 +13,7 @@
 use io::{self, ErrorKind};
 
 pub mod args;
-#[cfg(any(not(cargobuild), feature = "backtrace"))]
+#[cfg(feature = "backtrace")]
 pub mod backtrace;
 pub mod condvar;
 pub mod env;

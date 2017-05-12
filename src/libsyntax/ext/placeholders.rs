@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast;
+use ast::{self, NodeId};
 use codemap::{DUMMY_SP, dummy_spanned};
 use ext::base::ExtCtxt;
 use ext::expand::{Expansion, ExpansionKind};
 use ext::hygiene::Mark;
+use tokenstream::TokenStream;
 use fold::*;
 use ptr::P;
 use symbol::keywords;
@@ -20,13 +21,12 @@ use util::move_map::MoveMap;
 use util::small_vector::SmallVector;
 
 use std::collections::HashMap;
-use std::mem;
 
 pub fn placeholder(kind: ExpansionKind, id: ast::NodeId) -> Expansion {
     fn mac_placeholder() -> ast::Mac {
         dummy_spanned(ast::Mac_ {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
-            tts: Vec::new(),
+            tts: TokenStream::empty().into(),
         })
     }
 
@@ -84,8 +84,17 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
         }
     }
 
-    pub fn add(&mut self, id: ast::NodeId, expansion: Expansion) {
-        let expansion = expansion.fold_with(self);
+    pub fn add(&mut self, id: ast::NodeId, expansion: Expansion, derives: Vec<Mark>) {
+        let mut expansion = expansion.fold_with(self);
+        if let Expansion::Items(mut items) = expansion {
+            for derive in derives {
+                match self.remove(NodeId::placeholder_from_mark(derive)) {
+                    Expansion::Items(derived_items) => items.extend(derived_items),
+                    _ => unreachable!(),
+                }
+            }
+            expansion = Expansion::Items(items);
+        }
         self.expansions.insert(id, expansion);
     }
 
@@ -97,8 +106,8 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
 impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
         match item.node {
-            ast::ItemKind::Mac(ref mac) if !mac.node.path.segments.is_empty() => {}
             ast::ItemKind::Mac(_) => return self.remove(item.id).make_items(),
+            ast::ItemKind::MacroDef(_) => return SmallVector::one(item),
             _ => {}
         }
 
@@ -164,36 +173,14 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
 
     fn fold_block(&mut self, block: P<ast::Block>) -> P<ast::Block> {
         noop_fold_block(block, self).map(|mut block| {
-            let mut macros = Vec::new();
             let mut remaining_stmts = block.stmts.len();
 
             block.stmts = block.stmts.move_flat_map(|mut stmt| {
                 remaining_stmts -= 1;
 
-                // `macro_rules!` macro definition
-                if let ast::StmtKind::Item(ref item) = stmt.node {
-                    if let ast::ItemKind::Mac(_) = item.node {
-                        macros.push(Mark::from_placeholder_id(item.id));
-                        return None;
-                    }
-                }
-
-                match stmt.node {
-                    // Avoid wasting a node id on a trailing expression statement,
-                    // which shares a HIR node with the expression itself.
-                    ast::StmtKind::Expr(ref expr) if remaining_stmts == 0 => stmt.id = expr.id,
-
-                    _ if self.monotonic => {
-                        assert_eq!(stmt.id, ast::DUMMY_NODE_ID);
-                        stmt.id = self.cx.resolver.next_node_id();
-                    }
-
-                    _ => {}
-                }
-
-                if self.monotonic && !macros.is_empty() {
-                    let macros = mem::replace(&mut macros, Vec::new());
-                    self.cx.resolver.add_expansions_at_stmt(stmt.id, macros);
+                if self.monotonic {
+                    assert_eq!(stmt.id, ast::DUMMY_NODE_ID);
+                    stmt.id = self.cx.resolver.next_node_id();
                 }
 
                 Some(stmt)

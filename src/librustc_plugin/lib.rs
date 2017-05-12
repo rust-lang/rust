@@ -57,15 +57,13 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 
 #![feature(staged_api)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 
-#[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
-#[macro_use] #[no_link] extern crate rustc_bitflags;
 
 extern crate rustc;
 extern crate rustc_back;

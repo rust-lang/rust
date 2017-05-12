@@ -1,22 +1,22 @@
-error[E0425]: unresolved value `field`
+error[E0425]: cannot find value `field` in this scope
   --> $DIR/resolve-speculative-adjustment.rs:27:13
    |
 27 |             field;
-   |             ^^^^^ no resolution found
+   |             ^^^^^ not found in this scope
 
-error[E0425]: unresolved function `method`
+error[E0425]: cannot find function `method` in this scope
   --> $DIR/resolve-speculative-adjustment.rs:30:13
    |
 30 |             method();
-   |             ^^^^^^ no resolution found
+   |             ^^^^^^ not found in this scope
 
-error[E0425]: unresolved value `field`
+error[E0425]: cannot find value `field` in this scope
   --> $DIR/resolve-speculative-adjustment.rs:35:9
    |
 35 |         field;
    |         ^^^^^ did you mean `self.field`?
 
-error[E0425]: unresolved function `method`
+error[E0425]: cannot find function `method` in this scope
   --> $DIR/resolve-speculative-adjustment.rs:38:9
    |
 38 |         method();

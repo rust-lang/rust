@@ -22,5 +22,5 @@ impl<'a> IntoCow<'a, str> for String {
 
 fn main() {
     <String as IntoCow>::into_cow("foo".to_string());
-    //~^ ERROR too few type parameters provided: expected 1 parameter
+    //~^ ERROR too few type parameters provided: expected 1 type parameter
 }

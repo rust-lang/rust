@@ -15,5 +15,6 @@
 extern crate macro_non_reexport_2;
 
 fn main() {
-    assert_eq!(reexported!(), 3);  //~ ERROR macro undefined
+    assert_eq!(reexported!(), 3);
+    //~^ ERROR cannot find macro `reexported!` in this scope
 }

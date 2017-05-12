@@ -11,7 +11,9 @@
 #![feature(associated_consts)]
 
 enum Enum<T: Trait> {
-    X = Trait::Number, //~ ERROR constant evaluation error
+    X = Trait::Number,
+    //~^ ERROR mismatched types
+    //~| expected isize, found i32
 }
 
 trait Trait {

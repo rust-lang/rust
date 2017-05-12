@@ -10,7 +10,7 @@
 
 use llvm;
 use builder::Builder;
-use llvm::ValueRef;
+use llvm::{BasicBlockRef, ValueRef};
 use common::*;
 use rustc::ty::Ty;
 
@@ -20,7 +20,7 @@ pub fn slice_for_each<'a, 'tcx, F>(
     unit_ty: Ty<'tcx>,
     len: ValueRef,
     f: F
-) -> Builder<'a, 'tcx> where F: FnOnce(&Builder<'a, 'tcx>, ValueRef) {
+) -> Builder<'a, 'tcx> where F: FnOnce(&Builder<'a, 'tcx>, ValueRef, BasicBlockRef) {
     // Special-case vectors with elements of size 0  so they don't go out of bounds (#9890)
     let zst = type_is_zero_size(bcx.ccx, unit_ty);
     let add = |bcx: &Builder, a, b| if zst {
@@ -46,9 +46,8 @@ pub fn slice_for_each<'a, 'tcx, F>(
     let keep_going = header_bcx.icmp(llvm::IntNE, current, end);
     header_bcx.cond_br(keep_going, body_bcx.llbb(), next_bcx.llbb());
 
-    f(&body_bcx, if zst { data_ptr } else { current });
     let next = add(&body_bcx, current, C_uint(bcx.ccx, 1usize));
+    f(&body_bcx, if zst { data_ptr } else { current }, header_bcx.llbb());
     header_bcx.add_incoming_to_phi(current, next, body_bcx.llbb());
-    body_bcx.br(header_bcx.llbb());
     next_bcx
 }

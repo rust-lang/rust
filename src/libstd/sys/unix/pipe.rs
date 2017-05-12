@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cmp;
 use io;
 use libc::{self, c_int};
 use mem;
-use ptr;
-use sys::cvt_r;
+use sys::{cvt, cvt_r};
 use sys::fd::FileDesc;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,34 +27,29 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     // CLOEXEC flag is to use the `pipe2` syscall on Linux. This was added in
     // 2.6.27, however, and because we support 2.6.18 we must detect this
     // support dynamically.
-    if cfg!(target_os = "linux") {
+    if cfg!(any(target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "linux",
+                target_os = "netbsd",
+                target_os = "openbsd"))
+    {
         weak! { fn pipe2(*mut c_int, c_int) -> c_int }
         if let Some(pipe) = pipe2.get() {
-            match cvt_r(|| unsafe { pipe(fds.as_mut_ptr(), libc::O_CLOEXEC) }) {
-                Ok(_) => {
-                    return Ok((AnonPipe(FileDesc::new(fds[0])),
-                               AnonPipe(FileDesc::new(fds[1]))))
-                }
-                Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {}
-                Err(e) => return Err(e),
-            }
+            cvt(unsafe { pipe(fds.as_mut_ptr(), libc::O_CLOEXEC) })?;
+            return Ok((AnonPipe(FileDesc::new(fds[0])),
+                       AnonPipe(FileDesc::new(fds[1]))));
         }
     }
-    if unsafe { libc::pipe(fds.as_mut_ptr()) == 0 } {
-        let fd0 = FileDesc::new(fds[0]);
-        let fd1 = FileDesc::new(fds[1]);
-        Ok((AnonPipe::from_fd(fd0)?, AnonPipe::from_fd(fd1)?))
-    } else {
-        Err(io::Error::last_os_error())
-    }
+    cvt(unsafe { libc::pipe(fds.as_mut_ptr()) })?;
+
+    let fd0 = FileDesc::new(fds[0]);
+    let fd1 = FileDesc::new(fds[1]);
+    fd0.set_cloexec()?;
+    fd1.set_cloexec()?;
+    Ok((AnonPipe(fd0), AnonPipe(fd1)))
 }
 
 impl AnonPipe {
-    pub fn from_fd(fd: FileDesc) -> io::Result<AnonPipe> {
-        fd.set_cloexec()?;
-        Ok(AnonPipe(fd))
-    }
-
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
     }
@@ -85,16 +78,14 @@ pub fn read2(p1: AnonPipe,
     p1.set_nonblocking(true)?;
     p2.set_nonblocking(true)?;
 
-    let max = cmp::max(p1.raw(), p2.raw());
+    let mut fds: [libc::pollfd; 2] = unsafe { mem::zeroed() };
+    fds[0].fd = p1.raw();
+    fds[0].events = libc::POLLIN;
+    fds[1].fd = p2.raw();
+    fds[1].events = libc::POLLIN;
     loop {
-        // wait for either pipe to become readable using `select`
-        cvt_r(|| unsafe {
-            let mut read: libc::fd_set = mem::zeroed();
-            libc::FD_SET(p1.raw(), &mut read);
-            libc::FD_SET(p2.raw(), &mut read);
-            libc::select(max + 1, &mut read, ptr::null_mut(), ptr::null_mut(),
-                         ptr::null_mut())
-        })?;
+        // wait for either pipe to become readable using `poll`
+        cvt_r(|| unsafe { libc::poll(fds.as_mut_ptr(), 2, -1) })?;
 
         // Read as much as we can from each pipe, ignoring EWOULDBLOCK or
         // EAGAIN. If we hit EOF, then this will happen because the underlying
@@ -114,11 +105,11 @@ pub fn read2(p1: AnonPipe,
                 }
             }
         };
-        if read(&p1, v1)? {
+        if fds[0].revents != 0 && read(&p1, v1)? {
             p2.set_nonblocking(false)?;
             return p2.read_to_end(v2).map(|_| ());
         }
-        if read(&p2, v2)? {
+        if fds[1].revents != 0 && read(&p2, v2)? {
             p1.set_nonblocking(false)?;
             return p1.read_to_end(v1).map(|_| ());
         }

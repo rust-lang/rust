@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-abi_unadjusted
+
 extern "unadjusted" fn foo() {
 //~^ ERROR: unadjusted ABI is an implementation detail and perma-unstable
 }

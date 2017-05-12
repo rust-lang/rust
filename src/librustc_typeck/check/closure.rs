@@ -39,7 +39,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Some(ty) => self.deduce_expectations_from_expected_type(ty),
             None => (None, None),
         };
-        let body = self.tcx.map.body(body_id);
+        let body = self.tcx.hir.body(body_id);
         self.check_closure(expr, expected_kind, decl, body, expected_sig)
     }
 
@@ -54,12 +54,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                opt_kind,
                expected_sig);
 
-        let expr_def_id = self.tcx.map.local_def_id(expr.id);
-        let mut fn_ty = AstConv::ty_of_closure(self,
-                                               hir::Unsafety::Normal,
-                                               decl,
-                                               Abi::RustCall,
-                                               expected_sig);
+        let expr_def_id = self.tcx.hir.local_def_id(expr.id);
+        let sig = AstConv::ty_of_closure(self,
+                                         hir::Unsafety::Normal,
+                                         decl,
+                                         Abi::RustCall,
+                                         expected_sig);
 
         // Create type variables (for now) to represent the transformed
         // types of upvars. These will be unified during the upvar
@@ -73,36 +73,32 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         debug!("check_closure: expr.id={:?} closure_type={:?}", expr.id, closure_type);
 
-        let extent = self.tcx.region_maps.call_site_extent(expr.id, body.value.id);
-        let fn_sig = self.tcx.liberate_late_bound_regions(extent, &fn_ty.sig);
+        let extent = self.tcx.call_site_extent(expr.id, body.value.id);
+        let fn_sig = self.tcx.liberate_late_bound_regions(Some(extent), &sig);
         let fn_sig = self.inh.normalize_associated_types_in(body.value.span,
                                                             body.value.id, &fn_sig);
 
-        check_fn(self,
-                 hir::Unsafety::Normal,
-                 expr.id,
-                 &fn_sig,
-                 decl,
-                 expr.id,
-                 body);
+        check_fn(self, fn_sig, decl, expr.id, body);
 
         // Tuple up the arguments and insert the resulting function type into
         // the `closures` table.
-        fn_ty.sig.0 = self.tcx.mk_fn_sig(
-            iter::once(self.tcx.intern_tup(fn_ty.sig.skip_binder().inputs())),
-            fn_ty.sig.skip_binder().output(),
-            fn_ty.sig.variadic()
-        );
+        let sig = sig.map_bound(|sig| self.tcx.mk_fn_sig(
+            iter::once(self.tcx.intern_tup(sig.inputs(), false)),
+            sig.output(),
+            sig.variadic,
+            sig.unsafety,
+            sig.abi
+        ));
 
         debug!("closure for {:?} --> sig={:?} opt_kind={:?}",
                expr_def_id,
-               fn_ty.sig,
+               sig,
                opt_kind);
 
-        self.tables.borrow_mut().closure_tys.insert(expr_def_id, fn_ty);
+        self.tables.borrow_mut().closure_tys.insert(expr.id, sig);
         match opt_kind {
             Some(kind) => {
-                self.tables.borrow_mut().closure_kinds.insert(expr_def_id, kind);
+                self.tables.borrow_mut().closure_kinds.insert(expr.id, kind);
             }
             None => {}
         }
@@ -130,6 +126,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 (sig, kind)
             }
             ty::TyInfer(ty::TyVar(vid)) => self.deduce_expectations_from_obligations(vid),
+            ty::TyFnPtr(sig) => (Some(sig.skip_binder().clone()), Some(ty::ClosureKind::Fn)),
             _ => (None, None),
         }
     }
@@ -173,6 +170,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty::Predicate::Projection(ref data) => Some(data.to_poly_trait_ref()),
                     ty::Predicate::Trait(ref data) => Some(data.to_poly_trait_ref()),
                     ty::Predicate::Equate(..) => None,
+                    ty::Predicate::Subtype(..) => None,
                     ty::Predicate::RegionOutlives(..) => None,
                     ty::Predicate::TypeOutlives(..) => None,
                     ty::Predicate::WellFormed(..) => None,
@@ -218,7 +216,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                arg_param_ty);
 
         let input_tys = match arg_param_ty.sty {
-            ty::TyTuple(tys) => tys.into_iter(),
+            ty::TyTuple(tys, _) => tys.into_iter(),
             _ => {
                 return None;
             }
@@ -228,7 +226,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let ret_param_ty = self.resolve_type_vars_if_possible(&ret_param_ty);
         debug!("deduce_sig_from_projection: ret_param_ty {:?}", ret_param_ty);
 
-        let fn_sig = self.tcx.mk_fn_sig(input_tys.cloned(), ret_param_ty, false);
+        let fn_sig = self.tcx.mk_fn_sig(
+            input_tys.cloned(),
+            ret_param_ty,
+            false,
+            hir::Unsafety::Normal,
+            Abi::Rust
+        );
         debug!("deduce_sig_from_projection: fn_sig {:?}", fn_sig);
 
         Some(fn_sig)

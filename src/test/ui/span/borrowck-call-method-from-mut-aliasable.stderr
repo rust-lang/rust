@@ -5,7 +5,7 @@ error: cannot borrow immutable borrowed content `*x` as mutable
    |         ---- use `&mut Foo` here to make mutable
 26 |     x.f();
 27 |     x.h(); //~ ERROR cannot borrow
-   |     ^
+   |     ^ cannot borrow as mutable
 
 error: aborting due to previous error
 

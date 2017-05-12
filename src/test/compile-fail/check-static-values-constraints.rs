@@ -10,6 +10,8 @@
 
 // Verifies all possible restrictions for statics values.
 
+// gate-test-drop_types_in_const
+
 #![feature(box_syntax)]
 
 use std::marker;

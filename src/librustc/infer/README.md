@@ -152,7 +152,7 @@ course, it depends on the program.
 
 The main case which fails today that I would like to support is:
 
-```text
+```rust
 fn foo<T>(x: T, y: T) { ... }
 
 fn bar() {
@@ -167,6 +167,8 @@ In principle, the inferencer ought to find that the parameter `T` to
 because the type variable `T` is merged with the type variable for
 `X`, and thus inherits its UB/LB of `@mut int`.  This leaves no
 flexibility for `T` to later adjust to accommodate `@int`.
+
+Note: `@` and `@mut` are replaced with `Rc<T>` and `Rc<RefCell<T>>` in current Rust.
 
 ### What to do when not all bounds are present
 

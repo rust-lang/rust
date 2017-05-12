@@ -13,7 +13,6 @@
 use self::State::*;
 
 use syntax::ast;
-use syntax::codemap;
 use syntax::ext::base;
 use syntax::ext::base::*;
 use syntax::feature_gate;
@@ -107,7 +106,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                 if p2.token != token::Eof {
                     let mut extra_tts = panictry!(p2.parse_all_token_trees());
                     extra_tts.extend(tts[first_colon..].iter().cloned());
-                    p = parse::tts_to_parser(cx.parse_sess, extra_tts);
+                    p = parse::stream_to_parser(cx.parse_sess, extra_tts.into_iter().collect());
                 }
 
                 asm = s;
@@ -240,15 +239,6 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
         }
     }
 
-    let expn_id = cx.codemap().record_expansion(codemap::ExpnInfo {
-        call_site: sp,
-        callee: codemap::NameAndSpan {
-            format: codemap::MacroBang(Symbol::intern("asm")),
-            span: None,
-            allow_internal_unstable: false,
-        },
-    });
-
     MacEager::expr(P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprKind::InlineAsm(P(ast::InlineAsm {
@@ -260,7 +250,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
             volatile: volatile,
             alignstack: alignstack,
             dialect: dialect,
-            expn_id: expn_id,
+            ctxt: cx.backtrace(),
         })),
         span: sp,
         attrs: ast::ThinVec::new(),

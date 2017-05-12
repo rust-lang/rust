@@ -11,6 +11,7 @@
 use hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashMap;
 use std::cell::RefCell;
+use std::collections::hash_map::Entry;
 use std::ops::Index;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -38,7 +39,7 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
         DepTrackingMap {
             phantom: PhantomData,
             graph: graph,
-            map: FxHashMap()
+            map: FxHashMap(),
         }
     }
 
@@ -61,15 +62,15 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
         self.map.get(k)
     }
 
-    pub fn get_mut(&mut self, k: &M::Key) -> Option<&mut M::Value> {
-        self.read(k);
-        self.write(k);
-        self.map.get_mut(k)
+    pub fn insert(&mut self, k: M::Key, v: M::Value) {
+        self.write(&k);
+        let old_value = self.map.insert(k, v);
+        assert!(old_value.is_none());
     }
 
-    pub fn insert(&mut self, k: M::Key, v: M::Value) -> Option<M::Value> {
+    pub fn entry(&mut self, k: M::Key) -> Entry<M::Key, M::Value> {
         self.write(&k);
-        self.map.insert(k, v)
+        self.map.entry(k)
     }
 
     pub fn contains_key(&self, k: &M::Key) -> bool {
@@ -79,17 +80,6 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
 
     pub fn keys(&self) -> Vec<M::Key> {
         self.map.keys().cloned().collect()
-    }
-
-    /// Append `elem` to the vector stored for `k`, creating a new vector if needed.
-    /// This is considered a write to `k`.
-    pub fn push<E: Clone>(&mut self, k: M::Key, elem: E)
-        where M: DepTrackingMapConfig<Value=Vec<E>>
-    {
-        self.write(&k);
-        self.map.entry(k)
-                .or_insert(Vec::new())
-                .push(elem);
     }
 }
 
@@ -117,7 +107,7 @@ impl<M: DepTrackingMapConfig> MemoizationMap for RefCell<DepTrackingMap<M>> {
     ///
     /// ```
     /// fn type_of_item(..., item: &hir::Item) -> Ty<'tcx> {
-    ///     let item_def_id = ccx.tcx.map.local_def_id(it.id);
+    ///     let item_def_id = ccx.tcx.hir.local_def_id(it.id);
     ///     ccx.tcx.item_types.memoized(item_def_id, || {
     ///         ccx.tcx.dep_graph.read(DepNode::Hir(item_def_id)); // (*)
     ///         compute_type_of_item(ccx, item)

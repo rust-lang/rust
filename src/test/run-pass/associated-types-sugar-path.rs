@@ -10,10 +10,13 @@
 
 // Test paths to associated types using the type-parameter-only sugar.
 
+use std::ops::Deref;
 
 pub trait Foo {
     type A;
     fn boo(&self) -> Self::A;
+
+    fn baz(_: Self::Target) where Self: Deref {}
 }
 
 impl Foo for isize {

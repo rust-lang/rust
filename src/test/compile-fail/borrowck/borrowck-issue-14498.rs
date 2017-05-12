@@ -23,7 +23,7 @@ fn indirect_write_to_imm_box() {
     let mut x: isize = 1;
     let y: Box<_> = box &mut x;
     let p = &y;
-    ***p = 2; //~ ERROR cannot assign to data in an immutable container
+    ***p = 2; //~ ERROR cannot assign to data in a `&` reference
     drop(p);
 }
 
@@ -43,7 +43,6 @@ fn borrow_in_var_from_var_via_imm_box() {
     let p = &y;
     let q = &***p;
     **y = 2; //~ ERROR cannot assign to `**y` because it is borrowed
-    //~^         ERROR cannot assign to data in an immutable container
     drop(p);
     drop(q);
 }
@@ -64,7 +63,6 @@ fn borrow_in_var_from_field_via_imm_box() {
     let p = &y;
     let q = &***p;
     **y = 2; //~ ERROR cannot assign to `**y` because it is borrowed
-    //~^         ERROR cannot assign to data in an immutable container
     drop(p);
     drop(q);
 }
@@ -85,7 +83,6 @@ fn borrow_in_field_from_var_via_imm_box() {
     let p = &y.a;
     let q = &***p;
     **y.a = 2; //~ ERROR cannot assign to `**y.a` because it is borrowed
-    //~^           ERROR cannot assign to data in an immutable container
     drop(p);
     drop(q);
 }
@@ -106,7 +103,6 @@ fn borrow_in_field_from_field_via_imm_box() {
     let p = &y.a;
     let q = &***p;
     **y.a = 2; //~ ERROR cannot assign to `**y.a` because it is borrowed
-    //~^           ERROR cannot assign to data in an immutable container
     drop(p);
     drop(q);
 }

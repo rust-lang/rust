@@ -1,7 +1,6 @@
 FROM ubuntu:16.04
 
-RUN dpkg --add-architecture i386 && \
-    apt-get update && \
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
   g++ \
   make \
@@ -12,40 +11,54 @@ RUN dpkg --add-architecture i386 && \
   git \
   cmake \
   unzip \
-  expect \
-  openjdk-9-jre \
   sudo \
-  libstdc++6:i386 \
-  xz-utils
-
-WORKDIR /android/
-ENV PATH=$PATH:/android/ndk-arm-9/bin:/android/sdk/tools:/android/sdk/platform-tools
-
-COPY install-ndk.sh install-sdk.sh accept-licenses.sh /android/
-RUN sh /android/install-ndk.sh
-RUN sh /android/install-sdk.sh
+  xz-utils \
+  libssl-dev \
+  pkg-config
 
 RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
     dpkg -i dumb-init_*.deb && \
     rm dumb-init_*.deb
 
-COPY start-emulator.sh /android/
+RUN curl -o /usr/local/bin/sccache \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-04-29-sccache-x86_64-unknown-linux-musl && \
+    chmod +x /usr/local/bin/sccache
 
-ENTRYPOINT ["/usr/bin/dumb-init", "--", "/android/start-emulator.sh"]
+# Install NDK
+COPY install-ndk.sh /tmp
+RUN . /tmp/install-ndk.sh && \
+    download_ndk android-ndk-r13b-linux-x86_64.zip && \
+    make_standalone_toolchain arm 9 && \
+    remove_ndk
 
-ENV SCCACHE_DIGEST=7237e38e029342fa27b7ac25412cb9d52554008b12389727320bd533fd7f05b6a96d55485f305caf95e5c8f5f97c3313e10012ccad3e752aba2518f3522ba783
-RUN curl -L https://api.pub.build.mozilla.org/tooltool/sha512/$SCCACHE_DIGEST | \
-      tar xJf - -C /usr/local/bin --strip-components=1
+# Install SDK
+RUN dpkg --add-architecture i386 && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+  openjdk-9-jre-headless \
+  tzdata \
+  libstdc++6:i386 \
+  libgl1-mesa-glx \
+  libpulse0
+
+COPY install-sdk.sh /tmp
+RUN . /tmp/install-sdk.sh && \
+    download_sdk tools_r25.2.5-linux.zip && \
+    download_sysimage armeabi-v7a 18 && \
+    create_avd armeabi-v7a 18
+
+# Setup env
+ENV PATH=$PATH:/android/sdk/tools
+ENV PATH=$PATH:/android/sdk/platform-tools
 
 ENV TARGETS=arm-linux-androideabi
-ENV TARGETS=$TARGETS,i686-linux-android
-ENV TARGETS=$TARGETS,aarch64-linux-android
-ENV TARGETS=$TARGETS,armv7-linux-androideabi
 
 ENV RUST_CONFIGURE_ARGS \
       --target=$TARGETS \
-      --arm-linux-androideabi-ndk=/android/ndk-arm-9 \
-      --armv7-linux-androideabi-ndk=/android/ndk-arm-9 \
-      --i686-linux-android-ndk=/android/ndk-x86-9 \
-      --aarch64-linux-android-ndk=/android/ndk-aarch64
-ENV XPY_CHECK test --target arm-linux-androideabi
+      --arm-linux-androideabi-ndk=/android/ndk/arm-9
+
+ENV SCRIPT python2.7 ../x.py test --target $TARGETS --verbose
+
+# Entrypoint
+COPY start-emulator.sh /android/
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "/android/start-emulator.sh"]

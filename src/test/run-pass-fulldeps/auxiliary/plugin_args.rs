@@ -26,7 +26,7 @@ use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-use syntax::tokenstream;
+use syntax::tokenstream::TokenStream;
 use rustc_plugin::Registry;
 
 struct Expander {
@@ -37,7 +37,7 @@ impl TTMacroExpander for Expander {
     fn expand<'cx>(&self,
                    ecx: &'cx mut ExtCtxt,
                    sp: Span,
-                   _: &[tokenstream::TokenTree]) -> Box<MacResult+'cx> {
+                   _: TokenStream) -> Box<MacResult+'cx> {
         let args = self.args.iter().map(|i| pprust::meta_list_item_to_string(i))
             .collect::<Vec<_>>().join(", ");
         MacEager::expr(ecx.expr_str(sp, Symbol::intern(&args)))
@@ -48,6 +48,5 @@ impl TTMacroExpander for Expander {
 pub fn plugin_registrar(reg: &mut Registry) {
     let args = reg.args().to_owned();
     reg.register_syntax_extension(Symbol::intern("plugin_args"),
-        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         NormalTT(Box::new(Expander { args: args, }), None, false));
 }

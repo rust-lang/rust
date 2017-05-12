@@ -156,12 +156,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub TRANSMUTE_FROM_FN_ITEM_TYPES,
-    Deny,
-    "transmute from function item type to pointer-sized type erroneously allowed"
-}
-
-declare_lint! {
     pub HR_LIFETIME_IN_ASSOC_TYPE,
     Deny,
     "binding for associated type references higher-ranked lifetime \
@@ -193,6 +187,13 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
+    Warn,
+    "attempt to resolve a trait on an expression whose type cannot be inferred but which \
+     currently defaults to ()"
+}
+
+declare_lint! {
     pub SAFE_EXTERN_STATICS,
     Warn,
     "safe access to extern statics was erroneously allowed"
@@ -206,7 +207,7 @@ declare_lint! {
 
 declare_lint! {
     pub EXTRA_REQUIREMENT_IN_IMPL,
-    Warn,
+    Deny,
     "detects extra requirements in impls that were erroneously allowed"
 }
 
@@ -221,6 +222,18 @@ declare_lint! {
     pub LEGACY_IMPORTS,
     Warn,
     "detects names that resolve to ambiguous glob imports with RFC 1560"
+}
+
+declare_lint! {
+    pub LEGACY_CONSTRUCTOR_VISIBILITY,
+    Deny,
+    "detects use of struct constructors that would be invisible with new visibility rules"
+}
+
+declare_lint! {
+    pub MISSING_FRAGMENT_SPECIFIER,
+    Warn,
+    "detects missing fragment specifiers in unused `macro_rules!` patterns"
 }
 
 declare_lint! {
@@ -260,17 +273,19 @@ impl LintPass for HardwiredLints {
             ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN,
             CONST_ERR,
             RAW_POINTER_DERIVE,
-            TRANSMUTE_FROM_FN_ITEM_TYPES,
             OVERLAPPING_INHERENT_IMPLS,
             RENAMED_AND_REMOVED_LINTS,
             SUPER_OR_SELF_IN_GLOBAL_PATH,
             HR_LIFETIME_IN_ASSOC_TYPE,
             LIFETIME_UNDERSCORE,
+            RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
             SAFE_EXTERN_STATICS,
             PATTERNS_IN_FNS_WITHOUT_BODY,
             EXTRA_REQUIREMENT_IN_IMPL,
             LEGACY_DIRECTORY_OWNERSHIP,
             LEGACY_IMPORTS,
+            LEGACY_CONSTRUCTOR_VISIBILITY,
+            MISSING_FRAGMENT_SPECIFIER,
             DEPRECATED
         )
     }

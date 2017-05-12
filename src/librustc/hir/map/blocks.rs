@@ -38,21 +38,12 @@ use syntax_pos::Span;
 ///   - The default implementation for a trait method.
 ///
 /// To construct one, use the `Code::from_node` function.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct FnLikeNode<'a> { node: map::Node<'a> }
 
 /// MaybeFnLike wraps a method that indicates if an object
 /// corresponds to some FnLikeNode.
 pub trait MaybeFnLike { fn is_fn_like(&self) -> bool; }
-
-/// Components shared by fn-like things (fn items, methods, closures).
-pub struct FnParts<'a> {
-    pub decl: &'a FnDecl,
-    pub body: ast::BodyId,
-    pub kind: FnKind<'a>,
-    pub span: Span,
-    pub id:   NodeId,
-}
 
 impl MaybeFnLike for ast::Item {
     fn is_fn_like(&self) -> bool {
@@ -162,16 +153,6 @@ impl<'a> FnLikeNode<'a> {
             })
         } else {
             None
-        }
-    }
-
-    pub fn to_fn_parts(self) -> FnParts<'a> {
-        FnParts {
-            decl: self.decl(),
-            body: self.body(),
-            kind: self.kind(),
-            span: self.span(),
-            id:   self.id(),
         }
     }
 

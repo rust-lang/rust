@@ -16,5 +16,6 @@
 fn main() {
     let x: ! = panic!("aah"); //~ ERROR unused
     drop(x); //~ ERROR unreachable
+    //~^ ERROR unreachable
 }
 

@@ -97,7 +97,6 @@ pub fn main() {
 
     // &*
     //
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let f7: Box<ToBar> = Box::new(Bar1 {f :42});
     bar(&*f7);
 

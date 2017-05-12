@@ -56,7 +56,7 @@ pub struct DepGraphThreadData {
     // current buffer, where we accumulate messages
     messages: VecCell<DepMessage>,
 
-    // whence to receive new buffer when full
+    // where to receive new buffer when full
     swap_in: Receiver<Vec<DepMessage>>,
 
     // where to send buffer when full

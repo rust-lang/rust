@@ -11,11 +11,9 @@
 //! Give useful errors and suggestions to users when an item can't be
 //! found or is otherwise invalid.
 
-use CrateCtxt;
-
 use check::FnCtxt;
 use rustc::hir::map as hir_map;
-use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TypeFoldable};
+use rustc::ty::{self, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use hir::def::Def;
 use hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::lang_items::FnOnceTraitLangItem;
@@ -27,6 +25,7 @@ use errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
 use rustc::hir;
+use rustc::hir::print;
 use rustc::infer::type_variable::TypeVariableOrigin;
 
 use std::cell;
@@ -71,7 +70,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                rcvr_ty: Ty<'tcx>,
                                item_name: ast::Name,
                                rcvr_expr: Option<&hir::Expr>,
-                               error: MethodError<'tcx>) {
+                               error: MethodError<'tcx>,
+                               args: Option<&'gcx [hir::Expr]>) {
         // avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
             return;
@@ -97,8 +97,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     item_name
                                 )
                             }).unwrap();
-                        let note_span = self.tcx.map.span_if_local(item.def_id).or_else(|| {
-                            self.tcx.map.span_if_local(impl_did)
+                        let note_span = self.tcx.hir.span_if_local(item.def_id).or_else(|| {
+                            self.tcx.hir.span_if_local(impl_did)
                         });
 
                         let impl_ty = self.impl_self_ty(span, impl_did).ty;
@@ -131,6 +131,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                    "candidate #{} is defined in the trait `{}`",
                                    idx + 1,
                                    self.tcx.item_path_str(trait_did));
+                        err.help(&format!("to disambiguate the method call, write `{}::{}({}{})` \
+                                          instead",
+                                          self.tcx.item_path_str(trait_did),
+                                          item_name,
+                                          if rcvr_ty.is_region_ptr() && args.is_some() {
+                                              if rcvr_ty.is_mutable_pointer() {
+                                                  "&mut "
+                                              } else {
+                                                  "&"
+                                              }
+                                          } else {
+                                              ""
+                                          },
+                                          args.map(|arg| arg.iter()
+                                              .map(|arg| print::to_string(print::NO_ANN,
+                                                                          |s| s.print_expr(arg)))
+                                              .collect::<Vec<_>>()
+                                              .join(", ")).unwrap_or("...".to_owned())));
                     }
                 }
             }
@@ -178,18 +196,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                                     let field_ty = field.ty(tcx, substs);
 
-                                    if self.is_fn_ty(&field_ty, span) {
-                                        err.span_note(span,
-                                                      &format!("use `({0}.{1})(...)` if you \
-                                                                meant to call the function \
-                                                                stored in the `{1}` field",
-                                                               expr_string,
-                                                               item_name));
+                                    if tcx.vis_is_accessible_from(field.vis, self.body_id) {
+                                        if self.is_fn_ty(&field_ty, span) {
+                                            err.help(&format!("use `({0}.{1})(...)` if you \
+                                                               meant to call the function \
+                                                               stored in the `{1}` field",
+                                                              expr_string,
+                                                              item_name));
+                                        } else {
+                                            err.help(&format!("did you mean to write `{0}.{1}` \
+                                                               instead of `{0}.{1}(...)`?",
+                                                              expr_string,
+                                                              item_name));
+                                        }
+                                        err.span_label(span, "field, not a method");
                                     } else {
-                                        err.span_note(span,
-                                                      &format!("did you mean to write `{0}.{1}`?",
-                                                               expr_string,
-                                                               item_name));
+                                        err.span_label(span, "private field, not a method");
                                     }
                                     break;
                                 }
@@ -250,7 +272,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                span,
                                                E0034,
                                                "multiple applicable items in scope");
-                err.span_label(span, &format!("multiple `{}` found", item_name));
+                err.span_label(span, format!("multiple `{}` found", item_name));
 
                 report_candidates(&mut err, sources);
                 err.emit();
@@ -265,7 +287,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let msg = if let Some(callee) = rcvr_expr {
                     format!("{}; use overloaded call notation instead (e.g., `{}()`)",
                             msg,
-                            self.tcx.map.node_to_pretty_string(callee.id))
+                            self.tcx.hir.node_to_pretty_string(callee.id))
                 } else {
                     msg
                 };
@@ -323,7 +345,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // there's no implemented traits, so lets suggest some traits to
         // implement, by finding ones that have the item name, and are
         // legal to implement.
-        let mut candidates = all_traits(self.ccx)
+        let mut candidates = all_traits(self.tcx)
             .filter(|info| {
                 // we approximate the coherence rules to only suggest
                 // traits that are legal to implement by requiring that
@@ -403,7 +425,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub type AllTraitsVec = Vec<TraitInfo>;
+pub type AllTraitsVec = Vec<DefId>;
 
 #[derive(Copy, Clone)]
 pub struct TraitInfo {
@@ -438,8 +460,8 @@ impl Ord for TraitInfo {
 }
 
 /// Retrieve all traits in this crate and any dependent crates.
-pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
-    if ccx.all_traits.borrow().is_none() {
+pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> {
+    if tcx.all_traits.borrow().is_none() {
         use rustc::hir::itemlikevisit;
 
         let mut traits = vec![];
@@ -456,7 +478,7 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
                 match i.node {
                     hir::ItemTrait(..) => {
                         let def_id = self.map.local_def_id(i.id);
-                        self.traits.push(TraitInfo::new(def_id));
+                        self.traits.push(def_id);
                     }
                     _ => {}
                 }
@@ -468,45 +490,45 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
             fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
             }
         }
-        ccx.tcx.map.krate().visit_all_item_likes(&mut Visitor {
-            map: &ccx.tcx.map,
+        tcx.hir.krate().visit_all_item_likes(&mut Visitor {
+            map: &tcx.hir,
             traits: &mut traits,
         });
 
         // Cross-crate:
         let mut external_mods = FxHashSet();
-        fn handle_external_def(ccx: &CrateCtxt,
+        fn handle_external_def(tcx: TyCtxt,
                                traits: &mut AllTraitsVec,
                                external_mods: &mut FxHashSet<DefId>,
                                def: Def) {
             let def_id = def.def_id();
             match def {
                 Def::Trait(..) => {
-                    traits.push(TraitInfo::new(def_id));
+                    traits.push(def_id);
                 }
                 Def::Mod(..) => {
                     if !external_mods.insert(def_id) {
                         return;
                     }
-                    for child in ccx.tcx.sess.cstore.item_children(def_id) {
-                        handle_external_def(ccx, traits, external_mods, child.def)
+                    for child in tcx.sess.cstore.item_children(def_id) {
+                        handle_external_def(tcx, traits, external_mods, child.def)
                     }
                 }
                 _ => {}
             }
         }
-        for cnum in ccx.tcx.sess.cstore.crates() {
+        for cnum in tcx.sess.cstore.crates() {
             let def_id = DefId {
                 krate: cnum,
                 index: CRATE_DEF_INDEX,
             };
-            handle_external_def(ccx, &mut traits, &mut external_mods, Def::Mod(def_id));
+            handle_external_def(tcx, &mut traits, &mut external_mods, Def::Mod(def_id));
         }
 
-        *ccx.all_traits.borrow_mut() = Some(traits);
+        *tcx.all_traits.borrow_mut() = Some(traits);
     }
 
-    let borrow = ccx.all_traits.borrow();
+    let borrow = tcx.all_traits.borrow();
     assert!(borrow.is_some());
     AllTraits {
         borrow: borrow,
@@ -527,7 +549,7 @@ impl<'a> Iterator for AllTraits<'a> {
         // ugh.
         borrow.as_ref().unwrap().get(*idx).map(|info| {
             *idx += 1;
-            *info
+            TraitInfo::new(*info)
         })
     }
 }

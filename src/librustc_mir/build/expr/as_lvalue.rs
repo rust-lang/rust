@@ -56,11 +56,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let (usize_ty, bool_ty) = (this.hir.usize_ty(), this.hir.bool_ty());
 
                 let slice = unpack!(block = this.as_lvalue(block, lhs));
-
-                let idx = unpack!(block = this.as_operand(block, index));
+                // extent=None so lvalue indexes live forever. They are scalars so they
+                // do not need storage annotations, and they are often copied between
+                // places.
+                let idx = unpack!(block = this.as_operand(block, None, index));
 
                 // bounds check:
-                let (len, lt) = (this.temp(usize_ty.clone()), this.temp(bool_ty));
+                let (len, lt) = (this.temp(usize_ty.clone(), expr_span),
+                                 this.temp(bool_ty, expr_span));
                 this.cfg.push_assign(block, source_info, // len = len(slice)
                                      &len, Rvalue::Len(slice.clone()));
                 this.cfg.push_assign(block, source_info, // lt = idx < len
@@ -84,10 +87,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.and(Lvalue::Local(index))
             }
             ExprKind::StaticRef { id } => {
-                block.and(Lvalue::Static(id))
+                block.and(Lvalue::Static(Box::new(Static { def_id: id, ty: expr.ty })))
             }
 
-            ExprKind::Vec { .. } |
+            ExprKind::Array { .. } |
             ExprKind::Tuple { .. } |
             ExprKind::Adt { .. } |
             ExprKind::Closure { .. } |
@@ -99,6 +102,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Use { .. } |
             ExprKind::NeverToAny { .. } |
             ExprKind::ReifyFnPointer { .. } |
+            ExprKind::ClosureFnPointer { .. } |
             ExprKind::UnsafeFnPointer { .. } |
             ExprKind::Unsize { .. } |
             ExprKind::Repeat { .. } |
@@ -120,7 +124,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     Some(Category::Lvalue) => false,
                     _ => true,
                 });
-                this.as_temp(block, expr)
+                this.as_temp(block, expr.temp_lifetime, expr)
             }
         }
     }

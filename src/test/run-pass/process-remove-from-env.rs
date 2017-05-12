@@ -46,8 +46,7 @@ fn main() {
         Some(val) => env::set_var("RUN_TEST_NEW_ENV", &val)
     }
 
-    let prog = cmd.spawn().unwrap();
-    let result = prog.wait_with_output().unwrap();
+    let result = cmd.output().unwrap();
     let output = String::from_utf8_lossy(&result.stdout);
 
     assert!(!output.contains("RUN_TEST_NEW_ENV"),

@@ -22,10 +22,11 @@ struct SomeStruct<I : for<'x> Foo<&'x isize>> {
     //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
 }
 
-struct AnotherStruct<I : for<'x> Foo<&'x isize>> {
-    field: <I as Foo<&isize>>::A
-    //~^ ERROR missing lifetime specifier
-}
+// FIXME(eddyb) This one doesn't even compile because of the unsupported syntax.
+
+// struct AnotherStruct<I : for<'x> Foo<&'x isize>> {
+//     field: <I as for<'y> Foo<&'y isize>>::A
+// }
 
 struct YetAnotherStruct<'a, I : for<'x> Foo<&'x isize>> {
     field: <I as Foo<&'a isize>>::A

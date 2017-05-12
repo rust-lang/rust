@@ -9,6 +9,6 @@
 // except according to those terms.
 
 
-trait B < A > { fn a() -> A { this.a } } //~ ERROR unresolved value `this`
+trait B < A > { fn a() -> A { this.a } } //~ ERROR cannot find value `this` in this scope
 
 fn main() {}

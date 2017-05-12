@@ -14,9 +14,6 @@
 
 // === GDB TESTS ===================================================================================
 
-// there's no frame yet for gdb to reliably detect the language, set it explicitly
-// gdbr-command:set language rust
-
 // gdbg-command:print 'simple_struct::NO_PADDING_16'
 // gdbr-command:print simple_struct::NO_PADDING_16
 // gdbg-check:$1 = {x = 1000, y = -1001}

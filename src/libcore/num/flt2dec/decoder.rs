@@ -67,7 +67,7 @@ impl DecodableFloat for f64 {
 /// Returns a sign (true when negative) and `FullDecoded` value
 /// from given floating point number.
 pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
-    let (mant, exp, sign) = v.integer_decode2();
+    let (mant, exp, sign) = v.integer_decode();
     let even = (mant & 1) == 0;
     let decoded = match v.classify() {
         FpCategory::Nan => FullDecoded::Nan,
@@ -81,7 +81,7 @@ pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
                                           exp: exp, inclusive: even })
         }
         FpCategory::Normal => {
-            let minnorm = <T as DecodableFloat>::min_pos_norm_value().integer_decode2();
+            let minnorm = <T as DecodableFloat>::min_pos_norm_value().integer_decode();
             if mant == minnorm.0 {
                 // neighbors: (maxmant, exp - 1) -- (minnormmant, exp) -- (minnormmant + 1, exp)
                 // where maxmant = minnormmant * 2 - 1

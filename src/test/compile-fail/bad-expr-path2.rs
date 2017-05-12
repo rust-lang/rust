@@ -14,7 +14,7 @@ mod m1 {
 
 fn main(arguments: Vec<String>) { //~ ERROR main function has wrong type
     log(debug, m1::arguments);
-    //~^ ERROR unresolved function `log`
-    //~| ERROR unresolved value `debug`
+    //~^ ERROR cannot find function `log` in this scope
+    //~| ERROR cannot find value `debug` in this scope
     //~| ERROR expected value, found module `m1::arguments`
 }

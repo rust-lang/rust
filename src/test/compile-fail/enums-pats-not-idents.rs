@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let a(1) = 13; //~ ERROR unresolved tuple struct/variant `a`
+    let a(1) = 13; //~ ERROR cannot find tuple struct/variant `a` in this scope
 }

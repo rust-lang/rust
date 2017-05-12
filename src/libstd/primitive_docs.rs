@@ -12,7 +12,8 @@
 //
 /// The boolean type.
 ///
-/// The `bool` represents a value, which could only be either `true` or `false`.
+/// The `bool` represents a value, which could only be either `true` or `false`. If you cast
+/// a `bool` into an integer, `true` will be 1 and `false` will be 0.
 ///
 /// # Basic usage
 ///
@@ -28,7 +29,7 @@
 /// ```
 ///
 /// [`assert!`]: macro.assert.html
-/// [`if`]: ../book/if.html
+/// [`if`]: ../book/first-edition/if.html
 /// [`BitAnd`]: ops/trait.BitAnd.html
 /// [`BitOr`]: ops/trait.BitOr.html
 /// [`Not`]: ops/trait.Not.html
@@ -56,6 +57,14 @@
 ///
 /// Also, since `bool` implements the [`Copy`](marker/trait.Copy.html) trait, we don't
 /// have to worry about the move semantics (just like the integer and float primitives).
+///
+/// Now an example of `bool` cast to integer type:
+///
+/// ```
+/// assert_eq!(true as i32, 1);
+/// assert_eq!(false as i32, 0);
+/// ```
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_bool { }
 
 #[doc(primitive = "char")]
@@ -126,6 +135,7 @@ mod prim_bool { }
 /// assert_eq!(12, s.len() * std::mem::size_of::<u8>());
 /// assert_eq!(32, v.len() * std::mem::size_of::<char>());
 /// ```
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_char { }
 
 #[doc(primitive = "unit")]
@@ -163,6 +173,7 @@ mod prim_char { }
 /// };
 /// ```
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_unit { }
 
 #[doc(primitive = "pointer")]
@@ -172,9 +183,9 @@ mod prim_unit { }
 /// Working with raw pointers in Rust is uncommon,
 /// typically limited to a few patterns.
 ///
-/// Use the `null` function to create null pointers, and the `is_null` method
+/// Use the [`null`] function to create null pointers, and the [`is_null`] method
 /// of the `*const T` type  to check for null. The `*const T` type also defines
-/// the `offset` method, for pointer math.
+/// the [`offset`] method, for pointer math.
 ///
 /// # Common ways to create raw pointers
 ///
@@ -202,7 +213,7 @@ mod prim_unit { }
 ///
 /// ## 2. Consume a box (`Box<T>`).
 ///
-/// The `into_raw` function consumes a box and returns
+/// The [`into_raw`] function consumes a box and returns
 /// the raw pointer. It doesn't destroy `T` or deallocate any memory.
 ///
 /// ```
@@ -216,7 +227,7 @@ mod prim_unit { }
 /// }
 /// ```
 ///
-/// Note that here the call to `drop` is for clarity - it indicates
+/// Note that here the call to [`drop`] is for clarity - it indicates
 /// that we are done with the given value and it should be destroyed.
 ///
 /// ## 3. Get it from C.
@@ -244,6 +255,12 @@ mod prim_unit { }
 ///
 /// *[See also the `std::ptr` module](ptr/index.html).*
 ///
+/// [`null`]: ../std/ptr/fn.null.html
+/// [`is_null`]: ../std/primitive.pointer.html#method.is_null
+/// [`offset`]: ../std/primitive.pointer.html#method.offset
+/// [`into_raw`]: ../std/boxed/struct.Box.html#method.into_raw
+/// [`drop`]: ../std/mem/fn.drop.html
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer { }
 
 #[doc(primitive = "array")]
@@ -260,7 +277,7 @@ mod prim_pointer { }
 /// Arrays of sizes from 0 to 32 (inclusive) implement the following traits if
 /// the element type allows it:
 ///
-/// - [`Clone`][clone] (only if `T: Copy`)
+/// - [`Clone`][clone] (only if `T: `[`Copy`][copy])
 /// - [`Debug`][debug]
 /// - [`IntoIterator`][intoiterator] (implemented for `&[T; N]` and `&mut [T; N]`)
 /// - [`PartialEq`][partialeq], [`PartialOrd`][partialord], [`Eq`][eq], [`Ord`][ord]
@@ -275,8 +292,8 @@ mod prim_pointer { }
 /// entirely different types. As a stopgap, trait implementations are
 /// statically generated up to size 32.
 ///
-/// Arrays of *any* size are [`Copy`][copy] if the element type is `Copy`. This
-/// works because the `Copy` trait is specially known to the compiler.
+/// Arrays of *any* size are [`Copy`][copy] if the element type is [`Copy`][copy]. This
+/// works because the [`Copy`][copy] trait is specially known to the compiler.
 ///
 /// Arrays coerce to [slices (`[T]`)][slice], so a slice method may be called on
 /// an array. Indeed, this provides most of the API for working with arrays.
@@ -284,23 +301,6 @@ mod prim_pointer { }
 ///
 /// There is no way to move elements out of an array. See [`mem::replace`][replace]
 /// for an alternative.
-///
-/// [slice]: primitive.slice.html
-/// [copy]: marker/trait.Copy.html
-/// [clone]: clone/trait.Clone.html
-/// [debug]: fmt/trait.Debug.html
-/// [intoiterator]: iter/trait.IntoIterator.html
-/// [partialeq]: cmp/trait.PartialEq.html
-/// [partialord]: cmp/trait.PartialOrd.html
-/// [eq]: cmp/trait.Eq.html
-/// [ord]: cmp/trait.Ord.html
-/// [hash]: hash/trait.Hash.html
-/// [asref]: convert/trait.AsRef.html
-/// [asmut]: convert/trait.AsMut.html
-/// [borrow]: borrow/trait.Borrow.html
-/// [borrowmut]: borrow/trait.BorrowMut.html
-/// [default]: default/trait.Default.html
-/// [replace]: mem/fn.replace.html
 ///
 /// # Examples
 ///
@@ -335,13 +335,32 @@ mod prim_pointer { }
 /// ```
 ///
 /// If the array has 32 or fewer elements (see above), you can also use the
-/// array reference's `IntoIterator` implementation:
+/// array reference's [`IntoIterator`] implementation:
 ///
 /// ```
 /// # let array: [i32; 3] = [0; 3];
 /// for x in &array { }
 /// ```
 ///
+/// [slice]: primitive.slice.html
+/// [copy]: marker/trait.Copy.html
+/// [clone]: clone/trait.Clone.html
+/// [debug]: fmt/trait.Debug.html
+/// [intoiterator]: iter/trait.IntoIterator.html
+/// [partialeq]: cmp/trait.PartialEq.html
+/// [partialord]: cmp/trait.PartialOrd.html
+/// [eq]: cmp/trait.Eq.html
+/// [ord]: cmp/trait.Ord.html
+/// [hash]: hash/trait.Hash.html
+/// [asref]: convert/trait.AsRef.html
+/// [asmut]: convert/trait.AsMut.html
+/// [borrow]: borrow/trait.Borrow.html
+/// [borrowmut]: borrow/trait.BorrowMut.html
+/// [default]: default/trait.Default.html
+/// [replace]: mem/fn.replace.html
+/// [`IntoIterator`]: iter/trait.IntoIterator.html
+///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_array { }
 
 #[doc(primitive = "slice")]
@@ -372,6 +391,7 @@ mod prim_array { }
 ///
 /// *[See also the `std::slice` module](slice/index.html).*
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_slice { }
 
 #[doc(primitive = "str")]
@@ -386,7 +406,7 @@ mod prim_slice { }
 ///
 /// This documentation describes a number of methods and trait implementations
 /// on the `str` type. For technical reasons, there is additional, separate
-/// documentation in [the `std::str` module](str/index.html) as well.
+/// documentation in the [`std::str`](str/index.html) module as well.
 ///
 /// # Examples
 ///
@@ -405,7 +425,7 @@ mod prim_slice { }
 /// # Representation
 ///
 /// A `&str` is made up of two components: a pointer to some bytes, and a
-/// length. You can look at these with the [`.as_ptr()`] and [`len()`] methods:
+/// length. You can look at these with the [`as_ptr`] and [`len`] methods:
 ///
 /// ```
 /// use std::slice;
@@ -432,12 +452,13 @@ mod prim_slice { }
 /// assert_eq!(s, Ok(story));
 /// ```
 ///
-/// [`.as_ptr()`]: #method.as_ptr
-/// [`len()`]: #method.len
+/// [`as_ptr`]: #method.as_ptr
+/// [`len`]: #method.len
 ///
 /// Note: This example shows the internals of `&str`. `unsafe` should not be
-/// used to get a string slice under normal circumstances. Use `.as_slice()`
+/// used to get a string slice under normal circumstances. Use `as_slice`
 /// instead.
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_str { }
 
 #[doc(primitive = "tuple")]
@@ -474,7 +495,7 @@ mod prim_str { }
 /// assert_eq!(tuple.2, 'c');
 /// ```
 ///
-/// For more about tuples, see [the book](../book/primitive-types.html#tuples).
+/// For more about tuples, see [the book](../book/first-edition/primitive-types.html#tuples).
 ///
 /// # Trait implementations
 ///
@@ -502,7 +523,7 @@ mod prim_str { }
 /// [`Hash`]: hash/trait.Hash.html
 ///
 /// Due to a temporary restriction in Rust's type system, these traits are only
-/// implemented on tuples of arity 32 or less. In the future, this may change.
+/// implemented on tuples of arity 12 or less. In the future, this may change.
 ///
 /// # Examples
 ///
@@ -536,6 +557,7 @@ mod prim_str { }
 /// assert_eq!(y, 5);
 /// ```
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_tuple { }
 
 #[doc(primitive = "f32")]
@@ -543,6 +565,7 @@ mod prim_tuple { }
 ///
 /// *[See also the `std::f32` module](f32/index.html).*
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f32 { }
 
 #[doc(primitive = "f64")]
@@ -551,6 +574,7 @@ mod prim_f32 { }
 ///
 /// *[See also the `std::f64` module](f64/index.html).*
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f64 { }
 
 #[doc(primitive = "i8")]
@@ -562,6 +586,7 @@ mod prim_f64 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `i64` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i8 { }
 
 #[doc(primitive = "i16")]
@@ -573,6 +598,7 @@ mod prim_i8 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `i32` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i16 { }
 
 #[doc(primitive = "i32")]
@@ -584,6 +610,7 @@ mod prim_i16 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `i16` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i32 { }
 
 #[doc(primitive = "i64")]
@@ -595,6 +622,7 @@ mod prim_i32 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `i8` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_i64 { }
 
 #[doc(primitive = "i128")]
@@ -606,6 +634,7 @@ mod prim_i64 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `i8` in there.
 ///
+#[unstable(feature = "i128", issue="35118")]
 mod prim_i128 { }
 
 #[doc(primitive = "u8")]
@@ -617,6 +646,7 @@ mod prim_i128 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `u64` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u8 { }
 
 #[doc(primitive = "u16")]
@@ -628,6 +658,7 @@ mod prim_u8 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `u32` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u16 { }
 
 #[doc(primitive = "u32")]
@@ -639,6 +670,7 @@ mod prim_u16 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `u16` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u32 { }
 
 #[doc(primitive = "u64")]
@@ -650,6 +682,7 @@ mod prim_u32 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `u8` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_u64 { }
 
 #[doc(primitive = "u128")]
@@ -661,6 +694,7 @@ mod prim_u64 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `u8` in there.
 ///
+#[unstable(feature = "i128", issue="35118")]
 mod prim_u128 { }
 
 #[doc(primitive = "isize")]
@@ -672,6 +706,7 @@ mod prim_u128 { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `usize` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_isize { }
 
 #[doc(primitive = "usize")]
@@ -683,4 +718,5 @@ mod prim_isize { }
 /// However, please note that examples are shared between primitive integer
 /// types. So it's normal if you see usage of types like `isize` in there.
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 mod prim_usize { }

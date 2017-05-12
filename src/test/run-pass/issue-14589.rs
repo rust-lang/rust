@@ -11,8 +11,6 @@
 // All 3 expressions should work in that the argument gets
 // coerced to a trait object
 
-// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-
 // pretty-expanded FIXME #23616
 
 fn main() {

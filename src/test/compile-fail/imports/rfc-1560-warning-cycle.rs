@@ -17,12 +17,13 @@ mod bar {
     struct Foo;
 
     mod baz {
-        use *; //~ NOTE `Foo` could resolve to the name imported here
-        use bar::*; //~ NOTE `Foo` could also resolve to the name imported here
+        use *; //~ NOTE `Foo` could refer to the name imported here
+        use bar::*; //~ NOTE `Foo` could also refer to the name imported here
         fn f(_: Foo) {}
         //~^ WARN `Foo` is ambiguous
         //~| WARN hard error in a future release
         //~| NOTE see issue #38260
+        //~| NOTE #[warn(legacy_imports)] on by default
     }
 }
 

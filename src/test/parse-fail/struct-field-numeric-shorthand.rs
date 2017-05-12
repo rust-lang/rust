@@ -10,8 +10,6 @@
 
 // compile-flags: -Z parse-only
 
-#![feature(field_init_shorthand)]
-
 struct Rgb(u8, u8, u8);
 
 fn main() {

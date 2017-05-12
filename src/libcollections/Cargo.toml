@@ -13,10 +13,9 @@ core = { path = "../libcore" }
 std_unicode = { path = "../libstd_unicode" }
 
 [[test]]
-name = "collectionstest"
-path = "../libcollectionstest/lib.rs"
+name = "collectionstests"
+path = "../libcollections/tests/lib.rs"
 
-# FIXME: need to extract benchmarks to separate crate
-#[[bench]]
-#name = "collectionstest"
-#path = "../libcollectionstest/lib.rs"
+[[bench]]
+name = "collectionsbenches"
+path = "../libcollections/benches/lib.rs"

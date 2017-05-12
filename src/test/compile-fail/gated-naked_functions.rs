@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-naked_functions
+
 #[naked]
 //~^ the `#[naked]` attribute is an experimental feature
 fn naked() {}

@@ -90,6 +90,7 @@
        test(attr(deny(warnings))))]
 
 #![deny(missing_docs)]
+#![deny(warnings)]
 #![feature(staged_api)]
 
 use self::Name::*;
@@ -968,7 +969,6 @@ fn test_split_within() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::Fail::*;
 
     use std::result::Result::{Err, Ok};
     use std::result;

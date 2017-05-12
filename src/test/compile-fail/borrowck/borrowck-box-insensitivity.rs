@@ -35,7 +35,7 @@ fn copy_after_move() {
     let _x = a.x;
     //~^ value moved here
     let _y = a.y; //~ ERROR use of moved
-    //~^ move occurs because `a.x` has type `Box<isize>`
+    //~^ move occurs because `a.x` has type `std::boxed::Box<isize>`
     //~| value used here after move
 }
 
@@ -44,7 +44,7 @@ fn move_after_move() {
     let _x = a.x;
     //~^ value moved here
     let _y = a.y; //~ ERROR use of moved
-    //~^ move occurs because `a.x` has type `Box<isize>`
+    //~^ move occurs because `a.x` has type `std::boxed::Box<isize>`
     //~| value used here after move
 }
 
@@ -53,7 +53,7 @@ fn borrow_after_move() {
     let _x = a.x;
     //~^ value moved here
     let _y = &a.y; //~ ERROR use of moved
-    //~^ move occurs because `a.x` has type `Box<isize>`
+    //~^ move occurs because `a.x` has type `std::boxed::Box<isize>`
     //~| value used here after move
 }
 
@@ -106,7 +106,7 @@ fn copy_after_move_nested() {
     let _x = a.x.x;
     //~^ value moved here
     let _y = a.y; //~ ERROR use of collaterally moved
-    //~^ NOTE move occurs because `a.x.x` has type `Box<isize>`
+    //~^ NOTE move occurs because `a.x.x` has type `std::boxed::Box<isize>`
     //~| value used here after move
 }
 
@@ -115,7 +115,7 @@ fn move_after_move_nested() {
     let _x = a.x.x;
     //~^ value moved here
     let _y = a.y; //~ ERROR use of collaterally moved
-    //~^ NOTE move occurs because `a.x.x` has type `Box<isize>`
+    //~^ NOTE move occurs because `a.x.x` has type `std::boxed::Box<isize>`
     //~| value used here after move
 }
 
@@ -124,7 +124,7 @@ fn borrow_after_move_nested() {
     let _x = a.x.x;
     //~^ value moved here
     let _y = &a.y; //~ ERROR use of collaterally moved
-    //~^ NOTE move occurs because `a.x.x` has type `Box<isize>`
+    //~^ NOTE move occurs because `a.x.x` has type `std::boxed::Box<isize>`
     //~| value used here after move
 }
 

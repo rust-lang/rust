@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use LinkerFlavor;
 use target::{Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::freebsd_base::opts();
     base.cpu = "x86-64".to_string();
     base.max_atomic_width = Some(64);
-    base.pre_link_args.push("-m64".to_string());
+    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
 
     Ok(Target {
         llvm_target: "x86_64-unknown-freebsd".to_string(),
@@ -25,6 +26,7 @@ pub fn target() -> TargetResult {
         target_os: "freebsd".to_string(),
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
+        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     })
 }

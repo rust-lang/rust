@@ -35,20 +35,20 @@ mod x {
 mod y {
     use x;
 
-    #[rustc_clean(label="TypeckItemBody", cfg="cfail2")]
+    #[rustc_clean(label="TypeckTables", cfg="cfail2")]
     #[rustc_clean(label="TransCrateItem", cfg="cfail2")]
     pub fn y() {
-        //[cfail2]~^ ERROR `TypeckItemBody("y::y")` not found in dep graph, but should be clean
+        //[cfail2]~^ ERROR `TypeckTables("y::y")` not found in dep graph, but should be clean
         //[cfail2]~| ERROR `TransCrateItem("y::y")` not found in dep graph, but should be clean
         x::x();
     }
 }
 
 mod z {
-    #[rustc_dirty(label="TypeckItemBody", cfg="cfail2")]
+    #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
     #[rustc_dirty(label="TransCrateItem", cfg="cfail2")]
     pub fn z() {
-        //[cfail2]~^ ERROR `TypeckItemBody("z::z")` found in dep graph, but should be dirty
+        //[cfail2]~^ ERROR `TypeckTables("z::z")` found in dep graph, but should be dirty
         //[cfail2]~| ERROR `TransCrateItem("z::z")` found in dep graph, but should be dirty
     }
 }

@@ -1,0 +1,24 @@
+From b3563932f85d60bb0d38b0a5f3b8f4abc133f890 Mon Sep 17 00:00:00 2001
+From: Tulio Magno Quites Machado Filho <tuliom@linux.vnet.ibm.com>
+Date: Thu, 1 Nov 2012 18:00:06 -0500
+Subject: [PATCH] PowerPC: Remove unnecessary -mnew-mnemonics.
+
+---
+ sysdeps/powerpc/Makefile | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/sysdeps/powerpc/Makefile b/sysdeps/powerpc/Makefile
+index 79dd6fa976d5..7442b6709ad1 100644
+--- a/sysdeps/powerpc/Makefile
++++ b/sysdeps/powerpc/Makefile
+@@ -1,7 +1,3 @@
+-# We always want to use the new mnemonic syntax even if we are on a RS6000
+-# machine.
+-+cflags += -mnew-mnemonics
+-
+ ifeq ($(subdir),gmon)
+ sysdep_routines += ppc-mcount
+ endif
+-- 
+2.9.3
+

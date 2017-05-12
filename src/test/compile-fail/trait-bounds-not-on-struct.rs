@@ -11,6 +11,6 @@
 
 struct Foo;
 
-fn foo(_x: Box<Foo + Send>) { } //~ ERROR expected a reference to a trait
+fn foo(_x: Box<Foo + Send>) { } //~ ERROR expected trait, found struct `Foo`
 
 fn main() { }

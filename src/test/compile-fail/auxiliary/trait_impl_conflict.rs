@@ -9,6 +9,7 @@
 // except according to those terms.
 
 pub trait Foo {
+    fn foo() {}
 }
 
 impl Foo for isize {

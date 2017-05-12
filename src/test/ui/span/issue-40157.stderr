@@ -1,0 +1,14 @@
+error: `foo` does not live long enough
+  --> $DIR/issue-40157.rs:12:64
+   |
+12 |     {println!("{:?}", match { let foo = vec![1, 2]; foo.get(1) } { x => x });}
+   |      ----------------------------------------------------------^-------------
+   |      |                                              |          |
+   |      |                                              |          `foo` dropped here while still borrowed
+   |      |                                              borrow occurs here
+   |      borrowed value needs to live until here
+   |
+   = note: this error originates in a macro outside of the current crate
+
+error: aborting due to previous error
+

@@ -26,12 +26,15 @@ extern crate rand; // no error, the use marks it as used
 
 extern crate lint_unused_extern_crate as other; // no error, the use * marks it as used
 
-#[macro_use] extern crate core; // no error, the `#[macro_use]` marks it as used
-
 #[allow(unused_imports)]
 use rand::isaac::IsaacRng;
 
 use other::*;
+
+mod foo {
+    // Test that this is unused even though an earler `extern crate rand` is used.
+    extern crate rand; //~ ERROR unused extern crate
+}
 
 fn main() {
     let x: collecs::vec::Vec<usize> = Vec::new();

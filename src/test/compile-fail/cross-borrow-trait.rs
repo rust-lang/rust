@@ -16,10 +16,8 @@ trait Trait { fn foo(&self) {} }
 impl Trait for Foo {}
 
 pub fn main() {
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let x: Box<Trait> = Box::new(Foo);
-    let _y: &Trait = x; //~  ERROR mismatched types
+    let _y: &Trait = x; //~ ERROR E0308
                         //~| expected type `&Trait`
-                        //~| found type `Box<Trait>`
-                        //~| expected &Trait, found box
+                        //~| found type `std::boxed::Box<Trait>`
 }

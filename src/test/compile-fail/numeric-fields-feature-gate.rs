@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-relaxed_adts
+
 struct S(u8);
 
 fn main() {

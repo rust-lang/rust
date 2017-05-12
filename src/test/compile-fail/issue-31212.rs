@@ -16,5 +16,5 @@ mod foo {
 }
 
 fn main() {
-    foo::f(); //~ ERROR unresolved
+    foo::f(); //~ ERROR cannot find function `f` in module `foo`
 }

@@ -96,17 +96,17 @@ pub unsafe extern fn destroy_value<T>(ptr: *mut u8) {
     // `None`.
     (*ptr).dtor_running.set(true);
 
-    // The OSX implementation of TLS apparently had an odd aspect to it
+    // The macOS implementation of TLS apparently had an odd aspect to it
     // where the pointer we have may be overwritten while this destructor
     // is running. Specifically if a TLS destructor re-accesses TLS it may
     // trigger a re-initialization of all TLS variables, paving over at
     // least some destroyed ones with initial values.
     //
-    // This means that if we drop a TLS value in place on OSX that we could
+    // This means that if we drop a TLS value in place on macOS that we could
     // revert the value to its original state halfway through the
     // destructor, which would be bad!
     //
-    // Hence, we use `ptr::read` on OSX (to move to a "safe" location)
+    // Hence, we use `ptr::read` on macOS (to move to a "safe" location)
     // instead of drop_in_place.
     if cfg!(target_os = "macos") {
         ptr::read((*ptr).inner.get());

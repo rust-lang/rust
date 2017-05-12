@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-
 trait X { fn foo(&self) {} }
 
 fn p1<T>(v: T) -> Box<X+'static>

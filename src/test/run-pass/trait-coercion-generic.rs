@@ -26,7 +26,6 @@ impl Trait<&'static str> for Struct {
 
 pub fn main() {
     let a = Struct { x: 1, y: 2 };
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let b: Box<Trait<&'static str>> = Box::new(a);
     b.f("Mary");
     let c: &Trait<&'static str> = &a;

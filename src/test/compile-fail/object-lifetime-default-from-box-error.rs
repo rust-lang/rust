@@ -25,7 +25,7 @@ fn load(ss: &mut SomeStruct) -> Box<SomeTrait> {
     // `Box<SomeTrait>` defaults to a `'static` bound, so this return
     // is illegal.
 
-    ss.r //~ ERROR lifetime bound not satisfied
+    ss.r //~ ERROR cannot infer an appropriate lifetime
 }
 
 fn store(ss: &mut SomeStruct, b: Box<SomeTrait>) {
@@ -38,7 +38,7 @@ fn store(ss: &mut SomeStruct, b: Box<SomeTrait>) {
 fn store1<'b>(ss: &mut SomeStruct, b: Box<SomeTrait+'b>) {
     // Here we override the lifetimes explicitly, and so naturally we get an error.
 
-    ss.r = b; //~ ERROR lifetime bound not satisfied
+    ss.r = b; //~ ERROR cannot infer an appropriate lifetime
 }
 
 fn main() {

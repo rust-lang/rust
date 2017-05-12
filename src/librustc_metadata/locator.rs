@@ -367,7 +367,7 @@ impl<'a> Context<'a> {
                 && self.triple != config::host_triple() {
                 err.note(&format!("the `{}` target may not be installed", self.triple));
             }
-            err.span_label(self.span, &format!("can't find crate"));
+            err.span_label(self.span, "can't find crate");
             err
         };
 
@@ -477,15 +477,15 @@ impl<'a> Context<'a> {
                 Some(file) => file,
             };
             let (hash, found_kind) =
-                if file.starts_with(&rlib_prefix[..]) && file.ends_with(".rlib") {
+                if file.starts_with(&rlib_prefix) && file.ends_with(".rlib") {
                     (&file[(rlib_prefix.len())..(file.len() - ".rlib".len())], CrateFlavor::Rlib)
-                } else if file.starts_with(&rlib_prefix[..]) && file.ends_with(".rmeta") {
+                } else if file.starts_with(&rlib_prefix) && file.ends_with(".rmeta") {
                     (&file[(rlib_prefix.len())..(file.len() - ".rmeta".len())], CrateFlavor::Rmeta)
                 } else if file.starts_with(&dylib_prefix) &&
                                              file.ends_with(&dypair.1) {
                     (&file[(dylib_prefix.len())..(file.len() - dypair.1.len())], CrateFlavor::Dylib)
                 } else {
-                    if file.starts_with(&staticlib_prefix[..]) && file.ends_with(&staticpair.1) {
+                    if file.starts_with(&staticlib_prefix) && file.ends_with(&staticpair.1) {
                         staticlibs.push(CrateMismatch {
                             path: path.to_path_buf(),
                             got: "static".to_string(),
@@ -638,6 +638,34 @@ impl<'a> Context<'a> {
                                                          error,
                                                          lib.display()));
                 continue;
+            }
+
+            // Ok so at this point we've determined that `(lib, kind)` above is
+            // a candidate crate to load, and that `slot` is either none (this
+            // is the first crate of its kind) or if some the previous path has
+            // the exact same hash (e.g. it's the exact same crate).
+            //
+            // In principle these two candidate crates are exactly the same so
+            // we can choose either of them to link. As a stupidly gross hack,
+            // however, we favor crate in the sysroot.
+            //
+            // You can find more info in rust-lang/rust#39518 and various linked
+            // issues, but the general gist is that during testing libstd the
+            // compilers has two candidates to choose from: one in the sysroot
+            // and one in the deps folder. These two crates are the exact same
+            // crate but if the compiler chooses the one in the deps folder
+            // it'll cause spurious errors on Windows.
+            //
+            // As a result, we favor the sysroot crate here. Note that the
+            // candidates are all canonicalized, so we canonicalize the sysroot
+            // as well.
+            if let Some((ref prev, _)) = ret {
+                let sysroot = self.sess.sysroot();
+                let sysroot = sysroot.canonicalize()
+                                     .unwrap_or(sysroot.to_path_buf());
+                if prev.starts_with(&sysroot) {
+                    continue
+                }
             }
             *slot = Some((hash, metadata));
             ret = Some((lib, kind));

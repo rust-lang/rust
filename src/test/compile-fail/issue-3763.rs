@@ -25,13 +25,11 @@ fn main() {
     let _woohoo = (&my_struct).priv_field;
     //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private
 
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let _woohoo = (Box::new(my_struct)).priv_field;
     //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private
 
     (&my_struct).happyfun();               //~ ERROR method `happyfun` is private
 
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     (Box::new(my_struct)).happyfun();          //~ ERROR method `happyfun` is private
     let nope = my_struct.priv_field;
     //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private

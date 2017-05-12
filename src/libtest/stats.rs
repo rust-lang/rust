@@ -39,8 +39,10 @@ pub trait Stats {
     ///
     /// Note: this method sacrifices performance at the altar of accuracy
     /// Depends on IEEE-754 arithmetic guarantees. See proof of correctness at:
-    /// ["Adaptive Precision Floating-Point Arithmetic and Fast Robust Geometric Predicates"]
-    /// (http://www.cs.cmu.edu/~quake-papers/robust-arithmetic.ps)
+    /// ["Adaptive Precision Floating-Point Arithmetic and Fast Robust Geometric
+    /// Predicates"][paper]
+    ///
+    /// [paper]: http://www.cs.cmu.edu/~quake-papers/robust-arithmetic.ps
     fn sum(&self) -> f64;
 
     /// Minimum value of the samples.
@@ -120,7 +122,7 @@ pub trait Stats {
 }
 
 /// Extracted collection of all the summary statistics of a sample set.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Copy)]
 #[allow(missing_docs)]
 pub struct Summary {
     pub sum: f64,
@@ -264,8 +266,8 @@ impl Stats for [f64] {
         local_sort(&mut tmp);
         let first = 25f64;
         let a = percentile_of_sorted(&tmp, first);
-        let secound = 50f64;
-        let b = percentile_of_sorted(&tmp, secound);
+        let second = 50f64;
+        let b = percentile_of_sorted(&tmp, second);
         let third = 75f64;
         let c = percentile_of_sorted(&tmp, third);
         (a, b, c)
@@ -896,4 +898,7 @@ mod bench {
             v.sum();
         })
     }
+
+    #[bench]
+    pub fn no_iter(_: &mut Bencher) {}
 }

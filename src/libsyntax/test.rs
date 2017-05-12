@@ -31,6 +31,7 @@ use entry::{self, EntryPointType};
 use ext::base::{ExtCtxt, Resolver};
 use ext::build::AstBuilder;
 use ext::expand::ExpansionConfig;
+use ext::hygiene::{Mark, SyntaxContext};
 use fold::Folder;
 use util::move_map::MoveMap;
 use fold;
@@ -62,6 +63,7 @@ struct TestCtxt<'a> {
     testfns: Vec<Test>,
     reexport_test_harness_main: Option<Symbol>,
     is_test_crate: bool,
+    ctxt: SyntaxContext,
 
     // top-level re-export submodule, filled out after folding is finished
     toplevel_reexport: Option<Ident>,
@@ -195,7 +197,8 @@ impl fold::Folder for EntryPointCleaner {
                     let dead_code_str = Symbol::intern("dead_code");
                     let word_vec = vec![attr::mk_list_word_item(dead_code_str)];
                     let allow_dead_code_item = attr::mk_list_item(allow_str, word_vec);
-                    let allow_dead_code = attr::mk_attr_outer(attr::mk_attr_id(),
+                    let allow_dead_code = attr::mk_attr_outer(DUMMY_SP,
+                                                              attr::mk_attr_id(),
                                                               allow_dead_code_item);
 
                     ast::Item {
@@ -274,6 +277,7 @@ fn generate_test_harness(sess: &ParseSess,
     let mut cleaner = EntryPointCleaner { depth: 0 };
     let krate = cleaner.fold_crate(krate);
 
+    let mark = Mark::fresh();
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
         span_diagnostic: sd,
@@ -283,15 +287,16 @@ fn generate_test_harness(sess: &ParseSess,
         reexport_test_harness_main: reexport_test_harness_main,
         is_test_crate: is_test_crate(&krate),
         toplevel_reexport: None,
+        ctxt: SyntaxContext::empty().apply_mark(mark),
     };
     cx.ext_cx.crate_root = Some("std");
 
-    cx.ext_cx.bt_push(ExpnInfo {
+    mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
             format: MacroAttribute(Symbol::intern("test")),
             span: None,
-            allow_internal_unstable: false,
+            allow_internal_unstable: true,
         }
     });
 
@@ -306,18 +311,7 @@ fn generate_test_harness(sess: &ParseSess,
 /// call to codemap's is_internal check.
 /// The expanded code calls some unstable functions in the test crate.
 fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
-    let info = ExpnInfo {
-        call_site: sp,
-        callee: NameAndSpan {
-            format: MacroAttribute(Symbol::intern("test")),
-            span: None,
-            allow_internal_unstable: true,
-        }
-    };
-    let expn_id = cx.sess.codemap().record_expansion(info);
-    let mut sp = sp;
-    sp.expn_id = expn_id;
-    return sp;
+    Span { ctxt: cx.ctxt, ..sp }
 }
 
 #[derive(PartialEq)]
@@ -448,7 +442,7 @@ We're going to be building a module that looks more or less like:
 mod __test {
   extern crate test (name = "test", vers = "...");
   fn main() {
-    test::test_main_static(&::os::args()[], tests)
+    test::test_main_static(&::os::args()[], tests, test::Options::new())
   }
 
   static tests : &'static [test::TestDescAndFn] = &[
@@ -484,7 +478,7 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
     //        pub fn main() {
     //            #![main]
     //            use std::slice::AsSlice;
-    //            test::test_main_static(::std::os::args().as_slice(), TESTS);
+    //            test::test_main_static(::std::os::args().as_slice(), TESTS, test::Options::new());
     //        }
 
     let sp = ignored_span(cx, DUMMY_SP);
@@ -579,7 +573,7 @@ fn nospan<T>(t: T) -> codemap::Spanned<T> {
 fn path_node(ids: Vec<Ident>) -> ast::Path {
     ast::Path {
         span: DUMMY_SP,
-        segments: ids.into_iter().map(Into::into).collect(),
+        segments: ids.into_iter().map(|id| ast::PathSegment::from_ident(id, DUMMY_SP)).collect(),
     }
 }
 
@@ -615,7 +609,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
 
 fn is_test_crate(krate: &ast::Crate) -> bool {
     match attr::find_crate_name(&krate.attrs) {
-        Some(s) if "test" == &*s.as_str() => true,
+        Some(s) if "test" == s.as_str() => true,
         _ => false
     }
 }
@@ -628,7 +622,7 @@ fn mk_test_descs(cx: &TestCtxt) -> P<ast::Expr> {
         node: ast::ExprKind::AddrOf(ast::Mutability::Immutable,
             P(ast::Expr {
                 id: ast::DUMMY_NODE_ID,
-                node: ast::ExprKind::Vec(cx.testfns.iter().map(|test| {
+                node: ast::ExprKind::Array(cx.testfns.iter().map(|test| {
                     mk_test_desc_and_fn_rec(cx, test)
                 }).collect()),
                 span: DUMMY_SP,

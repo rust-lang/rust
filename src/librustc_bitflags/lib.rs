@@ -15,7 +15,7 @@
 #![crate_type = "rlib"]
 #![no_std]
 #![unstable(feature = "rustc_private", issue = "27812")]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 
 //! A typesafe bitmask flag generator.
 

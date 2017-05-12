@@ -16,6 +16,7 @@
 //! * The set of library features is disjoint from the set of language features
 //! * Library features have at most one stability level
 //! * Library features have at most one `since` value
+//! * All unstable lang features have tests to ensure they are actually unstable
 
 use std::collections::HashMap;
 use std::fmt;
@@ -23,9 +24,10 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
-#[derive(PartialEq)]
-enum Status {
+#[derive(Debug, PartialEq)]
+pub enum Status {
     Stable,
+    Removed,
     Unstable,
 }
 
@@ -34,97 +36,106 @@ impl fmt::Display for Status {
         let as_str = match *self {
             Status::Stable => "stable",
             Status::Unstable => "unstable",
+            Status::Removed => "removed",
         };
         fmt::Display::fmt(as_str, f)
     }
 }
 
-
-struct Feature {
-    name: String,
-    level: Status,
-    since: String,
-}
-
-struct LibFeature {
-    level: Status,
-    since: String,
+#[derive(Debug)]
+pub struct Feature {
+    pub level: Status,
+    pub since: String,
+    pub has_gate_test: bool,
 }
 
 pub fn check(path: &Path, bad: &mut bool) {
-    let features = collect_lang_features(&path.join("libsyntax/feature_gate.rs"));
+    let mut features = collect_lang_features(path);
     assert!(!features.is_empty());
-    let mut lib_features = HashMap::<String, LibFeature>::new();
+
+    let lib_features = collect_lib_features(path, bad, &features);
+    assert!(!lib_features.is_empty());
 
     let mut contents = String::new();
-    super::walk(path,
-                &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
-                &mut |file| {
+
+    super::walk_many(&[&path.join("test/compile-fail"),
+                       &path.join("test/compile-fail-fulldeps"),
+                       &path.join("test/parse-fail"),],
+                     &mut |path| super::filter_dirs(path),
+                     &mut |file| {
         let filename = file.file_name().unwrap().to_string_lossy();
         if !filename.ends_with(".rs") || filename == "features.rs" ||
            filename == "diagnostic_list.rs" {
             return;
         }
 
+        let filen_underscore = filename.replace("-","_").replace(".rs","");
+        test_filen_gate(&filen_underscore, &mut features);
+
         contents.truncate(0);
         t!(t!(File::open(&file), &file).read_to_string(&mut contents));
 
         for (i, line) in contents.lines().enumerate() {
             let mut err = |msg: &str| {
-                println!("{}:{}: {}", file.display(), i + 1, msg);
-                *bad = true;
-            };
-            let level = if line.contains("[unstable(") {
-                Status::Unstable
-            } else if line.contains("[stable(") {
-                Status::Stable
-            } else {
-                continue;
-            };
-            let feature_name = match find_attr_val(line, "feature") {
-                Some(name) => name,
-                None => {
-                    err("malformed stability attribute");
-                    continue;
-                }
-            };
-            let since = match find_attr_val(line, "since") {
-                Some(name) => name,
-                None if level == Status::Stable => {
-                    err("malformed stability attribute");
-                    continue;
-                }
-                None => "None",
+                tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
 
-            if features.iter().any(|f| f.name == feature_name) {
-                err("duplicating a lang feature");
-            }
-            if let Some(ref s) = lib_features.get(feature_name) {
-                if s.level != level {
-                    err("different stability level than before");
-                }
-                if s.since != since {
-                    err("different `since` than before");
-                }
+            let gate_test_str = "gate-test-";
+
+            if !line.contains(gate_test_str) {
                 continue;
             }
-            lib_features.insert(feature_name.to_owned(),
-                                LibFeature {
-                                    level: level,
-                                    since: since.to_owned(),
-                                });
+
+            let feature_name = match line.find(gate_test_str) {
+                Some(i) => {
+                    &line[i+gate_test_str.len()..line[i+1..].find(' ').unwrap_or(line.len())]
+                },
+                None => continue,
+            };
+            let found_feature = features.get_mut(feature_name)
+                                        .map(|v| { v.has_gate_test = true; () })
+                                        .is_some();
+
+            let found_lib_feature = features.get_mut(feature_name)
+                                            .map(|v| { v.has_gate_test = true; () })
+                                            .is_some();
+
+            if !(found_feature || found_lib_feature) {
+                err(&format!("gate-test test found referencing a nonexistent feature '{}'",
+                             feature_name));
+            }
         }
     });
+
+    // Only check the number of lang features.
+    // Obligatory testing for library features is dumb.
+    let gate_untested = features.iter()
+                                .filter(|&(_, f)| f.level == Status::Unstable)
+                                .filter(|&(_, f)| !f.has_gate_test)
+                                .collect::<Vec<_>>();
+
+    for &(name, _) in gate_untested.iter() {
+        println!("Expected a gate test for the feature '{}'.", name);
+        println!("Hint: create a file named 'feature-gate-{}.rs' in the compile-fail\
+                \n      test suite, with its failures due to missing usage of\
+                \n      #![feature({})].", name, name);
+        println!("Hint: If you already have such a test and don't want to rename it,\
+                \n      you can also add a // gate-test-{} line to the test file.",
+                 name);
+    }
+
+    if gate_untested.len() > 0 {
+        tidy_error!(bad, "Found {} features without a gate test.", gate_untested.len());
+    }
 
     if *bad {
         return;
     }
 
     let mut lines = Vec::new();
-    for feature in features {
+    for (name, feature) in features.iter() {
         lines.push(format!("{:<32} {:<8} {:<12} {:<8}",
-                           feature.name,
+                           name,
                            "lang",
                            feature.level,
                            feature.since));
@@ -150,8 +161,22 @@ fn find_attr_val<'a>(line: &'a str, attr: &str) -> Option<&'a str> {
         .map(|(i, j)| &line[i..j])
 }
 
-fn collect_lang_features(path: &Path) -> Vec<Feature> {
+fn test_filen_gate(filen_underscore: &str,
+                   features: &mut HashMap<String, Feature>) -> bool {
+    if filen_underscore.starts_with("feature_gate") {
+        for (n, f) in features.iter_mut() {
+            if filen_underscore == format!("feature_gate_{}", n) {
+                f.has_gate_test = true;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+pub fn collect_lang_features(base_src_path: &Path) -> HashMap<String, Feature> {
     let mut contents = String::new();
+    let path = base_src_path.join("libsyntax/feature_gate.rs");
     t!(t!(File::open(path)).read_to_string(&mut contents));
 
     contents.lines()
@@ -159,17 +184,85 @@ fn collect_lang_features(path: &Path) -> Vec<Feature> {
             let mut parts = line.trim().split(",");
             let level = match parts.next().map(|l| l.trim().trim_left_matches('(')) {
                 Some("active") => Status::Unstable,
-                Some("removed") => Status::Unstable,
+                Some("removed") => Status::Removed,
                 Some("accepted") => Status::Stable,
                 _ => return None,
             };
             let name = parts.next().unwrap().trim();
             let since = parts.next().unwrap().trim().trim_matches('"');
-            Some(Feature {
-                name: name.to_owned(),
-                level: level,
-                since: since.to_owned(),
-            })
+            Some((name.to_owned(),
+                Feature {
+                    level: level,
+                    since: since.to_owned(),
+                    has_gate_test: false,
+                }))
         })
         .collect()
+}
+
+pub fn collect_lib_features(base_src_path: &Path,
+                            bad: &mut bool,
+                            features: &HashMap<String, Feature>) -> HashMap<String, Feature> {
+    let mut lib_features = HashMap::<String, Feature>::new();
+    let mut contents = String::new();
+    super::walk(base_src_path,
+                &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
+                &mut |file| {
+        let filename = file.file_name().unwrap().to_string_lossy();
+        if !filename.ends_with(".rs") || filename == "features.rs" ||
+           filename == "diagnostic_list.rs" {
+            return;
+        }
+
+        contents.truncate(0);
+        t!(t!(File::open(&file), &file).read_to_string(&mut contents));
+
+        for (i, line) in contents.lines().enumerate() {
+            let mut err = |msg: &str| {
+                tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
+            };
+            let level = if line.contains("[unstable(") {
+                Status::Unstable
+            } else if line.contains("[stable(") {
+                Status::Stable
+            } else {
+                continue;
+            };
+            let feature_name = match find_attr_val(line, "feature") {
+                Some(name) => name,
+                None => {
+                    err("malformed stability attribute");
+                    continue;
+                }
+            };
+            let since = match find_attr_val(line, "since") {
+                Some(name) => name,
+                None if level == Status::Stable => {
+                    err("malformed stability attribute");
+                    continue;
+                }
+                None => "None",
+            };
+
+            if features.contains_key(feature_name) {
+                err("duplicating a lang feature");
+            }
+            if let Some(ref s) = lib_features.get(feature_name) {
+                if s.level != level {
+                    err("different stability level than before");
+                }
+                if s.since != since {
+                    err("different `since` than before");
+                }
+                continue;
+            }
+            lib_features.insert(feature_name.to_owned(),
+                                Feature {
+                                    level: level,
+                                    since: since.to_owned(),
+                                    has_gate_test: false,
+                                });
+        }
+    });
+    lib_features
 }

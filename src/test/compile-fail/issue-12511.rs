@@ -9,11 +9,14 @@
 // except according to those terms.
 
 trait t1 : t2 {
-//~^ ERROR: unsupported cyclic reference between types/traits detected
+//~^ NOTE the cycle begins when computing the supertraits of `t1`...
+//~| NOTE ...which then requires computing the supertraits of `t2`...
 }
 
 trait t2 : t1 {
-//~^ ERROR: unsupported cyclic reference between types/traits detected
+//~^ ERROR unsupported cyclic reference between types/traits detected
+//~| cyclic reference
+//~| NOTE ...which then again requires computing the supertraits of `t1`, completing the cycle
 }
 
 fn main() { }

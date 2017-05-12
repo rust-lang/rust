@@ -9,5 +9,6 @@
 // except according to those terms.
 
 trait Tr {}
-type Huh<T> where T: Tr = isize; //~ ERROR type parameter `T` is unused
+type Huh<T> where T: Tr = isize; //~  ERROR type parameter `T` is unused
+                                 //~| WARNING E0122
 fn main() {}

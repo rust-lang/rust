@@ -10,12 +10,13 @@
 
 use ffi::CStr;
 use io;
-use libc::{self, c_int, size_t, sockaddr, socklen_t, EAI_SYSTEM};
+use libc::{self, c_int, c_void, size_t, sockaddr, socklen_t, EAI_SYSTEM, MSG_PEEK};
+use mem;
 use net::{SocketAddr, Shutdown};
 use str;
 use sys::fd::FileDesc;
 use sys_common::{AsInner, FromInner, IntoInner};
-use sys_common::net::{getsockopt, setsockopt};
+use sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
 use time::Duration;
 
 pub use sys::{cvt, cvt_r};
@@ -155,8 +156,46 @@ impl Socket {
         self.0.duplicate().map(Socket)
     }
 
+    fn recv_with_flags(&self, buf: &mut [u8], flags: c_int) -> io::Result<usize> {
+        let ret = cvt(unsafe {
+            libc::recv(self.0.raw(),
+                       buf.as_mut_ptr() as *mut c_void,
+                       buf.len(),
+                       flags)
+        })?;
+        Ok(ret as usize)
+    }
+
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        self.0.read(buf)
+        self.recv_with_flags(buf, 0)
+    }
+
+    pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
+        self.recv_with_flags(buf, MSG_PEEK)
+    }
+
+    fn recv_from_with_flags(&self, buf: &mut [u8], flags: c_int)
+                            -> io::Result<(usize, SocketAddr)> {
+        let mut storage: libc::sockaddr_storage = unsafe { mem::zeroed() };
+        let mut addrlen = mem::size_of_val(&storage) as libc::socklen_t;
+
+        let n = cvt(unsafe {
+            libc::recvfrom(self.0.raw(),
+                        buf.as_mut_ptr() as *mut c_void,
+                        buf.len(),
+                        flags,
+                        &mut storage as *mut _ as *mut _,
+                        &mut addrlen)
+        })?;
+        Ok((n as usize, sockaddr_to_addr(&storage, addrlen as usize)?))
+    }
+
+    pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
+        self.recv_from_with_flags(buf, 0)
+    }
+
+    pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
+        self.recv_from_with_flags(buf, MSG_PEEK)
     }
 
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {

@@ -10,6 +10,5 @@
 
 fn main() {
     fn f(a: [u8; u32::DOESNOTEXIST]) {}
-    //~^ ERROR constant evaluation error
-    //~| unresolved path in constant expression
+    //~^ ERROR no associated item named `DOESNOTEXIST` found for type `u32`
 }

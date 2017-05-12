@@ -12,7 +12,6 @@
 // and rejected.
 
 fn main() {
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     (|| Box::new(*(&[0][..])))();
     //~^ ERROR `[{integer}]: std::marker::Sized` is not satisfied
 }

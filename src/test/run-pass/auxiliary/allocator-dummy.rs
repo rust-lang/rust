@@ -28,6 +28,11 @@ pub extern fn __rust_allocate(size: usize, align: usize) -> *mut u8 {
 }
 
 #[no_mangle]
+pub extern fn __rust_allocate_zeroed(size: usize, _align: usize) -> *mut u8 {
+    unsafe { libc::calloc(size as libc::size_t, 1) as *mut u8 }
+}
+
+#[no_mangle]
 pub extern fn __rust_deallocate(ptr: *mut u8, old_size: usize, align: usize) {
     unsafe {
         HITS += 1;

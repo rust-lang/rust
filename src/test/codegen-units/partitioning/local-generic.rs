@@ -16,10 +16,10 @@
 #![allow(dead_code)]
 #![crate_type="lib"]
 
-//~ TRANS_ITEM fn local_generic::generic[0]<u32> @@ local_generic[Internal]
-//~ TRANS_ITEM fn local_generic::generic[0]<u64> @@ local_generic-mod1[Internal]
-//~ TRANS_ITEM fn local_generic::generic[0]<char> @@ local_generic-mod1-mod1[Internal]
-//~ TRANS_ITEM fn local_generic::generic[0]<&str> @@ local_generic-mod2[Internal]
+//~ TRANS_ITEM fn local_generic::generic[0]<u32> @@ local_generic.volatile[External]
+//~ TRANS_ITEM fn local_generic::generic[0]<u64> @@ local_generic.volatile[External]
+//~ TRANS_ITEM fn local_generic::generic[0]<char> @@ local_generic.volatile[External]
+//~ TRANS_ITEM fn local_generic::generic[0]<&str> @@ local_generic.volatile[External]
 pub fn generic<T>(x: T) -> T { x }
 
 //~ TRANS_ITEM fn local_generic::user[0] @@ local_generic[External]

@@ -10,7 +10,6 @@
 
 // aux-build:pub_restricted.rs
 
-#![feature(pub_restricted)]
 #![deny(private_in_public)]
 #![allow(warnings)]
 extern crate pub_restricted;
@@ -57,6 +56,6 @@ fn main() {
 }
 
 mod pathological {
-    pub(bad::path) mod m1 {} //~ ERROR failed to resolve. Maybe a missing `extern crate bad;`?
-    pub(foo) mod m2 {} //~ ERROR visibilities can only be restricted to ancestor modules
+    pub(in bad::path) mod m1 {} //~ ERROR failed to resolve. Maybe a missing `extern crate bad;`?
+    pub(in foo) mod m2 {} //~ ERROR visibilities can only be restricted to ancestor modules
 }

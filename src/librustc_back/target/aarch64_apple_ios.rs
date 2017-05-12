@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use LinkerFlavor;
 use target::{Target, TargetOptions, TargetResult};
 use super::apple_ios_base::{opts, Arch};
 
@@ -22,6 +23,7 @@ pub fn target() -> TargetResult {
         target_os: "ios".to_string(),
         target_env: "".to_string(),
         target_vendor: "apple".to_string(),
+        linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
             features: "+neon,+fp-armv8,+cyclone".to_string(),
             eliminate_frame_pointer: false,

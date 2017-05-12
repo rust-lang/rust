@@ -83,6 +83,11 @@ impl Buf {
         self.inner.reserve_exact(additional)
     }
 
+    #[inline]
+    pub fn shrink_to_fit(&mut self) {
+        self.inner.shrink_to_fit()
+    }
+
     pub fn as_slice(&self) -> &Slice {
         unsafe { mem::transmute(&*self.inner) }
     }
@@ -93,6 +98,17 @@ impl Buf {
 
     pub fn push_slice(&mut self, s: &Slice) {
         self.inner.extend_from_slice(&s.inner)
+    }
+
+    #[inline]
+    pub fn into_box(self) -> Box<Slice> {
+        unsafe { mem::transmute(self.inner.into_boxed_slice()) }
+    }
+
+    #[inline]
+    pub fn from_box(boxed: Box<Slice>) -> Buf {
+        let inner: Box<[u8]> = unsafe { mem::transmute(boxed) };
+        Buf { inner: inner.into_vec() }
     }
 }
 
@@ -115,5 +131,16 @@ impl Slice {
 
     pub fn to_owned(&self) -> Buf {
         Buf { inner: self.inner.to_vec() }
+    }
+
+    #[inline]
+    pub fn into_box(&self) -> Box<Slice> {
+        let boxed: Box<[u8]> = self.inner.into();
+        unsafe { mem::transmute(boxed) }
+    }
+
+    pub fn empty_box() -> Box<Slice> {
+        let boxed: Box<[u8]> = Default::default();
+        unsafe { mem::transmute(boxed) }
     }
 }

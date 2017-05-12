@@ -17,7 +17,6 @@ use llvm::{ValueRef, ContextRef, TypeKind};
 use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
-use rustc::util::common::MemoizationMap;
 use middle::lang_items::LangItem;
 use base;
 use builder::Builder;
@@ -28,54 +27,44 @@ use monomorphize;
 use type_::Type;
 use value::Value;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::Layout;
-use rustc::traits::{self, SelectionContext, Reveal};
+use rustc::ty::layout::{Layout, LayoutTyper};
+use rustc::ty::subst::{Subst, Substs};
 use rustc::hir;
 
 use libc::{c_uint, c_char};
-use std::borrow::Cow;
 use std::iter;
 
-use syntax::ast;
+use syntax::attr;
 use syntax::symbol::InternedString;
 use syntax_pos::Span;
-
-use rustc_i128::u128;
 
 pub use context::{CrateContext, SharedCrateContext};
 
 pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.sty {
-        ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
-        ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
-        ty::TyBox(ty) => {
-            !ccx.shared().type_is_sized(ty)
-        }
-        _ => {
-            false
-        }
+    if let Layout::FatPointer { .. } = *ccx.layout_of(ty) {
+        true
+    } else {
+        false
     }
 }
 
 pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    use machine::llsize_of_alloc;
-    use type_of::sizing_type_of;
+    let layout = ccx.layout_of(ty);
+    match *layout {
+        Layout::CEnum { .. } |
+        Layout::Scalar { .. } |
+        Layout::Vector { .. } => true,
 
-    let simple = ty.is_scalar() ||
-        ty.is_unique() || ty.is_region_ptr() ||
-        ty.is_simd();
-    if simple && !type_is_fat_ptr(ccx, ty) {
-        return true;
-    }
-    if !ccx.shared().type_is_sized(ty) {
-        return false;
-    }
-    match ty.sty {
-        ty::TyAdt(..) | ty::TyTuple(..) | ty::TyArray(..) | ty::TyClosure(..) => {
-            let llty = sizing_type_of(ccx, ty);
-            llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type())
+        Layout::FatPointer { .. } => false,
+
+        Layout::Array { .. } |
+        Layout::Univariant { .. } |
+        Layout::General { .. } |
+        Layout::UntaggedUnion { .. } |
+        Layout::RawNullablePointer { .. } |
+        Layout::StructWrappedNullablePointer { .. } => {
+            !layout.is_unsized() && layout.size(ccx).bytes() == 0
         }
-        _ => type_is_zero_size(ccx, ty)
     }
 }
 
@@ -102,7 +91,7 @@ pub fn type_pair_fields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
                 }
             }))
         }
-        ty::TyTuple(tys) => {
+        ty::TyTuple(tys, _) => {
             if tys.len() != 2 {
                 return None;
             }
@@ -136,10 +125,8 @@ pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
 
 /// Identify types which have size zero at runtime.
 pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    use machine::llsize_of_alloc;
-    use type_of::sizing_type_of;
-    let llty = sizing_type_of(ccx, ty);
-    llsize_of_alloc(ccx, llty) == 0
+    let layout = ccx.layout_of(ty);
+    !layout.is_unsized() && layout.size(ccx).bytes() == 0
 }
 
 /*
@@ -238,14 +225,10 @@ pub fn C_integral(t: Type, u: u64, sign_extend: bool) -> ValueRef {
     }
 }
 
-pub fn C_big_integral(t: Type, u: u128, sign_extend: bool) -> ValueRef {
-    if ::std::mem::size_of::<u128>() == 16 {
-        unsafe {
-            llvm::LLVMConstIntOfArbitraryPrecision(t.to_ref(), 2, &u as *const u128 as *const u64)
-        }
-    } else {
-        // SNAP: remove after snapshot
-        C_integral(t, u as u64, sign_extend)
+pub fn C_big_integral(t: Type, u: u128) -> ValueRef {
+    unsafe {
+        let words = [u as u64, u.wrapping_shr(64) as u64];
+        llvm::LLVMConstIntOfArbitraryPrecision(t.to_ref(), 2, words.as_ptr())
     }
 }
 
@@ -405,13 +388,6 @@ fn is_const_integral(v: ValueRef) -> bool {
 }
 
 #[inline]
-#[cfg(stage0)]
-fn hi_lo_to_u128(lo: u64, _: u64) -> u128 {
-    lo as u128
-}
-
-#[inline]
-#[cfg(not(stage0))]
 fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {
     ((hi as u128) << 64) | (lo as u128)
 }
@@ -444,73 +420,6 @@ pub fn is_null(val: ValueRef) -> bool {
     unsafe {
         llvm::LLVMIsNull(val) != False
     }
-}
-
-/// Attempts to resolve an obligation. The result is a shallow vtable resolution -- meaning that we
-/// do not (necessarily) resolve all nested obligations on the impl. Note that type check should
-/// guarantee to us that all nested obligations *could be* resolved if we wanted to.
-pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
-                                    span: Span,
-                                    trait_ref: ty::PolyTraitRef<'tcx>)
-                                    -> traits::Vtable<'tcx, ()>
-{
-    let tcx = scx.tcx();
-
-    // Remove any references to regions; this helps improve caching.
-    let trait_ref = tcx.erase_regions(&trait_ref);
-
-    scx.trait_cache().memoize(trait_ref, || {
-        debug!("trans::fulfill_obligation(trait_ref={:?}, def_id={:?})",
-               trait_ref, trait_ref.def_id());
-
-        // Do the initial selection for the obligation. This yields the
-        // shallow result we are looking for -- that is, what specific impl.
-        tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
-            let mut selcx = SelectionContext::new(&infcx);
-
-            let obligation_cause = traits::ObligationCause::misc(span,
-                                                             ast::DUMMY_NODE_ID);
-            let obligation = traits::Obligation::new(obligation_cause,
-                                                     trait_ref.to_poly_trait_predicate());
-
-            let selection = match selcx.select(&obligation) {
-                Ok(Some(selection)) => selection,
-                Ok(None) => {
-                    // Ambiguity can happen when monomorphizing during trans
-                    // expands to some humongo type that never occurred
-                    // statically -- this humongo type can then overflow,
-                    // leading to an ambiguous result. So report this as an
-                    // overflow bug, since I believe this is the only case
-                    // where ambiguity can result.
-                    debug!("Encountered ambiguity selecting `{:?}` during trans, \
-                            presuming due to overflow",
-                           trait_ref);
-                    tcx.sess.span_fatal(span,
-                        "reached the recursion limit during monomorphization \
-                         (selection ambiguity)");
-                }
-                Err(e) => {
-                    span_bug!(span, "Encountered error `{:?}` selecting `{:?}` during trans",
-                              e, trait_ref)
-                }
-            };
-
-            debug!("fulfill_obligation: selection={:?}", selection);
-
-            // Currently, we use a fulfillment context to completely resolve
-            // all nested obligations. This is because they can inform the
-            // inference of the impl's type parameters.
-            let mut fulfill_cx = traits::FulfillmentContext::new();
-            let vtable = selection.map(|predicate| {
-                debug!("fulfill_obligation: register_predicate_obligation {:?}", predicate);
-                fulfill_cx.register_predicate_obligation(&infcx, predicate);
-            });
-            let vtable = infcx.drain_fulfillment_cx_or_panic(span, &mut fulfill_cx, &vtable);
-
-            info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
-            vtable
-        })
-    })
 }
 
 pub fn langcall(tcx: TyCtxt,
@@ -590,17 +499,17 @@ pub fn shift_mask_val<'a, 'tcx>(
     }
 }
 
-pub fn ty_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                          ty: Ty<'tcx>)
-                          -> Cow<'tcx, ty::BareFnTy<'tcx>>
+pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                           ty: Ty<'tcx>)
+                           -> ty::PolyFnSig<'tcx>
 {
     match ty.sty {
-        ty::TyFnDef(_, _, fty) => Cow::Borrowed(fty),
+        ty::TyFnDef(_, _, sig) => sig,
         // Shims currently have type TyFnPtr. Not sure this should remain.
-        ty::TyFnPtr(fty) => Cow::Borrowed(fty),
+        ty::TyFnPtr(sig) => sig,
         ty::TyClosure(def_id, substs) => {
             let tcx = ccx.tcx();
-            let ty::ClosureTy { unsafety, abi, sig } = tcx.closure_type(def_id, substs);
+            let sig = tcx.closure_type(def_id).subst(tcx, substs.substs);
 
             let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
             let env_ty = match tcx.closure_kind(def_id) {
@@ -609,17 +518,60 @@ pub fn ty_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 ty::ClosureKind::FnOnce => ty,
             };
 
-            let sig = sig.map_bound(|sig| tcx.mk_fn_sig(
+            sig.map_bound(|sig| tcx.mk_fn_sig(
                 iter::once(env_ty).chain(sig.inputs().iter().cloned()),
                 sig.output(),
-                sig.variadic
-            ));
-            Cow::Owned(ty::BareFnTy { unsafety: unsafety, abi: abi, sig: sig })
+                sig.variadic,
+                sig.unsafety,
+                sig.abi
+            ))
         }
         _ => bug!("unexpected type {:?} to ty_fn_sig", ty)
     }
 }
 
-pub fn is_closure(tcx: TyCtxt, def_id: DefId) -> bool {
-    tcx.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
+pub fn requests_inline<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    instance: &ty::Instance<'tcx>
+) -> bool {
+    if is_inline_instance(tcx, instance) {
+        return true
+    }
+    attr::requests_inline(&instance.def.attrs(tcx)[..])
+}
+
+pub fn is_inline_instance<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    instance: &ty::Instance<'tcx>
+) -> bool {
+    let def_id = match instance.def {
+        ty::InstanceDef::Item(def_id) => def_id,
+        ty::InstanceDef::DropGlue(_, Some(_)) => return false,
+        _ => return true
+    };
+    match tcx.def_key(def_id).disambiguated_data.data {
+        DefPathData::StructCtor |
+        DefPathData::EnumVariant(..) |
+        DefPathData::ClosureExpr => true,
+        _ => false
+    }
+}
+
+/// Given a DefId and some Substs, produces the monomorphic item type.
+pub fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
+                        def_id: DefId,
+                        substs: &'tcx Substs<'tcx>)
+                        -> Ty<'tcx>
+{
+    let ty = shared.tcx().type_of(def_id);
+    shared.tcx().trans_apply_param_substs(substs, &ty)
+}
+
+/// Return the substituted type of an instance.
+pub fn instance_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
+                             instance: &ty::Instance<'tcx>)
+                             -> Ty<'tcx>
+{
+    let ty = instance.def.def_ty(shared.tcx());
+    shared.tcx().trans_apply_param_substs(instance.substs, &ty)
 }

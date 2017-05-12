@@ -21,14 +21,21 @@
 //! This functionality is intended to be expanded over time as more surface
 //! area for macro authors is stabilized.
 //!
-//! See [the book](../../book/procedural-macros.html) for more.
+//! See [the book](../book/procedural-macros.html) for more.
 
 #![crate_name = "proc_macro"]
 #![stable(feature = "proc_macro_lib", since = "1.15.0")]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 #![deny(missing_docs)]
+#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+       html_root_url = "https://doc.rust-lang.org/nightly/",
+       html_playground_url = "https://play.rust-lang.org/",
+       issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
+       test(no_crate_inject, attr(deny(warnings))),
+       test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -39,9 +46,9 @@ extern crate syntax;
 use std::fmt;
 use std::str::FromStr;
 
-use syntax::ast;
+use syntax::errors::DiagnosticBuilder;
 use syntax::parse;
-use syntax::ptr::P;
+use syntax::tokenstream::TokenStream as TokenStream_;
 
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens.
@@ -54,7 +61,7 @@ use syntax::ptr::P;
 /// time!
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 pub struct TokenStream {
-    inner: Vec<P<ast::Item>>,
+    inner: TokenStream_,
 }
 
 /// Error returned from `TokenStream::from_str`.
@@ -77,17 +84,42 @@ pub struct LexError {
 #[doc(hidden)]
 pub mod __internal {
     use std::cell::Cell;
+    use std::rc::Rc;
 
     use syntax::ast;
     use syntax::ptr::P;
-    use syntax::parse::ParseSess;
-    use super::TokenStream;
+    use syntax::parse::{self, token, ParseSess};
+    use syntax::tokenstream::{TokenTree, TokenStream as TokenStream_};
+
+    use super::{TokenStream, LexError};
 
     pub fn new_token_stream(item: P<ast::Item>) -> TokenStream {
-        TokenStream { inner: vec![item] }
+        TokenStream {
+            inner: TokenTree::Token(item.span, token::Interpolated(Rc::new(token::NtItem(item))))
+                .into()
+        }
     }
 
-    pub fn token_stream_items(stream: TokenStream) -> Vec<P<ast::Item>> {
+    pub fn token_stream_wrap(inner: TokenStream_) -> TokenStream {
+        TokenStream {
+            inner: inner
+        }
+    }
+
+    pub fn token_stream_parse_items(stream: TokenStream) -> Result<Vec<P<ast::Item>>, LexError> {
+        with_parse_sess(move |sess| {
+            let mut parser = parse::stream_to_parser(sess, stream.inner);
+            let mut items = Vec::new();
+
+            while let Some(item) = try!(parser.parse_item().map_err(super::parse_to_lex_err)) {
+                items.push(item)
+            }
+
+            Ok(items)
+        })
+    }
+
+    pub fn token_stream_inner(stream: TokenStream) -> TokenStream_ {
         stream.inner
     }
 
@@ -96,6 +128,14 @@ pub mod __internal {
                                   trait_name: &str,
                                   expand: fn(TokenStream) -> TokenStream,
                                   attributes: &[&'static str]);
+
+        fn register_attr_proc_macro(&mut self,
+                                    name: &str,
+                                    expand: fn(TokenStream, TokenStream) -> TokenStream);
+
+        fn register_bang_proc_macro(&mut self,
+                                    name: &str,
+                                    expand: fn(TokenStream) -> TokenStream);
     }
 
     // Emulate scoped_thread_local!() here essentially
@@ -125,9 +165,15 @@ pub mod __internal {
         where F: FnOnce(&ParseSess) -> R
     {
         let p = CURRENT_SESS.with(|p| p.get());
-        assert!(!p.is_null());
+        assert!(!p.is_null(), "proc_macro::__internal::with_parse_sess() called \
+                               before set_parse_sess()!");
         f(unsafe { &*p })
     }
+}
+
+fn parse_to_lex_err(mut err: DiagnosticBuilder) -> LexError {
+    err.cancel();
+    LexError { _inner: () }
 }
 
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
@@ -138,18 +184,8 @@ impl FromStr for TokenStream {
         __internal::with_parse_sess(|sess| {
             let src = src.to_string();
             let name = "<proc-macro source code>".to_string();
-            let mut parser = parse::new_parser_from_source_str(sess, name, src);
-            let mut ret = TokenStream { inner: Vec::new() };
-            loop {
-                match parser.parse_item() {
-                    Ok(Some(item)) => ret.inner.push(item),
-                    Ok(None) => return Ok(ret),
-                    Err(mut err) => {
-                        err.cancel();
-                        return Err(LexError { _inner: () })
-                    }
-                }
-            }
+            let stream = parse::parse_stream_from_source_str(name, src, sess);
+            Ok(__internal::token_stream_wrap(stream))
         })
     }
 }
@@ -157,11 +193,6 @@ impl FromStr for TokenStream {
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl fmt::Display for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for item in self.inner.iter() {
-            let item = syntax::print::pprust::item_to_string(item);
-            try!(f.write_str(&item));
-            try!(f.write_str("\n"));
-        }
-        Ok(())
+        self.inner.fmt(f)
     }
 }

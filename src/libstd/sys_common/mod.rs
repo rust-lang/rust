@@ -29,7 +29,7 @@ use sync::Once;
 use sys;
 
 pub mod at_exit_imp;
-#[cfg(any(not(cargobuild), feature = "backtrace"))]
+#[cfg(feature = "backtrace")]
 pub mod backtrace;
 pub mod condvar;
 pub mod io;
@@ -50,7 +50,7 @@ pub use sys::net;
 #[cfg(not(target_os = "redox"))]
 pub mod net;
 
-#[cfg(any(not(cargobuild), feature = "backtrace"))]
+#[cfg(feature = "backtrace")]
 #[cfg(any(all(unix, not(any(target_os = "macos", target_os = "ios", target_os = "emscripten"))),
           all(windows, target_env = "gnu")))]
 pub mod gnu;

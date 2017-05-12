@@ -89,7 +89,7 @@ h2 {
 h3 {
 	font-size: 1.3em;
 }
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	font-weight: 500;
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
@@ -99,10 +99,10 @@ h1.fqn {
 	margin-top: 0;
 	position: relative;
 }
-h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
+h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	border-bottom: 1px solid;
 }
-h3.impl, h3.method, h4.method, h3.type, h4.type {
+h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
 	font-weight: 600;
 	margin-top: 10px;
 	margin-bottom: 10px;
@@ -141,7 +141,7 @@ pre {
 	padding: 14px;
 }
 
-.source pre {
+.source .content pre {
 	padding: 20px;
 }
 
@@ -149,7 +149,7 @@ img {
 	max-width: 100%;
 }
 
-.content.source {
+.source .content {
 	margin-top: 50px;
 	max-width: none;
 	overflow: visible;
@@ -170,6 +170,10 @@ nav.sub {
 	min-height: 100%;
 }
 
+.sidebar .current {
+	margin-right: -20px;
+}
+
 .content, nav { max-width: 960px; }
 
 /* Everything else */
@@ -185,9 +189,14 @@ nav.sub {
 }
 
 .sidebar .location {
+	border: 1px solid;
 	font-size: 17px;
 	margin: 30px 0 20px 0;
 	text-align: center;
+}
+
+.location:empty {
+	border: none;
 }
 
 .location a:first-child { font-weight: 500; }
@@ -222,7 +231,7 @@ nav.sub {
 	padding: 15px 0;
 }
 
-.content.source pre.rust {
+.source .content pre.rust {
 	white-space: pre;
 	overflow: auto;
 	padding-left: 0;
@@ -368,13 +377,7 @@ h4 > code, h3 > code, .invisible > code {
 .content .method .where,
 .content .fn .where,
 .content .where.fmt-newline {
-    display: block;
-}
-/* Bit of whitespace to indent it */
-.content .method .where::before,
-.content .fn .where::before,
-.content .where.fmt-newline::before {
-    content: '  ';
+	display: block;
 }
 
 .content .methods > div { margin-left: 40px; }
@@ -382,17 +385,12 @@ h4 > code, h3 > code, .invisible > code {
 .content .impl-items .docblock, .content .impl-items .stability {
 	margin-left: 40px;
 }
-.content .impl-items .method, .content .impl-items > .type {
+.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
 	margin-left: 20px;
 }
 
 .content .stability code {
 	font-size: 90%;
-}
-
-/* Shift where in trait listing down a line */
-pre.trait .where::before {
-	content: '\a         ';
 }
 
 nav {
@@ -497,17 +495,15 @@ body.blur > :not(#help) {
 }
 #help > div {
 	flex: 0 0 auto;
-	background: #e9e9e9;
 	box-shadow: 0 0 6px rgba(0,0,0,.2);
 	width: 550px;
 	height: 330px;
-	border: 1px solid #bfbfbf;
+	border: 1px solid;
 }
 #help dt {
 	float: left;
 	border-radius: 4px;
-	border: 1px solid #bfbfbf;
-	background: #fff;
+	border: 1px solid;
 	width: 23px;
 	text-align: center;
 	clear: left;
@@ -535,6 +531,14 @@ body.blur > :not(#help) {
 	display: inline;
 }
 
+.stab summary {
+	display: list-item;
+}
+
+.stab .microscope {
+	font-size: 1.5em;
+}
+
 .module-item .stab {
 	display: inline;
 	border-width: 0;
@@ -550,7 +554,6 @@ body.blur > :not(#help) {
 .since {
 	font-weight: normal;
 	font-size: initial;
-	color: grey;
 	position: absolute;
 	right: 0;
 	top: 0;
@@ -572,24 +575,12 @@ td.summary-column {
 	padding-right: 0px;
 }
 
-.line-numbers :target { background-color: transparent; }
-
-/* Code highlighting */
-pre.rust .kw { color: #8959A8; }
-pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }
-pre.rust .number, pre.rust .string { color: #718C00; }
-pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val,
-pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
-pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
-pre.rust .lifetime { color: #B76514; }
 pre.rust .question-mark {
-	color: #ff9011;
 	font-weight: bold;
 }
 
 pre.rust { position: relative; }
 a.test-arrow {
-	background-color: rgba(78, 139, 202, 0.2);
 	display: inline-block;
 	position: absolute;
 	padding: 5px 10px 5px 10px;
@@ -599,7 +590,6 @@ a.test-arrow {
 	right: 5px;
 }
 a.test-arrow:hover{
-	background-color: #4e8bca;
 	text-decoration: none;
 }
 
@@ -641,10 +631,6 @@ a.test-arrow:hover{
 	display: inline-block;
 	width: 1.2ch;
 	text-align: center;
-}
-
-.toggle-label {
-	color: #999;
 }
 
 .ghost {
@@ -702,8 +688,7 @@ span.since {
 }
 
 :target > code {
-   background: #FDFFD3;
-   opacity: 1;
+	opacity: 1;
 }
 
 /* Media Queries */

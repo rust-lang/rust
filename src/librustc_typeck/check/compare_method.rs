@@ -11,17 +11,15 @@
 use rustc::hir::{self, ImplItemKind, TraitItemKind};
 use rustc::infer::{self, InferOk};
 use rustc::middle::free_region::FreeRegionMap;
-use rustc::ty;
+use rustc::middle::region::RegionMaps;
+use rustc::ty::{self, TyCtxt};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::error::{ExpectedFound, TypeError};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::util::common::ErrorReported;
 
-use syntax::ast;
 use syntax_pos::Span;
 
-use CrateCtxt;
-use super::assoc;
 use super::{Inherited, FnCtxt};
 use astconv::ExplicitSelf;
 
@@ -32,14 +30,12 @@ use astconv::ExplicitSelf;
 ///
 /// - impl_m: type of the method we are checking
 /// - impl_m_span: span to use for reporting errors
-/// - impl_m_body_id: id of the method body
 /// - trait_m: the method in the trait
 /// - impl_trait_ref: the TraitRef corresponding to the trait implementation
 
-pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      impl_m: &ty::AssociatedItem,
                                      impl_m_span: Span,
-                                     impl_m_body_id: ast::NodeId,
                                      trait_m: &ty::AssociatedItem,
                                      impl_trait_ref: ty::TraitRef<'tcx>,
                                      trait_item_span: Option<Span>,
@@ -47,7 +43,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     debug!("compare_impl_method(impl_trait_ref={:?})",
            impl_trait_ref);
 
-    if let Err(ErrorReported) = compare_self_type(ccx,
+    if let Err(ErrorReported) = compare_self_type(tcx,
                                                   impl_m,
                                                   impl_m_span,
                                                   trait_m,
@@ -55,7 +51,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         return;
     }
 
-    if let Err(ErrorReported) = compare_number_of_generics(ccx,
+    if let Err(ErrorReported) = compare_number_of_generics(tcx,
                                                            impl_m,
                                                            impl_m_span,
                                                            trait_m,
@@ -63,7 +59,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         return;
     }
 
-    if let Err(ErrorReported) = compare_number_of_method_arguments(ccx,
+    if let Err(ErrorReported) = compare_number_of_method_arguments(tcx,
                                                                    impl_m,
                                                                    impl_m_span,
                                                                    trait_m,
@@ -71,10 +67,9 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         return;
     }
 
-    if let Err(ErrorReported) = compare_predicate_entailment(ccx,
+    if let Err(ErrorReported) = compare_predicate_entailment(tcx,
                                                              impl_m,
                                                              impl_m_span,
-                                                             impl_m_body_id,
                                                              trait_m,
                                                              impl_trait_ref,
                                                              old_broken_mode) {
@@ -82,26 +77,28 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                           impl_m: &ty::AssociatedItem,
                                           impl_m_span: Span,
-                                          impl_m_body_id: ast::NodeId,
                                           trait_m: &ty::AssociatedItem,
                                           impl_trait_ref: ty::TraitRef<'tcx>,
                                           old_broken_mode: bool)
                                           -> Result<(), ErrorReported> {
-    let tcx = ccx.tcx;
-
     let trait_to_impl_substs = impl_trait_ref.substs;
+
+    // This node-id should be used for the `body_id` field on each
+    // `ObligationCause` (and the `FnCtxt`). This is what
+    // `regionck_item` expects.
+    let impl_m_node_id = tcx.hir.as_local_node_id(impl_m.def_id).unwrap();
 
     let cause = ObligationCause {
         span: impl_m_span,
-        body_id: impl_m_body_id,
+        body_id: impl_m_node_id,
         code: ObligationCauseCode::CompareImplMethodObligation {
             item_name: impl_m.name,
             impl_item_def_id: impl_m.def_id,
             trait_item_def_id: trait_m.def_id,
-            lint_id: if !old_broken_mode { Some(impl_m_body_id) } else { None },
+            lint_id: if !old_broken_mode { Some(impl_m_node_id) } else { None },
         },
     };
 
@@ -170,7 +167,6 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     // Create a parameter environment that represents the implementation's
     // method.
-    let impl_m_node_id = tcx.map.as_local_node_id(impl_m.def_id).unwrap();
     let impl_param_env = ty::ParameterEnvironment::for_item(tcx, impl_m_node_id);
 
     // Create mapping from impl to skolemized.
@@ -184,13 +180,13 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     debug!("compare_impl_method: trait_to_skol_substs={:?}",
            trait_to_skol_substs);
 
-    let impl_m_generics = tcx.item_generics(impl_m.def_id);
-    let trait_m_generics = tcx.item_generics(trait_m.def_id);
-    let impl_m_predicates = tcx.item_predicates(impl_m.def_id);
-    let trait_m_predicates = tcx.item_predicates(trait_m.def_id);
+    let impl_m_generics = tcx.generics_of(impl_m.def_id);
+    let trait_m_generics = tcx.generics_of(trait_m.def_id);
+    let impl_m_predicates = tcx.predicates_of(impl_m.def_id);
+    let trait_m_predicates = tcx.predicates_of(trait_m.def_id);
 
     // Check region bounds.
-    check_region_bounds_on_impl_method(ccx,
+    check_region_bounds_on_impl_method(tcx,
                                        impl_m_span,
                                        impl_m,
                                        &trait_m_generics,
@@ -203,7 +199,7 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // environment. We can't just use `impl_env.caller_bounds`,
     // however, because we want to replace all late-bound regions with
     // region variables.
-    let impl_predicates = tcx.item_predicates(impl_m_predicates.parent.unwrap());
+    let impl_predicates = tcx.predicates_of(impl_m_predicates.parent.unwrap());
     let mut hybrid_preds = impl_predicates.instantiate(tcx, impl_to_skol_substs);
 
     debug!("compare_impl_method: impl_bounds={:?}", hybrid_preds);
@@ -221,16 +217,17 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // Construct trait parameter environment and then shift it into the skolemized viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
-    let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_body_id);
-    let trait_param_env = impl_param_env.with_caller_bounds(hybrid_preds.predicates);
+    let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_node_id);
+    let trait_param_env = impl_param_env.with_caller_bounds(
+        tcx.intern_predicates(&hybrid_preds.predicates));
     let trait_param_env = traits::normalize_param_env_or_error(tcx,
+                                                               impl_m.def_id,
                                                                trait_param_env,
                                                                normalize_cause.clone());
 
-    tcx.infer_ctxt(None, Some(trait_param_env), Reveal::NotSpecializable).enter(|infcx| {
-        let inh = Inherited::new(ccx, infcx);
+    tcx.infer_ctxt(trait_param_env, Reveal::UserFacing).enter(|infcx| {
+        let inh = Inherited::new(infcx);
         let infcx = &inh.infcx;
-        let fulfillment_cx = &inh.fulfillment_cx;
 
         debug!("compare_impl_method: caller_bounds={:?}",
                infcx.parameter_environment.caller_bounds);
@@ -242,12 +239,11 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                        infer::HigherRankedType,
                                                        &ty::Binder(impl_m_own_bounds.predicates));
         for predicate in impl_m_own_bounds {
-            let traits::Normalized { value: predicate, .. } =
+            let traits::Normalized { value: predicate, obligations } =
                 traits::normalize(&mut selcx, normalize_cause.clone(), &predicate);
 
-            fulfillment_cx.borrow_mut().register_predicate_obligation(
-                &infcx,
-                traits::Obligation::new(cause.clone(), predicate));
+            inh.register_predicates(obligations);
+            inh.register_predicate(traits::Obligation::new(cause.clone(), predicate));
         }
 
         // We now need to check that the signature of the impl method is
@@ -266,58 +262,43 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // Compute skolemized form of impl and trait method tys.
         let tcx = infcx.tcx;
 
-        let m_fty = |method: &ty::AssociatedItem| {
-            match tcx.item_type(method.def_id).sty {
+        let m_sig = |method: &ty::AssociatedItem| {
+            match tcx.type_of(method.def_id).sty {
                 ty::TyFnDef(_, _, f) => f,
                 _ => bug!()
             }
         };
-        let impl_m_fty = m_fty(impl_m);
-        let trait_m_fty = m_fty(trait_m);
 
         let (impl_sig, _) =
             infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
                                                             infer::HigherRankedType,
-                                                            &impl_m_fty.sig);
+                                                            &m_sig(impl_m));
         let impl_sig =
             impl_sig.subst(tcx, impl_to_skol_substs);
         let impl_sig =
-            assoc::normalize_associated_types_in(&infcx,
-                                                 &mut fulfillment_cx.borrow_mut(),
-                                                 impl_m_span,
-                                                 impl_m_body_id,
-                                                 &impl_sig);
-        let impl_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-            unsafety: impl_m_fty.unsafety,
-            abi: impl_m_fty.abi,
-            sig: ty::Binder(impl_sig.clone()),
-        }));
+            inh.normalize_associated_types_in(impl_m_span,
+                                              impl_m_node_id,
+                                              &impl_sig);
+        let impl_fty = tcx.mk_fn_ptr(ty::Binder(impl_sig));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
         let trait_sig = tcx.liberate_late_bound_regions(
             infcx.parameter_environment.free_id_outlive,
-            &trait_m_fty.sig);
+            &m_sig(trait_m));
         let trait_sig =
             trait_sig.subst(tcx, trait_to_skol_substs);
         let trait_sig =
-            assoc::normalize_associated_types_in(&infcx,
-                                                 &mut fulfillment_cx.borrow_mut(),
-                                                 impl_m_span,
-                                                 impl_m_body_id,
-                                                 &trait_sig);
-        let trait_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-            unsafety: trait_m_fty.unsafety,
-            abi: trait_m_fty.abi,
-            sig: ty::Binder(trait_sig.clone()),
-        }));
+            inh.normalize_associated_types_in(impl_m_span,
+                                              impl_m_node_id,
+                                              &trait_sig);
+        let trait_fty = tcx.mk_fn_ptr(ty::Binder(trait_sig));
 
         debug!("compare_impl_method: trait_fty={:?}", trait_fty);
 
         let sub_result = infcx.sub_types(false, &cause, impl_fty, trait_fty)
-            .map(|InferOk { obligations, .. }| {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty());
-            });
+                              .map(|InferOk { obligations, .. }| {
+                                  inh.register_predicates(obligations);
+                              });
 
         if let Err(terr) = sub_result {
             debug!("sub_types failed: impl ty {:?}, trait ty {:?}",
@@ -357,7 +338,7 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        if let Err(ref errors) = fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
+        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
             infcx.report_fulfillment_errors(errors);
             return Err(ErrorReported);
         }
@@ -370,24 +351,25 @@ fn compare_predicate_entailment<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             // region obligations that get overlooked.  The right
             // thing to do is the code below. But we keep this old
             // pass around temporarily.
+            let region_maps = RegionMaps::new();
             let mut free_regions = FreeRegionMap::new();
             free_regions.relate_free_regions_from_predicates(
                 &infcx.parameter_environment.caller_bounds);
-            infcx.resolve_regions_and_report_errors(&free_regions, impl_m_body_id);
+            infcx.resolve_regions_and_report_errors(impl_m.def_id, &region_maps, &free_regions);
         } else {
-            let fcx = FnCtxt::new(&inh, Some(tcx.types.err), impl_m_body_id);
-            fcx.regionck_item(impl_m_body_id, impl_m_span, &[]);
+            let fcx = FnCtxt::new(&inh, impl_m_node_id);
+            fcx.regionck_item(impl_m_node_id, impl_m_span, &[]);
         }
 
         Ok(())
     })
 }
 
-fn check_region_bounds_on_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 span: Span,
                                                 impl_m: &ty::AssociatedItem,
-                                                trait_generics: &ty::Generics<'tcx>,
-                                                impl_generics: &ty::Generics<'tcx>,
+                                                trait_generics: &ty::Generics,
+                                                impl_generics: &ty::Generics,
                                                 trait_to_skol_substs: &Substs<'tcx>,
                                                 impl_to_skol_substs: &Substs<'tcx>)
                                                 -> Result<(), ErrorReported> {
@@ -414,13 +396,13 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // are zero. Since I don't quite know how to phrase things at
     // the moment, give a kind of vague error message.
     if trait_params.len() != impl_params.len() {
-        struct_span_err!(ccx.tcx.sess,
+        struct_span_err!(tcx.sess,
                          span,
                          E0195,
                          "lifetime parameters or bounds on method `{}` do not match the \
                           trait declaration",
                          impl_m.name)
-            .span_label(span, &format!("lifetimes do not match trait"))
+            .span_label(span, "lifetimes do not match trait")
             .emit();
         return Err(ErrorReported);
     }
@@ -437,8 +419,8 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                                                      trait_sig: ty::FnSig<'tcx>)
                                                      -> (Span, Option<Span>) {
     let tcx = infcx.tcx;
-    let impl_m_node_id = tcx.map.as_local_node_id(impl_m.def_id).unwrap();
-    let (impl_m_output, impl_m_iter) = match tcx.map.expect_impl_item(impl_m_node_id).node {
+    let impl_m_node_id = tcx.hir.as_local_node_id(impl_m.def_id).unwrap();
+    let (impl_m_output, impl_m_iter) = match tcx.hir.expect_impl_item(impl_m_node_id).node {
         ImplItemKind::Method(ref impl_m_sig, _) => {
             (&impl_m_sig.decl.output, impl_m_sig.decl.inputs.iter())
         }
@@ -447,8 +429,8 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
 
     match *terr {
         TypeError::Mutability => {
-            if let Some(trait_m_node_id) = tcx.map.as_local_node_id(trait_m.def_id) {
-                let trait_m_iter = match tcx.map.expect_trait_item(trait_m_node_id).node {
+            if let Some(trait_m_node_id) = tcx.hir.as_local_node_id(trait_m.def_id) {
+                let trait_m_iter = match tcx.hir.expect_trait_item(trait_m_node_id).node {
                     TraitItemKind::Method(ref trait_m_sig, _) => {
                         trait_m_sig.decl.inputs.iter()
                     }
@@ -466,15 +448,15 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                 }).map(|(ref impl_arg, ref trait_arg)| {
                     (impl_arg.span, Some(trait_arg.span))
                 })
-                .unwrap_or_else(|| (cause.span, tcx.map.span_if_local(trait_m.def_id)))
+                .unwrap_or_else(|| (cause.span, tcx.hir.span_if_local(trait_m.def_id)))
             } else {
-                (cause.span, tcx.map.span_if_local(trait_m.def_id))
+                (cause.span, tcx.hir.span_if_local(trait_m.def_id))
             }
         }
         TypeError::Sorts(ExpectedFound { .. }) => {
-            if let Some(trait_m_node_id) = tcx.map.as_local_node_id(trait_m.def_id) {
+            if let Some(trait_m_node_id) = tcx.hir.as_local_node_id(trait_m.def_id) {
                 let (trait_m_output, trait_m_iter) =
-                    match tcx.map.expect_trait_item(trait_m_node_id).node {
+                    match tcx.hir.expect_trait_item(trait_m_node_id).node {
                         TraitItemKind::Method(ref trait_m_sig, _) => {
                             (&trait_m_sig.decl.output, trait_m_sig.decl.inputs.iter())
                         }
@@ -499,25 +481,24 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                                      .is_err() {
                                          (impl_m_output.span(), Some(trait_m_output.span()))
                                      } else {
-                                         (cause.span, tcx.map.span_if_local(trait_m.def_id))
+                                         (cause.span, tcx.hir.span_if_local(trait_m.def_id))
                                      }
                          })
             } else {
-                (cause.span, tcx.map.span_if_local(trait_m.def_id))
+                (cause.span, tcx.hir.span_if_local(trait_m.def_id))
             }
         }
-        _ => (cause.span, tcx.map.span_if_local(trait_m.def_id)),
+        _ => (cause.span, tcx.hir.span_if_local(trait_m.def_id)),
     }
 }
 
-fn compare_self_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                impl_m: &ty::AssociatedItem,
                                impl_m_span: Span,
                                trait_m: &ty::AssociatedItem,
                                impl_trait_ref: ty::TraitRef<'tcx>)
                                -> Result<(), ErrorReported>
 {
-    let tcx = ccx.tcx;
     // Try to give more informative error messages about self typing
     // mismatches.  Note that any mismatch will also be detected
     // below, where we construct a canonical function type that
@@ -531,7 +512,7 @@ fn compare_self_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             ty::ImplContainer(_) => impl_trait_ref.self_ty(),
             ty::TraitContainer(_) => tcx.mk_self_type()
         };
-        let method_ty = tcx.item_type(method.def_id);
+        let method_ty = tcx.type_of(method.def_id);
         let self_arg_ty = *method_ty.fn_sig().input(0).skip_binder();
         match ExplicitSelf::determine(untransformed_self_ty, self_arg_ty) {
             ExplicitSelf::ByValue => "self".to_string(),
@@ -553,9 +534,9 @@ fn compare_self_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             not in the trait",
                                            trait_m.name,
                                            self_descr);
-            err.span_label(impl_m_span, &format!("`{}` used in impl", self_descr));
-            if let Some(span) = tcx.map.span_if_local(trait_m.def_id) {
-                err.span_label(span, &format!("trait declared without `{}`", self_descr));
+            err.span_label(impl_m_span, format!("`{}` used in impl", self_descr));
+            if let Some(span) = tcx.hir.span_if_local(trait_m.def_id) {
+                err.span_label(span, format!("trait declared without `{}`", self_descr));
             }
             err.emit();
             return Err(ErrorReported);
@@ -571,9 +552,9 @@ fn compare_self_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                            trait_m.name,
                                            self_descr);
             err.span_label(impl_m_span,
-                           &format!("expected `{}` in impl", self_descr));
-            if let Some(span) = tcx.map.span_if_local(trait_m.def_id) {
-                err.span_label(span, &format!("`{}` used in trait", self_descr));
+                           format!("expected `{}` in impl", self_descr));
+            if let Some(span) = tcx.hir.span_if_local(trait_m.def_id) {
+                err.span_label(span, format!("`{}` used in trait", self_descr));
             }
             err.emit();
             return Err(ErrorReported);
@@ -583,20 +564,19 @@ fn compare_self_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     Ok(())
 }
 
-fn compare_number_of_generics<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+fn compare_number_of_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         impl_m: &ty::AssociatedItem,
                                         impl_m_span: Span,
                                         trait_m: &ty::AssociatedItem,
                                         trait_item_span: Option<Span>)
                                         -> Result<(), ErrorReported> {
-    let tcx = ccx.tcx;
-    let impl_m_generics = tcx.item_generics(impl_m.def_id);
-    let trait_m_generics = tcx.item_generics(trait_m.def_id);
+    let impl_m_generics = tcx.generics_of(impl_m.def_id);
+    let trait_m_generics = tcx.generics_of(trait_m.def_id);
     let num_impl_m_type_params = impl_m_generics.types.len();
     let num_trait_m_type_params = trait_m_generics.types.len();
     if num_impl_m_type_params != num_trait_m_type_params {
-        let impl_m_node_id = tcx.map.as_local_node_id(impl_m.def_id).unwrap();
-        let span = match tcx.map.expect_impl_item(impl_m_node_id).node {
+        let impl_m_node_id = tcx.hir.as_local_node_id(impl_m.def_id).unwrap();
+        let span = match tcx.hir.expect_impl_item(impl_m_node_id).node {
             ImplItemKind::Method(ref impl_m_sig, _) => {
                 if impl_m_sig.generics.is_parameterized() {
                     impl_m_sig.generics.span
@@ -626,7 +606,7 @@ fn compare_number_of_generics<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         if let Some(span) = trait_item_span {
             err.span_label(span,
-                           &format!("expected {}",
+                           format!("expected {}",
                                     &if num_trait_m_type_params != 1 {
                                         format!("{} type parameters", num_trait_m_type_params)
                                     } else {
@@ -637,7 +617,7 @@ fn compare_number_of_generics<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         }
 
         err.span_label(span,
-                       &format!("found {}{}",
+                       format!("found {}{}",
                                 &if num_impl_m_type_params != 1 {
                                     format!("{} type parameters", num_impl_m_type_params)
                                 } else {
@@ -653,27 +633,26 @@ fn compare_number_of_generics<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     Ok(())
 }
 
-fn compare_number_of_method_arguments<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 impl_m: &ty::AssociatedItem,
                                                 impl_m_span: Span,
                                                 trait_m: &ty::AssociatedItem,
                                                 trait_item_span: Option<Span>)
                                                 -> Result<(), ErrorReported> {
-    let tcx = ccx.tcx;
     let m_fty = |method: &ty::AssociatedItem| {
-        match tcx.item_type(method.def_id).sty {
+        match tcx.type_of(method.def_id).sty {
             ty::TyFnDef(_, _, f) => f,
             _ => bug!()
         }
     };
     let impl_m_fty = m_fty(impl_m);
     let trait_m_fty = m_fty(trait_m);
-    let trait_number_args = trait_m_fty.sig.inputs().skip_binder().len();
-    let impl_number_args = impl_m_fty.sig.inputs().skip_binder().len();
+    let trait_number_args = trait_m_fty.inputs().skip_binder().len();
+    let impl_number_args = impl_m_fty.inputs().skip_binder().len();
     if trait_number_args != impl_number_args {
-        let trait_m_node_id = tcx.map.as_local_node_id(trait_m.def_id);
+        let trait_m_node_id = tcx.hir.as_local_node_id(trait_m.def_id);
         let trait_span = if let Some(trait_id) = trait_m_node_id {
-            match tcx.map.expect_trait_item(trait_id).node {
+            match tcx.hir.expect_trait_item(trait_id).node {
                 TraitItemKind::Method(ref trait_m_sig, _) => {
                     if let Some(arg) = trait_m_sig.decl.inputs.get(if trait_number_args > 0 {
                         trait_number_args - 1
@@ -690,8 +669,8 @@ fn compare_number_of_method_arguments<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         } else {
             trait_item_span
         };
-        let impl_m_node_id = tcx.map.as_local_node_id(impl_m.def_id).unwrap();
-        let impl_span = match tcx.map.expect_impl_item(impl_m_node_id).node {
+        let impl_m_node_id = tcx.hir.as_local_node_id(impl_m.def_id).unwrap();
+        let impl_span = match tcx.hir.expect_impl_item(impl_m_node_id).node {
             ImplItemKind::Method(ref impl_m_sig, _) => {
                 if let Some(arg) = impl_m_sig.decl.inputs.get(if impl_number_args > 0 {
                     impl_number_args - 1
@@ -717,7 +696,7 @@ fn compare_number_of_method_arguments<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                        trait_number_args);
         if let Some(trait_span) = trait_span {
             err.span_label(trait_span,
-                           &format!("trait requires {}",
+                           format!("trait requires {}",
                                     &if trait_number_args != 1 {
                                         format!("{} parameters", trait_number_args)
                                     } else {
@@ -725,7 +704,7 @@ fn compare_number_of_method_arguments<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     }));
         }
         err.span_label(impl_span,
-                       &format!("expected {}, found {}",
+                       format!("expected {}, found {}",
                                 &if trait_number_args != 1 {
                                     format!("{} parameters", trait_number_args)
                                 } else {
@@ -739,16 +718,16 @@ fn compare_number_of_method_arguments<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     Ok(())
 }
 
-pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     impl_c: &ty::AssociatedItem,
                                     impl_c_span: Span,
                                     trait_c: &ty::AssociatedItem,
                                     impl_trait_ref: ty::TraitRef<'tcx>) {
     debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
 
-    let tcx = ccx.tcx;
-    tcx.infer_ctxt(None, None, Reveal::NotSpecializable).enter(|infcx| {
-        let mut fulfillment_cx = traits::FulfillmentContext::new();
+    tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
+        let inh = Inherited::new(infcx);
+        let infcx = &inh.infcx;
 
         // The below is for the most part highly similar to the procedure
         // for methods above. It is simpler in many respects, especially
@@ -759,7 +738,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         // Create a parameter environment that represents the implementation's
         // method.
-        let impl_c_node_id = tcx.map.as_local_node_id(impl_c.def_id).unwrap();
+        let impl_c_node_id = tcx.hir.as_local_node_id(impl_c.def_id).unwrap();
         let impl_param_env = ty::ParameterEnvironment::for_item(tcx, impl_c_node_id);
 
         // Create mapping from impl to skolemized.
@@ -774,35 +753,25 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                trait_to_skol_substs);
 
         // Compute skolemized form of impl and trait const tys.
-        let impl_ty = tcx.item_type(impl_c.def_id).subst(tcx, impl_to_skol_substs);
-        let trait_ty = tcx.item_type(trait_c.def_id).subst(tcx, trait_to_skol_substs);
+        let impl_ty = tcx.type_of(impl_c.def_id).subst(tcx, impl_to_skol_substs);
+        let trait_ty = tcx.type_of(trait_c.def_id).subst(tcx, trait_to_skol_substs);
         let mut cause = ObligationCause::misc(impl_c_span, impl_c_node_id);
 
-        let err = infcx.commit_if_ok(|_| {
-            // There is no "body" here, so just pass dummy id.
-            let impl_ty = assoc::normalize_associated_types_in(&infcx,
-                                                               &mut fulfillment_cx,
-                                                               impl_c_span,
-                                                               ast::CRATE_NODE_ID,
-                                                               &impl_ty);
+        // There is no "body" here, so just pass dummy id.
+        let impl_ty = inh.normalize_associated_types_in(impl_c_span,
+                                                        impl_c_node_id,
+                                                        &impl_ty);
 
-            debug!("compare_const_impl: impl_ty={:?}", impl_ty);
+        debug!("compare_const_impl: impl_ty={:?}", impl_ty);
 
-            let trait_ty = assoc::normalize_associated_types_in(&infcx,
-                                                                &mut fulfillment_cx,
-                                                                impl_c_span,
-                                                                ast::CRATE_NODE_ID,
-                                                                &trait_ty);
+        let trait_ty = inh.normalize_associated_types_in(impl_c_span,
+                                                         impl_c_node_id,
+                                                         &trait_ty);
 
-            debug!("compare_const_impl: trait_ty={:?}", trait_ty);
+        debug!("compare_const_impl: trait_ty={:?}", trait_ty);
 
-            infcx.sub_types(false, &cause, impl_ty, trait_ty)
-                 .map(|InferOk { obligations, value: () }| {
-                     for obligation in obligations {
-                         fulfillment_cx.register_predicate_obligation(&infcx, obligation);
-                     }
-                 })
-        });
+        let err = infcx.sub_types(false, &cause, impl_ty, trait_ty)
+            .map(|ok| inh.register_infer_ok_obligations(ok));
 
         if let Err(terr) = err {
             debug!("checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
@@ -810,7 +779,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                    trait_ty);
 
             // Locate the Span containing just the type of the offending impl
-            match tcx.map.expect_impl_item(impl_c_node_id).node {
+            match tcx.hir.expect_impl_item(impl_c_node_id).node {
                 ImplItemKind::Const(ref ty, _) => cause.span = ty.span,
                 _ => bug!("{:?} is not a impl const", impl_c),
             }
@@ -822,16 +791,18 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                              trait",
                                             trait_c.name);
 
-            // Add a label to the Span containing just the type of the item
-            let trait_c_node_id = tcx.map.as_local_node_id(trait_c.def_id).unwrap();
-            let trait_c_span = match tcx.map.expect_trait_item(trait_c_node_id).node {
-                TraitItemKind::Const(ref ty, _) => ty.span,
-                _ => bug!("{:?} is not a trait const", trait_c),
-            };
+            let trait_c_node_id = tcx.hir.as_local_node_id(trait_c.def_id);
+            let trait_c_span = trait_c_node_id.map(|trait_c_node_id| {
+                // Add a label to the Span containing just the type of the const
+                match tcx.hir.expect_trait_item(trait_c_node_id).node {
+                    TraitItemKind::Const(ref ty, _) => ty.span,
+                    _ => bug!("{:?} is not a trait const", trait_c),
+                }
+            });
 
             infcx.note_type_err(&mut diag,
                                 &cause,
-                                Some((trait_c_span, format!("type in trait"))),
+                                trait_c_span.map(|span| (span, format!("type in trait"))),
                                 Some(infer::ValuePairs::Types(ExpectedFound {
                                     expected: trait_ty,
                                     found: impl_ty,
@@ -839,5 +810,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 &terr);
             diag.emit();
         }
+
+        // FIXME(#41323) Check the obligations in the fulfillment context.
     });
 }

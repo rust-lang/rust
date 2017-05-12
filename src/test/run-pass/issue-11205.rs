@@ -12,8 +12,6 @@
 
 #![allow(dead_code)]
 
-// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-
 trait Foo { fn dummy(&self) { } }
 impl Foo for isize {}
 fn foo(_: [&Foo; 2]) {}

@@ -17,8 +17,7 @@ fn f() {
         }
     }
 
-    // issue #37353
-    loop { 'w: while break 'w { } } //~ ERROR use of undeclared label
+    loop { 'w: while break 'w { } }
 }
 
 fn main() {}

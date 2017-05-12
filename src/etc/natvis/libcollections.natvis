@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="collections::vec::Vec&lt;*&gt;">
+    <DisplayString>{{ size={len} }}</DisplayString>
+    <Expand>
+      <Item Name="[size]" ExcludeView="simple">len</Item>
+      <Item Name="[capacity]" ExcludeView="simple">buf.cap</Item>
+      <ArrayItems>
+        <Size>len</Size>
+        <ValuePointer>buf.ptr.pointer.__0</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  <Type Name="collections::vec_deque::VecDeque&lt;*&gt;">
+    <DisplayString>{{ size={tail &lt;= head ? head - tail : buf.cap - tail + head} }}</DisplayString>
+    <Expand>
+      <Item Name="[size]" ExcludeView="simple">tail &lt;= head ? head - tail : buf.cap - tail + head</Item>
+      <Item Name="[capacity]" ExcludeView="simple">buf.cap</Item>
+      <CustomListItems>
+        <Variable Name="i" InitialValue="tail" />
+
+        <Size>tail &lt;= head ? head - tail : buf.cap - tail + head</Size>
+        <Loop>
+          <If Condition="i == head">
+            <Break/>
+          </If>
+          <Item>buf.ptr.pointer.__0 + i</Item>
+          <Exec>i = (i + 1 == buf.cap ? 0 : i + 1)</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+  <Type Name="collections::linked_list::LinkedList&lt;*&gt;">
+    <DisplayString>{{ size={len} }}</DisplayString>
+    <Expand>
+      <LinkedListItems>
+        <Size>len</Size>
+        <HeadPointer>*(collections::linked_list::Node&lt;$T1&gt; **)&amp;head</HeadPointer>
+        <NextPointer>*(collections::linked_list::Node&lt;$T1&gt; **)&amp;next</NextPointer>
+        <ValueNode>element</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+  <Type Name="collections::string::String">
+    <DisplayString>{*(char**)this,[vec.len]}</DisplayString>
+    <StringView>*(char**)this,[vec.len]</StringView>
+    <Expand>
+      <Item Name="[size]" ExcludeView="simple">vec.len</Item>
+      <Item Name="[capacity]" ExcludeView="simple">vec.buf.cap</Item>
+      <ArrayItems>
+        <Size>vec.len</Size>
+        <ValuePointer>*(char**)this</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+</AutoVisualizer>

@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(pub_restricted)]
-
 mod foo {
     type T = ();
-    struct S1(pub(foo) (), pub(T), pub(crate) (), pub(((), T)));
-    struct S2(pub((foo)) ()); //~ ERROR expected one of `+` or `,`, found `(`
-                              //~| ERROR expected one of `+`, `;`, or `where`, found `(`
+    struct S1(pub(in foo) (), pub(T), pub(crate) (), pub(((), T)));
+    struct S2(pub((foo)) ());
+    //~^ ERROR expected `,`, found `(`
+    //~| ERROR expected one of `;` or `where`, found `(`
 }

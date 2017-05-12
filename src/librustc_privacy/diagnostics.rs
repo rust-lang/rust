@@ -115,45 +115,6 @@ pub enum Foo {
 ```
 "##,
 
-E0450: r##"
-A tuple constructor was invoked while some of its fields are private. Erroneous
-code example:
-
-```compile_fail,E0450
-mod Bar {
-    pub struct Foo(isize);
-}
-
-let f = Bar::Foo(0); // error: cannot invoke tuple struct constructor with
-                     //        private fields
-```
-
-To solve this issue, please ensure that all of the fields of the tuple struct
-are public. Alternatively, provide a `new()` method to the tuple struct to
-construct it from a given inner value. Example:
-
-```
-mod Bar {
-    pub struct Foo(pub isize); // we set its field to public
-}
-
-let f = Bar::Foo(0); // ok!
-
-// or:
-mod bar {
-    pub struct Foo(isize);
-
-    impl Foo {
-        pub fn new(x: isize) -> Foo {
-            Foo(x)
-        }
-    }
-}
-
-let f = bar::Foo::new(1);
-```
-"##,
-
 E0451: r##"
 A struct constructor with private fields was invoked. Erroneous code example:
 
@@ -203,4 +164,8 @@ let f = Bar::Foo::new(); // ok!
 ```
 "##,
 
+}
+
+register_diagnostics! {
+//  E0450, moved into resolve
 }

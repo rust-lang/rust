@@ -33,6 +33,9 @@ pub enum Adjust<'tcx> {
     /// Go from a safe fn pointer to an unsafe fn pointer.
     UnsafeFnPointer,
 
+    /// Go from a non-capturing closure to an fn pointer.
+    ClosureFnPointer,
+
     /// Go from a mut raw pointer to a const raw pointer.
     MutToConstPointer,
 
@@ -120,6 +123,7 @@ impl<'tcx> Adjustment<'tcx> {
 
             Adjust::ReifyFnPointer |
             Adjust::UnsafeFnPointer |
+            Adjust::ClosureFnPointer |
             Adjust::MutToConstPointer |
             Adjust::DerefRef {..} => false,
         }
@@ -129,10 +133,25 @@ impl<'tcx> Adjustment<'tcx> {
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 pub enum AutoBorrow<'tcx> {
     /// Convert from T to &T.
-    Ref(&'tcx ty::Region, hir::Mutability),
+    Ref(ty::Region<'tcx>, hir::Mutability),
 
     /// Convert from T to *T.
     RawPtr(hir::Mutability),
+}
+
+/// Information for `CoerceUnsized` impls, storing information we
+/// have computed about the coercion.
+///
+/// This struct can be obtained via the `coerce_impl_info` query.
+/// Demanding this struct also has the side-effect of reporting errors
+/// for inappropriate impls.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub struct CoerceUnsizedInfo {
+    /// If this is a "custom coerce" impl, then what kind of custom
+    /// coercion is it? This applies to impls of `CoerceUnsized` for
+    /// structs, primarily, where we store a bit of info about which
+    /// fields need to be coerced.
+    pub custom_kind: Option<CustomCoerceUnsized>
 }
 
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]

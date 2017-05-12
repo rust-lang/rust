@@ -142,7 +142,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenT
             // Add this input file to the code map to make it available as
             // dependency information
             let filename = format!("{}", file.display());
-            cx.codemap().new_filemap_and_lines(&filename, None, &src);
+            cx.codemap().new_filemap_and_lines(&filename, &src);
 
             base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&src)))
         }
@@ -173,7 +173,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
             // Add this input file to the code map to make it available as
             // dependency information, but don't enter it's contents
             let filename = format!("{}", file.display());
-            cx.codemap().new_filemap_and_lines(&filename, None, "");
+            cx.codemap().new_filemap_and_lines(&filename, "");
 
             base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Rc::new(bytes))))
         }
@@ -185,7 +185,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
 fn res_rel_file(cx: &mut ExtCtxt, sp: syntax_pos::Span, arg: &Path) -> PathBuf {
     // NB: relative paths are resolved relative to the compilation unit
     if !arg.is_absolute() {
-        let callsite = cx.codemap().source_callsite(sp);
+        let callsite = sp.source_callsite();
         let mut cu = PathBuf::from(&cx.codemap().span_to_filename(callsite));
         cu.pop();
         cu.push(arg);

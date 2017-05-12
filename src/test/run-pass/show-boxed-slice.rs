@@ -12,6 +12,5 @@
 struct Foo(Box<[u8]>);
 
 pub fn main() {
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     println!("{:?}", Foo(Box::new([0, 1, 2])));
 }

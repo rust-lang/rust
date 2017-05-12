@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(more_struct_aliases)]
-
 struct S<T, U = u16> {
     a: T,
     b: U,

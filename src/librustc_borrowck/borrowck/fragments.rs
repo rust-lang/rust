@@ -27,7 +27,7 @@ use rustc::middle::mem_categorization as mc;
 use std::mem;
 use std::rc::Rc;
 use syntax::ast;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::DUMMY_SP;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 enum Fragment {
@@ -132,7 +132,7 @@ pub fn build_unfragmented_map(this: &mut borrowck::BorrowckCtxt,
     }
 
     let mut fraginfo_map = this.tcx.fragment_infos.borrow_mut();
-    let fn_did = this.tcx.map.local_def_id(id);
+    let fn_did = this.tcx.hir.local_def_id(id);
     let prev = fraginfo_map.insert(fn_did, fragment_infos);
     assert!(prev.is_none());
 }
@@ -200,13 +200,14 @@ impl FragmentSets {
 
 pub fn instrument_move_fragments<'a, 'tcx>(this: &MoveData<'tcx>,
                                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                           sp: Span,
                                            id: ast::NodeId) {
-    let span_err = tcx.map.attrs(id).iter()
+    let span_err = tcx.hir.attrs(id).iter()
                           .any(|a| a.check_name("rustc_move_fragments"));
     let print = tcx.sess.opts.debugging_opts.print_move_fragments;
 
     if !span_err && !print { return; }
+
+    let sp = tcx.hir.span(id);
 
     let instrument_all_paths = |kind, vec_rc: &Vec<MovePathIndex>| {
         for (i, mpi) in vec_rc.iter().enumerate() {
@@ -266,11 +267,11 @@ pub fn fixup_fragment_sets<'a, 'tcx>(this: &MoveData<'tcx>, tcx: TyCtxt<'a, 'tcx
     // First, filter out duplicates
     moved.sort();
     moved.dedup();
-    debug!("fragments 1 moved: {:?}", path_lps(&moved[..]));
+    debug!("fragments 1 moved: {:?}", path_lps(&moved));
 
     assigned.sort();
     assigned.dedup();
-    debug!("fragments 1 assigned: {:?}", path_lps(&assigned[..]));
+    debug!("fragments 1 assigned: {:?}", path_lps(&assigned));
 
     // Second, build parents from the moved and assigned.
     for m in &moved {
@@ -290,14 +291,14 @@ pub fn fixup_fragment_sets<'a, 'tcx>(this: &MoveData<'tcx>, tcx: TyCtxt<'a, 'tcx
 
     parents.sort();
     parents.dedup();
-    debug!("fragments 2 parents: {:?}", path_lps(&parents[..]));
+    debug!("fragments 2 parents: {:?}", path_lps(&parents));
 
     // Third, filter the moved and assigned fragments down to just the non-parents
-    moved.retain(|f| non_member(*f, &parents[..]));
-    debug!("fragments 3 moved: {:?}", path_lps(&moved[..]));
+    moved.retain(|f| non_member(*f, &parents));
+    debug!("fragments 3 moved: {:?}", path_lps(&moved));
 
-    assigned.retain(|f| non_member(*f, &parents[..]));
-    debug!("fragments 3 assigned: {:?}", path_lps(&assigned[..]));
+    assigned.retain(|f| non_member(*f, &parents));
+    debug!("fragments 3 assigned: {:?}", path_lps(&assigned));
 
     // Fourth, build the leftover from the moved, assigned, and parents.
     for m in &moved {
@@ -315,16 +316,16 @@ pub fn fixup_fragment_sets<'a, 'tcx>(this: &MoveData<'tcx>, tcx: TyCtxt<'a, 'tcx
 
     unmoved.sort();
     unmoved.dedup();
-    debug!("fragments 4 unmoved: {:?}", frag_lps(&unmoved[..]));
+    debug!("fragments 4 unmoved: {:?}", frag_lps(&unmoved));
 
     // Fifth, filter the leftover fragments down to its core.
     unmoved.retain(|f| match *f {
         AllButOneFrom(_) => true,
-        Just(mpi) => non_member(mpi, &parents[..]) &&
-            non_member(mpi, &moved[..]) &&
-            non_member(mpi, &assigned[..])
+        Just(mpi) => non_member(mpi, &parents) &&
+            non_member(mpi, &moved) &&
+            non_member(mpi, &assigned)
     });
-    debug!("fragments 5 unmoved: {:?}", frag_lps(&unmoved[..]));
+    debug!("fragments 5 unmoved: {:?}", frag_lps(&unmoved));
 
     // Swap contents back in.
     fragments.unmoved_fragments = unmoved;
@@ -423,7 +424,7 @@ fn add_fragment_siblings_for_extension<'a, 'tcx>(this: &MoveData<'tcx>,
     };
 
     match parent_ty.sty {
-        ty::TyTuple(ref v) => {
+        ty::TyTuple(ref v, _) => {
             let tuple_idx = match *origin_field_name {
                 mc::PositionalField(tuple_idx) => tuple_idx,
                 mc::NamedField(_) =>
@@ -496,7 +497,7 @@ fn add_fragment_siblings_for_extension<'a, 'tcx>(this: &MoveData<'tcx>,
         },
 
         ref ty => {
-            let span = origin_id.map_or(DUMMY_SP, |id| tcx.map.span(id));
+            let span = origin_id.map_or(DUMMY_SP, |id| tcx.hir.span(id));
             span_bug!(span,
                       "type {:?} ({:?}) is not fragmentable",
                       parent_ty, ty);

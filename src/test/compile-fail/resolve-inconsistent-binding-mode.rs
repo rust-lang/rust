@@ -15,7 +15,7 @@ enum opts {
 fn matcher1(x: opts) {
     match x {
       opts::a(ref i) | opts::b(i) => {}
-      //~^ ERROR variable `i` is bound with different mode in pattern #2 than in pattern #1
+      //~^ ERROR variable `i` is bound in inconsistent ways within the same match arm
       //~^^ ERROR mismatched types
       opts::c(_) => {}
     }
@@ -24,7 +24,7 @@ fn matcher1(x: opts) {
 fn matcher2(x: opts) {
     match x {
       opts::a(ref i) | opts::b(i) => {}
-      //~^ ERROR variable `i` is bound with different mode in pattern #2 than in pattern #1
+      //~^ ERROR variable `i` is bound in inconsistent ways within the same match arm
       //~^^ ERROR mismatched types
       opts::c(_) => {}
     }
@@ -33,7 +33,7 @@ fn matcher2(x: opts) {
 fn matcher4(x: opts) {
     match x {
       opts::a(ref mut i) | opts::b(ref i) => {}
-      //~^ ERROR variable `i` is bound with different mode in pattern #2 than in pattern #1
+      //~^ ERROR variable `i` is bound in inconsistent ways within the same match arm
       //~^^ ERROR mismatched types
       opts::c(_) => {}
     }

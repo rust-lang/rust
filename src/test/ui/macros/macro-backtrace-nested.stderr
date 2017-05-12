@@ -1,17 +1,17 @@
-error[E0425]: unresolved value `fake`
+error[E0425]: cannot find value `fake` in this scope
   --> $DIR/macro-backtrace-nested.rs:15:12
    |
 15 |     () => (fake)
-   |            ^^^^ no resolution found
+   |            ^^^^ not found in this scope
 ...
 27 |     1 + call_nested_expr!();
    |         ------------------- in this macro invocation
 
-error[E0425]: unresolved value `fake`
+error[E0425]: cannot find value `fake` in this scope
   --> $DIR/macro-backtrace-nested.rs:15:12
    |
 15 |     () => (fake)
-   |            ^^^^ no resolution found
+   |            ^^^^ not found in this scope
 ...
 28 |     call_nested_expr_sum!();
    |     ------------------------ in this macro invocation

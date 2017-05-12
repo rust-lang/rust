@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(pub_restricted)]
-
 macro_rules! define_struct {
     ($t:ty) => {
         struct S1(pub $t);
-        struct S2(pub (foo) ());
-        struct S3(pub $t ()); //~ ERROR expected one of `+` or `,`, found `(`
-                              //~| ERROR expected one of `+`, `;`, or `where`, found `(`
+        struct S2(pub (in foo) ());
+        struct S3(pub $t ());
+        //~^ ERROR expected `,`, found `(`
+        //~| ERROR expected one of `;` or `where`, found `(`
     }
 }
 

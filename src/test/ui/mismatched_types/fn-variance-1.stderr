@@ -1,0 +1,18 @@
+error[E0281]: type mismatch: `fn(&mut isize) {takes_mut}` implements the trait `for<'r> std::ops::FnOnce<(&'r mut isize,)>`, but the trait `std::ops::FnOnce<(&{integer},)>` is required
+  --> $DIR/fn-variance-1.rs:21:5
+   |
+21 |     apply(&3, takes_mut);
+   |     ^^^^^ types differ in mutability
+   |
+   = note: required by `apply`
+
+error[E0281]: type mismatch: `fn(&isize) {takes_imm}` implements the trait `for<'r> std::ops::FnOnce<(&'r isize,)>`, but the trait `std::ops::FnOnce<(&mut {integer},)>` is required
+  --> $DIR/fn-variance-1.rs:27:5
+   |
+27 |     apply(&mut 3, takes_imm);
+   |     ^^^^^ types differ in mutability
+   |
+   = note: required by `apply`
+
+error: aborting due to 2 previous errors
+

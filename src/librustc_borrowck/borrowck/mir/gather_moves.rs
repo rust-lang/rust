@@ -43,7 +43,7 @@ mod indexes {
                     unsafe { $Index(NonZero::new(idx + 1)) }
                 }
                 fn index(self) -> usize {
-                    *self.0 - 1
+                    self.0.get() - 1
                 }
             }
 
@@ -289,7 +289,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             // error: can't move out of borrowed content
             ty::TyRef(..) | ty::TyRawPtr(..) => return Err(MovePathError::IllegalMove),
             // error: can't move out of struct with destructor
-            ty::TyAdt(adt, _) if adt.has_dtor() =>
+            ty::TyAdt(adt, _) if adt.has_dtor(self.tcx) && !adt.is_box() =>
                 return Err(MovePathError::IllegalMove),
             // move out of union - always move the entire union
             ty::TyAdt(adt, _) if adt.is_union() =>
@@ -412,6 +412,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 span_bug!(stmt.source_info.span,
                           "SetDiscriminant should not exist during borrowck");
             }
+            StatementKind::InlineAsm { .. } |
             StatementKind::Nop => {}
         }
     }
@@ -435,8 +436,8 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 }
             }
             Rvalue::Ref(..) |
+            Rvalue::Discriminant(..) |
             Rvalue::Len(..) |
-            Rvalue::InlineAsm { .. } => {}
             Rvalue::Box(..) => {
                 // This returns an rvalue with uninitialized contents. We can't
                 // move out of it here because it is an rvalue - assignments always
@@ -463,10 +464,8 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 self.gather_move(loc, &Lvalue::Local(RETURN_POINTER));
             }
 
-            TerminatorKind::If { .. } |
             TerminatorKind::Assert { .. } |
-            TerminatorKind::SwitchInt { .. } |
-            TerminatorKind::Switch { .. } => {
+            TerminatorKind::SwitchInt { .. } => {
                 // branching terminators - these don't move anything
             }
 

@@ -80,5 +80,3 @@ mod mod2 {
         static BAZ: u64 = 0;
     }
 }
-
-//~ TRANS_ITEM drop-glue i8

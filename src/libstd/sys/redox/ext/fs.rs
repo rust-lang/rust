@@ -30,8 +30,8 @@ pub trait PermissionsExt {
     /// use std::fs::File;
     /// use std::os::unix::fs::PermissionsExt;
     ///
-    /// let f = try!(File::create("foo.txt"));
-    /// let metadata = try!(f.metadata());
+    /// let f = File::create("foo.txt")?;
+    /// let metadata = f.metadata()?;
     /// let permissions = metadata.permissions();
     ///
     /// println!("permissions: {}", permissions.mode());
@@ -47,8 +47,8 @@ pub trait PermissionsExt {
     /// use std::fs::File;
     /// use std::os::unix::fs::PermissionsExt;
     ///
-    /// let f = try!(File::create("foo.txt"));
-    /// let metadata = try!(f.metadata());
+    /// let f = File::create("foo.txt")?;
+    /// let metadata = f.metadata()?;
     /// let mut permissions = metadata.permissions();
     ///
     /// permissions.set_mode(0o644); // Read/write for owner and read for others.
@@ -161,6 +161,10 @@ impl OpenOptionsExt for OpenOptions {
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn dev(&self) -> u64;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn ino(&self) -> u64;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn mode(&self) -> u32;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn uid(&self) -> u32;
@@ -184,6 +188,12 @@ pub trait MetadataExt {
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for fs::Metadata {
+    fn dev(&self) -> u64 {
+        self.as_inner().as_inner().st_dev as u64
+    }
+    fn ino(&self) -> u64 {
+        self.as_inner().as_inner().st_ino as u64
+    }
     fn mode(&self) -> u32 {
         self.as_inner().as_inner().st_mode as u32
     }
@@ -260,7 +270,7 @@ impl FileTypeExt for fs::FileType {
 /// use std::os::unix::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// try!(fs::symlink("a.txt", "b.txt"));
+/// fs::symlink("a.txt", "b.txt")?;
 /// # Ok(())
 /// # }
 /// ```

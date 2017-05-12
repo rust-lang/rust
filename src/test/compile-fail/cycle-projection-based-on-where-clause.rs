@@ -26,6 +26,7 @@ struct A<T>
     where T : Trait,
           T : Add<T::Item>
     //~^ ERROR unsupported cyclic reference between types/traits detected
+    //~| ERROR associated type `Item` not found for `T`
 {
     data: T
 }

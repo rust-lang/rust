@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() { println!("{}", foobar); } //~ ERROR unresolved value `foobar`
+fn main() { println!("{}", foobar); } //~ ERROR cannot find value `foobar` in this scope

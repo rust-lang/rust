@@ -23,15 +23,19 @@ impl Foo for Bar {
     fn foo(_: fn(u16) -> ()) {}
     //~^ ERROR method `foo` has an incompatible type for trait
     //~| NOTE expected u8
+    //~| NOTE expected type `fn(fn(u8))`
     fn bar(_: Option<u16>) {}
     //~^ ERROR method `bar` has an incompatible type for trait
     //~| NOTE expected u8
+    //~| NOTE expected type `fn(std::option::Option<u8>)`
     fn baz(_: (u16, u16)) {}
     //~^ ERROR method `baz` has an incompatible type for trait
     //~| NOTE expected u8
+    //~| NOTE expected type `fn((u8, u16))`
     fn qux() -> u16 { 5u16 }
     //~^ ERROR method `qux` has an incompatible type for trait
     //~| NOTE expected u8
+    //~| NOTE expected type `fn() -> u8`
 }
 
 fn main() {}

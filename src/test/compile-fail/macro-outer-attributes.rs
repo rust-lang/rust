@@ -25,6 +25,6 @@ test!(b,
 // test1!(#[bar])
 #[qux]
 fn main() {
-    a::bar(); //~ ERROR unresolved function `a::bar`
+    a::bar(); //~ ERROR cannot find function `bar` in module `a`
     b::bar();
 }

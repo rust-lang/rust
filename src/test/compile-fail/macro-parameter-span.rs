@@ -18,6 +18,6 @@ macro_rules! foo {
 // not to the macro variable '$id'
 fn main() {
     foo!(
-        x //~ ERROR unresolved value `x`
+        x //~ ERROR cannot find value `x` in this scope
         );
 }

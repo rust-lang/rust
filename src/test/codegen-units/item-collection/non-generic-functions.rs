@@ -77,5 +77,3 @@ fn main() {
     let x = Struct { _x: 0 };
     x.bar();
 }
-
-//~ TRANS_ITEM drop-glue i8

@@ -24,6 +24,10 @@ struct NotSoSecretlyEmpty {
     _priv: !,
 }
 
+fn foo() -> Option<NotSoSecretlyEmpty> {
+    None
+}
+
 fn main() {
     let x: &[!] = &[];
 
@@ -44,6 +48,10 @@ fn main() {
         Ok(_y) => (),
         Err(Err(_y)) => (),
         Err(Ok(_y)) => (),  //~ ERROR unreachable pattern
+    }
+
+    while let Some(_y) = foo() {
+        //~^ ERROR unreachable pattern
     }
 }
 

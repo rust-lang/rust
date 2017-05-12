@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(field_init_shorthand)]
-
 struct Foo {
     x: i32,
     y: i32
@@ -19,6 +17,6 @@ fn main() {
     let x = 0;
     let foo = Foo {
         x,
-        y //~ ERROR unresolved value `y`
+        y //~ ERROR cannot find value `y` in this scope
     };
 }

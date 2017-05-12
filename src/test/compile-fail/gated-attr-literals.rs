@@ -10,6 +10,9 @@
 
 // Check that literals in attributes don't parse without the feature gate.
 
+// gate-test-attr_literals
+// gate-test-custom_attribute
+
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
 #![allow(unused_variables)]

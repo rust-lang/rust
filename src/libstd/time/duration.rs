@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use iter::Sum;
 use ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
@@ -83,7 +84,10 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let five_seconds = Duration::from_secs(5);
+    /// let duration = Duration::from_secs(5);
+    ///
+    /// assert_eq!(5, duration.as_secs());
+    /// assert_eq!(0, duration.subsec_nanos());
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
@@ -98,7 +102,10 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let five_seconds = Duration::from_millis(5000);
+    /// let duration = Duration::from_millis(2569);
+    ///
+    /// assert_eq!(2, duration.as_secs());
+    /// assert_eq!(569000000, duration.subsec_nanos());
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
@@ -118,9 +125,24 @@ impl Duration {
     /// ```
     /// use std::time::Duration;
     ///
-    /// let five_seconds = Duration::new(5, 0);
-    /// assert_eq!(five_seconds.as_secs(), 5);
+    /// let duration = Duration::new(5, 730023852);
+    /// assert_eq!(duration.as_secs(), 5);
     /// ```
+    ///
+    /// To determine the total number of seconds represented by the `Duration`,
+    /// use `as_secs` in combination with [`subsec_nanos`]:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::new(5, 730023852);
+    ///
+    /// assert_eq!(5.730023852,
+    ///            duration.as_secs() as f64
+    ///            + duration.subsec_nanos() as f64 * 1e-9);
+    /// ```
+    ///
+    /// [`subsec_nanos`]: #method.subsec_nanos
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     pub fn as_secs(&self) -> u64 { self.secs }
@@ -153,14 +175,12 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(duration_checked_ops)]
-    ///
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 0).checked_add(Duration::new(0, 1)), Some(Duration::new(0, 1)));
     /// assert_eq!(Duration::new(1, 0).checked_add(Duration::new(std::u64::MAX, 0)), None);
     /// ```
-    #[unstable(feature = "duration_checked_ops", issue = "35774")]
+    #[stable(feature = "duration_checked_ops", since = "1.16.0")]
     #[inline]
     pub fn checked_add(self, rhs: Duration) -> Option<Duration> {
         if let Some(mut secs) = self.secs.checked_add(rhs.secs) {
@@ -193,14 +213,12 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(duration_checked_ops)]
-    ///
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 1).checked_sub(Duration::new(0, 0)), Some(Duration::new(0, 1)));
     /// assert_eq!(Duration::new(0, 0).checked_sub(Duration::new(0, 1)), None);
     /// ```
-    #[unstable(feature = "duration_checked_ops", issue = "35774")]
+    #[stable(feature = "duration_checked_ops", since = "1.16.0")]
     #[inline]
     pub fn checked_sub(self, rhs: Duration) -> Option<Duration> {
         if let Some(mut secs) = self.secs.checked_sub(rhs.secs) {
@@ -231,14 +249,12 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(duration_checked_ops)]
-    ///
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 500_000_001).checked_mul(2), Some(Duration::new(1, 2)));
     /// assert_eq!(Duration::new(std::u64::MAX - 1, 0).checked_mul(2), None);
     /// ```
-    #[unstable(feature = "duration_checked_ops", issue = "35774")]
+    #[stable(feature = "duration_checked_ops", since = "1.16.0")]
     #[inline]
     pub fn checked_mul(self, rhs: u32) -> Option<Duration> {
         // Multiply nanoseconds as u64, because it cannot overflow that way.
@@ -268,15 +284,13 @@ impl Duration {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(duration_checked_ops)]
-    ///
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(2, 0).checked_div(2), Some(Duration::new(1, 0)));
     /// assert_eq!(Duration::new(1, 0).checked_div(2), Some(Duration::new(0, 500_000_000)));
     /// assert_eq!(Duration::new(2, 0).checked_div(0), None);
     /// ```
-    #[unstable(feature = "duration_checked_ops", issue = "35774")]
+    #[stable(feature = "duration_checked_ops", since = "1.16.0")]
     #[inline]
     pub fn checked_div(self, rhs: u32) -> Option<Duration> {
         if rhs != 0 {
@@ -353,6 +367,20 @@ impl Div<u32> for Duration {
 impl DivAssign<u32> for Duration {
     fn div_assign(&mut self, rhs: u32) {
         *self = *self / rhs;
+    }
+}
+
+#[stable(feature = "duration_sum", since = "1.16.0")]
+impl Sum for Duration {
+    fn sum<I: Iterator<Item=Duration>>(iter: I) -> Duration {
+        iter.fold(Duration::new(0, 0), |a, b| a + b)
+    }
+}
+
+#[stable(feature = "duration_sum", since = "1.16.0")]
+impl<'a> Sum<&'a Duration> for Duration {
+    fn sum<I: Iterator<Item=&'a Duration>>(iter: I) -> Duration {
+        iter.fold(Duration::new(0, 0), |a, b| a + *b)
     }
 }
 

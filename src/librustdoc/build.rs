@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate build_helper;
 extern crate gcc;
 
 fn main() {
-    println!("cargo:rustc-cfg=cargobuild");
+    let src_dir = std::path::Path::new("../rt/hoedown/src");
+    build_helper::rerun_if_changed_anything_in_dir(src_dir);
     let mut cfg = gcc::Config::new();
     cfg.file("../rt/hoedown/src/autolink.c")
        .file("../rt/hoedown/src/buffer.c")
@@ -22,6 +24,7 @@ fn main() {
        .file("../rt/hoedown/src/html_smartypants.c")
        .file("../rt/hoedown/src/stack.c")
        .file("../rt/hoedown/src/version.c")
-       .include("../rt/hoedown/src")
+       .include(src_dir)
        .compile("libhoedown.a");
 }
+

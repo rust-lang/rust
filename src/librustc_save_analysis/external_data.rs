@@ -11,11 +11,15 @@
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex};
 use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
-use syntax::ast::NodeId;
+use syntax::ast::{self, NodeId};
 use syntax::codemap::CodeMap;
+use syntax::print::pprust;
 use syntax_pos::Span;
 
 use data::{self, Visibility, SigElement};
+
+use rls_data::{SpanData, CratePreludeData, Attribute};
+use rls_span::{Column, Row};
 
 // FIXME: this should be pub(crate), but the current snapshot doesn't allow it yet
 pub trait Lower {
@@ -34,42 +38,44 @@ pub fn null_def_id() -> DefId {
     }
 }
 
-#[derive(Clone, Debug, RustcEncodable)]
-pub struct SpanData {
-    pub file_name: String,
-    pub byte_start: u32,
-    pub byte_end: u32,
-    /// 1-based.
-    pub line_start: usize,
-    pub line_end: usize,
-    /// 1-based, character offset.
-    pub column_start: usize,
-    pub column_end: usize,
-}
+pub fn span_from_span(span: Span, cm: &CodeMap) -> SpanData {
+    let start = cm.lookup_char_pos(span.lo);
+    let end = cm.lookup_char_pos(span.hi);
 
-impl SpanData {
-    pub fn from_span(span: Span, cm: &CodeMap) -> SpanData {
-        let start = cm.lookup_char_pos(span.lo);
-        let end = cm.lookup_char_pos(span.hi);
-
-        SpanData {
-            file_name: start.file.name.clone(),
-            byte_start: span.lo.0,
-            byte_end: span.hi.0,
-            line_start: start.line,
-            line_end: end.line,
-            column_start: start.col.0 + 1,
-            column_end: end.col.0 + 1,
-        }
+    SpanData {
+        file_name: start.file.name.clone().into(),
+        byte_start: span.lo.0,
+        byte_end: span.hi.0,
+        line_start: Row::new_one_indexed(start.line as u32),
+        line_end: Row::new_one_indexed(end.line as u32),
+        column_start: Column::new_one_indexed(start.col.0 as u32 + 1),
+        column_end: Column::new_one_indexed(end.col.0 as u32 + 1),
     }
 }
 
-#[derive(Debug, RustcEncodable)]
-pub struct CratePreludeData {
-    pub crate_name: String,
-    pub crate_root: String,
-    pub external_crates: Vec<data::ExternalCrateData>,
-    pub span: SpanData,
+impl Lower for Vec<ast::Attribute> {
+    type Target = Vec<Attribute>;
+
+    fn lower(self, tcx: TyCtxt) -> Vec<Attribute> {
+        self.into_iter()
+        // Only retain real attributes. Doc comments are lowered separately.
+        .filter(|attr| attr.path != "doc")
+        .map(|mut attr| {
+            // Remove the surrounding '#[..]' or '#![..]' of the pretty printed
+            // attribute. First normalize all inner attribute (#![..]) to outer
+            // ones (#[..]), then remove the two leading and the one trailing character.
+            attr.style = ast::AttrStyle::Outer;
+            let value = pprust::attribute_to_string(&attr);
+            // This str slicing works correctly, because the leading and trailing characters
+            // are in the ASCII range and thus exactly one byte each.
+            let value = value[2..value.len()-1].to_string();
+
+            Attribute {
+                value: value,
+                span: span_from_span(attr.span, tcx.sess.codemap()),
+            }
+        }).collect()
+    }
 }
 
 impl Lower for data::CratePreludeData {
@@ -80,13 +86,13 @@ impl Lower for data::CratePreludeData {
             crate_name: self.crate_name,
             crate_root: self.crate_root,
             external_crates: self.external_crates,
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
+            span: span_from_span(self.span, tcx.sess.codemap()),
         }
     }
 }
 
 /// Data for enum declarations.
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct EnumData {
     pub id: DefId,
     pub value: String,
@@ -98,6 +104,7 @@ pub struct EnumData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::EnumData {
@@ -105,22 +112,23 @@ impl Lower for data::EnumData {
 
     fn lower(self, tcx: TyCtxt) -> EnumData {
         EnumData {
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             name: self.name,
             value: self.value,
             qualname: self.qualname,
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
-            variants: self.variants.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
+            span: span_from_span(self.span, tcx.sess.codemap()),
+            scope: make_def_id(self.scope, &tcx.hir),
+            variants: self.variants.into_iter().map(|id| make_def_id(id, &tcx.hir)).collect(),
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
 
 /// Data for extern crates.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct ExternCrateData {
     pub id: DefId,
     pub name: String,
@@ -135,18 +143,18 @@ impl Lower for data::ExternCrateData {
 
     fn lower(self, tcx: TyCtxt) -> ExternCrateData {
         ExternCrateData {
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             name: self.name,
             crate_num: self.crate_num,
             location: self.location,
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            span: span_from_span(self.span, tcx.sess.codemap()),
+            scope: make_def_id(self.scope, &tcx.hir),
         }
     }
 }
 
 /// Data about a function call.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct FunctionCallData {
     pub span: SpanData,
     pub scope: DefId,
@@ -158,15 +166,15 @@ impl Lower for data::FunctionCallData {
 
     fn lower(self, tcx: TyCtxt) -> FunctionCallData {
         FunctionCallData {
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            span: span_from_span(self.span, tcx.sess.codemap()),
+            scope: make_def_id(self.scope, &tcx.hir),
             ref_id: self.ref_id,
         }
     }
 }
 
 /// Data for all kinds of functions and methods.
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct FunctionData {
     pub id: DefId,
     pub name: String,
@@ -179,6 +187,7 @@ pub struct FunctionData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::FunctionData {
@@ -186,23 +195,24 @@ impl Lower for data::FunctionData {
 
     fn lower(self, tcx: TyCtxt) -> FunctionData {
         FunctionData {
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             name: self.name,
             qualname: self.qualname,
             declaration: self.declaration,
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            span: span_from_span(self.span, tcx.sess.codemap()),
+            scope: make_def_id(self.scope, &tcx.hir),
             value: self.value,
             visibility: self.visibility,
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
 
 /// Data about a function call.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct FunctionRefData {
     pub span: SpanData,
     pub scope: DefId,
@@ -214,13 +224,13 @@ impl Lower for data::FunctionRefData {
 
     fn lower(self, tcx: TyCtxt) -> FunctionRefData {
         FunctionRefData {
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            span: span_from_span(self.span, tcx.sess.codemap()),
+            scope: make_def_id(self.scope, &tcx.hir),
             ref_id: self.ref_id,
         }
     }
 }
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct ImplData {
     pub id: DefId,
     pub span: SpanData,
@@ -234,16 +244,16 @@ impl Lower for data::ImplData {
 
     fn lower(self, tcx: TyCtxt) -> ImplData {
         ImplData {
-            id: make_def_id(self.id, &tcx.map),
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
+            span: span_from_span(self.span, tcx.sess.codemap()),
+            scope: make_def_id(self.scope, &tcx.hir),
             trait_ref: self.trait_ref,
             self_ref: self.self_ref,
         }
     }
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct InheritanceData {
     pub span: SpanData,
     pub base_id: DefId,
@@ -255,15 +265,15 @@ impl Lower for data::InheritanceData {
 
     fn lower(self, tcx: TyCtxt) -> InheritanceData {
         InheritanceData {
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
+            span: span_from_span(self.span, tcx.sess.codemap()),
             base_id: self.base_id,
-            deriv_id: make_def_id(self.deriv_id, &tcx.map)
+            deriv_id: make_def_id(self.deriv_id, &tcx.hir)
         }
     }
 }
 
 /// Data about a macro declaration.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct MacroData {
     pub span: SpanData,
     pub name: String,
@@ -276,7 +286,7 @@ impl Lower for data::MacroData {
 
     fn lower(self, tcx: TyCtxt) -> MacroData {
         MacroData {
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
+            span: span_from_span(self.span, tcx.sess.codemap()),
             name: self.name,
             qualname: self.qualname,
             docs: self.docs,
@@ -285,7 +295,7 @@ impl Lower for data::MacroData {
 }
 
 /// Data about a macro use.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct MacroUseData {
     pub span: SpanData,
     pub name: String,
@@ -301,17 +311,17 @@ impl Lower for data::MacroUseData {
 
     fn lower(self, tcx: TyCtxt) -> MacroUseData {
         MacroUseData {
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
+            span: span_from_span(self.span, tcx.sess.codemap()),
             name: self.name,
             qualname: self.qualname,
-            callee_span: SpanData::from_span(self.callee_span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            callee_span: span_from_span(self.callee_span, tcx.sess.codemap()),
+            scope: make_def_id(self.scope, &tcx.hir),
         }
     }
 }
 
 /// Data about a method call.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct MethodCallData {
     pub span: SpanData,
     pub scope: DefId,
@@ -324,8 +334,8 @@ impl Lower for data::MethodCallData {
 
     fn lower(self, tcx: TyCtxt) -> MethodCallData {
         MethodCallData {
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            span: span_from_span(self.span, tcx.sess.codemap()),
+            scope: make_def_id(self.scope, &tcx.hir),
             ref_id: self.ref_id,
             decl_id: self.decl_id,
         }
@@ -333,7 +343,7 @@ impl Lower for data::MethodCallData {
 }
 
 /// Data for method declarations (methods with a body are treated as functions).
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct MethodData {
     pub id: DefId,
     pub name: String,
@@ -346,6 +356,7 @@ pub struct MethodData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::MethodData {
@@ -353,10 +364,10 @@ impl Lower for data::MethodData {
 
     fn lower(self, tcx: TyCtxt) -> MethodData {
         MethodData {
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
+            span: span_from_span(self.span, tcx.sess.codemap()),
             name: self.name,
-            scope: make_def_id(self.scope, &tcx.map),
-            id: make_def_id(self.id, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
+            id: make_def_id(self.id, &tcx.hir),
             qualname: self.qualname,
             value: self.value,
             decl_id: self.decl_id,
@@ -364,12 +375,13 @@ impl Lower for data::MethodData {
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
 
 /// Data for modules.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct ModData {
     pub id: DefId,
     pub name: String,
@@ -381,6 +393,7 @@ pub struct ModData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::ModData {
@@ -388,22 +401,23 @@ impl Lower for data::ModData {
 
     fn lower(self, tcx: TyCtxt) -> ModData {
         ModData {
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             name: self.name,
             qualname: self.qualname,
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            span: span_from_span(self.span, tcx.sess.codemap()),
+            scope: make_def_id(self.scope, &tcx.hir),
             filename: self.filename,
-            items: self.items.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
+            items: self.items.into_iter().map(|id| make_def_id(id, &tcx.hir)).collect(),
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
 
 /// Data for a reference to a module.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct ModRefData {
     pub span: SpanData,
     pub scope: DefId,
@@ -416,15 +430,15 @@ impl Lower for data::ModRefData {
 
     fn lower(self, tcx: TyCtxt) -> ModRefData {
         ModRefData {
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            span: span_from_span(self.span, tcx.sess.codemap()),
+            scope: make_def_id(self.scope, &tcx.hir),
             ref_id: self.ref_id,
             qualname: self.qualname,
         }
     }
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct StructData {
     pub span: SpanData,
     pub name: String,
@@ -437,6 +451,7 @@ pub struct StructData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::StructData {
@@ -444,22 +459,23 @@ impl Lower for data::StructData {
 
     fn lower(self, tcx: TyCtxt) -> StructData {
         StructData {
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
+            span: span_from_span(self.span, tcx.sess.codemap()),
             name: self.name,
-            id: make_def_id(self.id, &tcx.map),
-            ctor_id: make_def_id(self.ctor_id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
+            ctor_id: make_def_id(self.ctor_id, &tcx.hir),
             qualname: self.qualname,
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             value: self.value,
-            fields: self.fields.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
+            fields: self.fields.into_iter().map(|id| make_def_id(id, &tcx.hir)).collect(),
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct StructVariantData {
     pub span: SpanData,
     pub name: String,
@@ -471,6 +487,7 @@ pub struct StructVariantData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::StructVariantData {
@@ -478,21 +495,22 @@ impl Lower for data::StructVariantData {
 
     fn lower(self, tcx: TyCtxt) -> StructVariantData {
         StructVariantData {
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
+            span: span_from_span(self.span, tcx.sess.codemap()),
             name: self.name,
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             qualname: self.qualname,
             type_value: self.type_value,
             value: self.value,
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct TraitData {
     pub span: SpanData,
     pub name: String,
@@ -504,6 +522,7 @@ pub struct TraitData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::TraitData {
@@ -511,21 +530,22 @@ impl Lower for data::TraitData {
 
     fn lower(self, tcx: TyCtxt) -> TraitData {
         TraitData {
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
+            span: span_from_span(self.span, tcx.sess.codemap()),
             name: self.name,
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             qualname: self.qualname,
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             value: self.value,
-            items: self.items.into_iter().map(|id| make_def_id(id, &tcx.map)).collect(),
+            items: self.items.into_iter().map(|id| make_def_id(id, &tcx.hir)).collect(),
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct TupleVariantData {
     pub span: SpanData,
     pub id: DefId,
@@ -537,6 +557,7 @@ pub struct TupleVariantData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::TupleVariantData {
@@ -544,22 +565,23 @@ impl Lower for data::TupleVariantData {
 
     fn lower(self, tcx: TyCtxt) -> TupleVariantData {
         TupleVariantData {
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            id: make_def_id(self.id, &tcx.map),
+            span: span_from_span(self.span, tcx.sess.codemap()),
+            id: make_def_id(self.id, &tcx.hir),
             name: self.name,
             qualname: self.qualname,
             type_value: self.type_value,
             value: self.value,
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
 
 /// Data for a typedef.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct TypeDefData {
     pub id: DefId,
     pub name: String,
@@ -570,6 +592,7 @@ pub struct TypeDefData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Option<Signature>,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::TypeDefData {
@@ -577,21 +600,22 @@ impl Lower for data::TypeDefData {
 
     fn lower(self, tcx: TyCtxt) -> TypeDefData {
         TypeDefData {
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             name: self.name,
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
+            span: span_from_span(self.span, tcx.sess.codemap()),
             qualname: self.qualname,
             value: self.value,
             visibility: self.visibility,
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.map(|s| s.lower(tcx)),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
 
 /// Data for a reference to a type or trait.
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct TypeRefData {
     pub span: SpanData,
     pub scope: DefId,
@@ -604,15 +628,15 @@ impl Lower for data::TypeRefData {
 
     fn lower(self, tcx: TyCtxt) -> TypeRefData {
         TypeRefData {
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            span: span_from_span(self.span, tcx.sess.codemap()),
+            scope: make_def_id(self.scope, &tcx.hir),
             ref_id: self.ref_id,
             qualname: self.qualname,
         }
     }
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct UseData {
     pub id: DefId,
     pub span: SpanData,
@@ -627,17 +651,17 @@ impl Lower for data::UseData {
 
     fn lower(self, tcx: TyCtxt) -> UseData {
         UseData {
-            id: make_def_id(self.id, &tcx.map),
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
+            id: make_def_id(self.id, &tcx.hir),
+            span: span_from_span(self.span, tcx.sess.codemap()),
             name: self.name,
             mod_id: self.mod_id,
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             visibility: self.visibility,
         }
     }
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct UseGlobData {
     pub id: DefId,
     pub span: SpanData,
@@ -651,17 +675,17 @@ impl Lower for data::UseGlobData {
 
     fn lower(self, tcx: TyCtxt) -> UseGlobData {
         UseGlobData {
-            id: make_def_id(self.id, &tcx.map),
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
+            id: make_def_id(self.id, &tcx.hir),
+            span: span_from_span(self.span, tcx.sess.codemap()),
             names: self.names,
-            scope: make_def_id(self.scope, &tcx.map),
+            scope: make_def_id(self.scope, &tcx.hir),
             visibility: self.visibility,
         }
     }
 }
 
 /// Data for local and global variables (consts and statics).
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct VariableData {
     pub id: DefId,
     pub name: String,
@@ -675,6 +699,7 @@ pub struct VariableData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Option<Signature>,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::VariableData {
@@ -682,25 +707,26 @@ impl Lower for data::VariableData {
 
     fn lower(self, tcx: TyCtxt) -> VariableData {
         VariableData {
-            id: make_def_id(self.id, &tcx.map),
+            id: make_def_id(self.id, &tcx.hir),
             kind: self.kind,
             name: self.name,
             qualname: self.qualname,
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            span: span_from_span(self.span, tcx.sess.codemap()),
+            scope: make_def_id(self.scope, &tcx.hir),
             value: self.value,
             type_value: self.type_value,
             parent: self.parent,
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.map(|s| s.lower(tcx)),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
 
 /// Data for the use of some item (e.g., the use of a local variable, which
 /// will refer to that variables declaration (by ref_id)).
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct VariableRefData {
     pub name: String,
     pub span: SpanData,
@@ -714,14 +740,14 @@ impl Lower for data::VariableRefData {
     fn lower(self, tcx: TyCtxt) -> VariableRefData {
         VariableRefData {
             name: self.name,
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
-            scope: make_def_id(self.scope, &tcx.map),
+            span: span_from_span(self.span, tcx.sess.codemap()),
+            scope: make_def_id(self.scope, &tcx.hir),
             ref_id: self.ref_id,
         }
     }
 }
 
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct Signature {
     pub span: SpanData,
     pub text: String,
@@ -738,7 +764,7 @@ impl Lower for data::Signature {
 
     fn lower(self, tcx: TyCtxt) -> Signature {
         Signature {
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
+            span: span_from_span(self.span, tcx.sess.codemap()),
             text: self.text,
             ident_start: self.ident_start,
             ident_end: self.ident_end,

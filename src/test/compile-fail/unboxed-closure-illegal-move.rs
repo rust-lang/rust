@@ -18,8 +18,6 @@ fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
 fn to_fn_mut<A,F:FnMut<A>>(f: F) -> F { f }
 fn to_fn_once<A,F:FnOnce<A>>(f: F) -> F { f }
 
-// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-
 fn main() {
     // By-ref cases
     {

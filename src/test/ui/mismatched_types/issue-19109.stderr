@@ -1,0 +1,11 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-19109.rs:14:5
+   |
+14 |     t as *mut Trait
+   |     ^^^^^^^^^^^^^^^ expected (), found *-ptr
+   |
+   = note: expected type `()`
+              found type `*mut Trait`
+
+error: aborting due to previous error
+

@@ -47,7 +47,7 @@
 //! that the contained type `T` is shareable. Additionally, `Arc<T>` is itself
 //! sendable while `Rc<T>` is not.
 //!
-//! This types allows for shared access to the contained data, and is often
+//! This type allows for shared access to the contained data, and is often
 //! paired with synchronization primitives such as mutexes to allow mutation of
 //! shared resources.
 //!
@@ -70,7 +70,7 @@
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 #![no_std]
 #![needs_allocator]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 
 #![feature(allocator)]
 #![feature(box_syntax)]
@@ -79,9 +79,10 @@
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(custom_attribute)]
-#![feature(dropck_parametricity)]
+#![feature(dropck_eyepatch)]
 #![cfg_attr(not(test), feature(exact_size_is_empty))]
 #![feature(fundamental)]
+#![feature(generic_param_attrs)]
 #![feature(lang_items)]
 #![feature(needs_allocator)]
 #![feature(optin_builtin_traits)]
@@ -127,6 +128,8 @@ mod boxed_test;
 pub mod arc;
 pub mod rc;
 pub mod raw_vec;
+#[unstable(feature = "str_box_extras", issue = "41119")]
+pub mod str;
 pub mod oom;
 
 pub use oom::oom;

@@ -13,6 +13,7 @@
 
 trait Foo<X = Box<Foo>> {
     //~^ ERROR unsupported cyclic reference
+    //~| ERROR unsupported cyclic reference
 }
 
 fn main() { }

@@ -22,23 +22,23 @@
 // are *mostly* used as a part of that interface, but these should
 // probably get a better home if someone can find one.
 
-use hir::def::{self, Def};
+use hir::def;
+use dep_graph::DepNode;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::map as hir_map;
 use hir::map::definitions::{Definitions, DefKey, DisambiguatedDefPathData};
 use hir::svh::Svh;
+use ich;
 use middle::lang_items;
-use ty::{self, Ty, TyCtxt};
-use mir::Mir;
+use ty::{self, TyCtxt};
 use session::Session;
 use session::search_paths::PathKind;
 use util::nodemap::{NodeSet, DefIdMap};
 
-use std::collections::BTreeMap;
+use std::any::Any;
 use std::path::PathBuf;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
@@ -46,13 +46,12 @@ use rustc_back::target::Target;
 use hir;
 use rustc_back::PanicStrategy;
 
-pub use self::NativeLibraryKind::{NativeStatic, NativeFramework, NativeUnknown};
+pub use self::NativeLibraryKind::*;
 
 // lonely orphan structs and enums looking for a better home
 
 #[derive(Clone, Debug)]
 pub struct LinkMeta {
-    pub crate_name: Symbol,
     pub crate_hash: Svh,
 }
 
@@ -122,7 +121,8 @@ pub enum LinkagePreference {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum NativeLibraryKind {
     NativeStatic,    // native static library (.a archive)
-    NativeFramework, // OSX-specific
+    NativeStaticNobundle, // native static library, which doesn't get bundled into .rlibs
+    NativeFramework, // macOS-specific
     NativeUnknown,   // default way to specify a dynamic library
 }
 
@@ -135,7 +135,7 @@ pub struct NativeLibrary {
 }
 
 pub enum LoadedMacro {
-    MacroRules(ast::MacroDef),
+    MacroDef(ast::Item),
     ProcMacro(Rc<SyntaxExtension>),
 }
 
@@ -160,55 +160,69 @@ pub struct ExternCrate {
     pub path_len: usize,
 }
 
+pub struct EncodedMetadata {
+    pub raw_data: Vec<u8>,
+    pub hashes: EncodedMetadataHashes,
+}
+
+impl EncodedMetadata {
+    pub fn new() -> EncodedMetadata {
+        EncodedMetadata {
+            raw_data: Vec::new(),
+            hashes: EncodedMetadataHashes::new(),
+        }
+    }
+}
+
+/// The hash for some metadata that (when saving) will be exported
+/// from this crate, or which (when importing) was exported by an
+/// upstream crate.
+#[derive(Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
+pub struct EncodedMetadataHash {
+    pub def_index: DefIndex,
+    pub hash: ich::Fingerprint,
+}
+
+/// The hash for some metadata that (when saving) will be exported
+/// from this crate, or which (when importing) was exported by an
+/// upstream crate.
+#[derive(Debug, RustcEncodable, RustcDecodable, Clone)]
+pub struct EncodedMetadataHashes {
+    pub entry_hashes: Vec<EncodedMetadataHash>,
+    pub global_hashes: Vec<(DepNode<()>, ich::Fingerprint)>,
+}
+
+impl EncodedMetadataHashes {
+    pub fn new() -> EncodedMetadataHashes {
+        EncodedMetadataHashes {
+            entry_hashes: Vec::new(),
+            global_hashes: Vec::new(),
+        }
+    }
+}
+
 /// A store of Rust crates, through with their metadata
 /// can be accessed.
-pub trait CrateStore<'tcx> {
+pub trait CrateStore {
+    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>;
+
     // item info
-    fn describe_def(&self, def: DefId) -> Option<Def>;
-    fn def_span(&self, sess: &Session, def: DefId) -> Span;
-    fn stability(&self, def: DefId) -> Option<attr::Stability>;
-    fn deprecation(&self, def: DefId) -> Option<attr::Deprecation>;
     fn visibility(&self, def: DefId) -> ty::Visibility;
-    fn closure_kind(&self, def_id: DefId) -> ty::ClosureKind;
-    fn closure_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-                      -> ty::ClosureTy<'tcx>;
-    fn item_variances(&self, def: DefId) -> Vec<ty::Variance>;
-    fn item_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                     -> Ty<'tcx>;
-    fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>>;
-    fn item_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                           -> ty::GenericPredicates<'tcx>;
-    fn item_super_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                                 -> ty::GenericPredicates<'tcx>;
-    fn item_generics<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                         -> ty::Generics<'tcx>;
-    fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>;
-    fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)-> ty::TraitDef;
-    fn adt_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> &'tcx ty::AdtDef;
-    fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name>;
-    fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId>;
+    fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>>;
+    fn item_generics_cloned(&self, def: DefId) -> ty::Generics;
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>;
 
     // impl info
-    fn associated_item_def_ids(&self, def_id: DefId) -> Vec<DefId>;
-    fn impl_trait_ref<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                          -> Option<ty::TraitRef<'tcx>>;
-    fn impl_polarity(&self, def: DefId) -> hir::ImplPolarity;
-    fn custom_coerce_unsized_kind(&self, def: DefId)
-                                  -> Option<ty::adjustment::CustomCoerceUnsized>;
-    fn impl_parent(&self, impl_def_id: DefId) -> Option<DefId>;
+    fn impl_defaultness(&self, def: DefId) -> hir::Defaultness;
 
     // trait/impl-item info
-    fn trait_of_item(&self, def_id: DefId) -> Option<DefId>;
-    fn associated_item(&self, def: DefId) -> Option<ty::AssociatedItem>;
+    fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem;
 
     // flags
     fn is_const_fn(&self, did: DefId) -> bool;
-    fn is_defaulted_trait(&self, did: DefId) -> bool;
     fn is_default_impl(&self, impl_did: DefId) -> bool;
-    fn is_foreign_item(&self, did: DefId) -> bool;
     fn is_dllimport_foreign_item(&self, def: DefId) -> bool;
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool;
 
@@ -223,6 +237,7 @@ pub trait CrateStore<'tcx> {
     fn is_allocator(&self, cnum: CrateNum) -> bool;
     fn is_panic_runtime(&self, cnum: CrateNum) -> bool;
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool;
+    fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool;
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy;
     fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate>;
     /// The name of the crate as it is referred to in source code of the current
@@ -245,23 +260,14 @@ pub trait CrateStore<'tcx> {
                     -> Option<DefId>;
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
+    fn def_path_hash(&self, def: DefId) -> u64;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children(&self, did: DefId) -> Vec<def::Export>;
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro;
 
     // misc. metadata
-    fn maybe_get_item_body<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                               -> Option<&'tcx hir::Body>;
-    fn item_body_nested_bodies(&self, def: DefId) -> BTreeMap<hir::BodyId, hir::Body>;
-    fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool;
-
-    fn get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> Mir<'tcx>;
-    fn is_item_mir_available(&self, def: DefId) -> bool;
-
-    /// Take a look if we need to inline or monomorphize this. If so, we
-    /// will emit code for this item in the local crate, and thus
-    /// create a translation item for it.
-    fn can_have_local_instance<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> bool;
+    fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                           -> &'tcx hir::Body;
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
@@ -275,10 +281,11 @@ pub trait CrateStore<'tcx> {
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>;
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource;
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
-    fn encode_metadata<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           reexports: &def::ExportMap,
-                           link_meta: &LinkMeta,
-                           reachable: &NodeSet) -> Vec<u8>;
+    fn encode_metadata<'a, 'tcx>(&self,
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 link_meta: &LinkMeta,
+                                 reachable: &NodeSet)
+                                 -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }
 
@@ -312,60 +319,32 @@ pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
 /// A dummy crate store that does not support any non-local crates,
 /// for test purposes.
 pub struct DummyCrateStore;
+
 #[allow(unused_variables)]
-impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
+impl CrateStore for DummyCrateStore {
+    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>
+        { bug!("crate_data_as_rc_any") }
     // item info
-    fn describe_def(&self, def: DefId) -> Option<Def> { bug!("describe_def") }
-    fn def_span(&self, sess: &Session, def: DefId) -> Span { bug!("def_span") }
-    fn stability(&self, def: DefId) -> Option<attr::Stability> { bug!("stability") }
-    fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> { bug!("deprecation") }
     fn visibility(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
-    fn closure_kind(&self, def_id: DefId) -> ty::ClosureKind { bug!("closure_kind") }
-    fn closure_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-                      -> ty::ClosureTy<'tcx>  { bug!("closure_ty") }
-    fn item_variances(&self, def: DefId) -> Vec<ty::Variance> { bug!("item_variances") }
-    fn item_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                     -> Ty<'tcx> { bug!("item_type") }
-    fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>> {
+    fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>> {
         bug!("visible_parent_map")
     }
-    fn item_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                           -> ty::GenericPredicates<'tcx> { bug!("item_predicates") }
-    fn item_super_predicates<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                                 -> ty::GenericPredicates<'tcx> { bug!("item_super_predicates") }
-    fn item_generics<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                         -> ty::Generics<'tcx> { bug!("item_generics") }
-    fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute> { bug!("item_attrs") }
-    fn trait_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)-> ty::TraitDef
-        { bug!("trait_def") }
-    fn adt_def<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> &'tcx ty::AdtDef
-        { bug!("adt_def") }
-    fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name> { bug!("fn_arg_names") }
-    fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId> { vec![] }
+    fn item_generics_cloned(&self, def: DefId) -> ty::Generics
+        { bug!("item_generics_cloned") }
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId> { vec![] }
 
     // impl info
-    fn associated_item_def_ids(&self, def_id: DefId) -> Vec<DefId>
-        { bug!("associated_items") }
-    fn impl_trait_ref<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                          -> Option<ty::TraitRef<'tcx>> { bug!("impl_trait_ref") }
-    fn impl_polarity(&self, def: DefId) -> hir::ImplPolarity { bug!("impl_polarity") }
-    fn custom_coerce_unsized_kind(&self, def: DefId)
-                                  -> Option<ty::adjustment::CustomCoerceUnsized>
-        { bug!("custom_coerce_unsized_kind") }
-    fn impl_parent(&self, def: DefId) -> Option<DefId> { bug!("impl_parent") }
+    fn impl_defaultness(&self, def: DefId) -> hir::Defaultness { bug!("impl_defaultness") }
 
     // trait/impl-item info
-    fn trait_of_item(&self, def_id: DefId) -> Option<DefId> { bug!("trait_of_item") }
-    fn associated_item(&self, def: DefId) -> Option<ty::AssociatedItem> { bug!("associated_item") }
+    fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem
+        { bug!("associated_item_cloned") }
 
     // flags
     fn is_const_fn(&self, did: DefId) -> bool { bug!("is_const_fn") }
-    fn is_defaulted_trait(&self, did: DefId) -> bool { bug!("is_defaulted_trait") }
     fn is_default_impl(&self, impl_did: DefId) -> bool { bug!("is_default_impl") }
-    fn is_foreign_item(&self, did: DefId) -> bool { bug!("is_foreign_item") }
     fn is_dllimport_foreign_item(&self, id: DefId) -> bool { false }
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool { false }
 
@@ -383,6 +362,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_allocator(&self, cnum: CrateNum) -> bool { bug!("is_allocator") }
     fn is_panic_runtime(&self, cnum: CrateNum) -> bool { bug!("is_panic_runtime") }
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool { bug!("is_compiler_builtins") }
+    fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool { bug!("is_sanitizer_runtime") }
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy {
         bug!("panic_strategy")
     }
@@ -415,29 +395,17 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn def_path(&self, def: DefId) -> hir_map::DefPath {
         bug!("relative_def_path")
     }
+    fn def_path_hash(&self, def: DefId) -> u64 {
+        bug!("wa")
+    }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
     fn item_children(&self, did: DefId) -> Vec<def::Export> { bug!("item_children") }
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
 
     // misc. metadata
-    fn maybe_get_item_body<'a>(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                               -> Option<&'tcx hir::Body> {
-        bug!("maybe_get_item_body")
-    }
-    fn item_body_nested_bodies(&self, def: DefId) -> BTreeMap<hir::BodyId, hir::Body> {
-        bug!("item_body_nested_bodies")
-    }
-    fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool {
-        bug!("const_is_rvalue_promotable_to_static")
-    }
-
-    fn get_item_mir<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                        -> Mir<'tcx> { bug!("get_item_mir") }
-    fn is_item_mir_available(&self, def: DefId) -> bool {
-        bug!("is_item_mir_available")
-    }
-    fn can_have_local_instance<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId) -> bool {
-        bug!("can_have_local_instance")
+    fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                           -> &'tcx hir::Body {
+        bug!("item_body")
     }
 
     // This is basically a 1-based range of ints, which is a little
@@ -453,10 +421,13 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
         { vec![] }
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource { bug!("used_crate_source") }
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> { None }
-    fn encode_metadata<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           reexports: &def::ExportMap,
-                           link_meta: &LinkMeta,
-                           reachable: &NodeSet) -> Vec<u8> { vec![] }
+    fn encode_metadata<'a, 'tcx>(&self,
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 link_meta: &LinkMeta,
+                                 reachable: &NodeSet)
+                                 -> EncodedMetadata {
+        bug!("encode_metadata")
+    }
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
 }
 

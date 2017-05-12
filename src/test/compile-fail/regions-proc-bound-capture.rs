@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-
 fn borrowed_proc<'a>(x: &'a isize) -> Box<FnMut()->(isize) + 'a> {
     // This is legal, because the region bound on `proc`
     // states that it captures `x`.
@@ -18,7 +16,7 @@ fn borrowed_proc<'a>(x: &'a isize) -> Box<FnMut()->(isize) + 'a> {
 
 fn static_proc(x: &isize) -> Box<FnMut()->(isize) + 'static> {
     // This is illegal, because the region bound on `proc` is 'static.
-    Box::new(move|| { *x }) //~ ERROR does not fulfill the required lifetime
+    Box::new(move|| { *x }) //~ ERROR cannot infer an appropriate lifetime
 }
 
 fn main() { }

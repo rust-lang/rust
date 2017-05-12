@@ -13,6 +13,6 @@ pub fn main() {
         //~^ ERROR blocks in constants are limited to items and tail expressions
         let p = 3;
         //~^ ERROR blocks in constants are limited to items and tail expressions
-        &p
+        &p //~ ERROR `p` does not live long enough
     };
 }

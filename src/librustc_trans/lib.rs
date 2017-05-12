@@ -21,7 +21,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 
 #![feature(associated_consts)]
 #![feature(box_patterns)]
@@ -29,6 +29,7 @@
 #![feature(const_fn)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
+#![feature(i128_type)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -39,11 +40,9 @@
 #![feature(conservative_impl_trait)]
 
 use rustc::dep_graph::WorkProduct;
+use syntax_pos::symbol::Symbol;
 
-extern crate arena;
 extern crate flate;
-extern crate getopts;
-extern crate graphviz;
 extern crate libc;
 #[macro_use] extern crate rustc;
 extern crate rustc_back;
@@ -51,18 +50,16 @@ extern crate rustc_data_structures;
 extern crate rustc_incremental;
 pub extern crate rustc_llvm as llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
-extern crate serialize;
 extern crate rustc_const_math;
-extern crate rustc_const_eval;
 #[macro_use]
 #[no_link]
 extern crate rustc_bitflags;
-extern crate rustc_i128;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
+extern crate serialize;
 
 pub use rustc::session;
 pub use rustc::middle;
@@ -70,7 +67,7 @@ pub use rustc::lint;
 pub use rustc::util;
 
 pub use base::trans_crate;
-pub use disr::Disr;
+pub use back::symbol_names::provide;
 
 pub mod back {
     pub use rustc::hir::svh;
@@ -101,6 +98,7 @@ mod builder;
 mod cabi_aarch64;
 mod cabi_arm;
 mod cabi_asmjs;
+mod cabi_hexagon;
 mod cabi_mips;
 mod cabi_mips64;
 mod cabi_msp430;
@@ -115,14 +113,12 @@ mod cabi_x86;
 mod cabi_x86_64;
 mod cabi_x86_win64;
 mod callee;
-mod cleanup;
 mod collector;
 mod common;
 mod consts;
 mod context;
 mod debuginfo;
 mod declare;
-mod disr;
 mod glue;
 mod intrinsic;
 mod machine;
@@ -130,7 +126,6 @@ mod meth;
 mod mir;
 mod monomorphize;
 mod partitioning;
-mod symbol_map;
 mod symbol_names_test;
 mod trans_item;
 mod tvec;
@@ -169,10 +164,11 @@ unsafe impl Send for ModuleTranslation { }
 unsafe impl Sync for ModuleTranslation { }
 
 pub struct CrateTranslation {
+    pub crate_name: Symbol,
     pub modules: Vec<ModuleTranslation>,
     pub metadata_module: ModuleTranslation,
     pub link: middle::cstore::LinkMeta,
-    pub metadata: Vec<u8>,
+    pub metadata: middle::cstore::EncodedMetadata,
     pub exported_symbols: back::symbol_export::ExportedSymbols,
     pub no_builtins: bool,
     pub windows_subsystem: Option<String>,

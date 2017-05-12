@@ -269,10 +269,7 @@ LARGE_INTEGER increment_all_parts(LARGE_INTEGER li) {
     return li;
 }
 
-#define DO_INT128_TEST !(defined(WIN32) || defined(_WIN32) || defined(__WIN32)) && \
-    defined(__amd64__)
-
-#if DO_INT128_TEST
+#if __SIZEOF_INT128__ == 16
 
 unsigned __int128 identity(unsigned __int128 a) {
     return a;

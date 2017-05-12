@@ -80,7 +80,13 @@ impl ShadowGraph {
 
             let mut stack = self.stack.borrow_mut();
             match *message {
-                DepMessage::Read(ref n) => self.check_edge(Some(Some(n)), top(&stack)),
+                // It is ok to READ shared state outside of a
+                // task. That can't do any harm (at least, the only
+                // way it can do harm is by leaking that data into a
+                // query or task, which would be a problem
+                // anyway). What would be bad is WRITING to that
+                // state.
+                DepMessage::Read(_) => { }
                 DepMessage::Write(ref n) => self.check_edge(top(&stack), Some(Some(n))),
                 DepMessage::PushTask(ref n) => stack.push(Some(n.clone())),
                 DepMessage::PushIgnore => stack.push(None),
@@ -116,7 +122,7 @@ impl ShadowGraph {
             (None, None) => unreachable!(),
 
             // nothing on top of the stack
-            (None, Some(n)) | (Some(n), None) => bug!("read/write of {:?} but no current task", n),
+            (None, Some(n)) | (Some(n), None) => bug!("write of {:?} but no current task", n),
 
             // this corresponds to an Ignore being top of the stack
             (Some(None), _) | (_, Some(None)) => (),

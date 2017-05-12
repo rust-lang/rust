@@ -6,6 +6,9 @@ error[E0053]: method `foo` has an incompatible type for trait
 ...
 21 |     fn foo(x: i16) { }
    |               ^^^ expected u16, found i16
+   |
+   = note: expected type `fn(u16)`
+              found type `fn(i16)`
 
 error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/trait-impl-fn-incompatibility.rs:22:28
@@ -17,7 +20,7 @@ error[E0053]: method `bar` has an incompatible type for trait
    |                            ^^^^ types differ in mutability
    |
    = note: expected type `fn(&mut Bar, &mut Bar)`
-   = note:    found type `fn(&mut Bar, &Bar)`
+              found type `fn(&mut Bar, &Bar)`
 
 error: aborting due to 2 previous errors
 

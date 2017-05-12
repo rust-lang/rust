@@ -22,7 +22,7 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
-#![cfg_attr(not(stage0), deny(warnings))]
+#![deny(warnings)]
 
 #![feature(libc)]
 #![feature(staged_api)]
@@ -62,21 +62,17 @@ pub struct Bytes {
 impl Deref for Bytes {
     type Target = [u8];
     fn deref(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts(*self.ptr, self.len) }
+        unsafe { slice::from_raw_parts(self.ptr.as_ptr(), self.len) }
     }
 }
 
 impl Drop for Bytes {
     fn drop(&mut self) {
         unsafe {
-            libc::free(*self.ptr as *mut _);
+            libc::free(self.ptr.as_ptr() as *mut _);
         }
     }
 }
-
-#[link(name = "miniz", kind = "static")]
-#[cfg(not(cargobuild))]
-extern "C" {}
 
 extern "C" {
     /// Raw miniz compression function.

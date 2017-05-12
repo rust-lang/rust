@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-needs_panic_runtime
+// gate-test-panic_runtime
+
 #![panic_runtime] //~ ERROR: is an experimental feature
 #![needs_panic_runtime] //~ ERROR: is an experimental feature
 

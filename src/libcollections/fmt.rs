@@ -62,7 +62,7 @@
 //!
 //! A format string is required to use all of its arguments, otherwise it is a
 //! compile-time error. You may refer to the same argument more than once in the
-//! format string, although it must always be referred to with the same type.
+//! format string.
 //!
 //! ## Named parameters
 //!
@@ -89,19 +89,8 @@
 //!
 //! ## Argument types
 //!
-//! Each argument's type is dictated by the format string. It is a requirement
-//! that every argument is only ever referred to by one type. For example, this
-//! is an invalid format string:
-//!
-//! ```text
-//! {0:x} {0:o}
-//! ```
-//!
-//! This is invalid because the first argument is both referred to as a
-//! hexadecimal as well as an
-//! octal.
-//!
-//! There are various parameters which do require a particular type, however.
+//! Each argument's type is dictated by the format string.
+//! There are various parameters which require a particular type, however.
 //! An example is the `{:.*}` syntax, which sets the number of decimal places
 //! in floating-point types:
 //!
@@ -113,13 +102,7 @@
 //!
 //! If this syntax is used, then the number of characters to print precedes the
 //! actual object being formatted, and the number of characters must have the
-//! type `usize`. Although a `usize` can be printed with `{}`, it is invalid to
-//! reference an argument as such. For example this is another invalid format
-//! string:
-//!
-//! ```text
-//! {:.*} {0}
-//! ```
+//! type `usize`.
 //!
 //! ## Formatting traits
 //!
@@ -323,7 +306,8 @@
 //! `%`. The actual grammar for the formatting syntax is:
 //!
 //! ```text
-//! format_string := <text> [ format <text> ] *
+//! format_string := <text> [ maybe-format <text> ] *
+//! maybe-format := '{' '{' | '}' '}' | <format>
 //! format := '{' [ argument ] [ ':' format_spec ] '}'
 //! argument := integer | identifier
 //!
@@ -383,6 +367,10 @@
 //!         like `{:08}` would yield `00000001` for the integer `1`, while the
 //!         same format would yield `-0000001` for the integer `-1`. Notice that
 //!         the negative version has one fewer zero than the positive version.
+//!         Note that padding zeroes are always placed after the sign (if any)
+//!         and before the digits. When used together with the `#` flag, a similar
+//!         rule applies: padding zeroes are inserted after the prefix but before
+//!         the digits.
 //!
 //! ## Width
 //!
@@ -539,7 +527,9 @@ use string;
 /// [format!]: ../macro.format.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn format(args: Arguments) -> string::String {
-    let mut output = string::String::new();
-    let _ = output.write_fmt(args);
+    let capacity = args.estimated_capacity();
+    let mut output = string::String::with_capacity(capacity);
+    output.write_fmt(args)
+          .expect("a formatting trait implementation returned an error");
     output
 }

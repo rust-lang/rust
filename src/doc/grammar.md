@@ -187,7 +187,7 @@ literal : [ string_lit | char_lit | byte_string_lit | byte_lit | num_lit | bool_
 The optional `lit_suffix` production is only used for certain numeric literals,
 but is reserved for future extension. That is, the above gives the lexical
 grammar, but a Rust parser will reject everything but the 12 special cases
-mentioned in [Number literals](reference.html#number-literals) in the
+mentioned in [Number literals](reference/tokens.html#number-literals) in the
 reference.
 
 #### Character and string literals
@@ -510,8 +510,9 @@ unit_expr : "()" ;
 ### Structure expressions
 
 ```antlr
-struct_expr : expr_path '{' ident ':' expr
-                      [ ',' ident ':' expr ] *
+struct_expr_field_init : ident | ident ':' expr ;
+struct_expr : expr_path '{' struct_expr_field_init
+                      [ ',' struct_expr_field_init ] *
                       [ ".." expr ] '}' |
               expr_path '(' expr
                       [ ',' expr ] * ')' |
@@ -760,8 +761,6 @@ closure_type := [ 'unsafe' ] [ '<' lifetime-list '>' ] '|' arg-list '|'
                 [ ':' bound-list ] [ '->' type ]
 lifetime-list := lifetime | lifetime ',' lifetime-list
 arg-list := ident ':' type | ident ':' type ',' arg-list
-bound-list := bound | bound '+' bound-list
-bound := path | lifetime
 ```
 
 ### Never type
@@ -778,6 +777,16 @@ never_type : "!" ;
 ### Type parameters
 
 **FIXME:** grammar?
+
+### Type parameter bounds
+
+```antlr
+bound-list := bound | bound '+' bound-list '+' ?
+bound := ty_bound | lt_bound
+lt_bound := lifetime
+ty_bound := ty_bound_noparen | (ty_bound_noparen)
+ty_bound_noparen := [?] [ for<lt_param_defs> ] simple_path
+```
 
 ### Self types
 

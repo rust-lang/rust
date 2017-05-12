@@ -29,22 +29,20 @@
 //! (non-mutating) use of `SRC`. These restrictions are conservative and may be relaxed in the
 //! future.
 
-use def_use::DefUseAnalysis;
 use rustc::mir::{Constant, Local, LocalKind, Location, Lvalue, Mir, Operand, Rvalue, StatementKind};
-use rustc::mir::transform::{MirPass, MirSource, Pass};
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
+use util::def_use::DefUseAnalysis;
 use transform::qualify_consts;
 
 pub struct CopyPropagation;
 
-impl Pass for CopyPropagation {}
-
-impl<'tcx> MirPass<'tcx> for CopyPropagation {
-    fn run_pass<'a>(&mut self,
-                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    source: MirSource,
-                    mir: &mut Mir<'tcx>) {
+impl MirPass for CopyPropagation {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          source: MirSource,
+                          mir: &mut Mir<'tcx>) {
         match source {
             MirSource::Const(_) => {
                 // Don't run on constants, because constant qualification might reject the
@@ -57,7 +55,7 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                 return
             }
             MirSource::Fn(function_node_id) => {
-                if qualify_consts::is_const_fn(tcx, tcx.map.local_def_id(function_node_id)) {
+                if qualify_consts::is_const_fn(tcx, tcx.hir.local_def_id(function_node_id)) {
                     // Don't run on const functions, as, again, trans might not be able to evaluate
                     // the optimized IR.
                     return

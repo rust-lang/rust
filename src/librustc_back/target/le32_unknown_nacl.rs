@@ -8,17 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{Target, TargetOptions, TargetResult};
+use LinkerFlavor;
+use super::{LinkArgs, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
+    let mut pre_link_args = LinkArgs::new();
+    pre_link_args.insert(LinkerFlavor::Gcc,
+                         vec!["--pnacl-exceptions=sjlj".to_string(),
+                              "--target=le32-unknown-nacl".to_string(),
+                              "-Wl,--start-group".to_string()]);
+    let mut post_link_args = LinkArgs::new();
+    post_link_args.insert(LinkerFlavor::Gcc,
+                          vec!["-Wl,--end-group".to_string()]);
+
     let opts = TargetOptions {
         linker: "pnacl-clang".to_string(),
         ar: "pnacl-ar".to_string(),
 
-        pre_link_args: vec!["--pnacl-exceptions=sjlj".to_string(),
-                            "--target=le32-unknown-nacl".to_string(),
-                            "-Wl,--start-group".to_string()],
-        post_link_args: vec!["-Wl,--end-group".to_string()],
+        pre_link_args: pre_link_args,
+        post_link_args: post_link_args,
         dynamic_linking: false,
         executables: true,
         exe_suffix: ".pexe".to_string(),
@@ -36,6 +44,7 @@ pub fn target() -> TargetResult {
         target_vendor: "unknown".to_string(),
         data_layout: "e-i64:64:64-p:32:32:32-v128:32:32".to_string(),
         arch: "le32".to_string(),
+        linker_flavor: LinkerFlavor::Gcc,
         options: opts,
     })
 }

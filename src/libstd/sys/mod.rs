@@ -13,11 +13,11 @@
 //! The `std::sys` module is the abstracted interface through which
 //! `std` talks to the underlying operating system. It has different
 //! implementations for different operating system families, today
-//! just Unix and Windows.
+//! just Unix and Windows, and initial support for Redox.
 //!
 //! The centralization of platform-specific code in this module is
 //! enforced by the "platform abstraction layer" tidy script in
-//! `tools/tidy/pal.rs`.
+//! `tools/tidy/src/pal.rs`.
 //!
 //! This module is closely related to the platform-independent system
 //! integration code in `std::sys_common`. See that module's
@@ -34,14 +34,14 @@
 
 pub use self::imp::*;
 
-#[cfg(target_os = "redox")]
-#[path = "redox/mod.rs"]
-mod imp;
-
 #[cfg(unix)]
 #[path = "unix/mod.rs"]
 mod imp;
 
 #[cfg(windows)]
 #[path = "windows/mod.rs"]
+mod imp;
+
+#[cfg(target_os = "redox")]
+#[path = "redox/mod.rs"]
 mod imp;

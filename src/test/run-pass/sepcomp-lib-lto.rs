@@ -12,7 +12,7 @@
 // separately compiled.
 
 // aux-build:sepcomp_lib.rs
-// compile-flags: -C lto
+// compile-flags: -C lto -g
 // no-prefer-dynamic
 // ignore-android FIXME #18800
 

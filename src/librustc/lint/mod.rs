@@ -31,17 +31,20 @@
 pub use self::Level::*;
 pub use self::LintSource::*;
 
+use hir;
+use hir::intravisit::FnKind;
 use std::hash;
 use std::ascii::AsciiExt;
 use syntax_pos::Span;
-use hir::intravisit::FnKind;
 use syntax::visit as ast_visit;
 use syntax::ast;
-use hir;
+use syntax::symbol::Symbol;
 
 pub use lint::context::{LateContext, EarlyContext, LintContext, LintStore,
                         raw_emit_lint, check_crate, check_ast_crate, gather_attrs,
                         raw_struct_lint, FutureIncompatibleInfo, EarlyLint, IntoEarlyLint};
+
+pub use lint::table::LintTable;
 
 /// Specification of a single lint.
 #[derive(Copy, Clone, Debug)]
@@ -130,6 +133,8 @@ pub trait LintPass {
 // FIXME: eliminate the duplication with `Visitor`. But this also
 // contains a few lint-specific methods with no equivalent in `Visitor`.
 pub trait LateLintPass<'a, 'tcx>: LintPass {
+    fn check_body(&mut self, _: &LateContext, _: &'tcx hir::Body) { }
+    fn check_body_post(&mut self, _: &LateContext, _: &'tcx hir::Body) { }
     fn check_name(&mut self, _: &LateContext, _: Span, _: ast::Name) { }
     fn check_crate(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Crate) { }
     fn check_crate_post(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Crate) { }
@@ -336,13 +341,14 @@ pub enum LintSource {
     Default,
 
     /// Lint level was set by an attribute.
-    Node(Span),
+    Node(ast::Name, Span),
 
     /// Lint level was set by a command-line flag.
-    CommandLine,
+    CommandLine(Symbol),
 }
 
 pub type LevelSource = (Level, LintSource);
 
 pub mod builtin;
 mod context;
+mod table;

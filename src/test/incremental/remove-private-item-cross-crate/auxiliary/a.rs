@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z incremental-cc
+
 #![allow(warnings)]
 #![crate_name = "a"]
 #![crate_type = "rlib"]

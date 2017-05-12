@@ -23,13 +23,10 @@ use super::util::impl_trait_ref_and_oblig;
 use rustc_data_structures::fx::FxHashMap;
 use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk};
-use middle::region;
 use ty::subst::{Subst, Substs};
 use traits::{self, Reveal, ObligationCause};
 use ty::{self, TyCtxt, TypeFoldable};
 use syntax_pos::DUMMY_SP;
-
-use syntax::ast;
 
 pub mod specialization_graph;
 
@@ -37,7 +34,7 @@ pub mod specialization_graph;
 pub struct OverlapError {
     pub with_impl: DefId,
     pub trait_desc: String,
-    pub self_desc: Option<String>
+    pub self_desc: Option<String>,
 }
 
 /// Given a subst for the requested impl, translate it to a subst
@@ -106,24 +103,25 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 /// Given a selected impl described by `impl_data`, returns the
-/// definition and substitions for the method with the name `name`,
-/// and trait method substitutions `substs`, in that impl, a less
-/// specialized impl, or the trait default, whichever applies.
-pub fn find_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             name: ast::Name,
-                             substs: &'tcx Substs<'tcx>,
-                             impl_data: &super::VtableImplData<'tcx, ()>)
-                             -> (DefId, &'tcx Substs<'tcx>)
-{
+/// definition and substitions for the method with the name `name`
+/// the kind `kind`, and trait method substitutions `substs`, in
+/// that impl, a less specialized impl, or the trait default,
+/// whichever applies.
+pub fn find_associated_item<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    item: &ty::AssociatedItem,
+    substs: &'tcx Substs<'tcx>,
+    impl_data: &super::VtableImplData<'tcx, ()>,
+) -> (DefId, &'tcx Substs<'tcx>) {
     assert!(!substs.needs_infer());
 
     let trait_def_id = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
-    let trait_def = tcx.lookup_trait_def(trait_def_id);
+    let trait_def = tcx.trait_def(trait_def_id);
 
     let ancestors = trait_def.ancestors(impl_data.impl_def_id);
-    match ancestors.defs(tcx, name, ty::AssociatedKind::Method).next() {
+    match ancestors.defs(tcx, item.name, item.kind).next() {
         Some(node_item) => {
-            let substs = tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
+            let substs = tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
                 let substs = substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
                 let substs = translate_substs(&infcx, impl_data.impl_def_id,
                                               substs, node_item.node);
@@ -137,7 +135,7 @@ pub fn find_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             (node_item.item.def_id, substs)
         }
         None => {
-            bug!("method {:?} not found in {:?}", name, impl_data.impl_def_id)
+            bug!("{:?} not found in {:?}", item, impl_data.impl_def_id)
         }
     }
 }
@@ -176,20 +174,20 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // See RFC 1210 for more details and justification.
 
     // Currently we do not allow e.g. a negative impl to specialize a positive one
-    if tcx.trait_impl_polarity(impl1_def_id) != tcx.trait_impl_polarity(impl2_def_id) {
+    if tcx.impl_polarity(impl1_def_id) != tcx.impl_polarity(impl2_def_id) {
         return false;
     }
 
     // create a parameter environment corresponding to a (skolemized) instantiation of impl1
     let penv = tcx.construct_parameter_environment(DUMMY_SP,
                                                    impl1_def_id,
-                                                   region::DUMMY_CODE_EXTENT);
+                                                   None);
     let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id)
                              .unwrap()
                              .subst(tcx, &penv.free_substs);
 
     // Create a infcx, taking the predicates of impl1 as assumptions:
-    let result = tcx.infer_ctxt(None, Some(penv), Reveal::ExactMatch).enter(|infcx| {
+    let result = tcx.infer_ctxt(penv, Reveal::UserFacing).enter(|infcx| {
         // Normalize the trait reference. The WF rules ought to ensure
         // that this always succeeds.
         let impl1_trait_ref =
@@ -219,7 +217,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                        -> Result<&'tcx Substs<'tcx>, ()> {
     let selcx = &mut SelectionContext::new(&infcx);
     let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
-    let (target_trait_ref, obligations) = impl_trait_ref_and_oblig(selcx,
+    let (target_trait_ref, mut obligations) = impl_trait_ref_and_oblig(selcx,
                                                                    target_impl,
                                                                    target_substs);
 
@@ -228,9 +226,8 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                               &ObligationCause::dummy(),
                               source_trait_ref,
                               target_trait_ref) {
-        Ok(InferOk { obligations, .. }) => {
-            // FIXME(#32730) propagate obligations
-            assert!(obligations.is_empty())
+        Ok(InferOk { obligations: o, .. }) => {
+            obligations.extend(o);
         }
         Err(_) => {
             debug!("fulfill_implication: {:?} does not unify with {:?}",
@@ -243,7 +240,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     // attempt to prove all of the predicates for impl2 given those for impl1
     // (which are packed up in penv)
 
-    infcx.save_and_restore_obligations_in_snapshot_flag(|infcx| {
+    infcx.save_and_restore_in_snapshot_flag(|infcx| {
         let mut fulfill_cx = FulfillmentContext::new();
         for oblig in obligations.into_iter() {
             fulfill_cx.register_predicate_obligation(&infcx, oblig);
@@ -274,7 +271,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 pub struct SpecializesCache {
-    map: FxHashMap<(DefId, DefId), bool>
+    map: FxHashMap<(DefId, DefId), bool>,
 }
 
 impl SpecializesCache {

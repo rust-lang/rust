@@ -15,7 +15,6 @@
 // FIXME: #6220 Implement floating point formatting
 
 use fmt;
-use num::Zero;
 use ops::{Div, Rem, Sub};
 use str;
 use slice;
@@ -23,31 +22,29 @@ use ptr;
 use mem;
 
 #[doc(hidden)]
-trait Int: Zero + PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
+trait Int: PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
            Sub<Output=Self> + Copy {
+    fn zero() -> Self;
     fn from_u8(u: u8) -> Self;
     fn to_u8(&self) -> u8;
     fn to_u16(&self) -> u16;
     fn to_u32(&self) -> u32;
     fn to_u64(&self) -> u64;
-    #[cfg(not(stage0))]
     fn to_u128(&self) -> u128;
 }
 
 macro_rules! doit {
     ($($t:ident)*) => ($(impl Int for $t {
+        fn zero() -> $t { 0 }
         fn from_u8(u: u8) -> $t { u as $t }
         fn to_u8(&self) -> u8 { *self as u8 }
         fn to_u16(&self) -> u16 { *self as u16 }
         fn to_u32(&self) -> u32 { *self as u32 }
         fn to_u64(&self) -> u64 { *self as u64 }
-        #[cfg(not(stage0))]
         fn to_u128(&self) -> u128 { *self as u128 }
     })*)
 }
-doit! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
-#[cfg(not(stage0))]
-doit! { i128 u128 }
+doit! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 
 /// A type that represents a specific radix
 #[doc(hidden)]
@@ -188,7 +185,6 @@ integer! { i8, u8 }
 integer! { i16, u16 }
 integer! { i32, u32 }
 integer! { i64, u64 }
-#[cfg(not(stage0))]
 integer! { i128, u128 }
 
 const DEC_DIGITS_LUT: &'static[u8] =
@@ -265,7 +261,6 @@ macro_rules! impl_Display {
 
 impl_Display!(i8, u8, i16, u16, i32, u32: to_u32);
 impl_Display!(i64, u64: to_u64);
-#[cfg(not(stage0))]
 impl_Display!(i128, u128: to_u128);
 #[cfg(target_pointer_width = "16")]
 impl_Display!(isize, usize: to_u16);

@@ -33,7 +33,7 @@ fn main() {
         //~^ ERROR mismatched types
         //~| Perhaps two different versions of crate `crate_a1`
         //~| expected trait `main::a::Bar`
-        //~| expected type `Box<main::a::Bar + 'static>`
-        //~| found type `Box<main::a::Bar>`
+        //~| expected type `std::boxed::Box<main::a::Bar + 'static>`
+        //~| found type `std::boxed::Box<main::a::Bar>`
     }
 }

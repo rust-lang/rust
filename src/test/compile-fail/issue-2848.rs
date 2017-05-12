@@ -19,7 +19,8 @@ mod bar {
 fn main() {
     use bar::foo::{alpha, charlie};
     match alpha {
-      alpha | beta => {} //~  ERROR variable `beta` from pattern #2 is not bound in pattern #1
+      alpha | beta => {} //~  ERROR variable `beta` is not bound in all patterns
       charlie => {}      //~| NOTE pattern doesn't bind `beta`
+                         //~| NOTE variable not in all patterns
     }
 }

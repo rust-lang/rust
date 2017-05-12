@@ -30,8 +30,6 @@ impl Trait for Struct {
 
 fn foo(mut a: Box<Write>) {}
 
-// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-
 pub fn main() {
     let a = Struct { x: 1, y: 2 };
     let b: Box<Trait> = Box::new(a);

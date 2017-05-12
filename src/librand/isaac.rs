@@ -12,6 +12,7 @@
 
 #![allow(non_camel_case_types)]
 
+use core::fmt;
 use core::slice;
 use core::iter::repeat;
 use core::num::Wrapping as w;
@@ -42,6 +43,19 @@ pub struct IsaacRng {
     a: w32,
     b: w32,
     c: w32,
+}
+
+impl fmt::Debug for IsaacRng {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("IsaacRng")
+         .field("cnt", &self.cnt)
+         .field("rsl", &self.rsl.iter())
+         .field("mem", &self.mem.iter())
+         .field("a", &self.a)
+         .field("b", &self.b)
+         .field("c", &self.c)
+         .finish()
+    }
 }
 
 static EMPTY: IsaacRng = IsaacRng {
@@ -320,6 +334,19 @@ pub struct Isaac64Rng {
     a: w64,
     b: w64,
     c: w64,
+}
+
+impl fmt::Debug for Isaac64Rng {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Isaac64Rng")
+         .field("cnt", &self.cnt)
+         .field("rsl", &self.rsl.iter())
+         .field("mem", &self.mem.iter())
+         .field("a", &self.a)
+         .field("b", &self.b)
+         .field("c", &self.c)
+         .finish()
+    }
 }
 
 static EMPTY_64: Isaac64Rng = Isaac64Rng {

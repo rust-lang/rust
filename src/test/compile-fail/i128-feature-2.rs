@@ -7,6 +7,9 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+// gate-test-i128_type
+
 fn test1() -> i128 { //~ ERROR 128-bit type is unstable
     0
 }

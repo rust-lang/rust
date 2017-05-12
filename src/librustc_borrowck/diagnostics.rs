@@ -198,7 +198,7 @@ fn main() {
 ```
 "##,
 
-E0386: r##"
+/*E0386: r##"
 This error occurs when an attempt is made to mutate the target of a mutable
 reference stored inside an immutable container.
 
@@ -228,7 +228,7 @@ let x: i64 = 1;
 let y: Box<Cell<_>> = Box::new(Cell::new(x));
 y.set(2);
 ```
-"##,
+"##,*/
 
 E0387: r##"
 This error occurs when an attempt is made to mutate or mutably reference data
@@ -287,27 +287,7 @@ https://doc.rust-lang.org/std/cell/
 "##,
 
 E0388: r##"
-A mutable borrow was attempted in a static location.
-
-Erroneous code example:
-
-```compile_fail,E0388
-static X: i32 = 1;
-
-static STATIC_REF: &'static mut i32 = &mut X;
-// error: cannot borrow data mutably in a static location
-
-const CONST_REF: &'static mut i32 = &mut X;
-// error: cannot borrow data mutably in a static location
-```
-
-To fix this error, you have to use constant borrow:
-
-```
-static X: i32 = 1;
-
-static STATIC_REF: &'static i32 = &X;
-```
+E0388 was removed and is no longer issued.
 "##,
 
 E0389: r##"
@@ -1137,6 +1117,6 @@ fn main() {
 }
 
 register_diagnostics! {
-    E0385, // {} in an aliasable location
+//    E0385, // {} in an aliasable location
     E0524, // two closures require unique access to `..` at the same time
 }

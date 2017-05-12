@@ -1,0 +1,36 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-38371.rs:16:8
+   |
+16 | fn foo(&foo: Foo) {
+   |        ^^^^ expected struct `Foo`, found reference
+   |
+   = note: expected type `Foo`
+              found type `&_`
+   = help: did you mean `foo: &Foo`?
+
+error[E0308]: mismatched types
+  --> $DIR/issue-38371.rs:28:9
+   |
+28 | fn agh(&&bar: &u32) {
+   |         ^^^^ expected u32, found reference
+   |
+   = note: expected type `u32`
+              found type `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-38371.rs:31:8
+   |
+31 | fn bgh(&&bar: u32) {
+   |        ^^^^^ expected u32, found reference
+   |
+   = note: expected type `u32`
+              found type `&_`
+
+error[E0529]: expected an array or slice, found `u32`
+  --> $DIR/issue-38371.rs:34:9
+   |
+34 | fn ugh(&[bar]: &u32) {
+   |         ^^^^^ pattern cannot match with input type `u32`
+
+error: aborting due to 4 previous errors
+

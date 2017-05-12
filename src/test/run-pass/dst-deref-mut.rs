@@ -39,7 +39,6 @@ pub fn foo(arr: &mut Arr) {
 }
 
 fn main() {
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let mut a = Arr { ptr: Box::new([1, 2, 3]) };
     foo(&mut a);
 }

@@ -1,0 +1,59 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/issue-37767.rs:20:7
+   |
+20 |     a.foo()
+   |       ^^^ multiple `foo` found
+   |
+note: candidate #1 is defined in the trait `A`
+  --> $DIR/issue-37767.rs:12:5
+   |
+12 |     fn foo(&mut self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+   = help: to disambiguate the method call, write `A::foo(&a)` instead
+note: candidate #2 is defined in the trait `B`
+  --> $DIR/issue-37767.rs:16:5
+   |
+16 |     fn foo(&mut self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+   = help: to disambiguate the method call, write `B::foo(&a)` instead
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/issue-37767.rs:32:7
+   |
+32 |     a.foo()
+   |       ^^^ multiple `foo` found
+   |
+note: candidate #1 is defined in the trait `C`
+  --> $DIR/issue-37767.rs:24:5
+   |
+24 |     fn foo(&self) {}
+   |     ^^^^^^^^^^^^^^^^
+   = help: to disambiguate the method call, write `C::foo(&a)` instead
+note: candidate #2 is defined in the trait `D`
+  --> $DIR/issue-37767.rs:28:5
+   |
+28 |     fn foo(&self) {}
+   |     ^^^^^^^^^^^^^^^^
+   = help: to disambiguate the method call, write `D::foo(&a)` instead
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/issue-37767.rs:44:7
+   |
+44 |     a.foo()
+   |       ^^^ multiple `foo` found
+   |
+note: candidate #1 is defined in the trait `E`
+  --> $DIR/issue-37767.rs:36:5
+   |
+36 |     fn foo(self) {}
+   |     ^^^^^^^^^^^^^^^
+   = help: to disambiguate the method call, write `E::foo(a)` instead
+note: candidate #2 is defined in the trait `F`
+  --> $DIR/issue-37767.rs:40:5
+   |
+40 |     fn foo(self) {}
+   |     ^^^^^^^^^^^^^^^
+   = help: to disambiguate the method call, write `F::foo(a)` instead
+
+error: aborting due to 3 previous errors
+

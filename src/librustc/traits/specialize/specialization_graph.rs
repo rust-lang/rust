@@ -108,11 +108,15 @@ impl<'a, 'gcx, 'tcx> Children {
             let possible_sibling = *slot;
 
             let tcx = tcx.global_tcx();
-            let (le, ge) = tcx.infer_ctxt(None, None, Reveal::ExactMatch).enter(|infcx| {
+            let (le, ge) = tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
                 let overlap = traits::overlapping_impls(&infcx,
                                                         possible_sibling,
                                                         impl_def_id);
                 if let Some(impl_header) = overlap {
+                    if tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling) {
+                        return Ok((false, false));
+                    }
+
                     let le = specializes(tcx, impl_def_id, possible_sibling);
                     let ge = specializes(tcx, possible_sibling, impl_def_id);
 

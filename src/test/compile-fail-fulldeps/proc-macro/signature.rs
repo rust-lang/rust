@@ -18,6 +18,5 @@ pub unsafe extern fn foo(a: i32, b: u32) -> u32 {
     //~^ ERROR: mismatched types
     //~| NOTE: expected normal fn, found unsafe fn
     //~| NOTE: expected type `fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
-    //~| NOTE: found type `unsafe extern "C" fn(i32, u32) -> u32 {foo}`
     loop {}
 }

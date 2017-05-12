@@ -15,7 +15,7 @@
 // due to the orphan rules. Therefore, `A::Item` may yet turn out to
 // be `i32`.
 
-pub trait Foo<P> {}
+pub trait Foo<P> { fn foo() {} }
 
 pub trait Bar {
     type Output: 'static;

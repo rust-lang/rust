@@ -11,388 +11,251 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
-#![allow(non_upper_case_globals)]
-use self::RegClass::*;
-
-use llvm::{Integer, Pointer, Float, Double};
-use llvm::{Struct, Array, Vector};
-use abi::{self, ArgType, ArgAttribute, FnType};
+use abi::{ArgType, ArgAttribute, CastTarget, FnType, LayoutExt, Reg, RegKind};
 use context::CrateContext;
-use type_::Type;
 
-#[derive(Clone, Copy, PartialEq)]
-enum RegClass {
-    NoClass,
+use rustc::ty::layout::{self, Layout, TyLayout, Size};
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Class {
+    None,
     Int,
-    SSEFs,
-    SSEFv,
-    SSEDs,
-    SSEDv,
-    SSEInt(/* bitwidth */ u64),
-    /// Data that can appear in the upper half of an SSE register.
-    SSEUp,
-    X87,
-    X87Up,
-    ComplexX87,
-    Memory
+    Sse,
+    SseUp
 }
 
-trait TypeMethods {
-    fn is_reg_ty(&self) -> bool;
-}
+#[derive(Clone, Copy, Debug)]
+struct Memory;
 
-impl TypeMethods for Type {
-    fn is_reg_ty(&self) -> bool {
-        match self.kind() {
-            Integer | Pointer | Float | Double => true,
-            _ => false
-        }
-    }
-}
+// Currently supported vector size (AVX).
+const LARGEST_VECTOR_SIZE: usize = 256;
+const MAX_EIGHTBYTES: usize = LARGEST_VECTOR_SIZE / 64;
 
-impl RegClass {
-    fn is_sse(&self) -> bool {
-        match *self {
-            SSEFs | SSEFv | SSEDs | SSEDv | SSEInt(_) => true,
-            _ => false
-        }
-    }
-}
+fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
+                          -> Result<[Class; MAX_EIGHTBYTES], Memory> {
+    fn unify(cls: &mut [Class],
+             off: u64,
+             c: Class) {
+        let i = (off / 8) as usize;
+        let to_write = match (cls[i], c) {
+            (Class::None, _) => c,
+            (_, Class::None) => return,
 
-trait ClassList {
-    fn is_pass_byval(&self) -> bool;
-    fn is_ret_bysret(&self) -> bool;
-}
+            (Class::Int, _) |
+            (_, Class::Int) => Class::Int,
 
-impl ClassList for [RegClass] {
-    fn is_pass_byval(&self) -> bool {
-        if self.is_empty() { return false; }
+            (Class::Sse, _) |
+            (_, Class::Sse) => Class::Sse,
 
-        let class = self[0];
-           class == Memory
-        || class == X87
-        || class == ComplexX87
-    }
-
-    fn is_ret_bysret(&self) -> bool {
-        if self.is_empty() { return false; }
-
-        self[0] == Memory
-    }
-}
-
-fn classify_ty(ty: Type) -> Vec<RegClass> {
-    fn align(off: usize, ty: Type) -> usize {
-        let a = ty_align(ty);
-        return (off + a - 1) / a * a;
-    }
-
-    fn ty_align(ty: Type) -> usize {
-        abi::ty_align(ty, 8)
-    }
-
-    fn ty_size(ty: Type) -> usize {
-        abi::ty_size(ty, 8)
-    }
-
-    fn all_mem(cls: &mut [RegClass]) {
-        for elt in cls {
-            *elt = Memory;
-        }
-    }
-
-    fn unify(cls: &mut [RegClass],
-             i: usize,
-             newv: RegClass) {
-        if cls[i] == newv { return }
-
-        let to_write = match (cls[i], newv) {
-            (NoClass,     _) => newv,
-            (_,           NoClass) => return,
-
-            (Memory,      _) |
-            (_,           Memory) => Memory,
-
-            (Int,         _) |
-            (_,           Int) => Int,
-
-            (X87,         _) |
-            (X87Up,       _) |
-            (ComplexX87,  _) |
-            (_,           X87) |
-            (_,           X87Up) |
-            (_,           ComplexX87) => Memory,
-
-            (SSEFv,       SSEUp) |
-            (SSEFs,       SSEUp) |
-            (SSEDv,       SSEUp) |
-            (SSEDs,       SSEUp) |
-            (SSEInt(_),   SSEUp) => return,
-
-            (..) => newv
+            (Class::SseUp, Class::SseUp) => Class::SseUp
         };
         cls[i] = to_write;
     }
 
-    fn classify_struct(tys: &[Type],
-                       cls: &mut [RegClass],
-                       i: usize,
-                       off: usize,
-                       packed: bool) {
-        let mut field_off = off;
-        for ty in tys {
-            if !packed {
-                field_off = align(field_off, *ty);
+    fn classify<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                          layout: TyLayout<'tcx>,
+                          cls: &mut [Class],
+                          off: u64)
+                          -> Result<(), Memory> {
+        if off % layout.align(ccx).abi() != 0 {
+            if layout.size(ccx).bytes() > 0 {
+                return Err(Memory);
             }
-            classify(*ty, cls, i, field_off);
-            field_off += ty_size(*ty);
-        }
-    }
-
-    fn classify(ty: Type,
-                cls: &mut [RegClass], ix: usize,
-                off: usize) {
-        let t_align = ty_align(ty);
-        let t_size = ty_size(ty);
-
-        let misalign = off % t_align;
-        if misalign != 0 {
-            let mut i = off / 8;
-            let e = (off + t_size + 7) / 8;
-            while i < e {
-                unify(cls, ix + i, Memory);
-                i += 1;
-            }
-            return;
+            return Ok(());
         }
 
-        match ty.kind() {
-            Integer |
-            Pointer => {
-                unify(cls, ix + off / 8, Int);
-            }
-            Float => {
-                if off % 8 == 4 {
-                    unify(cls, ix + off / 8, SSEFv);
-                } else {
-                    unify(cls, ix + off / 8, SSEFs);
-                }
-            }
-            Double => {
-                unify(cls, ix + off / 8, SSEDs);
-            }
-            Struct => {
-                classify_struct(&ty.field_types(), cls, ix, off, ty.is_packed());
-            }
-            Array => {
-                let len = ty.array_length();
-                let elt = ty.element_type();
-                let eltsz = ty_size(elt);
-                let mut i = 0;
-                while i < len {
-                    classify(elt, cls, ix, off + i * eltsz);
-                    i += 1;
-                }
-            }
-            Vector => {
-                let len = ty.vector_length();
-                let elt = ty.element_type();
-                let eltsz = ty_size(elt);
-                let mut reg = match elt.kind() {
-                    Integer => SSEInt(elt.int_width()),
-                    Float => SSEFv,
-                    Double => SSEDv,
-                    _ => bug!("classify: unhandled vector element type")
+        match *layout {
+            Layout::Scalar { value, .. } |
+            Layout::RawNullablePointer { value, .. } => {
+                let reg = match value {
+                    layout::Int(_) |
+                    layout::Pointer => Class::Int,
+                    layout::F32 |
+                    layout::F64 => Class::Sse
                 };
+                unify(cls, off, reg);
+            }
 
-                let mut i = 0;
-                while i < len {
-                    unify(cls, ix + (off + i * eltsz) / 8, reg);
+            Layout::CEnum { .. } => {
+                unify(cls, off, Class::Int);
+            }
 
-                    // everything after the first one is the upper
-                    // half of a register.
-                    reg = SSEUp;
-                    i += 1;
+            Layout::Vector { element, count } => {
+                unify(cls, off, Class::Sse);
+
+                // everything after the first one is the upper
+                // half of a register.
+                let eltsz = element.size(ccx).bytes();
+                for i in 1..count {
+                    unify(cls, off + i * eltsz, Class::SseUp);
                 }
             }
-            _ => bug!("classify: unhandled type")
-        }
-    }
 
-    fn fixup(ty: Type, cls: &mut [RegClass]) {
-        let mut i = 0;
-        let ty_kind = ty.kind();
-        let e = cls.len();
-        if cls.len() > 2 && (ty_kind == Struct || ty_kind == Array || ty_kind == Vector) {
-            if cls[i].is_sse() {
-                i += 1;
-                while i < e {
-                    if cls[i] != SSEUp {
-                        all_mem(cls);
-                        return;
+            Layout::Array { count, .. } => {
+                if count > 0 {
+                    let elt = layout.field(ccx, 0);
+                    let eltsz = elt.size(ccx).bytes();
+                    for i in 0..count {
+                        classify(ccx, elt, cls, off + i * eltsz)?;
                     }
-                    i += 1;
-                }
-            } else {
-                all_mem(cls);
-                return
-            }
-        } else {
-            while i < e {
-                if cls[i] == Memory {
-                    all_mem(cls);
-                    return;
-                }
-                if cls[i] == X87Up {
-                    // for darwin
-                    // cls[i] = SSEDs;
-                    all_mem(cls);
-                    return;
-                }
-                if cls[i] == SSEUp {
-                    cls[i] = SSEDv;
-                } else if cls[i].is_sse() {
-                    i += 1;
-                    while i != e && cls[i] == SSEUp { i += 1; }
-                } else if cls[i] == X87 {
-                    i += 1;
-                    while i != e && cls[i] == X87Up { i += 1; }
-                } else {
-                    i += 1;
                 }
             }
+
+            Layout::Univariant { ref variant, .. } => {
+                for i in 0..layout.field_count() {
+                    let field_off = off + variant.offsets[i].bytes();
+                    classify(ccx, layout.field(ccx, i), cls, field_off)?;
+                }
+            }
+
+            Layout::UntaggedUnion { .. } => {
+                for i in 0..layout.field_count() {
+                    classify(ccx, layout.field(ccx, i), cls, off)?;
+                }
+            }
+
+            Layout::FatPointer { .. } |
+            Layout::General { .. } |
+            Layout::StructWrappedNullablePointer { .. } => return Err(Memory)
         }
+
+        Ok(())
     }
 
-    let words = (ty_size(ty) + 7) / 8;
-    let mut cls = vec![NoClass; words];
-    if words > 4 {
-        all_mem(&mut cls);
-        return cls;
-    }
-    classify(ty, &mut cls, 0, 0);
-    fixup(ty, &mut cls);
-    return cls;
-}
-
-fn llreg_ty(ccx: &CrateContext, cls: &[RegClass]) -> Type {
-    fn llvec_len(cls: &[RegClass]) -> usize {
-        let mut len = 1;
-        for c in cls {
-            if *c != SSEUp {
-                break;
-            }
-            len += 1;
-        }
-        return len;
+    let n = ((arg.layout.size(ccx).bytes() + 7) / 8) as usize;
+    if n > MAX_EIGHTBYTES {
+        return Err(Memory);
     }
 
-    let mut tys = Vec::new();
-    let mut i = 0;
-    let e = cls.len();
-    while i < e {
-        match cls[i] {
-            Int => {
-                tys.push(Type::i64(ccx));
-            }
-            SSEFv | SSEDv | SSEInt(_) => {
-                let (elts_per_word, elt_ty) = match cls[i] {
-                    SSEFv => (2, Type::f32(ccx)),
-                    SSEDv => (1, Type::f64(ccx)),
-                    SSEInt(bits) => {
-                        assert!(bits == 8 || bits == 16 || bits == 32 || bits == 64,
-                                "llreg_ty: unsupported SSEInt width {}", bits);
-                        (64 / bits, Type::ix(ccx, bits))
-                    }
-                    _ => bug!(),
-                };
-                let vec_len = llvec_len(&cls[i + 1..]);
-                let vec_ty = Type::vector(&elt_ty, vec_len as u64 * elts_per_word);
-                tys.push(vec_ty);
-                i += vec_len;
-                continue;
-            }
-            SSEFs => {
-                tys.push(Type::f32(ccx));
-            }
-            SSEDs => {
-                tys.push(Type::f64(ccx));
-            }
-            _ => bug!("llregtype: unhandled class")
+    let mut cls = [Class::None; MAX_EIGHTBYTES];
+    classify(ccx, arg.layout, &mut cls, 0)?;
+    if n > 2 {
+        if cls[0] != Class::Sse {
+            return Err(Memory);
         }
-        i += 1;
-    }
-    if tys.len() == 1 && tys[0].kind() == Vector {
-        // if the type contains only a vector, pass it as that vector.
-        tys[0]
+        if cls[1..n].iter().any(|&c| c != Class::SseUp) {
+            return Err(Memory);
+        }
     } else {
-        Type::struct_(ccx, &tys, false)
-    }
-}
-
-pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
-    fn x86_64_ty<F>(ccx: &CrateContext,
-                    arg: &mut ArgType,
-                    is_mem_cls: F,
-                    ind_attr: Option<ArgAttribute>)
-        where F: FnOnce(&[RegClass]) -> bool
-    {
-        if !arg.ty.is_reg_ty() {
-            let cls = classify_ty(arg.ty);
-            if is_mem_cls(&cls) {
-                arg.make_indirect(ccx);
-                if let Some(attr) = ind_attr {
-                    arg.attrs.set(attr);
-                }
+        let mut i = 0;
+        while i < n {
+            if cls[i] == Class::SseUp {
+                cls[i] = Class::Sse;
+            } else if cls[i] == Class::Sse {
+                i += 1;
+                while i != n && cls[i] == Class::SseUp { i += 1; }
             } else {
-                arg.cast = Some(llreg_ty(ccx, &cls));
+                i += 1;
             }
-        } else {
-            arg.extend_integer_width_to(32);
         }
     }
 
+    Ok(cls)
+}
+
+fn reg_component(cls: &[Class], i: &mut usize, size: u64) -> Option<Reg> {
+    if *i >= cls.len() {
+        return None;
+    }
+
+    match cls[*i] {
+        Class::None => None,
+        Class::Int => {
+            *i += 1;
+            Some(match size {
+                1 => Reg::i8(),
+                2 => Reg::i16(),
+                3 |
+                4 => Reg::i32(),
+                _ => Reg::i64()
+            })
+        }
+        Class::Sse => {
+            let vec_len = 1 + cls[*i+1..].iter().take_while(|&&c| c == Class::SseUp).count();
+            *i += vec_len;
+            Some(if vec_len == 1 {
+                match size {
+                    4 => Reg::f32(),
+                    _ => Reg::f64()
+                }
+            } else {
+                Reg {
+                    kind: RegKind::Vector,
+                    size: Size::from_bytes(vec_len as u64 * 8)
+                }
+            })
+        }
+        c => bug!("reg_component: unhandled class {:?}", c)
+    }
+}
+
+fn cast_target(cls: &[Class], size: u64) -> CastTarget {
+    let mut i = 0;
+    let lo = reg_component(cls, &mut i, size).unwrap();
+    let offset = i as u64 * 8;
+    let target = if size <= offset {
+        CastTarget::from(lo)
+    } else {
+        let hi = reg_component(cls, &mut i, size - offset).unwrap();
+        CastTarget::Pair(lo, hi)
+    };
+    assert_eq!(reg_component(cls, &mut i, 0), None);
+    target
+}
+
+pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     let mut int_regs = 6; // RDI, RSI, RDX, RCX, R8, R9
     let mut sse_regs = 8; // XMM0-7
 
-    if !fty.ret.is_ignore() {
-        x86_64_ty(ccx, &mut fty.ret, |cls| {
-            if cls.is_ret_bysret() {
-                // `sret` parameter thus one less register available
-                int_regs -= 1;
-                true
-            } else {
-                false
+    let mut x86_64_ty = |arg: &mut ArgType<'tcx>, is_arg: bool| {
+        let cls = classify_arg(ccx, arg);
+
+        let mut needed_int = 0;
+        let mut needed_sse = 0;
+        let in_mem = match cls {
+            Err(Memory) => true,
+            Ok(ref cls) if is_arg => {
+                for &c in cls {
+                    match c {
+                        Class::Int => needed_int += 1,
+                        Class::Sse => needed_sse += 1,
+                        _ => {}
+                    }
+                }
+                arg.layout.is_aggregate() &&
+                    (int_regs < needed_int || sse_regs < needed_sse)
             }
-        }, None);
+            Ok(_) => false
+        };
+
+        if in_mem {
+            arg.make_indirect(ccx);
+            if is_arg {
+                arg.attrs.set(ArgAttribute::ByVal);
+            } else {
+                // `sret` parameter thus one less integer register available
+                int_regs -= 1;
+            }
+        } else {
+            // split into sized chunks passed individually
+            int_regs -= needed_int;
+            sse_regs -= needed_sse;
+
+            if arg.layout.is_aggregate() {
+                let size = arg.layout.size(ccx).bytes();
+                arg.cast_to(ccx, cast_target(cls.as_ref().unwrap(), size))
+            } else {
+                arg.extend_integer_width_to(32);
+            }
+        }
+    };
+
+    if !fty.ret.is_ignore() {
+        x86_64_ty(&mut fty.ret, false);
     }
 
     for arg in &mut fty.args {
         if arg.is_ignore() { continue; }
-        x86_64_ty(ccx, arg, |cls| {
-            let needed_int = cls.iter().filter(|&&c| c == Int).count() as isize;
-            let needed_sse = cls.iter().filter(|c| c.is_sse()).count() as isize;
-            let in_mem = cls.is_pass_byval() ||
-                         int_regs < needed_int ||
-                         sse_regs < needed_sse;
-            if in_mem {
-                // `byval` parameter thus one less integer register available
-                int_regs -= 1;
-            } else {
-                // split into sized chunks passed individually
-                int_regs -= needed_int;
-                sse_regs -= needed_sse;
-            }
-            in_mem
-        }, Some(ArgAttribute::ByVal));
-
-        // An integer, pointer, double or float parameter
-        // thus the above closure passed to `x86_64_ty` won't
-        // get called.
-        match arg.ty.kind() {
-            Integer | Pointer => int_regs -= 1,
-            Double | Float => sse_regs -= 1,
-            _ => {}
-        }
+        x86_64_ty(arg, true);
     }
 }

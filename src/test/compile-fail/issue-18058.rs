@@ -9,6 +9,6 @@
 // except according to those terms.
 
 impl Undefined {}
-//~^ ERROR unresolved type `Undefined`
+//~^ ERROR cannot find type `Undefined` in this scope
 
 fn main() {}

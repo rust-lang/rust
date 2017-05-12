@@ -1,16 +1,15 @@
-error[E0411]: unresolved type `Self`
+error[E0391]: unsupported cyclic reference between types/traits detected
   --> $DIR/issue-23305.rs:15:12
    |
 15 | impl ToNbt<Self> {}
-   |            ^^^^ `Self` is only available in traits and impls
-
-error[E0038]: the trait `ToNbt` cannot be made into an object
-  --> $DIR/issue-23305.rs:15:6
+   |            ^^^^ cyclic reference
+   |
+note: the cycle begins when processing `<impl at $DIR/issue-23305.rs:15:1: 15:20>`...
+  --> $DIR/issue-23305.rs:15:1
    |
 15 | impl ToNbt<Self> {}
-   |      ^^^^^^^^^^^ the trait `ToNbt` cannot be made into an object
-   |
-   = note: method `new` has no receiver
+   | ^^^^^^^^^^^^^^^^^^^
+   = note: ...which then again requires processing `<impl at $DIR/issue-23305.rs:15:1: 15:20>`, completing the cycle.
 
 error: aborting due to previous error
 

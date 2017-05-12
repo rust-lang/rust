@@ -11,11 +11,13 @@
 // aux-build:import_crate_var.rs
 // error-pattern: `$crate` may not be imported
 // error-pattern: `use $crate;` was erroneously allowed and will become a hard error
+// error-pattern: compilation successful
 
 #![feature(rustc_attrs)]
 
 #[macro_use] extern crate import_crate_var;
-m!();
 
 #[rustc_error]
-fn main() {}
+fn main() {
+    m!();
+}

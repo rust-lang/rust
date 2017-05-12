@@ -38,9 +38,9 @@ fn test<'a,'b>() {
 }
 
 fn test2(x: &Foo<(isize,),Output=()>, y: &Foo(isize)) {
+//~^ ERROR wrong number of lifetime parameters: expected 1, found 0
     // Here, the omitted lifetimes are expanded to distinct things.
-    same_type(x, y) //~ ERROR cannot infer
-                    //~^ ERROR cannot infer
+    same_type(x, y)
 }
 
 fn main() { }

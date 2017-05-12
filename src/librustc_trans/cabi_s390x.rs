@@ -11,130 +11,60 @@
 // FIXME: The assumes we're using the non-vector ABI, i.e. compiling
 // for a pre-z13 machine or using -mno-vx.
 
-use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
-use abi::{align_up_to, FnType, ArgType};
+use abi::{FnType, ArgType, LayoutExt, Reg};
 use context::CrateContext;
-use type_::Type;
 
-use std::cmp;
+use rustc::ty::layout::{self, Layout, TyLayout};
 
-fn align(off: usize, ty: Type) -> usize {
-    let a = ty_align(ty);
-    return align_up_to(off, a);
-}
-
-fn ty_align(ty: Type) -> usize {
-    match ty.kind() {
-        Integer => ((ty.int_width() as usize) + 7) / 8,
-        Pointer => 8,
-        Float => 4,
-        Double => 8,
-        Struct => {
-            if ty.is_packed() {
-                1
-            } else {
-                let str_tys = ty.field_types();
-                str_tys.iter().fold(1, |a, t| cmp::max(a, ty_align(*t)))
-            }
-        }
-        Array => {
-            let elt = ty.element_type();
-            ty_align(elt)
-        }
-        Vector => ty_size(ty),
-        _ => bug!("ty_align: unhandled type")
-    }
-}
-
-fn ty_size(ty: Type) -> usize {
-    match ty.kind() {
-        Integer => ((ty.int_width() as usize) + 7) / 8,
-        Pointer => 8,
-        Float => 4,
-        Double => 8,
-        Struct => {
-            if ty.is_packed() {
-                let str_tys = ty.field_types();
-                str_tys.iter().fold(0, |s, t| s + ty_size(*t))
-            } else {
-                let str_tys = ty.field_types();
-                let size = str_tys.iter().fold(0, |s, t| align(s, *t) + ty_size(*t));
-                align(size, ty)
-            }
-        }
-        Array => {
-            let len = ty.array_length();
-            let elt = ty.element_type();
-            let eltsz = ty_size(elt);
-            len * eltsz
-        }
-        Vector => {
-            let len = ty.vector_length();
-            let elt = ty.element_type();
-            let eltsz = ty_size(elt);
-            len * eltsz
-        }
-        _ => bug!("ty_size: unhandled type")
-    }
-}
-
-fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
-    if is_reg_ty(ret.ty) {
+fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
+    if !ret.layout.is_aggregate() && ret.layout.size(ccx).bits() <= 64 {
         ret.extend_integer_width_to(64);
     } else {
         ret.make_indirect(ccx);
     }
 }
 
-fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
-    if arg.ty.kind() == Struct {
-        fn is_single_fp_element(tys: &[Type]) -> bool {
-            if tys.len() != 1 {
-                return false;
-            }
-            match tys[0].kind() {
-                Float | Double => true,
-                Struct => is_single_fp_element(&tys[0].field_types()),
-                _ => false
-            }
-        }
-
-        if is_single_fp_element(&arg.ty.field_types()) {
-            match ty_size(arg.ty) {
-                4 => arg.cast = Some(Type::f32(ccx)),
-                8 => arg.cast = Some(Type::f64(ccx)),
-                _ => arg.make_indirect(ccx)
-            }
-        } else {
-            match ty_size(arg.ty) {
-                1 => arg.cast = Some(Type::i8(ccx)),
-                2 => arg.cast = Some(Type::i16(ccx)),
-                4 => arg.cast = Some(Type::i32(ccx)),
-                8 => arg.cast = Some(Type::i64(ccx)),
-                _ => arg.make_indirect(ccx)
+fn is_single_fp_element<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                  layout: TyLayout<'tcx>) -> bool {
+    match *layout {
+        Layout::Scalar { value: layout::F32, .. } |
+        Layout::Scalar { value: layout::F64, .. } => true,
+        Layout::Univariant { .. } => {
+            if layout.field_count() == 1 {
+                is_single_fp_element(ccx, layout.field(ccx, 0))
+            } else {
+                false
             }
         }
-        return;
-    }
-
-    if is_reg_ty(arg.ty) {
-        arg.extend_integer_width_to(64);
-    } else {
-        arg.make_indirect(ccx);
-    }
-}
-
-fn is_reg_ty(ty: Type) -> bool {
-    match ty.kind() {
-        Integer
-        | Pointer
-        | Float
-        | Double => ty_size(ty) <= 8,
         _ => false
     }
 }
 
-pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
+fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
+    let size = arg.layout.size(ccx);
+    if !arg.layout.is_aggregate() && size.bits() <= 64 {
+        arg.extend_integer_width_to(64);
+        return;
+    }
+
+    if is_single_fp_element(ccx, arg.layout) {
+        match size.bytes() {
+            4 => arg.cast_to(ccx, Reg::f32()),
+            8 => arg.cast_to(ccx, Reg::f64()),
+            _ => arg.make_indirect(ccx)
+        }
+    } else {
+        match size.bytes() {
+            1 => arg.cast_to(ccx, Reg::i8()),
+            2 => arg.cast_to(ccx, Reg::i16()),
+            4 => arg.cast_to(ccx, Reg::i32()),
+            8 => arg.cast_to(ccx, Reg::i64()),
+            _ => arg.make_indirect(ccx)
+        }
+    }
+}
+
+pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     if !fty.ret.is_ignore() {
         classify_ret_ty(ccx, &mut fty.ret);
     }

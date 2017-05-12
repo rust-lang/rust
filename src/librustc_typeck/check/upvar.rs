@@ -85,7 +85,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for SeedBorrowKind<'a, 'gcx, 'tcx> {
     fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
         match expr.node {
             hir::ExprClosure(cc, _, body_id, _) => {
-                let body = self.fcx.tcx.map.body(body_id);
+                let body = self.fcx.tcx.hir.body(body_id);
                 self.visit_body(body);
                 self.check_closure(expr, cc);
             }
@@ -106,8 +106,7 @@ impl<'a, 'gcx, 'tcx> SeedBorrowKind<'a, 'gcx, 'tcx> {
                      expr: &hir::Expr,
                      capture_clause: hir::CaptureClause)
     {
-        let closure_def_id = self.fcx.tcx.map.local_def_id(expr.id);
-        if !self.fcx.tables.borrow().closure_kinds.contains_key(&closure_def_id) {
+        if !self.fcx.tables.borrow().closure_kinds.contains_key(&expr.id) {
             self.temp_closure_kinds.insert(expr.id, ty::ClosureKind::Fn);
             debug!("check_closure: adding closure {:?} as Fn", expr.id);
         }
@@ -115,7 +114,7 @@ impl<'a, 'gcx, 'tcx> SeedBorrowKind<'a, 'gcx, 'tcx> {
         self.fcx.tcx.with_freevars(expr.id, |freevars| {
             for freevar in freevars {
                 let def_id = freevar.def.def_id();
-                let var_node_id = self.fcx.tcx.map.as_local_node_id(def_id).unwrap();
+                let var_node_id = self.fcx.tcx.hir.as_local_node_id(def_id).unwrap();
                 let upvar_id = ty::UpvarId { var_id: var_node_id,
                                              closure_expr_id: expr.id };
                 debug!("seed upvar_id {:?}", upvar_id);
@@ -165,9 +164,12 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         debug!("analyze_closure(id={:?}, body.id={:?})", id, body.id());
 
         {
+            let body_owner_def_id = self.fcx.tcx.hir.body_owner_def_id(body.id());
+            let region_maps = &self.fcx.tcx.region_maps(body_owner_def_id);
             let mut euv =
                 euv::ExprUseVisitor::with_options(self,
                                                   self.fcx,
+                                                  region_maps,
                                                   mc::MemCategorizationOptions {
                                                       during_closure_kind_inference: true
                                                   });
@@ -209,10 +211,9 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
 
         // If we are also inferred the closure kind here, update the
         // main table and process any deferred resolutions.
-        let closure_def_id = self.fcx.tcx.map.local_def_id(id);
         if let Some(&kind) = self.temp_closure_kinds.get(&id) {
-            self.fcx.tables.borrow_mut().closure_kinds
-                                        .insert(closure_def_id, kind);
+            self.fcx.tables.borrow_mut().closure_kinds.insert(id, kind);
+            let closure_def_id = self.fcx.tcx.hir.local_def_id(id);
             debug!("closure_kind({:?}) = {:?}", closure_def_id, kind);
 
             let mut deferred_call_resolutions =
@@ -234,7 +235,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         tcx.with_freevars(closure_id, |freevars| {
             freevars.iter().map(|freevar| {
                 let def_id = freevar.def.def_id();
-                let var_id = tcx.map.as_local_node_id(def_id).unwrap();
+                let var_id = tcx.hir.as_local_node_id(def_id).unwrap();
                 let freevar_ty = self.fcx.node_ty(var_id);
                 let upvar_id = ty::UpvarId {
                     var_id: var_id,
@@ -341,7 +342,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
 
             Categorization::Deref(.., mc::UnsafePtr(..)) |
             Categorization::StaticItem |
-            Categorization::Rvalue(_) |
+            Categorization::Rvalue(..) |
             Categorization::Local(_) |
             Categorization::Upvar(..) => {
                 return;
@@ -373,7 +374,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
 
             Categorization::Deref(.., mc::UnsafePtr(..)) |
             Categorization::StaticItem |
-            Categorization::Rvalue(_) |
+            Categorization::Rvalue(..) |
             Categorization::Local(_) |
             Categorization::Upvar(..) => {
             }
@@ -502,7 +503,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for AdjustBorrowKind<'a, 'gcx, 'tcx> {
     {
         intravisit::walk_fn(self, fn_kind, decl, body, span, id);
 
-        let body = self.fcx.tcx.map.body(body);
+        let body = self.fcx.tcx.hir.body(body);
         self.visit_body(body);
         self.analyze_closure(id, span, body);
     }
@@ -538,7 +539,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a, 'gcx, 'tcx> {
               borrow_id: ast::NodeId,
               _borrow_span: Span,
               cmt: mc::cmt<'tcx>,
-              _loan_region: &'tcx ty::Region,
+              _loan_region: ty::Region<'tcx>,
               bk: ty::BorrowKind,
               _loan_cause: euv::LoanCause)
     {

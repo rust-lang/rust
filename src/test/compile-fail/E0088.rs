@@ -12,9 +12,11 @@ fn f() {}
 fn g<'a>() {}
 
 fn main() {
-    f::<'static>(); //~ ERROR E0088
-    //~^ unexpected lifetime parameter
+    f::<'static>();
+    //~^ ERROR expected at most 0 lifetime parameters, found 1 lifetime parameter [E0088]
+    //~| NOTE expected 0 lifetime parameters
 
-    g::<'static, 'static>(); //~ ERROR E0088
-    //~^ unexpected lifetime parameters
+    g::<'static, 'static>();
+    //~^ ERROR expected at most 0 lifetime parameters, found 2 lifetime parameters [E0088]
+    //~| NOTE expected 0 lifetime parameters
 }

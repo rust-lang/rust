@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ty::{self, TyCtxt};
+use infer::type_variable::TypeVariableMap;
+use ty::{self, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder};
 
 use super::InferCtxt;
@@ -54,57 +55,52 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// the actual types (`?T`, `Option<?T`) -- and remember that
     /// after the snapshot is popped, the variable `?T` is no longer
     /// unified.
-    ///
-    /// Assumptions:
-    /// - no new type variables are created during `f()` (asserted
-    ///   below); this simplifies our logic since we don't have to
-    ///   check for escaping type variables
     pub fn fudge_regions_if_ok<T, E, F>(&self,
                                         origin: &RegionVariableOrigin,
                                         f: F) -> Result<T, E> where
         F: FnOnce() -> Result<T, E>,
         T: TypeFoldable<'tcx>,
     {
-        let (region_vars, value) = self.probe(|snapshot| {
-            let vars_at_start = self.type_variables.borrow().num_vars();
+        debug!("fudge_regions_if_ok(origin={:?})", origin);
 
+        let (type_variables, region_vars, value) = self.probe(|snapshot| {
             match f() {
                 Ok(value) => {
                     let value = self.resolve_type_vars_if_possible(&value);
 
                     // At this point, `value` could in principle refer
-                    // to regions that have been created during the
-                    // snapshot (we assert below that `f()` does not
-                    // create any new type variables, so there
-                    // shouldn't be any of those). Once we exit
-                    // `probe()`, those are going to be popped, so we
-                    // will have to eliminate any references to them.
+                    // to types/regions that have been created during
+                    // the snapshot. Once we exit `probe()`, those are
+                    // going to be popped, so we will have to
+                    // eliminate any references to them.
 
-                    assert_eq!(self.type_variables.borrow().num_vars(), vars_at_start,
-                               "type variables were created during fudge_regions_if_ok");
+                    let type_variables =
+                        self.type_variables.borrow_mut().types_created_since_snapshot(
+                            &snapshot.type_snapshot);
                     let region_vars =
                         self.region_vars.vars_created_since_snapshot(
                             &snapshot.region_vars_snapshot);
 
-                    Ok((region_vars, value))
+                    Ok((type_variables, region_vars, value))
                 }
                 Err(e) => Err(e),
             }
         })?;
 
         // At this point, we need to replace any of the now-popped
-        // region variables that appear in `value` with a fresh region
-        // variable. We can't do this during the probe because they
-        // would just get popped then too. =)
+        // type/region variables that appear in `value` with a fresh
+        // variable of the appropriate kind. We can't do this during
+        // the probe because they would just get popped then too. =)
 
         // Micro-optimization: if no variables have been created, then
         // `value` can't refer to any of them. =) So we can just return it.
-        if region_vars.is_empty() {
+        if type_variables.is_empty() && region_vars.is_empty() {
             return Ok(value);
         }
 
         let mut fudger = RegionFudger {
             infcx: self,
+            type_variables: &type_variables,
             region_vars: &region_vars,
             origin: origin
         };
@@ -115,6 +111,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
 pub struct RegionFudger<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    type_variables: &'a TypeVariableMap,
     region_vars: &'a Vec<ty::RegionVid>,
     origin: &'a RegionVariableOrigin,
 }
@@ -124,7 +121,33 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    fn fold_region(&mut self, r: &'tcx ty::Region) -> &'tcx ty::Region {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match ty.sty {
+            ty::TyInfer(ty::InferTy::TyVar(vid)) => {
+                match self.type_variables.get(&vid) {
+                    None => {
+                        // This variable was created before the
+                        // "fudging".  Since we refresh all type
+                        // variables to their binding anyhow, we know
+                        // that it is unbound, so we can just return
+                        // it.
+                        debug_assert!(self.infcx.type_variables.borrow_mut().probe(vid).is_none());
+                        ty
+                    }
+
+                    Some(&origin) => {
+                        // This variable was created during the
+                        // fudging. Recreate it with a fresh variable
+                        // here.
+                        self.infcx.next_ty_var(origin)
+                    }
+                }
+            }
+            _ => ty.super_fold_with(self),
+        }
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
             ty::ReVar(v) if self.region_vars.contains(&v) => {
                 self.infcx.next_region_var(self.origin.clone())

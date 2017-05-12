@@ -31,7 +31,7 @@ impl ThreadInfo {
             if c.borrow().is_none() {
                 *c.borrow_mut() = Some(ThreadInfo {
                     stack_guard: None,
-                    thread: NewThread::new(None),
+                    thread: Thread::new(None),
                 })
             }
             Some(f(c.borrow_mut().as_mut().unwrap()))
@@ -53,9 +53,4 @@ pub fn set(stack_guard: Option<usize>, thread: Thread) {
         stack_guard: stack_guard,
         thread: thread,
     }));
-}
-
-// a hack to get around privacy restrictions; implemented by `std::thread`
-pub trait NewThread {
-    fn new(name: Option<String>) -> Self;
 }

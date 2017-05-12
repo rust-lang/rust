@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-box_syntax
+
 // Check that `box EXPR` is feature-gated.
 //
 // See also feature-gate-placement-expr.rs

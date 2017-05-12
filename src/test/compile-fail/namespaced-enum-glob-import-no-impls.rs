@@ -28,8 +28,8 @@ mod m {
 pub fn main() {
     use m2::Foo::*;
 
-    foo(); //~ ERROR unresolved function `foo`
-    m::foo(); //~ ERROR unresolved function `m::foo`
-    bar(); //~ ERROR unresolved function `bar`
-    m::bar(); //~ ERROR unresolved function `m::bar`
+    foo(); //~ ERROR cannot find function `foo` in this scope
+    m::foo(); //~ ERROR cannot find function `foo` in module `m`
+    bar(); //~ ERROR cannot find function `bar` in this scope
+    m::bar(); //~ ERROR cannot find function `bar` in module `m`
 }

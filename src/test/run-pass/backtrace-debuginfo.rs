@@ -37,7 +37,6 @@ macro_rules! dump_and_die {
                     target_os = "ios",
                     target_os = "android",
                     all(target_os = "linux", target_arch = "arm"),
-                    target_os = "windows",
                     target_os = "freebsd",
                     target_os = "dragonfly",
                     target_os = "bitrig",
@@ -142,12 +141,12 @@ fn run_test(me: &str) {
     use std::process::Command;
 
     let mut template = Command::new(me);
-    template.env("RUST_BACKTRACE", "1");
+    template.env("RUST_BACKTRACE", "full");
 
     let mut i = 0;
     loop {
         let out = Command::new(me)
-                          .env("RUST_BACKTRACE", "1")
+                          .env("RUST_BACKTRACE", "full")
                           .arg(i.to_string()).output().unwrap();
         let output = str::from_utf8(&out.stdout).unwrap();
         let error = str::from_utf8(&out.stderr).unwrap();
@@ -173,4 +172,3 @@ fn main() {
         run_test(&args[0]);
     }
 }
-

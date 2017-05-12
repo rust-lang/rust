@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-plugin_registrar
+
 // Test that `#[plugin_registrar]` attribute is gated by `plugin_registrar`
 // feature gate.
 

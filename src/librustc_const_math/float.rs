@@ -17,13 +17,7 @@ use super::err::*;
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum ConstFloat {
     F32(f32),
-    F64(f64),
-
-    // When the type isn't known, we have to operate on both possibilities.
-    FInfer {
-        f32: f32,
-        f64: f64
-    }
+    F64(f64)
 }
 pub use self::ConstFloat::*;
 
@@ -31,7 +25,6 @@ impl ConstFloat {
     /// Description of the type, not the value
     pub fn description(&self) -> &'static str {
         match *self {
-            FInfer {..} => "float",
             F32(_) => "f32",
             F64(_) => "f64",
         }
@@ -41,17 +34,13 @@ impl ConstFloat {
         match *self {
             F32(f) => f.is_nan(),
             F64(f) => f.is_nan(),
-            FInfer { f32, f64 } => f32.is_nan() || f64.is_nan()
         }
     }
 
     /// Compares the values if they are of the same type
     pub fn try_cmp(self, rhs: Self) -> Result<Ordering, ConstMathErr> {
         match (self, rhs) {
-            (F64(a), F64(b)) |
-            (F64(a), FInfer { f64: b, .. }) |
-            (FInfer { f64: a, .. }, F64(b)) |
-            (FInfer { f64: a, .. }, FInfer { f64: b, .. })  => {
+            (F64(a), F64(b))  => {
                 // This is pretty bad but it is the existing behavior.
                 Ok(if a == b {
                     Ordering::Equal
@@ -62,9 +51,7 @@ impl ConstFloat {
                 })
             }
 
-            (F32(a), F32(b)) |
-            (F32(a), FInfer { f32: b, .. }) |
-            (FInfer { f32: a, .. }, F32(b)) => {
+            (F32(a), F32(b)) => {
                 Ok(if a == b {
                     Ordering::Equal
                 } else if a < b {
@@ -86,10 +73,7 @@ impl ConstFloat {
 impl PartialEq for ConstFloat {
     fn eq(&self, other: &Self) -> bool {
         match (*self, *other) {
-            (F64(a), F64(b)) |
-            (F64(a), FInfer { f64: b, .. }) |
-            (FInfer { f64: a, .. }, F64(b)) |
-            (FInfer { f64: a, .. }, FInfer { f64: b, .. }) => {
+            (F64(a), F64(b)) => {
                 unsafe{transmute::<_,u64>(a) == transmute::<_,u64>(b)}
             }
             (F32(a), F32(b)) => {
@@ -105,7 +89,7 @@ impl Eq for ConstFloat {}
 impl hash::Hash for ConstFloat {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         match *self {
-            F64(a) | FInfer { f64: a, .. } => {
+            F64(a) => {
                 unsafe { transmute::<_,u64>(a) }.hash(state)
             }
             F32(a) => {
@@ -118,7 +102,6 @@ impl hash::Hash for ConstFloat {
 impl ::std::fmt::Display for ConstFloat {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
         match *self {
-            FInfer { f64, .. } => write!(fmt, "{}", f64),
             F32(f) => write!(fmt, "{}f32", f),
             F64(f) => write!(fmt, "{}f64", f),
         }
@@ -131,20 +114,8 @@ macro_rules! derive_binop {
             type Output = Result<Self, ConstMathErr>;
             fn $func(self, rhs: Self) -> Result<Self, ConstMathErr> {
                 match (self, rhs) {
-                    (F32(a), F32(b)) |
-                    (F32(a), FInfer { f32: b, .. }) |
-                    (FInfer { f32: a, .. }, F32(b)) => Ok(F32(a.$func(b))),
-
-                    (F64(a), F64(b)) |
-                    (FInfer { f64: a, .. }, F64(b)) |
-                    (F64(a), FInfer { f64: b, .. }) => Ok(F64(a.$func(b))),
-
-                    (FInfer { f32: a32, f64: a64 },
-                     FInfer { f32: b32, f64: b64 }) => Ok(FInfer {
-                        f32: a32.$func(b32),
-                        f64: a64.$func(b64)
-                    }),
-
+                    (F32(a), F32(b)) => Ok(F32(a.$func(b))),
+                    (F64(a), F64(b)) => Ok(F64(a.$func(b))),
                     _ => Err(UnequalTypes(Op::$op)),
                 }
             }
@@ -164,10 +135,6 @@ impl ::std::ops::Neg for ConstFloat {
         match self {
             F32(f) => F32(-f),
             F64(f) => F64(-f),
-            FInfer { f32, f64 } => FInfer {
-                f32: -f32,
-                f64: -f64
-            }
         }
     }
 }

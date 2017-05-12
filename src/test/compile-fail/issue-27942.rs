@@ -15,13 +15,11 @@ pub trait Buffer<'a, R: Resources<'a>> {
     //~^ ERROR mismatched types
     //~| lifetime mismatch
     //~| NOTE expected type `Resources<'_>`
-    //~| NOTE    found type `Resources<'a>`
     //~| NOTE the lifetime 'a as defined on the method body at 14:4...
     //~| NOTE ...does not necessarily outlive the anonymous lifetime #1 defined on the method body
     //~| ERROR mismatched types
     //~| lifetime mismatch
     //~| NOTE expected type `Resources<'_>`
-    //~| NOTE    found type `Resources<'a>`
     //~| NOTE the anonymous lifetime #1 defined on the method body at 14:4...
     //~| NOTE ...does not necessarily outlive the lifetime 'a as defined on the method body
 }

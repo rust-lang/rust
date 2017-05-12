@@ -10,12 +10,12 @@
 
 #![feature(optin_builtin_traits)]
 
-trait MyTrait {}
-
-impl MyTrait for .. {}
+trait MyTrait { fn foo() {} }
 
 impl MyTrait for .. {}
 //~^ ERROR redundant default implementations of trait `MyTrait`
+
+impl MyTrait for .. {}
 
 trait MySafeTrait {}
 

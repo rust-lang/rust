@@ -79,17 +79,16 @@ pub use self::ParseResult::*;
 use self::TokenTreeOrTokenTreeVec::*;
 
 use ast::Ident;
-use syntax_pos::{self, BytePos, mk_sp, Span};
+use syntax_pos::{self, BytePos, Span};
 use codemap::Spanned;
 use errors::FatalError;
-use parse::lexer::*; //resolve bug?
+use ext::tt::quoted::{self, TokenTree};
 use parse::{Directory, ParseSess};
 use parse::parser::{PathStyle, Parser};
-use parse::token::{DocComment, MatchNt, SubstNt};
-use parse::token::{Token, Nonterminal};
-use parse::token;
+use parse::token::{self, DocComment, Token, Nonterminal};
 use print::pprust;
-use tokenstream::{self, TokenTree};
+use symbol::keywords;
+use tokenstream::TokenStream;
 use util::small_vector::SmallVector;
 
 use std::mem;
@@ -102,8 +101,8 @@ use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 #[derive(Clone)]
 enum TokenTreeOrTokenTreeVec {
-    Tt(tokenstream::TokenTree),
-    TtSeq(Vec<tokenstream::TokenTree>),
+    Tt(TokenTree),
+    TtSeq(Vec<TokenTree>),
 }
 
 impl TokenTreeOrTokenTreeVec {
@@ -154,7 +153,7 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
             TokenTree::Delimited(_, ref delim) => {
                 count_names(&delim.tts)
             }
-            TokenTree::Token(_, MatchNt(..)) => {
+            TokenTree::MetaVarDecl(..) => {
                 1
             }
             TokenTree::Token(..) => 0,
@@ -201,22 +200,28 @@ pub enum NamedMatch {
     MatchedNonterminal(Rc<Nonterminal>)
 }
 
-fn nameize<I: Iterator<Item=Rc<NamedMatch>>>(ms: &[TokenTree], mut res: I) -> NamedParseResult {
-    fn n_rec<I: Iterator<Item=Rc<NamedMatch>>>(m: &TokenTree, mut res: &mut I,
+fn nameize<I: Iterator<Item=Rc<NamedMatch>>>(sess: &ParseSess, ms: &[TokenTree], mut res: I)
+                                             -> NamedParseResult {
+    fn n_rec<I: Iterator<Item=Rc<NamedMatch>>>(sess: &ParseSess, m: &TokenTree, mut res: &mut I,
              ret_val: &mut HashMap<Ident, Rc<NamedMatch>>)
              -> Result<(), (syntax_pos::Span, String)> {
         match *m {
             TokenTree::Sequence(_, ref seq) => {
                 for next_m in &seq.tts {
-                    n_rec(next_m, res.by_ref(), ret_val)?
+                    n_rec(sess, next_m, res.by_ref(), ret_val)?
                 }
             }
             TokenTree::Delimited(_, ref delim) => {
                 for next_m in &delim.tts {
-                    n_rec(next_m, res.by_ref(), ret_val)?;
+                    n_rec(sess, next_m, res.by_ref(), ret_val)?;
                 }
             }
-            TokenTree::Token(sp, MatchNt(bind_name, _)) => {
+            TokenTree::MetaVarDecl(span, _, id) if id.name == keywords::Invalid.name() => {
+                if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
+                    return Err((span, "missing fragment specifier".to_string()));
+                }
+            }
+            TokenTree::MetaVarDecl(sp, bind_name, _) => {
                 match ret_val.entry(bind_name) {
                     Vacant(spot) => {
                         spot.insert(res.next().unwrap());
@@ -226,9 +231,6 @@ fn nameize<I: Iterator<Item=Rc<NamedMatch>>>(ms: &[TokenTree], mut res: I) -> Na
                     }
                 }
             }
-            TokenTree::Token(sp, SubstNt(..)) => {
-                return Err((sp, "missing fragment specifier".to_string()))
-            }
             TokenTree::Token(..) => (),
         }
 
@@ -237,7 +239,7 @@ fn nameize<I: Iterator<Item=Rc<NamedMatch>>>(ms: &[TokenTree], mut res: I) -> Na
 
     let mut ret_val = HashMap::new();
     for m in ms {
-        match n_rec(m, res.by_ref(), &mut ret_val) {
+        match n_rec(sess, m, res.by_ref(), &mut ret_val) {
             Ok(_) => {},
             Err((sp, msg)) => return Error(sp, msg),
         }
@@ -277,11 +279,14 @@ fn create_matches(len: usize) -> Vec<Vec<Rc<NamedMatch>>> {
     (0..len).into_iter().map(|_| Vec::new()).collect()
 }
 
-fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
+fn inner_parse_loop(sess: &ParseSess,
+                    cur_eis: &mut SmallVector<Box<MatcherPos>>,
                     next_eis: &mut Vec<Box<MatcherPos>>,
                     eof_eis: &mut SmallVector<Box<MatcherPos>>,
                     bb_eis: &mut SmallVector<Box<MatcherPos>>,
-                    token: &Token, span: &syntax_pos::Span) -> ParseResult<()> {
+                    token: &Token,
+                    span: syntax_pos::Span)
+                    -> ParseResult<()> {
     while let Some(mut ei) = cur_eis.pop() {
         // When unzipped trees end, remove them
         while ei.idx >= ei.top_elts.len() {
@@ -318,8 +323,7 @@ fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
                     for idx in ei.match_lo..ei.match_hi {
                         let sub = ei.matches[idx].clone();
                         new_pos.matches[idx]
-                            .push(Rc::new(MatchedSeq(sub, mk_sp(ei.sp_lo,
-                                                                span.hi))));
+                            .push(Rc::new(MatchedSeq(sub, Span { lo: ei.sp_lo, ..span })));
                     }
 
                     new_pos.match_cur = ei.match_hi;
@@ -347,7 +351,7 @@ fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
             match ei.top_elts.get_tt(idx) {
                 /* need to descend into sequence */
                 TokenTree::Sequence(sp, seq) => {
-                    if seq.op == tokenstream::KleeneOp::ZeroOrMore {
+                    if seq.op == quoted::KleeneOp::ZeroOrMore {
                         // Examine the case where there are 0 matches of this sequence
                         let mut new_ei = ei.clone();
                         new_ei.match_cur += seq.num_captures;
@@ -373,16 +377,18 @@ fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
                         top_elts: Tt(TokenTree::Sequence(sp, seq)),
                     }));
                 }
-                TokenTree::Token(_, MatchNt(..)) => {
+                TokenTree::MetaVarDecl(span, _, id) if id.name == keywords::Invalid.name() => {
+                    if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
+                        return Error(span, "missing fragment specifier".to_string());
+                    }
+                }
+                TokenTree::MetaVarDecl(..) => {
                     // Built-in nonterminals never start with these tokens,
                     // so we can eliminate them from consideration.
                     match *token {
                         token::CloseDelim(_) => {},
                         _ => bb_eis.push(ei),
                     }
-                }
-                TokenTree::Token(sp, SubstNt(..)) => {
-                    return Error(sp, "missing fragment specifier".to_string())
                 }
                 seq @ TokenTree::Delimited(..) | seq @ TokenTree::Token(_, DocComment(..)) => {
                     let lower_elts = mem::replace(&mut ei.top_elts, Tt(seq));
@@ -407,9 +413,9 @@ fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
     Success(())
 }
 
-pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree], directory: Option<Directory>)
+pub fn parse(sess: &ParseSess, tts: TokenStream, ms: &[TokenTree], directory: Option<Directory>)
              -> NamedParseResult {
-    let mut parser = Parser::new(sess, Box::new(rdr), directory, true);
+    let mut parser = Parser::new(sess, tts, directory, true);
     let mut cur_eis = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo));
     let mut next_eis = Vec::new(); // or proceed normally
 
@@ -418,8 +424,8 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree], directory: Optio
         let mut eof_eis = SmallVector::new();
         assert!(next_eis.is_empty());
 
-        match inner_parse_loop(&mut cur_eis, &mut next_eis, &mut eof_eis, &mut bb_eis,
-                               &parser.token, &parser.span) {
+        match inner_parse_loop(sess, &mut cur_eis, &mut next_eis, &mut eof_eis, &mut bb_eis,
+                               &parser.token, parser.span) {
             Success(_) => {},
             Failure(sp, tok) => return Failure(sp, tok),
             Error(sp, msg) => return Error(sp, msg),
@@ -431,7 +437,8 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree], directory: Optio
         /* error messages here could be improved with links to orig. rules */
         if token_name_eq(&parser.token, &token::Eof) {
             if eof_eis.len() == 1 {
-                return nameize(ms, eof_eis[0].matches.iter_mut().map(|mut dv| dv.pop().unwrap()));
+                let matches = eof_eis[0].matches.iter_mut().map(|mut dv| dv.pop().unwrap());
+                return nameize(sess, ms, matches);
             } else if eof_eis.len() > 1 {
                 return Error(parser.span, "ambiguity: multiple successful parses".to_string());
             } else {
@@ -439,7 +446,7 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree], directory: Optio
             }
         } else if (!bb_eis.is_empty() && !next_eis.is_empty()) || bb_eis.len() > 1 {
             let nts = bb_eis.iter().map(|ei| match ei.top_elts.get_tt(ei.idx) {
-                TokenTree::Token(_, MatchNt(bind, name)) => {
+                TokenTree::MetaVarDecl(_, bind, name) => {
                     format!("{} ('{}')", name, bind)
                 }
                 _ => panic!()
@@ -461,7 +468,7 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree], directory: Optio
             parser.bump();
         } else /* bb_eis.len() == 1 */ {
             let mut ei = bb_eis.pop().unwrap();
-            if let TokenTree::Token(span, MatchNt(_, ident)) = ei.top_elts.get_tt(ei.idx) {
+            if let TokenTree::MetaVarDecl(span, _, ident) = ei.top_elts.get_tt(ei.idx) {
                 let match_cur = ei.match_cur;
                 ei.matches[match_cur].push(Rc::new(MatchedNonterminal(
                             Rc::new(parse_nt(&mut parser, span, &ident.name.as_str())))));
@@ -480,30 +487,12 @@ pub fn parse(sess: &ParseSess, rdr: TtReader, ms: &[TokenTree], directory: Optio
 fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
     match name {
         "tt" => {
-            p.quote_depth += 1; //but in theory, non-quoted tts might be useful
-            let mut tt = panictry!(p.parse_token_tree());
-            p.quote_depth -= 1;
-            while let TokenTree::Token(sp, token::Interpolated(nt)) = tt {
-                if let token::NtTT(..) = *nt {
-                    match Rc::try_unwrap(nt) {
-                        Ok(token::NtTT(sub_tt)) => tt = sub_tt,
-                        Ok(_) => unreachable!(),
-                        Err(nt_rc) => match *nt_rc {
-                            token::NtTT(ref sub_tt) => tt = sub_tt.clone(),
-                            _ => unreachable!(),
-                        },
-                    }
-                } else {
-                    tt = TokenTree::Token(sp, token::Interpolated(nt.clone()));
-                    break
-                }
-            }
-            return token::NtTT(tt);
+            return token::NtTT(p.parse_token_tree());
         }
         _ => {}
     }
     // check at the beginning and the parser checks after each bump
-    p.check_unknown_macro_variable();
+    p.process_potential_macro_variable();
     match name {
         "item" => match panictry!(p.parse_item()) {
             Some(i) => token::NtItem(i),
@@ -527,7 +516,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "ident" => match p.token {
             token::Ident(sn) => {
                 p.bump();
-                token::NtIdent(Spanned::<Ident>{node: sn, span: p.span})
+                token::NtIdent(Spanned::<Ident>{node: sn, span: p.prev_span})
             }
             _ => {
                 let token_str = pprust::token_to_string(&p.token);
@@ -540,6 +529,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
             token::NtPath(panictry!(p.parse_path(PathStyle::Type)))
         },
         "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
+        "vis" => token::NtVis(panictry!(p.parse_visibility(true))),
         // this is not supposed to happen, since it has been checked
         // when compiling the macro.
         _ => p.span_bug(sp, "invalid fragment specifier")

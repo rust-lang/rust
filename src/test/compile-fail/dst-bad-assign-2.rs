@@ -41,7 +41,6 @@ impl ToBar for Bar1 {
 pub fn main() {
     // Assignment.
     let f5: &mut Fat<ToBar> = &mut Fat { f1: 5, f2: "some str", ptr: Bar1 {f :42} };
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let z: Box<ToBar> = Box::new(Bar1 {f: 36});
     f5.ptr = *z;
     //~^ ERROR `ToBar: std::marker::Sized` is not satisfied

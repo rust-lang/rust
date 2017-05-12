@@ -19,9 +19,8 @@ use machine::llalign_of_pref;
 use type_::Type;
 use value::Value;
 use libc::{c_uint, c_char};
-use rustc::ty::{Ty, TyCtxt, TypeFoldable};
+use rustc::ty::TyCtxt;
 use rustc::session::Session;
-use type_of;
 
 use std::borrow::Cow;
 use std::ffi::CString;
@@ -478,29 +477,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn alloca(&self, ty: Type, name: &str) -> ValueRef {
+    pub fn alloca(&self, ty: Type, name: &str, align: Option<u32>) -> ValueRef {
         let builder = Builder::with_ccx(self.ccx);
         builder.position_at_start(unsafe {
             llvm::LLVMGetFirstBasicBlock(self.llfn())
         });
-        builder.dynamic_alloca(ty, name)
+        builder.dynamic_alloca(ty, name, align)
     }
 
-    pub fn alloca_ty(&self, ty: Ty<'tcx>, name: &str) -> ValueRef {
-        assert!(!ty.has_param_types());
-        self.alloca(type_of::type_of(self.ccx, ty), name)
-    }
-
-    pub fn dynamic_alloca(&self, ty: Type, name: &str) -> ValueRef {
+    pub fn dynamic_alloca(&self, ty: Type, name: &str, align: Option<u32>) -> ValueRef {
         self.count_insn("alloca");
         unsafe {
-            if name.is_empty() {
+            let alloca = if name.is_empty() {
                 llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(), noname())
             } else {
                 let name = CString::new(name).unwrap();
                 llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(),
                                       name.as_ptr())
+            };
+            if let Some(align) = align {
+                llvm::LLVMSetAlignment(alloca, align as c_uint);
             }
+            alloca
         }
     }
 
@@ -511,10 +509,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn load(&self, ptr: ValueRef) -> ValueRef {
+    pub fn load(&self, ptr: ValueRef, align: Option<u32>) -> ValueRef {
         self.count_insn("load");
         unsafe {
-            llvm::LLVMBuildLoad(self.llbuilder, ptr, noname())
+            let load = llvm::LLVMBuildLoad(self.llbuilder, ptr, noname());
+            if let Some(align) = align {
+                llvm::LLVMSetAlignment(load, align as c_uint);
+            }
+            load
         }
     }
 
@@ -539,8 +541,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
 
     pub fn load_range_assert(&self, ptr: ValueRef, lo: u64,
-                             hi: u64, signed: llvm::Bool) -> ValueRef {
-        let value = self.load(ptr);
+                             hi: u64, signed: llvm::Bool,
+                             align: Option<u32>) -> ValueRef {
+        let value = self.load(ptr, align);
 
         unsafe {
             let t = llvm::LLVMGetElementType(llvm::LLVMTypeOf(ptr));
@@ -558,8 +561,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         value
     }
 
-    pub fn load_nonnull(&self, ptr: ValueRef) -> ValueRef {
-        let value = self.load(ptr);
+    pub fn load_nonnull(&self, ptr: ValueRef, align: Option<u32>) -> ValueRef {
+        let value = self.load(ptr, align);
         unsafe {
             llvm::LLVMSetMetadata(value, llvm::MD_nonnull as c_uint,
                                   llvm::LLVMMDNodeInContext(self.ccx.llcx(), ptr::null(), 0));
@@ -628,7 +631,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         } else {
             let v = ixs.iter().map(|i| C_i32(self.ccx, *i as i32)).collect::<Vec<ValueRef>>();
             self.count_insn("gepi");
-            self.inbounds_gep(base, &v[..])
+            self.inbounds_gep(base, &v)
         }
     }
 
@@ -781,10 +784,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn intcast(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn intcast(&self, val: ValueRef, dest_ty: Type, is_signed: bool) -> ValueRef {
         self.count_insn("intcast");
         unsafe {
-            llvm::LLVMBuildIntCast(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMRustBuildIntCast(self.llbuilder, val, dest_ty.to_ref(), is_signed)
         }
     }
 
@@ -836,8 +839,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let s = format!("{} ({})",
                             text,
                             self.ccx.sess().codemap().span_to_string(sp));
-            debug!("{}", &s[..]);
-            self.add_comment(&s[..]);
+            debug!("{}", s);
+            self.add_comment(&s);
         }
     }
 
@@ -1107,7 +1110,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     pub fn set_personality_fn(&self, personality: ValueRef) {
         unsafe {
-            llvm::LLVMRustSetPersonalityFn(self.llbuilder, personality);
+            llvm::LLVMSetPersonalityFn(self.llfn(), personality);
         }
     }
 
@@ -1150,6 +1153,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn set_invariant_load(&self, load: ValueRef) {
+        unsafe {
+            llvm::LLVMSetMetadata(load, llvm::MD_invariant_load as c_uint,
+                                  llvm::LLVMMDNodeInContext(self.ccx.llcx(), ptr::null(), 0));
+        }
+    }
+
     /// Returns the ptr value that should be used for storing `val`.
     fn check_store<'b>(&self,
                        val: ValueRef,
@@ -1182,7 +1192,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         assert!(fn_ty.kind() == llvm::TypeKind::Function,
-                "builder::{} not passed a function", typ);
+                "builder::{} not passed a function, but {:?}", typ, fn_ty);
 
         let param_tys = fn_ty.func_params();
 

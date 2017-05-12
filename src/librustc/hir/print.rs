@@ -13,6 +13,7 @@ pub use self::AnnNode::*;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::codemap::{CodeMap, Spanned};
+use syntax::parse::ParseSess;
 use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, break_offset, word, space, hardbreak};
 use syntax::print::pp::{Breaks, eof};
@@ -21,11 +22,11 @@ use syntax::print::pprust::{self as ast_pp, PrintState};
 use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::{self, BytePos};
-use errors;
 
 use hir;
-use hir::{PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
+use hir::{PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier, RangeEnd};
 
+use std::cell::Cell;
 use std::io::{self, Write, Read};
 
 pub enum AnnNode<'a> {
@@ -116,7 +117,7 @@ pub const default_columns: usize = 78;
 /// it can scan the input text for comments and literals to
 /// copy forward.
 pub fn print_crate<'a>(cm: &'a CodeMap,
-                       span_diagnostic: &errors::Handler,
+                       sess: &ParseSess,
                        krate: &hir::Crate,
                        filename: String,
                        input: &mut Read,
@@ -124,8 +125,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
                        ann: &'a PpAnn,
                        is_expanded: bool)
                        -> io::Result<()> {
-    let mut s = State::new_from_input(cm, span_diagnostic, filename, input,
-                                      out, ann, is_expanded);
+    let mut s = State::new_from_input(cm, sess, filename, input, out, ann, is_expanded);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
@@ -137,16 +137,14 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
 
 impl<'a> State<'a> {
     pub fn new_from_input(cm: &'a CodeMap,
-                          span_diagnostic: &errors::Handler,
+                          sess: &ParseSess,
                           filename: String,
                           input: &mut Read,
                           out: Box<Write + 'a>,
                           ann: &'a PpAnn,
                           is_expanded: bool)
                           -> State<'a> {
-        let (cmnts, lits) = comments::gather_comments_and_literals(span_diagnostic,
-                                                                   filename,
-                                                                   input);
+        let (cmnts, lits) = comments::gather_comments_and_literals(sess, filename, input);
 
         State::new(cm,
                    out,
@@ -362,9 +360,9 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_opt_lifetime(&mut self, lifetime: &Option<hir::Lifetime>) -> io::Result<()> {
-        if let Some(l) = *lifetime {
-            self.print_lifetime(&l)?;
+    pub fn print_opt_lifetime(&mut self, lifetime: &hir::Lifetime) -> io::Result<()> {
+        if !lifetime.is_elided() {
+            self.print_lifetime(lifetime)?;
             self.nbsp()?;
         }
         Ok(())
@@ -418,12 +416,21 @@ impl<'a> State<'a> {
             hir::TyPath(ref qpath) => {
                 self.print_qpath(qpath, false)?
             }
-            hir::TyObjectSum(ref ty, ref bounds) => {
-                self.print_type(&ty)?;
-                self.print_bounds("+", &bounds[..])?;
-            }
-            hir::TyPolyTraitRef(ref bounds) => {
-                self.print_bounds("", &bounds[..])?;
+            hir::TyTraitObject(ref bounds, ref lifetime) => {
+                let mut first = true;
+                for bound in bounds {
+                    self.nbsp()?;
+                    if first {
+                        first = false;
+                    } else {
+                        self.word_space("+")?;
+                    }
+                    self.print_poly_trait_ref(bound)?;
+                }
+                if !lifetime.is_elided() {
+                    self.word_space("+")?;
+                    self.print_lifetime(lifetime)?;
+                }
             }
             hir::TyImplTrait(ref bounds) => {
                 self.print_bounds("impl ", &bounds[..])?;
@@ -442,6 +449,9 @@ impl<'a> State<'a> {
             }
             hir::TyInfer => {
                 word(&mut self.s, "_")?;
+            }
+            hir::TyErr => {
+                word(&mut self.s, "?")?;
             }
         }
         self.end()
@@ -623,6 +633,11 @@ impl<'a> State<'a> {
                 self.print_foreign_mod(nmod, &item.attrs)?;
                 self.bclose(item.span)?;
             }
+            hir::ItemGlobalAsm(ref ga) => {
+                self.head(&visibility_qualified(&item.vis, "global asm"))?;
+                word(&mut self.s, &ga.asm.as_str())?;
+                self.end()?
+            }
             hir::ItemTy(ref ty, ref params) => {
                 self.ibox(indent_unit)?;
                 self.ibox(0)?;
@@ -663,12 +678,14 @@ impl<'a> State<'a> {
             }
             hir::ItemImpl(unsafety,
                           polarity,
+                          defaultness,
                           ref generics,
                           ref opt_trait,
                           ref ty,
                           ref impl_items) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
+                self.print_defaultness(defaultness)?;
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("impl")?;
 
@@ -805,6 +822,14 @@ impl<'a> State<'a> {
         }
     }
 
+    pub fn print_defaultness(&mut self, defaultness: hir::Defaultness) -> io::Result<()> {
+        match defaultness {
+            hir::Defaultness::Default { .. } => self.word_nbsp("default")?,
+            hir::Defaultness::Final => (),
+        }
+        Ok(())
+    }
+
     pub fn print_struct(&mut self,
                         struct_def: &hir::VariantData,
                         generics: &hir::Generics,
@@ -916,11 +941,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol()?;
         self.maybe_print_comment(ii.span.lo)?;
         self.print_outer_attributes(&ii.attrs)?;
-
-        match ii.defaultness {
-            hir::Defaultness::Default { .. } => self.word_nbsp("default")?,
-            hir::Defaultness::Final => (),
-        }
+        self.print_defaultness(ii.defaultness)?;
 
         match ii.node {
             hir::ImplItemKind::Const(ref ty, expr) => {
@@ -1029,7 +1050,7 @@ impl<'a> State<'a> {
                         word(&mut self.s, " else if ")?;
                         self.print_expr(&i)?;
                         space(&mut self.s)?;
-                        self.print_block(&then)?;
+                        self.print_expr(&then)?;
                         self.print_else(e.as_ref().map(|e| &**e))
                     }
                     // "final else"
@@ -1051,13 +1072,13 @@ impl<'a> State<'a> {
 
     pub fn print_if(&mut self,
                     test: &hir::Expr,
-                    blk: &hir::Block,
+                    blk: &hir::Expr,
                     elseopt: Option<&hir::Expr>)
                     -> io::Result<()> {
         self.head("if")?;
         self.print_expr(test)?;
         space(&mut self.s)?;
-        self.print_block(blk)?;
+        self.print_expr(blk)?;
         self.print_else(elseopt)
     }
 
@@ -1210,6 +1231,7 @@ impl<'a> State<'a> {
 
     pub fn print_expr(&mut self, expr: &hir::Expr) -> io::Result<()> {
         self.maybe_print_comment(expr.span.lo)?;
+        self.print_outer_attributes(&expr.attrs)?;
         self.ibox(indent_unit)?;
         self.ann.pre(self, NodeExpr(expr))?;
         match expr.node {
@@ -1346,11 +1368,11 @@ impl<'a> State<'a> {
             hir::ExprPath(ref qpath) => {
                 self.print_qpath(qpath, true)?
             }
-            hir::ExprBreak(opt_label, ref opt_expr) => {
+            hir::ExprBreak(label, ref opt_expr) => {
                 word(&mut self.s, "break")?;
                 space(&mut self.s)?;
-                if let Some(label) = opt_label {
-                    self.print_name(label.name)?;
+                if let Some(label_ident) = label.ident {
+                    self.print_name(label_ident.node.name)?;
                     space(&mut self.s)?;
                 }
                 if let Some(ref expr) = *opt_expr {
@@ -1358,11 +1380,11 @@ impl<'a> State<'a> {
                     space(&mut self.s)?;
                 }
             }
-            hir::ExprAgain(opt_label) => {
+            hir::ExprAgain(label) => {
                 word(&mut self.s, "continue")?;
                 space(&mut self.s)?;
-                if let Some(label) = opt_label {
-                    self.print_name(label.name)?;
+                if let Some(label_ident) = label.ident {
+                    self.print_name(label_ident.node.name)?;
                     space(&mut self.s)?
                 }
             }
@@ -1559,65 +1581,49 @@ impl<'a> State<'a> {
                              parameters: &hir::PathParameters,
                              colons_before_params: bool)
                              -> io::Result<()> {
-        if parameters.is_empty() {
-            let infer_types = match *parameters {
-                hir::AngleBracketedParameters(ref data) => data.infer_types,
-                hir::ParenthesizedParameters(_) => false
-            };
-
-            // FIXME(eddyb) See the comment below about infer_types.
-            if !(infer_types && false) {
-                return Ok(());
-            }
-        }
-
-        if colons_before_params {
-            word(&mut self.s, "::")?
-        }
-
         match *parameters {
             hir::AngleBracketedParameters(ref data) => {
-                word(&mut self.s, "<")?;
-
-                let mut comma = false;
-                for lifetime in &data.lifetimes {
-                    if comma {
-                        self.word_space(",")?
+                let start = if colons_before_params { "::<" } else { "<" };
+                let empty = Cell::new(true);
+                let start_or_comma = |this: &mut Self| {
+                    if empty.get() {
+                        empty.set(false);
+                        word(&mut this.s, start)
+                    } else {
+                        this.word_space(",")
                     }
-                    self.print_lifetime(lifetime)?;
-                    comma = true;
+                };
+
+                if !data.lifetimes.iter().all(|lt| lt.is_elided()) {
+                    for lifetime in &data.lifetimes {
+                        start_or_comma(self)?;
+                        self.print_lifetime(lifetime)?;
+                    }
                 }
 
                 if !data.types.is_empty() {
-                    if comma {
-                        self.word_space(",")?
-                    }
+                    start_or_comma(self)?;
                     self.commasep(Inconsistent, &data.types, |s, ty| s.print_type(&ty))?;
-                    comma = true;
                 }
 
                 // FIXME(eddyb) This would leak into error messages, e.g.:
                 // "non-exhaustive patterns: `Some::<..>(_)` not covered".
                 if data.infer_types && false {
-                    if comma {
-                        self.word_space(",")?
-                    }
+                    start_or_comma(self)?;
                     word(&mut self.s, "..")?;
-                    comma = true;
                 }
 
                 for binding in data.bindings.iter() {
-                    if comma {
-                        self.word_space(",")?
-                    }
+                    start_or_comma(self)?;
                     self.print_name(binding.name)?;
                     space(&mut self.s)?;
                     self.word_space("=")?;
                     self.print_type(&binding.ty)?;
-                    comma = true;
                 }
 
-                word(&mut self.s, ">")?
+                if !empty.get() {
+                    word(&mut self.s, ">")?
+                }
             }
 
             hir::ParenthesizedParameters(ref data) => {
@@ -1738,10 +1744,13 @@ impl<'a> State<'a> {
                 self.print_pat(&inner)?;
             }
             PatKind::Lit(ref e) => self.print_expr(&e)?,
-            PatKind::Range(ref begin, ref end) => {
+            PatKind::Range(ref begin, ref end, ref end_kind) => {
                 self.print_expr(&begin)?;
                 space(&mut self.s)?;
-                word(&mut self.s, "...")?;
+                match *end_kind {
+                    RangeEnd::Included => word(&mut self.s, "...")?,
+                    RangeEnd::Excluded => word(&mut self.s, "..")?,
+                }
                 self.print_expr(&end)?;
             }
             PatKind::Slice(ref before, ref slice, ref after) => {
@@ -2022,11 +2031,13 @@ impl<'a> State<'a> {
                         }
                     }
                 }
-                &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate{ref path, ref ty, ..}) => {
-                    self.print_path(path, false)?;
+                &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate{ref lhs_ty,
+                                                                        ref rhs_ty,
+                                                                        ..}) => {
+                    self.print_type(lhs_ty)?;
                     space(&mut self.s)?;
                     self.word_space("=")?;
-                    self.print_type(&ty)?;
+                    self.print_type(rhs_ty)?;
                 }
             }
         }

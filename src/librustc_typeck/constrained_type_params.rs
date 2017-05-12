@@ -75,7 +75,7 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
         t.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: &'tcx ty::Region) -> bool {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
         match *r {
             ty::ReEarlyBound(data) => {
                 self.parameters.push(Parameter::from(data));

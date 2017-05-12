@@ -36,11 +36,9 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_macro("identity", expand_identity);
     reg.register_syntax_extension(
         Symbol::intern("into_multi_foo"),
-        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         MultiModifier(Box::new(expand_into_foo_multi)));
     reg.register_syntax_extension(
         Symbol::intern("duplicate"),
-        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         MultiDecorator(Box::new(expand_duplicate)));
 }
 

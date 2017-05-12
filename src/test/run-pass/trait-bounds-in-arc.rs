@@ -105,7 +105,6 @@ fn check_legs(arc: Arc<Vec<Box<Pet+Sync+Send>>>) {
 }
 fn check_names(arc: Arc<Vec<Box<Pet+Sync+Send>>>) {
     for pet in arc.iter() {
-        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         pet.name(Box::new(|name| {
             assert!(name.as_bytes()[0] == 'a' as u8 && name.as_bytes()[1] == 'l' as u8);
         }))

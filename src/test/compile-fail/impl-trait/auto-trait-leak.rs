@@ -52,23 +52,20 @@ fn after() -> impl Fn(i32) {
 // independently resolved and only require the concrete
 // return type, which can't depend on the obligation.
 fn cycle1() -> impl Clone {
+    //~^ ERROR unsupported cyclic reference between types/traits detected
+    //~| cyclic reference
+    //~| NOTE the cycle begins when processing `cycle1`...
+    //~| NOTE ...which then requires processing `cycle1::{{impl-Trait}}`...
+    //~| NOTE ...which then again requires processing `cycle1`, completing the cycle.
     send(cycle2().clone());
-    //~^ ERROR the trait bound `std::rc::Rc<std::string::String>: std::marker::Send` is not satisfied
-    //~| NOTE the trait `std::marker::Send` is not implemented for `std::rc::Rc<std::string::String>`
-    //~| NOTE `std::rc::Rc<std::string::String>` cannot be sent between threads safely
-    //~| NOTE required because it appears within the type `impl std::clone::Clone`
-    //~| NOTE required by `send`
 
     Rc::new(Cell::new(5))
 }
 
 fn cycle2() -> impl Clone {
+    //~^ NOTE ...which then requires processing `cycle2::{{impl-Trait}}`...
+    //~| NOTE ...which then requires processing `cycle2`...
     send(cycle1().clone());
-    //~^ ERROR the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied
-    //~| NOTE the trait `std::marker::Send` is not implemented for `std::rc::Rc<std::cell::Cell<i32>>`
-    //~| NOTE `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
-    //~| NOTE required because it appears within the type `impl std::clone::Clone`
-    //~| NOTE required by `send`
 
     Rc::new(String::from("foo"))
 }

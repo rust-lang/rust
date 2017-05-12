@@ -21,7 +21,6 @@ struct A {
 
 pub fn main() {
     let a: A = Default::default();
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let b: Box<[_]> = Box::<[bool; 0]>::new([]);
     assert_eq!(a.foo, b);
 }

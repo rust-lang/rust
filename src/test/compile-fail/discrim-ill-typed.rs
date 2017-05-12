@@ -25,7 +25,7 @@ fn f_i8() {
         Ok = i8::MAX - 1,
         Ok2,
         OhNo = 0_u8,
-        //~^ ERROR E0080
+        //~^ ERROR mismatched types
         //~| expected i8, found u8
     }
 
@@ -38,7 +38,7 @@ fn f_u8() {
         Ok = u8::MAX - 1,
         Ok2,
         OhNo = 0_i8,
-        //~^ ERROR E0080
+        //~^ ERROR mismatched types
         //~| expected u8, found i8
     }
 
@@ -51,7 +51,7 @@ fn f_i16() {
         Ok = i16::MAX - 1,
         Ok2,
         OhNo = 0_u16,
-        //~^ ERROR E0080
+        //~^ ERROR mismatched types
         //~| expected i16, found u16
     }
 
@@ -64,7 +64,7 @@ fn f_u16() {
         Ok = u16::MAX - 1,
         Ok2,
         OhNo = 0_i16,
-        //~^ ERROR E0080
+        //~^ ERROR mismatched types
         //~| expected u16, found i16
     }
 
@@ -77,7 +77,7 @@ fn f_i32() {
         Ok = i32::MAX - 1,
         Ok2,
         OhNo = 0_u32,
-        //~^ ERROR E0080
+        //~^ ERROR mismatched types
         //~| expected i32, found u32
     }
 
@@ -90,7 +90,7 @@ fn f_u32() {
         Ok = u32::MAX - 1,
         Ok2,
         OhNo = 0_i32,
-        //~^ ERROR E0080
+        //~^ ERROR mismatched types
         //~| expected u32, found i32
     }
 
@@ -103,7 +103,7 @@ fn f_i64() {
         Ok = i64::MAX - 1,
         Ok2,
         OhNo = 0_u64,
-        //~^ ERROR E0080
+        //~^ ERROR mismatched types
         //~| expected i64, found u64
     }
 
@@ -116,7 +116,7 @@ fn f_u64() {
         Ok = u64::MAX - 1,
         Ok2,
         OhNo = 0_i64,
-        //~^ ERROR E0080
+        //~^ ERROR mismatched types
         //~| expected u64, found i64
     }
 

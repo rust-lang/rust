@@ -17,7 +17,6 @@
 // cause a compilation error. Issue #18772.
 
 fn adder(y: isize) -> Box<Fn(isize) -> isize + 'static> {
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     Box::new(move |x| y + x)
 }
 

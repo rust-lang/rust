@@ -43,7 +43,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
     /// crate.
     #[inline]
     pub fn full(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> DefIdForest {
-        let crate_id = tcx.map.local_def_id(CRATE_NODE_ID);
+        let crate_id = tcx.hir.local_def_id(CRATE_NODE_ID);
         DefIdForest::from_id(crate_id)
     }
 

@@ -100,7 +100,7 @@ trait TraitAddReturnType {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddReturnType {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -121,7 +121,7 @@ trait TraitChangeReturnType {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitChangeReturnType {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -142,7 +142,7 @@ trait TraitAddParameterToMethod {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddParameterToMethod {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -164,7 +164,7 @@ trait TraitChangeMethodParameterName {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitChangeMethodParameterName {
     // FIXME(#38501) This should preferably always be clean.
@@ -194,7 +194,7 @@ trait TraitChangeMethodParameterType {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitChangeMethodParameterType {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -215,7 +215,7 @@ trait TraitChangeMethodParameterTypeRef {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitChangeMethodParameterTypeRef {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -236,7 +236,7 @@ trait TraitChangeMethodParametersOrder {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitChangeMethodParametersOrder {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -257,9 +257,13 @@ trait TraitAddMethodDefaultImplementation {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddMethodDefaultImplementation {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     fn method() { }
 }
 
@@ -293,7 +297,7 @@ trait TraitChangeModeSelfRefToMut {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitChangeModeSelfRefToMut {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -316,8 +320,10 @@ trait TraitChangeModeSelfOwnToMut: Sized {
 #[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitChangeModeSelfOwnToMut: Sized {
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_dirty(label="HirBody", cfg="cfail2")]
+    #[rustc_clean(label="HirBody", cfg="cfail3")]
     #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     fn method(mut self) {}
@@ -333,7 +339,7 @@ trait TraitChangeModeSelfOwnToRef {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitChangeModeSelfOwnToRef {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -354,7 +360,7 @@ trait TraitAddUnsafeModifier {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddUnsafeModifier {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -375,7 +381,7 @@ trait TraitAddExternModifier {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddExternModifier {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -396,7 +402,7 @@ trait TraitChangeExternCToRustIntrinsic {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitChangeExternCToRustIntrinsic {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -417,7 +423,7 @@ trait TraitAddTypeParameterToMethod {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddTypeParameterToMethod {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -438,12 +444,12 @@ trait TraitAddLifetimeParameterToMethod {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddLifetimeParameterToMethod {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")] // Unused lifetimes don't seem to show up in type?
     #[rustc_metadata_clean(cfg="cfail3")]
     fn method<'a>();
 }
@@ -463,7 +469,7 @@ trait TraitAddTraitBoundToMethodTypeParameter {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddTraitBoundToMethodTypeParameter {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -484,7 +490,7 @@ trait TraitAddBuiltinBoundToMethodTypeParameter {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddBuiltinBoundToMethodTypeParameter {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -505,7 +511,7 @@ trait TraitAddLifetimeBoundToMethodLifetimeParameter {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddLifetimeBoundToMethodLifetimeParameter {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -526,7 +532,7 @@ trait TraitAddSecondTraitBoundToMethodTypeParameter {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddSecondTraitBoundToMethodTypeParameter {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -547,7 +553,7 @@ trait TraitAddSecondBuiltinBoundToMethodTypeParameter {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddSecondBuiltinBoundToMethodTypeParameter {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -568,7 +574,7 @@ trait TraitAddSecondLifetimeBoundToMethodLifetimeParameter {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddSecondLifetimeBoundToMethodLifetimeParameter {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -583,7 +589,12 @@ trait TraitAddSecondLifetimeBoundToMethodLifetimeParameter {
 // Add associated type ------------------------------------------------------------
 #[cfg(cfail1)]
 trait TraitAddAssociatedType {
-    fn mathod();
+
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    fn method();
 }
 
 #[cfg(not(cfail1))]
@@ -594,7 +605,7 @@ trait TraitAddAssociatedType {
 trait TraitAddAssociatedType {
     type Associated;
 
-    fn mathod();
+    fn method();
 }
 
 
@@ -604,9 +615,12 @@ trait TraitAddAssociatedType {
 trait TraitAddTraitBoundToAssociatedType {
     type Associated;
 
-    fn mathod();
+    fn method();
 }
 
+
+// Apparently the type bound contributes to the predicates of the trait, but
+// does not change the associated item itself.
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
@@ -615,11 +629,11 @@ trait TraitAddTraitBoundToAssociatedType {
 trait TraitAddTraitBoundToAssociatedType {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     type Associated: ReferencedTrait0;
 
-    fn mathod();
+    fn method();
 }
 
 
@@ -629,7 +643,7 @@ trait TraitAddTraitBoundToAssociatedType {
 trait TraitAddLifetimeBoundToAssociatedType<'a> {
     type Associated;
 
-    fn mathod();
+    fn method();
 }
 
 #[cfg(not(cfail1))]
@@ -640,11 +654,11 @@ trait TraitAddLifetimeBoundToAssociatedType<'a> {
 trait TraitAddLifetimeBoundToAssociatedType<'a> {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     type Associated: 'a;
 
-    fn mathod();
+    fn method();
 }
 
 
@@ -654,18 +668,22 @@ trait TraitAddLifetimeBoundToAssociatedType<'a> {
 trait TraitAddDefaultToAssociatedType {
     type Associated;
 
-    fn mathod();
+    fn method();
 }
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddDefaultToAssociatedType {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     type Associated = ReferenceType0;
 
-    fn mathod();
+    fn method();
 }
 
 
@@ -673,7 +691,7 @@ trait TraitAddDefaultToAssociatedType {
 // Add associated constant --------------------------------------------------------
 #[cfg(cfail1)]
 trait TraitAddAssociatedConstant {
-    fn mathod();
+    fn method();
 }
 
 #[cfg(not(cfail1))]
@@ -684,7 +702,7 @@ trait TraitAddAssociatedConstant {
 trait TraitAddAssociatedConstant {
     const Value: u32;
 
-    fn mathod();
+    fn method();
 }
 
 
@@ -694,18 +712,26 @@ trait TraitAddAssociatedConstant {
 trait TraitAddInitializerToAssociatedConstant {
     const Value: u32;
 
-    fn mathod();
+    fn method();
 }
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitAddInitializerToAssociatedConstant {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     const Value: u32 = 1;
 
-    fn mathod();
+    #[rustc_clean(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    fn method();
 }
 
 
@@ -715,13 +741,13 @@ trait TraitAddInitializerToAssociatedConstant {
 trait TraitChangeTypeOfAssociatedConstant {
     const Value: u32;
 
-    fn mathod();
+    fn method();
 }
 
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 trait TraitChangeTypeOfAssociatedConstant {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -730,7 +756,11 @@ trait TraitChangeTypeOfAssociatedConstant {
     #[rustc_metadata_clean(cfg="cfail3")]
     const Value: f64;
 
-    fn mathod();
+    #[rustc_clean(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    fn method();
 }
 
 
@@ -1109,9 +1139,6 @@ trait TraitAddSecondBuiltinBoundToTypeParameterOfTraitWhere<T> where T: Send { }
 trait TraitAddSecondBuiltinBoundToTypeParameterOfTraitWhere<T> where T: Send + Sync { }
 
 
-
-// EDIT: Some more cases ----------------------------------------------------------
-
 // Change return type of method indirectly by modifying a use statement------------
 mod change_return_type_of_method_indirectly_use {
     #[cfg(cfail1)]
@@ -1121,7 +1148,7 @@ mod change_return_type_of_method_indirectly_use {
 
     #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     trait TraitChangeReturnType {
         #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -1143,7 +1170,7 @@ mod change_method_parameter_type_indirectly_by_use {
 
     #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     trait TraitChangeArgType {
         #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -1165,7 +1192,7 @@ mod change_method_parameter_type_bound_indirectly_by_use {
 
     #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     trait TraitChangeBoundOfMethodTypeParameter {
         #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -1188,7 +1215,7 @@ mod change_method_parameter_type_bound_indirectly_by_use_where {
 
     #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     trait TraitChangeBoundOfMethodTypeParameterWhere {
         #[rustc_dirty(label="Hir", cfg="cfail2")]

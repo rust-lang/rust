@@ -65,6 +65,7 @@ enum Redirect {
 struct FileEntry {
     source: String,
     ids: HashSet<String>,
+    names: HashSet<String>,
 }
 
 type Cache = HashMap<PathBuf, FileEntry>;
@@ -78,6 +79,15 @@ impl FileEntry {
                     *errors = true;
                     println!("{}:{}: id is not unique: `{}`", file.display(), i, fragment);
                 }
+            });
+        }
+    }
+
+    fn parse_names(&mut self, contents: &str) {
+        if self.names.is_empty() {
+            with_attrs_in_source(contents, " name", |fragment, _| {
+                let frag = fragment.trim_left_matches("#").to_owned();
+                self.names.insert(frag);
             });
         }
     }
@@ -112,6 +122,12 @@ fn check(cache: &mut Cache,
         return None;
     }
 
+    // ignore handlebars files as they use {{}} to build links, we only
+    // want to test the generated files
+    if file.extension().and_then(|s| s.to_str()) == Some("hbs") {
+        return None;
+    }
+
     // Unfortunately we're not 100% full of valid links today to we need a few
     // whitelists to get this past `make check` today.
     // FIXME(#32129)
@@ -126,7 +142,14 @@ fn check(cache: &mut Cache,
     if file.ends_with("btree_set/struct.BTreeSet.html") ||
        file.ends_with("collections/struct.BTreeSet.html") ||
        file.ends_with("collections/btree_map/struct.BTreeMap.html") ||
-       file.ends_with("collections/hash_map/struct.HashMap.html") {
+       file.ends_with("collections/hash_map/struct.HashMap.html") ||
+       file.ends_with("collections/hash_set/struct.HashSet.html") {
+        return None;
+    }
+
+    // mdbook uses the HTML <base> tag to handle links for subdirectories, which
+    // linkchecker doesn't support
+    if file.to_str().unwrap().contains("unstable-book") {
         return None;
     }
 
@@ -139,6 +162,9 @@ fn check(cache: &mut Cache,
         cache.get_mut(&pretty_file)
              .unwrap()
              .parse_ids(&pretty_file, &contents, errors);
+        cache.get_mut(&pretty_file)
+             .unwrap()
+             .parse_names(&contents);
     }
 
     // Search for anything that's the regex 'href[ ]*=[ ]*".*?"'
@@ -151,9 +177,6 @@ fn check(cache: &mut Cache,
         }
         let mut parts = url.splitn(2, "#");
         let url = parts.next().unwrap();
-        if url.is_empty() {
-            return
-        }
         let fragment = parts.next();
         let mut parts = url.splitn(2, "?");
         let url = parts.next().unwrap();
@@ -161,14 +184,23 @@ fn check(cache: &mut Cache,
         // Once we've plucked out the URL, parse it using our base url and
         // then try to extract a file path.
         let mut path = file.to_path_buf();
-        path.pop();
-        for part in Path::new(url).components() {
-            match part {
-                Component::Prefix(_) |
-                Component::RootDir => panic!(),
-                Component::CurDir => {}
-                Component::ParentDir => { path.pop(); }
-                Component::Normal(s) => { path.push(s); }
+        if !url.is_empty() {
+            path.pop();
+            for part in Path::new(url).components() {
+                match part {
+                    Component::Prefix(_) |
+                    Component::RootDir => panic!(),
+                    Component::CurDir => {}
+                    Component::ParentDir => { path.pop(); }
+                    Component::Normal(s) => { path.push(s); }
+                }
+            }
+        }
+
+        if let Some(extension) = path.extension() {
+            // don't check these files
+            if extension == "png" {
+                return;
             }
         }
 
@@ -189,7 +221,9 @@ fn check(cache: &mut Cache,
             let res = load_file(cache, root, path.clone(), FromRedirect(false));
             let (pretty_path, contents) = match res {
                 Ok(res) => res,
-                Err(LoadError::IOError(err)) => panic!(format!("{}", err)),
+                Err(LoadError::IOError(err)) => {
+                    panic!(format!("error loading {}: {}", path.display(), err));
+                }
                 Err(LoadError::BrokenRedirect(target, _)) => {
                     *errors = true;
                     println!("{}:{}: broken redirect to {}",
@@ -211,8 +245,9 @@ fn check(cache: &mut Cache,
 
                 let entry = &mut cache.get_mut(&pretty_path).unwrap();
                 entry.parse_ids(&pretty_path, &contents, errors);
+                entry.parse_names(&contents);
 
-                if !entry.ids.contains(*fragment) {
+                if !(entry.ids.contains(*fragment) || entry.names.contains(*fragment)) {
                     *errors = true;
                     print!("{}:{}: broken link fragment  ",
                            pretty_file.display(),
@@ -262,6 +297,7 @@ fn load_file(cache: &mut Cache,
                 entry.insert(FileEntry {
                     source: contents.clone(),
                     ids: HashSet::new(),
+                    names: HashSet::new(),
                 });
             }
             maybe

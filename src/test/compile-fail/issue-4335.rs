@@ -13,7 +13,6 @@
 fn id<T>(t: T) -> T { t }
 
 fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     id(Box::new(|| *v))
         //~^ ERROR E0373
         //~| NOTE `v` is borrowed here

@@ -32,7 +32,7 @@ pub fn errno() -> i32 {
 }
 
 /// Gets a detailed string description for the given error number.
-pub fn error_string(errnum: i32) -> String {
+pub fn error_string(mut errnum: i32) -> String {
     // This value is calculated from the macro
     // MAKELANGID(LANG_SYSTEM_DEFAULT, SUBLANG_SYS_DEFAULT)
     let langId = 0x0800 as c::DWORD;
@@ -40,9 +40,27 @@ pub fn error_string(errnum: i32) -> String {
     let mut buf = [0 as c::WCHAR; 2048];
 
     unsafe {
-        let res = c::FormatMessageW(c::FORMAT_MESSAGE_FROM_SYSTEM |
+        let mut module = ptr::null_mut();
+        let mut flags = 0;
+
+        // NTSTATUS errors may be encoded as HRESULT, which may returned from
+        // GetLastError. For more information about Windows error codes, see
+        // `[MS-ERREF]`: https://msdn.microsoft.com/en-us/library/cc231198.aspx
+        if (errnum & c::FACILITY_NT_BIT as i32) != 0 {
+            // format according to https://support.microsoft.com/en-us/help/259693
+            const NTDLL_DLL: &'static [u16] = &['N' as _, 'T' as _, 'D' as _, 'L' as _, 'L' as _,
+                                                '.' as _, 'D' as _, 'L' as _, 'L' as _, 0];
+            module = c::GetModuleHandleW(NTDLL_DLL.as_ptr());
+
+            if module != ptr::null_mut() {
+                errnum ^= c::FACILITY_NT_BIT as i32;
+                flags = c::FORMAT_MESSAGE_FROM_HMODULE;
+            }
+        }
+
+        let res = c::FormatMessageW(flags | c::FORMAT_MESSAGE_FROM_SYSTEM |
                                         c::FORMAT_MESSAGE_IGNORE_INSERTS,
-                                    ptr::null_mut(),
+                                    module,
                                     errnum as c::DWORD,
                                     langId,
                                     buf.as_mut_ptr(),
@@ -298,4 +316,18 @@ pub fn home_dir() -> Option<PathBuf> {
 
 pub fn exit(code: i32) -> ! {
     unsafe { c::ExitProcess(code as c::UINT) }
+}
+
+#[cfg(test)]
+mod tests {
+    use io::Error;
+    use sys::c;
+
+    // tests `error_string` above
+    #[test]
+    fn ntstatus_error() {
+        const STATUS_UNSUCCESSFUL: u32 = 0xc000_0001;
+        assert!(!Error::from_raw_os_error((STATUS_UNSUCCESSFUL | c::FACILITY_NT_BIT) as _)
+            .to_string().contains("FormatMessageW() returned error"));
+    }
 }

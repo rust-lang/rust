@@ -11,15 +11,20 @@
 // compile-flags: -F unused_features
 // aux-build:lint_output_format.rs
 
-#![feature(foo)] //~ ERROR unused or unknown feature
+#![feature(foo)]
+//~^ ERROR unused or unknown feature
+//~| NOTE requested on the command line with `-F unused-features`
 
 #![feature(test_feature)]
 
 extern crate lint_output_format;
 use lint_output_format::{foo, bar};
-//~^ WARNING use of deprecated item: text,
+//~^ WARNING use of deprecated item: text
+//~| NOTE #[warn(deprecated)] on by default
 
 fn main() {
-    let _x = foo(); //~ WARNING #[warn(deprecated)] on by default
+    let _x = foo();
+    //~^ WARNING use of deprecated item: text
+    //~| NOTE #[warn(deprecated)] on by default
     let _y = bar();
 }

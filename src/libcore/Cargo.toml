@@ -10,10 +10,9 @@ test = false
 bench = false
 
 [[test]]
-name = "coretest"
-path = "../libcoretest/lib.rs"
+name = "coretests"
+path = "../libcore/tests/lib.rs"
 
-# FIXME: need to extract benchmarks to a separate crate
-#[[bench]]
-#name = "coretest"
-#path = "../libcoretest/lib.rs"
+[[bench]]
+name = "corebenches"
+path = "../libcore/benches/lib.rs"

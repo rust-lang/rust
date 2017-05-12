@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! VecDeque is a double-ended queue, which is implemented with the help of a
-//! growing ring buffer.
+//! A double-ended queue implemented with a growable ring buffer.
 //!
 //! This queue has `O(1)` amortized inserts and removals from both ends of the
 //! container. It also has `O(1)` indexing like a vector. The contained elements
@@ -22,7 +21,7 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::iter::{repeat, FromIterator, FusedIterator};
 use core::mem;
-use core::ops::{Index, IndexMut};
+use core::ops::{Index, IndexMut, Place, Placer, InPlace};
 use core::ptr;
 use core::ptr::Shared;
 use core::slice;
@@ -33,6 +32,7 @@ use core::cmp;
 use alloc::raw_vec::RawVec;
 
 use super::range::RangeArgument;
+use Bound::{Excluded, Included, Unbounded};
 use super::vec::Vec;
 
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
@@ -42,13 +42,17 @@ const MAXIMUM_ZST_CAPACITY: usize = 1 << (32 - 1); // Largest possible power of 
 #[cfg(target_pointer_width = "64")]
 const MAXIMUM_ZST_CAPACITY: usize = 1 << (64 - 1); // Largest possible power of two
 
-/// `VecDeque` is a growable ring buffer, which can be used as a double-ended
-/// queue efficiently.
+/// A double-ended queue implemented with a growable ring buffer.
 ///
-/// The "default" usage of this type as a queue is to use `push_back` to add to
-/// the queue, and `pop_front` to remove from the queue. `extend` and `append`
+/// The "default" usage of this type as a queue is to use [`push_back`] to add to
+/// the queue, and [`pop_front`] to remove from the queue. [`extend`] and [`append`]
 /// push onto the back in this manner, and iterating over `VecDeque` goes front
 /// to back.
+///
+/// [`push_back`]: #method.push_back
+/// [`pop_front`]: #method.pop_front
+/// [`extend`]: #method.extend
+/// [`append`]: #method.append
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VecDeque<T> {
     // tail and head are pointers into the buffer. Tail always points
@@ -69,8 +73,7 @@ impl<T: Clone> Clone for VecDeque<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Drop for VecDeque<T> {
-    #[unsafe_destructor_blind_to_params]
+unsafe impl<#[may_dangle] T> Drop for VecDeque<T> {
     fn drop(&mut self) {
         let (front, back) = self.as_mut_slices();
         unsafe {
@@ -133,7 +136,7 @@ impl<T> VecDeque<T> {
         ptr::write(self.ptr().offset(off as isize), value);
     }
 
-    /// Returns true if and only if the buffer is at capacity
+    /// Returns `true` if and only if the buffer is at full capacity.
     #[inline]
     fn is_full(&self) -> bool {
         self.cap() - self.len() == 1
@@ -469,9 +472,9 @@ impl<T> VecDeque<T> {
     /// buf.push_back(3);
     /// buf.push_back(4);
     /// buf.push_back(5);
+    /// assert_eq!(buf, [3, 4, 5]);
     /// buf.swap(0, 2);
-    /// assert_eq!(buf[0], 5);
-    /// assert_eq!(buf[2], 3);
+    /// assert_eq!(buf, [5, 4, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap(&mut self, i: usize, j: usize) {
@@ -506,7 +509,7 @@ impl<T> VecDeque<T> {
     /// given `VecDeque`. Does nothing if the capacity is already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it requests. Therefore
-    /// capacity can not be relied upon to be precisely minimal. Prefer `reserve` if future
+    /// capacity can not be relied upon to be precisely minimal. Prefer [`reserve`] if future
     /// insertions are expected.
     ///
     /// # Panics
@@ -522,6 +525,8 @@ impl<T> VecDeque<T> {
     /// buf.reserve_exact(10);
     /// assert!(buf.capacity() >= 11);
     /// ```
+    ///
+    /// [`reserve`]: #method.reserve
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.reserve(additional);
@@ -635,7 +640,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Shortens a `VecDeque`, dropping excess elements from the back.
+    /// Shortens the `VecDeque`, dropping excess elements from the back.
     ///
     /// If `len` is greater than the `VecDeque`'s current length, this has no
     /// effect.
@@ -643,21 +648,17 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(deque_extras)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
     /// buf.push_back(5);
     /// buf.push_back(10);
     /// buf.push_back(15);
+    /// assert_eq!(buf, [5, 10, 15]);
     /// buf.truncate(1);
-    /// assert_eq!(buf.len(), 1);
-    /// assert_eq!(Some(&5), buf.get(0));
+    /// assert_eq!(buf, [5]);
     /// ```
-    #[unstable(feature = "deque_extras",
-               reason = "matches collection reform specification; waiting on panic semantics",
-               issue = "27788")]
+    #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn truncate(&mut self, len: usize) {
         for _ in len..self.len() {
             self.pop_back();
@@ -792,7 +793,7 @@ impl<T> VecDeque<T> {
         count(self.tail, self.head, self.cap())
     }
 
-    /// Returns true if the buffer contains no elements
+    /// Returns `true` if the `VecDeque` is empty.
     ///
     /// # Examples
     ///
@@ -830,8 +831,9 @@ impl<T> VecDeque<T> {
     /// use std::collections::VecDeque;
     ///
     /// let mut v: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
-    /// assert_eq!(vec![3].into_iter().collect::<VecDeque<_>>(), v.drain(2..).collect());
-    /// assert_eq!(vec![1, 2].into_iter().collect::<VecDeque<_>>(), v);
+    /// let drained = v.drain(2..).collect::<VecDeque<_>>();
+    /// assert_eq!(drained, [3]);
+    /// assert_eq!(v, [1, 2]);
     ///
     /// // A full range clears all contents
     /// v.drain(..);
@@ -853,8 +855,16 @@ impl<T> VecDeque<T> {
         // and the head/tail values will be restored correctly.
         //
         let len = self.len();
-        let start = *range.start().unwrap_or(&0);
-        let end = *range.end().unwrap_or(&len);
+        let start = match range.start() {
+            Included(&n) => n,
+            Excluded(&n) => n + 1,
+            Unbounded    => 0,
+        };
+        let end = match range.end() {
+            Included(&n) => n + 1,
+            Excluded(&n) => n,
+            Unbounded    => len,
+        };
         assert!(start <= end, "drain lower bound was too large");
         assert!(end <= len, "drain upper bound was too large");
 
@@ -936,7 +946,7 @@ impl<T> VecDeque<T> {
         a.contains(x) || b.contains(x)
     }
 
-    /// Provides a reference to the front element, or `None` if the sequence is
+    /// Provides a reference to the front element, or `None` if the `VecDeque` is
     /// empty.
     ///
     /// # Examples
@@ -961,7 +971,7 @@ impl<T> VecDeque<T> {
     }
 
     /// Provides a mutable reference to the front element, or `None` if the
-    /// sequence is empty.
+    /// `VecDeque` is empty.
     ///
     /// # Examples
     ///
@@ -988,7 +998,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Provides a reference to the back element, or `None` if the sequence is
+    /// Provides a reference to the back element, or `None` if the `VecDeque` is
     /// empty.
     ///
     /// # Examples
@@ -1013,7 +1023,7 @@ impl<T> VecDeque<T> {
     }
 
     /// Provides a mutable reference to the back element, or `None` if the
-    /// sequence is empty.
+    /// `VecDeque` is empty.
     ///
     /// # Examples
     ///
@@ -1041,7 +1051,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Removes the first element and returns it, or `None` if the sequence is
+    /// Removes the first element and returns it, or `None` if the `VecDeque` is
     /// empty.
     ///
     /// # Examples
@@ -1068,7 +1078,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Inserts an element first in the sequence.
+    /// Prepends an element to the `VecDeque`.
     ///
     /// # Examples
     ///
@@ -1082,14 +1092,7 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_front(&mut self, value: T) {
-        if self.is_full() {
-            let old_cap = self.cap();
-            self.buf.double();
-            unsafe {
-                self.handle_cap_increase(old_cap);
-            }
-            debug_assert!(!self.is_full());
-        }
+        self.grow_if_necessary();
 
         self.tail = self.wrap_sub(self.tail, 1);
         let tail = self.tail;
@@ -1098,7 +1101,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Appends an element to the back of a buffer
+    /// Appends an element to the back of the `VecDeque`.
     ///
     /// # Examples
     ///
@@ -1112,21 +1115,14 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_back(&mut self, value: T) {
-        if self.is_full() {
-            let old_cap = self.cap();
-            self.buf.double();
-            unsafe {
-                self.handle_cap_increase(old_cap);
-            }
-            debug_assert!(!self.is_full());
-        }
+        self.grow_if_necessary();
 
         let head = self.head;
         self.head = self.wrap_add(self.head, 1);
         unsafe { self.buffer_write(head, value) }
     }
 
-    /// Removes the last element from a buffer and returns it, or `None` if
+    /// Removes the last element from the `VecDeque` and returns it, or `None` if
     /// it is empty.
     ///
     /// # Examples
@@ -1175,11 +1171,10 @@ impl<T> VecDeque<T> {
     /// buf.push_back(1);
     /// buf.push_back(2);
     /// buf.push_back(3);
+    /// assert_eq!(buf, [1, 2, 3]);
     ///
     /// assert_eq!(buf.swap_remove_back(0), Some(1));
-    /// assert_eq!(buf.len(), 2);
-    /// assert_eq!(buf[0], 3);
-    /// assert_eq!(buf[1], 2);
+    /// assert_eq!(buf, [3, 2]);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn swap_remove_back(&mut self, index: usize) -> Option<T> {
@@ -1211,11 +1206,10 @@ impl<T> VecDeque<T> {
     /// buf.push_back(1);
     /// buf.push_back(2);
     /// buf.push_back(3);
+    /// assert_eq!(buf, [1, 2, 3]);
     ///
     /// assert_eq!(buf.swap_remove_front(2), Some(3));
-    /// assert_eq!(buf.len(), 2);
-    /// assert_eq!(buf[0], 2);
-    /// assert_eq!(buf[1], 1);
+    /// assert_eq!(buf, [2, 1]);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn swap_remove_front(&mut self, index: usize) -> Option<T> {
@@ -1228,9 +1222,8 @@ impl<T> VecDeque<T> {
         self.pop_front()
     }
 
-    /// Inserts an element at `index` within the `VecDeque`. Whichever
-    /// end is closer to the insertion point will be moved to make room,
-    /// and all the affected elements will be moved to new positions.
+    /// Inserts an element at `index` within the `VecDeque`, shifting all elements with indices
+    /// greater than or equal to `index` towards the back.
     ///
     /// Element at index 0 is the front of the queue.
     ///
@@ -1239,26 +1232,23 @@ impl<T> VecDeque<T> {
     /// Panics if `index` is greater than `VecDeque`'s length
     ///
     /// # Examples
+    ///
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf = VecDeque::new();
-    /// buf.push_back(10);
-    /// buf.push_back(12);
-    /// buf.insert(1, 11);
-    /// assert_eq!(Some(&11), buf.get(1));
+    /// let mut vec_deque = VecDeque::new();
+    /// vec_deque.push_back('a');
+    /// vec_deque.push_back('b');
+    /// vec_deque.push_back('c');
+    /// assert_eq!(vec_deque, &['a', 'b', 'c']);
+    ///
+    /// vec_deque.insert(1, 'd');
+    /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c']);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn insert(&mut self, index: usize, value: T) {
         assert!(index <= self.len(), "index out of bounds");
-        if self.is_full() {
-            let old_cap = self.cap();
-            self.buf.double();
-            unsafe {
-                self.handle_cap_increase(old_cap);
-            }
-            debug_assert!(!self.is_full());
-        }
+        self.grow_if_necessary();
 
         // Move the least number of elements in the ring buffer and insert
         // the given object
@@ -1470,9 +1460,10 @@ impl<T> VecDeque<T> {
     /// buf.push_back(1);
     /// buf.push_back(2);
     /// buf.push_back(3);
+    /// assert_eq!(buf, [1, 2, 3]);
     ///
     /// assert_eq!(buf.remove(1), Some(2));
-    /// assert_eq!(buf.get(1), Some(&3));
+    /// assert_eq!(buf, [1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, index: usize) -> Option<T> {
@@ -1651,9 +1642,8 @@ impl<T> VecDeque<T> {
     ///
     /// let mut buf: VecDeque<_> = vec![1,2,3].into_iter().collect();
     /// let buf2 = buf.split_off(1);
-    /// // buf = [1], buf2 = [2, 3]
-    /// assert_eq!(buf.len(), 1);
-    /// assert_eq!(buf2.len(), 2);
+    /// assert_eq!(buf, [1]);
+    /// assert_eq!(buf2, [2, 3]);
     /// ```
     #[inline]
     #[stable(feature = "split_off", since = "1.4.0")]
@@ -1710,11 +1700,11 @@ impl<T> VecDeque<T> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
-    /// let mut buf2: VecDeque<_> = vec![4, 5, 6].into_iter().collect();
+    /// let mut buf: VecDeque<_> = vec![1, 2].into_iter().collect();
+    /// let mut buf2: VecDeque<_> = vec![3, 4].into_iter().collect();
     /// buf.append(&mut buf2);
-    /// assert_eq!(buf.len(), 6);
-    /// assert_eq!(buf2.len(), 0);
+    /// assert_eq!(buf, [1, 2, 3, 4]);
+    /// assert_eq!(buf2, []);
     /// ```
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
@@ -1737,9 +1727,7 @@ impl<T> VecDeque<T> {
     /// let mut buf = VecDeque::new();
     /// buf.extend(1..5);
     /// buf.retain(|&x| x%2 == 0);
-    ///
-    /// let v: Vec<_> = buf.into_iter().collect();
-    /// assert_eq!(&v[..], &[2, 4]);
+    /// assert_eq!(buf, [2, 4]);
     /// ```
     #[stable(feature = "vec_deque_retain", since = "1.4.0")]
     pub fn retain<F>(&mut self, mut f: F)
@@ -1758,32 +1746,93 @@ impl<T> VecDeque<T> {
             self.truncate(len - del);
         }
     }
-}
 
-impl<T: Clone> VecDeque<T> {
-    /// Modifies the `VecDeque` in-place so that `len()` is equal to new_len,
-    /// either by removing excess elements or by appending copies of a value to the back.
+    // This may panic or abort
+    #[inline]
+    fn grow_if_necessary(&mut self) {
+        if self.is_full() {
+            let old_cap = self.cap();
+            self.buf.double();
+            unsafe {
+                self.handle_cap_increase(old_cap);
+            }
+            debug_assert!(!self.is_full());
+        }
+    }
+
+    /// Returns a place for insertion at the back of the `VecDeque`.
+    ///
+    /// Using this method with placement syntax is equivalent to [`push_back`](#method.push_back),
+    /// but may be more efficient.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(deque_extras)]
+    /// #![feature(collection_placement)]
+    /// #![feature(placement_in_syntax)]
     ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::new();
+    /// buf.place_back() <- 3;
+    /// buf.place_back() <- 4;
+    /// assert_eq!(&buf, &[3, 4]);
+    /// ```
+    #[unstable(feature = "collection_placement",
+               reason = "placement protocol is subject to change",
+               issue = "30172")]
+    pub fn place_back(&mut self) -> PlaceBack<T> {
+        PlaceBack { vec_deque: self }
+    }
+
+    /// Returns a place for insertion at the front of the `VecDeque`.
+    ///
+    /// Using this method with placement syntax is equivalent to [`push_front`](#method.push_front),
+    /// but may be more efficient.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(collection_placement)]
+    /// #![feature(placement_in_syntax)]
+    ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::new();
+    /// buf.place_front() <- 3;
+    /// buf.place_front() <- 4;
+    /// assert_eq!(&buf, &[4, 3]);
+    /// ```
+    #[unstable(feature = "collection_placement",
+               reason = "placement protocol is subject to change",
+               issue = "30172")]
+    pub fn place_front(&mut self) -> PlaceFront<T> {
+        PlaceFront { vec_deque: self }
+    }
+}
+
+impl<T: Clone> VecDeque<T> {
+    /// Modifies the `VecDeque` in-place so that `len()` is equal to new_len,
+    /// either by removing excess elements or by appending clones of `value` to the back.
+    ///
+    /// # Examples
+    ///
+    /// ```
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
     /// buf.push_back(5);
     /// buf.push_back(10);
     /// buf.push_back(15);
+    /// assert_eq!(buf, [5, 10, 15]);
+    ///
     /// buf.resize(2, 0);
-    /// buf.resize(6, 20);
-    /// for (a, b) in [5, 10, 20, 20, 20, 20].iter().zip(&buf) {
-    ///     assert_eq!(a, b);
-    /// }
+    /// assert_eq!(buf, [5, 10]);
+    ///
+    /// buf.resize(5, 20);
+    /// assert_eq!(buf, [5, 10, 20, 20, 20]);
     /// ```
-    #[unstable(feature = "deque_extras",
-               reason = "matches collection reform specification; waiting on panic semantics",
-               issue = "27788")]
+    #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
 
@@ -1803,7 +1852,7 @@ fn wrap_index(index: usize, size: usize) -> usize {
     index & (size - 1)
 }
 
-/// Returns the two slices that cover the VecDeque's valid range
+/// Returns the two slices that cover the `VecDeque`'s valid range
 trait RingSlices: Sized {
     fn slice(self, from: usize, to: usize) -> Self;
     fn split_at(self, i: usize) -> (Self, Self);
@@ -1846,12 +1895,29 @@ fn count(tail: usize, head: usize, size: usize) -> usize {
     (head.wrapping_sub(tail)) & (size - 1)
 }
 
-/// `VecDeque` iterator.
+/// An iterator over the elements of a `VecDeque`.
+///
+/// This `struct` is created by the [`iter`] method on [`VecDeque`]. See its
+/// documentation for more.
+///
+/// [`iter`]: struct.VecDeque.html#method.iter
+/// [`VecDeque`]: struct.VecDeque.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     ring: &'a [T],
     tail: usize,
     head: usize,
+}
+
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Iter")
+         .field(&self.ring)
+         .field(&self.tail)
+         .field(&self.head)
+         .finish()
+    }
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
@@ -1918,12 +1984,29 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {
 impl<'a, T> FusedIterator for Iter<'a, T> {}
 
 
-/// `VecDeque` mutable iterator.
+/// A mutable iterator over the elements of a `VecDeque`.
+///
+/// This `struct` is created by the [`iter_mut`] method on [`VecDeque`]. See its
+/// documentation for more.
+///
+/// [`iter_mut`]: struct.VecDeque.html#method.iter_mut
+/// [`VecDeque`]: struct.VecDeque.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     ring: &'a mut [T],
     tail: usize,
     head: usize,
+}
+
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<'a, T: 'a + fmt::Debug> fmt::Debug for IterMut<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("IterMut")
+         .field(&self.ring)
+         .field(&self.tail)
+         .field(&self.head)
+         .finish()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1985,11 +2068,26 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
 
-/// A by-value VecDeque iterator
+/// An owning iterator over the elements of a `VecDeque`.
+///
+/// This `struct` is created by the [`into_iter`] method on [`VecDeque`][`VecDeque`]
+/// (provided by the `IntoIterator` trait). See its documentation for more.
+///
+/// [`into_iter`]: struct.VecDeque.html#method.into_iter
+/// [`VecDeque`]: struct.VecDeque.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     inner: VecDeque<T>,
+}
+
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("IntoIter")
+         .field(&self.inner)
+         .finish()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2026,13 +2124,30 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for IntoIter<T> {}
 
-/// A draining VecDeque iterator
+/// A draining iterator over the elements of a `VecDeque`.
+///
+/// This `struct` is created by the [`drain`] method on [`VecDeque`]. See its
+/// documentation for more.
+///
+/// [`drain`]: struct.VecDeque.html#method.drain
+/// [`VecDeque`]: struct.VecDeque.html
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     after_tail: usize,
     after_head: usize,
     iter: Iter<'a, T>,
     deque: Shared<VecDeque<T>>,
+}
+
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<'a, T: 'a + fmt::Debug> fmt::Debug for Drain<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Drain")
+         .field(&self.after_tail)
+         .field(&self.after_head)
+         .field(&self.iter)
+         .finish()
+    }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -2045,7 +2160,7 @@ impl<'a, T: 'a> Drop for Drain<'a, T> {
     fn drop(&mut self) {
         for _ in self.by_ref() {}
 
-        let source_deque = unsafe { &mut **self.deque };
+        let source_deque = unsafe { self.deque.as_mut() };
 
         // T = source_deque_tail; H = source_deque_head; t = drain_tail; h = drain_head
         //
@@ -2157,6 +2272,46 @@ impl<A: PartialEq> PartialEq for VecDeque<A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Eq> Eq for VecDeque<A> {}
+
+macro_rules! __impl_slice_eq1 {
+    ($Lhs: ty, $Rhs: ty) => {
+        __impl_slice_eq1! { $Lhs, $Rhs, Sized }
+    };
+    ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
+        #[stable(feature = "vec-deque-partial-eq-slice", since = "1.17.0")]
+        impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
+            fn eq(&self, other: &$Rhs) -> bool {
+                if self.len() != other.len() {
+                    return false;
+                }
+                let (sa, sb) = self.as_slices();
+                let (oa, ob) = other[..].split_at(sa.len());
+                sa == oa && sb == ob
+            }
+        }
+    }
+}
+
+__impl_slice_eq1! { VecDeque<A>, Vec<B> }
+__impl_slice_eq1! { VecDeque<A>, &'b [B] }
+__impl_slice_eq1! { VecDeque<A>, &'b mut [B] }
+
+macro_rules! array_impls {
+    ($($N: expr)+) => {
+        $(
+            __impl_slice_eq1! { VecDeque<A>, [B; $N] }
+            __impl_slice_eq1! { VecDeque<A>, &'b [B; $N] }
+            __impl_slice_eq1! { VecDeque<A>, &'b mut [B; $N] }
+        )+
+    }
+}
+
+array_impls! {
+     0  1  2  3  4  5  6  7  8  9
+    10 11 12 13 14 15 16 17 18 19
+    20 21 22 23 24 25 26 27 28 29
+    30 31 32
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: PartialOrd> PartialOrd for VecDeque<A> {
@@ -2364,6 +2519,98 @@ impl<T> From<VecDeque<T>> for Vec<T> {
     }
 }
 
+/// A place for insertion at the back of a `VecDeque`.
+///
+/// See [`VecDeque::place_back`](struct.VecDeque.html#method.place_back) for details.
+#[must_use = "places do nothing unless written to with `<-` syntax"]
+#[unstable(feature = "collection_placement",
+           reason = "struct name and placement protocol are subject to change",
+           issue = "30172")]
+#[derive(Debug)]
+pub struct PlaceBack<'a, T: 'a> {
+    vec_deque: &'a mut VecDeque<T>,
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> Placer<T> for PlaceBack<'a, T> {
+    type Place = PlaceBack<'a, T>;
+
+    fn make_place(self) -> Self {
+        self.vec_deque.grow_if_necessary();
+        self
+    }
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> Place<T> for PlaceBack<'a, T> {
+    fn pointer(&mut self) -> *mut T {
+        unsafe { self.vec_deque.ptr().offset(self.vec_deque.head as isize) }
+    }
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> InPlace<T> for PlaceBack<'a, T> {
+    type Owner = &'a mut T;
+
+    unsafe fn finalize(mut self) -> &'a mut T {
+        let head = self.vec_deque.head;
+        self.vec_deque.head = self.vec_deque.wrap_add(head, 1);
+        &mut *(self.vec_deque.ptr().offset(head as isize))
+    }
+}
+
+/// A place for insertion at the front of a `VecDeque`.
+///
+/// See [`VecDeque::place_front`](struct.VecDeque.html#method.place_front) for details.
+#[must_use = "places do nothing unless written to with `<-` syntax"]
+#[unstable(feature = "collection_placement",
+           reason = "struct name and placement protocol are subject to change",
+           issue = "30172")]
+#[derive(Debug)]
+pub struct PlaceFront<'a, T: 'a> {
+    vec_deque: &'a mut VecDeque<T>,
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> Placer<T> for PlaceFront<'a, T> {
+    type Place = PlaceFront<'a, T>;
+
+    fn make_place(self) -> Self {
+        self.vec_deque.grow_if_necessary();
+        self
+    }
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> Place<T> for PlaceFront<'a, T> {
+    fn pointer(&mut self) -> *mut T {
+        let tail = self.vec_deque.wrap_sub(self.vec_deque.tail, 1);
+        unsafe { self.vec_deque.ptr().offset(tail as isize) }
+    }
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> InPlace<T> for PlaceFront<'a, T> {
+    type Owner = &'a mut T;
+
+    unsafe fn finalize(mut self) -> &'a mut T {
+        self.vec_deque.tail = self.vec_deque.wrap_sub(self.vec_deque.tail, 1);
+        &mut *(self.vec_deque.ptr().offset(self.vec_deque.tail as isize))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use test;
@@ -2430,7 +2677,7 @@ mod tests {
             let final_len = usable_cap / 2;
 
             for len in 0..final_len {
-                let expected = if back {
+                let expected: VecDeque<_> = if back {
                     (0..len).collect()
                 } else {
                     (0..len).rev().collect()
@@ -2479,7 +2726,7 @@ mod tests {
         // len is the length *after* insertion
         for len in 1..cap {
             // 0, 1, 2, .., len - 1
-            let expected = (0..).take(len).collect();
+            let expected = (0..).take(len).collect::<VecDeque<_>>();
             for tail_pos in 0..cap {
                 for to_insert in 0..len {
                     tester.tail = tail_pos;
@@ -2512,7 +2759,7 @@ mod tests {
         // len is the length *after* removal
         for len in 0..cap - 1 {
             // 0, 1, 2, .., len - 1
-            let expected = (0..).take(len).collect();
+            let expected = (0..).take(len).collect::<VecDeque<_>>();
             for tail_pos in 0..cap {
                 for to_remove in 0..len + 1 {
                     tester.tail = tail_pos;
@@ -2587,7 +2834,7 @@ mod tests {
 
         for len in 0..cap + 1 {
             // 0, 1, 2, .., len - 1
-            let expected = (0..).take(len).collect();
+            let expected = (0..).take(len).collect::<VecDeque<_>>();
             for tail_pos in 0..max_cap + 1 {
                 tester.tail = tail_pos;
                 tester.head = tail_pos;
@@ -2620,9 +2867,9 @@ mod tests {
             // index to split at
             for at in 0..len + 1 {
                 // 0, 1, 2, .., at - 1 (may be empty)
-                let expected_self = (0..).take(at).collect();
+                let expected_self = (0..).take(at).collect::<VecDeque<_>>();
                 // at, at + 1, .., len - 1 (may be empty)
-                let expected_other = (at..).take(len - at).collect();
+                let expected_other = (at..).take(len - at).collect::<VecDeque<_>>();
 
                 for tail_pos in 0..cap {
                     tester.tail = tail_pos;
@@ -2719,4 +2966,5 @@ mod tests {
             }
         }
     }
+
 }

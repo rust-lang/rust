@@ -154,7 +154,28 @@ pub struct NulError(usize, Vec<u8>);
 /// byte was found too early in the slice provided or one wasn't found at all.
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-pub struct FromBytesWithNulError { _a: () }
+pub struct FromBytesWithNulError {
+    kind: FromBytesWithNulErrorKind,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+enum FromBytesWithNulErrorKind {
+    InteriorNul(usize),
+    NotNulTerminated,
+}
+
+impl FromBytesWithNulError {
+    fn interior_nul(pos: usize) -> FromBytesWithNulError {
+        FromBytesWithNulError {
+            kind: FromBytesWithNulErrorKind::InteriorNul(pos),
+        }
+    }
+    fn not_nul_terminated() -> FromBytesWithNulError {
+        FromBytesWithNulError {
+            kind: FromBytesWithNulErrorKind::NotNulTerminated,
+        }
+    }
+}
 
 /// An error returned from `CString::into_string` to indicate that a UTF-8 error
 /// was encountered during the conversion.
@@ -303,6 +324,18 @@ impl CString {
         &self.inner
     }
 
+    /// Extracts a `CStr` slice containing the entire string.
+    #[unstable(feature = "as_c_str", issue = "40380")]
+    pub fn as_c_str(&self) -> &CStr {
+        &*self
+    }
+
+    /// Converts this `CString` into a boxed `CStr`.
+    #[unstable(feature = "into_boxed_c_str", issue = "40380")]
+    pub fn into_boxed_c_str(self) -> Box<CStr> {
+        unsafe { mem::transmute(self.into_inner()) }
+    }
+
     // Bypass "move out of struct which implements `Drop` trait" restriction.
     fn into_inner(self) -> Box<[u8]> {
         unsafe {
@@ -329,7 +362,7 @@ impl ops::Deref for CString {
     type Target = CStr;
 
     fn deref(&self) -> &CStr {
-        unsafe { mem::transmute(self.as_bytes_with_nul()) }
+        unsafe { CStr::from_bytes_with_nul_unchecked(self.as_bytes_with_nul()) }
     }
 }
 
@@ -378,6 +411,36 @@ impl Default for CString {
 #[stable(feature = "cstr_borrow", since = "1.3.0")]
 impl Borrow<CStr> for CString {
     fn borrow(&self) -> &CStr { self }
+}
+
+#[stable(feature = "box_from_c_str", since = "1.17.0")]
+impl<'a> From<&'a CStr> for Box<CStr> {
+    fn from(s: &'a CStr) -> Box<CStr> {
+        let boxed: Box<[u8]> = Box::from(s.to_bytes_with_nul());
+        unsafe { mem::transmute(boxed) }
+    }
+}
+
+#[stable(feature = "c_string_from_box", since = "1.17.0")]
+impl From<Box<CStr>> for CString {
+    fn from(s: Box<CStr>) -> CString {
+        s.into_c_string()
+    }
+}
+
+#[stable(feature = "box_from_c_string", since = "1.17.0")]
+impl Into<Box<CStr>> for CString {
+    fn into(self) -> Box<CStr> {
+        self.into_boxed_c_str()
+    }
+}
+
+#[stable(feature = "default_box_extra", since = "1.17.0")]
+impl Default for Box<CStr> {
+    fn default() -> Box<CStr> {
+        let boxed: Box<[u8]> = Box::from([0]);
+        unsafe { mem::transmute(boxed) }
+    }
 }
 
 impl NulError {
@@ -430,6 +493,29 @@ impl From<NulError> for io::Error {
     fn from(_: NulError) -> io::Error {
         io::Error::new(io::ErrorKind::InvalidInput,
                        "data provided contains a nul byte")
+    }
+}
+
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
+impl Error for FromBytesWithNulError {
+    fn description(&self) -> &str {
+        match self.kind {
+            FromBytesWithNulErrorKind::InteriorNul(..) =>
+                "data provided contains an interior nul byte",
+            FromBytesWithNulErrorKind::NotNulTerminated =>
+                "data provided is not nul terminated",
+        }
+    }
+}
+
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
+impl fmt::Display for FromBytesWithNulError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.description())?;
+        if let FromBytesWithNulErrorKind::InteriorNul(pos) = self.kind {
+            write!(f, " at byte pos {}", pos)?;
+        }
+        Ok(())
     }
 }
 
@@ -503,7 +589,8 @@ impl CStr {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
         let len = libc::strlen(ptr);
-        mem::transmute(slice::from_raw_parts(ptr, len as usize + 1))
+        let ptr = ptr as *const u8;
+        CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr, len as usize + 1))
     }
 
     /// Creates a C string wrapper from a byte slice.
@@ -523,10 +610,14 @@ impl CStr {
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     pub fn from_bytes_with_nul(bytes: &[u8])
                                -> Result<&CStr, FromBytesWithNulError> {
-        if bytes.is_empty() || memchr::memchr(0, &bytes) != Some(bytes.len() - 1) {
-            Err(FromBytesWithNulError { _a: () })
+        let nul_pos = memchr::memchr(0, bytes);
+        if let Some(nul_pos) = nul_pos {
+            if nul_pos + 1 != bytes.len() {
+                return Err(FromBytesWithNulError::interior_nul(nul_pos));
+            }
+            Ok(unsafe { CStr::from_bytes_with_nul_unchecked(bytes) })
         } else {
-            Ok(unsafe { Self::from_bytes_with_nul_unchecked(bytes) })
+            Err(FromBytesWithNulError::not_nul_terminated())
         }
     }
 
@@ -658,6 +749,12 @@ impl CStr {
     pub fn to_string_lossy(&self) -> Cow<str> {
         String::from_utf8_lossy(self.to_bytes())
     }
+
+    /// Converts a `Box<CStr>` into a `CString` without copying or allocating.
+    #[unstable(feature = "into_boxed_c_str", issue = "40380")]
+    pub fn into_c_string(self: Box<CStr>) -> CString {
+        unsafe { mem::transmute(self) }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -686,7 +783,7 @@ impl ToOwned for CStr {
     type Owned = CString;
 
     fn to_owned(&self) -> CString {
-        CString { inner: self.to_bytes_with_nul().to_vec().into_boxed_slice() }
+        CString { inner: self.to_bytes_with_nul().into() }
     }
 }
 
@@ -846,5 +943,22 @@ mod tests {
         let data = b"1\023\0";
         let cstr = CStr::from_bytes_with_nul(data);
         assert!(cstr.is_err());
+    }
+
+    #[test]
+    fn into_boxed() {
+        let orig: &[u8] = b"Hello, world!\0";
+        let cstr = CStr::from_bytes_with_nul(orig).unwrap();
+        let boxed: Box<CStr> = Box::from(cstr);
+        let cstring = cstr.to_owned().into_boxed_c_str().into_c_string();
+        assert_eq!(cstr, &*boxed);
+        assert_eq!(&*boxed, &*cstring);
+        assert_eq!(&*cstring, cstr);
+    }
+
+    #[test]
+    fn boxed_default() {
+        let boxed = <Box<CStr>>::default();
+        assert_eq!(boxed.to_bytes_with_nul(), &[0]);
     }
 }

@@ -34,36 +34,55 @@ pub trait MetadataExt {
     #[allow(deprecated)]
     fn as_raw_stat(&self) -> &raw::stat;
 
+    /// Returns the device ID on which this file resides.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_dev(&self) -> u64;
+    /// Returns the inode number.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_ino(&self) -> u64;
+    /// Returns the file type and mode.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_mode(&self) -> u32;
+    /// Returns the number of hard links to file.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_nlink(&self) -> u64;
+    /// Returns the user ID of the file owner.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_uid(&self) -> u32;
+    /// Returns the group ID of the file owner.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_gid(&self) -> u32;
+    /// Returns the device ID that this file represents. Only relevant for special file.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_rdev(&self) -> u64;
+    /// Returns the size of the file (if it is a regular file or a symbolic link) in bytes.
+    ///
+    /// The size of a symbolic link is the length of the pathname it contains,
+    /// without a terminating null byte.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_size(&self) -> u64;
+    /// Returns the last access time.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_atime(&self) -> i64;
+    /// Returns the last access time, nano seconds part.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_atime_nsec(&self) -> i64;
+    /// Returns the last modification time.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_mtime(&self) -> i64;
+    /// Returns the last modification time, nano seconds part.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_mtime_nsec(&self) -> i64;
+    /// Returns the last status change time.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_ctime(&self) -> i64;
+    /// Returns the last status change time, nano seconds part.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_ctime_nsec(&self) -> i64;
+    /// Returns the "preferred" blocksize for efficient filesystem I/O.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_blksize(&self) -> u64;
+    /// Returns the number of blocks allocated to the file, 512-byte units.
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_blocks(&self) -> u64;
 }

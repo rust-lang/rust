@@ -10,6 +10,8 @@
 
 // Check that writing an overlapping impl is not allow unless specialization is ungated.
 
+// gate-test-specialization
+
 trait Foo {
     fn foo(&self);
 }

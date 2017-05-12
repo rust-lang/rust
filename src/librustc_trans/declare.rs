@@ -23,6 +23,7 @@
 use llvm::{self, ValueRef};
 use llvm::AttributePlace::Function;
 use rustc::ty;
+use rustc::session::config::Sanitizer;
 use abi::{Abi, FnType};
 use attributes;
 use context::CrateContext;
@@ -72,11 +73,26 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
         llvm::Attribute::NoRedZone.apply_llfn(Function, llfn);
     }
 
+    if let Some(ref sanitizer) = ccx.tcx().sess.opts.debugging_opts.sanitizer {
+        match *sanitizer {
+            Sanitizer::Address => {
+                llvm::Attribute::SanitizeAddress.apply_llfn(Function, llfn);
+            },
+            Sanitizer::Memory => {
+                llvm::Attribute::SanitizeMemory.apply_llfn(Function, llfn);
+            },
+            Sanitizer::Thread => {
+                llvm::Attribute::SanitizeThread.apply_llfn(Function, llfn);
+            },
+            _ => {}
+        }
+    }
+
     // If we're compiling the compiler-builtins crate, e.g. the equivalent of
     // compiler-rt, then we want to implicitly compile everything with hidden
     // visibility as we're going to link this object all over the place but
     // don't want the symbols to get exported.
-    if attr::contains_name(ccx.tcx().map.krate_attrs(), "compiler_builtins") {
+    if attr::contains_name(ccx.tcx().hir.krate_attrs(), "compiler_builtins") {
         unsafe {
             llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
         }
@@ -116,11 +132,11 @@ pub fn declare_cfn(ccx: &CrateContext, name: &str, fn_type: Type) -> ValueRef {
 pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
                             fn_type: ty::Ty<'tcx>) -> ValueRef {
     debug!("declare_rust_fn(name={:?}, fn_type={:?})", name, fn_type);
-    let ty::BareFnTy { abi, ref sig, .. } = *common::ty_fn_ty(ccx, fn_type);
-    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(sig);
+    let sig = common::ty_fn_sig(ccx, fn_type);
+    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
-    let fty = FnType::new(ccx, abi, &sig, &[]);
+    let fty = FnType::new(ccx, sig, &[]);
     let llfn = declare_raw_fn(ccx, name, fty.cconv, fty.llvm_type(ccx));
 
     // FIXME(canndrew): This is_never should really be an is_uninhabited
@@ -128,7 +144,7 @@ pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
         llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
     }
 
-    if abi != Abi::Rust && abi != Abi::RustCall {
+    if sig.abi != Abi::Rust && sig.abi != Abi::RustCall {
         attributes::unwind(llfn, false);
     }
 

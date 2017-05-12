@@ -16,6 +16,8 @@
 // using `rustc_attrs` feature. There is a separate compile-fail/ test
 // ensuring that the attribute feature-gating works in this context.)
 
+// gate-test-generic_param_attrs
+
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
 

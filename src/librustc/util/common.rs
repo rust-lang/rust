@@ -94,7 +94,7 @@ pub fn to_readable_str(mut val: usize) -> String {
 
         if val == 0 {
             groups.push(format!("{}", group));
-            break
+            break;
         } else {
             groups.push(format!("{:03}", group));
         }
@@ -142,7 +142,8 @@ fn get_resident() -> Option<usize> {
     type HANDLE = *mut u8;
     use libc::size_t;
     use std::mem;
-    #[repr(C)] #[allow(non_snake_case)]
+    #[repr(C)]
+    #[allow(non_snake_case)]
     struct PROCESS_MEMORY_COUNTERS {
         cb: DWORD,
         PageFaultCount: DWORD,
@@ -184,7 +185,7 @@ pub fn indent<R, F>(op: F) -> R where
 }
 
 pub struct Indenter {
-    _cannot_construct_outside_of_this_module: ()
+    _cannot_construct_outside_of_this_module: (),
 }
 
 impl Drop for Indenter {

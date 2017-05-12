@@ -10,6 +10,8 @@
 
 //! The exponential distribution.
 
+use core::fmt;
+
 #[cfg(not(test))] // only necessary for no_std
 use FloatMath;
 
@@ -55,6 +57,14 @@ impl Rand for Exp1 {
     }
 }
 
+impl fmt::Debug for Exp1 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Exp1")
+         .field(&self.0)
+         .finish()
+    }
+}
+
 /// The exponential distribution `Exp(lambda)`.
 ///
 /// This distribution has density function: `f(x) = lambda *
@@ -79,10 +89,19 @@ impl Sample<f64> for Exp {
         self.ind_sample(rng)
     }
 }
+
 impl IndependentSample<f64> for Exp {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
         let Exp1(n) = rng.gen::<Exp1>();
         n * self.lambda_inverse
+    }
+}
+
+impl fmt::Debug for Exp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Exp")
+         .field("lambda_inverse", &self.lambda_inverse)
+         .finish()
     }
 }
 

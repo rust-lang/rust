@@ -12,14 +12,16 @@ mod macros_cant_escape_fns {
     fn f() {
         macro_rules! m { () => { 3 + 4 } }
     }
-    fn g() -> i32 { m!() } //~ ERROR macro undefined
+    fn g() -> i32 { m!() }
+    //~^ ERROR cannot find macro
 }
 
 mod macros_cant_escape_mods {
     mod f {
         macro_rules! m { () => { 3 + 4 } }
     }
-    fn g() -> i32 { m!() } //~ ERROR macro undefined
+    fn g() -> i32 { m!() }
+    //~^ ERROR cannot find macro
 }
 
 mod macros_can_escape_flattened_mods_test {

@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:macro undefined
+// error-pattern:cannot find macro
 fn main() { iamnotanextensionthatexists!(""); }

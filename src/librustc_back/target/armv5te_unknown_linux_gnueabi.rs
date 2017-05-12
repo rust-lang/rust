@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use LinkerFlavor;
 use target::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
@@ -21,6 +22,7 @@ pub fn target() -> TargetResult {
         target_os: "linux".to_string(),
         target_env: "gnu".to_string(),
         target_vendor: "unknown".to_string(),
+        linker_flavor: LinkerFlavor::Gcc,
 
         options: TargetOptions {
             features: "+soft-float".to_string(),
@@ -31,4 +33,3 @@ pub fn target() -> TargetResult {
         }
     })
 }
-

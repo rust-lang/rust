@@ -19,8 +19,7 @@ static STATIC_REF: &'static mut i32 = &mut X; //~ ERROR E0017
                                               //~| NOTE statics require immutable values
                                               //~| ERROR E0017
                                               //~| NOTE statics require immutable values
-                                              //~| ERROR E0388
-                                              //~| NOTE cannot write data in a static definition
+                                              //~| ERROR cannot borrow
 static CONST_REF: &'static mut i32 = &mut C; //~ ERROR E0017
                                              //~| NOTE statics require immutable values
                                              //~| ERROR E0017
