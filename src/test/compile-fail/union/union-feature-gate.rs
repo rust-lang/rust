@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-untagged_unions
-
 union U { //~ ERROR unions are unstable and possibly buggy
     a: u8,
 }

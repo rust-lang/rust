@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-log_syntax
-
 fn main() {
     log_syntax!() //~ ERROR `log_syntax!` is not stable enough
 }

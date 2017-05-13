@@ -68,3 +68,5 @@ impl Deref for Equatable {
         &self.0
     }
 }
+
+//~ TRANS_ITEM drop-glue i8

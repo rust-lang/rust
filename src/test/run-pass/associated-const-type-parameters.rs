@@ -27,12 +27,6 @@ impl Foo for Def {
     const X: i32 = 97;
 }
 
-struct Proxy<T>(T);
-
-impl<T: Foo> Foo for Proxy<T> {
-    const X: i32 = T::X;
-}
-
 fn sub<A: Foo, B: Foo>() -> i32 {
     A::X - B::X
 }
@@ -44,7 +38,4 @@ fn main() {
     assert_eq!(97, Def::get_x());
     assert_eq!(-86, sub::<Abc, Def>());
     assert_eq!(86, sub::<Def, Abc>());
-    assert_eq!(-86, sub::<Proxy<Abc>, Def>());
-    assert_eq!(-86, sub::<Abc, Proxy<Def>>());
-    assert_eq!(86, sub::<Proxy<Def>, Proxy<Abc>>());
 }

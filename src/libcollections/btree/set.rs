@@ -21,7 +21,7 @@ use core::ops::{BitOr, BitAnd, BitXor, Sub};
 use borrow::Borrow;
 use btree_map::{BTreeMap, Keys};
 use super::Recover;
-use range::RangeArgument;
+use Bound;
 
 // FIXME(conventions): implement bounded iterators
 
@@ -74,10 +74,9 @@ pub struct BTreeSet<T> {
     map: BTreeMap<T, ()>,
 }
 
-/// An iterator over the items of a `BTreeSet`.
+/// An iterator over a `BTreeSet`'s items.
 ///
-/// This `struct` is created by the [`iter`] method on [`BTreeSet`].
-/// See its documentation for more.
+/// This structure is created by the [`iter`] method on [`BTreeSet`].
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`iter`]: struct.BTreeSet.html#method.iter
@@ -86,45 +85,30 @@ pub struct Iter<'a, T: 'a> {
     iter: Keys<'a, T, ()>,
 }
 
-#[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Iter")
-         .field(&self.iter.clone())
-         .finish()
-    }
-}
-
-/// An owning iterator over the items of a `BTreeSet`.
+/// An owning iterator over a `BTreeSet`'s items.
 ///
-/// This `struct` is created by the [`into_iter`] method on [`BTreeSet`][`BTreeSet`]
-/// (provided by the `IntoIterator` trait). See its documentation for more.
+/// This structure is created by the `into_iter` method on [`BTreeSet`]
+/// [`BTreeSet`] (provided by the `IntoIterator` trait).
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
-/// [`into_iter`]: struct.BTreeSet.html#method.into_iter
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug)]
 pub struct IntoIter<T> {
     iter: ::btree_map::IntoIter<T, ()>,
 }
 
-/// An iterator over a sub-range of items in a `BTreeSet`.
+/// An iterator over a sub-range of `BTreeSet`'s items.
 ///
-/// This `struct` is created by the [`range`] method on [`BTreeSet`].
-/// See its documentation for more.
+/// This structure is created by the [`range`] method on [`BTreeSet`].
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`range`]: struct.BTreeSet.html#method.range
-#[derive(Debug)]
-#[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, T: 'a> {
     iter: ::btree_map::Range<'a, T, ()>,
 }
 
-/// A lazy iterator producing elements in the difference of `BTreeSet`s.
+/// A lazy iterator producing elements in the set difference (in-order).
 ///
-/// This `struct` is created by the [`difference`] method on [`BTreeSet`].
-/// See its documentation for more.
+/// This structure is created by the [`difference`] method on [`BTreeSet`].
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`difference`]: struct.BTreeSet.html#method.difference
@@ -134,20 +118,10 @@ pub struct Difference<'a, T: 'a> {
     b: Peekable<Iter<'a, T>>,
 }
 
-#[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, T: 'a + fmt::Debug> fmt::Debug for Difference<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Difference")
-         .field(&self.a)
-         .field(&self.b)
-         .finish()
-    }
-}
-
-/// A lazy iterator producing elements in the symmetric difference of `BTreeSet`s.
+/// A lazy iterator producing elements in the set symmetric difference (in-order).
 ///
-/// This `struct` is created by the [`symmetric_difference`] method on
-/// [`BTreeSet`]. See its documentation for more.
+/// This structure is created by the [`symmetric_difference`] method on
+/// [`BTreeSet`].
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`symmetric_difference`]: struct.BTreeSet.html#method.symmetric_difference
@@ -157,20 +131,9 @@ pub struct SymmetricDifference<'a, T: 'a> {
     b: Peekable<Iter<'a, T>>,
 }
 
-#[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, T: 'a + fmt::Debug> fmt::Debug for SymmetricDifference<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("SymmetricDifference")
-         .field(&self.a)
-         .field(&self.b)
-         .finish()
-    }
-}
-
-/// A lazy iterator producing elements in the intersection of `BTreeSet`s.
+/// A lazy iterator producing elements in the set intersection (in-order).
 ///
-/// This `struct` is created by the [`intersection`] method on [`BTreeSet`].
-/// See its documentation for more.
+/// This structure is created by the [`intersection`] method on [`BTreeSet`].
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`intersection`]: struct.BTreeSet.html#method.intersection
@@ -180,20 +143,9 @@ pub struct Intersection<'a, T: 'a> {
     b: Peekable<Iter<'a, T>>,
 }
 
-#[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, T: 'a + fmt::Debug> fmt::Debug for Intersection<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Intersection")
-         .field(&self.a)
-         .field(&self.b)
-         .finish()
-    }
-}
-
-/// A lazy iterator producing elements in the union of `BTreeSet`s.
+/// A lazy iterator producing elements in the set union (in-order).
 ///
-/// This `struct` is created by the [`union`] method on [`BTreeSet`].
-/// See its documentation for more.
+/// This structure is created by the [`union`] method on [`BTreeSet`].
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`union`]: struct.BTreeSet.html#method.union
@@ -201,16 +153,6 @@ impl<'a, T: 'a + fmt::Debug> fmt::Debug for Intersection<'a, T> {
 pub struct Union<'a, T: 'a> {
     a: Peekable<Iter<'a, T>>,
     b: Peekable<Iter<'a, T>>,
-}
-
-#[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, T: 'a + fmt::Debug> fmt::Debug for Union<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Union")
-         .field(&self.a)
-         .field(&self.b)
-         .finish()
-    }
 }
 
 impl<T: Ord> BTreeSet<T> {
@@ -265,40 +207,43 @@ impl<T> BTreeSet<T> {
 }
 
 impl<T: Ord> BTreeSet<T> {
-    /// Constructs a double-ended iterator over a sub-range of elements in the set.
-    /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
-    /// yield elements from min (inclusive) to max (exclusive).
-    /// The range may also be entered as `(Bound<T>, Bound<T>)`, so for example
-    /// `range((Excluded(4), Included(10)))` will yield a left-exclusive, right-inclusive
-    /// range from 4 to 10.
+    /// Constructs a double-ended iterator over a sub-range of elements in the set, starting
+    /// at min, and ending at max. If min is `Unbounded`, then it will be treated as "negative
+    /// infinity", and if max is `Unbounded`, then it will be treated as "positive infinity".
+    /// Thus range(Unbounded, Unbounded) will yield the whole collection.
     ///
     /// # Examples
     ///
     /// ```
+    /// #![feature(btree_range, collections_bound)]
+    ///
     /// use std::collections::BTreeSet;
-    /// use std::collections::Bound::Included;
+    /// use std::collections::Bound::{Included, Unbounded};
     ///
     /// let mut set = BTreeSet::new();
     /// set.insert(3);
     /// set.insert(5);
     /// set.insert(8);
-    /// for &elem in set.range((Included(&4), Included(&8))) {
+    /// for &elem in set.range(Included(&4), Included(&8)) {
     ///     println!("{}", elem);
     /// }
-    /// assert_eq!(Some(&5), set.range(4..).next());
+    /// assert_eq!(Some(&5), set.range(Included(&4), Unbounded).next());
     /// ```
-    #[stable(feature = "btree_range", since = "1.17.0")]
-    pub fn range<K: ?Sized, R>(&self, range: R) -> Range<T>
-        where K: Ord, T: Borrow<K>, R: RangeArgument<K>
+    #[unstable(feature = "btree_range",
+               reason = "matches collection reform specification, waiting for dust to settle",
+               issue = "27787")]
+    pub fn range<'a, Min: ?Sized + Ord, Max: ?Sized + Ord>(&'a self,
+                                                           min: Bound<&Min>,
+                                                           max: Bound<&Max>)
+                                                           -> Range<'a, T>
+        where T: Borrow<Min> + Borrow<Max>
     {
-        Range { iter: self.map.range(range) }
+        Range { iter: self.map.range(min, max) }
     }
 }
 
 impl<T: Ord> BTreeSet<T> {
-    /// Visits the values representing the difference,
-    /// i.e. the values that are in `self` but not in `other`,
-    /// in ascending order.
+    /// Visits the values representing the difference, in ascending order.
     ///
     /// # Examples
     ///
@@ -324,9 +269,7 @@ impl<T: Ord> BTreeSet<T> {
         }
     }
 
-    /// Visits the values representing the symmetric difference,
-    /// i.e. the values that are in `self` or in `other` but not in both,
-    /// in ascending order.
+    /// Visits the values representing the symmetric difference, in ascending order.
     ///
     /// # Examples
     ///
@@ -354,9 +297,7 @@ impl<T: Ord> BTreeSet<T> {
         }
     }
 
-    /// Visits the values representing the intersection,
-    /// i.e. the values that are both in `self` and `other`,
-    /// in ascending order.
+    /// Visits the values representing the intersection, in ascending order.
     ///
     /// # Examples
     ///
@@ -382,9 +323,7 @@ impl<T: Ord> BTreeSet<T> {
         }
     }
 
-    /// Visits the values representing the union,
-    /// i.e. all the values in `self` or `other`, without duplicates,
-    /// in ascending order.
+    /// Visits the values representing the union, in ascending order.
     ///
     /// # Examples
     ///
@@ -425,7 +364,7 @@ impl<T: Ord> BTreeSet<T> {
         self.map.len()
     }
 
-    /// Returns `true` if the set contains no elements.
+    /// Returns true if the set contains no elements.
     ///
     /// # Examples
     ///
@@ -495,7 +434,7 @@ impl<T: Ord> BTreeSet<T> {
         Recover::get(&self.map, value)
     }
 
-    /// Returns `true` if `self` has no elements in common with `other`.
+    /// Returns `true` if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     ///
     /// # Examples
@@ -517,8 +456,7 @@ impl<T: Ord> BTreeSet<T> {
         self.intersection(other).next().is_none()
     }
 
-    /// Returns `true` if the set is a subset of another,
-    /// i.e. `other` contains at least all the values in `self`.
+    /// Returns `true` if the set is a subset of another.
     ///
     /// # Examples
     ///
@@ -560,8 +498,7 @@ impl<T: Ord> BTreeSet<T> {
         true
     }
 
-    /// Returns `true` if the set is a superset of another,
-    /// i.e. `self` contains at least all the values in `other`.
+    /// Returns `true` if the set is a superset of another.
     ///
     /// # Examples
     ///
@@ -738,7 +675,7 @@ impl<T> IntoIterator for BTreeSet<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
-    /// Gets an iterator for moving out the `BTreeSet`'s contents.
+    /// Gets an iterator for moving out the BtreeSet's contents.
     ///
     /// # Examples
     ///
@@ -945,14 +882,11 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for IntoIter<T> {}
 
-#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, T> Clone for Range<'a, T> {
     fn clone(&self) -> Range<'a, T> {
         Range { iter: self.iter.clone() }
     }
 }
-
-#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, T> Iterator for Range<'a, T> {
     type Item = &'a T;
 
@@ -960,8 +894,6 @@ impl<'a, T> Iterator for Range<'a, T> {
         self.iter.next().map(|(k, _)| k)
     }
 }
-
-#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, T> DoubleEndedIterator for Range<'a, T> {
     fn next_back(&mut self) -> Option<&'a T> {
         self.iter.next_back().map(|(k, _)| k)

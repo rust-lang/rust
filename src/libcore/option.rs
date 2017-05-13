@@ -60,22 +60,22 @@
 //! the optional owned box, [`Option`]`<`[`Box<T>`]`>`.
 //!
 //! The following example uses [`Option`] to create an optional box of
-//! [`i32`]. Notice that in order to use the inner [`i32`] value first, the
+//! [`i32`]. Notice that in order to use the inner [`i32`] value first the
 //! `check_optional` function needs to use pattern matching to
 //! determine whether the box has a value (i.e. it is [`Some(...)`][`Some`]) or
 //! not ([`None`]).
 //!
 //! ```
-//! let optional = None;
-//! check_optional(optional);
+//! let optional: Option<Box<i32>> = None;
+//! check_optional(&optional);
 //!
-//! let optional = Some(Box::new(9000));
-//! check_optional(optional);
+//! let optional: Option<Box<i32>> = Some(Box::new(9000));
+//! check_optional(&optional);
 //!
-//! fn check_optional(optional: Option<Box<i32>>) {
-//!     match optional {
-//!         Some(ref p) => println!("has value {}", p),
-//!         None => println!("has no value"),
+//! fn check_optional(optional: &Option<Box<i32>>) {
+//!     match *optional {
+//!         Some(ref p) => println!("have value {}", p),
+//!         None => println!("have no value"),
 //!     }
 //! }
 //! ```
@@ -219,14 +219,12 @@ impl<T> Option<T> {
     ///
     /// # Examples
     ///
-    /// Convert an `Option<`[`String`]`>` into an `Option<`[`usize`]`>`, preserving the original.
+    /// Convert an `Option<String>` into an `Option<usize>`, preserving the original.
     /// The [`map`] method takes the `self` argument by value, consuming the original,
     /// so this technique uses `as_ref` to first take an `Option` to a reference
     /// to the value inside the original.
     ///
     /// [`map`]: enum.Option.html#method.map
-    /// [`String`]: ../../std/string/struct.String.html
-    /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// ```
     /// let num_as_str: Option<String> = Some("10".to_string());
@@ -273,10 +271,8 @@ impl<T> Option<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is a [`None`] with a custom panic message provided by
+    /// Panics if the value is a `None` with a custom panic message provided by
     /// `msg`.
-    ///
-    /// [`None`]: #variant.None
     ///
     /// # Examples
     ///
@@ -306,9 +302,7 @@ impl<T> Option<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the self value equals [`None`].
-    ///
-    /// [`None`]: #variant.None
+    /// Panics if the self value equals `None`.
     ///
     /// # Examples
     ///
@@ -373,10 +367,7 @@ impl<T> Option<T> {
     ///
     /// # Examples
     ///
-    /// Convert an `Option<`[`String`]`>` into an `Option<`[`usize`]`>`, consuming the original:
-    ///
-    /// [`String`]: ../../std/string/struct.String.html
-    /// [`usize`]: ../../std/primitive.usize.html
+    /// Convert an `Option<String>` into an `Option<usize>`, consuming the original:
     ///
     /// ```
     /// let maybe_some_string = Some(String::from("Hello, World!"));
@@ -642,76 +633,6 @@ impl<T> Option<T> {
     }
 
     /////////////////////////////////////////////////////////////////////////
-    // Entry-like operations to insert if None and return a reference
-    /////////////////////////////////////////////////////////////////////////
-
-    /// Inserts `v` into the option if it is `None`, then
-    /// returns a mutable reference to the contained value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(option_entry)]
-    ///
-    /// let mut x = None;
-    ///
-    /// {
-    ///     let y: &mut u32 = x.get_or_insert(5);
-    ///     assert_eq!(y, &5);
-    ///
-    ///     *y = 7;
-    /// }
-    ///
-    /// assert_eq!(x, Some(7));
-    /// ```
-    #[inline]
-    #[unstable(feature = "option_entry", issue = "39288")]
-    pub fn get_or_insert(&mut self, v: T) -> &mut T {
-        match *self {
-            None => *self = Some(v),
-            _ => (),
-        }
-
-        match *self {
-            Some(ref mut v) => v,
-            _ => unreachable!(),
-        }
-    }
-
-    /// Inserts a value computed from `f` into the option if it is `None`, then
-    /// returns a mutable reference to the contained value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(option_entry)]
-    ///
-    /// let mut x = None;
-    ///
-    /// {
-    ///     let y: &mut u32 = x.get_or_insert_with(|| 5);
-    ///     assert_eq!(y, &5);
-    ///
-    ///     *y = 7;
-    /// }
-    ///
-    /// assert_eq!(x, Some(7));
-    /// ```
-    #[inline]
-    #[unstable(feature = "option_entry", issue = "39288")]
-    pub fn get_or_insert_with<F: FnOnce() -> T>(&mut self, f: F) -> &mut T {
-        match *self {
-            None => *self = Some(f()),
-            _ => (),
-        }
-
-        match *self {
-            Some(ref mut v) => v,
-            _ => unreachable!(),
-        }
-    }
-
-    /////////////////////////////////////////////////////////////////////////
     // Misc
     /////////////////////////////////////////////////////////////////////////
 
@@ -894,15 +815,9 @@ impl<A> ExactSizeIterator for Item<A> {}
 impl<A> FusedIterator for Item<A> {}
 unsafe impl<A> TrustedLen for Item<A> {}
 
-/// An iterator over a reference to the [`Some`] variant of an [`Option`].
-///
-/// The iterator yields one value if the [`Option`] is a [`Some`], otherwise none.
-///
-/// This `struct` is created by the [`Option::iter`] function.
+/// An iterator over a reference of the contained item in an [`Option`].
 ///
 /// [`Option`]: enum.Option.html
-/// [`Some`]: enum.Option.html#variant.Some
-/// [`Option::iter`]: enum.Option.html#method.iter
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Iter<'a, A: 'a> { inner: Item<&'a A> }
@@ -939,15 +854,9 @@ impl<'a, A> Clone for Iter<'a, A> {
     }
 }
 
-/// An iterator over a mutable reference to the [`Some`] variant of an [`Option`].
-///
-/// The iterator yields one value if the [`Option`] is a [`Some`], otherwise none.
-///
-/// This `struct` is created by the [`Option::iter_mut`] function.
+/// An iterator over a mutable reference of the contained item in an [`Option`].
 ///
 /// [`Option`]: enum.Option.html
-/// [`Some`]: enum.Option.html#variant.Some
-/// [`Option::iter_mut`]: enum.Option.html#method.iter_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IterMut<'a, A: 'a> { inner: Item<&'a mut A> }
@@ -976,15 +885,9 @@ impl<'a, A> FusedIterator for IterMut<'a, A> {}
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, A> TrustedLen for IterMut<'a, A> {}
 
-/// An iterator over the value in [`Some`] variant of an [`Option`].
-///
-/// The iterator yields one value if the [`Option`] is a [`Some`], otherwise none.
-///
-/// This `struct` is created by the [`Option::into_iter`] function.
+/// An iterator over the item contained inside an [`Option`].
 ///
 /// [`Option`]: enum.Option.html
-/// [`Some`]: enum.Option.html#variant.Some
-/// [`Option::into_iter`]: enum.Option.html#method.into_iter
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<A> { inner: Item<A> }

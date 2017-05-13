@@ -63,10 +63,6 @@ impl TcpStream {
         Ok(path_to_local_addr(path.to_str().unwrap_or("")))
     }
 
-    pub fn peek(&self, _buf: &mut [u8]) -> Result<usize> {
-        Err(Error::new(ErrorKind::Other, "TcpStream::peek not implemented"))
-    }
-
     pub fn shutdown(&self, _how: Shutdown) -> Result<()> {
         Err(Error::new(ErrorKind::Other, "TcpStream::shutdown not implemented"))
     }

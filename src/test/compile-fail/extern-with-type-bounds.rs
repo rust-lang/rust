@@ -24,7 +24,7 @@ extern "rust-intrinsic" {
 
     // Unresolved bounds should still error.
     fn align_of<T: NoSuchTrait>() -> usize;
-    //~^ ERROR cannot find trait `NoSuchTrait` in this scope
+    //~^ ERROR unresolved trait `NoSuchTrait`
 }
 
 fn main() {}

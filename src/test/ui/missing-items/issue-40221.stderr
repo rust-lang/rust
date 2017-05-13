@@ -1,8 +1,0 @@
-error[E0004]: non-exhaustive patterns: `C(QA)` not covered
-  --> $DIR/issue-40221.rs:21:11
-   |
-21 |     match proto {
-   |           ^^^^^ pattern `C(QA)` not covered
-
-error: aborting due to previous error
-

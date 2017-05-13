@@ -10,7 +10,7 @@
 
 // Test that you cannot *directly* dispatch on lifetime requirements
 
-trait MyTrait { fn foo() {} }
+trait MyTrait {}
 
 impl<T> MyTrait for T {}
 impl<T: 'static> MyTrait for T {} //~ ERROR E0119

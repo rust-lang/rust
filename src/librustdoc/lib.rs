@@ -9,14 +9,14 @@
 // except according to those terms.
 
 #![crate_name = "rustdoc"]
-#![unstable(feature = "rustc_private", issue = "27812")]
+#![unstable(feature = "rustdoc", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/")]
-#![deny(warnings)]
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
@@ -27,13 +27,13 @@
 #![feature(staged_api)]
 #![feature(test)]
 #![feature(unicode)]
-#![feature(vec_remove_item)]
 
 extern crate arena;
 extern crate getopts;
-extern crate env_logger;
 extern crate libc;
 extern crate rustc;
+extern crate rustc_const_eval;
+extern crate rustc_const_math;
 extern crate rustc_data_structures;
 extern crate rustc_trans;
 extern crate rustc_driver;
@@ -41,7 +41,6 @@ extern crate rustc_resolve;
 extern crate rustc_lint;
 extern crate rustc_back;
 extern crate rustc_metadata;
-extern crate rustc_typeck;
 extern crate serialize;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
@@ -49,7 +48,6 @@ extern crate test as testing;
 extern crate std_unicode;
 #[macro_use] extern crate log;
 extern crate rustc_errors as errors;
-extern crate pulldown_cmark;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
@@ -94,8 +92,6 @@ pub mod test;
 
 use clean::AttributesExt;
 
-use html::markdown::RenderType;
-
 struct Output {
     krate: clean::Crate,
     renderinfo: html::render::RenderInfo,
@@ -104,7 +100,6 @@ struct Output {
 
 pub fn main() {
     const STACK_SIZE: usize = 32_000_000; // 32MB
-    env_logger::init().unwrap();
     let res = std::thread::Builder::new().stack_size(STACK_SIZE).spawn(move || {
         let s = env::args().collect::<Vec<_>>();
         main_args(&s)
@@ -172,8 +167,6 @@ pub fn opts() -> Vec<RustcOptGroup> {
                         "URL to send code snippets to, may be reset by --markdown-playground-url \
                          or `#![doc(html_playground_url=...)]`",
                         "URL")),
-        unstable(optflag("", "enable-commonmark", "to enable commonmark doc rendering/testing")),
-        unstable(optflag("", "display-warnings", "to print code warnings when testing doc")),
     ]
 }
 
@@ -201,7 +194,7 @@ pub fn main_args(args: &[String]) -> isize {
     nightly_options::check_nightly_options(&matches, &opts());
 
     if matches.opt_present("h") || matches.opt_present("help") {
-        usage("rustdoc");
+        usage(&args[0]);
         return 0;
     } else if matches.opt_present("version") {
         rustc_driver::version("rustdoc", &matches);
@@ -255,12 +248,6 @@ pub fn main_args(args: &[String]) -> isize {
     let css_file_extension = matches.opt_str("e").map(|s| PathBuf::from(&s));
     let cfgs = matches.opt_strs("cfg");
 
-    let render_type = if matches.opt_present("enable-commonmark") {
-        RenderType::Pulldown
-    } else {
-        RenderType::Hoedown
-    };
-
     if let Some(ref p) = css_file_extension {
         if !p.is_file() {
             writeln!(
@@ -281,22 +268,18 @@ pub fn main_args(args: &[String]) -> isize {
     let crate_name = matches.opt_str("crate-name");
     let playground_url = matches.opt_str("playground-url");
     let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
-    let display_warnings = matches.opt_present("display-warnings");
 
     match (should_test, markdown_input) {
         (true, true) => {
-            return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot, render_type,
-                                  display_warnings)
+            return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot)
         }
         (true, false) => {
-            return test::run(input, cfgs, libs, externs, test_args, crate_name, maybe_sysroot,
-                             render_type, display_warnings)
+            return test::run(input, cfgs, libs, externs, test_args, crate_name, maybe_sysroot)
         }
         (false, true) => return markdown::render(input,
                                                  output.unwrap_or(PathBuf::from("doc")),
                                                  &matches, &external_html,
-                                                 !matches.opt_present("markdown-no-toc"),
-                                                 render_type),
+                                                 !matches.opt_present("markdown-no-toc")),
         (false, false) => {}
     }
 
@@ -310,8 +293,7 @@ pub fn main_args(args: &[String]) -> isize {
                                   output.unwrap_or(PathBuf::from("doc")),
                                   passes.into_iter().collect(),
                                   css_file_extension,
-                                  renderinfo,
-                                  render_type)
+                                  renderinfo)
                     .expect("failed to generate documentation");
                 0
             }
@@ -392,15 +374,13 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
 
     let cr = PathBuf::from(cratefile);
     info!("starting to run rustc");
-    let display_warnings = matches.opt_present("display-warnings");
 
     let (tx, rx) = channel();
     rustc_driver::monitor(move || {
         use rustc::session::config::Input;
 
         let (mut krate, renderinfo) =
-            core::run_core(paths, cfgs, externs, Input::File(cr), triple, maybe_sysroot,
-                           display_warnings);
+            core::run_core(paths, cfgs, externs, Input::File(cr), triple, maybe_sysroot);
 
         info!("finished with rustc");
 

@@ -13,7 +13,7 @@ fn main() {
     // the case where we show a suggestion
     let _ = tup[0];
     //~^ ERROR cannot index a value of type
-    //~| HELP to access tuple elements, use
+    //~| HELP to access tuple elements, use tuple indexing syntax as shown
     //~| SUGGESTION let _ = tup.0
 
     // the case where we show just a general hint

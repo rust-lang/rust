@@ -66,7 +66,6 @@
 
 #![deny(warnings)]
 
-#[macro_use]
 extern crate build_helper;
 extern crate cmake;
 extern crate filetime;
@@ -76,18 +75,32 @@ extern crate num_cpus;
 extern crate rustc_serialize;
 extern crate toml;
 
-use std::cmp;
 use std::collections::HashMap;
+use std::cmp;
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
-use std::io::Read;
 use std::path::{Component, PathBuf, Path};
 use std::process::Command;
 
-use build_helper::{run_silent, run_suppressed, output, mtime};
+use build_helper::{run_silent, output};
 
-use util::{exe, libdir, add_lib_path};
+use util::{exe, mtime, libdir, add_lib_path};
+
+/// A helper macro to `unwrap` a result except also print out details like:
+///
+/// * The file/line of the panic
+/// * The expression that failed
+/// * The error itself
+///
+/// This is currently used judiciously throughout the build system rather than
+/// using a `Result` with `try!`, but this may change one day...
+macro_rules! t {
+    ($e:expr) => (match $e {
+        Ok(e) => e,
+        Err(e) => panic!("{} failed with {}", stringify!($e), e),
+    })
+}
 
 mod cc;
 mod channel;
@@ -149,9 +162,13 @@ pub struct Build {
     rustc: PathBuf,
     src: PathBuf,
     out: PathBuf,
-    rust_info: channel::GitInfo,
-    cargo_info: channel::GitInfo,
-    rls_info: channel::GitInfo,
+    release: String,
+    unstable_features: bool,
+    ver_hash: Option<String>,
+    short_ver_hash: Option<String>,
+    ver_date: Option<String>,
+    version: String,
+    package_vers: String,
     local_rebuild: bool,
 
     // Probed tools at runtime
@@ -163,13 +180,11 @@ pub struct Build {
     cxx: HashMap<String, gcc::Tool>,
     crates: HashMap<String, Crate>,
     is_sudo: bool,
-    src_is_git: bool,
 }
 
 #[derive(Debug)]
 struct Crate {
     name: String,
-    version: String,
     deps: Vec<String>,
     path: PathBuf,
     doc_step: String,
@@ -182,7 +197,7 @@ struct Crate {
 ///
 /// These entries currently correspond to the various output directories of the
 /// build system, with each mod generating output in a different directory.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy)]
 pub enum Mode {
     /// This cargo is going to build the standard library, placing output in the
     /// "stageN-std" directory.
@@ -233,10 +248,6 @@ impl Build {
             }
             None => false,
         };
-        let rust_info = channel::GitInfo::new(&src);
-        let cargo_info = channel::GitInfo::new(&src.join("src/tools/cargo"));
-        let rls_info = channel::GitInfo::new(&src.join("src/tools/rls"));
-        let src_is_git = src.join(".git").exists();
 
         Build {
             flags: flags,
@@ -246,17 +257,20 @@ impl Build {
             src: src,
             out: out,
 
-            rust_info: rust_info,
-            cargo_info: cargo_info,
-            rls_info: rls_info,
+            release: String::new(),
+            unstable_features: false,
+            ver_hash: None,
+            short_ver_hash: None,
+            ver_date: None,
+            version: String::new(),
             local_rebuild: local_rebuild,
+            package_vers: String::new(),
             cc: HashMap::new(),
             cxx: HashMap::new(),
             crates: HashMap::new(),
             lldb_version: None,
             lldb_python_dir: None,
             is_sudo: is_sudo,
-            src_is_git: src_is_git,
         }
     }
 
@@ -274,14 +288,15 @@ impl Build {
         cc::find(self);
         self.verbose("running sanity check");
         sanity::check(self);
+        self.verbose("collecting channel variables");
+        channel::collect(self);
         // If local-rust is the same major.minor as the current version, then force a local-rebuild
         let local_version_verbose = output(
             Command::new(&self.rustc).arg("--version").arg("--verbose"));
         let local_release = local_version_verbose
             .lines().filter(|x| x.starts_with("release:"))
             .next().unwrap().trim_left_matches("release:").trim();
-        let my_version = channel::CFG_RELEASE_NUM;
-        if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
+        if local_release.split('.').take(2).eq(self.release.split('.').take(2)) {
             self.verbose(&format!("auto-detected local-rebuild {}", local_release));
             self.local_rebuild = true;
         }
@@ -313,7 +328,10 @@ impl Build {
             OutOfSync,
         }
 
-        if !self.src_is_git || !self.config.submodules {
+        if !self.config.submodules {
+            return
+        }
+        if fs::metadata(self.src.join(".git")).is_err() {
             return
         }
         let git = || {
@@ -460,73 +478,27 @@ impl Build {
         //
         // These variables are primarily all read by
         // src/bootstrap/bin/{rustc.rs,rustdoc.rs}
-        cargo.env("RUSTBUILD_NATIVE_DIR", self.native_dir(target))
-             .env("RUSTC", self.out.join("bootstrap/debug/rustc"))
+        cargo.env("RUSTC", self.out.join("bootstrap/debug/rustc"))
              .env("RUSTC_REAL", self.compiler_path(compiler))
              .env("RUSTC_STAGE", stage.to_string())
+             .env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
+             .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string())
              .env("RUSTC_CODEGEN_UNITS",
                   self.config.rust_codegen_units.to_string())
              .env("RUSTC_DEBUG_ASSERTIONS",
                   self.config.rust_debug_assertions.to_string())
+             .env("RUSTC_SNAPSHOT", &self.rustc)
              .env("RUSTC_SYSROOT", self.sysroot(compiler))
              .env("RUSTC_LIBDIR", self.rustc_libdir(compiler))
+             .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir())
              .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
              .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
              .env("RUSTDOC_REAL", self.rustdoc(compiler))
              .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
 
-        // Tools don't get debuginfo right now, e.g. cargo and rls don't get
-        // compiled with debuginfo.
-        if mode != Mode::Tool {
-             cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
-                  .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string());
-        }
-
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
         self.add_rust_test_threads(&mut cargo);
-
-        // Almost all of the crates that we compile as part of the bootstrap may
-        // have a build script, including the standard library. To compile a
-        // build script, however, it itself needs a standard library! This
-        // introduces a bit of a pickle when we're compiling the standard
-        // library itself.
-        //
-        // To work around this we actually end up using the snapshot compiler
-        // (stage0) for compiling build scripts of the standard library itself.
-        // The stage0 compiler is guaranteed to have a libstd available for use.
-        //
-        // For other crates, however, we know that we've already got a standard
-        // library up and running, so we can use the normal compiler to compile
-        // build scripts in that situation.
-        if mode == Mode::Libstd {
-            cargo.env("RUSTC_SNAPSHOT", &self.rustc)
-                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
-        } else {
-            cargo.env("RUSTC_SNAPSHOT", self.compiler_path(compiler))
-                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
-        }
-
-        // There are two invariants we try must maintain:
-        // * stable crates cannot depend on unstable crates (general Rust rule),
-        // * crates that end up in the sysroot must be unstable (rustbuild rule).
-        //
-        // In order to do enforce the latter, we pass the env var
-        // `RUSTBUILD_UNSTABLE` down the line for any crates which will end up
-        // in the sysroot. We read this in bootstrap/bin/rustc.rs and if it is
-        // set, then we pass the `rustbuild` feature to rustc when building the
-        // the crate.
-        //
-        // In turn, crates that can be used here should recognise the `rustbuild`
-        // feature and opt-in to `rustc_private`.
-        //
-        // We can't always pass `rustbuild` because crates which are outside of
-        // the comipiler, libs, and tests are stable and we don't want to make
-        // their deps unstable (since this would break the first invariant
-        // above).
-        if mode != Mode::Tool {
-            cargo.env("RUSTBUILD_UNSTABLE", "1");
-        }
 
         // Ignore incremental modes except for stage0, since we're
         // not guaranteeing correctness acros builds if the compiler
@@ -534,10 +506,6 @@ impl Build {
         if self.flags.incremental && compiler.stage == 0 {
             let incr_dir = self.incremental_dir(compiler);
             cargo.env("RUSTC_INCREMENTAL", incr_dir);
-        }
-
-        if let Some(ref on_fail) = self.flags.on_fail {
-            cargo.env("RUSTC_ON_FAIL", on_fail);
         }
 
         let verbose = cmp::max(self.config.verbose, self.flags.verbose);
@@ -553,21 +521,8 @@ impl Build {
                  .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
         }
 
-        if self.config.extended && compiler.is_final_stage(self) {
+        if self.config.channel == "nightly" && compiler.is_final_stage(self) {
             cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
-        }
-
-        // When being built Cargo will at some point call `nmake.exe` on Windows
-        // MSVC. Unfortunately `nmake` will read these two environment variables
-        // below and try to intepret them. We're likely being run, however, from
-        // MSYS `make` which uses the same variables.
-        //
-        // As a result, to prevent confusion and errors, we remove these
-        // variables from our environment to prevent passing MSYS make flags to
-        // nmake, causing it to blow up.
-        if cfg!(target_env = "msvc") {
-            cargo.env_remove("MAKE");
-            cargo.env_remove("MAKEFLAGS");
         }
 
         // Environment variables *required* needed throughout the build
@@ -581,9 +536,6 @@ impl Build {
         // FIXME: cargo bench does not accept `--release`
         if self.config.rust_optimize && cmd != "bench" {
             cargo.arg("--release");
-        }
-        if self.config.locked_deps {
-            cargo.arg("--locked");
         }
         if self.config.vendor || self.is_sudo {
             cargo.arg("--frozen");
@@ -657,7 +609,6 @@ impl Build {
     /// library.
     fn std_features(&self) -> String {
         let mut features = "panic-unwind".to_string();
-
         if self.config.debug_jemalloc {
             features.push_str(" debug-jemalloc");
         }
@@ -750,13 +701,6 @@ impl Build {
         self.out.join(target).join("doc")
     }
 
-    /// Output directory for all crate documentation for a target (temporary)
-    ///
-    /// The artifacts here are then copied into `doc_out` above.
-    fn crate_doc_out(&self, target: &str) -> PathBuf {
-        self.out.join(target).join("crate-docs")
-    }
-
     /// Returns true if no custom `llvm-config` is set for the specified target.
     ///
     /// If no custom `llvm-config` was specified then Rust's llvm will be used.
@@ -790,7 +734,7 @@ impl Build {
         } else {
             let base = self.llvm_out(&self.config.build).join("build");
             let exe = exe("FileCheck", target);
-            if !self.config.ninja && self.config.build.contains("msvc") {
+            if self.config.build.contains("msvc") {
                 base.join("Release/bin").join(exe)
             } else {
                 base.join("bin").join(exe)
@@ -798,15 +742,10 @@ impl Build {
         }
     }
 
-    /// Directory for libraries built from C/C++ code and shared between stages.
-    fn native_dir(&self, target: &str) -> PathBuf {
-        self.out.join(target).join("native")
-    }
-
     /// Root output directory for rust_test_helpers library compiled for
     /// `target`
     fn test_helpers_out(&self, target: &str) -> PathBuf {
-        self.native_dir(target).join("rust-test-helpers")
+        self.out.join(target).join("rust-test-helpers")
     }
 
     /// Adds the compiler's directory of dynamic libraries to `cmd`'s dynamic
@@ -854,12 +793,6 @@ impl Build {
         run_silent(cmd)
     }
 
-    /// Runs a command, printing out nice contextual information if it fails.
-    fn run_quiet(&self, cmd: &mut Command) {
-        self.verbose(&format!("running: {:?}", cmd));
-        run_suppressed(cmd)
-    }
-
     /// Prints a message if this build is configured in verbose mode.
     fn verbose(&self, msg: &str) {
         if self.flags.verbose() || self.config.verbose() {
@@ -888,19 +821,23 @@ impl Build {
                            .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
                            .collect::<Vec<_>>();
 
-        // If we're compiling on macOS then we add a few unconditional flags
+        // If we're compiling on OSX then we add a few unconditional flags
         // indicating that we want libc++ (more filled out than libstdc++) and
         // we want to compile for 10.7. This way we can ensure that
         // LLVM/jemalloc/etc are all properly compiled.
         if target.contains("apple-darwin") {
             base.push("-stdlib=libc++".into());
         }
-
-        // Work around an apparently bad MinGW / GCC optimization,
-        // See: http://lists.llvm.org/pipermail/cfe-dev/2016-December/051980.html
-        // See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=78936
-        if target == "i686-pc-windows-gnu" {
-            base.push("-fno-omit-frame-pointer".into());
+        // This is a hack, because newer binutils broke things on some vms/distros
+        // (i.e., linking against unknown relocs disabled by the following flag)
+        // See: https://github.com/rust-lang/rust/issues/34978
+        match target {
+            "i586-unknown-linux-gnu" |
+            "i686-unknown-linux-musl" |
+            "x86_64-unknown-linux-musl" => {
+                base.push("-Wa,-mrelax-relocations=no".into());
+            },
+            _ => {},
         }
         return base
     }
@@ -945,23 +882,6 @@ impl Build {
             .map(|p| &**p)
     }
 
-    /// Returns whether the target will be tested using the `remote-test-client`
-    /// and `remote-test-server` binaries.
-    fn remote_tested(&self, target: &str) -> bool {
-        self.qemu_rootfs(target).is_some() || target.contains("android")
-    }
-
-    /// Returns the root of the "rootfs" image that this target will be using,
-    /// if one was configured.
-    ///
-    /// If `Some` is returned then that means that tests for this target are
-    /// emulated with QEMU and binaries will need to be shipped to the emulator.
-    fn qemu_rootfs(&self, target: &str) -> Option<&Path> {
-        self.config.target_config.get(target)
-            .and_then(|t| t.qemu_rootfs.as_ref())
-            .map(|p| &**p)
-    }
-
     /// Path to the python interpreter to use
     fn python(&self) -> &Path {
         self.config.python.as_ref().unwrap()
@@ -989,108 +909,6 @@ impl Build {
         !self.config.full_bootstrap &&
             compiler.stage >= 2 &&
             self.config.host.iter().any(|h| h == target)
-    }
-
-    /// Returns the directory that OpenSSL artifacts are compiled into if
-    /// configured to do so.
-    fn openssl_dir(&self, target: &str) -> Option<PathBuf> {
-        // OpenSSL not used on Windows
-        if target.contains("windows") {
-            None
-        } else if self.config.openssl_static {
-            Some(self.out.join(target).join("openssl"))
-        } else {
-            None
-        }
-    }
-
-    /// Returns the directory that OpenSSL artifacts are installed into if
-    /// configured as such.
-    fn openssl_install_dir(&self, target: &str) -> Option<PathBuf> {
-        self.openssl_dir(target).map(|p| p.join("install"))
-    }
-
-    /// Given `num` in the form "a.b.c" return a "release string" which
-    /// describes the release version number.
-    ///
-    /// For example on nightly this returns "a.b.c-nightly", on beta it returns
-    /// "a.b.c-beta.1" and on stable it just returns "a.b.c".
-    fn release(&self, num: &str) -> String {
-        match &self.config.channel[..] {
-            "stable" => num.to_string(),
-            "beta" => format!("{}-beta{}", num, channel::CFG_PRERELEASE_VERSION),
-            "nightly" => format!("{}-nightly", num),
-            _ => format!("{}-dev", num),
-        }
-    }
-
-    /// Returns the value of `release` above for Rust itself.
-    fn rust_release(&self) -> String {
-        self.release(channel::CFG_RELEASE_NUM)
-    }
-
-    /// Returns the "package version" for a component given the `num` release
-    /// number.
-    ///
-    /// The package version is typically what shows up in the names of tarballs.
-    /// For channels like beta/nightly it's just the channel name, otherwise
-    /// it's the `num` provided.
-    fn package_vers(&self, num: &str) -> String {
-        match &self.config.channel[..] {
-            "stable" => num.to_string(),
-            "beta" => "beta".to_string(),
-            "nightly" => "nightly".to_string(),
-            _ => format!("{}-dev", num),
-        }
-    }
-
-    /// Returns the value of `package_vers` above for Rust itself.
-    fn rust_package_vers(&self) -> String {
-        self.package_vers(channel::CFG_RELEASE_NUM)
-    }
-
-    /// Returns the value of `package_vers` above for Cargo
-    fn cargo_package_vers(&self) -> String {
-        self.package_vers(&self.release_num("cargo"))
-    }
-
-    /// Returns the value of `package_vers` above for rls
-    fn rls_package_vers(&self) -> String {
-        self.package_vers(&self.release_num("rls"))
-    }
-
-    /// Returns the `version` string associated with this compiler for Rust
-    /// itself.
-    ///
-    /// Note that this is a descriptive string which includes the commit date,
-    /// sha, version, etc.
-    fn rust_version(&self) -> String {
-        self.rust_info.version(self, channel::CFG_RELEASE_NUM)
-    }
-
-    /// Returns the `a.b.c` version that the given package is at.
-    fn release_num(&self, package: &str) -> String {
-        let mut toml = String::new();
-        let toml_file_name = self.src.join(&format!("src/tools/{}/Cargo.toml", package));
-        t!(t!(File::open(toml_file_name)).read_to_string(&mut toml));
-        for line in toml.lines() {
-            let prefix = "version = \"";
-            let suffix = "\"";
-            if line.starts_with(prefix) && line.ends_with(suffix) {
-                return line[prefix.len()..line.len() - suffix.len()].to_string()
-            }
-        }
-
-        panic!("failed to find version in {}'s Cargo.toml", package)
-    }
-
-    /// Returns whether unstable features should be enabled for the compiler
-    /// we're building.
-    fn unstable_features(&self) -> bool {
-        match &self.config.channel[..] {
-            "stable" | "beta" => false,
-            "nightly" | _ => true,
-        }
     }
 }
 

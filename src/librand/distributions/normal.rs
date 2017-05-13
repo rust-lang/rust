@@ -10,8 +10,6 @@
 
 //! The normal and derived distributions.
 
-use core::fmt;
-
 #[cfg(not(test))] // only necessary for no_std
 use FloatMath;
 
@@ -75,14 +73,6 @@ impl Rand for StandardNormal {
     }
 }
 
-impl fmt::Debug for StandardNormal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("StandardNormal")
-         .field(&self.0)
-         .finish()
-    }
-}
-
 /// The normal distribution `N(mean, std_dev**2)`.
 ///
 /// This uses the ZIGNOR variant of the Ziggurat method, see
@@ -108,26 +98,15 @@ impl Normal {
         }
     }
 }
-
 impl Sample<f64> for Normal {
     fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 {
         self.ind_sample(rng)
     }
 }
-
 impl IndependentSample<f64> for Normal {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
         let StandardNormal(n) = rng.gen::<StandardNormal>();
         self.mean + self.std_dev * n
-    }
-}
-
-impl fmt::Debug for Normal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Normal")
-         .field("mean", &self.mean)
-         .field("std_dev", &self.std_dev)
-         .finish()
     }
 }
 
@@ -153,24 +132,14 @@ impl LogNormal {
         LogNormal { norm: Normal::new(mean, std_dev) }
     }
 }
-
 impl Sample<f64> for LogNormal {
     fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 {
         self.ind_sample(rng)
     }
 }
-
 impl IndependentSample<f64> for LogNormal {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
         self.norm.ind_sample(rng).exp()
-    }
-}
-
-impl fmt::Debug for LogNormal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("LogNormal")
-         .field("norm", &self.norm)
-         .finish()
     }
 }
 

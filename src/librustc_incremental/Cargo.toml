@@ -13,6 +13,7 @@ graphviz = { path = "../libgraphviz" }
 rustc = { path = "../librustc" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 serialize = { path = "../libserialize" }
-log = "0.3"
+log = { path = "../liblog" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
+rustc_i128 = { path = "../librustc_i128" }

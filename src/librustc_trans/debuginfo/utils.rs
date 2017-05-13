@@ -14,7 +14,6 @@ use super::{CrateDebugContext};
 use super::namespace::item_namespace;
 
 use rustc::hir::def_id::DefId;
-use rustc::ty::DefIdTree;
 
 use llvm;
 use llvm::debuginfo::{DIScope, DIBuilderRef, DIDescriptor, DIArray};
@@ -24,8 +23,6 @@ use type_::Type;
 
 use syntax_pos::{self, Span};
 use syntax::ast;
-
-use std::ops;
 
 pub fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
 {
@@ -37,7 +34,7 @@ pub fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
     // visible). It might better to use the `exported_items` set from
     // `driver::CrateAnalysis` in the future, but (atm) this set is not
     // available in the translation pass.
-    !cx.shared().exported_symbols().contains(&node_id)
+    !cx.exported_symbols().contains(&node_id)
 }
 
 #[allow(non_snake_case)]
@@ -52,19 +49,19 @@ pub fn span_start(cx: &CrateContext, span: Span) -> syntax_pos::Loc {
     cx.sess().codemap().lookup_char_pos(span.lo)
 }
 
-pub fn size_and_align_of(cx: &CrateContext, llvm_type: Type) -> (u64, u32) {
-    (machine::llsize_of_alloc(cx, llvm_type), machine::llalign_of_min(cx, llvm_type))
+pub fn size_and_align_of(cx: &CrateContext, llvm_type: Type) -> (u64, u64) {
+    (machine::llsize_of_alloc(cx, llvm_type), machine::llalign_of_min(cx, llvm_type) as u64)
 }
 
-pub fn bytes_to_bits<T>(bytes: T) -> T
-    where T: ops::Mul<Output=T> + From<u8> {
-    bytes * 8u8.into()
+pub fn bytes_to_bits(bytes: u64) -> u64 {
+    bytes * 8
 }
 
 #[inline]
 pub fn debug_context<'a, 'tcx>(cx: &'a CrateContext<'a, 'tcx>)
                            -> &'a CrateDebugContext<'tcx> {
-    cx.dbg_cx().as_ref().unwrap()
+    let debug_context: &'a CrateDebugContext<'tcx> = cx.dbg_cx().as_ref().unwrap();
+    debug_context
 }
 
 #[inline]
@@ -75,8 +72,11 @@ pub fn DIB(cx: &CrateContext) -> DIBuilderRef {
 
 pub fn get_namespace_and_span_for_item(cx: &CrateContext, def_id: DefId)
                                    -> (DIScope, Span) {
-    let containing_scope = item_namespace(cx, cx.tcx().parent(def_id)
-        .expect("get_namespace_and_span_for_item: missing parent?"));
+    let containing_scope = item_namespace(cx, DefId {
+        krate: def_id.krate,
+        index: cx.tcx().def_key(def_id).parent
+                 .expect("get_namespace_and_span_for_item: missing parent?")
+    });
 
     // Try to get some span information, if we have an inlined item.
     let definition_span = cx.tcx().def_span(def_id);

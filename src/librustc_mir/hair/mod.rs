@@ -14,8 +14,7 @@
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-use rustc_const_math::ConstUsize;
-use rustc::mir::{BinOp, BorrowKind, Field, Literal, UnOp};
+use rustc::mir::{BinOp, BorrowKind, Field, Literal, UnOp, TypedConstVal};
 use rustc::hir::def_id::DefId;
 use rustc::middle::region::CodeExtent;
 use rustc::ty::subst::Substs;
@@ -31,8 +30,7 @@ pub use rustc_const_eval::pattern::{BindingMode, Pattern, PatternKind, FieldPatt
 
 #[derive(Clone, Debug)]
 pub struct Block<'tcx> {
-    pub targeted_by_break: bool,
-    pub extent: CodeExtent<'tcx>,
+    pub extent: CodeExtent,
     pub span: Span,
     pub stmts: Vec<StmtRef<'tcx>>,
     pub expr: Option<ExprRef<'tcx>>,
@@ -53,7 +51,7 @@ pub struct Stmt<'tcx> {
 pub enum StmtKind<'tcx> {
     Expr {
         /// scope for this statement; may be used as lifetime of temporaries
-        scope: CodeExtent<'tcx>,
+        scope: CodeExtent,
 
         /// expression being evaluated in this statement
         expr: ExprRef<'tcx>,
@@ -62,11 +60,11 @@ pub enum StmtKind<'tcx> {
     Let {
         /// scope for variables bound in this let; covers this and
         /// remaining statements in block
-        remainder_scope: CodeExtent<'tcx>,
+        remainder_scope: CodeExtent,
 
         /// scope for the initialization itself; might be used as
         /// lifetime of temporaries
-        init_scope: CodeExtent<'tcx>,
+        init_scope: CodeExtent,
 
         /// let <PAT> = ...
         pattern: Pattern<'tcx>,
@@ -97,10 +95,7 @@ pub struct Expr<'tcx> {
 
     /// lifetime of this expression if it should be spilled into a
     /// temporary; should be None only if in a constant context
-    pub temp_lifetime: Option<CodeExtent<'tcx>>,
-
-    /// whether this temp lifetime was shrunk by #36082.
-    pub temp_lifetime_was_shrunk: bool,
+    pub temp_lifetime: Option<CodeExtent>,
 
     /// span of the expression in the source
     pub span: Span,
@@ -112,12 +107,12 @@ pub struct Expr<'tcx> {
 #[derive(Clone, Debug)]
 pub enum ExprKind<'tcx> {
     Scope {
-        extent: CodeExtent<'tcx>,
+        extent: CodeExtent,
         value: ExprRef<'tcx>,
     },
     Box {
         value: ExprRef<'tcx>,
-        value_extents: CodeExtent<'tcx>,
+        value_extents: CodeExtent,
     },
     Call {
         ty: ty::Ty<'tcx>,
@@ -136,8 +131,7 @@ pub enum ExprKind<'tcx> {
         op: LogicalOp,
         lhs: ExprRef<'tcx>,
         rhs: ExprRef<'tcx>,
-    }, // NOT overloaded!
-       // LogicalOp is distinct from BinaryOp because of lazy evaluation of the operands.
+    },
     Unary {
         op: UnOp,
         arg: ExprRef<'tcx>,
@@ -152,9 +146,6 @@ pub enum ExprKind<'tcx> {
         source: ExprRef<'tcx>,
     },
     ReifyFnPointer {
-        source: ExprRef<'tcx>,
-    },
-    ClosureFnPointer {
         source: ExprRef<'tcx>,
     },
     UnsafeFnPointer {
@@ -205,25 +196,25 @@ pub enum ExprKind<'tcx> {
         id: DefId,
     },
     Borrow {
-        region: Region<'tcx>,
+        region: &'tcx Region,
         borrow_kind: BorrowKind,
         arg: ExprRef<'tcx>,
     },
     Break {
-        label: CodeExtent<'tcx>,
+        label: Option<CodeExtent>,
         value: Option<ExprRef<'tcx>>,
     },
     Continue {
-        label: CodeExtent<'tcx>,
+        label: Option<CodeExtent>,
     },
     Return {
         value: Option<ExprRef<'tcx>>,
     },
     Repeat {
         value: ExprRef<'tcx>,
-        count: ConstUsize,
+        count: TypedConstVal<'tcx>,
     },
-    Array {
+    Vec {
         fields: Vec<ExprRef<'tcx>>,
     },
     Tuple {

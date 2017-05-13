@@ -11,7 +11,6 @@
 use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
-use std::io;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 
@@ -20,8 +19,6 @@ pub fn dylib_env_var() -> &'static str {
         "PATH"
     } else if cfg!(target_os = "macos") {
         "DYLD_LIBRARY_PATH"
-    } else if cfg!(target_os = "haiku") {
-        "LIBRARY_PATH"
     } else {
         "LD_LIBRARY_PATH"
     }
@@ -55,30 +52,33 @@ pub fn run(lib_path: &str,
            args: &[String],
            env: Vec<(String, String)>,
            input: Option<String>)
-           -> io::Result<Result> {
+           -> Option<Result> {
 
     let mut cmd = Command::new(prog);
     cmd.args(args)
+        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .stdin(Stdio::piped());
-
+        .stderr(Stdio::piped());
     add_target_env(&mut cmd, lib_path, aux_path);
     for (key, val) in env {
         cmd.env(&key, &val);
     }
 
-    let mut process = cmd.spawn()?;
-    if let Some(input) = input {
-        process.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
-    }
-    let Output { status, stdout, stderr } = process.wait_with_output().unwrap();
+    match cmd.spawn() {
+        Ok(mut process) => {
+            if let Some(input) = input {
+                process.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
+            }
+            let Output { status, stdout, stderr } = process.wait_with_output().unwrap();
 
-    Ok(Result {
-        status: status,
-        out: String::from_utf8(stdout).unwrap(),
-        err: String::from_utf8(stderr).unwrap(),
-    })
+            Some(Result {
+                status: status,
+                out: String::from_utf8(stdout).unwrap(),
+                err: String::from_utf8(stderr).unwrap(),
+            })
+        }
+        Err(..) => None,
+    }
 }
 
 pub fn run_background(lib_path: &str,
@@ -87,21 +87,26 @@ pub fn run_background(lib_path: &str,
                       args: &[String],
                       env: Vec<(String, String)>,
                       input: Option<String>)
-                      -> io::Result<Child> {
+                      -> Option<Child> {
 
     let mut cmd = Command::new(prog);
     cmd.args(args)
-       .stdin(Stdio::piped())
-       .stdout(Stdio::piped());
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     add_target_env(&mut cmd, lib_path, aux_path);
     for (key, val) in env {
         cmd.env(&key, &val);
     }
 
-    let mut process = cmd.spawn()?;
-    if let Some(input) = input {
-        process.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
-    }
+    match cmd.spawn() {
+        Ok(mut process) => {
+            if let Some(input) = input {
+                process.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
+            }
 
-    Ok(process)
+            Some(process)
+        }
+        Err(..) => None,
+    }
 }

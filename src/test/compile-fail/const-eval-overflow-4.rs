@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test this should fail to compile (#23833)
+
 // Evaluation of constants in array-elem count goes through different
 // compiler control-flow paths.
 //
@@ -21,8 +23,7 @@ use std::{u8, u16, u32, u64, usize};
 
 const A_I8_T
     : [u32; (i8::MAX as i8 + 1i8) as usize]
-    //~^ ERROR constant evaluation error
-    //~^^ NOTE attempt to add with overflow
+    //~^ ERROR error evaluating count: attempt to add with overflow
     = [0; (i8::MAX as usize) + 1];
 
 fn main() {

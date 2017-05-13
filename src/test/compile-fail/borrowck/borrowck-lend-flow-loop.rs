@@ -109,6 +109,7 @@ fn while_aliased_mut_cond(cond: bool, cond2: bool) {
         borrow(&*v); //~ ERROR cannot borrow
         if cond2 {
             x = &mut v; //~ ERROR cannot borrow
+            //~^ ERROR cannot borrow
         }
     }
 }

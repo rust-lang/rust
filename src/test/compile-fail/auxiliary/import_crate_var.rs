@@ -8,10 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn f() {}
-
 #[macro_export]
-macro_rules! m { () => {
-    use $crate;
-    import_crate_var::f();
-} }
+macro_rules! m { () => { use $crate; } }

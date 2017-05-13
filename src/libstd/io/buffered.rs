@@ -21,12 +21,12 @@ use memchr;
 /// The `BufReader` struct adds buffering to any reader.
 ///
 /// It can be excessively inefficient to work directly with a [`Read`] instance.
-/// For example, every call to [`read`][`TcpStream::read`] on [`TcpStream`]
-/// results in a system call. A `BufReader` performs large, infrequent reads on
-/// the underlying [`Read`] and maintains an in-memory buffer of the results.
+/// For example, every call to [`read`] on [`TcpStream`] results in a system call.
+/// A `BufReader` performs large, infrequent reads on the underlying [`Read`]
+/// and maintains an in-memory buffer of the results.
 ///
 /// [`Read`]: ../../std/io/trait.Read.html
-/// [`TcpStream::read`]: ../../std/net/struct.TcpStream.html#method.read
+/// [`read`]: ../../std/net/struct.TcpStream.html#method.read
 /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 ///
 /// # Examples
@@ -37,11 +37,11 @@ use memchr;
 /// use std::fs::File;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// let mut f = File::open("log.txt")?;
+/// let mut f = try!(File::open("log.txt"));
 /// let mut reader = BufReader::new(f);
 ///
 /// let mut line = String::new();
-/// let len = reader.read_line(&mut line)?;
+/// let len = try!(reader.read_line(&mut line));
 /// println!("First line is {} bytes long", len);
 /// # Ok(())
 /// # }
@@ -64,7 +64,7 @@ impl<R: Read> BufReader<R> {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::open("log.txt")?;
+    /// let mut f = try!(File::open("log.txt"));
     /// let mut reader = BufReader::new(f);
     /// # Ok(())
     /// # }
@@ -85,7 +85,7 @@ impl<R: Read> BufReader<R> {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::open("log.txt")?;
+    /// let mut f = try!(File::open("log.txt"));
     /// let mut reader = BufReader::with_capacity(10, f);
     /// # Ok(())
     /// # }
@@ -111,7 +111,7 @@ impl<R: Read> BufReader<R> {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f1 = File::open("log.txt")?;
+    /// let mut f1 = try!(File::open("log.txt"));
     /// let mut reader = BufReader::new(f1);
     ///
     /// let f2 = reader.get_ref();
@@ -132,7 +132,7 @@ impl<R: Read> BufReader<R> {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f1 = File::open("log.txt")?;
+    /// let mut f1 = try!(File::open("log.txt"));
     /// let mut reader = BufReader::new(f1);
     ///
     /// let f2 = reader.get_mut();
@@ -153,7 +153,7 @@ impl<R: Read> BufReader<R> {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f1 = File::open("log.txt")?;
+    /// let mut f1 = try!(File::open("log.txt"));
     /// let mut reader = BufReader::new(f1);
     ///
     /// let f2 = reader.into_inner();
@@ -261,10 +261,9 @@ impl<R: Seek> Seek for BufReader<R> {
 /// Wraps a writer and buffers its output.
 ///
 /// It can be excessively inefficient to work directly with something that
-/// implements [`Write`]. For example, every call to
-/// [`write`][`Tcpstream::write`] on [`TcpStream`] results in a system call. A
-/// `BufWriter` keeps an in-memory buffer of data and writes it to an underlying
-/// writer in large, infrequent batches.
+/// implements [`Write`]. For example, every call to [`write`] on [`TcpStream`]
+/// results in a system call. A `BufWriter` keeps an in-memory buffer of data
+/// and writes it to an underlying writer in large, infrequent batches.
 ///
 /// The buffer will be written out when the writer is dropped.
 ///
@@ -304,7 +303,7 @@ impl<R: Seek> Seek for BufReader<R> {
 /// the `stream` is dropped.
 ///
 /// [`Write`]: ../../std/io/trait.Write.html
-/// [`Tcpstream::write`]: ../../std/net/struct.TcpStream.html#method.write
+/// [`write`]: ../../std/net/struct.TcpStream.html#method.write
 /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufWriter<W: Write> {
@@ -633,7 +632,7 @@ impl<W> fmt::Display for IntoInnerError<W> {
 /// I took the one less traveled by,
 /// And that has made all the difference.";
 ///
-/// let file = File::create("poem.txt")?;
+/// let file = try!(File::create("poem.txt"));
 /// let mut file = LineWriter::new(file);
 ///
 /// for &byte in road_not_taken.iter() {
@@ -641,10 +640,10 @@ impl<W> fmt::Display for IntoInnerError<W> {
 /// }
 ///
 /// // let's check we did the right thing.
-/// let mut file = File::open("poem.txt")?;
+/// let mut file = try!(File::open("poem.txt"));
 /// let mut contents = String::new();
 ///
-/// file.read_to_string(&mut contents)?;
+/// try!(file.read_to_string(&mut contents));
 ///
 /// assert_eq!(contents.as_bytes(), &road_not_taken[..]);
 /// # Ok(())
@@ -666,7 +665,7 @@ impl<W: Write> LineWriter<W> {
     /// use std::io::LineWriter;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let file = File::create("poem.txt")?;
+    /// let file = try!(File::create("poem.txt"));
     /// let file = LineWriter::new(file);
     /// # Ok(())
     /// # }
@@ -687,7 +686,7 @@ impl<W: Write> LineWriter<W> {
     /// use std::io::LineWriter;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let file = File::create("poem.txt")?;
+    /// let file = try!(File::create("poem.txt"));
     /// let file = LineWriter::with_capacity(100, file);
     /// # Ok(())
     /// # }
@@ -709,7 +708,7 @@ impl<W: Write> LineWriter<W> {
     /// use std::io::LineWriter;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let file = File::create("poem.txt")?;
+    /// let file = try!(File::create("poem.txt"));
     /// let file = LineWriter::new(file);
     ///
     /// let reference = file.get_ref();
@@ -731,7 +730,7 @@ impl<W: Write> LineWriter<W> {
     /// use std::io::LineWriter;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let file = File::create("poem.txt")?;
+    /// let file = try!(File::create("poem.txt"));
     /// let mut file = LineWriter::new(file);
     ///
     /// // we can use reference just like file
@@ -753,11 +752,11 @@ impl<W: Write> LineWriter<W> {
     /// use std::io::LineWriter;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let file = File::create("poem.txt")?;
+    /// let file = try!(File::create("poem.txt"));
     ///
     /// let writer: LineWriter<File> = LineWriter::new(file);
     ///
-    /// let file: File = writer.into_inner()?;
+    /// let file: File = try!(writer.into_inner());
     /// # Ok(())
     /// # }
     /// ```

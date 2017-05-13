@@ -16,7 +16,8 @@ extern crate derive_bad;
 #[derive(
     A
 )]
-//~^^ ERROR: proc-macro derive produced unparseable tokens
+//~^^ ERROR: custom derive attribute panicked
+//~| HELP: called `Result::unwrap()` on an `Err` value: LexError
 struct A;
 
 fn main() {}

@@ -17,7 +17,7 @@ pub use self::Token::*;
 use ast::{self};
 use ptr::P;
 use symbol::keywords;
-use tokenstream::TokenTree;
+use tokenstream;
 
 use std::fmt;
 use std::rc::Rc;
@@ -49,12 +49,6 @@ pub enum DelimToken {
     NoDelim,
 }
 
-impl DelimToken {
-    pub fn len(self) -> usize {
-        if self == NoDelim { 0 } else { 1 }
-    }
-}
-
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum Lit {
     Byte(ast::Name),
@@ -78,44 +72,6 @@ impl Lit {
             ByteStr(_) | ByteStrRaw(..) => "byte string"
         }
     }
-}
-
-fn ident_can_begin_expr(ident: ast::Ident) -> bool {
-    let ident_token: Token = Ident(ident);
-
-    !ident_token.is_any_keyword() ||
-    ident_token.is_path_segment_keyword() ||
-    [
-        keywords::Do.name(),
-        keywords::Box.name(),
-        keywords::Break.name(),
-        keywords::Continue.name(),
-        keywords::False.name(),
-        keywords::For.name(),
-        keywords::If.name(),
-        keywords::Loop.name(),
-        keywords::Match.name(),
-        keywords::Move.name(),
-        keywords::Return.name(),
-        keywords::True.name(),
-        keywords::Unsafe.name(),
-        keywords::While.name(),
-    ].contains(&ident.name)
-}
-
-fn ident_can_begin_type(ident: ast::Ident) -> bool {
-    let ident_token: Token = Ident(ident);
-
-    !ident_token.is_any_keyword() ||
-    ident_token.is_path_segment_keyword() ||
-    [
-        keywords::For.name(),
-        keywords::Impl.name(),
-        keywords::Fn.name(),
-        keywords::Unsafe.name(),
-        keywords::Extern.name(),
-        keywords::Typeof.name(),
-    ].contains(&ident.name)
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug)]
@@ -168,6 +124,9 @@ pub enum Token {
     // Can be expanded into several tokens.
     /// Doc comment
     DocComment(ast::Name),
+    // In left-hand-sides of MBE macros:
+    /// Parse a nonterminal (name to bind, name of NT)
+    MatchNt(ast::Ident, ast::Ident),
     // In right-hand-sides of MBE macros:
     /// A syntactic variable that will be filled in by macro expansion.
     SubstNt(ast::Ident),
@@ -197,44 +156,25 @@ impl Token {
     /// Returns `true` if the token can appear at the start of an expression.
     pub fn can_begin_expr(&self) -> bool {
         match *self {
-            Ident(ident)                => ident_can_begin_expr(ident), // value name or keyword
-            OpenDelim(..)               => true, // tuple, array or block
-            Literal(..)                 => true, // literal
-            Not                         => true, // operator not
-            BinOp(Minus)                => true, // unary minus
-            BinOp(Star)                 => true, // dereference
-            BinOp(Or) | OrOr            => true, // closure
-            BinOp(And)                  => true, // reference
-            AndAnd                      => true, // double reference
+            OpenDelim(..)               => true,
+            Ident(..)                   => true,
+            Literal(..)                 => true,
+            Not                         => true,
+            BinOp(Minus)                => true,
+            BinOp(Star)                 => true,
+            BinOp(And)                  => true,
+            BinOp(Or)                   => true, // in lambda syntax
+            OrOr                        => true, // in lambda syntax
+            AndAnd                      => true, // double borrow
             DotDot | DotDotDot          => true, // range notation
             Lt | BinOp(Shl)             => true, // associated path
-            ModSep                      => true, // global path
-            Pound                       => true, // expression attributes
+            ModSep                      => true,
+            Pound                       => true, // for expression attributes
             Interpolated(ref nt) => match **nt {
-                NtIdent(..) | NtExpr(..) | NtBlock(..) | NtPath(..) => true,
-                _ => false,
-            },
-            _ => false,
-        }
-    }
-
-    /// Returns `true` if the token can appear at the start of a type.
-    pub fn can_begin_type(&self) -> bool {
-        match *self {
-            Ident(ident)                => ident_can_begin_type(ident), // type name or keyword
-            OpenDelim(Paren)            => true, // tuple
-            OpenDelim(Bracket)          => true, // array
-            Underscore                  => true, // placeholder
-            Not                         => true, // never
-            BinOp(Star)                 => true, // raw pointer
-            BinOp(And)                  => true, // reference
-            AndAnd                      => true, // double reference
-            Question                    => true, // maybe bound in trait object
-            Lifetime(..)                => true, // lifetime bound in trait object
-            Lt | BinOp(Shl)             => true, // associated path
-            ModSep                      => true, // global path
-            Interpolated(ref nt) => match **nt {
-                NtIdent(..) | NtTy(..) | NtPath(..) => true,
+                NtExpr(..) => true,
+                NtIdent(..) => true,
+                NtBlock(..) => true,
+                NtPath(..) => true,
                 _ => false,
             },
             _ => false,
@@ -249,20 +189,12 @@ impl Token {
         }
     }
 
-    pub fn ident(&self) -> Option<ast::Ident> {
-        match *self {
-            Ident(ident) => Some(ident),
-            Interpolated(ref nt) => match **nt {
-                NtIdent(ident) => Some(ident.node),
-                _ => None,
-            },
-            _ => None,
-        }
-    }
-
     /// Returns `true` if the token is an identifier.
     pub fn is_ident(&self) -> bool {
-        self.ident().is_some()
+        match *self {
+            Ident(..)   => true,
+            _           => false,
+        }
     }
 
     /// Returns `true` if the token is a documentation comment.
@@ -316,15 +248,18 @@ impl Token {
 
     /// Returns `true` if the token is a given keyword, `kw`.
     pub fn is_keyword(&self, kw: keywords::Keyword) -> bool {
-        self.ident().map(|ident| ident.name == kw.name()).unwrap_or(false)
+        match *self {
+            Ident(id) => id.name == kw.name(),
+            _ => false,
+        }
     }
 
     pub fn is_path_segment_keyword(&self) -> bool {
-        match self.ident() {
-            Some(id) => id.name == keywords::Super.name() ||
-                        id.name == keywords::SelfValue.name() ||
-                        id.name == keywords::SelfType.name(),
-            None => false,
+        match *self {
+            Ident(id) => id.name == keywords::Super.name() ||
+                         id.name == keywords::SelfValue.name() ||
+                         id.name == keywords::SelfType.name(),
+            _ => false,
         }
     }
 
@@ -335,16 +270,18 @@ impl Token {
 
     /// Returns `true` if the token is a strict keyword.
     pub fn is_strict_keyword(&self) -> bool {
-        match self.ident() {
-            Some(id) => id.name >= keywords::As.name() && id.name <= keywords::While.name(),
+        match *self {
+            Ident(id) => id.name >= keywords::As.name() &&
+                         id.name <= keywords::While.name(),
             _ => false,
         }
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_reserved_keyword(&self) -> bool {
-        match self.ident() {
-            Some(id) => id.name >= keywords::Abstract.name() && id.name <= keywords::Yield.name(),
+        match *self {
+            Ident(id) => id.name >= keywords::Abstract.name() &&
+                         id.name <= keywords::Yield.name(),
             _ => false,
         }
     }
@@ -363,8 +300,7 @@ pub enum Nonterminal {
     /// Stuff inside brackets for attributes
     NtMeta(ast::MetaItem),
     NtPath(ast::Path),
-    NtVis(ast::Visibility),
-    NtTT(TokenTree),
+    NtTT(tokenstream::TokenTree),
     // These are not exposed to macros, but are used by quasiquote.
     NtArm(ast::Arm),
     NtImplItem(ast::ImplItem),
@@ -393,7 +329,6 @@ impl fmt::Debug for Nonterminal {
             NtGenerics(..) => f.pad("NtGenerics(..)"),
             NtWhereClause(..) => f.pad("NtWhereClause(..)"),
             NtArg(..) => f.pad("NtArg(..)"),
-            NtVis(..) => f.pad("NtVis(..)"),
         }
     }
 }

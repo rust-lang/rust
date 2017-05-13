@@ -10,8 +10,7 @@
 
 #![feature(alloc_jemalloc)]
 
-#[cfg(any(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")),
-          target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 extern crate alloc_jemalloc;
 
 fn main() {

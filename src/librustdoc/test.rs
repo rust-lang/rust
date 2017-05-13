@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::panic::{self, AssertUnwindSafe};
 use std::process::Command;
 use std::rc::Rc;
@@ -30,7 +29,7 @@ use rustc::session::config::{OutputType, OutputTypes, Externs};
 use rustc::session::search_paths::{SearchPaths, PathKind};
 use rustc_back::dynamic_lib::DynamicLibrary;
 use rustc_back::tempdir::TempDir;
-use rustc_driver::{self, driver, Compilation};
+use rustc_driver::{driver, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
@@ -38,12 +37,11 @@ use rustc_trans::back::link;
 use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::feature_gate::UnstableFeatures;
-use syntax_pos::{BytePos, DUMMY_SP, Pos, Span};
 use errors;
 use errors::emitter::ColorConfig;
 
 use clean::Attributes;
-use html::markdown::{self, RenderType};
+use html::markdown;
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -57,9 +55,7 @@ pub fn run(input: &str,
            externs: Externs,
            mut test_args: Vec<String>,
            crate_name: Option<String>,
-           maybe_sysroot: Option<PathBuf>,
-           render_type: RenderType,
-           display_warnings: bool)
+           maybe_sysroot: Option<PathBuf>)
            -> isize {
     let input_path = PathBuf::from(input);
     let input = config::Input::File(input_path.clone());
@@ -71,11 +67,10 @@ pub fn run(input: &str,
         crate_types: vec![config::CrateTypeDylib],
         externs: externs.clone(),
         unstable_features: UnstableFeatures::from_environment(),
-        actually_rustdoc: true,
         ..config::basic_options().clone()
     };
 
-    let codemap = Rc::new(CodeMap::new(sessopts.file_path_mapping()));
+    let codemap = Rc::new(CodeMap::new());
     let handler =
         errors::Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()));
 
@@ -83,7 +78,7 @@ pub fn run(input: &str,
     let _ignore = dep_graph.in_ignore();
     let cstore = Rc::new(CStore::new(&dep_graph));
     let mut sess = session::build_session_(
-        sessopts, &dep_graph, Some(input_path.clone()), handler, codemap.clone(), cstore.clone(),
+        sessopts, &dep_graph, Some(input_path.clone()), handler, codemap, cstore.clone(),
     );
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     sess.parse_sess.config =
@@ -106,10 +101,7 @@ pub fn run(input: &str,
                                        externs,
                                        false,
                                        opts,
-                                       maybe_sysroot,
-                                       Some(codemap),
-                                       None,
-                                       render_type);
+                                       maybe_sysroot);
 
     {
         let dep_graph = DepGraph::new(false);
@@ -128,8 +120,7 @@ pub fn run(input: &str,
     test_args.insert(0, "rustdoctest".to_string());
 
     testing::test_main(&test_args,
-                       collector.tests.into_iter().collect(),
-                       testing::Options::new().display_output(display_warnings));
+                       collector.tests.into_iter().collect());
     0
 }
 
@@ -142,13 +133,13 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
         attrs: Vec::new(),
     };
 
-    let test_attrs: Vec<_> = krate.attrs.iter()
-        .filter(|a| a.check_name("doc"))
-        .flat_map(|a| a.meta_item_list().unwrap_or_else(Vec::new))
-        .filter(|a| a.check_name("test"))
-        .collect();
-    let attrs = test_attrs.iter().flat_map(|a| a.meta_item_list().unwrap_or(&[]));
-
+    let attrs = krate.attrs.iter()
+                     .filter(|a| a.check_name("doc"))
+                     .filter_map(|a| a.meta_item_list())
+                     .flat_map(|l| l)
+                     .filter(|a| a.check_name("test"))
+                     .filter_map(|a| a.meta_item_list())
+                     .flat_map(|l| l);
     for attr in attrs {
         if attr.check_name("no_crate_inject") {
             opts.no_crate_inject = true;
@@ -219,7 +210,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
         }
     }
     let data = Arc::new(Mutex::new(Vec::new()));
-    let codemap = Rc::new(CodeMap::new(sessopts.file_path_mapping()));
+    let codemap = Rc::new(CodeMap::new());
     let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
                                                       Some(codemap.clone()));
     let old = io::set_panic(Some(box Sink(data.clone())));
@@ -264,9 +255,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
                         error_codes.retain(|err| !out.contains(err));
                     }
                 }
-                Ok(()) if compile_fail => {
-                    panic!("test compiled while it wasn't supposed to")
-                }
+                Ok(()) if compile_fail => panic!("test compiled while it wasn't supposed to"),
                 _ => {}
             }
         }
@@ -312,7 +301,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
             if should_panic && out.status.success() {
                 panic!("test executable succeeded when it should have failed");
             } else if !should_panic && !out.status.success() {
-                panic!("test executable failed:\n{}\n{}\n",
+                panic!("test executable failed:\n{}\n{}",
                        str::from_utf8(&out.stdout).unwrap_or(""),
                        str::from_utf8(&out.stderr).unwrap_or(""));
             }
@@ -358,7 +347,6 @@ pub fn maketest(s: &str, cratename: Option<&str>, dont_insert_main: bool,
     prog
 }
 
-// FIXME(aburka): use a real parser to deal with multiline attributes
 fn partition_source(s: &str) -> (String, String) {
     use std_unicode::str::UnicodeStr;
 
@@ -369,7 +357,7 @@ fn partition_source(s: &str) -> (String, String) {
     for line in s.lines() {
         let trimline = line.trim();
         let header = trimline.is_whitespace() ||
-            trimline.starts_with("#![");
+            trimline.starts_with("#![feature");
         if !header || after_header {
             after_header = true;
             after.push_str(line);
@@ -385,8 +373,6 @@ fn partition_source(s: &str) -> (String, String) {
 
 pub struct Collector {
     pub tests: Vec<testing::TestDescAndFn>,
-    // to be removed when hoedown will be definitely gone
-    pub old_tests: HashMap<String, Vec<String>>,
     names: Vec<String>,
     cfgs: Vec<String>,
     libs: SearchPaths,
@@ -397,21 +383,13 @@ pub struct Collector {
     cratename: String,
     opts: TestOptions,
     maybe_sysroot: Option<PathBuf>,
-    position: Span,
-    codemap: Option<Rc<CodeMap>>,
-    filename: Option<String>,
-    // to be removed when hoedown will be removed as well
-    pub render_type: RenderType,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
-               use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>,
-               codemap: Option<Rc<CodeMap>>, filename: Option<String>,
-               render_type: RenderType) -> Collector {
+               use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>) -> Collector {
         Collector {
             tests: Vec::new(),
-            old_tests: HashMap::new(),
             names: Vec::new(),
             cfgs: cfgs,
             libs: libs,
@@ -422,67 +400,19 @@ impl Collector {
             cratename: cratename,
             opts: opts,
             maybe_sysroot: maybe_sysroot,
-            position: DUMMY_SP,
-            codemap: codemap,
-            filename: filename,
-            render_type: render_type,
         }
-    }
-
-    fn generate_name(&self, line: usize, filename: &str) -> String {
-        if self.use_headers {
-            if let Some(ref header) = self.current_header {
-                format!("{} - {} (line {})", filename, header, line)
-            } else {
-                format!("{} - (line {})", filename, line)
-            }
-        } else {
-            format!("{} - {} (line {})", filename, self.names.join("::"), line)
-        }
-    }
-
-    // to be removed once hoedown is gone
-    fn generate_name_beginning(&self, filename: &str) -> String {
-        if self.use_headers {
-            if let Some(ref header) = self.current_header {
-                format!("{} - {} (line", filename, header)
-            } else {
-                format!("{} - (line", filename)
-            }
-        } else {
-            format!("{} - {} (line", filename, self.names.join("::"))
-        }
-    }
-
-    pub fn add_old_test(&mut self, test: String, filename: String) {
-        let name_beg = self.generate_name_beginning(&filename);
-        let entry = self.old_tests.entry(name_beg)
-                                  .or_insert(Vec::new());
-        entry.push(test.trim().to_owned());
     }
 
     pub fn add_test(&mut self, test: String,
                     should_panic: bool, no_run: bool, should_ignore: bool,
-                    as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
-                    line: usize, filename: String) {
-        let name = self.generate_name(line, &filename);
-        // to be removed when hoedown is removed
-        if self.render_type == RenderType::Pulldown {
-            let name_beg = self.generate_name_beginning(&filename);
-            let mut found = false;
-            let test = test.trim().to_owned();
-            if let Some(entry) = self.old_tests.get_mut(&name_beg) {
-                found = entry.remove_item(&test).is_some();
-            }
-            if !found {
-                let _ = writeln!(&mut io::stderr(),
-                                 "WARNING: {} Code block is not currently run as a test, but will \
-                                  in future versions of rustdoc. Please ensure this code block is \
-                                  a runnable test, or use the `ignore` directive.",
-                                 name);
-                return
-            }
-        }
+                    as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>) {
+        let name = if self.use_headers {
+            let s = self.current_header.as_ref().map(|s| &**s).unwrap_or("");
+            format!("{}_{}", s, self.cnt)
+        } else {
+            format!("{}_{}", self.names.join("::"), self.cnt)
+        };
+        self.cnt += 1;
         let cfgs = self.cfgs.clone();
         let libs = self.libs.clone();
         let externs = self.externs.clone();
@@ -498,63 +428,20 @@ impl Collector {
                 should_panic: testing::ShouldPanic::No,
             },
             testfn: testing::DynTestFn(box move |()| {
-                let panic = io::set_panic(None);
-                let print = io::set_print(None);
-                match {
-                    rustc_driver::in_rustc_thread(move || {
-                        io::set_panic(panic);
-                        io::set_print(print);
-                        runtest(&test,
-                                &cratename,
-                                cfgs,
-                                libs,
-                                externs,
-                                should_panic,
-                                no_run,
-                                as_test_harness,
-                                compile_fail,
-                                error_codes,
-                                &opts,
-                                maybe_sysroot)
-                    })
-                } {
-                    Ok(()) => (),
-                    Err(err) => panic::resume_unwind(err),
-                }
-            }),
+                runtest(&test,
+                        &cratename,
+                        cfgs,
+                        libs,
+                        externs,
+                        should_panic,
+                        no_run,
+                        as_test_harness,
+                        compile_fail,
+                        error_codes,
+                        &opts,
+                        maybe_sysroot);
+            })
         });
-    }
-
-    pub fn get_line(&self) -> usize {
-        if let Some(ref codemap) = self.codemap {
-            let line = self.position.lo.to_usize();
-            let line = codemap.lookup_char_pos(BytePos(line as u32)).line;
-            if line > 0 { line - 1 } else { line }
-        } else {
-            0
-        }
-    }
-
-    pub fn set_position(&mut self, position: Span) {
-        self.position = position;
-    }
-
-    pub fn get_filename(&self) -> String {
-        if let Some(ref codemap) = self.codemap {
-            let filename = codemap.span_to_filename(self.position);
-            if let Ok(cur_dir) = env::current_dir() {
-                if let Ok(path) = Path::new(&filename).strip_prefix(&cur_dir) {
-                    if let Some(path) = path.to_str() {
-                        return path.to_owned();
-                    }
-                }
-            }
-            filename
-        } else if let Some(ref filename) = self.filename {
-            filename.clone()
-        } else {
-            "<input>".to_owned()
-        }
     }
 
     pub fn register_header(&mut self, name: &str, level: u32) {
@@ -597,15 +484,7 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         attrs.unindent_doc_comments();
         if let Some(doc) = attrs.doc_value() {
             self.collector.cnt = 0;
-            if self.collector.render_type == RenderType::Pulldown {
-                markdown::old_find_testable_code(doc, self.collector,
-                                                 attrs.span.unwrap_or(DUMMY_SP));
-                markdown::find_testable_code(doc, self.collector,
-                                             attrs.span.unwrap_or(DUMMY_SP));
-            } else {
-                markdown::old_find_testable_code(doc, self.collector,
-                                                 attrs.span.unwrap_or(DUMMY_SP));
-            }
+            markdown::find_testable_code(doc, self.collector);
         }
 
         nested(self);

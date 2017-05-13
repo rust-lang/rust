@@ -20,6 +20,7 @@ use std::path;
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};
 use std::sync::Arc;
+use rustc_i128::{i128, u128};
 
 pub trait Encoder {
     type Error;
@@ -332,12 +333,14 @@ impl Decodable for u64 {
     }
 }
 
+#[cfg(not(stage0))]
 impl Encodable for u128 {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_u128(*self)
     }
 }
 
+#[cfg(not(stage0))]
 impl Decodable for u128 {
     fn decode<D: Decoder>(d: &mut D) -> Result<u128, D::Error> {
         d.read_u128()
@@ -404,12 +407,14 @@ impl Decodable for i64 {
     }
 }
 
+#[cfg(not(stage0))]
 impl Encodable for i128 {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_i128(*self)
     }
 }
 
+#[cfg(not(stage0))]
 impl Decodable for i128 {
     fn decode<D: Decoder>(d: &mut D) -> Result<i128, D::Error> {
         d.read_i128()
@@ -566,34 +571,6 @@ impl<T:Decodable> Decodable for Vec<T> {
         })
     }
 }
-
-impl<'a, T:Encodable> Encodable for Cow<'a, [T]>
-where [T]: ToOwned<Owned = Vec<T>>
-{
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))?
-            }
-            Ok(())
-        })
-    }
-}
-
-impl<T:Decodable+ToOwned> Decodable for Cow<'static, [T]>
-where [T]: ToOwned<Owned = Vec<T>>
-{
-    fn decode<D: Decoder>(d: &mut D) -> Result<Cow<'static, [T]>, D::Error> {
-        d.read_seq(|d, len| {
-            let mut v = Vec::with_capacity(len);
-            for i in 0..len {
-                v.push(d.read_seq_elt(i, |d| Decodable::decode(d))?);
-            }
-            Ok(Cow::Owned(v))
-        })
-    }
-}
-
 
 impl<T:Encodable> Encodable for Option<T> {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {

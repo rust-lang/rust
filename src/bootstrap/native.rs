@@ -18,8 +18,6 @@
 //! LLVM and compiler-rt are essentially just wired up to everything else to
 //! ensure that they're always in place if needed.
 
-use std::env;
-use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::Path;
@@ -30,8 +28,7 @@ use cmake;
 use gcc;
 
 use Build;
-use util;
-use build_helper::up_to_date;
+use util::{self, up_to_date};
 
 /// Compile LLVM for `target`.
 pub fn llvm(build: &Build, target: &str) {
@@ -43,29 +40,28 @@ pub fn llvm(build: &Build, target: &str) {
         }
     }
 
-    let rebuild_trigger = build.src.join("src/rustllvm/llvm-rebuild-trigger");
-    let mut rebuild_trigger_contents = String::new();
-    t!(t!(File::open(&rebuild_trigger)).read_to_string(&mut rebuild_trigger_contents));
-
-    let out_dir = build.llvm_out(target);
-    let done_stamp = out_dir.join("llvm-finished-building");
+    // If the cleaning trigger is newer than our built artifacts (or if the
+    // artifacts are missing) then we keep going, otherwise we bail out.
+    let dst = build.llvm_out(target);
+    let stamp = build.src.join("src/rustllvm/llvm-auto-clean-trigger");
+    let mut stamp_contents = String::new();
+    t!(t!(File::open(&stamp)).read_to_string(&mut stamp_contents));
+    let done_stamp = dst.join("llvm-finished-building");
     if done_stamp.exists() {
         let mut done_contents = String::new();
         t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
-
-        // If LLVM was already built previously and contents of the rebuild-trigger file
-        // didn't change from the previous build, then no action is required.
-        if done_contents == rebuild_trigger_contents {
+        if done_contents == stamp_contents {
             return
         }
     }
-    if build.config.llvm_clean_rebuild {
-        drop(fs::remove_dir_all(&out_dir));
-    }
+    drop(fs::remove_dir_all(&dst));
 
     println!("Building LLVM for {}", target);
+
     let _time = util::timeit();
-    t!(fs::create_dir_all(&out_dir));
+    let _ = fs::remove_dir_all(&dst.join("build"));
+    t!(fs::create_dir_all(&dst.join("build")));
+    let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
 
     // http://llvm.org/docs/CMake.html
     let mut cfg = cmake::Config::new(build.src.join("src/llvm"));
@@ -82,14 +78,12 @@ pub fn llvm(build: &Build, target: &str) {
     // NOTE: remember to also update `config.toml.example` when changing the defaults!
     let llvm_targets = match build.config.llvm_targets {
         Some(ref s) => s,
-        None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX;Hexagon",
+        None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX",
     };
-
-    let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
 
     cfg.target(target)
        .host(&build.config.build)
-       .out_dir(&out_dir)
+       .out_dir(&dst)
        .profile(profile)
        .define("LLVM_ENABLE_ASSERTIONS", assertions)
        .define("LLVM_TARGETS_TO_BUILD", llvm_targets)
@@ -105,20 +99,8 @@ pub fn llvm(build: &Build, target: &str) {
        .define("LLVM_DEFAULT_TARGET_TRIPLE", target)
        .static_crt(true);
 
-    if target.contains("msvc") {
-        cfg.define("LLVM_USE_CRT_DEBUG", "MT");
-        cfg.define("LLVM_USE_CRT_RELEASE", "MT");
-        cfg.define("LLVM_USE_CRT_RELWITHDEBINFO", "MT");
-    }
-
     if target.starts_with("i686") {
         cfg.define("LLVM_BUILD_32_BITS", "ON");
-    }
-
-    if let Some(num_linkers) = build.config.llvm_link_jobs {
-        if num_linkers > 0 {
-            cfg.define("LLVM_PARALLEL_LINK_JOBS", num_linkers.to_string());
-        }
     }
 
     // http://llvm.org/docs/HowToCrossCompileLLVM.html
@@ -131,59 +113,21 @@ pub fn llvm(build: &Build, target: &str) {
            .define("LLVM_TABLEGEN", &host);
     }
 
-    let sanitize_cc = |cc: &Path| {
-        if target.contains("msvc") {
-            OsString::from(cc.to_str().unwrap().replace("\\", "/"))
-        } else {
-            cc.as_os_str().to_owned()
-        }
-    };
-
-    let configure_compilers = |cfg: &mut cmake::Config| {
-        // MSVC with CMake uses msbuild by default which doesn't respect these
-        // vars that we'd otherwise configure. In that case we just skip this
-        // entirely.
-        if target.contains("msvc") && !build.config.ninja {
-            return
-        }
-
-        let cc = build.cc(target);
-        let cxx = build.cxx(target);
-
-        // Handle msvc + ninja + ccache specially (this is what the bots use)
-        if target.contains("msvc") &&
-           build.config.ninja &&
-           build.config.ccache.is_some() {
-            let mut cc = env::current_exe().expect("failed to get cwd");
-            cc.set_file_name("sccache-plus-cl.exe");
-
-           cfg.define("CMAKE_C_COMPILER", sanitize_cc(&cc))
-              .define("CMAKE_CXX_COMPILER", sanitize_cc(&cc));
-           cfg.env("SCCACHE_PATH",
-                   build.config.ccache.as_ref().unwrap())
-              .env("SCCACHE_TARGET", target);
-
-        // If ccache is configured we inform the build a little differently hwo
-        // to invoke ccache while also invoking our compilers.
-        } else if let Some(ref ccache) = build.config.ccache {
+    // MSVC handles compiler business itself
+    if !target.contains("msvc") {
+        if let Some(ref ccache) = build.config.ccache {
            cfg.define("CMAKE_C_COMPILER", ccache)
-              .define("CMAKE_C_COMPILER_ARG1", sanitize_cc(cc))
+              .define("CMAKE_C_COMPILER_ARG1", build.cc(target))
               .define("CMAKE_CXX_COMPILER", ccache)
-              .define("CMAKE_CXX_COMPILER_ARG1", sanitize_cc(cxx));
+              .define("CMAKE_CXX_COMPILER_ARG1", build.cxx(target));
         } else {
-           cfg.define("CMAKE_C_COMPILER", sanitize_cc(cc))
-              .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx));
+           cfg.define("CMAKE_C_COMPILER", build.cc(target))
+              .define("CMAKE_CXX_COMPILER", build.cxx(target));
         }
-
         cfg.build_arg("-j").build_arg(build.jobs().to_string());
+
         cfg.define("CMAKE_C_FLAGS", build.cflags(target).join(" "));
         cfg.define("CMAKE_CXX_FLAGS", build.cflags(target).join(" "));
-    };
-
-    configure_compilers(&mut cfg);
-
-    if env::var_os("SCCACHE_ERROR_LOG").is_some() {
-        cfg.env("RUST_LOG", "sccache=info");
     }
 
     // FIXME: we don't actually need to build all LLVM tools and all LLVM
@@ -192,7 +136,7 @@ pub fn llvm(build: &Build, target: &str) {
     //        tools and libs on all platforms.
     cfg.build();
 
-    t!(t!(File::create(&done_stamp)).write_all(rebuild_trigger_contents.as_bytes()));
+    t!(t!(File::create(&done_stamp)).write_all(stamp_contents.as_bytes()));
 }
 
 fn check_llvm_version(build: &Build, llvm_config: &Path) {
@@ -240,112 +184,4 @@ pub fn test_helpers(build: &Build, target: &str) {
        .debug(false)
        .file(build.src.join("src/rt/rust_test_helpers.c"))
        .compile("librust_test_helpers.a");
-}
-const OPENSSL_VERS: &'static str = "1.0.2k";
-const OPENSSL_SHA256: &'static str =
-    "6b3977c61f2aedf0f96367dcfb5c6e578cf37e7b8d913b4ecb6643c3cb88d8c0";
-
-pub fn openssl(build: &Build, target: &str) {
-    let out = match build.openssl_dir(target) {
-        Some(dir) => dir,
-        None => return,
-    };
-
-    let stamp = out.join(".stamp");
-    let mut contents = String::new();
-    drop(File::open(&stamp).and_then(|mut f| f.read_to_string(&mut contents)));
-    if contents == OPENSSL_VERS {
-        return
-    }
-    t!(fs::create_dir_all(&out));
-
-    let name = format!("openssl-{}.tar.gz", OPENSSL_VERS);
-    let tarball = out.join(&name);
-    if !tarball.exists() {
-        let tmp = tarball.with_extension("tmp");
-        // originally from https://www.openssl.org/source/...
-        let url = format!("https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/{}",
-                          name);
-        let mut ok = false;
-        for _ in 0..3 {
-            let status = Command::new("curl")
-                            .arg("-o").arg(&tmp)
-                            .arg(&url)
-                            .status()
-                            .expect("failed to spawn curl");
-            if status.success() {
-                ok = true;
-                break
-            }
-        }
-        if !ok {
-            panic!("failed to download openssl source")
-        }
-        let mut shasum = if target.contains("apple") {
-            let mut cmd = Command::new("shasum");
-            cmd.arg("-a").arg("256");
-            cmd
-        } else {
-            Command::new("sha256sum")
-        };
-        let output = output(&mut shasum.arg(&tmp));
-        let found = output.split_whitespace().next().unwrap();
-        if found != OPENSSL_SHA256 {
-            panic!("downloaded openssl sha256 different\n\
-                    expected: {}\n\
-                    found:    {}\n", OPENSSL_SHA256, found);
-        }
-        t!(fs::rename(&tmp, &tarball));
-    }
-    let obj = out.join(format!("openssl-{}", OPENSSL_VERS));
-    let dst = build.openssl_install_dir(target).unwrap();
-    drop(fs::remove_dir_all(&obj));
-    drop(fs::remove_dir_all(&dst));
-    build.run(Command::new("tar").arg("xf").arg(&tarball).current_dir(&out));
-
-    let mut configure = Command::new(obj.join("Configure"));
-    configure.arg(format!("--prefix={}", dst.display()));
-    configure.arg("no-dso");
-    configure.arg("no-ssl2");
-    configure.arg("no-ssl3");
-
-    let os = match target {
-        "aarch64-unknown-linux-gnu" => "linux-aarch64",
-        "arm-unknown-linux-gnueabi" => "linux-armv4",
-        "arm-unknown-linux-gnueabihf" => "linux-armv4",
-        "armv7-unknown-linux-gnueabihf" => "linux-armv4",
-        "i686-apple-darwin" => "darwin-i386-cc",
-        "i686-unknown-freebsd" => "BSD-x86-elf",
-        "i686-unknown-linux-gnu" => "linux-elf",
-        "i686-unknown-linux-musl" => "linux-elf",
-        "mips-unknown-linux-gnu" => "linux-mips32",
-        "mips64-unknown-linux-gnuabi64" => "linux64-mips64",
-        "mips64el-unknown-linux-gnuabi64" => "linux64-mips64",
-        "mipsel-unknown-linux-gnu" => "linux-mips32",
-        "powerpc-unknown-linux-gnu" => "linux-ppc",
-        "powerpc64-unknown-linux-gnu" => "linux-ppc64",
-        "powerpc64le-unknown-linux-gnu" => "linux-ppc64le",
-        "s390x-unknown-linux-gnu" => "linux64-s390x",
-        "x86_64-apple-darwin" => "darwin64-x86_64-cc",
-        "x86_64-unknown-freebsd" => "BSD-x86_64",
-        "x86_64-unknown-linux-gnu" => "linux-x86_64",
-        "x86_64-unknown-linux-musl" => "linux-x86_64",
-        "x86_64-unknown-netbsd" => "BSD-x86_64",
-        _ => panic!("don't know how to configure OpenSSL for {}", target),
-    };
-    configure.arg(os);
-    configure.env("CC", build.cc(target));
-    for flag in build.cflags(target) {
-        configure.arg(flag);
-    }
-    configure.current_dir(&obj);
-    println!("Configuring openssl for {}", target);
-    build.run_quiet(&mut configure);
-    println!("Building openssl for {}", target);
-    build.run_quiet(Command::new("make").arg("-j1").current_dir(&obj));
-    println!("Installing openssl for {}", target);
-    build.run_quiet(Command::new("make").arg("install").current_dir(&obj));
-
-    let mut f = t!(File::create(&stamp));
-    t!(f.write_all(OPENSSL_VERS.as_bytes()));
 }

@@ -75,7 +75,7 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
     "src/libtest", // Probably should defer to unstable std::sys APIs
 
     // std testing crates, ok for now at least
-    "src/libcore/tests",
+    "src/libcoretest",
 
     // non-std crates
     "src/test",
@@ -126,7 +126,8 @@ fn check_cfgs(contents: &mut String, file: &Path,
             Ok(_) => unreachable!(),
             Err(i) => i + 1
         };
-        tidy_error!(bad, "{}:{}: platform-specific cfg: {}", file.display(), line, cfg);
+        println!("{}:{}: platform-specific cfg: {}", file.display(), line, cfg);
+        *bad = true;
     };
 
     for (idx, cfg) in cfgs.into_iter() {

@@ -54,6 +54,7 @@ fn c() {
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out
+    //~^ NOTE to prevent move
     //~| cannot move out of here
 }
 
@@ -67,6 +68,7 @@ fn d() {
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out
+    //~^ NOTE to prevent move
     //~| cannot move out of here
 }
 
@@ -82,6 +84,7 @@ fn e() {
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out
+    //~^ NOTE to prevent move
     //~| cannot move out of here
 }
 

@@ -10,9 +10,9 @@ crate-type = ["dylib"]
 
 [dependencies]
 arena = { path = "../libarena" }
+flate = { path = "../libflate" }
 graphviz = { path = "../libgraphviz" }
-log = { version = "0.3", features = ["release_max_level_info"] }
-env_logger = { version = "0.4", default-features = false }
+log = { path = "../liblog" }
 proc_macro_plugin = { path = "../libproc_macro_plugin" }
 rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }

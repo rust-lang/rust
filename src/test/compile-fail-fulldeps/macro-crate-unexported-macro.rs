@@ -14,6 +14,5 @@
 extern crate macro_crate_test;
 
 fn main() {
-    unexported_macro!();
-    //~^ ERROR cannot find macro `unexported_macro!` in this scope
+    assert_eq!(3, unexported_macro!()); //~ ERROR macro undefined: 'unexported_macro!'
 }

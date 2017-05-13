@@ -20,3 +20,4 @@ pub fn foo<T>() { }
 fn main() { }
 
 //~ TRANS_ITEM fn static_init::main[0]
+//~ TRANS_ITEM drop-glue i8

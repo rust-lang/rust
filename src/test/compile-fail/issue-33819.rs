@@ -12,7 +12,7 @@ fn main() {
     match op {
         Some(ref v) => { let a = &mut v; },
         //~^ ERROR:cannot borrow immutable
-        //~| cannot borrow mutably
+        //~| use `ref mut v` here to make mutable
         None => {},
     }
 }

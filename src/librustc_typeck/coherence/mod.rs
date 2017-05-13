@@ -15,71 +15,132 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
-use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::ty::{TyCtxt, TypeFoldable};
-use rustc::ty::maps::Providers;
-
-use syntax::ast;
+use hir::def_id::DefId;
+use rustc::ty::{self, TyCtxt, TypeFoldable};
+use rustc::ty::{Ty, TyBool, TyChar, TyError};
+use rustc::ty::{TyParam, TyRawPtr};
+use rustc::ty::{TyRef, TyAdt, TyDynamic, TyNever, TyTuple};
+use rustc::ty::{TyStr, TyArray, TySlice, TyFloat, TyInfer, TyInt};
+use rustc::ty::{TyUint, TyClosure, TyBox, TyFnDef, TyFnPtr};
+use rustc::ty::{TyProjection, TyAnon};
+use CrateCtxt;
+use syntax_pos::Span;
+use rustc::dep_graph::DepNode;
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::hir::{Item, ItemImpl};
+use rustc::hir;
 
 mod builtin;
-mod inherent_impls;
-mod inherent_impls_overlap;
 mod orphan;
 mod overlap;
 mod unsafety;
 
-fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
-    let impl_def_id = tcx.hir.local_def_id(node_id);
+struct CoherenceChecker<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+}
 
-    // If there are no traits, then this implementation must have a
-    // base type.
-
-    if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
-        debug!("(checking implementation) adding impl for trait '{:?}', item '{}'",
-                trait_ref,
-                tcx.item_path_str(impl_def_id));
-
-        // Skip impls where one of the self type is an error type.
-        // This occurs with e.g. resolve failures (#30589).
-        if trait_ref.references_error() {
-            return;
+impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CoherenceChecker<'a, 'tcx> {
+    fn visit_item(&mut self, item: &Item) {
+        if let ItemImpl(..) = item.node {
+            self.check_implementation(item)
         }
+    }
 
-        enforce_trait_manually_implementable(tcx, impl_def_id, trait_ref.def_id);
-        let trait_def = tcx.trait_def(trait_ref.def_id);
-        trait_def.record_local_impl(tcx, impl_def_id, trait_ref);
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
+    }
+
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
 }
 
-fn enforce_trait_manually_implementable(tcx: TyCtxt, impl_def_id: DefId, trait_def_id: DefId) {
+impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
+    // Returns the def ID of the base type, if there is one.
+    fn get_base_type_def_id(&self, span: Span, ty: Ty<'tcx>) -> Option<DefId> {
+        match ty.sty {
+            TyAdt(def, _) => Some(def.did),
+
+            TyDynamic(ref t, ..) => t.principal().map(|p| p.def_id()),
+
+            TyBox(_) => self.tcx.lang_items.owned_box(),
+
+            TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) | TyStr | TyArray(..) |
+            TySlice(..) | TyFnDef(..) | TyFnPtr(_) | TyTuple(..) | TyParam(..) | TyError |
+            TyNever | TyRawPtr(_) | TyRef(..) | TyProjection(..) => None,
+
+            TyInfer(..) | TyClosure(..) | TyAnon(..) => {
+                // `ty` comes from a user declaration so we should only expect types
+                // that the user can type
+                span_bug!(span,
+                          "coherence encountered unexpected type searching for base type: {}",
+                          ty);
+            }
+        }
+    }
+
+    fn check(&mut self) {
+        // Check implementations and traits. This populates the tables
+        // containing the inherent methods and extension methods. It also
+        // builds up the trait inheritance table.
+        self.tcx.visit_all_item_likes_in_krate(DepNode::CoherenceCheckImpl, self);
+    }
+
+    fn check_implementation(&self, item: &Item) {
+        let tcx = self.tcx;
+        let impl_did = tcx.map.local_def_id(item.id);
+        let self_type = tcx.item_type(impl_did);
+
+        // If there are no traits, then this implementation must have a
+        // base type.
+
+        if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_did) {
+            debug!("(checking implementation) adding impl for trait '{:?}', item '{}'",
+                   trait_ref,
+                   item.name);
+
+            // Skip impls where one of the self type is an error type.
+            // This occurs with e.g. resolve failures (#30589).
+            if trait_ref.references_error() {
+                return;
+            }
+
+            enforce_trait_manually_implementable(self.tcx, item.span, trait_ref.def_id);
+            self.add_trait_impl(trait_ref, impl_did);
+        } else {
+            // Skip inherent impls where the self type is an error
+            // type. This occurs with e.g. resolve failures (#30589).
+            if self_type.references_error() {
+                return;
+            }
+
+            // Add the implementation to the mapping from implementation to base
+            // type def ID, if there is a base type for this implementation and
+            // the implementation does not have any associated traits.
+            if let Some(base_def_id) = self.get_base_type_def_id(item.span, self_type) {
+                self.add_inherent_impl(base_def_id, impl_did);
+            }
+        }
+    }
+
+    fn add_inherent_impl(&self, base_def_id: DefId, impl_def_id: DefId) {
+        self.tcx.inherent_impls.borrow_mut().push(base_def_id, impl_def_id);
+    }
+
+    fn add_trait_impl(&self, impl_trait_ref: ty::TraitRef<'tcx>, impl_def_id: DefId) {
+        debug!("add_trait_impl: impl_trait_ref={:?} impl_def_id={:?}",
+               impl_trait_ref,
+               impl_def_id);
+        let trait_def = self.tcx.lookup_trait_def(impl_trait_ref.def_id);
+        trait_def.record_local_impl(self.tcx, impl_def_id, impl_trait_ref);
+    }
+}
+
+fn enforce_trait_manually_implementable(tcx: TyCtxt, sp: Span, trait_def_id: DefId) {
+    if tcx.sess.features.borrow().unboxed_closures {
+        // the feature gate allows all of them
+        return;
+    }
     let did = Some(trait_def_id);
     let li = &tcx.lang_items;
-
-    // Disallow *all* explicit impls of `Sized` and `Unsize` for now.
-    if did == li.sized_trait() {
-        let span = tcx.span_of_impl(impl_def_id).unwrap();
-        struct_span_err!(tcx.sess,
-                         span,
-                         E0322,
-                         "explicit impls for the `Sized` trait are not permitted")
-            .span_label(span, "impl of 'Sized' not allowed")
-            .emit();
-        return;
-    }
-
-    if did == li.unsize_trait() {
-        let span = tcx.span_of_impl(impl_def_id).unwrap();
-        span_err!(tcx.sess,
-                  span,
-                  E0328,
-                  "explicit impls for the `Unsize` trait are not permitted");
-        return;
-    }
-
-    if tcx.sess.features.borrow().unboxed_closures {
-        // the feature gate allows all Fn traits
-        return;
-    }
 
     let trait_name = if did == li.fn_trait() {
         "Fn"
@@ -91,7 +152,7 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, impl_def_id: DefId, trait_d
         return; // everything OK
     };
     let mut err = struct_span_err!(tcx.sess,
-                                   tcx.span_of_impl(impl_def_id).unwrap(),
+                                   sp,
                                    E0183,
                                    "manual implementations of `{}` are experimental",
                                    trait_name);
@@ -100,45 +161,11 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, impl_def_id: DefId, trait_d
     err.emit();
 }
 
-pub fn provide(providers: &mut Providers) {
-    use self::builtin::coerce_unsized_info;
-    use self::inherent_impls::{crate_inherent_impls, inherent_impls};
-    use self::inherent_impls_overlap::crate_inherent_impls_overlap_check;
-
-    *providers = Providers {
-        coherent_trait,
-        crate_inherent_impls,
-        inherent_impls,
-        crate_inherent_impls_overlap_check,
-        coerce_unsized_info,
-        ..*providers
-    };
-}
-
-fn coherent_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            (_, def_id): (CrateNum, DefId)) {
-    tcx.populate_implementations_for_trait_if_necessary(def_id);
-
-    let impls = tcx.hir.trait_impls(def_id);
-    for &impl_id in impls {
-        check_impl(tcx, impl_id);
-    }
-    for &impl_id in impls {
-        overlap::check_impl(tcx, impl_id);
-    }
-    builtin::check_trait(tcx, def_id);
-}
-
-pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for &trait_def_id in tcx.hir.krate().trait_impls.keys() {
-        tcx.coherent_trait((LOCAL_CRATE, trait_def_id));
-    }
-
-    unsafety::check(tcx);
-    orphan::check(tcx);
-    overlap::check_default_impls(tcx);
-
-    // these queries are executed for side-effects (error reporting):
-    tcx.crate_inherent_impls(LOCAL_CRATE);
-    tcx.crate_inherent_impls_overlap_check(LOCAL_CRATE);
+pub fn check_coherence(ccx: &CrateCtxt) {
+    let _task = ccx.tcx.dep_graph.in_task(DepNode::Coherence);
+    CoherenceChecker { tcx: ccx.tcx }.check();
+    unsafety::check(ccx.tcx);
+    orphan::check(ccx.tcx);
+    overlap::check(ccx.tcx);
+    builtin::check(ccx.tcx);
 }

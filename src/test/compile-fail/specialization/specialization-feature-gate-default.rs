@@ -10,8 +10,6 @@
 
 // Check that specialization must be ungated to use the `default` keyword
 
-// gate-test-specialization
-
 trait Foo {
     fn foo(&self);
 }

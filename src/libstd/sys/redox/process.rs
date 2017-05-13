@@ -249,7 +249,7 @@ impl Command {
     // mutex, and then after the fork they unlock it.
     //
     // Despite this information, libnative's spawn has been witnessed to
-    // deadlock on both macOS and FreeBSD. I'm not entirely sure why, but
+    // deadlock on both OSX and FreeBSD. I'm not entirely sure why, but
     // all collected backtraces point at malloc/free traffic in the
     // child spawned process.
     //
@@ -270,22 +270,19 @@ impl Command {
         }
 
         if let Some(fd) = stdio.stderr.fd() {
-            t!(cvt(syscall::dup2(fd, 2, &[])));
-            let mut flags = t!(cvt(syscall::fcntl(2, syscall::F_GETFL, 0)));
-            flags &= ! syscall::O_CLOEXEC;
-            t!(cvt(syscall::fcntl(2, syscall::F_SETFL, flags)));
+            let _ = syscall::close(2);
+            t!(cvt(syscall::dup(fd, &[])));
+            let _ = syscall::close(fd);
         }
         if let Some(fd) = stdio.stdout.fd() {
-            t!(cvt(syscall::dup2(fd, 1, &[])));
-            let mut flags = t!(cvt(syscall::fcntl(1, syscall::F_GETFL, 0)));
-            flags &= ! syscall::O_CLOEXEC;
-            t!(cvt(syscall::fcntl(1, syscall::F_SETFL, flags)));
+            let _ = syscall::close(1);
+            t!(cvt(syscall::dup(fd, &[])));
+            let _ = syscall::close(fd);
         }
         if let Some(fd) = stdio.stdin.fd() {
-            t!(cvt(syscall::dup2(fd, 0, &[])));
-            let mut flags = t!(cvt(syscall::fcntl(0, syscall::F_GETFL, 0)));
-            flags &= ! syscall::O_CLOEXEC;
-            t!(cvt(syscall::fcntl(0, syscall::F_SETFL, flags)));
+            let _ = syscall::close(0);
+            t!(cvt(syscall::dup(fd, &[])));
+            let _ = syscall::close(fd);
         }
 
         if let Some(g) = self.gid {
@@ -503,19 +500,5 @@ impl Process {
         cvt(syscall::waitpid(self.pid, &mut status, 0))?;
         self.status = Some(ExitStatus(status as i32));
         Ok(ExitStatus(status as i32))
-    }
-
-    pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
-        if let Some(status) = self.status {
-            return Ok(Some(status))
-        }
-        let mut status = 0;
-        let pid = cvt(syscall::waitpid(self.pid, &mut status, syscall::WNOHANG))?;
-        if pid == 0 {
-            Ok(None)
-        } else {
-            self.status = Some(ExitStatus(status as i32));
-            Ok(Some(ExitStatus(status as i32)))
-        }
     }
 }

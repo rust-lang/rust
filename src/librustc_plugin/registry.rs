@@ -13,6 +13,8 @@
 use rustc::lint::{EarlyLintPassObject, LateLintPassObject, LintId, Lint};
 use rustc::session::Session;
 
+use rustc::mir::transform::MirMapPass;
+
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT, IdentTT};
 use syntax::ext::base::MacroExpanderFn;
 use syntax::symbol::Symbol;
@@ -52,6 +54,9 @@ pub struct Registry<'a> {
     pub late_lint_passes: Vec<LateLintPassObject>,
 
     #[doc(hidden)]
+    pub mir_passes: Vec<Box<for<'pcx> MirMapPass<'pcx>>>,
+
+    #[doc(hidden)]
     pub lint_groups: HashMap<&'static str, Vec<LintId>>,
 
     #[doc(hidden)]
@@ -76,6 +81,7 @@ impl<'a> Registry<'a> {
             lint_groups: HashMap::new(),
             llvm_passes: vec![],
             attributes: vec![],
+            mir_passes: Vec::new(),
             whitelisted_custom_derives: Vec::new(),
         }
     }
@@ -149,6 +155,11 @@ impl<'a> Registry<'a> {
     /// Register a lint group.
     pub fn register_lint_group(&mut self, name: &'static str, to: Vec<&'static Lint>) {
         self.lint_groups.insert(name, to.into_iter().map(|x| LintId::of(x)).collect());
+    }
+
+    /// Register a MIR pass
+    pub fn register_mir_pass(&mut self, pass: Box<for<'pcx> MirMapPass<'pcx>>) {
+        self.mir_passes.push(pass);
     }
 
     /// Register an LLVM pass.

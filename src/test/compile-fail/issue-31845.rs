@@ -14,7 +14,7 @@ fn f() {
     fn g() {}
     mod foo {
         fn h() {
-           g(); //~ ERROR cannot find function `g` in this scope
+           g(); //~ ERROR unresolved function `g`
         }
     }
 }

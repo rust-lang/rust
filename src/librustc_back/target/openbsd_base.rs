@@ -8,23 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use LinkerFlavor;
-use target::{LinkArgs, TargetOptions};
+use target::TargetOptions;
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {
-    let mut args = LinkArgs::new();
-    args.insert(LinkerFlavor::Gcc, vec![
-        // GNU-style linkers will use this to omit linking to libraries
-        // which don't actually fulfill any relocations, but only for
-        // libraries which follow this flag.  Thus, use it before
-        // specifying libraries to link to.
-        "-Wl,--as-needed".to_string(),
-
-        // Always enable NX protection when it is available
-        "-Wl,-z,noexecstack".to_string(),
-    ]);
-
     TargetOptions {
         dynamic_linking: true,
         executables: true,
@@ -32,7 +19,16 @@ pub fn opts() -> TargetOptions {
         linker_is_gnu: true,
         has_rpath: true,
         is_like_openbsd: true,
-        pre_link_args: args,
+        pre_link_args: vec![
+            // GNU-style linkers will use this to omit linking to libraries
+            // which don't actually fulfill any relocations, but only for
+            // libraries which follow this flag.  Thus, use it before
+            // specifying libraries to link to.
+            "-Wl,--as-needed".to_string(),
+
+            // Always enable NX protection when it is available
+            "-Wl,-z,noexecstack".to_string(),
+        ],
         position_independent_executables: true,
         exe_allocation_crate: "alloc_system".to_string(),
         .. Default::default()

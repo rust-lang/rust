@@ -12,12 +12,11 @@
 #![crate_name = "unwind"]
 #![crate_type = "rlib"]
 #![unstable(feature = "panic_unwind", issue = "32837")]
-#![deny(warnings)]
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(cfg_target_vendor)]
 #![feature(staged_api)]
 #![feature(unwind_attributes)]
-#![feature(static_nobundle)]
 
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
 

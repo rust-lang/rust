@@ -62,7 +62,8 @@ pub fn check(path: &Path, bad: &mut bool) {
                 });
             let path_bytes = rel_path.as_os_str().as_bytes();
             if output.status.success() && output.stdout.starts_with(path_bytes) {
-                tidy_error!(bad, "binary checked into source: {}", file.display());
+                println!("binary checked into source: {}", file.display());
+                *bad = true;
             }
         }
     })

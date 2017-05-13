@@ -9,12 +9,14 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-# This file is only a "symlink" to bootstrap.py, all logic should go there.
-
-import os
 import sys
-rust_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(rust_dir, "src", "bootstrap"))
+import os
+dir = os.path.dirname(__file__)
+sys.path.append(os.path.abspath(os.path.join(dir, "src", "bootstrap")))
 
 import bootstrap
-bootstrap.main()
+
+try:
+    bootstrap.main()
+except KeyboardInterrupt:
+    sys.exit()

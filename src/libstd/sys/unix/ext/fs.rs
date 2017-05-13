@@ -77,8 +77,8 @@ pub trait PermissionsExt {
     /// use std::fs::File;
     /// use std::os::unix::fs::PermissionsExt;
     ///
-    /// let f = File::create("foo.txt")?;
-    /// let metadata = f.metadata()?;
+    /// let f = try!(File::create("foo.txt"));
+    /// let metadata = try!(f.metadata());
     /// let permissions = metadata.permissions();
     ///
     /// println!("permissions: {}", permissions.mode());
@@ -94,8 +94,8 @@ pub trait PermissionsExt {
     /// use std::fs::File;
     /// use std::os::unix::fs::PermissionsExt;
     ///
-    /// let f = File::create("foo.txt")?;
-    /// let metadata = f.metadata()?;
+    /// let f = try!(File::create("foo.txt"));
+    /// let metadata = try!(f.metadata());
     /// let mut permissions = metadata.permissions();
     ///
     /// permissions.set_mode(0o644); // Read/write for owner and read for others.
@@ -335,7 +335,7 @@ impl DirEntryExt for fs::DirEntry {
 /// use std::os::unix::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// fs::symlink("a.txt", "b.txt")?;
+/// try!(fs::symlink("a.txt", "b.txt"));
 /// # Ok(())
 /// # }
 /// ```

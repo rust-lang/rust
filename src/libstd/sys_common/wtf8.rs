@@ -236,11 +236,6 @@ impl Wtf8Buf {
         self.bytes.reserve_exact(additional)
     }
 
-    #[inline]
-    pub fn shrink_to_fit(&mut self) {
-        self.bytes.shrink_to_fit()
-    }
-
     /// Returns the number of bytes that this string buffer can hold without reallocating.
     #[inline]
     pub fn capacity(&self) -> usize {
@@ -344,18 +339,6 @@ impl Wtf8Buf {
                 None => return unsafe { String::from_utf8_unchecked(self.bytes) }
             }
         }
-    }
-
-    /// Converts this `Wtf8Buf` into a boxed `Wtf8`.
-    #[inline]
-    pub fn into_box(self) -> Box<Wtf8> {
-        unsafe { mem::transmute(self.bytes.into_boxed_slice()) }
-    }
-
-    /// Converts a `Box<Wtf8>` into a `Wtf8Buf`.
-    pub fn from_box(boxed: Box<Wtf8>) -> Wtf8Buf {
-        let bytes: Box<[u8]> = unsafe { mem::transmute(boxed) };
-        Wtf8Buf { bytes: bytes.into_vec() }
     }
 }
 
@@ -599,19 +582,6 @@ impl Wtf8 {
             &[0xED, b2 @ 0xB0...0xBF, b3] => Some(decode_surrogate(b2, b3)),
             _ => None
         }
-    }
-
-    /// Boxes this `Wtf8`.
-    #[inline]
-    pub fn into_box(&self) -> Box<Wtf8> {
-        let boxed: Box<[u8]> = self.bytes.into();
-        unsafe { mem::transmute(boxed) }
-    }
-
-    /// Creates a boxed, empty `Wtf8`.
-    pub fn empty_box() -> Box<Wtf8> {
-        let boxed: Box<[u8]> = Default::default();
-        unsafe { mem::transmute(boxed) }
     }
 }
 

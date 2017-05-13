@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(pub_restricted)]
 #![deny(private_in_public)]
 #![allow(warnings)]
 
 mod foo {
     pub mod bar {
         pub struct S {
-            pub(in foo) x: i32,
+            pub(foo) x: i32,
         }
     }
 

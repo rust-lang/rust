@@ -14,24 +14,22 @@
 
 use fmt;
 
-#[cfg(any(target_os = "emscripten",
+#[cfg(any(target_os = "android",
+          target_os = "emscripten",
           all(target_os = "linux", any(target_arch = "aarch64",
                                        target_arch = "arm",
                                        target_arch = "powerpc",
                                        target_arch = "powerpc64",
                                        target_arch = "s390x")),
-          all(target_os = "android", any(target_arch = "aarch64",
-                                         target_arch = "arm")),
           all(target_os = "fuchsia", target_arch = "aarch64")))]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_char = u8;
-#[cfg(not(any(target_os = "emscripten",
+#[cfg(not(any(target_os = "android",
+              target_os = "emscripten",
               all(target_os = "linux", any(target_arch = "aarch64",
                                            target_arch = "arm",
                                            target_arch = "powerpc",
                                            target_arch = "powerpc64",
                                            target_arch = "s390x")),
-              all(target_os = "android", any(target_arch = "aarch64",
-                                             target_arch = "arm")),
               all(target_os = "fuchsia", target_arch = "aarch64"))))]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_char = i8;
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_schar = i8;
@@ -75,7 +73,7 @@ pub enum c_void {
     #[doc(hidden)] __variant2,
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[stable(feature = "std_debug", since = "1.15.0")]
 impl fmt::Debug for c_void {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("c_void")

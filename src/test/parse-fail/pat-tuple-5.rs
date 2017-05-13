@@ -12,6 +12,6 @@
 
 fn main() {
     match 0 {
-        (pat ..) => {} //~ ERROR unexpected token: `)`
+        (pat ..) => {} //~ ERROR expected one of `)`, `,`, or `@`, found `..`
     }
 }

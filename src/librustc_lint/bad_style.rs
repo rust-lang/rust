@@ -27,15 +27,19 @@ pub enum MethodLateContext {
     PlainImpl,
 }
 
-pub fn method_context(cx: &LateContext, id: ast::NodeId) -> MethodLateContext {
-    let def_id = cx.tcx.hir.local_def_id(id);
-    let item = cx.tcx.associated_item(def_id);
-    match item.container {
-        ty::TraitContainer(..) => MethodLateContext::TraitDefaultImpl,
-        ty::ImplContainer(cid) => {
-            match cx.tcx.impl_trait_ref(cid) {
-                Some(_) => MethodLateContext::TraitImpl,
-                None => MethodLateContext::PlainImpl,
+pub fn method_context(cx: &LateContext, id: ast::NodeId, span: Span) -> MethodLateContext {
+    let def_id = cx.tcx.map.local_def_id(id);
+    match cx.tcx.associated_items.borrow().get(&def_id) {
+        None => span_bug!(span, "missing method descriptor?!"),
+        Some(item) => {
+            match item.container {
+                ty::TraitContainer(..) => MethodLateContext::TraitDefaultImpl,
+                ty::ImplContainer(cid) => {
+                    match cx.tcx.impl_trait_ref(cid) {
+                        Some(_) => MethodLateContext::TraitImpl,
+                        None => MethodLateContext::PlainImpl,
+                    }
+                }
             }
         }
     }
@@ -84,7 +88,7 @@ impl NonCamelCaseTypes {
             } else {
                 format!("{} `{}` should have a camel case name such as `{}`", sort, name, c)
             };
-            cx.span_lint(NON_CAMEL_CASE_TYPES, span, &m);
+            cx.span_lint(NON_CAMEL_CASE_TYPES, span, &m[..]);
         }
     }
 }
@@ -113,16 +117,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
 
         match it.node {
             hir::ItemTy(..) |
-            hir::ItemEnum(..) |
             hir::ItemStruct(..) |
             hir::ItemUnion(..) => self.check_case(cx, "type", it.name, it.span),
             hir::ItemTrait(..) => self.check_case(cx, "trait", it.name, it.span),
+            hir::ItemEnum(ref enum_definition, _) => {
+                if has_extern_repr {
+                    return;
+                }
+                self.check_case(cx, "type", it.name, it.span);
+                for variant in &enum_definition.variants {
+                    self.check_case(cx, "variant", variant.node.name, variant.span);
+                }
+            }
             _ => (),
         }
-    }
-
-    fn check_variant(&mut self, cx: &LateContext, v: &hir::Variant, _: &hir::Generics) {
-        self.check_case(cx, "variant", v.node.name, v.span);
     }
 
     fn check_generics(&mut self, cx: &LateContext, it: &hir::Generics) {
@@ -240,7 +248,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
                 id: ast::NodeId) {
         match fk {
             FnKind::Method(name, ..) => {
-                match method_context(cx, id) {
+                match method_context(cx, id, span) {
                     MethodLateContext::PlainImpl => {
                         self.check_snake_case(cx, "method", &name.as_str(), Some(span))
                     }
@@ -369,8 +377,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
         if let PatKind::Path(hir::QPath::Resolved(None, ref path)) = p.node {
-            if let Def::Const(..) = path.def {
-                if path.segments.len() == 1 {
+            if path.segments.len() == 1 && path.segments[0].parameters.is_empty() {
+                if let Def::Const(..) = path.def {
                     NonUpperCaseGlobals::check_upper_case(cx,
                                                           "constant in pattern",
                                                           path.segments[0].name,

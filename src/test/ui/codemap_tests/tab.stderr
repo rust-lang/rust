@@ -1,8 +1,8 @@
-error[E0425]: cannot find value `bar` in this scope
+error[E0425]: unresolved value `bar`
   --> $DIR/tab.rs:14:2
    |
 14 | \tbar;
-   | \t^^^ not found in this scope
+   | \t^^^ no resolution found
 
 error: aborting due to previous error
 

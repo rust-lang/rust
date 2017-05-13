@@ -13,5 +13,5 @@ fn main() {
     let a = 1;
     let b = 2;
     unsafe {swap::<&mut _>(transmute(&a), transmute(&b))};
-    //~^ ERROR type annotations needed
+    //~^ ERROR unable to infer enough type information about `_`
 }

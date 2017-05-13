@@ -51,20 +51,7 @@
 # support. You'll need to write a target specification at least, and most
 # likely, teach rustc about the C ABI of the target. Get in touch with the
 # Rust team and file an issue if you need assistance in porting!
-#targets = "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX;Hexagon"
-
-# Cap the number of parallel linker invocations when compiling LLVM.
-# This can be useful when building LLVM with debug info, which significantly
-# increases the size of binaries and consequently the memory required by
-# each linker process.
-# If absent or 0, linker invocations are treated like any other job and
-# controlled by rustbuild's -j parameter.
-#link-jobs = 0
-
-# Delete LLVM build directory on LLVM rebuild.
-# This option defaults to `false` for local development, but CI may want to
-# always perform clean full builds (possibly accelerated by (s)ccache).
-#clean-rebuild = false
+#targets = "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX"
 
 # =============================================================================
 # General build configuration options
@@ -88,11 +75,11 @@
 # for each target triple.
 #target = ["x86_64-unknown-linux-gnu"] # defaults to just the build triple
 
-# Instead of downloading the src/stage0.txt version of Cargo specified, use
+# Instead of downloading the src/nightlies.txt version of Cargo specified, use
 # this Cargo binary instead to build all Rust code
 #cargo = "/path/to/bin/cargo"
 
-# Instead of downloading the src/stage0.txt version of the compiler
+# Instead of downloading the src/nightlies.txt version of the compiler
 # specified, use this rustc binary instead as the stage0 snapshot compiler.
 #rustc = "/path/to/bin/rustc"
 
@@ -121,10 +108,6 @@
 # Note that Python 2 is currently required.
 #python = "python2.7"
 
-# Force Cargo to check that Cargo.lock describes the precise dependency
-# set that all the Cargo.toml files create, instead of updating it.
-#locked-deps = false
-
 # Indicate whether the vendored sources are used for Rust dependencies or not
 #vendor = false
 
@@ -135,39 +118,13 @@
 # option to true.
 #full-bootstrap = false
 
-# Enable a build of the and extended rust tool set which is not only the
-# compiler but also tools such as Cargo. This will also produce "combined
-# installers" which are used to install Rust and Cargo together. This is
-# disabled by default.
-#extended = false
-
-# Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
-#verbose = 0
-
-# Build the sanitizer runtimes
-#sanitizers = false
-
-# Indicates whether the OpenSSL linked into Cargo will be statically linked or
-# not. If static linkage is specified then the build system will download a
-# known-good version of OpenSSL, compile it, and link it to Cargo.
-#openssl-static = false
-
 # =============================================================================
 # General install configuration options
 # =============================================================================
 [install]
 
 # Instead of installing to /usr/local, install to this path instead.
-#prefix = "/usr/local"
-
-# Where to install libraries in `prefix` above
-#libdir = "lib"
-
-# Where to install man pages in `prefix` above
-#mandir = "share/man"
-
-# Where to install documentation in `prefix` above
-#docdir = "share/doc/rust"
+#prefix = "/path/to/install"
 
 # =============================================================================
 # Options for compiling Rust code itself
@@ -191,11 +148,6 @@
 
 # Whether or not line number debug information is emitted
 #debuginfo-lines = false
-
-# Whether or not to only build debuginfo for the standard library if enabled.
-# If enabled, this will not compile the compiler with debuginfo, just the
-# standard library.
-#debuginfo-only-std = false
 
 # Whether or not jemalloc is built and enabled
 #use-jemalloc = true
@@ -270,33 +222,3 @@
 # that this option only makes sense for MUSL targets that produce statically
 # linked binaries
 #musl-root = "..."
-
-# =============================================================================
-# Distribution options
-#
-# These options are related to distribution, mostly for the Rust project itself.
-# You probably won't need to concern yourself with any of these options
-# =============================================================================
-[dist]
-
-# This is the folder of artifacts that the build system will sign. All files in
-# this directory will be signed with the default gpg key using the system `gpg`
-# binary. The `asc` and `sha256` files will all be output into the standard dist
-# output folder (currently `build/dist`)
-#
-# This folder should be populated ahead of time before the build system is
-# invoked.
-#sign-folder = "path/to/folder/to/sign"
-
-# This is a file which contains the password of the default gpg key. This will
-# be passed to `gpg` down the road when signing all files in `sign-folder`
-# above. This should be stored in plaintext.
-#gpg-password-file = "path/to/gpg/password"
-
-# The remote address that all artifacts will eventually be uploaded to. The
-# build system generates manifests which will point to these urls, and for the
-# manifests to be correct they'll have to have the right URLs encoded.
-#
-# Note that this address should not contain a trailing slash as file names will
-# be appended to it.
-#upload-addr = "https://example.com/folder"

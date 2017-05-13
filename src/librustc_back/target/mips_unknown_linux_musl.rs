@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use LinkerFlavor;
 use target::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
@@ -21,7 +20,6 @@ pub fn target() -> TargetResult {
         target_os: "linux".to_string(),
         target_env: "musl".to_string(),
         target_vendor: "unknown".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
             cpu: "mips32r2".to_string(),
             features: "+mips32r2,+soft-float".to_string(),

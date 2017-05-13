@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-associated_consts
-
 trait MyTrait {
     const C: bool;
     //~^ associated constants are experimental

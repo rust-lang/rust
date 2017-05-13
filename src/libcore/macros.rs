@@ -32,11 +32,11 @@ macro_rules! panic {
 
 /// Ensure that a boolean expression is `true` at runtime.
 ///
-/// This will invoke the [`panic!`] macro if the provided expression cannot be
+/// This will invoke the `panic!` macro if the provided expression cannot be
 /// evaluated to `true` at runtime.
 ///
 /// Assertions are always checked in both debug and release builds, and cannot
-/// be disabled. See [`debug_assert!`] for assertions that are not enabled in
+/// be disabled. See `debug_assert!` for assertions that are not enabled in
 /// release builds by default.
 ///
 /// Unsafe code relies on `assert!` to enforce run-time invariants that, if
@@ -45,11 +45,8 @@ macro_rules! panic {
 /// Other use-cases of `assert!` include [testing] and enforcing run-time
 /// invariants in safe code (whose violation cannot result in unsafety).
 ///
-/// This macro has a second version, where a custom panic message can
-/// be provided with or without arguments for formatting.
+/// This macro has a second version, where a custom panic message can be provided.
 ///
-/// [`panic!`]: macro.panic.html
-/// [`debug_assert!`]: macro.debug_assert.html
 /// [testing]: ../book/testing.html
 ///
 /// # Examples
@@ -90,24 +87,17 @@ macro_rules! assert {
 /// On panic, this macro will print the values of the expressions with their
 /// debug representations.
 ///
-/// Like [`assert!`], this macro has a second version, where a custom
-/// panic message can be provided.
-///
-/// [`assert!`]: macro.assert.html
-///
 /// # Examples
 ///
 /// ```
 /// let a = 3;
 /// let b = 1 + 2;
 /// assert_eq!(a, b);
-///
-/// assert_eq!(a, b, "we are testing addition with {} and {}", a, b);
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! assert_eq {
-    ($left:expr, $right:expr) => ({
+    ($left:expr , $right:expr) => ({
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
@@ -117,13 +107,13 @@ macro_rules! assert_eq {
             }
         }
     });
-    ($left:expr, $right:expr, $($arg:tt)+) => ({
+    ($left:expr , $right:expr, $($arg:tt)*) => ({
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
                     panic!("assertion failed: `(left == right)` \
                            (left: `{:?}`, right: `{:?}`): {}", left_val, right_val,
-                           format_args!($($arg)+))
+                           format_args!($($arg)*))
                 }
             }
         }
@@ -135,24 +125,17 @@ macro_rules! assert_eq {
 /// On panic, this macro will print the values of the expressions with their
 /// debug representations.
 ///
-/// Like `assert!()`, this macro has a second version, where a custom
-/// panic message can be provided.
-///
-/// [`assert!`]: macro.assert.html
-///
 /// # Examples
 ///
 /// ```
 /// let a = 3;
 /// let b = 2;
 /// assert_ne!(a, b);
-///
-/// assert_ne!(a, b, "we are testing that the values are not equal");
 /// ```
 #[macro_export]
-#[stable(feature = "assert_ne", since = "1.13.0")]
+#[stable(feature = "assert_ne", since = "1.12.0")]
 macro_rules! assert_ne {
-    ($left:expr, $right:expr) => ({
+    ($left:expr , $right:expr) => ({
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
@@ -162,13 +145,13 @@ macro_rules! assert_ne {
             }
         }
     });
-    ($left:expr, $right:expr, $($arg:tt)+) => ({
+    ($left:expr , $right:expr, $($arg:tt)*) => ({
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
                     panic!("assertion failed: `(left != right)` \
                            (left: `{:?}`, right: `{:?}`): {}", left_val, right_val,
-                           format_args!($($arg)+))
+                           format_args!($($arg)*))
                 }
             }
         }
@@ -177,13 +160,13 @@ macro_rules! assert_ne {
 
 /// Ensure that a boolean expression is `true` at runtime.
 ///
-/// This will invoke the [`panic!`] macro if the provided expression cannot be
+/// This will invoke the `panic!` macro if the provided expression cannot be
 /// evaluated to `true` at runtime.
 ///
-/// Like [`assert!`], this macro also has a second version, where a custom panic
+/// Like `assert!`, this macro also has a second version, where a custom panic
 /// message can be provided.
 ///
-/// Unlike [`assert!`], `debug_assert!` statements are only enabled in non
+/// Unlike `assert!`, `debug_assert!` statements are only enabled in non
 /// optimized builds by default. An optimized build will omit all
 /// `debug_assert!` statements unless `-C debug-assertions` is passed to the
 /// compiler. This makes `debug_assert!` useful for checks that are too
@@ -193,12 +176,9 @@ macro_rules! assert_ne {
 /// An unchecked assertion allows a program in an inconsistent state to keep
 /// running, which might have unexpected consequences but does not introduce
 /// unsafety as long as this only happens in safe code. The performance cost
-/// of assertions, is however, not measurable in general. Replacing [`assert!`]
+/// of assertions, is however, not measurable in general. Replacing `assert!`
 /// with `debug_assert!` is thus only encouraged after thorough profiling, and
 /// more importantly, only in safe code!
-///
-/// [`panic!`]: macro.panic.html
-/// [`assert!`]: macro.assert.html
 ///
 /// # Examples
 ///
@@ -268,7 +248,7 @@ macro_rules! debug_assert_eq {
 /// debug_assert_ne!(a, b);
 /// ```
 #[macro_export]
-#[stable(feature = "assert_ne", since = "1.13.0")]
+#[stable(feature = "assert_ne", since = "1.12.0")]
 macro_rules! debug_assert_ne {
     ($($arg:tt)*) => (if cfg!(debug_assertions) { assert_ne!($($arg)*); })
 }
@@ -337,20 +317,27 @@ macro_rules! try {
 
 /// Write formatted data into a buffer
 ///
-/// This macro accepts a format string, a list of arguments, and a 'writer'. Arguments will be
-/// formatted according to the specified format string and the result will be passed to the writer.
-/// The writer may be any value with a `write_fmt` method; generally this comes from an
-/// implementation of either the [`std::fmt::Write`] or the [`std::io::Write`] trait. The macro
-/// returns whatever the 'write_fmt' method returns; commonly a [`std::fmt::Result`], or an
-/// [`io::Result`].
+/// This macro accepts a 'writer' (any value with a `write_fmt` method), a format string, and a
+/// list of arguments to format.
 ///
-/// See [`std::fmt`] for more information on the format string syntax.
+/// The `write_fmt` method usually comes from an implementation of [`std::fmt::Write`][fmt_write]
+/// or [`std::io::Write`][io_write] traits. The term 'writer' refers to an implementation of one of
+/// these two traits.
 ///
-/// [`std::fmt`]: ../std/fmt/index.html
-/// [`std::fmt::Write`]: ../std/fmt/trait.Write.html
-/// [`std::io::Write`]: ../std/io/trait.Write.html
-/// [`std::fmt::Result`]: ../std/fmt/type.Result.html
-/// [`io::Result`]: ../std/io/type.Result.html
+/// Passed arguments will be formatted according to the specified format string and the resulting
+/// string will be passed to the writer.
+///
+/// See [`std::fmt`][fmt] for more information on format syntax.
+///
+/// `write!` returns whatever the 'write_fmt' method returns.
+///
+/// Common return values include: [`fmt::Result`][fmt_result], [`io::Result`][io_result]
+///
+/// [fmt]: ../std/fmt/index.html
+/// [fmt_write]: ../std/fmt/trait.Write.html
+/// [io_write]: ../std/io/trait.Write.html
+/// [fmt_result]: ../std/fmt/type.Result.html
+/// [io_result]: ../std/io/type.Result.html
 ///
 /// # Examples
 ///
@@ -379,7 +366,7 @@ macro_rules! try {
 /// assert_eq!(v, b"s = \"abc 123\"");
 /// ```
 #[macro_export]
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "core", since = "1.6.0")]
 macro_rules! write {
     ($dst:expr, $($arg:tt)*) => ($dst.write_fmt(format_args!($($arg)*)))
 }
@@ -389,12 +376,27 @@ macro_rules! write {
 /// On all platforms, the newline is the LINE FEED character (`\n`/`U+000A`) alone
 /// (no additional CARRIAGE RETURN (`\r`/`U+000D`).
 ///
-/// For more information, see [`write!`]. For information on the format string syntax, see
-/// [`std::fmt`].
+/// This macro accepts a 'writer' (any value with a `write_fmt` method), a format string, and a
+/// list of arguments to format.
 ///
-/// [`write!`]: macro.write.html
-/// [`std::fmt`]: ../std/fmt/index.html
+/// The `write_fmt` method usually comes from an implementation of [`std::fmt::Write`][fmt_write]
+/// or [`std::io::Write`][io_write] traits. The term 'writer' refers to an implementation of one of
+/// these two traits.
 ///
+/// Passed arguments will be formatted according to the specified format string and the resulting
+/// string will be passed to the writer, along with the appended newline.
+///
+/// See [`std::fmt`][fmt] for more information on format syntax.
+///
+/// `write!` returns whatever the 'write_fmt' method returns.
+///
+/// Common return values include: [`fmt::Result`][fmt_result], [`io::Result`][io_result]
+///
+/// [fmt]: ../std/fmt/index.html
+/// [fmt_write]: ../std/fmt/trait.Write.html
+/// [io_write]: ../std/io/trait.Write.html
+/// [fmt_result]: ../std/fmt/type.Result.html
+/// [io_result]: ../std/io/type.Result.html
 ///
 /// # Examples
 ///
@@ -402,11 +404,10 @@ macro_rules! write {
 /// use std::io::Write;
 ///
 /// let mut w = Vec::new();
-/// writeln!(&mut w).unwrap();
 /// writeln!(&mut w, "test").unwrap();
 /// writeln!(&mut w, "formatted {}", "arguments").unwrap();
 ///
-/// assert_eq!(&w[..], "\ntest\nformatted arguments\n".as_bytes());
+/// assert_eq!(&w[..], "test\nformatted arguments\n".as_bytes());
 /// ```
 ///
 /// A module can import both `std::fmt::Write` and `std::io::Write` and call `write!` on objects
@@ -426,9 +427,6 @@ macro_rules! write {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! writeln {
-    ($dst:expr) => (
-        write!($dst, "\n")
-    );
     ($dst:expr, $fmt:expr) => (
         write!($dst, concat!($fmt, "\n"))
     );
@@ -479,7 +477,7 @@ macro_rules! writeln {
 /// }
 /// ```
 #[macro_export]
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "core", since = "1.6.0")]
 macro_rules! unreachable {
     () => ({
         panic!("internal error: entered unreachable code")
@@ -540,7 +538,7 @@ macro_rules! unreachable {
 /// }
 /// ```
 #[macro_export]
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "core", since = "1.6.0")]
 macro_rules! unimplemented {
     () => (panic!("not yet implemented"))
 }

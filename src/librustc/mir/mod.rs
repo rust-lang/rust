@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! MIR datatypes and passes. See [the README](README.md) for details.
-
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
@@ -19,9 +17,8 @@ use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccesso
 use rustc_data_structures::control_flow_graph::ControlFlowGraph;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
-use ty::subst::{Subst, Substs};
+use ty::subst::Substs;
 use ty::{self, AdtDef, ClosureSubsts, Region, Ty};
-use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use util::ppaux;
 use rustc_back::slice;
 use hir::InlineAsm;
@@ -32,7 +29,7 @@ use std::fmt::{self, Debug, Formatter, Write};
 use std::{iter, u32};
 use std::ops::{Index, IndexMut};
 use std::vec::IntoIter;
-use syntax::ast::Name;
+use syntax::ast::{self, Name};
 use syntax_pos::Span;
 
 mod cache;
@@ -66,7 +63,8 @@ macro_rules! newtype_index {
 }
 
 /// Lowered representation of a single function.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+// Do not implement clone for Mir, its easy to do so accidently and its kind of expensive.
+#[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct Mir<'tcx> {
     /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
     /// that indexes into this vector.
@@ -199,10 +197,10 @@ impl<'tcx> Mir<'tcx> {
     pub fn temps_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
         (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
-            if self.local_decls[local].is_user_variable {
-                None
-            } else {
+            if self.local_decls[local].source_info.is_none() {
                 Some(local)
+            } else {
+                None
             }
         })
     }
@@ -212,10 +210,10 @@ impl<'tcx> Mir<'tcx> {
     pub fn vars_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
         (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
-            if self.local_decls[local].is_user_variable {
-                Some(local)
-            } else {
+            if self.local_decls[local].source_info.is_none() {
                 None
+            } else {
+                Some(local)
             }
         })
     }
@@ -244,19 +242,6 @@ impl<'tcx> Mir<'tcx> {
         block.statements[location.statement_index].make_nop()
     }
 }
-
-impl_stable_hash_for!(struct Mir<'tcx> {
-    basic_blocks,
-    visibility_scopes,
-    promoted,
-    return_ty,
-    local_decls,
-    arg_count,
-    upvar_decls,
-    spread_arg,
-    span,
-    cache
-});
 
 impl<'tcx> Index<BasicBlock> for Mir<'tcx> {
     type Output = BasicBlockData<'tcx>;
@@ -372,9 +357,6 @@ pub struct LocalDecl<'tcx> {
     /// Temporaries and the return pointer are always mutable.
     pub mutability: Mutability,
 
-    /// True if this corresponds to a user-declared local variable.
-    pub is_user_variable: bool,
-
     /// Type of this local.
     pub ty: Ty<'tcx>,
 
@@ -384,23 +366,24 @@ pub struct LocalDecl<'tcx> {
     /// to generate better debuginfo.
     pub name: Option<Name>,
 
-    /// Source info of the local.
-    pub source_info: SourceInfo,
+    /// For user-declared variables, stores their source information.
+    ///
+    /// For temporaries, this is `None`.
+    ///
+    /// This is the primary way to differentiate between user-declared
+    /// variables and compiler-generated temporaries.
+    pub source_info: Option<SourceInfo>,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
     /// Create a new `LocalDecl` for a temporary.
     #[inline]
-    pub fn new_temp(ty: Ty<'tcx>, span: Span) -> Self {
+    pub fn new_temp(ty: Ty<'tcx>) -> Self {
         LocalDecl {
             mutability: Mutability::Mut,
             ty: ty,
             name: None,
-            source_info: SourceInfo {
-                span: span,
-                scope: ARGUMENT_VISIBILITY_SCOPE
-            },
-            is_user_variable: false
+            source_info: None,
         }
     }
 
@@ -408,16 +391,12 @@ impl<'tcx> LocalDecl<'tcx> {
     ///
     /// This must be inserted into the `local_decls` list as the first local.
     #[inline]
-    pub fn new_return_pointer(return_ty: Ty, span: Span) -> LocalDecl {
+    pub fn new_return_pointer(return_ty: Ty) -> LocalDecl {
         LocalDecl {
             mutability: Mutability::Mut,
             ty: return_ty,
-            source_info: SourceInfo {
-                span: span,
-                scope: ARGUMENT_VISIBILITY_SCOPE
-            },
+            source_info: None,
             name: None,     // FIXME maybe we do want some name here?
-            is_user_variable: false
         }
     }
 }
@@ -474,30 +453,36 @@ pub enum TerminatorKind<'tcx> {
         target: BasicBlock,
     },
 
+    /// jump to branch 0 if this lvalue evaluates to true
+    If {
+        cond: Operand<'tcx>,
+        targets: (BasicBlock, BasicBlock),
+    },
+
+    /// lvalue evaluates to some enum; jump depending on the branch
+    Switch {
+        discr: Lvalue<'tcx>,
+        adt_def: &'tcx AdtDef,
+        targets: Vec<BasicBlock>,
+    },
+
     /// operand evaluates to an integer; jump depending on its value
     /// to one of the targets, and otherwise fallback to `otherwise`
     SwitchInt {
         /// discriminant value being tested
-        discr: Operand<'tcx>,
+        discr: Lvalue<'tcx>,
 
         /// type of value being tested
         switch_ty: Ty<'tcx>,
 
         /// Possible values. The locations to branch to in each case
         /// are found in the corresponding indices from the `targets` vector.
-        values: Cow<'tcx, [ConstInt]>,
+        values: Vec<ConstVal>,
 
-        /// Possible branch sites. The last element of this vector is used
-        /// for the otherwise branch, so targets.len() == values.len() + 1
-        /// should hold.
-        // This invariant is quite non-obvious and also could be improved.
-        // One way to make this invariant is to have something like this instead:
-        //
-        // branches: Vec<(ConstInt, BasicBlock)>,
-        // otherwise: Option<BasicBlock> // exhaustive if None
-        //
-        // However we’ve decided to keep this as-is until we figure a case
-        // where some other approach seems to be strictly better than other.
+        /// Possible branch sites. The length of this vector should be
+        /// equal to the length of the `values` vector plus 1 -- the
+        /// extra item is the block to branch to if none of the values
+        /// fit.
         targets: Vec<BasicBlock>,
     },
 
@@ -561,21 +546,12 @@ impl<'tcx> Terminator<'tcx> {
 }
 
 impl<'tcx> TerminatorKind<'tcx> {
-    pub fn if_<'a, 'gcx>(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>, cond: Operand<'tcx>,
-                         t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
-        static BOOL_SWITCH_FALSE: &'static [ConstInt] = &[ConstInt::U8(0)];
-        TerminatorKind::SwitchInt {
-            discr: cond,
-            switch_ty: tcx.types.bool,
-            values: From::from(BOOL_SWITCH_FALSE),
-            targets: vec![f, t],
-        }
-    }
-
     pub fn successors(&self) -> Cow<[BasicBlock]> {
         use self::TerminatorKind::*;
         match *self {
             Goto { target: ref b } => slice::ref_slice(b).into_cow(),
+            If { targets: (b1, b2), .. } => vec![b1, b2].into_cow(),
+            Switch { targets: ref b, .. } => b[..].into_cow(),
             SwitchInt { targets: ref b, .. } => b[..].into_cow(),
             Resume => (&[]).into_cow(),
             Return => (&[]).into_cow(),
@@ -604,6 +580,8 @@ impl<'tcx> TerminatorKind<'tcx> {
         use self::TerminatorKind::*;
         match *self {
             Goto { target: ref mut b } => vec![b],
+            If { targets: (ref mut b1, ref mut b2), .. } => vec![b1, b2],
+            Switch { targets: ref mut b, .. } => b.iter_mut().collect(),
             SwitchInt { targets: ref mut b, .. } => b.iter_mut().collect(),
             Resume => Vec::new(),
             Return => Vec::new(),
@@ -681,6 +659,8 @@ impl<'tcx> TerminatorKind<'tcx> {
         use self::TerminatorKind::*;
         match *self {
             Goto { .. } => write!(fmt, "goto"),
+            If { cond: ref lv, .. } => write!(fmt, "if({:?})", lv),
+            Switch { discr: ref lv, .. } => write!(fmt, "switch({:?})", lv),
             SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
             Return => write!(fmt, "return"),
             Resume => write!(fmt, "resume"),
@@ -730,11 +710,18 @@ impl<'tcx> TerminatorKind<'tcx> {
         match *self {
             Return | Resume | Unreachable => vec![],
             Goto { .. } => vec!["".into()],
+            If { .. } => vec!["true".into(), "false".into()],
+            Switch { ref adt_def, .. } => {
+                adt_def.variants
+                       .iter()
+                       .map(|variant| variant.name.to_string().into())
+                       .collect()
+            }
             SwitchInt { ref values, .. } => {
                 values.iter()
                       .map(|const_val| {
                           let mut buf = String::new();
-                          fmt_const_val(&mut buf, &ConstVal::Integral(*const_val)).unwrap();
+                          fmt_const_val(&mut buf, const_val).unwrap();
                           buf.into()
                       })
                       .chain(iter::once(String::from("otherwise").into()))
@@ -798,12 +785,6 @@ pub enum StatementKind<'tcx> {
     /// End the current live range for the storage of the local.
     StorageDead(Lvalue<'tcx>),
 
-    InlineAsm {
-        asm: InlineAsm,
-        outputs: Vec<Lvalue<'tcx>>,
-        inputs: Vec<Operand<'tcx>>
-    },
-
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
 }
@@ -817,10 +798,7 @@ impl<'tcx> Debug for Statement<'tcx> {
             StorageDead(ref lv) => write!(fmt, "StorageDead({:?})", lv),
             SetDiscriminant{lvalue: ref lv, variant_index: index} => {
                 write!(fmt, "discriminant({:?}) = {:?}", lv, index)
-            },
-            InlineAsm { ref asm, ref outputs, ref inputs } => {
-                write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)
-            },
+            }
             Nop => write!(fmt, "nop"),
         }
     }
@@ -837,24 +815,11 @@ pub enum Lvalue<'tcx> {
     Local(Local),
 
     /// static or static mut variable
-    Static(Box<Static<'tcx>>),
+    Static(DefId),
 
     /// projection out of an lvalue (access a field, deref a pointer, etc)
     Projection(Box<LvalueProjection<'tcx>>),
 }
-
-/// The def-id of a static, along with its normalized type (which is
-/// stored to avoid requiring normalization when reading MIR).
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
-pub struct Static<'tcx> {
-    pub def_id: DefId,
-    pub ty: Ty<'tcx>,
-}
-
-impl_stable_hash_for!(struct Static<'tcx> {
-    def_id,
-    ty
-});
 
 /// The `Projection` data structure defines things of the form `B.x`
 /// or `*B` or `B[index]`. Note that it is parameterized because it is
@@ -945,8 +910,8 @@ impl<'tcx> Debug for Lvalue<'tcx> {
 
         match *self {
             Local(id) => write!(fmt, "{:?}", id),
-            Static(box self::Static { def_id, ty }) =>
-                write!(fmt, "({}: {:?})", ty::tls::with(|tcx| tcx.item_path_str(def_id)), ty),
+            Static(def_id) =>
+                write!(fmt, "{}", ty::tls::with(|tcx| tcx.item_path_str(def_id))),
             Projection(ref data) =>
                 match data.elem {
                     ProjectionElem::Downcast(ref adt_def, index) =>
@@ -1008,22 +973,6 @@ impl<'tcx> Debug for Operand<'tcx> {
     }
 }
 
-impl<'tcx> Operand<'tcx> {
-    pub fn function_handle<'a>(
-        tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-        def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
-        span: Span,
-    ) -> Self {
-        Operand::Constant(Constant {
-            span: span,
-            ty: tcx.type_of(def_id).subst(tcx, substs),
-            literal: Literal::Value { value: ConstVal::Function(def_id, substs) },
-        })
-    }
-
-}
-
 ///////////////////////////////////////////////////////////////////////////
 /// Rvalues
 
@@ -1033,10 +982,10 @@ pub enum Rvalue<'tcx> {
     Use(Operand<'tcx>),
 
     /// [x; 32]
-    Repeat(Operand<'tcx>, ConstUsize),
+    Repeat(Operand<'tcx>, TypedConstVal<'tcx>),
 
     /// &x or &mut x
-    Ref(Region<'tcx>, BorrowKind, Lvalue<'tcx>),
+    Ref(&'tcx Region, BorrowKind, Lvalue<'tcx>),
 
     /// length of a [X] or [X;n] value
     Len(Lvalue<'tcx>),
@@ -1048,12 +997,6 @@ pub enum Rvalue<'tcx> {
 
     UnaryOp(UnOp, Operand<'tcx>),
 
-    /// Read the discriminant of an ADT.
-    ///
-    /// Undefined (i.e. no effort is made to make it defined, but there’s no reason why it cannot
-    /// be defined to return, say, a 0) if ADT is not an enum.
-    Discriminant(Lvalue<'tcx>),
-
     /// Creates an *uninitialized* Box
     Box(Ty<'tcx>),
 
@@ -1063,6 +1006,12 @@ pub enum Rvalue<'tcx> {
     /// that `Foo` has a destructor. These rvalues can be optimized
     /// away after type-checking and before lowering.
     Aggregate(AggregateKind<'tcx>, Vec<Operand<'tcx>>),
+
+    InlineAsm {
+        asm: InlineAsm,
+        outputs: Vec<Lvalue<'tcx>>,
+        inputs: Vec<Operand<'tcx>>
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
@@ -1071,9 +1020,6 @@ pub enum CastKind {
 
     /// Convert unique, zero-sized type for a fn to fn()
     ReifyFnPointer,
-
-    /// Convert non capturing closure to fn()
-    ClosureFnPointer,
 
     /// Convert safe fn() to unsafe fn()
     UnsafeFnPointer,
@@ -1088,8 +1034,7 @@ pub enum CastKind {
 
 #[derive(Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum AggregateKind<'tcx> {
-    /// The type is of the element
-    Array(Ty<'tcx>),
+    Array,
     Tuple,
     /// The second field is variant number (discriminant), it's equal to 0
     /// for struct and union expressions. The fourth field is active field
@@ -1166,8 +1111,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 write!(fmt, "Checked{:?}({:?}, {:?})", op, a, b)
             }
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
-            Discriminant(ref lval) => write!(fmt, "discriminant({:?})", lval),
             Box(ref t) => write!(fmt, "Box({:?})", t),
+            InlineAsm { ref asm, ref outputs, ref inputs } => {
+                write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)
+            }
+
             Ref(_, borrow_kind, ref lv) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
@@ -1186,7 +1134,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 }
 
                 match *kind {
-                    AggregateKind::Array(_) => write!(fmt, "{:?}", lvs),
+                    AggregateKind::Array => write!(fmt, "{:?}", lvs),
 
                     AggregateKind::Tuple => {
                         match lvs.len() {
@@ -1215,14 +1163,14 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     }
 
                     AggregateKind::Closure(def_id, _) => ty::tls::with(|tcx| {
-                        if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
-                            let name = format!("[closure@{:?}]", tcx.hir.span(node_id));
+                        if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
+                            let name = format!("[closure@{:?}]", tcx.map.span(node_id));
                             let mut struct_fmt = fmt.debug_struct(&name);
 
                             tcx.with_freevars(node_id, |freevars| {
                                 for (freevar, lv) in freevars.iter().zip(lvs) {
                                     let def_id = freevar.def.def_id();
-                                    let var_id = tcx.hir.as_local_node_id(def_id).unwrap();
+                                    let var_id = tcx.map.as_local_node_id(def_id).unwrap();
                                     let var_name = tcx.local_var_name_str(var_id);
                                     struct_fmt.field(&var_name, lv);
                                 }
@@ -1253,6 +1201,19 @@ pub struct Constant<'tcx> {
     pub literal: Literal<'tcx>,
 }
 
+#[derive(Clone, RustcEncodable, RustcDecodable)]
+pub struct TypedConstVal<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub span: Span,
+    pub value: ConstUsize,
+}
+
+impl<'tcx> Debug for TypedConstVal<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        write!(fmt, "const {}", ConstInt::Usize(self.value))
+    }
+}
+
 newtype_index!(Promoted, "promoted");
 
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -1262,7 +1223,7 @@ pub enum Literal<'tcx> {
         substs: &'tcx Substs<'tcx>,
     },
     Value {
-        value: ConstVal<'tcx>,
+        value: ConstVal,
     },
     Promoted {
         // Index into the `promoted` vector of `Mir`.
@@ -1309,12 +1270,16 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
             write!(fmt, "b\"{}\"", escaped)
         }
         Bool(b) => write!(fmt, "{:?}", b),
+        Function(def_id) => write!(fmt, "{}", item_path_str(def_id)),
+        Struct(node_id) | Tuple(node_id) | Array(node_id, _) | Repeat(node_id, _) =>
+            write!(fmt, "{}", node_to_string(node_id)),
         Char(c) => write!(fmt, "{:?}", c),
-        Variant(def_id) |
-        Function(def_id, _) => write!(fmt, "{}", item_path_str(def_id)),
-        Struct(_) | Tuple(_) | Array(_) | Repeat(..) =>
-            bug!("ConstVal `{:?}` should not be in MIR", const_val),
+        Dummy => bug!(),
     }
+}
+
+fn node_to_string(node_id: ast::NodeId) -> String {
+    ty::tls::with(|tcx| tcx.map.node_to_user_string(node_id))
 }
 
 fn item_path_str(def_id: DefId) -> String {
@@ -1373,350 +1338,6 @@ impl Location {
             self.statement_index <= other.statement_index
         } else {
             dominators.is_dominated_by(other.block, self.block)
-        }
-    }
-}
-
-
-/*
- * TypeFoldable implementations for MIR types
- */
-
-impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        Mir {
-            basic_blocks: self.basic_blocks.fold_with(folder),
-            visibility_scopes: self.visibility_scopes.clone(),
-            promoted: self.promoted.fold_with(folder),
-            return_ty: self.return_ty.fold_with(folder),
-            local_decls: self.local_decls.fold_with(folder),
-            arg_count: self.arg_count,
-            upvar_decls: self.upvar_decls.clone(),
-            spread_arg: self.spread_arg,
-            span: self.span,
-            cache: cache::Cache::new()
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.basic_blocks.visit_with(visitor) ||
-        self.promoted.visit_with(visitor)     ||
-        self.return_ty.visit_with(visitor)    ||
-        self.local_decls.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for LocalDecl<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        LocalDecl {
-            ty: self.ty.fold_with(folder),
-            ..self.clone()
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.ty.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for BasicBlockData<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        BasicBlockData {
-            statements: self.statements.fold_with(folder),
-            terminator: self.terminator.fold_with(folder),
-            is_cleanup: self.is_cleanup
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.statements.visit_with(visitor) || self.terminator.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        use mir::StatementKind::*;
-
-        let kind = match self.kind {
-            Assign(ref lval, ref rval) => Assign(lval.fold_with(folder), rval.fold_with(folder)),
-            SetDiscriminant { ref lvalue, variant_index } => SetDiscriminant {
-                lvalue: lvalue.fold_with(folder),
-                variant_index: variant_index
-            },
-            StorageLive(ref lval) => StorageLive(lval.fold_with(folder)),
-            StorageDead(ref lval) => StorageDead(lval.fold_with(folder)),
-            InlineAsm { ref asm, ref outputs, ref inputs } => InlineAsm {
-                asm: asm.clone(),
-                outputs: outputs.fold_with(folder),
-                inputs: inputs.fold_with(folder)
-            },
-            Nop => Nop,
-        };
-        Statement {
-            source_info: self.source_info,
-            kind: kind
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        use mir::StatementKind::*;
-
-        match self.kind {
-            Assign(ref lval, ref rval) => { lval.visit_with(visitor) || rval.visit_with(visitor) }
-            SetDiscriminant { ref lvalue, .. } |
-            StorageLive(ref lvalue) |
-            StorageDead(ref lvalue) => lvalue.visit_with(visitor),
-            InlineAsm { ref outputs, ref inputs, .. } =>
-                outputs.visit_with(visitor) || inputs.visit_with(visitor),
-            Nop => false,
-        }
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        use mir::TerminatorKind::*;
-
-        let kind = match self.kind {
-            Goto { target } => Goto { target: target },
-            SwitchInt { ref discr, switch_ty, ref values, ref targets } => SwitchInt {
-                discr: discr.fold_with(folder),
-                switch_ty: switch_ty.fold_with(folder),
-                values: values.clone(),
-                targets: targets.clone()
-            },
-            Drop { ref location, target, unwind } => Drop {
-                location: location.fold_with(folder),
-                target: target,
-                unwind: unwind
-            },
-            DropAndReplace { ref location, ref value, target, unwind } => DropAndReplace {
-                location: location.fold_with(folder),
-                value: value.fold_with(folder),
-                target: target,
-                unwind: unwind
-            },
-            Call { ref func, ref args, ref destination, cleanup } => {
-                let dest = destination.as_ref().map(|&(ref loc, dest)| {
-                    (loc.fold_with(folder), dest)
-                });
-
-                Call {
-                    func: func.fold_with(folder),
-                    args: args.fold_with(folder),
-                    destination: dest,
-                    cleanup: cleanup
-                }
-            },
-            Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let msg = if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
-                    AssertMessage::BoundsCheck {
-                        len: len.fold_with(folder),
-                        index: index.fold_with(folder),
-                    }
-                } else {
-                    msg.clone()
-                };
-                Assert {
-                    cond: cond.fold_with(folder),
-                    expected: expected,
-                    msg: msg,
-                    target: target,
-                    cleanup: cleanup
-                }
-            },
-            Resume => Resume,
-            Return => Return,
-            Unreachable => Unreachable,
-        };
-        Terminator {
-            source_info: self.source_info,
-            kind: kind
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        use mir::TerminatorKind::*;
-
-        match self.kind {
-            SwitchInt { ref discr, switch_ty, .. } =>
-                discr.visit_with(visitor) || switch_ty.visit_with(visitor),
-            Drop { ref location, ..} => location.visit_with(visitor),
-            DropAndReplace { ref location, ref value, ..} =>
-                location.visit_with(visitor) || value.visit_with(visitor),
-            Call { ref func, ref args, ref destination, .. } => {
-                let dest = if let Some((ref loc, _)) = *destination {
-                    loc.visit_with(visitor)
-                } else { false };
-                dest || func.visit_with(visitor) || args.visit_with(visitor)
-            },
-            Assert { ref cond, ref msg, .. } => {
-                if cond.visit_with(visitor) {
-                    if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
-                        len.visit_with(visitor) || index.visit_with(visitor)
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            },
-            Goto { .. } |
-            Resume |
-            Return |
-            Unreachable => false
-        }
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for Lvalue<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        match self {
-            &Lvalue::Projection(ref p) => Lvalue::Projection(p.fold_with(folder)),
-            _ => self.clone()
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        if let &Lvalue::Projection(ref p) = self {
-            p.visit_with(visitor)
-        } else {
-            false
-        }
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        use mir::Rvalue::*;
-        match *self {
-            Use(ref op) => Use(op.fold_with(folder)),
-            Repeat(ref op, len) => Repeat(op.fold_with(folder), len),
-            Ref(region, bk, ref lval) => Ref(region.fold_with(folder), bk, lval.fold_with(folder)),
-            Len(ref lval) => Len(lval.fold_with(folder)),
-            Cast(kind, ref op, ty) => Cast(kind, op.fold_with(folder), ty.fold_with(folder)),
-            BinaryOp(op, ref rhs, ref lhs) =>
-                BinaryOp(op, rhs.fold_with(folder), lhs.fold_with(folder)),
-            CheckedBinaryOp(op, ref rhs, ref lhs) =>
-                CheckedBinaryOp(op, rhs.fold_with(folder), lhs.fold_with(folder)),
-            UnaryOp(op, ref val) => UnaryOp(op, val.fold_with(folder)),
-            Discriminant(ref lval) => Discriminant(lval.fold_with(folder)),
-            Box(ty) => Box(ty.fold_with(folder)),
-            Aggregate(ref kind, ref fields) => {
-                let kind = match *kind {
-                    AggregateKind::Array(ty) => AggregateKind::Array(ty.fold_with(folder)),
-                    AggregateKind::Tuple => AggregateKind::Tuple,
-                    AggregateKind::Adt(def, v, substs, n) =>
-                        AggregateKind::Adt(def, v, substs.fold_with(folder), n),
-                    AggregateKind::Closure(id, substs) =>
-                        AggregateKind::Closure(id, substs.fold_with(folder))
-                };
-                Aggregate(kind, fields.fold_with(folder))
-            }
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        use mir::Rvalue::*;
-        match *self {
-            Use(ref op) => op.visit_with(visitor),
-            Repeat(ref op, _) => op.visit_with(visitor),
-            Ref(region, _, ref lval) => region.visit_with(visitor) || lval.visit_with(visitor),
-            Len(ref lval) => lval.visit_with(visitor),
-            Cast(_, ref op, ty) => op.visit_with(visitor) || ty.visit_with(visitor),
-            BinaryOp(_, ref rhs, ref lhs) |
-            CheckedBinaryOp(_, ref rhs, ref lhs) =>
-                rhs.visit_with(visitor) || lhs.visit_with(visitor),
-            UnaryOp(_, ref val) => val.visit_with(visitor),
-            Discriminant(ref lval) => lval.visit_with(visitor),
-            Box(ty) => ty.visit_with(visitor),
-            Aggregate(ref kind, ref fields) => {
-                (match *kind {
-                    AggregateKind::Array(ty) => ty.visit_with(visitor),
-                    AggregateKind::Tuple => false,
-                    AggregateKind::Adt(_, _, substs, _) => substs.visit_with(visitor),
-                    AggregateKind::Closure(_, substs) => substs.visit_with(visitor)
-                }) || fields.visit_with(visitor)
-            }
-        }
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        match *self {
-            Operand::Consume(ref lval) => Operand::Consume(lval.fold_with(folder)),
-            Operand::Constant(ref c) => Operand::Constant(c.fold_with(folder)),
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match *self {
-            Operand::Consume(ref lval) => lval.visit_with(visitor),
-            Operand::Constant(ref c) => c.visit_with(visitor)
-        }
-    }
-}
-
-impl<'tcx, B, V> TypeFoldable<'tcx> for Projection<'tcx, B, V>
-    where B: TypeFoldable<'tcx>, V: TypeFoldable<'tcx>
-{
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        use mir::ProjectionElem::*;
-
-        let base = self.base.fold_with(folder);
-        let elem = match self.elem {
-            Deref => Deref,
-            Field(f, ty) => Field(f, ty.fold_with(folder)),
-            Index(ref v) => Index(v.fold_with(folder)),
-            ref elem => elem.clone()
-        };
-
-        Projection {
-            base: base,
-            elem: elem
-        }
-    }
-
-    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
-        use mir::ProjectionElem::*;
-
-        self.base.visit_with(visitor) ||
-            match self.elem {
-                Field(_, ty) => ty.visit_with(visitor),
-                Index(ref v) => v.visit_with(visitor),
-                _ => false
-            }
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        Constant {
-            span: self.span.clone(),
-            ty: self.ty.fold_with(folder),
-            literal: self.literal.fold_with(folder)
-        }
-    }
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.ty.visit_with(visitor) || self.literal.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for Literal<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        match *self {
-            Literal::Item { def_id, substs } => Literal::Item {
-                def_id: def_id,
-                substs: substs.fold_with(folder)
-            },
-            _ => self.clone()
-        }
-    }
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match *self {
-            Literal::Item { substs, .. } => substs.visit_with(visitor),
-            _ => false
         }
     }
 }

@@ -19,6 +19,7 @@ fn main() {
         match 1 {
             1 => { addr = &mut x; }
             //~^ ERROR cannot borrow `x` as mutable more than once at a time
+            //~| ERROR cannot borrow `x` as mutable more than once at a time
             2 => { addr = &mut x; }
             //~^ ERROR cannot borrow `x` as mutable more than once at a time
             _ => { addr = &mut x; }

@@ -10,6 +10,7 @@
 
 // error-pattern: invalid windows subsystem `wrong`, only `windows` and `console` are allowed
 
+#![feature(windows_subsystem)]
 #![windows_subsystem = "wrong"]
 
 fn main() {}

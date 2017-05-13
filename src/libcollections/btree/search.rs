@@ -58,7 +58,7 @@ pub fn search_node<BorrowType, K, V, Type, Q: ?Sized>(
     }
 }
 
-pub fn search_linear<BorrowType, K, V, Type, Q: ?Sized>(
+fn search_linear<BorrowType, K, V, Type, Q: ?Sized>(
     node: &NodeRef<BorrowType, K, V, Type>,
     key: &Q
 ) -> (usize, bool)
@@ -73,3 +73,4 @@ pub fn search_linear<BorrowType, K, V, Type, Q: ?Sized>(
     }
     (node.keys().len(), false)
 }
+

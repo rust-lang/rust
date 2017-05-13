@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // no-prefer-dynamic
-// ignore-emscripten
 
 thread_local!(static FOO: Foo = Foo);
 thread_local!(static BAR: Bar = Bar(1));

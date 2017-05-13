@@ -32,7 +32,8 @@ use syntax::ast;
 
 use {ModuleSource, ModuleTranslation};
 
-use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_TRANSLATED};
+const PARTITION_REUSED: &'static str = "rustc_partition_reused";
+const PARTITION_TRANSLATED: &'static str = "rustc_partition_translated";
 
 const MODULE: &'static str = "module";
 const CFG: &'static str = "cfg";
@@ -49,7 +50,7 @@ pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let ams = AssertModuleSource { tcx: tcx, modules: modules };
-    for attr in &tcx.hir.krate().attrs {
+    for attr in &tcx.map.krate().attrs {
         ams.check_attr(attr);
     }
 }
@@ -61,9 +62,9 @@ struct AssertModuleSource<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
     fn check_attr(&self, attr: &ast::Attribute) {
-        let disposition = if attr.check_name(ATTR_PARTITION_REUSED) {
+        let disposition = if attr.check_name(PARTITION_REUSED) {
             Disposition::Reused
-        } else if attr.check_name(ATTR_PARTITION_TRANSLATED) {
+        } else if attr.check_name(PARTITION_TRANSLATED) {
             Disposition::Translated
         } else {
             return;
@@ -112,7 +113,7 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
     }
 
     fn field(&self, attr: &ast::Attribute, name: &str) -> ast::Name {
-        for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
+        for item in attr.meta_item_list().unwrap_or(&[]) {
             if item.check_name(name) {
                 if let Some(value) = item.value_str() {
                     return value;

@@ -1,0 +1,31 @@
+language: rust
+rust:
+  - stable
+  - beta
+  - nightly
+sudo: false
+before_script:
+  - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
+script:
+  - cargo build --verbose
+  - cargo build --verbose --no-default-features
+  - cargo build --verbose --features serde --no-default-features
+  - cargo test --verbose --features serde
+  - cargo test --verbose --manifest-path serde-tests/Cargo.toml
+  - rustdoc --test README.md -L target
+  - cargo doc --no-deps
+after_success:
+  - travis-cargo --only nightly doc-upload
+  - travis-cargo coveralls --no-sudo
+env:
+  global:
+    secure: LZMkQQJT5LqLQQ8JyakjvHNqqMPy8lm/SyC+H5cKUVI/xk7xRuti4eKY937N8uSmbff2m9ZYlG6cNwIOfk/nWn8YsqxA8Wg/xugubWzqGuqu+NQ4IZVa7INT2Fiqyk5SPCh8B5fo2x7OBJ24SCkWb2p8bEWAuW8XdZZOdmi3H2I=
+notifications:
+  email:
+    on_success: never
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev

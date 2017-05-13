@@ -28,8 +28,8 @@ use mem;
 /// # Initialization and Destruction
 ///
 /// Initialization is dynamically performed on the first call to `with()`
-/// within a thread, and values that implement `Drop` get destructed when a
-/// thread exits. Some caveats apply, which are explained below.
+/// within a thread, and values support destructors which will be run when a
+/// thread exits.
 ///
 /// # Examples
 ///
@@ -74,7 +74,7 @@ use mem;
 ///    destroyed, but not all platforms have this guard. Those platforms that do
 ///    not guard typically have a synthetic limit after which point no more
 ///    destructors are run.
-/// 3. On macOS, initializing TLS during destruction of other TLS slots can
+/// 3. On OSX, initializing TLS during destruction of other TLS slots can
 ///    sometimes cancel *all* destructors for the current thread, whether or not
 ///    the slots have already had their destructors run or not.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -99,7 +99,7 @@ pub struct LocalKey<T: 'static> {
     init: fn() -> T,
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[stable(feature = "std_debug", since = "1.15.0")]
 impl<T: 'static> fmt::Debug for LocalKey<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("LocalKey { .. }")
@@ -332,6 +332,7 @@ pub mod os {
         marker: marker::PhantomData<Cell<T>>,
     }
 
+    #[stable(feature = "std_debug", since = "1.15.0")]
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             f.pad("Key { .. }")
@@ -524,9 +525,9 @@ mod tests {
     }
 
     // Note that this test will deadlock if TLS destructors aren't run (this
-    // requires the destructor to be run to pass the test). macOS has a known bug
+    // requires the destructor to be run to pass the test). OSX has a known bug
     // where dtors-in-dtors may cancel other destructors, so we just ignore this
-    // test on macOS.
+    // test on OSX.
     #[test]
     #[cfg_attr(target_os = "macos", ignore)]
     fn dtors_in_dtors_in_dtors() {

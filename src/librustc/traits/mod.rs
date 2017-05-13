@@ -17,12 +17,10 @@ pub use self::ObligationCauseCode::*;
 
 use hir;
 use hir::def_id::DefId;
-use middle::region::RegionMaps;
 use middle::free_region::FreeRegionMap;
 use ty::subst::Substs;
 use ty::{self, Ty, TyCtxt, TypeFoldable, ToPredicate};
-use ty::error::{ExpectedFound, TypeError};
-use infer::{InferCtxt};
+use infer::InferCtxt;
 
 use std::rc::Rc;
 use syntax::ast;
@@ -33,14 +31,17 @@ pub use self::coherence::orphan_check;
 pub use self::coherence::overlapping_impls;
 pub use self::coherence::OrphanCheckErr;
 pub use self::fulfill::{FulfillmentContext, GlobalFulfilledPredicates, RegionObligation};
+pub use self::fulfill::DeferredObligation;
 pub use self::project::MismatchedProjectionTypes;
 pub use self::project::{normalize, normalize_projection_type, Normalized};
 pub use self::project::{ProjectionCache, ProjectionCacheSnapshot, Reveal};
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::object_safety::MethodViolationCode;
 pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
+pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
+pub use self::select::{MethodMatchedData}; // intentionally don't export variants
 pub use self::specialize::{OverlapError, specialization_graph, specializes, translate_substs};
-pub use self::specialize::{SpecializesCache, find_associated_item};
+pub use self::specialize::{SpecializesCache, find_method};
 pub use self::util::elaborate_predicates;
 pub use self::util::supertraits;
 pub use self::util::Supertraits;
@@ -56,7 +57,6 @@ mod object_safety;
 mod select;
 mod specialize;
 mod structural_impls;
-pub mod trans;
 mod util;
 
 /// An `Obligation` represents some trait reference (e.g. `int:Eq`) for
@@ -113,7 +113,7 @@ pub enum ObligationCauseCode<'tcx> {
     ReferenceOutlivesReferent(Ty<'tcx>),
 
     /// A type like `Box<Foo<'a> + 'b>` is WF only if `'b: 'a`.
-    ObjectTypeBound(Ty<'tcx>, ty::Region<'tcx>),
+    ObjectTypeBound(Ty<'tcx>, &'tcx ty::Region),
 
     /// Obligation incurred due to an object cast.
     ObjectCastObligation(/* Object type */ Ty<'tcx>),
@@ -174,9 +174,6 @@ pub enum ObligationCauseCode<'tcx> {
 
     // method receiver
     MethodReceiver,
-
-    // `return` with no expression
-    ReturnNoExpression,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -215,8 +212,6 @@ pub struct FulfillmentError<'tcx> {
 pub enum FulfillmentErrorCode<'tcx> {
     CodeSelectionError(SelectionError<'tcx>),
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),
-    CodeSubtypeError(ExpectedFound<Ty<'tcx>>,
-                     TypeError<'tcx>), // always comes from a SubtypePredicate
     CodeAmbiguity,
 }
 
@@ -436,10 +431,9 @@ pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx
 // FIXME: this is gonna need to be removed ...
 /// Normalizes the parameter environment, reporting errors if they occur.
 pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                              region_context: DefId,
-                                              unnormalized_env: ty::ParameterEnvironment<'tcx>,
-                                              cause: ObligationCause<'tcx>)
-                                              -> ty::ParameterEnvironment<'tcx>
+    unnormalized_env: ty::ParameterEnvironment<'tcx>,
+    cause: ObligationCause<'tcx>)
+    -> ty::ParameterEnvironment<'tcx>
 {
     // I'm not wild about reporting errors here; I'd prefer to
     // have the errors get reported at a defined place (e.g.,
@@ -457,12 +451,13 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // can be sure that no errors should occur.
 
     let span = cause.span;
+    let body_id = cause.body_id;
 
     debug!("normalize_param_env_or_error(unnormalized_env={:?})",
            unnormalized_env);
 
     let predicates: Vec<_> =
-        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.to_vec())
+        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.clone())
         .filter(|p| !p.is_global()) // (*)
         .collect();
 
@@ -477,19 +472,11 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}",
            predicates);
 
-    let elaborated_env = unnormalized_env.with_caller_bounds(tcx.intern_predicates(&predicates));
+    let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
 
-    tcx.infer_ctxt(elaborated_env, Reveal::UserFacing).enter(|infcx| {
-        let predicates = match fully_normalize(
-                &infcx, cause,
-                // You would really want to pass infcx.parameter_environment.caller_bounds here,
-                // but that is an interned slice, and fully_normalize takes &T and returns T, so
-                // without further refactoring, a slice can't be used. Luckily, we still have the
-                // predicate vector from which we created the ParameterEnvironment in infcx, so we
-                // can pass that instead. It's roundabout and a bit brittle, but this code path
-                // ought to be refactored anyway, and until then it saves us from having to copy.
-                &predicates,
-        ) {
+    tcx.infer_ctxt(None, Some(elaborated_env), Reveal::NotSpecializable).enter(|infcx| {
+        let predicates = match fully_normalize(&infcx, cause,
+                                               &infcx.parameter_environment.caller_bounds) {
             Ok(predicates) => predicates,
             Err(errors) => {
                 infcx.report_fulfillment_errors(&errors);
@@ -501,9 +488,8 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("normalize_param_env_or_error: normalized predicates={:?}",
             predicates);
 
-        let region_maps = RegionMaps::new();
         let free_regions = FreeRegionMap::new();
-        infcx.resolve_regions_and_report_errors(region_context, &region_maps, &free_regions);
+        infcx.resolve_regions_and_report_errors(&free_regions, body_id);
         let predicates = match infcx.fully_resolve(&predicates) {
             Ok(predicates) => predicates,
             Err(fixup_err) => {
@@ -528,7 +514,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("normalize_param_env_or_error: resolved predicates={:?}",
             predicates);
 
-        infcx.parameter_environment.with_caller_bounds(tcx.intern_predicates(&predicates))
+        infcx.parameter_environment.with_caller_bounds(predicates)
     })
 }
 
@@ -590,7 +576,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
 
-    tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
+    tcx.infer_ctxt(None, None, Reveal::All).enter(|infcx| {
         let mut selcx = SelectionContext::new(&infcx);
         let mut fulfill_cx = FulfillmentContext::new();
         let cause = ObligationCause::dummy();
@@ -639,19 +625,14 @@ pub fn get_vtable_methods<'a, 'tcx>(
             // the method may have some early-bound lifetimes, add
             // regions for those
             let substs = Substs::for_item(tcx, def_id,
-                                          |_, _| tcx.types.re_erased,
+                                          |_, _| tcx.mk_region(ty::ReErased),
                                           |def, _| trait_ref.substs().type_for_def(def));
-
-            // the trait type may have higher-ranked lifetimes in it;
-            // so erase them if they appear, so that we get the type
-            // at some particular call site
-            let substs = tcx.erase_late_bound_regions_and_normalize(&ty::Binder(substs));
 
             // It's possible that the method relies on where clauses that
             // do not hold for this particular set of type parameters.
             // Note that this method could then never be called, so we
             // do not want to try and trans it, in that case (see #23435).
-            let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
+            let predicates = tcx.item_predicates(def_id).instantiate_own(tcx, substs);
             if !normalize_and_test_predicates(tcx, predicates.predicates) {
                 debug!("get_vtable_methods: predicates do not hold");
                 return None;

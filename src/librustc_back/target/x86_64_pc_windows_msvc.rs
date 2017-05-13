@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use LinkerFlavor;
 use target::{Target, TargetResult};
 
 pub fn target() -> TargetResult {
@@ -25,7 +24,6 @@ pub fn target() -> TargetResult {
         target_os: "windows".to_string(),
         target_env: "msvc".to_string(),
         target_vendor: "pc".to_string(),
-        linker_flavor: LinkerFlavor::Msvc,
         options: base,
     })
 }

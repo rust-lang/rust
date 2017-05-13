@@ -63,7 +63,7 @@ impl MultilineAnnotation {
             start_col: self.start_col,
             end_col: self.start_col + 1,
             is_primary: self.is_primary,
-            label: None,
+            label: Some("starting here...".to_owned()),
             annotation_type: AnnotationType::MultilineStart(self.depth)
         }
     }
@@ -73,7 +73,10 @@ impl MultilineAnnotation {
             start_col: self.end_col - 1,
             end_col: self.end_col,
             is_primary: self.is_primary,
-            label: self.label.clone(),
+            label: match self.label {
+                Some(ref label) => Some(format!("...ending here: {}", label)),
+                None => Some("...ending here".to_owned()),
+            },
             annotation_type: AnnotationType::MultilineEnd(self.depth)
         }
     }
@@ -94,6 +97,9 @@ pub enum AnnotationType {
     /// Annotation under a single line of code
     Singleline,
 
+    /// Annotation under the first character of a multiline span
+    Minimized,
+
     /// Annotation enclosing the first and last character of a multiline span
     Multiline(MultilineAnnotation),
 
@@ -103,18 +109,15 @@ pub enum AnnotationType {
     // Each of these corresponds to one part of the following diagram:
     //
     //     x |   foo(1 + bar(x,
-    //       |  _________^              < MultilineStart
-    //     x | |             y),        < MultilineLine
-    //       | |______________^ label   < MultilineEnd
+    //       |  _________^ starting here...           < MultilineStart
+    //     x | |             y),                      < MultilineLine
+    //       | |______________^ ...ending here: label < MultilineEnd
     //     x |       z);
     /// Annotation marking the first character of a fully shown multiline span
     MultilineStart(usize),
     /// Annotation marking the last character of a fully shown multiline span
     MultilineEnd(usize),
     /// Line at the left enclosing the lines of a fully shown multiline span
-    // Just a placeholder for the drawing algorithm, to know that it shouldn't skip the first 4
-    // and last 2 lines of code. The actual line is drawn in `emit_message_default` and not in
-    // `draw_multiline_line`.
     MultilineLine(usize),
 }
 
@@ -141,12 +144,10 @@ pub struct Annotation {
 }
 
 impl Annotation {
-    /// Wether this annotation is a vertical line placeholder.
-    pub fn is_line(&self) -> bool {
-        if let AnnotationType::MultilineLine(_) = self.annotation_type {
-            true
-        } else {
-            false
+    pub fn is_minimized(&self) -> bool {
+        match self.annotation_type {
+            AnnotationType::Minimized => true,
+            _ => false,
         }
     }
 
@@ -160,41 +161,6 @@ impl Annotation {
         }
     }
 
-    pub fn len(&self) -> usize {
-        // Account for usize underflows
-        if self.end_col > self.start_col {
-            self.end_col - self.start_col
-        } else {
-            self.start_col - self.end_col
-        }
-    }
-
-    pub fn has_label(&self) -> bool {
-        if let Some(ref label) = self.label {
-            // Consider labels with no text as effectively not being there
-            // to avoid weird output with unnecessary vertical lines, like:
-            //
-            //     X | fn foo(x: u32) {
-            //       | -------^------
-            //       | |      |
-            //       | |
-            //       |
-            //
-            // Note that this would be the complete output users would see.
-            label.len() > 0
-        } else {
-            false
-        }
-    }
-
-    pub fn takes_space(&self) -> bool {
-        // Multiline annotations always have to keep vertical space.
-        match self.annotation_type {
-            AnnotationType::MultilineStart(_) |
-            AnnotationType::MultilineEnd(_) => true,
-            _ => false,
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -203,7 +169,7 @@ pub struct StyledString {
     pub style: Style,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Style {
     HeaderMsg,
     FileNameStyle,
@@ -219,5 +185,4 @@ pub enum Style {
     NoStyle,
     ErrorCode,
     Level(Level),
-    Highlight,
 }

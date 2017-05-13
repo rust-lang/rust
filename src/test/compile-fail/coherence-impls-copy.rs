@@ -37,7 +37,6 @@ impl Copy for (MyType, MyType) {}
 //~| ERROR only traits defined in the current crate can be implemented for arbitrary types
 //~| NOTE impl doesn't use types inside crate
 //~| NOTE the impl does not reference any types defined in this crate
-//~| NOTE define and implement a trait or new type instead
 
 impl Copy for &'static NotSync {}
 //~^ ERROR the trait `Copy` may not be implemented for this type
@@ -47,9 +46,8 @@ impl Copy for [MyType] {}
 //~^ ERROR the trait `Copy` may not be implemented for this type
 //~| NOTE type is not a structure or enumeration
 //~| ERROR only traits defined in the current crate can be implemented for arbitrary types
-//~| NOTE the impl does not reference any types defined in this crate
-//~| NOTE define and implement a trait or new type instead
 //~| NOTE impl doesn't use types inside crate
+//~| NOTE the impl does not reference any types defined in this crate
 
 impl Copy for &'static [NotSync] {}
 //~^ ERROR the trait `Copy` may not be implemented for this type
@@ -57,7 +55,6 @@ impl Copy for &'static [NotSync] {}
 //~| ERROR only traits defined in the current crate can be implemented for arbitrary types
 //~| NOTE impl doesn't use types inside crate
 //~| NOTE the impl does not reference any types defined in this crate
-//~| NOTE define and implement a trait or new type instead
 
 fn main() {
 }

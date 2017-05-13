@@ -1,0 +1,21 @@
+[package]
+
+name = "libc"
+version = "0.2.17"
+authors = ["The Rust Project Developers"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/rust-lang/libc"
+homepage = "https://github.com/rust-lang/libc"
+documentation = "http://doc.rust-lang.org/libc"
+description = """
+A library for types and bindings to native C functions often found in libc or
+other common platform libraries.
+"""
+
+[features]
+default = ["use_std"]
+use_std = []
+
+[workspace]
+members = ["libc-test", "libc-test/generate-files"]

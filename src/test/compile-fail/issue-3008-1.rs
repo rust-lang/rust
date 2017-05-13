@@ -8,16 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Foo {
-    Foo_(Bar)
-}
-
-enum Bar {
-    //~^ ERROR recursive type `Bar` has infinite size
-    //~| NOTE recursive type has infinite size
-    BarNone,
-    BarSome(Bar)  //~ NOTE recursive without indirection
-}
+enum foo { foo_(bar) }
+enum bar { bar_none, bar_some(bar) }
+//~^ ERROR recursive type `bar` has infinite size
 
 fn main() {
 }

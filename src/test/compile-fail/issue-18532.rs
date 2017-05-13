@@ -13,5 +13,6 @@
 // into it.
 
 fn main() {
-    (return)((),()); //~ ERROR expected function, found `!`
+    (return)((),());
+    //~^ ERROR the type of this value must be known
 }

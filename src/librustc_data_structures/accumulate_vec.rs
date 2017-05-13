@@ -25,7 +25,7 @@ use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 
 use array_vec::{self, Array, ArrayVec};
 
-#[derive(Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug)]
 pub enum AccumulateVec<A: Array> {
     Array(ArrayVec<A>),
     Heap(Vec<A::Element>)
@@ -91,8 +91,8 @@ impl<A: Array> Deref for AccumulateVec<A> {
     type Target = [A::Element];
     fn deref(&self) -> &Self::Target {
         match *self {
-            AccumulateVec::Array(ref v) => v,
-            AccumulateVec::Heap(ref v) => v,
+            AccumulateVec::Array(ref v) => &v[..],
+            AccumulateVec::Heap(ref v) => &v[..],
         }
     }
 }
@@ -100,8 +100,8 @@ impl<A: Array> Deref for AccumulateVec<A> {
 impl<A: Array> DerefMut for AccumulateVec<A> {
     fn deref_mut(&mut self) -> &mut [A::Element] {
         match *self {
-            AccumulateVec::Array(ref mut v) => v,
-            AccumulateVec::Heap(ref mut v) => v,
+            AccumulateVec::Array(ref mut v) => &mut v[..],
+            AccumulateVec::Heap(ref mut v) => &mut v[..],
         }
     }
 }

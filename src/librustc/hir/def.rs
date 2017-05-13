@@ -11,8 +11,6 @@
 use hir::def_id::DefId;
 use util::nodemap::NodeMap;
 use syntax::ast;
-use syntax::ext::base::MacroKind;
-use syntax_pos::Span;
 use hir;
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -55,53 +53,38 @@ pub enum Def {
     Label(ast::NodeId),
 
     // Macro namespace
-    Macro(DefId, MacroKind),
-
-    GlobalAsm(DefId),
+    Macro(DefId),
 
     // Both namespaces
     Err,
 }
 
-/// The result of resolving a path before lowering to HIR.
-/// `base_def` is definition of resolved part of the
-/// path, `unresolved_segments` is the number of unresolved
-/// segments.
+/// The result of resolving a path.
+/// Before type checking completes, `depth` represents the number of
+/// trailing segments which are yet unresolved. Afterwards, if there
+/// were no errors, all paths should be fully resolved, with `depth`
+/// set to `0` and `base_def` representing the final resolution.
+///
 ///     module::Type::AssocX::AssocY::MethodOrAssocType
 ///     ^~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-///     base_def      unresolved_segments = 3
+///     base_def      depth = 3
 ///
 ///     <T as Trait>::AssocX::AssocY::MethodOrAssocType
 ///           ^~~~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~
-///           base_def        unresolved_segments = 2
+///           base_def        depth = 2
 #[derive(Copy, Clone, Debug)]
 pub struct PathResolution {
-    base_def: Def,
-    unresolved_segments: usize,
+    pub base_def: Def,
+    pub depth: usize
 }
 
 impl PathResolution {
-    pub fn new(def: Def) -> Self {
-        PathResolution { base_def: def, unresolved_segments: 0 }
-    }
-
-    pub fn with_unresolved_segments(def: Def, mut unresolved_segments: usize) -> Self {
-        if def == Def::Err { unresolved_segments = 0 }
-        PathResolution { base_def: def, unresolved_segments: unresolved_segments }
-    }
-
-    #[inline]
-    pub fn base_def(&self) -> Def {
-        self.base_def
-    }
-
-    #[inline]
-    pub fn unresolved_segments(&self) -> usize {
-        self.unresolved_segments
+    pub fn new(def: Def) -> PathResolution {
+        PathResolution { base_def: def, depth: 0 }
     }
 
     pub fn kind_name(&self) -> &'static str {
-        if self.unresolved_segments != 0 {
+        if self.depth != 0 {
             "associated item"
         } else {
             self.base_def.kind_name()
@@ -119,7 +102,6 @@ pub type ExportMap = NodeMap<Vec<Export>>;
 pub struct Export {
     pub name: ast::Name, // The name of the target.
     pub def: Def, // The definition of the target.
-    pub span: Span, // The span of the target definition.
 }
 
 impl CtorKind {
@@ -146,8 +128,7 @@ impl Def {
             Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) | Def::TyAlias(id) |
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
-            Def::AssociatedConst(id) | Def::Local(id) | Def::Upvar(id, ..) | Def::Macro(id, ..) |
-            Def::GlobalAsm(id) => {
+            Def::AssociatedConst(id) | Def::Local(id) | Def::Upvar(id, ..) | Def::Macro(id) => {
                 id
             }
 
@@ -188,7 +169,6 @@ impl Def {
             Def::Label(..) => "label",
             Def::SelfTy(..) => "self type",
             Def::Macro(..) => "macro",
-            Def::GlobalAsm(..) => "global asm",
             Def::Err => "unresolved item",
         }
     }

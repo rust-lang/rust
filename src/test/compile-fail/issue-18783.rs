@@ -10,6 +10,8 @@
 
 use std::cell::RefCell;
 
+// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+
 fn main() {
     let mut y = 1;
     let c = RefCell::new(vec![]);

@@ -15,33 +15,6 @@
 // use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
 register_long_diagnostics! {
 
-E0128: r##"
-Type parameter defaults can only use parameters that occur before them.
-Erroneous code example:
-
-```compile_fail,E0128
-struct Foo<T=U, U=()> {
-    field1: T,
-    filed2: U,
-}
-// error: type parameters with a default cannot use forward declared
-// identifiers
-```
-
-Since type parameters are evaluated in-order, you may be able to fix this issue
-by doing:
-
-```
-struct Foo<U=(), T=U> {
-    field1: T,
-    filed2: U,
-}
-```
-
-Please also verify that this wasn't because of a name-clash and rename the type
-parameter if so.
-"##,
-
 E0154: r##"
 ## Note: this error code is no longer emitted by the compiler.
 
@@ -890,23 +863,19 @@ match (A, B, C) {
 E0422: r##"
 You are trying to use an identifier that is either undefined or not a struct.
 Erroneous code example:
-
-```compile_fail,E0422
+``` compile_fail,E0422
 fn main () {
     let x = Foo { x: 1, y: 2 };
 }
 ```
-
 In this case, `Foo` is undefined, so it inherently isn't anything, and
 definitely not a struct.
-
 ```compile_fail
 fn main () {
     let foo = 1;
     let x = foo { x: 1, y: 2 };
 }
 ```
-
 In this case, `foo` is defined, but is not a struct, so Rust can't use it as
 one.
 "##,

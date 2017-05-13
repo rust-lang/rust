@@ -189,6 +189,11 @@ mod imp {
             fn objc_msgSend_ul(obj: NsId, sel: Sel, ...) -> NsId;
         }
 
+        #[link(name = "Foundation", kind = "framework")]
+        #[link(name = "objc")]
+        #[cfg(not(cargobuild))]
+        extern {}
+
         type Sel = *const libc::c_void;
         type NsId = *const libc::c_void;
 

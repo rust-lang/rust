@@ -17,9 +17,8 @@
 
 use char_private::is_printable;
 use convert::TryFrom;
-use fmt::{self, Write};
+use fmt;
 use slice;
-use str::from_utf8_unchecked_mut;
 use iter::FusedIterator;
 use mem::transmute;
 
@@ -95,12 +94,12 @@ pub const MAX: char = '\u{10ffff}';
 ///
 /// [`char`]: ../../std/primitive.char.html
 /// [`u32`]: ../../std/primitive.u32.html
-/// [`as`]: ../../book/first-edition/casting-between-types.html#as
+/// [`as`]: ../../book/casting-between-types.html#as
 ///
 /// For an unsafe version of this function which ignores these checks, see
-/// [`from_u32_unchecked`].
+/// [`from_u32_unchecked()`].
 ///
-/// [`from_u32_unchecked`]: fn.from_u32_unchecked.html
+/// [`from_u32_unchecked()`]: fn.from_u32_unchecked.html
 ///
 /// # Examples
 ///
@@ -147,15 +146,15 @@ pub fn from_u32(i: u32) -> Option<char> {
 ///
 /// [`char`]: ../../std/primitive.char.html
 /// [`u32`]: ../../std/primitive.u32.html
-/// [`as`]: ../../book/first-edition/casting-between-types.html#as
+/// [`as`]: ../../book/casting-between-types.html#as
 ///
 /// # Safety
 ///
 /// This function is unsafe, as it may construct invalid `char` values.
 ///
-/// For a safe version of this function, see the [`from_u32`] function.
+/// For a safe version of this function, see the [`from_u32()`] function.
 ///
-/// [`from_u32`]: fn.from_u32.html
+/// [`from_u32()`]: fn.from_u32.html
 ///
 /// # Examples
 ///
@@ -188,7 +187,7 @@ impl From<char> for u32 {
 /// with the character encoding that IANA calls ISO-8859-1.
 /// This encoding is compatible with ASCII.
 ///
-/// Note that this is different from ISO/IEC 8859-1 a.k.a. ISO 8859-1 (with one less hyphen),
+/// Note that this is different from ISO/IEC 8859-1 a.k.a. ISO 8859-1 (with one less hypen),
 /// which leaves some "blanks", byte values that are not assigned to any character.
 /// ISO-8859-1 (the IANA one) assigns them to the C0 and C1 control codes.
 ///
@@ -210,10 +209,10 @@ impl From<u8> for char {
 
 #[unstable(feature = "try_from", issue = "33417")]
 impl TryFrom<u32> for char {
-    type Error = CharTryFromError;
+    type Err = CharTryFromError;
 
     #[inline]
-    fn try_from(i: u32) -> Result<Self, Self::Error> {
+    fn try_from(i: u32) -> Result<Self, Self::Err> {
         if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
             Err(CharTryFromError(()))
         } else {
@@ -449,7 +448,7 @@ impl CharExt for char {
                     code,
                     dst.len())
             };
-            from_utf8_unchecked_mut(dst.get_unchecked_mut(..len))
+            transmute(slice::from_raw_parts_mut(dst.as_mut_ptr(), len))
         }
     }
 
@@ -480,10 +479,10 @@ impl CharExt for char {
 /// Returns an iterator that yields the hexadecimal Unicode escape of a
 /// character, as `char`s.
 ///
-/// This `struct` is created by the [`escape_unicode`] method on [`char`]. See
+/// This `struct` is created by the [`escape_unicode()`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`escape_unicode`]: ../../std/primitive.char.html#method.escape_unicode
+/// [`escape_unicode()`]: ../../std/primitive.char.html#method.escape_unicode
 /// [`char`]: ../../std/primitive.char.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -589,22 +588,12 @@ impl ExactSizeIterator for EscapeUnicode {
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for EscapeUnicode {}
 
-#[stable(feature = "char_struct_display", since = "1.16.0")]
-impl fmt::Display for EscapeUnicode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for c in self.clone() {
-            f.write_char(c)?;
-        }
-        Ok(())
-    }
-}
-
 /// An iterator that yields the literal escape code of a `char`.
 ///
-/// This `struct` is created by the [`escape_default`] method on [`char`]. See
+/// This `struct` is created by the [`escape_default()`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`escape_default`]: ../../std/primitive.char.html#method.escape_default
+/// [`escape_default()`]: ../../std/primitive.char.html#method.escape_default
 /// [`char`]: ../../std/primitive.char.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -702,22 +691,12 @@ impl ExactSizeIterator for EscapeDefault {
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for EscapeDefault {}
 
-#[stable(feature = "char_struct_display", since = "1.16.0")]
-impl fmt::Display for EscapeDefault {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for c in self.clone() {
-            f.write_char(c)?;
-        }
-        Ok(())
-    }
-}
-
 /// An iterator that yields the literal escape code of a `char`.
 ///
-/// This `struct` is created by the [`escape_debug`] method on [`char`]. See its
+/// This `struct` is created by the [`escape_debug()`] method on [`char`]. See its
 /// documentation for more.
 ///
-/// [`escape_debug`]: ../../std/primitive.char.html#method.escape_debug
+/// [`escape_debug()`]: ../../std/primitive.char.html#method.escape_debug
 /// [`char`]: ../../std/primitive.char.html
 #[unstable(feature = "char_escape_debug", issue = "35068")]
 #[derive(Clone, Debug)]
@@ -735,13 +714,6 @@ impl ExactSizeIterator for EscapeDebug { }
 
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for EscapeDebug {}
-
-#[unstable(feature = "char_escape_debug", issue = "35068")]
-impl fmt::Display for EscapeDebug {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
-    }
-}
 
 
 

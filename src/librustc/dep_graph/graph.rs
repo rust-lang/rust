@@ -18,7 +18,6 @@ use std::sync::Arc;
 use super::dep_node::{DepNode, WorkProductId};
 use super::query::DepGraphQuery;
 use super::raii;
-use super::safe::DepGraphSafe;
 use super::thread::{DepGraphThreadData, DepMessage};
 
 #[derive(Clone)]
@@ -77,38 +76,11 @@ impl DepGraph {
         op()
     }
 
-    /// Starts a new dep-graph task. Dep-graph tasks are specified
-    /// using a free function (`task`) and **not** a closure -- this
-    /// is intentional because we want to exercise tight control over
-    /// what state they have access to. In particular, we want to
-    /// prevent implicit 'leaks' of tracked state into the task (which
-    /// could then be read without generating correct edges in the
-    /// dep-graph -- see the [README] for more details on the
-    /// dep-graph). To this end, the task function gets exactly two
-    /// pieces of state: the context `cx` and an argument `arg`. Both
-    /// of these bits of state must be of some type that implements
-    /// `DepGraphSafe` and hence does not leak.
-    ///
-    /// The choice of two arguments is not fundamental. One argument
-    /// would work just as well, since multiple values can be
-    /// collected using tuples. However, using two arguments works out
-    /// to be quite convenient, since it is common to need a context
-    /// (`cx`) and some argument (e.g., a `DefId` identifying what
-    /// item to process).
-    ///
-    /// For cases where you need some other number of arguments:
-    ///
-    /// - If you only need one argument, just use `()` for the `arg`
-    ///   parameter.
-    /// - If you need 3+ arguments, use a tuple for the
-    ///   `arg` parameter.
-    ///
-    /// [README]: README.md
-    pub fn with_task<C, A, R>(&self, key: DepNode<DefId>, cx: C, arg: A, task: fn(C, A) -> R) -> R
-        where C: DepGraphSafe, A: DepGraphSafe
+    pub fn with_task<OP,R>(&self, key: DepNode<DefId>, op: OP) -> R
+        where OP: FnOnce() -> R
     {
         let _task = self.in_task(key);
-        task(cx, arg)
+        op()
     }
 
     pub fn read(&self, v: DepNode<DefId>) {
@@ -153,12 +125,6 @@ impl DepGraph {
     /// used during saving of the dep-graph.
     pub fn work_products(&self) -> Ref<FxHashMap<Arc<WorkProductId>, WorkProduct>> {
         self.data.work_products.borrow()
-    }
-
-    /// Access the map of work-products created during the cached run. Only
-    /// used during saving of the dep-graph.
-    pub fn previous_work_products(&self) -> Ref<FxHashMap<Arc<WorkProductId>, WorkProduct>> {
-        self.data.previous_work_products.borrow()
     }
 }
 

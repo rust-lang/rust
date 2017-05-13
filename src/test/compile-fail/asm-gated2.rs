@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-asm
-
 fn main() {
     unsafe {
         println!("{}", asm!("")); //~ ERROR inline assembly is not stable

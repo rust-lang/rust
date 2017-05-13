@@ -14,15 +14,14 @@
 
 //! Range syntax.
 
-use core::ops::{RangeFull, Range, RangeTo, RangeFrom, RangeInclusive, RangeToInclusive};
-use Bound::{self, Excluded, Included, Unbounded};
+use core::ops::{RangeFull, Range, RangeTo, RangeFrom};
 
-/// `RangeArgument` is implemented by Rust's built-in range types, produced
+/// **RangeArgument** is implemented by Rust's built-in range types, produced
 /// by range syntax like `..`, `a..`, `..b` or `c..d`.
-pub trait RangeArgument<T: ?Sized> {
-    /// Start index bound.
+pub trait RangeArgument<T> {
+    /// Start index (inclusive)
     ///
-    /// Returns the start value as a `Bound`.
+    /// Return start value if present, else `None`.
     ///
     /// # Examples
     ///
@@ -34,17 +33,18 @@ pub trait RangeArgument<T: ?Sized> {
     ///
     /// # fn main() {
     /// use collections::range::RangeArgument;
-    /// use collections::Bound::*;
     ///
-    /// assert_eq!((..10).start(), Unbounded);
-    /// assert_eq!((3..10).start(), Included(&3));
+    /// assert_eq!((..10).start(), None);
+    /// assert_eq!((3..10).start(), Some(&3));
     /// # }
     /// ```
-    fn start(&self) -> Bound<&T>;
+    fn start(&self) -> Option<&T> {
+        None
+    }
 
-    /// End index bound.
+    /// End index (exclusive)
     ///
-    /// Returns the end value as a `Bound`.
+    /// Return end value if present, else `None`.
     ///
     /// # Examples
     ///
@@ -56,103 +56,37 @@ pub trait RangeArgument<T: ?Sized> {
     ///
     /// # fn main() {
     /// use collections::range::RangeArgument;
-    /// use collections::Bound::*;
     ///
-    /// assert_eq!((3..).end(), Unbounded);
-    /// assert_eq!((3..10).end(), Excluded(&10));
+    /// assert_eq!((3..).end(), None);
+    /// assert_eq!((3..10).end(), Some(&10));
     /// # }
     /// ```
-    fn end(&self) -> Bound<&T>;
+    fn end(&self) -> Option<&T> {
+        None
+    }
 }
 
 // FIXME add inclusive ranges to RangeArgument
 
-impl<T: ?Sized> RangeArgument<T> for RangeFull {
-    fn start(&self) -> Bound<&T> {
-        Unbounded
-    }
-    fn end(&self) -> Bound<&T> {
-        Unbounded
-    }
-}
+impl<T> RangeArgument<T> for RangeFull {}
 
 impl<T> RangeArgument<T> for RangeFrom<T> {
-    fn start(&self) -> Bound<&T> {
-        Included(&self.start)
-    }
-    fn end(&self) -> Bound<&T> {
-        Unbounded
+    fn start(&self) -> Option<&T> {
+        Some(&self.start)
     }
 }
 
 impl<T> RangeArgument<T> for RangeTo<T> {
-    fn start(&self) -> Bound<&T> {
-        Unbounded
-    }
-    fn end(&self) -> Bound<&T> {
-        Excluded(&self.end)
+    fn end(&self) -> Option<&T> {
+        Some(&self.end)
     }
 }
 
 impl<T> RangeArgument<T> for Range<T> {
-    fn start(&self) -> Bound<&T> {
-        Included(&self.start)
+    fn start(&self) -> Option<&T> {
+        Some(&self.start)
     }
-    fn end(&self) -> Bound<&T> {
-        Excluded(&self.end)
-    }
-}
-
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-impl<T> RangeArgument<T> for RangeInclusive<T> {
-    fn start(&self) -> Bound<&T> {
-        match *self {
-            RangeInclusive::Empty{ ref at }            => Included(at),
-            RangeInclusive::NonEmpty { ref start, .. } => Included(start),
-        }
-    }
-    fn end(&self) -> Bound<&T> {
-        match *self {
-            RangeInclusive::Empty{ ref at }            => Excluded(at),
-            RangeInclusive::NonEmpty { ref end, .. }   => Included(end),
-        }
-    }
-}
-
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-impl<T> RangeArgument<T> for RangeToInclusive<T> {
-    fn start(&self) -> Bound<&T> {
-        Unbounded
-    }
-    fn end(&self) -> Bound<&T> {
-        Included(&self.end)
-    }
-}
-
-impl<T> RangeArgument<T> for (Bound<T>, Bound<T>) {
-    fn start(&self) -> Bound<&T> {
-        match *self {
-            (Included(ref start), _) => Included(start),
-            (Excluded(ref start), _) => Excluded(start),
-            (Unbounded, _)           => Unbounded,
-        }
-    }
-
-    fn end(&self) -> Bound<&T> {
-        match *self {
-            (_, Included(ref end)) => Included(end),
-            (_, Excluded(ref end)) => Excluded(end),
-            (_, Unbounded)         => Unbounded,
-        }
-    }
-}
-
-impl<'a, T: ?Sized + 'a> RangeArgument<T> for (Bound<&'a T>, Bound<&'a T>) {
-    fn start(&self) -> Bound<&T> {
-        self.0
-    }
-
-    fn end(&self) -> Bound<&T> {
-        self.1
+    fn end(&self) -> Option<&T> {
+        Some(&self.end)
     }
 }

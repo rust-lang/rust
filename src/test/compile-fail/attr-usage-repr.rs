@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![allow(dead_code)]
-#![feature(attr_literals)]
 #![feature(repr_simd)]
 
 #[repr(C)] //~ ERROR: attribute should be applied to struct, enum or union
@@ -29,9 +28,6 @@ struct SInt(f64, f64);
 
 #[repr(C)]
 enum EExtern { A, B }
-
-#[repr(align(8))] //~ ERROR: attribute should be applied to struct
-enum EAlign { A, B }
 
 #[repr(packed)] //~ ERROR: attribute should be applied to struct
 enum EPacked { A, B }

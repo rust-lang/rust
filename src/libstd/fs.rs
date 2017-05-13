@@ -42,8 +42,8 @@ use time::SystemTime;
 /// use std::io::prelude::*;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// let mut file = File::create("foo.txt")?;
-/// file.write_all(b"Hello, world!")?;
+/// let mut file = try!(File::create("foo.txt"));
+/// try!(file.write_all(b"Hello, world!"));
 /// # Ok(())
 /// # }
 /// ```
@@ -55,9 +55,9 @@ use time::SystemTime;
 /// use std::io::prelude::*;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// let mut file = File::open("foo.txt")?;
+/// let mut file = try!(File::open("foo.txt"));
 /// let mut contents = String::new();
-/// file.read_to_string(&mut contents)?;
+/// try!(file.read_to_string(&mut contents));
 /// assert_eq!(contents, "Hello, world!");
 /// # Ok(())
 /// # }
@@ -72,17 +72,16 @@ use time::SystemTime;
 /// use std::io::prelude::*;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// let file = File::open("foo.txt")?;
+/// let file = try!(File::open("foo.txt"));
 /// let mut buf_reader = BufReader::new(file);
 /// let mut contents = String::new();
-/// buf_reader.read_to_string(&mut contents)?;
+/// try!(buf_reader.read_to_string(&mut contents));
 /// assert_eq!(contents, "Hello, world!");
 /// # Ok(())
 /// # }
 /// ```
 ///
-/// [`Read`]: ../io/trait.Read.html
-/// [`BufReader<R>`]: ../io/struct.BufReader.html
+/// [`BufReader`]: ../io/struct.BufReader.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
     inner: fs_imp::File,
@@ -90,13 +89,11 @@ pub struct File {
 
 /// Metadata information about a file.
 ///
-/// This structure is returned from the [`metadata`] or
-/// [`symlink_metadata`] function or method and represents known
-/// metadata about a file such as its permissions, size, modification
-/// times, etc.
+/// This structure is returned from the [`metadata`] function or method and
+/// represents known metadata about a file such as its permissions, size,
+/// modification times, etc.
 ///
 /// [`metadata`]: fn.metadata.html
-/// [`symlink_metadata`]: fn.symlink_metadata.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Metadata(fs_imp::FileAttr);
@@ -142,14 +139,14 @@ pub struct DirEntry(fs_imp::DirEntry);
 /// [`File::open`]: struct.File.html#method.open
 /// [`File::create`]: struct.File.html#method.create
 ///
-/// Generally speaking, when using `OpenOptions`, you'll first call [`new`],
-/// then chain calls to methods to set each option, then call [`open`],
+/// Generally speaking, when using `OpenOptions`, you'll first call [`new()`],
+/// then chain calls to methods to set each option, then call [`open()`],
 /// passing the path of the file you're trying to open. This will give you a
 /// [`io::Result`][result] with a [`File`][file] inside that you can further
 /// operate on.
 ///
-/// [`new`]: struct.OpenOptions.html#method.new
-/// [`open`]: struct.OpenOptions.html#method.open
+/// [`new()`]: struct.OpenOptions.html#method.new
+/// [`open()`]: struct.OpenOptions.html#method.open
 /// [result]: ../io/type.Result.html
 /// [file]: struct.File.html
 ///
@@ -227,7 +224,7 @@ impl File {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::open("foo.txt")?;
+    /// let mut f = try!(File::open("foo.txt"));
     /// # Ok(())
     /// # }
     /// ```
@@ -251,7 +248,7 @@ impl File {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::create("foo.txt")?;
+    /// let mut f = try!(File::create("foo.txt"));
     /// # Ok(())
     /// # }
     /// ```
@@ -272,10 +269,10 @@ impl File {
     /// use std::io::prelude::*;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::create("foo.txt")?;
-    /// f.write_all(b"Hello, world!")?;
+    /// let mut f = try!(File::create("foo.txt"));
+    /// try!(f.write_all(b"Hello, world!"));
     ///
-    /// f.sync_all()?;
+    /// try!(f.sync_all());
     /// # Ok(())
     /// # }
     /// ```
@@ -303,10 +300,10 @@ impl File {
     /// use std::io::prelude::*;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::create("foo.txt")?;
-    /// f.write_all(b"Hello, world!")?;
+    /// let mut f = try!(File::create("foo.txt"));
+    /// try!(f.write_all(b"Hello, world!"));
     ///
-    /// f.sync_data()?;
+    /// try!(f.sync_data());
     /// # Ok(())
     /// # }
     /// ```
@@ -333,8 +330,8 @@ impl File {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::create("foo.txt")?;
-    /// f.set_len(10)?;
+    /// let mut f = try!(File::create("foo.txt"));
+    /// try!(f.set_len(10));
     /// # Ok(())
     /// # }
     /// ```
@@ -351,8 +348,8 @@ impl File {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::open("foo.txt")?;
-    /// let metadata = f.metadata()?;
+    /// let mut f = try!(File::open("foo.txt"));
+    /// let metadata = try!(f.metadata());
     /// # Ok(())
     /// # }
     /// ```
@@ -373,8 +370,8 @@ impl File {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::open("foo.txt")?;
-    /// let file_copy = f.try_clone()?;
+    /// let mut f = try!(File::open("foo.txt"));
+    /// let file_copy = try!(f.try_clone());
     /// # Ok(())
     /// # }
     /// ```
@@ -404,6 +401,7 @@ impl File {
     /// # Examples
     ///
     /// ```
+    /// #![feature(set_permissions_atomic)]
     /// # fn foo() -> std::io::Result<()> {
     /// use std::fs::File;
     ///
@@ -414,7 +412,7 @@ impl File {
     /// # Ok(())
     /// # }
     /// ```
-    #[stable(feature = "set_permissions_atomic", since = "1.16.0")]
+    #[unstable(feature = "set_permissions_atomic", issue="37916")]
     pub fn set_permissions(&self, perm: Permissions) -> io::Result<()> {
         self.inner.set_permissions(perm.0)
     }
@@ -690,7 +688,7 @@ impl Metadata {
     /// # fn foo() -> std::io::Result<()> {
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// let metadata = try!(fs::metadata("foo.txt"));
     ///
     /// println!("{:?}", metadata.file_type());
     /// # Ok(())
@@ -709,7 +707,7 @@ impl Metadata {
     /// # fn foo() -> std::io::Result<()> {
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// let metadata = try!(fs::metadata("foo.txt"));
     ///
     /// assert!(!metadata.is_dir());
     /// # Ok(())
@@ -726,7 +724,7 @@ impl Metadata {
     /// # fn foo() -> std::io::Result<()> {
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// let metadata = try!(fs::metadata("foo.txt"));
     ///
     /// assert!(metadata.is_file());
     /// # Ok(())
@@ -743,7 +741,7 @@ impl Metadata {
     /// # fn foo() -> std::io::Result<()> {
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// let metadata = try!(fs::metadata("foo.txt"));
     ///
     /// assert_eq!(0, metadata.len());
     /// # Ok(())
@@ -760,7 +758,7 @@ impl Metadata {
     /// # fn foo() -> std::io::Result<()> {
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// let metadata = try!(fs::metadata("foo.txt"));
     ///
     /// assert!(!metadata.permissions().readonly());
     /// # Ok(())
@@ -787,7 +785,7 @@ impl Metadata {
     /// # fn foo() -> std::io::Result<()> {
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// let metadata = try!(fs::metadata("foo.txt"));
     ///
     /// if let Ok(time) = metadata.modified() {
     ///     println!("{:?}", time);
@@ -822,7 +820,7 @@ impl Metadata {
     /// # fn foo() -> std::io::Result<()> {
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// let metadata = try!(fs::metadata("foo.txt"));
     ///
     /// if let Ok(time) = metadata.accessed() {
     ///     println!("{:?}", time);
@@ -853,7 +851,7 @@ impl Metadata {
     /// # fn foo() -> std::io::Result<()> {
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// let metadata = try!(fs::metadata("foo.txt"));
     ///
     /// if let Ok(time) = metadata.created() {
     ///     println!("{:?}", time);
@@ -869,7 +867,7 @@ impl Metadata {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[stable(feature = "std_debug", since = "1.15.0")]
 impl fmt::Debug for Metadata {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Metadata")
@@ -897,8 +895,8 @@ impl Permissions {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::create("foo.txt")?;
-    /// let metadata = f.metadata()?;
+    /// let mut f = try!(File::create("foo.txt"));
+    /// let metadata = try!(f.metadata());
     ///
     /// assert_eq!(false, metadata.permissions().readonly());
     /// # Ok(())
@@ -918,8 +916,8 @@ impl Permissions {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let f = File::create("foo.txt")?;
-    /// let metadata = f.metadata()?;
+    /// let f = try!(File::create("foo.txt"));
+    /// let metadata = try!(f.metadata());
     /// let mut permissions = metadata.permissions();
     ///
     /// permissions.set_readonly(true);
@@ -947,7 +945,7 @@ impl FileType {
     /// # fn foo() -> std::io::Result<()> {
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// let metadata = try!(fs::metadata("foo.txt"));
     /// let file_type = metadata.file_type();
     ///
     /// assert_eq!(file_type.is_dir(), false);
@@ -965,7 +963,7 @@ impl FileType {
     /// # fn foo() -> std::io::Result<()> {
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// let metadata = try!(fs::metadata("foo.txt"));
     /// let file_type = metadata.file_type();
     ///
     /// assert_eq!(file_type.is_file(), true);
@@ -977,24 +975,13 @@ impl FileType {
 
     /// Test whether this file type represents a symbolic link.
     ///
-    /// The underlying [`Metadata`] struct needs to be retrieved
-    /// with the [`fs::symlink_metadata`] function and not the
-    /// [`fs::metadata`] function. The [`fs::metadata`] function
-    /// follows symbolic links, so [`is_symlink`] would always
-    /// return false for the target file.
-    ///
-    /// [`Metadata`]: struct.Metadata.html
-    /// [`fs::metadata`]: fn.metadata.html
-    /// [`fs::symlink_metadata`]: fn.symlink_metadata.html
-    /// [`is_symlink`]: struct.FileType.html#method.is_symlink
-    ///
     /// # Examples
     ///
     /// ```
     /// # fn foo() -> std::io::Result<()> {
     /// use std::fs;
     ///
-    /// let metadata = fs::symlink_metadata("foo.txt")?;
+    /// let metadata = try!(fs::metadata("foo.txt"));
     /// let file_type = metadata.file_type();
     ///
     /// assert_eq!(file_type.is_symlink(), false);
@@ -1039,8 +1026,8 @@ impl DirEntry {
     /// ```
     /// use std::fs;
     /// # fn foo() -> std::io::Result<()> {
-    /// for entry in fs::read_dir(".")? {
-    ///     let dir = entry?;
+    /// for entry in try!(fs::read_dir(".")) {
+    ///     let dir = try!(entry);
     ///     println!("{:?}", dir.path());
     /// }
     /// # Ok(())
@@ -1176,7 +1163,6 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// This function currently corresponds to the `unlink` function on Unix
 /// and the `DeleteFile` function on Windows.
 /// Note that, this [may change in the future][changes].
-///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1193,7 +1179,7 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// use std::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// fs::remove_file("a.txt")?;
+/// try!(fs::remove_file("a.txt"));
 /// # Ok(())
 /// # }
 /// ```
@@ -1213,7 +1199,6 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function currently corresponds to the `stat` function on Unix
 /// and the `GetFileAttributesEx` function on Windows.
 /// Note that, this [may change in the future][changes].
-///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1230,7 +1215,7 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// # fn foo() -> std::io::Result<()> {
 /// use std::fs;
 ///
-/// let attr = fs::metadata("/some/file/path.txt")?;
+/// let attr = try!(fs::metadata("/some/file/path.txt"));
 /// // inspect attr ...
 /// # Ok(())
 /// # }
@@ -1247,7 +1232,6 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// This function currently corresponds to the `lstat` function on Unix
 /// and the `GetFileAttributesEx` function on Windows.
 /// Note that, this [may change in the future][changes].
-///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1264,7 +1248,7 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// # fn foo() -> std::io::Result<()> {
 /// use std::fs;
 ///
-/// let attr = fs::symlink_metadata("/some/file/path.txt")?;
+/// let attr = try!(fs::symlink_metadata("/some/file/path.txt"));
 /// // inspect attr ...
 /// # Ok(())
 /// # }
@@ -1290,7 +1274,6 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// on Windows, `from` can be anything, but `to` must *not* be a directory.
 ///
 /// Note that, this [may change in the future][changes].
-///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1308,7 +1291,7 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// use std::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// fs::rename("a.txt", "b.txt")?; // Rename a.txt to b.txt
+/// try!(fs::rename("a.txt", "b.txt")); // Rename a.txt to b.txt
 /// # Ok(())
 /// # }
 /// ```
@@ -1334,7 +1317,6 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// `O_CLOEXEC` is set for returned file descriptors.
 /// On Windows, this function currently corresponds to `CopyFileEx`.
 /// Note that, this [may change in the future][changes].
-///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1353,7 +1335,7 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// use std::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// fs::copy("foo.txt", "bar.txt")?;  // Copy foo.txt to bar.txt
+/// try!(fs::copy("foo.txt", "bar.txt"));  // Copy foo.txt to bar.txt
 /// # Ok(()) }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1371,7 +1353,6 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 /// This function currently corresponds to the `link` function on Unix
 /// and the `CreateHardLink` function on Windows.
 /// Note that, this [may change in the future][changes].
-///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1387,7 +1368,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 /// use std::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// fs::hard_link("a.txt", "b.txt")?; // Hard link a.txt to b.txt
+/// try!(fs::hard_link("a.txt", "b.txt")); // Hard link a.txt to b.txt
 /// # Ok(())
 /// # }
 /// ```
@@ -1410,7 +1391,7 @@ pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 /// use std::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// fs::soft_link("a.txt", "b.txt")?;
+/// try!(fs::soft_link("a.txt", "b.txt"));
 /// # Ok(())
 /// # }
 /// ```
@@ -1430,7 +1411,6 @@ pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 /// and the `CreateFile` function with `FILE_FLAG_OPEN_REPARSE_POINT` and
 /// `FILE_FLAG_BACKUP_SEMANTICS` flags on Windows.
 /// Note that, this [may change in the future][changes].
-///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1447,7 +1427,7 @@ pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 /// use std::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// let path = fs::read_link("a.txt")?;
+/// let path = try!(fs::read_link("a.txt"));
 /// # Ok(())
 /// # }
 /// ```
@@ -1464,7 +1444,6 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// This function currently corresponds to the `realpath` function on Unix
 /// and the `CreateFile` and `GetFinalPathNameByHandle` functions on Windows.
 /// Note that, this [may change in the future][changes].
-///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1481,7 +1460,7 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// use std::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// let path = fs::canonicalize("../a/../foo.txt")?;
+/// let path = try!(fs::canonicalize("../a/../foo.txt"));
 /// # Ok(())
 /// # }
 /// ```
@@ -1497,7 +1476,6 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// This function currently corresponds to the `mkdir` function on Unix
 /// and the `CreateDirectory` function on Windows.
 /// Note that, this [may change in the future][changes].
-///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1514,7 +1492,7 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// use std::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// fs::create_dir("/some/dir")?;
+/// try!(fs::create_dir("/some/dir"));
 /// # Ok(())
 /// # }
 /// ```
@@ -1531,7 +1509,6 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function currently corresponds to the `mkdir` function on Unix
 /// and the `CreateDirectory` function on Windows.
 /// Note that, this [may change in the future][changes].
-///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1544,19 +1521,13 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// error conditions for when a directory is being created (after it is
 /// determined to not exist) are outlined by `fs::create_dir`.
 ///
-/// Notable exception is made for situations where any of the directories
-/// specified in the `path` could not be created as it was created concurrently.
-/// Such cases are considered success. In other words: calling `create_dir_all`
-/// concurrently from multiple threads or processes is guaranteed to not fail
-/// due to race itself.
-///
 /// # Examples
 ///
 /// ```
 /// use std::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// fs::create_dir_all("/some/dir")?;
+/// try!(fs::create_dir_all("/some/dir"));
 /// # Ok(())
 /// # }
 /// ```
@@ -1572,7 +1543,6 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function currently corresponds to the `rmdir` function on Unix
 /// and the `RemoveDirectory` function on Windows.
 /// Note that, this [may change in the future][changes].
-///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1589,7 +1559,7 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// use std::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// fs::remove_dir("/some/dir")?;
+/// try!(fs::remove_dir("/some/dir"));
 /// # Ok(())
 /// # }
 /// ```
@@ -1610,7 +1580,6 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// and the `FindFirstFile`, `GetFileAttributesEx`, `DeleteFile`, and `RemoveDirectory` functions
 /// on Windows.
 /// Note that, this [may change in the future][changes].
-///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1623,7 +1592,7 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// use std::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// fs::remove_dir_all("/some/dir")?;
+/// try!(fs::remove_dir_all("/some/dir"));
 /// # Ok(())
 /// # }
 /// ```
@@ -1645,7 +1614,6 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function currently corresponds to the `opendir` function on Unix
 /// and the `FindFirstFile` function on Windows.
 /// Note that, this [may change in the future][changes].
-///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1667,11 +1635,11 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// // one possible implementation of walking a directory only visiting files
 /// fn visit_dirs(dir: &Path, cb: &Fn(&DirEntry)) -> io::Result<()> {
 ///     if dir.is_dir() {
-///         for entry in fs::read_dir(dir)? {
-///             let entry = entry?;
+///         for entry in try!(fs::read_dir(dir)) {
+///             let entry = try!(entry);
 ///             let path = entry.path();
 ///             if path.is_dir() {
-///                 visit_dirs(&path, cb)?;
+///                 try!(visit_dirs(&path, cb));
 ///             } else {
 ///                 cb(&entry);
 ///             }
@@ -1692,7 +1660,6 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 /// This function currently corresponds to the `chmod` function on Unix
 /// and the `SetFileAttributes` function on Windows.
 /// Note that, this [may change in the future][changes].
-///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1709,9 +1676,9 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 /// # fn foo() -> std::io::Result<()> {
 /// use std::fs;
 ///
-/// let mut perms = fs::metadata("foo.txt")?.permissions();
+/// let mut perms = try!(fs::metadata("foo.txt")).permissions();
 /// perms.set_readonly(true);
-/// fs::set_permissions("foo.txt", perms)?;
+/// try!(fs::set_permissions("foo.txt", perms));
 /// # Ok(())
 /// # }
 /// ```
@@ -1740,9 +1707,9 @@ impl DirBuilder {
         }
     }
 
-    /// Indicates that directories should be created recursively, creating all
-    /// parent directories. Parents that do not exist are created with the same
-    /// security and permissions settings.
+    /// Indicate that directories create should be created recursively, creating
+    /// all parent directories if they do not exist with the same security and
+    /// permissions settings.
     ///
     /// This option defaults to `false`.
     ///
@@ -1762,9 +1729,6 @@ impl DirBuilder {
 
     /// Create the specified directory with the options configured in this
     /// builder.
-    ///
-    /// It is considered an error if the directory already exists unless
-    /// recursive mode is enabled.
     ///
     /// # Examples
     ///
@@ -1792,25 +1756,11 @@ impl DirBuilder {
     }
 
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
-        if path == Path::new("") {
-            return Ok(())
+        if path == Path::new("") || path.is_dir() { return Ok(()) }
+        if let Some(p) = path.parent() {
+            self.create_dir_all(p)?
         }
-
-        match self.inner.mkdir(path) {
-            Ok(()) => return Ok(()),
-            Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
-            Err(_) if path.is_dir() => return Ok(()),
-            Err(e) => return Err(e),
-        }
-        match path.parent() {
-            Some(p) => try!(self.create_dir_all(p)),
-            None => return Err(io::Error::new(io::ErrorKind::Other, "failed to create whole tree")),
-        }
-        match self.inner.mkdir(path) {
-            Ok(()) => Ok(()),
-            Err(_) if path.is_dir() => Ok(()),
-            Err(e) => Err(e),
-        }
+        self.inner.mkdir(path)
     }
 }
 
@@ -1830,7 +1780,6 @@ mod tests {
     use rand::{StdRng, Rng};
     use str;
     use sys_common::io::test::{TempDir, tmpdir};
-    use thread;
 
     #[cfg(windows)]
     use os::windows::fs::{symlink_dir, symlink_file};
@@ -2299,39 +2248,8 @@ mod tests {
     }
 
     #[test]
-    fn concurrent_recursive_mkdir() {
-        for _ in 0..100 {
-            let dir = tmpdir();
-            let mut dir = dir.join("a");
-            for _ in 0..40 {
-                dir = dir.join("a");
-            }
-            let mut join = vec!();
-            for _ in 0..8 {
-                let dir = dir.clone();
-                join.push(thread::spawn(move || {
-                    check!(fs::create_dir_all(&dir));
-                }))
-            }
-
-            // No `Display` on result of `join()`
-            join.drain(..).map(|join| join.join().unwrap()).count();
-        }
-    }
-
-    #[test]
     fn recursive_mkdir_slash() {
         check!(fs::create_dir_all(&Path::new("/")));
-    }
-
-    #[test]
-    fn recursive_mkdir_dot() {
-        check!(fs::create_dir_all(&Path::new(".")));
-    }
-
-    #[test]
-    fn recursive_mkdir_empty() {
-        check!(fs::create_dir_all(&Path::new("")));
     }
 
     #[test]
@@ -2412,7 +2330,7 @@ mod tests {
 
         let tmpdir = tmpdir();
         let unicode = tmpdir.path();
-        let unicode = unicode.join("test-각丁ー再见");
+        let unicode = unicode.join(&format!("test-각丁ー再见"));
         check!(fs::create_dir(&unicode));
         assert!(unicode.exists());
         assert!(!Path::new("test/unicode-bogus-path-각丁ー再见").exists());

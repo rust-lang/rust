@@ -21,12 +21,13 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(rustc_diagnostic_macros)]
 #![feature(staged_api)]
 #![feature(rustc_private)]
 
+extern crate core;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_const_eval;
@@ -47,4 +48,5 @@ pub mod hir_stats;
 pub mod loops;
 pub mod mir_stats;
 pub mod no_asm;
+pub mod rvalues;
 pub mod static_recursion;

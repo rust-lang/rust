@@ -12,14 +12,14 @@
 
 fn main() {
     let _: i32 =
-        'a: // in this case, the citation is just the `break`:
-        loop { break }; //~ ERROR mismatched types
+        'a: //~ ERROR mismatched types
+        loop { break };
     let _: i32 =
         'b: //~ ERROR mismatched types
-        while true { break }; // but here we cite the whole loop
+        while true { break };
     let _: i32 =
         'c: //~ ERROR mismatched types
-        for _ in None { break }; // but here we cite the whole loop
+        for _ in None { break };
     let _: i32 =
         'd: //~ ERROR mismatched types
         while let Some(_) = None { break };

@@ -64,7 +64,7 @@ impl UnusedMut {
         for (_, v) in &mutables {
             if !v.iter().any(|e| used_mutables.contains(e)) {
                 cx.span_lint(UNUSED_MUT,
-                             cx.tcx.hir.span(v[0]),
+                             cx.tcx.map.span(v[0]),
                              "variable does not need to be mutable");
             }
         }
@@ -139,14 +139,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             return;
         }
 
-        let t = cx.tables.expr_ty(&expr);
+        let t = cx.tcx.tables().expr_ty(&expr);
         let warned = match t.sty {
-            ty::TyTuple(ref tys, _) if tys.is_empty() => return,
+            ty::TyTuple(ref tys) if tys.is_empty() => return,
             ty::TyNever => return,
             ty::TyBool => return,
             ty::TyAdt(def, _) => {
                 let attrs = cx.tcx.get_attrs(def.did);
-                check_must_use(cx, &attrs, s.span)
+                check_must_use(cx, &attrs[..], s.span)
             }
             _ => false,
         };
@@ -189,38 +189,11 @@ impl LintPass for UnusedUnsafe {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedUnsafe {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        /// Return the NodeId for an enclosing scope that is also `unsafe`
-        fn is_enclosed(cx: &LateContext, id: ast::NodeId) -> Option<(String, ast::NodeId)> {
-            let parent_id = cx.tcx.hir.get_parent_node(id);
-            if parent_id != id {
-                if cx.tcx.used_unsafe.borrow().contains(&parent_id) {
-                    Some(("block".to_string(), parent_id))
-                } else if let Some(hir::map::NodeItem(&hir::Item {
-                    node: hir::ItemFn(_, hir::Unsafety::Unsafe, _, _, _, _),
-                    ..
-                })) = cx.tcx.hir.find(parent_id) {
-                    Some(("fn".to_string(), parent_id))
-                } else {
-                    is_enclosed(cx, parent_id)
-                }
-            } else {
-                None
-            }
-        }
         if let hir::ExprBlock(ref blk) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
             if blk.rules == hir::UnsafeBlock(hir::UserProvided) &&
                !cx.tcx.used_unsafe.borrow().contains(&blk.id) {
-
-                let mut db = cx.struct_span_lint(UNUSED_UNSAFE, blk.span,
-                                                 "unnecessary `unsafe` block");
-
-                db.span_label(blk.span, "unnecessary `unsafe` block");
-                if let Some((kind, id)) = is_enclosed(cx, blk.id) {
-                    db.span_note(cx.tcx.hir.span(id),
-                                 &format!("because it's nested under this `unsafe` {}", kind));
-                }
-                db.emit();
+                cx.span_lint(UNUSED_UNSAFE, blk.span, "unnecessary `unsafe` block");
             }
         }
     }
@@ -269,7 +242,6 @@ impl LintPass for UnusedAttributes {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
     fn check_attribute(&mut self, cx: &LateContext, attr: &ast::Attribute) {
         debug!("checking attribute: {:?}", attr);
-        let name = unwrap_or!(attr.name(), return);
 
         // Note that check_name() marks the attribute as used if it matches.
         for &(ref name, ty, _) in BUILTIN_ATTRIBUTES {
@@ -295,13 +267,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             // Is it a builtin attribute that must be used at the crate level?
             let known_crate = BUILTIN_ATTRIBUTES.iter()
-                .find(|&&(builtin, ty, _)| name == builtin && ty == AttributeType::CrateLevel)
+                .find(|&&(name, ty, _)| attr.name() == name && ty == AttributeType::CrateLevel)
                 .is_some();
 
             // Has a plugin registered this attribute as one which must be used at
             // the crate level?
             let plugin_crate = plugin_attributes.iter()
-                .find(|&&(ref x, t)| name == &**x && AttributeType::CrateLevel == t)
+                .find(|&&(ref x, t)| attr.name() == &**x && AttributeType::CrateLevel == t)
                 .is_some();
             if known_crate || plugin_crate {
                 let msg = match attr.style {
@@ -468,7 +440,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
             _ => return,
         }
 
-        if let Some(adjustment) = cx.tables.adjustments.get(&e.id) {
+        if let Some(adjustment) = cx.tcx.tables().adjustments.get(&e.id) {
             if let adjustment::Adjust::DerefRef { autoref, .. } = adjustment.kind {
                 match autoref {
                     Some(adjustment::AutoBorrow::Ref(_, hir::MutImmutable)) => {

@@ -1,0 +1,11 @@
+error[E0282]: unable to infer enough type information about `T`
+  --> $DIR/repair_span_std_macros.rs:12:13
+   |
+12 |     let x = vec![];
+   |             ^^^^^^ cannot infer type for `T`
+   |
+   = note: type annotations or generic parameter binding required
+   = note: this error originates in a macro outside of the current crate
+
+error: aborting due to previous error
+

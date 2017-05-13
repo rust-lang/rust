@@ -17,7 +17,7 @@ use rustc::hir::{self, Unsafety};
 
 pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut unsafety = UnsafetyChecker { tcx: tcx };
-    tcx.hir.krate().visit_all_item_likes(&mut unsafety);
+    tcx.map.krate().visit_all_item_likes(&mut unsafety);
 }
 
 struct UnsafetyChecker<'cx, 'tcx: 'cx> {
@@ -30,11 +30,24 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
                                 impl_generics: Option<&hir::Generics>,
                                 unsafety: hir::Unsafety,
                                 polarity: hir::ImplPolarity) {
-        match self.tcx.impl_trait_ref(self.tcx.hir.local_def_id(item.id)) {
-            None => {}
+        match self.tcx.impl_trait_ref(self.tcx.map.local_def_id(item.id)) {
+            None => {
+                // Inherent impl.
+                match unsafety {
+                    hir::Unsafety::Normal => {
+                        // OK
+                    }
+                    hir::Unsafety::Unsafe => {
+                        span_err!(self.tcx.sess,
+                                  item.span,
+                                  E0197,
+                                  "inherent impls cannot be declared as unsafe");
+                    }
+                }
+            }
 
             Some(trait_ref) => {
-                let trait_def = self.tcx.trait_def(trait_ref.def_id);
+                let trait_def = self.tcx.lookup_trait_def(trait_ref.def_id);
                 let unsafe_attr = impl_generics.and_then(|g| g.carries_unsafe_attr());
                 match (trait_def.unsafety, unsafe_attr, unsafety, polarity) {
                     (_, _, Unsafety::Unsafe, hir::ImplPolarity::Negative) => {
@@ -87,7 +100,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for UnsafetyChecker<'cx, 'tcx> {
             hir::ItemDefaultImpl(unsafety, _) => {
                 self.check_unsafety_coherence(item, None, unsafety, hir::ImplPolarity::Positive);
             }
-            hir::ItemImpl(unsafety, polarity, _, ref generics, ..) => {
+            hir::ItemImpl(unsafety, polarity, ref generics, ..) => {
                 self.check_unsafety_coherence(item, Some(generics), unsafety, polarity);
             }
             _ => {}

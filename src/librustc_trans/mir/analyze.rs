@@ -13,12 +13,12 @@
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc::middle::const_val::ConstVal;
-use rustc::mir::{self, Location, TerminatorKind, Literal};
+use rustc::mir::{self, Location, TerminatorKind};
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir::traversal;
 use common;
 use super::MirContext;
+use super::rvalue;
 
 pub fn lvalue_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
     let mir = mircx.mir;
@@ -30,7 +30,7 @@ pub fn lvalue_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
         let ty = mircx.monomorphize(&ty);
         debug!("local {} has type {:?}", index, ty);
         if ty.is_scalar() ||
-            ty.is_box() ||
+            ty.is_unique() ||
             ty.is_region_ptr() ||
             ty.is_simd() ||
             common::type_is_zero_size(mircx.ccx, ty)
@@ -92,7 +92,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 
         if let mir::Lvalue::Local(index) = *lvalue {
             self.mark_assigned(index);
-            if !self.cx.rvalue_creates_operand(rvalue) {
+            if !rvalue::rvalue_creates_operand(rvalue) {
                 self.mark_as_lvalue(index);
             }
         } else {
@@ -109,9 +109,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
         match *kind {
             mir::TerminatorKind::Call {
                 func: mir::Operand::Constant(mir::Constant {
-                    literal: Literal::Value {
-                        value: ConstVal::Function(def_id, _), ..
-                    }, ..
+                    literal: mir::Literal::Item { def_id, .. }, ..
                 }),
                 ref args, ..
             } if Some(def_id) == self.cx.ccx.tcx().lang_items.box_free_fn() => {
@@ -158,10 +156,10 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 
                 LvalueContext::StorageLive |
                 LvalueContext::StorageDead |
-                LvalueContext::Inspect |
                 LvalueContext::Consume => {}
 
                 LvalueContext::Store |
+                LvalueContext::Inspect |
                 LvalueContext::Borrow { .. } |
                 LvalueContext::Projection(..) => {
                     self.mark_as_lvalue(index);
@@ -206,6 +204,8 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock
                 TerminatorKind::Resume |
                 TerminatorKind::Return |
                 TerminatorKind::Unreachable |
+                TerminatorKind::If { .. } |
+                TerminatorKind::Switch { .. } |
                 TerminatorKind::SwitchInt { .. } => {
                     /* nothing to do */
                 }

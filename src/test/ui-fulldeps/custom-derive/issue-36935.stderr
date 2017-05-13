@@ -1,8 +1,0 @@
-error: proc-macro derive panicked
-  --> $DIR/issue-36935.rs:18:15
-   |
-18 | #[derive(Foo, Bar)]
-   |               ^^^
-   |
-   = help: message: lolnope
-

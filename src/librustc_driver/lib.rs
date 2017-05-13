@@ -21,10 +21,9 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(box_syntax)]
-#![feature(loop_break_value)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -33,9 +32,9 @@
 #![feature(staged_api)]
 
 extern crate arena;
+extern crate flate;
 extern crate getopts;
 extern crate graphviz;
-extern crate env_logger;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_back;
@@ -58,6 +57,7 @@ extern crate serialize;
 extern crate rustc_llvm as llvm;
 #[macro_use]
 extern crate log;
+#[macro_use]
 extern crate syntax;
 extern crate syntax_ext;
 extern crate syntax_pos;
@@ -67,7 +67,6 @@ use pretty::{PpMode, UserIdentifiedItem};
 
 use rustc_resolve as resolve;
 use rustc_save_analysis as save;
-use rustc_save_analysis::DumpHandler;
 use rustc_trans::back::link;
 use rustc_trans::back::write::{create_target_machine, RELOC_MODEL_ARGS, CODE_GEN_MODEL_ARGS};
 use rustc::dep_graph::DepGraph;
@@ -83,7 +82,6 @@ use rustc::util::common::time;
 
 use serialize::json::ToJson;
 
-use std::any::Any;
 use std::cmp::max;
 use std::cmp::Ordering::Equal;
 use std::default::Default;
@@ -206,7 +204,7 @@ pub fn run_compiler<'a>(args: &[String],
     let cstore = Rc::new(CStore::new(&dep_graph));
 
     let loader = file_loader.unwrap_or(box RealFileLoader);
-    let codemap = Rc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
+    let codemap = Rc::new(CodeMap::with_file_loader(loader));
     let mut sess = session::build_session_with_codemap(
         sopts, &dep_graph, input_file_path, descriptions, cstore.clone(), codemap, emitter_dest,
     );
@@ -234,7 +232,7 @@ fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<PathBuf>)
 // Extract input (string or file and optional path) from matches.
 fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>)> {
     if free_matches.len() == 1 {
-        let ifile = &free_matches[0];
+        let ifile = &free_matches[0][..];
         if ifile == "-" {
             let mut src = String::new();
             io::stdin().read_to_string(&mut src).unwrap();
@@ -343,7 +341,7 @@ pub trait CompilerCalls<'a> {
 
     // Create a CompilController struct for controlling the behaviour of
     // compilation.
-    fn build_controller(&mut self, _: &Session, _: &getopts::Matches) -> CompileController<'a>;
+    fn build_controller(&mut self, &Session, &getopts::Matches) -> CompileController<'a>;
 }
 
 // CompilerCalls instance for a regular rustc build.
@@ -457,7 +455,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 };
                 control.after_hir_lowering.callback = box move |state| {
                     pretty::print_after_hir_lowering(state.session,
-                                                     state.hir_map.unwrap(),
+                                                     state.ast_map.unwrap(),
                                                      state.analysis.unwrap(),
                                                      state.resolutions.unwrap(),
                                                      state.input,
@@ -508,25 +506,14 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                                         state.expanded_crate.unwrap(),
                                         state.analysis.unwrap(),
                                         state.crate_name.unwrap(),
-                                        DumpHandler::new(save_analysis_format(state.session),
-                                                         state.out_dir,
-                                                         state.crate_name.unwrap()))
+                                        state.out_dir,
+                                        save_analysis_format(state.session))
                 });
             };
             control.after_analysis.run_callback_on_error = true;
             control.make_glob_map = resolve::MakeGlobMap::Yes;
         }
 
-        if sess.print_fuel_crate.is_some() {
-            let old_callback = control.compilation_done.callback;
-            control.compilation_done.callback = box move |state| {
-                old_callback(state);
-                let sess = state.session;
-                println!("Fuel used by {}: {}",
-                    sess.print_fuel_crate.as_ref().unwrap(),
-                    sess.print_fuel.get());
-            }
-        }
         control
     }
 }
@@ -635,24 +622,11 @@ impl RustcDefaultCalls {
                             node: ast::MetaItemKind::Word,
                             span: DUMMY_SP,
                         });
-
-                        // Note that crt-static is a specially recognized cfg
-                        // directive that's printed out here as part of
-                        // rust-lang/rust#37406, but in general the
-                        // `target_feature` cfg is gated under
-                        // rust-lang/rust#29717. For now this is just
-                        // specifically allowing the crt-static cfg and that's
-                        // it, this is intended to get into Cargo and then go
-                        // through to build scripts.
-                        let value = value.as_ref().map(|s| s.as_str());
-                        let value = value.as_ref().map(|s| s.as_ref());
-                        if name != "target_feature" || value != Some("crt-static") {
-                            if !allow_unstable_cfg && gated_cfg.is_some() {
-                                continue;
-                            }
+                        if !allow_unstable_cfg && gated_cfg.is_some() {
+                            continue;
                         }
 
-                        cfgs.push(if let Some(value) = value {
+                        cfgs.push(if let &Some(ref value) = value {
                             format!("{}=\"{}\"", name, value)
                         } else {
                             format!("{}", name)
@@ -764,7 +738,7 @@ Available lint options:
               Allow <foo>
     -D <foo>           Deny <foo>
     -F <foo>           Forbid <foo> \
-              (deny <foo> and all attempts to override)
+              (deny, and deny all overrides)
 
 ");
 
@@ -825,7 +799,7 @@ Available lint options:
         for lint in lints {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7}  {}",
-                     padded(&name),
+                     padded(&name[..]),
                      lint.default_level.as_str(),
                      lint.desc);
         }
@@ -863,7 +837,7 @@ Available lint options:
                          .map(|x| x.to_string().replace("_", "-"))
                          .collect::<Vec<String>>()
                          .join(", ");
-            println!("    {}  {}", padded(&name), desc);
+            println!("    {}  {}", padded(&name[..]), desc);
         }
         println!("\n");
     };
@@ -931,7 +905,7 @@ fn print_flag_list<T>(cmdline_opt: &str,
 /// should continue, returns a getopts::Matches object parsed from args,
 /// otherwise returns None.
 ///
-/// The compiler's handling of options is a little complicated as it ties into
+/// The compiler's handling of options is a little complication as it ties into
 /// our stability story, and it's even *more* complicated by historical
 /// accidents. The current intention of each compiler option is to have one of
 /// three modes:
@@ -970,7 +944,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
                                                  .into_iter()
                                                  .map(|x| x.opt_group)
                                                  .collect();
-    let matches = match getopts::getopts(&args, &all_groups) {
+    let matches = match getopts::getopts(&args[..], &all_groups) {
         Ok(m) => m,
         Err(f) => early_error(ErrorOutputType::default(), &f.to_string()),
     };
@@ -1044,34 +1018,15 @@ fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<as
     }
 }
 
-/// Runs `f` in a suitable thread for running `rustc`; returns a
-/// `Result` with either the return value of `f` or -- if a panic
-/// occurs -- the panic value.
-pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<Any + Send>>
-    where F: FnOnce() -> R + Send + 'static,
-          R: Send + 'static,
-{
-    // Temporarily have stack size set to 16MB to deal with nom-using crates failing
-    const STACK_SIZE: usize = 16 * 1024 * 1024; // 16MB
-
-    let mut cfg = thread::Builder::new().name("rustc".to_string());
-
-    // FIXME: Hacks on hacks. If the env is trying to override the stack size
-    // then *don't* set it explicitly.
-    if env::var_os("RUST_MIN_STACK").is_none() {
-        cfg = cfg.stack_size(STACK_SIZE);
-    }
-
-    let thread = cfg.spawn(f);
-    thread.unwrap().join()
-}
-
 /// Run a procedure which will detect panics in the compiler and print nicer
 /// error messages rather than just failing the test.
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
 pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
+    // Temporarily have stack size set to 16MB to deal with nom-using crates failing
+    const STACK_SIZE: usize = 16 * 1024 * 1024; // 16MB
+
     struct Sink(Arc<Mutex<Vec<u8>>>);
     impl Write for Sink {
         fn write(&mut self, data: &[u8]) -> io::Result<usize> {
@@ -1085,12 +1040,20 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
     let data = Arc::new(Mutex::new(Vec::new()));
     let err = Sink(data.clone());
 
-    let result = in_rustc_thread(move || {
-        io::set_panic(Some(box err));
-        f()
-    });
+    let mut cfg = thread::Builder::new().name("rustc".to_string());
 
-    if let Err(value) = result {
+    // FIXME: Hacks on hacks. If the env is trying to override the stack size
+    // then *don't* set it explicitly.
+    if env::var_os("RUST_MIN_STACK").is_none() {
+        cfg = cfg.stack_size(STACK_SIZE);
+    }
+
+    let thread = cfg.spawn(move || {
+         io::set_panic(Some(box err));
+         f()
+     });
+
+     if let Err(value) = thread.unwrap().join() {
         // Thread panicked without emitting a fatal diagnostic
         if !value.is::<errors::FatalError>() {
             let emitter =
@@ -1109,7 +1072,7 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
                       format!("we would appreciate a bug report: {}", BUG_REPORT_URL)];
             for note in &xs {
                 handler.emit(&MultiSpan::new(),
-                             &note,
+                             &note[..],
                              errors::Level::Note);
             }
             if match env::var_os("RUST_BACKTRACE") {
@@ -1153,7 +1116,6 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
 }
 
 pub fn main() {
-    env_logger::init().unwrap();
     let result = run(|| run_compiler(&env::args().collect::<Vec<_>>(),
                                      &mut RustcDefaultCalls,
                                      None,

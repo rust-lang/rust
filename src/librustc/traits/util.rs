@@ -13,8 +13,6 @@ use ty::subst::{Subst, Substs};
 use ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use ty::outlives::Component;
 use util::nodemap::FxHashSet;
-use hir::{self};
-use traits::specialize::specialization_graph::NodeItem;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
 
@@ -44,10 +42,7 @@ fn anonymize_predicate<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             ty::Predicate::ObjectSafe(data),
 
         ty::Predicate::ClosureKind(closure_def_id, kind) =>
-            ty::Predicate::ClosureKind(closure_def_id, kind),
-
-        ty::Predicate::Subtype(ref data) =>
-            ty::Predicate::Subtype(tcx.anonymize_late_bound_regions(data)),
+            ty::Predicate::ClosureKind(closure_def_id, kind)
     }
 }
 
@@ -132,7 +127,7 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
         match *predicate {
             ty::Predicate::Trait(ref data) => {
                 // Predicates declared on the trait.
-                let predicates = tcx.super_predicates_of(data.def_id());
+                let predicates = tcx.item_super_predicates(data.def_id());
 
                 let mut predicates: Vec<_> =
                     predicates.predicates
@@ -164,10 +159,6 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                 // Currently, we do not "elaborate" predicates like
                 // `X == Y`, though conceivably we might. For example,
                 // `&X == &Y` implies that `X == Y`.
-            }
-            ty::Predicate::Subtype(..) => {
-                // Currently, we do not "elaborate" predicates like `X
-                // <: Y`, though conceivably we might.
             }
             ty::Predicate::Projection(..) => {
                 // Nothing to elaborate in a projection predicate.
@@ -303,7 +294,7 @@ impl<'cx, 'gcx, 'tcx> Iterator for SupertraitDefIds<'cx, 'gcx, 'tcx> {
             None => { return None; }
         };
 
-        let predicates = self.tcx.super_predicates_of(def_id);
+        let predicates = self.tcx.item_super_predicates(def_id);
         let visited = &mut self.visited;
         self.stack.extend(
             predicates.predicates
@@ -370,7 +361,7 @@ pub fn impl_trait_ref_and_oblig<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a,
     let Normalized { value: impl_trait_ref, obligations: normalization_obligations1 } =
         super::normalize(selcx, ObligationCause::dummy(), &impl_trait_ref);
 
-    let predicates = selcx.tcx().predicates_of(impl_def_id);
+    let predicates = selcx.tcx().item_predicates(impl_def_id);
     let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
     let Normalized { value: predicates, obligations: normalization_obligations2 } =
         super::normalize(selcx, ObligationCause::dummy(), &predicates);
@@ -491,44 +482,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn closure_trait_ref_and_return_type(self,
         fn_trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        sig: ty::PolyFnSig<'tcx>,
+        sig: &ty::PolyFnSig<'tcx>,
         tuple_arguments: TupleArgumentsFlag)
         -> ty::Binder<(ty::TraitRef<'tcx>, Ty<'tcx>)>
     {
         let arguments_tuple = match tuple_arguments {
             TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
             TupleArgumentsFlag::Yes =>
-                self.intern_tup(sig.skip_binder().inputs(), false),
+                self.intern_tup(sig.skip_binder().inputs()),
         };
         let trait_ref = ty::TraitRef {
             def_id: fn_trait_def_id,
             substs: self.mk_substs_trait(self_ty, &[arguments_tuple]),
         };
         ty::Binder((trait_ref, sig.skip_binder().output()))
-    }
-
-    pub fn impl_is_default(self, node_item_def_id: DefId) -> bool {
-        match self.hir.as_local_node_id(node_item_def_id) {
-            Some(node_id) => {
-                let item = self.hir.expect_item(node_id);
-                if let hir::ItemImpl(_, _, defaultness, ..) = item.node {
-                    defaultness.is_default()
-                } else {
-                    false
-                }
-            }
-            None => {
-                self.global_tcx()
-                    .sess
-                    .cstore
-                    .impl_defaultness(node_item_def_id)
-                    .is_default()
-            }
-        }
-    }
-
-    pub fn impl_item_is_final(self, node_item: &NodeItem<hir::Defaultness>) -> bool {
-        node_item.item.is_final() && !self.impl_is_default(node_item.node.def_id())
     }
 }
 

@@ -1,0 +1,26 @@
+[package]
+
+name = "toml"
+version = "0.1.30"
+authors = ["Alex Crichton <alex@alexcrichton.com>"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+keywords = ["encoding"]
+repository = "https://github.com/alexcrichton/toml-rs"
+homepage = "https://github.com/alexcrichton/toml-rs"
+documentation = "http://alexcrichton.com/toml-rs"
+description = """
+A native Rust encoder and decoder of TOML-formatted files and streams. Provides
+implementations of the standard Encodable/Decodable traits for TOML data to
+facilitate deserializing and serializing Rust structures.
+"""
+
+[dependencies]
+rustc-serialize = { optional = true, version = "0.3.0" }
+serde = { optional = true, version = "0.7" }
+
+[features]
+default = ["rustc-serialize"]
+
+[dev-dependencies]
+rustc-serialize = "0.3"

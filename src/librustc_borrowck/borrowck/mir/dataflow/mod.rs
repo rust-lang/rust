@@ -181,7 +181,6 @@ pub struct DataflowAnalysis<'a, 'tcx: 'a, O>
     where O: BitDenotation
 {
     flow_state: DataflowState<O>,
-    dead_unwinds: &'a IdxSet<mir::BasicBlock>,
     mir: &'a Mir<'tcx>,
 }
 
@@ -378,7 +377,6 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
 {
     pub fn new(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
                mir: &'a Mir<'tcx>,
-               dead_unwinds: &'a IdxSet<mir::BasicBlock>,
                denotation: D) -> Self {
         let bits_per_block = denotation.bits_per_block();
         let usize_bits = mem::size_of::<usize>() * 8;
@@ -399,7 +397,6 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
 
         DataflowAnalysis {
             mir: mir,
-            dead_unwinds: dead_unwinds,
             flow_state: DataflowState {
                 sets: AllSets {
                     bits_per_block: bits_per_block,
@@ -455,10 +452,13 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
                 ref target, value: _, location: _, unwind: Some(ref unwind)
             } => {
                 self.propagate_bits_into_entry_set_for(in_out, changed, target);
-                if !self.dead_unwinds.contains(&bb) {
-                    self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
-                }
+                self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
             }
+            mir::TerminatorKind::If { ref targets, .. } => {
+                self.propagate_bits_into_entry_set_for(in_out, changed, &targets.0);
+                self.propagate_bits_into_entry_set_for(in_out, changed, &targets.1);
+            }
+            mir::TerminatorKind::Switch { ref targets, .. } |
             mir::TerminatorKind::SwitchInt { ref targets, .. } => {
                 for target in targets {
                     self.propagate_bits_into_entry_set_for(in_out, changed, target);
@@ -466,9 +466,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
             }
             mir::TerminatorKind::Call { ref cleanup, ref destination, func: _, args: _ } => {
                 if let Some(ref unwind) = *cleanup {
-                    if !self.dead_unwinds.contains(&bb) {
-                        self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
-                    }
+                    self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
                 }
                 if let Some((ref dest_lval, ref dest_bb)) = *destination {
                     // N.B.: This must be done *last*, after all other

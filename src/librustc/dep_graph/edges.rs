@@ -101,15 +101,11 @@ impl<D: Clone + Debug + Eq + Hash> DepGraphEdges<D> {
     }
 
     /// Indicates that the current task `C` reads `v` by adding an
-    /// edge from `v` to `C`. If there is no current task, has no
-    /// effect. Note that *reading* from tracked state is harmless if
-    /// you are not in a task; what is bad is *writing* to tracked
-    /// state (and leaking data that you read into a tracked task).
+    /// edge from `v` to `C`. If there is no current task, panics. If
+    /// you want to suppress this edge, use `ignore`.
     pub fn read(&mut self, v: DepNode<D>) {
-        if self.current_node().is_some() {
-            let source = self.make_node(v);
-            self.add_edge_from_current_node(|current| (source, current))
-        }
+        let source = self.make_node(v);
+        self.add_edge_from_current_node(|current| (source, current))
     }
 
     /// Indicates that the current task `C` writes `v` by adding an

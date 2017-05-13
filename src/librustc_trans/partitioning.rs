@@ -53,6 +53,8 @@
 //! - One for "stable", that is non-generic, code
 //! - One for more "volatile" code, i.e. monomorphized instances of functions
 //!   defined in that module
+//! - Code for monomorphized instances of functions from external crates gets
+//!   placed into every codegen unit that uses that instance.
 //!
 //! In order to see why this heuristic makes sense, let's take a look at when a
 //! codegen unit can get invalidated:
@@ -80,6 +82,17 @@
 //! side-effect of references a little by at least not touching the non-generic
 //! code of the module.
 //!
+//! As another optimization, monomorphized functions from external crates get
+//! some special handling. Since we assume that the definition of such a
+//! function changes rather infrequently compared to local items, we can just
+//! instantiate external functions in every codegen unit where it is referenced
+//! -- without having to fear that doing this will cause a lot of unnecessary
+//! re-compilations. If such a reference is added or removed, the codegen unit
+//! has to be re-translated anyway.
+//! (Note that this only makes sense if external crates actually don't change
+//! frequently. For certain multi-crate projects this might not be a valid
+//! assumption).
+//!
 //! A Note on Inlining
 //! ------------------
 //! As briefly mentioned above, in order for LLVM to be able to inline a
@@ -94,30 +107,33 @@
 //!   inlined, so it can distribute function instantiations accordingly. Since
 //!   there is no way of knowing for sure which functions LLVM will decide to
 //!   inline in the end, we apply a heuristic here: Only functions marked with
-//!   #[inline] are considered for inlining by the partitioner. The current
-//!   implementation will not try to determine if a function is likely to be
-//!   inlined by looking at the functions definition.
+//!   #[inline] and (as stated above) functions from external crates are
+//!   considered for inlining by the partitioner. The current implementation
+//!   will not try to determine if a function is likely to be inlined by looking
+//!   at the functions definition.
 //!
 //! Note though that as a side-effect of creating a codegen units per
 //! source-level module, functions from the same module will be available for
 //! inlining, even when they are not marked #[inline].
 
 use collector::InliningMap;
-use common;
 use context::SharedCrateContext;
 use llvm;
+use monomorphize;
 use rustc::dep_graph::{DepNode, WorkProductId};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::session::config::NUMBERED_CODEGEN_UNIT_MARKER;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::TyCtxt;
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use rustc_incremental::IchHasher;
+use std::cmp::Ordering;
 use std::hash::Hash;
 use std::sync::Arc;
+use symbol_map::SymbolMap;
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
-use trans_item::{TransItem, InstantiationMode};
+use trans_item::TransItem;
 use util::nodemap::{FxHashMap, FxHashSet};
 
 pub enum PartitioningStrategy {
@@ -172,58 +188,79 @@ impl<'tcx> CodegenUnit<'tcx> {
         DepNode::WorkProduct(self.work_product_id())
     }
 
-    pub fn compute_symbol_name_hash<'a>(&self,
-                                        scx: &SharedCrateContext<'a, 'tcx>)
-                                        -> u64 {
+    pub fn compute_symbol_name_hash(&self,
+                                    scx: &SharedCrateContext,
+                                    symbol_map: &SymbolMap) -> u64 {
         let mut state = IchHasher::new();
         let exported_symbols = scx.exported_symbols();
-        let all_items = self.items_in_deterministic_order(scx.tcx());
+        let all_items = self.items_in_deterministic_order(scx.tcx(), symbol_map);
         for (item, _) in all_items {
-            let symbol_name = item.symbol_name(scx.tcx());
+            let symbol_name = symbol_map.get(item).unwrap();
             symbol_name.len().hash(&mut state);
             symbol_name.hash(&mut state);
             let exported = match item {
-                TransItem::Fn(ref instance) => {
-                    let node_id =
-                        scx.tcx().hir.as_local_node_id(instance.def_id());
+               TransItem::Fn(ref instance) => {
+                    let node_id = scx.tcx().map.as_local_node_id(instance.def);
                     node_id.map(|node_id| exported_symbols.contains(&node_id))
-                        .unwrap_or(false)
-                }
-                TransItem::Static(node_id) => {
+                           .unwrap_or(false)
+               }
+               TransItem::Static(node_id) => {
                     exported_symbols.contains(&node_id)
-                }
-                TransItem::GlobalAsm(..) => true,
+               }
+               TransItem::DropGlue(..) => false,
             };
             exported.hash(&mut state);
         }
         state.finish().to_smaller_hash()
     }
 
-    pub fn items_in_deterministic_order<'a>(&self,
-                                            tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                            -> Vec<(TransItem<'tcx>, llvm::Linkage)> {
+    pub fn items_in_deterministic_order(&self,
+                                        tcx: TyCtxt,
+                                        symbol_map: &SymbolMap)
+                                        -> Vec<(TransItem<'tcx>, llvm::Linkage)> {
+        let mut items: Vec<(TransItem<'tcx>, llvm::Linkage)> =
+            self.items.iter().map(|(item, linkage)| (*item, *linkage)).collect();
+
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
-        #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        pub struct ItemSortKey(Option<NodeId>, ty::SymbolName);
+        items.sort_by(|&(trans_item1, _), &(trans_item2, _)| {
+            let node_id1 = local_node_id(tcx, trans_item1);
+            let node_id2 = local_node_id(tcx, trans_item2);
 
-        fn item_sort_key<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   item: TransItem<'tcx>) -> ItemSortKey {
-            ItemSortKey(match item {
+            match (node_id1, node_id2) {
+                (None, None) => {
+                    let symbol_name1 = symbol_map.get(trans_item1).unwrap();
+                    let symbol_name2 = symbol_map.get(trans_item2).unwrap();
+                    symbol_name1.cmp(symbol_name2)
+                }
+                // In the following two cases we can avoid looking up the symbol
+                (None, Some(_)) => Ordering::Less,
+                (Some(_), None) => Ordering::Greater,
+                (Some(node_id1), Some(node_id2)) => {
+                    let ordering = node_id1.cmp(&node_id2);
+
+                    if ordering != Ordering::Equal {
+                        return ordering;
+                    }
+
+                    let symbol_name1 = symbol_map.get(trans_item1).unwrap();
+                    let symbol_name2 = symbol_map.get(trans_item2).unwrap();
+                    symbol_name1.cmp(symbol_name2)
+                }
+            }
+        });
+
+        return items;
+
+        fn local_node_id(tcx: TyCtxt, trans_item: TransItem) -> Option<NodeId> {
+            match trans_item {
                 TransItem::Fn(instance) => {
-                    tcx.hir.as_local_node_id(instance.def_id())
+                    tcx.map.as_local_node_id(instance.def)
                 }
-                TransItem::Static(node_id) | TransItem::GlobalAsm(node_id) => {
-                    Some(node_id)
-                }
-            }, item.symbol_name(tcx))
+                TransItem::Static(node_id) => Some(node_id),
+                TransItem::DropGlue(_) => None,
+            }
         }
-
-        let items: Vec<_> = self.items.iter().map(|(&i, &l)| (i, l)).collect();
-        let mut items : Vec<_> = items.iter()
-            .map(|il| (il, item_sort_key(tcx, il.0))).collect();
-        items.sort_by(|&(_, ref key1), &(_, ref key2)| key1.cmp(key2));
-        items.into_iter().map(|(&item_linkage, _)| item_linkage).collect()
     }
 }
 
@@ -246,14 +283,14 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     let mut initial_partitioning = place_root_translation_items(scx,
                                                                 trans_items);
 
-    debug_dump(tcx, "INITIAL PARTITONING:", initial_partitioning.codegen_units.iter());
+    debug_dump(scx, "INITIAL PARTITONING:", initial_partitioning.codegen_units.iter());
 
     // If the partitioning should produce a fixed count of codegen units, merge
     // until that count is reached.
     if let PartitioningStrategy::FixedUnitCount(count) = strategy {
         merge_codegen_units(&mut initial_partitioning, count, &tcx.crate_name.as_str());
 
-        debug_dump(tcx, "POST MERGING:", initial_partitioning.codegen_units.iter());
+        debug_dump(scx, "POST MERGING:", initial_partitioning.codegen_units.iter());
     }
 
     // In the next step, we use the inlining map to determine which addtional
@@ -263,7 +300,7 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     let post_inlining = place_inlined_translation_items(initial_partitioning,
                                                         inlining_map);
 
-    debug_dump(tcx, "POST INLINING:", post_inlining.0.iter());
+    debug_dump(scx, "POST INLINING:", post_inlining.0.iter());
 
     // Finally, sort by codegen unit name, so that we get deterministic results
     let mut result = post_inlining.0;
@@ -289,15 +326,13 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     let tcx = scx.tcx();
     let mut roots = FxHashSet();
     let mut codegen_units = FxHashMap();
-    let is_incremental_build = tcx.sess.opts.incremental.is_some();
 
     for trans_item in trans_items {
-        let is_root = trans_item.instantiation_mode(tcx) == InstantiationMode::GloballyShared;
+        let is_root = !trans_item.is_instantiated_only_on_demand(tcx);
 
         if is_root {
             let characteristic_def_id = characteristic_def_id_of_trans_item(scx, trans_item);
-            let is_volatile = is_incremental_build &&
-                              trans_item.is_generic_fn();
+            let is_volatile = trans_item.is_generic_fn();
 
             let codegen_unit_name = match characteristic_def_id {
                 Some(def_id) => compute_codegen_unit_name(tcx, def_id, is_volatile),
@@ -315,9 +350,25 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                 Some(explicit_linkage) => explicit_linkage,
                 None => {
                     match trans_item {
-                        TransItem::Fn(..) |
-                        TransItem::Static(..) |
-                        TransItem::GlobalAsm(..) => llvm::ExternalLinkage,
+                        TransItem::Static(..) => llvm::ExternalLinkage,
+                        TransItem::DropGlue(..) => unreachable!(),
+                        // Is there any benefit to using ExternalLinkage?:
+                        TransItem::Fn(ref instance) => {
+                            if instance.substs.types().next().is_none() {
+                                // This is a non-generic functions, we always
+                                // make it visible externally on the chance that
+                                // it might be used in another codegen unit.
+                                // Later on base::internalize_symbols() will
+                                // assign "internal" linkage to those symbols
+                                // that are not referenced from other codegen
+                                // units (and are not publicly visible).
+                                llvm::ExternalLinkage
+                            } else {
+                                // In the current setup, generic functions cannot
+                                // be roots.
+                                unreachable!()
+                            }
+                        }
                     }
                 }
             };
@@ -397,14 +448,29 @@ fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartit
             if let Some(linkage) = codegen_unit.items.get(&trans_item) {
                 // This is a root, just copy it over
                 new_codegen_unit.items.insert(trans_item, *linkage);
-            } else {
-                if initial_partitioning.roots.contains(&trans_item) {
-                    bug!("GloballyShared trans-item inlined into other CGU: \
-                          {:?}", trans_item);
-                }
-
-                // This is a cgu-private copy
+            } else if initial_partitioning.roots.contains(&trans_item) {
+                // This item will be instantiated in some other codegen unit,
+                // so we just add it here with AvailableExternallyLinkage
+                // FIXME(mw): I have not seen it happening yet but having
+                //            available_externally here could potentially lead
+                //            to the same problem with exception handling tables
+                //            as in the case below.
+                new_codegen_unit.items.insert(trans_item,
+                                              llvm::AvailableExternallyLinkage);
+            } else if trans_item.is_from_extern_crate() && !trans_item.is_generic_fn() {
+                // FIXME(mw): It would be nice if we could mark these as
+                // `AvailableExternallyLinkage`, since they should have
+                // been instantiated in the extern crate. But this
+                // sometimes leads to crashes on Windows because LLVM
+                // does not handle exception handling table instantiation
+                // reliably in that case.
                 new_codegen_unit.items.insert(trans_item, llvm::InternalLinkage);
+            } else {
+                // We can't be sure if this will also be instantiated
+                // somewhere else, so we add an instance here with
+                // InternalLinkage so we don't get any conflicts.
+                new_codegen_unit.items.insert(trans_item,
+                                              llvm::InternalLinkage);
             }
         }
 
@@ -432,38 +498,34 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
     let tcx = scx.tcx();
     match trans_item {
         TransItem::Fn(instance) => {
-            let def_id = match instance.def {
-                ty::InstanceDef::Item(def_id) => def_id,
-                ty::InstanceDef::FnPtrShim(..) |
-                ty::InstanceDef::ClosureOnceShim { .. } |
-                ty::InstanceDef::Intrinsic(..) |
-                ty::InstanceDef::DropGlue(..) |
-                ty::InstanceDef::Virtual(..) => return None
-            };
-
             // If this is a method, we want to put it into the same module as
             // its self-type. If the self-type does not provide a characteristic
             // DefId, we use the location of the impl after all.
 
-            if tcx.trait_of_item(def_id).is_some() {
+            if tcx.trait_of_item(instance.def).is_some() {
                 let self_ty = instance.substs.type_at(0);
                 // This is an implementation of a trait method.
-                return characteristic_def_id_of_type(self_ty).or(Some(def_id));
+                return characteristic_def_id_of_type(self_ty).or(Some(instance.def));
             }
 
-            if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
+            if let Some(impl_def_id) = tcx.impl_of_method(instance.def) {
                 // This is a method within an inherent impl, find out what the
                 // self-type is:
-                let impl_self_ty = common::def_ty(scx, impl_def_id, instance.substs);
+                let impl_self_ty = tcx.item_type(impl_def_id);
+                let impl_self_ty = tcx.erase_regions(&impl_self_ty);
+                let impl_self_ty = monomorphize::apply_param_substs(scx,
+                                                                    instance.substs,
+                                                                    &impl_self_ty);
+
                 if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
                     return Some(def_id);
                 }
             }
 
-            Some(def_id)
+            Some(instance.def)
         }
-        TransItem::Static(node_id) |
-        TransItem::GlobalAsm(node_id) => Some(tcx.hir.local_def_id(node_id)),
+        TransItem::DropGlue(dg) => characteristic_def_id_of_type(dg.ty()),
+        TransItem::Static(node_id) => Some(tcx.map.local_def_id(node_id)),
     }
 }
 
@@ -503,7 +565,7 @@ fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString 
     Symbol::intern(&format!("{}{}{}", crate_name, NUMBERED_CODEGEN_UNIT_MARKER, index)).as_str()
 }
 
-fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn debug_dump<'a, 'b, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                                label: &str,
                                cgus: I)
     where I: Iterator<Item=&'b CodegenUnit<'tcx>>,
@@ -512,16 +574,19 @@ fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if cfg!(debug_assertions) {
         debug!("{}", label);
         for cgu in cgus {
+            let symbol_map = SymbolMap::build(scx, cgu.items
+                                                      .iter()
+                                                      .map(|(&trans_item, _)| trans_item));
             debug!("CodegenUnit {}:", cgu.name);
 
             for (trans_item, linkage) in &cgu.items {
-                let symbol_name = trans_item.symbol_name(tcx);
+                let symbol_name = symbol_map.get_or_compute(scx, *trans_item);
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map(|i| &symbol_name[i ..])
                                                    .unwrap_or("<no hash>");
 
                 debug!(" - {} [{:?}] [{}]",
-                       trans_item.to_string(tcx),
+                       trans_item.to_string(scx.tcx()),
                        linkage,
                        symbol_hash);
             }

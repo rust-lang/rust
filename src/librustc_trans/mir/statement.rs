@@ -11,13 +11,13 @@
 use rustc::mir;
 
 use base;
-use asm;
 use common;
 use builder::Builder;
 
 use super::MirContext;
 use super::LocalRef;
 use super::super::adt;
+use super::super::disr::Disr;
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_statement(&mut self,
@@ -64,7 +64,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 adt::trans_set_discr(&bcx,
                     ty,
                     lvalue_transed.llval,
-                    variant_index as u64);
+                    Disr::from(variant_index));
                 bcx
             }
             mir::StatementKind::StorageLive(ref lvalue) => {
@@ -72,19 +72,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
             mir::StatementKind::StorageDead(ref lvalue) => {
                 self.trans_storage_liveness(bcx, lvalue, base::Lifetime::End)
-            }
-            mir::StatementKind::InlineAsm { ref asm, ref outputs, ref inputs } => {
-                let outputs = outputs.iter().map(|output| {
-                    let lvalue = self.trans_lvalue(&bcx, output);
-                    (lvalue.llval, lvalue.ty.to_ty(bcx.tcx()))
-                }).collect();
-
-                let input_vals = inputs.iter().map(|input| {
-                    self.trans_operand(&bcx, input).immediate()
-                }).collect();
-
-                asm::trans_inline_asm(&bcx, asm, outputs, input_vals);
-                bcx
             }
             mir::StatementKind::Nop => bcx,
         }

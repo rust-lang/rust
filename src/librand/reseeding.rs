@@ -11,7 +11,6 @@
 //! A wrapper around another RNG that reseeds it after it
 //! generates a certain number of random bytes.
 
-use core::fmt;
 use {Rng, SeedableRng};
 
 /// How many bytes of entropy the underling RNG is allowed to generate
@@ -55,6 +54,7 @@ impl<R: Rng, Rsdr: Reseeder<R>> ReseedingRng<R, Rsdr> {
     }
 }
 
+
 impl<R: Rng, Rsdr: Reseeder<R>> Rng for ReseedingRng<R, Rsdr> {
     fn next_u32(&mut self) -> u32 {
         self.reseed_if_necessary();
@@ -95,17 +95,6 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R> + Default>
     }
 }
 
-impl<R: fmt::Debug, Rsdr: fmt::Debug> fmt::Debug for ReseedingRng<R, Rsdr> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("ReseedingRng")
-         .field("rng", &self.rng)
-         .field("generation_threshold", &self.generation_threshold)
-         .field("bytes_generated", &self.bytes_generated)
-         .field("reseeder", &self.reseeder)
-         .finish()
-    }
-}
-
 /// Something that can be used to reseed an RNG via `ReseedingRng`.
 pub trait Reseeder<R> {
     /// Reseed the given RNG.
@@ -114,7 +103,7 @@ pub trait Reseeder<R> {
 
 /// Reseed an RNG using a `Default` instance. This reseeds by
 /// replacing the RNG with the result of a `Default::default` call.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct ReseedWithDefault;
 
 impl<R: Rng + Default> Reseeder<R> for ReseedWithDefault {

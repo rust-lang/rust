@@ -11,8 +11,6 @@
 // Test that `#[link_args]` attribute is gated by `link_args`
 // feature gate.
 
-// gate-test-link_args
-
 #[link_args = "aFdEfSeVEEE"]
 extern {}
 //~^ ERROR the `link_args` attribute is not portable across platforms

@@ -91,7 +91,6 @@
 use deriving;
 use deriving::generic::*;
 use deriving::generic::ty::*;
-use deriving::warn_if_deprecated;
 
 use syntax::ast::{Expr, ExprKind, MetaItem, Mutability};
 use syntax::ext::base::{Annotatable, ExtCtxt};
@@ -113,7 +112,6 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                  mitem: &MetaItem,
                                  item: &Annotatable,
                                  push: &mut FnMut(Annotatable)) {
-    warn_if_deprecated(cx, span, "Encodable");
     expand_deriving_encodable_imp(cx, span, mitem, item, push, "serialize")
 }
 

@@ -10,7 +10,7 @@
 
 use schema::*;
 
-use rustc::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace};
+use rustc::hir::def_id::{DefId, DefIndex};
 use std::io::{Cursor, Write};
 use std::slice;
 use std::u32;
@@ -23,15 +23,12 @@ use std::u32;
 /// appropriate spot by calling `record_position`. We should never
 /// visit the same index twice.
 pub struct Index {
-    positions: [Vec<u32>; 2]
+    positions: Vec<u32>,
 }
 
 impl Index {
-    pub fn new((max_index_lo, max_index_hi): (usize, usize)) -> Index {
-        Index {
-            positions: [vec![u32::MAX; max_index_lo],
-                        vec![u32::MAX; max_index_hi]],
-        }
+    pub fn new(max_index: usize) -> Index {
+        Index { positions: vec![u32::MAX; max_index] }
     }
 
     pub fn record(&mut self, def_id: DefId, entry: Lazy<Entry>) {
@@ -40,31 +37,24 @@ impl Index {
     }
 
     pub fn record_index(&mut self, item: DefIndex, entry: Lazy<Entry>) {
+        let item = item.as_usize();
+
         assert!(entry.position < (u32::MAX as usize));
         let position = entry.position as u32;
-        let space_index = item.address_space().index();
-        let array_index = item.as_array_index();
 
-        assert!(self.positions[space_index][array_index] == u32::MAX,
+        assert!(self.positions[item] == u32::MAX,
                 "recorded position for item {:?} twice, first at {:?} and now at {:?}",
                 item,
-                self.positions[space_index][array_index],
+                self.positions[item],
                 position);
 
-        self.positions[space_index][array_index] = position.to_le();
+        self.positions[item] = position.to_le();
     }
 
     pub fn write_index(&self, buf: &mut Cursor<Vec<u8>>) -> LazySeq<Index> {
         let pos = buf.position();
-
-        // First we write the length of the lower range ...
-        buf.write_all(words_to_bytes(&[(self.positions[0].len() as u32).to_le()])).unwrap();
-        // ... then the values in the lower range ...
-        buf.write_all(words_to_bytes(&self.positions[0][..])).unwrap();
-        // ... then the values in the higher range.
-        buf.write_all(words_to_bytes(&self.positions[1][..])).unwrap();
-        LazySeq::with_position_and_length(pos as usize,
-            self.positions[0].len() + self.positions[1].len() + 1)
+        buf.write_all(words_to_bytes(&self.positions)).unwrap();
+        LazySeq::with_position_and_length(pos as usize, self.positions.len())
     }
 }
 
@@ -80,18 +70,7 @@ impl<'tcx> LazySeq<Index> {
                index,
                words.len());
 
-        let positions = match def_index.address_space() {
-            DefIndexAddressSpace::Low => &words[1..],
-            DefIndexAddressSpace::High => {
-                // This is a DefIndex in the higher range, so find out where
-                // that starts:
-                let lo_count = u32::from_le(words[0].get()) as usize;
-                &words[lo_count + 1 .. ]
-            }
-        };
-
-        let array_index = def_index.as_array_index();
-        let position = u32::from_le(positions[array_index].get());
+        let position = u32::from_le(words[index].get());
         if position == u32::MAX {
             debug!("Index::lookup: position=u32::MAX");
             None
@@ -105,40 +84,20 @@ impl<'tcx> LazySeq<Index> {
                                bytes: &'a [u8])
                                -> impl Iterator<Item = (DefIndex, Lazy<Entry<'tcx>>)> + 'a {
         let words = &bytes_to_words(&bytes[self.position..])[..self.len];
-        let lo_count = u32::from_le(words[0].get()) as usize;
-        let lo = &words[1 .. lo_count + 1];
-        let hi = &words[1 + lo_count ..];
-
-        lo.iter().map(|word| word.get()).enumerate().filter_map(|(index, pos)| {
-            if pos == u32::MAX {
+        words.iter().map(|word| word.get()).enumerate().filter_map(|(index, position)| {
+            if position == u32::MAX {
                 None
             } else {
-                let pos = u32::from_le(pos) as usize;
-                Some((DefIndex::new(index), Lazy::with_position(pos)))
+                let position = u32::from_le(position) as usize;
+                Some((DefIndex::new(index), Lazy::with_position(position)))
             }
-        }).chain(hi.iter().map(|word| word.get()).enumerate().filter_map(|(index, pos)| {
-            if pos == u32::MAX {
-                None
-            } else {
-                let pos = u32::from_le(pos) as usize;
-                Some((DefIndex::new(index + DefIndexAddressSpace::High.start()),
-                                    Lazy::with_position(pos)))
-            }
-        }))
+        })
     }
 }
 
 #[repr(packed)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Unaligned<T>(T);
-
-// The derived Clone impl is unsafe for this packed struct since it needs to pass a reference to
-// the field to `T::clone`, but this reference may not be properly aligned.
-impl<T: Copy> Clone for Unaligned<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
 
 impl<T> Unaligned<T> {
     fn get(self) -> T { self.0 }

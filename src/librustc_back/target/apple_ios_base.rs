@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use LinkerFlavor;
 use std::io;
 use std::process::Command;
-use target::{LinkArgs, TargetOptions};
+use target::TargetOptions;
 
 use self::Arch::*;
 
@@ -61,7 +60,7 @@ pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
     }
 }
 
-fn build_pre_link_args(arch: Arch) -> Result<LinkArgs, String> {
+fn build_pre_link_args(arch: Arch) -> Result<Vec<String>, String> {
     let sdk_name = match arch {
         Armv7 | Armv7s | Arm64 => "iphoneos",
         I386 | X86_64 => "iphonesimulator"
@@ -71,14 +70,8 @@ fn build_pre_link_args(arch: Arch) -> Result<LinkArgs, String> {
 
     let sdk_root = get_sdk_root(sdk_name)?;
 
-    let mut args = LinkArgs::new();
-    args.insert(LinkerFlavor::Gcc,
-                vec!["-arch".to_string(),
-                     arch_name.to_string(),
-                     "-Wl,-syslibroot".to_string(),
-                     sdk_root]);
-
-    Ok(args)
+    Ok(vec!["-arch".to_string(), arch_name.to_string(),
+         "-Wl,-syslibroot".to_string(), sdk_root])
 }
 
 fn target_cpu(arch: Arch) -> String {

@@ -35,7 +35,7 @@ fn main() {
     // n == m
     let &x = &1isize as &T;      //~ ERROR type `&T` cannot be dereferenced
     let &&x = &(&1isize as &T);  //~ ERROR type `&T` cannot be dereferenced
-    let box x = box 1isize as Box<T>; //~ ERROR type `std::boxed::Box<T>` cannot be dereferenced
+    let box x = box 1isize as Box<T>; //~ ERROR `T: std::marker::Sized` is not satisfied
 
     // n > m
     let &&x = &1isize as &T;
@@ -51,5 +51,6 @@ fn main() {
     let box box x = box 1isize as Box<T>;
     //~^ ERROR mismatched types
     //~| expected type `T`
-    //~| found type `std::boxed::Box<_>`
+    //~| found type `Box<_>`
+    //~| expected trait T, found box
 }

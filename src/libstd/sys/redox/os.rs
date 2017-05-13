@@ -33,16 +33,9 @@ use vec;
 const TMPBUF_SZ: usize = 128;
 static ENV_LOCK: Mutex = Mutex::new();
 
-extern {
-    #[link_name = "__errno_location"]
-    fn errno_location() -> *mut i32;
-}
-
 /// Returns the platform-specific value of errno
 pub fn errno() -> i32 {
-    unsafe {
-        (*errno_location())
-    }
+    0
 }
 
 /// Gets a detailed string description for the given error number.

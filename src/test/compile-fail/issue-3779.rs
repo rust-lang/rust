@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S {
-    //~^ ERROR E0072
-    //~| NOTE recursive type has infinite size
+struct S { //~ ERROR E0072
+           //~| NOTE recursive type has infinite size
     element: Option<S>
-    //~^ NOTE recursive without indirection
 }
 
 fn main() {

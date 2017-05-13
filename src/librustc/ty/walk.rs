@@ -83,7 +83,7 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) |
         ty::TyStr | ty::TyInfer(_) | ty::TyParam(_) | ty::TyNever | ty::TyError => {
         }
-        ty::TyArray(ty, _) | ty::TySlice(ty) => {
+        ty::TyBox(ty) | ty::TyArray(ty, _) | ty::TySlice(ty) => {
             stack.push(ty);
         }
         ty::TyRawPtr(ref mt) | ty::TyRef(_, ref mt) => {
@@ -112,20 +112,20 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::TyClosure(_, ref substs) => {
             stack.extend(substs.substs.types().rev());
         }
-        ty::TyTuple(ts, _) => {
+        ty::TyTuple(ts) => {
             stack.extend(ts.iter().cloned().rev());
         }
-        ty::TyFnDef(_, substs, ft) => {
+        ty::TyFnDef(_, substs, ref ft) => {
             stack.extend(substs.types().rev());
-            push_sig_subtypes(stack, ft);
+            push_sig_subtypes(stack, &ft.sig);
         }
-        ty::TyFnPtr(ft) => {
-            push_sig_subtypes(stack, ft);
+        ty::TyFnPtr(ref ft) => {
+            push_sig_subtypes(stack, &ft.sig);
         }
     }
 }
 
-fn push_sig_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, sig: ty::PolyFnSig<'tcx>) {
+fn push_sig_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, sig: &ty::PolyFnSig<'tcx>) {
     stack.push(sig.skip_binder().output());
     stack.extend(sig.skip_binder().inputs().iter().cloned().rev());
 }

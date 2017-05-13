@@ -12,8 +12,7 @@ fn main() {
     let x = Some(0);
 
     match x {
-        Some(y) | None => {} //~  ERROR variable `y` is not bound in all patterns
+        Some(y) | None => {} //~  ERROR variable `y` from pattern #1 is not bound in pattern #2
         _ => ()              //~| NOTE pattern doesn't bind `y`
-                             //~| NOTE variable not in all patterns
     }
 }

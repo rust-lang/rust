@@ -17,7 +17,10 @@
 
 struct RefAny<'a, T>(&'a T);
 
-impl<#[rustc_1] 'a, #[rustc_2] T, #[oops]> RefAny<'a, T> {}
-//~^ ERROR trailing attribute after type parameters
+impl<#[rustc_1] 'a, #[rustc_2] T, #[oops]> RefAny<'a, T> {
+    //~^ ERROR expected identifier, found `>`
+}
 
-fn main() {}
+fn main() {
+
+}

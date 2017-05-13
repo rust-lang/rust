@@ -62,13 +62,9 @@ struct TupleStructFieldType(i32);
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-struct TupleStructFieldType(
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    u32
-);
+struct TupleStructFieldType(u32);
 
 
 // Tuple Struct Add Field ------------------------------------------------------
@@ -81,13 +77,7 @@ struct TupleStructAddField(i32);
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-struct TupleStructAddField(
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    i32,
-    #[rustc_metadata_clean(cfg="cfail3")]
-    u32
-);
+struct TupleStructAddField(i32, u32);
 
 
 // Tuple Struct Field Visibility -----------------------------------------------
@@ -111,13 +101,9 @@ struct RecordStructFieldType { x: f32 }
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-struct RecordStructFieldType {
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    x: u64
-}
+struct RecordStructFieldType { x: u64 }
 
 
 // Record Struct Field Name ----------------------------------------------------
@@ -143,12 +129,7 @@ struct RecordStructAddField { x: f32 }
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-struct RecordStructAddField {
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    x: f32,
-    #[rustc_metadata_clean(cfg="cfail3")]
-    y: () }
+struct RecordStructAddField { x: f32, y: () }
 
 
 // Record Struct Field Visibility ----------------------------------------------
@@ -161,11 +142,7 @@ struct RecordStructFieldVisibility { x: f32 }
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-struct RecordStructFieldVisibility {
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    pub x: f32
-}
+struct RecordStructFieldVisibility { pub x: f32 }
 
 
 // Add Lifetime Parameter ------------------------------------------------------
@@ -191,14 +168,7 @@ struct AddLifetimeParameterBound<'a, 'b>(&'a f32, &'b f64);
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-struct AddLifetimeParameterBound<'a, 'b: 'a>(
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    &'a f32,
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    &'b f64
-);
+struct AddLifetimeParameterBound<'a, 'b: 'a>(&'a f32, &'b f64);
 
 #[cfg(cfail1)]
 struct AddLifetimeParameterBoundWhereClause<'a, 'b>(&'a f32, &'b f64);
@@ -208,13 +178,7 @@ struct AddLifetimeParameterBoundWhereClause<'a, 'b>(&'a f32, &'b f64);
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-struct AddLifetimeParameterBoundWhereClause<'a, 'b>(
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    &'a f32,
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    &'b f64)
+struct AddLifetimeParameterBoundWhereClause<'a, 'b>(&'a f32, &'b f64)
     where 'b: 'a;
 
 
@@ -228,16 +192,7 @@ struct AddTypeParameter<T1>(T1, T1);
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-struct AddTypeParameter<T1, T2>(
-     // The field contains the parent's Generics, so it's dirty even though its
-     // type hasn't changed.
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    T1,
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    T2
-);
+struct AddTypeParameter<T1, T2>(T1, T2);
 
 
 // Add Type Parameter Bound ----------------------------------------------------
@@ -250,11 +205,7 @@ struct AddTypeParameterBound<T>(T);
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-struct AddTypeParameterBound<T: Send>(
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    T
-);
+struct AddTypeParameterBound<T: Send>(T);
 
 
 #[cfg(cfail1)]
@@ -265,11 +216,7 @@ struct AddTypeParameterBoundWhereClause<T>(T);
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-struct AddTypeParameterBoundWhereClause<T>(
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    T
-) where T: Sync;
+struct AddTypeParameterBoundWhereClause<T>(T) where T: Sync;
 
 
 // Empty struct ----------------------------------------------------------------
@@ -287,7 +234,6 @@ struct Visibility;
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub struct Visibility;
 
@@ -306,13 +252,9 @@ mod tuple_struct_change_field_type_indirectly {
 
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
-    struct TupleStruct(
-        #[rustc_metadata_dirty(cfg="cfail2")]
-        #[rustc_metadata_clean(cfg="cfail3")]
-        FieldType
-    );
+    struct TupleStruct(FieldType);
 }
 
 
@@ -325,11 +267,9 @@ mod record_struct_change_field_type_indirectly {
 
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     struct RecordStruct {
-        #[rustc_metadata_dirty(cfg="cfail2")]
-        #[rustc_metadata_clean(cfg="cfail3")]
         _x: FieldType
     }
 }

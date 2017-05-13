@@ -23,29 +23,27 @@ struct MarkAttrs<'a>(&'a [ast::Name]);
 
 impl<'a> Visitor<'a> for MarkAttrs<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
-        if let Some(name) = attr.name() {
-            if self.0.contains(&name) {
-                mark_used(attr);
-                mark_known(attr);
-            }
+        if self.0.contains(&attr.name()) {
+            mark_used(attr);
+            mark_known(attr);
         }
     }
 
     fn visit_mac(&mut self, _mac: &Mac) {}
 }
 
-pub struct ProcMacroDerive {
+pub struct CustomDerive {
     inner: fn(TokenStream) -> TokenStream,
     attrs: Vec<ast::Name>,
 }
 
-impl ProcMacroDerive {
-    pub fn new(inner: fn(TokenStream) -> TokenStream, attrs: Vec<ast::Name>) -> ProcMacroDerive {
-        ProcMacroDerive { inner: inner, attrs: attrs }
+impl CustomDerive {
+    pub fn new(inner: fn(TokenStream) -> TokenStream, attrs: Vec<ast::Name>) -> CustomDerive {
+        CustomDerive { inner: inner, attrs: attrs }
     }
 }
 
-impl MultiItemModifier for ProcMacroDerive {
+impl MultiItemModifier for CustomDerive {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
@@ -56,7 +54,7 @@ impl MultiItemModifier for ProcMacroDerive {
             Annotatable::Item(item) => item,
             Annotatable::ImplItem(_) |
             Annotatable::TraitItem(_) => {
-                ecx.span_err(span, "proc-macro derives may only be \
+                ecx.span_err(span, "custom derive attributes may only be \
                                     applied to struct/enum items");
                 return Vec::new()
             }
@@ -65,7 +63,7 @@ impl MultiItemModifier for ProcMacroDerive {
             ItemKind::Struct(..) |
             ItemKind::Enum(..) => {},
             _ => {
-                ecx.span_err(span, "proc-macro derives may only be \
+                ecx.span_err(span, "custom derive attributes may only be \
                                     applied to struct/enum items");
                 return Vec::new()
             }
@@ -79,11 +77,10 @@ impl MultiItemModifier for ProcMacroDerive {
             let inner = self.inner;
             panic::catch_unwind(panic::AssertUnwindSafe(|| inner(input)))
         });
-
-        let stream = match res {
-            Ok(stream) => stream,
+        let new_items = match res {
+            Ok(stream) => __internal::token_stream_items(stream),
             Err(e) => {
-                let msg = "proc-macro derive panicked";
+                let msg = "custom derive attribute panicked";
                 let mut err = ecx.struct_span_fatal(span, msg);
                 if let Some(s) = e.downcast_ref::<String>() {
                     err.help(&format!("message: {}", s));
@@ -97,22 +94,12 @@ impl MultiItemModifier for ProcMacroDerive {
             }
         };
 
-        let new_items = __internal::set_parse_sess(&ecx.parse_sess, || {
-            match __internal::token_stream_parse_items(stream) {
-                Ok(new_items) => new_items,
-                Err(_) => {
-                    // FIXME: handle this better
-                    let msg = "proc-macro derive produced unparseable tokens";
-                    ecx.struct_span_fatal(span, msg).emit();
-                    panic!(FatalError);
-                }
-            }
-        });
-
+        let mut res = vec![Annotatable::Item(item)];
         // Reassign spans of all expanded items to the input `item`
         // for better errors here.
-        new_items.into_iter().map(|item| {
-            Annotatable::Item(ChangeSpan { span: span }.fold_item(item).expect_one(""))
-        }).collect()
+        res.extend(new_items.into_iter().flat_map(|item| {
+            ChangeSpan { span: span }.fold_item(item)
+        }).map(Annotatable::Item));
+        res
     }
 }

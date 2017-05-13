@@ -8,16 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use LinkerFlavor;
-use target::{LinkArgs, TargetOptions};
+use target::TargetOptions;
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {
-    let mut args = LinkArgs::new();
-    args.insert(LinkerFlavor::Msvc,
-                vec!["/NOLOGO".to_string(),
-                     "/NXCOMPAT".to_string()]);
-
     TargetOptions {
         function_sections: true,
         linker: "link.exe".to_string(),
@@ -62,7 +56,10 @@ pub fn opts() -> TargetOptions {
         target_family: Some("windows".to_string()),
         is_like_windows: true,
         is_like_msvc: true,
-        pre_link_args: args,
+        pre_link_args: vec![
+            "/NOLOGO".to_string(),
+            "/NXCOMPAT".to_string(),
+        ],
         exe_allocation_crate: "alloc_system".to_string(),
 
         .. Default::default()

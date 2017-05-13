@@ -15,7 +15,6 @@ use rustc::mir::{BasicBlock, Mir};
 use rustc_data_structures::bitslice::bits_to_string;
 use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_mir::util as mir_util;
 
 use dot;
 use dot::IntoCow;
@@ -220,7 +219,7 @@ impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
             }
             Ok(())
         }
-        mir_util::write_graphviz_node_label(
+        ::rustc_mir::graphviz::write_node_label(
             *n, self.mbcx.mir(), &mut v, 4,
             |w| {
                 let flow = self.mbcx.flow_state();

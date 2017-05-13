@@ -11,6 +11,7 @@
 use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
+use middle::lang_items::OwnedBoxLangItem;
 
 use self::SimplifiedType::*;
 
@@ -68,15 +69,19 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             // view of possibly unifying
             simplify_type(tcx, mt.ty, can_simplify_params)
         }
+        ty::TyBox(_) => {
+            // treat like we would treat `Box`
+            Some(AdtSimplifiedType(tcx.require_lang_item(OwnedBoxLangItem)))
+        }
         ty::TyClosure(def_id, _) => {
             Some(ClosureSimplifiedType(def_id))
         }
         ty::TyNever => Some(NeverSimplifiedType),
-        ty::TyTuple(ref tys, _) => {
+        ty::TyTuple(ref tys) => {
             Some(TupleSimplifiedType(tys.len()))
         }
         ty::TyFnDef(.., ref f) | ty::TyFnPtr(ref f) => {
-            Some(FunctionSimplifiedType(f.skip_binder().inputs().len()))
+            Some(FunctionSimplifiedType(f.sig.skip_binder().inputs().len()))
         }
         ty::TyProjection(_) | ty::TyParam(_) => {
             if can_simplify_params {

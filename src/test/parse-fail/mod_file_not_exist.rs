@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-windows
-
 // compile-flags: -Z parse-only
 
 mod not_a_real_file; //~ ERROR file not found for module `not_a_real_file`

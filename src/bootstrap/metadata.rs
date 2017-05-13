@@ -27,7 +27,6 @@ struct Output {
 struct Package {
     id: String,
     name: String,
-    version: String,
     source: Option<String>,
     manifest_path: String,
 }
@@ -44,8 +43,8 @@ struct ResolveNode {
 }
 
 pub fn build(build: &mut Build) {
-    build_krate(build, "src/libstd");
-    build_krate(build, "src/libtest");
+    build_krate(build, "src/rustc/std_shim");
+    build_krate(build, "src/rustc/test_shim");
     build_krate(build, "src/rustc");
 }
 
@@ -58,7 +57,6 @@ fn build_krate(build: &mut Build, krate: &str) {
     // the dependency graph and what `-p` arguments there are.
     let mut cargo = Command::new(&build.cargo);
     cargo.arg("metadata")
-         .arg("--format-version").arg("1")
          .arg("--manifest-path").arg(build.src.join(krate).join("Cargo.toml"));
     let output = output(&mut cargo);
     let output: Output = json::decode(&output).unwrap();
@@ -74,7 +72,6 @@ fn build_krate(build: &mut Build, krate: &str) {
                 test_step: format!("test-crate-{}", package.name),
                 bench_step: format!("bench-crate-{}", package.name),
                 name: package.name,
-                version: package.version,
                 deps: Vec::new(),
                 path: path,
             });

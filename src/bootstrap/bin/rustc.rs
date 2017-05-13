@@ -68,7 +68,6 @@ fn main() {
     };
     let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
-    let mut on_fail = env::var_os("RUSTC_ON_FAIL").map(|of| Command::new(of));
 
     let rustc = env::var_os(rustc).unwrap_or_else(|| panic!("{:?} was not set", rustc));
     let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{:?} was not set", libdir));
@@ -92,13 +91,6 @@ fn main() {
         // linking all deps statically into the dylib.
         if env::var_os("RUSTC_NO_PREFER_DYNAMIC").is_none() {
             cmd.arg("-Cprefer-dynamic");
-        }
-
-        // Pass the `rustbuild` feature flag to crates which rustbuild is
-        // building. See the comment in bootstrap/lib.rs where this env var is
-        // set for more details.
-        if env::var_os("RUSTBUILD_UNSTABLE").is_some() {
-            cmd.arg("--cfg").arg("rustbuild");
         }
 
         // Help the libc crate compile by assisting it in finding the MUSL
@@ -189,7 +181,7 @@ fn main() {
         if env::var("RUSTC_RPATH") == Ok("true".to_string()) {
             let rpath = if target.contains("apple") {
 
-                // Note that we need to take one extra step on macOS to also pass
+                // Note that we need to take one extra step on OSX to also pass
                 // `-Wl,-instal_name,@rpath/...` to get things to work right. To
                 // do that we pass a weird flag to the compiler to get it to do
                 // so. Note that this is definitely a hack, and we should likely
@@ -213,11 +205,6 @@ fn main() {
                 }
             }
         }
-
-        if target.contains("pc-windows-msvc") {
-            cmd.arg("-Z").arg("unstable-options");
-            cmd.arg("-C").arg("target-feature=+crt-static");
-        }
     }
 
     if verbose > 1 {
@@ -225,20 +212,9 @@ fn main() {
     }
 
     // Actually run the compiler!
-    std::process::exit(if let Some(ref mut on_fail) = on_fail {
-        match cmd.status() {
-            Ok(s) if s.success() => 0,
-            _ => {
-                println!("\nDid not run successfully:\n{:?}\n-------------", cmd);
-                exec_cmd(on_fail).expect("could not run the backup command");
-                1
-            }
-        }
-    } else {
-        std::process::exit(match exec_cmd(&mut cmd) {
-            Ok(s) => s.code().unwrap_or(0xfe),
-            Err(e) => panic!("\n\nfailed to run {:?}: {}\n\n", cmd, e),
-        })
+    std::process::exit(match exec_cmd(&mut cmd) {
+        Ok(s) => s.code().unwrap_or(0xfe),
+        Err(e) => panic!("\n\nfailed to run {:?}: {}\n\n", cmd, e),
     })
 }
 

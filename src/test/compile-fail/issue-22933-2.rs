@@ -12,10 +12,12 @@ enum Delicious {
     Pie      = 0x1,
     Apple    = 0x2,
     ApplePie = Delicious::Apple as isize | Delicious::PIE as isize,
-    //~^ ERROR no associated item named `PIE` found for type `Delicious`
+    //~^ ERROR constant evaluation error
+    //~| unresolved path in constant expression
 }
 
 const FOO: [u32; u8::MIN as usize] = [];
-//~^ ERROR no associated item named `MIN` found for type `u8`
+//~^ ERROR constant evaluation error
+//~| unresolved path in constant expression
 
 fn main() {}

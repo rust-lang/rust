@@ -15,8 +15,6 @@
 // checking feature-gating of the attributes themselves, not the
 // capability to parse such attributes in that context.
 
-// gate-test-custom_attribute
-
 #![feature(generic_param_attrs)]
 #![allow(dead_code)]
 

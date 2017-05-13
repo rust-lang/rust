@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(rustc_attrs)]
 #![allow(dead_code)]
-#![feature(attr_literals)]
-#![feature(repr_align)]
 
 #[repr(C)]
 enum A { A }
@@ -27,7 +26,5 @@ enum D { D }
 #[repr(C, packed)]
 struct E(i32);
 
-#[repr(packed, align(8))] //~ ERROR conflicting packed and align representation hints
-struct F(i32);
-
-fn main() {}
+#[rustc_error]
+fn main() {} //~ ERROR compilation successful

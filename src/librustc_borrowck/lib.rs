@@ -15,7 +15,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #![allow(non_camel_case_types)]
 
@@ -50,7 +50,5 @@ pub mod diagnostics;
 mod borrowck;
 
 pub mod graphviz;
-
-pub use borrowck::provide;
 
 __build_diagnostic_array! { librustc_borrowck, DIAGNOSTICS }

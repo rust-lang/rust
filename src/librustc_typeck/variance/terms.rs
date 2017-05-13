@@ -20,7 +20,9 @@
 // a variable.
 
 use arena::TypedArena;
+use dep_graph::DepTrackingMapConfig;
 use rustc::ty::{self, TyCtxt};
+use rustc::ty::maps::ItemVariances;
 use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
@@ -107,7 +109,7 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
     };
 
     // See README.md for a discussion on dep-graph management.
-    tcx.hir.krate().visit_all_item_likes(&mut terms_cx);
+    tcx.visit_all_item_likes_in_krate(|def_id| ItemVariances::to_dep_node(&def_id), &mut terms_cx);
 
     terms_cx
 }
@@ -130,13 +132,14 @@ fn lang_items(tcx: TyCtxt) -> Vec<(ast::NodeId, Vec<ty::Variance>)> {
     all.into_iter() // iterating over (Option<DefId>, Variance)
        .filter(|&(ref d,_)| d.is_some())
        .map(|(d, v)| (d.unwrap(), v)) // (DefId, Variance)
-       .filter_map(|(d, v)| tcx.hir.as_local_node_id(d).map(|n| (n, v))) // (NodeId, Variance)
+       .filter_map(|(d, v)| tcx.map.as_local_node_id(d).map(|n| (n, v))) // (NodeId, Variance)
        .collect()
 }
 
 impl<'a, 'tcx> TermsContext<'a, 'tcx> {
     fn add_inferreds_for_item(&mut self,
                               item_id: ast::NodeId,
+                              has_self: bool,
                               generics: &hir::Generics) {
         //! Add "inferreds" for the generic parameters declared on this
         //! item. This has a lot of annoying parameters because we are
@@ -146,16 +149,41 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         //!
 
         // NB: In the code below for writing the results back into the
-        // `CrateVariancesMap`, we rely on the fact that all inferreds
-        // for a particular item are assigned continuous indices.
+        // tcx, we rely on the fact that all inferreds for a particular
+        // item are assigned continuous indices.
 
-        for (p, i) in generics.lifetimes.iter().zip(0..) {
+        let inferreds_on_entry = self.num_inferred();
+
+        if has_self {
+            self.add_inferred(item_id, 0, item_id);
+        }
+
+        for (i, p) in generics.lifetimes.iter().enumerate() {
             let id = p.lifetime.id;
+            let i = has_self as usize + i;
             self.add_inferred(item_id, i, id);
         }
 
-        for (p, i) in generics.ty_params.iter().zip(generics.lifetimes.len()..) {
+        for (i, p) in generics.ty_params.iter().enumerate() {
+            let i = has_self as usize + generics.lifetimes.len() + i;
             self.add_inferred(item_id, i, p.id);
+        }
+
+        // If this item has no type or lifetime parameters,
+        // then there are no variances to infer, so just
+        // insert an empty entry into the variance map.
+        // Arguably we could just leave the map empty in this
+        // case but it seems cleaner to be able to distinguish
+        // "invalid item id" from "item id with no
+        // parameters".
+        if self.num_inferred() == inferreds_on_entry {
+            let item_def_id = self.tcx.map.local_def_id(item_id);
+            let newly_added = self.tcx
+                .item_variance_map
+                .borrow_mut()
+                .insert(item_def_id, self.empty_variances.clone())
+                .is_none();
+            assert!(newly_added);
         }
     }
 
@@ -179,7 +207,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
                 param_id={}, \
                 inf_index={:?}, \
                 initial_variance={:?})",
-               self.tcx.item_path_str(self.tcx.hir.local_def_id(item_id)),
+               self.tcx.item_path_str(self.tcx.map.local_def_id(item_id)),
                item_id,
                index,
                param_id,
@@ -202,16 +230,21 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         debug!("add_inferreds for item {}",
-               self.tcx.hir.node_to_string(item.id));
+               self.tcx.map.node_to_string(item.id));
 
         match item.node {
             hir::ItemEnum(_, ref generics) |
             hir::ItemStruct(_, ref generics) |
             hir::ItemUnion(_, ref generics) => {
-                self.add_inferreds_for_item(item.id, generics);
+                self.add_inferreds_for_item(item.id, false, generics);
+            }
+            hir::ItemTrait(_, ref generics, ..) => {
+                // Note: all inputs for traits are ultimately
+                // constrained to be invariant. See `visit_item` in
+                // the impl for `ConstraintContext` in `constraints.rs`.
+                self.add_inferreds_for_item(item.id, true, generics);
             }
 
-            hir::ItemTrait(..) |
             hir::ItemExternCrate(_) |
             hir::ItemUse(..) |
             hir::ItemDefaultImpl(..) |
@@ -221,7 +254,6 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
             hir::ItemFn(..) |
             hir::ItemMod(..) |
             hir::ItemForeignMod(..) |
-            hir::ItemGlobalAsm(..) |
             hir::ItemTy(..) => {}
         }
     }

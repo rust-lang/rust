@@ -9,14 +9,15 @@
 // except according to those terms.
 
 #![feature(plugin, plugin_registrar, rustc_private)]
-#![plugin(proc_macro_plugin)]
 
+extern crate proc_macro_tokens;
 extern crate rustc_plugin;
 extern crate syntax;
 
+use proc_macro_tokens::prelude::*;
 use rustc_plugin::Registry;
 use syntax::ext::base::SyntaxExtension;
-use syntax::tokenstream::TokenStream;
+use syntax::ext::proc_macro_shim::prelude::*;
 use syntax::symbol::Symbol;
 
 #[plugin_registrar]
@@ -34,21 +35,23 @@ pub fn plugin_registrar(reg: &mut Registry) {
 }
 
 fn attr_tru(_attr: TokenStream, _item: TokenStream) -> TokenStream {
-    quote!(fn f1() -> bool { true })
+    lex("fn f1() -> bool { true }")
 }
 
 fn attr_identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    quote!($item)
+    let source = item.to_string();
+    lex(&source)
 }
 
 fn tru(_ts: TokenStream) -> TokenStream {
-    quote!(true)
+    lex("true")
 }
 
 fn ret_tru(_ts: TokenStream) -> TokenStream {
-    quote!(return true;)
+    lex("return true;")
 }
 
 fn identity(ts: TokenStream) -> TokenStream {
-    quote!($ts)
+    let source = ts.to_string();
+    lex(&source)
 }

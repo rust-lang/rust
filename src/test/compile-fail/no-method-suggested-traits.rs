@@ -16,7 +16,7 @@ struct Foo;
 enum Bar { X }
 
 mod foo {
-    pub trait Bar {
+    trait Bar {
         fn method(&self) {}
 
         fn method2(&self) {}

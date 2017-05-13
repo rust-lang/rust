@@ -9,7 +9,7 @@
 // except according to those terms.
 
 macro_rules! my_precioooous {
-    t => (1); //~ ERROR invalid macro matcher
+    $($t:tt)* => (1); //~ ERROR invalid macro matcher
 }
 
 fn main() {

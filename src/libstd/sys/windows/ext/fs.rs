@@ -144,7 +144,7 @@ pub trait OpenOptionsExt {
     /// `CreateFile`).
     ///
     /// If a _new_ file is created because it does not yet exist and
-    /// `.create(true)` or `.create_new(true)` are specified, the new file is
+    ///`.create(true)` or `.create_new(true)` are specified, the new file is
     /// given the attributes declared with `.attributes()`.
     ///
     /// If an _existing_ file is opened with `.create(true).truncate(true)`, its
@@ -257,7 +257,7 @@ impl MetadataExt for Metadata {
 /// use std::os::windows::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// fs::symlink_file("a.txt", "b.txt")?;
+/// try!(fs::symlink_file("a.txt", "b.txt"));
 /// # Ok(())
 /// # }
 /// ```
@@ -278,7 +278,7 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
 /// use std::os::windows::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// fs::symlink_file("a", "b")?;
+/// try!(fs::symlink_file("a", "b"));
 /// # Ok(())
 /// # }
 /// ```

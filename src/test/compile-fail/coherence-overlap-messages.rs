@@ -8,22 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo { fn foo() {} }
+trait Foo {}
 
 impl<T> Foo for T {}
 impl<U> Foo for U {} //~ ERROR conflicting implementations of trait `Foo`:
 
-trait Bar { fn bar() {} }
+trait Bar {}
 
 impl<T> Bar for (T, u8) {}
 impl<T> Bar for (u8, T) {} //~ ERROR conflicting implementations of trait `Bar` for type `(u8, u8)`:
 
-trait Baz<T> { fn baz() {} }
+trait Baz<T> {}
 
 impl<T> Baz<u8> for T {}
 impl<T> Baz<T> for u8 {} //~ ERROR conflicting implementations of trait `Baz<u8>` for type `u8`:
 
-trait Quux<U, V> { fn quux() {} }
+trait Quux<U, V> {}
 
 impl<T, U, V> Quux<U, V> for T {}
 impl<T, U> Quux<U, U> for T {} //~ ERROR conflicting implementations of trait `Quux<_, _>`:

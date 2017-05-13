@@ -4,6 +4,7 @@
 *.cpp rust
 *.h rust
 *.rs rust
-src/etc/installer/gfx/* binary
+src/etc/pkg/rust-logo.ico binary
+src/etc/pkg/rust-logo.png binary
 *.woff binary
-src/vendor/** -text
+src/vendor/* binary

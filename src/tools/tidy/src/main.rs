@@ -14,11 +14,9 @@
 //! etc. This is run by default on `make check` and as part of the auto
 //! builders.
 
-use std::env;
 use std::fs;
-use std::io::{self, Write};
 use std::path::{PathBuf, Path};
-use std::process;
+use std::env;
 
 macro_rules! t {
     ($e:expr, $p:expr) => (match $e {
@@ -32,15 +30,6 @@ macro_rules! t {
     })
 }
 
-macro_rules! tidy_error {
-    ($bad:expr, $fmt:expr, $($arg:tt)*) => ({
-        use std::io::Write;
-        *$bad = true;
-        write!(::std::io::stderr(), "tidy error: ").expect("could not write to stderr");
-        writeln!(::std::io::stderr(), $fmt, $($arg)*).expect("could not write to stderr");
-    });
-}
-
 mod bins;
 mod style;
 mod errors;
@@ -48,13 +37,10 @@ mod features;
 mod cargo;
 mod pal;
 mod deps;
-mod unstable_book;
 
 fn main() {
     let path = env::args_os().skip(1).next().expect("need an argument");
     let path = PathBuf::from(path);
-
-    let args: Vec<String> = env::args().skip(1).collect();
 
     let mut bad = false;
     bins::check(&path, &mut bad);
@@ -63,14 +49,10 @@ fn main() {
     cargo::check(&path, &mut bad);
     features::check(&path, &mut bad);
     pal::check(&path, &mut bad);
-    unstable_book::check(&path, &mut bad);
-    if !args.iter().any(|s| *s == "--no-vendor") {
-        deps::check(&path, &mut bad);
-    }
+    deps::check(&path, &mut bad);
 
     if bad {
-        writeln!(io::stderr(), "some tidy checks failed").expect("could not write to stderr");
-        process::exit(1);
+        panic!("some tidy checks failed");
     }
 }
 
@@ -80,22 +62,15 @@ fn filter_dirs(path: &Path) -> bool {
         "src/llvm",
         "src/libbacktrace",
         "src/compiler-rt",
+        "src/rt/hoedown",
         "src/rustllvm",
         "src/rust-installer",
         "src/liblibc",
         "src/vendor",
-        "src/rt/hoedown",
-        "src/tools/cargo",
-        "src/tools/rls",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }
 
-fn walk_many(paths: &[&Path], skip: &mut FnMut(&Path) -> bool, f: &mut FnMut(&Path)) {
-    for path in paths {
-        walk(path, skip, f);
-    }
-}
 
 fn walk(path: &Path, skip: &mut FnMut(&Path) -> bool, f: &mut FnMut(&Path)) {
     for entry in t!(fs::read_dir(path), path) {

@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! See [the README](README.md) for details on writing your own pass.
-
+use dep_graph::DepNode;
 use hir;
-use hir::def_id::DefId;
 use hir::map::DefPathData;
 use mir::{Mir, Promoted};
 use ty::TyCtxt;
-use std::rc::Rc;
 use syntax::ast::NodeId;
+use util::common::time;
 
 use std::borrow::Cow;
+use std::fmt;
 
 /// Where a specific Mir comes from.
 #[derive(Debug, Copy, Clone)]
@@ -37,22 +36,17 @@ pub enum MirSource {
 }
 
 impl<'a, 'tcx> MirSource {
-    pub fn from_local_def_id(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> MirSource {
-        let id = tcx.hir.as_local_node_id(def_id).expect("mir source requires local def-id");
-        Self::from_node(tcx, id)
-    }
-
     pub fn from_node(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: NodeId) -> MirSource {
         use hir::*;
 
         // Handle constants in enum discriminants, types, and repeat expressions.
-        let def_id = tcx.hir.local_def_id(id);
+        let def_id = tcx.map.local_def_id(id);
         let def_key = tcx.def_key(def_id);
         if def_key.disambiguated_data.data == DefPathData::Initializer {
             return MirSource::Const(id);
         }
 
-        match tcx.hir.get(id) {
+        match tcx.map.get(id) {
             map::NodeItem(&Item { node: ItemConst(..), .. }) |
             map::NodeTraitItem(&TraitItem { node: TraitItemKind::Const(..), .. }) |
             map::NodeImplItem(&ImplItem { node: ImplItemKind::Const(..), .. }) => {
@@ -76,111 +70,124 @@ impl<'a, 'tcx> MirSource {
     }
 }
 
-/// Generates a default name for the pass based on the name of the
-/// type `T`.
-pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
-    let name = unsafe { ::std::intrinsics::type_name::<T>() };
-    if let Some(tail) = name.rfind(":") {
-        Cow::from(&name[tail+1..])
-    } else {
-        Cow::from(name)
+/// Various information about pass.
+pub trait Pass {
+    // fn should_run(Session) to check if pass should run?
+    fn name<'a>(&self) -> Cow<'static, str> {
+        let name = unsafe { ::std::intrinsics::type_name::<Self>() };
+        if let Some(tail) = name.rfind(":") {
+            Cow::from(&name[tail+1..])
+        } else {
+            Cow::from(name)
+        }
     }
+    fn disambiguator<'a>(&'a self) -> Option<Box<fmt::Display+'a>> { None }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct MirSuite(pub usize);
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct MirPassIndex(pub usize);
-
-/// A pass hook is invoked both before and after each pass executes.
-/// This is primarily used to dump MIR for debugging.
-///
-/// You can tell whether this is before or after by inspecting the
-/// `mir` parameter -- before the pass executes, it will be `None` (in
-/// which case you can inspect the MIR from previous pass by executing
-/// `mir_cx.read_previous_mir()`); after the pass executes, it will be
-/// `Some()` with the result of the pass (in which case the output
-/// from the previous pass is most likely stolen, so you would not
-/// want to try and access it). If the pass is interprocedural, then
-/// the hook will be invoked once per output.
-pub trait PassHook {
-    fn on_mir_pass<'a, 'tcx: 'a>(&self,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 suite: MirSuite,
-                                 pass_num: MirPassIndex,
-                                 pass_name: &str,
-                                 source: MirSource,
-                                 mir: &Mir<'tcx>,
-                                 is_after: bool);
+/// A pass which inspects the whole Mir map.
+pub trait MirMapPass<'tcx>: Pass {
+    fn run_pass<'a>(
+        &mut self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        hooks: &mut [Box<for<'s> MirPassHook<'s>>]);
 }
 
-/// The full suite of types that identifies a particular
-/// application of a pass to a def-id.
-pub type PassId = (MirSuite, MirPassIndex, DefId);
+pub trait MirPassHook<'tcx>: Pass {
+    fn on_mir_pass<'a>(
+        &mut self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        src: MirSource,
+        mir: &Mir<'tcx>,
+        pass: &Pass,
+        is_after: bool
+    );
+}
 
-/// A streamlined trait that you can implement to create a pass; the
-/// pass will be named after the type, and it will consist of a main
-/// loop that goes over each available MIR and applies `run_pass`.
-pub trait MirPass {
-    fn name<'a>(&'a self) -> Cow<'a, str> {
-        default_name::<Self>()
+/// A pass which inspects Mir of functions in isolation.
+pub trait MirPass<'tcx>: Pass {
+    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    src: MirSource, mir: &mut Mir<'tcx>);
+}
+
+impl<'tcx, T: MirPass<'tcx>> MirMapPass<'tcx> for T {
+    fn run_pass<'a>(&mut self,
+                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    hooks: &mut [Box<for<'s> MirPassHook<'s>>])
+    {
+        let def_ids = tcx.mir_map.borrow().keys();
+        for def_id in def_ids {
+            if !def_id.is_local() {
+                continue;
+            }
+
+            let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
+            let mir = &mut tcx.mir_map.borrow()[&def_id].borrow_mut();
+            tcx.dep_graph.write(DepNode::Mir(def_id));
+
+            let id = tcx.map.as_local_node_id(def_id).unwrap();
+            let src = MirSource::from_node(tcx, id);
+
+            for hook in &mut *hooks {
+                hook.on_mir_pass(tcx, src, mir, self, false);
+            }
+            MirPass::run_pass(self, tcx, src, mir);
+            for hook in &mut *hooks {
+                hook.on_mir_pass(tcx, src, mir, self, true);
+            }
+
+            for (i, mir) in mir.promoted.iter_enumerated_mut() {
+                let src = MirSource::Promoted(id, i);
+                for hook in &mut *hooks {
+                    hook.on_mir_pass(tcx, src, mir, self, false);
+                }
+                MirPass::run_pass(self, tcx, src, mir);
+                for hook in &mut *hooks {
+                    hook.on_mir_pass(tcx, src, mir, self, true);
+                }
+            }
+        }
     }
-
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource,
-                          mir: &mut Mir<'tcx>);
 }
 
 /// A manager for MIR passes.
-///
-/// FIXME(#41712) -- it is unclear whether we should have this struct.
-#[derive(Clone)]
 pub struct Passes {
-    pass_hooks: Vec<Rc<PassHook>>,
-    suites: Vec<Vec<Rc<MirPass>>>,
+    passes: Vec<Box<for<'tcx> MirMapPass<'tcx>>>,
+    pass_hooks: Vec<Box<for<'tcx> MirPassHook<'tcx>>>,
+    plugin_passes: Vec<Box<for<'tcx> MirMapPass<'tcx>>>
 }
-
-/// The number of "pass suites" that we have:
-///
-/// - ready for constant evaluation
-/// - unopt
-/// - optimized
-pub const MIR_SUITES: usize = 3;
-
-/// Run the passes we need to do constant qualification and evaluation.
-pub const MIR_CONST: MirSuite = MirSuite(0);
-
-/// Run the passes we need to consider the MIR validated and ready for borrowck etc.
-pub const MIR_VALIDATED: MirSuite = MirSuite(1);
-
-/// Run the passes we need to consider the MIR *optimized*.
-pub const MIR_OPTIMIZED: MirSuite = MirSuite(2);
 
 impl<'a, 'tcx> Passes {
     pub fn new() -> Passes {
-        Passes {
+        let passes = Passes {
+            passes: Vec::new(),
             pass_hooks: Vec::new(),
-            suites: (0..MIR_SUITES).map(|_| Vec::new()).collect(),
+            plugin_passes: Vec::new()
+        };
+        passes
+    }
+
+    pub fn run_passes(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+        let Passes { ref mut passes, ref mut plugin_passes, ref mut pass_hooks } = *self;
+        for pass in plugin_passes.iter_mut().chain(passes.iter_mut()) {
+            time(tcx.sess.time_passes(), &*pass.name(),
+                 || pass.run_pass(tcx, pass_hooks));
         }
     }
 
     /// Pushes a built-in pass.
-    pub fn push_pass<T: MirPass + 'static>(&mut self, suite: MirSuite, pass: T) {
-        self.suites[suite.0].push(Rc::new(pass));
+    pub fn push_pass(&mut self, pass: Box<for<'b> MirMapPass<'b>>) {
+        self.passes.push(pass);
     }
 
     /// Pushes a pass hook.
-    pub fn push_hook<T: PassHook + 'static>(&mut self, hook: T) {
-        self.pass_hooks.push(Rc::new(hook));
+    pub fn push_hook(&mut self, hook: Box<for<'b> MirPassHook<'b>>) {
+        self.pass_hooks.push(hook);
     }
+}
 
-    pub fn passes(&self, suite: MirSuite) -> &[Rc<MirPass>] {
-        &self.suites[suite.0]
-    }
-
-    pub fn hooks(&self) -> &[Rc<PassHook>] {
-        &self.pass_hooks
+/// Copies the plugin passes.
+impl ::std::iter::Extend<Box<for<'a> MirMapPass<'a>>> for Passes {
+    fn extend<I: IntoIterator<Item=Box<for <'a> MirMapPass<'a>>>>(&mut self, it: I) {
+        self.plugin_passes.extend(it);
     }
 }

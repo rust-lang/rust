@@ -18,6 +18,7 @@
 
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
+#![feature(static_in_const)]
 #![allow(dead_code)]
 
 // These are expected to require translation.
@@ -78,7 +79,7 @@ mod point {
 mod fn_with_type_in_sig {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="rpass2")]
+    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
     pub fn boop(p: Option<&Point>) -> f32 {
         p.map(|p| p.total()).unwrap_or(0.0)
     }
@@ -94,7 +95,7 @@ mod fn_with_type_in_sig {
 mod call_fn_with_type_in_sig {
     use fn_with_type_in_sig;
 
-    #[rustc_dirty(label="TypeckTables", cfg="rpass2")]
+    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
     pub fn bip() -> f32 {
         fn_with_type_in_sig::boop(None)
     }
@@ -110,7 +111,7 @@ mod call_fn_with_type_in_sig {
 mod fn_with_type_in_body {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="rpass2")]
+    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
     pub fn boop() -> f32 {
         Point::origin().total()
     }
@@ -123,7 +124,7 @@ mod fn_with_type_in_body {
 mod call_fn_with_type_in_body {
     use fn_with_type_in_body;
 
-    #[rustc_clean(label="TypeckTables", cfg="rpass2")]
+    #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
     pub fn bip() -> f32 {
         fn_with_type_in_body::boop()
     }
@@ -133,7 +134,7 @@ mod call_fn_with_type_in_body {
 mod fn_make_struct {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="rpass2")]
+    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
     pub fn make_origin(p: Point) -> Point {
         Point { ..p }
     }
@@ -143,7 +144,7 @@ mod fn_make_struct {
 mod fn_read_field {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="rpass2")]
+    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
     pub fn get_x(p: Point) -> f32 {
         p.x
     }
@@ -153,7 +154,7 @@ mod fn_read_field {
 mod fn_write_field {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="rpass2")]
+    #[rustc_dirty(label="TypeckItemBody", cfg="rpass2")]
     pub fn inc_x(p: &mut Point) {
         p.x += 1.0;
     }

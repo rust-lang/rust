@@ -11,16 +11,18 @@
 pub use self::code_stats::{CodeStats, DataTypeKind, FieldInfo};
 pub use self::code_stats::{SizeKind, TypeSizeInfo, VariantInfo};
 
-use dep_graph::{DepGraph, DepNode};
-use hir::def_id::{DefId, CrateNum, DefIndex, CRATE_DEF_INDEX};
+use dep_graph::DepGraph;
+use hir::def_id::{CrateNum, DefIndex};
+use hir::svh::Svh;
 use lint;
 use middle::cstore::CrateStore;
 use middle::dependency_format;
 use session::search_paths::PathKind;
 use session::config::DebugInfoLevel;
 use ty::tls;
-use util::nodemap::{FxHashMap, FxHashSet};
+use util::nodemap::{NodeMap, FxHashMap, FxHashSet};
 use util::common::duration_to_secs_str;
+use mir::transform as mir_pass;
 
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder};
@@ -32,9 +34,9 @@ use syntax::parse::ParseSess;
 use syntax::symbol::Symbol;
 use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
-use syntax_pos::{Span, MultiSpan, FileMap};
+use syntax_pos::{Span, MultiSpan};
 
-use rustc_back::{LinkerFlavor, PanicStrategy};
+use rustc_back::PanicStrategy;
 use rustc_back::target::Target;
 use rustc_data_structures::flock;
 use llvm;
@@ -48,7 +50,6 @@ use std::io::Write;
 use std::rc::Rc;
 use std::fmt;
 use std::time::Duration;
-use std::sync::Arc;
 use libc::c_int;
 
 mod code_stats;
@@ -63,7 +64,7 @@ pub struct Session {
     pub target: config::Config,
     pub host: Target,
     pub opts: config::Options,
-    pub cstore: Rc<CrateStore>,
+    pub cstore: Rc<for<'a> CrateStore<'a>>,
     pub parse_sess: ParseSess,
     // For a library crate, this is always none
     pub entry_fn: RefCell<Option<(NodeId, Span)>>,
@@ -74,17 +75,16 @@ pub struct Session {
     // The name of the root source file of the crate, in the local file system.
     // The path is always expected to be absolute. `None` means that there is no
     // source file.
-    pub local_crate_source_file: Option<String>,
-    // The directory the compiler has been executed in plus a flag indicating
-    // if the value stored here has been affected by path remapping.
-    pub working_dir: (String, bool),
+    pub local_crate_source_file: Option<PathBuf>,
+    pub working_dir: PathBuf,
     pub lint_store: RefCell<lint::LintStore>,
-    pub lints: RefCell<lint::LintTable>,
+    pub lints: RefCell<NodeMap<Vec<lint::EarlyLint>>>,
     /// Set of (LintId, span, message) tuples tracking lint (sub)diagnostics
     /// that have been set once, but should not be set again, in order to avoid
     /// redundantly verbose output (Issue #24690).
     pub one_time_diagnostics: RefCell<FxHashSet<(lint::LintId, Span, String)>>,
     pub plugin_llvm_passes: RefCell<Vec<String>>,
+    pub mir_passes: RefCell<mir_pass::Passes>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
@@ -123,20 +123,6 @@ pub struct Session {
     pub code_stats: RefCell<CodeStats>,
 
     next_node_id: Cell<ast::NodeId>,
-
-    /// If -zfuel=crate=n is specified, Some(crate).
-    optimization_fuel_crate: Option<String>,
-    /// If -zfuel=crate=n is specified, initially set to n. Otherwise 0.
-    optimization_fuel_limit: Cell<u64>,
-    /// We're rejecting all further optimizations.
-    out_of_fuel: Cell<bool>,
-
-    // The next two are public because the driver needs to read them.
-
-    /// If -zprint-fuel=crate, Some(crate).
-    pub print_fuel_crate: Option<String>,
-    /// Always set to zero and incremented so that we can print fuel expended by a crate.
-    pub print_fuel: Cell<u64>,
 }
 
 pub struct PerfStats {
@@ -284,14 +270,13 @@ impl Session {
     pub fn unimpl(&self, msg: &str) -> ! {
         self.diagnostic().unimpl(msg)
     }
-
     pub fn add_lint<S: Into<MultiSpan>>(&self,
                                         lint: &'static lint::Lint,
                                         id: ast::NodeId,
                                         sp: S,
                                         msg: String)
     {
-        self.lints.borrow_mut().add_lint(lint, id, sp, msg);
+        self.add_lint_diagnostic(lint, id, (sp, &msg[..]))
     }
 
     pub fn add_lint_diagnostic<M>(&self,
@@ -300,9 +285,17 @@ impl Session {
                                   msg: M)
         where M: lint::IntoEarlyLint,
     {
-        self.lints.borrow_mut().add_lint_diagnostic(lint, id, msg);
+        let lint_id = lint::LintId::of(lint);
+        let mut lints = self.lints.borrow_mut();
+        let early_lint = msg.into_early_lint(lint_id);
+        if let Some(arr) = lints.get_mut(&id) {
+            if !arr.contains(&early_lint) {
+                arr.push(early_lint);
+            }
+            return;
+        }
+        lints.insert(id, vec![early_lint]);
     }
-
     pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
         let id = self.next_node_id.get();
 
@@ -377,9 +370,6 @@ impl Session {
     pub fn panic_strategy(&self) -> PanicStrategy {
         self.opts.cg.panic.unwrap_or(self.target.target.options.panic_strategy)
     }
-    pub fn linker_flavor(&self) -> LinkerFlavor {
-        self.opts.debugging_opts.linker_flavor.unwrap_or(self.target.target.linker_flavor)
-    }
     pub fn no_landing_pads(&self) -> bool {
         self.opts.debugging_opts.no_landing_pads || self.panic_strategy() == PanicStrategy::Abort
     }
@@ -389,11 +379,6 @@ impl Session {
     pub fn nonzeroing_move_hints(&self) -> bool {
         self.opts.debugging_opts.enable_nonzeroing_move_hints
     }
-    pub fn overflow_checks(&self) -> bool {
-        self.opts.cg.overflow_checks
-            .or(self.opts.debugging_opts.force_overflow_checks)
-            .unwrap_or(self.opts.debug_assertions)
-    }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
         self.opts.debuginfo != DebugInfoLevel::NoDebugInfo ||
@@ -402,14 +387,15 @@ impl Session {
 
     /// Returns the symbol name for the registrar function,
     /// given the crate Svh and the function DefIndex.
-    pub fn generate_plugin_registrar_symbol(&self, disambiguator: Symbol, index: DefIndex)
+    pub fn generate_plugin_registrar_symbol(&self, svh: &Svh, index: DefIndex)
                                             -> String {
-        format!("__rustc_plugin_registrar__{}_{}", disambiguator, index.as_usize())
+        format!("__rustc_plugin_registrar__{}_{}", svh, index.as_usize())
     }
 
-    pub fn generate_derive_registrar_symbol(&self, disambiguator: Symbol, index: DefIndex)
-                                            -> String {
-        format!("__rustc_derive_registrar__{}_{}", disambiguator, index.as_usize())
+    pub fn generate_derive_registrar_symbol(&self,
+                                            svh: &Svh,
+                                            index: DefIndex) -> String {
+        format!("__rustc_derive_registrar__{}_{}", svh, index.as_usize())
     }
 
     pub fn sysroot<'a>(&'a self) -> &'a Path {
@@ -520,48 +506,20 @@ impl Session {
         println!("Total time spent decoding DefPath tables:      {}",
                  duration_to_secs_str(self.perf_stats.decode_def_path_tables_time.get()));
     }
-
-    /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
-    /// This expends fuel if applicable, and records fuel if applicable.
-    pub fn consider_optimizing<T: Fn() -> String>(&self, crate_name: &str, msg: T) -> bool {
-        let mut ret = true;
-        match self.optimization_fuel_crate {
-            Some(ref c) if c == crate_name => {
-                let fuel = self.optimization_fuel_limit.get();
-                ret = fuel != 0;
-                if fuel == 0 && !self.out_of_fuel.get() {
-                    println!("optimization-fuel-exhausted: {}", msg());
-                    self.out_of_fuel.set(true);
-                } else if fuel > 0 {
-                    self.optimization_fuel_limit.set(fuel-1);
-                }
-            }
-            _ => {}
-        }
-        match self.print_fuel_crate {
-            Some(ref c) if c == crate_name=> {
-                self.print_fuel.set(self.print_fuel.get()+1);
-            },
-            _ => {}
-        }
-        ret
-    }
 }
 
 pub fn build_session(sopts: config::Options,
                      dep_graph: &DepGraph,
                      local_crate_source_file: Option<PathBuf>,
                      registry: errors::registry::Registry,
-                     cstore: Rc<CrateStore>)
+                     cstore: Rc<for<'a> CrateStore<'a>>)
                      -> Session {
-    let file_path_mapping = sopts.file_path_mapping();
-
     build_session_with_codemap(sopts,
                                dep_graph,
                                local_crate_source_file,
                                registry,
                                cstore,
-                               Rc::new(codemap::CodeMap::new(file_path_mapping)),
+                               Rc::new(codemap::CodeMap::new()),
                                None)
 }
 
@@ -569,7 +527,7 @@ pub fn build_session_with_codemap(sopts: config::Options,
                                   dep_graph: &DepGraph,
                                   local_crate_source_file: Option<PathBuf>,
                                   registry: errors::registry::Registry,
-                                  cstore: Rc<CrateStore>,
+                                  cstore: Rc<for<'a> CrateStore<'a>>,
                                   codemap: Rc<codemap::CodeMap>,
                                   emitter_dest: Option<Box<Write + Send>>)
                                   -> Session {
@@ -619,52 +577,29 @@ pub fn build_session_(sopts: config::Options,
                       local_crate_source_file: Option<PathBuf>,
                       span_diagnostic: errors::Handler,
                       codemap: Rc<codemap::CodeMap>,
-                      cstore: Rc<CrateStore>)
+                      cstore: Rc<for<'a> CrateStore<'a>>)
                       -> Session {
     let host = match Target::search(config::host_triple()) {
         Ok(t) => t,
         Err(e) => {
             panic!(span_diagnostic.fatal(&format!("Error loading host specification: {}", e)));
-        }
+    }
     };
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
-
-    // Hook up the codemap with a callback that allows it to register FileMap
-    // accesses with the dependency graph.
-    let cm_depgraph = dep_graph.clone();
-    let codemap_dep_tracking_callback = Box::new(move |filemap: &FileMap| {
-        let def_id = DefId {
-            krate: CrateNum::from_u32(filemap.crate_of_origin),
-            index: CRATE_DEF_INDEX,
-        };
-        let name = Arc::new(filemap.name.clone());
-        let dep_node = DepNode::FileMap(def_id, name);
-
-        cm_depgraph.read(dep_node);
-    });
-    codemap.set_dep_tracking_callback(codemap_dep_tracking_callback);
-
     let p_s = parse::ParseSess::with_span_handler(span_diagnostic, codemap);
     let default_sysroot = match sopts.maybe_sysroot {
         Some(_) => None,
         None => Some(filesearch::get_or_default_sysroot())
     };
 
-    let file_path_mapping = sopts.file_path_mapping();
-
     // Make the path absolute, if necessary
-    let local_crate_source_file = local_crate_source_file.map(|path| {
-        file_path_mapping.map_prefix(path.to_string_lossy().into_owned()).0
-    });
-
-    let optimization_fuel_crate = sopts.debugging_opts.fuel.as_ref().map(|i| i.0.clone());
-    let optimization_fuel_limit = Cell::new(sopts.debugging_opts.fuel.as_ref()
-        .map(|i| i.1).unwrap_or(0));
-    let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
-    let print_fuel = Cell::new(0);
-
-    let working_dir = env::current_dir().unwrap().to_string_lossy().into_owned();
-    let working_dir = file_path_mapping.map_prefix(working_dir);
+    let local_crate_source_file = local_crate_source_file.map(|path|
+        if path.is_absolute() {
+            path.clone()
+        } else {
+            env::current_dir().unwrap().join(&path)
+        }
+    );
 
     let sess = Session {
         dep_graph: dep_graph.clone(),
@@ -680,11 +615,12 @@ pub fn build_session_(sopts: config::Options,
         derive_registrar_fn: Cell::new(None),
         default_sysroot: default_sysroot,
         local_crate_source_file: local_crate_source_file,
-        working_dir: working_dir,
+        working_dir: env::current_dir().unwrap(),
         lint_store: RefCell::new(lint::LintStore::new()),
-        lints: RefCell::new(lint::LintTable::new()),
+        lints: RefCell::new(NodeMap()),
         one_time_diagnostics: RefCell::new(FxHashSet()),
         plugin_llvm_passes: RefCell::new(Vec::new()),
+        mir_passes: RefCell::new(mir_pass::Passes::new()),
         plugin_attributes: RefCell::new(Vec::new()),
         crate_types: RefCell::new(Vec::new()),
         dependency_formats: RefCell::new(FxHashMap()),
@@ -706,11 +642,6 @@ pub fn build_session_(sopts: config::Options,
             decode_def_path_tables_time: Cell::new(Duration::from_secs(0)),
         },
         code_stats: RefCell::new(CodeStats::new()),
-        optimization_fuel_crate: optimization_fuel_crate,
-        optimization_fuel_limit: optimization_fuel_limit,
-        print_fuel_crate: print_fuel_crate,
-        print_fuel: print_fuel,
-        out_of_fuel: Cell::new(false),
     };
 
     init_llvm(&sess);

@@ -14,24 +14,74 @@ pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
 pub use self::PathParameters::*;
-pub use symbol::{Ident, Symbol as Name};
+pub use symbol::Symbol as Name;
 pub use util::ThinVec;
 
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{mk_sp, Span, DUMMY_SP, ExpnId};
 use codemap::{respan, Spanned};
 use abi::Abi;
-use ext::hygiene::{Mark, SyntaxContext};
+use ext::hygiene::SyntaxContext;
 use print::pprust;
 use ptr::P;
-use rustc_data_structures::indexed_vec;
 use symbol::{Symbol, keywords};
-use tokenstream::{ThinTokenStream, TokenStream};
+use tokenstream::{TokenTree};
 
-use serialize::{self, Encoder, Decoder};
 use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
 use std::u32;
+
+use serialize::{self, Encodable, Decodable, Encoder, Decoder};
+
+use rustc_i128::{u128, i128};
+
+/// An identifier contains a Name (index into the interner
+/// table) and a SyntaxContext to track renaming and
+/// macro expansion per Flatt et al., "Macros That Work Together"
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Ident {
+    pub name: Symbol,
+    pub ctxt: SyntaxContext
+}
+
+impl Ident {
+    pub const fn with_empty_ctxt(name: Name) -> Ident {
+        Ident { name: name, ctxt: SyntaxContext::empty() }
+    }
+
+    /// Maps a string to an identifier with an empty syntax context.
+    pub fn from_str(s: &str) -> Ident {
+        Ident::with_empty_ctxt(Symbol::intern(s))
+    }
+
+    pub fn unhygienize(&self) -> Ident {
+        Ident { name: self.name, ctxt: SyntaxContext::empty() }
+    }
+}
+
+impl fmt::Debug for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{:?}", self.name, self.ctxt)
+    }
+}
+
+impl fmt::Display for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.name, f)
+    }
+}
+
+impl Encodable for Ident {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        self.name.encode(s)
+    }
+}
+
+impl Decodable for Ident {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
+        Ok(Ident::with_empty_ctxt(Name::decode(d)?))
+    }
+}
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
@@ -68,12 +118,6 @@ pub struct Path {
     pub segments: Vec<PathSegment>,
 }
 
-impl<'a> PartialEq<&'a str> for Path {
-    fn eq(&self, string: &&'a str) -> bool {
-        self.segments.len() == 1 && self.segments[0].identifier.name == *string
-    }
-}
-
 impl fmt::Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "path({})", pprust::path_to_string(self))
@@ -92,7 +136,7 @@ impl Path {
     pub fn from_ident(s: Span, identifier: Ident) -> Path {
         Path {
             span: s,
-            segments: vec![PathSegment::from_ident(identifier, s)],
+            segments: vec![identifier.into()],
         }
     }
 
@@ -117,8 +161,6 @@ impl Path {
 pub struct PathSegment {
     /// The identifier portion of this path segment.
     pub identifier: Ident,
-    /// Span of the segment identifier.
-    pub span: Span,
 
     /// Type/lifetime parameters attached to this path. They come in
     /// two flavors: `Path<A,B,C>` and `Path(A,B) -> C`. Note that
@@ -130,14 +172,16 @@ pub struct PathSegment {
     pub parameters: Option<P<PathParameters>>,
 }
 
-impl PathSegment {
-    pub fn from_ident(ident: Ident, span: Span) -> Self {
-        PathSegment { identifier: ident, span: span, parameters: None }
+impl From<Ident> for PathSegment {
+    fn from(id: Ident) -> Self {
+        PathSegment { identifier: id, parameters: None }
     }
+}
+
+impl PathSegment {
     pub fn crate_root() -> Self {
         PathSegment {
             identifier: keywords::CrateRoot.ident(),
-            span: DUMMY_SP,
             parameters: None,
         }
     }
@@ -160,11 +204,11 @@ pub struct AngleBracketedParameterData {
     /// The lifetime parameters for this path segment.
     pub lifetimes: Vec<Lifetime>,
     /// The type parameters for this path segment, if present.
-    pub types: Vec<P<Ty>>,
+    pub types: P<[P<Ty>]>,
     /// Bindings (equality constraints) on associated types, if present.
     ///
     /// E.g., `Foo<A=Bar>`.
-    pub bindings: Vec<TypeBinding>,
+    pub bindings: P<[TypeBinding]>,
 }
 
 impl Into<Option<P<PathParameters>>> for AngleBracketedParameterData {
@@ -207,14 +251,6 @@ impl NodeId {
     pub fn as_u32(&self) -> u32 {
         self.0
     }
-
-    pub fn placeholder_from_mark(mark: Mark) -> Self {
-        NodeId(mark.as_u32())
-    }
-
-    pub fn placeholder_to_mark(self) -> Mark {
-        Mark::from_u32(self.0)
-    }
 }
 
 impl fmt::Display for NodeId {
@@ -232,16 +268,6 @@ impl serialize::UseSpecializedEncodable for NodeId {
 impl serialize::UseSpecializedDecodable for NodeId {
     fn default_decode<D: Decoder>(d: &mut D) -> Result<NodeId, D::Error> {
         d.read_u32().map(NodeId)
-    }
-}
-
-impl indexed_vec::Idx for NodeId {
-    fn new(idx: usize) -> Self {
-        NodeId::new(idx)
-    }
-
-    fn index(self) -> usize {
-        self.as_usize()
     }
 }
 
@@ -271,7 +297,7 @@ pub enum TraitBoundModifier {
     Maybe,
 }
 
-pub type TyParamBounds = Vec<TyParamBound>;
+pub type TyParamBounds = P<[TyParamBound]>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TyParam {
@@ -288,7 +314,7 @@ pub struct TyParam {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Generics {
     pub lifetimes: Vec<LifetimeDef>,
-    pub ty_params: Vec<TyParam>,
+    pub ty_params: P<[TyParam]>,
     pub where_clause: WhereClause,
     pub span: Span,
 }
@@ -318,7 +344,7 @@ impl Default for Generics {
     fn default() ->  Generics {
         Generics {
             lifetimes: Vec::new(),
-            ty_params: Vec::new(),
+            ty_params: P::new(),
             where_clause: WhereClause {
                 id: DUMMY_NODE_ID,
                 predicates: Vec::new(),
@@ -377,8 +403,8 @@ pub struct WhereRegionPredicate {
 pub struct WhereEqPredicate {
     pub id: NodeId,
     pub span: Span,
-    pub lhs_ty: P<Ty>,
-    pub rhs_ty: P<Ty>,
+    pub path: Path,
+    pub ty: P<Ty>,
 }
 
 /// The set of MetaItems that define the compilation environment of the crate,
@@ -390,6 +416,7 @@ pub struct Crate {
     pub module: Mod,
     pub attrs: Vec<Attribute>,
     pub span: Span,
+    pub exported_macros: Vec<MacroDef>,
 }
 
 /// A spanned compile-time attribute list item.
@@ -511,19 +538,12 @@ pub struct FieldPat {
     /// The pattern the field is destructured to
     pub pat: P<Pat>,
     pub is_shorthand: bool,
-    pub attrs: ThinVec<Attribute>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum BindingMode {
     ByRef(Mutability),
     ByValue(Mutability),
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum RangeEnd {
-    Included,
-    Excluded,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -562,8 +582,8 @@ pub enum PatKind {
     Ref(P<Pat>, Mutability),
     /// A literal
     Lit(P<Expr>),
-    /// A range pattern, e.g. `1...2` or `1..2`
-    Range(P<Expr>, P<Expr>, RangeEnd),
+    /// A range pattern, e.g. `1...2`
+    Range(P<Expr>, P<Expr>),
     /// `[a, b, ..i, y, z]` is represented as:
     ///     `PatKind::Slice(box [a, b], Some(i), box [y, z])`
     Slice(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
@@ -795,7 +815,6 @@ pub struct Field {
     pub expr: P<Expr>,
     pub span: Span,
     pub is_shorthand: bool,
-    pub attrs: ThinVec<Attribute>,
 }
 
 pub type SpannedIdent = Spanned<Ident>;
@@ -843,7 +862,7 @@ pub enum ExprKind {
     /// First expr is the place; second expr is the value.
     InPlace(P<Expr>, P<Expr>),
     /// An array (`[a, b, c, d]`)
-    Array(Vec<P<Expr>>),
+    Vec(Vec<P<Expr>>),
     /// A function call
     ///
     /// The first field resolves to the function itself,
@@ -911,8 +930,6 @@ pub enum ExprKind {
     Closure(CaptureBy, P<FnDecl>, P<Expr>, Span),
     /// A block (`{ ... }`)
     Block(P<Block>),
-    /// A catch block (`catch { ... }`)
-    Catch(P<Block>),
 
     /// An assignment (`a = foo()`)
     Assign(P<Expr>, P<Expr>),
@@ -1010,13 +1027,7 @@ pub type Mac = Spanned<Mac_>;
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Mac_ {
     pub path: Path,
-    pub tts: ThinTokenStream,
-}
-
-impl Mac_ {
-    pub fn stream(&self) -> TokenStream {
-        self.tts.clone().into()
-    }
+    pub tts: Vec<TokenTree>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1344,11 +1355,11 @@ pub enum TyKind {
     ///
     /// Type parameters are stored in the Path itself
     Path(Option<QSelf>, Path),
-    /// A trait object type `Bound1 + Bound2 + Bound3`
-    /// where `Bound` is a trait or a lifetime.
-    TraitObject(TyParamBounds),
-    /// An `impl Bound1 + Bound2 + Bound3` type
-    /// where `Bound` is a trait or a lifetime.
+    /// Something like `A+B`. Note that `B` must always be a path.
+    ObjectSum(P<Ty>, TyParamBounds),
+    /// A type like `for<'a> Foo<&'a Bar>`
+    PolyTraitRef(TyParamBounds),
+    /// An `impl TraitA+TraitB` type.
     ImplTrait(TyParamBounds),
     /// No-op; kept solely so that we can pretty-print faithfully
     Paren(P<Ty>),
@@ -1361,8 +1372,6 @@ pub enum TyKind {
     ImplicitSelf,
     // A macro in the type position.
     Mac(Mac),
-    /// Placeholder for a kind that has failed to be defined.
-    Err,
 }
 
 /// Inline assembly dialect.
@@ -1398,7 +1407,7 @@ pub struct InlineAsm {
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
-    pub ctxt: SyntaxContext,
+    pub expn_id: ExpnId,
 }
 
 /// An argument in a function header.
@@ -1435,7 +1444,7 @@ impl Arg {
                     TyKind::Rptr(lt, MutTy{ref ty, mutbl}) if ty.node == TyKind::ImplicitSelf => {
                         Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
                     }
-                    _ => Some(respan(self.pat.span.to(self.ty.span),
+                    _ => Some(respan(mk_sp(self.pat.span.lo, self.ty.span.hi),
                                      SelfKind::Explicit(self.ty.clone(), mutbl))),
                 }
             }
@@ -1452,7 +1461,7 @@ impl Arg {
     }
 
     pub fn from_self(eself: ExplicitSelf, eself_ident: SpannedIdent) -> Arg {
-        let span = eself.span.to(eself_ident.span);
+        let span = mk_sp(eself.span.lo, eself_ident.span.hi);
         let infer_ty = P(Ty {
             id: DUMMY_NODE_ID,
             node: TyKind::ImplicitSelf,
@@ -1585,15 +1594,6 @@ pub struct ForeignMod {
     pub items: Vec<ForeignItem>,
 }
 
-/// Global inline assembly
-///
-/// aka module-level assembly or file-scoped assembly
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub struct GlobalAsm {
-    pub asm: Symbol,
-    pub ctxt: SyntaxContext,
-}
-
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct EnumDef {
     pub variants: Vec<Variant>,
@@ -1668,8 +1668,7 @@ pub struct AttrId(pub usize);
 pub struct Attribute {
     pub id: AttrId,
     pub style: AttrStyle,
-    pub path: Path,
-    pub tokens: TokenStream,
+    pub value: MetaItem,
     pub is_sugared_doc: bool,
     pub span: Span,
 }
@@ -1695,16 +1694,6 @@ pub struct PolyTraitRef {
     pub trait_ref: TraitRef,
 
     pub span: Span,
-}
-
-impl PolyTraitRef {
-    pub fn new(lifetimes: Vec<LifetimeDef>, path: Path, span: Span) -> Self {
-        PolyTraitRef {
-            bound_lifetimes: lifetimes,
-            trait_ref: TraitRef { path: path, ref_id: DUMMY_NODE_ID },
-            span: span,
-        }
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1821,8 +1810,6 @@ pub enum ItemKind {
     ///
     /// E.g. `extern {}` or `extern "C" {}`
     ForeignMod(ForeignMod),
-    /// Module-level inline assembly (from `global_asm!()`)
-    GlobalAsm(P<GlobalAsm>),
     /// A type alias (`type` or `pub type`).
     ///
     /// E.g. `type Foo = Bar<u8>;`
@@ -1852,18 +1839,14 @@ pub enum ItemKind {
     /// E.g. `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`
     Impl(Unsafety,
              ImplPolarity,
-             Defaultness,
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
              Vec<ImplItem>),
-    /// A macro invocation.
+    /// A macro invocation (which includes macro definition).
     ///
     /// E.g. `macro_rules! foo { .. }` or `foo!(..)`
     Mac(Mac),
-
-    /// A macro definition.
-    MacroDef(ThinTokenStream),
 }
 
 impl ItemKind {
@@ -1876,14 +1859,12 @@ impl ItemKind {
             ItemKind::Fn(..) => "function",
             ItemKind::Mod(..) => "module",
             ItemKind::ForeignMod(..) => "foreign module",
-            ItemKind::GlobalAsm(..) => "global asm",
             ItemKind::Ty(..) => "type alias",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::Mac(..) |
-            ItemKind::MacroDef(..) |
             ItemKind::Impl(..) |
             ItemKind::DefaultImpl(..) => "item"
         }
@@ -1917,6 +1898,18 @@ impl ForeignItemKind {
             ForeignItemKind::Static(..) => "foreign static item"
         }
     }
+}
+
+/// A macro definition, in this crate or imported from another.
+///
+/// Not parsed directly, but created on macro import or `macro_rules!` expansion.
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct MacroDef {
+    pub ident: Ident,
+    pub attrs: Vec<Attribute>,
+    pub id: NodeId,
+    pub span: Span,
+    pub body: Vec<TokenTree>,
 }
 
 #[cfg(test)]

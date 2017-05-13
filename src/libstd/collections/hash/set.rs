@@ -24,10 +24,11 @@ use super::map::{self, HashMap, Keys, RandomState};
 // for `bucket.val` in the case of HashSet. I suppose we would need HKT
 // to get rid of it properly.
 
-/// A hash set implemented as a `HashMap` where the value is `()`.
+/// An implementation of a hash set using the underlying representation of a
+/// HashMap where the value is ().
 ///
-/// As with the [`HashMap`] type, a `HashSet` requires that the elements
-/// implement the [`Eq`] and [`Hash`] traits. This can frequently be achieved by
+/// As with the `HashMap` type, a `HashSet` requires that the elements
+/// implement the `Eq` and `Hash` traits. This can frequently be achieved by
 /// using `#[derive(PartialEq, Eq, Hash)]`. If you implement these yourself,
 /// it is important that the following property holds:
 ///
@@ -39,9 +40,9 @@ use super::map::{self, HashMap, Keys, RandomState};
 ///
 ///
 /// It is a logic error for an item to be modified in such a way that the
-/// item's hash, as determined by the [`Hash`] trait, or its equality, as
-/// determined by the [`Eq`] trait, changes while it is in the set. This is
-/// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or
+/// item's hash, as determined by the `Hash` trait, or its equality, as
+/// determined by the `Eq` trait, changes while it is in the set. This is
+/// normally only possible through `Cell`, `RefCell`, global state, I/O, or
 /// unsafe code.
 ///
 /// # Examples
@@ -74,8 +75,8 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// ```
 ///
 /// The easiest way to use `HashSet` with a custom type is to derive
-/// [`Eq`] and [`Hash`]. We must also derive [`PartialEq`], this will in the
-/// future be implied by [`Eq`].
+/// `Eq` and `Hash`. We must also derive `PartialEq`, this will in the
+/// future be implied by `Eq`.
 ///
 /// ```
 /// use std::collections::HashSet;
@@ -98,7 +99,7 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// }
 /// ```
 ///
-/// A `HashSet` with fixed list of elements can be initialized from an array:
+/// HashSet with fixed list of elements can be initialized from an array:
 ///
 /// ```
 /// use std::collections::HashSet;
@@ -109,13 +110,6 @@ use super::map::{self, HashMap, Keys, RandomState};
 ///     // use the values stored in the set
 /// }
 /// ```
-///
-/// [`Cell`]: ../../std/cell/struct.Cell.html
-/// [`Eq`]: ../../std/cmp/trait.Eq.html
-/// [`Hash`]: ../../std/hash/trait.Hash.html
-/// [`HashMap`]: struct.HashMap.html
-/// [`PartialEq`]: ../../std/cmp/trait.PartialEq.html
-/// [`RefCell`]: ../../std/cell/struct.RefCell.html
 
 
 #[derive(Clone)]
@@ -187,7 +181,7 @@ impl<T, S> HashSet<T, S>
         HashSet { map: HashMap::with_hasher(hasher) }
     }
 
-    /// Creates an empty `HashSet` with with the specified capacity, using
+    /// Creates an empty HashSet with with the specified capacity, using
     /// `hasher` to hash the keys.
     ///
     /// The hash set will be able to hold at least `capacity` elements without
@@ -214,9 +208,7 @@ impl<T, S> HashSet<T, S>
         HashSet { map: HashMap::with_capacity_and_hasher(capacity, hasher) }
     }
 
-    /// Returns a reference to the set's [`BuildHasher`].
-    ///
-    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
+    /// Returns a reference to the set's hasher.
     #[stable(feature = "hashmap_public_hasher", since = "1.9.0")]
     pub fn hasher(&self) -> &S {
         self.map.hasher()
@@ -279,7 +271,7 @@ impl<T, S> HashSet<T, S>
     }
 
     /// An iterator visiting all elements in arbitrary order.
-    /// The iterator element type is `&'a T`.
+    /// Iterator element type is &'a T.
     ///
     /// # Examples
     ///
@@ -299,8 +291,7 @@ impl<T, S> HashSet<T, S>
         Iter { iter: self.map.keys() }
     }
 
-    /// Visits the values representing the difference,
-    /// i.e. the values that are in `self` but not in `other`.
+    /// Visit the values representing the difference.
     ///
     /// # Examples
     ///
@@ -330,8 +321,7 @@ impl<T, S> HashSet<T, S>
         }
     }
 
-    /// Visits the values representing the symmetric difference,
-    /// i.e. the values that are in `self` or in `other` but not in both.
+    /// Visit the values representing the symmetric difference.
     ///
     /// # Examples
     ///
@@ -358,8 +348,7 @@ impl<T, S> HashSet<T, S>
         SymmetricDifference { iter: self.difference(other).chain(other.difference(self)) }
     }
 
-    /// Visits the values representing the intersection,
-    /// i.e. the values that are both in `self` and `other`.
+    /// Visit the values representing the intersection.
     ///
     /// # Examples
     ///
@@ -384,8 +373,7 @@ impl<T, S> HashSet<T, S>
         }
     }
 
-    /// Visits the values representing the union,
-    /// i.e. all the values in `self` or `other`, without duplicates.
+    /// Visit the values representing the union.
     ///
     /// # Examples
     ///
@@ -468,7 +456,7 @@ impl<T, S> HashSet<T, S>
     /// Returns `true` if the set contains a value.
     ///
     /// The value may be any borrowed form of the set's value type, but
-    /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
     /// the value type.
     ///
     /// # Examples
@@ -480,9 +468,6 @@ impl<T, S> HashSet<T, S>
     /// assert_eq!(set.contains(&1), true);
     /// assert_eq!(set.contains(&4), false);
     /// ```
-    ///
-    /// [`Eq`]: ../../std/cmp/trait.Eq.html
-    /// [`Hash`]: ../../std/hash/trait.Hash.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
         where T: Borrow<Q>,
@@ -494,11 +479,8 @@ impl<T, S> HashSet<T, S>
     /// Returns a reference to the value in the set, if any, that is equal to the given value.
     ///
     /// The value may be any borrowed form of the set's value type, but
-    /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
     /// the value type.
-    ///
-    /// [`Eq`]: ../../std/cmp/trait.Eq.html
-    /// [`Hash`]: ../../std/hash/trait.Hash.html
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
         where T: Borrow<Q>,
@@ -507,7 +489,7 @@ impl<T, S> HashSet<T, S>
         Recover::get(&self.map, value)
     }
 
-    /// Returns `true` if `self` has no elements in common with `other`.
+    /// Returns `true` if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     ///
     /// # Examples
@@ -529,8 +511,7 @@ impl<T, S> HashSet<T, S>
         self.iter().all(|v| !other.contains(v))
     }
 
-    /// Returns `true` if the set is a subset of another,
-    /// i.e. `other` contains at least all the values in `self`.
+    /// Returns `true` if the set is a subset of another.
     ///
     /// # Examples
     ///
@@ -551,8 +532,7 @@ impl<T, S> HashSet<T, S>
         self.iter().all(|v| other.contains(v))
     }
 
-    /// Returns `true` if the set is a superset of another,
-    /// i.e. `self` contains at least all the values in `other`.
+    /// Returns `true` if the set is a superset of another.
     ///
     /// # Examples
     ///
@@ -610,7 +590,7 @@ impl<T, S> HashSet<T, S>
     /// present in the set.
     ///
     /// The value may be any borrowed form of the set's value type, but
-    /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
     /// the value type.
     ///
     /// # Examples
@@ -624,9 +604,6 @@ impl<T, S> HashSet<T, S>
     /// assert_eq!(set.remove(&2), true);
     /// assert_eq!(set.remove(&2), false);
     /// ```
-    ///
-    /// [`Eq`]: ../../std/cmp/trait.Eq.html
-    /// [`Hash`]: ../../std/hash/trait.Hash.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
         where T: Borrow<Q>,
@@ -638,39 +615,14 @@ impl<T, S> HashSet<T, S>
     /// Removes and returns the value in the set, if any, that is equal to the given one.
     ///
     /// The value may be any borrowed form of the set's value type, but
-    /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
     /// the value type.
-    ///
-    /// [`Eq`]: ../../std/cmp/trait.Eq.html
-    /// [`Hash`]: ../../std/hash/trait.Hash.html
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
         where T: Borrow<Q>,
               Q: Hash + Eq
     {
         Recover::take(&mut self.map, value)
-    }
-
-    /// Retains only the elements specified by the predicate.
-    ///
-    /// In other words, remove all elements `e` such that `f(&e)` returns `false`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(retain_hash_collection)]
-    /// use std::collections::HashSet;
-    ///
-    /// let xs = [1,2,3,4,5,6];
-    /// let mut set: HashSet<isize> = xs.iter().cloned().collect();
-    /// set.retain(|&k| k % 2 == 0);
-    /// assert_eq!(set.len(), 3);
-    /// ```
-    #[unstable(feature = "retain_hash_collection", issue = "36648")]
-    pub fn retain<F>(&mut self, mut f: F)
-        where F: FnMut(&T) -> bool
-    {
-        self.map.retain(|k, _| f(k));
     }
 }
 
@@ -876,49 +828,25 @@ impl<'a, 'b, T, S> Sub<&'b HashSet<T, S>> for &'a HashSet<T, S>
     }
 }
 
-/// An iterator over the items of a `HashSet`.
-///
-/// This `struct` is created by the [`iter`] method on [`HashSet`].
-/// See its documentation for more.
-///
-/// [`HashSet`]: struct.HashSet.html
-/// [`iter`]: struct.HashSet.html#method.iter
+/// HashSet iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a> {
     iter: Keys<'a, K, ()>,
 }
 
-/// An owning iterator over the items of a `HashSet`.
-///
-/// This `struct` is created by the [`into_iter`] method on [`HashSet`][`HashSet`]
-/// (provided by the `IntoIterator` trait). See its documentation for more.
-///
-/// [`HashSet`]: struct.HashSet.html
-/// [`into_iter`]: struct.HashSet.html#method.into_iter
+/// HashSet move iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K> {
     iter: map::IntoIter<K, ()>,
 }
 
-/// A draining iterator over the items of a `HashSet`.
-///
-/// This `struct` is created by the [`drain`] method on [`HashSet`].
-/// See its documentation for more.
-///
-/// [`HashSet`]: struct.HashSet.html
-/// [`drain`]: struct.HashSet.html#method.drain
+/// HashSet drain iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Drain<'a, K: 'a> {
     iter: map::Drain<'a, K, ()>,
 }
 
-/// A lazy iterator producing elements in the intersection of `HashSet`s.
-///
-/// This `struct` is created by the [`intersection`] method on [`HashSet`].
-/// See its documentation for more.
-///
-/// [`HashSet`]: struct.HashSet.html
-/// [`intersection`]: struct.HashSet.html#method.intersection
+/// Intersection iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Intersection<'a, T: 'a, S: 'a> {
     // iterator of the first set
@@ -927,13 +855,7 @@ pub struct Intersection<'a, T: 'a, S: 'a> {
     other: &'a HashSet<T, S>,
 }
 
-/// A lazy iterator producing elements in the difference of `HashSet`s.
-///
-/// This `struct` is created by the [`difference`] method on [`HashSet`].
-/// See its documentation for more.
-///
-/// [`HashSet`]: struct.HashSet.html
-/// [`difference`]: struct.HashSet.html#method.difference
+/// Difference iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Difference<'a, T: 'a, S: 'a> {
     // iterator of the first set
@@ -942,25 +864,13 @@ pub struct Difference<'a, T: 'a, S: 'a> {
     other: &'a HashSet<T, S>,
 }
 
-/// A lazy iterator producing elements in the symmetric difference of `HashSet`s.
-///
-/// This `struct` is created by the [`symmetric_difference`] method on
-/// [`HashSet`]. See its documentation for more.
-///
-/// [`HashSet`]: struct.HashSet.html
-/// [`symmetric_difference`]: struct.HashSet.html#method.symmetric_difference
+/// Symmetric difference iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SymmetricDifference<'a, T: 'a, S: 'a> {
     iter: Chain<Difference<'a, T, S>, Difference<'a, T, S>>,
 }
 
-/// A lazy iterator producing elements in the union of `HashSet`s.
-///
-/// This `struct` is created by the [`union`] method on [`HashSet`].
-/// See its documentation for more.
-///
-/// [`HashSet`]: struct.HashSet.html
-/// [`union`]: struct.HashSet.html#method.union
+/// Set union iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a, T: 'a, S: 'a> {
     iter: Chain<Iter<'a, T>, Difference<'a, T, S>>,
@@ -1038,7 +948,7 @@ impl<'a, K> ExactSizeIterator for Iter<'a, K> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K> FusedIterator for Iter<'a, K> {}
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[stable(feature = "std_debug", since = "1.15.0")]
 impl<'a, K: fmt::Debug> fmt::Debug for Iter<'a, K> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
@@ -1067,7 +977,7 @@ impl<K> ExactSizeIterator for IntoIter<K> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<K> FusedIterator for IntoIter<K> {}
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[stable(feature = "std_debug", since = "1.15.0")]
 impl<K: fmt::Debug> fmt::Debug for IntoIter<K> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entries_iter = self.iter.inner.iter().map(|(k, _)| k);
@@ -1097,7 +1007,7 @@ impl<'a, K> ExactSizeIterator for Drain<'a, K> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K> FusedIterator for Drain<'a, K> {}
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[stable(feature = "std_debug", since = "1.15.0")]
 impl<'a, K: fmt::Debug> fmt::Debug for Drain<'a, K> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entries_iter = self.iter.inner.iter().map(|(k, _)| k);
@@ -1140,7 +1050,7 @@ impl<'a, T, S> Iterator for Intersection<'a, T, S>
     }
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[stable(feature = "std_debug", since = "1.15.0")]
 impl<'a, T, S> fmt::Debug for Intersection<'a, T, S>
     where T: fmt::Debug + Eq + Hash,
           S: BuildHasher,
@@ -1199,7 +1109,7 @@ impl<'a, T, S> FusedIterator for Difference<'a, T, S>
 {
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[stable(feature = "std_debug", since = "1.15.0")]
 impl<'a, T, S> fmt::Debug for Difference<'a, T, S>
     where T: fmt::Debug + Eq + Hash,
           S: BuildHasher,
@@ -1240,7 +1150,7 @@ impl<'a, T, S> FusedIterator for SymmetricDifference<'a, T, S>
 {
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[stable(feature = "std_debug", since = "1.15.0")]
 impl<'a, T, S> fmt::Debug for SymmetricDifference<'a, T, S>
     where T: fmt::Debug + Eq + Hash,
           S: BuildHasher,
@@ -1266,7 +1176,7 @@ impl<'a, T, S> FusedIterator for Union<'a, T, S>
 {
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[stable(feature = "std_debug", since = "1.15.0")]
 impl<'a, T, S> fmt::Debug for Union<'a, T, S>
     where T: fmt::Debug + Eq + Hash,
           S: BuildHasher,
@@ -1694,16 +1604,5 @@ mod test_set {
         assert!(a.contains(&4));
         assert!(a.contains(&5));
         assert!(a.contains(&6));
-    }
-
-    #[test]
-    fn test_retain() {
-        let xs = [1,2,3,4,5,6];
-        let mut set: HashSet<isize> = xs.iter().cloned().collect();
-        set.retain(|&k| k % 2 == 0);
-        assert_eq!(set.len(), 3);
-        assert!(set.contains(&2));
-        assert!(set.contains(&4));
-        assert!(set.contains(&6));
     }
 }

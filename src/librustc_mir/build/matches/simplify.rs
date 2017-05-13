@@ -26,7 +26,7 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use build::matches::{Binding, MatchPair, Candidate};
 use hair::*;
 use rustc::mir::*;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxHashSet;
 
 use std::mem;
 
@@ -99,24 +99,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             PatternKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
-                if self.hir.tcx().sess.features.borrow().never_type {
-                    let irrefutable = adt_def.variants.iter().enumerate().all(|(i, v)| {
-                        i == variant_index || {
-                            let mut visited = FxHashMap::default();
-                            let node_set = v.uninhabited_from(&mut visited,
-                                                              self.hir.tcx(),
-                                                              substs,
-                                                              adt_def.adt_kind());
-                            !node_set.is_empty()
-                        }
-                    });
-                    if irrefutable {
-                        let lvalue = match_pair.lvalue.downcast(adt_def, variant_index);
-                        candidate.match_pairs.extend(self.field_match_pairs(lvalue, subpatterns));
-                        Ok(())
-                    } else {
-                        Err(match_pair)
+                let irrefutable = adt_def.variants.iter().enumerate().all(|(i, v)| {
+                    i == variant_index || {
+                        let mut visited = FxHashSet::default();
+                        let node_set = v.uninhabited_from(&mut visited,
+                                                          self.hir.tcx(),
+                                                          substs,
+                                                          adt_def.adt_kind());
+                        !node_set.is_empty()
                     }
+                });
+                if irrefutable {
+                    let lvalue = match_pair.lvalue.downcast(adt_def, variant_index);
+                    candidate.match_pairs.extend(self.field_match_pairs(lvalue, subpatterns));
+                    Ok(())
                 } else {
                     Err(match_pair)
                 }

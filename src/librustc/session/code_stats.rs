@@ -25,10 +25,7 @@ pub struct VariantInfo {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum SizeKind {
-    Exact,
-    Min,
-}
+pub enum SizeKind { Exact, Min }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FieldInfo {

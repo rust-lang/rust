@@ -10,31 +10,8 @@
 
 #![deny(warnings)]
 
-extern crate filetime;
-
-use std::fs::File;
-use std::io;
-use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::{fs, env};
-
-use filetime::FileTime;
-
-/// A helper macro to `unwrap` a result except also print out details like:
-///
-/// * The file/line of the panic
-/// * The expression that failed
-/// * The error itself
-///
-/// This is currently used judiciously throughout the build system rather than
-/// using a `Result` with `try!`, but this may change one day...
-#[macro_export]
-macro_rules! t {
-    ($e:expr) => (match $e {
-        Ok(e) => e,
-        Err(e) => panic!("{} failed with {}", stringify!($e), e),
-    })
-}
+use std::path::{Path, PathBuf};
 
 pub fn run(cmd: &mut Command) {
     println!("running: {:?}", cmd);
@@ -52,24 +29,6 @@ pub fn run_silent(cmd: &mut Command) {
                        expected success, got: {}",
                       cmd,
                       status));
-    }
-}
-
-pub fn run_suppressed(cmd: &mut Command) {
-    let output = match cmd.output() {
-        Ok(status) => status,
-        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}",
-                                cmd, e)),
-    };
-    if !output.status.success() {
-        fail(&format!("command did not execute successfully: {:?}\n\
-                       expected success, got: {}\n\n\
-                       stdout ----\n{}\n\
-                       stderr ----\n{}\n",
-                      cmd,
-                      output.status,
-                      String::from_utf8_lossy(&output.stdout),
-                      String::from_utf8_lossy(&output.stderr)));
     }
 }
 
@@ -129,135 +88,7 @@ pub fn output(cmd: &mut Command) -> String {
     String::from_utf8(output.stdout).unwrap()
 }
 
-pub fn rerun_if_changed_anything_in_dir(dir: &Path) {
-    let mut stack = dir.read_dir().unwrap()
-                       .map(|e| e.unwrap())
-                       .filter(|e| &*e.file_name() != ".git")
-                       .collect::<Vec<_>>();
-    while let Some(entry) = stack.pop() {
-        let path = entry.path();
-        if entry.file_type().unwrap().is_dir() {
-            stack.extend(path.read_dir().unwrap().map(|e| e.unwrap()));
-        } else {
-            println!("cargo:rerun-if-changed={}", path.display());
-        }
-    }
-}
-
-/// Returns the last-modified time for `path`, or zero if it doesn't exist.
-pub fn mtime(path: &Path) -> FileTime {
-    fs::metadata(path).map(|f| {
-        FileTime::from_last_modification_time(&f)
-    }).unwrap_or(FileTime::zero())
-}
-
-/// Returns whether `dst` is up to date given that the file or files in `src`
-/// are used to generate it.
-///
-/// Uses last-modified time checks to verify this.
-pub fn up_to_date(src: &Path, dst: &Path) -> bool {
-    let threshold = mtime(dst);
-    let meta = match fs::metadata(src) {
-        Ok(meta) => meta,
-        Err(e) => panic!("source {:?} failed to get metadata: {}", src, e),
-    };
-    if meta.is_dir() {
-        dir_up_to_date(src, &threshold)
-    } else {
-        FileTime::from_last_modification_time(&meta) <= threshold
-    }
-}
-
-#[must_use]
-pub struct NativeLibBoilerplate {
-    pub src_dir: PathBuf,
-    pub out_dir: PathBuf,
-}
-
-impl Drop for NativeLibBoilerplate {
-    fn drop(&mut self) {
-        t!(File::create(self.out_dir.join("rustbuild.timestamp")));
-    }
-}
-
-// Perform standard preparations for native libraries that are build only once for all stages.
-// Emit rerun-if-changed and linking attributes for Cargo, check if any source files are
-// updated, calculate paths used later in actual build with CMake/make or C/C++ compiler.
-// If Err is returned, then everything is up-to-date and further build actions can be skipped.
-// Timestamps are created automatically when the result of `native_lib_boilerplate` goes out
-// of scope, so all the build actions should be completed until then.
-pub fn native_lib_boilerplate(src_name: &str,
-                              out_name: &str,
-                              link_name: &str,
-                              search_subdir: &str)
-                              -> Result<NativeLibBoilerplate, ()> {
-    let current_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let src_dir = current_dir.join("..").join(src_name);
-    rerun_if_changed_anything_in_dir(&src_dir);
-
-    let out_dir = env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or(env::var_os("OUT_DIR").unwrap());
-    let out_dir = PathBuf::from(out_dir).join(out_name);
-    t!(create_dir_racy(&out_dir));
-    if link_name.contains('=') {
-        println!("cargo:rustc-link-lib={}", link_name);
-    } else {
-        println!("cargo:rustc-link-lib=static={}", link_name);
-    }
-    println!("cargo:rustc-link-search=native={}", out_dir.join(search_subdir).display());
-
-    let timestamp = out_dir.join("rustbuild.timestamp");
-    if !up_to_date(Path::new("build.rs"), &timestamp) || !up_to_date(&src_dir, &timestamp) {
-        Ok(NativeLibBoilerplate { src_dir: src_dir, out_dir: out_dir })
-    } else {
-        Err(())
-    }
-}
-
-pub fn sanitizer_lib_boilerplate(sanitizer_name: &str) -> Result<NativeLibBoilerplate, ()> {
-    let (link_name, search_path) = match &*env::var("TARGET").unwrap() {
-        "x86_64-unknown-linux-gnu" => (
-            format!("clang_rt.{}-x86_64", sanitizer_name),
-            "build/lib/linux",
-        ),
-        "x86_64-apple-darwin" => (
-            format!("dylib=clang_rt.{}_osx_dynamic", sanitizer_name),
-            "build/lib/darwin",
-        ),
-        _ => return Err(()),
-    };
-    native_lib_boilerplate("compiler-rt", sanitizer_name, &link_name, search_path)
-}
-
-fn dir_up_to_date(src: &Path, threshold: &FileTime) -> bool {
-    t!(fs::read_dir(src)).map(|e| t!(e)).all(|e| {
-        let meta = t!(e.metadata());
-        if meta.is_dir() {
-            dir_up_to_date(&e.path(), threshold)
-        } else {
-            FileTime::from_last_modification_time(&meta) < *threshold
-        }
-    })
-}
-
 fn fail(s: &str) -> ! {
     println!("\n\n{}\n\n", s);
     std::process::exit(1);
-}
-
-fn create_dir_racy(path: &Path) -> io::Result<()> {
-    match fs::create_dir(path) {
-        Ok(()) => return Ok(()),
-        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => return Ok(()),
-        Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
-        Err(e) => return Err(e),
-    }
-    match path.parent() {
-        Some(p) => try!(create_dir_racy(p)),
-        None => return Err(io::Error::new(io::ErrorKind::Other, "failed to create whole tree")),
-    }
-    match fs::create_dir(path) {
-        Ok(()) => Ok(()),
-        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => Ok(()),
-        Err(e) => Err(e),
-    }
 }

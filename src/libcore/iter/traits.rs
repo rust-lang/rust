@@ -16,13 +16,13 @@ use num::Wrapping;
 /// created from an iterator. This is common for types which describe a
 /// collection of some kind.
 ///
-/// `FromIterator`'s [`from_iter`] is rarely called explicitly, and is instead
-/// used through [`Iterator`]'s [`collect`] method. See [`collect`]'s
+/// `FromIterator`'s [`from_iter()`] is rarely called explicitly, and is instead
+/// used through [`Iterator`]'s [`collect()`] method. See [`collect()`]'s
 /// documentation for more examples.
 ///
-/// [`from_iter`]: #tymethod.from_iter
+/// [`from_iter()`]: #tymethod.from_iter
 /// [`Iterator`]: trait.Iterator.html
-/// [`collect`]: trait.Iterator.html#method.collect
+/// [`collect()`]: trait.Iterator.html#method.collect
 ///
 /// See also: [`IntoIterator`].
 ///
@@ -42,7 +42,7 @@ use num::Wrapping;
 /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
 /// ```
 ///
-/// Using [`collect`] to implicitly use `FromIterator`:
+/// Using [`collect()`] to implicitly use `FromIterator`:
 ///
 /// ```
 /// let five_fives = std::iter::repeat(5).take(5);
@@ -260,10 +260,7 @@ impl<I: Iterator> IntoIterator for I {
 ///
 /// Iterators produce a series of values, and collections can also be thought
 /// of as a series of values. The `Extend` trait bridges this gap, allowing you
-/// to extend a collection by including the contents of that iterator. When
-/// extending a collection with an already existing key, that entry is updated
-/// or, in the case of collections that permit multiple entries with equal
-/// keys, that entry is inserted.
+/// to extend a collection by including the contents of that iterator.
 ///
 /// # Examples
 ///
@@ -414,64 +411,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
-
-    /// Searches for an element of an iterator from the right that satisfies a predicate.
-    ///
-    /// `rfind()` takes a closure that returns `true` or `false`. It applies
-    /// this closure to each element of the iterator, starting at the end, and if any
-    /// of them return `true`, then `rfind()` returns [`Some(element)`]. If they all return
-    /// `false`, it returns [`None`].
-    ///
-    /// `rfind()` is short-circuiting; in other words, it will stop processing
-    /// as soon as the closure returns `true`.
-    ///
-    /// Because `rfind()` takes a reference, and many iterators iterate over
-    /// references, this leads to a possibly confusing situation where the
-    /// argument is a double reference. You can see this effect in the
-    /// examples below, with `&&x`.
-    ///
-    /// [`Some(element)`]: ../../std/option/enum.Option.html#variant.Some
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(iter_rfind)]
-    ///
-    /// let a = [1, 2, 3];
-    ///
-    /// assert_eq!(a.iter().rfind(|&&x| x == 2), Some(&2));
-    ///
-    /// assert_eq!(a.iter().rfind(|&&x| x == 5), None);
-    /// ```
-    ///
-    /// Stopping at the first `true`:
-    ///
-    /// ```
-    /// #![feature(iter_rfind)]
-    ///
-    /// let a = [1, 2, 3];
-    ///
-    /// let mut iter = a.iter();
-    ///
-    /// assert_eq!(iter.rfind(|&&x| x == 2), Some(&2));
-    ///
-    /// // we can still use `iter`, as there are more elements.
-    /// assert_eq!(iter.next_back(), Some(&1));
-    /// ```
-    #[inline]
-    #[unstable(feature = "iter_rfind", issue = "39480")]
-    fn rfind<P>(&mut self, mut predicate: P) -> Option<Self::Item> where
-        Self: Sized,
-        P: FnMut(&Self::Item) -> bool
-    {
-        while let Some(x) = self.next_back() {
-            if predicate(&x) { return Some(x) }
-        }
-        None
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -487,17 +426,17 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 /// backwards, a good start is to know where the end is.
 ///
 /// When implementing an `ExactSizeIterator`, You must also implement
-/// [`Iterator`]. When doing so, the implementation of [`size_hint`] *must*
+/// [`Iterator`]. When doing so, the implementation of [`size_hint()`] *must*
 /// return the exact size of the iterator.
 ///
 /// [`Iterator`]: trait.Iterator.html
-/// [`size_hint`]: trait.Iterator.html#method.size_hint
+/// [`size_hint()`]: trait.Iterator.html#method.size_hint
 ///
-/// The [`len`] method has a default implementation, so you usually shouldn't
+/// The [`len()`] method has a default implementation, so you usually shouldn't
 /// implement it. However, you may be able to provide a more performant
 /// implementation than the default, so overriding it in this case makes sense.
 ///
-/// [`len`]: #method.len
+/// [`len()`]: #method.len
 ///
 /// # Examples
 ///
@@ -536,9 +475,9 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 /// #     }
 /// # }
 /// impl ExactSizeIterator for Counter {
-///     // We can easily calculate the remaining number of iterations.
+///     // We already have the number of iterations, so we can use it directly.
 ///     fn len(&self) -> usize {
-///         5 - self.count
+///         self.count
 ///     }
 /// }
 ///
@@ -546,7 +485,7 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 ///
 /// let counter = Counter::new();
 ///
-/// assert_eq!(5, counter.len());
+/// assert_eq!(0, counter.len());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExactSizeIterator: Iterator {
@@ -557,11 +496,11 @@ pub trait ExactSizeIterator: Iterator {
     /// implementation, you can do so. See the [trait-level] docs for an
     /// example.
     ///
-    /// This function has the same safety guarantees as the [`size_hint`]
+    /// This function has the same safety guarantees as the [`size_hint()`]
     /// function.
     ///
     /// [trait-level]: trait.ExactSizeIterator.html
-    /// [`size_hint`]: trait.Iterator.html#method.size_hint
+    /// [`size_hint()`]: trait.Iterator.html#method.size_hint
     ///
     /// # Examples
     ///
@@ -624,14 +563,14 @@ impl<'a, I: ExactSizeIterator + ?Sized> ExactSizeIterator for &'a mut I {
 
 /// Trait to represent types that can be created by summing up an iterator.
 ///
-/// This trait is used to implement the [`sum`] method on iterators. Types which
-/// implement the trait can be generated by the [`sum`] method. Like
+/// This trait is used to implement the [`sum()`] method on iterators. Types which
+/// implement the trait can be generated by the [`sum()`] method. Like
 /// [`FromIterator`] this trait should rarely be called directly and instead
-/// interacted with through [`Iterator::sum`].
+/// interacted with through [`Iterator::sum()`].
 ///
-/// [`sum`]: ../../std/iter/trait.Sum.html#tymethod.sum
+/// [`sum()`]: ../../std/iter/trait.Sum.html#tymethod.sum
 /// [`FromIterator`]: ../../std/iter/trait.FromIterator.html
-/// [`Iterator::sum`]: ../../std/iter/trait.Iterator.html#method.sum
+/// [`Iterator::sum()`]: ../../std/iter/trait.Iterator.html#method.sum
 #[stable(feature = "iter_arith_traits", since = "1.12.0")]
 pub trait Sum<A = Self>: Sized {
     /// Method which takes an iterator and generates `Self` from the elements by
@@ -643,14 +582,14 @@ pub trait Sum<A = Self>: Sized {
 /// Trait to represent types that can be created by multiplying elements of an
 /// iterator.
 ///
-/// This trait is used to implement the [`product`] method on iterators. Types
-/// which implement the trait can be generated by the [`product`] method. Like
+/// This trait is used to implement the [`product()`] method on iterators. Types
+/// which implement the trait can be generated by the [`product()`] method. Like
 /// [`FromIterator`] this trait should rarely be called directly and instead
-/// interacted with through [`Iterator::product`].
+/// interacted with through [`Iterator::product()`].
 ///
-/// [`product`]: ../../std/iter/trait.Product.html#tymethod.product
+/// [`product()`]: ../../std/iter/trait.Product.html#tymethod.product
 /// [`FromIterator`]: ../../std/iter/trait.FromIterator.html
-/// [`Iterator::product`]: ../../std/iter/trait.Iterator.html#method.product
+/// [`Iterator::product()`]: ../../std/iter/trait.Iterator.html#method.product
 #[stable(feature = "iter_arith_traits", since = "1.12.0")]
 pub trait Product<A = Self>: Sized {
     /// Method which takes an iterator and generates `Self` from the elements by
@@ -661,29 +600,29 @@ pub trait Product<A = Self>: Sized {
 
 // NB: explicitly use Add and Mul here to inherit overflow checks
 macro_rules! integer_sum_product {
-    (@impls $zero:expr, $one:expr, #[$attr:meta], $($a:ty)*) => ($(
-        #[$attr]
+    (@impls $zero:expr, $one:expr, $($a:ty)*) => ($(
+        #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl Sum for $a {
             fn sum<I: Iterator<Item=$a>>(iter: I) -> $a {
                 iter.fold($zero, Add::add)
             }
         }
 
-        #[$attr]
+        #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl Product for $a {
             fn product<I: Iterator<Item=$a>>(iter: I) -> $a {
                 iter.fold($one, Mul::mul)
             }
         }
 
-        #[$attr]
+        #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl<'a> Sum<&'a $a> for $a {
             fn sum<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
                 iter.fold($zero, Add::add)
             }
         }
 
-        #[$attr]
+        #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl<'a> Product<&'a $a> for $a {
             fn product<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
                 iter.fold($one, Mul::mul)
@@ -691,12 +630,8 @@ macro_rules! integer_sum_product {
         }
     )*);
     ($($a:ty)*) => (
-        integer_sum_product!(@impls 0, 1,
-                #[stable(feature = "iter_arith_traits", since = "1.12.0")],
-                $($a)+);
-        integer_sum_product!(@impls Wrapping(0), Wrapping(1),
-                #[stable(feature = "wrapping_iter_arith", since = "1.14.0")],
-                $(Wrapping<$a>)+);
+        integer_sum_product!(@impls 0, 1, $($a)+);
+        integer_sum_product!(@impls Wrapping(0), Wrapping(1), $(Wrapping<$a>)+);
     );
 }
 
@@ -735,87 +670,6 @@ macro_rules! float_sum_product {
 integer_sum_product! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
 float_sum_product! { f32 f64 }
 
-/// An iterator adapter that produces output as long as the underlying
-/// iterator produces `Result::Ok` values.
-///
-/// If an error is encountered, the iterator stops and the error is
-/// stored. The error may be recovered later via `reconstruct`.
-struct ResultShunt<I, E> {
-    iter: I,
-    error: Option<E>,
-}
-
-impl<I, T, E> ResultShunt<I, E>
-    where I: Iterator<Item = Result<T, E>>
-{
-    /// Process the given iterator as if it yielded a `T` instead of a
-    /// `Result<T, _>`. Any errors will stop the inner iterator and
-    /// the overall result will be an error.
-    pub fn process<F, U>(iter: I, mut f: F) -> Result<U, E>
-        where F: FnMut(&mut Self) -> U
-    {
-        let mut shunt = ResultShunt::new(iter);
-        let value = f(shunt.by_ref());
-        shunt.reconstruct(value)
-    }
-
-    fn new(iter: I) -> Self {
-        ResultShunt {
-            iter: iter,
-            error: None,
-        }
-    }
-
-    /// Consume the adapter and rebuild a `Result` value. This should
-    /// *always* be called, otherwise any potential error would be
-    /// lost.
-    fn reconstruct<U>(self, val: U) -> Result<U, E> {
-        match self.error {
-            None => Ok(val),
-            Some(e) => Err(e),
-        }
-    }
-}
-
-impl<I, T, E> Iterator for ResultShunt<I, E>
-    where I: Iterator<Item = Result<T, E>>
-{
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.iter.next() {
-            Some(Ok(v)) => Some(v),
-            Some(Err(e)) => {
-                self.error = Some(e);
-                None
-            }
-            None => None,
-        }
-    }
-}
-
-#[stable(feature = "iter_arith_traits_result", since="1.16.0")]
-impl<T, U, E> Sum<Result<U, E>> for Result<T, E>
-    where T: Sum<U>,
-{
-    fn sum<I>(iter: I) -> Result<T, E>
-        where I: Iterator<Item = Result<U, E>>,
-    {
-        ResultShunt::process(iter, |i| i.sum())
-    }
-}
-
-#[stable(feature = "iter_arith_traits_result", since="1.16.0")]
-impl<T, U, E> Product<Result<U, E>> for Result<T, E>
-    where T: Product<U>,
-{
-    fn product<I>(iter: I) -> Result<T, E>
-        where I: Iterator<Item = Result<U, E>>,
-    {
-        ResultShunt::process(iter, |i| i.product())
-    }
-}
-
 /// An iterator that always continues to yield `None` when exhausted.
 ///
 /// Calling next on a fused iterator that has returned `None` once is guaranteed
@@ -823,12 +677,12 @@ impl<T, U, E> Product<Result<U, E>> for Result<T, E>
 /// that behave this way because it allows for some significant optimizations.
 ///
 /// Note: In general, you should not use `FusedIterator` in generic bounds if
-/// you need a fused iterator. Instead, you should just call [`Iterator::fuse`]
+/// you need a fused iterator. Instead, you should just call [`Iterator::fuse()`]
 /// on the iterator. If the iterator is already fused, the additional [`Fuse`]
 /// wrapper will be a no-op with no performance penalty.
 ///
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
-/// [`Iterator::fuse`]: ../../std/iter/trait.Iterator.html#method.fuse
+/// [`Iterator::fuse()`]: ../../std/iter/trait.Iterator.html#method.fuse
 /// [`Fuse`]: ../../std/iter/struct.Fuse.html
 #[unstable(feature = "fused", issue = "35602")]
 pub trait FusedIterator: Iterator {}
@@ -848,11 +702,11 @@ impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
 /// # Safety
 ///
 /// This trait must only be implemented when the contract is upheld.
-/// Consumers of this trait must inspect [`.size_hint`]’s upper bound.
+/// Consumers of this trait must inspect [`.size_hint()`]’s upper bound.
 ///
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
 /// [`usize::MAX`]: ../../std/usize/constant.MAX.html
-/// [`.size_hint`]: ../../std/iter/trait.Iterator.html#method.size_hint
+/// [`.size_hint()`]: ../../std/iter/trait.Iterator.html#method.size_hint
 #[unstable(feature = "trusted_len", issue = "37572")]
 pub unsafe trait TrustedLen : Iterator {}
 

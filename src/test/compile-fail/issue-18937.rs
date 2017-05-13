@@ -10,6 +10,8 @@
 
 // Regression test for #18937.
 
+#![deny(extra_requirement_in_impl)]
+
 use std::fmt;
 
 #[derive(Debug)]

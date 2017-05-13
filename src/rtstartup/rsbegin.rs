@@ -22,7 +22,7 @@
 // object (usually called `crtX.o), which then invokes initialization callbacks
 // of other runtime components (registered via yet another special image section).
 
-#![feature(no_core, lang_items, optin_builtin_traits)]
+#![feature(no_core, lang_items)]
 #![crate_type="rlib"]
 #![no_core]
 #![allow(non_camel_case_types)]
@@ -31,19 +31,9 @@
 trait Sized {}
 #[lang = "sync"]
 trait Sync {}
-impl Sync for .. {}
 #[lang = "copy"]
 trait Copy {}
-#[lang = "freeze"]
-trait Freeze {}
-impl Freeze for .. {}
-
-#[lang="drop_in_place"]
-#[inline]
-#[allow(unconditional_recursion)]
-pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
-    drop_in_place(to_drop);
-}
+impl<T> Sync for T {}
 
 #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
 pub mod eh_frames {

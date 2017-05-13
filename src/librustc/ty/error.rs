@@ -10,7 +10,7 @@
 
 use hir::def_id::DefId;
 use infer::type_variable;
-use ty::{self, BoundRegion, DefIdTree, Region, Ty, TyCtxt};
+use ty::{self, BoundRegion, Region, Ty, TyCtxt};
 
 use std::fmt;
 use syntax::abi;
@@ -23,7 +23,7 @@ use hir;
 #[derive(Clone, Copy, Debug)]
 pub struct ExpectedFound<T> {
     pub expected: T,
-    pub found: T,
+    pub found: T
 }
 
 // Data structures used in type unification
@@ -36,11 +36,11 @@ pub enum TypeError<'tcx> {
     TupleSize(ExpectedFound<usize>),
     FixedArraySize(ExpectedFound<usize>),
     ArgCount,
-    RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
-    RegionsNotSame(Region<'tcx>, Region<'tcx>),
-    RegionsNoOverlap(Region<'tcx>, Region<'tcx>),
-    RegionsInsufficientlyPolymorphic(BoundRegion, Region<'tcx>, Option<Box<ty::Issue32330>>),
-    RegionsOverlyPolymorphic(BoundRegion, Region<'tcx>, Option<Box<ty::Issue32330>>),
+    RegionsDoesNotOutlive(&'tcx Region, &'tcx Region),
+    RegionsNotSame(&'tcx Region, &'tcx Region),
+    RegionsNoOverlap(&'tcx Region, &'tcx Region),
+    RegionsInsufficientlyPolymorphic(BoundRegion, &'tcx Region),
+    RegionsOverlyPolymorphic(BoundRegion, &'tcx Region),
     Sorts(ExpectedFound<Ty<'tcx>>),
     IntMismatch(ExpectedFound<ty::IntVarValue>),
     FloatMismatch(ExpectedFound<ast::FloatTy>),
@@ -116,17 +116,13 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             RegionsNoOverlap(..) => {
                 write!(f, "lifetimes do not intersect")
             }
-            RegionsInsufficientlyPolymorphic(br, _, _) => {
-                write!(f,
-                       "expected bound lifetime parameter{}{}, found concrete lifetime",
-                       if br.is_named() { " " } else { "" },
-                       br)
+            RegionsInsufficientlyPolymorphic(br, _) => {
+                write!(f, "expected bound lifetime parameter {}, \
+                           found concrete lifetime", br)
             }
-            RegionsOverlyPolymorphic(br, _, _) => {
-                write!(f,
-                       "expected concrete lifetime, found bound lifetime parameter{}{}",
-                       if br.is_named() { " " } else { "" },
-                       br)
+            RegionsOverlyPolymorphic(br, _) => {
+                write!(f, "expected concrete lifetime, \
+                           found bound lifetime parameter {}", br)
             }
             Sorts(values) => ty::tls::with(|tcx| {
                 report_maybe_different(f, values.expected.sort_string(tcx),
@@ -182,9 +178,10 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
         match self.sty {
             ty::TyBool | ty::TyChar | ty::TyInt(_) |
             ty::TyUint(_) | ty::TyFloat(_) | ty::TyStr | ty::TyNever => self.to_string(),
-            ty::TyTuple(ref tys, _) if tys.is_empty() => self.to_string(),
+            ty::TyTuple(ref tys) if tys.is_empty() => self.to_string(),
 
             ty::TyAdt(def, _) => format!("{} `{}`", def.descr(), tcx.item_path_str(def.did)),
+            ty::TyBox(_) => "box".to_string(),
             ty::TyArray(_, n) => format!("array of {} elements", n),
             ty::TySlice(_) => "slice".to_string(),
             ty::TyRawPtr(_) => "*-ptr".to_string(),
@@ -213,7 +210,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
                     |p| format!("trait {}", tcx.item_path_str(p.def_id())))
             }
             ty::TyClosure(..) => "closure".to_string(),
-            ty::TyTuple(..) => "tuple".to_string(),
+            ty::TyTuple(_) => "tuple".to_string(),
             ty::TyInfer(ty::TyVar(_)) => "inferred type".to_string(),
             ty::TyInfer(ty::IntVar(_)) => "integral variable".to_string(),
             ty::TyInfer(ty::FloatVar(_)) => "floating-point variable".to_string(),
@@ -257,15 +254,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 self.note_and_explain_region(db, "...does not overlap ",
                                            region2, "");
             }
-            RegionsInsufficientlyPolymorphic(_, conc_region, _) => {
+            RegionsInsufficientlyPolymorphic(_, conc_region) => {
                 self.note_and_explain_region(db, "concrete lifetime that was found is ",
                                            conc_region, "");
             }
-            RegionsOverlyPolymorphic(_, &ty::ReVar(_), _) => {
+            RegionsOverlyPolymorphic(_, &ty::ReVar(_)) => {
                 // don't bother to print out the message below for
                 // inference variables, it's not very illuminating.
             }
-            RegionsOverlyPolymorphic(_, conc_region, _) => {
+            RegionsOverlyPolymorphic(_, conc_region) => {
                 self.note_and_explain_region(db, "expected concrete lifetime is ",
                                            conc_region, "");
             }
@@ -286,14 +283,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                           expected.ty,
                                           found.ty));
 
-                match self.hir.span_if_local(expected.def_id) {
+                match self.map.span_if_local(expected.def_id) {
                     Some(span) => {
                         db.span_note(span, "a default was defined here...");
                     }
                     None => {
-                        let item_def_id = self.parent(expected.def_id).unwrap();
                         db.note(&format!("a default is defined on `{}`",
-                                         self.item_path_str(item_def_id)));
+                                         self.item_path_str(expected.def_id)));
                     }
                 }
 
@@ -301,14 +297,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     expected.origin_span,
                     "...that was applied to an unconstrained type variable here");
 
-                match self.hir.span_if_local(found.def_id) {
+                match self.map.span_if_local(found.def_id) {
                     Some(span) => {
                         db.span_note(span, "a second default was defined here...");
                     }
                     None => {
-                        let item_def_id = self.parent(found.def_id).unwrap();
                         db.note(&format!("a second default is defined on `{}`",
-                                         self.item_path_str(item_def_id)));
+                                         self.item_path_str(found.def_id)));
                     }
                 }
 

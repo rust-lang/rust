@@ -10,14 +10,9 @@
 
 use libc;
 use io;
-use sys_common::backtrace::Frame;
-
-pub use sys_common::gnu::libbacktrace::*;
-pub struct BacktraceContext;
+use sys_common::backtrace::output;
 
 #[inline(never)]
-pub fn unwind_backtrace(frames: &mut [Frame])
-    -> io::Result<(usize, BacktraceContext)>
-{
-    Ok((0, BacktraceContext))
+pub fn write(w: &mut io::Write) -> io::Result<()> {
+    output(w, 0, 0 as *mut libc::c_void, None)
 }

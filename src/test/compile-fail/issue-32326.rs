@@ -15,8 +15,6 @@
 enum Expr { //~ ERROR E0072
             //~| NOTE recursive type has infinite size
     Plus(Expr, Expr),
-    //~^ NOTE recursive without indirection
-    //~| NOTE recursive without indirection
     Literal(i64),
 }
 

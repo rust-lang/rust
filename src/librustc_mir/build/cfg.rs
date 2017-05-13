@@ -25,9 +25,6 @@ impl<'tcx> CFG<'tcx> {
         &mut self.basic_blocks[blk]
     }
 
-    // llvm.org/PR32488 makes this function use an excess of stack space. Mark
-    // it as #[inline(never)] to keep rustc's stack use in check.
-    #[inline(never)]
     pub fn start_new_block(&mut self) -> BasicBlock {
         self.basic_blocks.push(BasicBlockData::new(None))
     }

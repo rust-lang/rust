@@ -20,8 +20,6 @@ use builder::Builder;
 use rustc::hir;
 use rustc::ty::Ty;
 
-use mir::lvalue::Alignment;
-
 use std::ffi::CString;
 use syntax::ast::AsmDialect;
 use libc::{c_uint, c_char};
@@ -40,7 +38,7 @@ pub fn trans_inline_asm<'a, 'tcx>(
     let mut indirect_outputs = vec![];
     for (i, (out, &(val, ty))) in ia.outputs.iter().zip(&outputs).enumerate() {
         let val = if out.is_rw || out.is_indirect {
-            Some(base::load_ty(bcx, val, Alignment::Packed, ty))
+            Some(base::load_ty(bcx, val, ty))
         } else {
             None
         };
@@ -77,14 +75,14 @@ pub fn trans_inline_asm<'a, 'tcx>(
           .chain(arch_clobbers.iter().map(|s| s.to_string()))
           .collect::<Vec<String>>().join(",");
 
-    debug!("Asm Constraints: {}", &all_constraints);
+    debug!("Asm Constraints: {}", &all_constraints[..]);
 
     // Depending on how many outputs we have, the return type is different
     let num_outputs = output_types.len();
     let output_type = match num_outputs {
         0 => Type::void(bcx.ccx),
         1 => output_types[0],
-        _ => Type::struct_(bcx.ccx, &output_types, false)
+        _ => Type::struct_(bcx.ccx, &output_types[..], false)
     };
 
     let dialect = match ia.dialect {
@@ -111,24 +109,16 @@ pub fn trans_inline_asm<'a, 'tcx>(
         bcx.store(v, val, None);
     }
 
-    // Store mark in a metadata node so we can map LLVM errors
+    // Store expn_id in a metadata node so we can map LLVM errors
     // back to source locations.  See #17552.
     unsafe {
         let key = "srcloc";
         let kind = llvm::LLVMGetMDKindIDInContext(bcx.ccx.llcx(),
             key.as_ptr() as *const c_char, key.len() as c_uint);
 
-        let val: llvm::ValueRef = C_i32(bcx.ccx, ia.ctxt.outer().as_u32() as i32);
+        let val: llvm::ValueRef = C_i32(bcx.ccx, ia.expn_id.into_u32() as i32);
 
         llvm::LLVMSetMetadata(r, kind,
             llvm::LLVMMDNodeInContext(bcx.ccx.llcx(), &val, 1));
-    }
-}
-
-pub fn trans_global_asm<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                  ga: &hir::GlobalAsm) {
-    let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
-    unsafe {
-        llvm::LLVMRustAppendModuleInlineAsm(ccx.llmod(), asm.as_ptr());
     }
 }

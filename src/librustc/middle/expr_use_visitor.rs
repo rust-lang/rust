@@ -23,7 +23,6 @@ use hir::def::Def;
 use hir::def_id::{DefId};
 use infer::InferCtxt;
 use middle::mem_categorization as mc;
-use middle::region::RegionMaps;
 use ty::{self, TyCtxt, adjustment};
 
 use hir::{self, PatKind};
@@ -76,7 +75,7 @@ pub trait Delegate<'tcx> {
               borrow_id: ast::NodeId,
               borrow_span: Span,
               cmt: mc::cmt<'tcx>,
-              loan_region: ty::Region<'tcx>,
+              loan_region: &'tcx ty::Region,
               bk: ty::BorrowKind,
               loan_cause: LoanCause);
 
@@ -271,31 +270,24 @@ enum PassArgs {
 
 impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     pub fn new(delegate: &'a mut (Delegate<'tcx>+'a),
-               region_maps: &'a RegionMaps<'tcx>,
                infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
                -> Self
     {
-        ExprUseVisitor::with_options(delegate,
-                                     infcx,
-                                     region_maps,
-                                     mc::MemCategorizationOptions::default())
+        ExprUseVisitor::with_options(delegate, infcx, mc::MemCategorizationOptions::default())
     }
 
     pub fn with_options(delegate: &'a mut (Delegate<'tcx>+'a),
                         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-                        region_maps: &'a RegionMaps<'tcx>,
                         options: mc::MemCategorizationOptions)
                -> Self
     {
         ExprUseVisitor {
-            mc: mc::MemCategorizationContext::with_options(infcx, region_maps, options),
+            mc: mc::MemCategorizationContext::with_options(infcx, options),
             delegate: delegate
         }
     }
 
     pub fn consume_body(&mut self, body: &hir::Body) {
-        debug!("consume_body(body={:?})", body);
-
         for arg in &body.arguments {
             let arg_ty = return_if_err!(self.mc.infcx.node_ty(arg.pat.id));
 
@@ -304,7 +296,6 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 arg.id,
                 arg.pat.span,
                 fn_body_scope_r, // Args live only as long as the fn body.
-                fn_body_scope_r,
                 arg_ty);
 
             self.walk_irrefutable_pat(arg_cmt, &arg.pat);
@@ -353,7 +344,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
     fn borrow_expr(&mut self,
                    expr: &hir::Expr,
-                   r: ty::Region<'tcx>,
+                   r: &'tcx ty::Region,
                    bk: ty::BorrowKind,
                    cause: LoanCause) {
         debug!("borrow_expr(expr={:?}, r={:?}, bk={:?})",
@@ -422,9 +413,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.consume_exprs(exprs);
             }
 
-            hir::ExprIf(ref cond_expr, ref then_expr, ref opt_else_expr) => {
+            hir::ExprIf(ref cond_expr, ref then_blk, ref opt_else_expr) => {
                 self.consume_expr(&cond_expr);
-                self.walk_expr(&then_expr);
+                self.walk_block(&then_blk);
                 if let Some(ref else_expr) = *opt_else_expr {
                     self.consume_expr(&else_expr);
                 }
@@ -432,7 +423,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
             hir::ExprMatch(ref discr, ref arms, _) => {
                 let discr_cmt = return_if_err!(self.mc.cat_expr(&discr));
-                let r = self.tcx().types.re_empty;
+                let r = self.tcx().mk_region(ty::ReEmpty);
                 self.borrow_expr(&discr, r, ty::ImmBorrow, MatchDiscriminant);
 
                 // treatment of the discriminant is handled while walking the arms.
@@ -717,13 +708,12 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     fn walk_adjustment(&mut self, expr: &hir::Expr) {
         let infcx = self.mc.infcx;
         //NOTE(@jroesch): mixed RefCell borrow causes crash
-        let adj = infcx.tables.borrow().adjustments.get(&expr.id).map(|x| x.clone());
+        let adj = infcx.adjustments().get(&expr.id).map(|x| x.clone());
         if let Some(adjustment) = adj {
             match adjustment.kind {
                 adjustment::Adjust::NeverToAny |
                 adjustment::Adjust::ReifyFnPointer |
                 adjustment::Adjust::UnsafeFnPointer |
-                adjustment::Adjust::ClosureFnPointer |
                 adjustment::Adjust::MutToConstPointer => {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.
@@ -999,12 +989,12 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 PatKind::Struct(ref qpath, ..) => qpath,
                 _ => return
             };
-            let def = infcx.tables.borrow().qpath_def(qpath, pat.id);
+            let def = tcx.tables().qpath_def(qpath, pat.id);
             match def {
                 Def::Variant(variant_did) |
                 Def::VariantCtor(variant_did, ..) => {
                     let enum_did = tcx.parent_def_id(variant_did).unwrap();
-                    let downcast_cmt = if tcx.adt_def(enum_did).is_univariant() {
+                    let downcast_cmt = if tcx.lookup_adt_def(enum_did).is_univariant() {
                         cmt_pat
                     } else {
                         let cmt_pat_ty = cmt_pat.ty;
@@ -1030,7 +1020,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         self.tcx().with_freevars(closure_expr.id, |freevars| {
             for freevar in freevars {
                 let def_id = freevar.def.def_id();
-                let id_var = self.tcx().hir.as_local_node_id(def_id).unwrap();
+                let id_var = self.tcx().map.as_local_node_id(def_id).unwrap();
                 let upvar_id = ty::UpvarId { var_id: id_var,
                                              closure_expr_id: closure_expr.id };
                 let upvar_capture = self.mc.infcx.upvar_capture(upvar_id).unwrap();
@@ -1062,7 +1052,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         -> mc::McResult<mc::cmt<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
-        let var_id = self.tcx().hir.as_local_node_id(upvar_def.def_id()).unwrap();
+        let var_id = self.tcx().map.as_local_node_id(upvar_def.def_id()).unwrap();
         let var_ty = self.mc.infcx.node_ty(var_id)?;
         self.mc.cat_def(closure_id, closure_span, var_ty, upvar_def)
     }

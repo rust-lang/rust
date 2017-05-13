@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{ArgAttribute, FnType, LayoutExt, Reg, RegKind};
-use common::CrateContext;
+use llvm::*;
+use abi::{ArgAttribute, FnType};
+use type_::Type;
+use super::common::*;
+use super::machine::*;
 
 #[derive(PartialEq)]
 pub enum Flavor {
@@ -17,11 +20,9 @@ pub enum Flavor {
     Fastcall
 }
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                  fty: &mut FnType<'tcx>,
-                                  flavor: Flavor) {
+pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType, flavor: Flavor) {
     if !fty.ret.is_ignore() {
-        if fty.ret.layout.is_aggregate() {
+        if fty.ret.ty.kind() == Struct {
             // Returning a structure. Most often, this will use
             // a hidden first argument. On some platforms, though,
             // small structs are returned as integers.
@@ -32,12 +33,11 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let t = &ccx.sess().target.target;
             if t.options.is_like_osx || t.options.is_like_windows
                 || t.options.is_like_openbsd {
-                let size = fty.ret.layout.size(ccx);
-                match size.bytes() {
-                    1 => fty.ret.cast_to(ccx, Reg::i8()),
-                    2 => fty.ret.cast_to(ccx, Reg::i16()),
-                    4 => fty.ret.cast_to(ccx, Reg::i32()),
-                    8 => fty.ret.cast_to(ccx, Reg::i64()),
+                match llsize_of_alloc(ccx, fty.ret.ty) {
+                    1 => fty.ret.cast = Some(Type::i8(ccx)),
+                    2 => fty.ret.cast = Some(Type::i16(ccx)),
+                    4 => fty.ret.cast = Some(Type::i32(ccx)),
+                    8 => fty.ret.cast = Some(Type::i64(ccx)),
                     _ => fty.ret.make_indirect(ccx)
                 }
             } else {
@@ -50,7 +50,7 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     for arg in &mut fty.args {
         if arg.is_ignore() { continue; }
-        if arg.layout.is_aggregate() {
+        if arg.ty.kind() == Struct {
             arg.make_indirect(ccx);
             arg.attrs.set(ArgAttribute::ByVal);
         } else {
@@ -73,15 +73,12 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         for arg in &mut fty.args {
             if arg.is_ignore() || arg.is_indirect() { continue; }
 
-            // At this point we know this must be a primitive of sorts.
-            let unit = arg.layout.homogenous_aggregate(ccx).unwrap();
-            let size = arg.layout.size(ccx);
-            assert_eq!(unit.size, size);
-            if unit.kind == RegKind::Float {
+            if arg.ty.kind() == Float {
                 continue;
             }
 
-            let size_in_regs = (size.bits() + 31) / 32;
+            let size = llbitsize_of_real(ccx, arg.ty);
+            let size_in_regs = (size + 31) / 32;
 
             if size_in_regs == 0 {
                 continue;
@@ -93,7 +90,7 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
             free_regs -= size_in_regs;
 
-            if size.bits() <= 32 && unit.kind == RegKind::Integer {
+            if size <= 32 && (arg.ty.kind() == Pointer || arg.ty.kind() == Integer) {
                 arg.attrs.set(ArgAttribute::InReg);
             }
 

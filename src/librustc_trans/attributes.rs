@@ -17,7 +17,6 @@ pub use syntax::attr::InlineAttr;
 use syntax::ast;
 use context::CrateContext;
 
-
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]
 pub fn inline(val: ValueRef, inline: InlineAttr) {

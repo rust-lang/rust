@@ -55,11 +55,6 @@ fn main() {
         Err(e) => match e {},
     };
 
-    let x: Result<u32, &!> = Ok(123);
-    match x {
-        Ok(y) => y,
-    };
-
     bar(&[]);
 }
 

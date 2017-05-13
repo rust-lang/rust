@@ -13,7 +13,7 @@
 
 use std::marker::PhantomData;
 
-pub trait Foo<P> { fn foo() {} }
+pub trait Foo<P> {}
 
 impl <P, T: Foo<P>> Foo<P> for Option<T> {}
 

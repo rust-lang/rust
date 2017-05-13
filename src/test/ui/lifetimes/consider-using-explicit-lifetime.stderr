@@ -1,0 +1,25 @@
+error: main function not found
+
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/consider-using-explicit-lifetime.rs:19:12
+   |
+19 |         Ok(Foo { field: path })
+   |            ^^^
+
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/consider-using-explicit-lifetime.rs:26:12
+   |
+26 |         Ok(Foo { field: path })
+   |            ^^^
+   |
+help: consider using an explicit lifetime parameter as shown: fn from_str(path: &'a str) -> Result<Self, ()>
+  --> $DIR/consider-using-explicit-lifetime.rs:25:5
+   |
+25 |       fn from_str(path: &str) -> Result<Self, ()> {
+   |  _____^ starting here...
+26 | |         Ok(Foo { field: path })
+27 | |     }
+   | |_____^ ...ending here
+
+error: aborting due to 2 previous errors
+

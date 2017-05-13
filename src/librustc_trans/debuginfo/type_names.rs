@@ -48,7 +48,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             push_item_name(cx, def.did, qualified, output);
             push_type_params(cx, substs, output);
         },
-        ty::TyTuple(component_types, _) => {
+        ty::TyTuple(component_types) => {
             output.push('(');
             for &component_type in component_types {
                 push_debuginfo_type_name(cx, component_type, true, output);
@@ -59,6 +59,11 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 output.pop();
             }
             output.push(')');
+        },
+        ty::TyBox(inner_type) => {
+            output.push_str("Box<");
+            push_debuginfo_type_name(cx, inner_type, true, output);
+            output.push('>');
         },
         ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
             output.push('*');
@@ -96,13 +101,12 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 push_type_params(cx, principal.substs, output);
             }
         },
-        ty::TyFnDef(.., sig) |
-        ty::TyFnPtr(sig) => {
-            if sig.unsafety() == hir::Unsafety::Unsafe {
+        ty::TyFnDef(.., &ty::BareFnTy{ unsafety, abi, ref sig } ) |
+        ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {
+            if unsafety == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");
             }
 
-            let abi = sig.abi();
             if abi != ::abi::Abi::Rust {
                 output.push_str("extern \"");
                 output.push_str(abi.name());
@@ -111,7 +115,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             output.push_str("fn(");
 
-            let sig = cx.tcx().erase_late_bound_regions_and_normalize(&sig);
+            let sig = cx.tcx().erase_late_bound_regions_and_normalize(sig);
             if !sig.inputs().is_empty() {
                 for &parameter_type in sig.inputs() {
                     push_debuginfo_type_name(cx, parameter_type, true, output);

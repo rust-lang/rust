@@ -37,7 +37,7 @@ use io::{self, Read, Write, ErrorKind, BufRead};
 /// let mut reader: &[u8] = b"hello";
 /// let mut writer: Vec<u8> = vec![];
 ///
-/// io::copy(&mut reader, &mut writer)?;
+/// try!(io::copy(&mut reader, &mut writer));
 ///
 /// assert_eq!(reader, &writer[..]);
 /// # Ok(())
@@ -63,7 +63,7 @@ pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<
 
 /// A reader which is always at EOF.
 ///
-/// This struct is generally created by calling [`empty`][empty]. Please see
+/// This struct is generally created by calling [`empty()`][empty]. Please see
 /// the documentation of `empty()` for more details.
 ///
 /// [empty]: fn.empty.html
@@ -98,7 +98,7 @@ impl BufRead for Empty {
     fn consume(&mut self, _n: usize) {}
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[stable(feature = "std_debug", since = "1.15.0")]
 impl fmt::Debug for Empty {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Empty { .. }")
@@ -107,7 +107,7 @@ impl fmt::Debug for Empty {
 
 /// A reader which yields one byte over and over and over and over and over and...
 ///
-/// This struct is generally created by calling [`repeat`][repeat]. Please
+/// This struct is generally created by calling [`repeat()`][repeat]. Please
 /// see the documentation of `repeat()` for more details.
 ///
 /// [repeat]: fn.repeat.html
@@ -141,7 +141,7 @@ impl Read for Repeat {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[stable(feature = "std_debug", since = "1.15.0")]
 impl fmt::Debug for Repeat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Repeat { .. }")
@@ -150,7 +150,7 @@ impl fmt::Debug for Repeat {
 
 /// A writer which will move data into the void.
 ///
-/// This struct is generally created by calling [`sink`][sink]. Please
+/// This struct is generally created by calling [`sink()`][sink]. Please
 /// see the documentation of `sink()` for more details.
 ///
 /// [sink]: fn.sink.html
@@ -180,7 +180,7 @@ impl Write for Sink {
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[stable(feature = "std_debug", since = "1.15.0")]
 impl fmt::Debug for Sink {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Sink { .. }")

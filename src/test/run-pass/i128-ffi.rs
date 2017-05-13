@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-stage0
+// ignore-stage1
+
 // MSVC doesn't support 128 bit integers, and other Windows
 // C compilers have very inconsistent views on how the ABI
 // should look like.
@@ -16,8 +19,6 @@
 
 // Ignore 32 bit targets:
 // ignore-x86, ignore-arm
-
-// ignore-emscripten
 
 #![feature(i128_type)]
 

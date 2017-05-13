@@ -12,16 +12,14 @@
 // a direct participant in the cycle.
 
 trait A: B {
-    //~^ NOTE the cycle begins when computing the supertraits of `B`...
+    //~^ ERROR unsupported cyclic reference
 }
 
 trait B: C {
-    //~^ NOTE ...which then requires computing the supertraits of `C`...
+    //~^ ERROR unsupported cyclic reference
 }
 
 trait C: B { }
     //~^ ERROR unsupported cyclic reference
-    //~| cyclic reference
-    //~| NOTE ...which then again requires computing the supertraits of `B`, completing the cycle
 
 fn main() { }

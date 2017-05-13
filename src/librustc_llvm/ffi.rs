@@ -8,12 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME: Rename 'DIGlobalVariable' to 'DIGlobalVariableExpression'
-// once support for LLVM 3.9 is dropped.
-//
-// This method was changed in this LLVM patch:
-// https://reviews.llvm.org/D26769
-
 use debuginfo::{DIBuilderRef, DIDescriptor, DIFile, DILexicalBlock, DISubprogram, DIType,
                 DIBasicType, DIDerivedType, DICompositeType, DIScope, DIVariable,
                 DIGlobalVariable, DIArray, DISubrange, DITemplateTypeParameter, DIEnumerator,
@@ -48,12 +42,10 @@ pub enum CallConv {
     X86StdcallCallConv = 64,
     X86FastcallCallConv = 65,
     ArmAapcsCallConv = 67,
-    Msp430Intr = 69,
     PtxKernel = 71,
     X86_64_SysV = 78,
     X86_64_Win64 = 79,
     X86_VectorCall = 80,
-    X86_Intr = 83,
 }
 
 /// LLVMRustLinkage
@@ -127,9 +119,6 @@ pub enum Attribute {
     UWTable         = 17,
     ZExt            = 18,
     InReg           = 19,
-    SanitizeThread  = 20,
-    SanitizeAddress = 21,
-    SanitizeMemory  = 22,
 }
 
 /// LLVMIntPredicate
@@ -284,13 +273,10 @@ pub enum CodeGenOptLevel {
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub enum RelocMode {
-    Default,
-    Static,
-    PIC,
-    DynamicNoPic,
-    ROPI,
-    RWPI,
-    ROPI_RWPI,
+    Default = 0,
+    Static = 1,
+    PIC = 2,
+    DynamicNoPic = 3,
 }
 
 /// LLVMRustCodeModel
@@ -472,7 +458,6 @@ pub mod debuginfo {
             const FlagStaticMember        = (1 << 12),
             const FlagLValueReference     = (1 << 13),
             const FlagRValueReference     = (1 << 14),
-            const FlagMainSubprogram      = (1 << 21),
         }
     }
 }
@@ -510,7 +495,6 @@ extern "C" {
 
     /// See Module::setModuleInlineAsm.
     pub fn LLVMSetModuleInlineAsm(M: ModuleRef, Asm: *const c_char);
-    pub fn LLVMRustAppendModuleInlineAsm(M: ModuleRef, Asm: *const c_char);
 
     /// See llvm::LLVMTypeKind::getTypeID.
     pub fn LLVMRustGetTypeKind(Ty: TypeRef) -> TypeKind;
@@ -819,7 +803,7 @@ extern "C" {
                                     Name: *const c_char)
                                     -> ValueRef;
     pub fn LLVMRustAddHandler(CatchSwitch: ValueRef, Handler: BasicBlockRef);
-    pub fn LLVMSetPersonalityFn(Func: ValueRef, Pers: ValueRef);
+    pub fn LLVMRustSetPersonalityFn(B: BuilderRef, Pers: ValueRef);
 
     // Add a case to the switch instruction
     pub fn LLVMAddCase(Switch: ValueRef, OnVal: ValueRef, Dest: BasicBlockRef);
@@ -1089,11 +1073,11 @@ extern "C" {
                                 DestTy: TypeRef,
                                 Name: *const c_char)
                                 -> ValueRef;
-    pub fn LLVMRustBuildIntCast(B: BuilderRef,
-                                Val: ValueRef,
-                                DestTy: TypeRef,
-                                IsSized: bool)
-                                -> ValueRef;
+    pub fn LLVMBuildIntCast(B: BuilderRef,
+                            Val: ValueRef,
+                            DestTy: TypeRef,
+                            Name: *const c_char)
+                            -> ValueRef;
     pub fn LLVMBuildFPCast(B: BuilderRef,
                            Val: ValueRef,
                            DestTy: TypeRef,
@@ -1339,7 +1323,8 @@ extern "C" {
 
     pub fn LLVMRustDIBuilderCreateCompileUnit(Builder: DIBuilderRef,
                                               Lang: c_uint,
-                                              File: DIFile,
+                                              File: *const c_char,
+                                              Dir: *const c_char,
                                               Producer: *const c_char,
                                               isOptimized: bool,
                                               Flags: *const c_char,
@@ -1377,14 +1362,14 @@ extern "C" {
     pub fn LLVMRustDIBuilderCreateBasicType(Builder: DIBuilderRef,
                                             Name: *const c_char,
                                             SizeInBits: u64,
-                                            AlignInBits: u32,
+                                            AlignInBits: u64,
                                             Encoding: c_uint)
                                             -> DIBasicType;
 
     pub fn LLVMRustDIBuilderCreatePointerType(Builder: DIBuilderRef,
                                               PointeeTy: DIType,
                                               SizeInBits: u64,
-                                              AlignInBits: u32,
+                                              AlignInBits: u64,
                                               Name: *const c_char)
                                               -> DIDerivedType;
 
@@ -1394,7 +1379,7 @@ extern "C" {
                                              File: DIFile,
                                              LineNumber: c_uint,
                                              SizeInBits: u64,
-                                             AlignInBits: u32,
+                                             AlignInBits: u64,
                                              Flags: DIFlags,
                                              DerivedFrom: DIType,
                                              Elements: DIArray,
@@ -1409,7 +1394,7 @@ extern "C" {
                                              File: DIFile,
                                              LineNo: c_uint,
                                              SizeInBits: u64,
-                                             AlignInBits: u32,
+                                             AlignInBits: u64,
                                              OffsetInBits: u64,
                                              Flags: DIFlags,
                                              Ty: DIType)
@@ -1437,7 +1422,7 @@ extern "C" {
                                                  isLocalToUnit: bool,
                                                  Val: ValueRef,
                                                  Decl: DIDescriptor,
-                                                 AlignInBits: u32)
+                                                 AlignInBits: u64)
                                                  -> DIGlobalVariable;
 
     pub fn LLVMRustDIBuilderCreateVariable(Builder: DIBuilderRef,
@@ -1450,19 +1435,19 @@ extern "C" {
                                            AlwaysPreserve: bool,
                                            Flags: DIFlags,
                                            ArgNo: c_uint,
-                                           AlignInBits: u32)
+                                           AlignInBits: u64)
                                            -> DIVariable;
 
     pub fn LLVMRustDIBuilderCreateArrayType(Builder: DIBuilderRef,
                                             Size: u64,
-                                            AlignInBits: u32,
+                                            AlignInBits: u64,
                                             Ty: DIType,
                                             Subscripts: DIArray)
                                             -> DIType;
 
     pub fn LLVMRustDIBuilderCreateVectorType(Builder: DIBuilderRef,
                                              Size: u64,
-                                             AlignInBits: u32,
+                                             AlignInBits: u64,
                                              Ty: DIType,
                                              Subscripts: DIArray)
                                              -> DIType;
@@ -1497,7 +1482,7 @@ extern "C" {
                                                   File: DIFile,
                                                   LineNumber: c_uint,
                                                   SizeInBits: u64,
-                                                  AlignInBits: u32,
+                                                  AlignInBits: u64,
                                                   Elements: DIArray,
                                                   ClassType: DIType)
                                                   -> DIType;
@@ -1508,7 +1493,7 @@ extern "C" {
                                             File: DIFile,
                                             LineNumber: c_uint,
                                             SizeInBits: u64,
-                                            AlignInBits: u32,
+                                            AlignInBits: u64,
                                             Flags: DIFlags,
                                             Elements: DIArray,
                                             RunTimeLang: c_uint,
@@ -1666,3 +1651,10 @@ extern "C" {
     pub fn LLVMRustUnsetComdat(V: ValueRef);
     pub fn LLVMRustSetModulePIELevel(M: ModuleRef);
 }
+
+
+// LLVM requires symbols from this library, but apparently they're not printed
+// during llvm-config?
+#[cfg(windows)]
+#[link(name = "ole32")]
+extern "C" {}

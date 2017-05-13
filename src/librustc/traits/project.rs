@@ -38,6 +38,36 @@ use util::common::FN_OUTPUT_NAME;
 /// more or less conservative.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Reveal {
+    /// FIXME (#32205)
+    /// At coherence-checking time, we're still constructing the
+    /// specialization graph, and thus we only project
+    /// non-`default` associated types that are defined directly in
+    /// the applicable impl. (This behavior should be improved over
+    /// time, to allow for successful projections modulo cycles
+    /// between different impls).
+    ///
+    /// Here's an example that will fail due to the restriction:
+    ///
+    /// ```
+    /// trait Assoc {
+    ///     type Output;
+    /// }
+    ///
+    /// impl<T> Assoc for T {
+    ///     type Output = bool;
+    /// }
+    ///
+    /// impl Assoc for u8 {} // <- inherits the non-default type from above
+    ///
+    /// trait Foo {}
+    /// impl Foo for u32 {}
+    /// impl Foo for <u8 as Assoc>::Output {}  // <- this projection will fail
+    /// ```
+    ///
+    /// The projection would succeed if `Output` had been defined
+    /// directly in the impl for `u8`.
+    ExactMatch,
+
     /// At type-checking time, we refuse to project any associated
     /// type that is marked `default`. Non-`default` ("final") types
     /// are always projected. This is necessary in general for
@@ -60,7 +90,7 @@ pub enum Reveal {
     /// fn main() {
     ///     let <() as Assoc>::Output = true;
     /// }
-    UserFacing,
+    NotSpecializable,
 
     /// At trans time, all monomorphic projections will succeed.
     /// Also, `impl Trait` is normalized to the concrete type,
@@ -279,7 +309,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
             ty::TyAnon(def_id, substs) if !substs.has_escaping_regions() => { // (*)
                 // Only normalize `impl Trait` after type-checking, usually in trans.
                 if self.selcx.projection_mode() == Reveal::All {
-                    let generic_ty = self.tcx().type_of(def_id);
+                    let generic_ty = self.tcx().item_type(def_id);
                     let concrete_ty = generic_ty.subst(self.tcx(), substs);
                     self.fold_ty(concrete_ty)
                 } else {
@@ -787,7 +817,7 @@ fn assemble_candidates_from_trait_def<'cx, 'gcx, 'tcx>(
     };
 
     // If so, extract what we know from the trait and try to come up with a good answer.
-    let trait_predicates = selcx.tcx().predicates_of(def_id);
+    let trait_predicates = selcx.tcx().item_predicates(def_id);
     let bounds = trait_predicates.instantiate(selcx.tcx(), substs);
     let bounds = elaborate_predicates(selcx.tcx(), bounds.predicates);
     assemble_candidates_from_predicates(selcx,
@@ -923,8 +953,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                         // being invoked).
                         node_item.item.defaultness.has_value()
                     } else {
-                        node_item.item.defaultness.is_default() ||
-                        selcx.tcx().impl_is_default(node_item.node.def_id())
+                        node_item.item.defaultness.is_default()
                     };
 
                     // Only reveal a specializable default if we're past type-checking
@@ -1179,8 +1208,7 @@ fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
     -> Progress<'tcx>
 {
     let closure_typer = selcx.closure_typer();
-    let closure_type = closure_typer.closure_type(vtable.closure_def_id)
-        .subst(selcx.tcx(), vtable.substs.substs);
+    let closure_type = closure_typer.closure_type(vtable.closure_def_id, vtable.substs);
     let Normalized {
         value: closure_type,
         obligations
@@ -1196,7 +1224,7 @@ fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
 
     confirm_callable_candidate(selcx,
                                obligation,
-                               closure_type,
+                               &closure_type.sig,
                                util::TupleArgumentsFlag::No)
         .with_addl_obligations(vtable.nested)
         .with_addl_obligations(obligations)
@@ -1205,7 +1233,7 @@ fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
 fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    fn_sig: ty::PolyFnSig<'tcx>,
+    fn_sig: &ty::PolyFnSig<'tcx>,
     flag: util::TupleArgumentsFlag)
     -> Progress<'tcx>
 {
@@ -1289,7 +1317,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
                        obligation.predicate.trait_ref);
                 tcx.types.err
             } else {
-                tcx.type_of(node_item.item.def_id)
+                tcx.item_type(node_item.item.def_id)
             };
             let substs = translate_substs(selcx.infcx(), impl_def_id, substs, node_item.node);
             Progress {
@@ -1318,9 +1346,8 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
     -> Option<specialization_graph::NodeItem<ty::AssociatedItem>>
 {
     let trait_def_id = selcx.tcx().impl_trait_ref(impl_def_id).unwrap().def_id;
-    let trait_def = selcx.tcx().trait_def(trait_def_id);
 
-    if !trait_def.is_complete(selcx.tcx()) {
+    if selcx.projection_mode() == Reveal::ExactMatch {
         let impl_node = specialization_graph::Node::Impl(impl_def_id);
         for item in impl_node.items(selcx.tcx()) {
             if item.kind == ty::AssociatedKind::Type && item.name == assoc_ty_name {
@@ -1332,7 +1359,7 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
         }
         None
     } else {
-        trait_def
+        selcx.tcx().lookup_trait_def(trait_def_id)
             .ancestors(impl_def_id)
             .defs(selcx.tcx(), assoc_ty_name, ty::AssociatedKind::Type)
             .next()

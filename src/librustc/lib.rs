@@ -21,34 +21,29 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(associated_consts)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(collections)]
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
-#![feature(i128_type)]
 #![feature(libc)]
-#![feature(loop_break_value)]
-#![feature(never_type)]
 #![feature(nonzero)]
+#![feature(pub_restricted)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
-#![feature(specialization)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
-#![feature(discriminant_value)]
-#![feature(sort_unstable)]
-#![feature(trace_macros)]
-
-#![recursion_limit="128"]
+#![cfg_attr(test, feature(test))]
 
 extern crate arena;
 extern crate core;
+extern crate flate;
 extern crate fmt_macros;
 extern crate getopts;
 extern crate graphviz;
@@ -57,14 +52,21 @@ extern crate rustc_llvm as llvm;
 extern crate rustc_back;
 extern crate rustc_data_structures;
 extern crate serialize;
+extern crate collections;
 extern crate rustc_const_math;
 extern crate rustc_errors as errors;
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
-extern crate syntax_pos;
+#[macro_use] extern crate syntax_pos;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
 
 extern crate serialize as rustc_serialize; // used by deriving
+
+// SNAP:
+extern crate rustc_i128;
+
+#[cfg(test)]
+extern crate test;
 
 #[macro_use]
 mod macros;
@@ -76,11 +78,11 @@ pub mod diagnostics;
 pub mod cfg;
 pub mod dep_graph;
 pub mod hir;
-pub mod ich;
 pub mod infer;
 pub mod lint;
 
 pub mod middle {
+    pub mod astconv_util;
     pub mod expr_use_visitor;
     pub mod const_val;
     pub mod cstore;
@@ -112,6 +114,7 @@ pub mod util {
     pub mod common;
     pub mod ppaux;
     pub mod nodemap;
+    pub mod num;
     pub mod fs;
 }
 

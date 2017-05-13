@@ -24,15 +24,16 @@ mod m1 {
 }
 
 mod m2 {
-    use two_macros::*; //~ NOTE could also refer
+    use two_macros::*; //~ NOTE could also resolve
     m! { //~ ERROR ambiguous
          //~| NOTE macro-expanded macro imports do not shadow
-        use foo::m; //~ NOTE could refer to the name imported here
+        use foo::m; //~ NOTE could resolve to the name imported here
+                    //~^^^ NOTE in this expansion
     }
 }
 
 mod m3 {
-    use two_macros::m; //~ NOTE could also refer
+    use two_macros::m; //~ NOTE could also resolve
     fn f() {
         use two_macros::n as m; // This shadows the above import
         m!();
@@ -41,13 +42,14 @@ mod m3 {
     fn g() {
         m! { //~ ERROR ambiguous
              //~| NOTE macro-expanded macro imports do not shadow
-            use two_macros::n as m; //~ NOTE could refer to the name imported here
+            use two_macros::n as m; //~ NOTE could resolve to the name imported here
+                                    //~^^^ NOTE in this expansion
         }
     }
 }
 
 mod m4 {
-    macro_rules! m { () => {} } //~ NOTE could refer to the macro defined here
-    use two_macros::m; //~ NOTE could also refer to the macro imported here
+    macro_rules! m { () => {} } //~ NOTE could resolve to the macro defined here
+    use two_macros::m; //~ NOTE could also resolve to the macro imported here
     m!(); //~ ERROR ambiguous
 }

@@ -19,7 +19,7 @@ extern crate coherence_copy_like_lib as lib;
 
 struct MyType { x: i32 }
 
-trait MyTrait { fn foo() {} }
+trait MyTrait { }
 
 impl<T: lib::MyCopy> MyTrait for T { }
 

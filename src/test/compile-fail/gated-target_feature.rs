@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-target_feature
-
 #[target_feature = "+sse2"]
 //~^ the `#[target_feature]` attribute is an experimental feature
 fn foo() {}

@@ -20,5 +20,6 @@ use proc_macro::TokenStream;
 pub fn derive(input: TokenStream) -> TokenStream {
     let input = input.to_string();
     assert!(input.contains("struct A;"));
+    assert!(input.contains("#[derive(Debug, PartialEq, Eq, Copy, Clone)]"));
     "".parse().unwrap()
 }

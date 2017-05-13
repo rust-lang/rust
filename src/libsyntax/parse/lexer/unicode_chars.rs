@@ -11,7 +11,7 @@
 // Characters and their corresponding confusables were collected from
 // http://www.unicode.org/Public/security/revision-06/confusables.txt
 
-use syntax_pos::{Span, NO_EXPANSION};
+use syntax_pos::mk_sp as make_span;
 use errors::DiagnosticBuilder;
 use super::StringReader;
 
@@ -234,7 +234,7 @@ pub fn check_for_substitution<'a>(reader: &StringReader<'a>,
     .iter()
     .find(|&&(c, _, _)| c == ch)
     .map(|&(_, u_name, ascii_char)| {
-        let span = Span { lo: reader.pos, hi: reader.next_pos, ctxt: NO_EXPANSION };
+        let span = make_span(reader.pos, reader.next_pos);
         match ASCII_ARRAY.iter().find(|&&(c, _)| c == ascii_char) {
             Some(&(ascii_char, ascii_name)) => {
                 let msg =
@@ -243,8 +243,10 @@ pub fn check_for_substitution<'a>(reader: &StringReader<'a>,
                 err.span_help(span, &msg);
             },
             None => {
-                let msg = format!("substitution character not found for '{}'", ch);
-                reader.sess.span_diagnostic.span_bug_no_panic(span, &msg);
+                reader
+                .span_diagnostic
+                .span_bug_no_panic(span,
+                                   &format!("substitution character not found for '{}'", ch));
             }
         }
     });

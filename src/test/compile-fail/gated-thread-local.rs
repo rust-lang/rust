@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-thread_local
-
 // Test that `#[thread_local]` attribute is gated by `thread_local`
 // feature gate.
 //

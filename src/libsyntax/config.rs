@@ -13,10 +13,9 @@ use feature_gate::{feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features
 use {fold, attr};
 use ast;
 use codemap::Spanned;
-use parse::{token, ParseSess};
-use syntax_pos::Span;
-
+use parse::ParseSess;
 use ptr::P;
+
 use util::small_vector::SmallVector;
 
 /// A folder that strips out items that do not belong in the current configuration.
@@ -85,33 +84,43 @@ impl<'a> StripUnconfigured<'a> {
             return Some(attr);
         }
 
-        let (cfg, path, tokens, span) = match attr.parse(self.sess, |parser| {
-            parser.expect(&token::OpenDelim(token::Paren))?;
-            let cfg = parser.parse_meta_item()?;
-            parser.expect(&token::Comma)?;
-            let lo = parser.span.lo;
-            let (path, tokens) = parser.parse_path_and_tokens()?;
-            parser.expect(&token::CloseDelim(token::Paren))?;
-            Ok((cfg, path, tokens, Span { lo: lo, ..parser.prev_span }))
-        }) {
-            Ok(result) => result,
-            Err(mut e) => {
-                e.emit();
+        let attr_list = match attr.meta_item_list() {
+            Some(attr_list) => attr_list,
+            None => {
+                let msg = "expected `#[cfg_attr(<cfg pattern>, <attr>)]`";
+                self.sess.span_diagnostic.span_err(attr.span, msg);
                 return None;
             }
         };
 
-        if attr::cfg_matches(&cfg, self.sess, self.features) {
-            self.process_cfg_attr(ast::Attribute {
-                id: attr::mk_attr_id(),
-                style: attr.style,
-                path: path,
-                tokens: tokens,
-                is_sugared_doc: false,
-                span: span,
-            })
-        } else {
-            None
+        let (cfg, mi) = match (attr_list.len(), attr_list.get(0), attr_list.get(1)) {
+            (2, Some(cfg), Some(mi)) => (cfg, mi),
+            _ => {
+                let msg = "expected `#[cfg_attr(<cfg pattern>, <attr>)]`";
+                self.sess.span_diagnostic.span_err(attr.span, msg);
+                return None;
+            }
+        };
+
+        use attr::cfg_matches;
+        match (cfg.meta_item(), mi.meta_item()) {
+            (Some(cfg), Some(mi)) =>
+                if cfg_matches(&cfg, self.sess, self.features) {
+                    self.process_cfg_attr(ast::Attribute {
+                        id: attr::mk_attr_id(),
+                        style: attr.style,
+                        value: mi.clone(),
+                        is_sugared_doc: false,
+                        span: mi.span,
+                    })
+                } else {
+                    None
+                },
+            _ => {
+                let msg = "unexpected literal(s) in `#[cfg_attr(<cfg pattern>, <attr>)]`";
+                self.sess.span_diagnostic.span_err(attr.span, msg);
+                None
+            }
         }
     }
 
@@ -123,12 +132,9 @@ impl<'a> StripUnconfigured<'a> {
                 return false;
             }
 
-            let mis = if !is_cfg(&attr) {
-                return true;
-            } else if let Some(mis) = attr.meta_item_list() {
-                mis
-            } else {
-                return true;
+            let mis = match attr.value.node {
+                ast::MetaItemKind::List(ref mis) if is_cfg(&attr) => mis,
+                _ => return true
             };
 
             if mis.len() != 1 {
@@ -215,21 +221,11 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     pub fn configure_expr_kind(&mut self, expr_kind: ast::ExprKind) -> ast::ExprKind {
-        match expr_kind {
-            ast::ExprKind::Match(m, arms) => {
-                let arms = arms.into_iter().filter_map(|a| self.configure(a)).collect();
-                ast::ExprKind::Match(m, arms)
-            }
-            ast::ExprKind::Struct(path, fields, base) => {
-                let fields = fields.into_iter()
-                    .filter_map(|field| {
-                        self.visit_struct_field_attrs(field.attrs());
-                        self.configure(field)
-                    })
-                    .collect();
-                ast::ExprKind::Struct(path, fields, base)
-            }
-            _ => expr_kind,
+        if let ast::ExprKind::Match(m, arms) = expr_kind {
+            let arms = arms.into_iter().filter_map(|a| self.configure(a)).collect();
+            ast::ExprKind::Match(m, arms)
+        } else {
+            expr_kind
         }
     }
 
@@ -253,51 +249,6 @@ impl<'a> StripUnconfigured<'a> {
 
     pub fn configure_stmt(&mut self, stmt: ast::Stmt) -> Option<ast::Stmt> {
         self.configure(stmt)
-    }
-
-    pub fn configure_struct_expr_field(&mut self, field: ast::Field) -> Option<ast::Field> {
-        if !self.features.map(|features| features.struct_field_attributes).unwrap_or(true) {
-            if !field.attrs.is_empty() {
-                let mut err = feature_err(&self.sess,
-                                          "struct_field_attributes",
-                                          field.span,
-                                          GateIssue::Language,
-                                          "attributes on struct literal fields are unstable");
-                err.emit();
-            }
-        }
-
-        self.configure(field)
-    }
-
-    pub fn configure_pat(&mut self, pattern: P<ast::Pat>) -> P<ast::Pat> {
-        pattern.map(|mut pattern| {
-            if let ast::PatKind::Struct(path, fields, etc) = pattern.node {
-                let fields = fields.into_iter()
-                    .filter_map(|field| {
-                        self.visit_struct_field_attrs(field.attrs());
-                        self.configure(field)
-                    })
-                    .collect();
-                pattern.node = ast::PatKind::Struct(path, fields, etc);
-            }
-            pattern
-        })
-    }
-
-    fn visit_struct_field_attrs(&mut self, attrs: &[ast::Attribute]) {
-        // flag the offending attributes
-        for attr in attrs.iter() {
-            if !self.features.map(|features| features.struct_field_attributes).unwrap_or(true) {
-                let mut err = feature_err(
-                    &self.sess,
-                    "struct_field_attributes",
-                    attr.span,
-                    GateIssue::Language,
-                    "attributes on struct pattern or literal fields are unstable");
-                err.emit();
-            }
-        }
     }
 }
 
@@ -347,10 +298,6 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
         // Don't configure interpolated AST (c.f. #34171).
         // Interpolated AST will get configured once the surrounding tokens are parsed.
         mac
-    }
-
-    fn fold_pat(&mut self, pattern: P<ast::Pat>) -> P<ast::Pat> {
-        fold::noop_fold_pat(self.configure_pat(pattern), self)
     }
 }
 

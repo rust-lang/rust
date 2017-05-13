@@ -15,7 +15,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
@@ -23,10 +23,16 @@
 #![feature(staged_api)]
 #![feature(range_contains)]
 #![feature(libc)]
+#![feature(unicode)]
 
+extern crate serialize;
 extern crate term;
+#[macro_use]
+extern crate log;
+#[macro_use]
 extern crate libc;
-extern crate serialize as rustc_serialize;
+extern crate std_unicode;
+extern crate serialize as rustc_serialize; // used by deriving
 extern crate syntax_pos;
 
 pub use emitter::ColorConfig;
@@ -48,8 +54,9 @@ pub mod styled_buffer;
 mod lock;
 
 use syntax_pos::{BytePos, Loc, FileLinesResult, FileName, MultiSpan, Span, NO_EXPANSION};
+use syntax_pos::MacroBacktrace;
 
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum RenderSpan {
     /// A FullSpan renders with both with an initial line for the
     /// message, prefixed by file:linenum, followed by a summary of
@@ -63,11 +70,10 @@ pub enum RenderSpan {
     Suggestion(CodeSuggestion),
 }
 
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CodeSuggestion {
     pub msp: MultiSpan,
     pub substitutes: Vec<String>,
-    pub msg: String,
 }
 
 pub trait CodeMapper {
@@ -75,6 +81,7 @@ pub trait CodeMapper {
     fn span_to_lines(&self, sp: Span) -> FileLinesResult;
     fn span_to_string(&self, sp: Span) -> String;
     fn span_to_filename(&self, sp: Span) -> FileName;
+    fn macro_backtrace(&self, span: Span) -> Vec<MacroBacktrace>;
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span>;
 }
 
@@ -89,8 +96,7 @@ impl CodeSuggestion {
                          hi_opt: Option<&Loc>) {
             let (lo, hi_opt) = (lo.col.to_usize(), hi_opt.map(|hi| hi.col.to_usize()));
             if let Some(line) = line_opt {
-                if let Some(lo) = line.char_indices().map(|(i, _)| i).nth(lo) {
-                    let hi_opt = hi_opt.and_then(|hi| line.char_indices().map(|(i, _)| i).nth(hi));
+                if line.len() > lo {
                     buf.push_str(match hi_opt {
                         Some(hi) => &line[lo..hi],
                         None => &line[lo..],
@@ -119,7 +125,7 @@ impl CodeSuggestion {
         let bounding_span = Span {
             lo: lo,
             hi: hi,
-            ctxt: NO_EXPANSION,
+            expn_id: NO_EXPANSION,
         };
         let lines = cm.span_to_lines(bounding_span).unwrap();
         assert!(!lines.lines.is_empty());
@@ -204,7 +210,7 @@ impl error::Error for ExplicitBug {
     }
 }
 
-pub use diagnostic::{Diagnostic, SubDiagnostic, DiagnosticStyledString, StringPart};
+pub use diagnostic::{Diagnostic, SubDiagnostic};
 pub use diagnostic_builder::DiagnosticBuilder;
 
 /// A handler deals with errors; certain errors
@@ -376,9 +382,6 @@ impl Handler {
         panic!(ExplicitBug);
     }
     pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
-        if self.treat_err_as_bug {
-            self.span_bug(sp, msg);
-        }
         let mut delayed = self.delayed_span_bug.borrow_mut();
         *delayed = Some((sp.into(), msg.to_string()));
     }
@@ -387,14 +390,6 @@ impl Handler {
     }
     pub fn span_note_without_error<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.emit(&sp.into(), msg, Note);
-    }
-    pub fn span_note_diag<'a>(&'a self,
-                              sp: Span,
-                              msg: &str)
-                              -> DiagnosticBuilder<'a> {
-        let mut db = DiagnosticBuilder::new(self, Note, msg);
-        db.set_span(sp);
-        db
     }
     pub fn span_unimpl<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
         self.span_bug(sp, &format!("unimplemented {}", msg));
@@ -489,7 +484,7 @@ impl Handler {
 }
 
 
-#[derive(Copy, PartialEq, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, PartialEq, Clone, Debug)]
 pub enum Level {
     Bug,
     Fatal,

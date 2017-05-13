@@ -24,12 +24,14 @@
 // - It's not possible to take the address of a static item with unsafe interior. This is enforced
 // by borrowck::gather_loans
 
+use rustc::dep_graph::DepNode;
 use rustc::ty::cast::CastKind;
-use rustc_const_eval::ConstContext;
-use rustc::middle::const_val::ConstEvalErr;
-use rustc::middle::const_val::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal, MiscCatchAll};
-use rustc::middle::const_val::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp, NonConstPath};
-use rustc::middle::const_val::ErrKind::{TypeckError, Math};
+use rustc_const_eval::{ConstEvalErr, compare_lit_exprs};
+use rustc_const_eval::{eval_const_expr_partial};
+use rustc_const_eval::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal, MiscCatchAll, Math};
+use rustc_const_eval::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp, NonConstPath};
+use rustc_const_eval::ErrKind::UnresolvedPath;
+use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_math::{ConstMathErr, Op};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
@@ -44,9 +46,9 @@ use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeSet;
 use rustc::lint::builtin::CONST_ERR;
 
-use rustc::hir::{self, PatKind, RangeEnd};
+use rustc::hir::{self, PatKind};
 use syntax::ast;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 
 use std::collections::hash_map::Entry;
@@ -59,18 +61,15 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
     promotable: bool,
     mut_rvalue_borrows: NodeSet,
     param_env: ty::ParameterEnvironment<'tcx>,
-    tables: &'a ty::TypeckTables<'tcx>,
 }
 
 impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     fn check_const_eval(&self, expr: &'gcx hir::Expr) {
-        let const_cx = ConstContext::with_tables(self.tcx, self.tables);
-        if let Err(err) = const_cx.eval(expr) {
+        if let Err(err) = eval_const_expr_partial(self.tcx, expr, ExprTypeChecked, None) {
             match err.kind {
                 UnimplementedConstVal(_) => {}
                 IndexOpFeatureGated => {}
                 ErroneousReferencedConstant(_) => {}
-                TypeckError => {}
                 _ => {
                     self.tcx.sess.add_lint(CONST_ERR,
                                            expr.id,
@@ -85,11 +84,11 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
 
     // Adds the worst effect out of all the values of one type.
     fn add_type(&mut self, ty: Ty<'gcx>) {
-        if !ty.is_freeze(self.tcx, &self.param_env, DUMMY_SP) {
+        if ty.type_contents(self.tcx).interior_unsafe() {
             self.promotable = false;
         }
 
-        if ty.needs_drop(self.tcx, &self.param_env) {
+        if self.tcx.type_needs_drop_given_env(ty, &self.param_env) {
             self.promotable = false;
         }
     }
@@ -97,8 +96,8 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     fn handle_const_fn_call(&mut self, def_id: DefId, ret_ty: Ty<'gcx>) {
         self.add_type(ret_ty);
 
-        self.promotable &= if let Some(fn_id) = self.tcx.hir.as_local_node_id(def_id) {
-            FnLikeNode::from_node(self.tcx.hir.get(fn_id)).map_or(false, |fn_like| {
+        self.promotable &= if let Some(fn_id) = self.tcx.map.as_local_node_id(def_id) {
+            FnLikeNode::from_node(self.tcx.map.get(fn_id)).map_or(false, |fn_like| {
                 fn_like.constness() == hir::Constness::Const
             })
         } else {
@@ -112,8 +111,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_nested_body(&mut self, body_id: hir::BodyId) {
-        match self.tcx.rvalue_promotable_to_static.borrow_mut().entry(body_id.node_id) {
+    fn visit_nested_body(&mut self, body: hir::BodyId) {
+        match self.tcx.rvalue_promotable_to_static.borrow_mut().entry(body.node_id) {
             Entry::Occupied(_) => return,
             Entry::Vacant(entry) => {
                 // Prevent infinite recursion on re-entry.
@@ -121,7 +120,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
             }
         }
 
-        let item_id = self.tcx.hir.body_owner(body_id);
+        let item_id = self.tcx.map.body_owner(body);
 
         let outer_in_fn = self.in_fn;
         self.in_fn = match MirSource::from_node(self.tcx, item_id) {
@@ -129,27 +128,19 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
             _ => false
         };
 
-        let outer_tables = self.tables;
-        let item_def_id = self.tcx.hir.local_def_id(item_id);
-        self.tables = self.tcx.typeck_tables_of(item_def_id);
-
-        let body = self.tcx.hir.body(body_id);
+        let body = self.tcx.map.body(body);
         if !self.in_fn {
             self.check_const_eval(&body.value);
         }
 
-        let outer_penv = self.tcx.infer_ctxt(body_id, Reveal::UserFacing).enter(|infcx| {
-            let param_env = infcx.parameter_environment.clone();
-            let outer_penv = mem::replace(&mut self.param_env, param_env);
-            let region_maps = &self.tcx.region_maps(item_def_id);;
-            euv::ExprUseVisitor::new(self, region_maps, &infcx).consume_body(body);
-            outer_penv
-        });
+        let param_env = ty::ParameterEnvironment::for_item(self.tcx, item_id);
+        let outer_param_env = mem::replace(&mut self.param_env, param_env);
+        self.tcx.infer_ctxt(None, Some(self.param_env.clone()), Reveal::NotSpecializable)
+            .enter(|infcx| euv::ExprUseVisitor::new(self, &infcx).consume_body(body));
 
         self.visit_body(body);
 
-        self.param_env = outer_penv;
-        self.tables = outer_tables;
+        self.param_env = outer_param_env;
         self.in_fn = outer_in_fn;
     }
 
@@ -158,29 +149,17 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
             PatKind::Lit(ref lit) => {
                 self.check_const_eval(lit);
             }
-            PatKind::Range(ref start, ref end, RangeEnd::Excluded) => {
-                let const_cx = ConstContext::with_tables(self.tcx, self.tables);
-                match const_cx.compare_lit_exprs(p.span, start, end) {
-                    Ok(Ordering::Less) => {}
-                    Ok(Ordering::Equal) |
-                    Ok(Ordering::Greater) => {
-                        span_err!(self.tcx.sess,
-                                  start.span,
-                                  E0579,
-                                  "lower range bound must be less than upper");
-                    }
-                    Err(ErrorReported) => {}
-                }
-            }
-            PatKind::Range(ref start, ref end, RangeEnd::Included) => {
-                let const_cx = ConstContext::with_tables(self.tcx, self.tables);
-                match const_cx.compare_lit_exprs(p.span, start, end) {
+            PatKind::Range(ref start, ref end) => {
+                self.check_const_eval(start);
+                self.check_const_eval(end);
+
+                match compare_lit_exprs(self.tcx, p.span, start, end) {
                     Ok(Ordering::Less) |
                     Ok(Ordering::Equal) => {}
                     Ok(Ordering::Greater) => {
                         struct_span_err!(self.tcx.sess, start.span, E0030,
                             "lower range bound must be less than or equal to upper")
-                            .span_label(start.span, "lower bound larger than upper bound")
+                            .span_label(start.span, &format!("lower bound larger than upper bound"))
                             .emit();
                     }
                     Err(ErrorReported) => {}
@@ -214,7 +193,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         let outer = self.promotable;
         self.promotable = true;
 
-        let node_ty = self.tables.node_id_to_type(ex.id);
+        let node_ty = self.tcx.tables().node_id_to_type(ex.id);
         check_expr(self, ex, node_ty);
         check_adjustments(self, ex);
 
@@ -240,18 +219,17 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         }
 
         if self.in_fn && self.promotable {
-            let const_cx = ConstContext::with_tables(self.tcx, self.tables);
-            match const_cx.eval(ex) {
+            match eval_const_expr_partial(self.tcx, ex, ExprTypeChecked, None) {
                 Ok(_) => {}
                 Err(ConstEvalErr { kind: UnimplementedConstVal(_), .. }) |
                 Err(ConstEvalErr { kind: MiscCatchAll, .. }) |
                 Err(ConstEvalErr { kind: MiscBinaryOp, .. }) |
                 Err(ConstEvalErr { kind: NonConstPath, .. }) |
+                Err(ConstEvalErr { kind: UnresolvedPath, .. }) |
                 Err(ConstEvalErr { kind: ErroneousReferencedConstant(_), .. }) |
                 Err(ConstEvalErr { kind: Math(ConstMathErr::Overflow(Op::Shr)), .. }) |
                 Err(ConstEvalErr { kind: Math(ConstMathErr::Overflow(Op::Shl)), .. }) |
                 Err(ConstEvalErr { kind: IndexOpFeatureGated, .. }) => {}
-                Err(ConstEvalErr { kind: TypeckError, .. }) => {}
                 Err(msg) => {
                     self.tcx.sess.add_lint(CONST_ERR,
                                            ex.id,
@@ -274,7 +252,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
 /// instead of producing errors.
 fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node_ty: Ty<'tcx>) {
     match node_ty.sty {
-        ty::TyAdt(def, _) if def.has_dtor(v.tcx) => {
+        ty::TyAdt(def, _) if def.has_dtor() => {
             v.promotable = false;
         }
         _ => {}
@@ -284,14 +262,14 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
     match e.node {
         hir::ExprUnary(..) |
         hir::ExprBinary(..) |
-        hir::ExprIndex(..) if v.tables.method_map.contains_key(&method_call) => {
+        hir::ExprIndex(..) if v.tcx.tables().method_map.contains_key(&method_call) => {
             v.promotable = false;
         }
         hir::ExprBox(_) => {
             v.promotable = false;
         }
         hir::ExprUnary(op, ref inner) => {
-            match v.tables.node_id_to_type(inner.id).sty {
+            match v.tcx.tables().node_id_to_type(inner.id).sty {
                 ty::TyRawPtr(_) => {
                     assert!(op == hir::UnDeref);
 
@@ -301,7 +279,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
         hir::ExprBinary(op, ref lhs, _) => {
-            match v.tables.node_id_to_type(lhs.id).sty {
+            match v.tcx.tables().node_id_to_type(lhs.id).sty {
                 ty::TyRawPtr(_) => {
                     assert!(op.node == hir::BiEq || op.node == hir::BiNe ||
                             op.node == hir::BiLe || op.node == hir::BiLt ||
@@ -314,7 +292,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
         }
         hir::ExprCast(ref from, _) => {
             debug!("Checking const cast(id={})", from.id);
-            match v.tables.cast_kinds.get(&from.id) {
+            match v.tcx.cast_kinds.borrow().get(&from.id) {
                 None => span_bug!(e.span, "no kind for cast"),
                 Some(&CastKind::PtrAddrCast) | Some(&CastKind::FnPtrAddrCast) => {
                     v.promotable = false;
@@ -323,14 +301,14 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
         hir::ExprPath(ref qpath) => {
-            let def = v.tables.qpath_def(qpath, e.id);
+            let def = v.tcx.tables().qpath_def(qpath, e.id);
             match def {
                 Def::VariantCtor(..) | Def::StructCtor(..) |
                 Def::Fn(..) | Def::Method(..) => {}
                 Def::AssociatedConst(_) => v.add_type(node_ty),
                 Def::Const(did) => {
-                    v.promotable &= if let Some(node_id) = v.tcx.hir.as_local_node_id(did) {
-                        match v.tcx.hir.expect_item(node_id).node {
+                    v.promotable &= if let Some(node_id) = v.tcx.map.as_local_node_id(did) {
+                        match v.tcx.map.expect_item(node_id).node {
                             hir::ItemConst(_, body) => {
                                 v.visit_nested_body(body);
                                 v.tcx.rvalue_promotable_to_static.borrow()[&body.node_id]
@@ -338,7 +316,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                             _ => false
                         }
                     } else {
-                        v.tcx.const_is_rvalue_promotable_to_static(did)
+                        v.tcx.sess.cstore.const_is_rvalue_promotable_to_static(did)
                     };
                 }
                 _ => {
@@ -359,7 +337,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
             // The callee is an arbitrary expression, it doesn't necessarily have a definition.
             let def = if let hir::ExprPath(ref qpath) = callee.node {
-                v.tables.qpath_def(qpath, callee.id)
+                v.tcx.tables().qpath_def(qpath, callee.id)
             } else {
                 Def::Err
             };
@@ -381,14 +359,14 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
         hir::ExprMethodCall(..) => {
-            let method = v.tables.method_map[&method_call];
+            let method = v.tcx.tables().method_map[&method_call];
             match v.tcx.associated_item(method.def_id).container {
                 ty::ImplContainer(_) => v.handle_const_fn_call(method.def_id, node_ty),
                 ty::TraitContainer(_) => v.promotable = false
             }
         }
         hir::ExprStruct(..) => {
-            if let ty::TyAdt(adt, ..) = v.tables.expr_ty(e).sty {
+            if let ty::TyAdt(adt, ..) = v.tcx.tables().expr_ty(e).sty {
                 // unsafe_cell_type doesn't necessarily exist with no_core
                 if Some(adt.did) == v.tcx.lang_items.unsafe_cell_type() {
                     v.promotable = false;
@@ -442,17 +420,16 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
 fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr) {
     use rustc::ty::adjustment::*;
 
-    match v.tables.adjustments.get(&e.id).map(|adj| adj.kind) {
+    match v.tcx.tables().adjustments.get(&e.id).map(|adj| adj.kind) {
         None |
         Some(Adjust::NeverToAny) |
         Some(Adjust::ReifyFnPointer) |
         Some(Adjust::UnsafeFnPointer) |
-        Some(Adjust::ClosureFnPointer) |
         Some(Adjust::MutToConstPointer) => {}
 
         Some(Adjust::DerefRef { autoderefs, .. }) => {
             if (0..autoderefs as u32)
-                .any(|autoderef| v.tables.is_overloaded_autoderef(e.id, autoderef)) {
+                .any(|autoderef| v.tcx.tables().is_overloaded_autoderef(e.id, autoderef)) {
                 v.promotable = false;
             }
         }
@@ -460,14 +437,14 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.hir.krate().visit_all_item_likes(&mut CheckCrateVisitor {
-        tcx: tcx,
-        tables: &ty::TypeckTables::empty(),
-        in_fn: false,
-        promotable: false,
-        mut_rvalue_borrows: NodeSet(),
-        param_env: tcx.empty_parameter_environment(),
-    }.as_deep_visitor());
+    tcx.visit_all_item_likes_in_krate(DepNode::CheckConst,
+                                      &mut CheckCrateVisitor {
+                                          tcx: tcx,
+                                          in_fn: false,
+                                          promotable: false,
+                                          mut_rvalue_borrows: NodeSet(),
+                                          param_env: tcx.empty_parameter_environment(),
+                                      }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }
 
@@ -482,7 +459,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
               borrow_id: ast::NodeId,
               _borrow_span: Span,
               cmt: mc::cmt<'tcx>,
-              _loan_region: ty::Region<'tcx>,
+              _loan_region: &'tcx ty::Region,
               bk: ty::BorrowKind,
               loan_cause: euv::LoanCause) {
         // Kind of hacky, but we allow Unsafe coercions in constants.

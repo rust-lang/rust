@@ -37,8 +37,8 @@ pub fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {
 
     let libs = config.used_crates.clone();
     let libs = libs.into_iter().filter_map(|(_, l)| l.option()).collect::<Vec<_>>();
-    let rpaths = get_rpaths(config, &libs);
-    flags.extend_from_slice(&rpaths_to_flags(&rpaths));
+    let rpaths = get_rpaths(config, &libs[..]);
+    flags.extend_from_slice(&rpaths_to_flags(&rpaths[..]));
 
     // Use DT_RUNPATH instead of DT_RPATH if available
     if config.linker_is_gnu {
@@ -51,13 +51,7 @@ pub fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {
 fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
     let mut ret = Vec::new();
     for rpath in rpaths {
-        if rpath.contains(',') {
-            ret.push("-Wl,-rpath".into());
-            ret.push("-Xlinker".into());
-            ret.push(rpath.clone());
-        } else {
-            ret.push(format!("-Wl,-rpath,{}", &(*rpath)));
-        }
+        ret.push(format!("-Wl,-rpath,{}", &(*rpath)));
     }
     return ret;
 }
@@ -84,14 +78,14 @@ fn get_rpaths(config: &mut RPathConfig, libs: &[PathBuf]) -> Vec<String> {
         }
     }
 
-    log_rpaths("relative", &rel_rpaths);
-    log_rpaths("fallback", &fallback_rpaths);
+    log_rpaths("relative", &rel_rpaths[..]);
+    log_rpaths("fallback", &fallback_rpaths[..]);
 
     let mut rpaths = rel_rpaths;
-    rpaths.extend_from_slice(&fallback_rpaths);
+    rpaths.extend_from_slice(&fallback_rpaths[..]);
 
     // Remove duplicates
-    let rpaths = minimize_rpaths(&rpaths);
+    let rpaths = minimize_rpaths(&rpaths[..]);
     return rpaths;
 }
 
@@ -177,7 +171,7 @@ fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {
     let mut set = HashSet::new();
     let mut minimized = Vec::new();
     for rpath in rpaths {
-        if set.insert(rpath) {
+        if set.insert(&rpath[..]) {
             minimized.push(rpath.clone());
         }
     }
@@ -263,20 +257,5 @@ mod tests {
                                                    Path::new("lib/libstd.so"));
             assert_eq!(res, "$ORIGIN/../lib");
         }
-    }
-
-    #[test]
-    fn test_xlinker() {
-        let args = rpaths_to_flags(&[
-            "a/normal/path".to_string(),
-            "a,comma,path".to_string()
-        ]);
-
-        assert_eq!(args, vec![
-            "-Wl,-rpath,a/normal/path".to_string(),
-            "-Wl,-rpath".to_string(),
-            "-Xlinker".to_string(),
-            "a,comma,path".to_string()
-        ]);
     }
 }

@@ -10,25 +10,14 @@
 
 #![cfg_attr(target_os = "nacl", allow(dead_code))]
 
-/// Common code for printing the backtrace in the same way across the different
-/// supported platforms.
-
 use env;
 use io::prelude::*;
 use io;
 use libc;
 use str;
 use sync::atomic::{self, Ordering};
-use path::{self, Path};
-use sys::mutex::Mutex;
-use ptr;
 
-pub use sys::backtrace::{
-    unwind_backtrace,
-    resolve_symname,
-    foreach_symbol_fileline,
-    BacktraceContext
-};
+pub use sys::backtrace::write;
 
 #[cfg(target_pointer_width = "64")]
 pub const HEX_WIDTH: usize = 18;
@@ -36,203 +25,45 @@ pub const HEX_WIDTH: usize = 18;
 #[cfg(target_pointer_width = "32")]
 pub const HEX_WIDTH: usize = 10;
 
-/// Represents an item in the backtrace list. See `unwind_backtrace` for how
-/// it is created.
-#[derive(Debug, Copy, Clone)]
-pub struct Frame {
-    /// Exact address of the call that failed.
-    pub exact_position: *const libc::c_void,
-    /// Address of the enclosing function.
-    pub symbol_addr: *const libc::c_void,
-}
-
-/// Max number of frames to print.
-const MAX_NB_FRAMES: usize = 100;
-
-/// Prints the current backtrace.
-pub fn print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
-    static LOCK: Mutex = Mutex::new();
-
-    // Use a lock to prevent mixed output in multithreading context.
-    // Some platforms also requires it, like `SymFromAddr` on Windows.
-    unsafe {
-        LOCK.lock();
-        let res = _print(w, format);
-        LOCK.unlock();
-        res
-    }
-}
-
-fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
-    let mut frames = [Frame {
-        exact_position: ptr::null(),
-        symbol_addr: ptr::null(),
-    }; MAX_NB_FRAMES];
-    let (nb_frames, context) = unwind_backtrace(&mut frames)?;
-    let (skipped_before, skipped_after) =
-        filter_frames(&frames[..nb_frames], format, &context);
-    if skipped_before + skipped_after > 0 {
-        writeln!(w, "note: Some details are omitted, \
-                     run with `RUST_BACKTRACE=full` for a verbose backtrace.")?;
-    }
-    writeln!(w, "stack backtrace:")?;
-
-    let filtered_frames = &frames[..nb_frames - skipped_after];
-    for (index, frame) in filtered_frames.iter().skip(skipped_before).enumerate() {
-        resolve_symname(*frame, |symname| {
-            output(w, index, *frame, symname, format)
-        }, &context)?;
-        let has_more_filenames = foreach_symbol_fileline(*frame, |file, line| {
-            output_fileline(w, file, line, format)
-        }, &context)?;
-        if has_more_filenames {
-            w.write_all(b" <... and possibly more>")?;
-        }
-    }
-
-    Ok(())
-}
-
-/// Returns a number of frames to remove at the beginning and at the end of the
-/// backtrace, according to the backtrace format.
-fn filter_frames(frames: &[Frame],
-                 format: PrintFormat,
-                 context: &BacktraceContext) -> (usize, usize)
-{
-    if format == PrintFormat::Full {
-        return (0, 0);
-    }
-
-    let skipped_before = 0;
-
-    let skipped_after = frames.len() - frames.iter().position(|frame| {
-        let mut is_marker = false;
-        let _ = resolve_symname(*frame, |symname| {
-            if let Some(mangled_symbol_name) = symname {
-                // Use grep to find the concerned functions
-                if mangled_symbol_name.contains("__rust_begin_short_backtrace") {
-                    is_marker = true;
-                }
-            }
-            Ok(())
-        }, context);
-        is_marker
-    }).unwrap_or(frames.len());
-
-    if skipped_before + skipped_after >= frames.len() {
-        // Avoid showing completely empty backtraces
-        return (0, 0);
-    }
-
-    (skipped_before, skipped_after)
-}
-
-
-/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
-#[inline(never)]
-pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
-    where F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
-{
-    f()
-}
-
-/// Controls how the backtrace should be formated.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum PrintFormat {
-    /// Show all the frames with absolute path for files.
-    Full = 2,
-    /// Show only relevant data from the backtrace.
-    Short = 3,
-}
-
 // For now logging is turned off by default, and this function checks to see
 // whether the magical environment variable is present to see if it's turned on.
-pub fn log_enabled() -> Option<PrintFormat> {
+pub fn log_enabled() -> bool {
     static ENABLED: atomic::AtomicIsize = atomic::AtomicIsize::new(0);
     match ENABLED.load(Ordering::SeqCst) {
-        0 => {},
-        1 => return None,
-        2 => return Some(PrintFormat::Full),
-        3 => return Some(PrintFormat::Short),
-        _ => unreachable!(),
+        1 => return false,
+        2 => return true,
+        _ => {}
     }
 
     let val = match env::var_os("RUST_BACKTRACE") {
-        Some(x) => if &x == "0" {
-            None
-        } else if &x == "full" {
-            Some(PrintFormat::Full)
-        } else {
-            Some(PrintFormat::Short)
-        },
-        None => None,
-    };
-    ENABLED.store(match val {
-        Some(v) => v as isize,
+        Some(x) => if &x == "0" { 1 } else { 2 },
         None => 1,
-    }, Ordering::SeqCst);
-    val
+    };
+    ENABLED.store(val, Ordering::SeqCst);
+    val == 2
 }
 
-/// Print the symbol of the backtrace frame.
-///
-/// These output functions should now be used everywhere to ensure consistency.
-/// You may want to also use `output_fileline`.
-fn output(w: &mut Write, idx: usize, frame: Frame,
-              s: Option<&str>, format: PrintFormat) -> io::Result<()> {
-    // Remove the `17: 0x0 - <unknown>` line.
-    if format == PrintFormat::Short && frame.exact_position == ptr::null() {
-        return Ok(());
+// These output functions should now be used everywhere to ensure consistency.
+pub fn output(w: &mut Write, idx: isize, addr: *mut libc::c_void,
+              s: Option<&[u8]>) -> io::Result<()> {
+    write!(w, "  {:2}: {:2$?} - ", idx, addr, HEX_WIDTH)?;
+    match s.and_then(|s| str::from_utf8(s).ok()) {
+        Some(string) => demangle(w, string)?,
+        None => write!(w, "<unknown>")?,
     }
-    match format {
-        PrintFormat::Full => write!(w,
-                                    "  {:2}: {:2$?} - ",
-                                    idx,
-                                    frame.exact_position,
-                                    HEX_WIDTH)?,
-        PrintFormat::Short => write!(w, "  {:2}: ", idx)?,
-    }
-    match s {
-        Some(string) => demangle(w, string, format)?,
-        None => w.write_all(b"<unknown>")?,
-    }
-    w.write_all(b"\n")
+    w.write_all(&['\n' as u8])
 }
 
-/// Print the filename and line number of the backtrace frame.
-///
-/// See also `output`.
 #[allow(dead_code)]
-fn output_fileline(w: &mut Write, file: &[u8], line: libc::c_int,
-                       format: PrintFormat) -> io::Result<()> {
-    // prior line: "  ##: {:2$} - func"
-    w.write_all(b"")?;
-    match format {
-        PrintFormat::Full => write!(w,
-                                    "           {:1$}",
-                                    "",
-                                    HEX_WIDTH)?,
-        PrintFormat::Short => write!(w, "           ")?,
-    }
-
+pub fn output_fileline(w: &mut Write, file: &[u8], line: libc::c_int,
+                       more: bool) -> io::Result<()> {
     let file = str::from_utf8(file).unwrap_or("<unknown>");
-    let file_path = Path::new(file);
-    let mut already_printed = false;
-    if format == PrintFormat::Short && file_path.is_absolute() {
-        if let Ok(cwd) = env::current_dir() {
-            if let Ok(stripped) = file_path.strip_prefix(&cwd) {
-                if let Some(s) = stripped.to_str() {
-                    write!(w, "  at .{}{}:{}", path::MAIN_SEPARATOR, s, line)?;
-                    already_printed = true;
-                }
-            }
-        }
+    // prior line: "  ##: {:2$} - func"
+    write!(w, "      {:3$}at {}:{}", "", file, line, HEX_WIDTH)?;
+    if more {
+        write!(w, " <... and possibly more>")?;
     }
-    if !already_printed {
-        write!(w, "  at {}:{}", file, line)?;
-    }
-
-    w.write_all(b"\n")
+    w.write_all(&['\n' as u8])
 }
 
 
@@ -253,7 +84,7 @@ fn output_fileline(w: &mut Write, file: &[u8], line: libc::c_int,
 // Note that this demangler isn't quite as fancy as it could be. We have lots
 // of other information in our symbols like hashes, version, type information,
 // etc. Additionally, this doesn't handle glue symbols at all.
-pub fn demangle(writer: &mut Write, s: &str, format: PrintFormat) -> io::Result<()> {
+pub fn demangle(writer: &mut Write, s: &str) -> io::Result<()> {
     // First validate the symbol. If it doesn't look like anything we're
     // expecting, we just print it literally. Note that we must handle non-rust
     // symbols because we could have any function in the backtrace.
@@ -292,22 +123,6 @@ pub fn demangle(writer: &mut Write, s: &str, format: PrintFormat) -> io::Result<
     if !valid {
         writer.write_all(s.as_bytes())?;
     } else {
-        // remove the `::hfc2edb670e5eda97` part at the end of the symbol.
-        if format == PrintFormat::Short {
-            // The symbol in still mangled.
-            let mut split = inner.rsplitn(2, "17h");
-            match (split.next(), split.next()) {
-                (Some(addr), rest) => {
-                    if addr.len() == 16 &&
-                       addr.chars().all(|c| c.is_digit(16))
-                    {
-                        inner = rest.unwrap_or("");
-                    }
-                }
-                _ => (),
-            }
-        }
-
         let mut first = true;
         while !inner.is_empty() {
             if !first {
@@ -393,9 +208,7 @@ mod tests {
     use sys_common;
     macro_rules! t { ($a:expr, $b:expr) => ({
         let mut m = Vec::new();
-        sys_common::backtrace::demangle(&mut m,
-                                        $a,
-                                        super::PrintFormat::Full).unwrap();
+        sys_common::backtrace::demangle(&mut m, $a).unwrap();
         assert_eq!(String::from_utf8(m).unwrap(), $b);
     }) }
 

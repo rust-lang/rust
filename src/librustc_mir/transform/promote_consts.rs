@@ -97,8 +97,11 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
             // Ignore drops, if the temp gets promoted,
             // then it's constant and thus drop is noop.
             // Storage live ranges are also irrelevant.
-            if context.is_drop() || context.is_storage_marker() {
-                return;
+            match context {
+                LvalueContext::Drop |
+                LvalueContext::StorageLive |
+                LvalueContext::StorageDead => return,
+                _ => {}
             }
 
             let temp = &mut self.temps[index];
@@ -115,17 +118,15 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
                     _ => { /* mark as unpromotable below */ }
                 }
             } else if let TempState::Defined { ref mut uses, .. } = *temp {
-                // We always allow borrows, even mutable ones, as we need
-                // to promote mutable borrows of some ZSTs e.g. `&mut []`.
-                let allowed_use = match context {
-                    LvalueContext::Borrow {..} => true,
-                    _ => context.is_nonmutating_use()
-                };
-                if allowed_use {
-                    *uses += 1;
-                    return;
+                match context {
+                    LvalueContext::Borrow {..} |
+                    LvalueContext::Consume |
+                    LvalueContext::Inspect => {
+                        *uses += 1;
+                        return;
+                    }
+                    _ => { /* mark as unpromotable below */ }
                 }
-                /* mark as unpromotable below */
             }
             *temp = TempState::Unpromotable;
         }
@@ -208,8 +209,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         let no_stmts = self.source[loc.block].statements.len();
         let new_temp = self.promoted.local_decls.push(
-            LocalDecl::new_temp(self.source.local_decls[temp].ty,
-                                self.source.local_decls[temp].source_info.span));
+            LocalDecl::new_temp(self.source.local_decls[temp].ty));
 
         debug!("promote({:?} @ {:?}/{:?}, {:?})",
                temp, loc, no_stmts, self.keep_original);
@@ -238,7 +238,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             self.visit_rvalue(&mut rvalue, loc);
             self.assign(new_temp, rvalue, source_info.span);
         } else {
-            let terminator = if self.keep_original {
+            let mut terminator = if self.keep_original {
                 self.source[loc.block].terminator().clone()
             } else {
                 let terminator = self.source[loc.block].terminator_mut();
@@ -256,30 +256,28 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 }
             };
 
-            match terminator.kind {
+            let last = self.promoted.basic_blocks().last().unwrap();
+            let new_target = self.new_block();
+
+            terminator.kind = match terminator.kind {
                 TerminatorKind::Call { mut func, mut args, .. } => {
                     self.visit_operand(&mut func, loc);
                     for arg in &mut args {
                         self.visit_operand(arg, loc);
                     }
-
-                    let last = self.promoted.basic_blocks().last().unwrap();
-                    let new_target = self.new_block();
-
-                    *self.promoted[last].terminator_mut() = Terminator {
-                        kind: TerminatorKind::Call {
-                            func: func,
-                            args: args,
-                            cleanup: None,
-                            destination: Some((Lvalue::Local(new_temp), new_target))
-                        },
-                        ..terminator
-                    };
+                    TerminatorKind::Call {
+                        func: func,
+                        args: args,
+                        cleanup: None,
+                        destination: Some((Lvalue::Local(new_temp), new_target))
+                    }
                 }
                 ref kind => {
                     span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
                 }
             };
+
+            *self.promoted[last].terminator_mut() = terminator;
         };
 
         self.keep_original = old_keep_original;
@@ -380,8 +378,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
         };
 
         // Declare return pointer local
-        let initial_locals = iter::once(LocalDecl::new_return_pointer(ty, span))
-            .collect();
+        let initial_locals = iter::once(LocalDecl::new_return_pointer(ty)).collect();
 
         let mut promoter = Promoter {
             promoted: Mir::new(

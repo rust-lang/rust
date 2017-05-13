@@ -30,21 +30,18 @@ pub use self::Visibility::{Public, Inherited};
 pub use self::PathParameters::*;
 
 use hir::def::Def;
-use hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
-use util::nodemap::{NodeMap, FxHashSet};
+use hir::def_id::DefId;
+use util::nodemap::{NodeMap, FxHashMap, FxHashSet};
 
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, ExpnId, DUMMY_SP};
 use syntax::codemap::{self, Spanned};
 use syntax::abi::Abi;
-use syntax::ast::{Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
+use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
-use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
-use syntax::tokenstream::TokenStream;
+use syntax::tokenstream::TokenTree;
 use syntax::util::ThinVec;
-
-use rustc_data_structures::indexed_vec;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -76,74 +73,10 @@ pub mod pat_util;
 pub mod print;
 pub mod svh;
 
-/// A HirId uniquely identifies a node in the HIR of then current crate. It is
-/// composed of the `owner`, which is the DefIndex of the directly enclosing
-/// hir::Item, hir::TraitItem, or hir::ImplItem (i.e. the closest "item-like"),
-/// and the `local_id` which is unique within the given owner.
-///
-/// This two-level structure makes for more stable values: One can move an item
-/// around within the source code, or add or remove stuff before it, without
-/// the local_id part of the HirId changing, which is a very useful property
-/// incremental compilation where we have to persist things through changes to
-/// the code base.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug,
-         RustcEncodable, RustcDecodable)]
-pub struct HirId {
-    pub owner: DefIndex,
-    pub local_id: ItemLocalId,
-}
-
-/// An `ItemLocalId` uniquely identifies something within a given "item-like",
-/// that is within a hir::Item, hir::TraitItem, or hir::ImplItem. There is no
-/// guarantee that the numerical value of a given `ItemLocalId` corresponds to
-/// the node's position within the owning item in any way, but there is a
-/// guarantee that the `LocalItemId`s within an owner occupy a dense range of
-/// integers starting at zero, so a mapping that maps all or most nodes within
-/// an "item-like" to something else can be implement by a `Vec` instead of a
-/// tree or hash map.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug,
-         RustcEncodable, RustcDecodable)]
-pub struct ItemLocalId(pub u32);
-
-impl ItemLocalId {
-    pub fn as_usize(&self) -> usize {
-        self.0 as usize
-    }
-}
-
-impl indexed_vec::Idx for ItemLocalId {
-    fn new(idx: usize) -> Self {
-        debug_assert!((idx as u32) as usize == idx);
-        ItemLocalId(idx as u32)
-    }
-
-    fn index(self) -> usize {
-        self.0 as usize
-    }
-}
-
-/// The `HirId` corresponding to CRATE_NODE_ID and CRATE_DEF_INDEX
-pub const CRATE_HIR_ID: HirId = HirId {
-    owner: CRATE_DEF_INDEX,
-    local_id: ItemLocalId(0)
-};
-
-pub const DUMMY_HIR_ID: HirId = HirId {
-    owner: CRATE_DEF_INDEX,
-    local_id: ItemLocalId(!0)
-};
-
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
     pub id: NodeId,
     pub span: Span,
-
-    /// Either "'a", referring to a named lifetime definition,
-    /// or "" (aka keywords::Invalid), for elision placeholders.
-    ///
-    /// HIR lowering inserts these placeholders in type paths that
-    /// refer to type definitions needing lifetime parameters,
-    /// `&T` and `&mut T`, and trait objects without `... + 'a`.
     pub name: Name,
 }
 
@@ -153,16 +86,6 @@ impl fmt::Debug for Lifetime {
                "lifetime({}: {})",
                self.id,
                print::to_string(print::NO_ANN, |s| s.print_lifetime(self)))
-    }
-}
-
-impl Lifetime {
-    pub fn is_elided(&self) -> bool {
-        self.name == keywords::Invalid.name()
-    }
-
-    pub fn is_static(&self) -> bool {
-        self.name == keywords::StaticLifetime.name()
     }
 }
 
@@ -242,6 +165,30 @@ impl PathParameters {
         })
     }
 
+    pub fn is_empty(&self) -> bool {
+        match *self {
+            AngleBracketedParameters(ref data) => data.is_empty(),
+
+            // Even if the user supplied no types, something like
+            // `X()` is equivalent to `X<(),()>`.
+            ParenthesizedParameters(..) => false,
+        }
+    }
+
+    pub fn has_lifetimes(&self) -> bool {
+        match *self {
+            AngleBracketedParameters(ref data) => !data.lifetimes.is_empty(),
+            ParenthesizedParameters(_) => false,
+        }
+    }
+
+    pub fn has_types(&self) -> bool {
+        match *self {
+            AngleBracketedParameters(ref data) => !data.types.is_empty(),
+            ParenthesizedParameters(..) => true,
+        }
+    }
+
     /// Returns the types that the user wrote. Note that these do not necessarily map to the type
     /// parameters in the parenthesized case.
     pub fn types(&self) -> HirVec<&P<Ty>> {
@@ -296,6 +243,12 @@ pub struct AngleBracketedParameterData {
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
     pub bindings: HirVec<TypeBinding>,
+}
+
+impl AngleBracketedParameterData {
+    fn is_empty(&self) -> bool {
+        self.lifetimes.is_empty() && self.types.is_empty() && self.bindings.is_empty()
+    }
 }
 
 /// A path like `Foo(A,B) -> C`
@@ -450,8 +403,8 @@ pub struct WhereRegionPredicate {
 pub struct WhereEqPredicate {
     pub id: NodeId,
     pub span: Span,
-    pub lhs_ty: P<Ty>,
-    pub rhs_ty: P<Ty>,
+    pub path: Path,
+    pub ty: P<Ty>,
 }
 
 pub type CrateConfig = HirVec<P<MetaItem>>;
@@ -473,15 +426,7 @@ pub struct Crate {
 
     pub trait_items: BTreeMap<TraitItemId, TraitItem>,
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
-    pub bodies: BTreeMap<BodyId, Body>,
-    pub trait_impls: BTreeMap<DefId, Vec<NodeId>>,
-    pub trait_default_impl: BTreeMap<DefId, NodeId>,
-
-    /// A list of the body ids written out in the order in which they
-    /// appear in the crate. If you're going to process all the bodies
-    /// in the crate, you should iterate over this list rather than the keys
-    /// of bodies.
-    pub body_ids: Vec<BodyId>,
+    pub bodies: FxHashMap<BodyId, Body>,
 }
 
 impl Crate {
@@ -535,7 +480,7 @@ pub struct MacroDef {
     pub attrs: HirVec<Attribute>,
     pub id: NodeId,
     pub span: Span,
-    pub body: TokenStream,
+    pub body: HirVec<TokenTree>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -549,11 +494,6 @@ pub struct Block {
     /// Distinguishes between `unsafe { ... }` and `{ ... }`
     pub rules: BlockCheckMode,
     pub span: Span,
-    /// If true, then there may exist `break 'a` values that aim to
-    /// break out of this block early. As of this writing, this is not
-    /// currently permitted in Rust itself, but it is generated as
-    /// part of `catch` statements.
-    pub targeted_by_break: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
@@ -633,12 +573,6 @@ pub enum BindingMode {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum RangeEnd {
-    Included,
-    Excluded,
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum PatKind {
     /// Represents a wildcard pattern (`_`)
     Wild,
@@ -669,8 +603,8 @@ pub enum PatKind {
     Ref(P<Pat>, Mutability),
     /// A literal
     Lit(P<Expr>),
-    /// A range pattern, e.g. `1...2` or `1..2`
-    Range(P<Expr>, P<Expr>, RangeEnd),
+    /// A range pattern, e.g. `1...2`
+    Range(P<Expr>, P<Expr>),
     /// `[a, b, ..i, y, z]` is represented as:
     ///     `PatKind::Slice(box [a, b], Some(i), box [y, z])`
     Slice(HirVec<P<Pat>>, Option<P<Pat>>, HirVec<P<Pat>>),
@@ -995,8 +929,8 @@ pub enum Expr_ {
     ExprType(P<Expr>, P<Ty>),
     /// An `if` block, with an optional else block
     ///
-    /// `if expr { expr } else { expr }`
-    ExprIf(P<Expr>, P<Expr>, Option<P<Expr>>),
+    /// `if expr { block } else { expr }`
+    ExprIf(P<Expr>, P<Block>, Option<P<Expr>>),
     /// A while loop, with an optional label
     ///
     /// `'label: while expr { block }`
@@ -1036,9 +970,9 @@ pub enum Expr_ {
     /// A referencing operation (`&a` or `&mut a`)
     ExprAddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break
-    ExprBreak(Destination, Option<P<Expr>>),
+    ExprBreak(Option<Label>, Option<P<Expr>>),
     /// A `continue`, with an optional label
-    ExprAgain(Destination),
+    ExprAgain(Option<Label>),
     /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
@@ -1074,7 +1008,7 @@ pub enum QPath {
     ///
     /// UFCS source paths can desugar into this, with `Vec::new` turning into
     /// `<Vec>::new`, and `T::X::Y::method` into `<<<T>::X>::Y>::method`,
-    /// the `X` and `Y` nodes each being a `TyPath(QPath::TypeRelative(..))`.
+    /// the `X` and `Y` nodes being each a `TyPath(QPath::TypeRelative(..))`.
     TypeRelative(P<Ty>, P<PathSegment>)
 }
 
@@ -1107,72 +1041,12 @@ pub enum LoopSource {
     ForLoop,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum LoopIdError {
-    OutsideLoopScope,
-    UnlabeledCfInWhileCondition,
-    UnresolvedLabel,
-}
-
-impl fmt::Display for LoopIdError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(match *self {
-            LoopIdError::OutsideLoopScope => "not inside loop scope",
-            LoopIdError::UnlabeledCfInWhileCondition =>
-                "unlabeled control flow (break or continue) in while condition",
-            LoopIdError::UnresolvedLabel => "label not found",
-        }, f)
-    }
-}
-
-// FIXME(cramertj) this should use `Result` once master compiles w/ a vesion of Rust where
-// `Result` implements `Encodable`/`Decodable`
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum LoopIdResult {
-    Ok(NodeId),
-    Err(LoopIdError),
-}
-impl Into<Result<NodeId, LoopIdError>> for LoopIdResult {
-    fn into(self) -> Result<NodeId, LoopIdError> {
-        match self {
-            LoopIdResult::Ok(ok) => Ok(ok),
-            LoopIdResult::Err(err) => Err(err),
-        }
-    }
-}
-impl From<Result<NodeId, LoopIdError>> for LoopIdResult {
-    fn from(res: Result<NodeId, LoopIdError>) -> Self {
-        match res {
-            Ok(ok) => LoopIdResult::Ok(ok),
-            Err(err) => LoopIdResult::Err(err),
-        }
-    }
-}
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum ScopeTarget {
-    Block(NodeId),
-    Loop(LoopIdResult),
-}
-
-impl ScopeTarget {
-    pub fn opt_id(self) -> Option<NodeId> {
-        match self {
-            ScopeTarget::Block(node_id) |
-            ScopeTarget::Loop(LoopIdResult::Ok(node_id)) => Some(node_id),
-            ScopeTarget::Loop(LoopIdResult::Err(_)) => None,
-        }
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub struct Destination {
-    // This is `Some(_)` iff there is an explicit user-specified `label
-    pub ident: Option<Spanned<Ident>>,
-
-    // These errors are caught and then reported during the diagnostics pass in
-    // librustc_passes/loops.rs
-    pub target_id: ScopeTarget,
+pub struct Label {
+    pub span: Span,
+    pub name: Name,
+    pub loop_id: NodeId
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1328,7 +1202,7 @@ pub enum Ty_ {
     /// A raw pointer (`*const T` or `*mut T`)
     TyPtr(MutTy),
     /// A reference (`&'a T` or `&'a mut T`)
-    TyRptr(Lifetime, MutTy),
+    TyRptr(Option<Lifetime>, MutTy),
     /// A bare function (e.g. `fn(usize) -> bool`)
     TyBareFn(P<BareFnTy>),
     /// The never type (`!`)
@@ -1340,19 +1214,18 @@ pub enum Ty_ {
     ///
     /// Type parameters may be stored in each `PathSegment`.
     TyPath(QPath),
-    /// A trait object type `Bound1 + Bound2 + Bound3`
-    /// where `Bound` is a trait or a lifetime.
-    TyTraitObject(HirVec<PolyTraitRef>, Lifetime),
-    /// An `impl Bound1 + Bound2 + Bound3` type
-    /// where `Bound` is a trait or a lifetime.
+
+    /// Something like `A+B`. Note that `B` must always be a path.
+    TyObjectSum(P<Ty>, TyParamBounds),
+    /// A type like `for<'a> Foo<&'a Bar>`
+    TyPolyTraitRef(TyParamBounds),
+    /// An `impl TraitA+TraitB` type.
     TyImplTrait(TyParamBounds),
     /// Unused for now
     TyTypeof(BodyId),
     /// TyInfer means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     TyInfer,
-    /// Placeholder for a type that has failed to be defined.
-    TyErr,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1372,7 +1245,7 @@ pub struct InlineAsm {
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
-    pub ctxt: SyntaxContext,
+    pub expn_id: ExpnId,
 }
 
 /// represents an argument in a function header
@@ -1388,9 +1261,6 @@ pub struct FnDecl {
     pub inputs: HirVec<P<Ty>>,
     pub output: FunctionRetTy,
     pub variadic: bool,
-    /// True if this function has an `self`, `&self` or `&mut self` receiver
-    /// (but not a `self: Xxx` one).
-    pub has_implicit_self: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1496,12 +1366,6 @@ pub struct ForeignMod {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct GlobalAsm {
-    pub asm: Symbol,
-    pub ctxt: SyntaxContext,
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct EnumDef {
     pub variants: HirVec<Variant>,
 }
@@ -1562,18 +1426,6 @@ pub enum Visibility {
     Crate,
     Restricted { path: P<Path>, id: NodeId },
     Inherited,
-}
-
-impl Visibility {
-    pub fn is_pub_restricted(&self) -> bool {
-        use self::Visibility::*;
-        match self {
-            &Public |
-            &Inherited => false,
-            &Crate |
-            &Restricted { .. } => true,
-        }
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1692,8 +1544,6 @@ pub enum Item_ {
     ItemMod(Mod),
     /// An external module
     ItemForeignMod(ForeignMod),
-    /// Module-level inline assembly (from global_asm!)
-    ItemGlobalAsm(P<GlobalAsm>),
     /// A type alias, e.g. `type Foo = Bar<u8>`
     ItemTy(P<Ty>, Generics),
     /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
@@ -1712,7 +1562,6 @@ pub enum Item_ {
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,
              ImplPolarity,
-             Defaultness,
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
@@ -1729,7 +1578,6 @@ impl Item_ {
             ItemFn(..) => "function",
             ItemMod(..) => "module",
             ItemForeignMod(..) => "foreign module",
-            ItemGlobalAsm(..) => "global asm",
             ItemTy(..) => "type alias",
             ItemEnum(..) => "enum",
             ItemStruct(..) => "struct",

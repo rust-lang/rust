@@ -10,7 +10,8 @@
 
 pub enum SomeEnum {
     B = SomeEnum::A,
-    //~^ ERROR no associated item named `A` found for type `SomeEnum`
+    //~^ ERROR constant evaluation error
+    //~| unresolved path in constant expression
 }
 
 fn main() {}

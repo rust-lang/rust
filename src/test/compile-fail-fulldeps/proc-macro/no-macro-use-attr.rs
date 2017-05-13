@@ -13,7 +13,7 @@
 #![feature(rustc_attrs)]
 
 extern crate derive_a;
-//~^ WARN proc macro crates and `#[no_link]` crates have no effect without `#[macro_use]`
+//~^ WARN custom derive crates and `#[no_link]` crates have no effect without `#[macro_use]`
 
 #[rustc_error]
 fn main() {} //~ ERROR compilation successful

@@ -13,15 +13,13 @@
 //! Single-threaded reference-counting pointers.
 //!
 //! The type [`Rc<T>`][`Rc`] provides shared ownership of a value of type `T`,
-//! allocated in the heap. Invoking [`clone`][clone] on [`Rc`] produces a new
+//! allocated in the heap. Invoking [`clone()`][clone] on [`Rc`] produces a new
 //! pointer to the same value in the heap. When the last [`Rc`] pointer to a
 //! given value is destroyed, the pointed-to value is also destroyed.
 //!
-//! Shared references in Rust disallow mutation by default, and [`Rc`]
-//! is no exception: you cannot obtain a mutable reference to
-//! something inside an [`Rc`]. If you need mutability, put a [`Cell`]
-//! or [`RefCell`] inside the [`Rc`]; see [an example of mutability
-//! inside an Rc][mutability].
+//! Shared references in Rust disallow mutation by default, and `Rc` is no
+//! exception. If you need to mutate through an [`Rc`], use [`Cell`] or
+//! [`RefCell`].
 //!
 //! [`Rc`] uses non-atomic reference counting. This means that overhead is very
 //! low, but an [`Rc`] cannot be sent between threads, and consequently [`Rc`]
@@ -30,7 +28,7 @@
 //! threads. If you need multi-threaded, atomic reference counting, use
 //! [`sync::Arc`][arc].
 //!
-//! The [`downgrade`][downgrade] method can be used to create a non-owning
+//! The [`downgrade()`][downgrade] method can be used to create a non-owning
 //! [`Weak`] pointer. A [`Weak`] pointer can be [`upgrade`][upgrade]d
 //! to an [`Rc`], but this will return [`None`] if the value has
 //! already been dropped.
@@ -215,8 +213,7 @@
 //! [downgrade]: struct.Rc.html#method.downgrade
 //! [upgrade]: struct.Weak.html#method.upgrade
 //! [`None`]: ../../std/option/enum.Option.html#variant.None
-//! [assoc]: ../../book/first-edition/method-syntax.html#associated-functions
-//! [mutability]: ../../std/cell/index.html#introducing-mutability-inside-of-something-immutable
+//! [assoc]: ../../book/method-syntax.html#associated-functions
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -230,7 +227,7 @@ use core::cell::Cell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::intrinsics::abort;
+use core::intrinsics::{abort, assume};
 use core::marker;
 use core::marker::Unsize;
 use core::mem::{self, align_of_val, forget, size_of, size_of_val, uninitialized};
@@ -239,7 +236,7 @@ use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
 use core::convert::From;
 
-use heap::{allocate, deallocate, box_free};
+use heap::deallocate;
 use raw_vec::RawVec;
 
 struct RcBox<T: ?Sized> {
@@ -247,6 +244,7 @@ struct RcBox<T: ?Sized> {
     weak: Cell<usize>,
     value: T,
 }
+
 
 /// A single-threaded reference-counting pointer.
 ///
@@ -340,6 +338,19 @@ impl<T> Rc<T> {
         }
     }
 
+    /// Checks whether [`Rc::try_unwrap`][try_unwrap] would return
+    /// [`Ok`].
+    ///
+    /// [try_unwrap]: struct.Rc.html#method.try_unwrap
+    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
+    #[unstable(feature = "rc_would_unwrap",
+               reason = "just added for niche usecase",
+               issue = "28356")]
+    #[rustc_deprecated(since = "1.15.0", reason = "too niche; use `strong_count` instead")]
+    pub fn would_unwrap(this: &Self) -> bool {
+        Rc::strong_count(&this) == 1
+    }
+
     /// Consumes the `Rc`, returning the wrapped pointer.
     ///
     /// To avoid a memory leak the pointer must be converted back to an `Rc` using
@@ -350,15 +361,17 @@ impl<T> Rc<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(rc_raw)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let x = Rc::new(10);
     /// let x_ptr = Rc::into_raw(x);
     /// assert_eq!(unsafe { *x_ptr }, 10);
     /// ```
-    #[stable(feature = "rc_raw", since = "1.17.0")]
-    pub fn into_raw(this: Self) -> *const T {
-        let ptr: *const T = &*this;
+    #[unstable(feature = "rc_raw", issue = "37197")]
+    pub fn into_raw(this: Self) -> *mut T {
+        let ptr = unsafe { &mut (**this.ptr).value as *mut _ };
         mem::forget(this);
         ptr
     }
@@ -376,6 +389,8 @@ impl<T> Rc<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(rc_raw)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let x = Rc::new(10);
@@ -391,15 +406,11 @@ impl<T> Rc<T> {
     ///
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
     /// ```
-    #[stable(feature = "rc_raw", since = "1.17.0")]
-    pub unsafe fn from_raw(ptr: *const T) -> Self {
+    #[unstable(feature = "rc_raw", issue = "37197")]
+    pub unsafe fn from_raw(ptr: *mut T) -> Self {
         // To find the corresponding pointer to the `RcBox` we need to subtract the offset of the
         // `value` field from the pointer.
-
-        let ptr = (ptr as *const u8).offset(-offset_of!(RcBox<T>, value));
-        Rc {
-            ptr: Shared::new(ptr as *mut u8 as *mut _)
-        }
+        Rc { ptr: Shared::new((ptr as *mut u8).offset(-offset_of!(RcBox<T>, value)) as *mut _) }
     }
 }
 
@@ -424,38 +435,6 @@ impl Rc<str> {
             let rcbox_ptr: *mut RcBox<str> = mem::transmute([ptr as usize, value.len()]);
             assert!(aligned_len * size_of::<usize>() == size_of_val(&*rcbox_ptr));
             Rc { ptr: Shared::new(rcbox_ptr) }
-        }
-    }
-}
-
-impl<T> Rc<[T]> {
-    /// Constructs a new `Rc<[T]>` from a `Box<[T]>`.
-    #[doc(hidden)]
-    #[unstable(feature = "rustc_private",
-               reason = "for internal use in rustc",
-               issue = "0")]
-    pub fn __from_array(value: Box<[T]>) -> Rc<[T]> {
-        unsafe {
-            let ptr: *mut RcBox<[T]> =
-                mem::transmute([mem::align_of::<RcBox<[T; 1]>>(), value.len()]);
-            // FIXME(custom-DST): creating this invalid &[T] is dubiously defined,
-            // we should have a better way of getting the size/align
-            // of a DST from its unsized part.
-            let ptr = allocate(size_of_val(&*ptr), align_of_val(&*ptr));
-            let ptr: *mut RcBox<[T]> = mem::transmute([ptr as usize, value.len()]);
-
-            // Initialize the new RcBox.
-            ptr::write(&mut (*ptr).strong, Cell::new(1));
-            ptr::write(&mut (*ptr).weak, Cell::new(1));
-            ptr::copy_nonoverlapping(
-                value.as_ptr(),
-                &mut (*ptr).value as *mut [T] as *mut T,
-                value.len());
-
-            // Free the original allocation without freeing its (moved) contents.
-            box_free(Box::into_raw(value));
-
-            Rc { ptr: Shared::new(ptr as *mut _) }
         }
     }
 }
@@ -523,7 +502,11 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// [weak]: struct.Weak.html
     #[inline]
-    fn is_unique(this: &Self) -> bool {
+    #[unstable(feature = "is_unique", reason = "uniqueness has unclear meaning",
+               issue = "28356")]
+    #[rustc_deprecated(since = "1.15.0",
+                       reason = "too niche; use `strong_count` and `weak_count` instead")]
+    pub fn is_unique(this: &Self) -> bool {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
     }
 
@@ -557,22 +540,25 @@ impl<T: ?Sized> Rc<T> {
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn get_mut(this: &mut Self) -> Option<&mut T> {
         if Rc::is_unique(this) {
-            unsafe {
-                Some(&mut this.ptr.as_mut().value)
-            }
+            let inner = unsafe { &mut **this.ptr };
+            Some(&mut inner.value)
         } else {
             None
         }
     }
 
     #[inline]
-    #[stable(feature = "ptr_eq", since = "1.17.0")]
+    #[unstable(feature = "ptr_eq",
+               reason = "newly added",
+               issue = "36497")]
     /// Returns true if the two `Rc`s point to the same value (not
     /// just values that compare as equal).
     ///
     /// # Examples
     ///
     /// ```
+    /// #![feature(ptr_eq)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
@@ -583,7 +569,9 @@ impl<T: ?Sized> Rc<T> {
     /// assert!(!Rc::ptr_eq(&five, &other_five));
     /// ```
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
-        this.ptr.as_ptr() == other.ptr.as_ptr()
+        let this_ptr: *const RcBox<T> = *this.ptr;
+        let other_ptr: *const RcBox<T> = *other.ptr;
+        this_ptr == other_ptr
     }
 }
 
@@ -626,7 +614,7 @@ impl<T: Clone> Rc<T> {
         } else if Rc::weak_count(this) != 0 {
             // Can just steal the data, all that's left is Weaks
             unsafe {
-                let mut swap = Rc::new(ptr::read(&this.ptr.as_ref().value));
+                let mut swap = Rc::new(ptr::read(&(**this.ptr).value));
                 mem::swap(this, &mut swap);
                 swap.dec_strong();
                 // Remove implicit strong-weak ref (no need to craft a fake
@@ -640,9 +628,8 @@ impl<T: Clone> Rc<T> {
         // reference count is guaranteed to be 1 at this point, and we required
         // the `Rc<T>` itself to be `mut`, so we're returning the only possible
         // reference to the inner value.
-        unsafe {
-            &mut this.ptr.as_mut().value
-        }
+        let inner = unsafe { &mut **this.ptr };
+        &mut inner.value
     }
 }
 
@@ -657,7 +644,7 @@ impl<T: ?Sized> Deref for Rc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
+impl<T: ?Sized> Drop for Rc<T> {
     /// Drops the `Rc`.
     ///
     /// This will decrement the strong reference count. If the strong reference
@@ -685,14 +672,15 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// drop(foo);    // Doesn't print anything
     /// drop(foo2);   // Prints "dropped!"
     /// ```
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         unsafe {
-            let ptr = self.ptr.as_ptr();
+            let ptr = *self.ptr;
 
             self.dec_strong();
             if self.strong() == 0 {
                 // destroy the contained object
-                ptr::drop_in_place(self.ptr.as_mut());
+                ptr::drop_in_place(&mut (*ptr).value);
 
                 // remove the implicit "strong weak" pointer now that we've
                 // destroyed the contents.
@@ -929,7 +917,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Rc<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Pointer::fmt(&self.ptr, f)
+        fmt::Pointer::fmt(&*self.ptr, f)
     }
 }
 
@@ -940,29 +928,18 @@ impl<T> From<T> for Rc<T> {
     }
 }
 
-/// `Weak` is a version of [`Rc`] that holds a non-owning reference to the
-/// managed value. The value is accessed by calling [`upgrade`] on the `Weak`
-/// pointer, which returns an [`Option`]`<`[`Rc`]`<T>>`.
+/// A weak version of [`Rc`][rc].
 ///
-/// Since a `Weak` reference does not count towards ownership, it will not
-/// prevent the inner value from being dropped, and `Weak` itself makes no
-/// guarantees about the value still being present and may return [`None`]
-/// when [`upgrade`]d.
+/// `Weak` pointers do not count towards determining if the inner value
+/// should be dropped.
 ///
-/// A `Weak` pointer is useful for keeping a temporary reference to the value
-/// within [`Rc`] without extending its lifetime. It is also used to prevent
-/// circular references between [`Rc`] pointers, since mutual owning references
-/// would never allow either [`Arc`] to be dropped. For example, a tree could
-/// have strong [`Rc`] pointers from parent nodes to children, and `Weak`
-/// pointers from children back to their parents.
+/// The typical way to obtain a `Weak` pointer is to call
+/// [`Rc::downgrade`][downgrade].
 ///
-/// The typical way to obtain a `Weak` pointer is to call [`Rc::downgrade`].
+/// See the [module-level documentation](./index.html) for more details.
 ///
-/// [`Rc`]: struct.Rc.html
-/// [`Rc::downgrade`]: struct.Rc.html#method.downgrade
-/// [`upgrade`]: struct.Weak.html#method.upgrade
-/// [`Option`]: ../../std/option/enum.Option.html
-/// [`None`]: ../../std/option/enum.Option.html#variant.None
+/// [rc]: struct.Rc.html
+/// [downgrade]: struct.Rc.html#method.downgrade
 #[stable(feature = "rc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
     ptr: Shared<RcBox<T>>,
@@ -977,11 +954,14 @@ impl<T: ?Sized> !marker::Sync for Weak<T> {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
 impl<T> Weak<T> {
-    /// Constructs a new `Weak<T>`, allocating memory for `T` without initializing
-    /// it. Calling [`upgrade`] on the return value always gives [`None`].
+    /// Constructs a new `Weak<T>`, without an accompanying instance of `T`.
     ///
-    /// [`upgrade`]: struct.Weak.html#method.upgrade
-    /// [`None`]: ../../std/option/enum.Option.html
+    /// This allocates memory for `T`, but does not initialize it. Calling
+    /// [`upgrade`][upgrade] on the return value always gives
+    /// [`None`][option].
+    ///
+    /// [upgrade]: struct.Weak.html#method.upgrade
+    /// [option]: ../../std/option/enum.Option.html
     ///
     /// # Examples
     ///
@@ -1006,13 +986,13 @@ impl<T> Weak<T> {
 }
 
 impl<T: ?Sized> Weak<T> {
-    /// Attempts to upgrade the `Weak` pointer to an [`Rc`], extending
-    /// the lifetime of the value if successful.
+    /// Upgrades the `Weak` pointer to an [`Rc`][rc], if possible.
     ///
-    /// Returns [`None`] if the value has since been dropped.
+    /// Returns [`None`][option] if the strong count has reached zero and the
+    /// inner value was destroyed.
     ///
-    /// [`Rc`]: struct.Rc.html
-    /// [`None`]: ../../std/option/enum.Option.html
+    /// [rc]: struct.Rc.html
+    /// [option]: ../../std/option/enum.Option.html
     ///
     /// # Examples
     ///
@@ -1047,6 +1027,8 @@ impl<T: ?Sized> Weak<T> {
 impl<T: ?Sized> Drop for Weak<T> {
     /// Drops the `Weak` pointer.
     ///
+    /// This will decrement the weak reference count.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1071,7 +1053,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// ```
     fn drop(&mut self) {
         unsafe {
-            let ptr = self.ptr.as_ptr();
+            let ptr = *self.ptr;
 
             self.dec_weak();
             // the weak count starts at 1, and will only go to zero if all
@@ -1085,7 +1067,10 @@ impl<T: ?Sized> Drop for Weak<T> {
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized> Clone for Weak<T> {
-    /// Makes a clone of the `Weak` pointer that points to the same value.
+    /// Makes a clone of the `Weak` pointer.
+    ///
+    /// This creates another pointer to the same inner value, increasing the
+    /// weak reference count.
     ///
     /// # Examples
     ///
@@ -1112,11 +1097,14 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
 
 #[stable(feature = "downgraded_weak", since = "1.10.0")]
 impl<T> Default for Weak<T> {
-    /// Constructs a new `Weak<T>`, allocating memory for `T` without initializing
-    /// it. Calling [`upgrade`] on the return value always gives [`None`].
+    /// Constructs a new `Weak<T>`, without an accompanying instance of `T`.
     ///
-    /// [`upgrade`]: struct.Weak.html#method.upgrade
-    /// [`None`]: ../../std/option/enum.Option.html
+    /// This allocates memory for `T`, but does not initialize it. Calling
+    /// [`upgrade`][upgrade] on the return value always gives
+    /// [`None`][option].
+    ///
+    /// [upgrade]: struct.Weak.html#method.upgrade
+    /// [option]: ../../std/option/enum.Option.html
     ///
     /// # Examples
     ///
@@ -1179,7 +1167,12 @@ impl<T: ?Sized> RcBoxPtr<T> for Rc<T> {
     #[inline(always)]
     fn inner(&self) -> &RcBox<T> {
         unsafe {
-            self.ptr.as_ref()
+            // Safe to assume this here, as if it weren't true, we'd be breaking
+            // the contract anyway.
+            // This allows the null check to be elided in the destructor if we
+            // manipulated the reference count in the same function.
+            assume(!(*(&self.ptr as *const _ as *const *const ())).is_null());
+            &(**self.ptr)
         }
     }
 }
@@ -1188,7 +1181,12 @@ impl<T: ?Sized> RcBoxPtr<T> for Weak<T> {
     #[inline(always)]
     fn inner(&self) -> &RcBox<T> {
         unsafe {
-            self.ptr.as_ref()
+            // Safe to assume this here, as if it weren't true, we'd be breaking
+            // the contract anyway.
+            // This allows the null check to be elided in the destructor if we
+            // manipulated the reference count in the same function.
+            assume(!(*(&self.ptr as *const _ as *const *const ())).is_null());
+            &(**self.ptr)
         }
     }
 }

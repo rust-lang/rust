@@ -15,5 +15,4 @@ doc = false
 core = { path = "../libcore" }
 
 [build-dependencies]
-build_helper = { path = "../build_helper" }
 gcc = "0.3.27"

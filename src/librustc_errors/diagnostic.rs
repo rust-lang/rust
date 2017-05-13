@@ -11,68 +11,27 @@
 use CodeSuggestion;
 use Level;
 use RenderSpan;
+use RenderSpan::Suggestion;
 use std::fmt;
 use syntax_pos::{MultiSpan, Span};
-use snippet::Style;
 
 #[must_use]
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Diagnostic {
     pub level: Level,
-    pub message: Vec<(String, Style)>,
+    pub message: String,
     pub code: Option<String>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
-    pub suggestion: Option<CodeSuggestion>,
 }
 
 /// For example a note attached to an error.
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SubDiagnostic {
     pub level: Level,
-    pub message: Vec<(String, Style)>,
+    pub message: String,
     pub span: MultiSpan,
     pub render_span: Option<RenderSpan>,
-}
-
-#[derive(PartialEq, Eq)]
-pub struct DiagnosticStyledString(pub Vec<StringPart>);
-
-impl DiagnosticStyledString {
-    pub fn new() -> DiagnosticStyledString {
-        DiagnosticStyledString(vec![])
-    }
-    pub fn push_normal<S: Into<String>>(&mut self, t: S) {
-        self.0.push(StringPart::Normal(t.into()));
-    }
-    pub fn push_highlighted<S: Into<String>>(&mut self, t: S) {
-        self.0.push(StringPart::Highlighted(t.into()));
-    }
-    pub fn normal<S: Into<String>>(t: S) -> DiagnosticStyledString {
-        DiagnosticStyledString(vec![StringPart::Normal(t.into())])
-    }
-
-    pub fn highlighted<S: Into<String>>(t: S) -> DiagnosticStyledString {
-        DiagnosticStyledString(vec![StringPart::Highlighted(t.into())])
-    }
-
-    pub fn content(&self) -> String {
-        self.0.iter().map(|x| x.content()).collect::<String>()
-    }
-}
-
-#[derive(PartialEq, Eq)]
-pub enum StringPart {
-    Normal(String),
-    Highlighted(String),
-}
-
-impl StringPart {
-    pub fn content(&self) -> String {
-        match self {
-            &StringPart::Normal(ref s) | & StringPart::Highlighted(ref s) => s.to_owned()
-        }
-    }
 }
 
 impl Diagnostic {
@@ -83,11 +42,10 @@ impl Diagnostic {
     pub fn new_with_code(level: Level, code: Option<String>, message: &str) -> Self {
         Diagnostic {
             level: level,
-            message: vec![(message.to_owned(), Style::NoStyle)],
+            message: message.to_owned(),
             code: code,
             span: MultiSpan::new(),
             children: vec![],
-            suggestion: None,
         }
     }
 
@@ -114,15 +72,16 @@ impl Diagnostic {
     /// all, and you just supplied a `Span` to create the diagnostic,
     /// then the snippet will just include that `Span`, which is
     /// called the primary span.
-    pub fn span_label<T: Into<String>>(&mut self, span: Span, label: T) -> &mut Self {
-        self.span.push_span_label(span, label.into());
+    pub fn span_label(&mut self, span: Span, label: &fmt::Display)
+                      -> &mut Self {
+        self.span.push_span_label(span, format!("{}", label));
         self
     }
 
     pub fn note_expected_found(&mut self,
                                label: &fmt::Display,
-                               expected: DiagnosticStyledString,
-                               found: DiagnosticStyledString)
+                               expected: &fmt::Display,
+                               found: &fmt::Display)
                                -> &mut Self
     {
         self.note_expected_found_extra(label, expected, found, &"", &"")
@@ -130,39 +89,20 @@ impl Diagnostic {
 
     pub fn note_expected_found_extra(&mut self,
                                      label: &fmt::Display,
-                                     expected: DiagnosticStyledString,
-                                     found: DiagnosticStyledString,
+                                     expected: &fmt::Display,
+                                     found: &fmt::Display,
                                      expected_extra: &fmt::Display,
                                      found_extra: &fmt::Display)
                                      -> &mut Self
     {
-        let mut msg: Vec<_> = vec![(format!("expected {} `", label), Style::NoStyle)];
-        msg.extend(expected.0.iter()
-                   .map(|x| match *x {
-                       StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-                       StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
-                   }));
-        msg.push((format!("`{}\n", expected_extra), Style::NoStyle));
-        msg.push((format!("   found {} `", label), Style::NoStyle));
-        msg.extend(found.0.iter()
-                   .map(|x| match *x {
-                       StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-                       StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
-                   }));
-        msg.push((format!("`{}", found_extra), Style::NoStyle));
-
         // For now, just attach these as notes
-        self.highlighted_note(msg);
+        self.note(&format!("expected {} `{}`{}", label, expected, expected_extra));
+        self.note(&format!("   found {} `{}`{}", label, found, found_extra));
         self
     }
 
     pub fn note(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Note, msg, MultiSpan::new(), None);
-        self
-    }
-
-    pub fn highlighted_note(&mut self, msg: Vec<(String, Style)>) -> &mut Self {
-        self.sub_with_highlights(Level::Note, msg, MultiSpan::new(), None);
         self
     }
 
@@ -202,14 +142,19 @@ impl Diagnostic {
 
     /// Prints out a message with a suggested edit of the code.
     ///
-    /// See `diagnostic::CodeSuggestion` for more information.
-    pub fn span_suggestion(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
-        assert!(self.suggestion.is_none());
-        self.suggestion = Some(CodeSuggestion {
-            msp: sp.into(),
-            substitutes: vec![suggestion],
-            msg: msg.to_owned(),
-        });
+    /// See `diagnostic::RenderSpan::Suggestion` for more information.
+    pub fn span_suggestion<S: Into<MultiSpan>>(&mut self,
+                                               sp: S,
+                                               msg: &str,
+                                               suggestion: String)
+                                               -> &mut Self {
+        self.sub(Level::Help,
+                 msg,
+                 MultiSpan::new(),
+                 Some(Suggestion(CodeSuggestion {
+                     msp: sp.into(),
+                     substitutes: vec![suggestion],
+                 })));
         self
     }
 
@@ -223,11 +168,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn message(&self) -> String {
-        self.message.iter().map(|i| i.0.to_owned()).collect::<String>()
-    }
-
-    pub fn styled_message(&self) -> &Vec<(String, Style)> {
+    pub fn message(&self) -> &str {
         &self.message
     }
 
@@ -252,36 +193,10 @@ impl Diagnostic {
            render_span: Option<RenderSpan>) {
         let sub = SubDiagnostic {
             level: level,
-            message: vec![(message.to_owned(), Style::NoStyle)],
+            message: message.to_owned(),
             span: span,
             render_span: render_span,
         };
         self.children.push(sub);
-    }
-
-    /// Convenience function for internal use, clients should use one of the
-    /// public methods above.
-    fn sub_with_highlights(&mut self,
-                           level: Level,
-                           message: Vec<(String, Style)>,
-                           span: MultiSpan,
-                           render_span: Option<RenderSpan>) {
-        let sub = SubDiagnostic {
-            level: level,
-            message: message,
-            span: span,
-            render_span: render_span,
-        };
-        self.children.push(sub);
-    }
-}
-
-impl SubDiagnostic {
-    pub fn message(&self) -> String {
-        self.message.iter().map(|i| i.0.to_owned()).collect::<String>()
-    }
-
-    pub fn styled_message(&self) -> &Vec<(String, Style)> {
-        &self.message
     }
 }

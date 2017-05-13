@@ -13,7 +13,7 @@
             reason = "needs an RFC to flesh out the design",
             issue = "27730")]
 
-use ops::CoerceUnsized;
+use ops::{CoerceUnsized, Deref};
 
 /// Unsafe trait to indicate what types are usable with the NonZero struct
 pub unsafe trait Zeroable {}
@@ -30,7 +30,9 @@ unsafe impl Zeroable for i32 {}
 unsafe impl Zeroable for u32 {}
 unsafe impl Zeroable for i64 {}
 unsafe impl Zeroable for u64 {}
+#[cfg(not(stage0))]
 unsafe impl Zeroable for i128 {}
+#[cfg(not(stage0))]
 unsafe impl Zeroable for u128 {}
 
 /// A wrapper type for raw pointers and integers that will never be
@@ -46,10 +48,15 @@ impl<T: Zeroable> NonZero<T> {
     pub const unsafe fn new(inner: T) -> NonZero<T> {
         NonZero(inner)
     }
+}
 
-    /// Gets the inner value.
-    pub fn get(self) -> T {
-        self.0
+impl<T: Zeroable> Deref for NonZero<T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &T {
+        let NonZero(ref inner) = *self;
+        inner
     }
 }
 

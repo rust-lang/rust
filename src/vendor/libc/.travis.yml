@@ -1,0 +1,125 @@
+language: rust
+sudo: required
+dist: trusty
+services:
+  - docker
+install:
+  - curl https://static.rust-lang.org/rustup.sh |
+    sh -s -- --add-target=$TARGET --disable-sudo -y --prefix=`rustc --print sysroot`
+script:
+  - cargo build
+  - cargo build --no-default-features
+  - cargo generate-lockfile --manifest-path libc-test/Cargo.toml
+  - if [[ $TRAVIS_OS_NAME = "linux" ]]; then
+      sh ci/run-docker.sh $TARGET;
+    else
+      export CARGO_TARGET_DIR=`pwd`/target;
+      sh ci/run.sh $TARGET;
+    fi
+  - rustc ci/style.rs && ./style src
+osx_image: xcode7.3
+env:
+  global:
+    secure: eIDEoQdTyglcsTD13zSGotAX2HDhRSXIaaTnVZTThqLSrySOc3/6KY3qmOc2Msf7XaBqfFy9QA+alk7OwfePp253eiy1Kced67ffjjFOytEcRT7FlQiYpcYQD6WNHZEj62/bJBO4LTM9sGtWNCTJVEDKW0WM8mUK7qNuC+honPM=
+matrix:
+  include:
+    # 1.0.0 compat
+    - os: linux
+      env: TARGET=x86_64-unknown-linux-gnu
+      rust: 1.0.0
+      script: cargo build
+      install:
+
+    # build documentation
+    - os: linux
+      env: TARGET=x86_64-unknown-linux-gnu
+      rust: stable
+      script: sh ci/dox.sh
+
+    # stable compat
+    - os: linux
+      env: TARGET=x86_64-unknown-linux-gnu
+      rust: stable
+    - os: linux
+      env: TARGET=i686-unknown-linux-gnu
+      rust: stable
+    - os: osx
+      env: TARGET=x86_64-apple-darwin
+      rust: stable
+    - os: osx
+      env: TARGET=i686-apple-darwin
+      rust: stable
+    - os: linux
+      env: TARGET=arm-linux-androideabi
+      rust: stable
+    - os: linux
+      env: TARGET=x86_64-unknown-linux-musl
+      rust: stable
+    - os: linux
+      env: TARGET=i686-unknown-linux-musl
+      rust: stable
+    - os: linux
+      env: TARGET=arm-unknown-linux-gnueabihf
+      rust: stable
+    - os: linux
+      env: TARGET=aarch64-unknown-linux-gnu
+      rust: stable
+    - os: osx
+      env: TARGET=i386-apple-ios
+      rust: stable
+    - os: osx
+      env: TARGET=x86_64-apple-ios
+      rust: stable
+    - os: linux
+      env: TARGET=x86_64-rumprun-netbsd
+      rust: stable
+    - os: linux
+      env: TARGET=powerpc-unknown-linux-gnu
+      rust: stable
+    - os: linux
+      env: TARGET=powerpc64-unknown-linux-gnu
+      rust: stable
+    - os: linux
+      env: TARGET=mips-unknown-linux-musl
+      rust: stable
+    - os: linux
+      env: TARGET=mipsel-unknown-linux-musl
+      rust: stable
+    - os: linux
+      env: TARGET=mips64-unknown-linux-gnuabi64
+      rust: nightly
+
+    # beta
+    - os: linux
+      env: TARGET=x86_64-unknown-linux-gnu
+      rust: beta
+    - os: osx
+      env: TARGET=x86_64-apple-darwin
+      rust: beta
+
+    # nightly
+    - os: linux
+      env: TARGET=x86_64-unknown-linux-gnu
+      rust: nightly
+    - os: osx
+      env: TARGET=x86_64-apple-darwin
+      rust: nightly
+    - os: linux
+      env: TARGET=mips-unknown-linux-gnu
+      # not sure why this has to be nightly...
+      rust: nightly
+
+    # QEMU based targets that compile in an emulator
+    - os: linux
+      env: TARGET=x86_64-unknown-freebsd
+      rust: stable
+    - os: linux
+      env: TARGET=x86_64-unknown-openbsd QEMU=openbsd.qcow2
+      rust: stable
+      script: sh ci/run-docker.sh $TARGET
+      install:
+
+notifications:
+  email:
+    on_success: never
+  webhooks: https://buildbot.rust-lang.org/homu/travis

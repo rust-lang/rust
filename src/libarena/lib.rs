@@ -26,13 +26,14 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        test(no_crate_inject, attr(deny(warnings))))]
-#![deny(warnings)]
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(alloc)]
 #![feature(core_intrinsics)]
-#![feature(dropck_eyepatch)]
-#![feature(generic_param_attrs)]
+#![feature(heap_api)]
+#![feature(heap_api)]
 #![feature(staged_api)]
+#![feature(dropck_parametricity)]
 #![cfg_attr(test, feature(test))]
 
 #![allow(deprecated)]
@@ -47,6 +48,7 @@ use std::mem;
 use std::ptr;
 use std::slice;
 
+use alloc::heap;
 use alloc::raw_vec::RawVec;
 
 /// An arena that can hold objects of only one type.
@@ -138,7 +140,7 @@ impl<T> TypedArena<T> {
         unsafe {
             if mem::size_of::<T>() == 0 {
                 self.ptr.set(intrinsics::arith_offset(self.ptr.get() as *mut u8, 1) as *mut T);
-                let ptr = mem::align_of::<T>() as *mut T;
+                let ptr = heap::EMPTY as *mut T;
                 // Don't drop the object. This `write` is equivalent to `forget`.
                 ptr::write(ptr, object);
                 &mut *ptr
@@ -256,7 +258,8 @@ impl<T> TypedArena<T> {
     }
 }
 
-unsafe impl<#[may_dangle] T> Drop for TypedArena<T> {
+impl<T> Drop for TypedArena<T> {
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         unsafe {
             // Determine how much was filled.

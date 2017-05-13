@@ -1,0 +1,25 @@
+environment:
+  matrix:
+  - TARGET: x86_64-pc-windows-gnu
+    MSYS2_BITS: 64
+  - TARGET: i686-pc-windows-gnu
+    MSYS2_BITS: 32
+  - TARGET: x86_64-pc-windows-msvc
+  - TARGET: i686-pc-windows-msvc
+install:
+  - curl -sSf -o rustup-init.exe https://win.rustup.rs/
+  - rustup-init.exe -y --default-host %TARGET%
+  - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+  - if defined MSYS2_BITS set PATH=%PATH%;C:\msys64\mingw%MSYS2_BITS%\bin
+  - rustc -V
+  - cargo -V
+
+build: false
+
+test_script:
+  - cargo test --target %TARGET%
+  - cargo run --manifest-path libc-test/Cargo.toml --target %TARGET%
+
+cache:
+  - target
+  - C:\Users\appveyor\.cargo\registry

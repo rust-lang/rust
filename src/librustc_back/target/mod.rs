@@ -50,7 +50,7 @@ use std::default::Default;
 use std::io::prelude::*;
 use syntax::abi::{Abi, lookup as lookup_abi};
 
-use {LinkerFlavor, PanicStrategy};
+use PanicStrategy;
 
 mod android_base;
 mod apple_base;
@@ -72,7 +72,6 @@ mod thumb_base;
 mod fuchsia_base;
 mod redox_base;
 
-pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<String>>;
 pub type TargetResult = Result<Target, String>;
 
 macro_rules! supported_targets {
@@ -162,12 +161,10 @@ supported_targets! {
     ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
 
     ("i686-linux-android", i686_linux_android),
-    ("x86_64-linux-android", x86_64_linux_android),
     ("arm-linux-androideabi", arm_linux_androideabi),
     ("armv7-linux-androideabi", armv7_linux_androideabi),
     ("aarch64-linux-android", aarch64_linux_android),
 
-    ("aarch64-unknown-freebsd", aarch64_unknown_freebsd),
     ("i686-unknown-freebsd", i686_unknown_freebsd),
     ("x86_64-unknown-freebsd", x86_64_unknown_freebsd),
 
@@ -179,7 +176,6 @@ supported_targets! {
     ("i686-unknown-openbsd", i686_unknown_openbsd),
     ("x86_64-unknown-openbsd", x86_64_unknown_openbsd),
 
-    ("i686-unknown-netbsd", i686_unknown_netbsd),
     ("sparc64-unknown-netbsd", sparc64_unknown_netbsd),
     ("x86_64-unknown-netbsd", x86_64_unknown_netbsd),
     ("x86_64-rumprun-netbsd", x86_64_rumprun_netbsd),
@@ -202,7 +198,6 @@ supported_targets! {
     ("armv7s-apple-ios", armv7s_apple_ios),
 
     ("x86_64-sun-solaris", x86_64_sun_solaris),
-    ("sparcv9-sun-solaris", sparcv9_sun_solaris),
 
     ("x86_64-pc-windows-gnu", x86_64_pc_windows_gnu),
     ("i686-pc-windows-gnu", i686_pc_windows_gnu),
@@ -243,8 +238,6 @@ pub struct Target {
     pub arch: String,
     /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
     pub data_layout: String,
-    /// Linker flavor
-    pub linker_flavor: LinkerFlavor,
     /// Optional settings with defaults.
     pub options: TargetOptions,
 }
@@ -265,7 +258,7 @@ pub struct TargetOptions {
 
     /// Linker arguments that are unconditionally passed *before* any
     /// user-defined libraries.
-    pub pre_link_args: LinkArgs,
+    pub pre_link_args: Vec<String>,
     /// Objects to link before all others, always found within the
     /// sysroot folder.
     pub pre_link_objects_exe: Vec<String>, // ... when linking an executable
@@ -273,13 +266,13 @@ pub struct TargetOptions {
     /// Linker arguments that are unconditionally passed after any
     /// user-defined but before post_link_objects.  Standard platform
     /// libraries that should be always be linked to, usually go here.
-    pub late_link_args: LinkArgs,
+    pub late_link_args: Vec<String>,
     /// Objects to link after all others, always found within the
     /// sysroot folder.
     pub post_link_objects: Vec<String>,
     /// Linker arguments that are unconditionally passed *after* any
     /// user-defined libraries.
-    pub post_link_args: LinkArgs,
+    pub post_link_args: Vec<String>,
 
     /// Extra arguments to pass to the external assembler (when used)
     pub asm_args: Vec<String>,
@@ -322,8 +315,8 @@ pub struct TargetOptions {
     /// Whether the target toolchain is like OpenBSD's.
     /// Only useful for compiling against OpenBSD, for configuring abi when returning a struct.
     pub is_like_openbsd: bool,
-    /// Whether the target toolchain is like macOS's. Only useful for compiling against iOS/macOS,
-    /// in particular running dsymutil and some other stuff like `-dead_strip`. Defaults to false.
+    /// Whether the target toolchain is like OSX's. Only useful for compiling against iOS/OS X, in
+    /// particular running dsymutil and some other stuff like `-dead_strip`. Defaults to false.
     pub is_like_osx: bool,
     /// Whether the target toolchain is like Solaris's.
     /// Only useful for compiling against Illumos/Solaris,
@@ -337,10 +330,6 @@ pub struct TargetOptions {
     /// Whether the target toolchain is like Android's. Only useful for compiling against Android.
     /// Defaults to false.
     pub is_like_android: bool,
-    /// Whether the target toolchain is like Emscripten's. Only useful for compiling with
-    /// Emscripten toolchain.
-    /// Defaults to false.
-    pub is_like_emscripten: bool,
     /// Whether the linker support GNU-like arguments such as -O. Defaults to false.
     pub linker_is_gnu: bool,
     /// The MinGW toolchain has a known issue that prevents it from correctly
@@ -416,8 +405,8 @@ impl Default for TargetOptions {
             is_builtin: false,
             linker: option_env!("CFG_DEFAULT_LINKER").unwrap_or("cc").to_string(),
             ar: option_env!("CFG_DEFAULT_AR").unwrap_or("ar").to_string(),
-            pre_link_args: LinkArgs::new(),
-            post_link_args: LinkArgs::new(),
+            pre_link_args: Vec::new(),
+            post_link_args: Vec::new(),
             asm_args: Vec::new(),
             cpu: "generic".to_string(),
             features: "".to_string(),
@@ -439,7 +428,6 @@ impl Default for TargetOptions {
             is_like_solaris: false,
             is_like_windows: false,
             is_like_android: false,
-            is_like_emscripten: false,
             is_like_msvc: false,
             linker_is_gnu: false,
             allows_weak_linkage: true,
@@ -449,7 +437,7 @@ impl Default for TargetOptions {
             pre_link_objects_exe: Vec::new(),
             pre_link_objects_dll: Vec::new(),
             post_link_objects: Vec::new(),
-            late_link_args: LinkArgs::new(),
+            late_link_args: Vec::new(),
             archive_format: "gnu".to_string(),
             custom_unwind_resume: false,
             lib_allocation_crate: "alloc_system".to_string(),
@@ -533,10 +521,6 @@ impl Target {
             target_os: get_req_field("os")?,
             target_env: get_opt_field("env", ""),
             target_vendor: get_opt_field("vendor", "unknown"),
-            linker_flavor: LinkerFlavor::from_str(&*get_req_field("linker-flavor")?)
-                .ok_or_else(|| {
-                    format!("linker flavor must be {}", LinkerFlavor::one_of())
-                })?,
             options: Default::default(),
         };
 
@@ -587,49 +571,17 @@ impl Target {
                         .map(|s| s.to_string() );
                 }
             } );
-            ($key_name:ident, LinkerFlavor) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..]).and_then(|o| o.as_string().map(|s| {
-                    LinkerFlavor::from_str(&s).ok_or_else(|| {
-                        Err(format!("'{}' is not a valid value for linker-flavor. \
-                                     Use 'em', 'gcc', 'ld' or 'msvc.", s))
-                    })
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, link_args) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(obj) = obj.find(&name[..]).and_then(|o| o.as_object()) {
-                    let mut args = LinkArgs::new();
-                    for (k, v) in obj {
-                        let k = LinkerFlavor::from_str(&k).ok_or_else(|| {
-                            format!("{}: '{}' is not a valid value for linker-flavor. \
-                                     Use 'em', 'gcc', 'ld' or 'msvc'", name, k)
-                        })?;
-
-                        let v = v.as_array().map(|a| {
-                            a
-                                .iter()
-                                .filter_map(|o| o.as_string())
-                                .map(|s| s.to_owned())
-                                .collect::<Vec<_>>()
-                        }).unwrap_or(vec![]);
-
-                        args.insert(k, v);
-                    }
-                    base.options.$key_name = args;
-                }
-            } );
         }
 
         key!(is_builtin, bool);
         key!(linker);
         key!(ar);
-        key!(pre_link_args, link_args);
+        key!(pre_link_args, list);
         key!(pre_link_objects_exe, list);
         key!(pre_link_objects_dll, list);
-        key!(late_link_args, link_args);
+        key!(late_link_args, list);
         key!(post_link_objects, list);
-        key!(post_link_args, link_args);
+        key!(post_link_args, list);
         key!(asm_args, list);
         key!(cpu);
         key!(features);
@@ -651,7 +603,6 @@ impl Target {
         key!(is_like_solaris, bool);
         key!(is_like_windows, bool);
         key!(is_like_msvc, bool);
-        key!(is_like_emscripten, bool);
         key!(is_like_android, bool);
         key!(linker_is_gnu, bool);
         key!(allows_weak_linkage, bool);
@@ -774,16 +725,6 @@ impl ToJson for Target {
                     d.insert(name.to_string(), self.options.$attr.to_json());
                 }
             } );
-            (link_args - $attr:ident) => ( {
-                let name = (stringify!($attr)).replace("_", "-");
-                if default.$attr != self.options.$attr {
-                    let obj = self.options.$attr
-                        .iter()
-                        .map(|(k, v)| (k.desc().to_owned(), v.clone()))
-                        .collect::<BTreeMap<_, _>>();
-                    d.insert(name.to_string(), obj.to_json());
-                }
-            } );
         }
 
         target_val!(llvm_target);
@@ -793,18 +734,18 @@ impl ToJson for Target {
         target_val!(target_os, "os");
         target_val!(target_env, "env");
         target_val!(target_vendor, "vendor");
+        target_val!(arch);
         target_val!(data_layout);
-        target_val!(linker_flavor);
 
         target_option_val!(is_builtin);
         target_option_val!(linker);
         target_option_val!(ar);
-        target_option_val!(link_args - pre_link_args);
+        target_option_val!(pre_link_args);
         target_option_val!(pre_link_objects_exe);
         target_option_val!(pre_link_objects_dll);
-        target_option_val!(link_args - late_link_args);
+        target_option_val!(late_link_args);
         target_option_val!(post_link_objects);
-        target_option_val!(link_args - post_link_args);
+        target_option_val!(post_link_args);
         target_option_val!(asm_args);
         target_option_val!(cpu);
         target_option_val!(features);
@@ -826,7 +767,6 @@ impl ToJson for Target {
         target_option_val!(is_like_solaris);
         target_option_val!(is_like_windows);
         target_option_val!(is_like_msvc);
-        target_option_val!(is_like_emscripten);
         target_option_val!(is_like_android);
         target_option_val!(linker_is_gnu);
         target_option_val!(allows_weak_linkage);

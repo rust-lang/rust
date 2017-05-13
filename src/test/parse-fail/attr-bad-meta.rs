@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
+// error-pattern:expected one of `=` or `]`
+
 // asterisk is bogus
-#[path*] //~ ERROR expected one of `(` or `=`
+#[attr*]
 mod m {}

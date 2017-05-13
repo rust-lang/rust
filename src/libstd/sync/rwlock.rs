@@ -78,11 +78,11 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 /// RAII structure used to release the shared read access of a lock when
 /// dropped.
 ///
-/// This structure is created by the [`read`] and [`try_read`] methods on
+/// This structure is created by the [`read()`] and [`try_read()`] methods on
 /// [`RwLock`].
 ///
-/// [`read`]: struct.RwLock.html#method.read
-/// [`try_read`]: struct.RwLock.html#method.try_read
+/// [`read()`]: struct.RwLock.html#method.read
+/// [`try_read()`]: struct.RwLock.html#method.try_read
 /// [`RwLock`]: struct.RwLock.html
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -96,11 +96,11 @@ impl<'a, T: ?Sized> !marker::Send for RwLockReadGuard<'a, T> {}
 /// RAII structure used to release the exclusive write access of a lock when
 /// dropped.
 ///
-/// This structure is created by the [`write`] and [`try_write`] methods
+/// This structure is created by the [`write()`] and [`try_write()`] methods
 /// on [`RwLock`].
 ///
-/// [`write`]: struct.RwLock.html#method.write
-/// [`try_write`]: struct.RwLock.html#method.try_write
+/// [`write()`]: struct.RwLock.html#method.write
+/// [`try_write()`]: struct.RwLock.html#method.try_write
 /// [`RwLock`]: struct.RwLock.html
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -310,7 +310,8 @@ impl<T: ?Sized> RwLock<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T: ?Sized> Drop for RwLock<T> {
+impl<T: ?Sized> Drop for RwLock<T> {
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         // IMPORTANT: This code needs to be kept in sync with `RwLock::into_inner`.
         unsafe { self.inner.destroy() }
@@ -361,7 +362,7 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[stable(feature = "std_debug", since = "1.15.0")]
 impl<'a, T: fmt::Debug> fmt::Debug for RwLockReadGuard<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RwLockReadGuard")
@@ -370,7 +371,7 @@ impl<'a, T: fmt::Debug> fmt::Debug for RwLockReadGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
+#[stable(feature = "std_debug", since = "1.15.0")]
 impl<'a, T: fmt::Debug> fmt::Debug for RwLockWriteGuard<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RwLockWriteGuard")

@@ -10,15 +10,14 @@
 
 //! Method lookup: the secret sauce of Rust. See `README.md`.
 
-use check::{FnCtxt, AdjustedRcvr};
+use check::FnCtxt;
 use hir::def::Def;
 use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
-use rustc::ty::subst::Subst;
-use rustc::infer::{self, InferOk};
+use rustc::infer;
 
 use syntax::ast;
 use syntax_pos::Span;
@@ -138,9 +137,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                        self_ty, call_expr.id)?;
 
         if let Some(import_id) = pick.import_id {
-            let import_def_id = self.tcx.hir.local_def_id(import_id);
-            debug!("used_trait_import: {:?}", import_def_id);
-            self.tables.borrow_mut().used_trait_imports.insert(import_def_id);
+            self.tcx.used_trait_imports.borrow_mut().insert(import_id);
         }
 
         self.tcx.check_stability(pick.item.def_id, call_expr.id, span);
@@ -151,6 +148,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                self_ty,
                                pick,
                                supplied_method_types))
+    }
+
+    pub fn lookup_method_in_trait(&self,
+                                  span: Span,
+                                  self_expr: Option<&hir::Expr>,
+                                  m_name: ast::Name,
+                                  trait_def_id: DefId,
+                                  self_ty: ty::Ty<'tcx>,
+                                  opt_input_types: Option<Vec<ty::Ty<'tcx>>>)
+                                  -> Option<ty::MethodCallee<'tcx>> {
+        self.lookup_method_in_trait_adjusted(span,
+                                             self_expr,
+                                             m_name,
+                                             trait_def_id,
+                                             0,
+                                             false,
+                                             self_ty,
+                                             opt_input_types)
     }
 
     /// `lookup_in_trait_adjusted` is used for overloaded operators.
@@ -166,16 +181,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// this method is basically the same as confirmation.
     pub fn lookup_method_in_trait_adjusted(&self,
                                            span: Span,
-                                           self_info: Option<AdjustedRcvr>,
+                                           self_expr: Option<&hir::Expr>,
                                            m_name: ast::Name,
                                            trait_def_id: DefId,
+                                           autoderefs: usize,
+                                           unsize: bool,
                                            self_ty: ty::Ty<'tcx>,
                                            opt_input_types: Option<Vec<ty::Ty<'tcx>>>)
-                                           -> Option<InferOk<'tcx, ty::MethodCallee<'tcx>>> {
-        debug!("lookup_in_trait_adjusted(self_ty={:?}, self_info={:?}, \
+                                           -> Option<ty::MethodCallee<'tcx>> {
+        debug!("lookup_in_trait_adjusted(self_ty={:?}, self_expr={:?}, \
                 m_name={}, trait_def_id={:?})",
                self_ty,
-               self_info,
+               self_expr,
                m_name,
                trait_def_id);
 
@@ -212,12 +229,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.tcx;
         let method_item = self.associated_item(trait_def_id, m_name).unwrap();
         let def_id = method_item.def_id;
-        let generics = tcx.generics_of(def_id);
+        let generics = tcx.item_generics(def_id);
         assert_eq!(generics.types.len(), 0);
         assert_eq!(generics.regions.len(), 0);
 
         debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);
-        let mut obligations = vec![];
 
         // Instantiate late-bound regions and substitute the trait
         // parameters into the method type to get the actual method type.
@@ -225,20 +241,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // NB: Instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let original_method_ty = tcx.type_of(def_id);
-        let fn_sig = original_method_ty.fn_sig();
+        let original_method_ty = tcx.item_type(def_id);
+        let fty = match original_method_ty.sty {
+            ty::TyFnDef(_, _, f) => f,
+            _ => bug!()
+        };
         let fn_sig = self.replace_late_bound_regions_with_fresh_var(span,
                                                                     infer::FnCall,
-                                                                    &fn_sig).0;
-        let fn_sig = fn_sig.subst(self.tcx, substs);
-        let fn_sig = match self.normalize_associated_types_in_as_infer_ok(span, &fn_sig) {
-            InferOk { value, obligations: o } => {
-                obligations.extend(o);
-                value
-            }
-        };
+                                                                    &fty.sig).0;
+        let fn_sig = self.instantiate_type_scheme(span, trait_ref.substs, &fn_sig);
         let transformed_self_ty = fn_sig.inputs()[0];
-        let method_ty = tcx.mk_fn_def(def_id, substs, ty::Binder(fn_sig));
+        let method_ty = tcx.mk_fn_def(def_id, trait_ref.substs,
+                                      tcx.mk_bare_fn(ty::BareFnTy {
+            sig: ty::Binder(fn_sig),
+            unsafety: fty.unsafety,
+            abi: fty.abi
+        }));
 
         debug!("lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
                method_ty,
@@ -252,26 +270,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         //
         // Note that as the method comes from a trait, it should not have
         // any late-bound regions appearing in its bounds.
-        let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, substs);
-        let bounds = match self.normalize_associated_types_in_as_infer_ok(span, &bounds) {
-            InferOk { value, obligations: o } => {
-                obligations.extend(o);
-                value
-            }
-        };
-        assert!(!bounds.has_escaping_regions());
+        let method_bounds = self.instantiate_bounds(span, def_id, trait_ref.substs);
+        assert!(!method_bounds.has_escaping_regions());
+        self.add_obligations_for_parameters(traits::ObligationCause::misc(span, self.body_id),
+                                            &method_bounds);
 
-        let cause = traits::ObligationCause::misc(span, self.body_id);
-        obligations.extend(traits::predicates_for_generics(cause.clone(), &bounds));
+        // Also register an obligation for the method type being well-formed.
+        self.register_wf_obligation(method_ty, span, traits::MiscObligation);
 
-        // Also add an obligation for the method type being well-formed.
-        obligations.push(traits::Obligation::new(cause, ty::Predicate::WellFormed(method_ty)));
+        // FIXME(#18653) -- Try to resolve obligations, giving us more
+        // typing information, which can sometimes be needed to avoid
+        // pathological region inference failures.
+        self.select_obligations_where_possible();
 
         // Insert any adjustments needed (always an autoref of some mutability).
-        if let Some(AdjustedRcvr { rcvr_expr, autoderefs, unsize }) = self_info {
+        if let Some(self_expr) = self_expr {
             debug!("lookup_in_trait_adjusted: inserting adjustment if needed \
                     (self-id={}, autoderefs={}, unsize={}, fty={:?})",
-                    rcvr_expr.id, autoderefs, unsize, original_method_ty);
+                    self_expr.id, autoderefs, unsize, original_method_ty);
 
             let original_sig = original_method_ty.fn_sig();
             let autoref = match (&original_sig.input(0).skip_binder().sty,
@@ -288,7 +304,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             };
 
-            self.apply_adjustment(rcvr_expr.id, Adjustment {
+            self.write_adjustment(self_expr.id, Adjustment {
                 kind: Adjust::DerefRef {
                     autoderefs: autoderefs,
                     autoref: autoref,
@@ -306,10 +322,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         debug!("callee = {:?}", callee);
 
-        Some(InferOk {
-            obligations,
-            value: callee
-        })
+        Some(callee)
     }
 
     pub fn resolve_ufcs(&self,
@@ -323,14 +336,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                        self_ty, expr_id)?;
 
         if let Some(import_id) = pick.import_id {
-            let import_def_id = self.tcx.hir.local_def_id(import_id);
-            debug!("used_trait_import: {:?}", import_def_id);
-            self.tables.borrow_mut().used_trait_imports.insert(import_def_id);
+            self.tcx.used_trait_imports.borrow_mut().insert(import_id);
         }
 
         let def = pick.item.def();
+
         self.tcx.check_stability(def.def_id(), expr_id, span);
 
+        if let probe::InherentImplPick = pick.kind {
+            if !self.tcx.vis_is_accessible_from(pick.item.vis, self.body_id) {
+                let msg = format!("{} `{}` is private", def.kind_name(), method_name);
+                self.tcx.sess.span_err(span, &msg);
+            }
+        }
         Ok(def)
     }
 

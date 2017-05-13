@@ -15,7 +15,6 @@ fn main() {
     {
         if (foo)
             bar; //~ ERROR expected `{`, found `bar`
-                 //~^ HELP try placing this code inside a block
-                 //~| SUGGESTION { bar; }
+                 //^ HELP try placing this code inside a block
     }
 }

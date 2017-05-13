@@ -2,23 +2,14 @@
 members = [
   "bootstrap",
   "rustc",
-  "libstd",
-  "libtest",
+  "rustc/std_shim",
+  "rustc/test_shim",
   "tools/cargotest",
   "tools/compiletest",
   "tools/error_index_generator",
   "tools/linkchecker",
   "tools/rustbook",
   "tools/tidy",
-  "tools/build-manifest",
-  "tools/remote-test-client",
-  "tools/remote-test-server",
-]
-
-# These projects have their own Cargo.lock
-exclude = [
-  "tools/cargo",
-  "tools/rls",
 ]
 
 # Curiously, compiletest will segfault if compiled with opt-level=3 on 64-bit

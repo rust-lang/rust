@@ -12,7 +12,7 @@
 #![crate_type = "lib"]
 // we can compile to a variety of platforms, because we don't need
 // cross-compiled standard libraries.
-#![feature(no_core, optin_builtin_traits)]
+#![feature(no_core)]
 #![no_core]
 
 #![feature(repr_simd, simd_ffi, link_llvm_intrinsics, lang_items)]
@@ -78,7 +78,3 @@ pub trait Copy { }
 pub mod marker {
     pub use Copy;
 }
-
-#[lang = "freeze"]
-trait Freeze {}
-impl Freeze for .. {}

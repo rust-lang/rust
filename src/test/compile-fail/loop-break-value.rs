@@ -40,40 +40,37 @@ fn main() {
         loop {
             break 'while_loop 123;
             //~^ ERROR `break` with value from a `while` loop
+            //~| ERROR mismatched types
             break 456;
             break 789;
         };
     }
 
-    while let Some(_) = Some(()) {
-        if break () { //~ ERROR `break` with value from a `while let` loop
-        }
-    }
-
-    while let Some(_) = Some(()) {
-        break None;
-        //~^ ERROR `break` with value from a `while let` loop
-    }
-
     'while_let_loop: while let Some(_) = Some(()) {
+        if break () { //~ ERROR `break` with value from a `while let` loop
+            break;
+            break None;
+            //~^ ERROR `break` with value from a `while let` loop
+            //~| ERROR mismatched types
+        }
         loop {
             break 'while_let_loop "nope";
             //~^ ERROR `break` with value from a `while let` loop
+            //~| ERROR mismatched types
             break 33;
         };
     }
 
-    for _ in &[1,2,3] {
+    'for_loop: for _ in &[1,2,3] {
         break (); //~ ERROR `break` with value from a `for` loop
         break [()];
         //~^ ERROR `break` with value from a `for` loop
-    }
-
-    'for_loop: for _ in &[1,2,3] {
+        //~| ERROR mismatched types
         loop {
             break Some(3);
             break 'for_loop Some(17);
             //~^ ERROR `break` with value from a `for` loop
+            //~| ERROR mismatched types
         };
     }
 

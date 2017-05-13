@@ -12,8 +12,6 @@
 // ignore-arm
 // ignore-aarch64
 // ignore-s390x
-// ignore-emscripten
-// ignore-powerpc
 
 #![feature(asm, rustc_attrs)]
 

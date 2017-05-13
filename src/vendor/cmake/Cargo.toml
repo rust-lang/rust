@@ -1,0 +1,17 @@
+[package]
+
+name = "cmake"
+version = "0.1.18"
+authors = ["Alex Crichton <alex@alexcrichton.com>"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+keywords = ["build-dependencies"]
+repository = "https://github.com/alexcrichton/cmake-rs"
+homepage = "https://github.com/alexcrichton/cmake-rs"
+documentation = "http://alexcrichton.com/cmake-rs"
+description = """
+A build dependency for running `cmake` to build a native library
+"""
+
+[dependencies]
+gcc = "0.3.17"

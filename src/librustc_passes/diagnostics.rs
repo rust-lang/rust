@@ -82,6 +82,39 @@ extern {
 ```
 "##,
 
+E0161: r##"
+A value was moved. However, its size was not known at compile time, and only
+values of a known size can be moved.
+
+Erroneous code example:
+
+```compile_fail
+#![feature(box_syntax)]
+
+fn main() {
+    let array: &[isize] = &[1, 2, 3];
+    let _x: Box<[isize]> = box *array;
+    // error: cannot move a value of type [isize]: the size of [isize] cannot
+    //        be statically determined
+}
+```
+
+In Rust, you can only move a value when its size is known at compile time.
+
+To work around this restriction, consider "hiding" the value behind a reference:
+either `&x` or `&mut x`. Since a reference has a fixed size, this lets you move
+it around as usual. Example:
+
+```
+#![feature(box_syntax)]
+
+fn main() {
+    let array: &[isize] = &[1, 2, 3];
+    let _x: Box<&[isize]> = box array; // ok!
+}
+```
+"##,
+
 E0265: r##"
 This error indicates that a static or constant references itself.
 All statics and constants need to resolve to a value in an acyclic manner.
@@ -190,44 +223,9 @@ pub impl Foo for Bar {
 ```
 "##,
 
-
-E0579: r##"
-When matching against an exclusive range, the compiler verifies that the range
-is non-empty. Exclusive range patterns include the start point but not the end
-point, so this is equivalent to requiring the start of the range to be less
-than the end of the range.
-
-For example:
-
-```compile_fail
-match 5u32 {
-    // This range is ok, albeit pointless.
-    1 .. 2 => {}
-    // This range is empty, and the compiler can tell.
-    5 .. 5 => {}
-}
-```
-"##,
-
-E0590: r##"
-`break` or `continue` must include a label when used in the condition of a
-`while` loop.
-
-Example of erroneous code:
-
-```compile_fail
-while break {}
-```
-
-To fix this, add a label specifying which loop is being broken out of:
-```
-`foo: while break `foo {}
-```
-"##
 }
 
 register_diagnostics! {
-    E0226, // only a single explicit lifetime bound is permitted
     E0472, // asm! is unsupported on this target
     E0561, // patterns aren't allowed in function pointer types
     E0571, // `break` with a value in a non-`loop`-loop

@@ -1,8 +1,0 @@
-error: expected one of `!` or `::`, found `<eof>`
-  --> $DIR/bounds-obj-parens.rs:15:1
-   |
-15 | FAIL
-   | ^^^^ expected one of `!` or `::` here
-
-error: aborting due to previous error
-

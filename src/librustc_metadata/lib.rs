@@ -15,19 +15,17 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(box_patterns)]
 #![feature(conservative_impl_trait)]
 #![feature(core_intrinsics)]
-#![feature(i128_type)]
 #![feature(proc_macro_internals)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(specialization)]
 #![feature(staged_api)]
-#![feature(discriminant_value)]
 
 #[macro_use]
 extern crate log;
@@ -46,6 +44,7 @@ extern crate rustc_back;
 extern crate rustc_const_math;
 extern crate rustc_data_structures;
 extern crate rustc_llvm;
+extern crate rustc_i128;
 
 mod diagnostics;
 
@@ -57,7 +56,6 @@ mod index;
 mod encoder;
 mod decoder;
 mod cstore_impl;
-mod isolated_encoder;
 mod schema;
 
 pub mod creader;

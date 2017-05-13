@@ -72,7 +72,6 @@ else
 endif
 else
 ifeq ($(UNAME),Darwin)
-	EXTRACFLAGS := -lresolv
 else
 ifeq ($(UNAME),FreeBSD)
 	EXTRACFLAGS := -lm -lpthread -lgcc_s

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-custom_derive
-
 #[derive_Clone]
 //~^ ERROR attributes of the form `#[derive_*]` are reserved
 struct Test;

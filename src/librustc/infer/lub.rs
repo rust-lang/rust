@@ -49,8 +49,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         match variance {
             ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
             ty::Covariant => self.relate(a, b),
-            // FIXME(#41044) -- not correct, need test
-            ty::Bivariant => Ok(a.clone()),
+            ty::Bivariant => self.fields.bivariate(self.a_is_expected).relate(a, b),
             ty::Contravariant => self.fields.glb(self.a_is_expected).relate(a, b),
         }
     }
@@ -59,8 +58,8 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         lattice::super_lattice_tys(self, a, b)
     }
 
-    fn regions(&mut self, a: ty::Region<'tcx>, b: ty::Region<'tcx>)
-               -> RelateResult<'tcx, ty::Region<'tcx>> {
+    fn regions(&mut self, a: &'tcx ty::Region, b: &'tcx ty::Region)
+               -> RelateResult<'tcx, &'tcx ty::Region> {
         debug!("{}.regions({:?}, {:?})",
                self.tag(),
                a,

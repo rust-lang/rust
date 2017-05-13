@@ -14,13 +14,12 @@
 struct S(i32);
 
 const CONSTANT: S = S(0);
+//~^ ERROR E0080
+//~| unimplemented constant expression: tuple struct constructors
 
 enum E {
     V = CONSTANT,
-    //~^ ERROR mismatched types
-    //~| expected isize, found struct `S`
-    //~| NOTE expected type `isize`
-    //~|         found type `S`
+    //~^ NOTE: for enum discriminant here
 }
 
 fn main() {}

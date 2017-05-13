@@ -1,0 +1,23 @@
+[package]
+
+name = "gcc"
+version = "0.3.40"
+authors = ["Alex Crichton <alex@alexcrichton.com>"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/alexcrichton/gcc-rs"
+documentation = "http://alexcrichton.com/gcc-rs"
+description = """
+A build-time dependency for Cargo build scripts to assist in invoking the native
+C compiler to compile native C code into a static archive to be linked into Rust
+code.
+"""
+keywords = ["build-dependencies"]
+
+[dependencies]
+rayon = { version = "0.4", optional = true }
+
+[features]
+parallel = ["rayon"]
+
+[dev-dependencies]
+tempdir = "0.3"

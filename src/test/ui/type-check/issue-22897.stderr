@@ -1,8 +1,0 @@
-error[E0282]: type annotations needed
-  --> $DIR/issue-22897.rs:14:5
-   |
-14 |     [];
-   |     ^^ cannot infer type for `[_; 0]`
-
-error: aborting due to previous error
-

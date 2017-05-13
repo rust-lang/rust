@@ -13,6 +13,5 @@
 mod mod_file_aux;
 
 fn main() {
-    assert!(mod_file_aux::bar() == 10);
-    //~^ ERROR cannot find function `bar` in module `mod_file_aux`
+    assert!(mod_file_aux::bar() == 10); //~ ERROR unresolved function `mod_file_aux::bar`
 }

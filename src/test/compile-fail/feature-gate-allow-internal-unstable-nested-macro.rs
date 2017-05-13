@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-allow_internal_unstable
-
 macro_rules! bar {
     () => {
         // more layers don't help:

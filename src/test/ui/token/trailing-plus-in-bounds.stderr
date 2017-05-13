@@ -1,8 +1,0 @@
-error: expected one of `!` or `::`, found `<eof>`
-  --> $DIR/trailing-plus-in-bounds.rs:19:1
-   |
-19 | FAIL
-   | ^^^^ expected one of `!` or `::` here
-
-error: aborting due to previous error
-

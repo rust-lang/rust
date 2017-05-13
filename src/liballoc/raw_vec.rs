@@ -22,13 +22,13 @@ use core::cmp;
 /// involved. This type is excellent for building your own data structures like Vec and VecDeque.
 /// In particular:
 ///
-/// * Produces Unique::empty() on zero-sized types
-/// * Produces Unique::empty() on zero-length allocations
+/// * Produces heap::EMPTY on zero-sized types
+/// * Produces heap::EMPTY on zero-length allocations
 /// * Catches all overflows in capacity computations (promotes them to "capacity overflow" panics)
 /// * Guards against 32-bit systems allocating more than isize::MAX bytes
 /// * Guards against overflowing your length
 /// * Aborts on OOM
-/// * Avoids freeing Unique::empty()
+/// * Avoids freeing heap::EMPTY
 /// * Contains a ptr::Unique and thus endows the user with all related benefits
 ///
 /// This type does not in anyway inspect the memory that it manages. When dropped it *will*
@@ -55,13 +55,15 @@ impl<T> RawVec<T> {
     /// it makes a RawVec with capacity `usize::MAX`. Useful for implementing
     /// delayed allocation.
     pub fn new() -> Self {
-        // !0 is usize::MAX. This branch should be stripped at compile time.
-        let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
+        unsafe {
+            // !0 is usize::MAX. This branch should be stripped at compile time.
+            let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
 
-        // Unique::empty() doubles as "unallocated" and "zero-sized allocation"
-        RawVec {
-            ptr: Unique::empty(),
-            cap: cap,
+            // heap::EMPTY doubles as "unallocated" and "zero-sized allocation"
+            RawVec {
+                ptr: Unique::new(heap::EMPTY as *mut T),
+                cap: cap,
+            }
         }
     }
 
@@ -79,18 +81,7 @@ impl<T> RawVec<T> {
     /// # Aborts
     ///
     /// Aborts on OOM
-    #[inline]
     pub fn with_capacity(cap: usize) -> Self {
-        RawVec::allocate(cap, false)
-    }
-
-    /// Like `with_capacity` but guarantees the buffer is zeroed.
-    #[inline]
-    pub fn with_capacity_zeroed(cap: usize) -> Self {
-        RawVec::allocate(cap, true)
-    }
-
-    fn allocate(cap: usize, zeroed: bool) -> Self {
         unsafe {
             let elem_size = mem::size_of::<T>();
 
@@ -99,14 +90,10 @@ impl<T> RawVec<T> {
 
             // handles ZSTs and `cap = 0` alike
             let ptr = if alloc_size == 0 {
-                mem::align_of::<T>() as *mut u8
+                heap::EMPTY as *mut u8
             } else {
                 let align = mem::align_of::<T>();
-                let ptr = if zeroed {
-                    heap::allocate_zeroed(alloc_size, align)
-                } else {
-                    heap::allocate(alloc_size, align)
-                };
+                let ptr = heap::allocate(alloc_size, align);
                 if ptr.is_null() {
                     oom()
                 }
@@ -146,10 +133,10 @@ impl<T> RawVec<T> {
 
 impl<T> RawVec<T> {
     /// Gets a raw pointer to the start of the allocation. Note that this is
-    /// Unique::empty() if `cap = 0` or T is zero-sized. In the former case, you must
+    /// heap::EMPTY if `cap = 0` or T is zero-sized. In the former case, you must
     /// be careful.
     pub fn ptr(&self) -> *mut T {
-        self.ptr.as_ptr()
+        *self.ptr
     }
 
     /// Gets the capacity of the allocation.
@@ -552,7 +539,8 @@ impl<T> RawVec<T> {
     }
 }
 
-unsafe impl<#[may_dangle] T> Drop for RawVec<T> {
+impl<T> Drop for RawVec<T> {
+    #[unsafe_destructor_blind_to_params]
     /// Frees the memory owned by the RawVec *without* trying to Drop its contents.
     fn drop(&mut self) {
         let elem_size = mem::size_of::<T>();
@@ -561,7 +549,7 @@ unsafe impl<#[may_dangle] T> Drop for RawVec<T> {
 
             let num_bytes = elem_size * self.cap;
             unsafe {
-                heap::deallocate(self.ptr() as *mut u8, num_bytes, align);
+                heap::deallocate(*self.ptr as *mut _, num_bytes, align);
             }
         }
     }

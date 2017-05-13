@@ -12,22 +12,16 @@
 
 use rustc::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use rustc::hir::def_id::DefIndex;
-use rustc::ich::Fingerprint;
-use rustc::middle::cstore::EncodedMetadataHash;
 use std::sync::Arc;
 use rustc_data_structures::fx::FxHashMap;
+use ich::Fingerprint;
 
 use super::directory::DefPathIndex;
 
 /// Data for use when recompiling the **current crate**.
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedDepGraph {
-    pub edges: Vec<SerializedEdgeSet>,
-
-    /// These are output nodes that have no incoming edges. We track
-    /// these separately so that when we reload all edges, we don't
-    /// lose track of these nodes.
-    pub bootstrap_outputs: Vec<DepNode<DefPathIndex>>,
+    pub edges: Vec<SerializedEdge>,
 
     /// These are hashes of two things:
     /// - the HIR nodes in this crate
@@ -51,13 +45,14 @@ pub struct SerializedDepGraph {
     pub hashes: Vec<SerializedHash>,
 }
 
-/// Represents a set of "reduced" dependency edge. We group the
-/// outgoing edges from a single source together.
-#[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct SerializedEdgeSet {
-    pub source: DepNode<DefPathIndex>,
-    pub targets: Vec<DepNode<DefPathIndex>>
-}
+/// Represents a "reduced" dependency edge. Unlike the full dep-graph,
+/// the dep-graph we serialize contains only edges `S -> T` where the
+/// source `S` is something hashable (a HIR node or foreign metadata)
+/// and the target `T` is something significant, like a work-product.
+/// Normally, significant nodes are only those that have saved data on
+/// disk, but in unit-testing the set of significant nodes can be
+/// increased.
+pub type SerializedEdge = (DepNode<DefPathIndex>, DepNode<DefPathIndex>);
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedHash {
@@ -99,11 +94,7 @@ pub struct SerializedMetadataHashes {
     /// where `X` refers to some item in this crate. That `X` will be
     /// a `DefPathIndex` that gets retracted to the current `DefId`
     /// (matching the one found in this structure).
-    pub entry_hashes: Vec<EncodedMetadataHash>,
-
-    /// This map contains fingerprints that are not specific to some DefId but
-    /// describe something global to the whole crate.
-    pub global_hashes: Vec<(DepNode<()>, Fingerprint)>,
+    pub hashes: Vec<SerializedMetadataHash>,
 
     /// For each DefIndex (as it occurs in SerializedMetadataHash), this
     /// map stores the DefPathIndex (as it occurs in DefIdDirectory), so
@@ -116,4 +107,15 @@ pub struct SerializedMetadataHashes {
     /// empty otherwise. Importing crates are perfectly happy with just having
     /// the DefIndex.
     pub index_map: FxHashMap<DefIndex, DefPathIndex>
+}
+
+/// The hash for some metadata that (when saving) will be exported
+/// from this crate, or which (when importing) was exported by an
+/// upstream crate.
+#[derive(Debug, RustcEncodable, RustcDecodable)]
+pub struct SerializedMetadataHash {
+    pub def_index: DefIndex,
+
+    /// the hash itself, computed by `calculate_item_hash`
+    pub hash: Fingerprint,
 }

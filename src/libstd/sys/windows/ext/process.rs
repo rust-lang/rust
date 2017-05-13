@@ -99,18 +99,17 @@ impl ExitStatusExt for process::ExitStatus {
 }
 
 /// Windows-specific extensions to the `std::process::Command` builder
-#[stable(feature = "windows_process_extensions", since = "1.16.0")]
+#[unstable(feature = "windows_process_extensions", issue = "37827")]
 pub trait CommandExt {
     /// Sets the [process creation flags][1] to be passed to `CreateProcess`.
     ///
     /// These will always be ORed with `CREATE_UNICODE_ENVIRONMENT`.
-    ///
     /// [1]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms684863(v=vs.85).aspx
-    #[stable(feature = "windows_process_extensions", since = "1.16.0")]
+    #[unstable(feature = "windows_process_extensions", issue = "37827")]
     fn creation_flags(&mut self, flags: u32) -> &mut process::Command;
 }
 
-#[stable(feature = "windows_process_extensions", since = "1.16.0")]
+#[unstable(feature = "windows_process_extensions", issue = "37827")]
 impl CommandExt for process::Command {
     fn creation_flags(&mut self, flags: u32) -> &mut process::Command {
         self.as_inner_mut().creation_flags(flags);

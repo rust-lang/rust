@@ -29,23 +29,16 @@ pub struct Blake2bCtx {
     t: [u64; 2],
     c: usize,
     outlen: u16,
-    finalized: bool,
-
-    #[cfg(debug_assertions)]
-    fnv_hash: u64,
+    finalized: bool
 }
 
-#[cfg(debug_assertions)]
 impl ::std::fmt::Debug for Blake2bCtx {
-    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(fmt, "{:x}", self.fnv_hash)
-    }
-}
-
-#[cfg(not(debug_assertions))]
-impl ::std::fmt::Debug for Blake2bCtx {
-    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(fmt, "Enable debug_assertions() for more info.")
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+        try!(write!(fmt, "hash: "));
+        for v in &self.h[..] {
+            try!(write!(fmt, "{:x}", v));
+        }
+        Ok(())
     }
 }
 
@@ -120,20 +113,17 @@ fn blake2b_compress(ctx: &mut Blake2bCtx, last: bool) {
     }
 
     {
-        // Re-interpret the input buffer in the state as an array
-        // of little-endian u64s, converting them to machine
-        // endianness. It's OK to modify the buffer in place
-        // since this is the last time  this data will be accessed
-        // before it's overwritten.
-
+        // Re-interpret the input buffer in the state as u64s
         let m: &mut [u64; 16] = unsafe {
             let b: &mut [u8; 128] = &mut ctx.b;
             ::std::mem::transmute(b)
         };
 
+        // It's OK to modify the buffer in place since this is the last time
+        // this data will be accessed before it's overwritten
         if cfg!(target_endian = "big") {
             for word in &mut m[..] {
-                *word = u64::from_le(*word);
+                *word = word.to_be();
             }
         }
 
@@ -164,9 +154,6 @@ fn blake2b_new(outlen: usize, key: &[u8]) -> Blake2bCtx {
         c: 0,
         outlen: outlen as u16,
         finalized: false,
-
-        #[cfg(debug_assertions)]
-        fnv_hash: 0xcbf29ce484222325,
     };
 
     ctx.h[0] ^= 0x01010000 ^ ((key.len() << 8) as u64) ^ (outlen as u64);
@@ -204,16 +191,6 @@ fn blake2b_update(ctx: &mut Blake2bCtx, mut data: &[u8]) {
         checked_mem_copy(data, &mut ctx.b[ctx.c .. ], bytes_to_copy);
         ctx.c += bytes_to_copy;
     }
-
-    #[cfg(debug_assertions)]
-    {
-        // compute additional FNV hash for simpler to read debug output
-        const MAGIC_PRIME: u64 = 0x00000100000001b3;
-
-        for &byte in data {
-            ctx.fnv_hash = (ctx.fnv_hash ^ byte as u64).wrapping_mul(MAGIC_PRIME);
-        }
-    }
 }
 
 fn blake2b_final(ctx: &mut Blake2bCtx)
@@ -232,10 +209,9 @@ fn blake2b_final(ctx: &mut Blake2bCtx)
 
     blake2b_compress(ctx, true);
 
-    // Modify our buffer to little-endian format as it will be read
-    // as a byte array. It's OK to modify the buffer in place since
-    // this is the last time this data will be accessed.
     if cfg!(target_endian = "big") {
+        // Make sure that the data is in memory in little endian format, as is
+        // demanded by BLAKE2
         for word in &mut ctx.h {
             *word = word.to_le();
         }

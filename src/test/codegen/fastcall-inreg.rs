@@ -53,7 +53,6 @@
 // ignore-shave
 // ignore-wasm32
 // ignore-wasm64
-// ignore-emscripten
 
 // compile-flags: -C no-prepopulate-passes
 

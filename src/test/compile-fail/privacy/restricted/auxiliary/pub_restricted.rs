@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(pub_restricted)]
+
 pub(crate) struct Crate;
 #[derive(Default)]
 pub struct Universe {

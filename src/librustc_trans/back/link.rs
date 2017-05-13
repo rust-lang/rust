@@ -29,10 +29,7 @@ use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::CrateNum;
 use rustc::hir::svh::Svh;
 use rustc_back::tempdir::TempDir;
-use rustc_back::PanicStrategy;
 use rustc_incremental::IncrementalHashesMap;
-use context::get_reloc_model;
-use llvm;
 
 use std::ascii;
 use std::char;
@@ -47,14 +44,8 @@ use std::str;
 use flate;
 use syntax::ast;
 use syntax::attr;
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
-
-/// The LLVM module name containing crate-metadata. This includes a `.` on
-/// purpose, so it cannot clash with the name of a user-defined module.
-pub const METADATA_MODULE_NAME: &'static str = "crate.metadata";
-/// The name of the crate-metadata object file the compiler generates. Must
-/// match up with `METADATA_MODULE_NAME`.
-pub const METADATA_OBJ_NAME: &'static str = "crate.metadata.o";
 
 // RLIB LLVM-BYTECODE OBJECT LAYOUT
 // Version 1
@@ -90,7 +81,7 @@ pub fn find_crate_name(sess: Option<&Session>,
                        attrs: &[ast::Attribute],
                        input: &Input) -> String {
     let validate = |s: String, span: Option<Span>| {
-        cstore::validate_crate_name(sess, &s, span);
+        cstore::validate_crate_name(sess, &s[..], span);
         s
     };
 
@@ -108,7 +99,7 @@ pub fn find_crate_name(sess: Option<&Session>,
                     let msg = format!("--crate-name and #[crate_name] are \
                                        required to match, but `{}` != `{}`",
                                       s, name);
-                    sess.span_err(attr.span, &msg);
+                    sess.span_err(attr.span, &msg[..]);
                 }
             }
             return validate(s.clone(), None);
@@ -135,8 +126,11 @@ pub fn find_crate_name(sess: Option<&Session>,
     "rust_out".to_string()
 }
 
-pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap) -> LinkMeta {
+pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap,
+                       name: &str)
+                       -> LinkMeta {
     let r = LinkMeta {
+        crate_name: Symbol::intern(name),
         crate_hash: Svh::new(incremental_hashes_map[&DepNode::Krate].to_smaller_hash()),
     };
     info!("{:?}", r);
@@ -192,6 +186,8 @@ pub fn link_binary(sess: &Session,
                    trans: &CrateTranslation,
                    outputs: &OutputFilenames,
                    crate_name: &str) -> Vec<PathBuf> {
+    let _task = sess.dep_graph.in_task(DepNode::LinkBinary);
+
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
         // Ignore executable crates if we have -Z no-trans, as they will error.
@@ -216,7 +212,7 @@ pub fn link_binary(sess: &Session,
                 remove(sess, &obj);
             }
         }
-        remove(sess, &outputs.with_extension(METADATA_OBJ_NAME));
+        remove(sess, &outputs.with_extension("metadata.o"));
     }
 
     out_filenames
@@ -411,7 +407,7 @@ fn object_filenames(trans: &CrateTranslation,
                     outputs: &OutputFilenames)
                     -> Vec<PathBuf> {
     trans.modules.iter().map(|module| {
-        outputs.temp_path(OutputType::Object, Some(&module.name))
+        outputs.temp_path(OutputType::Object, Some(&module.name[..]))
     }).collect()
 }
 
@@ -437,10 +433,7 @@ fn archive_config<'a>(sess: &'a Session,
 }
 
 fn emit_metadata<'a>(sess: &'a Session, trans: &CrateTranslation, out_filename: &Path) {
-    let result = fs::File::create(out_filename).and_then(|mut f| {
-        f.write_all(&trans.metadata.raw_data)
-    });
-
+    let result = fs::File::create(out_filename).and_then(|mut f| f.write_all(&trans.metadata));
     if let Err(e) = result {
         sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
     }
@@ -483,7 +476,6 @@ fn link_rlib<'a>(sess: &'a Session,
     for lib in sess.cstore.used_libraries() {
         match lib.kind {
             NativeLibraryKind::NativeStatic => {}
-            NativeLibraryKind::NativeStaticNobundle |
             NativeLibraryKind::NativeFramework |
             NativeLibraryKind::NativeUnknown => continue,
         }
@@ -548,7 +540,7 @@ fn link_rlib<'a>(sess: &'a Session,
                                                  e))
                 }
 
-                let bc_data_deflated = flate::deflate_bytes(&bc_data);
+                let bc_data_deflated = flate::deflate_bytes(&bc_data[..]);
 
                 let mut bc_file_deflated = match fs::File::create(&bc_deflated_filename) {
                     Ok(file) => file,
@@ -580,7 +572,7 @@ fn link_rlib<'a>(sess: &'a Session,
             }
 
             // After adding all files to the archive, we need to update the
-            // symbol table of the archive. This currently dies on macOS (see
+            // symbol table of the archive. This currently dies on OSX (see
             // #11162), and isn't necessary there anyway
             if !sess.target.target.options.is_like_osx {
                 ab.update_symbols();
@@ -682,7 +674,6 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
 
     for lib in all_native_libs.iter().filter(|l| relevant_lib(sess, l)) {
         let name = match lib.kind {
-            NativeLibraryKind::NativeStaticNobundle |
             NativeLibraryKind::NativeUnknown => "library",
             NativeLibraryKind::NativeFramework => "framework",
             // These are included, no need to print them
@@ -704,16 +695,13 @@ fn link_natively(sess: &Session,
                  outputs: &OutputFilenames,
                  tmpdir: &Path) {
     info!("preparing {:?} from {:?} to {:?}", crate_type, objects, out_filename);
-    let flavor = sess.linker_flavor();
 
     // The invocations of cc share some flags across platforms
     let (pname, mut cmd, extra) = get_linker(sess);
     cmd.env("PATH", command_path(sess, extra));
 
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
-    if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {
-        cmd.args(args);
-    }
+    cmd.args(&sess.target.target.options.pre_link_args);
 
     let pre_link_objects = if crate_type == config::CrateTypeExecutable {
         &sess.target.target.options.pre_link_objects_exe
@@ -724,30 +712,16 @@ fn link_natively(sess: &Session,
         cmd.arg(root.join(obj));
     }
 
-    if sess.target.target.options.is_like_emscripten {
-        cmd.arg("-s");
-        cmd.arg(if sess.panic_strategy() == PanicStrategy::Abort {
-            "DISABLE_EXCEPTION_CATCHING=1"
-        } else {
-            "DISABLE_EXCEPTION_CATCHING=0"
-        });
-    }
-
     {
-        let mut linker = trans.linker_info.to_linker(cmd, &sess);
+        let mut linker = trans.linker_info.to_linker(&mut cmd, &sess);
         link_args(&mut *linker, sess, crate_type, tmpdir,
                   objects, out_filename, outputs, trans);
-        cmd = linker.finalize();
     }
-    if let Some(args) = sess.target.target.options.late_link_args.get(&flavor) {
-        cmd.args(args);
-    }
+    cmd.args(&sess.target.target.options.late_link_args);
     for obj in &sess.target.target.options.post_link_objects {
         cmd.arg(root.join(obj));
     }
-    if let Some(args) = sess.target.target.options.post_link_args.get(&flavor) {
-        cmd.args(args);
-    }
+    cmd.args(&sess.target.target.options.post_link_args);
 
     if sess.opts.debugging_opts.print_link_args {
         println!("{:?}", &cmd);
@@ -757,54 +731,8 @@ fn link_natively(sess: &Session,
     sess.abort_if_errors();
 
     // Invoke the system linker
-    //
-    // Note that there's a terribly awful hack that really shouldn't be present
-    // in any compiler. Here an environment variable is supported to
-    // automatically retry the linker invocation if the linker looks like it
-    // segfaulted.
-    //
-    // Gee that seems odd, normally segfaults are things we want to know about!
-    // Unfortunately though in rust-lang/rust#38878 we're experiencing the
-    // linker segfaulting on Travis quite a bit which is causing quite a bit of
-    // pain to land PRs when they spuriously fail due to a segfault.
-    //
-    // The issue #38878 has some more debugging information on it as well, but
-    // this unfortunately looks like it's just a race condition in macOS's linker
-    // with some thread pool working in the background. It seems that no one
-    // currently knows a fix for this so in the meantime we're left with this...
     info!("{:?}", &cmd);
-    let retry_on_segfault = env::var("RUSTC_RETRY_LINKER_ON_SEGFAULT").is_ok();
-    let mut prog;
-    let mut i = 0;
-    loop {
-        i += 1;
-        prog = time(sess.time_passes(), "running linker", || cmd.output());
-        if !retry_on_segfault || i > 3 {
-            break
-        }
-        let output = match prog {
-            Ok(ref output) => output,
-            Err(_) => break,
-        };
-        if output.status.success() {
-            break
-        }
-        let mut out = output.stderr.clone();
-        out.extend(&output.stdout);
-        let out = String::from_utf8_lossy(&out);
-        let msg = "clang: error: unable to execute command: \
-                   Segmentation fault: 11";
-        if !out.contains(msg) {
-            break
-        }
-
-        sess.struct_warn("looks like the linker segfaulted when we tried to \
-                          call it, automatically retrying again")
-            .note(&format!("{:?}", cmd))
-            .note(&out)
-            .emit();
-    }
-
+    let prog = time(sess.time_passes(), "running linker", || cmd.output());
     match prog {
         Ok(prog) => {
             fn escape_string(s: &[u8]) -> String {
@@ -824,12 +752,12 @@ fn link_natively(sess: &Session,
                                          pname,
                                          prog.status))
                     .note(&format!("{:?}", &cmd))
-                    .note(&escape_string(&output))
+                    .note(&escape_string(&output[..]))
                     .emit();
                 sess.abort_if_errors();
             }
-            info!("linker stderr:\n{}", escape_string(&prog.stderr));
-            info!("linker stdout:\n{}", escape_string(&prog.stdout));
+            info!("linker stderr:\n{}", escape_string(&prog.stderr[..]));
+            info!("linker stdout:\n{}", escape_string(&prog.stdout[..]));
         },
         Err(e) => {
             sess.struct_err(&format!("could not exec the linker `{}`: {}", pname, e))
@@ -846,7 +774,7 @@ fn link_natively(sess: &Session,
     }
 
 
-    // On macOS, debuggers need this utility to get run to do some munging of
+    // On OSX, debuggers need this utility to get run to do some munging of
     // the symbols
     if sess.target.target.options.is_like_osx && sess.opts.debuginfo != NoDebugInfo {
         match Command::new("dsymutil").arg(out_filename).output() {
@@ -887,8 +815,7 @@ fn link_args(cmd: &mut Linker,
 
     // If we're building a dynamic library then some platforms need to make sure
     // that all symbols are exported correctly from the dynamic library.
-    if crate_type != config::CrateTypeExecutable ||
-       sess.target.target.options.is_like_emscripten {
+    if crate_type != config::CrateTypeExecutable {
         cmd.export_symbols(tmpdir, crate_type);
     }
 
@@ -897,7 +824,7 @@ fn link_args(cmd: &mut Linker,
     // object file, so we link that in here.
     if crate_type == config::CrateTypeDylib ||
        crate_type == config::CrateTypeProcMacro {
-        cmd.add_object(&outputs.with_extension(METADATA_OBJ_NAME));
+        cmd.add_object(&outputs.with_extension("metadata.o"));
     }
 
     // Try to strip as much out of the generated object by removing unused
@@ -912,11 +839,13 @@ fn link_args(cmd: &mut Linker,
     if crate_type == config::CrateTypeExecutable &&
        t.options.position_independent_executables {
         let empty_vec = Vec::new();
+        let empty_str = String::new();
         let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
         let more_args = &sess.opts.cg.link_arg;
         let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
-
-        if get_reloc_model(sess) == llvm::RelocMode::PIC
+        let relocation_model = sess.opts.cg.relocation_model.as_ref()
+                                   .unwrap_or(&empty_str);
+        if (t.options.relocation_model == "pic" || *relocation_model == "pic")
             && !args.any(|x| *x == "-static") {
             cmd.position_independent_executable();
         }
@@ -965,7 +894,7 @@ fn link_args(cmd: &mut Linker,
     // on other dylibs (e.g. other native deps).
     add_local_native_libraries(cmd, sess);
     add_upstream_rust_crates(cmd, sess, crate_type, tmpdir);
-    add_upstream_native_libraries(cmd, sess, crate_type);
+    add_upstream_native_libraries(cmd, sess);
 
     // # Telling the linker what we're doing
 
@@ -1026,18 +955,37 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
         }
     });
 
-    let relevant_libs = sess.cstore.used_libraries().into_iter().filter(|l| {
+    let pair = sess.cstore.used_libraries().into_iter().filter(|l| {
         relevant_lib(sess, l)
+    }).partition(|lib| {
+        lib.kind == NativeLibraryKind::NativeStatic
     });
+    let (staticlibs, others): (Vec<_>, Vec<_>) = pair;
+
+    // Some platforms take hints about whether a library is static or dynamic.
+    // For those that support this, we ensure we pass the option if the library
+    // was flagged "static" (most defaults are dynamic) to ensure that if
+    // libfoo.a and libfoo.so both exist that the right one is chosen.
+    cmd.hint_static();
 
     let search_path = archive_search_paths(sess);
-    for lib in relevant_libs {
+    for l in staticlibs {
+        // Here we explicitly ask that the entire archive is included into the
+        // result artifact. For more details see #15460, but the gist is that
+        // the linker will strip away any unused objects in the archive if we
+        // don't otherwise explicitly reference them. This can occur for
+        // libraries which are just providing bindings, libraries with generic
+        // functions, etc.
+        cmd.link_whole_staticlib(&l.name.as_str(), &search_path);
+    }
+
+    cmd.hint_dynamic();
+
+    for lib in others {
         match lib.kind {
             NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
             NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
-            NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(&lib.name.as_str()),
-            NativeLibraryKind::NativeStatic => cmd.link_whole_staticlib(&lib.name.as_str(),
-                                                                        &search_path)
+            NativeLibraryKind::NativeStatic => bug!(),
         }
     }
 }
@@ -1074,9 +1022,6 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         // symbols from the dylib.
         let src = sess.cstore.used_crate_source(cnum);
         match data[cnum.as_usize() - 1] {
-            _ if sess.cstore.is_sanitizer_runtime(cnum) => {
-                link_sanitizer_runtime(cmd, sess, tmpdir, cnum);
-            }
             // compiler-builtins are always placed last to ensure that they're
             // linked correctly.
             _ if sess.cstore.is_compiler_builtins(cnum) => {
@@ -1094,8 +1039,6 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         }
     }
 
-    // compiler-builtins are always placed last to ensure that they're
-    // linked correctly.
     // We must always link the `compiler_builtins` crate statically. Even if it
     // was already "included" in a dylib (e.g. `libstd` when `-C prefer-dynamic`
     // is used)
@@ -1110,47 +1053,6 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         } else {
             stem
         }
-    }
-
-    // We must link the sanitizer runtime using -Wl,--whole-archive but since
-    // it's packed in a .rlib, it contains stuff that are not objects that will
-    // make the linker error. So we must remove those bits from the .rlib before
-    // linking it.
-    fn link_sanitizer_runtime(cmd: &mut Linker,
-                              sess: &Session,
-                              tmpdir: &Path,
-                              cnum: CrateNum) {
-        let src = sess.cstore.used_crate_source(cnum);
-        let cratepath = &src.rlib.unwrap().0;
-
-        if sess.target.target.options.is_like_osx {
-            // On Apple platforms, the sanitizer is always built as a dylib, and
-            // LLVM will link to `@rpath/*.dylib`, so we need to specify an
-            // rpath to the library as well (the rpath should be absolute, see
-            // PR #41352 for details).
-            //
-            // FIXME: Remove this logic into librustc_*san once Cargo supports it
-            let rpath = cratepath.parent().unwrap();
-            let rpath = rpath.to_str().expect("non-utf8 component in path");
-            cmd.args(&["-Wl,-rpath".into(), "-Xlinker".into(), rpath.into()]);
-        }
-
-        let dst = tmpdir.join(cratepath.file_name().unwrap());
-        let cfg = archive_config(sess, &dst, Some(cratepath));
-        let mut archive = ArchiveBuilder::new(cfg);
-        archive.update_symbols();
-
-        for f in archive.src_files() {
-            if f.ends_with("bytecode.deflate") ||
-                f == sess.cstore.metadata_filename() {
-                    archive.remove_file(&f);
-                    continue
-                }
-        }
-
-        archive.build();
-
-        cmd.link_whole_rlib(&dst);
     }
 
     // Adds the static "rlib" versions of all crates to the command line.
@@ -1308,7 +1210,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
 // generic function calls a native function, then the generic function must
 // be instantiated in the target crate, meaning that the native symbol must
 // also be resolved in the target crate.
-fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session, crate_type: config::CrateType) {
+fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session) {
     // Be sure to use a topological sorting of crates because there may be
     // interdependencies between native libraries. When passing -nodefaultlibs,
     // for example, almost all native libraries depend on libc, so we have to
@@ -1318,9 +1220,6 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session, crate_type: c
     // This passes RequireStatic, but the actual requirement doesn't matter,
     // we're just getting an ordering of crate numbers, we're not worried about
     // the paths.
-    let formats = sess.dependency_formats.borrow();
-    let data = formats.get(&crate_type).unwrap();
-
     let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic);
     for (cnum, _) in crates {
         for lib in sess.cstore.native_libraries(cnum) {
@@ -1330,15 +1229,7 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session, crate_type: c
             match lib.kind {
                 NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
                 NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
-                NativeLibraryKind::NativeStaticNobundle => {
-                    // Link "static-nobundle" native libs only if the crate they originate from
-                    // is being linked statically to the current crate.  If it's linked dynamically
-                    // or is an rlib already included via some other dylib crate, the symbols from
-                    // native libs will have already been included in that dylib.
-                    if data[cnum.as_usize() - 1] == Linkage::Static {
-                        cmd.link_staticlib(&lib.name.as_str())
-                    }
-                },
+
                 // ignore statically included native libraries here as we've
                 // already included them when we included the rust library
                 // previously

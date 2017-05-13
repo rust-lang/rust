@@ -10,7 +10,7 @@ crate-type = ["dylib"]
 
 [dependencies]
 flate = { path = "../libflate" }
-log = "0.3"
+log = { path = "../liblog" }
 proc_macro = { path = "../libproc_macro" }
 rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }
@@ -18,6 +18,7 @@ rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_llvm = { path = "../librustc_llvm" }
+rustc_i128 = { path = "../librustc_i128" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_ext = { path = "../libsyntax_ext" }

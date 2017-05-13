@@ -23,8 +23,7 @@
        html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(deny(warnings))))]
-#![deny(warnings)]
-#![deny(missing_debug_implementations)]
+#![cfg_attr(not(stage0), deny(warnings))]
 #![no_std]
 #![unstable(feature = "rand",
             reason = "use `rand` from crates.io",
@@ -33,7 +32,6 @@
 #![feature(staged_api)]
 #![feature(step_by)]
 #![feature(custom_attribute)]
-#![feature(specialization)]
 #![allow(unused_attributes)]
 
 #![cfg_attr(not(test), feature(core_float))] // only necessary for no_std
@@ -45,7 +43,6 @@
 #[macro_use]
 extern crate std;
 
-use core::fmt;
 use core::f64;
 use core::intrinsics;
 use core::marker::PhantomData;
@@ -291,14 +288,6 @@ impl<'a, T: Rand, R: Rng> Iterator for Generator<'a, T, R> {
     }
 }
 
-impl<'a, T, R: fmt::Debug> fmt::Debug for Generator<'a, T, R> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Generator")
-         .field("rng", &self.rng)
-         .finish()
-    }
-}
-
 /// Iterator which will continuously generate random ascii characters.
 ///
 /// This iterator is created via the `gen_ascii_chars` method on `Rng`.
@@ -317,19 +306,11 @@ impl<'a, R: Rng> Iterator for AsciiGenerator<'a, R> {
     }
 }
 
-impl<'a, R: fmt::Debug> fmt::Debug for AsciiGenerator<'a, R> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("AsciiGenerator")
-         .field("rng", &self.rng)
-         .finish()
-    }
-}
-
 /// A random number generator that can be explicitly seeded to produce
 /// the same stream of randomness multiple times.
 pub trait SeedableRng<Seed>: Rng {
     /// Reseed an RNG with the given seed.
-    fn reseed(&mut self, _: Seed);
+    fn reseed(&mut self, Seed);
 
     /// Create a new RNG with the given seed.
     fn from_seed(seed: Seed) -> Self;
@@ -345,7 +326,7 @@ pub trait SeedableRng<Seed>: Rng {
 /// [1]: Marsaglia, George (July 2003). ["Xorshift
 /// RNGs"](http://www.jstatsoft.org/v08/i14/paper). *Journal of
 /// Statistical Software*. Vol. 8 (Issue 14).
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct XorShiftRng {
     x: u32,
     y: u32,
@@ -434,14 +415,6 @@ impl Rand for XorShiftRng {
 /// `[0,1)`.
 pub struct Open01<F>(pub F);
 
-impl<F: fmt::Debug> fmt::Debug for Open01<F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Open01")
-         .field(&self.0)
-         .finish()
-    }
-}
-
 /// A wrapper for generating floating point numbers uniformly in the
 /// closed interval `[0,1]` (including both endpoints).
 ///
@@ -449,14 +422,6 @@ impl<F: fmt::Debug> fmt::Debug for Open01<F> {
 /// `Rand` implementation of `f32` and `f64` for the half-open
 /// `[0,1)`.
 pub struct Closed01<F>(pub F);
-
-impl<F: fmt::Debug> fmt::Debug for Closed01<F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Closed01")
-         .field(&self.0)
-         .finish()
-    }
-}
 
 #[cfg(test)]
 mod test {

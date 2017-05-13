@@ -68,8 +68,6 @@ impl DynamicLibrary {
             "PATH"
         } else if cfg!(target_os = "macos") {
             "DYLD_LIBRARY_PATH"
-        } else if cfg!(target_os = "haiku") {
-            "LIBRARY_PATH"
         } else {
             "LD_LIBRARY_PATH"
         }

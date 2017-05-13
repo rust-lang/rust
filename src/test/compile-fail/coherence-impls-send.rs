@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(optin_builtin_traits)]
-#![feature(overlapping_marker_traits)]
 
 use std::marker::Copy;
 
@@ -35,6 +34,7 @@ unsafe impl Send for [MyType] {}
 
 unsafe impl Send for &'static [NotSync] {}
 //~^ ERROR E0117
+//~| ERROR E0119
 
 fn main() {
 }

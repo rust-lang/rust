@@ -11,13 +11,11 @@
 use borrowck::BorrowckCtxt;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
-use rustc::middle::mem_categorization::NoteClosureEnv;
 use rustc::middle::mem_categorization::InteriorOffsetKind as Kind;
 use rustc::ty;
 use syntax::ast;
 use syntax_pos;
 use errors::DiagnosticBuilder;
-use borrowck::gather_loans::gather_moves::PatternSource;
 
 pub struct MoveErrorCollector<'tcx> {
     errors: Vec<MoveError<'tcx>>
@@ -41,12 +39,12 @@ impl<'tcx> MoveErrorCollector<'tcx> {
 
 pub struct MoveError<'tcx> {
     move_from: mc::cmt<'tcx>,
-    move_to: Option<MovePlace<'tcx>>
+    move_to: Option<MoveSpanAndPath>
 }
 
 impl<'tcx> MoveError<'tcx> {
     pub fn with_move_info(move_from: mc::cmt<'tcx>,
-                          move_to: Option<MovePlace<'tcx>>)
+                          move_to: Option<MoveSpanAndPath>)
                           -> MoveError<'tcx> {
         MoveError {
             move_from: move_from,
@@ -56,48 +54,28 @@ impl<'tcx> MoveError<'tcx> {
 }
 
 #[derive(Clone)]
-pub struct MovePlace<'tcx> {
+pub struct MoveSpanAndPath {
     pub span: syntax_pos::Span,
     pub name: ast::Name,
-    pub pat_source: PatternSource<'tcx>,
 }
 
 pub struct GroupedMoveErrors<'tcx> {
     move_from: mc::cmt<'tcx>,
-    move_to_places: Vec<MovePlace<'tcx>>
+    move_to_places: Vec<MoveSpanAndPath>
 }
 
-fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>, errors: &Vec<MoveError<'tcx>>) {
+fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                errors: &Vec<MoveError<'tcx>>) {
     let grouped_errors = group_errors_with_same_origin(errors);
     for error in &grouped_errors {
         let mut err = report_cannot_move_out_of(bccx, error.move_from.clone());
         let mut is_first_note = true;
-        match error.move_to_places.get(0) {
-            Some(&MovePlace { pat_source: PatternSource::LetDecl(ref e), .. }) => {
-                // ignore patterns that are found at the top-level of a `let`;
-                // see `get_pattern_source()` for details
-                let initializer =
-                    e.init.as_ref().expect("should have an initializer to get an error");
-                if let Ok(snippet) = bccx.tcx.sess.codemap().span_to_snippet(initializer.span) {
-                    err.span_suggestion(initializer.span,
-                                        "consider using a reference instead",
-                                        format!("&{}", snippet));
-                }
-            }
-            _ => {
-                for move_to in &error.move_to_places {
-
-                    err = note_move_destination(err, move_to.span, move_to.name, is_first_note);
-                    is_first_note = false;
-                }
-            }
-        }
-        if let NoteClosureEnv(upvar_id) = error.move_from.note {
-            err.span_label(bccx.tcx.hir.span(upvar_id.var_id),
-                           "captured outer variable");
+        for move_to in &error.move_to_places {
+            err = note_move_destination(err, move_to.span,
+                                  move_to.name, is_first_note);
+            is_first_note = false;
         }
         err.emit();
-
     }
 }
 
@@ -147,7 +125,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                              move_from.descriptive_string(bccx.tcx));
             err.span_label(
                 move_from.span,
-                format!("cannot move out of {}", move_from.descriptive_string(bccx.tcx))
+                &format!("cannot move out of {}", move_from.descriptive_string(bccx.tcx))
                 );
             err
         }
@@ -160,7 +138,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                                    "cannot move out of type `{}`, \
                                                     a non-copy array",
                                                    b.ty);
-                    err.span_label(move_from.span, "cannot move out of here");
+                    err.span_label(move_from.span, &format!("cannot move out of here"));
                     err
                 }
                 (_, Kind::Pattern) => {
@@ -172,12 +150,12 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         Categorization::Downcast(ref b, _) |
         Categorization::Interior(ref b, mc::InteriorField(_)) => {
             match b.ty.sty {
-                ty::TyAdt(def, _) if def.has_dtor(bccx.tcx) => {
+                ty::TyAdt(def, _) if def.has_dtor() => {
                     let mut err = struct_span_err!(bccx, move_from.span, E0509,
                                                    "cannot move out of type `{}`, \
                                                    which implements the `Drop` trait",
                                                    b.ty);
-                    err.span_label(move_from.span, "cannot move out of here");
+                    err.span_label(move_from.span, &format!("cannot move out of here"));
                     err
                 },
                 _ => {
@@ -198,12 +176,12 @@ fn note_move_destination(mut err: DiagnosticBuilder,
     if is_first_note {
         err.span_label(
             move_to_span,
-            format!("hint: to prevent move, use `ref {0}` or `ref mut {0}`",
+            &format!("hint: to prevent move, use `ref {0}` or `ref mut {0}`",
                      pat_name));
         err
     } else {
         err.span_label(move_to_span,
-                      format!("...and here (use `ref {0}` or `ref mut {0}`)",
+                      &format!("...and here (use `ref {0}` or `ref mut {0}`)",
                                pat_name));
         err
     }

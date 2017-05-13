@@ -104,7 +104,6 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
             mir::StatementKind::StorageLive(_) |
             mir::StatementKind::StorageDead(_) |
-            mir::StatementKind::InlineAsm { .. } |
             mir::StatementKind::Nop => continue,
             mir::StatementKind::SetDiscriminant{ .. } =>
                 span_bug!(stmt.source_info.span,
@@ -164,9 +163,8 @@ fn is_rustc_peek<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         {
             if let mir::Operand::Constant(ref func) = *oper
             {
-                if let ty::TyFnDef(def_id, _, sig) = func.ty.sty
+                if let ty::TyFnDef(def_id, _, &ty::BareFnTy { abi, .. }) = func.ty.sty
                 {
-                    let abi = sig.abi();
                     let name = tcx.item_name(def_id);
                     if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
                         if name == "rustc_peek" {

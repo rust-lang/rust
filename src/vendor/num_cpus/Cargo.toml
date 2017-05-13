@@ -1,0 +1,12 @@
+[package]
+
+name = "num_cpus"
+version = "0.2.13"
+description = "Get the number of CPUs on a machine."
+authors = ["Sean McArthur <sean.monstar@gmail.com>"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/seanmonstar/num_cpus"
+
+
+[dependencies]
+libc = "0.2"

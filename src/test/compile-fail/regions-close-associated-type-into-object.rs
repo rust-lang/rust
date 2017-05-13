@@ -10,6 +10,8 @@
 
 #![feature(box_syntax)]
 
+// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+
 trait X {}
 
 trait Iter {

@@ -20,8 +20,7 @@
 #[no_mangle]
 #[naked]
 fn naked_empty() {
-    // CHECK-NEXT: {{.+}}:
-    // CHECK-NEXT: ret void
+    // CHECK: ret void
 }
 
 // CHECK: Function Attrs: naked uwtable
@@ -29,10 +28,9 @@ fn naked_empty() {
 #[naked]
 // CHECK-NEXT: define internal void @naked_with_args(i{{[0-9]+}})
 fn naked_with_args(a: isize) {
-    // CHECK-NEXT: {{.+}}:
-    // CHECK-NEXT: %a = alloca i{{[0-9]+}}
-    &a; // keep variable in an alloca
+    // CHECK: %a = alloca i{{[0-9]+}}
     // CHECK: ret void
+    &a; // keep variable in an alloca
 }
 
 // CHECK: Function Attrs: naked uwtable
@@ -40,8 +38,7 @@ fn naked_with_args(a: isize) {
 #[no_mangle]
 #[naked]
 fn naked_with_return() -> isize {
-    // CHECK-NEXT: {{.+}}:
-    // CHECK-NEXT: ret i{{[0-9]+}} 0
+    // CHECK: ret i{{[0-9]+}} 0
     0
 }
 
@@ -50,10 +47,9 @@ fn naked_with_return() -> isize {
 #[no_mangle]
 #[naked]
 fn naked_with_args_and_return(a: isize) -> isize {
-    // CHECK-NEXT: {{.+}}:
-    // CHECK-NEXT: %a = alloca i{{[0-9]+}}
-    &a; // keep variable in an alloca
+    // CHECK: %a = alloca i{{[0-9]+}}
     // CHECK: ret i{{[0-9]+}} %{{[0-9]+}}
+    &a; // keep variable in an alloca
     a
 }
 
@@ -62,37 +58,14 @@ fn naked_with_args_and_return(a: isize) -> isize {
 #[no_mangle]
 #[naked]
 fn naked_recursive() {
-    // CHECK-NEXT: {{.+}}:
-    // CHECK-NEXT: call void @naked_empty()
-
-    // FIXME(#39685) Avoid one block per call.
-    // CHECK-NEXT: br label %bb1
-    // CHECK: bb1:
-
+    // CHECK: call void @naked_empty()
     naked_empty();
-
-    // CHECK-NEXT: %{{[0-9]+}} = call i{{[0-9]+}} @naked_with_return()
-
-    // FIXME(#39685) Avoid one block per call.
-    // CHECK-NEXT: br label %bb2
-    // CHECK: bb2:
-
-    // CHECK-NEXT: %{{[0-9]+}} = call i{{[0-9]+}} @naked_with_args_and_return(i{{[0-9]+}} %{{[0-9]+}})
-
-    // FIXME(#39685) Avoid one block per call.
-    // CHECK-NEXT: br label %bb3
-    // CHECK: bb3:
-
-    // CHECK-NEXT: call void @naked_with_args(i{{[0-9]+}} %{{[0-9]+}})
-
-    // FIXME(#39685) Avoid one block per call.
-    // CHECK-NEXT: br label %bb4
-    // CHECK: bb4:
-
+    // CHECK: %{{[0-9]+}} = call i{{[0-9]+}} @naked_with_return()
     naked_with_args(
+        // CHECK: %{{[0-9]+}} = call i{{[0-9]+}} @naked_with_args_and_return(i{{[0-9]+}} %{{[0-9]+}})
         naked_with_args_and_return(
+            // CHECK: call void @naked_with_args(i{{[0-9]+}} %{{[0-9]+}})
             naked_with_return()
         )
     );
-    // CHECK-NEXT: ret void
 }

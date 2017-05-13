@@ -23,7 +23,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://www.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(shared)]
 #![feature(collections_range)]
@@ -35,12 +35,6 @@
 #![feature(untagged_unions)]
 #![feature(associated_consts)]
 #![feature(unsize)]
-#![feature(i128_type)]
-#![feature(conservative_impl_trait)]
-#![feature(discriminant_value)]
-#![feature(specialization)]
-#![feature(manually_drop)]
-#![feature(struct_field_attributes)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
@@ -51,6 +45,8 @@ extern crate log;
 extern crate serialize as rustc_serialize; // used by deriving
 #[cfg(unix)]
 extern crate libc;
+
+extern crate rustc_i128;
 
 pub use rustc_serialize::hex::ToHex;
 

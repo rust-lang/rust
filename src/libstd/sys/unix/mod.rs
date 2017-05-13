@@ -33,7 +33,7 @@ pub mod weak;
 
 pub mod args;
 pub mod android;
-#[cfg(feature = "backtrace")]
+#[cfg(any(not(cargobuild), feature = "backtrace"))]
 pub mod backtrace;
 pub mod condvar;
 pub mod env;
@@ -92,7 +92,7 @@ pub fn init() {
 
     #[cfg(not(any(target_os = "nacl", target_os = "emscripten", target_os="fuchsia")))]
     unsafe fn reset_sigpipe() {
-        assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != libc::SIG_ERR);
+        assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != !0);
     }
     #[cfg(any(target_os = "nacl", target_os = "emscripten", target_os="fuchsia"))]
     unsafe fn reset_sigpipe() {}
