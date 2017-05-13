@@ -293,7 +293,7 @@ impl Into<Option<Def>> for ModData {
                 parent: None,
                 decl_id: None,
                 docs: self.docs,
-                sig: Some(self.sig.into()),
+                sig: self.sig.map(|s| s.into()),
                 attributes: vec![],
             }),
             _ => None,
