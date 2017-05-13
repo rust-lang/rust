@@ -1327,7 +1327,7 @@ impl<'a> State<'a> {
                     space(&mut self.s)?;
                 }
 
-                if let ast::ImplPolarity::Negative = polarity {
+                if polarity == ast::ImplPolarity::Negative {
                     word(&mut self.s, "!")?;
                 }
 

@@ -1546,7 +1546,7 @@ impl<'a> Parser<'a> {
     pub fn is_named_argument(&mut self) -> bool {
         let offset = match self.token {
             token::BinOp(token::And) |
-            token::AndAnd |
+            token::AndAnd => 1,
             _ if self.token.is_keyword(keywords::Mut) => 1,
             _ => 0
         };
@@ -2569,7 +2569,7 @@ impl<'a> Parser<'a> {
                             s.print_usize(float.trunc() as usize)?;
                             s.pclose()?;
                             word(&mut s.s, ".")?;
-                            word(&mut s.s, fstr.splitn(2, '.').last().unwrap())
+                            word(&mut s.s, fstr.splitn(2, ".").last().unwrap())
                         });
                         err.span_suggestion(
                             lo.to(self.prev_span),
@@ -4917,7 +4917,7 @@ impl<'a> Parser<'a> {
                 }
             }
         } else {
-            if let ast::ImplPolarity::Negative = polarity {
+            if polarity == ast::ImplPolarity::Negative {
                 // This is a negated type implementation
                 // `impl !MyType {}`, which is not allowed.
                 self.span_err(neg_span, "inherent implementation can't be negated");

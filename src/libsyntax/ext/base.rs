@@ -635,8 +635,8 @@ pub struct ExpansionData {
 }
 
 /// One of these is made during expansion and incrementally updated as we go;
-/// when a macro expansion occurs, the resulting nodes have the backtrace()
-/// -> `expn_info` of their expansion context stored into their span.
+/// when a macro expansion occurs, the resulting nodes have the `backtrace()
+/// -> expn_info` of their expansion context stored into their span.
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,

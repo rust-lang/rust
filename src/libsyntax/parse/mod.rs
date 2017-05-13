@@ -341,7 +341,6 @@ pub fn raw_str_lit(lit: &str) -> String {
     debug!("raw_str_lit: given {}", escape_default(lit));
     let mut res = String::with_capacity(lit.len());
 
-    // FIXME #8372: This could be a for-loop if it didn't borrow the iterator
     let mut chars = lit.chars().peekable();
     while let Some(c) = chars.next() {
         if c == '\r' {

@@ -36,43 +36,47 @@
 //! repetitions indicated by Kleene stars. It only advances or calls out to the
 //! real Rust parser when no `cur_eis` items remain
 //!
-//! Example: Start parsing `a a a a b` against [· a $( a )* a b].
+//! Example:
 //!
-//! Remaining input: `a a a a b`
-//! `next_eis`: `[· a $( a )* a b]`
+//! ```text, ignore
+//! Start parsing a a a a b against [· a $( a )* a b].
 //!
-//! - - - Advance over an `a`. - - -
+//! Remaining input: a a a a b
+//! next_eis: [· a $( a )* a b]
 //!
-//! Remaining input: `a a a b`
-//! cur: `[a · $( a )* a b]`
+//! - - - Advance over an a. - - -
+//!
+//! Remaining input: a a a b
+//! cur: [a · $( a )* a b]
 //! Descend/Skip (first item).
-//! next: `[a $( · a )* a b]  [a $( a )* · a b]`.
+//! next: [a $( · a )* a b]  [a $( a )* · a b].
 //!
-//! - - - Advance over an `a`. - - -
+//! - - - Advance over an a. - - -
 //!
-//! Remaining input: `a a b`
-//! cur: `[a $( a · )* a b]`  next: `[a $( a )* a · b]`
+//! Remaining input: a a b
+//! cur: [a $( a · )* a b]  next: [a $( a )* a · b]
 //! Finish/Repeat (first item)
-//! next: `[a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]`
+//! next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
 //!
-//! - - - Advance over an `a`. - - - (this looks exactly like the last step)
+//! - - - Advance over an a. - - - (this looks exactly like the last step)
 //!
-//! Remaining input: `a b`
-//! cur: `[a $( a · )* a b]`  next: `[a $( a )* a · b]`
+//! Remaining input: a b
+//! cur: [a $( a · )* a b]  next: [a $( a )* a · b]
 //! Finish/Repeat (first item)
-//! next: `[a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]`
+//! next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
 //!
-//! - - - Advance over an `a`. - - - (this looks exactly like the last step)
+//! - - - Advance over an a. - - - (this looks exactly like the last step)
 //!
-//! Remaining input: `b`
-//! cur: `[a $( a · )* a b]`  next: `[a $( a )* a · b]`
+//! Remaining input: b
+//! cur: [a $( a · )* a b]  next: [a $( a )* a · b]
 //! Finish/Repeat (first item)
-//! next: `[a $( a )* · a b]  [a $( · a )* a b]`
+//! next: [a $( a )* · a b]  [a $( · a )* a b]
 //!
-//! - - - Advance over a `b`. - - -
+//! - - - Advance over a b. - - -
 //!
-//! Remaining input: ``
-//! eof: `[a $( a )* a b ·]`
+//! Remaining input: ''
+//! eof: [a $( a )* a b ·]
+//! ```
 
 pub use self::NamedMatch::*;
 pub use self::ParseResult::*;
@@ -485,7 +489,7 @@ pub fn parse(sess: &ParseSess, tts: TokenStream, ms: &[TokenTree], directory: Op
 }
 
 fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
-    if let "tt" = name {
+    if name == "tt" {
         return token::NtTT(p.parse_token_tree());
     }
     // check at the beginning and the parser checks after each bump

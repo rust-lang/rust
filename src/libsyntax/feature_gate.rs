@@ -1216,7 +1216,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, _) => {
-                if let ast::ImplPolarity::Negative = polarity {
+                if polarity == ast::ImplPolarity::Negative {
                     gate_feature_post!(&self, optin_builtin_traits,
                                        i.span,
                                        "negative trait bounds are not yet fully implemented; \
@@ -1269,10 +1269,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FunctionRetTy) {
         if let ast::FunctionRetTy::Ty(ref output_ty) = *ret_ty {
-            if let ast::TyKind::Never = output_ty.node {
-                return
+            if output_ty.node != ast::TyKind::Never {
+                self.visit_ty(output_ty)
             }
-            self.visit_ty(output_ty)
         }
     }
 

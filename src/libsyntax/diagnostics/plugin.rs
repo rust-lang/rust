@@ -111,7 +111,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
     // overflow the maximum line width.
     description.map(|raw_msg| {
         let msg = raw_msg.as_str();
-        if !msg.starts_with('\n') || !msg.ends_with('\n') {
+        if !msg.starts_with("\n") || !msg.ends_with("\n") {
             ecx.span_err(span, &format!(
                 "description for error code {} doesn't start and end with a newline",
                 code
@@ -120,7 +120,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
 
         // URLs can be unavoidably longer than the line limit, so we allow them.
         // Allowed format is: `[name]: https://www.rust-lang.org/`
-        let is_url = |l: &str| l.starts_with('[') && l.contains("]:") && l.contains("http");
+        let is_url = |l: &str| l.starts_with("[") && l.contains("]:") && l.contains("http");
 
         if msg.lines().any(|line| line.len() > MAX_DESCRIPTION_WIDTH && !is_url(line)) {
             ecx.span_err(span, &format!(
