@@ -102,13 +102,13 @@ pub fn llvm(build: &Build, target: &str) {
        .define("LLVM_ENABLE_LIBEDIT", "OFF")
        .define("LLVM_PARALLEL_COMPILE_JOBS", build.jobs().to_string())
        .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
-       .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
+       .define("LLVM_DEFAULT_TARGET_TRIPLE", target)
+       .static_crt(true);
 
     if target.contains("msvc") {
         cfg.define("LLVM_USE_CRT_DEBUG", "MT");
         cfg.define("LLVM_USE_CRT_RELEASE", "MT");
         cfg.define("LLVM_USE_CRT_RELWITHDEBINFO", "MT");
-        cfg.static_crt(true);
     }
 
     if target.starts_with("i686") {
