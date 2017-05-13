@@ -500,7 +500,7 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::TyFnPtr(sig) => sig,
         ty::TyClosure(def_id, substs) => {
             let tcx = ccx.tcx();
-            let sig = tcx.closure_type(def_id).subst(tcx, substs.substs);
+            let sig = tcx.fn_sig(def_id).subst(tcx, substs.substs);
 
             let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
             let env_ty = match tcx.closure_kind(def_id) {

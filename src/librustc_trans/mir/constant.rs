@@ -579,7 +579,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                     .find(|it| it.kind == ty::AssociatedKind::Method)
                                     .unwrap().def_id;
                                 // Now create its substs [Closure, Tuple]
-                                let input = tcx.closure_type(def_id)
+                                let input = tcx.fn_sig(def_id)
                                     .subst(tcx, substs.substs).input(0);
                                 let input = tcx.erase_late_bound_regions_and_normalize(&input);
                                 let substs = tcx.mk_substs([operand.ty, input]

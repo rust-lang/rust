@@ -553,6 +553,6 @@ impl_stable_hash_for!(struct MethodData { fn_data, container, has_self });
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ClosureData<'tcx> {
     pub kind: ty::ClosureKind,
-    pub ty: Lazy<ty::PolyFnSig<'tcx>>,
+    pub sig: Lazy<ty::PolyFnSig<'tcx>>,
 }
-impl_stable_hash_for!(struct ClosureData<'tcx> { kind, ty });
+impl_stable_hash_for!(struct ClosureData<'tcx> { kind, sig });

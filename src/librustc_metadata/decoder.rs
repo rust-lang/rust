@@ -1084,12 +1084,12 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn closure_ty(&self,
-                      closure_id: DefIndex,
-                      tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                      -> ty::PolyFnSig<'tcx> {
+    pub fn fn_sig(&self,
+                  closure_id: DefIndex,
+                  tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                  -> ty::PolyFnSig<'tcx> {
         match self.entry(closure_id).kind {
-            EntryKind::Closure(data) => data.decode(self).ty.decode((self, tcx)),
+            EntryKind::Closure(data) => data.decode(self).sig.decode((self, tcx)),
             _ => bug!(),
         }
     }

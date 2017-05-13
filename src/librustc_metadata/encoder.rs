@@ -1175,7 +1175,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
         let data = ClosureData {
             kind: tcx.closure_kind(def_id),
-            ty: self.lazy(&tcx.closure_type(def_id)),
+            sig: self.lazy(&tcx.fn_sig(def_id)),
         };
 
         Entry {

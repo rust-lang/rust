@@ -639,7 +639,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
                 // to
                 //     `fn(arg0,arg1,...) -> _`
-                let sig = self.closure_type(def_id_a).subst(self.tcx, substs_a.substs);
+                let sig = self.fn_sig(def_id_a).subst(self.tcx, substs_a.substs);
                 let converted_sig = sig.map_bound(|s| {
                     let params_iter = match s.inputs()[0].sty {
                         ty::TyTuple(params, _) => {

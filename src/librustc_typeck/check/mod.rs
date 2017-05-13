@@ -718,16 +718,16 @@ pub fn provide(providers: &mut Providers) {
         typeck_item_bodies,
         typeck_tables_of,
         has_typeck_tables,
-        closure_type,
+        fn_sig,
         closure_kind,
         adt_destructor,
         ..*providers
     };
 }
 
-fn closure_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          def_id: DefId)
-                          -> ty::PolyFnSig<'tcx> {
+fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    def_id: DefId)
+                    -> ty::PolyFnSig<'tcx> {
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     tcx.typeck_tables_of(def_id).closure_tys[&node_id]
 }

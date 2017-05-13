@@ -1149,7 +1149,7 @@ fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
     -> Progress<'tcx>
 {
     let closure_typer = selcx.closure_typer();
-    let closure_type = closure_typer.closure_type(vtable.closure_def_id)
+    let closure_type = closure_typer.fn_sig(vtable.closure_def_id)
         .subst(selcx.tcx(), vtable.substs.substs);
     let Normalized {
         value: closure_type,

@@ -108,7 +108,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // haven't yet decided on whether the closure is fn vs
                 // fnmut vs fnonce. If so, we have to defer further processing.
                 if self.closure_kind(def_id).is_none() {
-                    let closure_ty = self.closure_type(def_id).subst(self.tcx, substs.substs);
+                    let closure_ty = self.fn_sig(def_id).subst(self.tcx, substs.substs);
                     let fn_sig = self.replace_late_bound_regions_with_fresh_var(call_expr.span,
                                                                    infer::FnCall,
                                                                    &closure_ty)
