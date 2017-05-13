@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use CodeSuggestion;
+use Substitution;
 use Level;
 use RenderSpan;
 use std::fmt;
@@ -23,7 +24,7 @@ pub struct Diagnostic {
     pub code: Option<String>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
-    pub suggestion: Option<CodeSuggestion>,
+    pub suggestions: Vec<CodeSuggestion>,
 }
 
 /// For example a note attached to an error.
@@ -87,7 +88,7 @@ impl Diagnostic {
             code: code,
             span: MultiSpan::new(),
             children: vec![],
-            suggestion: None,
+            suggestions: vec![],
         }
     }
 
@@ -204,10 +205,22 @@ impl Diagnostic {
     ///
     /// See `diagnostic::CodeSuggestion` for more information.
     pub fn span_suggestion(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
-        assert!(self.suggestion.is_none());
-        self.suggestion = Some(CodeSuggestion {
-            msp: sp.into(),
-            substitutes: vec![suggestion],
+        self.suggestions.push(CodeSuggestion {
+            substitution_parts: vec![Substitution {
+                span: sp,
+                substitutions: vec![suggestion],
+            }],
+            msg: msg.to_owned(),
+        });
+        self
+    }
+
+    pub fn span_suggestions(&mut self, sp: Span, msg: &str, suggestions: Vec<String>) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitution_parts: vec![Substitution {
+                span: sp,
+                substitutions: suggestions,
+            }],
             msg: msg.to_owned(),
         });
         self

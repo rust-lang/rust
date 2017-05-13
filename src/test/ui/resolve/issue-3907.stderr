@@ -4,8 +4,8 @@ error[E0404]: expected trait, found type alias `Foo`
 20 | impl Foo for S { //~ ERROR expected trait, found type alias `Foo`
    |      ^^^ type aliases cannot be used for traits
    |
-   = help: possible better candidate is found in another module, you can import it into scope:
-             `use issue_3907::Foo;`
+help: possible better candidate is found in another module, you can import it into scope
+   | use issue_3907::Foo;
 
 error: cannot continue compilation due to previous error
 
