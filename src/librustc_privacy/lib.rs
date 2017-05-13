@@ -400,7 +400,13 @@ impl<'b, 'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
     }
 
     fn ty(&mut self) -> &mut Self {
-        self.ev.tcx.type_of(self.item_def_id).visit_with(self);
+        let ty = self.ev.tcx.type_of(self.item_def_id);
+        ty.visit_with(self);
+        if let ty::TyFnDef(def_id, _) = ty.sty {
+            if def_id == self.item_def_id {
+                self.ev.tcx.fn_sig(def_id).visit_with(self);
+            }
+        }
         self
     }
 
@@ -910,7 +916,13 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     }
 
     fn ty(&mut self) -> &mut Self {
-        self.tcx.type_of(self.item_def_id).visit_with(self);
+        let ty = self.tcx.type_of(self.item_def_id);
+        ty.visit_with(self);
+        if let ty::TyFnDef(def_id, _) = ty.sty {
+            if def_id == self.item_def_id {
+                self.tcx.fn_sig(def_id).visit_with(self);
+            }
+        }
         self
     }
 

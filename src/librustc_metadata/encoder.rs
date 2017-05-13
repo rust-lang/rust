@@ -16,6 +16,7 @@ use schema::*;
 use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary,
                             EncodedMetadata, EncodedMetadataHashes,
                             EncodedMetadataHash};
+use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LOCAL_CRATE};
 use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
 use rustc::ich::Fingerprint;
@@ -499,6 +500,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
             struct_ctor: None,
+            ctor_sig: if variant.ctor_kind == CtorKind::Fn {
+                Some(self.lazy(&tcx.fn_sig(def_id)))
+            } else {
+                None
+            }
         };
 
         let enum_id = tcx.hir.as_local_node_id(enum_did).unwrap();
@@ -617,6 +623,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
             struct_ctor: Some(def_id.index),
+            ctor_sig: if variant.ctor_kind == CtorKind::Fn {
+                Some(self.lazy(&tcx.fn_sig(def_id)))
+            } else {
+                None
+            }
         };
 
         let struct_id = tcx.hir.as_local_node_id(adt_def_id).unwrap();
@@ -695,7 +706,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     };
                     FnData {
                         constness: hir::Constness::NotConst,
-                        arg_names: arg_names
+                        arg_names: arg_names,
+                        sig: self.lazy(&tcx.fn_sig(def_id)),
                     }
                 } else {
                     bug!()
@@ -747,6 +759,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
     fn encode_info_for_impl_item(&mut self, def_id: DefId) -> Entry<'tcx> {
         debug!("IsolatedEncoder::encode_info_for_impl_item({:?})", def_id);
+        let tcx = self.tcx;
+
         let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
         let ast_item = self.tcx.hir.expect_impl_item(node_id);
         let impl_item = self.tcx.associated_item(def_id);
@@ -768,6 +782,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     FnData {
                         constness: sig.constness,
                         arg_names: self.encode_fn_arg_names_for_body(body),
+                        sig: self.lazy(&tcx.fn_sig(def_id)),
                     }
                 } else {
                     bug!()
@@ -881,6 +896,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 let data = FnData {
                     constness: constness,
                     arg_names: self.encode_fn_arg_names_for_body(body),
+                    sig: self.lazy(&tcx.fn_sig(def_id)),
                 };
 
                 EntryKind::Fn(self.lazy(&data))
@@ -910,6 +926,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
                     struct_ctor: struct_ctor,
+                    ctor_sig: None,
                 }), repr_options)
             }
             hir::ItemUnion(..) => {
@@ -920,6 +937,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
                     struct_ctor: None,
+                    ctor_sig: None,
                 }), repr_options)
             }
             hir::ItemDefaultImpl(..) => {
@@ -1363,6 +1381,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 let data = FnData {
                     constness: hir::Constness::NotConst,
                     arg_names: self.encode_fn_arg_names(names),
+                    sig: self.lazy(&tcx.fn_sig(def_id)),
                 };
                 EntryKind::ForeignFn(self.lazy(&data))
             }

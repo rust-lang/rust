@@ -4736,4 +4736,5 @@ register_diagnostics! {
     E0568, // auto-traits can not have predicates,
     E0588, // packed struct cannot transitively contain a `[repr(align)]` struct
     E0592, // duplicate definitions with name `{}`
+    E0619, // intrinsic must be a function
 }

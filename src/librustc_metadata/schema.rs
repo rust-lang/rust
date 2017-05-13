@@ -343,18 +343,18 @@ pub enum EntryKind<'tcx> {
     Type,
     Enum(ReprOptions),
     Field,
-    Variant(Lazy<VariantData>),
-    Struct(Lazy<VariantData>, ReprOptions),
-    Union(Lazy<VariantData>, ReprOptions),
-    Fn(Lazy<FnData>),
-    ForeignFn(Lazy<FnData>),
+    Variant(Lazy<VariantData<'tcx>>),
+    Struct(Lazy<VariantData<'tcx>>, ReprOptions),
+    Union(Lazy<VariantData<'tcx>>, ReprOptions),
+    Fn(Lazy<FnData<'tcx>>),
+    ForeignFn(Lazy<FnData<'tcx>>),
     Mod(Lazy<ModData>),
     MacroDef(Lazy<MacroDef>),
     Closure(Lazy<ClosureData<'tcx>>),
     Trait(Lazy<TraitData<'tcx>>),
     Impl(Lazy<ImplData<'tcx>>),
     DefaultImpl(Lazy<ImplData<'tcx>>),
-    Method(Lazy<MethodData>),
+    Method(Lazy<MethodData<'tcx>>),
     AssociatedType(AssociatedContainer),
     AssociatedConst(AssociatedContainer, u8),
 }
@@ -439,27 +439,33 @@ pub struct MacroDef {
 impl_stable_hash_for!(struct MacroDef { body, legacy });
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct FnData {
+pub struct FnData<'tcx> {
     pub constness: hir::Constness,
     pub arg_names: LazySeq<ast::Name>,
+    pub sig: Lazy<ty::PolyFnSig<'tcx>>,
 }
 
-impl_stable_hash_for!(struct FnData { constness, arg_names });
+impl_stable_hash_for!(struct FnData<'tcx> { constness, arg_names, sig });
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct VariantData {
+pub struct VariantData<'tcx> {
     pub ctor_kind: CtorKind,
     pub discr: ty::VariantDiscr,
 
     /// If this is a struct's only variant, this
     /// is the index of the "struct ctor" item.
     pub struct_ctor: Option<DefIndex>,
+
+    /// If this is a tuple struct or variant
+    /// ctor, this is its "function" signature.
+    pub ctor_sig: Option<Lazy<ty::PolyFnSig<'tcx>>>,
 }
 
-impl_stable_hash_for!(struct VariantData {
+impl_stable_hash_for!(struct VariantData<'tcx> {
     ctor_kind,
     discr,
-    struct_ctor
+    struct_ctor,
+    ctor_sig
 });
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -543,12 +549,12 @@ impl AssociatedContainer {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct MethodData {
-    pub fn_data: FnData,
+pub struct MethodData<'tcx> {
+    pub fn_data: FnData<'tcx>,
     pub container: AssociatedContainer,
     pub has_self: bool,
 }
-impl_stable_hash_for!(struct MethodData { fn_data, container, has_self });
+impl_stable_hash_for!(struct MethodData<'tcx> { fn_data, container, has_self });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ClosureData<'tcx> {

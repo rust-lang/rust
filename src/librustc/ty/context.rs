@@ -1378,9 +1378,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_fn_def(self, def_id: DefId,
-                     substs: &'tcx Substs<'tcx>,
-                     fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(TyFnDef(def_id, substs, fty))
+                     substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(TyFnDef(def_id, substs))
     }
 
     pub fn mk_fn_ptr(self, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {

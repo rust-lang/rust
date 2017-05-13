@@ -205,11 +205,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // FIXME(canndrew): This is_never should probably be an is_uninhabited
                 let diverges = expr.ty.is_never();
                 let intrinsic = match ty.sty {
-                    ty::TyFnDef(def_id, _, ref f) if
-                        f.abi() == Abi::RustIntrinsic ||
-                        f.abi() == Abi::PlatformIntrinsic =>
-                    {
-                        Some(this.hir.tcx().item_name(def_id).as_str())
+                    ty::TyFnDef(def_id, _)  => {
+                        let f = ty.fn_sig(this.hir.tcx());
+                        if f.abi() == Abi::RustIntrinsic ||
+                           f.abi() == Abi::PlatformIntrinsic {
+                            Some(this.hir.tcx().item_name(def_id).as_str())
+                        } else {
+                            None
+                        }
                     }
                     _ => None
                 };

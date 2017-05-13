@@ -404,20 +404,18 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
                 let callee = self.trans_operand(&bcx, func);
 
-                let (instance, mut llfn, sig) = match callee.ty.sty {
-                    ty::TyFnDef(def_id, substs, sig) => {
+                let (instance, mut llfn) = match callee.ty.sty {
+                    ty::TyFnDef(def_id, substs) => {
                         (Some(monomorphize::resolve(bcx.ccx.shared(), def_id, substs)),
-                         None,
-                         sig)
+                         None)
                     }
-                    ty::TyFnPtr(sig) => {
-                        (None,
-                         Some(callee.immediate()),
-                         sig)
+                    ty::TyFnPtr(_) => {
+                        (None, Some(callee.immediate()))
                     }
                     _ => bug!("{} is not callable", callee.ty)
                 };
                 let def = instance.map(|i| i.def);
+                let sig = callee.ty.fn_sig(bcx.tcx());
                 let sig = bcx.tcx().erase_late_bound_regions_and_normalize(&sig);
                 let abi = sig.abi;
 

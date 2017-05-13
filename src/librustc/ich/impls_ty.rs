@@ -524,10 +524,9 @@ for ty::TypeVariants<'tcx>
                 region.hash_stable(hcx, hasher);
                 pointee_ty.hash_stable(hcx, hasher);
             }
-            TyFnDef(def_id, substs, ref sig) => {
+            TyFnDef(def_id, substs) => {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
-                sig.hash_stable(hcx, hasher);
             }
             TyFnPtr(ref sig) => {
                 sig.hash_stable(hcx, hasher);

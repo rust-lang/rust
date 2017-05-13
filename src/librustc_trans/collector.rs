@@ -587,7 +587,7 @@ fn visit_fn_use<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                           is_direct_call: bool,
                           output: &mut Vec<TransItem<'tcx>>)
 {
-    if let ty::TyFnDef(def_id, substs, _) = ty.sty {
+    if let ty::TyFnDef(def_id, substs) = ty.sty {
         let instance = monomorphize::resolve(scx, def_id, substs);
         visit_instance_use(scx, instance, is_direct_call, output);
     }

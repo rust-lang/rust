@@ -1367,7 +1367,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
             ty::AssociatedKind::Method => {
                 let generics = (cx.tcx.generics_of(self.def_id),
                                 &cx.tcx.predicates_of(self.def_id)).clean(cx);
-                let sig = cx.tcx.type_of(self.def_id).fn_sig();
+                let sig = cx.tcx.fn_sig(self.def_id);
                 let mut decl = (self.def_id, sig).clean(cx);
 
                 if self.method_has_self_argument {
@@ -1842,17 +1842,21 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 mutability: mt.mutbl.clean(cx),
                 type_: box mt.ty.clean(cx),
             },
-            ty::TyFnDef(.., sig) |
-            ty::TyFnPtr(sig) => BareFunction(box BareFunctionDecl {
-                unsafety: sig.unsafety(),
-                generics: Generics {
-                    lifetimes: Vec::new(),
-                    type_params: Vec::new(),
-                    where_predicates: Vec::new()
-                },
-                decl: (cx.tcx.hir.local_def_id(ast::CRATE_NODE_ID), sig).clean(cx),
-                abi: sig.abi(),
-            }),
+            ty::TyFnDef(..) |
+            ty::TyFnPtr(_) => {
+                let ty = cx.tcx.lift(self).unwrap();
+                let sig = ty.fn_sig(cx.tcx);
+                BareFunction(box BareFunctionDecl {
+                    unsafety: sig.unsafety(),
+                    generics: Generics {
+                        lifetimes: Vec::new(),
+                        type_params: Vec::new(),
+                        where_predicates: Vec::new()
+                    },
+                    decl: (cx.tcx.hir.local_def_id(ast::CRATE_NODE_ID), sig).clean(cx),
+                    abi: sig.abi(),
+                })
+            }
             ty::TyAdt(def, substs) => {
                 let did = def.did;
                 let kind = match def.adt_kind() {

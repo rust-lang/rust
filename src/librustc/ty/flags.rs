@@ -155,9 +155,8 @@ impl FlagComputation {
                 self.add_tys(&ts[..]);
             }
 
-            &ty::TyFnDef(_, substs, f) => {
+            &ty::TyFnDef(_, substs) => {
                 self.add_substs(substs);
-                self.add_fn_sig(f);
             }
 
             &ty::TyFnPtr(f) => {

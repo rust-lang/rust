@@ -1085,13 +1085,19 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn fn_sig(&self,
-                  closure_id: DefIndex,
+                  id: DefIndex,
                   tcx: TyCtxt<'a, 'tcx, 'tcx>)
                   -> ty::PolyFnSig<'tcx> {
-        match self.entry(closure_id).kind {
-            EntryKind::Closure(data) => data.decode(self).sig.decode((self, tcx)),
+        let sig = match self.entry(id).kind {
+            EntryKind::Fn(data) |
+            EntryKind::ForeignFn(data) => data.decode(self).sig,
+            EntryKind::Method(data) => data.decode(self).fn_data.sig,
+            EntryKind::Variant(data) |
+            EntryKind::Struct(data, _) => data.decode(self).ctor_sig.unwrap(),
+            EntryKind::Closure(data) => data.decode(self).sig,
             _ => bug!(),
-        }
+        };
+        sig.decode((self, tcx))
     }
 
     #[inline]

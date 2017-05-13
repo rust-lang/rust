@@ -58,7 +58,7 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             // types in the MIR. They will be substituted again with
             // the param-substs, but because they are concrete, this
             // will not do any harm.
-            let sig = tcx.erase_late_bound_regions(&ty.fn_sig());
+            let sig = tcx.erase_late_bound_regions(&ty.fn_sig(tcx));
             let arg_tys = sig.inputs();
 
             build_call_shim(
@@ -153,8 +153,8 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     } else {
         Substs::identity_for_item(tcx, def_id)
     };
-    let fn_ty = tcx.type_of(def_id).subst(tcx, substs);
-    let sig = tcx.erase_late_bound_regions(&fn_ty.fn_sig());
+    let sig = tcx.fn_sig(def_id).subst(tcx, substs);
+    let sig = tcx.erase_late_bound_regions(&sig);
     let span = tcx.def_span(def_id);
 
     let source_info = SourceInfo { span, scope: ARGUMENT_VISIBILITY_SCOPE };
@@ -276,8 +276,8 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             call_kind={:?}, untuple_args={:?})",
            def_id, rcvr_adjustment, call_kind, untuple_args);
 
-    let fn_ty = tcx.type_of(def_id);
-    let sig = tcx.erase_late_bound_regions(&fn_ty.fn_sig());
+    let sig = tcx.fn_sig(def_id);
+    let sig = tcx.erase_late_bound_regions(&sig);
     let span = tcx.def_span(def_id);
 
     debug!("build_call_shim: sig={:?}", sig);
@@ -409,11 +409,8 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
 {
     let tcx = infcx.tcx;
     let def_id = tcx.hir.local_def_id(ctor_id);
-    let sig = match tcx.type_of(def_id).sty {
-        ty::TyFnDef(_, _, fty) => tcx.no_late_bound_regions(&fty)
-            .expect("LBR in ADT constructor signature"),
-        _ => bug!("unexpected type for ctor {:?}", def_id)
-    };
+    let sig = tcx.no_late_bound_regions(&tcx.fn_sig(def_id))
+        .expect("LBR in ADT constructor signature");
     let sig = tcx.erase_regions(&sig);
 
     let (adt_def, substs) = match sig.output().sty {

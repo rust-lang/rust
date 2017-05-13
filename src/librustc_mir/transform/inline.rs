@@ -87,7 +87,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 let terminator = bb_data.terminator();
                 if let TerminatorKind::Call {
                     func: Operand::Constant(ref f), .. } = terminator.kind {
-                    if let ty::TyFnDef(callee_def_id, substs, _) = f.ty.sty {
+                    if let ty::TyFnDef(callee_def_id, substs) = f.ty.sty {
                         callsites.push_back(CallSite {
                             callee: callee_def_id,
                             substs: substs,
@@ -131,7 +131,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     let terminator = bb_data.terminator();
                     if let TerminatorKind::Call {
                         func: Operand::Constant(ref f), .. } = terminator.kind {
-                        if let ty::TyFnDef(callee_def_id, substs, _) = f.ty.sty {
+                        if let ty::TyFnDef(callee_def_id, substs) = f.ty.sty {
                             // Don't inline the same function multiple times.
                             if callsite.callee != callee_def_id {
                                 callsites.push_back(CallSite {
@@ -270,8 +270,9 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 }
 
                 TerminatorKind::Call {func: Operand::Constant(ref f), .. } => {
-                    if let ty::TyFnDef(.., f) = f.ty.sty {
+                    if let ty::TyFnDef(def_id, _) = f.ty.sty {
                         // Don't give intrinsics the extra penalty for calls
+                        let f = tcx.fn_sig(def_id);
                         if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
                             cost += INSTR_COST;
                         } else {

@@ -165,9 +165,11 @@ pub fn resolve<'a, 'tcx>(
     } else {
         let item_type = def_ty(scx, def_id, substs);
         let def = match item_type.sty {
-            ty::TyFnDef(_, _, f) if
-                f.abi() == Abi::RustIntrinsic ||
-                f.abi() == Abi::PlatformIntrinsic =>
+            ty::TyFnDef(..) if {
+                    let f = item_type.fn_sig(scx.tcx());
+                    f.abi() == Abi::RustIntrinsic ||
+                    f.abi() == Abi::PlatformIntrinsic
+                } =>
             {
                 debug!(" => intrinsic");
                 ty::InstanceDef::Intrinsic(def_id)

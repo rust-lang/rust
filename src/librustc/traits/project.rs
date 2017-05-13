@@ -1137,9 +1137,19 @@ fn confirm_fn_pointer_candidate<'cx, 'gcx, 'tcx>(
     -> Progress<'tcx>
 {
     let fn_type = selcx.infcx().shallow_resolve(fn_pointer_vtable.fn_ty);
-    let sig = fn_type.fn_sig();
+    let sig = fn_type.fn_sig(selcx.tcx());
+    let Normalized {
+        value: sig,
+        obligations
+    } = normalize_with_depth(selcx,
+                             obligation.param_env,
+                             obligation.cause.clone(),
+                             obligation.recursion_depth+1,
+                             &sig);
+
     confirm_callable_candidate(selcx, obligation, sig, util::TupleArgumentsFlag::Yes)
         .with_addl_obligations(fn_pointer_vtable.nested)
+        .with_addl_obligations(obligations)
 }
 
 fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(

@@ -196,8 +196,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             expected: Expectation<'tcx>)
                             -> Ty<'tcx> {
         let (fn_sig, def_span) = match callee_ty.sty {
-            ty::TyFnDef(def_id, .., sig) => {
-                (sig, self.tcx.hir.span_if_local(def_id))
+            ty::TyFnDef(def_id, _) => {
+                (callee_ty.fn_sig(self.tcx), self.tcx.hir.span_if_local(def_id))
             }
             ty::TyFnPtr(sig) => (sig, None),
             ref t => {

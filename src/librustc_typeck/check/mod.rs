@@ -718,18 +718,10 @@ pub fn provide(providers: &mut Providers) {
         typeck_item_bodies,
         typeck_tables_of,
         has_typeck_tables,
-        fn_sig,
         closure_kind,
         adt_destructor,
         ..*providers
     };
-}
-
-fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    def_id: DefId)
-                    -> ty::PolyFnSig<'tcx> {
-    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-    tcx.typeck_tables_of(def_id).closure_tys[&node_id]
 }
 
 fn closure_kind<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -844,7 +836,7 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     Inherited::build(tcx, def_id).enter(|inh| {
         let param_env = tcx.param_env(def_id);
         let fcx = if let Some(decl) = fn_decl {
-            let fn_sig = tcx.type_of(def_id).fn_sig();
+            let fn_sig = tcx.fn_sig(def_id);
 
             check_abi(tcx, span, fn_sig.abi());
 
@@ -2173,7 +2165,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                           -> ty::TypeAndMut<'tcx>
     {
         // extract method return type, which will be &T;
-        // all LB regions should have been instantiated during method lookup
         let ret_ty = method.sig.output();
 
         // method returns &T, but the type as visible to user is T, so deref
@@ -2580,8 +2571,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty::TyUint(ast::UintTy::U8) | ty::TyUint(ast::UintTy::U16) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_uint");
                     }
-                    ty::TyFnDef(.., f) => {
-                        let ptr_ty = self.tcx.mk_fn_ptr(f);
+                    ty::TyFnDef(..) => {
+                        let ptr_ty = self.tcx.mk_fn_ptr(arg_ty.fn_sig(self.tcx));
                         let ptr_ty = self.resolve_type_vars_if_possible(&ptr_ty);
                         variadic_error(tcx.sess, arg.span, arg_ty, &format!("{}", ptr_ty));
                     }

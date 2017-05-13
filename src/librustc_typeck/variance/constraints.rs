@@ -382,6 +382,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // leaf type -- noop
             }
 
+            ty::TyFnDef(..) |
             ty::TyClosure(..) |
             ty::TyAnon(..) => {
                 bug!("Unexpected closure type in variance computation");
@@ -466,7 +467,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::TyFnDef(.., sig) |
             ty::TyFnPtr(sig) => {
                 self.add_constraints_from_sig(current, sig, variance);
             }

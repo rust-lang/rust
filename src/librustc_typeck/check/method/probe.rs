@@ -673,7 +673,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                expected: ty::Ty<'tcx>) -> bool {
         match method.def() {
             Def::Method(def_id) => {
-                let fty = self.tcx.type_of(def_id).fn_sig();
+                let fty = self.tcx.fn_sig(def_id);
                 self.probe(|_| {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);
                     let output = fty.output().subst(self.tcx, substs);
@@ -1288,7 +1288,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                             impl_ty: Ty<'tcx>,
                             substs: &Substs<'tcx>)
                             -> Ty<'tcx> {
-        let self_ty = self.tcx.type_of(method).fn_sig().input(0);
+        let self_ty = self.tcx.fn_sig(method).input(0);
         debug!("xform_self_ty(impl_ty={:?}, self_ty={:?}, substs={:?})",
                impl_ty,
                self_ty,

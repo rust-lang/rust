@@ -334,7 +334,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     let fn_ty = func.ty(self.mir, tcx);
                     let fn_ty = self.monomorphize(&fn_ty);
                     let (def_id, substs) = match fn_ty.sty {
-                        ty::TyFnDef(def_id, substs, _) => (def_id, substs),
+                        ty::TyFnDef(def_id, substs) => (def_id, substs),
                         _ => span_bug!(span, "calling {:?} (of type {}) in constant",
                                        func, fn_ty)
                     };
@@ -560,7 +560,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let val = match *kind {
                     mir::CastKind::ReifyFnPointer => {
                         match operand.ty.sty {
-                            ty::TyFnDef(def_id, substs, _) => {
+                            ty::TyFnDef(def_id, substs) => {
                                 callee::resolve_and_get_fn(self.ccx, def_id, substs)
                             }
                             _ => {

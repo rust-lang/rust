@@ -95,11 +95,12 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     let ccx = bcx.ccx;
     let tcx = ccx.tcx();
 
-    let (def_id, substs, sig) = match callee_ty.sty {
-        ty::TyFnDef(def_id, substs, sig) => (def_id, substs, sig),
+    let (def_id, substs) = match callee_ty.sty {
+        ty::TyFnDef(def_id, substs) => (def_id, substs),
         _ => bug!("expected fn item type, found {}", callee_ty)
     };
 
+    let sig = callee_ty.fn_sig(tcx);
     let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
     let arg_tys = sig.inputs();
     let ret_ty = sig.output();
@@ -986,7 +987,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
 
 
     let tcx = bcx.tcx();
-    let sig = tcx.erase_late_bound_regions_and_normalize(&callee_ty.fn_sig());
+    let sig = tcx.erase_late_bound_regions_and_normalize(&callee_ty.fn_sig(tcx));
     let arg_tys = sig.inputs();
 
     // every intrinsic takes a SIMD vector as its first argument
