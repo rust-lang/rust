@@ -108,6 +108,7 @@ pub fn llvm(build: &Build, target: &str) {
         cfg.define("LLVM_USE_CRT_DEBUG", "MT");
         cfg.define("LLVM_USE_CRT_RELEASE", "MT");
         cfg.define("LLVM_USE_CRT_RELWITHDEBINFO", "MT");
+        cfg.static_crt(true);
     }
 
     if target.starts_with("i686") {
