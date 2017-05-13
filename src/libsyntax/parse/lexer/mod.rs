@@ -754,9 +754,7 @@ impl<'a> StringReader<'a> {
         // integer literal followed by field/method access or a range pattern
         // (`0..2` and `12.foo()`)
         if self.ch_is('.') && !self.nextch_is('.') &&
-           !self.nextch()
-                .unwrap_or('\0')
-                .is_xid_start() {
+           !ident_start(self.nextch()) {
             // might have stuff after the ., and if it does, it needs to start
             // with a number
             self.bump();
