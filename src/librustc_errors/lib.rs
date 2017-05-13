@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![crate_name = "rustc_errors"]
-#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -19,10 +18,12 @@
 
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
-#![feature(rustc_private)]
-#![feature(staged_api)]
 #![feature(range_contains)]
 #![feature(libc)]
+
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(rustc_private))]
+#![cfg_attr(stage0, feature(staged_api))]
 
 extern crate term;
 extern crate libc;
