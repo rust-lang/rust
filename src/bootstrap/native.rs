@@ -309,11 +309,15 @@ pub fn openssl(build: &Build, target: &str) {
     configure.arg("no-ssl3");
 
     let os = match target {
+        "aarch64-linux-android" => "linux-aarch64",
         "aarch64-unknown-linux-gnu" => "linux-aarch64",
+        "arm-linux-androideabi" => "android",
         "arm-unknown-linux-gnueabi" => "linux-armv4",
         "arm-unknown-linux-gnueabihf" => "linux-armv4",
+        "armv7-linux-androideabi" => "android-armv7",
         "armv7-unknown-linux-gnueabihf" => "linux-armv4",
         "i686-apple-darwin" => "darwin-i386-cc",
+        "i686-linux-android" => "android-x86",
         "i686-unknown-freebsd" => "BSD-x86-elf",
         "i686-unknown-linux-gnu" => "linux-elf",
         "i686-unknown-linux-musl" => "linux-elf",
@@ -326,6 +330,7 @@ pub fn openssl(build: &Build, target: &str) {
         "powerpc64le-unknown-linux-gnu" => "linux-ppc64le",
         "s390x-unknown-linux-gnu" => "linux64-s390x",
         "x86_64-apple-darwin" => "darwin64-x86_64-cc",
+        "x86_64-linux-android" => "linux-x86_64",
         "x86_64-unknown-freebsd" => "BSD-x86_64",
         "x86_64-unknown-linux-gnu" => "linux-x86_64",
         "x86_64-unknown-linux-musl" => "linux-x86_64",
@@ -336,6 +341,18 @@ pub fn openssl(build: &Build, target: &str) {
     configure.env("CC", build.cc(target));
     for flag in build.cflags(target) {
         configure.arg(flag);
+    }
+    // There is no specific os target for android aarch64 or x86_64,
+    // so we need to pass some extra cflags
+    if target == "aarch64-linux-android" || target == "x86_64-linux-android" {
+        configure.arg("-mandroid");
+        configure.arg("-fomit-frame-pointer");
+    }
+    // Make PIE binaries
+    // Non-PIE linker support was removed in Lollipop
+    // https://source.android.com/security/enhancements/enhancements50
+    if target == "i686-linux-android" {
+        configure.arg("no-asm");
     }
     configure.current_dir(&obj);
     println!("Configuring openssl for {}", target);
