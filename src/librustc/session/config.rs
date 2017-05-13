@@ -1027,6 +1027,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "add a source pattern to the file path remapping config"),
     remap_path_prefix_to: Vec<String> = (vec![], parse_string_push, [TRACKED],
         "add a mapping target to the file path remapping config"),
+    force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
+        "force all crates to be `rustc_private` unstable"),
 }
 
 pub fn default_lib_output() -> CrateType {

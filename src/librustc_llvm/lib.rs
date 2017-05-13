@@ -14,7 +14,6 @@
 #![allow(dead_code)]
 
 #![crate_name = "rustc_llvm"]
-#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -27,9 +26,11 @@
 #![feature(concat_idents)]
 #![feature(libc)]
 #![feature(link_args)]
-#![feature(staged_api)]
-#![feature(rustc_private)]
 #![feature(static_nobundle)]
+
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(rustc_private))]
+#![cfg_attr(stage0, feature(staged_api))]
 
 extern crate libc;
 #[macro_use]

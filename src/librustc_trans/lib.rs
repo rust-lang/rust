@@ -15,7 +15,6 @@
 //! This API is completely unstable and subject to change.
 
 #![crate_name = "rustc_trans"]
-#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -33,11 +32,13 @@
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(rustc_private)]
 #![feature(slice_patterns)]
-#![feature(staged_api)]
 #![feature(unicode)]
 #![feature(conservative_impl_trait)]
+
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(rustc_private))]
+#![cfg_attr(stage0, feature(staged_api))]
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;

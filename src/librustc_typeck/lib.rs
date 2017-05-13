@@ -64,7 +64,6 @@ This API is completely unstable and subject to change.
 */
 
 #![crate_name = "rustc_typeck"]
-#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -81,8 +80,10 @@ This API is completely unstable and subject to change.
 #![feature(never_type)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(rustc_private)]
-#![feature(staged_api)]
+
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(rustc_private))]
+#![cfg_attr(stage0, feature(staged_api))]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

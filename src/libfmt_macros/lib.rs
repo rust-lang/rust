@@ -15,7 +15,7 @@
 //! generated instead.
 
 #![crate_name = "fmt_macros"]
-#![unstable(feature = "rustc_private", issue = "27812")]
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -25,7 +25,7 @@
        test(attr(deny(warnings))))]
 #![deny(warnings)]
 
-#![feature(staged_api)]
+#![cfg_attr(stage0, feature(staged_api))]
 #![feature(unicode)]
 
 pub use self::Piece::*;

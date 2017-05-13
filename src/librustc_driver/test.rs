@@ -138,7 +138,7 @@ fn test_env<F>(source_string: &str,
     // run just enough stuff to build a tcx:
     let lang_items = lang_items::collect_language_items(&sess, &hir_map);
     let named_region_map = resolve_lifetime::krate(&sess, &hir_map);
-    let index = stability::Index::new(&hir_map);
+    let index = stability::Index::new(&sess);
     TyCtxt::create_and_enter(&sess,
                              ty::maps::Providers::default(),
                              ty::maps::Providers::default(),

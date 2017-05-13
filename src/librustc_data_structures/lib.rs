@@ -17,7 +17,6 @@
 //! This API is completely unstable and subject to change.
 
 #![crate_name = "rustc_data_structures"]
-#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -28,8 +27,6 @@
 #![feature(shared)]
 #![feature(collections_range)]
 #![feature(nonzero)]
-#![feature(rustc_private)]
-#![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
 #![feature(untagged_unions)]
@@ -41,6 +38,10 @@
 #![feature(specialization)]
 #![feature(manually_drop)]
 #![feature(struct_field_attributes)]
+
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(rustc_private))]
+#![cfg_attr(stage0, feature(staged_api))]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
