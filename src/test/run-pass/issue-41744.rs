@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,22 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! unpack_datum {
-    ($bcx: ident, $inp: expr) => (
-        {
-            let db = $inp;
-            $bcx = db.bcx;
-            db.datum
-        }
-    )
-}
+trait Tc {}
+impl Tc for bool {}
 
-macro_rules! unpack_result {
-    ($bcx: ident, $inp: expr) => (
-        {
-            let db = $inp;
-            $bcx = db.bcx;
-            db.val
-        }
-    )
+fn main() {
+    let _: &[&Tc] = &[&true];
 }

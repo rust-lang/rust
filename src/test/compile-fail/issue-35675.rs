@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Fruit {
+// these two HELPs are actually in a new line between this line and the `enum Fruit` line
+enum Fruit { //~ HELP possible candidate is found in another module, you can import it into scope
+    //~^ HELP possible candidate is found in another module, you can import it into scope
     Apple(i64),
     //~^ HELP there is an enum variant `Fruit::Apple`, did you mean to use `Fruit`?
     //~| HELP there is an enum variant `Fruit::Apple`, did you mean to use `Fruit`?
@@ -21,7 +23,6 @@ fn should_return_fruit() -> Apple {
     Apple(5)
     //~^ ERROR cannot find function `Apple` in this scope
     //~| NOTE not found in this scope
-    //~| HELP possible candidate is found in another module, you can import it into scope
 }
 
 fn should_return_fruit_too() -> Fruit::Apple {
@@ -30,7 +31,6 @@ fn should_return_fruit_too() -> Fruit::Apple {
     Apple(5)
     //~^ ERROR cannot find function `Apple` in this scope
     //~| NOTE not found in this scope
-    //~| HELP possible candidate is found in another module, you can import it into scope
 }
 
 fn foo() -> Ok {

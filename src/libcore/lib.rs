@@ -104,10 +104,6 @@ mod macros;
 #[macro_use]
 mod internal_macros;
 
-#[path = "num/float_macros.rs"]
-#[macro_use]
-mod float_macros;
-
 #[path = "num/int_macros.rs"]
 #[macro_use]
 mod int_macros;
