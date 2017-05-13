@@ -214,10 +214,10 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
+        // FIXME(#41968): Move this check to tidy?
         let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
-        if !expected_errors.is_empty() {
-            self.check_expected_errors(expected_errors, &proc_res);
-        }
+        assert!(expected_errors.is_empty(),
+                "run-pass tests with expected warnings should be moved to ui/");
 
         let proc_res = self.exec_compiled_test();
 
@@ -1394,7 +1394,6 @@ actual:\n\
         match self.config.mode {
             CompileFail |
             ParseFail |
-            RunPass |
             Incremental => {
                 // If we are extracting and matching errors in the new
                 // fashion, then you want JSON mode. Old-skool error
@@ -1422,6 +1421,7 @@ actual:\n\
 
                 args.push(dir_opt);
             }
+            RunPass |
             RunFail |
             RunPassValgrind |
             Pretty |
@@ -2253,6 +2253,14 @@ actual:\n\
                      relative_path_to_file.display());
             self.fatal_proc_rec(&format!("{} errors occurred comparing output.", errors),
                                 &proc_res);
+        }
+
+        if self.props.run_pass {
+            let proc_res = self.exec_compiled_test();
+
+            if !proc_res.status.success() {
+                self.fatal_proc_rec("test run failed!", &proc_res);
+            }
         }
     }
 
