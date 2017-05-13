@@ -7,7 +7,13 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//
+
+// run-pass
+// ignore-x86
+// ignore-arm
+// ignore-emscripten
+// ^ ignore 32-bit targets, as the error message is target-dependent. see PR #41968.
+
 #![warn(variant_size_differences)]
 #![allow(dead_code)]
 

@@ -1,0 +1,8 @@
+warning: function is never used: `lintme`
+  --> $DIR/lint-plugin-cmdline-allow.rs:19:1
+   |
+19 | fn lintme() { }
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(dead_code)] on by default
+
