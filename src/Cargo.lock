@@ -572,6 +572,7 @@ dependencies = [
 name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
+ "libc 0.2.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
  "syntax_pos 0.0.0",
 ]

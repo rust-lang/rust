@@ -17,12 +17,9 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
-#![feature(custom_attribute)]
 #![allow(unused_attributes)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(range_contains)]
-#![feature(libc)]
 
 extern crate term;
 extern crate libc;
