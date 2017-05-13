@@ -252,7 +252,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
 
 impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
 
-    fn visit_mod(&mut self, m: &'v ast::Mod, _s: Span, _n: NodeId) {
+    fn visit_mod(&mut self, m: &'v ast::Mod, _s: Span, _a: &[ast::Attribute], _n: NodeId) {
         self.record("Mod", Id::None, m);
         ast_visit::walk_mod(self, m)
     }
