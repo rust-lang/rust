@@ -115,62 +115,41 @@ impl FileLines {
         Files(self.0.as_ref().map(MultiMap::keys))
     }
 
-    /// Returns true if `range` is fully contained in `self`.
-    pub fn contains(&self, range: &LineRange) -> bool {
+    /// Returns true if `self` includes all lines in all files. Otherwise runs `f` on all ranges in
+    /// the designated file (if any) and returns true if `f` ever does.
+    fn file_range_matches<F>(&self, file_name: &str, f: F) -> bool
+        where F: FnMut(&Range) -> bool
+    {
         let map = match self.0 {
             // `None` means "all lines in all files".
             None => return true,
             Some(ref map) => map,
         };
 
-        match canonicalize_path_string(range.file_name())
-                  .and_then(|canonical| map.get_vec(&canonical).ok_or(())) {
-            Ok(ranges) => ranges.iter().any(|r| r.contains(Range::from(range))),
+        match canonicalize_path_string(file_name).and_then(|file| map.get_vec(&file).ok_or(())) {
+            Ok(ranges) => ranges.iter().any(f),
             Err(_) => false,
         }
+    }
+
+    /// Returns true if `range` is fully contained in `self`.
+    pub fn contains(&self, range: &LineRange) -> bool {
+        self.file_range_matches(range.file_name(), |r| r.contains(Range::from(range)))
     }
 
     /// Returns true if any lines in `range` are in `self`.
     pub fn intersects(&self, range: &LineRange) -> bool {
-        let map = match self.0 {
-            // `None` means "all lines in all files".
-            None => return true,
-            Some(ref map) => map,
-        };
-
-        match canonicalize_path_string(range.file_name())
-                  .and_then(|canonical| map.get_vec(&canonical).ok_or(())) {
-            Ok(ranges) => ranges.iter().any(|r| r.intersects(Range::from(range))),
-            Err(_) => false,
-        }
+        self.file_range_matches(range.file_name(), |r| r.intersects(Range::from(range)))
     }
 
+    /// Returns true if `line` from `file_name` is in `self`.
     pub fn contains_line(&self, file_name: &str, line: usize) -> bool {
-        let map = match self.0 {
-            // `None` means "all lines in all files".
-            None => return true,
-            Some(ref map) => map,
-        };
-
-        match canonicalize_path_string(file_name)
-                  .and_then(|canonical| map.get_vec(&canonical).ok_or(())) {
-            Ok(ranges) => ranges.iter().any(|r| r.lo <= line && r.hi >= line),
-            Err(_) => false,
-        }
+        self.file_range_matches(file_name, |r| r.lo <= line && r.hi >= line)
     }
 
+    /// Returns true if any of the lines between `lo` and `hi` from `file_name` are in `self`.
     pub fn intersects_range(&self, file_name: &str, lo: usize, hi: usize) -> bool {
-        let map = match self.0 {
-            // `None` means "all lines in all files".
-            None => return true,
-            Some(ref map) => map,
-        };
-
-        match canonicalize_path_string(file_name)
-                  .and_then(|canonical| map.get_vec(&canonical).ok_or(())) {
-            Ok(ranges) => ranges.iter().any(|r| r.intersects(Range::new(lo, hi))),
-            Err(_) => false,
-        }
+        self.file_range_matches(file_name, |r| r.intersects(Range::new(lo, hi)))
     }
 }
 
