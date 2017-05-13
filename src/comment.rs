@@ -52,37 +52,35 @@ pub fn rewrite_comment(orig: &str,
         return light_rewrite_comment(orig, shape.indent, config);
     }
 
-    let (opener, closer, line_start) =
-        if block_style {
+    let (opener, closer, line_start) = if block_style {
+        ("/* ", " */", " * ")
+    } else if !config.normalize_comments {
+        if orig.starts_with("/**") && !orig.starts_with("/**/") {
+            ("/** ", " **/", " ** ")
+        } else if orig.starts_with("/*!") {
+            ("/*! ", " */", " * ")
+        } else if orig.starts_with("/*") {
             ("/* ", " */", " * ")
-        } else if !config.normalize_comments {
-            if orig.starts_with("/**") && !orig.starts_with("/**/") {
-                ("/** ", " **/", " ** ")
-            } else if orig.starts_with("/*!") {
-                ("/*! ", " */", " * ")
-            } else if orig.starts_with("/*") {
-                ("/* ", " */", " * ")
-            } else if orig.starts_with("///") {
-                ("/// ", "", "/// ")
-            } else if orig.starts_with("//!") {
-                ("//! ", "", "//! ")
-            } else {
-                ("// ", "", "// ")
-            }
-        } else if orig.starts_with("///") ||
-                  (orig.starts_with("/**") && !orig.starts_with("/**/")) {
+        } else if orig.starts_with("///") {
             ("/// ", "", "/// ")
-        } else if orig.starts_with("//!") || orig.starts_with("/*!") {
+        } else if orig.starts_with("//!") {
             ("//! ", "", "//! ")
-        } else if is_custom_comment(orig) {
-            if orig.chars().nth(3) == Some(' ') {
-                (&orig[0..4], "", &orig[0..4])
-            } else {
-                (&orig[0..3], "", &orig[0..3])
-            }
         } else {
             ("// ", "", "// ")
-        };
+        }
+    } else if orig.starts_with("///") || (orig.starts_with("/**") && !orig.starts_with("/**/")) {
+        ("/// ", "", "/// ")
+    } else if orig.starts_with("//!") || orig.starts_with("/*!") {
+        ("//! ", "", "//! ")
+    } else if is_custom_comment(orig) {
+        if orig.chars().nth(3) == Some(' ') {
+            (&orig[0..4], "", &orig[0..4])
+        } else {
+            (&orig[0..3], "", &orig[0..3])
+        }
+    } else {
+        ("// ", "", "// ")
+    };
 
     let max_chars = shape
         .width
