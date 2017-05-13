@@ -121,7 +121,7 @@ impl<'b, O: DumpOutput + 'b> Dump for JsonDumper<O> {
             children: data.items.into_iter().map(|id| id_from_def_id(id)).collect(),
             decl_id: None,
             docs: data.docs,
-            sig: Some(data.sig.into()),
+            sig: data.sig.map(|s| s.into()),
             attributes: data.attributes.into_iter().map(|a| a.into()).collect(),
         };
         if def.span.file_name.to_str().unwrap() != def.value {
