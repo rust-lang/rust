@@ -236,6 +236,9 @@ nav.sub {
 	overflow: auto;
 	padding-left: 0;
 }
+#search {
+	margin-left: 230px;
+}
 .content pre.line-numbers {
 	float: left;
 	border: none;
