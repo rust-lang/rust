@@ -56,7 +56,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_ident(&mut self, span: Span, ident: Ident) {
         walk_ident(self, span, ident);
     }
-    fn visit_mod(&mut self, m: &'ast Mod, _s: Span, _n: NodeId) { walk_mod(self, m) }
+    fn visit_mod(&mut self, m: &'ast Mod, _s: Span, _attrs: &[Attribute], _n: NodeId) {
+        walk_mod(self, m);
+    }
     fn visit_foreign_item(&mut self, i: &'ast ForeignItem) { walk_foreign_item(self, i) }
     fn visit_global_asm(&mut self, ga: &'ast GlobalAsm) { walk_global_asm(self, ga) }
     fn visit_item(&mut self, i: &'ast Item) { walk_item(self, i) }
@@ -172,7 +174,7 @@ pub fn walk_ident<'a, V: Visitor<'a>>(visitor: &mut V, span: Span, ident: Ident)
 }
 
 pub fn walk_crate<'a, V: Visitor<'a>>(visitor: &mut V, krate: &'a Crate) {
-    visitor.visit_mod(&krate.module, krate.span, CRATE_NODE_ID);
+    visitor.visit_mod(&krate.module, krate.span, &krate.attrs, CRATE_NODE_ID);
     walk_list!(visitor, visit_attribute, &krate.attrs);
 }
 
@@ -249,7 +251,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
                              item.id)
         }
         ItemKind::Mod(ref module) => {
-            visitor.visit_mod(module, item.span, item.id)
+            visitor.visit_mod(module, item.span, &item.attrs, item.id)
         }
         ItemKind::ForeignMod(ref foreign_module) => {
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
