@@ -96,8 +96,7 @@ pub fn llvm(build: &Build, target: &str) {
        .define("LLVM_ENABLE_LIBEDIT", "OFF")
        .define("LLVM_PARALLEL_COMPILE_JOBS", build.jobs().to_string())
        .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
-       .define("LLVM_DEFAULT_TARGET_TRIPLE", target)
-       .static_crt(true);
+       .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
 
     if target.starts_with("i686") {
         cfg.define("LLVM_BUILD_32_BITS", "ON");
