@@ -14,6 +14,7 @@ import contextlib
 import datetime
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -297,8 +298,10 @@ class RustBuild(object):
 
     def get_toml(self, key):
         for line in self.config_toml.splitlines():
-            if line.startswith(key + ' ='):
-                return self.get_string(line)
+            match = re.match(r'^{}\s*=(.*)$'.format(key), line)
+            if match is not None:
+                value = match.group(1)
+                return self.get_string(value) or value.strip()
         return None
 
     def get_mk(self, key):
@@ -329,6 +332,8 @@ class RustBuild(object):
 
     def get_string(self, line):
         start = line.find('"')
+        if start == -1:
+            return None
         end = start + 1 + line[start + 1:].find('"')
         return line[start + 1:end]
 
@@ -386,7 +391,7 @@ class RustBuild(object):
             args.append("--frozen")
         self.run(args, env)
 
-    def run(self, args, env):
+    def run(self, args, env=None):
         proc = subprocess.Popen(args, env=env)
         ret = proc.wait()
         if ret != 0:
@@ -529,6 +534,32 @@ class RustBuild(object):
 
         return "{}-{}".format(cputype, ostype)
 
+    def update_submodules(self):
+        if (not os.path.exists(os.path.join(self.rust_root, ".git"))) or \
+            self.get_toml('submodules') == "false" or \
+            self.get_mk('CFG_DISABLE_MANAGE_SUBMODULES') == "1":
+            return
+
+        print('Updating submodules')
+        self.run(["git", "-C", self.rust_root, "submodule", "-q", "sync"])
+        # FIXME: nobody does, but this won't work well with whitespace in
+        # submodule path
+        submodules = [s.split()[1] for s in subprocess.check_output(
+            ["git", "config", "--file", os.path.join(
+                self.rust_root, ".gitmodules"), "--get-regexp", "path"]).splitlines()]
+        for module in submodules:
+            if module.endswith(b"llvm") and \
+                (self.get_toml('llvm-config') or self.get_mk('CFG_LLVM_ROOT')):
+                continue
+            if module.endswith(b"jemalloc") and \
+                (self.get_toml('jemalloc') or self.get_mk('CFG_JEMALLOC_ROOT')):
+                continue
+            self.run(["git", "-C", self.rust_root,
+                      "submodule", "update", "--init", module])
+        self.run(["git", "-C", self.rust_root, "submodule", "-q",
+                  "foreach", "git", "reset", "-q", "--hard"])
+        self.run(["git", "-C", self.rust_root, "submodule",
+                  "-q", "foreach", "git", "clean", "-qdfx"])
 def bootstrap():
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
@@ -596,6 +627,8 @@ def bootstrap():
         rb._download_url = 'https://dev-static.rust-lang.org'
     else:
         rb._download_url = 'https://static.rust-lang.org'
+
+    rb.update_submodules()
 
     # Fetch/build the bootstrap
     rb.build = rb.build_triple()
