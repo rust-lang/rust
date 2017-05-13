@@ -35,7 +35,7 @@ use std::rc::Rc;
 pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    pub region_maps: Rc<RegionMaps<'tcx>>,
+    pub region_maps: Rc<RegionMaps>,
     constness: hir::Constness,
 
     /// True if this constant/function needs overflow checks.

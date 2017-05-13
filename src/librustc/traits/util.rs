@@ -197,7 +197,7 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                 // I want to be conservative. --nmatsakis
                 let ty_max = data.skip_binder().0;
                 let r_min = data.skip_binder().1;
-                if r_min.is_bound() {
+                if r_min.is_late_bound() {
                     return;
                 }
 
@@ -206,7 +206,7 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                     tcx.outlives_components(ty_max)
                        .into_iter()
                        .filter_map(|component| match component {
-                           Component::Region(r) => if r.is_bound() {
+                           Component::Region(r) => if r.is_late_bound() {
                                None
                            } else {
                                Some(ty::Predicate::RegionOutlives(

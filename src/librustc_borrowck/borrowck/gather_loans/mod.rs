@@ -45,7 +45,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         bccx: bccx,
         infcx: &infcx,
         all_loans: Vec::new(),
-        item_ub: bccx.tcx.node_extent(body.node_id),
+        item_ub: region::CodeExtent::Misc(body.node_id),
         move_data: MoveData::new(),
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
@@ -66,7 +66,7 @@ struct GatherLoanCtxt<'a, 'tcx: 'a> {
     all_loans: Vec<Loan<'tcx>>,
     /// `item_ub` is used as an upper-bound on the lifetime whenever we
     /// ask for the scope of an expression categorized as an upvar.
-    item_ub: region::CodeExtent<'tcx>,
+    item_ub: region::CodeExtent,
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
@@ -353,13 +353,18 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                 let loan_scope = match *loan_region {
                     ty::ReScope(scope) => scope,
 
-                    ty::ReFree(ref fr) => fr.scope.unwrap_or(self.item_ub),
+                    ty::ReEarlyBound(ref br) => {
+                        self.bccx.region_maps.early_free_extent(self.tcx(), br)
+                    }
+
+                    ty::ReFree(ref fr) => {
+                        self.bccx.region_maps.free_extent(self.tcx(), fr)
+                    }
 
                     ty::ReStatic => self.item_ub,
 
                     ty::ReEmpty |
                     ty::ReLateBound(..) |
-                    ty::ReEarlyBound(..) |
                     ty::ReVar(..) |
                     ty::ReSkolemized(..) |
                     ty::ReErased => {
@@ -371,7 +376,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                 };
                 debug!("loan_scope = {:?}", loan_scope);
 
-                let borrow_scope = self.tcx().node_extent(borrow_id);
+                let borrow_scope = region::CodeExtent::Misc(borrow_id);
                 let gen_scope = self.compute_gen_scope(borrow_scope, loan_scope);
                 debug!("gen_scope = {:?}", gen_scope);
 
@@ -450,9 +455,9 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
     }
 
     pub fn compute_gen_scope(&self,
-                             borrow_scope: region::CodeExtent<'tcx>,
-                             loan_scope: region::CodeExtent<'tcx>)
-                             -> region::CodeExtent<'tcx> {
+                             borrow_scope: region::CodeExtent,
+                             loan_scope: region::CodeExtent)
+                             -> region::CodeExtent {
         //! Determine when to introduce the loan. Typically the loan
         //! is introduced at the point of the borrow, but in some cases,
         //! notably method arguments, the loan may be introduced only
@@ -465,8 +470,8 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn compute_kill_scope(&self, loan_scope: region::CodeExtent<'tcx>, lp: &LoanPath<'tcx>)
-                              -> region::CodeExtent<'tcx> {
+    pub fn compute_kill_scope(&self, loan_scope: region::CodeExtent, lp: &LoanPath<'tcx>)
+                              -> region::CodeExtent {
         //! Determine when the loan restrictions go out of scope.
         //! This is either when the lifetime expires or when the
         //! local variable which roots the loan-path goes out of scope,

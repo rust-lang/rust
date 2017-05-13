@@ -65,7 +65,7 @@ pub fn borrowck_mir(bcx: &mut BorrowckCtxt,
     // steals it, but it forces the `borrowck` query.
     let mir = &tcx.mir_validated(def_id).borrow();
 
-    let param_env = ty::ParameterEnvironment::for_item(tcx, id);
+    let param_env = tcx.parameter_environment(def_id);
     let move_data = MoveData::gather_moves(mir, tcx, &param_env);
     let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
     let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());

@@ -801,7 +801,7 @@ define_maps! { <'tcx>
     /// Per-function `RegionMaps`. The `DefId` should be the owner-def-id for the fn body;
     /// in the case of closures or "inline" expressions, this will be redirected to the enclosing
     /// fn item.
-    [] region_maps: RegionMaps(DefId) -> Rc<RegionMaps<'tcx>>,
+    [] region_maps: RegionMaps(DefId) -> Rc<RegionMaps>,
 
     [] mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx mir::Mir<'tcx>,
 

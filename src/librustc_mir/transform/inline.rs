@@ -219,7 +219,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         // FIXME: Give a bonus to functions with only a single caller
 
-        let param_env = ty::ParameterEnvironment::for_item(tcx, self.source.item_id());
+        let def_id = tcx.hir.local_def_id(self.source.item_id());
+        let param_env = tcx.parameter_environment(def_id);
 
         let mut first_block = true;
         let mut cost = 0;

@@ -11,17 +11,18 @@
 pub trait Resources<'a> {}
 
 pub trait Buffer<'a, R: Resources<'a>> {
+    //~^ NOTE the lifetime 'a as defined on the trait at 13:0...
+    //~| NOTE ...does not necessarily outlive the lifetime 'a as defined on the trait
+
     fn select(&self) -> BufferViewHandle<R>;
     //~^ ERROR mismatched types
     //~| lifetime mismatch
     //~| NOTE expected type `Resources<'_>`
-    //~| NOTE the lifetime 'a as defined on the method body at 14:4...
     //~| NOTE ...does not necessarily outlive the anonymous lifetime #1 defined on the method body
     //~| ERROR mismatched types
     //~| lifetime mismatch
     //~| NOTE expected type `Resources<'_>`
-    //~| NOTE the anonymous lifetime #1 defined on the method body at 14:4...
-    //~| NOTE ...does not necessarily outlive the lifetime 'a as defined on the method body
+    //~| NOTE the anonymous lifetime #1 defined on the method body at 17:4...
 }
 
 pub struct BufferViewHandle<'a, R: 'a+Resources<'a>>(&'a R);

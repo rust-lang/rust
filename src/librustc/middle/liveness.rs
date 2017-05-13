@@ -96,9 +96,6 @@
 //!
 //! - `fallthrough_ln`: a live node that represents a fallthrough
 //!
-//! - `no_ret_var`: a synthetic variable that is only 'read' from, the
-//!   fallthrough node.  This allows us to detect functions where we fail
-//!   to return explicitly.
 //! - `clean_exit_var`: a synthetic variable that is only 'read' from the
 //!   fallthrough node.  It is only live if the function could converge
 //!   via means other than an explicit `return` expression. That is, it is
@@ -110,9 +107,7 @@ use self::LiveNodeKind::*;
 use self::VarKind::*;
 
 use hir::def::*;
-use ty::{self, TyCtxt, ParameterEnvironment};
-use traits::{self, Reveal};
-use ty::subst::Subst;
+use ty::{self, TyCtxt};
 use lint;
 use util::nodemap::NodeMap;
 
@@ -256,7 +251,6 @@ struct LocalInfo {
 enum VarKind {
     Arg(NodeId, ast::Name),
     Local(LocalInfo),
-    ImplicitRet,
     CleanExit
 }
 
@@ -313,7 +307,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             Local(LocalInfo { id: node_id, .. }) | Arg(node_id, _) => {
                 self.variable_map.insert(node_id, v);
             },
-            ImplicitRet | CleanExit => {}
+            CleanExit => {}
         }
 
         debug!("{:?} is {:?}", v, vk);
@@ -335,7 +329,6 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             Local(LocalInfo { name, .. }) | Arg(_, name) => {
                 name.to_string()
             },
-            ImplicitRet => "<implicit-ret>".to_string(),
             CleanExit => "<clean-exit>".to_string()
         }
     }
@@ -382,7 +375,6 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
 
     // check for various error conditions
     lsets.visit_body(body);
-    lsets.check_ret(id, sp, entry_ln, body);
     lsets.warn_about_unused_args(body, entry_ln);
 }
 
@@ -500,7 +492,6 @@ fn invalid_users() -> Users {
 struct Specials {
     exit_ln: LiveNode,
     fallthrough_ln: LiveNode,
-    no_ret_var: Variable,
     clean_exit_var: Variable
 }
 
@@ -534,7 +525,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let specials = Specials {
             exit_ln: ir.add_live_node(ExitNode),
             fallthrough_ln: ir.add_live_node(ExitNode),
-            no_ret_var: ir.add_variable(ImplicitRet),
             clean_exit_var: ir.add_variable(CleanExit)
         };
 
@@ -1420,45 +1410,6 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
-    fn check_ret(&self,
-                 id: NodeId,
-                 sp: Span,
-                 entry_ln: LiveNode,
-                 body: &hir::Body)
-    {
-        let fn_ty = self.ir.tcx.type_of(self.ir.tcx.hir.local_def_id(id));
-        let fn_sig = match fn_ty.sty {
-            ty::TyClosure(closure_def_id, substs) => {
-                self.ir.tcx.closure_type(closure_def_id)
-                    .subst(self.ir.tcx, substs.substs)
-            }
-            _ => fn_ty.fn_sig()
-        };
-
-        let fn_ret = fn_sig.output();
-
-        // within the fn body, late-bound regions are liberated
-        // and must outlive the *call-site* of the function.
-        let fn_ret =
-            self.ir.tcx.liberate_late_bound_regions(
-                Some(self.ir.tcx.call_site_extent(id, body.value.id)),
-                &fn_ret);
-
-        if !fn_ret.is_never() && self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
-            let param_env = ParameterEnvironment::for_item(self.ir.tcx, id);
-            let t_ret_subst = fn_ret.subst(self.ir.tcx, &param_env.free_substs);
-            let is_nil = self.ir.tcx.infer_ctxt(param_env, Reveal::All).enter(|infcx| {
-                let cause = traits::ObligationCause::dummy();
-                traits::fully_normalize(&infcx, cause, &t_ret_subst).unwrap().is_nil()
-            });
-
-            // for nil return types, it is ok to not return a value expl.
-            if !is_nil {
-                span_bug!(sp, "not all control paths return a value");
-            }
-        }
-    }
-
     fn check_lvalue(&mut self, expr: &'tcx Expr) {
         match expr.node {
             hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {

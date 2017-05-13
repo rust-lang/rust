@@ -21,7 +21,6 @@ use rustc::middle::cstore::LinkagePreference;
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::middle::lang_items;
-use rustc::middle::region;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
@@ -357,12 +356,6 @@ impl<'a, 'tcx> SpecializedDecoder<&'tcx Substs<'tcx>> for DecodeContext<'a, 'tcx
 impl<'a, 'tcx> SpecializedDecoder<ty::Region<'tcx>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<ty::Region<'tcx>, Self::Error> {
         Ok(self.tcx().mk_region(Decodable::decode(self)?))
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<region::CodeExtent<'tcx>> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<region::CodeExtent<'tcx>, Self::Error> {
-        Ok(self.tcx().intern_code_extent(Decodable::decode(self)?))
     }
 }
 

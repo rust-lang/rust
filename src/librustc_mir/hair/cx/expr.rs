@@ -14,7 +14,6 @@ use rustc_const_math::ConstInt;
 use hair::cx::Cx;
 use hair::cx::block;
 use hair::cx::to_ref::ToRef;
-use rustc::hir::map;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
@@ -26,8 +25,8 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
     type Output = Expr<'tcx>;
 
     fn make_mirror<'a, 'gcx>(self, cx: &mut Cx<'a, 'gcx, 'tcx>) -> Expr<'tcx> {
-        let (temp_lifetime, was_shrunk) = cx.region_maps.temporary_scope2(cx.tcx, self.id);
-        let expr_extent = cx.tcx.node_extent(self.id);
+        let (temp_lifetime, was_shrunk) = cx.region_maps.temporary_scope2(self.id);
+        let expr_extent = CodeExtent::Misc(self.id);
 
         debug!("Expr::make_mirror(): id={}, span={:?}", self.id, self.span);
 
@@ -238,7 +237,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                           expr: &'tcx hir::Expr)
                                           -> Expr<'tcx> {
     let expr_ty = cx.tables().expr_ty(expr);
-    let (temp_lifetime, was_shrunk) = cx.region_maps.temporary_scope2(cx.tcx, expr.id);
+    let (temp_lifetime, was_shrunk) = cx.region_maps.temporary_scope2(expr.id);
 
     let kind = match expr.node {
         // Here comes the interesting stuff:
@@ -610,7 +609,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             match dest.target_id {
                 hir::ScopeTarget::Block(target_id) |
                 hir::ScopeTarget::Loop(hir::LoopIdResult::Ok(target_id)) => ExprKind::Break {
-                    label: cx.tcx.node_extent(target_id),
+                    label: CodeExtent::Misc(target_id),
                     value: value.to_ref(),
                 },
                 hir::ScopeTarget::Loop(hir::LoopIdResult::Err(err)) =>
@@ -621,7 +620,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             match dest.target_id {
                 hir::ScopeTarget::Block(_) => bug!("cannot continue to blocks"),
                 hir::ScopeTarget::Loop(hir::LoopIdResult::Ok(loop_id)) => ExprKind::Continue {
-                    label: cx.tcx.node_extent(loop_id),
+                    label: CodeExtent::Misc(loop_id),
                 },
                 hir::ScopeTarget::Loop(hir::LoopIdResult::Err(err)) =>
                     bug!("invalid loop id for continue: {}", err)
@@ -686,7 +685,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprBox(ref value) => {
             ExprKind::Box {
                 value: value.to_ref(),
-                value_extents: cx.tcx.node_extent(value.id),
+                value_extents: CodeExtent::Misc(value.id),
             }
         }
         hir::ExprArray(ref fields) => ExprKind::Array { fields: fields.to_ref() },
@@ -707,7 +706,7 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                  method_call: ty::MethodCall)
                                  -> Expr<'tcx> {
     let callee = cx.tables().method_map[&method_call];
-    let (temp_lifetime, was_shrunk) = cx.region_maps.temporary_scope2(cx.tcx, expr.id);
+    let (temp_lifetime, was_shrunk) = cx.region_maps.temporary_scope2(expr.id);
     Expr {
         temp_lifetime: temp_lifetime,
         temp_lifetime_was_shrunk: was_shrunk,
@@ -791,7 +790,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                expr: &'tcx hir::Expr,
                                def: Def)
                                -> ExprKind<'tcx> {
-    let (temp_lifetime, was_shrunk) = cx.region_maps.temporary_scope2(cx.tcx, expr.id);
+    let (temp_lifetime, was_shrunk) = cx.region_maps.temporary_scope2(expr.id);
 
     match def {
         Def::Local(def_id) => {
@@ -807,33 +806,20 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                    closure_expr_id);
             let var_ty = cx.tables().node_id_to_type(id_var);
 
-            let body_id = match cx.tcx.hir.find(closure_expr_id) {
-                Some(map::NodeExpr(expr)) => {
-                    match expr.node {
-                        hir::ExprClosure(.., body, _) => body.node_id,
-                        _ => {
-                            span_bug!(expr.span, "closure expr is not a closure expr");
-                        }
-                    }
-                }
-                _ => {
-                    span_bug!(expr.span, "ast-map has garbage for closure expr");
-                }
-            };
-
             // FIXME free regions in closures are not right
             let closure_ty = cx.tables().node_id_to_type(closure_expr_id);
 
             // FIXME we're just hard-coding the idea that the
             // signature will be &self or &mut self and hence will
             // have a bound region with number 0
+            let closure_def_id = cx.tcx.hir.local_def_id(closure_expr_id);
             let region = ty::ReFree(ty::FreeRegion {
-                scope: Some(cx.tcx.node_extent(body_id)),
+                scope: closure_def_id,
                 bound_region: ty::BoundRegion::BrAnon(0),
             });
             let region = cx.tcx.mk_region(region);
 
-            let self_expr = match cx.tcx.closure_kind(cx.tcx.hir.local_def_id(closure_expr_id)) {
+            let self_expr = match cx.tcx.closure_kind(closure_def_id) {
                 ty::ClosureKind::Fn => {
                     let ref_closure_ty = cx.tcx.mk_ref(region,
                                                        ty::TypeAndMut {
@@ -979,7 +965,7 @@ fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         PassArgs::ByRef => {
             let region = cx.tcx.node_scope_region(expr.id);
             let (temp_lifetime, was_shrunk) =
-                cx.region_maps.temporary_scope2(cx.tcx, expr.id);
+                cx.region_maps.temporary_scope2(expr.id);
             argrefs.extend(args.iter()
                 .map(|arg| {
                     let arg_ty = cx.tables().expr_ty_adjusted(arg);
@@ -1031,7 +1017,7 @@ fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
     // construct the complete expression `foo()` for the overloaded call,
     // which will yield the &T type
-    let (temp_lifetime, was_shrunk) = cx.region_maps.temporary_scope2(cx.tcx, expr.id);
+    let (temp_lifetime, was_shrunk) = cx.region_maps.temporary_scope2(expr.id);
     let ref_kind = overloaded_operator(cx, expr, method_call, pass_args, receiver, args);
     let ref_expr = Expr {
         temp_lifetime: temp_lifetime,
@@ -1056,7 +1042,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         closure_expr_id: closure_expr.id,
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id).unwrap();
-    let (temp_lifetime, was_shrunk) = cx.region_maps.temporary_scope2(cx.tcx, closure_expr.id);
+    let (temp_lifetime, was_shrunk) = cx.region_maps.temporary_scope2(closure_expr.id);
     let var_ty = cx.tables().node_id_to_type(id_var);
     let captured_var = Expr {
         temp_lifetime: temp_lifetime,

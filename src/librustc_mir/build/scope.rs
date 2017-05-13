@@ -87,7 +87,7 @@ should go to.
 */
 
 use build::{BlockAnd, BlockAndExtension, Builder, CFG};
-use rustc::middle::region::{CodeExtent, CodeExtentData};
+use rustc::middle::region::CodeExtent;
 use rustc::middle::lang_items;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::subst::{Kind, Subst};
@@ -102,7 +102,7 @@ pub struct Scope<'tcx> {
     visibility_scope: VisibilityScope,
 
     /// the extent of this scope within source code.
-    extent: CodeExtent<'tcx>,
+    extent: CodeExtent,
 
     /// Whether there's anything to do for the cleanup path, that is,
     /// when unwinding through this scope. This includes destructors,
@@ -137,7 +137,7 @@ pub struct Scope<'tcx> {
     free: Option<FreeData<'tcx>>,
 
     /// The cache for drop chain on “normal” exit into a particular BasicBlock.
-    cached_exits: FxHashMap<(BasicBlock, CodeExtent<'tcx>), BasicBlock>,
+    cached_exits: FxHashMap<(BasicBlock, CodeExtent), BasicBlock>,
 }
 
 struct DropData<'tcx> {
@@ -180,7 +180,7 @@ struct FreeData<'tcx> {
 #[derive(Clone, Debug)]
 pub struct BreakableScope<'tcx> {
     /// Extent of the loop
-    pub extent: CodeExtent<'tcx>,
+    pub extent: CodeExtent,
     /// Where the body of the loop begins. `None` if block
     pub continue_block: Option<BasicBlock>,
     /// Block to branch into when the loop or block terminates (either by being `break`-en out
@@ -271,7 +271,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
     pub fn in_scope<F, R>(&mut self,
-                          extent: CodeExtent<'tcx>,
+                          extent: CodeExtent,
                           mut block: BasicBlock,
                           f: F)
                           -> BlockAnd<R>
@@ -289,7 +289,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// scope and call `pop_scope` afterwards. Note that these two
     /// calls must be paired; using `in_scope` as a convenience
     /// wrapper maybe preferable.
-    pub fn push_scope(&mut self, extent: CodeExtent<'tcx>) {
+    pub fn push_scope(&mut self, extent: CodeExtent) {
         debug!("push_scope({:?})", extent);
         let vis_scope = self.visibility_scope;
         self.scopes.push(Scope {
@@ -306,7 +306,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// drops onto the end of `block` that are needed.  This must
     /// match 1-to-1 with `push_scope`.
     pub fn pop_scope(&mut self,
-                     extent: CodeExtent<'tcx>,
+                     extent: CodeExtent,
                      mut block: BasicBlock)
                      -> BlockAnd<()> {
         debug!("pop_scope({:?}, {:?})", extent, block);
@@ -330,7 +330,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// module comment for details.
     pub fn exit_scope(&mut self,
                       span: Span,
-                      extent: CodeExtent<'tcx>,
+                      extent: CodeExtent,
                       mut block: BasicBlock,
                       target: BasicBlock) {
         debug!("exit_scope(extent={:?}, block={:?}, target={:?})", extent, block, target);
@@ -391,7 +391,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// resolving `break` and `continue`.
     pub fn find_breakable_scope(&mut self,
                            span: Span,
-                           label: CodeExtent<'tcx>)
+                           label: CodeExtent)
                            -> &mut BreakableScope<'tcx> {
         // find the loop-scope with the correct id
         self.breakable_scopes.iter_mut()
@@ -411,12 +411,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Returns the extent of the scope which should be exited by a
     /// return.
-    pub fn extent_of_return_scope(&self) -> CodeExtent<'tcx> {
+    pub fn extent_of_return_scope(&self) -> CodeExtent {
         // The outermost scope (`scopes[0]`) will be the `CallSiteScope`.
         // We want `scopes[1]`, which is the `ParameterScope`.
         assert!(self.scopes.len() >= 2);
-        assert!(match *self.scopes[1].extent {
-            CodeExtentData::ParameterScope { .. } => true,
+        assert!(match self.scopes[1].extent {
+            CodeExtent::ParameterScope(_) => true,
             _ => false,
         });
         self.scopes[1].extent
@@ -424,7 +424,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Returns the topmost active scope, which is known to be alive until
     /// the next scope expression.
-    pub fn topmost_scope(&self) -> CodeExtent<'tcx> {
+    pub fn topmost_scope(&self) -> CodeExtent {
         self.scopes.last().expect("topmost_scope: no scopes present").extent
     }
 
@@ -434,7 +434,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// `extent`.
     pub fn schedule_drop(&mut self,
                          span: Span,
-                         extent: CodeExtent<'tcx>,
+                         extent: CodeExtent,
                          lvalue: &Lvalue<'tcx>,
                          lvalue_ty: Ty<'tcx>) {
         let needs_drop = self.hir.needs_drop(lvalue_ty);
@@ -524,7 +524,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// There may only be one “free” scheduled in any given scope.
     pub fn schedule_box_free(&mut self,
                              span: Span,
-                             extent: CodeExtent<'tcx>,
+                             extent: CodeExtent,
                              value: &Lvalue<'tcx>,
                              item_ty: Ty<'tcx>) {
         for scope in self.scopes.iter_mut().rev() {

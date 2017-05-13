@@ -205,10 +205,6 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
         self.tcx.at(span).type_param_predicates((self.item_def_id, def_id))
     }
 
-    fn get_free_substs(&self) -> Option<&Substs<'tcx>> {
-        None
-    }
-
     fn re_infer(&self, _span: Span, _def: Option<&ty::RegionParameterDef>)
                 -> Option<ty::Region<'tcx>> {
         None
@@ -1299,6 +1295,7 @@ fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut index = parent_count + has_own_self as u32;
     for param in early_bound_lifetimes_from_generics(tcx, ast_generics) {
         let region = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
+            def_id: tcx.hir.local_def_id(param.lifetime.id),
             index: index,
             name: param.lifetime.name
         }));

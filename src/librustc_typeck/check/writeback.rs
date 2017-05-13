@@ -19,7 +19,7 @@ use rustc::infer::{InferCtxt};
 use rustc::ty::{self, Ty, TyCtxt, MethodCall, MethodCallee};
 use rustc::ty::adjustment;
 use rustc::ty::fold::{TypeFolder,TypeFoldable};
-use rustc::util::nodemap::{DefIdMap, DefIdSet};
+use rustc::util::nodemap::DefIdSet;
 use syntax::ast;
 use syntax_pos::Span;
 use std::mem;
@@ -71,55 +71,17 @@ struct WritebackCx<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
 
     tables: ty::TypeckTables<'gcx>,
 
-    // Mapping from free regions of the function to the
-    // early-bound versions of them, visible from the
-    // outside of the function. This is needed by, and
-    // only populated if there are any `impl Trait`.
-    free_to_bound_regions: DefIdMap<ty::Region<'gcx>>,
-
     body: &'gcx hir::Body,
 }
 
 impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     fn new(fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>, body: &'gcx hir::Body)
         -> WritebackCx<'cx, 'gcx, 'tcx> {
-        let mut wbcx = WritebackCx {
+        WritebackCx {
             fcx: fcx,
             tables: ty::TypeckTables::empty(),
-            free_to_bound_regions: DefIdMap(),
             body: body
-        };
-
-        // Only build the reverse mapping if `impl Trait` is used.
-        if fcx.anon_types.borrow().is_empty() {
-            return wbcx;
         }
-
-        let gcx = fcx.tcx.global_tcx();
-        let free_substs = fcx.parameter_environment.free_substs;
-        for (i, k) in free_substs.iter().enumerate() {
-            let r = if let Some(r) = k.as_region() {
-                r
-            } else {
-                continue;
-            };
-            match *r {
-                ty::ReFree(ty::FreeRegion {
-                    bound_region: ty::BoundRegion::BrNamed(def_id, name), ..
-                }) => {
-                    let bound_region = gcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
-                        index: i as u32,
-                        name: name,
-                    }));
-                    wbcx.free_to_bound_regions.insert(def_id, bound_region);
-                }
-                _ => {
-                    bug!("{:?} is not a free region for an early-bound lifetime", r);
-                }
-            }
-        }
-
-        wbcx
     }
 
     fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
@@ -285,22 +247,16 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             let inside_ty = self.resolve(&concrete_ty, &node_id);
 
             // Convert the type from the function into a type valid outside
-            // the function, by replacing free regions with early-bound ones.
+            // the function, by replacing invalid regions with 'static,
+            // after producing an error for each of them.
             let outside_ty = gcx.fold_regions(&inside_ty, &mut false, |r, _| {
                 match *r {
-                    // 'static is valid everywhere.
-                    ty::ReStatic => gcx.types.re_static,
-                    ty::ReEmpty => gcx.types.re_empty,
-
-                    // Free regions that come from early-bound regions are valid.
-                    ty::ReFree(ty::FreeRegion {
-                        bound_region: ty::BoundRegion::BrNamed(def_id, ..), ..
-                    }) if self.free_to_bound_regions.contains_key(&def_id) => {
-                        self.free_to_bound_regions[&def_id]
-                    }
+                    // 'static and early-bound regions are valid.
+                    ty::ReStatic |
+                    ty::ReEarlyBound(_) |
+                    ty::ReEmpty => r,
 
                     ty::ReFree(_) |
-                    ty::ReEarlyBound(_) |
                     ty::ReLateBound(..) |
                     ty::ReScope(_) |
                     ty::ReSkolemized(..) => {

@@ -43,12 +43,8 @@ pub struct TypeAndMut<'tcx> {
          RustcEncodable, RustcDecodable, Copy)]
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
-///
-/// If `fr.scope` is None, then this is in some context (e.g., an
-/// impl) where lifetimes are more abstract and the notion of the
-/// caller/callee stack frames are not applicable.
-pub struct FreeRegion<'tcx> {
-    pub scope: Option<region::CodeExtent<'tcx>>,
+pub struct FreeRegion {
+    pub scope: DefId,
     pub bound_region: BoundRegion,
 }
 
@@ -688,7 +684,7 @@ pub struct DebruijnIndex {
     pub depth: u32,
 }
 
-pub type Region<'tcx> = &'tcx RegionKind<'tcx>;
+pub type Region<'tcx> = &'tcx RegionKind;
 
 /// Representation of regions.
 ///
@@ -747,7 +743,7 @@ pub type Region<'tcx> = &'tcx RegionKind<'tcx>;
 /// [1] http://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2] http://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 #[derive(Clone, PartialEq, Eq, Hash, Copy, RustcEncodable, RustcDecodable)]
-pub enum RegionKind<'tcx> {
+pub enum RegionKind {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
     // parameters are substituted.
@@ -760,12 +756,12 @@ pub enum RegionKind<'tcx> {
     /// When checking a function body, the types of all arguments and so forth
     /// that refer to bound region parameters are modified to refer to free
     /// region parameters.
-    ReFree(FreeRegion<'tcx>),
+    ReFree(FreeRegion),
 
     /// A concrete region naming some statically determined extent
     /// (e.g. an expression or sequence of statements) within the
     /// current function.
-    ReScope(region::CodeExtent<'tcx>),
+    ReScope(region::CodeExtent),
 
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
     ReStatic,
@@ -794,6 +790,7 @@ impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct EarlyBoundRegion {
+    pub def_id: DefId,
     pub index: u32,
     pub name: Name,
 }
@@ -909,10 +906,9 @@ impl DebruijnIndex {
 }
 
 /// Region utilities
-impl<'tcx> RegionKind<'tcx> {
-    pub fn is_bound(&self) -> bool {
+impl RegionKind {
+    pub fn is_late_bound(&self) -> bool {
         match *self {
-            ty::ReEarlyBound(..) => true,
             ty::ReLateBound(..) => true,
             _ => false,
         }
@@ -933,7 +929,7 @@ impl<'tcx> RegionKind<'tcx> {
     }
 
     /// Returns the depth of `self` from the (1-based) binding level `depth`
-    pub fn from_depth(&self, depth: u32) -> RegionKind<'tcx> {
+    pub fn from_depth(&self, depth: u32) -> RegionKind {
         match *self {
             ty::ReLateBound(debruijn, r) => ty::ReLateBound(DebruijnIndex {
                 depth: debruijn.depth - (depth - 1)

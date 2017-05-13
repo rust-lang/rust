@@ -458,7 +458,7 @@ impl fmt::Debug for ty::BoundRegion {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::RegionKind<'tcx> {
+impl fmt::Debug for ty::RegionKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ty::ReEarlyBound(ref data) => {
@@ -506,17 +506,11 @@ impl<'tcx> fmt::Debug for ty::ClosureUpvar<'tcx> {
 
 impl<'tcx> fmt::Debug for ty::ParameterEnvironment<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ParameterEnvironment(\
-            free_substs={:?}, \
-            implicit_region_bound={:?}, \
-            caller_bounds={:?})",
-            self.free_substs,
-            self.implicit_region_bound,
-            self.caller_bounds)
+        write!(f, "ParameterEnvironment({:?})", self.caller_bounds)
     }
 }
 
-impl<'tcx> fmt::Display for ty::RegionKind<'tcx> {
+impl<'tcx> fmt::Display for ty::RegionKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if verbose() {
             return write!(f, "{:?}", *self);
@@ -544,7 +538,7 @@ impl<'tcx> fmt::Display for ty::RegionKind<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::FreeRegion<'tcx> {
+impl fmt::Debug for ty::FreeRegion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ReFree({:?}, {:?})",
                self.scope, self.bound_region)

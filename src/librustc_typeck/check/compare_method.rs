@@ -167,16 +167,15 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Create a parameter environment that represents the implementation's
     // method.
-    let impl_param_env = ty::ParameterEnvironment::for_item(tcx, impl_m_node_id);
+    let impl_param_env = tcx.parameter_environment(impl_m.def_id);
 
     // Create mapping from impl to skolemized.
-    let impl_to_skol_substs = &impl_param_env.free_substs;
+    let impl_to_skol_substs = Substs::identity_for_item(tcx, impl_m.def_id);
 
     // Create mapping from trait to skolemized.
     let trait_to_skol_substs = impl_to_skol_substs.rebase_onto(tcx,
                                                                impl_m.container.id(),
-                                                               trait_to_impl_substs.subst(tcx,
-                                                                          impl_to_skol_substs));
+                                                               trait_to_impl_substs);
     debug!("compare_impl_method: trait_to_skol_substs={:?}",
            trait_to_skol_substs);
 
@@ -191,8 +190,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        impl_m,
                                        &trait_m_generics,
                                        &impl_m_generics,
-                                       trait_to_skol_substs,
-                                       impl_to_skol_substs)?;
+                                       trait_to_skol_substs)?;
 
     // Create obligations for each predicate declared by the impl
     // definition in the context of the trait's parameter
@@ -200,7 +198,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // however, because we want to replace all late-bound regions with
     // region variables.
     let impl_predicates = tcx.predicates_of(impl_m_predicates.parent.unwrap());
-    let mut hybrid_preds = impl_predicates.instantiate(tcx, impl_to_skol_substs);
+    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx);
 
     debug!("compare_impl_method: impl_bounds={:?}", hybrid_preds);
 
@@ -226,7 +224,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                                normalize_cause.clone());
 
     tcx.infer_ctxt(trait_param_env, Reveal::UserFacing).enter(|infcx| {
-        let inh = Inherited::new(infcx);
+        let inh = Inherited::new(infcx, impl_m.def_id);
         let infcx = &inh.infcx;
 
         debug!("compare_impl_method: caller_bounds={:?}",
@@ -274,16 +272,14 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                             infer::HigherRankedType,
                                                             &m_sig(impl_m));
         let impl_sig =
-            impl_sig.subst(tcx, impl_to_skol_substs);
-        let impl_sig =
             inh.normalize_associated_types_in(impl_m_span,
                                               impl_m_node_id,
                                               &impl_sig);
         let impl_fty = tcx.mk_fn_ptr(ty::Binder(impl_sig));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
-        let trait_sig = tcx.liberate_late_bound_regions(
-            infcx.parameter_environment.free_id_outlive,
+        let trait_sig = inh.liberate_late_bound_regions(
+            impl_m.def_id,
             &m_sig(trait_m));
         let trait_sig =
             trait_sig.subst(tcx, trait_to_skol_substs);
@@ -370,8 +366,7 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 impl_m: &ty::AssociatedItem,
                                                 trait_generics: &ty::Generics,
                                                 impl_generics: &ty::Generics,
-                                                trait_to_skol_substs: &Substs<'tcx>,
-                                                impl_to_skol_substs: &Substs<'tcx>)
+                                                trait_to_skol_substs: &Substs<'tcx>)
                                                 -> Result<(), ErrorReported> {
     let trait_params = &trait_generics.regions[..];
     let impl_params = &impl_generics.regions[..];
@@ -379,12 +374,10 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("check_region_bounds_on_impl_method: \
             trait_generics={:?} \
             impl_generics={:?} \
-            trait_to_skol_substs={:?} \
-            impl_to_skol_substs={:?}",
+            trait_to_skol_substs={:?}",
            trait_generics,
            impl_generics,
-           trait_to_skol_substs,
-           impl_to_skol_substs);
+           trait_to_skol_substs);
 
     // Must have same number of early-bound lifetime parameters.
     // Unfortunately, if the user screws up the bounds, then this
@@ -726,7 +719,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
 
     tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
-        let inh = Inherited::new(infcx);
+        let inh = Inherited::new(infcx, impl_c.def_id);
         let infcx = &inh.infcx;
 
         // The below is for the most part highly similar to the procedure
@@ -739,22 +732,10 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Create a parameter environment that represents the implementation's
         // method.
         let impl_c_node_id = tcx.hir.as_local_node_id(impl_c.def_id).unwrap();
-        let impl_param_env = ty::ParameterEnvironment::for_item(tcx, impl_c_node_id);
-
-        // Create mapping from impl to skolemized.
-        let impl_to_skol_substs = &impl_param_env.free_substs;
-
-        // Create mapping from trait to skolemized.
-        let trait_to_skol_substs = impl_to_skol_substs.rebase_onto(tcx,
-                                                                   impl_c.container.id(),
-                                                                   trait_to_impl_substs.subst(tcx,
-                                                                              impl_to_skol_substs));
-        debug!("compare_const_impl: trait_to_skol_substs={:?}",
-               trait_to_skol_substs);
 
         // Compute skolemized form of impl and trait const tys.
-        let impl_ty = tcx.type_of(impl_c.def_id).subst(tcx, impl_to_skol_substs);
-        let trait_ty = tcx.type_of(trait_c.def_id).subst(tcx, trait_to_skol_substs);
+        let impl_ty = tcx.type_of(impl_c.def_id);
+        let trait_ty = tcx.type_of(trait_c.def_id).subst(tcx, trait_to_impl_substs);
         let mut cause = ObligationCause::misc(impl_c_span, impl_c_node_id);
 
         // There is no "body" here, so just pass dummy id.

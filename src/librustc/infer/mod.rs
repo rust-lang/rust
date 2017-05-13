@@ -450,10 +450,10 @@ impl<'a, 'tcx> InferEnv<'a, 'tcx> for hir::BodyId {
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
                     Option<ty::ParameterEnvironment<'tcx>>) {
-        let item_id = tcx.hir.body_owner(self);
-        (Some(tcx.typeck_tables_of(tcx.hir.local_def_id(item_id))),
+        let def_id = tcx.hir.body_owner_def_id(self);
+        (Some(tcx.typeck_tables_of(def_id)),
          None,
-         Some(ty::ParameterEnvironment::for_item(tcx, item_id)))
+         Some(tcx.parameter_environment(def_id)))
     }
 }
 
@@ -1009,7 +1009,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn add_given(&self,
-                     sub: ty::FreeRegion<'tcx>,
+                     sub: ty::Region<'tcx>,
                      sup: ty::RegionVid)
     {
         self.region_vars.add_given(sub, sup);
@@ -1324,7 +1324,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn resolve_regions_and_report_errors(&self,
                                              region_context: DefId,
-                                             region_map: &RegionMaps<'tcx>,
+                                             region_map: &RegionMaps,
                                              free_regions: &FreeRegionMap<'tcx>) {
         let region_rels = RegionRelations::new(self.tcx,
                                                region_context,

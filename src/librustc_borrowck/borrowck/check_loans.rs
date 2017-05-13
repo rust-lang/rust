@@ -232,7 +232,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         })
     }
 
-    pub fn each_in_scope_loan<F>(&self, scope: region::CodeExtent<'tcx>, mut op: F) -> bool where
+    pub fn each_in_scope_loan<F>(&self, scope: region::CodeExtent, mut op: F) -> bool where
         F: FnMut(&Loan<'tcx>) -> bool,
     {
         //! Like `each_issued_loan()`, but only considers loans that are
@@ -248,7 +248,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     }
 
     fn each_in_scope_loan_affecting_path<F>(&self,
-                                            scope: region::CodeExtent<'tcx>,
+                                            scope: region::CodeExtent,
                                             loan_path: &LoanPath<'tcx>,
                                             mut op: F)
                                             -> bool where
@@ -708,7 +708,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         let mut ret = UseOk;
 
         self.each_in_scope_loan_affecting_path(
-            self.tcx().node_extent(expr_id), use_path, |loan| {
+            region::CodeExtent::Misc(expr_id), use_path, |loan| {
             if !compatible_borrow_kinds(loan.kind, borrow_kind) {
                 ret = UseWhileBorrowed(loan.loan_path.clone(), loan.span);
                 false
@@ -822,7 +822,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
         // Check that we don't invalidate any outstanding loans
         if let Some(loan_path) = opt_loan_path(&assignee_cmt) {
-            let scope = self.tcx().node_extent(assignment_id);
+            let scope = region::CodeExtent::Misc(assignment_id);
             self.each_in_scope_loan_affecting_path(scope, &loan_path, |loan| {
                 self.report_illegal_mutation(assignment_span, &loan_path, loan);
                 false

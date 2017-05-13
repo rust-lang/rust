@@ -19,7 +19,6 @@ use hir::map::Map;
 use session::Session;
 use hir::def::Def;
 use hir::def_id::DefId;
-use middle::region;
 use ty;
 
 use std::cell::Cell;
@@ -42,7 +41,7 @@ pub enum Region {
     EarlyBound(/* index */ u32, /* lifetime decl */ ast::NodeId),
     LateBound(ty::DebruijnIndex, /* lifetime decl */ ast::NodeId),
     LateBoundAnon(ty::DebruijnIndex, /* anon index */ u32),
-    Free(region::CallSiteScopeData, /* lifetime decl */ ast::NodeId),
+    Free(DefId, /* lifetime decl */ ast::NodeId),
 }
 
 impl Region {
@@ -895,11 +894,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         };
 
         if let Some(mut def) = result {
-            if let Some(body_id) = outermost_body {
+            if let Region::EarlyBound(..) = def {
+                // Do not free early-bound regions, only late-bound ones.
+            } else if let Some(body_id) = outermost_body {
                 let fn_id = self.hir_map.body_owner(body_id);
-                let scope_data = region::CallSiteScopeData {
-                    fn_id: fn_id, body_id: body_id.node_id
-                };
                 match self.hir_map.get(fn_id) {
                     hir::map::NodeItem(&hir::Item {
                         node: hir::ItemFn(..), ..
@@ -910,7 +908,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     hir::map::NodeImplItem(&hir::ImplItem {
                         node: hir::ImplItemKind::Method(..), ..
                     }) => {
-                        def = Region::Free(scope_data, def.id().unwrap());
+                        let scope = self.hir_map.local_def_id(fn_id);
+                        def = Region::Free(scope, def.id().unwrap());
                     }
                     _ => {}
                 }

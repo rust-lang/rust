@@ -290,7 +290,7 @@ impl ast_node for hir::Pat {
 #[derive(Clone)]
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    pub region_maps: &'a RegionMaps<'tcx>,
+    pub region_maps: &'a RegionMaps,
     options: MemCategorizationOptions,
 }
 
@@ -406,7 +406,7 @@ impl MutabilityCategory {
 impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     /// Context should be the `DefId` we use to fetch region-maps.
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-               region_maps: &'a RegionMaps<'tcx>)
+               region_maps: &'a RegionMaps)
                -> MemCategorizationContext<'a, 'gcx, 'tcx> {
         MemCategorizationContext::with_options(infcx,
                                                region_maps,
@@ -414,7 +414,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     }
 
     pub fn with_options(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-                        region_maps: &'a RegionMaps<'tcx>,
+                        region_maps: &'a RegionMaps,
                         options: MemCategorizationOptions)
                         -> MemCategorizationContext<'a, 'gcx, 'tcx> {
         MemCategorizationContext {
@@ -785,26 +785,12 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                  cmt_result: cmt_<'tcx>)
                  -> cmt_<'tcx>
     {
-        // Look up the node ID of the closure body so we can construct
-        // a free region within it
-        let fn_body_id = {
-            let fn_expr = match self.tcx().hir.find(upvar_id.closure_expr_id) {
-                Some(hir_map::NodeExpr(e)) => e,
-                _ => bug!()
-            };
-
-            match fn_expr.node {
-                hir::ExprClosure(.., body_id, _) => body_id,
-                _ => bug!()
-            }
-        };
-
         // Region of environment pointer
         let env_region = self.tcx().mk_region(ty::ReFree(ty::FreeRegion {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
-            scope: Some(self.tcx().item_extent(fn_body_id.node_id)),
+            scope: self.tcx().hir.local_def_id(upvar_id.closure_expr_id),
             bound_region: ty::BrEnv
         }));
 
@@ -853,7 +839,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn temporary_scope(&self, id: ast::NodeId) -> (ty::Region<'tcx>, ty::Region<'tcx>)
     {
         let (scope, old_scope) =
-            self.region_maps.old_and_new_temporary_scope(self.tcx(), id);
+            self.region_maps.old_and_new_temporary_scope(id);
         (self.tcx().mk_region(match scope {
             Some(scope) => ty::ReScope(scope),
             None => ty::ReStatic

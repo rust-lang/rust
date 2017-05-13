@@ -35,7 +35,7 @@ pub struct RegionRelations<'a, 'gcx: 'tcx, 'tcx: 'a> {
     pub context: DefId,
 
     /// region maps for the given context
-    pub region_maps: &'a RegionMaps<'tcx>,
+    pub region_maps: &'a RegionMaps,
 
     /// free-region relationships
     pub free_regions: &'a FreeRegionMap<'tcx>,
@@ -45,7 +45,7 @@ impl<'a, 'gcx, 'tcx> RegionRelations<'a, 'gcx, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         context: DefId,
-        region_maps: &'a RegionMaps<'tcx>,
+        region_maps: &'a RegionMaps,
         free_regions: &'a FreeRegionMap<'tcx>,
     ) -> Self {
         Self {
@@ -71,26 +71,27 @@ impl<'a, 'gcx, 'tcx> RegionRelations<'a, 'gcx, 'tcx> {
                 (&ty::ReScope(sub_scope), &ty::ReScope(super_scope)) =>
                     self.region_maps.is_subscope_of(sub_scope, super_scope),
 
-                (&ty::ReScope(sub_scope), &ty::ReFree(fr)) => {
-                    // 1. It is safe to unwrap `fr.scope` because we
-                    // should only ever wind up comparing against
-                    // `ReScope` in the context of a method or
-                    // body, where `fr.scope` should be `Some`.
-                    self.region_maps.is_subscope_of(sub_scope, fr.scope.unwrap() /*1*/) ||
-                        self.is_static(super_region)
+                (&ty::ReScope(sub_scope), &ty::ReEarlyBound(ref br)) => {
+                    let fr_scope = self.region_maps.early_free_extent(self.tcx, br);
+                    self.region_maps.is_subscope_of(sub_scope, fr_scope)
                 }
 
-                (&ty::ReFree(_), &ty::ReFree(_)) =>
-                    self.free_regions.relation.contains(&sub_region, &super_region) ||
-                        self.is_static(super_region),
+                (&ty::ReScope(sub_scope), &ty::ReFree(ref fr)) => {
+                    let fr_scope = self.region_maps.free_extent(self.tcx, fr);
+                    self.region_maps.is_subscope_of(sub_scope, fr_scope)
+                }
 
-                (&ty::ReStatic, &ty::ReFree(_)) =>
-                    self.is_static(super_region),
+                (&ty::ReEarlyBound(_), &ty::ReEarlyBound(_)) |
+                (&ty::ReFree(_), &ty::ReEarlyBound(_)) |
+                (&ty::ReEarlyBound(_), &ty::ReFree(_)) |
+                (&ty::ReFree(_), &ty::ReFree(_)) =>
+                    self.free_regions.relation.contains(&sub_region, &super_region),
 
                 _ =>
                     false,
             }
         };
+        let result = result || self.is_static(super_region);
         debug!("is_subregion_of(sub_region={:?}, super_region={:?}) = {:?}",
                sub_region, super_region, result);
         result
@@ -101,11 +102,11 @@ impl<'a, 'gcx, 'tcx> RegionRelations<'a, 'gcx, 'tcx> {
         debug!("is_static(super_region={:?})", super_region);
         match *super_region {
             ty::ReStatic => true,
-            ty::ReFree(_) => {
+            ty::ReEarlyBound(_) | ty::ReFree(_) => {
                 let re_static = self.tcx.mk_region(ty::ReStatic);
                 self.free_regions.relation.contains(&re_static, &super_region)
             }
-            _ => bug!("only free regions should be given to `is_static`")
+            _ => false
         }
     }
 
@@ -142,11 +143,9 @@ impl<'tcx> FreeRegionMap<'tcx> {
         for implied_bound in implied_bounds {
             debug!("implied bound: {:?}", implied_bound);
             match *implied_bound {
-                ImpliedBound::RegionSubRegion(a @ &ty::ReFree(_), b @ &ty::ReFree(_)) |
-                ImpliedBound::RegionSubRegion(a @ &ty::ReStatic, b @ &ty::ReFree(_)) => {
+                ImpliedBound::RegionSubRegion(a, b) => {
                     self.relate_regions(a, b);
                 }
-                ImpliedBound::RegionSubRegion(..) |
                 ImpliedBound::RegionSubParam(..) |
                 ImpliedBound::RegionSubProjection(..) => {
                 }
@@ -170,32 +169,18 @@ impl<'tcx> FreeRegionMap<'tcx> {
                     // No region bounds here
                 }
                 ty::Predicate::RegionOutlives(ty::Binder(ty::OutlivesPredicate(r_a, r_b))) => {
-                    match (r_a, r_b) {
-                        // `'static: 'x` is not notable
-                        (&ty::ReStatic, &ty::ReFree(_)) => {},
-
-                        (&ty::ReFree(_), &ty::ReStatic) |
-                        (&ty::ReFree(_), &ty::ReFree(_)) => {
-                            // Record that `'a:'b`. Or, put another way, `'b <= 'a`.
-                            self.relate_regions(r_b, r_a);
-                        }
-
-                        _ => {
-                            // All named regions are instantiated with free regions.
-                            bug!("record_region_bounds: non free region: {:?} / {:?}",
-                                 r_a,
-                                 r_b);
-                        }
-                    }
+                    self.relate_regions(r_b, r_a);
                 }
             }
         }
     }
 
+    // Record that `'sup:'sub`. Or, put another way, `'sub <= 'sup`.
+    // (with the exception that `'static: 'x` is not notable)
     fn relate_regions(&mut self, sub: Region<'tcx>, sup: Region<'tcx>) {
-        assert!(match *sub { ty::ReFree(_) | ty::ReStatic => true, _ => false });
-        assert!(match *sup { ty::ReFree(_) | ty::ReStatic => true, _ => false });
-        self.relation.add(sub, sup)
+        if (is_free(sub) || *sub == ty::ReStatic) && is_free(sup) {
+            self.relation.add(sub, sup)
+        }
     }
 
     pub fn lub_free_regions<'a, 'gcx>(&self,
@@ -203,8 +188,8 @@ impl<'tcx> FreeRegionMap<'tcx> {
                                       r_a: Region<'tcx>,
                                       r_b: Region<'tcx>)
                                       -> Region<'tcx> {
-        assert!(match *r_a { ty::ReFree(_) => true, _ => false });
-        assert!(match *r_b { ty::ReFree(_) => true, _ => false });
+        assert!(is_free(r_a));
+        assert!(is_free(r_b));
         let result = if r_a == r_b { r_a } else {
             match self.relation.postdom_upper_bound(&r_a, &r_b) {
                 None => tcx.mk_region(ty::ReStatic),
@@ -213,6 +198,13 @@ impl<'tcx> FreeRegionMap<'tcx> {
         };
         debug!("lub_free_regions(r_a={:?}, r_b={:?}) = {:?}", r_a, r_b, result);
         result
+    }
+}
+
+fn is_free(r: Region) -> bool {
+    match *r {
+        ty::ReEarlyBound(_) | ty::ReFree(_) => true,
+        _ => false
     }
 }
 

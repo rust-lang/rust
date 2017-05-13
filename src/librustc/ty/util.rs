@@ -688,9 +688,8 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
                 self.hash(db.depth);
                 self.hash(i);
             }
-            ty::ReEarlyBound(ty::EarlyBoundRegion { index, name }) => {
-                self.hash(index);
-                self.hash(name.as_str());
+            ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, .. }) => {
+                self.def_id(def_id);
             }
             ty::ReLateBound(..) |
             ty::ReFree(..) |

@@ -15,7 +15,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use rustc::ty::{self, Ty};
-use rustc::ty::subst::{Kind, Subst};
+use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::ty::maps::Providers;
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -41,8 +41,7 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 {
     debug!("make_shim({:?})", instance);
     let did = instance.def_id();
-    let span = tcx.def_span(did);
-    let param_env = tcx.construct_parameter_environment(span, did, None);
+    let param_env = tcx.parameter_environment(did);
 
     let mut result = match instance {
         ty::InstanceDef::Item(..) =>
@@ -66,7 +65,6 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 
             build_call_shim(
                 tcx,
-                &param_env,
                 def_id,
                 adjustment,
                 CallKind::Indirect,
@@ -78,7 +76,6 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             // trans::mir knows to turn to an actual virtual call.
             build_call_shim(
                 tcx,
-                &param_env,
                 def_id,
                 Adjustment::Identity,
                 CallKind::Direct(def_id),
@@ -94,7 +91,6 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 
             build_call_shim(
                 tcx,
-                &param_env,
                 call_once,
                 Adjustment::RefMut,
                 CallKind::Direct(call_mut),
@@ -158,7 +154,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     let substs = if let Some(ty) = ty {
         tcx.mk_substs(iter::once(Kind::from(ty)))
     } else {
-        param_env.free_substs
+        Substs::identity_for_item(tcx, def_id)
     };
     let fn_ty = tcx.type_of(def_id).subst(tcx, substs);
     let sig = tcx.erase_late_bound_regions(&fn_ty.fn_sig());
@@ -272,7 +268,6 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
 /// If `untuple_args` is a vec of types, the second argument of the
 /// function will be untupled as these types.
 fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-                             param_env: &ty::ParameterEnvironment<'tcx>,
                              def_id: DefId,
                              rcvr_adjustment: Adjustment,
                              call_kind: CallKind,
@@ -283,7 +278,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             call_kind={:?}, untuple_args={:?})",
            def_id, rcvr_adjustment, call_kind, untuple_args);
 
-    let fn_ty = tcx.type_of(def_id).subst(tcx, param_env.free_substs);
+    let fn_ty = tcx.type_of(def_id);
     let sig = tcx.erase_late_bound_regions(&fn_ty.fn_sig());
     let span = tcx.def_span(def_id);
 
@@ -325,9 +320,10 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         CallKind::Direct(def_id) => (
             Operand::Constant(box Constant {
                 span: span,
-                ty: tcx.type_of(def_id).subst(tcx, param_env.free_substs),
+                ty: tcx.type_of(def_id),
                 literal: Literal::Value {
-                    value: ConstVal::Function(def_id, param_env.free_substs),
+                    value: ConstVal::Function(def_id,
+                        Substs::identity_for_item(tcx, def_id)),
                 },
             }),
             vec![rcvr]

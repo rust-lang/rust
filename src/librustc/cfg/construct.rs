@@ -10,6 +10,7 @@
 
 use rustc_data_structures::graph;
 use cfg::*;
+use middle::region::CodeExtent;
 use ty::{self, TyCtxt};
 use syntax::ast;
 use syntax::ptr::P;
@@ -586,8 +587,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                         scope_id: ast::NodeId,
                         to_index: CFGIndex) {
         let mut data = CFGEdgeData { exiting_scopes: vec![] };
-        let mut scope = self.tcx.node_extent(from_expr.id);
-        let target_scope = self.tcx.node_extent(scope_id);
+        let mut scope = CodeExtent::Misc(from_expr.id);
+        let target_scope = CodeExtent::Misc(scope_id);
         let region_maps = self.tcx.region_maps(self.owner_def_id);
         while scope != target_scope {
             data.exiting_scopes.push(scope.node_id());

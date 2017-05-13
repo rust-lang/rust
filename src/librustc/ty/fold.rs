@@ -39,7 +39,6 @@
 //! These methods return true to indicate that the visitor has found what it is looking for
 //! and does not need to visit anything else.
 
-use middle::region;
 use ty::subst::Substs;
 use ty::adjustment;
 use ty::{self, Binder, Ty, TyCtxt, TypeFlags};
@@ -326,23 +325,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         (result, replacer.map)
     }
 
-
-    /// Replace any late-bound regions bound in `value` with free variants attached to scope-id
-    /// `scope_id`.
-    pub fn liberate_late_bound_regions<T>(self,
-        all_outlive_scope: Option<region::CodeExtent<'tcx>>,
-        value: &Binder<T>)
-        -> T
-        where T : TypeFoldable<'tcx>
-    {
-        self.replace_late_bound_regions(value, |br| {
-            self.mk_region(ty::ReFree(ty::FreeRegion {
-                scope: all_outlive_scope,
-                bound_region: br
-            }))
-        }).0
-    }
-
     /// Flattens two binding levels into one. So `for<'a> for<'b> Foo`
     /// becomes `for<'a,'b> Foo`.
     pub fn flatten_late_bound_regions<T>(self, bound2_value: &Binder<Binder<T>>)
@@ -554,7 +536,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 // regions. See comment on `shift_regions_through_binders` method in
 // `subst.rs` for more details.
 
-pub fn shift_region<'tcx>(region: ty::RegionKind<'tcx>, amount: u32) -> ty::RegionKind<'tcx> {
+pub fn shift_region(region: ty::RegionKind, amount: u32) -> ty::RegionKind {
     match region {
         ty::ReLateBound(debruijn, br) => {
             ty::ReLateBound(debruijn.shifted(amount), br)

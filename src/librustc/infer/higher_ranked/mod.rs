@@ -274,7 +274,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                                              -> ty::Region<'tcx> {
             // Regions that pre-dated the LUB computation stay as they are.
             if !is_var_in_set(new_vars, r0) {
-                assert!(!r0.is_bound());
+                assert!(!r0.is_late_bound());
                 debug!("generalize_region(r0={:?}): not new variable", r0);
                 return r0;
             }
@@ -288,7 +288,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                 debug!("generalize_region(r0={:?}): \
                         non-new-variables found in {:?}",
                        r0, tainted);
-                assert!(!r0.is_bound());
+                assert!(!r0.is_late_bound());
                 return r0;
             }
 
@@ -371,7 +371,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                                              r0: ty::Region<'tcx>)
                                              -> ty::Region<'tcx> {
             if !is_var_in_set(new_vars, r0) {
-                assert!(!r0.is_bound());
+                assert!(!r0.is_late_bound());
                 return r0;
             }
 
@@ -424,7 +424,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                 return rev_lookup(infcx, span, a_map, a_r.unwrap());
             } else if a_r.is_none() && b_r.is_none() {
                 // Not related to bound variables from either fn:
-                assert!(!r0.is_bound());
+                assert!(!r0.is_late_bound());
                 return r0;
             } else {
                 // Other:
