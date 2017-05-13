@@ -1211,6 +1211,31 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 }
 
 impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll, D> {
+    fn visit_mod(&mut self, m: &'l ast::Mod, span: Span, attrs: &[ast::Attribute], id: NodeId) {
+        // Since we handle explicit modules ourselves in visit_item, this should
+        // only get called for the root module of a crate.
+        assert_eq!(id, ast::CRATE_NODE_ID);
+
+        let qualname = format!("::{}", self.tcx.node_path_str(id));
+
+        let cm = self.tcx.sess.codemap();
+        let filename = cm.span_to_filename(span);
+        self.dumper.mod_data(ModData {
+            id: id,
+            name: String::new(),
+            qualname: qualname,
+            span: span,
+            scope: id,
+            filename: filename,
+            items: m.items.iter().map(|i| i.id).collect(),
+            visibility: Visibility::Public,
+            docs: docs_for_attrs(attrs),
+            sig: None,
+            attributes: attrs.to_owned(),
+        }.lower(self.tcx));
+        self.nest_scope(id, |v| visit::walk_mod(v, m));
+    }
+
     fn visit_item(&mut self, item: &'l ast::Item) {
         use syntax::ast::ItemKind::*;
         self.process_macro_use(item.span, item.id);

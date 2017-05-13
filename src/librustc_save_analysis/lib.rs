@@ -258,7 +258,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     items: m.items.iter().map(|i| i.id).collect(),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
-                    sig: self.sig_base(item),
+                    sig: Some(self.sig_base(item)),
                     attributes: item.attrs.clone(),
                 }))
             }
