@@ -137,13 +137,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     source_info,
                     kind: mir::StatementKind::Assign(
                         mir::Lvalue::Local(mir::Local::new(2)),
-                        mir::Rvalue::Use(mir::Operand::Constant(mir::Constant {
+                        mir::Rvalue::Use(mir::Operand::Constant(Box::new(mir::Constant {
                             span: DUMMY_SP,
                             ty: tcx.types.usize,
                             literal: mir::Literal::Value {
                                 value: ConstVal::Integral(ConstInt::Usize(ConstUsize::new(0, tcx.sess.target.uint_type).unwrap())),
                             },
-                        }))
+                        })))
                     )
                 },
                 mir::Statement {
@@ -225,13 +225,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         mir::Rvalue::BinaryOp(
                             mir::BinOp::Add,
                             mir::Operand::Consume(mir::Lvalue::Local(mir::Local::new(2))),
-                            mir::Operand::Constant(mir::Constant {
+                            mir::Operand::Constant(Box::new(mir::Constant {
                                 span: DUMMY_SP,
                                 ty: tcx.types.usize,
                                 literal: mir::Literal::Value {
                                     value: ConstVal::Integral(ConstInt::Usize(ConstUsize::new(1, tcx.sess.target.uint_type).unwrap())),
                                 },
-                            }),
+                            })),
                         )
                     )
                 },
@@ -636,7 +636,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     General { discr, ref variants, .. } => {
-                        if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
+                        if let mir::AggregateKind::Adt(adt_def, variant, _, _) = **kind {
                             let discr_val = adt_def.discriminants(self.tcx)
                                 .nth(variant)
                                 .expect("broken mir: Adt variant id invalid")
@@ -662,7 +662,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     RawNullablePointer { nndiscr, .. } => {
-                        if let mir::AggregateKind::Adt(_, variant, _, _) = *kind {
+                        if let mir::AggregateKind::Adt(_, variant, _, _) = **kind {
                             if nndiscr == variant as u64 {
                                 assert_eq!(operands.len(), 1);
                                 let operand = &operands[0];
@@ -683,7 +683,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     StructWrappedNullablePointer { nndiscr, ref nonnull, ref discrfield, .. } => {
-                        if let mir::AggregateKind::Adt(_, variant, _, _) = *kind {
+                        if let mir::AggregateKind::Adt(_, variant, _, _) = **kind {
                             if nonnull.packed {
                                 let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0;
                                 self.memory.mark_packed(ptr, nonnull.stride().bytes());
@@ -712,7 +712,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     CEnum { .. } => {
                         assert_eq!(operands.len(), 0);
-                        if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
+                        if let mir::AggregateKind::Adt(adt_def, variant, _, _) = **kind {
                             let n = adt_def.discriminants(self.tcx)
                                 .nth(variant)
                                 .expect("broken mir: Adt variant index invalid")
@@ -997,8 +997,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match *op {
             Consume(ref lvalue) => self.eval_and_read_lvalue(lvalue),
 
-            Constant(mir::Constant { ref literal, .. }) => {
+            Constant(ref constant) => {
                 use rustc::mir::Literal;
+                let mir::Constant { ref literal, .. } = **constant;
                 let value = match *literal {
                     Literal::Value { ref value } => self.const_to_value(value)?,
 
