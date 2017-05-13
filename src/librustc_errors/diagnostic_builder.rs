@@ -99,7 +99,10 @@ impl<'a> DiagnosticBuilder<'a> {
 
         self.handler.emitter.borrow_mut().emit(&self);
         self.cancel();
-        self.handler.panic_if_treat_err_as_bug();
+
+        if self.level == Level::Error {
+            self.handler.panic_if_treat_err_as_bug();
+        }
 
         // if self.is_fatal() {
         //     panic!(FatalError);
