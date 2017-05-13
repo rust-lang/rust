@@ -160,6 +160,14 @@ pub fn opts() -> Vec<RustcOptGroup> {
                         "files to include inline between the content and </body> of a rendered \
                          Markdown file or generated documentation",
                         "FILES")),
+        unstable(optmulti("", "markdown-before-content",
+                          "files to include inline between <body> and the content of a rendered \
+                           Markdown file or generated documentation",
+                          "FILES")),
+        unstable(optmulti("", "markdown-after-content",
+                          "files to include inline between the content and </body> of a rendered \
+                           Markdown file or generated documentation",
+                          "FILES")),
         stable(optopt("", "markdown-playground-url",
                       "URL to send code snippets to", "URL")),
         stable(optflag("", "markdown-no-toc", "don't include table of contents")),
@@ -275,7 +283,10 @@ pub fn main_args(args: &[String]) -> isize {
     let external_html = match ExternalHtml::load(
             &matches.opt_strs("html-in-header"),
             &matches.opt_strs("html-before-content"),
-            &matches.opt_strs("html-after-content")) {
+            &matches.opt_strs("html-after-content"),
+            &matches.opt_strs("markdown-before-content"),
+            &matches.opt_strs("markdown-after-content"),
+            render_type) {
         Some(eh) => eh,
         None => return 3,
     };
