@@ -943,9 +943,9 @@
                         if (hasClass(main, 'content')) {
                             removeClass(main, 'hidden');
                         }
-                        var search = document.getElementById('search');
-                        if (hasClass(main, 'content')) {
-                            addClass(main, 'hidden');
+                        var search_c = document.getElementById('search');
+                        if (hasClass(search_c, 'content')) {
+                            addClass(search_c, 'hidden');
                         }
                     }
                     // Revert to the previous title manually since the History
@@ -959,7 +959,11 @@
                     // perform the search. This will empty the bar if there's
                     // nothing there, which lets you really go back to a
                     // previous state with nothing in the bar.
-                    document.getElementsByClassName('search-input')[0].value = params.search;
+                    if (params.search) {
+                        document.getElementsByClassName('search-input')[0].value = params.search;
+                    } else {
+                        document.getElementsByClassName('search-input')[0].value = '';
+                    }
                     // Some browsers fire 'onpopstate' for every page load
                     // (Chrome), while others fire the event only when actually
                     // popping a state (Firefox), which is why search() is
