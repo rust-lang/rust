@@ -13,6 +13,7 @@ members = [
   "tools/build-manifest",
   "tools/remote-test-client",
   "tools/remote-test-server",
+  "tools/rust-installer",
 ]
 
 # These projects have their own Cargo.lock
