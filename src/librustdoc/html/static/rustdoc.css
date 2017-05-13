@@ -193,6 +193,7 @@ nav.sub {
 	font-size: 17px;
 	margin: 30px 0 20px 0;
 	text-align: center;
+	word-wrap: break-word;
 }
 
 .location:empty {
@@ -235,6 +236,9 @@ nav.sub {
 	white-space: pre;
 	overflow: auto;
 	padding-left: 0;
+}
+#search {
+	margin-left: 230px;
 }
 .content pre.line-numbers {
 	float: left;

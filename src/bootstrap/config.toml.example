@@ -175,6 +175,9 @@
 [rust]
 
 # Whether or not to optimize the compiler and standard library
+# Note: the slowness of the non optimized compiler compiling itself usually
+#       outweighs the time gains in not doing optimizations, therefore a
+#       full bootstrap takes much more time with optimize set to false.
 #optimize = true
 
 # Number of codegen units to use for each compiler invocation. A value of 0

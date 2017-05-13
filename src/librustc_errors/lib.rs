@@ -20,6 +20,7 @@
 #![allow(unused_attributes)]
 #![feature(range_contains)]
 #![feature(libc)]
+#![feature(conservative_impl_trait)]
 
 #![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
 #![cfg_attr(stage0, feature(rustc_private))]
@@ -66,9 +67,33 @@ pub enum RenderSpan {
 
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct CodeSuggestion {
-    pub msp: MultiSpan,
-    pub substitutes: Vec<String>,
+    /// Each substitute can have multiple variants due to multiple
+    /// applicable suggestions
+    ///
+    /// `foo.bar` might be replaced with `a.b` or `x.y` by replacing
+    /// `foo` and `bar` on their own:
+    ///
+    /// ```
+    /// vec![
+    ///     (0..3, vec!["a", "x"]),
+    ///     (4..7, vec!["b", "y"]),
+    /// ]
+    /// ```
+    ///
+    /// or by replacing the entire span:
+    ///
+    /// ```
+    /// vec![(0..7, vec!["a.b", "x.y"])]
+    /// ```
+    pub substitution_parts: Vec<Substitution>,
     pub msg: String,
+}
+
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+/// See the docs on `CodeSuggestion::substitutions`
+pub struct Substitution {
+    pub span: Span,
+    pub substitutions: Vec<String>,
 }
 
 pub trait CodeMapper {
@@ -80,8 +105,18 @@ pub trait CodeMapper {
 }
 
 impl CodeSuggestion {
-    /// Returns the assembled code suggestion.
-    pub fn splice_lines(&self, cm: &CodeMapper) -> String {
+    /// Returns the number of substitutions
+    fn substitutions(&self) -> usize {
+        self.substitution_parts[0].substitutions.len()
+    }
+
+    /// Returns the number of substitutions
+    pub fn substitution_spans<'a>(&'a self) -> impl Iterator<Item = Span> + 'a {
+        self.substitution_parts.iter().map(|sub| sub.span)
+    }
+
+    /// Returns the assembled code suggestions.
+    pub fn splice_lines(&self, cm: &CodeMapper) -> Vec<String> {
         use syntax_pos::{CharPos, Loc, Pos};
 
         fn push_trailing(buf: &mut String,
@@ -103,20 +138,22 @@ impl CodeSuggestion {
             }
         }
 
-        let mut primary_spans = self.msp.primary_spans().to_owned();
-
-        assert_eq!(primary_spans.len(), self.substitutes.len());
-        if primary_spans.is_empty() {
-            return format!("");
+        if self.substitution_parts.is_empty() {
+            return vec![String::new()];
         }
+
+        let mut primary_spans: Vec<_> = self.substitution_parts
+            .iter()
+            .map(|sub| (sub.span, &sub.substitutions))
+            .collect();
 
         // Assumption: all spans are in the same file, and all spans
         // are disjoint. Sort in ascending order.
-        primary_spans.sort_by_key(|sp| sp.lo);
+        primary_spans.sort_by_key(|sp| sp.0.lo);
 
         // Find the bounding span.
-        let lo = primary_spans.iter().map(|sp| sp.lo).min().unwrap();
-        let hi = primary_spans.iter().map(|sp| sp.hi).min().unwrap();
+        let lo = primary_spans.iter().map(|sp| sp.0.lo).min().unwrap();
+        let hi = primary_spans.iter().map(|sp| sp.0.hi).min().unwrap();
         let bounding_span = Span {
             lo: lo,
             hi: hi,
@@ -139,33 +176,40 @@ impl CodeSuggestion {
         prev_hi.col = CharPos::from_usize(0);
 
         let mut prev_line = fm.get_line(lines.lines[0].line_index);
-        let mut buf = String::new();
+        let mut bufs = vec![String::new(); self.substitutions()];
 
-        for (sp, substitute) in primary_spans.iter().zip(self.substitutes.iter()) {
+        for (sp, substitutes) in primary_spans {
             let cur_lo = cm.lookup_char_pos(sp.lo);
-            if prev_hi.line == cur_lo.line {
-                push_trailing(&mut buf, prev_line, &prev_hi, Some(&cur_lo));
-            } else {
-                push_trailing(&mut buf, prev_line, &prev_hi, None);
-                // push lines between the previous and current span (if any)
-                for idx in prev_hi.line..(cur_lo.line - 1) {
-                    if let Some(line) = fm.get_line(idx) {
-                        buf.push_str(line);
-                        buf.push('\n');
+            for (buf, substitute) in bufs.iter_mut().zip(substitutes) {
+                if prev_hi.line == cur_lo.line {
+                    push_trailing(buf, prev_line, &prev_hi, Some(&cur_lo));
+                } else {
+                    push_trailing(buf, prev_line, &prev_hi, None);
+                    // push lines between the previous and current span (if any)
+                    for idx in prev_hi.line..(cur_lo.line - 1) {
+                        if let Some(line) = fm.get_line(idx) {
+                            buf.push_str(line);
+                            buf.push('\n');
+                        }
+                    }
+                    if let Some(cur_line) = fm.get_line(cur_lo.line - 1) {
+                        buf.push_str(&cur_line[..cur_lo.col.to_usize()]);
                     }
                 }
-                if let Some(cur_line) = fm.get_line(cur_lo.line - 1) {
-                    buf.push_str(&cur_line[..cur_lo.col.to_usize()]);
-                }
+                buf.push_str(substitute);
             }
-            buf.push_str(substitute);
             prev_hi = cm.lookup_char_pos(sp.hi);
             prev_line = fm.get_line(prev_hi.line - 1);
         }
-        push_trailing(&mut buf, prev_line, &prev_hi, None);
-        // remove trailing newline
-        buf.pop();
-        buf
+        for buf in &mut bufs {
+            // if the replacement already ends with a newline, don't print the next line
+            if !buf.ends_with('\n') {
+                push_trailing(buf, prev_line, &prev_hi, None);
+            }
+            // remove trailing newline
+            buf.pop();
+        }
+        bufs
     }
 }
 

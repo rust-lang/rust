@@ -32,6 +32,7 @@
 //! comments can also be found below leading through the various code paths.
 
 // A simple macro to make this option mess easier to read
+#[cfg(windows)]
 macro_rules! otry {
     ($expr:expr) => (match $expr {
         Some(val) => val,
