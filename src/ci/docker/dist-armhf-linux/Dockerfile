@@ -62,7 +62,7 @@ RUN ./build-toolchains.sh
 USER root
 
 RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-04-29-sccache-x86_64-unknown-linux-musl && \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
       chmod +x /usr/local/bin/sccache
 
 ENV PATH=$PATH:/x-tools/arm-unknown-linux-gnueabihf/bin

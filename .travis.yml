@@ -63,7 +63,7 @@ matrix:
       os: osx
       osx_image: xcode8.2
       install: &osx_install_sccache >
-        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-04-29-sccache-x86_64-apple-darwin &&
+        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-apple-darwin &&
           chmod +x /usr/local/bin/sccache &&
         travis_retry curl -o /usr/local/bin/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
           chmod +x /usr/local/bin/stamp
