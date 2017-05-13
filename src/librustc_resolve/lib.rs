@@ -127,8 +127,6 @@ impl Ord for BindingError {
 enum ResolutionError<'a> {
     /// error E0401: can't use type parameters from outer function
     TypeParametersFromOuterFunction,
-    /// error E0402: cannot use an outer type parameter in this context
-    OuterTypeParameterContext,
     /// error E0403: the name is already used for a type parameter in this type parameter list
     NameAlreadyUsedInTypeParameterList(Name, &'a Span),
     /// error E0407: method is not a member of trait
@@ -186,12 +184,6 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                                            try using a local type parameter instead");
             err.span_label(span, "use of type variable from outer function");
             err
-        }
-        ResolutionError::OuterTypeParameterContext => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0402,
-                             "cannot use an outer type parameter in this context")
         }
         ResolutionError::NameAlreadyUsedInTypeParameterList(name, first_use_span) => {
              let mut err = struct_span_err!(resolver.session,
@@ -1671,16 +1663,16 @@ impl<'a> Resolver<'a> {
                             this.check_proc_macro_attrs(&trait_item.attrs);
 
                             match trait_item.node {
-                                TraitItemKind::Const(_, ref default) => {
+                                TraitItemKind::Const(ref ty, ref default) => {
+                                    this.visit_ty(ty);
+
                                     // Only impose the restrictions of
-                                    // ConstRibKind if there's an actual constant
+                                    // ConstRibKind for an actual constant
                                     // expression in a provided default.
-                                    if default.is_some() {
+                                    if let Some(ref expr) = *default{
                                         this.with_constant_rib(|this| {
-                                            visit::walk_trait_item(this, trait_item)
+                                            this.visit_expr(expr);
                                         });
-                                    } else {
-                                        visit::walk_trait_item(this, trait_item)
                                     }
                                 }
                                 TraitItemKind::Method(ref sig, _) => {
@@ -1709,9 +1701,13 @@ impl<'a> Resolver<'a> {
                 });
             }
 
-            ItemKind::Const(..) | ItemKind::Static(..) => {
-                self.with_constant_rib(|this| {
-                    visit::walk_item(this, item);
+            ItemKind::Static(ref ty, _, ref expr) |
+            ItemKind::Const(ref ty, ref expr) => {
+                self.with_item_rib(|this| {
+                    this.visit_ty(ty);
+                    this.with_constant_rib(|this| {
+                        this.visit_expr(expr);
+                    });
                 });
             }
 
@@ -1782,13 +1778,21 @@ impl<'a> Resolver<'a> {
         self.label_ribs.pop();
     }
 
+    fn with_item_rib<F>(&mut self, f: F)
+        where F: FnOnce(&mut Resolver)
+    {
+        self.ribs[ValueNS].push(Rib::new(ItemRibKind));
+        self.ribs[TypeNS].push(Rib::new(ItemRibKind));
+        f(self);
+        self.ribs[TypeNS].pop();
+        self.ribs[ValueNS].pop();
+    }
+
     fn with_constant_rib<F>(&mut self, f: F)
         where F: FnOnce(&mut Resolver)
     {
         self.ribs[ValueNS].push(Rib::new(ConstantItemRibKind));
-        self.ribs[TypeNS].push(Rib::new(ConstantItemRibKind));
         f(self);
-        self.ribs[TypeNS].pop();
         self.ribs[ValueNS].pop();
     }
 
@@ -2755,7 +2759,8 @@ impl<'a> Resolver<'a> {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | MethodRibKind(_) | ClosureRibKind(..) |
-                        ModuleRibKind(..) | MacroDefinition(..) | ForwardTyParamBanRibKind => {
+                        ModuleRibKind(..) | MacroDefinition(..) | ForwardTyParamBanRibKind |
+                        ConstantItemRibKind => {
                             // Nothing to do. Continue.
                         }
                         ItemRibKind => {
@@ -2764,14 +2769,6 @@ impl<'a> Resolver<'a> {
                             if record_used {
                                 resolve_error(self, span,
                                               ResolutionError::TypeParametersFromOuterFunction);
-                            }
-                            return Def::Err;
-                        }
-                        ConstantItemRibKind => {
-                            // see #9186
-                            if record_used {
-                                resolve_error(self, span,
-                                              ResolutionError::OuterTypeParameterContext);
                             }
                             return Def::Err;
                         }
