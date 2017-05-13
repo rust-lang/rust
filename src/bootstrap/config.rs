@@ -264,7 +264,7 @@ impl Config {
             let table = match p.parse() {
                 Some(table) => table,
                 None => {
-                    println!("failed to parse TOML configuration:");
+                    println!("failed to parse TOML configuration '{}':", file.to_str().unwrap());
                     for err in p.errors.iter() {
                         let (loline, locol) = p.to_linecol(err.lo);
                         let (hiline, hicol) = p.to_linecol(err.hi);
