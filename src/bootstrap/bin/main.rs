@@ -33,5 +33,8 @@ fn main() {
         config.update_with_config_mk();
     }
 
+    // Unset DESTDIR as it interferes with some build systems (libgit2)
+    env::remove_var("DESTDIR");
+
     Build::new(flags, config).build();
 }

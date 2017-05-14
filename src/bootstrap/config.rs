@@ -98,6 +98,7 @@ pub struct Config {
     pub quiet_tests: bool,
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
+    pub destdir: Option<PathBuf>,
     pub prefix: Option<PathBuf>,
     pub docdir: Option<PathBuf>,
     pub libdir: Option<PathBuf>,
@@ -313,6 +314,8 @@ impl Config {
         set(&mut config.sanitizers, build.sanitizers);
         set(&mut config.openssl_static, build.openssl_static);
 
+        // Cache DESTDIR environment variable as we unset it later on
+        config.destdir = env::var_os("DESTDIR").map(PathBuf::from);
         if let Some(ref install) = toml.install {
             config.prefix = install.prefix.clone().map(PathBuf::from);
             config.mandir = install.mandir.clone().map(PathBuf::from);

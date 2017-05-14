@@ -13,7 +13,6 @@
 //! This module is responsible for installing the standard library,
 //! compiler, and documentation.
 
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf, Component};
 use std::process::Command;
@@ -36,7 +35,7 @@ pub fn install(build: &Build, stage: u32, host: &str) {
     let libdir = prefix.join(libdir);
     let mandir = prefix.join(mandir);
 
-    let destdir = env::var_os("DESTDIR").map(PathBuf::from);
+    let destdir = build.config.destdir.as_ref();
 
     let prefix = add_destdir(&prefix, &destdir);
     let docdir = add_destdir(&docdir, &destdir);
@@ -84,9 +83,9 @@ fn install_sh(build: &Build, package: &str, name: &str, version: &str, stage: u3
     build.run(&mut cmd);
 }
 
-fn add_destdir(path: &Path, destdir: &Option<PathBuf>) -> PathBuf {
+fn add_destdir(path: &Path, destdir: &Option<&PathBuf>) -> PathBuf {
     let mut ret = match *destdir {
-        Some(ref dest) => dest.clone(),
+        Some(dest) => dest.clone(),
         None => return path.to_path_buf(),
     };
     for part in path.components() {
