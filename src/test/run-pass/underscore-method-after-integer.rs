@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct P { child: Option<Box<P>> }
-trait PTrait {
-   fn getChildOption(&self) -> Option<Box<P>>;
+trait Tr : Sized {
+    fn _method_on_numbers(self) {}
 }
 
-impl PTrait for P {
-   fn getChildOption(&self) -> Option<Box<P>> {
-       static childVal: Box<P> = self.child.get();
-       //~^ ERROR can't capture dynamic environment
-       panic!();
-   }
-}
+impl Tr for i32 {}
 
-fn main() {}
+fn main() {
+    42._method_on_numbers();
+}
