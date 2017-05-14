@@ -37,6 +37,10 @@ fn sub<A: Foo, B: Foo>() -> i32 {
     A::X - B::X
 }
 
+trait Bar: Foo {
+    const Y: i32 = Self::X;
+}
+
 fn main() {
     assert_eq!(11, Abc::X);
     assert_eq!(97, Def::X);

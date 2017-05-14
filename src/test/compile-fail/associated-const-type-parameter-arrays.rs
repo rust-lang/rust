@@ -26,7 +26,7 @@ impl Foo for Def {
 
 pub fn test<A: Foo, B: Foo>() {
     let _array: [u32; <A as Foo>::Y];
-    //~^ ERROR cannot use an outer type parameter in this context [E0402]
+    //~^ ERROR the trait bound `A: Foo` is not satisfied [E0277]
 }
 
 fn main() {

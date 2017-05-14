@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct P { child: Option<Box<P>> }
-trait PTrait {
-   fn getChildOption(&self) -> Option<Box<P>>;
+trait Dim {
+    fn dim() -> usize;
 }
 
-impl PTrait for P {
-   fn getChildOption(&self) -> Option<Box<P>> {
-       static childVal: Box<P> = self.child.get();
-       //~^ ERROR can't capture dynamic environment
-       panic!();
-   }
+enum Dim3 {}
+
+impl Dim for Dim3 {
+    fn dim() -> usize {
+        3
+    }
 }
 
-fn main() {}
+fn main() {
+    let array: [usize; Dim3::dim()]
+    //~^ ERROR calls in constants are limited to constant functions
+        = [0; Dim3::dim()];
+        //~^ ERROR calls in constants are limited to constant functions
+}

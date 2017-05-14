@@ -22,12 +22,7 @@ impl Dim for Dim3 {
 
 pub struct Vector<T, D: Dim> {
     entries: [T; D::dim()]
-    //~^ ERROR cannot use an outer type parameter in this context
+    //~^ ERROR no associated item named `dim` found for type `D` in the current scope
 }
 
-fn main() {
-    let array: [usize; Dim3::dim()]
-    //~^ ERROR calls in constants are limited to constant functions
-        = [0; Dim3::dim()];
-        //~^ ERROR calls in constants are limited to constant functions
-}
+fn main() {}
