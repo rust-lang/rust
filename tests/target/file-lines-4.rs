@@ -11,10 +11,10 @@ fn floaters() {
     let y = if cond {
                 val1
             } else {
-                val2
+                val2	
             }
                 .method_call();
-
+                                                                                              // aaaaaaaaaaaaa
     {
         match x {
             PushParam => {
@@ -24,6 +24,6 @@ fn floaters() {
                                         }]
                                .clone());
             }
-        }
+        }    
     }
 }
