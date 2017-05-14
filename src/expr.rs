@@ -70,7 +70,7 @@ fn format_expr(expr: &ast::Expr,
         }
         ast::ExprKind::Call(ref callee, ref args) => {
             let inner_span = mk_sp(callee.span.hi, expr.span.hi);
-            rewrite_call(context, &**callee, args, inner_span, shape, false)
+            rewrite_call(context, &**callee, args, inner_span, shape)
         }
         ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape),
         ast::ExprKind::Binary(ref op, ref lhs, ref rhs) => {
@@ -512,7 +512,8 @@ fn rewrite_closure(capture: ast::CaptureBy,
         }
 
         // Figure out if the block is necessary.
-        let needs_block = block.rules != ast::BlockCheckMode::Default || block.stmts.len() > 1 ||
+        let needs_block = block.rules != ast::BlockCheckMode::Default ||
+                          block.stmts.len() > 1 || context.inside_macro ||
                           block_contains_comment(block, context.codemap) ||
                           prefix.contains('\n');
 
@@ -1599,20 +1600,12 @@ pub fn rewrite_call<R>(context: &RewriteContext,
                        callee: &R,
                        args: &[ptr::P<ast::Expr>],
                        span: Span,
-                       shape: Shape,
-                       force_no_trailing_comma: bool)
+                       shape: Shape)
                        -> Option<String>
     where R: Rewrite
 {
-    let closure = |callee_max_width| {
-        rewrite_call_inner(context,
-                           callee,
-                           callee_max_width,
-                           args,
-                           span,
-                           shape,
-                           force_no_trailing_comma)
-    };
+    let closure =
+        |callee_max_width| rewrite_call_inner(context, callee, callee_max_width, args, span, shape);
 
     // 2 is for parens
     let max_width = try_opt!(shape.width.checked_sub(2));
@@ -1624,8 +1617,7 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                          max_callee_width: usize,
                          args: &[ptr::P<ast::Expr>],
                          span: Span,
-                         shape: Shape,
-                         force_no_trailing_comma: bool)
+                         shape: Shape)
                          -> Result<String, Ordering>
     where R: Rewrite
 {
@@ -1665,13 +1657,8 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
     let span_lo = context.codemap.span_after(span, "(");
     let span = mk_sp(span_lo, span.hi);
 
-    let list_str = rewrite_call_args(context,
-                                     args,
-                                     span,
-                                     nested_shape,
-                                     one_line_width,
-                                     force_no_trailing_comma)
-            .ok_or(Ordering::Less)?;
+    let list_str = rewrite_call_args(context, args, span, nested_shape, one_line_width)
+        .ok_or(Ordering::Less)?;
 
     let result = if context.config.fn_call_style == IndentStyle::Visual ||
                     (!list_str.contains('\n') && list_str.chars().last().unwrap_or(' ') != ',') {
@@ -1695,8 +1682,7 @@ fn rewrite_call_args(context: &RewriteContext,
                      args: &[ptr::P<ast::Expr>],
                      span: Span,
                      shape: Shape,
-                     one_line_width: usize,
-                     force_no_trailing_comma: bool)
+                     one_line_width: usize)
                      -> Option<String> {
     let arg_count = args.len();
 
@@ -1766,7 +1752,7 @@ fn rewrite_call_args(context: &RewriteContext,
     let mut fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
-        trailing_separator: if force_no_trailing_comma ||
+        trailing_separator: if context.inside_macro ||
                                context.config.fn_call_style == IndentStyle::Visual ||
                                arg_count <= 1 {
             SeparatorTactic::Never
@@ -1783,7 +1769,7 @@ fn rewrite_call_args(context: &RewriteContext,
         // try to put it on the next line. Try this only when we are in block mode
         // and not rewriting macro.
         Some(ref s) if context.config.fn_call_style == IndentStyle::Block &&
-                       !force_no_trailing_comma &&
+                       !context.inside_macro &&
                        (!s.contains('\n') &&
                         (s.len() > one_line_width || s.len() > context.config.fn_call_width)) => {
             fmt.trailing_separator = SeparatorTactic::Vertical;

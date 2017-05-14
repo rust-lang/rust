@@ -440,5 +440,5 @@ fn rewrite_method_call(method_name: ast::Ident,
     let callee_str = format!(".{}{}", method_name, type_str);
     let span = mk_sp(lo, span.hi);
 
-    rewrite_call(context, &callee_str, &args[1..], span, shape, false)
+    rewrite_call(context, &callee_str, &args[1..], span, shape)
 }

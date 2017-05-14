@@ -574,6 +574,7 @@ impl<'a> FmtVisitor<'a> {
             parse_session: self.parse_session,
             codemap: self.codemap,
             config: self.config,
+            inside_macro: false,
         }
     }
 }

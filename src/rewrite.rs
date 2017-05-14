@@ -26,6 +26,7 @@ pub struct RewriteContext<'a> {
     pub parse_session: &'a ParseSess,
     pub codemap: &'a CodeMap,
     pub config: &'a Config,
+    pub inside_macro: bool,
 }
 
 impl<'a> RewriteContext<'a> {
