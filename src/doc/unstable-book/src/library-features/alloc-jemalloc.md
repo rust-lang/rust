@@ -4,7 +4,7 @@ The tracking issue for this feature is: [#33082]
 
 [#33082]: https://github.com/rust-lang/rust/issues/33082
 
-See also [`alloc_system`](alloc-system.html).
+See also [`alloc_system`](library-features/alloc-system.html).
 
 ------------------------
 

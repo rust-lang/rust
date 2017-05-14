@@ -8,7 +8,7 @@ The tracking issue for this feature is: [#29597]
 This feature is part of "compiler plugins." It will often be used with the
 [`plugin_registrar`] and `rustc_private` features.
 
-[`plugin_registrar`]: plugin-registrar.html
+[`plugin_registrar`]: language-features/plugin-registrar.html
 
 ------------------------
 

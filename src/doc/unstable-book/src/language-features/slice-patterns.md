@@ -4,7 +4,8 @@ The tracking issue for this feature is: [#23121]
 
 [#23121]: https://github.com/rust-lang/rust/issues/23121
 
-See also [`advanced_slice_patterns`](advanced-slice-patterns.html).
+See also
+[`advanced_slice_patterns`](language-features/advanced-slice-patterns.html).
 
 ------------------------
 
