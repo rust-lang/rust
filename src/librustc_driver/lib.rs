@@ -1114,11 +1114,11 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
                              errors::Level::Note);
             }
             if match env::var_os("RUST_BACKTRACE") {
-                Some(val) => &val != "0",
+                Some(val) => (&val != "0") && (&val != "no"),
                 None => false,
             } {
                 handler.emit(&MultiSpan::new(),
-                             "run with `RUST_BACKTRACE=1` for a backtrace",
+                             "run with `RUST_BACKTRACE=yes` for a backtrace",
                              errors::Level::Note);
             }
 
