@@ -261,8 +261,9 @@ macro_rules! create_config {
                 match parsed.try_into() {
                     Ok(parsed_config) =>
                         Ok(Config::default().fill_from_parsed_config(parsed_config)),
-                    Err(_) => {
-                        err.push_str("Error: Decoding config file failed. ");
+                    Err(e) => {
+                        err.push_str("Error: Decoding config file failed:\n");
+                        err.push_str(format!("{}\n", e).as_str());
                         err.push_str("Please check your config file.\n");
                         Err(err)
                     }
