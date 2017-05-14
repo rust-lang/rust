@@ -13,6 +13,9 @@ env_logger = { version = "0.4", default-features = false }
 log = "0.3"
 pulldown-cmark = { version = "0.0.14", default-features = false }
 
+[target.'cfg(not(stage0))'.dependencies]
+html-diff = "0.0.2"
+
 [build-dependencies]
 build_helper = { path = "../build_helper" }
 gcc = "0.3.50"
