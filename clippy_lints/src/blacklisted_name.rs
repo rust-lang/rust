@@ -43,7 +43,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlackListedName {
             if self.blacklist.iter().any(|s| ident.node == *s) {
                 span_lint(cx,
                           BLACKLISTED_NAME,
-                          pat.span,
+                          ident.span,
                           &format!("use of a blacklisted/placeholder name `{}`", ident.node));
             }
         }

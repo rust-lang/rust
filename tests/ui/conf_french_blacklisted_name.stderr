@@ -44,7 +44,7 @@ error: use of a blacklisted/placeholder name `titi`
   --> $DIR/conf_french_blacklisted_name.rs:20:28
    |
 20 |         (toto, Some(tata), titi @ Some(_)) => (),
-   |                            ^^^^^^^^^^^^^^
+   |                            ^^^^
 
 error: aborting due to 7 previous errors
 
