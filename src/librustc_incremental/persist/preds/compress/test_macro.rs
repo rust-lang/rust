@@ -37,14 +37,3 @@ macro_rules! graph {
         }
     }
 }
-
-macro_rules! set {
-    ($( $value:expr ),*) => {
-        {
-            use $crate::rustc_data_structures::fx::FxHashSet;
-            let mut set = FxHashSet();
-            $(set.insert($value);)*
-            set
-        }
-    }
-}
