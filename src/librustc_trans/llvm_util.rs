@@ -16,23 +16,25 @@ use rustc::session::config::PrintRequest;
 use libc::{c_int, c_char};
 use std::ffi::CString;
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Once;
+
 pub fn init(sess: &Session) {
     unsafe {
         // Before we touch LLVM, make sure that multithreading is enabled.
-        use std::sync::Once;
+        static POISONED: AtomicBool = AtomicBool::new(false);
         static INIT: Once = Once::new();
-        static mut POISONED: bool = false;
         INIT.call_once(|| {
             if llvm::LLVMStartMultithreaded() != 1 {
                 // use an extra bool to make sure that all future usage of LLVM
                 // cannot proceed despite the Once not running more than once.
-                POISONED = true;
+                POISONED.store(true, Ordering::SeqCst);
             }
 
             configure_llvm(sess);
         });
 
-        if POISONED {
+        if POISONED.load(Ordering::SeqCst) {
             bug!("couldn't enable multi-threaded LLVM");
         }
     }
