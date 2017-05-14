@@ -384,9 +384,10 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                                    NONMINIMAL_BOOL,
                                    e.span,
                                    "this boolean expression can be simplified",
-                                   |db| for suggestion in &improvements {
-                                       db.span_suggestion(e.span, "try", suggest(self.cx, suggestion, &h2q.terminals));
-                                       break; // FIXME: multiple suggestions in rustc are broken
+                                   |db| {
+                                       db.span_suggestions(e.span, "try", improvements.into_iter().map(|suggestion| {
+                                           suggest(self.cx, suggestion, &h2q.terminals)
+                                       }).collect());
                                    });
             }
         }

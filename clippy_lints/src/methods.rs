@@ -657,8 +657,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
 
             // check conventions w.r.t. conversion method names and predicates
-            let ty = cx.tcx.type_of(cx.tcx.hir.local_def_id(item.id));
-            let is_copy = is_copy(cx, ty, item.id);
+            let def_id = cx.tcx.hir.local_def_id(item.id);
+            let ty = cx.tcx.type_of(def_id);
+            let is_copy = is_copy(cx, ty, def_id);
             for &(ref conv, self_kinds) in &CONVENTIONS {
                 if_let_chain! {[
                     conv.check(&name.as_str()),
@@ -683,8 +684,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
 
             let ret_ty = return_ty(cx, implitem.id);
+            let implitem_defid = cx.tcx.hir.local_def_id(implitem.id);
             if name == "new" &&
-               !ret_ty.walk().any(|t| same_tys(cx, t, ty, implitem.id)) {
+               !ret_ty.walk().any(|t| same_tys(cx, t, ty, implitem_defid)) {
                 span_lint(cx,
                           NEW_RET_NO_SELF,
                           implitem.span,
@@ -837,7 +839,7 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_t
         }
     }
 
-    if is_copy(cx, ty, parent) {
+    if is_copy(cx, ty, cx.tcx.hir.local_def_id(parent)) {
         span_lint_and_then(cx,
                            CLONE_ON_COPY,
                            expr.span,

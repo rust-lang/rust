@@ -873,7 +873,7 @@ impl<'tcx> Visitor<'tcx> for UsedVisitor {
 struct VarVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>, // context reference
     var: DefId, // var name to look for as index
-    indexed: HashMap<Name, Option<CodeExtent<'tcx>>>, // indexed variables, the extent is None for global
+    indexed: HashMap<Name, Option<CodeExtent>>, // indexed variables, the extent is None for global
     nonindex: bool, // has the var been used otherwise?
 }
 

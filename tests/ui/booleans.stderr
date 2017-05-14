@@ -79,13 +79,21 @@ error: this boolean expression can be simplified
   --> $DIR/booleans.rs:34:13
    |
 34 |     let _ = a == b && c == 5 && a == b;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `a == b && c == 5`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |     let _ = a == b && c == 5;
+   |     let _ = !(c != 5 || a != b);
 
 error: this boolean expression can be simplified
   --> $DIR/booleans.rs:35:13
    |
 35 |     let _ = a == b && c == 5 && b == a;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `a == b && c == 5`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |     let _ = a == b && c == 5;
+   |     let _ = !(c != 5 || a != b);
 
 error: this boolean expression contains a logic bug
   --> $DIR/booleans.rs:36:13
@@ -115,7 +123,11 @@ error: this boolean expression can be simplified
   --> $DIR/booleans.rs:39:13
    |
 39 |     let _ = a != b || !(a != b || c == d);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `c != d || a != b`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |     let _ = c != d || a != b;
+   |     let _ = !(a == b && c == d);
 
 error: aborting due to 13 previous errors
 

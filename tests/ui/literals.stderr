@@ -71,6 +71,8 @@ note: lint level defined here
    |         ^^^^^^^^^^^^^^^^^^^^^
 help: if you mean to use a decimal constant, remove the `0` to remove confusion:
    |     let fail8 = 123;
+help: if you mean to use an octal constant, use `0o`:
+   |     let fail8 = 0o123;
 
 error: aborting due to 9 previous errors
 

@@ -79,14 +79,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         let asref_trait = need!(get_trait_def_id(cx, &paths::ASREF_TRAIT));
         let borrow_trait = need!(get_trait_def_id(cx, &paths::BORROW_TRAIT));
 
+        let fn_def_id = cx.tcx.hir.local_def_id(node_id);
+
         let preds: Vec<ty::Predicate> = {
-            let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, node_id);
+            let parameter_env = cx.tcx.parameter_environment(fn_def_id);
             traits::elaborate_predicates(cx.tcx, parameter_env.caller_bounds.to_vec())
                 .filter(|p| !p.is_global())
                 .collect()
         };
-
-        let fn_def_id = cx.tcx.hir.local_def_id(node_id);
 
         // Collect moved variables and spans which will need dereferencings from the function body.
         let MovedVariablesCtxt { moved_vars, spans_need_deref, .. } = {
@@ -100,9 +100,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             ctx
         };
 
-        let param_env = ty::ParameterEnvironment::for_item(cx.tcx, node_id);
         let fn_sig = cx.tcx.type_of(fn_def_id).fn_sig();
-        let fn_sig = cx.tcx.liberate_late_bound_regions(param_env.free_id_outlive, &fn_sig);
+        let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);
 
         for ((input, &ty), arg) in decl.inputs.iter().zip(fn_sig.inputs()).zip(&body.arguments) {
 
@@ -120,7 +119,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             if_let_chain! {[
                 !is_self(arg),
                 !ty.is_mutable_pointer(),
-                !is_copy(cx, ty, node_id),
+                !is_copy(cx, ty, fn_def_id),
                 !implements_trait(cx, ty, fn_trait, &[], Some(node_id)),
                 !implements_trait(cx, ty, asref_trait, &[], Some(node_id)),
                 !implements_borrow_trait,

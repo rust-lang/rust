@@ -108,12 +108,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                 // can't be implemented by default
                 return;
             }
+            let def_id = cx.tcx.hir.local_def_id(id);
             if decl.inputs.is_empty() && name == "new" && cx.access_levels.is_reachable(id) {
                 let self_ty = cx.tcx
                     .type_of(cx.tcx.hir.local_def_id(cx.tcx.hir.get_parent(id)));
                 if_let_chain!{[
                     self_ty.walk_shallow().next().is_none(), // implements_trait does not work with generics
-                    same_tys(cx, self_ty, return_ty(cx, id), id),
+                    same_tys(cx, self_ty, return_ty(cx, id), def_id),
                     let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT),
                     !implements_trait(cx, self_ty, default_trait_id, &[], None)
                 ], {

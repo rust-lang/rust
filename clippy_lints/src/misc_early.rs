@@ -369,11 +369,11 @@ impl MiscEarly {
                         "if you mean to use a decimal constant, remove the `0` to remove confusion:",
                         src[1..].to_string(),
                     );
-                    /*db.span_suggestion(
+                    db.span_suggestion(
                         lit.span,
                         "if you mean to use an octal constant, use `0o`:",
                         format!("0o{}", &src[1..]),
-                    ); FIXME: rustc doesn't support multiple suggestions anymore */
+                    );
                 });
             }
         }}

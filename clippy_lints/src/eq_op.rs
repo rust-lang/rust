@@ -76,6 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                 BiLt | BiLe | BiGe | BiGt => (cx.tcx.lang_items.ord_trait(), true),
             };
             let parent = cx.tcx.hir.get_parent(e.id);
+            let parent = cx.tcx.hir.local_def_id(parent);
             if let Some(trait_id) = trait_id {
                 #[allow(match_same_arms)]
                 match (&left.node, &right.node) {

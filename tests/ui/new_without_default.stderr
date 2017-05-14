@@ -11,7 +11,6 @@ note: lint level defined here
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: try this
    | #[derive(Default)]
-   | pub struct Foo;
 
 error: you should consider deriving a `Default` implementation for `Bar`
   --> $DIR/new_without_default.rs:16:5
@@ -21,7 +20,6 @@ error: you should consider deriving a `Default` implementation for `Bar`
    |
 help: try this
    | #[derive(Default)]
-   | pub struct Bar;
 
 error: you should consider adding a `Default` implementation for `LtKo<'c>`
   --> $DIR/new_without_default.rs:64:5

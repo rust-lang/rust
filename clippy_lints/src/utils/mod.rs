@@ -7,7 +7,7 @@ use rustc::lint::{LintContext, LateContext, Level, Lint};
 use rustc::session::Session;
 use rustc::traits::Reveal;
 use rustc::traits;
-use rustc::ty::subst::Subst;
+use rustc::ty::subst::{Subst, Substs};
 use rustc::ty;
 use rustc::ty::layout::TargetDataLayout;
 use rustc::mir::transform::MirSource;
@@ -18,7 +18,7 @@ use std::mem;
 use std::str::FromStr;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
-use syntax::codemap::{ExpnFormat, ExpnInfo, MultiSpan, Span, DUMMY_SP};
+use syntax::codemap::{ExpnFormat, ExpnInfo, Span, DUMMY_SP};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
@@ -594,12 +594,10 @@ pub fn span_lint_and_sugg<'a, 'tcx: 'a, T: LintContext<'tcx>>(
 /// replacement. In human-readable format though, it only appears once before the whole suggestion.
 pub fn multispan_sugg(db: &mut DiagnosticBuilder, help_msg: String, sugg: Vec<(Span, String)>) {
     let sugg = rustc_errors::CodeSuggestion {
-        msp: MultiSpan::from_spans(sugg.iter().map(|&(span, _)| span).collect()),
-        substitutes: sugg.into_iter().map(|(_, subs)| subs).collect(),
+        substitution_parts: sugg.into_iter().map(|(span, sub)| rustc_errors::Substitution { span, substitutions: vec![sub] }).collect(),
         msg: help_msg,
     };
-    assert!(db.suggestion.is_none());
-    db.suggestion = Some(sugg);
+    db.suggestions.push(sugg);
 }
 
 /// Return the base type for references and raw pointers.
@@ -777,11 +775,9 @@ pub fn camel_case_from(s: &str) -> usize {
 
 /// Convenience function to get the return type of a function
 pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> ty::Ty<'tcx> {
-    let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, fn_item);
     let fn_def_id = cx.tcx.hir.local_def_id(fn_item);
-    let fn_sig = cx.tcx.type_of(fn_def_id).fn_sig();
-    let fn_sig = cx.tcx.liberate_late_bound_regions(parameter_env.free_id_outlive, &fn_sig);
-    fn_sig.output()
+    let ret_ty = cx.tcx.type_of(fn_def_id).fn_sig().output();
+    cx.tcx.erase_late_bound_regions(&ret_ty)
 }
 
 /// Check if two types are the same.
@@ -791,12 +787,13 @@ pub fn same_tys<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     a: ty::Ty<'tcx>,
     b: ty::Ty<'tcx>,
-    parameter_item: NodeId
+    parameter_item: DefId
 ) -> bool {
-    let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, parameter_item);
+    let parameter_env = cx.tcx.parameter_environment(parameter_item);
     cx.tcx.infer_ctxt(parameter_env, Reveal::All).enter(|infcx| {
-        let new_a = a.subst(infcx.tcx, infcx.parameter_environment.free_substs);
-        let new_b = b.subst(infcx.tcx, infcx.parameter_environment.free_substs);
+        let substs = Substs::identity_for_item(cx.tcx, parameter_item);
+        let new_a = a.subst(infcx.tcx, substs);
+        let new_b = b.subst(infcx.tcx, substs);
         infcx.can_equate(&new_a, &new_b).is_ok()
     })
 }
@@ -810,9 +807,10 @@ pub fn type_is_unsafe_function(ty: ty::Ty) -> bool {
     }
 }
 
-pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, env: NodeId) -> bool {
-    let env = ty::ParameterEnvironment::for_item(cx.tcx, env);
-    !ty.subst(cx.tcx, env.free_substs).moves_by_default(cx.tcx.global_tcx(), &env, DUMMY_SP)
+pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, env: DefId) -> bool {
+    let substs = Substs::identity_for_item(cx.tcx, env);
+    let env = cx.tcx.parameter_environment(env);
+    !ty.subst(cx.tcx, substs).moves_by_default(cx.tcx.global_tcx(), &env, DUMMY_SP)
 }
 
 /// Return whether a pattern is refutable.
