@@ -479,11 +479,7 @@ impl<'a> StringReader<'a> {
         }
 
         self.with_str_from(start, |string| {
-            if string == "_" {
-                None
-            } else {
-                Some(Symbol::intern(string))
-            }
+            Some(Symbol::intern(string))
         })
     }
 
