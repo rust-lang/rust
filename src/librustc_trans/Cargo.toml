@@ -12,6 +12,7 @@ test = false
 [dependencies]
 flate = { path = "../libflate" }
 log = "0.3"
+owning_ref = "0.3.3"
 rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }
 rustc_bitflags = { path = "../librustc_bitflags" }

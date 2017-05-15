@@ -9,24 +9,9 @@
 // except according to those terms.
 
 use syntax::ast;
-use llvm::LLVMRustHasFeature;
 use rustc::session::Session;
-use rustc_trans::back::write::create_target_machine;
 use syntax::symbol::Symbol;
-use libc::c_char;
-
-// WARNING: the features must be known to LLVM or the feature
-// detection code will walk past the end of the feature array,
-// leading to crashes.
-
-const ARM_WHITELIST: &'static [&'static str] = &["neon\0", "vfp2\0", "vfp3\0", "vfp4\0"];
-
-const X86_WHITELIST: &'static [&'static str] = &["avx\0", "avx2\0", "bmi\0", "bmi2\0", "sse\0",
-                                                 "sse2\0", "sse3\0", "sse4.1\0", "sse4.2\0",
-                                                 "ssse3\0", "tbm\0", "lzcnt\0", "popcnt\0",
-                                                 "sse4a\0", "rdrnd\0", "rdseed\0", "fma\0"];
-
-const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx\0", "hvx-double\0"];
+use rustc_trans;
 
 /// Add `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
@@ -34,21 +19,10 @@ const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx\0", "hvx-double\0"];
 /// This is performed by checking whether a whitelisted set of
 /// features is available on the target machine, by querying LLVM.
 pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
-    let target_machine = create_target_machine(sess);
-
-    let whitelist = match &*sess.target.target.arch {
-        "arm" => ARM_WHITELIST,
-        "x86" | "x86_64" => X86_WHITELIST,
-        "hexagon" => HEXAGON_WHITELIST,
-        _ => &[],
-    };
-
     let tf = Symbol::intern("target_feature");
-    for feat in whitelist {
-        assert_eq!(feat.chars().last(), Some('\0'));
-        if unsafe { LLVMRustHasFeature(target_machine, feat.as_ptr() as *const c_char) } {
-            cfg.insert((tf, Some(Symbol::intern(&feat[..feat.len() - 1]))));
-        }
+
+    for feat in rustc_trans::target_features(sess) {
+        cfg.insert((tf, Some(feat)));
     }
 
     let requested_features = sess.opts.cg.target_feature.split(',');
