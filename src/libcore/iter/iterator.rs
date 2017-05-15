@@ -266,8 +266,7 @@ pub trait Iterator {
     ///
     /// # Panics
     ///
-    /// If the given step is `0`, the method will panic if debug assertions are
-    /// enabled.
+    /// The method will panic if the given step is `0`.
     ///
     /// # Examples
     ///
