@@ -35,10 +35,12 @@
 #![feature(char_escape_debug)]
 #![feature(core_char_ext)]
 #![feature(decode_utf8)]
+#![feature(exact_size_is_empty)]
 #![feature(fused)]
 #![feature(fn_traits)]
 #![feature(lang_items)]
 #![feature(staged_api)]
+#![feature(trusted_len)]
 #![feature(try_from)]
 #![feature(unboxed_closures)]
 
