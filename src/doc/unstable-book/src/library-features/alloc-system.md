@@ -4,7 +4,7 @@ The tracking issue for this feature is: [#33082]
 
 [#33082]: https://github.com/rust-lang/rust/issues/33082
 
-See also [`alloc_jemalloc`](alloc-jemalloc.html).
+See also [`alloc_jemalloc`](library-features/alloc-jemalloc.html).
 
 ------------------------
 
