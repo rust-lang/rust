@@ -291,24 +291,24 @@ impl<'a> base::Resolver for Resolver<'a> {
             },
         };
         self.macro_defs.insert(invoc.expansion_data.mark, def.def_id());
-        self.unused_macros.get_mut(&def.def_id()).map(|m| *m = false);
+        self.unused_macros.remove(&def.def_id());
         Ok(Some(self.get_macro(def)))
     }
 
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy> {
         self.resolve_macro_to_def(scope, path, kind, force).map(|def| {
-            self.unused_macros.get_mut(&def.def_id()).map(|m| *m = false);
+            self.unused_macros.remove(&def.def_id());
             self.get_macro(def)
         })
     }
 
     fn check_unused_macros(&self) {
-        for (did, _) in self.unused_macros.iter().filter(|&(_, b)| *b) {
+        for did in self.unused_macros.iter() {
             let id_span = match *self.macro_map[did] {
-                           SyntaxExtension::NormalTT(_, isp, _) => isp,
-                           _ => None
-                       };
+                SyntaxExtension::NormalTT(_, isp, _) => isp,
+                _ => None,
+            };
             if let Some((id, span)) = id_span {
                 let lint = lint::builtin::UNUSED_MACROS;
                 let msg = "unused macro definition".to_string();
@@ -708,7 +708,7 @@ impl<'a> Resolver<'a> {
             let def = Def::Macro(def_id, MacroKind::Bang);
             self.macro_exports.push(Export { name: ident.name, def: def, span: item.span });
         } else {
-            self.unused_macros.insert(def_id, true);
+            self.unused_macros.insert(def_id);
         }
     }
 

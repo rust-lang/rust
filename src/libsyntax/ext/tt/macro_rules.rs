@@ -252,11 +252,9 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
         valid: valid,
     });
 
-    NormalTT(
-             exp,
+    NormalTT(exp,
              Some((def.id, def.span)),
-             attr::contains_name(&def.attrs, "allow_internal_unstable")
-    )
+             attr::contains_name(&def.attrs, "allow_internal_unstable"))
 }
 
 fn check_lhs_nt_follows(sess: &ParseSess,
