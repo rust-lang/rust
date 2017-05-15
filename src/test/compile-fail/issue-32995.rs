@@ -17,6 +17,22 @@ fn main() {
 
     let b: ::std::boxed()::Box<_> = Box::new(1);
     //~^ ERROR parenthesized parameters may only be used with a trait
+
+    macro_rules! pathexpr {
+        ($p:path) => { $p }
+    }
+
+    let p = pathexpr!(::std::str()::from_utf8)(b"foo").unwrap();
+    //~^ ERROR parenthesized parameters may only be used with a trait
+
+    let p = pathexpr!(::std::str::from_utf8())(b"foo").unwrap();
+    //~^ ERROR parenthesized parameters may only be used with a trait
+
+    let o : Box<::std::marker()::Send> = Box::new(1);
+    //~^ ERROR parenthesized parameters may only be used with a trait
+
+    let o : Box<Send + ::std::marker()::Sync> = Box::new(1);
+    //~^ ERROR parenthesized parameters may only be used with a trait
 }
 
 fn foo<X:Default>() {

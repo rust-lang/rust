@@ -372,6 +372,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         self_ty: Ty<'tcx>)
         -> ty::TraitRef<'tcx>
     {
+        self.prohibit_type_params(trait_ref.path.segments.split_last().unwrap().1);
+
         let trait_def_id = self.trait_def_id(trait_ref);
         self.ast_path_to_mono_trait_ref(trait_ref.path.span,
                                         trait_def_id,
@@ -403,6 +405,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let trait_def_id = self.trait_def_id(trait_ref);
 
         debug!("ast_path_to_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
+
+        self.prohibit_type_params(trait_ref.path.segments.split_last().unwrap().1);
 
         let (substs, assoc_bindings) =
             self.create_substs_for_ast_trait_ref(trait_ref.path.span,
@@ -624,6 +628,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let principal = self.instantiate_poly_trait_ref(&trait_bounds[0],
                                                         dummy_self,
                                                         &mut projection_bounds);
+
+        for trait_bound in trait_bounds[1..].iter() {
+            // Sanity check for non-principal trait bounds
+            self.instantiate_poly_trait_ref(trait_bound,
+                                            dummy_self,
+                                            &mut vec![]);
+        }
 
         let (auto_traits, trait_bounds) = split_auto_traits(tcx, &trait_bounds[1..]);
 
