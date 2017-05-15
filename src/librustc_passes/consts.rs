@@ -38,7 +38,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::mir::transform::MirSource;
-use rustc::ty::{self, ParamEnv, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeSet;
@@ -466,7 +466,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         in_fn: false,
         promotable: false,
         mut_rvalue_borrows: NodeSet(),
-        param_env: ParamEnv::empty(),
+        param_env: ty::ParamEnv::empty(),
     }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }

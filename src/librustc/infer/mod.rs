@@ -28,7 +28,7 @@ use middle::lang_items;
 use mir::tcx::LvalueTy;
 use ty::subst::{Kind, Subst, Substs};
 use ty::{TyVid, IntVid, FloatVid};
-use ty::{self, ParamEnv, Ty, TyCtxt};
+use ty::{self, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::relate::{Relate, RelateResult, TypeRelation};
@@ -526,7 +526,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         let tables = tables.map(InferTables::Interned).unwrap_or_else(|| {
             fresh_tables.as_ref().map_or(InferTables::Missing, InferTables::InProgress)
         });
-        let param_env = param_env.take().unwrap_or_else(|| ParamEnv::empty());
+        let param_env = param_env.take().unwrap_or_else(|| ty::ParamEnv::empty());
         global_tcx.enter_local(arena, |tcx| f(InferCtxt {
             tcx: tcx,
             tables: tables,

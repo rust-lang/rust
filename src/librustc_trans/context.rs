@@ -24,7 +24,7 @@ use partitioning::CodegenUnit;
 use type_::Type;
 use rustc_data_structures::base_n;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, ParamEnv, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{LayoutTyper, TyLayout};
 use session::config::NoDebugInfo;
 use session::Session;
@@ -321,15 +321,15 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     }
 
     pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        ty.needs_drop(self.tcx, ParamEnv::empty())
+        ty.needs_drop(self.tcx, ty::ParamEnv::empty())
     }
 
     pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx, ParamEnv::empty(), DUMMY_SP)
+        ty.is_sized(self.tcx, ty::ParamEnv::empty(), DUMMY_SP)
     }
 
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(self.tcx, ParamEnv::empty(), DUMMY_SP)
+        ty.is_freeze(self.tcx, ty::ParamEnv::empty(), DUMMY_SP)
     }
 
     pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {

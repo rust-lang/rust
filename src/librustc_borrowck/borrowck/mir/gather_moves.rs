@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use rustc::ty::{self, TyCtxt, ParamEnv};
+use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
@@ -191,7 +191,7 @@ pub struct MovePathLookup<'tcx> {
 struct MoveDataBuilder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    param_env: ParamEnv<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     data: MoveData<'tcx>,
 }
 
@@ -203,7 +203,7 @@ pub enum MovePathError {
 impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     fn new(mir: &'a Mir<'tcx>,
            tcx: TyCtxt<'a, 'tcx, 'tcx>,
-           param_env: ParamEnv<'tcx>)
+           param_env: ty::ParamEnv<'tcx>)
            -> Self {
         let mut move_paths = IndexVec::new();
         let mut path_map = IndexVec::new();
@@ -370,7 +370,7 @@ impl<'tcx> MovePathLookup<'tcx> {
 impl<'a, 'tcx> MoveData<'tcx> {
     pub fn gather_moves(mir: &Mir<'tcx>,
                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        param_env: ParamEnv<'tcx>)
+                        param_env: ty::ParamEnv<'tcx>)
                         -> Self {
         gather_moves(mir, tcx, param_env)
     }
@@ -378,7 +378,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
 fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          param_env: ParamEnv<'tcx>)
+                          param_env: ty::ParamEnv<'tcx>)
                           -> MoveData<'tcx> {
     let mut builder = MoveDataBuilder::new(mir, tcx, param_env);
 
