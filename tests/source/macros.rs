@@ -79,3 +79,9 @@ gfx_pipeline!(pipe {
 fn issue_1279() {
     println!("dsfs"); // a comment
 }
+
+fn issue_1555() {
+    let hello = &format!("HTTP/1.1 200 OK\r\nServer: {}\r\n\r\n{}",
+                         "65454654654654654654654655464",
+                         "4");
+}

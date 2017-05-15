@@ -138,8 +138,8 @@ impl<'a> FmtVisitor<'a> {
 
                 if rewrite_next_comment &&
                    !self.config
-                        .file_lines
-                        .intersects_range(file_name, cur_line, cur_line + subslice_num_lines) {
+                       .file_lines
+                       .intersects_range(file_name, cur_line, cur_line + subslice_num_lines) {
                     rewrite_next_comment = false;
                 }
 
@@ -164,7 +164,7 @@ impl<'a> FmtVisitor<'a> {
                                                    Shape::legacy(comment_width,
                                                                  self.block_indent),
                                                    self.config)
-                                           .unwrap());
+                                          .unwrap());
 
                     last_wspace = None;
                     line_start = offset + subslice.len();
@@ -172,9 +172,9 @@ impl<'a> FmtVisitor<'a> {
                     if let Some('/') = subslice.chars().skip(1).next() {
                         // check that there are no contained block comments
                         if !subslice
-                                .split('\n')
-                                .map(|s| s.trim_left())
-                                .any(|s| s.len() > 2 && &s[0..2] == "/*") {
+                               .split('\n')
+                               .map(|s| s.trim_left())
+                               .any(|s| s.len() > 2 && &s[0..2] == "/*") {
                             // Add a newline after line comments
                             self.buffer.push_str("\n");
                         }

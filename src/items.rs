@@ -1104,7 +1104,7 @@ fn format_tuple_struct(context: &RewriteContext,
         // know that earlier, so the where clause will not be indented properly.
         result.push('\n');
         result.push_str(&(offset.block_only() + (context.config.tab_spaces - 1))
-                             .to_string(context.config));
+                            .to_string(context.config));
     }
     result.push_str(&where_clause_str);
 
