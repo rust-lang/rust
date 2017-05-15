@@ -1961,14 +1961,14 @@ pub fn rewrite_tuple<'a, I>(context: &RewriteContext,
         // 3 = "(" + ",)"
         let nested_shape = try_opt!(shape.sub_width(3)).visual_indent(1);
         return items
-                   .next()
-                   .unwrap()
-                   .rewrite(context, nested_shape)
-                   .map(|s| if context.config.spaces_within_parens {
-                            format!("( {}, )", s)
-                        } else {
-                            format!("({},)", s)
-                        });
+            .next()
+            .unwrap()
+            .rewrite(context, nested_shape)
+            .map(|s| if context.config.spaces_within_parens {
+                     format!("( {}, )", s)
+                 } else {
+                     format!("({},)", s)
+                 });
     }
 
     let list_lo = context.codemap.span_after(span, "(");

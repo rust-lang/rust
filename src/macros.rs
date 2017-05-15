@@ -94,13 +94,13 @@ pub fn rewrite_macro(mac: &ast::Mac,
 
     if mac.node.tts.is_empty() && !contains_comment(&context.snippet(mac.span)) {
         return match style {
-                   MacroStyle::Parens if position == MacroPosition::Item => {
-                       Some(format!("{}();", macro_name))
-                   }
-                   MacroStyle::Parens => Some(format!("{}()", macro_name)),
-                   MacroStyle::Brackets => Some(format!("{}[]", macro_name)),
-                   MacroStyle::Braces => Some(format!("{}{{}}", macro_name)),
-               };
+            MacroStyle::Parens if position == MacroPosition::Item => {
+                Some(format!("{}();", macro_name))
+            }
+            MacroStyle::Parens => Some(format!("{}()", macro_name)),
+            MacroStyle::Brackets => Some(format!("{}[]", macro_name)),
+            MacroStyle::Braces => Some(format!("{}{{}}", macro_name)),
+        };
     }
 
     let mut parser = tts_to_parser(context.parse_session, mac.node.tts.clone());

@@ -50,8 +50,8 @@ impl<'a> FmtVisitor<'a> {
 
         // FIXME(#434): Move this check to somewhere more central, eg Rewrite.
         if !self.config
-                .file_lines
-                .intersects(&self.codemap.lookup_line_range(stmt.span)) {
+               .file_lines
+               .intersects(&self.codemap.lookup_line_range(stmt.span)) {
             return;
         }
 
