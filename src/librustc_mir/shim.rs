@@ -217,7 +217,7 @@ pub struct DropShimElaborator<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     patch: MirPatch<'tcx>,
     tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-    param_env: ty::ParameterEnvironment<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'a, 'tcx> fmt::Debug for DropShimElaborator<'a, 'tcx> {
@@ -232,7 +232,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     fn patch(&mut self) -> &mut MirPatch<'tcx> { &mut self.patch }
     fn mir(&self) -> &'a Mir<'tcx> { self.mir }
     fn tcx(&self) -> ty::TyCtxt<'a, 'tcx, 'tcx> { self.tcx }
-    fn param_env(&self) -> ty::ParameterEnvironment<'tcx> { self.param_env }
+    fn param_env(&self) -> ty::ParamEnv<'tcx> { self.param_env }
 
     fn drop_style(&self, _path: Self::Path, mode: DropFlagMode) -> DropStyle {
         if let DropFlagMode::Shallow = mode {

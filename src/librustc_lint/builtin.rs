@@ -527,7 +527,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
         if def.has_dtor(cx.tcx) {
             return;
         }
-        let param_env = ty::ParameterEnvironment::empty();
+        let param_env = ty::ParamEnv::empty();
         if !ty.moves_by_default(cx.tcx, param_env, item.span) {
             return;
         }

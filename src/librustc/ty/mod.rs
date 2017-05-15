@@ -1238,18 +1238,18 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     }
 }
 
-/// When type checking, we use the `ParameterEnvironment` to track
+/// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
 /// particular point.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ParameterEnvironment<'tcx> {
+pub struct ParamEnv<'tcx> {
     /// Obligations that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
     /// into Obligations, and elaborated and normalized.
     pub caller_bounds: &'tcx Slice<ty::Predicate<'tcx>>,
 }
 
-impl<'tcx> ParameterEnvironment<'tcx> {
+impl<'tcx> ParamEnv<'tcx> {
     /// Creates a suitable environment in which to perform trait
     /// queries on the given value. This will either be `self` *or*
     /// the empty environment, depending on whether `value` references
@@ -1265,16 +1265,16 @@ impl<'tcx> ParameterEnvironment<'tcx> {
     /// effectively, when type-checking the body of said
     /// function. This preserves existing behavior in any
     /// case. --nmatsakis
-    pub fn and<T: TypeFoldable<'tcx>>(self, value: T) -> ParameterEnvironmentAnd<'tcx, T> {
+    pub fn and<T: TypeFoldable<'tcx>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
         assert!(!value.needs_infer());
         if value.has_param_types() || value.has_self_ty() {
-            ParameterEnvironmentAnd {
+            ParamEnvAnd {
                 param_env: self,
                 value: value,
             }
         } else {
-            ParameterEnvironmentAnd {
-                param_env: ParameterEnvironment::empty(),
+            ParamEnvAnd {
+                param_env: ParamEnv::empty(),
                 value: value,
             }
         }
@@ -1282,13 +1282,13 @@ impl<'tcx> ParameterEnvironment<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ParameterEnvironmentAnd<'tcx, T> {
-    pub param_env: ParameterEnvironment<'tcx>,
+pub struct ParamEnvAnd<'tcx, T> {
+    pub param_env: ParamEnv<'tcx>,
     pub value: T,
 }
 
-impl<'tcx, T> ParameterEnvironmentAnd<'tcx, T> {
-    pub fn into_parts(self) -> (ParameterEnvironment<'tcx>, T) {
+impl<'tcx, T> ParamEnvAnd<'tcx, T> {
+    pub fn into_parts(self) -> (ParamEnv<'tcx>, T) {
         (self.param_env, self.value)
     }
 }
@@ -2517,10 +2517,10 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
         })
 }
 
-/// See `ParameterEnvironment` struct def'n for details.
+/// See `ParamEnv` struct def'n for details.
 fn parameter_environment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    def_id: DefId)
-                                   -> ParameterEnvironment<'tcx> {
+                                   -> ParamEnv<'tcx> {
     // Compute the bounds on Self and the type parameters.
 
     let bounds = tcx.predicates_of(def_id).instantiate_identity(tcx);
@@ -2538,7 +2538,7 @@ fn parameter_environment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // are any errors at that point, so after type checking you can be
     // sure that this will succeed without errors anyway.
 
-    let unnormalized_env = ty::ParameterEnvironment::new(tcx.intern_predicates(&predicates));
+    let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates));
 
     let body_id = tcx.hir.as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
         tcx.hir.maybe_body_owned_by(id).map_or(id, |body| body.node_id)

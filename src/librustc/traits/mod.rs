@@ -437,9 +437,9 @@ pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx
 /// Normalizes the parameter environment, reporting errors if they occur.
 pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                               region_context: DefId,
-                                              unnormalized_env: ty::ParameterEnvironment<'tcx>,
+                                              unnormalized_env: ty::ParamEnv<'tcx>,
                                               cause: ObligationCause<'tcx>)
-                                              -> ty::ParameterEnvironment<'tcx>
+                                              -> ty::ParamEnv<'tcx>
 {
     // I'm not wild about reporting errors here; I'd prefer to
     // have the errors get reported at a defined place (e.g.,
@@ -477,7 +477,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}",
            predicates);
 
-    let elaborated_env = ty::ParameterEnvironment::new(tcx.intern_predicates(&predicates));
+    let elaborated_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates));
 
     tcx.infer_ctxt(elaborated_env, Reveal::UserFacing).enter(|infcx| {
         let predicates = match fully_normalize(
@@ -485,7 +485,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 // You would really want to pass infcx.parameter_environment.caller_bounds here,
                 // but that is an interned slice, and fully_normalize takes &T and returns T, so
                 // without further refactoring, a slice can't be used. Luckily, we still have the
-                // predicate vector from which we created the ParameterEnvironment in infcx, so we
+                // predicate vector from which we created the ParamEnv in infcx, so we
                 // can pass that instead. It's roundabout and a bit brittle, but this code path
                 // ought to be refactored anyway, and until then it saves us from having to copy.
                 &predicates,
@@ -528,7 +528,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("normalize_param_env_or_error: resolved predicates={:?}",
             predicates);
 
-        ty::ParameterEnvironment::new(tcx.intern_predicates(&predicates))
+        ty::ParamEnv::new(tcx.intern_predicates(&predicates))
     })
 }
 

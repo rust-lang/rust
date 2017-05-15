@@ -163,7 +163,7 @@ pub enum DepNode<D: Clone + Debug> {
     // not a hotspot.
     ProjectionCache { def_ids: Vec<D> },
 
-    ParameterEnvironment(D),
+    ParamEnv(D),
     DescribeDef(D),
     DefSpan(D),
     Stability(D),
@@ -293,7 +293,7 @@ impl<D: Clone + Debug> DepNode<D> {
                 let def_ids: Option<Vec<E>> = def_ids.iter().map(op).collect();
                 def_ids.map(|d| ProjectionCache { def_ids: d })
             }
-            ParameterEnvironment(ref d) => op(d).map(ParameterEnvironment),
+            ParamEnv(ref d) => op(d).map(ParamEnv),
             DescribeDef(ref d) => op(d).map(DescribeDef),
             DefSpan(ref d) => op(d).map(DefSpan),
             Stability(ref d) => op(d).map(Stability),

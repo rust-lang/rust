@@ -315,7 +315,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn param_env(&self) -> ty::ParameterEnvironment<'gcx> {
+    pub fn param_env(&self) -> ty::ParamEnv<'gcx> {
         self.infcx.param_env()
     }
 

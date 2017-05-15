@@ -90,7 +90,7 @@ struct CheckLoanCtxt<'a, 'tcx: 'a> {
     dfcx_loans: &'a LoanDataFlow<'a, 'tcx>,
     move_data: &'a move_data::FlowedMoveData<'a, 'tcx>,
     all_loans: &'a [Loan<'tcx>],
-    param_env: &'a ty::ParameterEnvironment<'tcx>,
+    param_env: &'a ty::ParamEnv<'tcx>,
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {

@@ -78,7 +78,7 @@ impl<'a, 'tcx> Qualif {
     /// Remove flags which are impossible for the given type.
     fn restrict(&mut self, ty: Ty<'tcx>,
                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                param_env: ty::ParameterEnvironment<'tcx>) {
+                param_env: ty::ParamEnv<'tcx>) {
         if ty.is_freeze(tcx, param_env, DUMMY_SP) {
             *self = *self - Qualif::MUTABLE_INTERIOR;
         }
@@ -128,7 +128,7 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     rpo: ReversePostorder<'a, 'tcx>,
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    param_env: ty::ParameterEnvironment<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     temp_qualif: IndexVec<Local, Option<Qualif>>,
     return_qualif: Option<Qualif>,
     qualif: Qualif,
@@ -139,7 +139,7 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-           param_env: ty::ParameterEnvironment<'tcx>,
+           param_env: ty::ParamEnv<'tcx>,
            def_id: DefId,
            mir: &'a Mir<'tcx>,
            mode: Mode)

@@ -16,7 +16,7 @@ use infer::InferCtxt;
 use ich::{StableHashingContext, NodeIdHashingMode};
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
-use ty::ParameterEnvironment;
+use ty::ParamEnv;
 use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
 use ty::subst::{Subst, Kind};
@@ -148,7 +148,7 @@ pub enum Representability {
     SelfRecursive(Vec<Span>),
 }
 
-impl<'tcx> ParameterEnvironment<'tcx> {
+impl<'tcx> ParamEnv<'tcx> {
     /// Construct a trait environment suitable for contexts where
     /// there are no where clauses in scope.
     pub fn empty() -> Self {
@@ -157,7 +157,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
 
     /// Construct a trait environment with the given set of predicates.
     pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>) -> Self {
-        ty::ParameterEnvironment { caller_bounds }
+        ty::ParamEnv { caller_bounds }
     }
 
     pub fn can_type_implement_copy<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -720,7 +720,7 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
 impl<'a, 'tcx> ty::TyS<'tcx> {
     pub fn moves_by_default(&'tcx self,
                             tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            param_env: ParameterEnvironment<'tcx>,
+                            param_env: ParamEnv<'tcx>,
                             span: Span)
                             -> bool {
         !tcx.at(span).is_copy_raw(param_env.and(self))
@@ -728,7 +728,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
     pub fn is_sized(&'tcx self,
                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    param_env: ParameterEnvironment<'tcx>,
+                    param_env: ParamEnv<'tcx>,
                     span: Span)-> bool
     {
         tcx.at(span).is_sized_raw(param_env.and(self))
@@ -736,7 +736,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
     pub fn is_freeze(&'tcx self,
                      tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                     param_env: ParameterEnvironment<'tcx>,
+                     param_env: ParamEnv<'tcx>,
                      span: Span)-> bool
     {
         tcx.at(span).is_freeze_raw(param_env.and(self))
@@ -751,7 +751,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     #[inline]
     pub fn needs_drop(&'tcx self,
                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                      param_env: ty::ParameterEnvironment<'tcx>)
+                      param_env: ty::ParamEnv<'tcx>)
                       -> bool {
         tcx.needs_drop_raw(param_env.and(self))
     }
@@ -942,7 +942,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 }
 
 fn is_copy_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         query: ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>)
+                         query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                          -> bool
 {
     let (param_env, ty) = query.into_parts();
@@ -952,7 +952,7 @@ fn is_copy_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          query: ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>)
+                          query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                           -> bool
 {
     let (param_env, ty) = query.into_parts();
@@ -962,7 +962,7 @@ fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           query: ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>)
+                           query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                            -> bool
 {
     let (param_env, ty) = query.into_parts();
@@ -972,7 +972,7 @@ fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            query: ty::ParameterEnvironmentAnd<'tcx, Ty<'tcx>>)
+                            query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                             -> bool
 {
     let (param_env, ty) = query.into_parts();
@@ -1018,7 +1018,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyAdt(def, _) if def.has_dtor(tcx) => true,
 
         // Can refer to a type which may drop.
-        // FIXME(eddyb) check this against a ParameterEnvironment.
+        // FIXME(eddyb) check this against a ParamEnv.
         ty::TyDynamic(..) | ty::TyProjection(..) | ty::TyParam(_) |
         ty::TyAnon(..) | ty::TyInfer(_) | ty::TyError => true,
 

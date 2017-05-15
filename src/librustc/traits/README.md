@@ -418,7 +418,7 @@ before, and hence the cache lookup would succeed, yielding
 One subtle interaction is that the results of trait lookup will vary
 depending on what where clauses are in scope. Therefore, we actually
 have *two* caches, a local and a global cache. The local cache is
-attached to the `ParameterEnvironment` and the global cache attached
+attached to ParamEnv` and the global cache attached
 to the `tcx`. We use the local cache whenever the result might depend
 on the where clauses that are in scope. The determination of which
 cache to use is done by the method `pick_candidate_cache` in

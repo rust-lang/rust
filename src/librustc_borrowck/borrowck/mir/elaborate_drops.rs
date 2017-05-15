@@ -196,7 +196,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
         self.ctxt.tcx
     }
 
-    fn param_env(&self) -> ty::ParameterEnvironment<'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.ctxt.param_env()
     }
 
@@ -290,7 +290,7 @@ struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
 impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     fn move_data(&self) -> &'b MoveData<'tcx> { &self.env.move_data }
 
-    fn param_env(&self) -> ty::ParameterEnvironment<'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.env.param_env
     }
 

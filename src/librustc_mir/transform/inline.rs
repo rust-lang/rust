@@ -545,7 +545,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
     }
 }
 
-fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, param_env: ty::ParameterEnvironment<'tcx>,
+fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, param_env: ty::ParamEnv<'tcx>,
                           ty: Ty<'tcx>) -> Option<u64> {
     tcx.infer_ctxt(param_env, traits::Reveal::All).enter(|infcx| {
         ty.layout(&infcx).ok().map(|layout| {

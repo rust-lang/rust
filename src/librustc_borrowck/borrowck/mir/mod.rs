@@ -51,7 +51,7 @@ fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option<MetaItem> 
 
 pub struct MoveDataParamEnv<'tcx> {
     move_data: MoveData<'tcx>,
-    param_env: ty::ParameterEnvironment<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 pub fn borrowck_mir(bcx: &mut BorrowckCtxt,
