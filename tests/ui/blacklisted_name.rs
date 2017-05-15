@@ -1,9 +1,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-#![allow(dead_code)]
-#![allow(single_match)]
-#![allow(unused_variables, similar_names)]
+#![allow(dead_code, similar_names, single_match, toplevel_ref_arg, unused_mut, unused_variables)]
 #![deny(blacklisted_name)]
 
 fn test(foo: ()) {}
@@ -20,4 +18,19 @@ fn main() {
         (foo, Some(bar), baz @ Some(_)) => (),
         _ => (),
     }
+}
+
+fn issue_1647(mut foo: u8) {
+    let mut bar = 0;
+    if let Some(mut baz) = Some(42) {}
+}
+
+fn issue_1647_ref() {
+    let ref bar = 0;
+    if let Some(ref baz) = Some(42) {}
+}
+
+fn issue_1647_ref_mut() {
+    let ref mut bar = 0;
+    if let Some(ref mut baz) = Some(42) {}
 }
