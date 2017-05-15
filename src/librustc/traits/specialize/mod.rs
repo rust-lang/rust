@@ -293,7 +293,19 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                                                       -> Rc<specialization_graph::Graph> {
     let mut sg = specialization_graph::Graph::new();
 
-    for &impl_def_id in tcx.trait_impls_of(trait_id).iter() {
+    let mut trait_impls: Vec<DefId> = tcx.trait_impls_of(trait_id).iter().collect();
+
+    // The coherence checking implementation seems to rely on impls being
+    // iterated over (roughly) in definition order, so we are sorting by
+    // negated CrateNum (so remote definitions are visited first) and then
+    // by a flattend version of the DefIndex.
+    trait_impls.sort_unstable_by_key(|def_id| {
+        (-(def_id.krate.as_u32() as i64),
+         def_id.index.address_space().index(),
+         def_id.index.as_array_index())
+    });
+
+    for impl_def_id in trait_impls {
         if impl_def_id.is_local() {
             // This is where impl overlap checking happens:
             let insert_result = sg.insert(tcx, impl_def_id);

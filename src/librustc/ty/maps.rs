@@ -850,10 +850,10 @@ define_maps! { <'tcx>
     [] const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
     [] is_mir_available: IsMirAvailable(DefId) -> bool,
 
-    [] trait_impls_of: TraitImpls(DefId) -> Rc<Vec<DefId>>,
+    [] trait_impls_of: TraitImpls(DefId) -> ty::trait_def::TraitImpls,
     // Note that TraitDef::for_each_relevant_impl() will do type simplication for you.
     [] relevant_trait_impls_for: relevant_trait_impls_for((DefId, SimplifiedType))
-        -> Rc<Vec<DefId>>,
+        -> ty::trait_def::TraitImpls,
     [] specialization_graph_of: SpecializationGraph(DefId) -> Rc<specialization_graph::Graph>,
     [] is_object_safe: ObjectSafety(DefId) -> bool,
 }
