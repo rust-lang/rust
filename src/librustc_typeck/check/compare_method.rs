@@ -223,7 +223,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let infcx = &inh.infcx;
 
         debug!("compare_impl_method: caller_bounds={:?}",
-               infcx.parameter_environment.caller_bounds);
+               infcx.param_env.caller_bounds);
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
@@ -345,7 +345,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let region_maps = RegionMaps::new();
             let mut free_regions = FreeRegionMap::new();
             free_regions.relate_free_regions_from_predicates(
-                &infcx.parameter_environment.caller_bounds);
+                &infcx.param_env.caller_bounds);
             infcx.resolve_regions_and_report_errors(impl_m.def_id, &region_maps, &free_regions);
         } else {
             let fcx = FnCtxt::new(&inh, impl_m_node_id);

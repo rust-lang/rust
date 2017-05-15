@@ -161,7 +161,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // For region variables.
     region_vars: RegionVarBindings<'a, 'gcx, 'tcx>,
 
-    pub parameter_environment: ty::ParamEnv<'gcx>,
+    pub param_env: ty::ParamEnv<'gcx>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that have to do with the parameters in scope.
@@ -453,7 +453,7 @@ impl<'a, 'tcx> InferEnv<'a, 'tcx> for hir::BodyId {
         let def_id = tcx.hir.body_owner_def_id(self);
         (Some(tcx.typeck_tables_of(def_id)),
          None,
-         Some(tcx.parameter_environment(def_id)))
+         Some(tcx.param_env(def_id)))
     }
 }
 
@@ -498,7 +498,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
             region_vars: RegionVarBindings::new(self),
-            parameter_environment: param_env.unwrap(),
+            param_env: param_env.unwrap(),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
@@ -535,7 +535,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
             region_vars: RegionVarBindings::new(tcx),
-            parameter_environment: param_env,
+            param_env: param_env,
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             reported_trait_errors: RefCell::new(FxHashSet()),
@@ -1673,7 +1673,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn param_env(&self) -> ty::ParamEnv<'gcx> {
-        self.parameter_environment
+        self.param_env
     }
 
     pub fn closure_kind(&self,

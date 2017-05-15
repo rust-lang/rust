@@ -482,7 +482,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.infer_ctxt(elaborated_env, Reveal::UserFacing).enter(|infcx| {
         let predicates = match fully_normalize(
                 &infcx, cause,
-                // You would really want to pass infcx.parameter_environment.caller_bounds here,
+                // You would really want to pass infcx.param_env.caller_bounds here,
                 // but that is an interned slice, and fully_normalize takes &T and returns T, so
                 // without further refactoring, a slice can't be used. Luckily, we still have the
                 // predicate vector from which we created the ParamEnv in infcx, so we
@@ -494,7 +494,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             Err(errors) => {
                 infcx.report_fulfillment_errors(&errors);
                 // An unnormalized env is better than nothing.
-                return infcx.parameter_environment;
+                return infcx.param_env;
             }
         };
 
@@ -516,13 +516,13 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 // all things considered.
                 tcx.sess.span_err(span, &fixup_err.to_string());
                 // An unnormalized env is better than nothing.
-                return infcx.parameter_environment;
+                return infcx.param_env;
             }
         };
 
         let predicates = match tcx.lift_to_global(&predicates) {
             Some(predicates) => predicates,
-            None => return infcx.parameter_environment
+            None => return infcx.param_env
         };
 
         debug!("normalize_param_env_or_error: resolved predicates={:?}",

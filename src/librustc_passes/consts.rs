@@ -139,7 +139,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         }
 
         let outer_penv = self.tcx.infer_ctxt(body_id, Reveal::UserFacing).enter(|infcx| {
-            let param_env = infcx.parameter_environment.clone();
+            let param_env = infcx.param_env.clone();
             let outer_penv = mem::replace(&mut self.param_env, param_env);
             let region_maps = &self.tcx.region_maps(item_def_id);;
             euv::ExprUseVisitor::new(self, region_maps, &infcx).consume_body(body);

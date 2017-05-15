@@ -52,7 +52,7 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
             tcx: self.tcx,
             tables: self.tcx.body_tables(b),
             region_maps: &self.tcx.region_maps(def_id),
-            param_env: self.tcx.parameter_environment(def_id)
+            param_env: self.tcx.param_env(def_id)
         }.visit_body(self.tcx.hir.body(b));
     }
 }

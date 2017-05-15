@@ -1079,7 +1079,7 @@ impl<'a, 'gcx, 'tcx> Layout {
         let ptr_layout = |pointee: Ty<'gcx>| {
             let non_zero = !ty.is_unsafe_ptr();
             let pointee = infcx.normalize_projections(pointee);
-            if pointee.is_sized(tcx, infcx.parameter_environment, DUMMY_SP) {
+            if pointee.is_sized(tcx, infcx.param_env, DUMMY_SP) {
                 Ok(Scalar { value: Pointer, non_zero: non_zero })
             } else {
                 let unsized_part = tcx.struct_tail(pointee);
@@ -1268,7 +1268,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     let kind = if def.is_enum() || def.variants[0].fields.len() == 0{
                         StructKind::AlwaysSizedUnivariant
                     } else {
-                        let param_env = tcx.parameter_environment(def.did);
+                        let param_env = tcx.param_env(def.did);
                         let fields = &def.variants[0].fields;
                         let last_field = &fields[fields.len()-1];
                         let always_sized = tcx.type_of(last_field.did)

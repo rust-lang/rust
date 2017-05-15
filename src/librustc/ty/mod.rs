@@ -2518,7 +2518,7 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
 }
 
 /// See `ParamEnv` struct def'n for details.
-fn parameter_environment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    def_id: DefId)
                                    -> ParamEnv<'tcx> {
     // Compute the bounds on Self and the type parameters.
@@ -2555,7 +2555,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         adt_sized_constraint,
         adt_dtorck_constraint,
         def_span,
-        parameter_environment,
+        param_env,
         trait_of_item,
         trait_impls_of: trait_def::trait_impls_of_provider,
         relevant_trait_impls_for: trait_def::relevant_trait_impls_provider,
@@ -2569,7 +2569,7 @@ pub fn provide_extern(providers: &mut ty::maps::Providers) {
         adt_dtorck_constraint,
         trait_impls_of: trait_def::trait_impls_of_provider,
         relevant_trait_impls_for: trait_def::relevant_trait_impls_provider,
-        parameter_environment,
+        param_env,
         ..*providers
     };
 }

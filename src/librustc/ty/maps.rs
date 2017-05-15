@@ -890,7 +890,7 @@ define_maps! { <'tcx>
     [] specialization_graph_of: SpecializationGraph(DefId) -> Rc<specialization_graph::Graph>,
     [] is_object_safe: ObjectSafety(DefId) -> bool,
 
-    [] parameter_environment: ParamEnv(DefId) -> ty::ParamEnv<'tcx>,
+    [] param_env: ParamEnv(DefId) -> ty::ParamEnv<'tcx>,
 
     // Trait selection queries. These are best used by invoking `ty.moves_by_default()`,
     // `ty.is_copy()`, etc, since that will prune the environment where possible.

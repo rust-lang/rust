@@ -79,7 +79,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
 
     // check that the impl type can be made to match the trait type.
 
-    let impl_param_env = tcx.parameter_environment(self_type_did);
+    let impl_param_env = tcx.param_env(self_type_did);
     tcx.infer_ctxt(impl_param_env, Reveal::UserFacing).enter(|ref infcx| {
         let tcx = infcx.tcx;
         let mut fulfillment_cx = traits::FulfillmentContext::new();

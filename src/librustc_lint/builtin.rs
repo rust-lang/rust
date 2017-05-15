@@ -988,7 +988,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                         traits::Obligation::new(traits::ObligationCause::misc(span, expr_id),
                                                 trait_ref.to_poly_trait_predicate());
 
-                    let param_env = tcx.parameter_environment(method.def_id);
+                    let param_env = tcx.param_env(method.def_id);
                     tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
                         let mut selcx = traits::SelectionContext::new(&infcx);
                         match selcx.select(&obligation) {
@@ -1257,7 +1257,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
     fn check_item(&mut self, ctx: &LateContext, item: &hir::Item) {
         if let hir::ItemUnion(ref vdata, _) = item.node {
             let item_def_id = ctx.tcx.hir.local_def_id(item.id);
-            let param_env = ctx.tcx.parameter_environment(item_def_id);
+            let param_env = ctx.tcx.param_env(item_def_id);
             for field in vdata.fields() {
                 let field_ty = ctx.tcx.type_of(ctx.tcx.hir.local_def_id(field.id));
                 if field_ty.needs_drop(ctx.tcx, param_env) {
