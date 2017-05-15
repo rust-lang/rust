@@ -28,9 +28,7 @@ use syntax::codemap::{self, BytePos, Span};
 impl Rewrite for Pat {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         match self.node {
-            PatKind::Box(ref pat) => {
-                rewrite_unary_prefix(context, "box ", &**pat, shape, self.span)
-            }
+            PatKind::Box(ref pat) => rewrite_unary_prefix(context, "box ", &**pat, shape),
             PatKind::Ident(binding_mode, ident, ref sub_pat) => {
                 let (prefix, mutability) = match binding_mode {
                     BindingMode::ByRef(mutability) => ("ref ", mutability),
@@ -74,7 +72,7 @@ impl Rewrite for Pat {
             }
             PatKind::Ref(ref pat, mutability) => {
                 let prefix = format!("&{}", format_mutability(mutability));
-                rewrite_unary_prefix(context, &prefix, &**pat, shape, self.span)
+                rewrite_unary_prefix(context, &prefix, &**pat, shape)
             }
             PatKind::Tuple(ref items, dotdot_pos) => {
                 rewrite_tuple_pat(items, dotdot_pos, None, self.span, context, shape)
