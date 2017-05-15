@@ -17,6 +17,7 @@
 #![feature(libc)]
 
 #![deny(warnings)]
+#![allow(stable_features)]
 
 extern crate libc;
 extern crate test;
