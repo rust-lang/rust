@@ -393,6 +393,7 @@ impl<'a> CrateLoader<'a> {
                 rejected_via_filename: vec![],
                 should_match_name: true,
                 is_proc_macro: Some(false),
+                metadata_loader: &*self.cstore.metadata_loader,
             };
 
             self.load(&mut locate_ctxt).or_else(|| {
@@ -554,6 +555,7 @@ impl<'a> CrateLoader<'a> {
             rejected_via_filename: vec![],
             should_match_name: true,
             is_proc_macro: None,
+            metadata_loader: &*self.cstore.metadata_loader,
         };
         let library = self.load(&mut locate_ctxt).or_else(|| {
             if !is_cross {
