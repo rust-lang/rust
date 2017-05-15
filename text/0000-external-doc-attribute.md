@@ -152,7 +152,7 @@ making this feature useless if it creates ergonomic overhead like this.
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
-`#[external_doc("path", "type")]` is an extension of the current
+`#[doc(include = "file_path")]` is an extension of the current
 `#[doc = "doc"]` attribute by allowing documentation to exist outside of the
 source code. This isn't entirely hard to grasp if one is familiar with
 attributes but if not then this syntax vs a `///` or `//!` type of comment
