@@ -12,7 +12,7 @@ use io::prelude::*;
 
 use core::convert::TryInto;
 use cmp;
-use io::{self, SeekFrom, Error, ErrorKind};
+use io::{self, Initializer, SeekFrom, Error, ErrorKind};
 
 /// A `Cursor` wraps another type and provides it with a
 /// [`Seek`] implementation.
@@ -228,6 +228,11 @@ impl<T> Read for Cursor<T> where T: AsRef<[u8]> {
         let n = Read::read(&mut self.fill_buf()?, buf)?;
         self.pos += n as u64;
         Ok(n)
+    }
+
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        Initializer::nop()
     }
 }
 

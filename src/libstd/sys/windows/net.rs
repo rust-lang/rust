@@ -20,7 +20,6 @@ use sync::Once;
 use sys::c;
 use sys;
 use sys_common::{self, AsInner, FromInner, IntoInner};
-use sys_common::io::read_to_end_uninitialized;
 use sys_common::net;
 use time::Duration;
 
@@ -200,11 +199,6 @@ impl Socket {
         self.recv_from_with_flags(buf, c::MSG_PEEK)
     }
 
-    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        let mut me = self;
-        (&mut me).read_to_end(buf)
-    }
-
     pub fn set_timeout(&self, dur: Option<Duration>,
                        kind: c_int) -> io::Result<()> {
         let timeout = match dur {
@@ -282,10 +276,6 @@ impl Socket {
 impl<'a> Read for &'a Socket {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
-    }
-
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        unsafe { read_to_end_uninitialized(self, buf) }
     }
 }
 

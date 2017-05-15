@@ -19,7 +19,7 @@
 
 use fmt;
 use ffi::OsString;
-use io::{self, SeekFrom, Seek, Read, Write};
+use io::{self, SeekFrom, Seek, Read, Initializer, Write};
 use path::{Path, PathBuf};
 use sys::fs as fs_imp;
 use sys_common::{AsInnerMut, FromInner, AsInner, IntoInner};
@@ -446,8 +446,10 @@ impl Read for File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        self.inner.read_to_end(buf)
+
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        Initializer::nop()
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -468,8 +470,10 @@ impl<'a> Read for &'a File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        self.inner.read_to_end(buf)
+
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        Initializer::nop()
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
