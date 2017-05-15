@@ -11,8 +11,8 @@ functions and doctests.
 
 To make this possible, the return type of these functions are
 generalized from `()` to a new trait, provisionally called
-`Termination`.  libstd implements this trait for `!`, `()`, `Error`,
-`Result<T, E> where T: Termination, E: Termination`, and possibly
+`Termination`.  libstd implements this trait for `!`, `()`,
+`process::ExitStatus`, `Result<(), E> where E: Error`, and possibly
 other types TBD.  Applications can provide impls themselves if they
 want.
 
@@ -33,6 +33,109 @@ so that `?` can be used without having to write a function head yourself.
 It is currently not possible to use `?` in `main`, because `main`'s
 return type is required to be `()`.  This is a trip hazard for new
 users of the language, and complicates "programming in the small".
+For example, consider a version of the
+[CSV-parsing example from the Rust Book][csv-example]
+(I have omitted a chunk of command-line parsing code and the
+definition of the Row type, to keep it short):
+
+``` rust
+fn main() {
+    let argv = env::args();
+    let _ = argv.next();
+    let data_path = argv.next().unwrap();
+    let city = argv.next().unwrap();
+
+    let file = File::open(data_path).unwrap();
+    let mut rdr = csv::Reader::from_reader(file);
+
+    for row in rdr.decode::<Row>() {
+        let row = row.unwrap();
+
+        if row.city == city {
+            println!("{}, {}: {:?}",
+                row.city, row.country,
+                row.population.expect("population count"));
+        }
+    }
+}
+```
+
+The Rust Book uses this as a starting point for a demonstration of how
+to do error handing _properly_, i.e. without using `unwrap` and
+`expect`.  But suppose this is a program for your own personal use.
+You are only writing it in Rust because it needs to crunch an enormous
+data file and high-level scripting languages are too slow.  You don't
+especially _care_ about proper error handling, you just want something
+that works, with minimal programming effort.  You'd like to not have
+to remember that this is `main` and you can't use `?`.  You would like
+to write instead
+
+``` rust
+fn main() -> Result<(), Box<Error>> {
+    let argv = env::args();
+    let _ = argv.next();
+    let data_path = argv.next()?;
+    let city = argv.next()?;
+
+    let file = File::open(data_path)?;
+    let mut rdr = csv::Reader::from_reader(file);
+
+    for row in rdr.decode::<Row>() {
+        let row = row?;
+
+        if row.city == city {
+            println!("{}, {}: {:?}",
+                row.city, row.country, row.population?);
+        }
+    }
+    Ok(())
+}
+```
+
+(Just to be completely clear, this is not intended to _reduce_ the
+amount of error-handling boilerplate one has to write; only to make it
+be the same in `main` as it would be for any other function.)
+
+For the same reason, it is not possible to use `?` in doctests and
+`#[test]` functions.  This is only an inconvenience for `#[test]`
+functions, same as for `main`, but it's a major problem for doctests,
+because doctests are supposed to demonstrate normal usage, as well as
+testing functionality.  Taking an
+[example from the stdlib][to-socket-addrs]:
+
+``` rust
+use std::net::{SocketAddrV4, TcpStream, UdpSocket, TcpListener, Ipv4Addr};
+let ip = Ipv4Addr::new(127, 0, 0, 1);
+let port = 12345;
+
+// The following lines are equivalent modulo possible "localhost" name
+// resolution differences
+let tcp_s = TcpStream::connect(SocketAddrV4::new(ip, port));
+let tcp_s = TcpStream::connect((ip, port));
+let tcp_s = TcpStream::connect(("127.0.0.1", port));
+let tcp_s = TcpStream::connect(("localhost", port));
+let tcp_s = TcpStream::connect("127.0.0.1:12345");
+let tcp_s = TcpStream::connect("localhost:12345");
+
+// TcpListener::bind(), UdpSocket::bind() and UdpSocket::send_to()
+// behave similarly
+let tcp_l = TcpListener::bind("localhost:12345");
+
+let mut udp_s = UdpSocket::bind(("127.0.0.1", port)).unwrap(); // XXX
+udp_s.send_to(&[7], (ip, 23451)).unwrap(); // XXX
+```
+
+The lines marked `XXX` have to use `unwrap`, because a doctest is the
+body of a `main` function, but in normal usage, they would be written
+
+``` rust
+let mut udp_s = UdpSocket::bind(("127.0.0.1", port))?;
+udp_s.send_to(&[7], (ip, 23451))?;
+```
+
+and that's what the documentation _ought_ to say.  Documentation
+writers can work around this by including their own `main` as
+hidden code, but they shouldn't have to.
 
 On a related note, `main` returning `()` means that short-lived
 programs, designed to be invoked from the Unix shell or a similar
@@ -47,7 +150,6 @@ fn inner_main() -> Result<(), ErrorT> {
 
 fn main() -> () {
     use std::process::exit;
-    use std::io::{Write,stderr};
     use libc::{EXIT_SUCCESS, EXIT_FAILURE};
 
     exit(match inner_main() {
@@ -55,7 +157,7 @@ fn main() -> () {
 
         Err(ref err) => {
             let progname = get_program_name();
-            writeln!(stderr(), "{}: {}\n", progname, err);
+            eprintln!("{}: {}\n", progname, err);
 
             EXIT_FAILURE
         }
@@ -63,9 +165,11 @@ fn main() -> () {
 }
 ```
 
-Both of these problems can be solved at once if the compiler and/or
-libstd are taught to recognize a `main` that returns
-`Result<(), ErrorT>` and supply boilerplate similar to the above.
+These problems can be solved by generalizing the return type of `main`
+and test functions.
+
+[csv-example]: https://doc.rust-lang.org/book/error-handling.html#case-study-a-program-to-read-population-data
+[to-socket-addrs]: https://doc.rust-lang.org/std/net/trait.ToSocketAddrs.html
 
 # Detailed design
 [design]: #detailed-design
@@ -73,9 +177,9 @@ libstd are taught to recognize a `main` that returns
 The design goals for this new feature are, in decreasing order of
 importance:
 
-1. The `?` operator should be usable in `main` (and `#[test]`
-   functions and doctests).  This entails these functions now
-   returning a richer value than `()`.
+1. The `?` operator should be usable in `main`, `#[test]` functions,
+   and doctests.  This entails these functions now returning a richer
+   value than `()`.
 1. Existing code with `fn main() -> ()` should not break.
 1. Errors returned from `main` in a hosted environment should
    *not* trigger a panic, consistent with the general language
@@ -92,14 +196,13 @@ importance:
    around.
 
 Goal 1 dictates that the new return type for `main` will be
-`Result<T,E>` for some T and E.  To minimize the necessary changes to
+`Result<T, E>` for some T and E.  To minimize the necessary changes to
 existing code that wants to start using `?` in `main`, T should be
-_allowed_ to be `()`, but other types in that position may also make
-sense.  The boilerplate shown [above][motivation] will work for any E
-that is `Display`, but that is probably too general for the stdlib; we
-propose only `Error` types should work by default.
-
-[grep]: http://man7.org/linux/man-pages/man1/grep.1.html
+allowed to be `()`, but other types in that position may also make
+sense.  The appropriate bound for E is unclear; there are plausible
+arguments for at least `Error`, `Debug`, and `Display`.  This proposal
+starts from the narrowest possibility and provides for only
+`Result<() E> where E: Error`.
 
 ## The `Termination` trait
 [the-termination-trait]: #the-termination-trait
@@ -112,69 +215,171 @@ signature:
 
 ``` rust
 trait Termination {
-    fn write_diagnostic(&self, progname: &str, stream: &mut Write) -> ();
-    fn exit_status(&self) -> i32;
+    fn report(self) -> i32;
 }
 ```
 
-`write_diagnostic` shall write a complete diagnostic message for
-`self` to its `stream` argument.  If it produces no output, there will
-be no output.  `stream` will be the same stream that `panic` messages
-from the main thread would go to, which is normally "standard error".
-(An application-controllable override mechanism may make sense,
-[see below][squelching-diagnostics].)
-
-The `progname` argument is a short version of the program's name
-(abstractly, what you would type at the command line to start the
-program, assuming it were in `PATH`; concretely, the basename of
-`argv[0]`, with any trailing `.exe` or `.com` chopped off on Windows,
-but not on other platforms).  This makes it easy to generate
-diagnostics in the style conventional for "Unixy" systems, e.g.
-
-    grep: /etc/shadow: Permission denied
-
-`exit_status` shall convert `self` to a platform-specific exit code,
-conveying at least a notion of success or failure.  The return type is
-`i32` to match [std::process::exit][] (which probably calls the C
-library's `exit` primitive), but (as already documented for
-`process::exit`) on "most Unix-like" operating systems, only the low 8
-bits of this value are significant.
+`report` is a call-once function; it consumes self.  The runtime
+guarantees to call this function after `main` returns, but at a point
+where it is still safe to use `eprintln!` or `io::stderr()` to print
+error messages.  `report` is not _required_ to print error messages,
+and if it doesn't, nothing will be printed.  The value it returns will
+be passed to `std::process::exit`, and shall convey at least a notion
+of success or failure.  The return type is `i32` to match
+[std::process::exit][] (which probably calls the C library's `exit`
+primitive), but (as already documented for `process::exit`) on "most
+Unix-like" operating systems, only the low 8 bits of this value are
+significant.
 
 [std::process::exit]: https://doc.rust-lang.org/std/process/fn.exit.html
 
-## Changes to `main`
-[changes-to-main]: #changes-to-main
+## Standard impls of Termination
+[standard-impls-of-termination]: #standard-impls-of-termination
 
-From the perspective of the code that calls `main`, its signature is
-now generic:
+At least the following implementations of Termination are available in
+libstd.  I use the ISO C constants `EXIT_SUCCESS` and `EXIT_FAILURE`
+for exposition; they are not necesssarily intended to be the exact
+values passed to `process::exit`.
 
 ``` rust
-fn<T: Termination> main() -> T { ... }
+impl Termination for ! {
+    fn report(self) -> i32 { unreachable!(); }
+}
+
+impl Termination for () {
+    fn report(self) -> i32 { EXIT_SUCCESS }
+}
+
+impl Termination for std::process::ExitStatus {
+    fn report(self) -> i32 {
+        self.code().expect("Cannot use a signal ExitStatus to exit")
+    }
+}
+
+fn print_diagnostics_for_error<E: Error>(err: &E) {
+    // unspecified, but along the lines of:
+    if let Some(ref cause) = err.cause() {
+        print_diagnostics_for_error(cause);
+    }
+    eprintln!("{}: {}", get_program_name(), err.description());
+}
+
+impl<E: Error> Termination for Result<(), E> {
+    fn report(self) -> i32 {
+        match self {
+            Ok(_) => EXIT_SUCCESS,
+            Err(ref err) => {
+                print_diagnostics_for_error(err);
+                EXIT_FAILURE
+            }
+        }
+    }
+}
 ```
 
-It is critical that people _writing_ main should not have to treat it
-as a generic, though.  Existing code with `fn main() -> ()` should
-continue to compile, and code that wants to use the new feature should
-be able to write `fn main() -> TermT` for some concrete type `TermT`.
+The impl for `!` allows programs that intend to run forever to be more
+self-documenting: `fn main() -> !` will satisfy the implicit trait
+bound on the return type.  It might not be necessary to have code for
+this impl in libstd, since `-> !` satisfies `-> ()`, but it should
+appear in the reference manual anyway, so people know they can do
+that, and it may also be desirable as a backstop against a `main` that
+does somehow return, despite declaring that it doesn't.
 
-I also don't know whether the code that calls `main` can accept a
-generic.  The `lang_start` glue currently receives an unsafe pointer
-to `main`, and expects it to have the signature `() -> ()`.  The
-abstractly correct new signature is `() -> Termination` but I suspect
-that this is currently not possible, pending `impl Trait` return types
-or something similar.  `() -> Box<Termination>` probably _is_ possible
-but requires a heap allocation, which is undesirable in no-std
-contexts.
+The impl for `ExitStatus` allows programs to generate both success and
+failure conditions _without_ any errors printed, by returning from
+`main`.  This is meant to be used by sophisticated programs that do
+all of their own error-message printing themselves.
+[See below][exit-status] for more discussion and related changes to
+`ExitStatus`.
 
-A solution to both problems is to implement the new semantics entirely
-within the compiler.  When it notices that `main` returns anything
-other than `()`, it renames the function and injects a shim:
+Additional impls of Termination should be added as ergonomics dictate.
+For instance, it may well make sense to provide an impl for
+`Result<(), E> where E: Display` or `... where E: Debug`, because
+programs may find it convenient to use bare strings as error values,
+and application error types are not obliged to be `std::Error`s.
+Also, it is unclear to me whether `impl<E: Error> Termination for
+Result<(), E>` applies to `Result<(), Box<Error>>`.  If it doesn't, we
+will almost certainly need to add `impl<E: Box<Error>> Termination for
+Result<(), E>`.  I hope that isn't necessary, because then we might
+also need `Rc<Error>` and `Arc<Error>` and `Cow<Error>` and
+`RefCell<Error>` and ...
+
+There probably _shouldn't_ be an impl of Termination for Option,
+because there are equally strong arguments for None indicating success
+and None indicating failure.  `bool` is similarly ambiguous.  And
+there probably shouldn't be an impl for `i32` or `u8` either, because
+that would permit the programmer to return arbitrary numbers from
+`main` without thinking at all about whether they make sense as exit
+statuses.
+
+A previous revision of this RFC included an impl for `Result<T, E>
+where T: Termination, E: Termination`, but it has been removed from
+this version, as some people felt it would allow undesirable behavior.
+It can always be added again in the future.
+
+## Changes to `lang_start`
+[changes-to-lang-start]: #changes-to-lang-start
+
+The `start` "lang item", the function that calls `main`, takes the
+address of `main` as an argument.  Its signature is currently
 
 ``` rust
-fn main() -> () {
-    let term = $real_main();
-    term.write_diagnostic(std::env::progname(), std::io::LOCAL_STDERR);
-    std::process::exit(term.exit_status());
+#[lang = "start"]
+fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize
+```
+
+It will need to become generic, something like
+
+``` rust
+#[lang = "start"]
+fn lang_start<T: Termination>
+    (main: fn() -> T, argc: isize, argv: *const *const u8) -> !
+```
+
+(Note: the current `isize` return type is incorrect.  As is, the
+correct return type is `libc::c_int`.  We can avoid the entire issue by
+requiring `lang_start` to call `process::exit` or equivalent itself;
+this also moves one step toward not depending on the C runtime.)
+
+The implementation for typical "hosted" environments will be something
+like
+
+``` rust
+#[lang = "start"]
+fn lang_start<T: Termination>
+    (main: fn() -> T, argc: isize, argv: *const *const u8) -> !
+{
+    use panic;
+    use sys;
+    use sys_common;
+    use sys_common::thread_info;
+    use thread::Thread;
+    use process::exit;
+
+    sys::init();
+
+    exit(unsafe {
+        let main_guard = sys::thread::guard::init();
+        sys::stack_overflow::init();
+
+        // Next, set up the current Thread with the guard information we just
+        // created. Note that this isn't necessary in general for new threads,
+        // but we just do this to name the main thread and to give it correct
+        // info about the stack bounds.
+        let thread = Thread::new(Some("main".to_owned()));
+        thread_info::set(main_guard, thread);
+
+        // Store our args if necessary in a squirreled away location
+        sys::args::init(argc, argv);
+
+        // Let's run some code!
+        let status = match panic::catch_unwind(main) {
+            Ok(term) { term.report() }
+            Err(_)   { 101 }
+        }
+        sys_common::cleanup();
+        status
+    });
 }
 ```
 
@@ -182,10 +387,12 @@ fn main() -> () {
 [main-in-nostd-environments]: #main-in-nostd-environments
 
 Some no-std environments do have a notion of processes that run and
-then exit, but they may or may not have notions of "exit status" or
-"error messages".  In this case, the signature of `main` should be
-unchanged, and the shim should simply ignore whichever aspects of
-`Termination` don't make sense in context.
+then exit, but do not have a notion of "exit status".  In this case,
+`process::exit` probably already ignores its argument, so `main` and
+the `start` lang item do not need to change.  Similarly, in an
+environment where there is no such thing as an "error message",
+`io::stderr()` probably already points to the bit bucket, so `report`
+functions can go ahead and use `eprintln!` anyway.
 
 There are also environments where
 [returning from `main` constitutes a _bug_.][divergent-main] If you
@@ -202,16 +409,13 @@ environments to refuse to let you impl Termination yourself.
 ## Test functions and doctests
 [test-functions-and-doctests]: #test-functions-and-doctests
 
-The harness for `#[test]` functions is very simple; I think it would
-be enough to just give `#[test]` functions the same shim that we give
-to `main`.  The programmer would be responsible for adjusting their
-`#[test]` functions' return types if they want to use `?`, but
-existing code would continue to work.
+The harness for `#[test]` functions will need to be changed, similarly
+to how the "start" lang item was changed.  Tests which return
+anything whose `report()` method returns a nonzero value should be
+considered to have failed.
 
-Doctests require a little magic, because you normally don't write the
-function head for a doctest yourself, only its body.  This magic
-belongs in rustdoc, not in rustc.  When `maketest` sees that it needs
-to insert a function head for `main`, it should now write out
+Doctests require a little magic in rustdoc: when `maketest` sees that
+it needs to insert a function head for `main`, it should now write out
 
 ``` rust
 fn main () -> Result<(), ErrorT> {
@@ -224,111 +428,39 @@ for some value of `ErrorT` TBD.  It doesn't need to parse the body of
 the test to know whether it should do this; it can just do it
 unconditionally.
 
-## Standard impls of Termination
-[standard-impls-of-termination]: #standard-impls-of-termination
+## New constructors for `ExitStatus`
+[exit-status]: #exit-status
 
-At least the following implementations of Termination are available in
-libstd.  I use the ISO C constants `EXIT_SUCCESS` and `EXIT_FAILURE`
-for exposition.  [See below][unix-specific-refinements] for more
-discussion of these constants and the `TermStatus` type.
+As mentioned above, we propose to reuse `process::ExitStatus` as a way
+for a program to generate both success and failure conditions
+_without_ any errors printed, by returning it from `main`.  To make
+this more convenient, we also propose to add the following new
+constructors to `ExitStatus`:
 
 ``` rust
-impl Termination for ! {
-    fn write_diagnostic(&self, progname: &str, stream: &mut Write) -> ()
-    { unreachable!(); }
-    fn exit_status(&self) -> i32
-    { unreachable!(); }
-}
+impl ExitStatus {
+    /// Return an ExitStatus value representing success.
+    /// (ExitStatus::ok()).success() is guaranteed to be true, and
+    /// (ExitStatus::ok()).code() is guaranteed to be Some(0).
+    pub fn ok() -> Self;
 
-impl Termination for () {
-    fn write_diagnostic(&self, progname: &str, stream: &mut Write) -> ()
-    { }
-    fn exit_status(&self) -> i32
-    { EXIT_SUCCESS }
-}
+    /// Return an ExitStatus value representing failure.
+    /// (ExitStatus::failure()).success() is guaranteed to be false, and
+    /// (ExitStatus::failure()).code() is guaranteed to be Some(n),
+    /// for some unspecified n, 1 < n < 64.
+    pub fn failure() -> Self;
 
-impl Termination for TermStatus {
-    fn write_diagnostic(&self, progname: &str, stream: &mut Write) -> ()
-    { }
-    fn exit_status(&self) -> i32
-    { self.0 }
-}
-
-impl<E: Error> Termination for E {
-    fn write_diagnostic(&self, progname: &str, stream: &mut Write) -> ()
-    {
-        // unspecified, but not entirely unlike this:
-        if let Some(ref cause) = self.cause() {
-            cause.write_diagnostic(progname, stream);
-        }
-        writeln!(stream, "{}: {}\n", progname, self.description());
-    }
-
-    fn exit_status(&self) -> i32
-    { EXIT_FAILURE }
-}
-
-impl<T: Termination, E: Termination> Termination for Result<T, E> {
-    fn write_diagnostic(&self, progname: &str, stream: &mut Write) {
-        match *self {
-            Ok(ref ok) { ok.write_diagnostic(progname, stream); },
-            Err(ref err) { err.write_diagnostic(progname, stream); }
-        }
-    }
-    fn exit_status(&self) -> i32 {
-        match *self {
-            Ok(ref ok) => ok.exit_status(),
-            Err(ref err) => match err.exit_status() {
-                0 | EXIT_SUCCESS => EXIT_FAILURE,
-                e => e
-            }
-        }
-    }
+    /// Return an ExitStatus value representing a specific exit code.
+    /// The difference between this method and ExitStatusExt::from_raw
+    /// is that this method can only be used to produce ExitStatus
+    /// values that will pass unmodified through the operating system
+    /// primitive "exit" and "wait" operations on all supported
+    /// platforms.  (Conveniently, this is exactly the range of u8.)
+    pub fn from_code(code: u8) -> Self;
 }
 ```
 
-The impl for `!` allows programs that intend to run forever to be more
-self-documenting: `fn main() -> !` will satisfy the implicit trait
-bound on the return type.  It might not be necessary to have the code
-in libstd, if the compiler can figure out for itself that `-> !`
-satisfies _any_ return type; I have heard that this works in Haskell.
-But it's probably good to have it in the reference manual anyway, so
-people know they can do that.
-
-The impl for `Result<T,E>` does not allow its `Err` case to produce a
-successful exit status.  The technical case for doing this is that it
-means you can use `Result<(),()>` to encode success or failure without
-printing any messages in either case, and the ergonomics case is that
-it's less surprising this way.  I don't _think_ it gets in the way of
-anything a realistic program would want to do.
-
-Additional impls of Termination should be added as ergonomics dictate.
-However, there probably _shouldn't_ be an impl of Termination for
-Option, because there are equally strong arguments for None indicating
-success and None indicating failure.  `bool` is similarly ambiguous.
-And there probably shouldn't be an impl for `i32` or `u8` either,
-because that would permit the programmer to return arbitrary numbers
-from `main` without thinking at all about whether they make sense as
-exit statuses.
-
-A generic implementation of Termination for anything that is Display
-_could_ make sense, but my current opinion is that it is too general
-and would make it too easy to get undesired behavior by accident.
-
-## Squelching diagnostics
-[squelching-diagnostics]: #squelching-diagnostics
-
-It is fairly common for command-line tools to have a mode, often
-triggered by an option `-q` or `--quiet`, which suppresses all output,
-*including error messages*.  They still exit unsuccessfully if there
-are errors, but they don't print anything at all.  This is for use in
-shell control-flow constructs, e.g. `if grep -q blah ...; then ...`
-An easy way to facilitate this would be to stabilize a subset of the
-`set_panic` feature, say a new function `squelch_errors` or
-`silence_stderr` which simply discards all output sent to stderr.
-
-Programs that need to do something more complicated than that are
-probably better off printing diagnostics by hand, as is done now.
+The first method's name is `ok` because `success` is already taken.
 
 ## Unix-specific refinements
 [unix-specific-refinements]: #unix-specific-refinements
@@ -340,10 +472,16 @@ guaranteed to have the same effect as calling `exit(EXIT_SUCCESS)`;
 several versions of the `exit` manpage are incorrect on this point.)
 Any other argument has an implementation-defined effect.
 
-Within the Unix ecosystem, `exit` is relied upon to pass values in the
-range 0 through 127 (*not* 255) up to the parent process.  There is no
-general agreement on the meaning of specific nonzero exit codes, but
-there are many contexts that give specific codes a meaning, such as:
+Within the Unix ecosystem, `exit` can be relied upon to pass values in
+the range 0 through 255 up to the parent process; this is the range
+proposed for `ExitStatus::from_code`.  (POSIX says that one should be
+able to pass a full C `int` through `exit` as long as the parent uses
+`waitid` to retrieve the value, but this is not widely implemented.
+Also, values 128 through 255 have historically been avoided because
+older implementations were unreliable about zero- rather than
+sign-extending in `WEXITSTATUS`.)  There is no general agreement on
+the meaning of specific nonzero exit codes, but there are many
+contexts that give specific codes a meaning, such as:
 
 * POSIX reserves status 127 for certain internal failures in `system`
   and `posix_spawn` that cannot practically be reported via `errno`.
@@ -374,25 +512,15 @@ However, the stdlib should not get in the way of a program that
 intends to conform to any of the above.  This can be done with the
 following refinements:
 
-* The stdlib provides `EXIT_SUCCESS` and `EXIT_FAILURE` constants in
-  `std::process` (since `exit` is already there).  These constants do
-  _not_ necessarily have the values that the platform's C library
-  gives them.  `EXIT_SUCCESS` is always 0.  `EXIT_FAILURE` has the same
-  value as the C library gives it, _unless_ the C library gives it the
-  value 1, in which case 2 is used instead.
+* All of the implementations of `Termination` in the stdlib, except
+  the one for `ExitStatus` itself, are guaranteed to behave as-if they
+  use only `ExitStatus::ok()` and `ExitStatus::failure()`.
 
-* All of the impls of `Termination` in the stdlib are guaranteed to
-  use only `EXIT_SUCCESS` and `EXIT_FAILURE`, with one exception:
-
-* There is a type, provisionally called `TermStatus`, which is a
-  newtype over `i32`; on Unix (but not on Windows), creating one from
-  a value outside the range 0 ... 255 will panic.  It implements
-  `Termination`, passing its value to `exit` and not printing any
-  diagnostics.  Using this type, you can generate specific exit codes
-  when appropriate, without having to avoid using `?` in `main`.
-
-  (It can't be called `ExitStatus` because that name is already
-  taken for the return type of `std::process::Command::status`.)
+* The value used by `ExitStatus::failure()` is guaranteed to be
+  greater than 1 and less than 64.  This avoids collisions with all of
+  the above conventions.  (I recommend we actually use 2, because
+  people may think that any larger value has a specific meaning, and
+  then waste time trying to find out what it is.)
 
 [exit.3]: http://www.cplusplus.com/reference/cstdlib/exit/
 [grep.1]: http://pubs.opengroup.org/onlinepubs/9699919799/utilities/grep.html
@@ -405,7 +533,7 @@ following refinements:
 
 This should be taught alongside the `?` operator and error handling in
 general.  The stock `Termination` impls in libstd mean that simple
-programs that can fail don't need to do anything special:
+programs that can fail don't need to do anything special.
 
 ``` rust
 fn main() -> Result<(), io::Error> {
@@ -420,23 +548,89 @@ fn main() -> Result<(), io::Error> {
 }
 ```
 
-Doctest examples can freely use `?` with no extra boilerplate;
-`#[test]` examples may need their boilerplate adjusted.
+Programs that care about the exact structure of their error messages
+will still need to use `main` primarily for error reporting.
+Returning to the [CSV-parsing example][csv-example], a "professional"
+version of the program might look something like this (assume all of
+the boilerplate involved in the definition of `AppError` is just off
+the top of your screen):
 
-More complex programs, with their own error types, still get
-platform-consistent exit status behavior for free, as long as they
-implement `Error`.  The Book should describe `Termination` to explain
-_how_ `Result`s returned from `main` turn into error messages and exit
-statuses, but as a thing that most programs will not need to deal with
-directly.
+``` rust
+struct Args {
+    progname: String,
+    data_path: PathBuf,
+    city: String
+}
+
+fn parse_args() -> Result<Args, AppError> {
+    let argv = env::args_os();
+    let progname = argv.next().into_string()?;
+    let data_path = PathBuf::from(argv.next());
+    let city = argv.next().into_string()?;
+    if let Some(_) = argv.next() {
+        return Err(UsageError("too many arguments"));
+    }
+    Ok(Args { progname, data_path, city })
+}
+
+fn process(city: &String, data_path: &Path) -> Result<Args, AppError> {
+    let file = File::open(args.data_path)?;
+    let mut rdr = csv::Reader::from_reader(file);
+
+    for row in rdr.decode::<Row>() {
+        let row = row?;
+
+        if row.city == city {
+            println!("{}, {}: {:?}",
+                row.city, row.country, row.population?);
+        }
+    }
+}
+
+fn main() -> ExitStatus {
+    match parse_args() {
+        Err(err) => {
+            eprintln!("{}", err);
+            ExitStatus::failure()
+        },
+        Ok(args) => {
+            match process(&args.city, &args.data_path) {
+                Err(err) => {
+                    eprintln!("{}: {}: {}",
+                              args.progname, args.data_path, err);
+                    ExitStatus::failure()
+                },
+                Ok(_) => ExitStatus::ok()
+            }
+        }
+    }
+}
+```
+
+and a detailed error-handling tutorial could build that up from the
+quick-and-dirty version.  Notice that this is not using `?` in main,
+but it _is_ using the generalized `main` return value.  The
+`catch`-block feature (part of [RFC #243][rfc243] along with `?`;
+[issue #39849][issue39849]) may well enable shortening this `main`
+and/or putting `parse_args` and `process` back inline.
 
 Tutorial examples should probably still begin with `fn main() -> ()`
 until the tutorial gets to the point where it starts explaining why
-`panic!` and `unwrap` are not for "normal errors".
+`panic!` and `unwrap` are not for "normal errors".  The `Termination`
+trait should also be explained at that point, to illuminate _how_
+`Result`s returned from `main` turn into error messages and exit
+statuses, but as a thing that most programs will not need to deal with
+directly.
 
-Discussion of `TermStatus` should be reserved for an advanced-topics
-section talking about interoperation with the Unix command-line
-ecosystem.
+Discussion of `ExitStatus::from_code` should be reserved for an
+advanced-topics section talking about interoperation with the Unix
+command-line ecosystem.
+
+Doctest examples can freely use `?` with no extra boilerplate;
+`#[test]` examples may need their boilerplate adjusted.
+
+[rfc243]: https://github.com/rust-lang/rfcs/blob/master/text/0243-trait-based-exception-handling.md
+[issue39849]: https://github.com/rust-lang/rust/issues/39849
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -454,9 +648,10 @@ Do nothing; continue to live with the trip hazard, the extra
 boilerplate required to comply with platform conventions, and people
 using `panic!` to report ordinary errors because it's less hassle.
 
-The [pre-RFC][pre-rfc] included a suggestion to use `catch` instead,
-but this still involves extra boilerplate in `main` so I'm not
-enthusiastic about it.
+"Template projects" (e.g. [quickstart][]) mean that one need not write
+out all the boilerplate by hand, but it's still there.
+
+[quickstart]: https://github.com/rusttemplates/quickstart
 
 # Unresolved Questions
 [unresolved]: #unresolved-questions
@@ -474,13 +669,11 @@ so I don't see that it adds value there.)
 We also need to decide where the trait should live.  One obvious place
 is in `std::process`, because that is where `exit(i32)` is; on the
 other hand, this is basic enough that it may make sense to put at
-least some of it in libcore.
+least some of it in libcore.  Note that the `start` lang item is not
+in libcore.
 
 I don't know what impls of `Termination` should be available beyond
 the ones listed above, nor do I know what impls should be in libcore.
-Most importantly, I do not know whether it is necessary to impl
-Termination for `Box<T> where T: Termination`.  It might be that Box's
-existing impl of Deref renders this unnecessary.
 
 It may make sense to provide a type alias like
 
