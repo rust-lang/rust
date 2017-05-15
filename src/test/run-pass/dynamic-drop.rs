@@ -90,6 +90,22 @@ fn dynamic_drop(a: &Allocator, c: bool) {
     };
 }
 
+struct TwoPtrs<'a>(Ptr<'a>, Ptr<'a>);
+fn struct_dynamic_drop(a: &Allocator, c0: bool, c1: bool, c: bool) {
+    for i in 0..2 {
+        let x;
+        let y;
+        if (c0 && i == 0) || (c1 && i == 1) {
+            x = (a.alloc(), a.alloc(), a.alloc());
+            y = TwoPtrs(a.alloc(), a.alloc());
+            if c {
+                drop(x.1);
+                drop(y.0);
+            }
+        }
+    }
+}
+
 fn assignment2(a: &Allocator, c0: bool, c1: bool) {
     let mut _v = a.alloc();
     let mut _w = a.alloc();
@@ -181,6 +197,15 @@ fn main() {
 
     run_test(|a| array_simple(a));
     run_test(|a| vec_simple(a));
+
+    run_test(|a| struct_dynamic_drop(a, false, false, false));
+    run_test(|a| struct_dynamic_drop(a, false, false, true));
+    run_test(|a| struct_dynamic_drop(a, false, true, false));
+    run_test(|a| struct_dynamic_drop(a, false, true, true));
+    run_test(|a| struct_dynamic_drop(a, true, false, false));
+    run_test(|a| struct_dynamic_drop(a, true, false, true));
+    run_test(|a| struct_dynamic_drop(a, true, true, false));
+    run_test(|a| struct_dynamic_drop(a, true, true, true));
 
     run_test_nopanic(|a| union1(a));
 }

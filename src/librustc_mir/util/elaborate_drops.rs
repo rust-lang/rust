@@ -243,30 +243,37 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     }
 
     /// Create one-half of the drop ladder for a list of fields, and return
-    /// the list of steps in it in reverse order.
+    /// the list of steps in it in reverse order, with the first step
+    /// dropping 0 fields and so on.
     ///
     /// `unwind_ladder` is such a list of steps in reverse order,
     /// which is called if the matching step of the drop glue panics.
     fn drop_halfladder(&mut self,
                        unwind_ladder: &[Unwind],
-                       succ: BasicBlock,
+                       mut succ: BasicBlock,
                        fields: &[(Lvalue<'tcx>, Option<D::Path>)])
                        -> Vec<BasicBlock>
     {
-        let goto = TerminatorKind::Goto { target: succ };
-        let mut succ = self.new_block(unwind_ladder[0], goto);
+        Some(succ).into_iter().chain(
+            fields.iter().rev().zip(unwind_ladder)
+                .map(|(&(ref lv, path), &unwind_succ)| {
+                    succ = self.drop_subpath(lv, path, succ, unwind_succ);
+                    succ
+                })
+        ).collect()
+    }
 
-        // Always clear the "master" drop flag at the bottom of the
-        // ladder. This is needed because the "master" drop flag
-        // protects the ADT's discriminant, which is invalidated
-        // after the ADT is dropped.
-        let succ_loc = Location { block: succ, statement_index: 0 };
-        self.elaborator.clear_drop_flag(succ_loc, self.path, DropFlagMode::Shallow);
-
-        fields.iter().rev().zip(unwind_ladder).map(|(&(ref lv, path), &unwind_succ)| {
-            succ = self.drop_subpath(lv, path, succ, unwind_succ);
-            succ
-        }).collect()
+    fn drop_ladder_bottom(&mut self) -> (BasicBlock, Unwind) {
+        // Clear the "master" drop flag at the end. This is needed
+        // because the "master" drop protects the ADT's discriminant,
+        // which is invalidated after the ADT is dropped.
+        let (succ, unwind) = (self.succ, self.unwind); // FIXME(#6393)
+        (
+            self.drop_flag_reset_block(DropFlagMode::Shallow, succ, unwind),
+            unwind.map(|unwind| {
+                self.drop_flag_reset_block(DropFlagMode::Shallow, unwind, Unwind::InCleanup)
+            })
+        )
     }
 
     /// Create a full drop ladder, consisting of 2 connected half-drop-ladders
@@ -283,8 +290,13 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     ///     ELAB(drop location.1 [target=.c2])
     /// .c2:
     ///     ELAB(drop location.2 [target=`self.unwind`])
+    ///
+    /// NOTE: this does not clear the master drop flag, so you need
+    /// to point succ/unwind on a `drop_ladder_bottom`.
     fn drop_ladder<'a>(&mut self,
-                       fields: Vec<(Lvalue<'tcx>, Option<D::Path>)>)
+                       fields: Vec<(Lvalue<'tcx>, Option<D::Path>)>,
+                       succ: BasicBlock,
+                       unwind: Unwind)
                        -> (BasicBlock, Unwind)
     {
         debug!("drop_ladder({:?}, {:?})", self, fields);
@@ -297,20 +309,17 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         debug!("drop_ladder - fields needing drop: {:?}", fields);
 
         let unwind_ladder = vec![Unwind::InCleanup; fields.len() + 1];
-        let unwind_ladder: Vec<_> = if let Unwind::To(target) = self.unwind {
+        let unwind_ladder: Vec<_> = if let Unwind::To(target) = unwind {
             let halfladder = self.drop_halfladder(&unwind_ladder, target, &fields);
-            Some(self.unwind).into_iter().chain(halfladder.into_iter().map(Unwind::To))
-                .collect()
+            halfladder.into_iter().map(Unwind::To).collect()
         } else {
             unwind_ladder
         };
 
-        let succ = self.succ; // FIXME(#6393)
         let normal_ladder =
             self.drop_halfladder(&unwind_ladder, succ, &fields);
 
-        (normal_ladder.last().cloned().unwrap_or(succ),
-         unwind_ladder.last().cloned().unwrap_or(self.unwind))
+        (*normal_ladder.last().unwrap(), *unwind_ladder.last().unwrap())
     }
 
     fn open_drop_for_tuple<'a>(&mut self, tys: &[Ty<'tcx>])
@@ -323,7 +332,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
              self.elaborator.field_subpath(self.path, Field::new(i)))
         }).collect();
 
-        self.drop_ladder(fields).0
+        let (succ, unwind) = self.drop_ladder_bottom();
+        self.drop_ladder(fields, succ, unwind).0
     }
 
     fn open_drop_for_box<'a>(&mut self, ty: Ty<'tcx>) -> BasicBlock
@@ -370,106 +380,100 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         }
     }
 
-    fn open_drop_for_adt_contents<'a>(&mut self, adt: &'tcx ty::AdtDef,
-                                      substs: &'tcx Substs<'tcx>)
-                                      -> (BasicBlock, Unwind) {
-        match adt.variants.len() {
-            1 => {
-                let fields = self.move_paths_for_fields(
-                    self.lvalue,
-                    self.path,
-                    &adt.variants[0],
-                    substs
-                );
-                self.drop_ladder(fields)
-            }
-            _ => {
-                let succ = self.succ;
-                let unwind = self.unwind; // FIXME(#6393)
+    fn open_drop_for_adt_contents(&mut self, adt: &'tcx ty::AdtDef,
+                                  substs: &'tcx Substs<'tcx>)
+                                  -> (BasicBlock, Unwind) {
+        let (succ, unwind) = self.drop_ladder_bottom();
+        if adt.variants.len() == 1 {
+            let fields = self.move_paths_for_fields(
+                self.lvalue,
+                self.path,
+                &adt.variants[0],
+                substs
+            );
+            self.drop_ladder(fields, succ, unwind)
+        } else {
+            self.open_drop_for_multivariant(adt, substs, succ, unwind)
+        }
+    }
 
-                let mut values = Vec::with_capacity(adt.variants.len());
-                let mut normal_blocks = Vec::with_capacity(adt.variants.len());
-                let mut unwind_blocks = if unwind.is_cleanup() {
-                    None
-                } else {
-                    Some(Vec::with_capacity(adt.variants.len()))
-                };
-                let mut otherwise = None;
-                let mut unwind_otherwise = None;
-                for (variant_index, discr) in adt.discriminants(self.tcx()).enumerate() {
-                    let subpath = self.elaborator.downcast_subpath(
-                        self.path, variant_index);
-                    if let Some(variant_path) = subpath {
-                        let base_lv = self.lvalue.clone().elem(
-                            ProjectionElem::Downcast(adt, variant_index)
+    fn open_drop_for_multivariant(&mut self, adt: &'tcx ty::AdtDef,
+                                  substs: &'tcx Substs<'tcx>,
+                                  succ: BasicBlock,
+                                  unwind: Unwind)
+                                  -> (BasicBlock, Unwind) {
+        let mut values = Vec::with_capacity(adt.variants.len());
+        let mut normal_blocks = Vec::with_capacity(adt.variants.len());
+        let mut unwind_blocks = if unwind.is_cleanup() {
+            None
+        } else {
+            Some(Vec::with_capacity(adt.variants.len()))
+        };
+
+        let mut have_otherwise = false;
+
+        for (variant_index, discr) in adt.discriminants(self.tcx()).enumerate() {
+            let subpath = self.elaborator.downcast_subpath(
+                self.path, variant_index);
+            if let Some(variant_path) = subpath {
+                let base_lv = self.lvalue.clone().elem(
+                    ProjectionElem::Downcast(adt, variant_index)
                         );
-                        let fields = self.move_paths_for_fields(
-                            &base_lv,
-                            variant_path,
-                            &adt.variants[variant_index],
-                            substs);
-                        values.push(discr);
-                        if let Unwind::To(unwind) = unwind {
-                            // We can't use the half-ladder from the original
-                            // drop ladder, because this breaks the
-                            // "funclet can't have 2 successor funclets"
-                            // requirement from MSVC:
-                            //
-                            //           switch       unwind-switch
-                            //          /      \         /        \
-                            //         v1.0    v2.0  v2.0-unwind  v1.0-unwind
-                            //         |        |      /             |
-                            //    v1.1-unwind  v2.1-unwind           |
-                            //      ^                                |
-                            //       \-------------------------------/
-                            //
-                            // Create a duplicate half-ladder to avoid that. We
-                            // could technically only do this on MSVC, but I
-                            // I want to minimize the divergence between MSVC
-                            // and non-MSVC.
+                let fields = self.move_paths_for_fields(
+                    &base_lv,
+                    variant_path,
+                    &adt.variants[variant_index],
+                    substs);
+                values.push(discr);
+                if let Unwind::To(unwind) = unwind {
+                    // We can't use the half-ladder from the original
+                    // drop ladder, because this breaks the
+                    // "funclet can't have 2 successor funclets"
+                    // requirement from MSVC:
+                    //
+                    //           switch       unwind-switch
+                    //          /      \         /        \
+                    //         v1.0    v2.0  v2.0-unwind  v1.0-unwind
+                    //         |        |      /             |
+                    //    v1.1-unwind  v2.1-unwind           |
+                    //      ^                                |
+                    //       \-------------------------------/
+                    //
+                    // Create a duplicate half-ladder to avoid that. We
+                    // could technically only do this on MSVC, but I
+                    // I want to minimize the divergence between MSVC
+                    // and non-MSVC.
 
-                            let unwind_blocks = unwind_blocks.as_mut().unwrap();
-                            let unwind_ladder = vec![Unwind::InCleanup; fields.len() + 1];
-                            let halfladder =
-                                self.drop_halfladder(&unwind_ladder, unwind, &fields);
-                            unwind_blocks.push(halfladder.last().cloned().unwrap_or(unwind));
-                        }
-                        let (normal, _) = self.drop_ladder(fields);
-                        normal_blocks.push(normal);
-                    } else {
-                        // variant not found - drop the entire enum
-                        if let None = otherwise {
-                            otherwise = Some(self.complete_drop(
-                                Some(DropFlagMode::Shallow),
-                                succ,
-                                unwind));
-                            if let Unwind::To(unwind) = unwind {
-                                unwind_otherwise = Some(self.complete_drop(
-                                    Some(DropFlagMode::Shallow),
-                                    unwind,
-                                    Unwind::InCleanup
-                                ));
-                            }
-                        }
-                    }
+                    let unwind_blocks = unwind_blocks.as_mut().unwrap();
+                    let unwind_ladder = vec![Unwind::InCleanup; fields.len() + 1];
+                    let halfladder =
+                        self.drop_halfladder(&unwind_ladder, unwind, &fields);
+                    unwind_blocks.push(halfladder.last().cloned().unwrap());
                 }
-                if let Some(block) = otherwise {
-                    normal_blocks.push(block);
-                    if let Some(ref mut unwind_blocks) = unwind_blocks {
-                        unwind_blocks.push(unwind_otherwise.unwrap());
-                    }
-                } else {
-                    values.pop();
-                }
-
-                (self.adt_switch_block(adt, normal_blocks, &values, succ, unwind),
-                 unwind.map(|unwind| {
-                     self.adt_switch_block(
-                         adt, unwind_blocks.unwrap(), &values, unwind, Unwind::InCleanup
-                     )
-                 }))
+                let (normal, _) = self.drop_ladder(fields, succ, unwind);
+                normal_blocks.push(normal);
+            } else {
+                have_otherwise = true;
             }
         }
+
+        if have_otherwise {
+            normal_blocks.push(self.drop_block(succ, unwind));
+            if let Unwind::To(unwind) = unwind {
+                unwind_blocks.as_mut().unwrap().push(
+                    self.drop_block(unwind, Unwind::InCleanup)
+                        );
+            }
+        } else {
+            values.pop();
+        }
+
+        (self.adt_switch_block(adt, normal_blocks, &values, succ, unwind),
+         unwind.map(|unwind| {
+             self.adt_switch_block(
+                 adt, unwind_blocks.unwrap(), &values, unwind, Unwind::InCleanup
+             )
+         }))
     }
 
     fn adt_switch_block(&mut self,
@@ -652,8 +656,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         });
 
         // FIXME(#34708): handle partially-dropped array/slice elements.
-        self.drop_flag_test_and_reset_block(
-            Some(DropFlagMode::Deep), drop_block, succ, unwind)
+        let reset_block = self.drop_flag_reset_block(DropFlagMode::Deep, drop_block, unwind);
+        self.drop_flag_test_block(reset_block, succ, unwind)
     }
 
     /// The slow-path - create an "open", elaborated drop for a type
@@ -707,23 +711,26 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         debug!("complete_drop({:?},{:?})", self, drop_mode);
 
         let drop_block = self.drop_block(succ, unwind);
-        self.drop_flag_test_and_reset_block(drop_mode, drop_block, succ, unwind)
-    }
-
-    fn drop_flag_test_and_reset_block(&mut self,
-                                      drop_mode: Option<DropFlagMode>,
-                                      drop_block: BasicBlock,
-                                      succ: BasicBlock,
-                                      unwind: Unwind) -> BasicBlock
-    {
-        debug!("drop_flag_test_and_reset_block({:?},{:?})", self, drop_mode);
-
-        if let Some(mode) = drop_mode {
-            let block_start = Location { block: drop_block, statement_index: 0 };
-            self.elaborator.clear_drop_flag(block_start, self.path, mode);
-        }
+        let drop_block = if let Some(mode) = drop_mode {
+            self.drop_flag_reset_block(mode, drop_block, unwind)
+        } else {
+            drop_block
+        };
 
         self.drop_flag_test_block(drop_block, succ, unwind)
+    }
+
+    fn drop_flag_reset_block(&mut self,
+                             mode: DropFlagMode,
+                             succ: BasicBlock,
+                             unwind: Unwind) -> BasicBlock
+    {
+        debug!("drop_flag_reset_block({:?},{:?})", self, mode);
+
+        let block = self.new_block(unwind, TerminatorKind::Goto { target: succ });
+        let block_start = Location { block: block, statement_index: 0 };
+        self.elaborator.clear_drop_flag(block_start, self.path, mode);
+        block
     }
 
     fn elaborated_drop_block<'a>(&mut self) -> BasicBlock {
