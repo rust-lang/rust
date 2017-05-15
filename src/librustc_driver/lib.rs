@@ -23,7 +23,6 @@
 #![deny(warnings)]
 
 #![feature(box_syntax)]
-#![feature(loop_break_value)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -32,6 +31,7 @@
 #![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
 #![cfg_attr(stage0, feature(rustc_private))]
 #![cfg_attr(stage0, feature(staged_api))]
+#![cfg_attr(stage0, feature(loop_break_value))]
 
 extern crate arena;
 extern crate getopts;
