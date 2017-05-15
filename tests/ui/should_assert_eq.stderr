@@ -27,21 +27,37 @@ error: use `assert_ne` for better reporting
    |
    = note: this error originates in a macro outside of the current crate
 
-error: use `assert_eq` for better reporting
-  --> $DIR/should_assert_eq.rs:24:5
+error: use `debug_assert_eq` for better reporting
+  --> $DIR/should_assert_eq.rs:22:5
    |
-24 |     assert!(x == y);
+22 |     debug_assert!(4 == 5);
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate
+
+error: use `debug_assert_ne` for better reporting
+  --> $DIR/should_assert_eq.rs:23:5
+   |
+23 |     debug_assert!(4 != 6);
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate
+
+error: use `assert_eq` for better reporting
+  --> $DIR/should_assert_eq.rs:27:5
+   |
+27 |     assert!(x == y);
    |     ^^^^^^^^^^^^^^^^
    |
    = note: this error originates in a macro outside of the current crate
 
 error: use `assert_ne` for better reporting
-  --> $DIR/should_assert_eq.rs:27:5
+  --> $DIR/should_assert_eq.rs:30:5
    |
-27 |     assert!(x != y);
+30 |     assert!(x != y);
    |     ^^^^^^^^^^^^^^^^
    |
    = note: this error originates in a macro outside of the current crate
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 
