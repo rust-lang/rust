@@ -556,8 +556,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     /// create a loop that drops an array:
     ///
     /// loop-block:
-    ///    can_go = index < len
-    ///    if can_go then drop-block else succ
+    ///    can_go = index == len
+    ///    if can_go then succ else drop-block
     /// drop-block:
     ///    ptr = &mut LV[index]
     ///    index = index + 1
@@ -604,13 +604,13 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let loop_block = self.elaborator.patch().new_block(BasicBlockData {
             statements: vec![
                 Statement { source_info: self.source_info, kind: StatementKind::Assign(
-                    can_go.clone(), Rvalue::BinaryOp(BinOp::Lt, use_(index), use_(length))
+                    can_go.clone(), Rvalue::BinaryOp(BinOp::Eq, use_(index), use_(length))
                 )},
             ],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
-                kind: TerminatorKind::if_(tcx, use_(can_go), drop_block, succ)
+                kind: TerminatorKind::if_(tcx, use_(can_go), succ, drop_block)
             })
         });
 
