@@ -75,6 +75,8 @@ use html::item_type::ItemType;
 use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine, RenderType};
 use html::{highlight, layout};
 
+use minifier::html::minify;
+
 /// A pair of name and its optional document.
 pub type NameDoc = (String, Option<String>);
 
@@ -952,13 +954,14 @@ impl<'a> SourceCollector<'a> {
             href.push_str(component);
             href.push('/');
         });
-        let mut fname = p.file_name().expect("source has no filename")
+        let mut fname = p.file_name()
+                         .expect("source has no filename")
                          .to_os_string();
         fname.push(".html");
         cur.push(&fname);
         href.push_str(&fname.to_string_lossy());
 
-        let mut w = BufWriter::new(File::create(&cur)?);
+        let mut w = BufWriter::new(Vec::new());
         let title = format!("{} -- source", cur.file_name().unwrap()
                                                .to_string_lossy());
         let desc = format!("Source to the Rust file `{}`.", filename);
@@ -973,6 +976,12 @@ impl<'a> SourceCollector<'a> {
                        &page, &(""), &Source(contents),
                        self.scx.css_file_extension.is_some())?;
         w.flush()?;
+        let mut file = File::create(&cur)?;
+        let content = unsafe {
+            minify(&String::from_utf8_unchecked(w.into_inner().expect("Couldn't get html content")))
+        };
+        file.write(content.as_bytes())?;
+        file.sync_all()?;
         self.scx.local_sources.insert(p, href);
         Ok(())
     }
@@ -1363,7 +1372,8 @@ impl Context {
                     let joint_dst = this.dst.join("index.html");
                     try_err!(fs::create_dir_all(&this.dst), &this.dst);
                     let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
-                    try_err!(dst.write_all(&buf), &joint_dst);
+                    let content = unsafe { minify(&String::from_utf8_unchecked(buf)) };
+                    try_err!(dst.write_all(content.as_bytes()), &joint_dst);
                 }
 
                 let m = match item.inner {

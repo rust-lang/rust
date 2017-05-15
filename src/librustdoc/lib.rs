@@ -34,6 +34,7 @@ extern crate arena;
 extern crate getopts;
 extern crate env_logger;
 extern crate libc;
+extern crate minifier;
 extern crate rustc;
 extern crate rustc_data_structures;
 extern crate rustc_trans;
