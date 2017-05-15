@@ -16,7 +16,6 @@ use infer::InferCtxt;
 use ich::{StableHashingContext, NodeIdHashingMode};
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
-use ty::ParamEnv;
 use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
 use ty::subst::{Subst, Kind};
@@ -148,7 +147,7 @@ pub enum Representability {
     SelfRecursive(Vec<Span>),
 }
 
-impl<'tcx> ParamEnv<'tcx> {
+impl<'tcx> ty::ParamEnv<'tcx> {
     /// Construct a trait environment suitable for contexts where
     /// there are no where clauses in scope.
     pub fn empty() -> Self {
@@ -720,7 +719,7 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
 impl<'a, 'tcx> ty::TyS<'tcx> {
     pub fn moves_by_default(&'tcx self,
                             tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            param_env: ParamEnv<'tcx>,
+                            param_env: ty::ParamEnv<'tcx>,
                             span: Span)
                             -> bool {
         !tcx.at(span).is_copy_raw(param_env.and(self))
@@ -728,7 +727,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
     pub fn is_sized(&'tcx self,
                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    param_env: ParamEnv<'tcx>,
+                    param_env: ty::ParamEnv<'tcx>,
                     span: Span)-> bool
     {
         tcx.at(span).is_sized_raw(param_env.and(self))
@@ -736,7 +735,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
     pub fn is_freeze(&'tcx self,
                      tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                     param_env: ParamEnv<'tcx>,
+                     param_env: ty::ParamEnv<'tcx>,
                      span: Span)-> bool
     {
         tcx.at(span).is_freeze_raw(param_env.and(self))
