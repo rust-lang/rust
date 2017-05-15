@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{is_direct_expn_of, implements_trait, span_lint};
+use utils::{is_direct_expn_of, is_expn_of, implements_trait, span_lint};
 
 /// **What it does:** Checks for `assert!(x == y)` or `assert!(x != y)` which can be better written
 /// using `assert_eq` or `assert_ne` if `x` and `y` implement `Debug` trait.
@@ -39,6 +39,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ShouldAssertEq {
             is_direct_expn_of(e.span, "assert").is_some(),
             let Some(debug_trait) = cx.tcx.lang_items.debug_trait(),
         ], {
+            let debug = is_expn_of(e.span, "debug_assert").map_or("", |_| "debug_");
             let sugg = match binop.node {
                 BinOp_::BiEq => "assert_eq",
                 BinOp_::BiNe => "assert_ne",
@@ -52,7 +53,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ShouldAssertEq {
 
             if implements_trait(cx, ty1, debug_trait, &[], Some(parent)) &&
                 implements_trait(cx, ty2, debug_trait, &[], Some(parent)) {
-                span_lint(cx, SHOULD_ASSERT_EQ, e.span, &format!("use `{}` for better reporting", sugg));
+                span_lint(cx, SHOULD_ASSERT_EQ, e.span, &format!("use `{}{}` for better reporting", debug, sugg));
             }
         }}
     }

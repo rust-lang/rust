@@ -18,6 +18,9 @@ fn main() {
     assert!(NonDebug(1) != NonDebug(2)); // ok
 
     test_generic(1, 2, 3, 4);
+
+    debug_assert!(4 == 5);
+    debug_assert!(4 != 6);
 }
 
 fn test_generic<T: std::fmt::Debug + Eq, U: Eq>(x: T, y: T, z: U, w: U) {
