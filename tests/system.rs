@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 
 use rustfmt::*;
 use rustfmt::filemap::{write_system_newlines, FileMap};
-use rustfmt::config::{Config, ReportTactic};
+use rustfmt::config::Config;
 use rustfmt::rustfmt_diff::*;
 
 const DIFF_CONTEXT_SIZE: usize = 3;
@@ -224,12 +224,16 @@ fn read_config(filename: &str) -> Config {
 
     for (key, val) in &sig_comments {
         if key != "target" && key != "config" {
-            config.override_value(key, val);
+            config
+                .override_value(key, val)
+                .expect(&format!("Failed to override config {} (\"{}\")", key, val));
         }
     }
 
     // Don't generate warnings for to-do items.
-    config.report_todo = ReportTactic::Never;
+    config
+        .override_value("report_todo", "Never")
+        .expect("Could not set report-todo to Never");
 
     config
 }

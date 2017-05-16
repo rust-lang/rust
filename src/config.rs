@@ -10,6 +10,9 @@
 
 extern crate toml;
 
+use std::error;
+use std::result;
+
 use file_lines::FileLines;
 use lists::{SeparatorTactic, ListTactic};
 
@@ -212,7 +215,7 @@ macro_rules! create_config {
     ($($i:ident: $ty:ty, $def:expr, $( $dstring:expr ),+ );+ $(;)*) => (
         #[derive(Deserialize, Clone)]
         pub struct Config {
-            $(pub $i: $ty),+
+            $($i: $ty),+
         }
 
         // Just like the Config struct but with each property wrapped
@@ -226,6 +229,12 @@ macro_rules! create_config {
         }
 
         impl Config {
+
+            $(
+            pub fn $i(&self) -> $ty {
+                self.$i.clone()
+            }
+            )+
 
             fn fill_from_parsed_config(mut self, parsed: ParsedConfig) -> Config {
             $(
@@ -270,19 +279,16 @@ macro_rules! create_config {
                 }
             }
 
-            pub fn override_value(&mut self, key: &str, val: &str) {
+            pub fn override_value(&mut self, key: &str, val: &str)
+                -> result::Result<(), Box<error::Error + Send + Sync>>
+            {
                 match key {
                     $(
-                        stringify!($i) => {
-                            self.$i = val.parse::<$ty>()
-                                .expect(&format!("Failed to parse override for {} (\"{}\") as a {}",
-                                                 stringify!($i),
-                                                 val,
-                                                 stringify!($ty)));
-                        }
+                        stringify!($i) => self.$i = val.parse::<$ty>()?,
                     )+
                     _ => panic!("Unknown config key in override: {}", key)
                 }
+                Ok(())
             }
 
             pub fn print_docs() {

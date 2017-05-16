@@ -38,23 +38,23 @@ pub fn rewrite_comment(orig: &str,
                        config: &Config)
                        -> Option<String> {
     // If there are lines without a starting sigil, we won't format them correctly
-    // so in that case we won't even re-align (if !config.normalize_comments) and
+    // so in that case we won't even re-align (if !config.normalize_comments()) and
     // we should stop now.
     let num_bare_lines = orig.lines()
         .map(|line| line.trim())
         .filter(|l| !(l.starts_with('*') || l.starts_with("//") || l.starts_with("/*")))
         .count();
-    if num_bare_lines > 0 && !config.normalize_comments {
+    if num_bare_lines > 0 && !config.normalize_comments() {
         return Some(orig.to_owned());
     }
 
-    if !config.normalize_comments && !config.wrap_comments {
+    if !config.normalize_comments() && !config.wrap_comments() {
         return light_rewrite_comment(orig, shape.indent, config);
     }
 
     let (opener, closer, line_start) = if block_style {
         ("/* ", " */", " * ")
-    } else if !config.normalize_comments {
+    } else if !config.normalize_comments() {
         if orig.starts_with("/**") && !orig.starts_with("/**/") {
             ("/** ", " **/", " ** ")
         } else if orig.starts_with("/*!") {
@@ -128,7 +128,7 @@ pub fn rewrite_comment(orig: &str,
             result.push_str(line_start);
         }
 
-        if config.wrap_comments && line.len() > max_chars {
+        if config.wrap_comments() && line.len() > max_chars {
             let rewrite = rewrite_string(line, &fmt).unwrap_or(line.to_owned());
             result.push_str(&rewrite);
         } else {
@@ -579,7 +579,7 @@ pub fn recover_comment_removed(new: String,
     if changed_comment_content(&snippet, &new) {
         // We missed some comments
         // Keep previous formatting if it satisfies the constrains
-        wrap_str(snippet, context.config.max_width, shape)
+        wrap_str(snippet, context.config.max_width(), shape)
     } else {
         Some(new)
     }
@@ -731,8 +731,10 @@ mod test {
     #[cfg_attr(rustfmt, rustfmt_skip)]
     fn format_comments() {
         let mut config: ::config::Config = Default::default();
-        config.wrap_comments = true;
-        config.normalize_comments = true;
+        config.override_value("wrap_comments", "true")
+            .expect("Could not set wrap_comments to true");
+        config.override_value("normalize_comments", "true")
+            .expect("Could not set normalize_comments to true");
 
         let comment = rewrite_comment(" //test",
                                       true,

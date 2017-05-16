@@ -116,7 +116,7 @@ impl<'a> FmtVisitor<'a> {
                 .collect()
         }
 
-        let replaced = match self.config.write_mode {
+        let replaced = match self.config.write_mode() {
             WriteMode::Coverage => replace_chars(old_snippet),
             _ => old_snippet.to_owned(),
         };
@@ -138,7 +138,7 @@ impl<'a> FmtVisitor<'a> {
 
                 if rewrite_next_comment &&
                    !self.config
-                       .file_lines
+                       .file_lines()
                        .intersects_range(file_name, cur_line, cur_line + subslice_num_lines) {
                     rewrite_next_comment = false;
                 }
@@ -154,8 +154,8 @@ impl<'a> FmtVisitor<'a> {
                         self.buffer.push_str(" ");
                     }
 
-                    let comment_width = ::std::cmp::min(self.config.comment_width,
-                                                        self.config.max_width -
+                    let comment_width = ::std::cmp::min(self.config.comment_width(),
+                                                        self.config.max_width() -
                                                         self.block_indent.width());
 
                     self.buffer
@@ -197,7 +197,7 @@ impl<'a> FmtVisitor<'a> {
                 i += offset;
 
                 if c == '\n' {
-                    if !self.config.file_lines.contains_line(file_name, cur_line) {
+                    if !self.config.file_lines().contains_line(file_name, cur_line) {
                         last_wspace = None;
                     }
 

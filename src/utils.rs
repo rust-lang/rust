@@ -312,7 +312,7 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, shape: Shape) -> Option<S
 
 impl Rewrite for String {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        wrap_str(self, context.config.max_width, shape).map(ToOwned::to_owned)
+        wrap_str(self, context.config.max_width(), shape).map(ToOwned::to_owned)
     }
 }
 

@@ -53,7 +53,7 @@ pub fn rewrite_path(context: &RewriteContext,
 
     if let Some(qself) = qself {
         result.push('<');
-        if context.config.spaces_within_angle_brackets {
+        if context.config.spaces_within_angle_brackets() {
             result.push_str(" ")
         }
 
@@ -79,7 +79,7 @@ pub fn rewrite_path(context: &RewriteContext,
                                                     shape));
         }
 
-        if context.config.spaces_within_angle_brackets {
+        if context.config.spaces_within_angle_brackets() {
             result.push_str(" ")
         }
 
@@ -158,7 +158,7 @@ impl<'a> Rewrite for SegmentParam<'a> {
             SegmentParam::LifeTime(lt) => lt.rewrite(context, shape),
             SegmentParam::Type(ty) => ty.rewrite(context, shape),
             SegmentParam::Binding(binding) => {
-                let mut result = match context.config.type_punctuation_density {
+                let mut result = match context.config.type_punctuation_density() {
                     TypeDensity::Wide => format!("{} = ", binding.ident),
                     TypeDensity::Compressed => format!("{}=", binding.ident),
                 };
@@ -237,7 +237,7 @@ fn rewrite_segment(path_context: PathContext,
                 // Update position of last bracket.
                 *span_lo = next_span_lo;
 
-                if context.config.spaces_within_angle_brackets && list_str.len() > 0 {
+                if context.config.spaces_within_angle_brackets() && list_str.len() > 0 {
                     format!("{}< {} >", separator, list_str)
                 } else {
                     format!("{}<{}>", separator, list_str)
@@ -338,7 +338,7 @@ fn format_function_type<'a, I>(inputs: I,
         String::new()
     };
 
-    Some(if context.config.spaces_within_parens {
+    Some(if context.config.spaces_within_parens() {
              format!("( {} ){}{}", list_str, infix, output)
          } else {
              format!("({}){}{}", list_str, infix, output)
@@ -346,8 +346,8 @@ fn format_function_type<'a, I>(inputs: I,
 }
 
 fn type_bound_colon(context: &RewriteContext) -> &'static str {
-    colon_spaces(context.config.space_before_bound,
-                 context.config.space_after_bound_colon)
+    colon_spaces(context.config.space_before_bound(),
+                 context.config.space_after_bound_colon())
 }
 
 impl Rewrite for ast::WherePredicate {
@@ -370,7 +370,7 @@ impl Rewrite for ast::WherePredicate {
                                      .intersperse(Some(", ".to_string()))
                                      .collect());
 
-                    let joiner = match context.config.type_punctuation_density {
+                    let joiner = match context.config.type_punctuation_density() {
                         TypeDensity::Compressed => "+",
                         TypeDensity::Wide => " + ",
                     };
@@ -386,7 +386,7 @@ impl Rewrite for ast::WherePredicate {
                                                     .intersperse(Some(joiner.to_string()))
                                                     .collect());
 
-                    if context.config.spaces_within_angle_brackets && lifetime_str.len() > 0 {
+                    if context.config.spaces_within_angle_brackets() && lifetime_str.len() > 0 {
                         format!("for< {} > {}{}{}",
                                 lifetime_str,
                                 type_str,
@@ -396,7 +396,7 @@ impl Rewrite for ast::WherePredicate {
                         format!("for<{}> {}{}{}", lifetime_str, type_str, colon, bounds_str)
                     }
                 } else {
-                    let joiner = match context.config.type_punctuation_density {
+                    let joiner = match context.config.type_punctuation_density() {
                         TypeDensity::Compressed => "+",
                         TypeDensity::Wide => " + ",
                     };
@@ -437,7 +437,7 @@ impl Rewrite for ast::WherePredicate {
             }
         };
 
-        wrap_str(result, context.config.max_width, shape)
+        wrap_str(result, context.config.max_width(), shape)
     }
 }
 
@@ -464,12 +464,12 @@ fn rewrite_bounded_lifetime<'b, I>(lt: &ast::Lifetime,
                                             .map(|b| b.rewrite(context, shape))
                                             .collect());
         let colon = type_bound_colon(context);
-        let joiner = match context.config.type_punctuation_density {
+        let joiner = match context.config.type_punctuation_density() {
             TypeDensity::Compressed => "+",
             TypeDensity::Wide => " + ",
         };
         let result = format!("{}{}{}", result, colon, appendix.join(joiner));
-        wrap_str(result, context.config.max_width, shape)
+        wrap_str(result, context.config.max_width(), shape)
     }
 }
 
@@ -493,19 +493,19 @@ impl Rewrite for ast::TyParamBound {
 impl Rewrite for ast::Lifetime {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         wrap_str(pprust::lifetime_to_string(self),
-                 context.config.max_width,
+                 context.config.max_width(),
                  shape)
     }
 }
 
 impl Rewrite for ast::TyParamBounds {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let joiner = match context.config.type_punctuation_density {
+        let joiner = match context.config.type_punctuation_density() {
             TypeDensity::Compressed => "+",
             TypeDensity::Wide => " + ",
         };
         let strs: Vec<_> = try_opt!(self.iter().map(|b| b.rewrite(context, shape)).collect());
-        wrap_str(strs.join(joiner), context.config.max_width, shape)
+        wrap_str(strs.join(joiner), context.config.max_width(), shape)
     }
 }
 
@@ -514,14 +514,14 @@ impl Rewrite for ast::TyParam {
         let mut result = String::with_capacity(128);
         result.push_str(&self.ident.to_string());
         if !self.bounds.is_empty() {
-            if context.config.space_before_bound {
+            if context.config.space_before_bound() {
                 result.push_str(" ");
             }
             result.push_str(":");
-            if context.config.space_after_bound_colon {
+            if context.config.space_after_bound_colon() {
                 result.push_str(" ");
             }
-            let joiner = match context.config.type_punctuation_density {
+            let joiner = match context.config.type_punctuation_density() {
                 TypeDensity::Compressed => "+",
                 TypeDensity::Wide => " + ",
             };
@@ -536,7 +536,7 @@ impl Rewrite for ast::TyParam {
         }
         if let Some(ref def) = self.default {
 
-            let eq_str = match context.config.type_punctuation_density {
+            let eq_str = match context.config.type_punctuation_density() {
                 TypeDensity::Compressed => "=",
                 TypeDensity::Wide => " = ",
             };
@@ -547,7 +547,7 @@ impl Rewrite for ast::TyParam {
             result.push_str(&rewrite);
         }
 
-        wrap_str(result, context.config.max_width, shape)
+        wrap_str(result, context.config.max_width(), shape)
     }
 }
 
@@ -568,7 +568,7 @@ impl Rewrite for ast::PolyTraitRef {
                                                  Shape::legacy(max_path_width,
                                                                shape.indent + extra_offset)));
 
-            Some(if context.config.spaces_within_angle_brackets && lifetime_str.len() > 0 {
+            Some(if context.config.spaces_within_angle_brackets() && lifetime_str.len() > 0 {
                      format!("for< {} > {}", lifetime_str, path_str)
                  } else {
                      format!("for<{}> {}", lifetime_str, path_str)
@@ -637,20 +637,20 @@ impl Rewrite for ast::Ty {
             ast::TyKind::Paren(ref ty) => {
                 let budget = try_opt!(shape.width.checked_sub(2));
                 ty.rewrite(context, Shape::legacy(budget, shape.indent + 1))
-                    .map(|ty_str| if context.config.spaces_within_parens {
+                    .map(|ty_str| if context.config.spaces_within_parens() {
                              format!("( {} )", ty_str)
                          } else {
                              format!("({})", ty_str)
                          })
             }
             ast::TyKind::Slice(ref ty) => {
-                let budget = if context.config.spaces_within_square_brackets {
+                let budget = if context.config.spaces_within_square_brackets() {
                     try_opt!(shape.width.checked_sub(4))
                 } else {
                     try_opt!(shape.width.checked_sub(2))
                 };
                 ty.rewrite(context, Shape::legacy(budget, shape.indent + 1))
-                    .map(|ty_str| if context.config.spaces_within_square_brackets {
+                    .map(|ty_str| if context.config.spaces_within_square_brackets() {
                              format!("[ {} ]", ty_str)
                          } else {
                              format!("[{}]", ty_str)
@@ -663,7 +663,7 @@ impl Rewrite for ast::Ty {
                 rewrite_path(context, PathContext::Type, q_self.as_ref(), path, shape)
             }
             ast::TyKind::Array(ref ty, ref repeats) => {
-                let use_spaces = context.config.spaces_within_square_brackets;
+                let use_spaces = context.config.spaces_within_square_brackets();
                 let lbr = if use_spaces { "[ " } else { "[" };
                 let rbr = if use_spaces { " ]" } else { "]" };
                 rewrite_pair(&**ty, &**repeats, lbr, "; ", rbr, context, shape)
@@ -715,7 +715,7 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
     result.push_str(::utils::format_unsafety(bare_fn.unsafety));
 
     if bare_fn.abi != abi::Abi::Rust {
-        result.push_str(&::utils::format_abi(bare_fn.abi, context.config.force_explicit_abi));
+        result.push_str(&::utils::format_abi(bare_fn.abi, context.config.force_explicit_abi()));
     }
 
     result.push_str("fn");

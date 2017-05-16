@@ -114,23 +114,23 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     };
     let (nested_shape, extend) = if !parent_rewrite_contains_newline && is_continuable(&parent) {
         let nested_shape = if first_subexpr_is_try {
-            parent_shape.block_indent(context.config.tab_spaces)
+            parent_shape.block_indent(context.config.tab_spaces())
         } else {
             chain_indent(context, shape.add_offset(parent_rewrite.len()))
         };
         (nested_shape,
-         context.config.chain_indent == IndentStyle::Visual ||
-         parent_rewrite.len() <= context.config.tab_spaces)
+         context.config.chain_indent() == IndentStyle::Visual ||
+         parent_rewrite.len() <= context.config.tab_spaces())
     } else if is_block_expr(&parent, &parent_rewrite) {
         // The parent is a block, so align the rest of the chain with the closing
         // brace.
         (parent_shape, false)
     } else if parent_rewrite_contains_newline {
         (chain_indent(context,
-                      parent_shape.block_indent(context.config.tab_spaces)),
+                      parent_shape.block_indent(context.config.tab_spaces())),
          false)
     } else {
-        (shape.block_indent(context.config.tab_spaces), false)
+        (shape.block_indent(context.config.tab_spaces()), false)
     };
 
     let max_width = try_opt!((shape.width + shape.indent.width() + shape.offset)
@@ -143,14 +143,14 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     };
     let first_child_shape = if extend {
         let mut shape = try_opt!(parent_shape.offset_left(last_line_width(&parent_rewrite)));
-        match context.config.chain_indent {
+        match context.config.chain_indent() {
             IndentStyle::Visual => shape,
             IndentStyle::Block => {
                 shape.offset = shape
                     .offset
-                    .checked_sub(context.config.tab_spaces)
+                    .checked_sub(context.config.tab_spaces())
                     .unwrap_or(0);
-                shape.indent.block_indent += context.config.tab_spaces;
+                shape.indent.block_indent += context.config.tab_spaces();
                 shape
             }
         }
@@ -176,7 +176,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
     let one_line_len = rewrites.iter().fold(0, |a, r| a + r.len()) + parent_rewrite.len();
 
-    let veto_single_line = if one_line_len > context.config.chain_one_line_max {
+    let veto_single_line = if one_line_len > context.config.chain_one_line_max() {
         if rewrites.len() > 1 {
             true
         } else if rewrites.len() == 1 {
@@ -185,7 +185,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         } else {
             false
         }
-    } else if context.config.take_source_hints && subexpr_list.len() > 1 {
+    } else if context.config.take_source_hints() && subexpr_list.len() > 1 {
         // Look at the source code. Unless all chain elements start on the same
         // line, we won't consider putting them on a single line either.
         let last_span = context.snippet(mk_sp(subexpr_list[1].span.hi, total_span.hi));
@@ -214,7 +214,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
                                                          shape) {
                         // If the first line of the last method does not fit into a single line
                         // after the others, allow new lines.
-                        almost_total + first_line_width(&last[0]) < context.config.max_width
+                        almost_total + first_line_width(&last[0]) < context.config.max_width()
                     } else {
                         false
                     }
@@ -242,7 +242,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
                      parent_rewrite,
                      first_connector,
                      join_rewrites(&rewrites, &subexpr_list, &connector)),
-             context.config.max_width,
+             context.config.max_width(),
              shape)
 }
 
@@ -320,9 +320,9 @@ fn make_subexpr_list(expr: &ast::Expr, context: &RewriteContext) -> (ast::Expr, 
 }
 
 fn chain_indent(context: &RewriteContext, shape: Shape) -> Shape {
-    match context.config.chain_indent {
+    match context.config.chain_indent() {
         IndentStyle::Visual => shape.visual_indent(0),
-        IndentStyle::Block => shape.block_indent(context.config.tab_spaces),
+        IndentStyle::Block => shape.block_indent(context.config.tab_spaces()),
     }
 }
 
@@ -372,7 +372,7 @@ fn pop_expr_chain(expr: &ast::Expr, context: &RewriteContext) -> Option<ast::Exp
 
 fn convert_try(expr: &ast::Expr, context: &RewriteContext) -> ast::Expr {
     match expr.node {
-        ast::ExprKind::Mac(ref mac) if context.config.use_try_shorthand => {
+        ast::ExprKind::Mac(ref mac) if context.config.use_try_shorthand() => {
             if let Some(subexpr) = convert_try_mac(mac, context) {
                 subexpr
             } else {
@@ -428,7 +428,7 @@ fn rewrite_method_call(method_name: ast::Ident,
         let type_list: Vec<_> =
             try_opt!(types.iter().map(|ty| ty.rewrite(context, shape)).collect());
 
-        let type_str = if context.config.spaces_within_angle_brackets && type_list.len() > 0 {
+        let type_str = if context.config.spaces_within_angle_brackets() && type_list.len() > 0 {
             format!("::< {} >", type_list.join(", "))
         } else {
             format!("::<{}>", type_list.join(", "))

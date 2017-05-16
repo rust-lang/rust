@@ -50,7 +50,7 @@ impl<'a> FmtVisitor<'a> {
 
         // FIXME(#434): Move this check to somewhere more central, eg Rewrite.
         if !self.config
-               .file_lines
+               .file_lines()
                .intersects(&self.codemap.lookup_line_range(stmt.span)) {
             return;
         }
@@ -113,10 +113,10 @@ impl<'a> FmtVisitor<'a> {
     // level.
     fn close_block(&mut self) {
         let total_len = self.buffer.len;
-        let chars_too_many = if self.config.hard_tabs {
+        let chars_too_many = if self.config.hard_tabs() {
             1
         } else {
-            self.config.tab_spaces
+            self.config.tab_spaces()
         };
         self.buffer.truncate(total_len - chars_too_many);
         self.buffer.push_str("}");
@@ -509,7 +509,7 @@ impl<'a> FmtVisitor<'a> {
             // If the next item is a `use` declaration, then extract it and any subsequent `use`s
             // to be potentially reordered within `format_imports`. Otherwise, just format the
             // next item for output.
-            if self.config.reorder_imports && is_use_item(&*items_left[0]) {
+            if self.config.reorder_imports() && is_use_item(&*items_left[0]) {
                 let use_item_length = items_left
                     .iter()
                     .take_while(|ppi| is_use_item(&***ppi))
@@ -599,13 +599,13 @@ impl<'a> Rewrite for [ast::Attribute] {
                 let multi_line = a_str.starts_with("//") && comment.matches('\n').count() > 1;
                 let comment = comment.trim();
                 if !comment.is_empty() {
-                    let comment = try_opt!(rewrite_comment(comment,
-                                                           false,
-                                                           Shape::legacy(context.config
-                                                                             .comment_width -
-                                                                         shape.indent.width(),
-                                                                         shape.indent),
-                                                           context.config));
+                    let comment =
+                        try_opt!(rewrite_comment(comment,
+                                                 false,
+                                                 Shape::legacy(context.config.comment_width() -
+                                                               shape.indent.width(),
+                                                               shape.indent),
+                                                 context.config));
                     result.push_str(&indent);
                     result.push_str(&comment);
                     result.push('\n');
@@ -618,7 +618,7 @@ impl<'a> Rewrite for [ast::Attribute] {
             if a_str.starts_with("//") {
                 a_str = try_opt!(rewrite_comment(&a_str,
                                                  false,
-                                                 Shape::legacy(context.config.comment_width -
+                                                 Shape::legacy(context.config.comment_width() -
                                                                shape.indent.width(),
                                                                shape.indent),
                                                  context.config));

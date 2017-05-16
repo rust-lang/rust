@@ -33,11 +33,11 @@ pub fn append_newline(s: &mut StringBuffer) {
 pub fn write_all_files<T>(file_map: &FileMap, out: &mut T, config: &Config) -> Result<(), io::Error>
     where T: Write
 {
-    output_header(out, config.write_mode).ok();
+    output_header(out, config.write_mode()).ok();
     for &(ref filename, ref text) in file_map {
         write_file(text, filename, out, config)?;
     }
-    output_footer(out, config.write_mode).ok();
+    output_footer(out, config.write_mode()).ok();
 
     Ok(())
 }
@@ -52,14 +52,14 @@ pub fn write_system_newlines<T>(writer: T,
     // Buffer output, since we're writing a since char at a time.
     let mut writer = BufWriter::new(writer);
 
-    let style = if config.newline_style == NewlineStyle::Native {
+    let style = if config.newline_style() == NewlineStyle::Native {
         if cfg!(windows) {
             NewlineStyle::Windows
         } else {
             NewlineStyle::Unix
         }
     } else {
-        config.newline_style
+        config.newline_style()
     };
 
     match style {
@@ -107,7 +107,7 @@ pub fn write_file<T>(text: &StringBuffer,
         Ok(make_diff(&ori, &fmt, 3))
     }
 
-    match config.write_mode {
+    match config.write_mode() {
         WriteMode::Replace => {
             if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {
                 if fmt != ori {

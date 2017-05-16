@@ -145,12 +145,12 @@ impl Indent {
     }
 
     pub fn block_indent(mut self, config: &Config) -> Indent {
-        self.block_indent += config.tab_spaces;
+        self.block_indent += config.tab_spaces();
         self
     }
 
     pub fn block_unindent(mut self, config: &Config) -> Indent {
-        self.block_indent -= config.tab_spaces;
+        self.block_indent -= config.tab_spaces();
         self
     }
 
@@ -159,8 +159,8 @@ impl Indent {
     }
 
     pub fn to_string(&self, config: &Config) -> String {
-        let (num_tabs, num_spaces) = if config.hard_tabs {
-            (self.block_indent / config.tab_spaces, self.alignment)
+        let (num_tabs, num_spaces) = if config.hard_tabs() {
+            (self.block_indent / config.tab_spaces(), self.alignment)
         } else {
             (0, self.width())
         };
@@ -248,7 +248,7 @@ impl Shape {
 
     pub fn indented(indent: Indent, config: &Config) -> Shape {
         Shape {
-            width: config.max_width.checked_sub(indent.width()).unwrap_or(0),
+            width: config.max_width().checked_sub(indent.width()).unwrap_or(0),
             indent: indent,
             offset: indent.alignment,
         }
@@ -257,7 +257,7 @@ impl Shape {
     pub fn with_max_width(&self, config: &Config) -> Shape {
         Shape {
             width: config
-                .max_width
+                .max_width()
                 .checked_sub(self.indent.width())
                 .unwrap_or(0),
             ..*self
@@ -442,13 +442,13 @@ fn format_ast<F>(krate: &ast::Crate,
 
     // We always skip children for the "Plain" write mode, since there is
     // nothing to distinguish the nested module contents.
-    let skip_children = config.skip_children || config.write_mode == config::WriteMode::Plain;
+    let skip_children = config.skip_children() || config.write_mode() == config::WriteMode::Plain;
     for (path, module) in modules::list_files(krate, parse_session.codemap()) {
         if skip_children && path.as_path() != main_file {
             continue;
         }
         let path = path.to_str().unwrap();
-        if config.verbose {
+        if config.verbose() {
             println!("Formatting {}", path);
         }
         let mut visitor = FmtVisitor::from_codemap(parse_session, config);
@@ -473,14 +473,14 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
     let mut cur_line = 1;
     let mut newline_count = 0;
     let mut errors = vec![];
-    let mut issue_seeker = BadIssueSeeker::new(config.report_todo, config.report_fixme);
+    let mut issue_seeker = BadIssueSeeker::new(config.report_todo(), config.report_fixme());
 
     for (c, b) in text.chars() {
         if c == '\r' {
             continue;
         }
 
-        let format_line = config.file_lines.contains_line(name, cur_line as usize);
+        let format_line = config.file_lines().contains_line(name, cur_line as usize);
 
         if format_line {
             // Add warnings for bad todos/ fixmes
@@ -501,10 +501,10 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
                 }
 
                 // Check for any line width errors we couldn't correct.
-                if config.error_on_line_overflow && line_len > config.max_width {
+                if config.error_on_line_overflow() && line_len > config.max_width() {
                     errors.push(FormattingError {
                                     line: cur_line,
-                                    kind: ErrorKind::LineOverflow(line_len, config.max_width),
+                                    kind: ErrorKind::LineOverflow(line_len, config.max_width()),
                                 });
                 }
             }
@@ -577,7 +577,7 @@ pub fn format_input<T: Write>(input: Input,
                               mut out: Option<&mut T>)
                               -> Result<(Summary, FileMap, FormatReport), (io::Error, Summary)> {
     let mut summary = Summary::new();
-    if config.disable_all_formatting {
+    if config.disable_all_formatting() {
         return Ok((summary, FileMap::new(), FormatReport::new()));
     }
     let codemap = Rc::new(CodeMap::new());
@@ -651,10 +651,10 @@ pub enum Input {
 
 pub fn run(input: Input, config: &Config) -> Summary {
     let mut out = &mut stdout();
-    output_header(out, config.write_mode).ok();
+    output_header(out, config.write_mode()).ok();
     match format_input(input, config, Some(out)) {
         Ok((summary, _, report)) => {
-            output_footer(out, config.write_mode).ok();
+            output_footer(out, config.write_mode()).ok();
 
             if report.has_warnings() {
                 msg!("{}", report);
@@ -708,7 +708,9 @@ mod test {
     #[test]
     fn indent_to_string_hard_tabs() {
         let mut config = Config::default();
-        config.hard_tabs = true;
+        config
+            .override_value("hard_tabs", "true")
+            .expect("Could not set hard_tabs to true");
         let indent = Indent::new(8, 4);
 
         // 2 tabs + 4 spaces
@@ -719,10 +721,10 @@ mod test {
     fn shape_visual_indent() {
         let config = Config::default();
         let indent = Indent::new(4, 8);
-        let shape = Shape::legacy(config.max_width, indent);
+        let shape = Shape::legacy(config.max_width(), indent);
         let shape = shape.visual_indent(20);
 
-        assert_eq!(config.max_width, shape.width);
+        assert_eq!(config.max_width(), shape.width);
         assert_eq!(4, shape.indent.block_indent);
         assert_eq!(28, shape.indent.alignment);
         assert_eq!(28, shape.offset);
@@ -732,10 +734,10 @@ mod test {
     fn shape_block_indent_without_alignment() {
         let config = Config::default();
         let indent = Indent::new(4, 0);
-        let shape = Shape::legacy(config.max_width, indent);
+        let shape = Shape::legacy(config.max_width(), indent);
         let shape = shape.block_indent(20);
 
-        assert_eq!(config.max_width, shape.width);
+        assert_eq!(config.max_width(), shape.width);
         assert_eq!(24, shape.indent.block_indent);
         assert_eq!(0, shape.indent.alignment);
         assert_eq!(0, shape.offset);
@@ -745,10 +747,10 @@ mod test {
     fn shape_block_indent_with_alignment() {
         let config = Config::default();
         let indent = Indent::new(4, 8);
-        let shape = Shape::legacy(config.max_width, indent);
+        let shape = Shape::legacy(config.max_width(), indent);
         let shape = shape.block_indent(20);
 
-        assert_eq!(config.max_width, shape.width);
+        assert_eq!(config.max_width(), shape.width);
         assert_eq!(4, shape.indent.block_indent);
         assert_eq!(28, shape.indent.alignment);
         assert_eq!(28, shape.offset);

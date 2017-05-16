@@ -51,7 +51,7 @@ impl Rewrite for Pat {
                 };
 
                 let result = format!("{}{}{}{}", prefix, mut_infix, id_str, sub_pat);
-                wrap_str(result, context.config.max_width, shape)
+                wrap_str(result, context.config.max_width(), shape)
             }
             PatKind::Wild => {
                 if 1 <= shape.width {
@@ -108,19 +108,21 @@ impl Rewrite for Pat {
                 let pats = try_opt!(pats);
 
                 // Unwrap all the sub-strings and join them with commas.
-                let result = if context.config.spaces_within_square_brackets {
+                let result = if context.config.spaces_within_square_brackets() {
                     format!("[ {} ]", pats.join(", "))
                 } else {
                     format!("[{}]", pats.join(", "))
                 };
-                wrap_str(result, context.config.max_width, shape)
+                wrap_str(result, context.config.max_width(), shape)
             }
             PatKind::Struct(ref path, ref fields, elipses) => {
                 rewrite_struct_pat(path, fields, elipses, self.span, context, shape)
             }
             // FIXME(#819) format pattern macros.
             PatKind::Mac(..) => {
-                wrap_str(context.snippet(self.span), context.config.max_width, shape)
+                wrap_str(context.snippet(self.span),
+                         context.config.max_width(),
+                         shape)
             }
         }
     }
@@ -187,9 +189,10 @@ fn rewrite_struct_pat(path: &ast::Path,
     }
 
 
-    let fields_str = if context.config.struct_lit_style == IndentStyle::Block &&
+    let fields_str = if context.config.struct_lit_style() == IndentStyle::Block &&
                         (fields_str.contains('\n') ||
-                         context.config.struct_lit_multiline_style == MultilineStyle::ForceMulti ||
+                         context.config.struct_lit_multiline_style() ==
+                         MultilineStyle::ForceMulti ||
                          fields_str.len() > h_shape.map(|s| s.width).unwrap_or(0)) {
         format!("\n{}{}\n{}",
                 v_shape.indent.to_string(context.config),
@@ -210,7 +213,7 @@ impl Rewrite for FieldPat {
             pat
         } else {
             wrap_str(format!("{}: {}", self.ident.to_string(), try_opt!(pat)),
-                     context.config.max_width,
+                     context.config.max_width(),
                      shape)
         }
     }
@@ -296,7 +299,7 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
     // Condense wildcard string suffix into a single ..
     let wildcard_suffix_len = count_wildcard_suffix_len(&items);
 
-    let list = if context.config.condense_wildcard_suffices && wildcard_suffix_len >= 2 {
+    let list = if context.config.condense_wildcard_suffices() && wildcard_suffix_len >= 2 {
         let new_item_count = 1 + pats.len() - wildcard_suffix_len;
         items[new_item_count - 1].item = Some("..".to_owned());
 
@@ -308,7 +311,7 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
 
     match path_str {
         Some(path_str) => {
-            Some(if context.config.spaces_within_parens {
+            Some(if context.config.spaces_within_parens() {
                      format!("{}( {} )", path_str, list)
                  } else {
                      format!("{}({})", path_str, list)
@@ -316,7 +319,7 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
         }
         None => {
             let comma = if add_comma { "," } else { "" };
-            Some(if context.config.spaces_within_parens {
+            Some(if context.config.spaces_within_parens() {
                      format!("( {}{} )", list, comma)
                  } else {
                      format!("({}{})", list, comma)
