@@ -12,7 +12,7 @@
 
 use parse::token;
 
-/// SeqSep : a sequence separator (token)
+/// `SeqSep` : a sequence separator (token)
 /// and whether a trailing separator is allowed.
 pub struct SeqSep {
     pub sep: Option<token::Token>,

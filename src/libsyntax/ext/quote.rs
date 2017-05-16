@@ -23,7 +23,7 @@ use tokenstream::{TokenStream, TokenTree};
 ///
 /// This is registered as a set of expression syntax extension called quote!
 /// that lifts its argument token-tree to an AST representing the
-/// construction of the same token tree, with token::SubstNt interpreted
+/// construction of the same token tree, with `token::SubstNt` interpreted
 /// as antiquotes (splices).
 
 pub mod rt {
@@ -389,7 +389,7 @@ pub fn unflatten(tts: Vec<TokenTree>) -> Vec<TokenTree> {
                 result = results.pop().unwrap();
                 result.push(tree);
             }
-            tree @ _ => result.push(tree),
+            tree => result.push(tree),
         }
     }
     result

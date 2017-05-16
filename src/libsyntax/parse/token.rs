@@ -53,6 +53,10 @@ impl DelimToken {
     pub fn len(self) -> usize {
         if self == NoDelim { 0 } else { 1 }
     }
+
+    pub fn is_empty(self) -> bool {
+        self == NoDelim
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -198,17 +202,17 @@ impl Token {
     pub fn can_begin_expr(&self) -> bool {
         match *self {
             Ident(ident)                => ident_can_begin_expr(ident), // value name or keyword
-            OpenDelim(..)               => true, // tuple, array or block
-            Literal(..)                 => true, // literal
-            Not                         => true, // operator not
-            BinOp(Minus)                => true, // unary minus
-            BinOp(Star)                 => true, // dereference
-            BinOp(Or) | OrOr            => true, // closure
-            BinOp(And)                  => true, // reference
-            AndAnd                      => true, // double reference
-            DotDot | DotDotDot          => true, // range notation
-            Lt | BinOp(Shl)             => true, // associated path
-            ModSep                      => true, // global path
+            OpenDelim(..)               | // tuple, array or block
+            Literal(..)                 | // literal
+            Not                         | // operator not
+            BinOp(Minus)                | // unary minus
+            BinOp(Star)                 | // dereference
+            BinOp(Or) | OrOr            | // closure
+            BinOp(And)                  | // reference
+            AndAnd                      | // double reference
+            DotDot | DotDotDot          | // range notation
+            Lt | BinOp(Shl)             | // associated path
+            ModSep                      | // global path
             Pound                       => true, // expression attributes
             Interpolated(ref nt) => match **nt {
                 NtIdent(..) | NtExpr(..) | NtBlock(..) | NtPath(..) => true,
@@ -222,16 +226,16 @@ impl Token {
     pub fn can_begin_type(&self) -> bool {
         match *self {
             Ident(ident)                => ident_can_begin_type(ident), // type name or keyword
-            OpenDelim(Paren)            => true, // tuple
-            OpenDelim(Bracket)          => true, // array
-            Underscore                  => true, // placeholder
-            Not                         => true, // never
-            BinOp(Star)                 => true, // raw pointer
-            BinOp(And)                  => true, // reference
-            AndAnd                      => true, // double reference
-            Question                    => true, // maybe bound in trait object
-            Lifetime(..)                => true, // lifetime bound in trait object
-            Lt | BinOp(Shl)             => true, // associated path
+            OpenDelim(Paren)            | // tuple
+            OpenDelim(Bracket)          | // array
+            Underscore                  | // placeholder
+            Not                         | // never
+            BinOp(Star)                 | // raw pointer
+            BinOp(And)                  | // reference
+            AndAnd                      | // double reference
+            Question                    | // maybe bound in trait object
+            Lifetime(..)                | // lifetime bound in trait object
+            Lt | BinOp(Shl)             | // associated path
             ModSep                      => true, // global path
             Interpolated(ref nt) => match **nt {
                 NtIdent(..) | NtTy(..) | NtPath(..) => true,

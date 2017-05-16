@@ -106,9 +106,8 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         // Add a special __test module to the crate that will contain code
         // generated for the test harness
         let (mod_, reexport) = mk_test_module(&mut self.cx);
-        match reexport {
-            Some(re) => folded.module.items.push(re),
-            None => {}
+        if let Some(re) = reexport {
+            folded.module.items.push(re)
         }
         folded.module.items.push(mod_);
         folded
@@ -257,7 +256,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
     let parent = if parent == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { parent };
     cx.ext_cx.current_expansion.mark = cx.ext_cx.resolver.get_module_scope(parent);
     let it = cx.ext_cx.monotonic_expander().fold_item(P(ast::Item {
-        ident: sym.clone(),
+        ident: sym,
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
         node: ast::ItemKind::Mod(reexport_mod),
@@ -308,7 +307,7 @@ fn generate_test_harness(sess: &ParseSess,
 }
 
 /// Craft a span that will be ignored by the stability lint's
-/// call to codemap's is_internal check.
+/// call to codemap's `is_internal` check.
 /// The expanded code calls some unstable functions in the test crate.
 fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
     Span { ctxt: cx.ctxt, ..sp }
@@ -354,7 +353,7 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
         }
     }
 
-    return has_test_attr && has_test_signature(i) == Yes;
+    has_test_attr && has_test_signature(i) == Yes
 }
 
 fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
@@ -385,7 +384,7 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
                       `fn(&mut Bencher) -> ()`");
     }
 
-    return has_bench_attr && has_test_signature(i);
+    has_bench_attr && has_test_signature(i)
 }
 
 fn is_ignored(i: &ast::Item) -> bool {
@@ -504,16 +503,14 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
                            ast::Unsafety::Normal,
                            dummy_spanned(ast::Constness::NotConst),
                            ::abi::Abi::Rust, ast::Generics::default(), main_body);
-    let main = P(ast::Item {
+    P(ast::Item {
         ident: Ident::from_str("main"),
         attrs: vec![main_attr],
         id: ast::DUMMY_NODE_ID,
         node: main,
         vis: ast::Visibility::Public,
         span: sp
-    });
-
-    return main;
+    })
 }
 
 fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {

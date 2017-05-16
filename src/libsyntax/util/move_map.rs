@@ -37,10 +37,10 @@ impl<T> MoveMap<T> for Vec<T> {
                 // move the read_i'th item out of the vector and map it
                 // to an iterator
                 let e = ptr::read(self.get_unchecked(read_i));
-                let mut iter = f(e).into_iter();
+                let iter = f(e).into_iter();
                 read_i += 1;
 
-                while let Some(e) = iter.next() {
+                for e in iter {
                     if write_i < read_i {
                         ptr::write(self.get_unchecked_mut(write_i), e);
                         write_i += 1;
@@ -93,10 +93,10 @@ impl<T> MoveMap<T> for SmallVector<T> {
                 // move the read_i'th item out of the vector and map it
                 // to an iterator
                 let e = ptr::read(self.get_unchecked(read_i));
-                let mut iter = f(e).into_iter();
+                let iter = f(e).into_iter();
                 read_i += 1;
 
-                while let Some(e) = iter.next() {
+                for e in iter {
                     if write_i < read_i {
                         ptr::write(self.get_unchecked_mut(write_i), e);
                         write_i += 1;

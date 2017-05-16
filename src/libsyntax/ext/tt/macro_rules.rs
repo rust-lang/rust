@@ -94,7 +94,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                           -> Box<MacResult+'cx> {
     if cx.trace_macros() {
         let sp = sp.macro_backtrace().last().map(|trace| trace.call_site).unwrap_or(sp);
-        let mut values: &mut Vec<String> = cx.expansions.entry(sp).or_insert(vec![]);
+        let mut values: &mut Vec<String> = cx.expansions.entry(sp).or_insert_with(Vec::new);
         values.push(format!("expands to `{}! {{ {} }}`", name, arg));
     }
 
@@ -206,7 +206,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
     let mut valid = true;
 
     // Extract the arguments:
-    let lhses = match **argument_map.get(&lhs_nm).unwrap() {
+    let lhses = match *argument_map[&lhs_nm] {
         MatchedSeq(ref s, _) => {
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = **m {
@@ -222,7 +222,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
         _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
     };
 
-    let rhses = match **argument_map.get(&rhs_nm).unwrap() {
+    let rhses = match *argument_map[&rhs_nm] {
         MatchedSeq(ref s, _) => {
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = **m {
@@ -260,13 +260,12 @@ fn check_lhs_nt_follows(sess: &ParseSess,
                         lhs: &quoted::TokenTree) -> bool {
     // lhs is going to be like TokenTree::Delimited(...), where the
     // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
-    match lhs {
-        &quoted::TokenTree::Delimited(_, ref tts) => check_matcher(sess, features, &tts.tts),
-        _ => {
-            let msg = "invalid macro matcher; matchers must be contained in balanced delimiters";
-            sess.span_diagnostic.span_err(lhs.span(), msg);
-            false
-        }
+    if let quoted::TokenTree::Delimited(_, ref tts) = *lhs {
+        check_matcher(sess, features, &tts.tts)
+    } else {
+        let msg = "invalid macro matcher; matchers must be contained in balanced delimiters";
+        sess.span_diagnostic.span_err(lhs.span(), msg);
+        false
     }
     // we don't abort on errors on rejection, the driver will do that for us
     // after parsing/expansion. we can report every error in every macro this way.
@@ -283,17 +282,15 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
                 return false;
             },
             TokenTree::Sequence(span, ref seq) => {
-                if seq.separator.is_none() {
-                    if seq.tts.iter().all(|seq_tt| {
-                        match *seq_tt {
-                            TokenTree::Sequence(_, ref sub_seq) =>
-                                sub_seq.op == quoted::KleeneOp::ZeroOrMore,
-                            _ => false,
-                        }
-                    }) {
-                        sess.span_diagnostic.span_err(span, "repetition matches empty token tree");
-                        return false;
+                if seq.separator.is_none() && seq.tts.iter().all(|seq_tt| {
+                    match *seq_tt {
+                        TokenTree::Sequence(_, ref sub_seq) =>
+                            sub_seq.op == quoted::KleeneOp::ZeroOrMore,
+                        _ => false,
                     }
+                }) {
+                    sess.span_diagnostic.span_err(span, "repetition matches empty token tree");
+                    return false;
                 }
                 if !check_lhs_no_empty_seq(sess, &seq.tts) {
                     return false;
@@ -407,7 +404,7 @@ impl FirstSets {
                 }
             }
 
-            return first;
+            first
         }
     }
 
@@ -469,7 +466,7 @@ impl FirstSets {
         // we only exit the loop if `tts` was empty or if every
         // element of `tts` matches the empty sequence.
         assert!(first.maybe_empty);
-        return first;
+        first
     }
 }
 
@@ -579,7 +576,7 @@ fn check_matcher_core(sess: &ParseSess,
         let build_suffix_first = || {
             let mut s = first_sets.first(suffix);
             if s.maybe_empty { s.add_all(follow); }
-            return s;
+            s
         };
 
         // (we build `suffix_first` on demand below; you can tell
@@ -861,6 +858,7 @@ fn quoted_tt_to_string(tt: &quoted::TokenTree) -> String {
     match *tt {
         quoted::TokenTree::Token(_, ref tok) => ::print::pprust::token_to_string(tok),
         quoted::TokenTree::MetaVarDecl(_, name, kind) => format!("${}:{}", name, kind),
-        _ => panic!("unexpected quoted::TokenTree::{Sequence or Delimited} in follow set checker"),
+        _ => panic!("unexpected quoted::TokenTree::{{Sequence or Delimited}} \
+                     in follow set checker"),
     }
 }
