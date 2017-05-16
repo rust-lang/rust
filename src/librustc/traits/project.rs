@@ -29,7 +29,6 @@ use infer::type_variable::TypeVariableOrigin;
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use syntax::ast;
 use syntax::symbol::Symbol;
-use syntax_pos::DUMMY_SP;
 use ty::subst::Subst;
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder};
@@ -1324,32 +1323,24 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
 
     // This function may be called while we are still building the
     // specialization graph that is queried below (via TraidDef::ancestors()),
-    // so, in order to avoid infinite recursion, we detect this case by
-    // seeing if a query of the specialization graph fails with a cycle error.
-    // If we are in cycle, and thus still building the graph, we perform a
-    // reduced version of the associated item lookup that does not need the
-    // specialization graph.
-    let specialization_graph_complete =
-        ty::queries::specialization_graph_of::try_get(tcx,
-                                                      DUMMY_SP,
-                                                      trait_def_id).is_ok();
-    if !specialization_graph_complete {
-        let impl_node = specialization_graph::Node::Impl(impl_def_id);
-        for item in impl_node.items(tcx) {
-            if item.kind == ty::AssociatedKind::Type && item.name == assoc_ty_name {
-                return Some(specialization_graph::NodeItem {
-                    node: specialization_graph::Node::Impl(impl_def_id),
-                    item: item,
-                });
-            }
+    // so, in order to avoid unnecessary infinite recursion, we manually look
+    // for the associated item at the given impl.
+    // If there is no such item in that impl, this function will fail with a
+    // cycle error if the specialization graph is currently being built.
+    let impl_node = specialization_graph::Node::Impl(impl_def_id);
+    for item in impl_node.items(tcx) {
+        if item.kind == ty::AssociatedKind::Type && item.name == assoc_ty_name {
+            return Some(specialization_graph::NodeItem {
+                node: specialization_graph::Node::Impl(impl_def_id),
+                item: item,
+            });
         }
-        None
-    } else {
-        trait_def
-            .ancestors(tcx, impl_def_id)
-            .defs(tcx, assoc_ty_name, ty::AssociatedKind::Type)
-            .next()
     }
+
+    trait_def
+        .ancestors(tcx, impl_def_id)
+        .defs(tcx, assoc_ty_name, ty::AssociatedKind::Type)
+        .next()
 }
 
 // # Cache
