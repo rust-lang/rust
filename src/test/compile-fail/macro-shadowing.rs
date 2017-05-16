@@ -10,6 +10,8 @@
 
 // aux-build:two_macros.rs
 
+#![allow(unused_macros)]
+
 macro_rules! foo { () => {} }
 macro_rules! macro_one { () => {} }
 #[macro_use(macro_two)] extern crate two_macros;

@@ -1187,6 +1187,10 @@ pub struct Resolver<'a> {
     pub whitelisted_legacy_custom_derives: Vec<Name>,
     pub found_unresolved_macro: bool,
 
+    // List of crate local macros that we need to warn about as being unused.
+    // Right now this only includes macro_rules! macros.
+    unused_macros: FxHashSet<DefId>,
+
     // Maps the `Mark` of an expansion to its containing module or block.
     invocations: FxHashMap<Mark, &'a InvocationData<'a>>,
 
@@ -1392,6 +1396,7 @@ impl<'a> Resolver<'a> {
             potentially_unused_imports: Vec::new(),
             struct_constructors: DefIdMap(),
             found_unresolved_macro: false,
+            unused_macros: FxHashSet(),
         }
     }
 

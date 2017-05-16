@@ -49,6 +49,7 @@ use hir;
 use hir::def_id::LOCAL_CRATE;
 use hir::intravisit as hir_visit;
 use syntax::visit as ast_visit;
+use syntax::tokenstream::ThinTokenStream;
 
 /// Information about the registered lints.
 ///
@@ -1124,6 +1125,13 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
 
     fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
         run_lints!(self, check_attribute, early_passes, attr);
+    }
+
+    fn visit_mac_def(&mut self, _mac: &'a ThinTokenStream, id: ast::NodeId) {
+        let lints = self.sess.lints.borrow_mut().take(id);
+        for early_lint in lints {
+            self.early_lint(&early_lint);
+        }
     }
 }
 
