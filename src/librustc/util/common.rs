@@ -116,6 +116,7 @@ pub fn record_time<T, F>(accu: &Cell<Duration>, f: F) -> T where
 }
 
 // Like std::macros::try!, but for Option<>.
+#[cfg(unix)]
 macro_rules! option_try(
     ($e:expr) => (match $e { Some(e) => e, None => return None })
 );
