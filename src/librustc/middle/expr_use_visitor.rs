@@ -563,19 +563,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
             ty::TyError => { }
             _ => {
-                let overloaded_call_type =
-                    match self.mc.infcx.node_method_id(ty::MethodCall::expr(call.id)) {
-                        Some(method_id) => {
-                            OverloadedCallType::from_method_id(self.tcx(), method_id)
-                        }
-                        None => {
-                            span_bug!(
-                                callee.span,
-                                "unexpected callee type {}",
-                                callee_ty)
-                        }
-                    };
-                match overloaded_call_type {
+                let method = self.mc.infcx.tables.borrow().method_map[&call.id];
+                match OverloadedCallType::from_method_id(self.tcx(), method.def_id) {
                     FnMutOverloadedCall => {
                         let call_scope_r = self.tcx().node_scope_region(call.id);
                         self.borrow_expr(callee,
@@ -717,7 +706,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     fn walk_adjustment(&mut self, expr: &hir::Expr) {
         let infcx = self.mc.infcx;
         //NOTE(@jroesch): mixed RefCell borrow causes crash
-        let adj = infcx.tables.borrow().adjustments.get(&expr.id).map(|x| x.clone());
+        let adj = infcx.tables.borrow().adjustments.get(&expr.id).cloned();
+        let cmt_unadjusted =
+            return_if_err!(self.mc.cat_expr_unadjusted(expr));
         if let Some(adjustment) = adj {
             match adjustment.kind {
                 adjustment::Adjust::NeverToAny |
@@ -728,17 +719,13 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.
                     debug!("walk_adjustment: trivial adjustment");
-                    let cmt_unadjusted =
-                        return_if_err!(self.mc.cat_expr_unadjusted(expr));
                     self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
                 }
-                adjustment::Adjust::DerefRef { autoderefs, autoref, unsize } => {
+                adjustment::Adjust::DerefRef { ref autoderefs, autoref, unsize } => {
                     debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
 
-                    self.walk_autoderefs(expr, autoderefs);
-
                     let cmt_derefd =
-                        return_if_err!(self.mc.cat_expr_autoderefd(expr, autoderefs));
+                        return_if_err!(self.walk_autoderefs(expr, cmt_unadjusted, autoderefs));
 
                     let cmt_refd =
                         self.walk_autoref(expr, cmt_derefd, autoref);
@@ -757,30 +744,30 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     /// `deref()` is declared with `&self`, this is an autoref of `x`.
     fn walk_autoderefs(&mut self,
                        expr: &hir::Expr,
-                       autoderefs: usize) {
-        debug!("walk_autoderefs expr={:?} autoderefs={}", expr, autoderefs);
+                       mut cmt: mc::cmt<'tcx>,
+                       autoderefs: &[Option<ty::MethodCallee<'tcx>>])
+                       -> mc::McResult<mc::cmt<'tcx>> {
+        debug!("walk_autoderefs expr={:?} autoderefs={:?}", expr, autoderefs);
 
-        for i in 0..autoderefs {
-            let deref_id = ty::MethodCall::autoderef(expr.id, i as u32);
-            if let Some(method_ty) = self.mc.infcx.node_method_ty(deref_id) {
-                let cmt = return_if_err!(self.mc.cat_expr_autoderefd(expr, i));
-
+        for &overloaded in autoderefs {
+            if let Some(method) = overloaded {
                 // the method call infrastructure should have
                 // replaced all late-bound regions with variables:
-                let self_ty = method_ty.fn_sig().input(0);
+                let self_ty = method.ty.fn_sig().input(0);
+                let self_ty = self.mc.infcx.resolve_type_vars_if_possible(&self_ty);
                 let self_ty = self.tcx().no_late_bound_regions(&self_ty).unwrap();
 
                 let (m, r) = match self_ty.sty {
                     ty::TyRef(r, ref m) => (m.mutbl, r),
-                    _ => span_bug!(expr.span,
-                                   "bad overloaded deref type {:?}",
-                                   method_ty)
+                    _ => span_bug!(expr.span, "bad overloaded deref type {:?}", self_ty)
                 };
                 let bk = ty::BorrowKind::from_mutbl(m);
-                self.delegate.borrow(expr.id, expr.span, cmt,
+                self.delegate.borrow(expr.id, expr.span, cmt.clone(),
                                      r, bk, AutoRef);
             }
+            cmt = self.mc.cat_deref(expr, cmt, overloaded)?;
         }
+        Ok(cmt)
     }
 
     /// Walks the autoref `opt_autoref` applied to the autoderef'd
@@ -863,7 +850,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                                 pass_args: PassArgs)
                                 -> bool
     {
-        if !self.mc.infcx.is_method_call(expr.id) {
+        if !self.mc.infcx.tables.borrow().is_method_call(expr.id) {
             return false;
         }
 

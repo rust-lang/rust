@@ -280,11 +280,10 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
         _ => {}
     }
 
-    let method_call = ty::MethodCall::expr(e.id);
     match e.node {
         hir::ExprUnary(..) |
         hir::ExprBinary(..) |
-        hir::ExprIndex(..) if v.tables.method_map.contains_key(&method_call) => {
+        hir::ExprIndex(..) if v.tables.method_map.contains_key(&e.id) => {
             v.promotable = false;
         }
         hir::ExprBox(_) => {
@@ -381,7 +380,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
         hir::ExprMethodCall(..) => {
-            let method = v.tables.method_map[&method_call];
+            let method = v.tables.method_map[&e.id];
             match v.tcx.associated_item(method.def_id).container {
                 ty::ImplContainer(_) => v.handle_const_fn_call(method.def_id, node_ty),
                 ty::TraitContainer(_) => v.promotable = false
@@ -450,9 +449,8 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
         Some(&Adjust::ClosureFnPointer) |
         Some(&Adjust::MutToConstPointer) => {}
 
-        Some(&Adjust::DerefRef { autoderefs, .. }) => {
-            if (0..autoderefs as u32)
-                .any(|autoderef| v.tables.is_overloaded_autoderef(e.id, autoderef)) {
+        Some(&Adjust::DerefRef { ref autoderefs, .. }) => {
+            if autoderefs.iter().any(|overloaded| overloaded.is_some()) {
                 v.promotable = false;
             }
         }

@@ -412,8 +412,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             pred: CFGIndex,
             func_or_rcvr: &hir::Expr,
             args: I) -> CFGIndex {
-        let method_call = ty::MethodCall::expr(call_expr.id);
-        let fn_ty = match self.tables.method_map.get(&method_call) {
+        let fn_ty = match self.tables.method_map.get(&call_expr.id) {
             Some(method) => method.ty,
             None => self.tables.expr_ty_adjusted(func_or_rcvr),
         };

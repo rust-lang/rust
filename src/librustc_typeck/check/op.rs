@@ -14,6 +14,7 @@ use super::FnCtxt;
 use hir::def_id::DefId;
 use rustc::ty::{Ty, TypeFoldable, PreferMutLvalue, TypeVariants};
 use rustc::ty::TypeVariants::{TyStr, TyRef};
+use rustc::ty::adjustment::{Adjustment, Adjust};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use errors;
 use syntax::ast;
@@ -184,7 +185,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // particularly for things like `String + &String`.
         let rhs_ty_var = self.next_ty_var(TypeVariableOrigin::MiscVariable(rhs_expr.span));
 
-        let return_ty = self.lookup_op_method(expr, lhs_ty, vec![rhs_ty_var],
+        let return_ty = self.lookup_op_method(expr, lhs_ty, &[rhs_ty_var],
                                               Symbol::intern(name), trait_def_id,
                                               lhs_expr);
 
@@ -214,7 +215,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                         if let TypeVariants::TyRef(_, ref ty_mut) = lhs_ty.sty {
                             if !self.infcx.type_moves_by_default(ty_mut.ty, lhs_expr.span) &&
-                                self.lookup_op_method(expr, ty_mut.ty, vec![rhs_ty],
+                                self.lookup_op_method(expr, ty_mut.ty, &[rhs_ty],
                                     Symbol::intern(name), trait_def_id,
                                     lhs_expr).is_ok() {
                                 err.note(
@@ -313,7 +314,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     {
         assert!(op.is_by_value());
         let mname = Symbol::intern(mname);
-        match self.lookup_op_method(ex, operand_ty, vec![], mname, trait_did, operand_expr) {
+        match self.lookup_op_method(ex, operand_ty, &[], mname, trait_did, operand_expr) {
             Ok(t) => t,
             Err(()) => {
                 let actual = self.resolve_type_vars_if_possible(&operand_ty);
@@ -382,7 +383,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn lookup_op_method(&self,
                         expr: &'gcx hir::Expr,
                         lhs_ty: Ty<'tcx>,
-                        other_tys: Vec<Ty<'tcx>>,
+                        other_tys: &[Ty<'tcx>],
                         opname: ast::Name,
                         trait_did: Option<DefId>,
                         lhs_expr: &'a hir::Expr)
@@ -398,11 +399,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let method = match trait_did {
             Some(trait_did) => {
-                let lhs_expr = Some(super::AdjustedRcvr {
-                    rcvr_expr: lhs_expr, autoderefs: 0, unsize: false
-                });
                 self.lookup_method_in_trait_adjusted(expr.span,
-                                                     lhs_expr,
                                                      opname,
                                                      trait_did,
                                                      lhs_ty,
@@ -413,18 +410,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         match method {
             Some(ok) => {
-                let method = self.register_infer_ok_obligations(ok);
+                let (autoref, method) = self.register_infer_ok_obligations(ok);
                 self.select_obligations_where_possible();
 
-                let method_ty = method.ty;
-
-                // HACK(eddyb) Fully qualified path to work around a resolve bug.
-                let method_call = ::rustc::ty::MethodCall::expr(expr.id);
-                self.tables.borrow_mut().method_map.insert(method_call, method);
+                self.apply_adjustment(lhs_expr.id, Adjustment {
+                    kind: Adjust::DerefRef {
+                        autoderefs: vec![],
+                        autoref,
+                        unsize: false
+                    },
+                    target: *method.ty.fn_sig().input(0).skip_binder()
+                });
+                self.tables.borrow_mut().method_map.insert(expr.id, method);
 
                 // extract return type for method; all late bound regions
                 // should have been instantiated by now
-                let ret_ty = method_ty.fn_ret();
+                let ret_ty = method.ty.fn_ret();
                 Ok(self.tcx.no_late_bound_regions(&ret_ty).unwrap())
             }
             None => {

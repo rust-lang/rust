@@ -136,8 +136,10 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         let (autoderefd_ty, n) = autoderef.nth(pick.autoderefs).unwrap();
         assert_eq!(n, pick.autoderefs);
 
+        let autoderefs = autoderef.adjust_steps(LvaluePreference::NoPreference);
+
         autoderef.unambiguous_final_ty();
-        autoderef.finalize(LvaluePreference::NoPreference, self.self_expr);
+        autoderef.finalize();
 
         let target = pick.unsize.unwrap_or(autoderefd_ty);
         let target = target.adjust_for_autoref(self.tcx, autoref);
@@ -145,8 +147,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // Write out the final adjustment.
         self.apply_adjustment(self.self_expr.id, Adjustment {
             kind: Adjust::DerefRef {
-                autoderefs: pick.autoderefs,
-                autoref: autoref,
+                autoderefs,
+                autoref,
                 unsize: pick.unsize.is_some(),
             },
             target: target
@@ -436,19 +438,18 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             // Fix up the autoderefs. Autorefs can only occur immediately preceding
             // overloaded lvalue ops, and will be fixed by them in order to get
             // the correct region.
-            let autoderefs = match self.tables.borrow().adjustments.get(&expr.id) {
-                Some(&Adjustment { kind: Adjust::DerefRef { autoderefs, .. }, .. }) => autoderefs,
-                Some(_) | None => 0
-            };
-
-            if autoderefs > 0 {
-                let mut autoderef = self.autoderef(expr.span, self.node_ty(expr.id));
-                autoderef.nth(autoderefs).unwrap_or_else(|| {
-                    span_bug!(expr.span,
-                              "expr was deref-able {} times but now isn't?",
-                              autoderefs);
-                });
-                autoderef.finalize(PreferMutLvalue, expr);
+            let expr_ty = self.node_ty(expr.id);
+            if let Some(adj) = self.tables.borrow_mut().adjustments.get_mut(&expr.id) {
+                if let Adjust::DerefRef { ref mut autoderefs, .. } = adj.kind {
+                    let mut autoderef = self.autoderef(expr.span, expr_ty);
+                    autoderef.nth(autoderefs.len()).unwrap_or_else(|| {
+                        span_bug!(expr.span,
+                                "expr was deref-able as {:?} but now isn't?",
+                                autoderefs);
+                    });
+                    *autoderefs = autoderef.adjust_steps(LvaluePreference::PreferMutLvalue);
+                    autoderef.finalize();
+                }
             }
 
             match expr.node {
@@ -474,8 +475,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     {
         debug!("convert_lvalue_op_to_mutable({:?}, {:?}, {:?}, {:?})",
                op, expr, base_expr, arg_tys);
-        let method_call = ty::MethodCall::expr(expr.id);
-        if !self.tables.borrow().method_map.contains_key(&method_call) {
+        if !self.tables.borrow().method_map.contains_key(&expr.id) {
             debug!("convert_lvalue_op_to_mutable - builtin, nothing to do");
             return
         }
@@ -490,14 +490,14 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             .ty;
 
         let method = self.try_overloaded_lvalue_op(
-            expr.span, None, base_ty, arg_tys, PreferMutLvalue, op);
+            expr.span, base_ty, arg_tys, PreferMutLvalue, op);
         let ok = match method {
             Some(method) => method,
             None => return self.tcx.sess.delay_span_bug(expr.span, "re-trying op failed")
         };
-        let method = self.register_infer_ok_obligations(ok);
+        let (_, method) = self.register_infer_ok_obligations(ok);
         debug!("convert_lvalue_op_to_mutable: method={:?}", method);
-        self.tables.borrow_mut().method_map.insert(method_call, method);
+        self.tables.borrow_mut().method_map.insert(expr.id, method);
 
         // Convert the autoref in the base expr to mutable with the correct
         // region and mutability.

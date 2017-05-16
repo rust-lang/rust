@@ -398,44 +398,6 @@ pub struct MethodCallee<'tcx> {
     pub substs: &'tcx Substs<'tcx>
 }
 
-/// With method calls, we store some extra information in
-/// side tables (i.e method_map). We use
-/// MethodCall as a key to index into these tables instead of
-/// just directly using the expression's NodeId. The reason
-/// for this being that we may apply adjustments (coercions)
-/// with the resulting expression also needing to use the
-/// side tables. The problem with this is that we don't
-/// assign a separate NodeId to this new expression
-/// and so it would clash with the base expression if both
-/// needed to add to the side tables. Thus to disambiguate
-/// we also keep track of whether there's an adjustment in
-/// our key.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct MethodCall {
-    pub expr_id: NodeId,
-    pub autoderef: u32
-}
-
-impl MethodCall {
-    pub fn expr(id: NodeId) -> MethodCall {
-        MethodCall {
-            expr_id: id,
-            autoderef: 0
-        }
-    }
-
-    pub fn autoderef(expr_id: NodeId, autoderef: u32) -> MethodCall {
-        MethodCall {
-            expr_id: expr_id,
-            autoderef: 1 + autoderef
-        }
-    }
-}
-
-// maps from an expression id that corresponds to a method call to the details
-// of the method to be invoked
-pub type MethodMap<'tcx> = FxHashMap<MethodCall, MethodCallee<'tcx>>;
-
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]

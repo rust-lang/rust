@@ -110,7 +110,7 @@ fn coerce_mutbls<'tcx>(from_mutbl: hir::Mutability,
 
 fn identity<'tcx>() -> Adjust<'tcx> {
     Adjust::DerefRef {
-        autoderefs: 0,
+        autoderefs: vec![],
         autoref: None,
         unsize: false,
     }
@@ -157,13 +157,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         })
     }
 
-    fn coerce<E>(&self,
-                 exprs: &[E],
-                 a: Ty<'tcx>,
-                 b: Ty<'tcx>)
-                 -> CoerceResult<'tcx>
-        where E: AsCoercionSite
-    {
+    fn coerce(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
         let a = self.shallow_resolve(a);
         debug!("Coerce.tys({:?} => {:?})", a, b);
 
@@ -210,7 +204,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             }
 
             ty::TyRef(r_b, mt_b) => {
-                return self.coerce_borrowed_pointer(exprs, a, b, r_b, mt_b);
+                return self.coerce_borrowed_pointer(a, b, r_b, mt_b);
             }
 
             _ => {}
@@ -245,15 +239,12 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
     /// Reborrows `&mut A` to `&mut B` and `&(mut) A` to `&B`.
     /// To match `A` with `B`, autoderef will be performed,
     /// calling `deref`/`deref_mut` where necessary.
-    fn coerce_borrowed_pointer<E>(&self,
-                                  exprs: &[E],
-                                  a: Ty<'tcx>,
-                                  b: Ty<'tcx>,
-                                  r_b: ty::Region<'tcx>,
-                                  mt_b: TypeAndMut<'tcx>)
-                                  -> CoerceResult<'tcx>
-        where E: AsCoercionSite
-    {
+    fn coerce_borrowed_pointer(&self,
+                               a: Ty<'tcx>,
+                               b: Ty<'tcx>,
+                               r_b: ty::Region<'tcx>,
+                               mt_b: TypeAndMut<'tcx>)
+                               -> CoerceResult<'tcx> {
 
         debug!("coerce_borrowed_pointer(a={:?}, b={:?})", a, b);
 
@@ -375,7 +366,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                                               });
             match self.unify(derefd_ty_a, b) {
                 Ok(ok) => {
-                    found = Some((ok, autoderefs));
+                    found = Some(ok);
                     break;
                 }
                 Err(err) => {
@@ -391,7 +382,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         // (e.g., in example above, the failure from relating `Vec<T>`
         // to the target type), since that should be the least
         // confusing.
-        let (InferOk { value: ty, mut obligations }, autoderefs) = match found {
+        let InferOk { value: ty, mut obligations } = match found {
             Some(d) => d,
             None => {
                 let err = first_error.expect("coerce_borrowed_pointer had no error");
@@ -400,7 +391,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             }
         };
 
-        if ty == a && mt_a.mutbl == hir::MutImmutable && autoderefs == 1 {
+        if ty == a && mt_a.mutbl == hir::MutImmutable && autoderef.step_count() == 1 {
             // As a special case, if we would produce `&'a *x`, that's
             // a total no-op. We end up with the type `&'a T` just as
             // we started with.  In that case, just skip it
@@ -423,17 +414,21 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             _ => span_bug!(span, "expected a ref type, got {:?}", ty),
         };
         let autoref = Some(AutoBorrow::Ref(r_borrow, mt_b.mutbl));
+
+        let pref = LvaluePreference::from_mutbl(mt_b.mutbl);
+        let InferOk { value: autoderefs, obligations: o }
+            = autoderef.adjust_steps_as_infer_ok(pref);
+        obligations.extend(o);
+        obligations.extend(autoderef.into_obligations());
+
         debug!("coerce_borrowed_pointer: succeeded ty={:?} autoderefs={:?} autoref={:?}",
                ty,
                autoderefs,
                autoref);
 
-        let pref = LvaluePreference::from_mutbl(mt_b.mutbl);
-        obligations.extend(autoderef.finalize_as_infer_ok(pref, exprs).obligations);
-
         success(Adjust::DerefRef {
-            autoderefs: autoderefs,
-            autoref: autoref,
+            autoderefs,
+            autoref,
             unsize: false,
         }, ty, obligations)
     }
@@ -477,7 +472,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         let coerce_source = source.adjust_for_autoref(self.tcx, reborrow);
 
         let adjust = Adjust::DerefRef {
-            autoderefs: if reborrow.is_some() { 1 } else { 0 },
+            autoderefs: if reborrow.is_some() { vec![None] } else { vec![] },
             autoref: reborrow,
             unsize: true,
         };
@@ -668,7 +663,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         // regionck knows that the region for `a` must be valid here.
         self.unify_and(a_unsafe, b, if is_ref {
             Adjust::DerefRef {
-                autoderefs: 1,
+                autoderefs: vec![None],
                 autoref: Some(AutoBorrow::RawPtr(mutbl_b)),
                 unsize: false,
             }
@@ -703,7 +698,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let cause = self.cause(expr.span, ObligationCauseCode::ExprAssignable);
         let coerce = Coerce::new(self, cause);
-        let ok = self.commit_if_ok(|_| coerce.coerce(&[expr], source, target))?;
+        let ok = self.commit_if_ok(|_| coerce.coerce(source, target))?;
 
         let adjustment = self.register_infer_ok_obligations(ok);
         self.apply_adjustment(expr.id, adjustment);
@@ -721,7 +716,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let cause = self.cause(syntax_pos::DUMMY_SP, ObligationCauseCode::ExprAssignable);
         let coerce = Coerce::new(self, cause);
-        self.probe(|_| coerce.coerce::<hir::Expr>(&[], source, target)).is_ok()
+        self.probe(|_| coerce.coerce(source, target)).is_ok()
     }
 
     /// Given some expressions, their known unified type and another expression,
@@ -796,7 +791,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // but only if the new expression has no coercion already applied to it.
         let mut first_error = None;
         if !self.tables.borrow().adjustments.contains_key(&new.id) {
-            let result = self.commit_if_ok(|_| coerce.coerce(&[new], new_ty, prev_ty));
+            let result = self.commit_if_ok(|_| coerce.coerce(new_ty, prev_ty));
             match result {
                 Ok(ok) => {
                     let adjustment = self.register_infer_ok_obligations(ok);
@@ -815,10 +810,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let expr = expr.as_coercion_site();
             let noop = match self.tables.borrow().adjustments.get(&expr.id).map(|adj| &adj.kind) {
                 Some(&Adjust::DerefRef {
-                    autoderefs: 1,
+                    ref autoderefs,
                     autoref: Some(AutoBorrow::Ref(_, mutbl_adj)),
                     unsize: false
-                }) => {
+                }) if autoderefs.len() == 1 => {
                     match self.node_ty(expr.id).sty {
                         ty::TyRef(_, mt_orig) => {
                             // Reborrow that we can safely ignore, because
@@ -842,7 +837,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        match self.commit_if_ok(|_| coerce.coerce(&exprs, prev_ty, new_ty)) {
+        match self.commit_if_ok(|_| coerce.coerce(prev_ty, new_ty)) {
             Err(_) => {
                 // Avoid giving strange errors on failed attempts.
                 if let Some(e) = first_error {

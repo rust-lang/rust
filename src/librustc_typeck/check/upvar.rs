@@ -216,9 +216,9 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
             let closure_def_id = self.fcx.tcx.hir.local_def_id(id);
             debug!("closure_kind({:?}) = {:?}", closure_def_id, kind);
 
-            let mut deferred_call_resolutions =
+            let deferred_call_resolutions =
                 self.fcx.remove_deferred_call_resolutions(closure_def_id);
-            for deferred_call_resolution in &mut deferred_call_resolutions {
+            for deferred_call_resolution in deferred_call_resolutions {
                 deferred_call_resolution.resolve(self.fcx);
             }
         }

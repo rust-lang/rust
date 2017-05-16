@@ -9,10 +9,6 @@
 // except according to those terms.
 
 use ty::{self, Ty, TyCtxt, TypeAndMut};
-use ty::LvaluePreference::{NoPreference};
-
-use syntax::ast;
-use syntax_pos::Span;
 
 use hir;
 
@@ -43,10 +39,10 @@ pub enum Adjust<'tcx> {
     /// here means either or both of raw vs borrowed vs unique and fat vs thin.
     ///
     /// We transform pointers by following the following steps in order:
-    /// 1. Deref the pointer `self.autoderefs` times (may be 0).
+    /// 1. Deref the pointer through `self.autoderefs` steps (may be no steps).
     /// 2. If `autoref` is `Some(_)`, then take the address and produce either a
     ///    `&` or `*` pointer.
-    /// 3. If `unsize` is `Some(_)`, then apply the unsize transformation,
+    /// 3. If `unsize` is `true`, then apply the unsize transformation,
     ///    which will do things like convert thin pointers to fat
     ///    pointers, or convert structs containing thin pointers to
     ///    structs containing fat pointers, or convert between fat
@@ -61,23 +57,26 @@ pub enum Adjust<'tcx> {
     /// 1. The simplest cases are where the pointer is not adjusted fat vs thin.
     /// Here the pointer will be dereferenced N times (where a dereference can
     /// happen to raw or borrowed pointers or any smart pointer which implements
-    /// Deref, including Box<_>). The number of dereferences is given by
+    /// Deref, including Box<_>). The types of dereferences is given by
     /// `autoderefs`.  It can then be auto-referenced zero or one times, indicated
     /// by `autoref`, to either a raw or borrowed pointer. In these cases unsize is
-    /// None.
+    /// `false`.
     ///
     /// 2. A thin-to-fat coercon involves unsizing the underlying data. We start
     /// with a thin pointer, deref a number of times, unsize the underlying data,
     /// then autoref. The 'unsize' phase may change a fixed length array to a
     /// dynamically sized one, a concrete object to a trait object, or statically
-    /// sized struct to a dyncamically sized one. E.g., &[i32; 4] -> &[i32] is
+    /// sized struct to a dynamically sized one. E.g., &[i32; 4] -> &[i32] is
     /// represented by:
     ///
     /// ```
-    /// Adjust::DerefRef {
-    ///     autoderefs: 1,          // &[i32; 4] -> [i32; 4]
-    ///     autoref: Some(AutoBorrow::Ref), // [i32] -> &[i32]
-    ///     unsize: Some([i32]),    // [i32; 4] -> [i32]
+    /// Adjustment {
+    ///     kind: Adjust::DerefRef {
+    ///         autoderefs: vec![None],         // &[i32; 4] -> [i32; 4]
+    ///         autoref: Some(AutoBorrow::Ref), // [i32; 4] -> &[i32; 4]
+    ///         unsize: true,                   // &[i32; 4] -> &[i32]
+    ///     },
+    ///     target: `[i32]`,
     /// }
     /// ```
     ///
@@ -95,15 +94,18 @@ pub enum Adjust<'tcx> {
     /// Box<[i32]> is represented by:
     ///
     /// ```
-    /// Adjust::DerefRef {
-    ///     autoderefs: 0,
-    ///     autoref: None,
-    ///     unsize: Some(Box<[i32]>),
+    /// Adjustment {
+    ///     Adjust::DerefRef {
+    ///         autoderefs: vec![],
+    ///         autoref: None,
+    ///         unsize: true,
+    ///     },
+    ///     target: `Box<[i32]>`,
     /// }
     /// ```
     DerefRef {
         /// Step 1. Apply a number of dereferences, producing an lvalue.
-        autoderefs: usize,
+        autoderefs: Vec<Option<ty::MethodCallee<'tcx>>>,
 
         /// Step 2. Optionally produce a pointer/reference from the value.
         autoref: Option<AutoBorrow<'tcx>>,
@@ -119,7 +121,11 @@ impl<'tcx> Adjustment<'tcx> {
         match self.kind {
             Adjust::NeverToAny => self.target.is_never(),
 
-            Adjust::DerefRef { autoderefs: 0, autoref: None, unsize: false } => true,
+            Adjust::DerefRef {
+                ref autoderefs,
+                autoref: None,
+                unsize: false
+            } if autoderefs.is_empty() => true,
 
             Adjust::ReifyFnPointer |
             Adjust::UnsafeFnPointer |
@@ -161,35 +167,6 @@ pub enum CustomCoerceUnsized {
 }
 
 impl<'a, 'gcx, 'tcx> ty::TyS<'tcx> {
-    pub fn adjust_for_autoderef<F>(&'tcx self,
-                                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                   expr_id: ast::NodeId,
-                                   expr_span: Span,
-                                   autoderef: u32, // how many autoderefs so far?
-                                   mut method_type: F)
-                                   -> Ty<'tcx> where
-        F: FnMut(ty::MethodCall) -> Option<Ty<'tcx>>,
-    {
-        let method_call = ty::MethodCall::autoderef(expr_id, autoderef);
-        let mut adjusted_ty = self;
-        if let Some(method_ty) = method_type(method_call) {
-            // Method calls always have all late-bound regions
-            // fully instantiated.
-            adjusted_ty = tcx.no_late_bound_regions(&method_ty.fn_ret()).unwrap();
-        }
-        match adjusted_ty.builtin_deref(true, NoPreference) {
-            Some(mt) => mt.ty,
-            None => {
-                span_bug!(
-                    expr_span,
-                    "the {}th autoderef for {} failed: {}",
-                    autoderef,
-                    expr_id,
-                    adjusted_ty);
-            }
-        }
-    }
-
     pub fn adjust_for_autoref(&'tcx self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                               autoref: Option<AutoBorrow<'tcx>>)
                               -> Ty<'tcx> {

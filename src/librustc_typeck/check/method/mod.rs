@@ -10,13 +10,13 @@
 
 //! Method lookup: the secret sauce of Rust. See `README.md`.
 
-use check::{FnCtxt, AdjustedRcvr};
+use check::FnCtxt;
 use hir::def::Def;
 use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
+use rustc::ty::adjustment::AutoBorrow;
 use rustc::ty::subst::Subst;
 use rustc::infer::{self, InferOk};
 
@@ -166,16 +166,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// this method is basically the same as confirmation.
     pub fn lookup_method_in_trait_adjusted(&self,
                                            span: Span,
-                                           self_info: Option<AdjustedRcvr>,
                                            m_name: ast::Name,
                                            trait_def_id: DefId,
                                            self_ty: ty::Ty<'tcx>,
-                                           opt_input_types: Option<Vec<ty::Ty<'tcx>>>)
-                                           -> Option<InferOk<'tcx, ty::MethodCallee<'tcx>>> {
-        debug!("lookup_in_trait_adjusted(self_ty={:?}, self_info={:?}, \
+                                           opt_input_types: Option<&[ty::Ty<'tcx>]>)
+                                           -> Option<InferOk<'tcx,
+                                                (Option<AutoBorrow<'tcx>>,
+                                                 ty::MethodCallee<'tcx>)>> {
+        debug!("lookup_in_trait_adjusted(self_ty={:?}, \
                 m_name={}, trait_def_id={:?})",
                self_ty,
-               self_info,
                m_name,
                trait_def_id);
 
@@ -237,7 +237,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 value
             }
         };
-        let transformed_self_ty = fn_sig.inputs()[0];
         let method_ty = tcx.mk_fn_def(def_id, substs, ty::Binder(fn_sig));
 
         debug!("lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
@@ -267,36 +266,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Also add an obligation for the method type being well-formed.
         obligations.push(traits::Obligation::new(cause, ty::Predicate::WellFormed(method_ty)));
 
-        // Insert any adjustments needed (always an autoref of some mutability).
-        if let Some(AdjustedRcvr { rcvr_expr, autoderefs, unsize }) = self_info {
-            debug!("lookup_in_trait_adjusted: inserting adjustment if needed \
-                    (self-id={}, autoderefs={}, unsize={}, fty={:?})",
-                    rcvr_expr.id, autoderefs, unsize, original_method_ty);
-
-            let original_sig = original_method_ty.fn_sig();
-            let autoref = match (&original_sig.input(0).skip_binder().sty,
-                                 &transformed_self_ty.sty) {
-                (&ty::TyRef(..), &ty::TyRef(region, ty::TypeAndMut { mutbl, ty: _ })) => {
-                    // Trait method is fn(&self) or fn(&mut self), need an
-                    // autoref. Pull the region etc out of the type of first argument.
-                    Some(AutoBorrow::Ref(region, mutbl))
-                }
-                _ => {
-                    // Trait method is fn(self), no transformation needed.
-                    assert!(!unsize);
-                    None
-                }
-            };
-
-            self.apply_adjustment(rcvr_expr.id, Adjustment {
-                kind: Adjust::DerefRef {
-                    autoderefs: autoderefs,
-                    autoref: autoref,
-                    unsize: unsize
-                },
-                target: transformed_self_ty
-            });
-        }
+        let autoref = match (&original_method_ty.fn_sig().input(0).skip_binder().sty,
+                                      &method_ty.fn_sig().input(0).skip_binder().sty) {
+            (&ty::TyRef(..), &ty::TyRef(region, ty::TypeAndMut { mutbl, ty: _ })) => {
+                // Trait method is fn(&self) or fn(&mut self), need an
+                // autoref. Pull the region etc out of the type of first argument.
+                Some(AutoBorrow::Ref(region, mutbl))
+            }
+            _ => {
+                // Trait method is fn(self), no transformation needed.
+                None
+            }
+        };
 
         let callee = ty::MethodCallee {
             def_id: def_id,
@@ -308,7 +289,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         Some(InferOk {
             obligations,
-            value: callee
+            value: (autoref, callee)
         })
     }
 

@@ -1084,8 +1084,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           hir::ExprMethodCall(.., ref args) => {
-            let method_call = ty::MethodCall::expr(expr.id);
-            let method_ty = self.tables.method_map[&method_call].ty;
+            let method_ty = self.tables.method_map[&expr.id].ty;
             // FIXME(canndrew): This is_never should really be an is_uninhabited
             let succ = if method_ty.fn_ret().0.is_never() {
                 self.s.exit_ln

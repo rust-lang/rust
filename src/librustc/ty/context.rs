@@ -222,7 +222,7 @@ pub struct TypeckTables<'tcx> {
 
     pub adjustments: NodeMap<ty::adjustment::Adjustment<'tcx>>,
 
-    pub method_map: ty::MethodMap<'tcx>,
+    pub method_map: NodeMap<ty::MethodCallee<'tcx>>,
 
     /// Borrows
     pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
@@ -358,11 +358,7 @@ impl<'tcx> TypeckTables<'tcx> {
     }
 
     pub fn is_method_call(&self, expr_id: NodeId) -> bool {
-        self.method_map.contains_key(&ty::MethodCall::expr(expr_id))
-    }
-
-    pub fn is_overloaded_autoderef(&self, expr_id: NodeId, autoderefs: u32) -> bool {
-        self.method_map.contains_key(&ty::MethodCall::autoderef(expr_id, autoderefs))
+        self.method_map.contains_key(&expr_id)
     }
 
     pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture<'tcx>> {

@@ -882,19 +882,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             use rustc::ty::adjustment::*;
 
             // Check for method calls and overloaded operators.
-            let opt_m = cx.tables.method_map.get(&ty::MethodCall::expr(id)).cloned();
-            if let Some(m) = opt_m {
+            if let Some(m) = cx.tables.method_map.get(&id).cloned() {
                 if method_call_refers_to_method(cx.tcx, method, m.def_id, m.substs, id) {
                     return true;
                 }
             }
 
             // Check for overloaded autoderef method calls.
-            let opt_adj = cx.tables.adjustments.get(&id).cloned();
-            if let Some(Adjustment { kind: Adjust::DerefRef { autoderefs, .. }, .. }) = opt_adj {
-                for i in 0..autoderefs {
-                    let method_call = ty::MethodCall::autoderef(id, i as u32);
-                    if let Some(m) = cx.tables.method_map.get(&method_call).cloned() {
+            if let Some(Adjustment {
+                kind: Adjust::DerefRef { ref autoderefs, .. }, ..
+            }) = cx.tables.adjustments.get(&id).cloned() {
+                for &overloaded in autoderefs {
+                    if let Some(m) = overloaded {
                         if method_call_refers_to_method(cx.tcx, method, m.def_id, m.substs, id) {
                             return true;
                         }

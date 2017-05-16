@@ -16,7 +16,7 @@ use check::FnCtxt;
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::infer::{InferCtxt};
-use rustc::ty::{self, Ty, TyCtxt, MethodCall, MethodCallee};
+use rustc::ty::{self, Ty, TyCtxt, MethodCallee};
 use rustc::ty::adjustment;
 use rustc::ty::fold::{TypeFolder,TypeFoldable};
 use rustc::util::nodemap::DefIdSet;
@@ -106,7 +106,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 let inner_ty = self.fcx.resolve_type_vars_if_possible(&inner_ty);
 
                 if inner_ty.is_scalar() {
-                    self.fcx.tables.borrow_mut().method_map.remove(&MethodCall::expr(e.id));
+                    self.fcx.tables.borrow_mut().method_map.remove(&e.id);
                 }
             }
             hir::ExprBinary(ref op, ref lhs, ref rhs) |
@@ -118,7 +118,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 let rhs_ty = self.fcx.resolve_type_vars_if_possible(&rhs_ty);
 
                 if lhs_ty.is_scalar() && rhs_ty.is_scalar() {
-                    self.fcx.tables.borrow_mut().method_map.remove(&MethodCall::expr(e.id));
+                    self.fcx.tables.borrow_mut().method_map.remove(&e.id);
 
                     // weird but true: the by-ref binops put an
                     // adjustment on the lhs but not the rhs; the
@@ -164,7 +164,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         self.fix_scalar_builtin_expr(e);
 
         self.visit_node_id(e.span, e.id);
-        self.visit_method_map_entry(e.span, MethodCall::expr(e.id));
+        self.visit_method_map_entry(e.span, e.id);
 
         if let hir::ExprClosure(_, _, body, _) = e.node {
             let body = self.fcx.tcx.hir.body(body);
@@ -335,13 +335,16 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     }
 
                     adjustment::Adjust::DerefRef { autoderefs, autoref, unsize } => {
-                        for autoderef in 0..autoderefs {
-                            let method_call = MethodCall::autoderef(node_id, autoderef as u32);
-                            self.visit_method_map_entry(span, method_call);
-                        }
-
                         adjustment::Adjust::DerefRef {
-                            autoderefs: autoderefs,
+                            autoderefs: autoderefs.iter().map(|overloaded| {
+                                overloaded.map(|method| {
+                                    MethodCallee {
+                                        def_id: method.def_id,
+                                        ty: self.resolve(&method.ty, &span),
+                                        substs: self.resolve(&method.substs, &span),
+                                    }
+                                })
+                            }).collect(),
                             autoref: self.resolve(&autoref, &span),
                             unsize: unsize,
                         }
@@ -359,27 +362,22 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn visit_method_map_entry(&mut self,
                               method_span: Span,
-                              method_call: MethodCall) {
+                              node_id: ast::NodeId) {
         // Resolve any method map entry
-        let new_method = match self.fcx.tables.borrow_mut().method_map.remove(&method_call) {
+        let new_method = match self.fcx.tables.borrow_mut().method_map.remove(&node_id) {
             Some(method) => {
-                debug!("writeback::resolve_method_map_entry(call={:?}, entry={:?})",
-                       method_call,
-                       method);
-                let new_method = MethodCallee {
+                Some(MethodCallee {
                     def_id: method.def_id,
                     ty: self.resolve(&method.ty, &method_span),
                     substs: self.resolve(&method.substs, &method_span),
-                };
-
-                Some(new_method)
+                })
             }
             None => None
         };
 
         //NB(jroesch): We need to match twice to avoid a double borrow which would cause an ICE
         if let Some(method) = new_method {
-            self.tables.method_map.insert(method_call, method);
+            self.tables.method_map.insert(node_id, method);
         }
     }
 
