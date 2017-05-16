@@ -11,7 +11,6 @@
 use hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashMap;
 use std::cell::RefCell;
-use std::collections::hash_map::Entry;
 use std::ops::Index;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -50,27 +49,9 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
         self.graph.read(dep_node);
     }
 
-    /// Registers a (synthetic) write to the key `k`. Usually this is
-    /// invoked automatically by `insert`.
-    fn write(&self, k: &M::Key) {
-        let dep_node = M::to_dep_node(k);
-        self.graph.write(dep_node);
-    }
-
     pub fn get(&self, k: &M::Key) -> Option<&M::Value> {
         self.read(k);
         self.map.get(k)
-    }
-
-    pub fn insert(&mut self, k: M::Key, v: M::Value) {
-        self.write(&k);
-        let old_value = self.map.insert(k, v);
-        assert!(old_value.is_none());
-    }
-
-    pub fn entry(&mut self, k: M::Key) -> Entry<M::Key, M::Value> {
-        self.write(&k);
-        self.map.entry(k)
     }
 
     pub fn contains_key(&self, k: &M::Key) -> bool {

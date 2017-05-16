@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig};
+use dep_graph::{DepNode, DepTrackingMapConfig};
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use hir::def::Def;
 use hir;
@@ -27,9 +27,11 @@ use ty::fast_reject::SimplifiedType;
 use util::nodemap::{DefIdSet, NodeSet};
 
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::fx::FxHashMap;
 use std::cell::{RefCell, RefMut};
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::marker::PhantomData;
 use std::mem;
 use std::collections::BTreeMap;
 use std::ops::Deref;
@@ -177,6 +179,20 @@ impl<'tcx> Value<'tcx> for ty::DtorckConstraint<'tcx> {
 impl<'tcx> Value<'tcx> for ty::SymbolName {
     fn from_cycle_error<'a>(_: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         ty::SymbolName { name: Symbol::intern("<error>").as_str() }
+    }
+}
+
+struct QueryMap<D: QueryDescription> {
+    phantom: PhantomData<D>,
+    map: FxHashMap<D::Key, D::Value>,
+}
+
+impl<M: QueryDescription> QueryMap<M> {
+    fn new() -> QueryMap<M> {
+        QueryMap {
+            phantom: PhantomData,
+            map: FxHashMap(),
+        }
     }
 }
 
@@ -463,13 +479,12 @@ macro_rules! define_maps {
         }
 
         impl<$tcx> Maps<$tcx> {
-            pub fn new(dep_graph: DepGraph,
-                       providers: IndexVec<CrateNum, Providers<$tcx>>)
+            pub fn new(providers: IndexVec<CrateNum, Providers<$tcx>>)
                        -> Self {
                 Maps {
                     providers,
                     query_stack: RefCell::new(vec![]),
-                    $($name: RefCell::new(DepTrackingMap::new(dep_graph.clone()))),*
+                    $($name: RefCell::new(QueryMap::new())),*
                 }
             }
         }
@@ -521,7 +536,7 @@ macro_rules! define_maps {
                        key,
                        span);
 
-                if let Some(result) = tcx.maps.$name.borrow().get(&key) {
+                if let Some(result) = tcx.maps.$name.borrow().map.get(&key) {
                     return Ok(f(result));
                 }
 
@@ -539,21 +554,19 @@ macro_rules! define_maps {
                     provider(tcx.global_tcx(), key)
                 })?;
 
-                Ok(f(tcx.maps.$name.borrow_mut().entry(key).or_insert(result)))
+                Ok(f(tcx.maps.$name.borrow_mut().map.entry(key).or_insert(result)))
             }
 
             pub fn try_get(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K)
                            -> Result<$V, CycleError<'a, $tcx>> {
+                // We register the `read` here, but not in `force`, since
+                // `force` does not give access to the value produced (and thus
+                // we actually don't read it).
+                tcx.dep_graph.read(Self::to_dep_node(&key));
                 Self::try_get_with(tcx, span, key, Clone::clone)
             }
 
             pub fn force(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K) {
-                // FIXME(eddyb) Move away from using `DepTrackingMap`
-                // so we don't have to explicitly ignore a false edge:
-                // we can't observe a value dependency, only side-effects,
-                // through `force`, and once everything has been updated,
-                // perhaps only diagnostics, if those, will remain.
-                let _ignore = tcx.dep_graph.in_ignore();
                 match Self::try_get_with(tcx, span, key, |_| ()) {
                     Ok(()) => {}
                     Err(e) => tcx.report_cycle(e)
@@ -644,7 +657,7 @@ macro_rules! define_map_struct {
             tcx: $tcx,
             input: $input,
             output: ($($output)*
-                     $(#[$attr])* $($pub)* $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>,)
+                     $(#[$attr])* $($pub)* $name: RefCell<QueryMap<queries::$name<$tcx>>>,)
         }
     };
 
