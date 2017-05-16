@@ -2323,18 +2323,20 @@ impl<'a> Resolver<'a> {
                     let self_is_available = this.self_value_is_available(path[0].ctxt, span);
                     match candidate {
                         AssocSuggestion::Field => {
-                            err.span_label(span, format!("did you mean `self.{}`?", path_str));
+                            err.span_suggestion(span, "did you mean",
+                                                format!("self.{}", path_str));
                             if !self_is_available {
                                 err.span_label(span, format!("`self` value is only available in \
                                                                methods with `self` parameter"));
                             }
                         }
                         AssocSuggestion::MethodWithSelf if self_is_available => {
-                            err.span_label(span, format!("did you mean `self.{}(...)`?",
-                                                           path_str));
+                            err.span_suggestion(span, "did you mean",
+                                                format!("self.{}", path_str));
                         }
                         AssocSuggestion::MethodWithSelf | AssocSuggestion::AssocItem => {
-                            err.span_label(span, format!("did you mean `Self::{}`?", path_str));
+                            err.span_suggestion(span, "did you mean",
+                                                format!("Self::{}", path_str));
                         }
                     }
                     return err;
