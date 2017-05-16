@@ -19,9 +19,5 @@ mod m {
 
 fn main() {
     k!();
-    //~^ ERROR cannot find macro `k!` in this scope
-    //~^^ HELP did you mean `kl!`?
     kl!();
-    //~^ ERROR cannot find macro `kl!` in this scope
-    //~^^ HELP have you added the `#[macro_use]` on the module/import?
 }
