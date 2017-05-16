@@ -15,6 +15,8 @@ never exits.
 A `loop` can instead evaluate to a useful value via *break with value*:
 
 ```rust
+#![feature(loop_break_value)]
+
 // Find the first square number over 1000:
 let mut n = 1;
 let square = loop {
@@ -28,6 +30,8 @@ let square = loop {
 The evaluation type may be specified externally:
 
 ```rust
+#![feature(loop_break_value)]
+
 // Declare that value returned is unsigned 64-bit:
 let n: u64 = loop {
     break 1;
@@ -37,9 +41,11 @@ let n: u64 = loop {
 It is an error if types do not agree, either between a "break" value and an external requirement,
 or between multiple "break" values:
 
-```rust
+```no_compile
+#![feature(loop_break_value)]
+
 loop {
-    if random_bool() {
+    if true {
         break 1u32;
     } else {
         break 0u8;  // error: types do not agree
@@ -69,6 +75,8 @@ When no value is given, the value `()` is assumed, thus `break;` is equivalent t
 Using a label allows returning a value from an inner loop:
 
 ```rust
+#![feature(loop_break_value)]
+
 let result = 'outer: loop {
     for n in 1..10 {
         if n > 4 {
