@@ -180,8 +180,33 @@ pub use self::local::{LocalKey, LocalKeyState};
 // Builder
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Thread configuration. Provides detailed control over the properties
-/// and behavior of new threads.
+/// Thread factory, which can be used in order to configure the properties of
+/// a new thread.
+///
+/// Methods can be chained on it in order to configure it.
+///
+/// The two configurations available are:
+///
+/// - [`name`]: allows to give a name to the thread which is currently
+///   only used in `panic` messages.
+/// - [`stack_size`]: specifies the desired stack size. Note that this can
+///   be overriden by the OS.
+///
+/// If the [`stack_size`] field is not specified, the stack size
+/// will be the `RUST_MIN_STACK` environment variable. If it is
+/// not specified either, a sensible default will be set.
+///
+/// If the [`name`] field is not specified, the thread will not be named.
+///
+/// The [`spawn`] method will take ownership of the builder and create an
+/// [`io::Result`] to the thread handle with the given configuration.
+///
+/// The [`thread::spawn`] free function uses a `Builder` with default
+/// configuration and [`unwrap`]s its return value.
+///
+/// You may want to use [`spawn`] instead of [`thread::spawn`], when you want
+/// to recover from a failure to launch a thread, indeed the free function will
+/// panick where the `Builder` method will return a [`io::Result`].
 ///
 /// # Examples
 ///
@@ -196,6 +221,13 @@ pub use self::local::{LocalKey, LocalKeyState};
 ///
 /// handler.join().unwrap();
 /// ```
+///
+/// [`thread::spawn`]: ../../std/thread/fn.spawn.html
+/// [`stack_size`]: ../../std/thread/struct.Builder.html#method.stack_size
+/// [`name`]: ../../std/thread/struct.Builder.html#method.name
+/// [`spawn`]: ../../std/thread/struct.Builder.html#method.spawn
+/// [`io::Result`]: ../../std/io/type.Result.html
+/// [`unwrap`]: ../../std/result/enum.Result.html#method.unwrap
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Builder {
@@ -208,11 +240,6 @@ pub struct Builder {
 impl Builder {
     /// Generates the base configuration for spawning a thread, from which
     /// configuration methods can be chained.
-    ///
-    /// If the [`stack_size`] field is not specified, the stack size
-    /// will be the `RUST_MIN_STACK` environment variable.  If it is
-    /// not specified either, a sensible default will be set (2MB as
-    /// of the writting of this doc).
     ///
     /// # Examples
     ///
@@ -229,8 +256,6 @@ impl Builder {
     ///
     /// handler.join().unwrap();
     /// ```
-    ///
-    /// [`stack_size`]: ../../std/thread/struct.Builder.html#method.stack_size
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Builder {
         Builder {
@@ -280,9 +305,10 @@ impl Builder {
         self
     }
 
-    /// Spawns a new thread, and returns a join handle for it.
+    /// Spawns a new thread by taking ownership of the `Builder`, and returns an
+    /// [`io::Result`] to its [`JoinHandle`].
     ///
-    /// The child thread may outlive the parent (unless the parent thread
+    /// The spawned thread may outlive the caller (unless the caller thread
     /// is the main thread; the whole process is terminated when the main
     /// thread finishes). The join handle can be used to block on
     /// termination of the child thread, including recovering its panics.
@@ -297,6 +323,7 @@ impl Builder {
     ///
     /// [`spawn`]: ../../std/thread/fn.spawn.html
     /// [`io::Result`]: ../../std/io/type.Result.html
+    /// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
     ///
     /// # Examples
     ///
@@ -468,6 +495,23 @@ pub fn current() -> Thread {
 
 /// Cooperatively gives up a timeslice to the OS scheduler.
 ///
+/// This is used when the programmer knows that the thread will have nothing
+/// to do for some time, and thus avoid wasting computing time.
+///
+/// For example when polling on a resource, it is common to check that it is
+/// available, and if not to yield in order to avoid busy waiting.
+///
+/// Thus the pattern of `yield`ing after a failed poll is rather common when
+/// implementing low-level shared resources or synchronization primitives.
+///
+/// However programmers will usualy prefer to use, [`channel`]s, [`Condvar`]s,
+/// [`Mutex`]es or [`join`] for their synchronisation routines, as they avoid
+/// thinking about thread schedulling.
+///
+/// Note that [`channel`]s for example are implemented using this primitive.
+/// Indeed when you call `send` or `recv`, which are blocking, they will yield
+/// if the channel is not available.
+///
 /// # Examples
 ///
 /// ```
@@ -475,6 +519,12 @@ pub fn current() -> Thread {
 ///
 /// thread::yield_now();
 /// ```
+///
+/// [`channel`]: ../../std/sync/mpsc/index.html
+/// [`spawn`]: ../../std/thread/fn.spawn.html
+/// [`join`]: ../../std/thread/struct.JoinHandle.html#method.join
+/// [`Mutex`]: ../../std/sync/struct.Mutex.html
+/// [`Condvar`]: ../../std/sync/struct.Condvar.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn yield_now() {
     imp::Thread::yield_now()

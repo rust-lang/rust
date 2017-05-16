@@ -1177,7 +1177,6 @@ impl fmt::Display for AbiSpace {
         let quot = if f.alternate() { "\"" } else { "&quot;" };
         match self.0 {
             Abi::Rust => Ok(()),
-            Abi::C => write!(f, "extern "),
             abi => write!(f, "extern {0}{1}{0} ", quot, abi.name()),
         }
     }
