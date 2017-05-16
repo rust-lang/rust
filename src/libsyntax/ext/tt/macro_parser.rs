@@ -267,11 +267,12 @@ pub fn parse_failure_msg(tok: Token) -> String {
 
 /// Perform a token equality check, ignoring syntax context (that is, an unhygienic comparison)
 fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
-    match (t1,t2) {
-        (&token::Ident(id1),&token::Ident(id2))
-        | (&token::Lifetime(id1),&token::Lifetime(id2)) =>
-            id1.name == id2.name,
-        _ => *t1 == *t2
+    if let (Some(id1), Some(id2)) = (t1.ident(), t2.ident()) {
+        id1.name == id2.name
+    } else if let (&token::Lifetime(id1), &token::Lifetime(id2)) = (t1, t2) {
+        id1.name == id2.name
+    } else {
+        *t1 == *t2
     }
 }
 
