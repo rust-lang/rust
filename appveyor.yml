@@ -141,9 +141,9 @@ install:
   - set PATH="C:\Program Files (x86)\Inno Setup 5";%PATH%
 
   # Help debug some handle issues on AppVeyor
-  - ps: Invoke-WebRequest -Uri https://download.sysinternals.com/files/Handle.zip -OutFile handle.zip
+  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-15-Handle.zip
   - mkdir handle
-  - ps: Expand-Archive handle.zip -dest handle
+  - 7z x -ohandle 2017-05-15-Handle.zip
   - set PATH=%PATH%;%CD%\handle
   - handle.exe -accepteula -help
 
