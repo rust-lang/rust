@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![deny(missing_fragment_specifier)] //~ NOTE lint level defined here
+#![allow(unused_macros)]
 
 macro_rules! m { ($i) => {} }
 //~^ ERROR missing fragment specifier

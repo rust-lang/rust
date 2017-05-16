@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_macros)]
+
 #[allow_internal_unstable] //~ ERROR allow_internal_unstable side-steps
 macro_rules! foo {
     () => {}

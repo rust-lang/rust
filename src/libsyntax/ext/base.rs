@@ -535,7 +535,7 @@ pub enum SyntaxExtension {
     ///
     /// The `bool` dictates whether the contents of the macro can
     /// directly use `#[unstable]` things (true == yes).
-    NormalTT(Box<TTMacroExpander>, Option<Span>, bool),
+    NormalTT(Box<TTMacroExpander>, Option<(ast::NodeId, Span)>, bool),
 
     /// A function-like syntax extension that has an extra ident before
     /// the block.
@@ -589,6 +589,7 @@ pub trait Resolver {
                      -> Result<Option<Rc<SyntaxExtension>>, Determinacy>;
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy>;
+    fn check_unused_macros(&self);
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -618,6 +619,7 @@ impl Resolver for DummyResolver {
                      _force: bool) -> Result<Rc<SyntaxExtension>, Determinacy> {
         Err(Determinacy::Determined)
     }
+    fn check_unused_macros(&self) {}
 }
 
 #[derive(Clone)]
@@ -799,6 +801,10 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn name_of(&self, st: &str) -> ast::Name {
         Symbol::intern(st)
+    }
+
+    pub fn check_unused_macros(&self) {
+        self.resolver.check_unused_macros();
     }
 }
 

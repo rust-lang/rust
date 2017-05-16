@@ -12,6 +12,7 @@ use super::Wrapping;
 
 use ops::*;
 
+#[allow(unused_macros)]
 macro_rules! sh_impl_signed {
     ($t:ident, $f:ident) => (
         #[stable(feature = "rust1", since = "1.0.0")]

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_macros)]
+
 macro_rules! assign {
     (($($a:tt)*) = ($($b:tt))*) => { //~ ERROR expected `*` or `+`
         $($a)* = $($b)*

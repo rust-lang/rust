@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_macros)]
+
 macro_rules! test {
     ($e:expr +) => () //~ ERROR not allowed for `expr` fragments
 }
