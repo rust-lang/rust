@@ -942,22 +942,26 @@ fn relevant_trait_impls_for((def_id, _): (DefId, SimplifiedType)) -> DepNode<Def
     DepNode::TraitImpls(def_id)
 }
 
-fn is_copy_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
-    let krate_def_id = DefId::local(CRATE_DEF_INDEX);
-    DepNode::IsCopy(krate_def_id)
+fn is_copy_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
+    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
+        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
+    DepNode::IsCopy(def_id)
 }
 
-fn is_sized_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
-    let krate_def_id = DefId::local(CRATE_DEF_INDEX);
-    DepNode::IsSized(krate_def_id)
+fn is_sized_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
+    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
+        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
+    DepNode::IsSized(def_id)
 }
 
-fn is_freeze_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
-    let krate_def_id = DefId::local(CRATE_DEF_INDEX);
-    DepNode::IsSized(krate_def_id)
+fn is_freeze_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
+    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
+        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
+    DepNode::IsFreeze(def_id)
 }
 
-fn needs_drop_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
-    let krate_def_id = DefId::local(CRATE_DEF_INDEX);
-    DepNode::NeedsDrop(krate_def_id)
+fn needs_drop_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
+    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
+        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
+    DepNode::NeedsDrop(def_id)
 }
