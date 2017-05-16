@@ -122,12 +122,12 @@ last 1 UCAndroid version
 
 Support:
 
-- We add automated testing for each of these as much as possible (and work on
-  adding automated testing to those web contents that aren't currently tested,
-  such as rustdoc output).
+- We add automated testing of functionality in a variety of browsers through a
+  service such as [BrowserStack][] for each of these as much as possible (and
+  work on adding this type of automated testing to those web contents that
+  aren't currently tested, such as rustdoc output).
 - Bugs affecting the functionality of the sites in these browsers are
   prioritized highly.
-
 
 ### Unsupported browsers
 
