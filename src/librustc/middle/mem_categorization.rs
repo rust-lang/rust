@@ -94,7 +94,7 @@ pub enum Categorization<'tcx> {
     StaticItem,
     Upvar(Upvar),                          // upvar referenced by closure env
     Local(ast::NodeId),                    // local variable
-    Deref(cmt<'tcx>, usize, PointerKind<'tcx>),  // deref of a ptr
+    Deref(cmt<'tcx>, PointerKind<'tcx>),   // deref of a ptr
     Interior(cmt<'tcx>, InteriorKind),     // something interior: field, tuple, etc
     Downcast(cmt<'tcx>, DefId),            // selects a particular enum variant (*1)
 
@@ -229,8 +229,8 @@ impl<'tcx> cmt_<'tcx> {
 
     pub fn immutability_blame(&self) -> Option<ImmutabilityBlame<'tcx>> {
         match self.cat {
-            Categorization::Deref(ref base_cmt, _, BorrowedPtr(ty::ImmBorrow, _)) |
-            Categorization::Deref(ref base_cmt, _, Implicit(ty::ImmBorrow, _)) => {
+            Categorization::Deref(ref base_cmt, BorrowedPtr(ty::ImmBorrow, _)) |
+            Categorization::Deref(ref base_cmt, Implicit(ty::ImmBorrow, _)) => {
                 // try to figure out where the immutable reference came from
                 match base_cmt.cat {
                     Categorization::Local(node_id) =>
@@ -255,13 +255,13 @@ impl<'tcx> cmt_<'tcx> {
             }
             Categorization::Rvalue(..) |
             Categorization::Upvar(..) |
-            Categorization::Deref(.., UnsafePtr(..)) => {
+            Categorization::Deref(_, UnsafePtr(..)) => {
                 // This should not be reachable up to inference limitations.
                 None
             }
             Categorization::Interior(ref base_cmt, _) |
             Categorization::Downcast(ref base_cmt, _) |
-            Categorization::Deref(ref base_cmt, _, _) => {
+            Categorization::Deref(ref base_cmt, _) => {
                 base_cmt.immutability_blame()
             }
             Categorization::StaticItem => {
@@ -569,7 +569,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                     // is an rvalue. That is what we will be
                     // dereferencing.
                     let base_cmt = self.cat_rvalue_node(expr.id(), expr.span(), ret_ty);
-                    Ok(self.cat_deref_common(expr, base_cmt, 1, elem_ty, true))
+                    Ok(self.cat_deref_common(expr, base_cmt, elem_ty, true))
                 }
                 None => {
                     self.cat_index(expr, self.cat_expr(&base)?, InteriorOffsetKind::Index)
@@ -763,7 +763,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 cmt_ {
                     id: id,
                     span: span,
-                    cat: Categorization::Deref(Rc::new(cmt_result), 0, ptr),
+                    cat: Categorization::Deref(Rc::new(cmt_result), ptr),
                     mutbl: MutabilityCategory::from_borrow_kind(upvar_borrow.kind),
                     ty: var_ty,
                     note: NoteUpvarRef(upvar_id)
@@ -823,7 +823,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let ret = cmt_ {
             id: id,
             span: span,
-            cat: Categorization::Deref(Rc::new(cmt_result), 0, env_ptr),
+            cat: Categorization::Deref(Rc::new(cmt_result), env_ptr),
             mutbl: deref_mutbl,
             ty: var_ty,
             note: NoteClosureEnv(upvar_id)
@@ -957,7 +957,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let base_cmt_ty = base_cmt.ty;
         match base_cmt_ty.builtin_deref(true, ty::NoPreference) {
             Some(mt) => {
-                let ret = self.cat_deref_common(node, base_cmt, deref_cnt, mt.ty, false);
+                let ret = self.cat_deref_common(node, base_cmt, mt.ty, false);
                 debug!("cat_deref ret {:?}", ret);
                 Ok(ret)
             }
@@ -972,7 +972,6 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     fn cat_deref_common<N:ast_node>(&self,
                                     node: &N,
                                     base_cmt: cmt<'tcx>,
-                                    deref_cnt: usize,
                                     deref_ty: Ty<'tcx>,
                                     implicit: bool)
                                     -> cmt<'tcx>
@@ -991,7 +990,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             span: node.span(),
             // For unique ptrs, we inherit mutability from the owning reference.
             mutbl: MutabilityCategory::from_pointer_kind(base_cmt.mutbl, ptr),
-            cat: Categorization::Deref(base_cmt, deref_cnt, ptr),
+            cat: Categorization::Deref(base_cmt, ptr),
             ty: deref_ty,
             note: NoteNone
         });
@@ -1300,15 +1299,15 @@ impl<'tcx> cmt_<'tcx> {
             Categorization::Rvalue(..) |
             Categorization::StaticItem |
             Categorization::Local(..) |
-            Categorization::Deref(.., UnsafePtr(..)) |
-            Categorization::Deref(.., BorrowedPtr(..)) |
-            Categorization::Deref(.., Implicit(..)) |
+            Categorization::Deref(_, UnsafePtr(..)) |
+            Categorization::Deref(_, BorrowedPtr(..)) |
+            Categorization::Deref(_, Implicit(..)) |
             Categorization::Upvar(..) => {
                 Rc::new((*self).clone())
             }
             Categorization::Downcast(ref b, _) |
             Categorization::Interior(ref b, _) |
-            Categorization::Deref(ref b, _, Unique) => {
+            Categorization::Deref(ref b, Unique) => {
                 b.guarantor()
             }
         }
@@ -1321,11 +1320,11 @@ impl<'tcx> cmt_<'tcx> {
         // aliased and eventually recused.
 
         match self.cat {
-            Categorization::Deref(ref b, _, BorrowedPtr(ty::MutBorrow, _)) |
-            Categorization::Deref(ref b, _, Implicit(ty::MutBorrow, _)) |
-            Categorization::Deref(ref b, _, BorrowedPtr(ty::UniqueImmBorrow, _)) |
-            Categorization::Deref(ref b, _, Implicit(ty::UniqueImmBorrow, _)) |
-            Categorization::Deref(ref b, _, Unique) |
+            Categorization::Deref(ref b, BorrowedPtr(ty::MutBorrow, _)) |
+            Categorization::Deref(ref b, Implicit(ty::MutBorrow, _)) |
+            Categorization::Deref(ref b, BorrowedPtr(ty::UniqueImmBorrow, _)) |
+            Categorization::Deref(ref b, Implicit(ty::UniqueImmBorrow, _)) |
+            Categorization::Deref(ref b, Unique) |
             Categorization::Downcast(ref b, _) |
             Categorization::Interior(ref b, _) => {
                 // Aliasability depends on base cmt
@@ -1335,7 +1334,7 @@ impl<'tcx> cmt_<'tcx> {
             Categorization::Rvalue(..) |
             Categorization::Local(..) |
             Categorization::Upvar(..) |
-            Categorization::Deref(.., UnsafePtr(..)) => { // yes, it's aliasable, but...
+            Categorization::Deref(_, UnsafePtr(..)) => { // yes, it's aliasable, but...
                 NonAliasable
             }
 
@@ -1347,8 +1346,8 @@ impl<'tcx> cmt_<'tcx> {
                 }
             }
 
-            Categorization::Deref(_, _, BorrowedPtr(ty::ImmBorrow, _)) |
-            Categorization::Deref(_, _, Implicit(ty::ImmBorrow, _)) => {
+            Categorization::Deref(_, BorrowedPtr(ty::ImmBorrow, _)) |
+            Categorization::Deref(_, Implicit(ty::ImmBorrow, _)) => {
                 FreelyAliasable(AliasableBorrowed)
             }
         }
@@ -1360,9 +1359,9 @@ impl<'tcx> cmt_<'tcx> {
         match self.note {
             NoteClosureEnv(..) | NoteUpvarRef(..) => {
                 Some(match self.cat {
-                    Categorization::Deref(ref inner, ..) => {
+                    Categorization::Deref(ref inner, _) => {
                         match inner.cat {
-                            Categorization::Deref(ref inner, ..) => inner.clone(),
+                            Categorization::Deref(ref inner, _) => inner.clone(),
                             Categorization::Upvar(..) => inner.clone(),
                             _ => bug!()
                         }
@@ -1390,7 +1389,7 @@ impl<'tcx> cmt_<'tcx> {
                     "local variable".to_string()
                 }
             }
-            Categorization::Deref(.., pk) => {
+            Categorization::Deref(_, pk) => {
                 let upvar = self.upvar();
                 match upvar.as_ref().map(|i| &i.cat) {
                     Some(&Categorization::Upvar(ref var)) => {
@@ -1467,8 +1466,8 @@ impl<'tcx> fmt::Debug for Categorization<'tcx> {
             Categorization::Upvar(upvar) => {
                 write!(f, "upvar({:?})", upvar)
             }
-            Categorization::Deref(ref cmt, derefs, ptr) => {
-                write!(f, "{:?}-{:?}{}->", cmt.cat, ptr, derefs)
+            Categorization::Deref(ref cmt, ptr) => {
+                write!(f, "{:?}-{:?}->", cmt.cat, ptr)
             }
             Categorization::Interior(ref cmt, interior) => {
                 write!(f, "{:?}.{:?}", cmt.cat, interior)

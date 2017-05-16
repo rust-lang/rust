@@ -512,7 +512,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
                 Categorization::StaticItem => {
                     break;
                 }
-                Categorization::Deref(ref cmt, ..) |
+                Categorization::Deref(ref cmt, _) |
                 Categorization::Downcast(ref cmt, _) |
                 Categorization::Interior(ref cmt, _) => {
                     cur = cmt;

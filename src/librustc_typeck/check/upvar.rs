@@ -281,8 +281,8 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         debug!("adjust_upvar_borrow_kind_for_consume: guarantor={:?}",
                guarantor);
         match guarantor.cat {
-            Categorization::Deref(.., mc::BorrowedPtr(..)) |
-            Categorization::Deref(.., mc::Implicit(..)) => {
+            Categorization::Deref(_, mc::BorrowedPtr(..)) |
+            Categorization::Deref(_, mc::Implicit(..)) => {
                 match cmt.note {
                     mc::NoteUpvarRef(upvar_id) => {
                         debug!("adjust_upvar_borrow_kind_for_consume: \
@@ -327,7 +327,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                cmt);
 
         match cmt.cat.clone() {
-            Categorization::Deref(base, _, mc::Unique) |
+            Categorization::Deref(base, mc::Unique) |
             Categorization::Interior(base, _) |
             Categorization::Downcast(base, _) => {
                 // Interior or owned data is mutable if base is
@@ -335,8 +335,8 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                 self.adjust_upvar_borrow_kind_for_mut(base);
             }
 
-            Categorization::Deref(base, _, mc::BorrowedPtr(..)) |
-            Categorization::Deref(base, _, mc::Implicit(..)) => {
+            Categorization::Deref(base, mc::BorrowedPtr(..)) |
+            Categorization::Deref(base, mc::Implicit(..)) => {
                 if !self.try_adjust_upvar_deref(cmt, ty::MutBorrow) {
                     // assignment to deref of an `&mut`
                     // borrowed pointer implies that the
@@ -346,7 +346,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                 }
             }
 
-            Categorization::Deref(.., mc::UnsafePtr(..)) |
+            Categorization::Deref(_, mc::UnsafePtr(..)) |
             Categorization::StaticItem |
             Categorization::Rvalue(..) |
             Categorization::Local(_) |
@@ -361,7 +361,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                cmt);
 
         match cmt.cat.clone() {
-            Categorization::Deref(base, _, mc::Unique) |
+            Categorization::Deref(base, mc::Unique) |
             Categorization::Interior(base, _) |
             Categorization::Downcast(base, _) => {
                 // Interior or owned data is unique if base is
@@ -369,8 +369,8 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                 self.adjust_upvar_borrow_kind_for_unique(base);
             }
 
-            Categorization::Deref(base, _, mc::BorrowedPtr(..)) |
-            Categorization::Deref(base, _, mc::Implicit(..)) => {
+            Categorization::Deref(base, mc::BorrowedPtr(..)) |
+            Categorization::Deref(base, mc::Implicit(..)) => {
                 if !self.try_adjust_upvar_deref(cmt, ty::UniqueImmBorrow) {
                     // for a borrowed pointer to be unique, its
                     // base must be unique
@@ -378,7 +378,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                 }
             }
 
-            Categorization::Deref(.., mc::UnsafePtr(..)) |
+            Categorization::Deref(_, mc::UnsafePtr(..)) |
             Categorization::StaticItem |
             Categorization::Rvalue(..) |
             Categorization::Local(_) |

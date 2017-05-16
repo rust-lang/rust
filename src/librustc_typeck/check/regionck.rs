@@ -1224,10 +1224,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                    borrow_kind,
                    borrow_cmt);
             match borrow_cmt.cat.clone() {
-                Categorization::Deref(ref_cmt, _,
-                                      mc::Implicit(ref_kind, ref_region)) |
-                Categorization::Deref(ref_cmt, _,
-                                      mc::BorrowedPtr(ref_kind, ref_region)) => {
+                Categorization::Deref(ref_cmt, mc::Implicit(ref_kind, ref_region)) |
+                Categorization::Deref(ref_cmt, mc::BorrowedPtr(ref_kind, ref_region)) => {
                     match self.link_reborrowed_region(span,
                                                       borrow_region, borrow_kind,
                                                       ref_cmt, ref_region, ref_kind,
@@ -1243,7 +1241,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 Categorization::Downcast(cmt_base, _) |
-                Categorization::Deref(cmt_base, _, mc::Unique) |
+                Categorization::Deref(cmt_base, mc::Unique) |
                 Categorization::Interior(cmt_base, _) => {
                     // Borrowing interior or owned data requires the base
                     // to be valid and borrowable in the same fashion.
@@ -1251,7 +1249,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     borrow_kind = borrow_kind;
                 }
 
-                Categorization::Deref(.., mc::UnsafePtr(..)) |
+                Categorization::Deref(_, mc::UnsafePtr(..)) |
                 Categorization::StaticItem |
                 Categorization::Upvar(..) |
                 Categorization::Local(..) |

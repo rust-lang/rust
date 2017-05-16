@@ -426,7 +426,7 @@ pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
             Some(new_lp(LpUpvar(id)))
         }
 
-        Categorization::Deref(ref cmt_base, _, pk) => {
+        Categorization::Deref(ref cmt_base, pk) => {
             opt_loan_path(cmt_base).map(|lp| {
                 new_lp(LpExtend(lp, cmt.mutbl, LpDeref(pk)))
             })

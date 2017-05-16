@@ -222,9 +222,9 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                                cmt: &mc::cmt<'tcx>)
                                                -> Option<mc::cmt<'tcx>> {
     match cmt.cat {
-        Categorization::Deref(.., mc::BorrowedPtr(..)) |
-        Categorization::Deref(.., mc::Implicit(..)) |
-        Categorization::Deref(.., mc::UnsafePtr(..)) |
+        Categorization::Deref(_, mc::BorrowedPtr(..)) |
+        Categorization::Deref(_, mc::Implicit(..)) |
+        Categorization::Deref(_, mc::UnsafePtr(..)) |
         Categorization::StaticItem => {
             Some(cmt.clone())
         }
@@ -258,7 +258,7 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             Some(cmt.clone())
         }
 
-        Categorization::Deref(ref b, _, mc::Unique) => {
+        Categorization::Deref(ref b, mc::Unique) => {
             check_and_get_illegal_move_origin(bccx, b)
         }
     }
