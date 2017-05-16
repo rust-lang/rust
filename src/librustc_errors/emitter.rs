@@ -51,7 +51,7 @@ impl Emitter for EmitterWriter {
                     // This substitution is only removal, don't show it
                     format!("help: {}", sugg.msg)
                 } else {
-                    format!("help: {} `{}`", sugg.msg, substitution)
+                    format!("help: {}: `{}`", sugg.msg, substitution)
                 };
                 primary_span.push_span_label(sugg.substitution_spans().next().unwrap(), msg);
             } else {

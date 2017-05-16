@@ -5,7 +5,7 @@ error: unexpected token: `1.1`
    |     ------------^^^
    |     |           |
    |     |           unexpected token
-   |     help: try parenthesizing the first index `((1, (2, 3)).1).1`
+   |     help: try parenthesizing the first index: `((1, (2, 3)).1).1`
 
 error: aborting due to previous error
 

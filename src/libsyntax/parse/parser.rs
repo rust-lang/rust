@@ -1490,7 +1490,7 @@ impl<'a> Parser<'a> {
                     s.print_bounds(" +", &bounds)?;
                     s.pclose()
                 });
-                err.span_suggestion(sum_span, "try adding parentheses:", sum_with_parens);
+                err.span_suggestion(sum_span, "try adding parentheses", sum_with_parens);
             }
             TyKind::Ptr(..) | TyKind::BareFn(..) => {
                 err.span_label(sum_span, "perhaps you forgot parentheses?");
@@ -5280,7 +5280,7 @@ impl<'a> Parser<'a> {
 `pub(in path::to::module)`: visible only on the specified path"##;
                 let path = self.parse_path(PathStyle::Mod)?;
                 let path_span = self.prev_span;
-                let help_msg = format!("make this visible only to module `{}` with `in`:", path);
+                let help_msg = format!("make this visible only to module `{}` with `in`", path);
                 self.expect(&token::CloseDelim(token::Paren))?;  // `)`
                 let mut err = self.span_fatal_help(path_span, msg, suggestion);
                 err.span_suggestion(path_span, &help_msg, format!("in {}", path));

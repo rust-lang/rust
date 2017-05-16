@@ -10,9 +10,7 @@ error: cannot find macro `k!` in this scope
   --> $DIR/macro_undefined.rs:21:5
    |
 21 |     k!();
-   |     ^
-   |
-   = help: did you mean `kl!`?
+   |     ^ help: you could try the macro: `kl!`
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 

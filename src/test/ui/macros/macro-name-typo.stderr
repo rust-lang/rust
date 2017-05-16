@@ -2,9 +2,7 @@ error: cannot find macro `printlx!` in this scope
   --> $DIR/macro-name-typo.rs:12:5
    |
 12 |     printlx!("oh noes!");
-   |     ^^^^^^^
-   |
-   = help: did you mean `println!`?
+   |     ^^^^^^^ help: you could try the macro: `println!`
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

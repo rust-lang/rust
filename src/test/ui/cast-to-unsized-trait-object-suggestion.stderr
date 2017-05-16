@@ -1,4 +1,4 @@
-error: cast to unsized type: `&{integer}` as `std::marker::Send`
+error[E0620]: cast to unsized type: `&{integer}` as `std::marker::Send`
   --> $DIR/cast-to-unsized-trait-object-suggestion.rs:12:5
    |
 12 |     &1 as Send;
@@ -6,7 +6,7 @@ error: cast to unsized type: `&{integer}` as `std::marker::Send`
    |           |
    |           help: try casting to a reference instead: `&Send`
 
-error: cast to unsized type: `std::boxed::Box<{integer}>` as `std::marker::Send`
+error[E0620]: cast to unsized type: `std::boxed::Box<{integer}>` as `std::marker::Send`
   --> $DIR/cast-to-unsized-trait-object-suggestion.rs:13:5
    |
 13 |     Box::new(1) as Send;
@@ -14,5 +14,5 @@ error: cast to unsized type: `std::boxed::Box<{integer}>` as `std::marker::Send`
    |                    |
    |                    help: try casting to a `Box` instead: `Box<Send>`
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 

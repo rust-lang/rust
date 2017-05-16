@@ -2,17 +2,13 @@ error: cannot find derive macro `FooWithLongNan` in this scope
   --> $DIR/resolve-error.rs:37:10
    |
 37 | #[derive(FooWithLongNan)]
-   |          ^^^^^^^^^^^^^^
-   |
-   = help: did you mean `FooWithLongName`?
+   |          ^^^^^^^^^^^^^^ help: try: `FooWithLongName`
 
 error: cannot find attribute macro `attr_proc_macra` in this scope
   --> $DIR/resolve-error.rs:40:3
    |
 40 | #[attr_proc_macra]
-   |   ^^^^^^^^^^^^^^^
-   |
-   = help: did you mean `attr_proc_macro`?
+   |   ^^^^^^^^^^^^^^^ help: try: `attr_proc_macro`
 
 error: cannot find attribute macro `FooWithLongNan` in this scope
   --> $DIR/resolve-error.rs:43:3
@@ -24,17 +20,13 @@ error: cannot find derive macro `Dlone` in this scope
   --> $DIR/resolve-error.rs:46:10
    |
 46 | #[derive(Dlone)]
-   |          ^^^^^
-   |
-   = help: did you mean `Clone`?
+   |          ^^^^^ help: try: `Clone`
 
 error: cannot find derive macro `Dlona` in this scope
   --> $DIR/resolve-error.rs:49:10
    |
 49 | #[derive(Dlona)]
-   |          ^^^^^
-   |
-   = help: did you mean `Clona`?
+   |          ^^^^^ help: try: `Clona`
 
 error: cannot find derive macro `attr_proc_macra` in this scope
   --> $DIR/resolve-error.rs:52:10
@@ -46,17 +38,13 @@ error: cannot find macro `FooWithLongNama!` in this scope
   --> $DIR/resolve-error.rs:56:5
    |
 56 |     FooWithLongNama!();
-   |     ^^^^^^^^^^^^^^^
-   |
-   = help: did you mean `FooWithLongNam!`?
+   |     ^^^^^^^^^^^^^^^ help: you could try the macro: `FooWithLongNam!`
 
 error: cannot find macro `attr_proc_macra!` in this scope
   --> $DIR/resolve-error.rs:58:5
    |
 58 |     attr_proc_macra!();
-   |     ^^^^^^^^^^^^^^^
-   |
-   = help: did you mean `attr_proc_mac!`?
+   |     ^^^^^^^^^^^^^^^ help: you could try the macro: `attr_proc_mac!`
 
 error: cannot find macro `Dlona!` in this scope
   --> $DIR/resolve-error.rs:60:5
@@ -68,9 +56,7 @@ error: cannot find macro `bang_proc_macrp!` in this scope
   --> $DIR/resolve-error.rs:62:5
    |
 62 |     bang_proc_macrp!();
-   |     ^^^^^^^^^^^^^^^
-   |
-   = help: did you mean `bang_proc_macro!`?
+   |     ^^^^^^^^^^^^^^^ help: you could try the macro: `bang_proc_macro!`
 
 error: aborting due to previous error(s)
 
