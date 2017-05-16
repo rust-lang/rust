@@ -219,7 +219,7 @@ impl Once {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn call_once<F>(&'static self, f: F) where F: FnOnce() {
         // Fast path, just see if we've completed initialization.
-        if self.state.load(Ordering::SeqCst) == COMPLETE {
+        if self.state.load(Ordering::Acquire) == COMPLETE {
             return
         }
 
@@ -243,7 +243,7 @@ impl Once {
     #[unstable(feature = "once_poison", issue = "33577")]
     pub fn call_once_force<F>(&'static self, f: F) where F: FnOnce(&OnceState) {
         // same as above, just with a different parameter to `call_inner`.
-        if self.state.load(Ordering::SeqCst) == COMPLETE {
+        if self.state.load(Ordering::Acquire) == COMPLETE {
             return
         }
 
