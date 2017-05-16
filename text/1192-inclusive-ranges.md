@@ -61,18 +61,30 @@ inclusive range is non-empty _iff_ `a <= b`.  When the range is iterable,
 a non-empty range will produce at least one item when iterated.  Because
 `T::MAX...T::MAX` is a non-empty range, the iteration needs extra handling
 compared to a half-open `Range`.  As such, `.next()` on an empty range
-`y...y` will produce the value `y` and replace the range with the canonical
-empty range for the type.  Using methods on the the existing (but unstable)
-[`Step` trait][step_trait], that's `1...0` for all currently-iterable
-value types.  Providing such a range is not a burden on the `T` type as
+`y...y` will produce the value `y` and adjust the range such that
+`!(start <= end)`.  Providing such a range is not a burden on the `T` type as
 any such range is acceptable, and only `PartialOrd` is required so
 it can be satisfied with an incomparable value `n` with `!(n <= n)`.
+A caller must not, in general, expect any particular `start` or `end`
+after iterating, and is encouraged to detect empty ranges with
+`ExactSizeIterator::is_empty` instead of by observing fields directly.
 
 Note that because ranges are not required to be well-formed, they have a
 much stronger bound than just needing successor function: they require a
 `b is-reachable-from a` predicate (as `a <= b`). Providing that efficiently
 for a DAG walk, or even a simpler forward list walk, is a substantially
 harder thing to do than providing a pair `(x, y)` such that `!(x <= y)`.
+
+Implementation note: For currently-iterable types, the initial implementation
+of this will have the range become `1...0` after yielding the final value,
+as that can be done using the `replace_one` and `replace_zero` methods on
+the existing (but unstable) [`Step` trait][step_trait].  It's expected,
+however, that the trait will change to allow more type-appropriate `impl`s.
+For example, a `num::BitInt` may rather become empty by incrementing `start`,
+as `Range` does, since it doesn't to need to worry about overflow.  Even for
+primitives, it could be advantageous to choose a different implementation,
+perhaps using `.overflowing_add(1)` and swapping on overflow, or `a...a`
+could become `(a+1)...a` where possible and `a...(a-1)` otherwise.
 
 [step_trait]: https://github.com/rust-lang/rust/issues/27741
 
@@ -122,11 +134,6 @@ reevaluated for usefulness and conflicts with other proposed syntax.
   this means that `a.. .b` behaves differently to `a..b`, so
   `(a...b).map(|x| ...)` doesn't work (the `..` version of that is
   used reasonably often, in the author's experience)
-- Different choices for the end of iteration are also possible.  While neither
-  `start` nor `end` can always have the last value of the iteration while
-  still producing an empty range (consider what happens with `MIN...MIN`
-  and `MAX...MAX`), they could be closer.  For example, `a...a` could become
-  `(a+1)...a` where possible, and `a...(a-1)` otherwise.
 - The name of the `end` field could be different, perhaps `last`, to reflect
   its different (inclusive) semantics from the `end` (exclusive) field on
   the other ranges.
