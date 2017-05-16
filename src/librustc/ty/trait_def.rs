@@ -170,12 +170,12 @@ pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          .map(|&node_id| tcx.hir.local_def_id(node_id));
 
      for impl_def_id in local_impls.chain(remote_impls.into_iter()) {
-        let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
-        if impl_def_id.is_local() && impl_trait_ref.references_error() {
+        let impl_self_ty = tcx.type_of(impl_def_id);
+        if impl_def_id.is_local() && impl_self_ty.references_error() {
             continue
         }
 
-        if fast_reject::simplify_type(tcx, impl_trait_ref.self_ty(), false).is_some() {
+        if fast_reject::simplify_type(tcx, impl_self_ty, false).is_some() {
             non_blanket_impls.push(impl_def_id);
         } else {
             blanket_impls.push(impl_def_id);
@@ -201,9 +201,9 @@ pub(super) fn relevant_trait_impls_provider<'a, 'tcx>(
         .iter()
         .cloned()
         .filter(|&impl_def_id| {
-            let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
+            let impl_self_ty = tcx.type_of(impl_def_id);
             let impl_simple_self_ty = fast_reject::simplify_type(tcx,
-                                                                 impl_trait_ref.self_ty(),
+                                                                 impl_self_ty,
                                                                  false).unwrap();
             impl_simple_self_ty == self_ty
         })
