@@ -2307,13 +2307,14 @@ impl<'a> Resolver<'a> {
                     .map(|suggestion| import_candidate_to_paths(&suggestion)).collect::<Vec<_>>();
                 enum_candidates.sort();
                 for (sp, variant_path, enum_path) in enum_candidates {
-                    let msg = format!("there is an enum variant `{}`, did you mean to use `{}`?",
-                                      variant_path,
-                                      enum_path);
                     if sp == DUMMY_SP {
+                        let msg = format!("there is an enum variant `{}`,\
+                                        did you mean to use `{}`?",
+                                        variant_path,
+                                        enum_path);
                         err.help(&msg);
                     } else {
-                        err.span_help(sp, &msg);
+                        err.span_suggestion(span, "did you mean the variant's enum", enum_path);
                     }
                 }
             }
