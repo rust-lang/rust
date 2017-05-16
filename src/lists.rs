@@ -35,7 +35,7 @@ pub enum ListTactic {
     Mixed,
 }
 
-impl_enum_decodable!(ListTactic, Vertical, Horizontal, HorizontalVertical, Mixed);
+impl_enum_serialize_and_deserialize!(ListTactic, Vertical, Horizontal, HorizontalVertical, Mixed);
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum SeparatorTactic {
@@ -44,7 +44,7 @@ pub enum SeparatorTactic {
     Vertical,
 }
 
-impl_enum_decodable!(SeparatorTactic, Always, Never, Vertical);
+impl_enum_serialize_and_deserialize!(SeparatorTactic, Always, Never, Vertical);
 
 impl SeparatorTactic {
     pub fn from_bool(b: bool) -> SeparatorTactic {

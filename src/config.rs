@@ -25,7 +25,7 @@ macro_rules! configuration_option_enum{
             $( $x ),+
         }
 
-        impl_enum_decodable!($e, $( $x ),+);
+        impl_enum_serialize_and_deserialize!($e, $( $x ),+);
     }
 }
 
@@ -247,10 +247,10 @@ macro_rules! create_config {
         // Just like the Config struct but with each property wrapped
         // as Option<T>. This is used to parse a rustfmt.toml that doesn't
         // specity all properties of `Config`.
-        // We first parse into `ParsedConfig`, then create a default `Config`
-        // and overwrite the properties with corresponding values from `ParsedConfig`
-        #[derive(Deserialize, Clone)]
-        pub struct ParsedConfig {
+        // We first parse into `PartialConfig`, then create a default `Config`
+        // and overwrite the properties with corresponding values from `PartialConfig`.
+        #[derive(Deserialize, Serialize, Clone)]
+        struct PartialConfig {
             $(pub $i: Option<$ty>),+
         }
 
@@ -263,7 +263,7 @@ macro_rules! create_config {
             }
             )+
 
-            fn fill_from_parsed_config(mut self, parsed: ParsedConfig) -> Config {
+            fn fill_from_parsed_config(mut self, parsed: PartialConfig) -> Config {
             $(
                 if let Some(val) = parsed.$i {
                     self.$i = val;
@@ -304,6 +304,38 @@ macro_rules! create_config {
                         Err(err)
                     }
                 }
+            }
+
+            pub fn used_to_toml(&self) -> Result<String, String> {
+                let mut partial = PartialConfig {
+                    $(
+                        $i: if self.tracker.was_accessed(stringify!($i)) {
+                                Some(self.$i.clone())
+                            } else {
+                                None
+                            },
+                    )+
+                };
+
+                // file_lines is special and can't be specified in toml.
+                partial.file_lines = None;
+
+                toml::to_string(&partial)
+                    .map_err(|e| format!("Could not output config: {}", e.to_string()))
+            }
+
+            pub fn to_toml(&self) -> Result<String, String> {
+                let mut partial = PartialConfig {
+                    $(
+                        $i: Some(self.$i.clone()),
+                    )+
+                };
+
+                // file_lines is special and can't be specified in toml.
+                partial.file_lines = None;
+
+                toml::to_string(&partial)
+                    .map_err(|e| format!("Could not output config: {}", e.to_string()))
             }
 
             pub fn override_value(&mut self, key: &str, val: &str)
