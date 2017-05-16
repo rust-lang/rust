@@ -93,6 +93,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::ty::subst::{Kind, Subst};
 use rustc::ty::{Ty, TyCtxt};
 use rustc::mir::*;
+use rustc::mir::transform::MirSource;
 use syntax_pos::Span;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::fx::FxHashMap;
@@ -426,6 +427,33 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// the next scope expression.
     pub fn topmost_scope(&self) -> CodeExtent {
         self.scopes.last().expect("topmost_scope: no scopes present").extent
+    }
+
+    /// Returns the scope that we should use as the lifetime of an
+    /// operand. Basically, an operand must live until it is consumed.
+    /// This is similar to, but not quite the same as, the temporary
+    /// scope (which can be larger or smaller).
+    ///
+    /// Consider:
+    ///
+    ///     let x = foo(bar(X, Y));
+    ///
+    /// We wish to pop the storage for X and Y after `bar()` is
+    /// called, not after the whole `let` is completed.
+    ///
+    /// When building statics/constants, returns `None` since
+    /// intermediate values do not have to be dropped in that case.
+    pub fn local_scope(&self) -> Option<CodeExtent> {
+        match self.hir.src {
+            MirSource::Const(_) |
+            MirSource::Static(..) =>
+                // No need to free storage in this context.
+                None,
+            MirSource::Fn(_) =>
+                Some(self.topmost_scope()),
+            MirSource::Promoted(..) =>
+                bug!(),
+        }
     }
 
     // Scheduling drops

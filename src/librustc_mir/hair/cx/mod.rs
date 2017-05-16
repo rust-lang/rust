@@ -36,7 +36,13 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     pub region_maps: Rc<RegionMaps>,
+
+    /// This is `Constness::Const` if we are compiling a `static`,
+    /// `const`, or the body of a `const fn`.
     constness: hir::Constness,
+
+    /// What are we compiling?
+    pub src: MirSource,
 
     /// True if this constant/function needs overflow checks.
     check_overflow: bool,
@@ -74,7 +80,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         // Constants and const fn's always need overflow checks.
         check_overflow |= constness == hir::Constness::Const;
 
-        Cx { tcx, infcx, region_maps, constness, check_overflow }
+        Cx { tcx, infcx, region_maps, constness, src, check_overflow }
     }
 }
 

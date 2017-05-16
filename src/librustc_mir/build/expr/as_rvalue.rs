@@ -33,8 +33,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                              -> BlockAnd<Rvalue<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
-        let topmost_scope = self.topmost_scope(); // FIXME(#6393)
-        self.as_rvalue(block, Some(topmost_scope), expr)
+        let local_scope = self.local_scope();
+        self.as_rvalue(block, local_scope, expr)
     }
 
     /// Compile `expr`, yielding an rvalue.
@@ -51,7 +51,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                       scope: Option<CodeExtent>,
                       expr: Expr<'tcx>)
                       -> BlockAnd<Rvalue<'tcx>> {
-        debug!("expr_as_rvalue(block={:?}, expr={:?})", block, expr);
+        debug!("expr_as_rvalue(block={:?}, scope={:?}, expr={:?})", block, scope, expr);
 
         let this = self;
         let expr_span = expr.span;
