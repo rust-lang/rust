@@ -800,8 +800,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match result {
                 Ok(ok) => {
                     let adjustment = self.register_infer_ok_obligations(ok);
+                    let target = adjustment.target;
                     self.apply_adjustment(new.id, adjustment);
-                    return Ok(adjustment.target);
+                    return Ok(target);
                 }
                 Err(e) => first_error = Some(e),
             }
@@ -812,8 +813,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // previous expressions, other than noop reborrows (ignoring lifetimes).
         for expr in exprs {
             let expr = expr.as_coercion_site();
-            let noop = match self.tables.borrow().adjustments.get(&expr.id).map(|adj| adj.kind) {
-                Some(Adjust::DerefRef {
+            let noop = match self.tables.borrow().adjustments.get(&expr.id).map(|adj| &adj.kind) {
+                Some(&Adjust::DerefRef {
                     autoderefs: 1,
                     autoref: Some(AutoBorrow::Ref(_, mutbl_adj)),
                     unsize: false
@@ -828,7 +829,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         _ => false,
                     }
                 }
-                Some(Adjust::NeverToAny) => true,
+                Some(&Adjust::NeverToAny) => true,
                 Some(_) => false,
                 None => true,
             };
@@ -857,7 +858,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let adjustment = self.register_infer_ok_obligations(ok);
                 for expr in exprs {
                     let expr = expr.as_coercion_site();
-                    self.apply_adjustment(expr.id, adjustment);
+                    self.apply_adjustment(expr.id, adjustment.clone());
                 }
                 Ok(adjustment.target)
             }

@@ -442,15 +442,15 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
 fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr) {
     use rustc::ty::adjustment::*;
 
-    match v.tables.adjustments.get(&e.id).map(|adj| adj.kind) {
+    match v.tables.adjustments.get(&e.id).map(|adj| &adj.kind) {
         None |
-        Some(Adjust::NeverToAny) |
-        Some(Adjust::ReifyFnPointer) |
-        Some(Adjust::UnsafeFnPointer) |
-        Some(Adjust::ClosureFnPointer) |
-        Some(Adjust::MutToConstPointer) => {}
+        Some(&Adjust::NeverToAny) |
+        Some(&Adjust::ReifyFnPointer) |
+        Some(&Adjust::UnsafeFnPointer) |
+        Some(&Adjust::ClosureFnPointer) |
+        Some(&Adjust::MutToConstPointer) => {}
 
-        Some(Adjust::DerefRef { autoderefs, .. }) => {
+        Some(&Adjust::DerefRef { autoderefs, .. }) => {
             if (0..autoderefs as u32)
                 .any(|autoderef| v.tables.is_overloaded_autoderef(e.id, autoderef)) {
                 v.promotable = false;

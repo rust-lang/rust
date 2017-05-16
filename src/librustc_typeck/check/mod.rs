@@ -1805,16 +1805,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Entry::Vacant(entry) => { entry.insert(adj); },
             Entry::Occupied(mut entry) => {
                 debug!(" - composing on top of {:?}", entry.get());
-                let composed_kind = match (entry.get().kind, adj.kind) {
+                let composed_kind = match (&entry.get().kind, &adj.kind) {
                     // Applying any adjustment on top of a NeverToAny
                     // is a valid NeverToAny adjustment, because it can't
                     // be reached.
-                    (Adjust::NeverToAny, _) => Adjust::NeverToAny,
-                    (Adjust::DerefRef {
+                    (&Adjust::NeverToAny, _) => Adjust::NeverToAny,
+                    (&Adjust::DerefRef {
                         autoderefs: 1,
                         autoref: Some(AutoBorrow::Ref(..)),
                         unsize: false
-                    }, Adjust::DerefRef { autoderefs, .. }) if autoderefs > 0 => {
+                    }, &Adjust::DerefRef { autoderefs, .. }) if autoderefs > 0 => {
                         // A reborrow has no effect before a dereference.
                         adj.kind
                     }

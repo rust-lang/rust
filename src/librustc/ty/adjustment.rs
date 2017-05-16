@@ -16,13 +16,13 @@ use syntax_pos::Span;
 
 use hir;
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Adjustment<'tcx> {
     pub kind: Adjust<'tcx>,
     pub target: Ty<'tcx>
 }
 
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum Adjust<'tcx> {
     /// Go from ! to any type.
     NeverToAny,
