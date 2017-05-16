@@ -13,6 +13,7 @@ use super::linker::Linker;
 use super::rpath::RPathConfig;
 use super::rpath;
 use super::msvc;
+use metadata::METADATA_FILENAME;
 use session::config;
 use session::config::NoDebugInfo;
 use session::config::{OutputFilenames, Input, OutputType};
@@ -521,7 +522,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // contain the metadata in a separate file. We use a temp directory
             // here so concurrent builds in the same directory don't try to use
             // the same filename for metadata (stomping over one another)
-            let metadata = tmpdir.join(sess.cstore.metadata_filename());
+            let metadata = tmpdir.join(METADATA_FILENAME);
             emit_metadata(sess, trans, &metadata);
             ab.add_file(&metadata);
 
@@ -1141,8 +1142,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         archive.update_symbols();
 
         for f in archive.src_files() {
-            if f.ends_with("bytecode.deflate") ||
-                f == sess.cstore.metadata_filename() {
+            if f.ends_with("bytecode.deflate") || f == METADATA_FILENAME {
                     archive.remove_file(&f);
                     continue
                 }
@@ -1217,8 +1217,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
 
             let mut any_objects = false;
             for f in archive.src_files() {
-                if f.ends_with("bytecode.deflate") ||
-                   f == sess.cstore.metadata_filename() {
+                if f.ends_with("bytecode.deflate") || f == METADATA_FILENAME {
                     archive.remove_file(&f);
                     continue
                 }
