@@ -345,7 +345,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "lzma-sys"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "filetime 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1126,7 +1126,7 @@ name = "xz2"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "lzma-sys 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lzma-sys 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1160,7 +1160,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "3b37545ab726dd833ec6420aaba8231c5b320814b9029ad585555d2a03e94fbf"
 "checksum libc 0.2.21 (registry+https://github.com/rust-lang/crates.io-index)" = "88ee81885f9f04bff991e306fea7c1c60a5f0f9e409e99f6b40e3311a3363135"
 "checksum log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)" = "5141eca02775a762cc6cd564d8d2c50f67c0ea3a372cbf1c51592b3e029e10ad"
-"checksum lzma-sys 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "c5eaaa53b35fa17482ee2c001b04242827b47ae0faba72663fee3dee32366248"
+"checksum lzma-sys 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "fedff6a5cbb24494ec6ee4784e9ac5c187161fede04c7767d49bf87544013afa"
 "checksum mdbook 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)" = "f1e2e9d848514dcfad4195788d0d42ae5153a477c191d75d5b84fab10f222fbd"
 "checksum memchr 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "1dbccc0e46f1ea47b9f17e6d67c5a96bd27030519c519c9c91327e31275a47b4"
 "checksum miniz-sys 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "28eaee17666671fa872e567547e8428e83308ebe5808cdf6a0e28397dbe2c726"
