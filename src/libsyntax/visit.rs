@@ -27,6 +27,7 @@ use abi::Abi;
 use ast::*;
 use syntax_pos::Span;
 use codemap::Spanned;
+use tokenstream::ThinTokenStream;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
@@ -111,6 +112,9 @@ pub trait Visitor<'ast>: Sized {
         // works on macros, use this
         // definition in your trait impl:
         // visit::walk_mac(self, _mac)
+    }
+    fn visit_mac_def(&mut self, _mac: &'ast ThinTokenStream, _id: NodeId) {
+        // Nothing to do
     }
     fn visit_path(&mut self, path: &'ast Path, _id: NodeId) {
         walk_path(self, path)
@@ -290,7 +294,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             walk_list!(visitor, visit_trait_item, methods);
         }
         ItemKind::Mac(ref mac) => visitor.visit_mac(mac),
-        ItemKind::MacroDef(..) => {},
+        ItemKind::MacroDef(ref ts) => visitor.visit_mac_def(ts, item.id),
     }
     walk_list!(visitor, visit_attribute, &item.attrs);
 }

@@ -699,6 +699,8 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 
         let krate = ecx.monotonic_expander().expand_crate(krate);
 
+        ecx.check_unused_macros();
+
         let mut missing_fragment_specifiers: Vec<_> =
             ecx.parse_sess.missing_fragment_specifiers.borrow().iter().cloned().collect();
         missing_fragment_specifiers.sort();
