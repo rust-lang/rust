@@ -324,7 +324,9 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
         MirSource::Promoted(_, i) => write!(w, "{:?} in", i)?
     }
 
-    write!(w, " {}", tcx.node_path_str(src.item_id()))?;
+    item_path::with_forced_impl_filename_line(|| { // see notes on #41697 elsewhere
+        write!(w, " {}", tcx.node_path_str(src.item_id()))
+    })?;
 
     if let MirSource::Fn(_) = src {
         write!(w, "(")?;

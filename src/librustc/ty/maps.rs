@@ -592,7 +592,7 @@ macro_rules! define_map_struct {
      output: $output:tt) => {
         define_map_struct! {
             tcx: $tcx,
-            ready: ([pub] $attrs $name),
+            ready: ([] $attrs $name),
             input: ($($input)*),
             output: $output
         }
