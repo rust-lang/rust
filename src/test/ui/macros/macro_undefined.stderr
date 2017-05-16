@@ -1,0 +1,18 @@
+error: cannot find macro `kl!` in this scope
+  --> $DIR/macro_undefined.rs:22:5
+   |
+22 |     kl!();
+   |     ^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error: cannot find macro `k!` in this scope
+  --> $DIR/macro_undefined.rs:21:5
+   |
+21 |     k!();
+   |     ^
+   |
+   = help: did you mean `kl!`?
+
+error: aborting due to previous error(s)
+
