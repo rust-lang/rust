@@ -249,13 +249,11 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 
 // True if the chain is only `?`s.
 fn chain_only_try(exprs: &[ast::Expr]) -> bool {
-    exprs
-        .iter()
-        .all(|e| if let ast::ExprKind::Try(_) = e.node {
-                 true
-             } else {
-                 false
-             })
+    exprs.iter().all(|e| if let ast::ExprKind::Try(_) = e.node {
+                         true
+                     } else {
+                         false
+                     })
 }
 
 pub fn rewrite_try(expr: &ast::Expr,

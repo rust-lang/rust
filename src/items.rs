@@ -457,11 +457,8 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let indent = self.block_indent;
-        let mut result = try_opt!(field
-                                      .node
-                                      .attrs
-                                      .rewrite(&self.get_context(),
-                                               Shape::indented(indent, self.config)));
+        let mut result = try_opt!(field.node.attrs.rewrite(&self.get_context(),
+                                                           Shape::indented(indent, self.config)));
         if !result.is_empty() {
             result.push('\n');
             result.push_str(&indent.to_string(self.config));
@@ -1201,9 +1198,9 @@ impl Rewrite for ast::StructField {
 
         let name = self.ident;
         let vis = format_visibility(&self.vis);
-        let mut attr_str =
-            try_opt!(self.attrs
-                         .rewrite(context, Shape::indented(shape.indent, context.config)));
+        let mut attr_str = try_opt!(self.attrs.rewrite(context,
+                                                       Shape::indented(shape.indent,
+                                                                       context.config)));
         if !attr_str.is_empty() {
             attr_str.push('\n');
             attr_str.push_str(&shape.indent.to_string(context.config));
@@ -1223,9 +1220,9 @@ impl Rewrite for ast::StructField {
 
         let last_line_width = last_line_width(&result) + type_annotation_spacing.1.len();
         let budget = try_opt!(shape.width.checked_sub(last_line_width));
-        let ty_rewritten = self.ty
-            .rewrite(context,
-                     Shape::legacy(budget, shape.indent + last_line_width));
+        let ty_rewritten =
+            self.ty.rewrite(context,
+                            Shape::legacy(budget, shape.indent + last_line_width));
         match ty_rewritten {
             Some(ref ty) if ty.contains('\n') => {
                 let new_ty = rewrite_type_in_next_line();
@@ -1377,9 +1374,8 @@ impl Rewrite for ast::FunctionRetTy {
 impl Rewrite for ast::Arg {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         if is_named_arg(self) {
-            let mut result = try_opt!(self.pat
-                                          .rewrite(context,
-                                                   Shape::legacy(shape.width, shape.indent)));
+            let mut result = try_opt!(self.pat.rewrite(context,
+                                                       Shape::legacy(shape.width, shape.indent)));
 
             if self.ty.node != ast::TyKind::Infer {
                 if context.config.space_before_type_annotation {
@@ -1390,10 +1386,9 @@ impl Rewrite for ast::Arg {
                     result.push_str(" ");
                 }
                 let max_width = try_opt!(shape.width.checked_sub(result.len()));
-                let ty_str = try_opt!(self.ty
-                                          .rewrite(context,
-                                                   Shape::legacy(max_width,
-                                                                 shape.indent + result.len())));
+                let ty_str = try_opt!(self.ty.rewrite(context,
+                                                      Shape::legacy(max_width,
+                                                                    shape.indent + result.len())));
                 result.push_str(&ty_str);
             }
 
@@ -1693,9 +1688,8 @@ fn rewrite_fn_base(context: &RewriteContext,
         if multi_line_ret_str || ret_should_indent {
             // Now that we know the proper indent and width, we need to
             // re-layout the return type.
-            let ret_str = try_opt!(fd.output
-                                       .rewrite(context,
-                                                Shape::indented(ret_indent, context.config)));
+            let ret_str = try_opt!(fd.output.rewrite(context,
+                                                     Shape::indented(ret_indent, context.config)));
             result.push_str(&ret_str);
         } else {
             result.push_str(&ret_str);
@@ -1985,16 +1979,14 @@ fn rewrite_generics(context: &RewriteContext,
         .map(|ty_param| ty_param.rewrite(context, Shape::legacy(h_budget, offset)));
 
     // Extract comments between generics.
-    let lt_spans = lifetimes
-        .iter()
-        .map(|l| {
-                 let hi = if l.bounds.is_empty() {
-                     l.lifetime.span.hi
-                 } else {
-                     l.bounds[l.bounds.len() - 1].span.hi
-                 };
-                 mk_sp(l.lifetime.span.lo, hi)
-             });
+    let lt_spans = lifetimes.iter().map(|l| {
+                                            let hi = if l.bounds.is_empty() {
+                                                l.lifetime.span.hi
+                                            } else {
+                                                l.bounds[l.bounds.len() - 1].span.hi
+                                            };
+                                            mk_sp(l.lifetime.span.lo, hi)
+                                        });
     let ty_spans = tys.iter().map(span_for_ty_param);
 
     let items = itemize_list(context.codemap,

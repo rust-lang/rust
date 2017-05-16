@@ -29,14 +29,13 @@ fn b() {
 }
 
 fn issue550() {
-    self.visitor
-        .visit_volume(self.level.sector_id(sector),
-                      (floor_y,
-                       if is_sky_flat(ceil_tex) {
-                           from_wad_height(self.height_range.1)
-                       } else {
-                           ceil_y
-                       }));
+    self.visitor.visit_volume(self.level.sector_id(sector),
+                              (floor_y,
+                               if is_sky_flat(ceil_tex) {
+                                   from_wad_height(self.height_range.1)
+                               } else {
+                                   ceil_y
+                               }));
 }
 
 fn issue775() {

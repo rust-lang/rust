@@ -158,13 +158,12 @@ impl<'a> FmtVisitor<'a> {
                                                         self.config.max_width -
                                                         self.block_indent.width());
 
-                    self.buffer
-                        .push_str(&rewrite_comment(subslice,
-                                                   false,
-                                                   Shape::legacy(comment_width,
-                                                                 self.block_indent),
-                                                   self.config)
-                                          .unwrap());
+                    self.buffer.push_str(&rewrite_comment(subslice,
+                                                          false,
+                                                          Shape::legacy(comment_width,
+                                                                        self.block_indent),
+                                                          self.config)
+                                                 .unwrap());
 
                     last_wspace = None;
                     line_start = offset + subslice.len();
