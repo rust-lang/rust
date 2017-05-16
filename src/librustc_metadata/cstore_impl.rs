@@ -10,12 +10,11 @@
 
 use cstore;
 use encoder;
-use locator;
 use schema;
 
 use rustc::dep_graph::DepTrackingMapConfig;
 use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind,
-                            ExternCrate, NativeLibrary, LinkMeta,
+                            ExternCrate, NativeLibrary, MetadataLoader, LinkMeta,
                             LinkagePreference, LoadedMacro, EncodedMetadata};
 use rustc::hir::def;
 use rustc::middle::lang_items;
@@ -38,7 +37,6 @@ use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, NO_EXPANSION};
 use rustc::hir::svh::Svh;
-use rustc_back::target::Target;
 use rustc::hir;
 
 macro_rules! provide {
@@ -133,6 +131,10 @@ provide! { <'tcx> tcx, def_id, cdata
 impl CrateStore for cstore::CStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any> {
         self.get_crate_data(krate)
+    }
+
+    fn metadata_loader(&self) -> &MetadataLoader {
+        &*self.metadata_loader
     }
 
     fn visibility(&self, def: DefId) -> ty::Visibility {
@@ -420,17 +422,6 @@ impl CrateStore for cstore::CStore {
     {
         self.get_used_link_args().borrow().clone()
     }
-
-    fn metadata_filename(&self) -> &str
-    {
-        locator::METADATA_FILENAME
-    }
-
-    fn metadata_section_name(&self, target: &Target) -> &str
-    {
-        locator::meta_section_name(target)
-    }
-
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>
     {
         self.do_get_used_crates(prefer)
