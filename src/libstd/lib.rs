@@ -280,6 +280,7 @@
 #![feature(link_args)]
 #![feature(linkage)]
 #![feature(macro_reexport)]
+#![feature(macro_vis_matcher)]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
 #![feature(num_bits_bytes)]
