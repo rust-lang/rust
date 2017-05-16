@@ -249,6 +249,45 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     return err_info;
                 }
 
+                // Here we are considering a case of converting
+                // `S<P0...Pn>` to S<Q0...Qn>`. As an example, let's imagine a struct `Foo<T, U>`,
+                // which acts like a pointer to `U`, but carries along some extra data of type `T`:
+                //
+                //     struct Foo<T, U> {
+                //         extra: T,
+                //         ptr: *mut U,
+                //     }
+                //
+                // We might have an impl that allows (e.g.) `Foo<T, [i32; 3]>` to be unsized
+                // to `Foo<T, [i32]>`. That impl would look like:
+                //
+                //   impl<T, U: Unsize<V>, V> CoerceUnsized<Foo<T, V>> for Foo<T, U> {}
+                //
+                // Here `U = [i32; 3]` and `V = [i32]`. At runtime,
+                // when this coercion occurs, we would be changing the
+                // field `ptr` from a thin pointer of type `*mut [i32;
+                // 3]` to a fat pointer of type `*mut [i32]` (with
+                // extra data `3`).  **The purpose of this check is to
+                // make sure that we know how to do this conversion.**
+                //
+                // To check if this impl is legal, we would walk down
+                // the fields of `Foo` and consider their types with
+                // both substitutes. We are looking to find that
+                // exactly one (non-phantom) field has changed its
+                // type, which we will expect to be the pointer that
+                // is becoming fat (we could probably generalize this
+                // to mutiple thin pointers of the same type becoming
+                // fat, but we don't). In this case:
+                //
+                // - `extra` has type `T` before and type `T` after
+                // - `ptr` has type `*mut U` before and type `*mut V` after
+                //
+                // Since just one field changed, we would then check
+                // that `*mut U: CoerceUnsized<*mut V>` is implemented
+                // (in other words, that we know how to do this
+                // conversion). This will work out because `U:
+                // Unsize<V>`, and we have a builtin rule that `*mut
+                // U` can be coerced to `*mut V` if `U: Unsize<V>`.
                 let fields = &def_a.struct_variant().fields;
                 let diff_fields = fields.iter()
                     .enumerate()
@@ -260,8 +299,16 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             return None;
                         }
 
-                        // Ignore fields that aren't significantly changed
-                        if let Ok(ok) = infcx.sub_types(false, &cause, b, a) {
+                        // Ignore fields that aren't changed; it may
+                        // be that we could get away with subtyping or
+                        // something more accepting, but we use
+                        // equality because we want to be able to
+                        // perform this check without computing
+                        // variance where possible. (This is because
+                        // we may have to evaluate constraint
+                        // expressions in the course of execution.)
+                        // See e.g. #41936.
+                        if let Ok(ok) = infcx.eq_types(false, &cause, b, a) {
                             if ok.obligations.is_empty() {
                                 return None;
                             }

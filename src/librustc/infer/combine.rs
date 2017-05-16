@@ -39,10 +39,12 @@ use super::sub::Sub;
 use super::InferCtxt;
 use super::{MiscVariable, TypeTrace};
 
+use hir::def_id::DefId;
 use ty::{IntType, UintType};
 use ty::{self, Ty, TyCtxt};
 use ty::error::TypeError;
 use ty::relate::{self, Relate, RelateResult, TypeRelation};
+use ty::subst::Substs;
 use traits::{Obligation, PredicateObligations};
 
 use syntax::ast;
@@ -334,6 +336,23 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
         where T: Relate<'tcx>
     {
         Ok(ty::Binder(self.relate(a.skip_binder(), b.skip_binder())?))
+    }
+
+    fn relate_item_substs(&mut self,
+                          item_def_id: DefId,
+                          a_subst: &'tcx Substs<'tcx>,
+                          b_subst: &'tcx Substs<'tcx>)
+                          -> RelateResult<'tcx, &'tcx Substs<'tcx>>
+    {
+        if self.ambient_variance == ty::Variance::Invariant {
+            // Avoid fetching the variance if we are in an invariant
+            // context; no need, and it can induce dependency cycles
+            // (e.g. #41849).
+            relate::relate_substs(self, None, a_subst, b_subst)
+        } else {
+            let opt_variances = self.tcx().variances_of(item_def_id);
+            relate::relate_substs(self, Some(&opt_variances), a_subst, b_subst)
+        }
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(&mut self,
