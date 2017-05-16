@@ -468,6 +468,23 @@ pub fn current() -> Thread {
 
 /// Cooperatively gives up a timeslice to the OS scheduler.
 ///
+/// This is used when the programmer knows that the thread will have nothing
+/// to do for some time, and thus avoid wasting computing time.
+///
+/// For example when polling on a resource, it is common to check that it is
+/// available, and if not to yield in order to avoid busy waiting.
+///
+/// Thus the pattern of `yield`ing after a failed poll is rather common when
+/// implementing low-level shared resources or synchronization primitives.
+///
+/// However programmers will usualy prefer to use, [`channel`]s, [`Condvar`]s,
+/// [`Mutex`]es or [`join`] for their synchronisation routines, as they avoid
+/// thinking about thread schedulling.
+///
+/// Note that [`channel`]s for example are implemented using this primitive.
+/// Indeed when you call `send` or `recv`, which are blocking, they will yield
+/// if the channel is not available.
+///
 /// # Examples
 ///
 /// ```
@@ -475,6 +492,12 @@ pub fn current() -> Thread {
 ///
 /// thread::yield_now();
 /// ```
+///
+/// [`channel`]: ../../std/sync/mpsc/index.html
+/// [`spawn`]: ../../std/thread/fn.spawn.html
+/// [`join`]: ../../std/thread/struct.JoinHandle.html#method.join
+/// [`Mutex`]: ../../std/sync/struct.Mutex.html
+/// [`Condvar`]: ../../std/sync/struct.Condvar.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn yield_now() {
     imp::Thread::yield_now()
