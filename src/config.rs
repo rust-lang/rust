@@ -10,6 +10,8 @@
 
 extern crate toml;
 
+use std::cell::RefCell;
+use std::collections::HashSet;
 use std::error;
 use std::result;
 
@@ -211,10 +213,34 @@ impl ConfigHelpItem {
     }
 }
 
+/// This is used by Config to track which config parameters are accessed during
+/// formatting. It uses a RefCell for interior mutability, as we don't want to
+/// require a mutable reference to Config in order to access configuration.
+#[derive(Clone, Default)]
+struct ConfigTracker {
+    set: RefCell<HashSet<&'static str>>,
+}
+
+impl ConfigTracker {
+    fn mark_accessed(&self, name: &'static str) {
+        // We don't ever expect borrowing to fail, as our use of RefCell is very
+        // simple.
+        let mut set = self.set.borrow_mut();
+        set.insert(name);
+    }
+
+    fn was_accessed(&self, name: &'static str) -> bool {
+        self.set.borrow().contains(name)
+    }
+}
+
 macro_rules! create_config {
     ($($i:ident: $ty:ty, $def:expr, $( $dstring:expr ),+ );+ $(;)*) => (
         #[derive(Deserialize, Clone)]
         pub struct Config {
+            #[serde(skip_deserializing)]
+            tracker: ConfigTracker,
+
             $($i: $ty),+
         }
 
@@ -232,6 +258,7 @@ macro_rules! create_config {
 
             $(
             pub fn $i(&self) -> $ty {
+                self.tracker.mark_accessed(stringify!($i));
                 self.$i.clone()
             }
             )+
@@ -324,6 +351,7 @@ macro_rules! create_config {
         impl Default for Config {
             fn default() -> Config {
                 Config {
+                    tracker: ConfigTracker::default(),
                     $(
                         $i: $def,
                     )+
