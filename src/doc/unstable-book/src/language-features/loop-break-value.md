@@ -57,10 +57,6 @@ let n: i32 = loop {
 };
 ```
 
-For now, breaking with a value is only possible with `loop`; the same functionality may
-some day be added to `for` and `while` (this would require some new syntax like
-`while f() { break 1; } default { break 0; }`).
-
 #### Break: label, value
 
 Four forms of `break` are available, where EXPR is some expression which evaluates to a value:
