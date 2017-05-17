@@ -88,19 +88,20 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         debug!("all_substs={:?}", all_substs);
 
         // Create the final signature for the method, replacing late-bound regions.
-        let (method_ty, method_predicates) = self.instantiate_method_sig(&pick, all_substs);
+        let (method_sig, method_predicates) = self.instantiate_method_sig(&pick, all_substs);
 
         // Unify the (adjusted) self type with what the method expects.
-        self.unify_receivers(self_ty, method_ty.fn_sig().input(0).skip_binder());
+        self.unify_receivers(self_ty, method_sig.inputs()[0]);
 
         // Add any trait/regions obligations specified on the method's type parameters.
+        let method_ty = self.tcx.mk_fn_ptr(ty::Binder(method_sig));
         self.add_obligations(method_ty, all_substs, &method_predicates);
 
         // Create the final `MethodCallee`.
         let callee = ty::MethodCallee {
             def_id: pick.item.def_id,
-            ty: method_ty,
             substs: all_substs,
+            sig: method_sig,
         };
 
         if let Some(hir::MutMutable) = pick.autoref {
@@ -351,7 +352,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     fn instantiate_method_sig(&mut self,
                               pick: &probe::Pick<'tcx>,
                               all_substs: &'tcx Substs<'tcx>)
-                              -> (Ty<'tcx>, ty::InstantiatedPredicates<'tcx>) {
+                              -> (ty::FnSig<'tcx>, ty::InstantiatedPredicates<'tcx>) {
         debug!("instantiate_method_sig(pick={:?}, all_substs={:?})",
                pick,
                all_substs);
@@ -382,8 +383,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         let method_sig = self.instantiate_type_scheme(self.span, all_substs, &method_sig);
         debug!("type scheme substituted, method_sig={:?}", method_sig);
 
-        (self.tcx.mk_fn_def(def_id, all_substs, ty::Binder(method_sig)),
-         method_predicates)
+        (method_sig, method_predicates)
     }
 
     fn add_obligations(&mut self,
@@ -508,11 +508,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         }) = self.tables.borrow_mut().adjustments.get_mut(&base_expr.id) {
             debug!("convert_lvalue_op_to_mutable: converting autoref of {:?}", target);
 
-            // extract method return type, which will be &mut T;
-            // all LB regions should have been instantiated during method lookup
-            let method_sig = self.tcx.no_late_bound_regions(&method.ty.fn_sig()).unwrap();
-
-            *target = method_sig.inputs()[0];
+            *target = method.sig.inputs()[0];
             if let ty::TyRef(r_, mt) = target.sty {
                 *r = r_;
                 *mutbl = mt.mutbl;

@@ -173,10 +173,10 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprMethodCall(..) => {
-                let base_type = self.tables.method_map[&expr.id].ty;
+                let method_sig = self.tables.method_map[&expr.id].sig;
                 debug!("effect: method call case, base type is {:?}",
-                        base_type);
-                if type_is_unsafe_function(base_type) {
+                        method_sig);
+                if method_sig.unsafety == hir::Unsafety::Unsafe {
                     self.require_unsafe(expr.span,
                                         "invocation of unsafe method")
                 }

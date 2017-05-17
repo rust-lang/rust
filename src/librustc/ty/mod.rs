@@ -394,8 +394,12 @@ impl Variance {
 pub struct MethodCallee<'tcx> {
     /// Impl method ID, for inherent methods, or trait method ID, otherwise.
     pub def_id: DefId,
-    pub ty: Ty<'tcx>,
-    pub substs: &'tcx Substs<'tcx>
+    pub substs: &'tcx Substs<'tcx>,
+
+    /// Instantiated method signature, i.e. it has been substituted,
+    /// normalized, and has had late-bound lifetimes replaced
+    /// (with inference variables, during type-checking).
+    pub sig: FnSig<'tcx>,
 }
 
 // Contains information needed to resolve types and (in the future) look up

@@ -18,6 +18,7 @@ use rustc::hir::def::{Def, CtorKind};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
 use rustc::ty::cast::CastKind as TyCastKind;
+use rustc::ty::subst::Subst;
 use rustc::hir;
 use syntax::ptr::P;
 
@@ -92,9 +93,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     let kind = if let Some(method) = overloaded {
                         debug!("make_mirror: overloaded autoderef (method={:?})", method);
 
-                        // Method calls always have all late-bound regions
-                        // fully instantiated.
-                        ref_ty = cx.tcx.no_late_bound_regions(&method.ty.fn_ret()).unwrap();
+                        ref_ty = method.sig.output();
                         let (region, mutbl) = match ref_ty.sty {
                             ty::TyRef(region, mt) => (region, mt.mutbl),
                             _ => span_bug!(expr.span, "autoderef returned bad type"),
@@ -265,13 +264,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
                 // rewrite f(u, v) into FnOnce::call_once(f, (u, v))
 
+                let sig = method.sig;
                 let method = method_callee(cx, expr, method);
-
-                let sig = method.ty.fn_sig();
-
-                let sig = cx.tcx
-                    .no_late_bound_regions(&sig)
-                    .unwrap_or_else(|| span_bug!(expr.span, "method call has late-bound regions"));
 
                 assert_eq!(sig.inputs().len(), 2);
 
@@ -711,7 +705,7 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     Expr {
         temp_lifetime: temp_lifetime,
         temp_lifetime_was_shrunk: was_shrunk,
-        ty: callee.ty,
+        ty: cx.tcx.type_of(callee.def_id).subst(cx.tcx, callee.substs),
         span: expr.span,
         kind: ExprKind::Literal {
             literal: Literal::Value {
@@ -1012,9 +1006,7 @@ fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     // line up (this is because `*x` and `x[y]` represent lvalues):
 
     // to find the type &T of the content returned by the method;
-    let ref_ty = method.ty.fn_ret();
-    let ref_ty = cx.tcx.no_late_bound_regions(&ref_ty).unwrap();
-    // callees always have all late-bound regions fully instantiated,
+    let ref_ty = method.sig.output();
 
     // construct the complete expression `foo()` for the overloaded call,
     // which will yield the &T type

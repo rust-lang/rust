@@ -267,7 +267,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         obligations.push(traits::Obligation::new(cause, ty::Predicate::WellFormed(method_ty)));
 
         let autoref = match (&original_method_ty.fn_sig().input(0).skip_binder().sty,
-                                      &method_ty.fn_sig().input(0).skip_binder().sty) {
+                             &fn_sig.inputs()[0].sty) {
             (&ty::TyRef(..), &ty::TyRef(region, ty::TypeAndMut { mutbl, ty: _ })) => {
                 // Trait method is fn(&self) or fn(&mut self), need an
                 // autoref. Pull the region etc out of the type of first argument.
@@ -281,8 +281,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let callee = ty::MethodCallee {
             def_id: def_id,
-            ty: method_ty,
             substs: trait_ref.substs,
+            sig: fn_sig,
         };
 
         debug!("callee = {:?}", callee);

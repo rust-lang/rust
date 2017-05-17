@@ -419,14 +419,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         autoref,
                         unsize: false
                     },
-                    target: *method.ty.fn_sig().input(0).skip_binder()
+                    target: method.sig.inputs()[0]
                 });
                 self.tables.borrow_mut().method_map.insert(expr.id, method);
 
-                // extract return type for method; all late bound regions
-                // should have been instantiated by now
-                let ret_ty = method.ty.fn_ret();
-                Ok(self.tcx.no_late_bound_regions(&ret_ty).unwrap())
+                Ok(method.sig.output())
             }
             None => {
                 Err(())

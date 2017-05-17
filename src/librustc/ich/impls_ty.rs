@@ -112,7 +112,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::adjustment::Ad
 }
 
 impl_stable_hash_for!(struct ty::adjustment::Adjustment<'tcx> { kind, target });
-impl_stable_hash_for!(struct ty::MethodCallee<'tcx> { def_id, ty, substs });
+impl_stable_hash_for!(struct ty::MethodCallee<'tcx> { def_id, substs, sig });
 impl_stable_hash_for!(struct ty::UpvarId { var_id, closure_expr_id });
 impl_stable_hash_for!(struct ty::UpvarBorrow<'tcx> { kind, region });
 

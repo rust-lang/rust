@@ -2156,8 +2156,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     {
         // extract method return type, which will be &T;
         // all LB regions should have been instantiated during method lookup
-        let ret_ty = method.ty.fn_ret();
-        let ret_ty = self.tcx.no_late_bound_regions(&ret_ty).unwrap();
+        let ret_ty = method.sig.output();
 
         // method returns &T, but the type as visible to user is T, so deref
         ret_ty.builtin_deref(true, NoPreference).unwrap()
@@ -2246,7 +2245,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         autoref,
                         unsize
                     },
-                    target: *method.ty.fn_sig().input(0).skip_binder()
+                    target: method.sig.inputs()[0]
                 });
 
                 self.tables.borrow_mut().method_map.insert(expr.id, method);
@@ -2321,13 +2320,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn check_method_argument_types(&self,
                                    sp: Span,
-                                   method_fn_ty: Ty<'tcx>,
-                                   callee_expr: &'gcx hir::Expr,
+                                   method: Result<ty::MethodCallee<'tcx>, ()>,
                                    args_no_rcvr: &'gcx [hir::Expr],
                                    tuple_arguments: TupleArgumentsFlag,
                                    expected: Expectation<'tcx>)
                                    -> Ty<'tcx> {
-        if method_fn_ty.references_error() {
+        let has_error = match method {
+            Ok(method) => {
+                method.substs.references_error() || method.sig.references_error()
+            }
+            Err(_) => true
+        };
+        if has_error {
             let err_inputs = self.err_args(args_no_rcvr.len());
 
             let err_inputs = match tuple_arguments {
@@ -2337,27 +2341,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             self.check_argument_types(sp, &err_inputs[..], &[], args_no_rcvr,
                                       false, tuple_arguments, None);
-            self.tcx.types.err
-        } else {
-            match method_fn_ty.sty {
-                ty::TyFnDef(def_id, .., ref fty) => {
-                    // HACK(eddyb) ignore self in the definition (see above).
-                    let expected_arg_tys = self.expected_inputs_for_expected_output(
-                        sp,
-                        expected,
-                        fty.0.output(),
-                        &fty.0.inputs()[1..]
-                    );
-                    self.check_argument_types(sp, &fty.0.inputs()[1..], &expected_arg_tys[..],
-                                              args_no_rcvr, fty.0.variadic, tuple_arguments,
-                                              self.tcx.hir.span_if_local(def_id));
-                    fty.0.output()
-                }
-                _ => {
-                    span_bug!(callee_expr.span, "method without bare fn type");
-                }
-            }
+            return self.tcx.types.err;
         }
+
+        let method = method.unwrap();
+        // HACK(eddyb) ignore self in the definition (see above).
+        let expected_arg_tys = self.expected_inputs_for_expected_output(
+            sp,
+            expected,
+            method.sig.output(),
+            &method.sig.inputs()[1..]
+        );
+        self.check_argument_types(sp, &method.sig.inputs()[1..], &expected_arg_tys[..],
+                                  args_no_rcvr, method.sig.variadic, tuple_arguments,
+                                  self.tcx.hir.span_if_local(method.def_id));
+        method.sig.output()
     }
 
     /// Generic function that factors out common logic from function calls,
@@ -2782,15 +2780,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let expr_t = self.structurally_resolved_type(expr.span, rcvr_t);
 
         let tps = tps.iter().map(|ast_ty| self.to_ty(&ast_ty)).collect::<Vec<_>>();
-        let fn_ty = match self.lookup_method(method_name.span,
-                                             method_name.node,
-                                             expr_t,
-                                             tps,
-                                             expr,
-                                             rcvr) {
+        let method = match self.lookup_method(method_name.span,
+                                              method_name.node,
+                                              expr_t,
+                                              tps,
+                                              expr,
+                                              rcvr) {
             Ok(method) => {
                 self.tables.borrow_mut().method_map.insert(expr.id, method);
-                method.ty
+                Ok(method)
             }
             Err(error) => {
                 if method_name.node != keywords::Invalid.name() {
@@ -2801,18 +2799,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                              error,
                                              Some(args));
                 }
-                self.write_error(expr.id);
-                self.tcx.types.err
+                Err(())
             }
         };
 
         // Call the generic checker.
-        let ret_ty = self.check_method_argument_types(method_name.span, fn_ty,
-                                                      expr, &args[1..],
-                                                      DontTupleArguments,
-                                                      expected);
-
-        ret_ty
+        self.check_method_argument_types(method_name.span, method,
+                                         &args[1..],
+                                         DontTupleArguments,
+                                         expected)
     }
 
     fn check_return_expr(&self, return_expr: &'gcx hir::Expr) {
@@ -3465,7 +3460,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     autoref,
                                     unsize: false
                                 },
-                                target: *method.ty.fn_sig().input(0).skip_binder()
+                                target: method.sig.inputs()[0]
                             });
                             oprnd_t = self.make_overloaded_lvalue_return_type(method).ty;
                             self.tables.borrow_mut().method_map.insert(expr.id, method);

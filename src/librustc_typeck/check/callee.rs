@@ -72,11 +72,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
 
             Some(CallStep::Overloaded(method_callee)) => {
-                self.confirm_overloaded_call(call_expr,
-                                             callee_expr,
-                                             arg_exprs,
-                                             expected,
-                                             method_callee)
+                self.confirm_overloaded_call(call_expr, arg_exprs, expected, method_callee)
             }
         };
 
@@ -152,7 +148,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     autoref,
                     unsize: false
                 },
-                target: *method.ty.fn_sig().input(0).skip_binder()
+                target: method.sig.inputs()[0]
             });
             CallStep::Overloaded(method)
         })
@@ -302,14 +298,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn confirm_overloaded_call(&self,
                                call_expr: &hir::Expr,
-                               callee_expr: &'gcx hir::Expr,
                                arg_exprs: &'gcx [hir::Expr],
                                expected: Expectation<'tcx>,
                                method_callee: ty::MethodCallee<'tcx>)
                                -> Ty<'tcx> {
         let output_type = self.check_method_argument_types(call_expr.span,
-                                                           method_callee.ty,
-                                                           callee_expr,
+                                                           Ok(method_callee),
                                                            arg_exprs,
                                                            TupleArgumentsFlag::TupleArguments,
                                                            expected);
@@ -349,9 +343,7 @@ impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
                 // can't because of the annoying need for a TypeTrace.
                 // (This always bites me, should find a way to
                 // refactor it.)
-                let method_sig = fcx.tcx
-                    .no_late_bound_regions(&method_callee.ty.fn_sig())
-                    .unwrap();
+                let method_sig = method_callee.sig;
 
                 debug!("attempt_resolution: method_callee={:?}", method_callee);
 

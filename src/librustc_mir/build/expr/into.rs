@@ -201,13 +201,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 exit_block.unit()
             }
             ExprKind::Call { ty, fun, args } => {
-                let diverges = match ty.sty {
-                    ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f) => {
-                        // FIXME(canndrew): This is_never should probably be an is_uninhabited
-                        f.output().skip_binder().is_never()
-                    }
-                    _ => false
-                };
+                // FIXME(canndrew): This is_never should probably be an is_uninhabited
+                let diverges = expr.ty.is_never();
                 let intrinsic = match ty.sty {
                     ty::TyFnDef(def_id, _, ref f) if
                         f.abi() == Abi::RustIntrinsic ||

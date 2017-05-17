@@ -340,8 +340,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                                 overloaded.map(|method| {
                                     MethodCallee {
                                         def_id: method.def_id,
-                                        ty: self.resolve(&method.ty, &span),
                                         substs: self.resolve(&method.substs, &span),
+                                        sig: self.resolve(&method.sig, &span),
                                     }
                                 })
                             }).collect(),
@@ -368,8 +368,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             Some(method) => {
                 Some(MethodCallee {
                     def_id: method.def_id,
-                    ty: self.resolve(&method.ty, &method_span),
                     substs: self.resolve(&method.substs, &method_span),
+                    sig: self.resolve(&method.sig, &method_span),
                 })
             }
             None => None

@@ -538,8 +538,10 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
             };
 
             self.substs_wf_in_scope(origin, &callee.substs, expr.span, expr_region);
-            self.type_must_outlive(infer::ExprTypeIsNotInScope(callee.ty, expr.span),
-                                   callee.ty, expr_region);
+            for &ty in callee.sig.inputs() {
+                self.type_must_outlive(infer::ExprTypeIsNotInScope(ty, expr.span),
+                                       ty, expr_region);
+            }
         }
 
         // Check any autoderefs or autorefs that appear.
@@ -692,9 +694,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                     Some(method) => {
                         self.constrain_call(expr, Some(&base),
                                             None::<hir::Expr>.iter(), true);
-                        // late-bound regions in overloaded method calls are instantiated
-                        let fn_ret = self.tcx.no_late_bound_regions(&method.ty.fn_ret());
-                        fn_ret.unwrap()
+                        method.sig.output()
                     }
                     None => self.resolve_node_type(base.id)
                 };
@@ -933,17 +933,14 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
                 // Treat overloaded autoderefs as if an AutoBorrow adjustment
                 // was applied on the base type, as that is always the case.
-                let fn_sig = method.ty.fn_sig();
-                let fn_sig = // late-bound regions should have been instantiated
-                    self.tcx.no_late_bound_regions(&fn_sig).unwrap();
-                let self_ty = fn_sig.inputs()[0];
+                let self_ty = method.sig.inputs()[0];
                 let (m, r) = match self_ty.sty {
                     ty::TyRef(r, ref m) => (m.mutbl, r),
                     _ => {
                         span_bug!(
                             deref_expr.span,
                             "bad overloaded deref type {:?}",
-                            method.ty)
+                            method.sig)
                     }
                 };
 
@@ -958,7 +955,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 self.type_must_outlive(infer::CallRcvr(deref_expr.span),
                                        self_ty, r_deref_expr);
                 self.type_must_outlive(infer::CallReturn(deref_expr.span),
-                                       fn_sig.output(), r_deref_expr);
+                                       method.sig.output(), r_deref_expr);
             }
 
             {

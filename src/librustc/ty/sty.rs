@@ -1313,15 +1313,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    /// Type accessors for substructures of types
-    pub fn fn_args(&self) -> ty::Binder<&'tcx [Ty<'tcx>]> {
-        self.fn_sig().inputs()
-    }
-
-    pub fn fn_ret(&self) -> Binder<Ty<'tcx>> {
-        self.fn_sig().output()
-    }
-
     pub fn is_fn(&self) -> bool {
         match self.sty {
             TyFnDef(..) | TyFnPtr(_) => true,

@@ -751,11 +751,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
         for &overloaded in autoderefs {
             if let Some(method) = overloaded {
-                // the method call infrastructure should have
-                // replaced all late-bound regions with variables:
-                let self_ty = method.ty.fn_sig().input(0);
+                let self_ty = method.sig.inputs()[0];
                 let self_ty = self.mc.infcx.resolve_type_vars_if_possible(&self_ty);
-                let self_ty = self.tcx().no_late_bound_regions(&self_ty).unwrap();
 
                 let (m, r) = match self_ty.sty {
                     ty::TyRef(r, ref m) => (m.mutbl, r),
