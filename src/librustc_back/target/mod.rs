@@ -160,7 +160,7 @@ supported_targets! {
     ("mipsel-unknown-linux-uclibc", mipsel_unknown_linux_uclibc),
 
     ("arm-frc-linux-gnueabi", arm_frc_linux_gnueabi),
-    
+
     ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
 
     ("i686-linux-android", i686_linux_android),
