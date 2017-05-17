@@ -1,0 +1,29 @@
+error: this lifetime isn't used in the function definition
+  --> examples/unused_lt.rs:16:14
+   |
+16 | fn unused_lt<'a>(x: u8) {
+   |              ^^
+   |
+   = note: `-D unused-lifetimes` implied by `-D warnings`
+
+error: this lifetime isn't used in the function definition
+  --> examples/unused_lt.rs:20:25
+   |
+20 | fn unused_lt_transitive<'a, 'b: 'a>(x: &'b u8) {
+   |                         ^^
+   |
+   = note: `-D unused-lifetimes` implied by `-D warnings`
+
+error: this lifetime isn't used in the function definition
+  --> examples/unused_lt.rs:50:10
+   |
+50 |     fn x<'a>(&self) {}
+   |          ^^
+   |
+   = note: `-D unused-lifetimes` implied by `-D warnings`
+
+error: aborting due to 3 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

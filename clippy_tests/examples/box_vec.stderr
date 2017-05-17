@@ -1,0 +1,14 @@
+error: you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`
+  --> examples/box_vec.rs:17:18
+   |
+17 | pub fn test(foo: Box<Vec<bool>>) {
+   |                  ^^^^^^^^^^^^^^
+   |
+   = note: `-D box-vec` implied by `-D warnings`
+   = help: `Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.
+
+error: aborting due to previous error
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

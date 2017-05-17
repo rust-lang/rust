@@ -14,6 +14,7 @@ readme = "README.md"
 license = "MPL-2.0"
 keywords = ["clippy", "lint", "plugin"]
 categories = ["development-tools", "development-tools::cargo-plugins"]
+workspace = "clippy_tests"
 
 [badges]
 travis-ci = { repository = "Manishearth/rust-clippy" }
@@ -36,6 +37,7 @@ cargo_metadata = "0.2"
 
 [dev-dependencies]
 compiletest_rs = "0.2.6"
+duct = "0.8.2"
 lazy_static = "0.2"
 regex = "0.2"
 serde_derive = "1.0"

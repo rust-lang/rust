@@ -1,0 +1,29 @@
+error: useless use of `format!`
+ --> examples/format.rs:6:5
+  |
+6 |     format!("foo");
+  |     ^^^^^^^^^^^^^^^
+  |
+  = note: `-D useless-format` implied by `-D warnings`
+
+error: useless use of `format!`
+ --> examples/format.rs:8:5
+  |
+8 |     format!("{}", "foo");
+  |     ^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D useless-format` implied by `-D warnings`
+
+error: useless use of `format!`
+  --> examples/format.rs:15:5
+   |
+15 |     format!("{}", arg);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D useless-format` implied by `-D warnings`
+
+error: aborting due to 3 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

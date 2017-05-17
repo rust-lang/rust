@@ -1,0 +1,11 @@
+error[E0463]: can't find crate for `serde`
+ --> examples/serde.rs:6:1
+  |
+6 | extern crate serde;
+  | ^^^^^^^^^^^^^^^^^^^ can't find crate
+
+error: aborting due to previous error
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

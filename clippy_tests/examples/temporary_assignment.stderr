@@ -1,0 +1,21 @@
+error: assignment to temporary
+  --> examples/temporary_assignment.rs:29:5
+   |
+29 |     Struct { field: 0 }.field = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D temporary-assignment` implied by `-D warnings`
+
+error: assignment to temporary
+  --> examples/temporary_assignment.rs:30:5
+   |
+30 |     (0, 0).0 = 1;
+   |     ^^^^^^^^^^^^
+   |
+   = note: `-D temporary-assignment` implied by `-D warnings`
+
+error: aborting due to 2 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

@@ -17,7 +17,7 @@ fn my_vec() -> MyVec<i32> {
 }
 
 #[allow(needless_lifetimes)]
-#[deny(useless_transmute)]
+#[warn(useless_transmute)]
 unsafe fn _generic<'a, T, U: 'a>(t: &'a T) {
     let _: &'a T = core::intrinsics::transmute(t);
 
@@ -30,7 +30,7 @@ unsafe fn _generic<'a, T, U: 'a>(t: &'a T) {
     let _: *const U = core::intrinsics::transmute(t);
 }
 
-#[deny(transmute_ptr_to_ref)]
+#[warn(transmute_ptr_to_ref)]
 unsafe fn _ptr_to_ref<T, U>(p: *const T, m: *mut T, o: *const U, om: *mut U) {
     let _: &T = std::mem::transmute(p);
     let _: &T = &*p;
@@ -54,7 +54,7 @@ unsafe fn _ptr_to_ref<T, U>(p: *const T, m: *mut T, o: *const U, om: *mut U) {
     let _: &T = &*(om as *const T);
 }
 
-#[deny(transmute_ptr_to_ref)]
+#[warn(transmute_ptr_to_ref)]
 fn issue1231() {
     struct Foo<'a, T: 'a> {
         bar: &'a T,
@@ -70,7 +70,7 @@ fn issue1231() {
     unsafe { std::mem::transmute::<_, Bar>(raw) };
 }
 
-#[deny(useless_transmute)]
+#[warn(useless_transmute)]
 fn useless() {
     unsafe {
         let _: Vec<i32> = core::intrinsics::transmute(my_vec());
@@ -101,7 +101,7 @@ fn useless() {
 
 struct Usize(usize);
 
-#[deny(crosspointer_transmute)]
+#[warn(crosspointer_transmute)]
 fn crosspointer() {
     let mut int: Usize = Usize(0);
     let int_const_ptr: *const Usize = &int as *const Usize;

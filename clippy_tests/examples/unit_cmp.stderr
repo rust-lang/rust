@@ -1,0 +1,21 @@
+error: ==-comparison of unit values detected. This will always be true
+  --> examples/unit_cmp.rs:16:8
+   |
+16 |     if { true; } == { false; } {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D unit-cmp` implied by `-D warnings`
+
+error: >-comparison of unit values detected. This will always be false
+  --> examples/unit_cmp.rs:19:8
+   |
+19 |     if { true; } > { false; } {
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D unit-cmp` implied by `-D warnings`
+
+error: aborting due to 2 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

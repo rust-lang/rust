@@ -1,0 +1,61 @@
+error: Consider using an AtomicBool instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
+ --> examples/mutex_atomic.rs:9:5
+  |
+9 |     Mutex::new(true);
+  |     ^^^^^^^^^^^^^^^^
+  |
+  = note: `-D mutex-atomic` implied by `-D warnings`
+
+error: Consider using an AtomicUsize instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
+  --> examples/mutex_atomic.rs:10:5
+   |
+10 |     Mutex::new(5usize);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D mutex-atomic` implied by `-D warnings`
+
+error: Consider using an AtomicIsize instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
+  --> examples/mutex_atomic.rs:11:5
+   |
+11 |     Mutex::new(9isize);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D mutex-atomic` implied by `-D warnings`
+
+error: Consider using an AtomicPtr instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
+  --> examples/mutex_atomic.rs:13:5
+   |
+13 |     Mutex::new(&x as *const u32);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D mutex-atomic` implied by `-D warnings`
+
+error: Consider using an AtomicPtr instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
+  --> examples/mutex_atomic.rs:14:5
+   |
+14 |     Mutex::new(&mut x as *mut u32);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D mutex-atomic` implied by `-D warnings`
+
+error: Consider using an AtomicUsize instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
+  --> examples/mutex_atomic.rs:15:5
+   |
+15 |     Mutex::new(0u32);
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D mutex-integer` implied by `-D warnings`
+
+error: Consider using an AtomicIsize instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
+  --> examples/mutex_atomic.rs:16:5
+   |
+16 |     Mutex::new(0i32);
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D mutex-integer` implied by `-D warnings`
+
+error: aborting due to 7 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

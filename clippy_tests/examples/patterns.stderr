@@ -1,0 +1,13 @@
+error: the `y @ _` pattern can be written as just `y`
+  --> examples/patterns.rs:10:9
+   |
+10 |         y @ _   => (),
+   |         ^^^^^
+   |
+   = note: `-D redundant-pattern` implied by `-D warnings`
+
+error: aborting due to previous error
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

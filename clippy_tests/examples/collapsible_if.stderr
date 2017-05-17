@@ -1,0 +1,245 @@
+error: this if statement can be collapsed
+  --> examples/collapsible_if.rs:8:5
+   |
+8  | /     if x == "hello" {
+9  | |         if y == "world" {
+10 | |             println!("Hello world!");
+11 | |         }
+12 | |     }
+   | |_____^
+   |
+   = note: `-D collapsible-if` implied by `-D warnings`
+help: try
+   |     if x == "hello" && y == "world" {
+   |     println!("Hello world!");
+   | }
+
+error: this if statement can be collapsed
+  --> examples/collapsible_if.rs:14:5
+   |
+14 | /     if x == "hello" || x == "world" {
+15 | |         if y == "world" || y == "hello" {
+16 | |             println!("Hello world!");
+17 | |         }
+18 | |     }
+   | |_____^
+   |
+   = note: `-D collapsible-if` implied by `-D warnings`
+help: try
+   |     if (x == "hello" || x == "world") && (y == "world" || y == "hello") {
+   |     println!("Hello world!");
+   | }
+
+error: this if statement can be collapsed
+  --> examples/collapsible_if.rs:20:5
+   |
+20 | /     if x == "hello" && x == "world" {
+21 | |         if y == "world" || y == "hello" {
+22 | |             println!("Hello world!");
+23 | |         }
+24 | |     }
+   | |_____^
+   |
+   = note: `-D collapsible-if` implied by `-D warnings`
+help: try
+   |     if x == "hello" && x == "world" && (y == "world" || y == "hello") {
+   |     println!("Hello world!");
+   | }
+
+error: this if statement can be collapsed
+  --> examples/collapsible_if.rs:26:5
+   |
+26 | /     if x == "hello" || x == "world" {
+27 | |         if y == "world" && y == "hello" {
+28 | |             println!("Hello world!");
+29 | |         }
+30 | |     }
+   | |_____^
+   |
+   = note: `-D collapsible-if` implied by `-D warnings`
+help: try
+   |     if (x == "hello" || x == "world") && y == "world" && y == "hello" {
+   |     println!("Hello world!");
+   | }
+
+error: this if statement can be collapsed
+  --> examples/collapsible_if.rs:32:5
+   |
+32 | /     if x == "hello" && x == "world" {
+33 | |         if y == "world" && y == "hello" {
+34 | |             println!("Hello world!");
+35 | |         }
+36 | |     }
+   | |_____^
+   |
+   = note: `-D collapsible-if` implied by `-D warnings`
+help: try
+   |     if x == "hello" && x == "world" && y == "world" && y == "hello" {
+   |     println!("Hello world!");
+   | }
+
+error: this if statement can be collapsed
+  --> examples/collapsible_if.rs:38:5
+   |
+38 | /     if 42 == 1337 {
+39 | |         if 'a' != 'A' {
+40 | |             println!("world!")
+41 | |         }
+42 | |     }
+   | |_____^
+   |
+   = note: `-D collapsible-if` implied by `-D warnings`
+help: try
+   |     if 42 == 1337 && 'a' != 'A' {
+   |     println!("world!")
+   | }
+
+error: this `else { if .. }` block can be collapsed
+  --> examples/collapsible_if.rs:47:12
+   |
+47 |       } else {
+   |  ____________^
+48 | |         if y == "world" {
+49 | |             println!("world!")
+50 | |         }
+51 | |     }
+   | |_____^
+   |
+   = note: `-D collapsible-if` implied by `-D warnings`
+help: try
+   |     } else if y == "world" {
+   |     println!("world!")
+   | }
+
+error: this `else { if .. }` block can be collapsed
+  --> examples/collapsible_if.rs:55:12
+   |
+55 |       } else {
+   |  ____________^
+56 | |         if let Some(42) = Some(42) {
+57 | |             println!("world!")
+58 | |         }
+59 | |     }
+   | |_____^
+   |
+   = note: `-D collapsible-if` implied by `-D warnings`
+help: try
+   |     } else if let Some(42) = Some(42) {
+   |     println!("world!")
+   | }
+
+error: this `else { if .. }` block can be collapsed
+  --> examples/collapsible_if.rs:63:12
+   |
+63 |       } else {
+   |  ____________^
+64 | |         if y == "world" {
+65 | |             println!("world")
+66 | |         }
+...  |
+69 | |         }
+70 | |     }
+   | |_____^
+   |
+   = note: `-D collapsible-if` implied by `-D warnings`
+help: try
+   |     } else if y == "world" {
+   |     println!("world")
+   | }
+   | else {
+   |     println!("!")
+   | }
+
+error: this `else { if .. }` block can be collapsed
+  --> examples/collapsible_if.rs:74:12
+   |
+74 |       } else {
+   |  ____________^
+75 | |         if let Some(42) = Some(42) {
+76 | |             println!("world")
+77 | |         }
+...  |
+80 | |         }
+81 | |     }
+   | |_____^
+   |
+   = note: `-D collapsible-if` implied by `-D warnings`
+help: try
+   |     } else if let Some(42) = Some(42) {
+   |     println!("world")
+   | }
+   | else {
+   |     println!("!")
+   | }
+
+error: this `else { if .. }` block can be collapsed
+  --> examples/collapsible_if.rs:85:12
+   |
+85 |       } else {
+   |  ____________^
+86 | |         if let Some(42) = Some(42) {
+87 | |             println!("world")
+88 | |         }
+...  |
+91 | |         }
+92 | |     }
+   | |_____^
+   |
+   = note: `-D collapsible-if` implied by `-D warnings`
+help: try
+   |     } else if let Some(42) = Some(42) {
+   |     println!("world")
+   | }
+   | else {
+   |     println!("!")
+   | }
+
+error: this `else { if .. }` block can be collapsed
+   --> examples/collapsible_if.rs:96:12
+    |
+96  |       } else {
+    |  ____________^
+97  | |         if x == "hello" {
+98  | |             println!("world")
+99  | |         }
+...   |
+102 | |         }
+103 | |     }
+    | |_____^
+    |
+    = note: `-D collapsible-if` implied by `-D warnings`
+help: try
+    |     } else if x == "hello" {
+    |     println!("world")
+    | }
+    | else {
+    |     println!("!")
+    | }
+
+error: this `else { if .. }` block can be collapsed
+   --> examples/collapsible_if.rs:107:12
+    |
+107 |       } else {
+    |  ____________^
+108 | |         if let Some(42) = Some(42) {
+109 | |             println!("world")
+110 | |         }
+...   |
+113 | |         }
+114 | |     }
+    | |_____^
+    |
+    = note: `-D collapsible-if` implied by `-D warnings`
+help: try
+    |     } else if let Some(42) = Some(42) {
+    |     println!("world")
+    | }
+    | else {
+    |     println!("!")
+    | }
+
+error: aborting due to 13 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

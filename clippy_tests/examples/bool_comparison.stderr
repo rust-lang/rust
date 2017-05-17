@@ -1,0 +1,37 @@
+error: equality checks against true are unnecessary
+ --> examples/bool_comparison.rs:7:8
+  |
+7 |     if x == true { "yes" } else { "no" };
+  |        ^^^^^^^^^ help: try simplifying it as shown: `x`
+  |
+  = note: `-D bool-comparison` implied by `-D warnings`
+
+error: equality checks against false can be replaced by a negation
+ --> examples/bool_comparison.rs:8:8
+  |
+8 |     if x == false { "yes" } else { "no" };
+  |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
+  |
+  = note: `-D bool-comparison` implied by `-D warnings`
+
+error: equality checks against true are unnecessary
+ --> examples/bool_comparison.rs:9:8
+  |
+9 |     if true == x { "yes" } else { "no" };
+  |        ^^^^^^^^^ help: try simplifying it as shown: `x`
+  |
+  = note: `-D bool-comparison` implied by `-D warnings`
+
+error: equality checks against false can be replaced by a negation
+  --> examples/bool_comparison.rs:10:8
+   |
+10 |     if false == x { "yes" } else { "no" };
+   |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
+   |
+   = note: `-D bool-comparison` implied by `-D warnings`
+
+error: aborting due to 4 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

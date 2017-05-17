@@ -1,0 +1,100 @@
+error: this looks like an `else if` but the `else` is missing
+  --> examples/formatting.rs:15:6
+   |
+15 |     } if foo() {
+   |      ^
+   |
+   = note: `-D suspicious-else-formatting` implied by `-D warnings`
+   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
+
+error: this looks like an `else if` but the `else` is missing
+  --> examples/formatting.rs:22:10
+   |
+22 |         } if foo() {
+   |          ^
+   |
+   = note: `-D suspicious-else-formatting` implied by `-D warnings`
+   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
+
+error: this looks like an `else if` but the `else` is missing
+  --> examples/formatting.rs:30:10
+   |
+30 |         } if foo() {
+   |          ^
+   |
+   = note: `-D suspicious-else-formatting` implied by `-D warnings`
+   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
+
+error: this is an `else if` but the formatting might hide it
+  --> examples/formatting.rs:39:6
+   |
+39 |       } else
+   |  ______^
+40 | |     if foo() { // the span of the above error should continue here
+   | |____^
+   |
+   = note: `-D suspicious-else-formatting` implied by `-D warnings`
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
+
+error: this is an `else if` but the formatting might hide it
+  --> examples/formatting.rs:44:6
+   |
+44 |       }
+   |  ______^
+45 | |     else
+46 | |     if foo() { // the span of the above error should continue here
+   | |____^
+   |
+   = note: `-D suspicious-else-formatting` implied by `-D warnings`
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
+
+error: this looks like you are trying to use `.. -= ..`, but you really are doing `.. = (- ..)`
+  --> examples/formatting.rs:71:6
+   |
+71 |     a =- 35;
+   |      ^^^^
+   |
+   = note: `-D suspicious-assignment-formatting` implied by `-D warnings`
+   = note: to remove this lint, use either `-=` or `= -`
+
+error: this looks like you are trying to use `.. *= ..`, but you really are doing `.. = (* ..)`
+  --> examples/formatting.rs:72:6
+   |
+72 |     a =* &191;
+   |      ^^^^
+   |
+   = note: `-D suspicious-assignment-formatting` implied by `-D warnings`
+   = note: to remove this lint, use either `*=` or `= *`
+
+error: this looks like you are trying to use `.. != ..`, but you really are doing `.. = (! ..)`
+  --> examples/formatting.rs:75:6
+   |
+75 |     b =! false;
+   |      ^^^^
+   |
+   = note: `-D suspicious-assignment-formatting` implied by `-D warnings`
+   = note: to remove this lint, use either `!=` or `= !`
+
+error: possibly missing a comma here
+  --> examples/formatting.rs:84:19
+   |
+84 |         -1, -2, -3 // <= no comma here
+   |                   ^
+   |
+   = note: `-D possible-missing-comma` implied by `-D warnings`
+   = note: to remove this lint, add a comma or write the expr in a single line
+
+error: possibly missing a comma here
+  --> examples/formatting.rs:88:19
+   |
+88 |         -1, -2, -3 // <= no comma here
+   |                   ^
+   |
+   = note: `-D possible-missing-comma` implied by `-D warnings`
+   = note: to remove this lint, add a comma or write the expr in a single line
+
+error: aborting due to 10 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

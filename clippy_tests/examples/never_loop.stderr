@@ -1,0 +1,41 @@
+error: this loop never actually loops
+  --> examples/never_loop.rs:8:5
+   |
+8  | /     loop {
+9  | |         println!("This is only ever printed once");
+10 | |         break;
+11 | |     }
+   | |_____^
+   |
+   = note: `-D never-loop` implied by `-D warnings`
+
+error: this loop never actually loops
+  --> examples/never_loop.rs:21:5
+   |
+21 | /     loop {
+22 | |         loop {
+23 | |             // another one
+24 | |             break;
+25 | |         }
+26 | |         break;
+27 | |     }
+   | |_____^
+   |
+   = note: `-D never-loop` implied by `-D warnings`
+
+error: this loop never actually loops
+  --> examples/never_loop.rs:22:9
+   |
+22 | /         loop {
+23 | |             // another one
+24 | |             break;
+25 | |         }
+   | |_________^
+   |
+   = note: `-D never-loop` implied by `-D warnings`
+
+error: aborting due to 3 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

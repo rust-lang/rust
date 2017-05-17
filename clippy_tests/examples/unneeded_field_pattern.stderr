@@ -1,0 +1,23 @@
+error: You matched a field with a wildcard pattern. Consider using `..` instead
+  --> examples/unneeded_field_pattern.rs:17:15
+   |
+17 |         Foo { a: _, b: 0, .. } => {}
+   |               ^^^^
+   |
+   = note: `-D unneeded-field-pattern` implied by `-D warnings`
+   = help: Try with `Foo { b: 0, .. }`
+
+error: All the struct fields are matched to a wildcard pattern, consider using `..`.
+  --> examples/unneeded_field_pattern.rs:19:9
+   |
+19 |         Foo { a: _, b: _, c: _ } => {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D unneeded-field-pattern` implied by `-D warnings`
+   = help: Try with `Foo { .. }` instead
+
+error: aborting due to 2 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

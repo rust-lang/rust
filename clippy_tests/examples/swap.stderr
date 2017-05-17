@@ -1,0 +1,79 @@
+error: this looks like you are swapping elements of `foo` manually
+  --> examples/swap.rs:11:5
+   |
+11 | /     let temp = foo[0];
+12 | |     foo[0] = foo[1];
+13 | |     foo[1] = temp;
+   | |_________________^ help: try `foo.swap(0, 1)`
+   |
+   = note: `-D manual-swap` implied by `-D warnings`
+
+error: this looks like you are swapping elements of `foo` manually
+  --> examples/swap.rs:20:5
+   |
+20 | /     let temp = foo[0];
+21 | |     foo[0] = foo[1];
+22 | |     foo[1] = temp;
+   | |_________________^ help: try `foo.swap(0, 1)`
+   |
+   = note: `-D manual-swap` implied by `-D warnings`
+
+error: this looks like you are swapping elements of `foo` manually
+  --> examples/swap.rs:29:5
+   |
+29 | /     let temp = foo[0];
+30 | |     foo[0] = foo[1];
+31 | |     foo[1] = temp;
+   | |_________________^ help: try `foo.swap(0, 1)`
+   |
+   = note: `-D manual-swap` implied by `-D warnings`
+
+error: this looks like you are swapping `a` and `b` manually
+  --> examples/swap.rs:47:7
+   |
+47 |       ; let t = a;
+   |  _______^
+48 | |     a = b;
+49 | |     b = t;
+   | |_________^ help: try `std::mem::swap(&mut a, &mut b)`
+   |
+   = note: `-D manual-swap` implied by `-D warnings`
+   = note: or maybe you should use `std::mem::replace`?
+
+error: this looks like you are swapping `c.0` and `a` manually
+  --> examples/swap.rs:56:7
+   |
+56 |       ; let t = c.0;
+   |  _______^
+57 | |     c.0 = a;
+58 | |     a = t;
+   | |_________^ help: try `std::mem::swap(&mut c.0, &mut a)`
+   |
+   = note: `-D manual-swap` implied by `-D warnings`
+   = note: or maybe you should use `std::mem::replace`?
+
+error: this looks like you are trying to swap `a` and `b`
+  --> examples/swap.rs:44:5
+   |
+44 | /     a = b;
+45 | |     b = a;
+   | |_________^ help: try `std::mem::swap(&mut a, &mut b)`
+   |
+   = note: `-D almost-swapped` implied by `-D warnings`
+   = note: or maybe you should use `std::mem::replace`?
+
+error: this looks like you are trying to swap `c.0` and `a`
+  --> examples/swap.rs:53:5
+   |
+53 | /     c.0 = a;
+54 | |     a = c.0;
+   | |___________^ help: try `std::mem::swap(&mut c.0, &mut a)`
+   |
+   = note: `-D almost-swapped` implied by `-D warnings`
+   = note: or maybe you should use `std::mem::replace`?
+
+error: aborting due to 7 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

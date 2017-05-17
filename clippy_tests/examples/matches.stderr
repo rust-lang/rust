@@ -1,0 +1,296 @@
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> examples/matches.rs:26:5
+   |
+26 | /     match ExprNode::Butterflies {
+27 | |         ExprNode::ExprAddrOf => Some(&NODE),
+28 | |         _ => { let x = 5; None },
+29 | |     }
+   | |_____^ help: try this `if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else { let x = 5; None }`
+   |
+   = note: `-D single-match-else` implied by `-D warnings`
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> examples/matches.rs:35:5
+   |
+35 | /     match x {
+36 | |         Some(y) => { println!("{:?}", y); }
+37 | |         _ => ()
+38 | |     };
+   | |_____^ help: try this `if let Some(y) = x { println!("{:?}", y); }`
+   |
+   = note: `-D single-match` implied by `-D warnings`
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> examples/matches.rs:41:5
+   |
+41 | /     match z {
+42 | |         (2...3, 7...9) => dummy(),
+43 | |         _ => {}
+44 | |     };
+   | |_____^ help: try this `if let (2...3, 7...9) = z { dummy() }`
+   |
+   = note: `-D single-match` implied by `-D warnings`
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> examples/matches.rs:63:5
+   |
+63 | /     match x {
+64 | |         Some(y) => dummy(),
+65 | |         None => ()
+66 | |     };
+   | |_____^ help: try this `if let Some(y) = x { dummy() }`
+   |
+   = note: `-D single-match` implied by `-D warnings`
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> examples/matches.rs:68:5
+   |
+68 | /     match y {
+69 | |         Ok(y) => dummy(),
+70 | |         Err(..) => ()
+71 | |     };
+   | |_____^ help: try this `if let Ok(y) = y { dummy() }`
+   |
+   = note: `-D single-match` implied by `-D warnings`
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> examples/matches.rs:75:5
+   |
+75 | /     match c {
+76 | |         Cow::Borrowed(..) => dummy(),
+77 | |         Cow::Owned(..) => (),
+78 | |     };
+   | |_____^ help: try this `if let Cow::Borrowed(..) = c { dummy() }`
+   |
+   = note: `-D single-match` implied by `-D warnings`
+
+error: you seem to be trying to match on a boolean expression
+  --> examples/matches.rs:96:5
+   |
+96 | /     match test {
+97 | |         true => 0,
+98 | |         false => 42,
+99 | |     };
+   | |_____^ help: consider using an if/else expression `if test { 0 } else { 42 }`
+   |
+   = note: `-D match-bool` implied by `-D warnings`
+
+error: you seem to be trying to match on a boolean expression
+   --> examples/matches.rs:102:5
+    |
+102 | /     match option == 1 {
+103 | |         true => 1,
+104 | |         false => 0,
+105 | |     };
+    | |_____^ help: consider using an if/else expression `if option == 1 { 1 } else { 0 }`
+    |
+    = note: `-D match-bool` implied by `-D warnings`
+
+error: you seem to be trying to match on a boolean expression
+   --> examples/matches.rs:107:5
+    |
+107 | /     match test {
+108 | |         true => (),
+109 | |         false => { println!("Noooo!"); }
+110 | |     };
+    | |_____^ help: consider using an if/else expression `if !test { println!("Noooo!"); }`
+    |
+    = note: `-D match-bool` implied by `-D warnings`
+
+error: you seem to be trying to match on a boolean expression
+   --> examples/matches.rs:112:5
+    |
+112 | /     match test {
+113 | |         false => { println!("Noooo!"); }
+114 | |         _ => (),
+115 | |     };
+    | |_____^ help: consider using an if/else expression `if !test { println!("Noooo!"); }`
+    |
+    = note: `-D match-bool` implied by `-D warnings`
+
+error: you seem to be trying to match on a boolean expression
+   --> examples/matches.rs:117:5
+    |
+117 | /     match test && test {
+118 | |         false => { println!("Noooo!"); }
+119 | |         _ => (),
+120 | |     };
+    | |_____^ help: consider using an if/else expression `if !(test && test) { println!("Noooo!"); }`
+    |
+    = note: `-D match-bool` implied by `-D warnings`
+
+error: equal expressions as operands to `&&`
+   --> examples/matches.rs:117:11
+    |
+117 |     match test && test {
+    |           ^^^^^^^^^^^^
+    |
+    = note: `-D eq-op` implied by `-D warnings`
+
+error: you seem to be trying to match on a boolean expression
+   --> examples/matches.rs:122:5
+    |
+122 | /     match test {
+123 | |         false => { println!("Noooo!"); }
+124 | |         true => { println!("Yes!"); }
+125 | |     };
+    | |_____^ help: consider using an if/else expression `if test { println!("Yes!"); } else { println!("Noooo!"); }`
+    |
+    = note: `-D match-bool` implied by `-D warnings`
+
+error: you don't need to add `&` to all patterns
+   --> examples/matches.rs:138:9
+    |
+138 | /         match v {
+139 | |             &Some(v) => println!("{:?}", v),
+140 | |             &None => println!("none"),
+141 | |         }
+    | |_________^
+    |
+    = note: `-D match-ref-pats` implied by `-D warnings`
+help: instead of prefixing all patterns with `&`, you can dereference the expression
+    |         match *v { .. }
+
+error: you don't need to add `&` to all patterns
+   --> examples/matches.rs:148:5
+    |
+148 | /     match tup {
+149 | |         &(v, 1) => println!("{}", v),
+150 | |         _ => println!("none"),
+151 | |     }
+    | |_____^
+    |
+    = note: `-D match-ref-pats` implied by `-D warnings`
+help: instead of prefixing all patterns with `&`, you can dereference the expression
+    |     match *tup { .. }
+
+error: you don't need to add `&` to both the expression and the patterns
+   --> examples/matches.rs:154:5
+    |
+154 | /     match &w {
+155 | |         &Some(v) => println!("{:?}", v),
+156 | |         &None => println!("none"),
+157 | |     }
+    | |_____^ help: try `match w { .. }`
+    |
+    = note: `-D match-ref-pats` implied by `-D warnings`
+
+error: you don't need to add `&` to all patterns
+   --> examples/matches.rs:165:5
+    |
+165 | /     if let &None = a {
+166 | |         println!("none");
+167 | |     }
+    | |_____^
+    |
+    = note: `-D match-ref-pats` implied by `-D warnings`
+help: instead of prefixing all patterns with `&`, you can dereference the expression
+    |     if let .. = *a { .. }
+
+error: you don't need to add `&` to both the expression and the patterns
+   --> examples/matches.rs:170:5
+    |
+170 | /     if let &None = &b {
+171 | |         println!("none");
+172 | |     }
+    | |_____^ help: try `if let .. = b { .. }`
+    |
+    = note: `-D match-ref-pats` implied by `-D warnings`
+
+error: some ranges overlap
+   --> examples/matches.rs:179:9
+    |
+179 |         0 ... 10 => println!("0 ... 10"),
+    |         ^^^^^^^^
+    |
+    = note: `-D match-overlapping-arm` implied by `-D warnings`
+note: overlaps with this
+   --> examples/matches.rs:180:9
+    |
+180 |         0 ... 11 => println!("0 ... 11"),
+    |         ^^^^^^^^
+
+error: some ranges overlap
+   --> examples/matches.rs:185:9
+    |
+185 |         0 ... 5 => println!("0 ... 5"),
+    |         ^^^^^^^
+    |
+    = note: `-D match-overlapping-arm` implied by `-D warnings`
+note: overlaps with this
+   --> examples/matches.rs:187:9
+    |
+187 |         FOO ... 11 => println!("0 ... 11"),
+    |         ^^^^^^^^^^
+
+error: some ranges overlap
+   --> examples/matches.rs:193:9
+    |
+193 |         0 ... 5 => println!("0 ... 5"),
+    |         ^^^^^^^
+    |
+    = note: `-D match-overlapping-arm` implied by `-D warnings`
+note: overlaps with this
+   --> examples/matches.rs:192:9
+    |
+192 |         2 => println!("2"),
+    |         ^
+
+error: some ranges overlap
+   --> examples/matches.rs:199:9
+    |
+199 |         0 ... 2 => println!("0 ... 2"),
+    |         ^^^^^^^
+    |
+    = note: `-D match-overlapping-arm` implied by `-D warnings`
+note: overlaps with this
+   --> examples/matches.rs:198:9
+    |
+198 |         2 => println!("2"),
+    |         ^
+
+error: some ranges overlap
+   --> examples/matches.rs:222:9
+    |
+222 |         0 .. 11 => println!("0 .. 11"),
+    |         ^^^^^^^
+    |
+    = note: `-D match-overlapping-arm` implied by `-D warnings`
+note: overlaps with this
+   --> examples/matches.rs:223:9
+    |
+223 |         0 ... 11 => println!("0 ... 11"),
+    |         ^^^^^^^^
+
+error: Err(_) will match all errors, maybe not a good idea
+   --> examples/matches.rs:240:9
+    |
+240 |         Err(_) => panic!("err")
+    |         ^^^^^^
+    |
+    = note: `-D match-wild-err-arm` implied by `-D warnings`
+    = note: to remove this warning, match each error seperately or use unreachable macro
+
+error: Err(_) will match all errors, maybe not a good idea
+   --> examples/matches.rs:246:9
+    |
+246 |         Err(_) => {panic!()}
+    |         ^^^^^^
+    |
+    = note: `-D match-wild-err-arm` implied by `-D warnings`
+    = note: to remove this warning, match each error seperately or use unreachable macro
+
+error: Err(_) will match all errors, maybe not a good idea
+   --> examples/matches.rs:252:9
+    |
+252 |         Err(_) => {panic!();}
+    |         ^^^^^^
+    |
+    = note: `-D match-wild-err-arm` implied by `-D warnings`
+    = note: to remove this warning, match each error seperately or use unreachable macro
+
+error: aborting due to 26 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

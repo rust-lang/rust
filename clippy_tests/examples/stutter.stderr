@@ -1,0 +1,37 @@
+error: item name starts with its containing module's name
+ --> examples/stutter.rs:8:5
+  |
+8 |     pub fn foo_bar() {}
+  |     ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D stutter` implied by `-D warnings`
+
+error: item name ends with its containing module's name
+ --> examples/stutter.rs:9:5
+  |
+9 |     pub fn bar_foo() {}
+  |     ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D stutter` implied by `-D warnings`
+
+error: item name starts with its containing module's name
+  --> examples/stutter.rs:10:5
+   |
+10 |     pub struct FooCake {}
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D stutter` implied by `-D warnings`
+
+error: item name ends with its containing module's name
+  --> examples/stutter.rs:11:5
+   |
+11 |     pub enum CakeFoo {}
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D stutter` implied by `-D warnings`
+
+error: aborting due to 4 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

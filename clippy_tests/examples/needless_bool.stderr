@@ -1,0 +1,93 @@
+error: this if-then-else expression will always return true
+ --> examples/needless_bool.rs:9:5
+  |
+9 |     if x { true } else { true };
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D needless-bool` implied by `-D warnings`
+
+error: this if-then-else expression will always return false
+  --> examples/needless_bool.rs:10:5
+   |
+10 |     if x { false } else { false };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D needless-bool` implied by `-D warnings`
+
+error: this if-then-else expression returns a bool literal
+  --> examples/needless_bool.rs:11:5
+   |
+11 |     if x { true } else { false };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to `x`
+   |
+   = note: `-D needless-bool` implied by `-D warnings`
+
+error: this if-then-else expression returns a bool literal
+  --> examples/needless_bool.rs:12:5
+   |
+12 |     if x { false } else { true };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to `!x`
+   |
+   = note: `-D needless-bool` implied by `-D warnings`
+
+error: this if-then-else expression returns a bool literal
+  --> examples/needless_bool.rs:13:5
+   |
+13 |     if x && y { false } else { true };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to `!(x && y)`
+   |
+   = note: `-D needless-bool` implied by `-D warnings`
+
+error: this if-then-else expression will always return true
+  --> examples/needless_bool.rs:25:5
+   |
+25 |     if x { return true } else { return true };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D needless-bool` implied by `-D warnings`
+
+error: this if-then-else expression will always return false
+  --> examples/needless_bool.rs:30:5
+   |
+30 |     if x { return false } else { return false };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D needless-bool` implied by `-D warnings`
+
+error: this if-then-else expression returns a bool literal
+  --> examples/needless_bool.rs:35:5
+   |
+35 |     if x { return true } else { return false };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to `return x`
+   |
+   = note: `-D needless-bool` implied by `-D warnings`
+
+error: this if-then-else expression returns a bool literal
+  --> examples/needless_bool.rs:40:5
+   |
+40 |     if x && y { return true } else { return false };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to `return x && y`
+   |
+   = note: `-D needless-bool` implied by `-D warnings`
+
+error: this if-then-else expression returns a bool literal
+  --> examples/needless_bool.rs:45:5
+   |
+45 |     if x { return false } else { return true };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to `return !x`
+   |
+   = note: `-D needless-bool` implied by `-D warnings`
+
+error: this if-then-else expression returns a bool literal
+  --> examples/needless_bool.rs:50:5
+   |
+50 |     if x && y { return false } else { return true };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to `return !(x && y)`
+   |
+   = note: `-D needless-bool` implied by `-D warnings`
+
+error: aborting due to 11 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

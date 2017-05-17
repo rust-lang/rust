@@ -1,0 +1,13 @@
+error: `--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op
+ --> examples/double_neg.rs:9:5
+  |
+9 |     --x;
+  |     ^^^
+  |
+  = note: `-D double-neg` implied by `-D warnings`
+
+error: aborting due to previous error
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

@@ -1,0 +1,29 @@
+error: you have declared `#[inline(always)]` on `test_attr_lint`. This is usually a bad idea
+ --> examples/attrs.rs:6:1
+  |
+6 | #[inline(always)]
+  | ^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D inline-always` implied by `-D warnings`
+
+error: the since field must contain a semver-compliant version
+  --> examples/attrs.rs:27:14
+   |
+27 | #[deprecated(since = "forever")]
+   |              ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D deprecated-semver` implied by `-D warnings`
+
+error: the since field must contain a semver-compliant version
+  --> examples/attrs.rs:30:14
+   |
+30 | #[deprecated(since = "1")]
+   |              ^^^^^^^^^^^
+   |
+   = note: `-D deprecated-semver` implied by `-D warnings`
+
+error: aborting due to 3 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

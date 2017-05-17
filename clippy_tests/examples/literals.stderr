@@ -1,0 +1,81 @@
+error: inconsistent casing in hexadecimal literal
+  --> examples/literals.rs:14:17
+   |
+14 |     let fail1 = 0xabCD;
+   |                 ^^^^^^
+   |
+   = note: `-D mixed-case-hex-literals` implied by `-D warnings`
+
+error: inconsistent casing in hexadecimal literal
+  --> examples/literals.rs:15:17
+   |
+15 |     let fail2 = 0xabCD_u32;
+   |                 ^^^^^^^^^^
+   |
+   = note: `-D mixed-case-hex-literals` implied by `-D warnings`
+
+error: inconsistent casing in hexadecimal literal
+  --> examples/literals.rs:16:17
+   |
+16 |     let fail2 = 0xabCD_isize;
+   |                 ^^^^^^^^^^^^
+   |
+   = note: `-D mixed-case-hex-literals` implied by `-D warnings`
+
+error: integer type suffix should be separated by an underscore
+  --> examples/literals.rs:21:17
+   |
+21 |     let fail3 = 1234i32;
+   |                 ^^^^^^^
+   |
+   = note: `-D unseparated-literal-suffix` implied by `-D warnings`
+
+error: integer type suffix should be separated by an underscore
+  --> examples/literals.rs:22:17
+   |
+22 |     let fail4 = 1234u32;
+   |                 ^^^^^^^
+   |
+   = note: `-D unseparated-literal-suffix` implied by `-D warnings`
+
+error: integer type suffix should be separated by an underscore
+  --> examples/literals.rs:23:17
+   |
+23 |     let fail5 = 1234isize;
+   |                 ^^^^^^^^^
+   |
+   = note: `-D unseparated-literal-suffix` implied by `-D warnings`
+
+error: integer type suffix should be separated by an underscore
+  --> examples/literals.rs:24:17
+   |
+24 |     let fail6 = 1234usize;
+   |                 ^^^^^^^^^
+   |
+   = note: `-D unseparated-literal-suffix` implied by `-D warnings`
+
+error: float type suffix should be separated by an underscore
+  --> examples/literals.rs:25:17
+   |
+25 |     let fail7 = 1.5f32;
+   |                 ^^^^^^
+   |
+   = note: `-D unseparated-literal-suffix` implied by `-D warnings`
+
+error: this is a decimal constant
+  --> examples/literals.rs:29:17
+   |
+29 |     let fail8 = 0123;
+   |                 ^^^^
+   |
+   = note: `-D zero-prefixed-literal` implied by `-D warnings`
+help: if you mean to use a decimal constant, remove the `0` to remove confusion:
+   |     let fail8 = 123;
+help: if you mean to use an octal constant, use `0o`:
+   |     let fail8 = 0o123;
+
+error: aborting due to 9 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

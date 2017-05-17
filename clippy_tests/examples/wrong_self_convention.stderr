@@ -1,0 +1,101 @@
+error: methods called `from_*` usually take no self; consider choosing a less ambiguous name
+  --> examples/wrong_self_convention.rs:21:17
+   |
+21 |     fn from_i32(self) {}
+   |                 ^^^^
+   |
+   = note: `-D wrong-self-convention` implied by `-D warnings`
+
+error: methods called `from_*` usually take no self; consider choosing a less ambiguous name
+  --> examples/wrong_self_convention.rs:27:21
+   |
+27 |     pub fn from_i64(self) {}
+   |                     ^^^^
+   |
+   = note: `-D wrong-self-convention` implied by `-D warnings`
+
+error: methods called `as_*` usually take self by reference or self by mutable reference; consider choosing a less ambiguous name
+  --> examples/wrong_self_convention.rs:38:15
+   |
+38 |     fn as_i32(self) {}
+   |               ^^^^
+   |
+   = note: `-D wrong-self-convention` implied by `-D warnings`
+
+error: methods called `into_*` usually take self by value; consider choosing a less ambiguous name
+  --> examples/wrong_self_convention.rs:40:17
+   |
+40 |     fn into_i32(&self) {}
+   |                 ^^^^^
+   |
+   = note: `-D wrong-self-convention` implied by `-D warnings`
+
+error: methods called `is_*` usually take self by reference or no self; consider choosing a less ambiguous name
+  --> examples/wrong_self_convention.rs:42:15
+   |
+42 |     fn is_i32(self) {}
+   |               ^^^^
+   |
+   = note: `-D wrong-self-convention` implied by `-D warnings`
+
+error: methods called `to_*` usually take self by reference; consider choosing a less ambiguous name
+  --> examples/wrong_self_convention.rs:44:15
+   |
+44 |     fn to_i32(self) {}
+   |               ^^^^
+   |
+   = note: `-D wrong-self-convention` implied by `-D warnings`
+
+error: methods called `from_*` usually take no self; consider choosing a less ambiguous name
+  --> examples/wrong_self_convention.rs:46:17
+   |
+46 |     fn from_i32(self) {}
+   |                 ^^^^
+   |
+   = note: `-D wrong-self-convention` implied by `-D warnings`
+
+error: methods called `as_*` usually take self by reference or self by mutable reference; consider choosing a less ambiguous name
+  --> examples/wrong_self_convention.rs:48:19
+   |
+48 |     pub fn as_i64(self) {}
+   |                   ^^^^
+   |
+   = note: `-D wrong-self-convention` implied by `-D warnings`
+
+error: methods called `into_*` usually take self by value; consider choosing a less ambiguous name
+  --> examples/wrong_self_convention.rs:49:21
+   |
+49 |     pub fn into_i64(&self) {}
+   |                     ^^^^^
+   |
+   = note: `-D wrong-self-convention` implied by `-D warnings`
+
+error: methods called `is_*` usually take self by reference or no self; consider choosing a less ambiguous name
+  --> examples/wrong_self_convention.rs:50:19
+   |
+50 |     pub fn is_i64(self) {}
+   |                   ^^^^
+   |
+   = note: `-D wrong-self-convention` implied by `-D warnings`
+
+error: methods called `to_*` usually take self by reference; consider choosing a less ambiguous name
+  --> examples/wrong_self_convention.rs:51:19
+   |
+51 |     pub fn to_i64(self) {}
+   |                   ^^^^
+   |
+   = note: `-D wrong-self-convention` implied by `-D warnings`
+
+error: methods called `from_*` usually take no self; consider choosing a less ambiguous name
+  --> examples/wrong_self_convention.rs:52:21
+   |
+52 |     pub fn from_i64(self) {}
+   |                     ^^^^
+   |
+   = note: `-D wrong-self-convention` implied by `-D warnings`
+
+error: aborting due to 12 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

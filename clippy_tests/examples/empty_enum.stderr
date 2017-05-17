@@ -1,0 +1,18 @@
+error: enum with no variants
+ --> examples/empty_enum.rs:7:1
+  |
+7 | enum Empty {}
+  | ^^^^^^^^^^^^^
+  |
+  = note: `-D empty-enum` implied by `-D warnings`
+help: consider using the uninhabited type `!` or a wrapper around it
+ --> examples/empty_enum.rs:7:1
+  |
+7 | enum Empty {}
+  | ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

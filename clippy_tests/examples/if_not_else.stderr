@@ -1,0 +1,31 @@
+error: Unnecessary boolean `not` operation
+  --> examples/if_not_else.rs:9:5
+   |
+9  | /     if !bla() {
+10 | |         println!("Bugs");
+11 | |     } else {
+12 | |         println!("Bunny");
+13 | |     }
+   | |_____^
+   |
+   = note: `-D if-not-else` implied by `-D warnings`
+   = help: remove the `!` and swap the blocks of the if/else
+
+error: Unnecessary `!=` operation
+  --> examples/if_not_else.rs:14:5
+   |
+14 | /     if 4 != 5 {
+15 | |         println!("Bugs");
+16 | |     } else {
+17 | |         println!("Bunny");
+18 | |     }
+   | |_____^
+   |
+   = note: `-D if-not-else` implied by `-D warnings`
+   = help: change to `==` and swap the blocks of the if/else
+
+error: aborting due to 2 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.
