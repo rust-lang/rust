@@ -22,7 +22,7 @@ pub fn target() -> TargetResult {
         arch: "arm".to_string(),
         target_os: "linux".to_string(),
         target_env: "gnu".to_string(),
-        target_vendor: "frc".to_string(),
+        target_vendor: "frc-roboRIO-2015".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
 
         options: TargetOptions {
