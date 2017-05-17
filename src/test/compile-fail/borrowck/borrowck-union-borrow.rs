@@ -10,8 +10,6 @@
 
 // ignore-tidy-linelength
 
-#![feature(untagged_unions)]
-
 #[derive(Clone, Copy)]
 union U {
     a: u8,

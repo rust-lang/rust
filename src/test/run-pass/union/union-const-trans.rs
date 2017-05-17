@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(untagged_unions)]
-
 union U {
     a: u64,
     b: u64,
