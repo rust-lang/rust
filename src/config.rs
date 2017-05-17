@@ -10,8 +10,7 @@
 
 extern crate toml;
 
-use std::cell::RefCell;
-use std::collections::HashSet;
+use std::cell::Cell;
 use std::error;
 use std::result;
 
@@ -213,35 +212,13 @@ impl ConfigHelpItem {
     }
 }
 
-/// This is used by Config to track which config parameters are accessed during
-/// formatting. It uses a RefCell for interior mutability, as we don't want to
-/// require a mutable reference to Config in order to access configuration.
-#[derive(Clone, Default)]
-struct ConfigTracker {
-    set: RefCell<HashSet<&'static str>>,
-}
-
-impl ConfigTracker {
-    fn mark_accessed(&self, name: &'static str) {
-        // We don't ever expect borrowing to fail, as our use of RefCell is very
-        // simple.
-        let mut set = self.set.borrow_mut();
-        set.insert(name);
-    }
-
-    fn was_accessed(&self, name: &'static str) -> bool {
-        self.set.borrow().contains(name)
-    }
-}
-
 macro_rules! create_config {
     ($($i:ident: $ty:ty, $def:expr, $( $dstring:expr ),+ );+ $(;)*) => (
-        #[derive(Deserialize, Clone)]
+        #[derive(Clone)]
         pub struct Config {
-            #[serde(skip_deserializing)]
-            tracker: ConfigTracker,
-
-            $($i: $ty),+
+            // For each config item, we store a bool indicating whether it has
+            // been accessed and the value.
+            $($i: (Cell<bool>, $ty)),+
         }
 
         // Just like the Config struct but with each property wrapped
@@ -258,15 +235,15 @@ macro_rules! create_config {
 
             $(
             pub fn $i(&self) -> $ty {
-                self.tracker.mark_accessed(stringify!($i));
-                self.$i.clone()
+                self.$i.0.set(true);
+                self.$i.1.clone()
             }
             )+
 
             fn fill_from_parsed_config(mut self, parsed: PartialConfig) -> Config {
             $(
                 if let Some(val) = parsed.$i {
-                    self.$i = val;
+                    self.$i.1 = val;
                 }
             )+
                 self
@@ -309,8 +286,8 @@ macro_rules! create_config {
             pub fn used_to_toml(&self) -> Result<String, String> {
                 let mut partial = PartialConfig {
                     $(
-                        $i: if self.tracker.was_accessed(stringify!($i)) {
-                                Some(self.$i.clone())
+                        $i: if self.$i.0.get() {
+                                Some(self.$i.1.clone())
                             } else {
                                 None
                             },
@@ -327,7 +304,7 @@ macro_rules! create_config {
             pub fn to_toml(&self) -> Result<String, String> {
                 let mut partial = PartialConfig {
                     $(
-                        $i: Some(self.$i.clone()),
+                        $i: Some(self.$i.1.clone()),
                     )+
                 };
 
@@ -343,7 +320,7 @@ macro_rules! create_config {
             {
                 match key {
                     $(
-                        stringify!($i) => self.$i = val.parse::<$ty>()?,
+                        stringify!($i) => self.$i.1 = val.parse::<$ty>()?,
                     )+
                     _ => panic!("Unknown config key in override: {}", key)
                 }
@@ -383,9 +360,8 @@ macro_rules! create_config {
         impl Default for Config {
             fn default() -> Config {
                 Config {
-                    tracker: ConfigTracker::default(),
                     $(
-                        $i: $def,
+                        $i: (Cell::new(false), $def),
                     )+
                 }
             }
@@ -488,4 +464,20 @@ create_config! {
         "What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff, Coverage";
     condense_wildcard_suffices: bool, false, "Replace strings of _ wildcards by a single .. in \
                                               tuple patterns"
+}
+
+#[cfg(test)]
+mod test {
+    use super::Config;
+
+    #[test]
+    fn test_config_tracking() {
+        let config = Config::default();
+        assert!(!config.verbose.0.get());
+        config.verbose();
+        config.skip_children();
+        assert!(config.verbose.0.get());
+        assert!(config.skip_children.0.get());
+        assert!(!config.disable_all_formatting.0.get());
+    }
 }
