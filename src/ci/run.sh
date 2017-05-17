@@ -58,8 +58,17 @@ else
   fi
 fi
 
+travis_fold start configure
+travis_time_start
 $SRC/configure $RUST_CONFIGURE_ARGS
+travis_fold end configure
+travis_time_finish
+
+travis_fold start make-prepare
+travis_time_start
 retry make prepare
+travis_fold end make-prepare
+travis_time_finish
 
 if [ "$TRAVIS_OS_NAME" = "osx" ]; then
     ncpus=$(sysctl -n hw.ncpu)
@@ -67,12 +76,21 @@ else
     ncpus=$(grep processor /proc/cpuinfo | wc -l)
 fi
 
-set -x
-
 if [ ! -z "$SCRIPT" ]; then
   sh -x -c "$SCRIPT"
 else
-  make -j $ncpus tidy
-  make -j $ncpus
-  make $RUST_CHECK_TARGET -j $ncpus
+  do_make() {
+    travis_fold start "make-$1"
+    travis_time_start
+    echo "make -j $ncpus $1"
+    make -j $ncpus "$1"
+    local retval=$?
+    travis_fold end "make-$1"
+    travis_time_finish
+    return $retval
+  }
+
+  do_make tidy
+  do_make all
+  do_make "$RUST_CHECK_TARGET"
 fi

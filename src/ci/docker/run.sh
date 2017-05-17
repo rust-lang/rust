@@ -21,6 +21,9 @@ root_dir="`dirname $src_dir`"
 
 source "$ci_dir/shared.sh"
 
+travis_fold start build_docker
+travis_time_start
+
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
     retry docker \
       build \
@@ -43,6 +46,9 @@ else
     echo Invalid image: $image
     exit 1
 fi
+
+travis_fold end build_docker
+travis_time_finish
 
 objdir=$root_dir/obj
 
@@ -72,6 +78,7 @@ exec docker \
   --env DEPLOY=$DEPLOY \
   --env DEPLOY_ALT=$DEPLOY_ALT \
   --env LOCAL_USER_ID=`id -u` \
+  --env TRAVIS=${TRAVIS-false} \
   --volume "$HOME/.cargo:/cargo" \
   --volume "$HOME/rustsrc:$HOME/rustsrc" \
   --privileged \
