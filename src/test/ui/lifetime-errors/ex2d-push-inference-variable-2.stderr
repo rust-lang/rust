@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` d
 17 |     let b = Ref { data: y.data };
    |             ^^^
    |
-note: first, the lifetime cannot outlive the lifetime 'c as defined on the function body at 15:0...
+note: first, the lifetime cannot outlive the lifetime 'c as defined on the function body at 15:1...
   --> $DIR/ex2d-push-inference-variable-2.rs:15:1
    |
 15 | / fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
@@ -18,7 +18,7 @@ note: ...so that reference does not outlive borrowed content
    |
 17 |     let b = Ref { data: y.data };
    |                         ^^^^^^
-note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 15:0...
+note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 15:1...
   --> $DIR/ex2d-push-inference-variable-2.rs:15:1
    |
 15 | / fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
