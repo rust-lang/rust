@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate duct;
 
+use std::io::{BufRead, BufReader};
+use std::fs::File;
+
 #[test]
 fn examples() {
     let mut error = false;
@@ -8,6 +11,16 @@ fn examples() {
         let file = file.unwrap().path();
         // only test *.rs files
         if file.extension().map_or(true, |file| file != "rs") {
+            continue;
+        }
+        print!("testing {}... ", file.file_stem().unwrap().to_str().unwrap());
+        let skip = BufReader::new(File::open(&file).unwrap()).lines().any(|line| {
+            let line = line.as_ref().unwrap().trim();
+            line == "// ignore-x86" && cfg!(target_pointer_width = "32") ||
+            line == "// ignore-x86_64" && cfg!(target_pointer_width = "64")
+        });
+        if skip {
+            println!("skipping");
             continue;
         }
         cmd!("touch", &file).run().unwrap();
@@ -22,7 +35,6 @@ fn examples() {
             .dir("clippy_tests")
             .run()
             .unwrap();
-        print!("testing {}... ", file.file_stem().unwrap().to_str().unwrap());
         if cmd!("git", "diff", "--exit-code", output).run().is_err() {
             error = true;
             println!("ERROR");
