@@ -149,10 +149,8 @@ impl CrateStore for cstore::CStore {
 
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>
     {
-        if let Some(def_id) = filter {
-            self.dep_graph.read(DepNode::MetaData(def_id));
-        }
         let mut result = vec![];
+
         self.iter_crate_data(|_, cdata| {
             cdata.get_implementations_for_trait(filter, &self.dep_graph, &mut result)
         });

@@ -27,6 +27,7 @@ use ty::subst::{Subst, Substs};
 use traits::{self, Reveal, ObligationCause};
 use ty::{self, TyCtxt, TypeFoldable};
 use syntax_pos::DUMMY_SP;
+use std::rc::Rc;
 
 pub mod specialization_graph;
 
@@ -118,7 +119,7 @@ pub fn find_associated_item<'a, 'tcx>(
     let trait_def_id = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
     let trait_def = tcx.trait_def(trait_def_id);
 
-    let ancestors = trait_def.ancestors(impl_data.impl_def_id);
+    let ancestors = trait_def.ancestors(tcx, impl_data.impl_def_id);
     match ancestors.defs(tcx, item.name, item.kind).next() {
         Some(node_item) => {
             let substs = tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
@@ -284,4 +285,63 @@ impl SpecializesCache {
     pub fn insert(&mut self, a: DefId, b: DefId, result: bool) {
         self.map.insert((a, b), result);
     }
+}
+
+// Query provider for `specialization_graph_of`.
+pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                      trait_id: DefId)
+                                                      -> Rc<specialization_graph::Graph> {
+    let mut sg = specialization_graph::Graph::new();
+
+    let mut trait_impls: Vec<DefId> = tcx.trait_impls_of(trait_id).iter().collect();
+
+    // The coherence checking implementation seems to rely on impls being
+    // iterated over (roughly) in definition order, so we are sorting by
+    // negated CrateNum (so remote definitions are visited first) and then
+    // by a flattend version of the DefIndex.
+    trait_impls.sort_unstable_by_key(|def_id| {
+        (-(def_id.krate.as_u32() as i64),
+         def_id.index.address_space().index(),
+         def_id.index.as_array_index())
+    });
+
+    for impl_def_id in trait_impls {
+        if impl_def_id.is_local() {
+            // This is where impl overlap checking happens:
+            let insert_result = sg.insert(tcx, impl_def_id);
+            // Report error if there was one.
+            if let Err(overlap) = insert_result {
+                let mut err = struct_span_err!(tcx.sess,
+                                               tcx.span_of_impl(impl_def_id).unwrap(),
+                                               E0119,
+                                               "conflicting implementations of trait `{}`{}:",
+                                               overlap.trait_desc,
+                                               overlap.self_desc.clone().map_or(String::new(),
+                                                                                |ty| {
+                    format!(" for type `{}`", ty)
+                }));
+
+                match tcx.span_of_impl(overlap.with_impl) {
+                    Ok(span) => {
+                        err.span_label(span, format!("first implementation here"));
+                        err.span_label(tcx.span_of_impl(impl_def_id).unwrap(),
+                                       format!("conflicting implementation{}",
+                                                overlap.self_desc
+                                                    .map_or(String::new(),
+                                                            |ty| format!(" for `{}`", ty))));
+                    }
+                    Err(cname) => {
+                        err.note(&format!("conflicting implementation in crate `{}`", cname));
+                    }
+                }
+
+                err.emit();
+            }
+        } else {
+            let parent = tcx.impl_parent(impl_def_id).unwrap_or(trait_id);
+            sg.record_impl_from_cstore(tcx, parent, impl_def_id)
+        }
+    }
+
+    Rc::new(sg)
 }

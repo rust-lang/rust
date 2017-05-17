@@ -501,16 +501,11 @@ impl<'a, 'tcx> CrateMetadata {
             _ => bug!(),
         };
 
-        let def = ty::TraitDef::new(self.local_def_id(item_id),
-                                    data.unsafety,
-                                    data.paren_sugar,
-                                    self.def_path_table.def_path_hash(item_id));
-
-        if data.has_default_impl {
-            def.record_has_default_impl();
-        }
-
-        def
+        ty::TraitDef::new(self.local_def_id(item_id),
+                          data.unsafety,
+                          data.paren_sugar,
+                          data.has_default_impl,
+                          self.def_path_table.def_path_hash(item_id))
     }
 
     fn get_variant(&self, item: &Entry, index: DefIndex) -> ty::VariantDef {
@@ -957,17 +952,17 @@ impl<'a, 'tcx> CrateMetadata {
             None => None,
         };
 
-        // FIXME(eddyb) Make this O(1) instead of O(n).
         let dep_node = self.metadata_dep_node(GlobalMetaDataKind::Impls);
-        for trait_impls in self.root.impls.get(dep_graph, dep_node).decode(self) {
-            if filter.is_some() && filter != Some(trait_impls.trait_id) {
-                continue;
+
+        if let Some(filter) = filter {
+            if let Some(impls) = self.trait_impls
+                                     .get(dep_graph, dep_node)
+                                     .get(&filter) {
+                result.extend(impls.decode(self).map(|idx| self.local_def_id(idx)));
             }
-
-            result.extend(trait_impls.impls.decode(self).map(|index| self.local_def_id(index)));
-
-            if filter.is_some() {
-                break;
+        } else {
+            for impls in self.trait_impls.get(dep_graph, dep_node).values() {
+                result.extend(impls.decode(self).map(|idx| self.local_def_id(idx)));
             }
         }
     }

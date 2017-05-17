@@ -8,16 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-tidy-linelength
+// Make sure we don't crash with a cycle error during coherence.
 
-//[rpass1] compile-flags: -g -Zincremental-cc
-//[rpass2] compile-flags: -g -Zincremental-cc
-//[rpass3] compile-flags: -g -Zincremental-cc -Zremap-path-prefix-from={{src-base}} -Zremap-path-prefix-to=/the/src
+#![feature(specialization)]
 
-#![feature(rustc_attrs)]
-#![crate_type="rlib"]
-
-#[inline(always)]
-pub fn inline_fn() {
-    println!("test");
+trait Trait<T> {
+    type Assoc;
 }
+
+impl<T> Trait<T> for Vec<T> {
+    default type Assoc = ();
+}
+
+impl Trait<u8> for Vec<u8> {
+    type Assoc = u8;
+}
+
+impl<T> Trait<T> for String {
+    type Assoc = ();
+}
+
+impl Trait<<Vec<u8> as Trait<u8>>::Assoc> for String {}
+
+fn main() {}

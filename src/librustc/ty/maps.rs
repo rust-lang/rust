@@ -18,10 +18,12 @@ use middle::region::RegionMaps;
 use mir;
 use mir::transform::{MirSuite, MirPassIndex};
 use session::CompileResult;
+use traits::specialization_graph;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::item_path;
 use ty::steal::Steal;
 use ty::subst::Substs;
+use ty::fast_reject::SimplifiedType;
 use util::nodemap::{DefIdSet, NodeSet};
 
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -95,6 +97,15 @@ impl Key for (CrateNum, DefId) {
     }
     fn default_span(&self, tcx: TyCtxt) -> Span {
         self.1.default_span(tcx)
+    }
+}
+
+impl Key for (DefId, SimplifiedType) {
+    fn map_crate(&self) -> CrateNum {
+        self.0.krate
+    }
+    fn default_span(&self, tcx: TyCtxt) -> Span {
+        self.0.default_span(tcx)
     }
 }
 
@@ -388,6 +399,24 @@ impl<'tcx> QueryDescription for queries::is_mir_available<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("checking if item is mir available: `{}`",
             tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::trait_impls_of<'tcx> {
+    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+        format!("trait impls of `{}`", tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::relevant_trait_impls_for<'tcx> {
+    fn describe(tcx: TyCtxt, (def_id, ty): (DefId, SimplifiedType)) -> String {
+        format!("relevant impls for: `({}, {:?})`", tcx.item_path_str(def_id), ty)
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_object_safe<'tcx> {
+    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+        format!("determine object safety of trait `{}`", tcx.item_path_str(def_id))
     }
 }
 
@@ -820,6 +849,13 @@ define_maps! { <'tcx>
     [] item_body_nested_bodies: ItemBodyNestedBodies(DefId) -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
     [] const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
     [] is_mir_available: IsMirAvailable(DefId) -> bool,
+
+    [] trait_impls_of: TraitImpls(DefId) -> ty::trait_def::TraitImpls,
+    // Note that TraitDef::for_each_relevant_impl() will do type simplication for you.
+    [] relevant_trait_impls_for: relevant_trait_impls_for((DefId, SimplifiedType))
+        -> ty::trait_def::TraitImpls,
+    [] specialization_graph_of: SpecializationGraph(DefId) -> Rc<specialization_graph::Graph>,
+    [] is_object_safe: ObjectSafety(DefId) -> bool,
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -858,4 +894,8 @@ fn mir_keys(_: CrateNum) -> DepNode<DefId> {
 
 fn crate_variances(_: CrateNum) -> DepNode<DefId> {
     DepNode::CrateVariances
+}
+
+fn relevant_trait_impls_for((def_id, _): (DefId, SimplifiedType)) -> DepNode<DefId> {
+    DepNode::TraitImpls(def_id)
 }

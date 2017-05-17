@@ -77,25 +77,6 @@ pub enum MethodViolationCode {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn is_object_safe(self, trait_def_id: DefId) -> bool {
-        // Because we query yes/no results frequently, we keep a cache:
-        let def = self.trait_def(trait_def_id);
-
-        let result = def.object_safety().unwrap_or_else(|| {
-            let result = self.object_safety_violations(trait_def_id).is_empty();
-
-            // Record just a yes/no result in the cache; this is what is
-            // queried most frequently. Note that this may overwrite a
-            // previous result, but always with the same thing.
-            def.set_object_safety(result);
-
-            result
-        });
-
-        debug!("is_object_safe({:?}) = {}", trait_def_id, result);
-
-        result
-    }
 
     /// Returns the object safety violations that affect
     /// astconv - currently, Self in supertraits. This is needed
@@ -390,4 +371,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         error
     }
+}
+
+pub(super) fn is_object_safe_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                         trait_def_id: DefId)
+                                         -> bool {
+    tcx.object_safety_violations(trait_def_id).is_empty()
 }

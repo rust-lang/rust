@@ -900,96 +900,50 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                 // In either case, we handle this by not adding a
                 // candidate for an impl if it contains a `default`
                 // type.
-                let opt_node_item = assoc_ty_def(selcx,
-                                                 impl_data.impl_def_id,
-                                                 obligation.predicate.item_name);
-                let new_candidate = if let Some(node_item) = opt_node_item {
-                    let is_default = if node_item.node.is_from_trait() {
-                        // If true, the impl inherited a `type Foo = Bar`
-                        // given in the trait, which is implicitly default.
-                        // Otherwise, the impl did not specify `type` and
-                        // neither did the trait:
-                        //
-                        // ```rust
-                        // trait Foo { type T; }
-                        // impl Foo for Bar { }
-                        // ```
-                        //
-                        // This is an error, but it will be
-                        // reported in `check_impl_items_against_trait`.
-                        // We accept it here but will flag it as
-                        // an error when we confirm the candidate
-                        // (which will ultimately lead to `normalize_to_error`
-                        // being invoked).
-                        node_item.item.defaultness.has_value()
-                    } else {
-                        node_item.item.defaultness.is_default() ||
-                        selcx.tcx().impl_is_default(node_item.node.def_id())
-                    };
+                let node_item = assoc_ty_def(selcx,
+                                             impl_data.impl_def_id,
+                                             obligation.predicate.item_name);
 
-                    // Only reveal a specializable default if we're past type-checking
-                    // and the obligations is monomorphic, otherwise passes such as
-                    // transmute checking and polymorphic MIR optimizations could
-                    // get a result which isn't correct for all monomorphizations.
-                    if !is_default {
+                let is_default = if node_item.node.is_from_trait() {
+                    // If true, the impl inherited a `type Foo = Bar`
+                    // given in the trait, which is implicitly default.
+                    // Otherwise, the impl did not specify `type` and
+                    // neither did the trait:
+                    //
+                    // ```rust
+                    // trait Foo { type T; }
+                    // impl Foo for Bar { }
+                    // ```
+                    //
+                    // This is an error, but it will be
+                    // reported in `check_impl_items_against_trait`.
+                    // We accept it here but will flag it as
+                    // an error when we confirm the candidate
+                    // (which will ultimately lead to `normalize_to_error`
+                    // being invoked).
+                    node_item.item.defaultness.has_value()
+                } else {
+                    node_item.item.defaultness.is_default() ||
+                    selcx.tcx().impl_is_default(node_item.node.def_id())
+                };
+
+                // Only reveal a specializable default if we're past type-checking
+                // and the obligations is monomorphic, otherwise passes such as
+                // transmute checking and polymorphic MIR optimizations could
+                // get a result which isn't correct for all monomorphizations.
+                let new_candidate = if !is_default {
+                    Some(ProjectionTyCandidate::Select)
+                } else if selcx.projection_mode() == Reveal::All {
+                    assert!(!poly_trait_ref.needs_infer());
+                    if !poly_trait_ref.needs_subst() {
                         Some(ProjectionTyCandidate::Select)
-                    } else if selcx.projection_mode() == Reveal::All {
-                        assert!(!poly_trait_ref.needs_infer());
-                        if !poly_trait_ref.needs_subst() {
-                            Some(ProjectionTyCandidate::Select)
-                        } else {
-                            None
-                        }
                     } else {
                         None
                     }
                 } else {
-                    // This is saying that neither the trait nor
-                    // the impl contain a definition for this
-                    // associated type.  Normally this situation
-                    // could only arise through a compiler bug --
-                    // if the user wrote a bad item name, it
-                    // should have failed in astconv. **However**,
-                    // at coherence-checking time, we only look at
-                    // the topmost impl (we don't even consider
-                    // the trait itself) for the definition -- and
-                    // so in that case it may be that the trait
-                    // *DOES* have a declaration, but we don't see
-                    // it, and we end up in this branch.
-                    //
-                    // This is kind of tricky to handle actually.
-                    // For now, we just unconditionally ICE,
-                    // because otherwise, examples like the
-                    // following will succeed:
-                    //
-                    // ```
-                    // trait Assoc {
-                    //     type Output;
-                    // }
-                    //
-                    // impl<T> Assoc for T {
-                    //     default type Output = bool;
-                    // }
-                    //
-                    // impl Assoc for u8 {}
-                    // impl Assoc for u16 {}
-                    //
-                    // trait Foo {}
-                    // impl Foo for <u8 as Assoc>::Output {}
-                    // impl Foo for <u16 as Assoc>::Output {}
-                    //     return None;
-                    // }
-                    // ```
-                    //
-                    // The essential problem here is that the
-                    // projection fails, leaving two unnormalized
-                    // types, which appear not to unify -- so the
-                    // overlap check succeeds, when it should
-                    // fail.
-                    span_bug!(obligation.cause.span,
-                              "Tried to project an inherited associated type during \
-                               coherence checking, which is currently not supported.");
+                    None
                 };
+
                 candidate_set.vec.extend(new_candidate);
             }
             super::VtableParam(..) => {
@@ -1274,35 +1228,25 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
     let VtableImplData { substs, nested, impl_def_id } = impl_vtable;
 
     let tcx = selcx.tcx();
-    let trait_ref = obligation.predicate.trait_ref;
     let assoc_ty = assoc_ty_def(selcx, impl_def_id, obligation.predicate.item_name);
 
-    match assoc_ty {
-        Some(node_item) => {
-            let ty = if !node_item.item.defaultness.has_value() {
-                // This means that the impl is missing a definition for the
-                // associated type. This error will be reported by the type
-                // checker method `check_impl_items_against_trait`, so here we
-                // just return TyError.
-                debug!("confirm_impl_candidate: no associated type {:?} for {:?}",
-                       node_item.item.name,
-                       obligation.predicate.trait_ref);
-                tcx.types.err
-            } else {
-                tcx.type_of(node_item.item.def_id)
-            };
-            let substs = translate_substs(selcx.infcx(), impl_def_id, substs, node_item.node);
-            Progress {
-                ty: ty.subst(tcx, substs),
-                obligations: nested,
-                cacheable: true
-            }
-        }
-        None => {
-            span_bug!(obligation.cause.span,
-                      "No associated type for {:?}",
-                      trait_ref);
-        }
+    let ty = if !assoc_ty.item.defaultness.has_value() {
+        // This means that the impl is missing a definition for the
+        // associated type. This error will be reported by the type
+        // checker method `check_impl_items_against_trait`, so here we
+        // just return TyError.
+        debug!("confirm_impl_candidate: no associated type {:?} for {:?}",
+               assoc_ty.item.name,
+               obligation.predicate.trait_ref);
+        tcx.types.err
+    } else {
+        tcx.type_of(assoc_ty.item.def_id)
+    };
+    let substs = translate_substs(selcx.infcx(), impl_def_id, substs, assoc_ty.node);
+    Progress {
+        ty: ty.subst(tcx, substs),
+        obligations: nested,
+        cacheable: true
     }
 }
 
@@ -1315,27 +1259,43 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
     selcx: &SelectionContext<'cx, 'gcx, 'tcx>,
     impl_def_id: DefId,
     assoc_ty_name: ast::Name)
-    -> Option<specialization_graph::NodeItem<ty::AssociatedItem>>
+    -> specialization_graph::NodeItem<ty::AssociatedItem>
 {
-    let trait_def_id = selcx.tcx().impl_trait_ref(impl_def_id).unwrap().def_id;
-    let trait_def = selcx.tcx().trait_def(trait_def_id);
+    let tcx = selcx.tcx();
+    let trait_def_id = tcx.impl_trait_ref(impl_def_id).unwrap().def_id;
+    let trait_def = tcx.trait_def(trait_def_id);
 
-    if !trait_def.is_complete(selcx.tcx()) {
-        let impl_node = specialization_graph::Node::Impl(impl_def_id);
-        for item in impl_node.items(selcx.tcx()) {
-            if item.kind == ty::AssociatedKind::Type && item.name == assoc_ty_name {
-                return Some(specialization_graph::NodeItem {
-                    node: specialization_graph::Node::Impl(impl_def_id),
-                    item: item,
-                });
-            }
+    // This function may be called while we are still building the
+    // specialization graph that is queried below (via TraidDef::ancestors()),
+    // so, in order to avoid unnecessary infinite recursion, we manually look
+    // for the associated item at the given impl.
+    // If there is no such item in that impl, this function will fail with a
+    // cycle error if the specialization graph is currently being built.
+    let impl_node = specialization_graph::Node::Impl(impl_def_id);
+    for item in impl_node.items(tcx) {
+        if item.kind == ty::AssociatedKind::Type && item.name == assoc_ty_name {
+            return specialization_graph::NodeItem {
+                node: specialization_graph::Node::Impl(impl_def_id),
+                item: item,
+            };
         }
-        None
+    }
+
+    if let Some(assoc_item) = trait_def
+        .ancestors(tcx, impl_def_id)
+        .defs(tcx, assoc_ty_name, ty::AssociatedKind::Type)
+        .next() {
+        assoc_item
     } else {
-        trait_def
-            .ancestors(impl_def_id)
-            .defs(selcx.tcx(), assoc_ty_name, ty::AssociatedKind::Type)
-            .next()
+        // This is saying that neither the trait nor
+        // the impl contain a definition for this
+        // associated type.  Normally this situation
+        // could only arise through a compiler bug --
+        // if the user wrote a bad item name, it
+        // should have failed in astconv.
+        bug!("No associated type `{}` for {}",
+             assoc_ty_name,
+             tcx.item_path_str(impl_def_id))
     }
 }
 

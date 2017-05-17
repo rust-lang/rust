@@ -1200,7 +1200,7 @@ fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            impl_id: DefId,
                                            impl_item: &hir::ImplItem)
 {
-    let ancestors = trait_def.ancestors(impl_id);
+    let ancestors = trait_def.ancestors(tcx, impl_id);
 
     let kind = match impl_item.node {
         hir::ImplItemKind::Const(..) => ty::AssociatedKind::Const,
@@ -1330,7 +1330,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut invalidated_items = Vec::new();
     let associated_type_overridden = overridden_associated_type.is_some();
     for trait_item in tcx.associated_items(impl_trait_ref.def_id) {
-        let is_implemented = trait_def.ancestors(impl_id)
+        let is_implemented = trait_def.ancestors(tcx, impl_id)
             .defs(tcx, trait_item.name, trait_item.kind)
             .next()
             .map(|node_item| !node_item.node.is_from_trait())

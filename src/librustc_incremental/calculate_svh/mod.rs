@@ -36,9 +36,10 @@ use rustc::hir::def_id::{LOCAL_CRATE, CRATE_DEF_INDEX, DefId};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ich::{Fingerprint, StableHashingContext};
 use rustc::ty::TyCtxt;
+use rustc::util::common::record_time;
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use rustc_data_structures::fx::FxHashMap;
-use rustc::util::common::record_time;
+use rustc_data_structures::accumulate_vec::AccumulateVec;
 
 pub type IchHasher = StableHasher<Fingerprint>;
 
@@ -159,6 +160,11 @@ impl<'a, 'tcx: 'a> ComputeItemHashesVisitor<'a, 'tcx> {
                                         // difference, filter them out.
                                         return None
                                     }
+                                    DepNode::AllLocalTraitImpls => {
+                                        // These are already covered by hashing
+                                        // the HIR.
+                                        return None
+                                    }
                                     ref other => {
                                         bug!("Found unexpected DepNode during \
                                               SVH computation: {:?}",
@@ -213,6 +219,49 @@ impl<'a, 'tcx: 'a> ComputeItemHashesVisitor<'a, 'tcx> {
                                                  true,
                                                  (module, (span, attrs)));
     }
+
+    fn compute_and_store_ich_for_trait_impls(&mut self, krate: &'tcx hir::Crate)
+    {
+        let tcx = self.hcx.tcx();
+
+        let mut impls: Vec<(u64, Fingerprint)> = krate
+            .trait_impls
+            .iter()
+            .map(|(&trait_id, impls)| {
+                let trait_id = tcx.def_path_hash(trait_id);
+                let mut impls: AccumulateVec<[_; 32]> = impls
+                    .iter()
+                    .map(|&node_id| {
+                        let def_id = tcx.hir.local_def_id(node_id);
+                        tcx.def_path_hash(def_id)
+                    })
+                    .collect();
+
+                impls.sort_unstable();
+                let mut hasher = StableHasher::new();
+                impls.hash_stable(&mut self.hcx, &mut hasher);
+                (trait_id, hasher.finish())
+            })
+            .collect();
+
+        impls.sort_unstable();
+
+        let mut default_impls: AccumulateVec<[_; 32]> = krate
+            .trait_default_impl
+            .iter()
+            .map(|(&trait_def_id, &impl_node_id)| {
+                let impl_def_id = tcx.hir.local_def_id(impl_node_id);
+                (tcx.def_path_hash(trait_def_id), tcx.def_path_hash(impl_def_id))
+            })
+            .collect();
+
+        default_impls.sort_unstable();
+
+        let mut hasher = StableHasher::new();
+        impls.hash_stable(&mut self.hcx, &mut hasher);
+
+        self.hashes.insert(DepNode::AllLocalTraitImpls, hasher.finish());
+    }
 }
 
 impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for ComputeItemHashesVisitor<'a, 'tcx> {
@@ -234,6 +283,8 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for ComputeItemHashesVisitor<'a, 'tcx> 
         self.compute_and_store_ich_for_item_like(DepNode::HirBody(def_id), true, item);
     }
 }
+
+
 
 pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                                     -> IncrementalHashesMap {
@@ -272,6 +323,8 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
             let fingerprint = hasher.finish();
             visitor.hashes.insert(dep_node, fingerprint);
         }
+
+        visitor.compute_and_store_ich_for_trait_impls(krate);
     });
 
     tcx.sess.perf_stats.incr_comp_hashes_count.set(visitor.hashes.len() as u64);
