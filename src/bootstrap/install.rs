@@ -55,37 +55,47 @@ pub fn install(build: &Build, stage: u32, host: &str) {
     t!(fs::create_dir_all(&empty_dir));
     if build.config.docs {
         install_sh(&build, "docs", "rust-docs", &build.rust_package_vers(),
-                   stage, host, &prefix, &sysconfdir, &docdir, &bindir, &libdir,
+                   stage, Some(host), &prefix, &sysconfdir, &docdir, &bindir, &libdir,
                    &mandir, &empty_dir);
     }
 
     for target in build.config.target.iter() {
         install_sh(&build, "std", "rust-std", &build.rust_package_vers(),
-                   stage, target, &prefix, &sysconfdir, &docdir, &bindir, &libdir,
+                   stage, Some(target), &prefix, &sysconfdir, &docdir, &bindir, &libdir,
                    &mandir, &empty_dir);
     }
 
     if build.config.extended {
         install_sh(&build, "cargo", "cargo", &build.cargo_package_vers(),
-                   stage, host, &prefix, &sysconfdir, &docdir, &bindir, &libdir,
+                   stage, Some(host), &prefix, &sysconfdir, &docdir, &bindir, &libdir,
                    &mandir, &empty_dir);
         install_sh(&build, "rls", "rls", &build.rls_package_vers(),
-                   stage, host, &prefix, &sysconfdir, &docdir, &bindir, &libdir,
+                   stage, Some(host), &prefix, &sysconfdir, &docdir, &bindir, &libdir,
+                   &mandir, &empty_dir);
+        install_sh(&build, "analysis", "rust-analysis", &build.rust_package_vers(),
+                   stage, Some(host), &prefix, &sysconfdir, &docdir, &bindir, &libdir,
+                   &mandir, &empty_dir);
+        install_sh(&build, "src", "rust-src", &build.rust_package_vers(),
+                   stage, None, &prefix, &sysconfdir, &docdir, &bindir, &libdir,
                    &mandir, &empty_dir);
     }
 
     install_sh(&build, "rustc", "rustc", &build.rust_package_vers(),
-               stage, host, &prefix, &sysconfdir, &docdir, &bindir, &libdir,
+               stage, Some(host), &prefix, &sysconfdir, &docdir, &bindir, &libdir,
                &mandir, &empty_dir);
 
     t!(fs::remove_dir_all(&empty_dir));
 }
 
-fn install_sh(build: &Build, package: &str, name: &str, version: &str, stage: u32, host: &str,
+fn install_sh(build: &Build, package: &str, name: &str, version: &str, stage: u32, host: Option<&str>,
               prefix: &Path, sysconfdir: &Path, docdir: &Path, bindir: &Path, libdir: &Path,
               mandir: &Path, empty_dir: &Path) {
-    println!("Install {} stage{} ({})", package, stage, host);
-    let package_name = format!("{}-{}-{}", name, version, host);
+    println!("Install {} stage{} ({:?})", package, stage, host);
+    let package_name = if let Some(host) = host {
+        format!("{}-{}-{}", name, version, host)
+    } else {
+        format!("{}-{}", name, version)
+    };
 
     let mut cmd = Command::new("sh");
     cmd.current_dir(empty_dir)
