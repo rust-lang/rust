@@ -49,7 +49,7 @@ pub fn format_visibility(vis: &Visibility) -> Cow<'static, str> {
                     .expect("Non-global path in pub(restricted)?");
             }
             let is_keyword = |s: &str| s == "self" || s == "super";
-            let path = segments_iter.join("::");
+            let path = segments_iter.collect::<Vec<_>>().join("::");
             let in_str = if is_keyword(&path) { "" } else { "in " };
 
             Cow::from(format!("pub({}{}) ", in_str, path))
