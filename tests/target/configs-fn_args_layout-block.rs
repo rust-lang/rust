@@ -16,3 +16,10 @@ fn lorem(
 ) {
     // body
 }
+
+// #1441
+extern "system" {
+    pub fn GetConsoleHistoryInfo(
+        console_history_info: *mut ConsoleHistoryInfo,
+    ) -> Boooooooooooooool;
+}

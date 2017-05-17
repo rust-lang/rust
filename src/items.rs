@@ -1617,7 +1617,8 @@ fn rewrite_fn_base(context: &RewriteContext,
                                         fd.variadic,
                                         generics_str.contains('\n')));
 
-    let multi_line_arg_str = arg_str.contains('\n');
+    let multi_line_arg_str = arg_str.contains('\n') ||
+                             arg_str.chars().last().map_or(false, |c| c == ',');
 
     let put_args_in_block = match context.config.fn_args_layout {
         IndentStyle::Block => multi_line_arg_str || generics_str.contains('\n'),
@@ -1849,12 +1850,16 @@ fn rewrite_args(context: &RewriteContext,
         arg_items.extend(more_items);
     }
 
+    let fits_in_one_line = !generics_str_contains_newline &&
+                           (arg_items.len() == 0 ||
+                            arg_items.len() == 1 && arg_item_strs[0].len() <= one_line_budget);
+
     for (item, arg) in arg_items.iter_mut().zip(arg_item_strs) {
         item.item = Some(arg);
     }
 
     let (indent, trailing_comma, end_with_newline) = match context.config.fn_args_layout {
-        IndentStyle::Block if !generics_str_contains_newline && arg_items.len() <= 1 => {
+        IndentStyle::Block if fits_in_one_line => {
             (indent.block_indent(context.config), SeparatorTactic::Never, true)
         }
         IndentStyle::Block => {
