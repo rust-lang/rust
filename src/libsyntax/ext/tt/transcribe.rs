@@ -121,20 +121,20 @@ pub fn transcribe(sp_diag: &Handler,
                                          &repeats) {
                     LockstepIterSize::Unconstrained => {
                         panic!(sp_diag.span_fatal(
-                            sp.clone(), /* blame macro writer */
+                            sp, /* blame macro writer */
                             "attempted to repeat an expression \
                              containing no syntax \
                              variables matched as repeating at this depth"));
                     }
                     LockstepIterSize::Contradiction(ref msg) => {
                         // FIXME #2887 blame macro invoker instead
-                        panic!(sp_diag.span_fatal(sp.clone(), &msg[..]));
+                        panic!(sp_diag.span_fatal(sp, &msg[..]));
                     }
                     LockstepIterSize::Constraint(len, _) => {
                         if len == 0 {
                             if seq.op == quoted::KleeneOp::OneOrMore {
                                 // FIXME #2887 blame invoker
-                                panic!(sp_diag.span_fatal(sp.clone(),
+                                panic!(sp_diag.span_fatal(sp,
                                                           "this must repeat at least once"));
                             }
                         } else {

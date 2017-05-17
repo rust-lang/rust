@@ -62,7 +62,7 @@ impl<'a> Parser<'a> {
                 _ => break,
             }
         }
-        return Ok(attrs);
+        Ok(attrs)
     }
 
     /// Matches `attribute = # ! [ meta_item ]`
@@ -182,7 +182,7 @@ impl<'a> Parser<'a> {
                     }
 
                     let attr = self.parse_attribute(true)?;
-                    assert!(attr.style == ast::AttrStyle::Inner);
+                    assert_eq!(attr.style, ast::AttrStyle::Inner);
                     attrs.push(attr);
                 }
                 token::DocComment(s) => {
