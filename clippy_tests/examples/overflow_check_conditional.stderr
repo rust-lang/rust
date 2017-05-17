@@ -1,5 +1,5 @@
 error: You are trying to use classic C overflow conditions that will fail in Rust.
-  --> examples/overflow_check_conditional.rs:11:5
+  --> overflow_check_conditional.rs:11:5
    |
 11 | 	if a + b < a {
    | 	   ^^^^^^^^^
@@ -7,7 +7,7 @@ error: You are trying to use classic C overflow conditions that will fail in Rus
    = note: `-D overflow-check-conditional` implied by `-D warnings`
 
 error: You are trying to use classic C overflow conditions that will fail in Rust.
-  --> examples/overflow_check_conditional.rs:14:5
+  --> overflow_check_conditional.rs:14:5
    |
 14 | 	if a > a + b {
    | 	   ^^^^^^^^^
@@ -15,7 +15,7 @@ error: You are trying to use classic C overflow conditions that will fail in Rus
    = note: `-D overflow-check-conditional` implied by `-D warnings`
 
 error: You are trying to use classic C overflow conditions that will fail in Rust.
-  --> examples/overflow_check_conditional.rs:17:5
+  --> overflow_check_conditional.rs:17:5
    |
 17 | 	if a + b < b {
    | 	   ^^^^^^^^^
@@ -23,7 +23,7 @@ error: You are trying to use classic C overflow conditions that will fail in Rus
    = note: `-D overflow-check-conditional` implied by `-D warnings`
 
 error: You are trying to use classic C overflow conditions that will fail in Rust.
-  --> examples/overflow_check_conditional.rs:20:5
+  --> overflow_check_conditional.rs:20:5
    |
 20 | 	if b > a + b {
    | 	   ^^^^^^^^^
@@ -31,7 +31,7 @@ error: You are trying to use classic C overflow conditions that will fail in Rus
    = note: `-D overflow-check-conditional` implied by `-D warnings`
 
 error: You are trying to use classic C underflow conditions that will fail in Rust.
-  --> examples/overflow_check_conditional.rs:23:5
+  --> overflow_check_conditional.rs:23:5
    |
 23 | 	if a - b > b {
    | 	   ^^^^^^^^^
@@ -39,7 +39,7 @@ error: You are trying to use classic C underflow conditions that will fail in Ru
    = note: `-D overflow-check-conditional` implied by `-D warnings`
 
 error: You are trying to use classic C underflow conditions that will fail in Rust.
-  --> examples/overflow_check_conditional.rs:26:5
+  --> overflow_check_conditional.rs:26:5
    |
 26 | 	if b < a - b {
    | 	   ^^^^^^^^^
@@ -47,7 +47,7 @@ error: You are trying to use classic C underflow conditions that will fail in Ru
    = note: `-D overflow-check-conditional` implied by `-D warnings`
 
 error: You are trying to use classic C underflow conditions that will fail in Rust.
-  --> examples/overflow_check_conditional.rs:29:5
+  --> overflow_check_conditional.rs:29:5
    |
 29 | 	if a - b > a {
    | 	   ^^^^^^^^^
@@ -55,7 +55,7 @@ error: You are trying to use classic C underflow conditions that will fail in Ru
    = note: `-D overflow-check-conditional` implied by `-D warnings`
 
 error: You are trying to use classic C underflow conditions that will fail in Rust.
-  --> examples/overflow_check_conditional.rs:32:5
+  --> overflow_check_conditional.rs:32:5
    |
 32 | 	if a < a - b {
    | 	   ^^^^^^^^^

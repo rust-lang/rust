@@ -1,5 +1,5 @@
 error: `if _ { .. } else { .. }` is an expression
-  --> examples/let_if_seq.rs:57:5
+  --> let_if_seq.rs:57:5
    |
 57 | /     let mut foo = 0;
 58 | |     if f() {
@@ -11,7 +11,7 @@ error: `if _ { .. } else { .. }` is an expression
    = note: you might not need `mut` at all
 
 error: `if _ { .. } else { .. }` is an expression
-  --> examples/let_if_seq.rs:62:5
+  --> let_if_seq.rs:62:5
    |
 62 | /     let mut bar = 0;
 63 | |     if f() {
@@ -26,7 +26,7 @@ error: `if _ { .. } else { .. }` is an expression
    = note: you might not need `mut` at all
 
 error: `if _ { .. } else { .. }` is an expression
-  --> examples/let_if_seq.rs:71:5
+  --> let_if_seq.rs:71:5
    |
 71 | /     let quz;
 72 | |     if f() {
@@ -39,7 +39,7 @@ error: `if _ { .. } else { .. }` is an expression
    = note: `-D useless-let-if-seq` implied by `-D warnings`
 
 error: `if _ { .. } else { .. }` is an expression
-   --> examples/let_if_seq.rs:100:5
+   --> let_if_seq.rs:100:5
     |
 100 | /     let mut baz = 0;
 101 | |     if f() {

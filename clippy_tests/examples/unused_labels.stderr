@@ -1,5 +1,5 @@
 error: unused label `'label`
-  --> examples/unused_labels.rs:8:5
+  --> unused_labels.rs:8:5
    |
 8  | /     'label: for i in 1..2 {
 9  | |         if i > 4 { continue }
@@ -9,7 +9,7 @@ error: unused label `'label`
    = note: `-D unused-label` implied by `-D warnings`
 
 error: unused label `'a`
-  --> examples/unused_labels.rs:21:5
+  --> unused_labels.rs:21:5
    |
 21 |     'a: loop { break }
    |     ^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ error: unused label `'a`
    = note: `-D unused-label` implied by `-D warnings`
 
 error: unused label `'same_label_in_two_fns`
-  --> examples/unused_labels.rs:32:5
+  --> unused_labels.rs:32:5
    |
 32 | /     'same_label_in_two_fns: loop {
 33 | |         let _ = 1;

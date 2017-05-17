@@ -1,5 +1,5 @@
 error: use `assert_eq` for better reporting
-  --> examples/should_assert_eq.rs:14:5
+  --> should_assert_eq.rs:14:5
    |
 14 |     assert!(1 == 2);
    |     ^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ error: use `assert_eq` for better reporting
    = note: this error originates in a macro outside of the current crate
 
 error: use `assert_eq` for better reporting
-  --> examples/should_assert_eq.rs:15:5
+  --> should_assert_eq.rs:15:5
    |
 15 |     assert!(Debug(1) == Debug(2));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ error: use `assert_eq` for better reporting
    = note: this error originates in a macro outside of the current crate
 
 error: use `assert_ne` for better reporting
-  --> examples/should_assert_eq.rs:17:5
+  --> should_assert_eq.rs:17:5
    |
 17 |     assert!(Debug(1) != Debug(2));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ error: use `assert_ne` for better reporting
    = note: this error originates in a macro outside of the current crate
 
 error: use `debug_assert_eq` for better reporting
-  --> examples/should_assert_eq.rs:22:5
+  --> should_assert_eq.rs:22:5
    |
 22 |     debug_assert!(4 == 5);
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ error: use `debug_assert_eq` for better reporting
    = note: this error originates in a macro outside of the current crate
 
 error: use `debug_assert_ne` for better reporting
-  --> examples/should_assert_eq.rs:23:5
+  --> should_assert_eq.rs:23:5
    |
 23 |     debug_assert!(4 != 6);
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ error: use `debug_assert_ne` for better reporting
    = note: this error originates in a macro outside of the current crate
 
 error: use `assert_eq` for better reporting
-  --> examples/should_assert_eq.rs:27:5
+  --> should_assert_eq.rs:27:5
    |
 27 |     assert!(x == y);
    |     ^^^^^^^^^^^^^^^^
@@ -53,7 +53,7 @@ error: use `assert_eq` for better reporting
    = note: this error originates in a macro outside of the current crate
 
 error: use `assert_ne` for better reporting
-  --> examples/should_assert_eq.rs:30:5
+  --> should_assert_eq.rs:30:5
    |
 30 |     assert!(x != y);
    |     ^^^^^^^^^^^^^^^^

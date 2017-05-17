@@ -1,5 +1,5 @@
 error: casting character literal to u8. `char`s are 4 bytes wide in rust, so casting to u8 truncates them
- --> examples/char_lit_as_u8.rs:7:13
+ --> char_lit_as_u8.rs:7:13
   |
 7 |     let c = 'a' as u8;
   |             ^^^^^^^^^

@@ -1,6 +1,6 @@
 error: This else block is redundant.
 
-  --> examples/needless_continue.rs:26:16
+  --> needless_continue.rs:26:16
    |
 26 |           } else {
    |  ________________^
@@ -37,7 +37,7 @@ error: This else block is redundant.
 
 error: There is no need for an explicit `else` block for this `if` expression
 
-  --> examples/needless_continue.rs:41:9
+  --> needless_continue.rs:41:9
    |
 41 | /         if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
 42 | |             continue;

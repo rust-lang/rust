@@ -1,5 +1,5 @@
 error: using `print!()` with a format string that ends in a newline, consider using `println!()` instead
- --> examples/print_with_newline.rs:6:5
+ --> print_with_newline.rs:6:5
   |
 6 |     print!("Hello\n");
   |     ^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ error: using `print!()` with a format string that ends in a newline, consider us
   = note: `-D print-with-newline` implied by `-D warnings`
 
 error: using `print!()` with a format string that ends in a newline, consider using `println!()` instead
- --> examples/print_with_newline.rs:7:5
+ --> print_with_newline.rs:7:5
   |
 7 |     print!("Hello {}\n", "world");
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ error: using `print!()` with a format string that ends in a newline, consider us
   = note: `-D print-with-newline` implied by `-D warnings`
 
 error: using `print!()` with a format string that ends in a newline, consider using `println!()` instead
- --> examples/print_with_newline.rs:8:5
+ --> print_with_newline.rs:8:5
   |
 8 |     print!("Hello {} {}\n\n", "world", "#2");
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ error: using `print!()` with a format string that ends in a newline, consider us
   = note: `-D print-with-newline` implied by `-D warnings`
 
 error: using `print!()` with a format string that ends in a newline, consider using `println!()` instead
- --> examples/print_with_newline.rs:9:5
+ --> print_with_newline.rs:9:5
   |
 9 |     print!("{}\n", 1265);
   |     ^^^^^^^^^^^^^^^^^^^^^

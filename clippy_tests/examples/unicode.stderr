@@ -1,5 +1,5 @@
 error: zero-width space detected
- --> examples/unicode.rs:6:12
+ --> unicode.rs:6:12
   |
 6 |     print!("Here >​< is a ZWS, and ​another");
   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ error: zero-width space detected
           ""Here >\u{200B}< is a ZWS, and \u{200B}another""
 
 error: non-nfc unicode sequence detected
-  --> examples/unicode.rs:12:12
+  --> unicode.rs:12:12
    |
 12 |     print!("̀àh?");
    |            ^^^^^^^
@@ -19,7 +19,7 @@ error: non-nfc unicode sequence detected
            ""̀àh?""
 
 error: literal non-ASCII character detected
-  --> examples/unicode.rs:18:12
+  --> unicode.rs:18:12
    |
 18 |     print!("Üben!");
    |            ^^^^^^^

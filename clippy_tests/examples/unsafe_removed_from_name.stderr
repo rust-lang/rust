@@ -1,5 +1,5 @@
 error: removed "unsafe" from the name of `UnsafeCell` in use as `TotallySafeCell`
- --> examples/unsafe_removed_from_name.rs:7:1
+ --> unsafe_removed_from_name.rs:7:1
   |
 7 | use std::cell::{UnsafeCell as TotallySafeCell};
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ error: removed "unsafe" from the name of `UnsafeCell` in use as `TotallySafeCell
   = note: `-D unsafe-removed-from-name` implied by `-D warnings`
 
 error: removed "unsafe" from the name of `UnsafeCell` in use as `TotallySafeCellAgain`
- --> examples/unsafe_removed_from_name.rs:9:1
+ --> unsafe_removed_from_name.rs:9:1
   |
 9 | use std::cell::UnsafeCell as TotallySafeCellAgain;
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ error: removed "unsafe" from the name of `UnsafeCell` in use as `TotallySafeCell
   = note: `-D unsafe-removed-from-name` implied by `-D warnings`
 
 error: removed "unsafe" from the name of `Unsafe` in use as `LieAboutModSafety`
-  --> examples/unsafe_removed_from_name.rs:23:1
+  --> unsafe_removed_from_name.rs:23:1
    |
 23 | use mod_with_some_unsafe_things::Unsafe as LieAboutModSafety;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

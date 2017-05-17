@@ -1,5 +1,5 @@
 error: ==-comparison of unit values detected. This will always be true
-  --> examples/unit_cmp.rs:16:8
+  --> unit_cmp.rs:16:8
    |
 16 |     if { true; } == { false; } {
    |        ^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ error: ==-comparison of unit values detected. This will always be true
    = note: `-D unit-cmp` implied by `-D warnings`
 
 error: >-comparison of unit values detected. This will always be false
-  --> examples/unit_cmp.rs:19:8
+  --> unit_cmp.rs:19:8
    |
 19 |     if { true; } > { false; } {
    |        ^^^^^^^^^^^^^^^^^^^^^^

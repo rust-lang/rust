@@ -1,5 +1,5 @@
 error[E0463]: can't find crate for `serde`
- --> examples/serde.rs:6:1
+ --> serde.rs:6:1
   |
 6 | extern crate serde;
   | ^^^^^^^^^^^^^^^^^^^ can't find crate

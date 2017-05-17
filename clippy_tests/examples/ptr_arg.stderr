@@ -1,5 +1,5 @@
 error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices. Consider changing the type to `&[...]`
- --> examples/ptr_arg.rs:6:14
+ --> ptr_arg.rs:6:14
   |
 6 | fn do_vec(x: &Vec<i64>) {
   |              ^^^^^^^^^
@@ -7,7 +7,7 @@ error: writing `&Vec<_>` instead of `&[_]` involves one more reference and canno
   = note: `-D ptr-arg` implied by `-D warnings`
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do. Consider changing the type to `&str`
-  --> examples/ptr_arg.rs:14:14
+  --> ptr_arg.rs:14:14
    |
 14 | fn do_str(x: &String) {
    |              ^^^^^^^
@@ -15,7 +15,7 @@ error: writing `&String` instead of `&str` involves a new object where a slice w
    = note: `-D ptr-arg` implied by `-D warnings`
 
 error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices. Consider changing the type to `&[...]`
-  --> examples/ptr_arg.rs:27:18
+  --> ptr_arg.rs:27:18
    |
 27 |     fn do_vec(x: &Vec<i64>);
    |                  ^^^^^^^^^

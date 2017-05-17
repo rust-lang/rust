@@ -1,5 +1,5 @@
 error: you added something to a string. Consider using `String::push_str()` instead
-  --> examples/strings.rs:10:13
+  --> strings.rs:10:13
    |
 10 |         x = x + ".";
    |             ^^^^^^^
@@ -7,7 +7,7 @@ error: you added something to a string. Consider using `String::push_str()` inst
    = note: `-D string-add` implied by `-D warnings`
 
 error: you added something to a string. Consider using `String::push_str()` instead
-  --> examples/strings.rs:14:13
+  --> strings.rs:14:13
    |
 14 |     let z = y + "...";
    |             ^^^^^^^^^
@@ -15,7 +15,7 @@ error: you added something to a string. Consider using `String::push_str()` inst
    = note: `-D string-add` implied by `-D warnings`
 
 error: you assigned the result of adding something to this string. Consider using `String::push_str()` instead
-  --> examples/strings.rs:24:9
+  --> strings.rs:24:9
    |
 24 |         x = x + ".";
    |         ^^^^^^^^^^^
@@ -23,7 +23,7 @@ error: you assigned the result of adding something to this string. Consider usin
    = note: `-D string-add-assign` implied by `-D warnings`
 
 error: you assigned the result of adding something to this string. Consider using `String::push_str()` instead
-  --> examples/strings.rs:38:9
+  --> strings.rs:38:9
    |
 38 |         x = x + ".";
    |         ^^^^^^^^^^^
@@ -31,7 +31,7 @@ error: you assigned the result of adding something to this string. Consider usin
    = note: `-D string-add-assign` implied by `-D warnings`
 
 error: you added something to a string. Consider using `String::push_str()` instead
-  --> examples/strings.rs:42:13
+  --> strings.rs:42:13
    |
 42 |     let z = y + "...";
    |             ^^^^^^^^^
@@ -39,7 +39,7 @@ error: you added something to a string. Consider using `String::push_str()` inst
    = note: `-D string-add` implied by `-D warnings`
 
 error: calling `as_bytes()` on a string literal
-  --> examples/strings.rs:50:14
+  --> strings.rs:50:14
    |
 50 |     let bs = "hello there".as_bytes();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead `b"hello there"`
@@ -47,7 +47,7 @@ error: calling `as_bytes()` on a string literal
    = note: `-D string-lit-as-bytes` implied by `-D warnings`
 
 error: manual implementation of an assign operation
-  --> examples/strings.rs:65:7
+  --> strings.rs:65:7
    |
 65 |     ; x = x + 1;
    |       ^^^^^^^^^ help: replace it with `x += 1`

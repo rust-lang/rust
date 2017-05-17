@@ -1,5 +1,5 @@
 error: use of a blacklisted/placeholder name `foo`
- --> examples/blacklisted_name.rs:7:9
+ --> blacklisted_name.rs:7:9
   |
 7 | fn test(foo: ()) {}
   |         ^^^
@@ -7,7 +7,7 @@ error: use of a blacklisted/placeholder name `foo`
   = note: `-D blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `foo`
-  --> examples/blacklisted_name.rs:10:9
+  --> blacklisted_name.rs:10:9
    |
 10 |     let foo = 42;
    |         ^^^
@@ -15,7 +15,7 @@ error: use of a blacklisted/placeholder name `foo`
    = note: `-D blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `bar`
-  --> examples/blacklisted_name.rs:11:9
+  --> blacklisted_name.rs:11:9
    |
 11 |     let bar = 42;
    |         ^^^
@@ -23,7 +23,7 @@ error: use of a blacklisted/placeholder name `bar`
    = note: `-D blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `baz`
-  --> examples/blacklisted_name.rs:12:9
+  --> blacklisted_name.rs:12:9
    |
 12 |     let baz = 42;
    |         ^^^
@@ -31,7 +31,7 @@ error: use of a blacklisted/placeholder name `baz`
    = note: `-D blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `foo`
-  --> examples/blacklisted_name.rs:18:10
+  --> blacklisted_name.rs:18:10
    |
 18 |         (foo, Some(bar), baz @ Some(_)) => (),
    |          ^^^
@@ -39,7 +39,7 @@ error: use of a blacklisted/placeholder name `foo`
    = note: `-D blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `bar`
-  --> examples/blacklisted_name.rs:18:20
+  --> blacklisted_name.rs:18:20
    |
 18 |         (foo, Some(bar), baz @ Some(_)) => (),
    |                    ^^^
@@ -47,7 +47,7 @@ error: use of a blacklisted/placeholder name `bar`
    = note: `-D blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `baz`
-  --> examples/blacklisted_name.rs:18:26
+  --> blacklisted_name.rs:18:26
    |
 18 |         (foo, Some(bar), baz @ Some(_)) => (),
    |                          ^^^
@@ -55,7 +55,7 @@ error: use of a blacklisted/placeholder name `baz`
    = note: `-D blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `foo`
-  --> examples/blacklisted_name.rs:23:19
+  --> blacklisted_name.rs:23:19
    |
 23 | fn issue_1647(mut foo: u8) {
    |                   ^^^
@@ -63,7 +63,7 @@ error: use of a blacklisted/placeholder name `foo`
    = note: `-D blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `bar`
-  --> examples/blacklisted_name.rs:24:13
+  --> blacklisted_name.rs:24:13
    |
 24 |     let mut bar = 0;
    |             ^^^
@@ -71,7 +71,7 @@ error: use of a blacklisted/placeholder name `bar`
    = note: `-D blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `baz`
-  --> examples/blacklisted_name.rs:25:21
+  --> blacklisted_name.rs:25:21
    |
 25 |     if let Some(mut baz) = Some(42) {}
    |                     ^^^
@@ -79,7 +79,7 @@ error: use of a blacklisted/placeholder name `baz`
    = note: `-D blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `bar`
-  --> examples/blacklisted_name.rs:29:13
+  --> blacklisted_name.rs:29:13
    |
 29 |     let ref bar = 0;
    |             ^^^
@@ -87,7 +87,7 @@ error: use of a blacklisted/placeholder name `bar`
    = note: `-D blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `baz`
-  --> examples/blacklisted_name.rs:30:21
+  --> blacklisted_name.rs:30:21
    |
 30 |     if let Some(ref baz) = Some(42) {}
    |                     ^^^
@@ -95,7 +95,7 @@ error: use of a blacklisted/placeholder name `baz`
    = note: `-D blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `bar`
-  --> examples/blacklisted_name.rs:34:17
+  --> blacklisted_name.rs:34:17
    |
 34 |     let ref mut bar = 0;
    |                 ^^^
@@ -103,7 +103,7 @@ error: use of a blacklisted/placeholder name `bar`
    = note: `-D blacklisted-name` implied by `-D warnings`
 
 error: use of a blacklisted/placeholder name `baz`
-  --> examples/blacklisted_name.rs:35:25
+  --> blacklisted_name.rs:35:25
    |
 35 |     if let Some(ref mut baz) = Some(42) {}
    |                         ^^^

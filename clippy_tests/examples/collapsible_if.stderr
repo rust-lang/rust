@@ -1,5 +1,5 @@
 error: this if statement can be collapsed
-  --> examples/collapsible_if.rs:8:5
+  --> collapsible_if.rs:8:5
    |
 8  | /     if x == "hello" {
 9  | |         if y == "world" {
@@ -15,7 +15,7 @@ help: try
    | }
 
 error: this if statement can be collapsed
-  --> examples/collapsible_if.rs:14:5
+  --> collapsible_if.rs:14:5
    |
 14 | /     if x == "hello" || x == "world" {
 15 | |         if y == "world" || y == "hello" {
@@ -31,7 +31,7 @@ help: try
    | }
 
 error: this if statement can be collapsed
-  --> examples/collapsible_if.rs:20:5
+  --> collapsible_if.rs:20:5
    |
 20 | /     if x == "hello" && x == "world" {
 21 | |         if y == "world" || y == "hello" {
@@ -47,7 +47,7 @@ help: try
    | }
 
 error: this if statement can be collapsed
-  --> examples/collapsible_if.rs:26:5
+  --> collapsible_if.rs:26:5
    |
 26 | /     if x == "hello" || x == "world" {
 27 | |         if y == "world" && y == "hello" {
@@ -63,7 +63,7 @@ help: try
    | }
 
 error: this if statement can be collapsed
-  --> examples/collapsible_if.rs:32:5
+  --> collapsible_if.rs:32:5
    |
 32 | /     if x == "hello" && x == "world" {
 33 | |         if y == "world" && y == "hello" {
@@ -79,7 +79,7 @@ help: try
    | }
 
 error: this if statement can be collapsed
-  --> examples/collapsible_if.rs:38:5
+  --> collapsible_if.rs:38:5
    |
 38 | /     if 42 == 1337 {
 39 | |         if 'a' != 'A' {
@@ -95,7 +95,7 @@ help: try
    | }
 
 error: this `else { if .. }` block can be collapsed
-  --> examples/collapsible_if.rs:47:12
+  --> collapsible_if.rs:47:12
    |
 47 |       } else {
    |  ____________^
@@ -112,7 +112,7 @@ help: try
    | }
 
 error: this `else { if .. }` block can be collapsed
-  --> examples/collapsible_if.rs:55:12
+  --> collapsible_if.rs:55:12
    |
 55 |       } else {
    |  ____________^
@@ -129,7 +129,7 @@ help: try
    | }
 
 error: this `else { if .. }` block can be collapsed
-  --> examples/collapsible_if.rs:63:12
+  --> collapsible_if.rs:63:12
    |
 63 |       } else {
    |  ____________^
@@ -151,7 +151,7 @@ help: try
    | }
 
 error: this `else { if .. }` block can be collapsed
-  --> examples/collapsible_if.rs:74:12
+  --> collapsible_if.rs:74:12
    |
 74 |       } else {
    |  ____________^
@@ -173,7 +173,7 @@ help: try
    | }
 
 error: this `else { if .. }` block can be collapsed
-  --> examples/collapsible_if.rs:85:12
+  --> collapsible_if.rs:85:12
    |
 85 |       } else {
    |  ____________^
@@ -195,7 +195,7 @@ help: try
    | }
 
 error: this `else { if .. }` block can be collapsed
-   --> examples/collapsible_if.rs:96:12
+   --> collapsible_if.rs:96:12
     |
 96  |       } else {
     |  ____________^
@@ -217,7 +217,7 @@ help: try
     | }
 
 error: this `else { if .. }` block can be collapsed
-   --> examples/collapsible_if.rs:107:12
+   --> collapsible_if.rs:107:12
     |
 107 |       } else {
     |  ____________^

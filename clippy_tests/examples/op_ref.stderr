@@ -1,5 +1,5 @@
 error: needlessly taken reference of both operands
-  --> examples/op_ref.rs:13:15
+  --> op_ref.rs:13:15
    |
 13 |     let foo = &5 - &6;
    |               ^^^^^^^

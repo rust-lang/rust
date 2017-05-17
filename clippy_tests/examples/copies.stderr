@@ -1,6 +1,6 @@
 error: This else block is redundant.
 
-   --> examples/copies.rs:121:20
+   --> copies.rs:121:20
     |
 121 |               } else {
     |  ____________________^
@@ -18,7 +18,7 @@ error: This else block is redundant.
 
 error: This else block is redundant.
 
-   --> examples/copies.rs:131:20
+   --> copies.rs:131:20
     |
 131 |               } else {
     |  ____________________^

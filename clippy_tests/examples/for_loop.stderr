@@ -1,5 +1,5 @@
 error: for loop over `option`, which is an `Option`. This is more readably written as an `if let` statement.
-  --> examples/for_loop.rs:17:14
+  --> for_loop.rs:17:14
    |
 17 |     for x in option {
    |              ^^^^^^
@@ -8,7 +8,7 @@ error: for loop over `option`, which is an `Option`. This is more readably writt
    = help: consider replacing `for x in option` with `if let Some(x) = option`
 
 error: for loop over `result`, which is a `Result`. This is more readably written as an `if let` statement.
-  --> examples/for_loop.rs:22:14
+  --> for_loop.rs:22:14
    |
 22 |     for x in result {
    |              ^^^^^^
@@ -17,7 +17,7 @@ error: for loop over `result`, which is a `Result`. This is more readably writte
    = help: consider replacing `for x in result` with `if let Ok(x) = result`
 
 error: for loop over `option.ok_or("x not found")`, which is a `Result`. This is more readably written as an `if let` statement.
-  --> examples/for_loop.rs:26:14
+  --> for_loop.rs:26:14
    |
 26 |     for x in option.ok_or("x not found") {
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ error: for loop over `option.ok_or("x not found")`, which is a `Result`. This is
    = help: consider replacing `for x in option.ok_or("x not found")` with `if let Ok(x) = option.ok_or("x not found")`
 
 error: you are iterating over `Iterator::next()` which is an Option; this will compile but is probably not what you want
-  --> examples/for_loop.rs:31:5
+  --> for_loop.rs:31:5
    |
 31 | /     for x in v.iter().next() {
 32 | |         println!("{}", x);
@@ -36,7 +36,7 @@ error: you are iterating over `Iterator::next()` which is an Option; this will c
    = note: `-D iter-next-loop` implied by `-D warnings`
 
 error: for loop over `v.iter().next().and(Some(0))`, which is an `Option`. This is more readably written as an `if let` statement.
-  --> examples/for_loop.rs:36:14
+  --> for_loop.rs:36:14
    |
 36 |     for x in v.iter().next().and(Some(0)) {
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -45,7 +45,7 @@ error: for loop over `v.iter().next().and(Some(0))`, which is an `Option`. This 
    = help: consider replacing `for x in v.iter().next().and(Some(0))` with `if let Some(x) = v.iter().next().and(Some(0))`
 
 error: for loop over `v.iter().next().ok_or("x not found")`, which is a `Result`. This is more readably written as an `if let` statement.
-  --> examples/for_loop.rs:40:14
+  --> for_loop.rs:40:14
    |
 40 |     for x in v.iter().next().ok_or("x not found") {
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -54,7 +54,7 @@ error: for loop over `v.iter().next().ok_or("x not found")`, which is a `Result`
    = help: consider replacing `for x in v.iter().next().ok_or("x not found")` with `if let Ok(x) = v.iter().next().ok_or("x not found")`
 
 error: the loop variable `i` is only used to index `vec`.
-  --> examples/for_loop.rs:84:5
+  --> for_loop.rs:84:5
    |
 84 | /     for i in 0..vec.len() {
 85 | |         println!("{}", vec[i]);
@@ -66,7 +66,7 @@ help: consider using an iterator
    |     for <item> in &vec {
 
 error: unused variable: `i`
-  --> examples/for_loop.rs:88:9
+  --> for_loop.rs:88:9
    |
 88 |     for i in 0..vec.len() {
    |         ^
@@ -74,7 +74,7 @@ error: unused variable: `i`
    = note: `-D unused-variables` implied by `-D warnings`
 
 error: the loop variable `i` is only used to index `vec`.
-  --> examples/for_loop.rs:93:5
+  --> for_loop.rs:93:5
    |
 93 |     for i in 0..vec.len() { let _ = vec[i]; }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -84,7 +84,7 @@ help: consider using an iterator
    |     for <item> in &vec { let _ = vec[i]; }
 
 error: the loop variable `j` is only used to index `STATIC`.
-  --> examples/for_loop.rs:96:5
+  --> for_loop.rs:96:5
    |
 96 | /     for j in 0..4 {
 97 | |         println!("{:?}", STATIC[j]);
@@ -96,7 +96,7 @@ help: consider using an iterator
    |     for <item> in STATIC.iter().take(4) {
 
 error: the loop variable `j` is only used to index `CONST`.
-   --> examples/for_loop.rs:100:5
+   --> for_loop.rs:100:5
     |
 100 | /     for j in 0..4 {
 101 | |         println!("{:?}", CONST[j]);
@@ -108,7 +108,7 @@ help: consider using an iterator
     |     for <item> in CONST.iter().take(4) {
 
 error: the loop variable `i` is used to index `vec`
-   --> examples/for_loop.rs:104:5
+   --> for_loop.rs:104:5
     |
 104 | /     for i in 0..vec.len() {
 105 | |         println!("{} {}", vec[i], i);
@@ -120,7 +120,7 @@ help: consider using an iterator
     |     for (i, <item>) in vec.iter().enumerate() {
 
 error: the loop variable `i` is only used to index `vec2`.
-   --> examples/for_loop.rs:111:5
+   --> for_loop.rs:111:5
     |
 111 | /     for i in 0..vec.len() {
 112 | |         println!("{}", vec2[i]);
@@ -132,7 +132,7 @@ help: consider using an iterator
     |     for <item> in vec2.iter().take(vec.len()) {
 
 error: the loop variable `i` is only used to index `vec`.
-   --> examples/for_loop.rs:115:5
+   --> for_loop.rs:115:5
     |
 115 | /     for i in 5..vec.len() {
 116 | |         println!("{}", vec[i]);
@@ -144,7 +144,7 @@ help: consider using an iterator
     |     for <item> in vec.iter().skip(5) {
 
 error: the loop variable `i` is only used to index `vec`.
-   --> examples/for_loop.rs:119:5
+   --> for_loop.rs:119:5
     |
 119 | /     for i in 0..MAX_LEN {
 120 | |         println!("{}", vec[i]);
@@ -156,7 +156,7 @@ help: consider using an iterator
     |     for <item> in vec.iter().take(MAX_LEN) {
 
 error: the loop variable `i` is only used to index `vec`.
-   --> examples/for_loop.rs:123:5
+   --> for_loop.rs:123:5
     |
 123 | /     for i in 0...MAX_LEN {
 124 | |         println!("{}", vec[i]);
@@ -168,7 +168,7 @@ help: consider using an iterator
     |     for <item> in vec.iter().take(MAX_LEN + 1) {
 
 error: the loop variable `i` is only used to index `vec`.
-   --> examples/for_loop.rs:127:5
+   --> for_loop.rs:127:5
     |
 127 | /     for i in 5..10 {
 128 | |         println!("{}", vec[i]);
@@ -180,7 +180,7 @@ help: consider using an iterator
     |     for <item> in vec.iter().take(10).skip(5) {
 
 error: the loop variable `i` is only used to index `vec`.
-   --> examples/for_loop.rs:131:5
+   --> for_loop.rs:131:5
     |
 131 | /     for i in 5...10 {
 132 | |         println!("{}", vec[i]);
@@ -192,7 +192,7 @@ help: consider using an iterator
     |     for <item> in vec.iter().take(10 + 1).skip(5) {
 
 error: the loop variable `i` is used to index `vec`
-   --> examples/for_loop.rs:135:5
+   --> for_loop.rs:135:5
     |
 135 | /     for i in 5..vec.len() {
 136 | |         println!("{} {}", vec[i], i);
@@ -204,7 +204,7 @@ help: consider using an iterator
     |     for (i, <item>) in vec.iter().enumerate().skip(5) {
 
 error: the loop variable `i` is used to index `vec`
-   --> examples/for_loop.rs:139:5
+   --> for_loop.rs:139:5
     |
 139 | /     for i in 5..10 {
 140 | |         println!("{} {}", vec[i], i);
@@ -216,7 +216,7 @@ help: consider using an iterator
     |     for (i, <item>) in vec.iter().enumerate().take(10).skip(5) {
 
 error: this range is empty so this for loop will never run
-   --> examples/for_loop.rs:143:5
+   --> for_loop.rs:143:5
     |
 143 | /     for i in 10..0 {
 144 | |         println!("{}", i);
@@ -228,7 +228,7 @@ help: consider using the following if you are attempting to iterate over this ra
     |     for i in (0..10).rev() {
 
 error: this range is empty so this for loop will never run
-   --> examples/for_loop.rs:147:5
+   --> for_loop.rs:147:5
     |
 147 | /     for i in 10...0 {
 148 | |         println!("{}", i);
@@ -240,7 +240,7 @@ help: consider using the following if you are attempting to iterate over this ra
     |     for i in (0...10).rev() {
 
 error: this range is empty so this for loop will never run
-   --> examples/for_loop.rs:151:5
+   --> for_loop.rs:151:5
     |
 151 | /     for i in MAX_LEN..0 {
 152 | |         println!("{}", i);
@@ -252,7 +252,7 @@ help: consider using the following if you are attempting to iterate over this ra
     |     for i in (0..MAX_LEN).rev() {
 
 error: this range is empty so this for loop will never run
-   --> examples/for_loop.rs:155:5
+   --> for_loop.rs:155:5
     |
 155 | /     for i in 5..5 {
 156 | |         println!("{}", i);
@@ -262,7 +262,7 @@ error: this range is empty so this for loop will never run
     = note: `-D reverse-range-loop` implied by `-D warnings`
 
 error: this range is empty so this for loop will never run
-   --> examples/for_loop.rs:176:5
+   --> for_loop.rs:176:5
     |
 176 | /     for i in 10..5+4 {
 177 | |         println!("{}", i);
@@ -274,7 +274,7 @@ help: consider using the following if you are attempting to iterate over this ra
     |     for i in (5+4..10).rev() {
 
 error: this range is empty so this for loop will never run
-   --> examples/for_loop.rs:180:5
+   --> for_loop.rs:180:5
     |
 180 | /     for i in (5+2)..(3-1) {
 181 | |         println!("{}", i);
@@ -286,7 +286,7 @@ help: consider using the following if you are attempting to iterate over this ra
     |     for i in ((3-1)..(5+2)).rev() {
 
 error: this range is empty so this for loop will never run
-   --> examples/for_loop.rs:184:5
+   --> for_loop.rs:184:5
     |
 184 | /     for i in (5+2)..(8-1) {
 185 | |         println!("{}", i);
@@ -296,7 +296,7 @@ error: this range is empty so this for loop will never run
     = note: `-D reverse-range-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> examples/for_loop.rs:207:15
+   --> for_loop.rs:207:15
     |
 207 |     for _v in vec.iter() { }
     |               ^^^^^^^^^^ help: to write this more concisely, try `&vec`
@@ -304,7 +304,7 @@ error: it is more idiomatic to loop over references to containers instead of usi
     = note: `-D explicit-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> examples/for_loop.rs:209:15
+   --> for_loop.rs:209:15
     |
 209 |     for _v in vec.iter_mut() { }
     |               ^^^^^^^^^^^^^^ help: to write this more concisely, try `&mut vec`
@@ -312,7 +312,7 @@ error: it is more idiomatic to loop over references to containers instead of usi
     = note: `-D explicit-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over containers instead of using explicit iteration methods`
-   --> examples/for_loop.rs:212:15
+   --> for_loop.rs:212:15
     |
 212 |     for _v in out_vec.into_iter() { }
     |               ^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try `out_vec`
@@ -320,7 +320,7 @@ error: it is more idiomatic to loop over containers instead of using explicit it
     = note: `-D explicit-into-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> examples/for_loop.rs:215:15
+   --> for_loop.rs:215:15
     |
 215 |     for _v in array.into_iter() {}
     |               ^^^^^^^^^^^^^^^^^ help: to write this more concisely, try `&array`
@@ -328,7 +328,7 @@ error: it is more idiomatic to loop over references to containers instead of usi
     = note: `-D explicit-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> examples/for_loop.rs:220:15
+   --> for_loop.rs:220:15
     |
 220 |     for _v in [1, 2, 3].iter() { }
     |               ^^^^^^^^^^^^^^^^ help: to write this more concisely, try `&[1, 2, 3]`
@@ -336,7 +336,7 @@ error: it is more idiomatic to loop over references to containers instead of usi
     = note: `-D explicit-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> examples/for_loop.rs:224:15
+   --> for_loop.rs:224:15
     |
 224 |     for _v in [0; 32].iter() {}
     |               ^^^^^^^^^^^^^^ help: to write this more concisely, try `&[0; 32]`
@@ -344,7 +344,7 @@ error: it is more idiomatic to loop over references to containers instead of usi
     = note: `-D explicit-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> examples/for_loop.rs:229:15
+   --> for_loop.rs:229:15
     |
 229 |     for _v in ll.iter() { }
     |               ^^^^^^^^^ help: to write this more concisely, try `&ll`
@@ -352,7 +352,7 @@ error: it is more idiomatic to loop over references to containers instead of usi
     = note: `-D explicit-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> examples/for_loop.rs:232:15
+   --> for_loop.rs:232:15
     |
 232 |     for _v in vd.iter() { }
     |               ^^^^^^^^^ help: to write this more concisely, try `&vd`
@@ -360,7 +360,7 @@ error: it is more idiomatic to loop over references to containers instead of usi
     = note: `-D explicit-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> examples/for_loop.rs:235:15
+   --> for_loop.rs:235:15
     |
 235 |     for _v in bh.iter() { }
     |               ^^^^^^^^^ help: to write this more concisely, try `&bh`
@@ -368,7 +368,7 @@ error: it is more idiomatic to loop over references to containers instead of usi
     = note: `-D explicit-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> examples/for_loop.rs:238:15
+   --> for_loop.rs:238:15
     |
 238 |     for _v in hm.iter() { }
     |               ^^^^^^^^^ help: to write this more concisely, try `&hm`
@@ -376,7 +376,7 @@ error: it is more idiomatic to loop over references to containers instead of usi
     = note: `-D explicit-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> examples/for_loop.rs:241:15
+   --> for_loop.rs:241:15
     |
 241 |     for _v in bt.iter() { }
     |               ^^^^^^^^^ help: to write this more concisely, try `&bt`
@@ -384,7 +384,7 @@ error: it is more idiomatic to loop over references to containers instead of usi
     = note: `-D explicit-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> examples/for_loop.rs:244:15
+   --> for_loop.rs:244:15
     |
 244 |     for _v in hs.iter() { }
     |               ^^^^^^^^^ help: to write this more concisely, try `&hs`
@@ -392,7 +392,7 @@ error: it is more idiomatic to loop over references to containers instead of usi
     = note: `-D explicit-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> examples/for_loop.rs:247:15
+   --> for_loop.rs:247:15
     |
 247 |     for _v in bs.iter() { }
     |               ^^^^^^^^^ help: to write this more concisely, try `&bs`
@@ -400,7 +400,7 @@ error: it is more idiomatic to loop over references to containers instead of usi
     = note: `-D explicit-iter-loop` implied by `-D warnings`
 
 error: you are iterating over `Iterator::next()` which is an Option; this will compile but is probably not what you want
-   --> examples/for_loop.rs:249:5
+   --> for_loop.rs:249:5
     |
 249 |     for _v in vec.iter().next() { }
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -408,7 +408,7 @@ error: you are iterating over `Iterator::next()` which is an Option; this will c
     = note: `-D iter-next-loop` implied by `-D warnings`
 
 error: you are collect()ing an iterator and throwing away the result. Consider using an explicit for loop to exhaust the iterator
-   --> examples/for_loop.rs:256:5
+   --> for_loop.rs:256:5
     |
 256 |     vec.iter().map(|x| out.push(x)).collect::<Vec<_>>();
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -416,7 +416,7 @@ error: you are collect()ing an iterator and throwing away the result. Consider u
     = note: `-D unused-collect` implied by `-D warnings`
 
 error: the variable `_index` is used as a loop counter. Consider using `for (_index, item) in &vec.enumerate()` or similar iterators
-   --> examples/for_loop.rs:261:5
+   --> for_loop.rs:261:5
     |
 261 |     for _v in &vec { _index += 1 }
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -424,7 +424,7 @@ error: the variable `_index` is used as a loop counter. Consider using `for (_in
     = note: `-D explicit-counter-loop` implied by `-D warnings`
 
 error: the variable `_index` is used as a loop counter. Consider using `for (_index, item) in &vec.enumerate()` or similar iterators
-   --> examples/for_loop.rs:265:5
+   --> for_loop.rs:265:5
     |
 265 |     for _v in &vec { _index += 1 }
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -432,7 +432,7 @@ error: the variable `_index` is used as a loop counter. Consider using `for (_in
     = note: `-D explicit-counter-loop` implied by `-D warnings`
 
 error: you seem to want to iterate on a map's values
-   --> examples/for_loop.rs:325:5
+   --> for_loop.rs:325:5
     |
 325 | /     for (_, v) in &m {
 326 | |         let _v = v;
@@ -444,7 +444,7 @@ help: use the corresponding method
     |     for v in m.values() {
 
 error: you seem to want to iterate on a map's values
-   --> examples/for_loop.rs:330:5
+   --> for_loop.rs:330:5
     |
 330 | /     for (_, v) in &*m {
 331 | |         let _v = v;
@@ -458,7 +458,7 @@ help: use the corresponding method
     |     for v in (*m).values() {
 
 error: you seem to want to iterate on a map's values
-   --> examples/for_loop.rs:337:5
+   --> for_loop.rs:337:5
     |
 337 | /     for (_, v) in &mut m {
 338 | |         let _v = v;
@@ -470,7 +470,7 @@ help: use the corresponding method
     |     for v in m.values_mut() {
 
 error: you seem to want to iterate on a map's values
-   --> examples/for_loop.rs:342:5
+   --> for_loop.rs:342:5
     |
 342 | /     for (_, v) in &mut *m {
 343 | |         let _v = v;
@@ -482,7 +482,7 @@ help: use the corresponding method
     |     for v in (*m).values_mut() {
 
 error: you seem to want to iterate on a map's keys
-   --> examples/for_loop.rs:348:5
+   --> for_loop.rs:348:5
     |
 348 | /     for (k, _value) in rm {
 349 | |         let _k = k;

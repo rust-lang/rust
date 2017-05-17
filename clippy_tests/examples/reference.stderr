@@ -1,5 +1,5 @@
 error: immediately dereferencing a reference
-  --> examples/reference.rs:19:13
+  --> reference.rs:19:13
    |
 19 |     let b = *&a;
    |             ^^^ help: try this `a`
@@ -7,7 +7,7 @@ error: immediately dereferencing a reference
    = note: `-D deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
-  --> examples/reference.rs:21:13
+  --> reference.rs:21:13
    |
 21 |     let b = *&get_number();
    |             ^^^^^^^^^^^^^^ help: try this `get_number()`
@@ -15,7 +15,7 @@ error: immediately dereferencing a reference
    = note: `-D deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
-  --> examples/reference.rs:26:13
+  --> reference.rs:26:13
    |
 26 |     let b = *&bytes[1..2][0];
    |             ^^^^^^^^^^^^^^^^ help: try this `bytes[1..2][0]`
@@ -23,7 +23,7 @@ error: immediately dereferencing a reference
    = note: `-D deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
-  --> examples/reference.rs:30:13
+  --> reference.rs:30:13
    |
 30 |     let b = *&(a);
    |             ^^^^^ help: try this `(a)`
@@ -31,7 +31,7 @@ error: immediately dereferencing a reference
    = note: `-D deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
-  --> examples/reference.rs:32:13
+  --> reference.rs:32:13
    |
 32 |     let b = *(&a);
    |             ^^^^^ help: try this `a`
@@ -39,7 +39,7 @@ error: immediately dereferencing a reference
    = note: `-D deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
-  --> examples/reference.rs:34:13
+  --> reference.rs:34:13
    |
 34 |     let b = *((&a));
    |             ^^^^^^^ help: try this `a`
@@ -47,7 +47,7 @@ error: immediately dereferencing a reference
    = note: `-D deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
-  --> examples/reference.rs:36:13
+  --> reference.rs:36:13
    |
 36 |     let b = *&&a;
    |             ^^^^ help: try this `&a`
@@ -55,7 +55,7 @@ error: immediately dereferencing a reference
    = note: `-D deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
-  --> examples/reference.rs:38:14
+  --> reference.rs:38:14
    |
 38 |     let b = **&aref;
    |              ^^^^^^ help: try this `aref`
@@ -63,7 +63,7 @@ error: immediately dereferencing a reference
    = note: `-D deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
-  --> examples/reference.rs:42:14
+  --> reference.rs:42:14
    |
 42 |     let b = **&&a;
    |              ^^^^ help: try this `&a`
@@ -71,7 +71,7 @@ error: immediately dereferencing a reference
    = note: `-D deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
-  --> examples/reference.rs:46:17
+  --> reference.rs:46:17
    |
 46 |         let y = *&mut x;
    |                 ^^^^^^^ help: try this `x`
@@ -79,7 +79,7 @@ error: immediately dereferencing a reference
    = note: `-D deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
-  --> examples/reference.rs:53:18
+  --> reference.rs:53:18
    |
 53 |         let y = **&mut &mut x;
    |                  ^^^^^^^^^^^^ help: try this `&mut x`

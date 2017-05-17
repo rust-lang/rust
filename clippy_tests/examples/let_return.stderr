@@ -1,25 +1,25 @@
 error: returning the result of a let binding from a block. Consider returning the expression directly.
-  --> examples/let_return.rs:10:5
+  --> let_return.rs:10:5
    |
 10 |     x
    |     ^
    |
    = note: `-D let-and-return` implied by `-D warnings`
 note: this expression can be directly returned
-  --> examples/let_return.rs:9:13
+  --> let_return.rs:9:13
    |
 9  |     let x = 5;
    |             ^
 
 error: returning the result of a let binding from a block. Consider returning the expression directly.
-  --> examples/let_return.rs:16:9
+  --> let_return.rs:16:9
    |
 16 |         x
    |         ^
    |
    = note: `-D let-and-return` implied by `-D warnings`
 note: this expression can be directly returned
-  --> examples/let_return.rs:15:17
+  --> let_return.rs:15:17
    |
 15 |         let x = 5;
    |                 ^

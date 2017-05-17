@@ -1,5 +1,5 @@
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
-  --> examples/used_underscore_binding.rs:17:5
+  --> used_underscore_binding.rs:17:5
    |
 17 |     _foo + 1
    |     ^^^^
@@ -7,7 +7,7 @@ error: used binding `_foo` which is prefixed with an underscore. A leading under
    = note: `-D used-underscore-binding` implied by `-D warnings`
 
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
-  --> examples/used_underscore_binding.rs:22:20
+  --> used_underscore_binding.rs:22:20
    |
 22 |     println!("{}", _foo);
    |                    ^^^^
@@ -15,7 +15,7 @@ error: used binding `_foo` which is prefixed with an underscore. A leading under
    = note: `-D used-underscore-binding` implied by `-D warnings`
 
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
-  --> examples/used_underscore_binding.rs:23:16
+  --> used_underscore_binding.rs:23:16
    |
 23 |     assert_eq!(_foo, _foo);
    |                ^^^^
@@ -23,7 +23,7 @@ error: used binding `_foo` which is prefixed with an underscore. A leading under
    = note: `-D used-underscore-binding` implied by `-D warnings`
 
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
-  --> examples/used_underscore_binding.rs:23:22
+  --> used_underscore_binding.rs:23:22
    |
 23 |     assert_eq!(_foo, _foo);
    |                      ^^^^
@@ -31,7 +31,7 @@ error: used binding `_foo` which is prefixed with an underscore. A leading under
    = note: `-D used-underscore-binding` implied by `-D warnings`
 
 error: used binding `_underscore_field` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
-  --> examples/used_underscore_binding.rs:36:5
+  --> used_underscore_binding.rs:36:5
    |
 36 |     s._underscore_field += 1;
    |     ^^^^^^^^^^^^^^^^^^^

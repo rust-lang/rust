@@ -1,5 +1,5 @@
 error: this loop could be written as a `while let` loop
-  --> examples/while_loop.rs:9:5
+  --> while_loop.rs:9:5
    |
 9  | /     loop {
 10 | |         if let Some(_x) = y {
@@ -13,7 +13,7 @@ error: this loop could be written as a `while let` loop
    = note: `-D while-let-loop` implied by `-D warnings`
 
 error: this loop could be written as a `while let` loop
-  --> examples/while_loop.rs:22:5
+  --> while_loop.rs:22:5
    |
 22 | /     loop {
 23 | |         match y {
@@ -26,7 +26,7 @@ error: this loop could be written as a `while let` loop
    = note: `-D while-let-loop` implied by `-D warnings`
 
 error: this loop could be written as a `while let` loop
-  --> examples/while_loop.rs:28:5
+  --> while_loop.rs:28:5
    |
 28 | /     loop {
 29 | |         let x = match y {
@@ -40,7 +40,7 @@ error: this loop could be written as a `while let` loop
    = note: `-D while-let-loop` implied by `-D warnings`
 
 error: this loop could be written as a `while let` loop
-  --> examples/while_loop.rs:36:5
+  --> while_loop.rs:36:5
    |
 36 | /     loop {
 37 | |         let x = match y {
@@ -54,7 +54,7 @@ error: this loop could be written as a `while let` loop
    = note: `-D while-let-loop` implied by `-D warnings`
 
 error: this loop could be written as a `while let` loop
-  --> examples/while_loop.rs:58:5
+  --> while_loop.rs:58:5
    |
 58 | /     loop {
 59 | |         let (e, l) = match "".split_whitespace().next() {
@@ -68,7 +68,7 @@ error: this loop could be written as a `while let` loop
    = note: `-D while-let-loop` implied by `-D warnings`
 
 error: this loop could be written as a `for` loop
-  --> examples/while_loop.rs:68:5
+  --> while_loop.rs:68:5
    |
 68 | /     while let Option::Some(x) = iter.next() {
 69 | |         println!("{}", x);
@@ -78,7 +78,7 @@ error: this loop could be written as a `for` loop
    = note: `-D while-let-on-iterator` implied by `-D warnings`
 
 error: this loop could be written as a `for` loop
-  --> examples/while_loop.rs:73:5
+  --> while_loop.rs:73:5
    |
 73 | /     while let Some(x) = iter.next() {
 74 | |         println!("{}", x);
@@ -88,7 +88,7 @@ error: this loop could be written as a `for` loop
    = note: `-D while-let-on-iterator` implied by `-D warnings`
 
 error: this loop could be written as a `for` loop
-  --> examples/while_loop.rs:78:5
+  --> while_loop.rs:78:5
    |
 78 |     while let Some(_) = iter.next() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `for _ in iter { .. }`
@@ -96,7 +96,7 @@ error: this loop could be written as a `for` loop
    = note: `-D while-let-on-iterator` implied by `-D warnings`
 
 error: this loop could be written as a `while let` loop
-   --> examples/while_loop.rs:118:5
+   --> while_loop.rs:118:5
     |
 118 | /     loop {
 119 | |         let _ = match iter.next() {
@@ -110,7 +110,7 @@ error: this loop could be written as a `while let` loop
     = note: `-D while-let-loop` implied by `-D warnings`
 
 error: empty `loop {}` detected. You may want to either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
-   --> examples/while_loop.rs:123:9
+   --> while_loop.rs:123:9
     |
 123 |         loop {}
     |         ^^^^^^^

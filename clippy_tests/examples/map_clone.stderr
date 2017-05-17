@@ -1,5 +1,5 @@
 error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
-  --> examples/map_clone.rs:12:5
+  --> map_clone.rs:12:5
    |
 12 |     x.iter().map(|y| y.clone());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ error: you seem to be using .map() to clone the contents of an iterator, conside
            x.iter().cloned()
 
 error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
-  --> examples/map_clone.rs:14:5
+  --> map_clone.rs:14:5
    |
 14 |     x.iter().map(|&y| y);
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ error: you seem to be using .map() to clone the contents of an iterator, conside
            x.iter().cloned()
 
 error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
-  --> examples/map_clone.rs:16:5
+  --> map_clone.rs:16:5
    |
 16 |     x.iter().map(|y| *y);
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ error: you seem to be using .map() to clone the contents of an iterator, conside
            x.iter().cloned()
 
 error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
-  --> examples/map_clone.rs:18:5
+  --> map_clone.rs:18:5
    |
 18 |     x.iter().map(|y| { y.clone() });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ error: you seem to be using .map() to clone the contents of an iterator, conside
            x.iter().cloned()
 
 error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
-  --> examples/map_clone.rs:20:5
+  --> map_clone.rs:20:5
    |
 20 |     x.iter().map(|&y| { y });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ error: you seem to be using .map() to clone the contents of an iterator, conside
            x.iter().cloned()
 
 error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
-  --> examples/map_clone.rs:22:5
+  --> map_clone.rs:22:5
    |
 22 |     x.iter().map(|y| { *y });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -59,7 +59,7 @@ error: you seem to be using .map() to clone the contents of an iterator, conside
            x.iter().cloned()
 
 error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
-  --> examples/map_clone.rs:24:5
+  --> map_clone.rs:24:5
    |
 24 |     x.iter().map(Clone::clone);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -69,7 +69,7 @@ error: you seem to be using .map() to clone the contents of an iterator, conside
            x.iter().cloned()
 
 error: you seem to be using .map() to clone the contents of an Option, consider using `.cloned()`
-  --> examples/map_clone.rs:30:5
+  --> map_clone.rs:30:5
    |
 30 |     x.as_ref().map(|y| y.clone());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -79,7 +79,7 @@ error: you seem to be using .map() to clone the contents of an Option, consider 
            x.as_ref().cloned()
 
 error: you seem to be using .map() to clone the contents of an Option, consider using `.cloned()`
-  --> examples/map_clone.rs:32:5
+  --> map_clone.rs:32:5
    |
 32 |     x.as_ref().map(|&y| y);
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -89,7 +89,7 @@ error: you seem to be using .map() to clone the contents of an Option, consider 
            x.as_ref().cloned()
 
 error: you seem to be using .map() to clone the contents of an Option, consider using `.cloned()`
-  --> examples/map_clone.rs:34:5
+  --> map_clone.rs:34:5
    |
 34 |     x.as_ref().map(|y| *y);
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -99,7 +99,7 @@ error: you seem to be using .map() to clone the contents of an Option, consider 
            x.as_ref().cloned()
 
 error: you seem to be using .map() to clone the contents of an Option, consider using `.cloned()`
-  --> examples/map_clone.rs:90:35
+  --> map_clone.rs:90:35
    |
 90 |     let _: Option<UnusualDeref> = x.as_ref().map(|y| *y);
    |                                   ^^^^^^^^^^^^^^^^^^^^^^

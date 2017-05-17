@@ -1,51 +1,51 @@
 error: unsequenced read of a variable
- --> examples/eval_order_dependence.rs:8:28
+ --> eval_order_dependence.rs:8:28
   |
 8 |     let a = { x = 1; 1 } + x;
   |                            ^
   |
   = note: `-D eval-order-dependence` implied by `-D warnings`
 note: whether read occurs before this write depends on evaluation order
- --> examples/eval_order_dependence.rs:8:15
+ --> eval_order_dependence.rs:8:15
   |
 8 |     let a = { x = 1; 1 } + x;
   |               ^^^^^
 
 error: unsequenced read of a variable
-  --> examples/eval_order_dependence.rs:11:5
+  --> eval_order_dependence.rs:11:5
    |
 11 |     x += { x = 20; 2 };
    |     ^
    |
    = note: `-D eval-order-dependence` implied by `-D warnings`
 note: whether read occurs before this write depends on evaluation order
-  --> examples/eval_order_dependence.rs:11:12
+  --> eval_order_dependence.rs:11:12
    |
 11 |     x += { x = 20; 2 };
    |            ^^^^^^
 
 error: unsequenced read of a variable
-  --> examples/eval_order_dependence.rs:17:24
+  --> eval_order_dependence.rs:17:24
    |
 17 |     let foo = Foo { a: x, .. { x = 6; base } };
    |                        ^
    |
    = note: `-D eval-order-dependence` implied by `-D warnings`
 note: whether read occurs before this write depends on evaluation order
-  --> examples/eval_order_dependence.rs:17:32
+  --> eval_order_dependence.rs:17:32
    |
 17 |     let foo = Foo { a: x, .. { x = 6; base } };
    |                                ^^^^^
 
 error: unsequenced read of a variable
-  --> examples/eval_order_dependence.rs:21:9
+  --> eval_order_dependence.rs:21:9
    |
 21 |         x += { x = 20; 2 };
    |         ^
    |
    = note: `-D eval-order-dependence` implied by `-D warnings`
 note: whether read occurs before this write depends on evaluation order
-  --> examples/eval_order_dependence.rs:21:16
+  --> eval_order_dependence.rs:21:16
    |
 21 |         x += { x = 20; 2 };
    |                ^^^^^^

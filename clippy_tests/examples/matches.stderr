@@ -1,5 +1,5 @@
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
-  --> examples/matches.rs:26:5
+  --> matches.rs:26:5
    |
 26 | /     match ExprNode::Butterflies {
 27 | |         ExprNode::ExprAddrOf => Some(&NODE),
@@ -10,7 +10,7 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
    = note: `-D single-match-else` implied by `-D warnings`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
-  --> examples/matches.rs:35:5
+  --> matches.rs:35:5
    |
 35 | /     match x {
 36 | |         Some(y) => { println!("{:?}", y); }
@@ -21,7 +21,7 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
    = note: `-D single-match` implied by `-D warnings`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
-  --> examples/matches.rs:41:5
+  --> matches.rs:41:5
    |
 41 | /     match z {
 42 | |         (2...3, 7...9) => dummy(),
@@ -32,7 +32,7 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
    = note: `-D single-match` implied by `-D warnings`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
-  --> examples/matches.rs:63:5
+  --> matches.rs:63:5
    |
 63 | /     match x {
 64 | |         Some(y) => dummy(),
@@ -43,7 +43,7 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
    = note: `-D single-match` implied by `-D warnings`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
-  --> examples/matches.rs:68:5
+  --> matches.rs:68:5
    |
 68 | /     match y {
 69 | |         Ok(y) => dummy(),
@@ -54,7 +54,7 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
    = note: `-D single-match` implied by `-D warnings`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
-  --> examples/matches.rs:75:5
+  --> matches.rs:75:5
    |
 75 | /     match c {
 76 | |         Cow::Borrowed(..) => dummy(),
@@ -65,7 +65,7 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
    = note: `-D single-match` implied by `-D warnings`
 
 error: you seem to be trying to match on a boolean expression
-  --> examples/matches.rs:96:5
+  --> matches.rs:96:5
    |
 96 | /     match test {
 97 | |         true => 0,
@@ -76,7 +76,7 @@ error: you seem to be trying to match on a boolean expression
    = note: `-D match-bool` implied by `-D warnings`
 
 error: you seem to be trying to match on a boolean expression
-   --> examples/matches.rs:102:5
+   --> matches.rs:102:5
     |
 102 | /     match option == 1 {
 103 | |         true => 1,
@@ -87,7 +87,7 @@ error: you seem to be trying to match on a boolean expression
     = note: `-D match-bool` implied by `-D warnings`
 
 error: you seem to be trying to match on a boolean expression
-   --> examples/matches.rs:107:5
+   --> matches.rs:107:5
     |
 107 | /     match test {
 108 | |         true => (),
@@ -98,7 +98,7 @@ error: you seem to be trying to match on a boolean expression
     = note: `-D match-bool` implied by `-D warnings`
 
 error: you seem to be trying to match on a boolean expression
-   --> examples/matches.rs:112:5
+   --> matches.rs:112:5
     |
 112 | /     match test {
 113 | |         false => { println!("Noooo!"); }
@@ -109,7 +109,7 @@ error: you seem to be trying to match on a boolean expression
     = note: `-D match-bool` implied by `-D warnings`
 
 error: you seem to be trying to match on a boolean expression
-   --> examples/matches.rs:117:5
+   --> matches.rs:117:5
     |
 117 | /     match test && test {
 118 | |         false => { println!("Noooo!"); }
@@ -120,7 +120,7 @@ error: you seem to be trying to match on a boolean expression
     = note: `-D match-bool` implied by `-D warnings`
 
 error: equal expressions as operands to `&&`
-   --> examples/matches.rs:117:11
+   --> matches.rs:117:11
     |
 117 |     match test && test {
     |           ^^^^^^^^^^^^
@@ -128,7 +128,7 @@ error: equal expressions as operands to `&&`
     = note: `-D eq-op` implied by `-D warnings`
 
 error: you seem to be trying to match on a boolean expression
-   --> examples/matches.rs:122:5
+   --> matches.rs:122:5
     |
 122 | /     match test {
 123 | |         false => { println!("Noooo!"); }
@@ -139,7 +139,7 @@ error: you seem to be trying to match on a boolean expression
     = note: `-D match-bool` implied by `-D warnings`
 
 error: you don't need to add `&` to all patterns
-   --> examples/matches.rs:138:9
+   --> matches.rs:138:9
     |
 138 | /         match v {
 139 | |             &Some(v) => println!("{:?}", v),
@@ -152,7 +152,7 @@ help: instead of prefixing all patterns with `&`, you can dereference the expres
     |         match *v { .. }
 
 error: you don't need to add `&` to all patterns
-   --> examples/matches.rs:148:5
+   --> matches.rs:148:5
     |
 148 | /     match tup {
 149 | |         &(v, 1) => println!("{}", v),
@@ -165,7 +165,7 @@ help: instead of prefixing all patterns with `&`, you can dereference the expres
     |     match *tup { .. }
 
 error: you don't need to add `&` to both the expression and the patterns
-   --> examples/matches.rs:154:5
+   --> matches.rs:154:5
     |
 154 | /     match &w {
 155 | |         &Some(v) => println!("{:?}", v),
@@ -176,7 +176,7 @@ error: you don't need to add `&` to both the expression and the patterns
     = note: `-D match-ref-pats` implied by `-D warnings`
 
 error: you don't need to add `&` to all patterns
-   --> examples/matches.rs:165:5
+   --> matches.rs:165:5
     |
 165 | /     if let &None = a {
 166 | |         println!("none");
@@ -188,7 +188,7 @@ help: instead of prefixing all patterns with `&`, you can dereference the expres
     |     if let .. = *a { .. }
 
 error: you don't need to add `&` to both the expression and the patterns
-   --> examples/matches.rs:170:5
+   --> matches.rs:170:5
     |
 170 | /     if let &None = &b {
 171 | |         println!("none");
@@ -198,72 +198,72 @@ error: you don't need to add `&` to both the expression and the patterns
     = note: `-D match-ref-pats` implied by `-D warnings`
 
 error: some ranges overlap
-   --> examples/matches.rs:179:9
+   --> matches.rs:179:9
     |
 179 |         0 ... 10 => println!("0 ... 10"),
     |         ^^^^^^^^
     |
     = note: `-D match-overlapping-arm` implied by `-D warnings`
 note: overlaps with this
-   --> examples/matches.rs:180:9
+   --> matches.rs:180:9
     |
 180 |         0 ... 11 => println!("0 ... 11"),
     |         ^^^^^^^^
 
 error: some ranges overlap
-   --> examples/matches.rs:185:9
+   --> matches.rs:185:9
     |
 185 |         0 ... 5 => println!("0 ... 5"),
     |         ^^^^^^^
     |
     = note: `-D match-overlapping-arm` implied by `-D warnings`
 note: overlaps with this
-   --> examples/matches.rs:187:9
+   --> matches.rs:187:9
     |
 187 |         FOO ... 11 => println!("0 ... 11"),
     |         ^^^^^^^^^^
 
 error: some ranges overlap
-   --> examples/matches.rs:193:9
+   --> matches.rs:193:9
     |
 193 |         0 ... 5 => println!("0 ... 5"),
     |         ^^^^^^^
     |
     = note: `-D match-overlapping-arm` implied by `-D warnings`
 note: overlaps with this
-   --> examples/matches.rs:192:9
+   --> matches.rs:192:9
     |
 192 |         2 => println!("2"),
     |         ^
 
 error: some ranges overlap
-   --> examples/matches.rs:199:9
+   --> matches.rs:199:9
     |
 199 |         0 ... 2 => println!("0 ... 2"),
     |         ^^^^^^^
     |
     = note: `-D match-overlapping-arm` implied by `-D warnings`
 note: overlaps with this
-   --> examples/matches.rs:198:9
+   --> matches.rs:198:9
     |
 198 |         2 => println!("2"),
     |         ^
 
 error: some ranges overlap
-   --> examples/matches.rs:222:9
+   --> matches.rs:222:9
     |
 222 |         0 .. 11 => println!("0 .. 11"),
     |         ^^^^^^^
     |
     = note: `-D match-overlapping-arm` implied by `-D warnings`
 note: overlaps with this
-   --> examples/matches.rs:223:9
+   --> matches.rs:223:9
     |
 223 |         0 ... 11 => println!("0 ... 11"),
     |         ^^^^^^^^
 
 error: Err(_) will match all errors, maybe not a good idea
-   --> examples/matches.rs:240:9
+   --> matches.rs:240:9
     |
 240 |         Err(_) => panic!("err")
     |         ^^^^^^
@@ -272,7 +272,7 @@ error: Err(_) will match all errors, maybe not a good idea
     = note: to remove this warning, match each error seperately or use unreachable macro
 
 error: Err(_) will match all errors, maybe not a good idea
-   --> examples/matches.rs:246:9
+   --> matches.rs:246:9
     |
 246 |         Err(_) => {panic!()}
     |         ^^^^^^
@@ -281,7 +281,7 @@ error: Err(_) will match all errors, maybe not a good idea
     = note: to remove this warning, match each error seperately or use unreachable macro
 
 error: Err(_) will match all errors, maybe not a good idea
-   --> examples/matches.rs:252:9
+   --> matches.rs:252:9
     |
 252 |         Err(_) => {panic!();}
     |         ^^^^^^

@@ -1,5 +1,5 @@
 error: missing documentation for a type alias
-  --> examples/missing-doc.rs:26:1
+  --> missing-doc.rs:26:1
    |
 26 | type Typedef = String;
    | ^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ error: missing documentation for a type alias
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a type alias
-  --> examples/missing-doc.rs:27:1
+  --> missing-doc.rs:27:1
    |
 27 | pub type PubTypedef = String;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ error: missing documentation for a type alias
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a struct
-  --> examples/missing-doc.rs:29:1
+  --> missing-doc.rs:29:1
    |
 29 | / struct Foo {
 30 | |     a: isize,
@@ -26,7 +26,7 @@ error: missing documentation for a struct
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a struct field
-  --> examples/missing-doc.rs:30:5
+  --> missing-doc.rs:30:5
    |
 30 |     a: isize,
    |     ^^^^^^^^
@@ -34,7 +34,7 @@ error: missing documentation for a struct field
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a struct field
-  --> examples/missing-doc.rs:31:5
+  --> missing-doc.rs:31:5
    |
 31 |     b: isize,
    |     ^^^^^^^^
@@ -42,7 +42,7 @@ error: missing documentation for a struct field
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a struct
-  --> examples/missing-doc.rs:34:1
+  --> missing-doc.rs:34:1
    |
 34 | / pub struct PubFoo {
 35 | |     pub a: isize,
@@ -53,7 +53,7 @@ error: missing documentation for a struct
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a struct field
-  --> examples/missing-doc.rs:35:5
+  --> missing-doc.rs:35:5
    |
 35 |     pub a: isize,
    |     ^^^^^^^^^^^^
@@ -61,7 +61,7 @@ error: missing documentation for a struct field
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a struct field
-  --> examples/missing-doc.rs:36:5
+  --> missing-doc.rs:36:5
    |
 36 |     b: isize,
    |     ^^^^^^^^
@@ -69,7 +69,7 @@ error: missing documentation for a struct field
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a module
-  --> examples/missing-doc.rs:45:1
+  --> missing-doc.rs:45:1
    |
 45 | mod module_no_dox {}
    | ^^^^^^^^^^^^^^^^^^^^
@@ -77,7 +77,7 @@ error: missing documentation for a module
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a module
-  --> examples/missing-doc.rs:46:1
+  --> missing-doc.rs:46:1
    |
 46 | pub mod pub_module_no_dox {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ error: missing documentation for a module
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a function
-  --> examples/missing-doc.rs:50:1
+  --> missing-doc.rs:50:1
    |
 50 | pub fn foo2() {}
    | ^^^^^^^^^^^^^^^^
@@ -93,7 +93,7 @@ error: missing documentation for a function
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a function
-  --> examples/missing-doc.rs:51:1
+  --> missing-doc.rs:51:1
    |
 51 | fn foo3() {}
    | ^^^^^^^^^^^^
@@ -101,7 +101,7 @@ error: missing documentation for a function
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a trait
-  --> examples/missing-doc.rs:68:1
+  --> missing-doc.rs:68:1
    |
 68 | / pub trait C {
 69 | |     fn foo(&self);
@@ -112,7 +112,7 @@ error: missing documentation for a trait
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a trait method
-  --> examples/missing-doc.rs:69:5
+  --> missing-doc.rs:69:5
    |
 69 |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
@@ -120,7 +120,7 @@ error: missing documentation for a trait method
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a trait method
-  --> examples/missing-doc.rs:70:5
+  --> missing-doc.rs:70:5
    |
 70 |     fn foo_with_impl(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -128,7 +128,7 @@ error: missing documentation for a trait method
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for an associated type
-  --> examples/missing-doc.rs:80:5
+  --> missing-doc.rs:80:5
    |
 80 |     type AssociatedType;
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -136,7 +136,7 @@ error: missing documentation for an associated type
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for an associated type
-  --> examples/missing-doc.rs:81:5
+  --> missing-doc.rs:81:5
    |
 81 |     type AssociatedTypeDef = Self;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -144,7 +144,7 @@ error: missing documentation for an associated type
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a method
-  --> examples/missing-doc.rs:92:5
+  --> missing-doc.rs:92:5
    |
 92 |     pub fn foo() {}
    |     ^^^^^^^^^^^^^^^
@@ -152,7 +152,7 @@ error: missing documentation for a method
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a method
-  --> examples/missing-doc.rs:93:5
+  --> missing-doc.rs:93:5
    |
 93 |     fn bar() {}
    |     ^^^^^^^^^^^
@@ -160,7 +160,7 @@ error: missing documentation for a method
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a method
-  --> examples/missing-doc.rs:97:5
+  --> missing-doc.rs:97:5
    |
 97 |     pub fn foo() {}
    |     ^^^^^^^^^^^^^^^
@@ -168,7 +168,7 @@ error: missing documentation for a method
    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a method
-   --> examples/missing-doc.rs:100:5
+   --> missing-doc.rs:100:5
     |
 100 |     fn foo2() {}
     |     ^^^^^^^^^^^^
@@ -176,7 +176,7 @@ error: missing documentation for a method
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for an enum
-   --> examples/missing-doc.rs:126:1
+   --> missing-doc.rs:126:1
     |
 126 | / enum Baz {
 127 | |     BazA {
@@ -190,7 +190,7 @@ error: missing documentation for an enum
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a variant
-   --> examples/missing-doc.rs:127:5
+   --> missing-doc.rs:127:5
     |
 127 | /     BazA {
 128 | |         a: isize,
@@ -201,7 +201,7 @@ error: missing documentation for a variant
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a struct field
-   --> examples/missing-doc.rs:128:9
+   --> missing-doc.rs:128:9
     |
 128 |         a: isize,
     |         ^^^^^^^^
@@ -209,7 +209,7 @@ error: missing documentation for a struct field
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a struct field
-   --> examples/missing-doc.rs:129:9
+   --> missing-doc.rs:129:9
     |
 129 |         b: isize
     |         ^^^^^^^^
@@ -217,7 +217,7 @@ error: missing documentation for a struct field
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a variant
-   --> examples/missing-doc.rs:131:5
+   --> missing-doc.rs:131:5
     |
 131 |     BarB
     |     ^^^^
@@ -225,7 +225,7 @@ error: missing documentation for a variant
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for an enum
-   --> examples/missing-doc.rs:134:1
+   --> missing-doc.rs:134:1
     |
 134 | / pub enum PubBaz {
 135 | |     PubBazA {
@@ -237,7 +237,7 @@ error: missing documentation for an enum
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a variant
-   --> examples/missing-doc.rs:135:5
+   --> missing-doc.rs:135:5
     |
 135 | /     PubBazA {
 136 | |         a: isize,
@@ -247,7 +247,7 @@ error: missing documentation for a variant
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a struct field
-   --> examples/missing-doc.rs:136:9
+   --> missing-doc.rs:136:9
     |
 136 |         a: isize,
     |         ^^^^^^^^
@@ -255,7 +255,7 @@ error: missing documentation for a struct field
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a constant
-   --> examples/missing-doc.rs:160:1
+   --> missing-doc.rs:160:1
     |
 160 | const FOO: u32 = 0;
     | ^^^^^^^^^^^^^^^^^^^
@@ -263,7 +263,7 @@ error: missing documentation for a constant
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a constant
-   --> examples/missing-doc.rs:167:1
+   --> missing-doc.rs:167:1
     |
 167 | pub const FOO4: u32 = 0;
     | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -271,7 +271,7 @@ error: missing documentation for a constant
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a static
-   --> examples/missing-doc.rs:170:1
+   --> missing-doc.rs:170:1
     |
 170 | static BAR: u32 = 0;
     | ^^^^^^^^^^^^^^^^^^^^
@@ -279,7 +279,7 @@ error: missing documentation for a static
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a static
-   --> examples/missing-doc.rs:177:1
+   --> missing-doc.rs:177:1
     |
 177 | pub static BAR4: u32 = 0;
     | ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -287,7 +287,7 @@ error: missing documentation for a static
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a module
-   --> examples/missing-doc.rs:180:1
+   --> missing-doc.rs:180:1
     |
 180 | / mod internal_impl {
 181 | |     /// dox
@@ -301,7 +301,7 @@ error: missing documentation for a module
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a function
-   --> examples/missing-doc.rs:183:5
+   --> missing-doc.rs:183:5
     |
 183 |     pub fn undocumented1() {}
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -309,7 +309,7 @@ error: missing documentation for a function
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a function
-   --> examples/missing-doc.rs:184:5
+   --> missing-doc.rs:184:5
     |
 184 |     pub fn undocumented2() {}
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -317,7 +317,7 @@ error: missing documentation for a function
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a function
-   --> examples/missing-doc.rs:185:5
+   --> missing-doc.rs:185:5
     |
 185 |     fn undocumented3() {}
     |     ^^^^^^^^^^^^^^^^^^^^^
@@ -325,7 +325,7 @@ error: missing documentation for a function
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a function
-   --> examples/missing-doc.rs:190:9
+   --> missing-doc.rs:190:9
     |
 190 |         pub fn also_undocumented1() {}
     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -333,7 +333,7 @@ error: missing documentation for a function
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a function
-   --> examples/missing-doc.rs:191:9
+   --> missing-doc.rs:191:9
     |
 191 |         fn also_undocumented2() {}
     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -341,7 +341,7 @@ error: missing documentation for a function
     = note: `-D missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a function
-   --> examples/missing-doc.rs:202:1
+   --> missing-doc.rs:202:1
     |
 202 | fn main() {}
     | ^^^^^^^^^^^^

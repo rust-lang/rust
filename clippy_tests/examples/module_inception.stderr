@@ -1,5 +1,5 @@
 error: module has the same name as its containing module
- --> examples/module_inception.rs:7:9
+ --> module_inception.rs:7:9
   |
 7 | /         mod bar {
 8 | |             mod foo {}
@@ -9,7 +9,7 @@ error: module has the same name as its containing module
   = note: `-D module-inception` implied by `-D warnings`
 
 error: module has the same name as its containing module
-  --> examples/module_inception.rs:12:5
+  --> module_inception.rs:12:5
    |
 12 | /     mod foo {
 13 | |         mod bar {}

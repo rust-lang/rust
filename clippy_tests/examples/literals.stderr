@@ -1,5 +1,5 @@
 error: inconsistent casing in hexadecimal literal
-  --> examples/literals.rs:14:17
+  --> literals.rs:14:17
    |
 14 |     let fail1 = 0xabCD;
    |                 ^^^^^^
@@ -7,7 +7,7 @@ error: inconsistent casing in hexadecimal literal
    = note: `-D mixed-case-hex-literals` implied by `-D warnings`
 
 error: inconsistent casing in hexadecimal literal
-  --> examples/literals.rs:15:17
+  --> literals.rs:15:17
    |
 15 |     let fail2 = 0xabCD_u32;
    |                 ^^^^^^^^^^
@@ -15,7 +15,7 @@ error: inconsistent casing in hexadecimal literal
    = note: `-D mixed-case-hex-literals` implied by `-D warnings`
 
 error: inconsistent casing in hexadecimal literal
-  --> examples/literals.rs:16:17
+  --> literals.rs:16:17
    |
 16 |     let fail2 = 0xabCD_isize;
    |                 ^^^^^^^^^^^^
@@ -23,7 +23,7 @@ error: inconsistent casing in hexadecimal literal
    = note: `-D mixed-case-hex-literals` implied by `-D warnings`
 
 error: integer type suffix should be separated by an underscore
-  --> examples/literals.rs:21:17
+  --> literals.rs:21:17
    |
 21 |     let fail3 = 1234i32;
    |                 ^^^^^^^
@@ -31,7 +31,7 @@ error: integer type suffix should be separated by an underscore
    = note: `-D unseparated-literal-suffix` implied by `-D warnings`
 
 error: integer type suffix should be separated by an underscore
-  --> examples/literals.rs:22:17
+  --> literals.rs:22:17
    |
 22 |     let fail4 = 1234u32;
    |                 ^^^^^^^
@@ -39,7 +39,7 @@ error: integer type suffix should be separated by an underscore
    = note: `-D unseparated-literal-suffix` implied by `-D warnings`
 
 error: integer type suffix should be separated by an underscore
-  --> examples/literals.rs:23:17
+  --> literals.rs:23:17
    |
 23 |     let fail5 = 1234isize;
    |                 ^^^^^^^^^
@@ -47,7 +47,7 @@ error: integer type suffix should be separated by an underscore
    = note: `-D unseparated-literal-suffix` implied by `-D warnings`
 
 error: integer type suffix should be separated by an underscore
-  --> examples/literals.rs:24:17
+  --> literals.rs:24:17
    |
 24 |     let fail6 = 1234usize;
    |                 ^^^^^^^^^
@@ -55,7 +55,7 @@ error: integer type suffix should be separated by an underscore
    = note: `-D unseparated-literal-suffix` implied by `-D warnings`
 
 error: float type suffix should be separated by an underscore
-  --> examples/literals.rs:25:17
+  --> literals.rs:25:17
    |
 25 |     let fail7 = 1.5f32;
    |                 ^^^^^^
@@ -63,7 +63,7 @@ error: float type suffix should be separated by an underscore
    = note: `-D unseparated-literal-suffix` implied by `-D warnings`
 
 error: this is a decimal constant
-  --> examples/literals.rs:29:17
+  --> literals.rs:29:17
    |
 29 |     let fail8 = 0123;
    |                 ^^^^

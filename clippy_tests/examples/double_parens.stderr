@@ -1,5 +1,5 @@
 error: Consider removing unnecessary double parentheses
-  --> examples/double_parens.rs:16:5
+  --> double_parens.rs:16:5
    |
 16 |     ((0))
    |     ^^^^^
@@ -7,7 +7,7 @@ error: Consider removing unnecessary double parentheses
    = note: `-D double-parens` implied by `-D warnings`
 
 error: Consider removing unnecessary double parentheses
-  --> examples/double_parens.rs:20:14
+  --> double_parens.rs:20:14
    |
 20 |     dummy_fn((0));
    |              ^^^
@@ -15,7 +15,7 @@ error: Consider removing unnecessary double parentheses
    = note: `-D double-parens` implied by `-D warnings`
 
 error: Consider removing unnecessary double parentheses
-  --> examples/double_parens.rs:24:20
+  --> double_parens.rs:24:20
    |
 24 |     x.dummy_method((0));
    |                    ^^^
@@ -23,7 +23,7 @@ error: Consider removing unnecessary double parentheses
    = note: `-D double-parens` implied by `-D warnings`
 
 error: Consider removing unnecessary double parentheses
-  --> examples/double_parens.rs:28:5
+  --> double_parens.rs:28:5
    |
 28 |     ((1, 2))
    |     ^^^^^^^^
@@ -31,7 +31,7 @@ error: Consider removing unnecessary double parentheses
    = note: `-D double-parens` implied by `-D warnings`
 
 error: Consider removing unnecessary double parentheses
-  --> examples/double_parens.rs:32:5
+  --> double_parens.rs:32:5
    |
 32 |     (())
    |     ^^^^

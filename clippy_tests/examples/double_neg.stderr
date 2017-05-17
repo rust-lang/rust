@@ -1,5 +1,5 @@
 error: `--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op
- --> examples/double_neg.rs:9:5
+ --> double_neg.rs:9:5
   |
 9 |     --x;
   |     ^^^

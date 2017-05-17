@@ -1,5 +1,5 @@
 error: Consider using an AtomicBool instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
- --> examples/mutex_atomic.rs:9:5
+ --> mutex_atomic.rs:9:5
   |
 9 |     Mutex::new(true);
   |     ^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ error: Consider using an AtomicBool instead of a Mutex here. If you just want th
   = note: `-D mutex-atomic` implied by `-D warnings`
 
 error: Consider using an AtomicUsize instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
-  --> examples/mutex_atomic.rs:10:5
+  --> mutex_atomic.rs:10:5
    |
 10 |     Mutex::new(5usize);
    |     ^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ error: Consider using an AtomicUsize instead of a Mutex here. If you just want t
    = note: `-D mutex-atomic` implied by `-D warnings`
 
 error: Consider using an AtomicIsize instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
-  --> examples/mutex_atomic.rs:11:5
+  --> mutex_atomic.rs:11:5
    |
 11 |     Mutex::new(9isize);
    |     ^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ error: Consider using an AtomicIsize instead of a Mutex here. If you just want t
    = note: `-D mutex-atomic` implied by `-D warnings`
 
 error: Consider using an AtomicPtr instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
-  --> examples/mutex_atomic.rs:13:5
+  --> mutex_atomic.rs:13:5
    |
 13 |     Mutex::new(&x as *const u32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ error: Consider using an AtomicPtr instead of a Mutex here. If you just want the
    = note: `-D mutex-atomic` implied by `-D warnings`
 
 error: Consider using an AtomicPtr instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
-  --> examples/mutex_atomic.rs:14:5
+  --> mutex_atomic.rs:14:5
    |
 14 |     Mutex::new(&mut x as *mut u32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ error: Consider using an AtomicPtr instead of a Mutex here. If you just want the
    = note: `-D mutex-atomic` implied by `-D warnings`
 
 error: Consider using an AtomicUsize instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
-  --> examples/mutex_atomic.rs:15:5
+  --> mutex_atomic.rs:15:5
    |
 15 |     Mutex::new(0u32);
    |     ^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ error: Consider using an AtomicUsize instead of a Mutex here. If you just want t
    = note: `-D mutex-integer` implied by `-D warnings`
 
 error: Consider using an AtomicIsize instead of a Mutex here. If you just want the locking behaviour and not the internal type, consider using Mutex<()>.
-  --> examples/mutex_atomic.rs:16:5
+  --> mutex_atomic.rs:16:5
    |
 16 |     Mutex::new(0i32);
    |     ^^^^^^^^^^^^^^^^

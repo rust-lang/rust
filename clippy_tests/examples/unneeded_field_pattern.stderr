@@ -1,5 +1,5 @@
 error: You matched a field with a wildcard pattern. Consider using `..` instead
-  --> examples/unneeded_field_pattern.rs:17:15
+  --> unneeded_field_pattern.rs:17:15
    |
 17 |         Foo { a: _, b: 0, .. } => {}
    |               ^^^^
@@ -8,7 +8,7 @@ error: You matched a field with a wildcard pattern. Consider using `..` instead
    = help: Try with `Foo { b: 0, .. }`
 
 error: All the struct fields are matched to a wildcard pattern, consider using `..`.
-  --> examples/unneeded_field_pattern.rs:19:9
+  --> unneeded_field_pattern.rs:19:9
    |
 19 |         Foo { a: _, b: _, c: _ } => {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^

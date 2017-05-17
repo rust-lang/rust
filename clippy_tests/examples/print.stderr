@@ -1,5 +1,5 @@
 error: use of `Debug`-based formatting
-  --> examples/print.rs:12:27
+  --> print.rs:12:27
    |
 12 |         write!(f, "{:?}", 43.1415)
    |                           ^^^^^^^
@@ -7,7 +7,7 @@ error: use of `Debug`-based formatting
    = note: `-D use-debug` implied by `-D warnings`
 
 error: use of `println!`
-  --> examples/print.rs:24:5
+  --> print.rs:24:5
    |
 24 |     println!("Hello");
    |     ^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ error: use of `println!`
    = note: `-D print-stdout` implied by `-D warnings`
 
 error: use of `print!`
-  --> examples/print.rs:25:5
+  --> print.rs:25:5
    |
 25 |     print!("Hello");
    |     ^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ error: use of `print!`
    = note: `-D print-stdout` implied by `-D warnings`
 
 error: use of `print!`
-  --> examples/print.rs:27:5
+  --> print.rs:27:5
    |
 27 |     print!("Hello {}", "World");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ error: use of `print!`
    = note: `-D print-stdout` implied by `-D warnings`
 
 error: use of `print!`
-  --> examples/print.rs:29:5
+  --> print.rs:29:5
    |
 29 |     print!("Hello {:?}", "World");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ error: use of `print!`
    = note: `-D print-stdout` implied by `-D warnings`
 
 error: use of `Debug`-based formatting
-  --> examples/print.rs:29:26
+  --> print.rs:29:26
    |
 29 |     print!("Hello {:?}", "World");
    |                          ^^^^^^^
@@ -47,7 +47,7 @@ error: use of `Debug`-based formatting
    = note: `-D use-debug` implied by `-D warnings`
 
 error: use of `print!`
-  --> examples/print.rs:31:5
+  --> print.rs:31:5
    |
 31 |     print!("Hello {:#?}", "#orld");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -55,7 +55,7 @@ error: use of `print!`
    = note: `-D print-stdout` implied by `-D warnings`
 
 error: use of `Debug`-based formatting
-  --> examples/print.rs:31:27
+  --> print.rs:31:27
    |
 31 |     print!("Hello {:#?}", "#orld");
    |                           ^^^^^^^

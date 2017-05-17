@@ -1,5 +1,5 @@
 error: useless use of `format!`
- --> examples/format.rs:6:5
+ --> format.rs:6:5
   |
 6 |     format!("foo");
   |     ^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ error: useless use of `format!`
   = note: `-D useless-format` implied by `-D warnings`
 
 error: useless use of `format!`
- --> examples/format.rs:8:5
+ --> format.rs:8:5
   |
 8 |     format!("{}", "foo");
   |     ^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ error: useless use of `format!`
   = note: `-D useless-format` implied by `-D warnings`
 
 error: useless use of `format!`
-  --> examples/format.rs:15:5
+  --> format.rs:15:5
    |
 15 |     format!("{}", arg);
    |     ^^^^^^^^^^^^^^^^^^^

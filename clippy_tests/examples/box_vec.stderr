@@ -1,5 +1,5 @@
 error: you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`
-  --> examples/box_vec.rs:17:18
+  --> box_vec.rs:17:18
    |
 17 | pub fn test(foo: Box<Vec<bool>>) {
    |                  ^^^^^^^^^^^^^^

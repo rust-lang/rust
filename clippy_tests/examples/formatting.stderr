@@ -1,5 +1,5 @@
 error: this looks like an `else if` but the `else` is missing
-  --> examples/formatting.rs:15:6
+  --> formatting.rs:15:6
    |
 15 |     } if foo() {
    |      ^
@@ -8,7 +8,7 @@ error: this looks like an `else if` but the `else` is missing
    = note: to remove this lint, add the missing `else` or add a new line before the second `if`
 
 error: this looks like an `else if` but the `else` is missing
-  --> examples/formatting.rs:22:10
+  --> formatting.rs:22:10
    |
 22 |         } if foo() {
    |          ^
@@ -17,7 +17,7 @@ error: this looks like an `else if` but the `else` is missing
    = note: to remove this lint, add the missing `else` or add a new line before the second `if`
 
 error: this looks like an `else if` but the `else` is missing
-  --> examples/formatting.rs:30:10
+  --> formatting.rs:30:10
    |
 30 |         } if foo() {
    |          ^
@@ -26,7 +26,7 @@ error: this looks like an `else if` but the `else` is missing
    = note: to remove this lint, add the missing `else` or add a new line before the second `if`
 
 error: this is an `else if` but the formatting might hide it
-  --> examples/formatting.rs:39:6
+  --> formatting.rs:39:6
    |
 39 |       } else
    |  ______^
@@ -37,7 +37,7 @@ error: this is an `else if` but the formatting might hide it
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
 
 error: this is an `else if` but the formatting might hide it
-  --> examples/formatting.rs:44:6
+  --> formatting.rs:44:6
    |
 44 |       }
    |  ______^
@@ -49,7 +49,7 @@ error: this is an `else if` but the formatting might hide it
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
 
 error: this looks like you are trying to use `.. -= ..`, but you really are doing `.. = (- ..)`
-  --> examples/formatting.rs:71:6
+  --> formatting.rs:71:6
    |
 71 |     a =- 35;
    |      ^^^^
@@ -58,7 +58,7 @@ error: this looks like you are trying to use `.. -= ..`, but you really are doin
    = note: to remove this lint, use either `-=` or `= -`
 
 error: this looks like you are trying to use `.. *= ..`, but you really are doing `.. = (* ..)`
-  --> examples/formatting.rs:72:6
+  --> formatting.rs:72:6
    |
 72 |     a =* &191;
    |      ^^^^
@@ -67,7 +67,7 @@ error: this looks like you are trying to use `.. *= ..`, but you really are doin
    = note: to remove this lint, use either `*=` or `= *`
 
 error: this looks like you are trying to use `.. != ..`, but you really are doing `.. = (! ..)`
-  --> examples/formatting.rs:75:6
+  --> formatting.rs:75:6
    |
 75 |     b =! false;
    |      ^^^^
@@ -76,7 +76,7 @@ error: this looks like you are trying to use `.. != ..`, but you really are doin
    = note: to remove this lint, use either `!=` or `= !`
 
 error: possibly missing a comma here
-  --> examples/formatting.rs:84:19
+  --> formatting.rs:84:19
    |
 84 |         -1, -2, -3 // <= no comma here
    |                   ^
@@ -85,7 +85,7 @@ error: possibly missing a comma here
    = note: to remove this lint, add a comma or write the expr in a single line
 
 error: possibly missing a comma here
-  --> examples/formatting.rs:88:19
+  --> formatting.rs:88:19
    |
 88 |         -1, -2, -3 // <= no comma here
    |                   ^

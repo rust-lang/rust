@@ -1,5 +1,5 @@
 error: don't use glob imports for enum variants
- --> examples/enum_glob_use.rs:6:1
+ --> enum_glob_use.rs:6:1
   |
 6 | use std::cmp::Ordering::*;
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ error: don't use glob imports for enum variants
   = note: `-D enum-glob-use` implied by `-D warnings`
 
 error: don't use glob imports for enum variants
-  --> examples/enum_glob_use.rs:12:1
+  --> enum_glob_use.rs:12:1
    |
 12 | use self::Enum::*;
    | ^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0463]: can't find crate for `clippy_lints`
- --> examples/useless_attribute.rs:6:1
+ --> useless_attribute.rs:6:1
   |
 6 | extern crate clippy_lints;
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ can't find crate

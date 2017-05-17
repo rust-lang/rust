@@ -1,5 +1,5 @@
 error: this creates an owned instance just for comparison
- --> examples/cmp_owned.rs:8:14
+ --> cmp_owned.rs:8:14
   |
 8 |         x != "foo".to_string();
   |              ^^^^^^^^^^^^^^^^^ help: try `"foo"`
@@ -7,7 +7,7 @@ error: this creates an owned instance just for comparison
   = note: `-D cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
-  --> examples/cmp_owned.rs:10:9
+  --> cmp_owned.rs:10:9
    |
 10 |         "foo".to_string() != x;
    |         ^^^^^^^^^^^^^^^^^ help: try `"foo"`
@@ -15,7 +15,7 @@ error: this creates an owned instance just for comparison
    = note: `-D cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
-  --> examples/cmp_owned.rs:17:10
+  --> cmp_owned.rs:17:10
    |
 17 |     x != "foo".to_owned();
    |          ^^^^^^^^^^^^^^^^ help: try `"foo"`
@@ -23,7 +23,7 @@ error: this creates an owned instance just for comparison
    = note: `-D cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
-  --> examples/cmp_owned.rs:19:10
+  --> cmp_owned.rs:19:10
    |
 19 |     x != String::from("foo");
    |          ^^^^^^^^^^^^^^^^^^^ help: try `"foo"`
@@ -31,7 +31,7 @@ error: this creates an owned instance just for comparison
    = note: `-D cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
-  --> examples/cmp_owned.rs:23:5
+  --> cmp_owned.rs:23:5
    |
 23 |     Foo.to_owned() == Foo;
    |     ^^^^^^^^^^^^^^ help: try `Foo`
@@ -39,7 +39,7 @@ error: this creates an owned instance just for comparison
    = note: `-D cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
-  --> examples/cmp_owned.rs:30:9
+  --> cmp_owned.rs:30:9
    |
 30 |         self.to_owned() == *other
    |         ^^^^^^^^^^^^^^^ try calling implementing the comparison without allocating

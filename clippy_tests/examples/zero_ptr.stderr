@@ -1,5 +1,5 @@
 error: `0 as *const _` detected. Consider using `ptr::null()`
- --> examples/zero_ptr.rs:6:13
+ --> zero_ptr.rs:6:13
   |
 6 |     let x = 0 as *const usize;
   |             ^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ error: `0 as *const _` detected. Consider using `ptr::null()`
   = note: `-D zero-ptr` implied by `-D warnings`
 
 error: `0 as *mut _` detected. Consider using `ptr::null_mut()`
- --> examples/zero_ptr.rs:7:13
+ --> zero_ptr.rs:7:13
   |
 7 |     let y = 0 as *mut f64;
   |             ^^^^^^^^^^^^^

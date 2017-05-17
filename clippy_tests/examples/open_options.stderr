@@ -1,5 +1,5 @@
 error: file opened with "truncate" and "read"
- --> examples/open_options.rs:8:5
+ --> open_options.rs:8:5
   |
 8 |     OpenOptions::new().read(true).truncate(true).open("foo.txt");
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ error: file opened with "truncate" and "read"
   = note: `-D nonsensical-open-options` implied by `-D warnings`
 
 error: file opened with "append" and "truncate"
- --> examples/open_options.rs:9:5
+ --> open_options.rs:9:5
   |
 9 |     OpenOptions::new().append(true).truncate(true).open("foo.txt");
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ error: file opened with "append" and "truncate"
   = note: `-D nonsensical-open-options` implied by `-D warnings`
 
 error: the method "read" is called more than once
-  --> examples/open_options.rs:11:5
+  --> open_options.rs:11:5
    |
 11 |     OpenOptions::new().read(true).read(false).open("foo.txt");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ error: the method "read" is called more than once
    = note: `-D nonsensical-open-options` implied by `-D warnings`
 
 error: the method "create" is called more than once
-  --> examples/open_options.rs:12:5
+  --> open_options.rs:12:5
    |
 12 |     OpenOptions::new().create(true).create(false).open("foo.txt");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ error: the method "create" is called more than once
    = note: `-D nonsensical-open-options` implied by `-D warnings`
 
 error: the method "write" is called more than once
-  --> examples/open_options.rs:13:5
+  --> open_options.rs:13:5
    |
 13 |     OpenOptions::new().write(true).write(false).open("foo.txt");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ error: the method "write" is called more than once
    = note: `-D nonsensical-open-options` implied by `-D warnings`
 
 error: the method "append" is called more than once
-  --> examples/open_options.rs:14:5
+  --> open_options.rs:14:5
    |
 14 |     OpenOptions::new().append(true).append(false).open("foo.txt");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ error: the method "append" is called more than once
    = note: `-D nonsensical-open-options` implied by `-D warnings`
 
 error: the method "truncate" is called more than once
-  --> examples/open_options.rs:15:5
+  --> open_options.rs:15:5
    |
 15 |     OpenOptions::new().truncate(true).truncate(false).open("foo.txt");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: Unnecessary boolean `not` operation
-  --> examples/if_not_else.rs:9:5
+  --> if_not_else.rs:9:5
    |
 9  | /     if !bla() {
 10 | |         println!("Bugs");
@@ -12,7 +12,7 @@ error: Unnecessary boolean `not` operation
    = help: remove the `!` and swap the blocks of the if/else
 
 error: Unnecessary `!=` operation
-  --> examples/if_not_else.rs:14:5
+  --> if_not_else.rs:14:5
    |
 14 | /     if 4 != 5 {
 15 | |         println!("Bugs");

@@ -1,5 +1,5 @@
 error: handle written amount returned or use `Write::write_all` instead
-  --> examples/unused_io_amount.rs:11:5
+  --> unused_io_amount.rs:11:5
    |
 11 |     try!(s.write(b"test"));
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ error: handle written amount returned or use `Write::write_all` instead
    = note: this error originates in a macro outside of the current crate
 
 error: handle read amount returned or use `Read::read_exact` instead
-  --> examples/unused_io_amount.rs:13:5
+  --> unused_io_amount.rs:13:5
    |
 13 |     try!(s.read(&mut buf));
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ error: handle read amount returned or use `Read::read_exact` instead
    = note: this error originates in a macro outside of the current crate
 
 error: handle written amount returned or use `Write::write_all` instead
-  --> examples/unused_io_amount.rs:18:5
+  --> unused_io_amount.rs:18:5
    |
 18 |     s.write(b"test")?;
    |     ^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ error: handle written amount returned or use `Write::write_all` instead
    = note: `-D unused-io-amount` implied by `-D warnings`
 
 error: handle read amount returned or use `Read::read_exact` instead
-  --> examples/unused_io_amount.rs:20:5
+  --> unused_io_amount.rs:20:5
    |
 20 |     s.read(&mut buf)?;
    |     ^^^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ error: handle read amount returned or use `Read::read_exact` instead
    = note: `-D unused-io-amount` implied by `-D warnings`
 
 error: handle written amount returned or use `Write::write_all` instead
-  --> examples/unused_io_amount.rs:25:5
+  --> unused_io_amount.rs:25:5
    |
 25 |     s.write(b"test").unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ error: handle written amount returned or use `Write::write_all` instead
    = note: `-D unused-io-amount` implied by `-D warnings`
 
 error: handle read amount returned or use `Read::read_exact` instead
-  --> examples/unused_io_amount.rs:27:5
+  --> unused_io_amount.rs:27:5
    |
 27 |     s.read(&mut buf).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^

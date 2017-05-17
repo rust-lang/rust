@@ -1,5 +1,5 @@
 error: Matching on `Some` with `ok()` is redundant
-  --> examples/ok_if_let.rs:7:5
+  --> ok_if_let.rs:7:5
    |
 7  | /     if let Some(y) = x.parse().ok() {
 8  | |         y

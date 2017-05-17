@@ -1,5 +1,5 @@
 error: Clike enum variant discriminant is not portable to 32-bit targets
-  --> examples/enums_clike.rs:10:5
+  --> enums_clike.rs:10:5
    |
 10 |     X = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ error: Clike enum variant discriminant is not portable to 32-bit targets
    = note: `-D enum-clike-unportable-variant` implied by `-D warnings`
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
-  --> examples/enums_clike.rs:17:5
+  --> enums_clike.rs:17:5
    |
 17 |     X = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ error: Clike enum variant discriminant is not portable to 32-bit targets
    = note: `-D enum-clike-unportable-variant` implied by `-D warnings`
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
-  --> examples/enums_clike.rs:20:5
+  --> enums_clike.rs:20:5
    |
 20 |     A = 0xFFFF_FFFF,
    |     ^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ error: Clike enum variant discriminant is not portable to 32-bit targets
    = note: `-D enum-clike-unportable-variant` implied by `-D warnings`
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
-  --> examples/enums_clike.rs:27:5
+  --> enums_clike.rs:27:5
    |
 27 |     Z = 0xFFFF_FFFF,
    |     ^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ error: Clike enum variant discriminant is not portable to 32-bit targets
    = note: `-D enum-clike-unportable-variant` implied by `-D warnings`
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
-  --> examples/enums_clike.rs:28:5
+  --> enums_clike.rs:28:5
    |
 28 |     A = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ error: Clike enum variant discriminant is not portable to 32-bit targets
    = note: `-D enum-clike-unportable-variant` implied by `-D warnings`
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
-  --> examples/enums_clike.rs:30:5
+  --> enums_clike.rs:30:5
    |
 30 |     C = (std::i32::MIN as isize) - 1,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ error: Clike enum variant discriminant is not portable to 32-bit targets
    = note: `-D enum-clike-unportable-variant` implied by `-D warnings`
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
-  --> examples/enums_clike.rs:36:5
+  --> enums_clike.rs:36:5
    |
 36 |     Z = 0xFFFF_FFFF,
    |     ^^^^^^^^^^^^^^^
@@ -55,7 +55,7 @@ error: Clike enum variant discriminant is not portable to 32-bit targets
    = note: `-D enum-clike-unportable-variant` implied by `-D warnings`
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
-  --> examples/enums_clike.rs:37:5
+  --> enums_clike.rs:37:5
    |
 37 |     A = 0x1_0000_0000,
    |     ^^^^^^^^^^^^^^^^^

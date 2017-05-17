@@ -1,5 +1,5 @@
 error: generally you want to avoid `&mut &mut _` if possible
-  --> examples/mut_mut.rs:10:12
+  --> mut_mut.rs:10:12
    |
 10 | fn fun(x : &mut &mut u32) -> bool {
    |            ^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ error: generally you want to avoid `&mut &mut _` if possible
    = note: `-D mut-mut` implied by `-D warnings`
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> examples/mut_mut.rs:24:17
+  --> mut_mut.rs:24:17
    |
 24 |     let mut x = &mut &mut 1u32;
    |                 ^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ error: generally you want to avoid `&mut &mut _` if possible
    = note: `-D mut-mut` implied by `-D warnings`
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> examples/mut_mut.rs:19:20
+  --> mut_mut.rs:19:20
    |
 19 |     ($p:expr) => { &mut $p }
    |                    ^^^^^^^
@@ -26,7 +26,7 @@ error: generally you want to avoid `&mut &mut _` if possible
    = note: `-D mut-mut` implied by `-D warnings`
 
 error: this expression mutably borrows a mutable reference. Consider reborrowing
-  --> examples/mut_mut.rs:26:21
+  --> mut_mut.rs:26:21
    |
 26 |         let mut y = &mut x;
    |                     ^^^^^^
@@ -34,7 +34,7 @@ error: this expression mutably borrows a mutable reference. Consider reborrowing
    = note: `-D mut-mut` implied by `-D warnings`
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> examples/mut_mut.rs:30:17
+  --> mut_mut.rs:30:17
    |
 30 |         let y : &mut &mut u32 = &mut &mut 2;
    |                 ^^^^^^^^^^^^^
@@ -42,7 +42,7 @@ error: generally you want to avoid `&mut &mut _` if possible
    = note: `-D mut-mut` implied by `-D warnings`
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> examples/mut_mut.rs:30:33
+  --> mut_mut.rs:30:33
    |
 30 |         let y : &mut &mut u32 = &mut &mut 2;
    |                                 ^^^^^^^^^^^
@@ -50,7 +50,7 @@ error: generally you want to avoid `&mut &mut _` if possible
    = note: `-D mut-mut` implied by `-D warnings`
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> examples/mut_mut.rs:30:17
+  --> mut_mut.rs:30:17
    |
 30 |         let y : &mut &mut u32 = &mut &mut 2;
    |                 ^^^^^^^^^^^^^
@@ -58,7 +58,7 @@ error: generally you want to avoid `&mut &mut _` if possible
    = note: `-D mut-mut` implied by `-D warnings`
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> examples/mut_mut.rs:35:17
+  --> mut_mut.rs:35:17
    |
 35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
    |                 ^^^^^^^^^^^^^^^^^^
@@ -66,7 +66,7 @@ error: generally you want to avoid `&mut &mut _` if possible
    = note: `-D mut-mut` implied by `-D warnings`
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> examples/mut_mut.rs:35:22
+  --> mut_mut.rs:35:22
    |
 35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
    |                      ^^^^^^^^^^^^^
@@ -74,7 +74,7 @@ error: generally you want to avoid `&mut &mut _` if possible
    = note: `-D mut-mut` implied by `-D warnings`
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> examples/mut_mut.rs:35:38
+  --> mut_mut.rs:35:38
    |
 35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
    |                                      ^^^^^^^^^^^^^^^^
@@ -82,7 +82,7 @@ error: generally you want to avoid `&mut &mut _` if possible
    = note: `-D mut-mut` implied by `-D warnings`
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> examples/mut_mut.rs:35:17
+  --> mut_mut.rs:35:17
    |
 35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
    |                 ^^^^^^^^^^^^^^^^^^
@@ -90,7 +90,7 @@ error: generally you want to avoid `&mut &mut _` if possible
    = note: `-D mut-mut` implied by `-D warnings`
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> examples/mut_mut.rs:35:22
+  --> mut_mut.rs:35:22
    |
 35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
    |                      ^^^^^^^^^^^^^
@@ -98,7 +98,7 @@ error: generally you want to avoid `&mut &mut _` if possible
    = note: `-D mut-mut` implied by `-D warnings`
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> examples/mut_mut.rs:35:22
+  --> mut_mut.rs:35:22
    |
 35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
    |                      ^^^^^^^^^^^^^

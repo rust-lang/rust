@@ -1,5 +1,5 @@
 error: integer arithmetic detected
- --> examples/arithmetic.rs:8:5
+ --> arithmetic.rs:8:5
   |
 8 |     1 + i;
   |     ^^^^^
@@ -7,7 +7,7 @@ error: integer arithmetic detected
   = note: `-D integer-arithmetic` implied by `-D warnings`
 
 error: integer arithmetic detected
- --> examples/arithmetic.rs:9:5
+ --> arithmetic.rs:9:5
   |
 9 |     i * 2;
   |     ^^^^^
@@ -15,7 +15,7 @@ error: integer arithmetic detected
   = note: `-D integer-arithmetic` implied by `-D warnings`
 
 error: integer arithmetic detected
-  --> examples/arithmetic.rs:10:5
+  --> arithmetic.rs:10:5
    |
 10 | /     1 %
 11 | |     i / 2; // no error, this is part of the expression in the preceding line
@@ -24,7 +24,7 @@ error: integer arithmetic detected
    = note: `-D integer-arithmetic` implied by `-D warnings`
 
 error: integer arithmetic detected
-  --> examples/arithmetic.rs:12:5
+  --> arithmetic.rs:12:5
    |
 12 |     i - 2 + 2 - i;
    |     ^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ error: integer arithmetic detected
    = note: `-D integer-arithmetic` implied by `-D warnings`
 
 error: integer arithmetic detected
-  --> examples/arithmetic.rs:13:5
+  --> arithmetic.rs:13:5
    |
 13 |     -i;
    |     ^^
@@ -40,7 +40,7 @@ error: integer arithmetic detected
    = note: `-D integer-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
-  --> examples/arithmetic.rs:23:5
+  --> arithmetic.rs:23:5
    |
 23 |     f * 2.0;
    |     ^^^^^^^
@@ -48,7 +48,7 @@ error: floating-point arithmetic detected
    = note: `-D float-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
-  --> examples/arithmetic.rs:25:5
+  --> arithmetic.rs:25:5
    |
 25 |     1.0 + f;
    |     ^^^^^^^
@@ -56,7 +56,7 @@ error: floating-point arithmetic detected
    = note: `-D float-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
-  --> examples/arithmetic.rs:26:5
+  --> arithmetic.rs:26:5
    |
 26 |     f * 2.0;
    |     ^^^^^^^
@@ -64,7 +64,7 @@ error: floating-point arithmetic detected
    = note: `-D float-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
-  --> examples/arithmetic.rs:27:5
+  --> arithmetic.rs:27:5
    |
 27 |     f / 2.0;
    |     ^^^^^^^
@@ -72,7 +72,7 @@ error: floating-point arithmetic detected
    = note: `-D float-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
-  --> examples/arithmetic.rs:28:5
+  --> arithmetic.rs:28:5
    |
 28 |     f - 2.0 * 4.2;
    |     ^^^^^^^^^^^^^
@@ -80,7 +80,7 @@ error: floating-point arithmetic detected
    = note: `-D float-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
-  --> examples/arithmetic.rs:29:5
+  --> arithmetic.rs:29:5
    |
 29 |     -f;
    |     ^^

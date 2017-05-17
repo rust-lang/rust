@@ -1,5 +1,5 @@
 error: Variant name ends with the enum's name
-  --> examples/enum_variants.rs:14:5
+  --> enum_variants.rs:14:5
    |
 14 |     cFoo,
    |     ^^^^
@@ -7,7 +7,7 @@ error: Variant name ends with the enum's name
    = note: `-D enum-variant-names` implied by `-D warnings`
 
 error: Variant name starts with the enum's name
-  --> examples/enum_variants.rs:25:5
+  --> enum_variants.rs:25:5
    |
 25 |     FoodGood,
    |     ^^^^^^^^
@@ -15,7 +15,7 @@ error: Variant name starts with the enum's name
    = note: `-D enum-variant-names` implied by `-D warnings`
 
 error: Variant name starts with the enum's name
-  --> examples/enum_variants.rs:26:5
+  --> enum_variants.rs:26:5
    |
 26 |     FoodMiddle,
    |     ^^^^^^^^^^
@@ -23,7 +23,7 @@ error: Variant name starts with the enum's name
    = note: `-D enum-variant-names` implied by `-D warnings`
 
 error: Variant name starts with the enum's name
-  --> examples/enum_variants.rs:27:5
+  --> enum_variants.rs:27:5
    |
 27 |     FoodBad,
    |     ^^^^^^^
@@ -31,7 +31,7 @@ error: Variant name starts with the enum's name
    = note: `-D enum-variant-names` implied by `-D warnings`
 
 error: All variants have the same prefix: `Food`
-  --> examples/enum_variants.rs:24:1
+  --> enum_variants.rs:24:1
    |
 24 | / enum Food {
 25 | |     FoodGood,
@@ -44,7 +44,7 @@ error: All variants have the same prefix: `Food`
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: All variants have the same prefix: `CallType`
-  --> examples/enum_variants.rs:34:1
+  --> enum_variants.rs:34:1
    |
 34 | / enum BadCallType {
 35 | |     CallTypeCall,
@@ -57,7 +57,7 @@ error: All variants have the same prefix: `CallType`
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: All variants have the same prefix: `Constant`
-  --> examples/enum_variants.rs:45:1
+  --> enum_variants.rs:45:1
    |
 45 | / enum Consts {
 46 | |     ConstantInt,
@@ -70,7 +70,7 @@ error: All variants have the same prefix: `Constant`
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: All variants have the same prefix: `With`
-  --> examples/enum_variants.rs:78:1
+  --> enum_variants.rs:78:1
    |
 78 | / enum Seallll {
 79 | |     WithOutCake,
@@ -83,7 +83,7 @@ error: All variants have the same prefix: `With`
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: All variants have the same prefix: `Prefix`
-  --> examples/enum_variants.rs:84:1
+  --> enum_variants.rs:84:1
    |
 84 | / enum NonCaps {
 85 | |     Prefix的,
@@ -96,7 +96,7 @@ error: All variants have the same prefix: `Prefix`
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: All variants have the same prefix: `With`
-  --> examples/enum_variants.rs:90:1
+  --> enum_variants.rs:90:1
    |
 90 | / pub enum PubSeall {
 91 | |     WithOutCake,

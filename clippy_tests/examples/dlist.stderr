@@ -1,5 +1,5 @@
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
-  --> examples/dlist.rs:13:16
+  --> dlist.rs:13:16
    |
 13 |     type Baz = LinkedList<u8>;
    |                ^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ error: I see you're using a LinkedList! Perhaps you meant some other data struct
    = help: a VecDeque might work
 
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
-  --> examples/dlist.rs:14:12
+  --> dlist.rs:14:12
    |
 14 |     fn foo(LinkedList<u8>);
    |            ^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ error: I see you're using a LinkedList! Perhaps you meant some other data struct
    = help: a VecDeque might work
 
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
-  --> examples/dlist.rs:15:24
+  --> dlist.rs:15:24
    |
 15 |     const BAR : Option<LinkedList<u8>>;
    |                        ^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ error: I see you're using a LinkedList! Perhaps you meant some other data struct
    = help: a VecDeque might work
 
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
-  --> examples/dlist.rs:26:15
+  --> dlist.rs:26:15
    |
 26 |     fn foo(_: LinkedList<u8>) {}
    |               ^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ error: I see you're using a LinkedList! Perhaps you meant some other data struct
    = help: a VecDeque might work
 
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
-  --> examples/dlist.rs:29:39
+  --> dlist.rs:29:39
    |
 29 | pub fn test(my_favourite_linked_list: LinkedList<u8>) {
    |                                       ^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ error: I see you're using a LinkedList! Perhaps you meant some other data struct
    = help: a VecDeque might work
 
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
-  --> examples/dlist.rs:33:29
+  --> dlist.rs:33:29
    |
 33 | pub fn test_ret() -> Option<LinkedList<u8>> {
    |                             ^^^^^^^^^^^^^^

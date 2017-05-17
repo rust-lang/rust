@@ -1,5 +1,5 @@
 error: adding items after statements is confusing, since items exist from the start of the scope
-  --> examples/item_after_statement.rs:12:5
+  --> item_after_statement.rs:12:5
    |
 12 |     fn foo() { println!("foo"); }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ error: adding items after statements is confusing, since items exist from the st
    = note: `-D items-after-statements` implied by `-D warnings`
 
 error: adding items after statements is confusing, since items exist from the start of the scope
-  --> examples/item_after_statement.rs:17:5
+  --> item_after_statement.rs:17:5
    |
 17 |     fn foo() { println!("foo"); }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

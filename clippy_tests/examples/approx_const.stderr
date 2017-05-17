@@ -1,5 +1,5 @@
 error: approximate value of `f{32, 64}::consts::E` found. Consider using it directly
- --> examples/approx_const.rs:7:16
+ --> approx_const.rs:7:16
   |
 7 |     let my_e = 2.7182;
   |                ^^^^^^
@@ -7,7 +7,7 @@ error: approximate value of `f{32, 64}::consts::E` found. Consider using it dire
   = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::E` found. Consider using it directly
- --> examples/approx_const.rs:8:20
+ --> approx_const.rs:8:20
   |
 8 |     let almost_e = 2.718;
   |                    ^^^^^
@@ -15,7 +15,7 @@ error: approximate value of `f{32, 64}::consts::E` found. Consider using it dire
   = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::FRAC_1_PI` found. Consider using it directly
-  --> examples/approx_const.rs:11:24
+  --> approx_const.rs:11:24
    |
 11 |     let my_1_frac_pi = 0.3183;
    |                        ^^^^^^
@@ -23,7 +23,7 @@ error: approximate value of `f{32, 64}::consts::FRAC_1_PI` found. Consider using
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found. Consider using it directly
-  --> examples/approx_const.rs:14:28
+  --> approx_const.rs:14:28
    |
 14 |     let my_frac_1_sqrt_2 = 0.70710678;
    |                            ^^^^^^^^^^
@@ -31,7 +31,7 @@ error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found. Consider u
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found. Consider using it directly
-  --> examples/approx_const.rs:15:32
+  --> approx_const.rs:15:32
    |
 15 |     let almost_frac_1_sqrt_2 = 0.70711;
    |                                ^^^^^^^
@@ -39,7 +39,7 @@ error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found. Consider u
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::FRAC_2_PI` found. Consider using it directly
-  --> examples/approx_const.rs:18:24
+  --> approx_const.rs:18:24
    |
 18 |     let my_frac_2_pi = 0.63661977;
    |                        ^^^^^^^^^^
@@ -47,7 +47,7 @@ error: approximate value of `f{32, 64}::consts::FRAC_2_PI` found. Consider using
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::FRAC_2_SQRT_PI` found. Consider using it directly
-  --> examples/approx_const.rs:21:27
+  --> approx_const.rs:21:27
    |
 21 |     let my_frac_2_sq_pi = 1.128379;
    |                           ^^^^^^^^
@@ -55,7 +55,7 @@ error: approximate value of `f{32, 64}::consts::FRAC_2_SQRT_PI` found. Consider 
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::FRAC_PI_2` found. Consider using it directly
-  --> examples/approx_const.rs:24:24
+  --> approx_const.rs:24:24
    |
 24 |     let my_frac_pi_2 = 1.57079632679;
    |                        ^^^^^^^^^^^^^
@@ -63,7 +63,7 @@ error: approximate value of `f{32, 64}::consts::FRAC_PI_2` found. Consider using
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::FRAC_PI_3` found. Consider using it directly
-  --> examples/approx_const.rs:27:24
+  --> approx_const.rs:27:24
    |
 27 |     let my_frac_pi_3 = 1.04719755119;
    |                        ^^^^^^^^^^^^^
@@ -71,7 +71,7 @@ error: approximate value of `f{32, 64}::consts::FRAC_PI_3` found. Consider using
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::FRAC_PI_4` found. Consider using it directly
-  --> examples/approx_const.rs:30:24
+  --> approx_const.rs:30:24
    |
 30 |     let my_frac_pi_4 = 0.785398163397;
    |                        ^^^^^^^^^^^^^^
@@ -79,7 +79,7 @@ error: approximate value of `f{32, 64}::consts::FRAC_PI_4` found. Consider using
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::FRAC_PI_6` found. Consider using it directly
-  --> examples/approx_const.rs:33:24
+  --> approx_const.rs:33:24
    |
 33 |     let my_frac_pi_6 = 0.523598775598;
    |                        ^^^^^^^^^^^^^^
@@ -87,7 +87,7 @@ error: approximate value of `f{32, 64}::consts::FRAC_PI_6` found. Consider using
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::FRAC_PI_8` found. Consider using it directly
-  --> examples/approx_const.rs:36:24
+  --> approx_const.rs:36:24
    |
 36 |     let my_frac_pi_8 = 0.3926990816987;
    |                        ^^^^^^^^^^^^^^^
@@ -95,7 +95,7 @@ error: approximate value of `f{32, 64}::consts::FRAC_PI_8` found. Consider using
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::LN_10` found. Consider using it directly
-  --> examples/approx_const.rs:39:20
+  --> approx_const.rs:39:20
    |
 39 |     let my_ln_10 = 2.302585092994046;
    |                    ^^^^^^^^^^^^^^^^^
@@ -103,7 +103,7 @@ error: approximate value of `f{32, 64}::consts::LN_10` found. Consider using it 
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::LN_2` found. Consider using it directly
-  --> examples/approx_const.rs:42:19
+  --> approx_const.rs:42:19
    |
 42 |     let my_ln_2 = 0.6931471805599453;
    |                   ^^^^^^^^^^^^^^^^^^
@@ -111,7 +111,7 @@ error: approximate value of `f{32, 64}::consts::LN_2` found. Consider using it d
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::LOG10_E` found. Consider using it directly
-  --> examples/approx_const.rs:45:22
+  --> approx_const.rs:45:22
    |
 45 |     let my_log10_e = 0.43429448190325182;
    |                      ^^^^^^^^^^^^^^^^^^^
@@ -119,7 +119,7 @@ error: approximate value of `f{32, 64}::consts::LOG10_E` found. Consider using i
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::LOG2_E` found. Consider using it directly
-  --> examples/approx_const.rs:48:21
+  --> approx_const.rs:48:21
    |
 48 |     let my_log2_e = 1.4426950408889634;
    |                     ^^^^^^^^^^^^^^^^^^
@@ -127,7 +127,7 @@ error: approximate value of `f{32, 64}::consts::LOG2_E` found. Consider using it
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::PI` found. Consider using it directly
-  --> examples/approx_const.rs:51:17
+  --> approx_const.rs:51:17
    |
 51 |     let my_pi = 3.1415;
    |                 ^^^^^^
@@ -135,7 +135,7 @@ error: approximate value of `f{32, 64}::consts::PI` found. Consider using it dir
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::PI` found. Consider using it directly
-  --> examples/approx_const.rs:52:21
+  --> approx_const.rs:52:21
    |
 52 |     let almost_pi = 3.14;
    |                     ^^^^
@@ -143,7 +143,7 @@ error: approximate value of `f{32, 64}::consts::PI` found. Consider using it dir
    = note: `-D approx-constant` implied by `-D warnings`
 
 error: approximate value of `f{32, 64}::consts::SQRT_2` found. Consider using it directly
-  --> examples/approx_const.rs:55:18
+  --> approx_const.rs:55:18
    |
 55 |     let my_sq2 = 1.4142;
    |                  ^^^^^^

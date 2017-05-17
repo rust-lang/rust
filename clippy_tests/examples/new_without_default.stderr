@@ -1,5 +1,5 @@
 error: you should consider deriving a `Default` implementation for `Foo`
-  --> examples/new_without_default.rs:10:5
+  --> new_without_default.rs:10:5
    |
 10 |     pub fn new() -> Foo { Foo }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ help: try this
    | #[derive(Default)]
 
 error: you should consider deriving a `Default` implementation for `Bar`
-  --> examples/new_without_default.rs:16:5
+  --> new_without_default.rs:16:5
    |
 16 |     pub fn new() -> Self { Bar }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ help: try this
    | #[derive(Default)]
 
 error: you should consider adding a `Default` implementation for `LtKo<'c>`
-  --> examples/new_without_default.rs:64:5
+  --> new_without_default.rs:64:5
    |
 64 |     pub fn new() -> LtKo<'c> { unimplemented!() }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: this looks like you are swapping elements of `foo` manually
-  --> examples/swap.rs:11:5
+  --> swap.rs:11:5
    |
 11 | /     let temp = foo[0];
 12 | |     foo[0] = foo[1];
@@ -9,7 +9,7 @@ error: this looks like you are swapping elements of `foo` manually
    = note: `-D manual-swap` implied by `-D warnings`
 
 error: this looks like you are swapping elements of `foo` manually
-  --> examples/swap.rs:20:5
+  --> swap.rs:20:5
    |
 20 | /     let temp = foo[0];
 21 | |     foo[0] = foo[1];
@@ -19,7 +19,7 @@ error: this looks like you are swapping elements of `foo` manually
    = note: `-D manual-swap` implied by `-D warnings`
 
 error: this looks like you are swapping elements of `foo` manually
-  --> examples/swap.rs:29:5
+  --> swap.rs:29:5
    |
 29 | /     let temp = foo[0];
 30 | |     foo[0] = foo[1];
@@ -29,7 +29,7 @@ error: this looks like you are swapping elements of `foo` manually
    = note: `-D manual-swap` implied by `-D warnings`
 
 error: this looks like you are swapping `a` and `b` manually
-  --> examples/swap.rs:47:7
+  --> swap.rs:47:7
    |
 47 |       ; let t = a;
    |  _______^
@@ -41,7 +41,7 @@ error: this looks like you are swapping `a` and `b` manually
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are swapping `c.0` and `a` manually
-  --> examples/swap.rs:56:7
+  --> swap.rs:56:7
    |
 56 |       ; let t = c.0;
    |  _______^
@@ -53,7 +53,7 @@ error: this looks like you are swapping `c.0` and `a` manually
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are trying to swap `a` and `b`
-  --> examples/swap.rs:44:5
+  --> swap.rs:44:5
    |
 44 | /     a = b;
 45 | |     b = a;
@@ -63,7 +63,7 @@ error: this looks like you are trying to swap `a` and `b`
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are trying to swap `c.0` and `a`
-  --> examples/swap.rs:53:5
+  --> swap.rs:53:5
    |
 53 | /     c.0 = a;
 54 | |     a = c.0;

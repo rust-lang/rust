@@ -1,5 +1,5 @@
 error: boolean short circuit operator in statement may be clearer using an explicit test
- --> examples/short_circuit_statement.rs:7:5
+ --> short_circuit_statement.rs:7:5
   |
 7 |     f() && g();
   |     ^^^^^^^^^^^ help: replace it with `if f() { g(); }`
@@ -7,7 +7,7 @@ error: boolean short circuit operator in statement may be clearer using an expli
   = note: `-D short-circuit-statement` implied by `-D warnings`
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
- --> examples/short_circuit_statement.rs:8:5
+ --> short_circuit_statement.rs:8:5
   |
 8 |     f() || g();
   |     ^^^^^^^^^^^ help: replace it with `if !f() { g(); }`
@@ -15,7 +15,7 @@ error: boolean short circuit operator in statement may be clearer using an expli
   = note: `-D short-circuit-statement` implied by `-D warnings`
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
- --> examples/short_circuit_statement.rs:9:5
+ --> short_circuit_statement.rs:9:5
   |
 9 |     1 == 2 || g();
   |     ^^^^^^^^^^^^^^ help: replace it with `if !(1 == 2) { g(); }`

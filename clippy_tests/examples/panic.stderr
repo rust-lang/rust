@@ -1,5 +1,5 @@
 error: you probably are missing some parameter in your format string
- --> examples/panic.rs:8:16
+ --> panic.rs:8:16
   |
 8 |         panic!("{}");
   |                ^^^^
@@ -7,7 +7,7 @@ error: you probably are missing some parameter in your format string
   = note: `-D panic-params` implied by `-D warnings`
 
 error: you probably are missing some parameter in your format string
-  --> examples/panic.rs:10:16
+  --> panic.rs:10:16
    |
 10 |         panic!("{:?}");
    |                ^^^^^^
@@ -15,7 +15,7 @@ error: you probably are missing some parameter in your format string
    = note: `-D panic-params` implied by `-D warnings`
 
 error: you probably are missing some parameter in your format string
-  --> examples/panic.rs:12:23
+  --> panic.rs:12:23
    |
 12 |         assert!(true, "here be missing values: {}");
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ error: you probably are missing some parameter in your format string
    = note: `-D panic-params` implied by `-D warnings`
 
 error: you probably are missing some parameter in your format string
-  --> examples/panic.rs:22:5
+  --> panic.rs:22:5
    |
 22 |     assert!("foo bar".contains(&format!("foo {}", "bar")));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

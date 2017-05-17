@@ -1,5 +1,5 @@
 error: the function has a cyclomatic complexity of 28
-  --> examples/cyclomatic_complexity.rs:7:1
+  --> cyclomatic_complexity.rs:7:1
    |
 7  | / fn main() {
 8  | |     if true {
@@ -14,7 +14,7 @@ error: the function has a cyclomatic complexity of 28
    = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 7
-   --> examples/cyclomatic_complexity.rs:92:1
+   --> cyclomatic_complexity.rs:92:1
     |
 92  | / fn kaboom() {
 93  | |     let n = 0;
@@ -29,7 +29,7 @@ error: the function has a cyclomatic complexity of 7
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
-   --> examples/cyclomatic_complexity.rs:138:1
+   --> cyclomatic_complexity.rs:138:1
     |
 138 | / fn lots_of_short_circuits() -> bool {
 139 | |     true && false && true && false && true && false && true
@@ -40,7 +40,7 @@ error: the function has a cyclomatic complexity of 1
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
-   --> examples/cyclomatic_complexity.rs:143:1
+   --> cyclomatic_complexity.rs:143:1
     |
 143 | / fn lots_of_short_circuits2() -> bool {
 144 | |     true || false || true || false || true || false || true
@@ -51,7 +51,7 @@ error: the function has a cyclomatic complexity of 1
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
-   --> examples/cyclomatic_complexity.rs:148:1
+   --> cyclomatic_complexity.rs:148:1
     |
 148 | / fn baa() {
 149 | |     let x = || match 99 {
@@ -66,7 +66,7 @@ error: the function has a cyclomatic complexity of 2
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
-   --> examples/cyclomatic_complexity.rs:149:13
+   --> cyclomatic_complexity.rs:149:13
     |
 149 |       let x = || match 99 {
     |  _____________^
@@ -82,7 +82,7 @@ error: the function has a cyclomatic complexity of 2
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
-   --> examples/cyclomatic_complexity.rs:166:1
+   --> cyclomatic_complexity.rs:166:1
     |
 166 | / fn bar() {
 167 | |     match 99 {
@@ -96,7 +96,7 @@ error: the function has a cyclomatic complexity of 2
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
-   --> examples/cyclomatic_complexity.rs:185:1
+   --> cyclomatic_complexity.rs:185:1
     |
 185 | / fn barr() {
 186 | |     match 99 {
@@ -111,7 +111,7 @@ error: the function has a cyclomatic complexity of 2
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 3
-   --> examples/cyclomatic_complexity.rs:195:1
+   --> cyclomatic_complexity.rs:195:1
     |
 195 | / fn barr2() {
 196 | |     match 99 {
@@ -126,7 +126,7 @@ error: the function has a cyclomatic complexity of 3
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
-   --> examples/cyclomatic_complexity.rs:211:1
+   --> cyclomatic_complexity.rs:211:1
     |
 211 | / fn barrr() {
 212 | |     match 99 {
@@ -141,7 +141,7 @@ error: the function has a cyclomatic complexity of 2
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 3
-   --> examples/cyclomatic_complexity.rs:221:1
+   --> cyclomatic_complexity.rs:221:1
     |
 221 | / fn barrr2() {
 222 | |     match 99 {
@@ -156,7 +156,7 @@ error: the function has a cyclomatic complexity of 3
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
-   --> examples/cyclomatic_complexity.rs:237:1
+   --> cyclomatic_complexity.rs:237:1
     |
 237 | / fn barrrr() {
 238 | |     match 99 {
@@ -171,7 +171,7 @@ error: the function has a cyclomatic complexity of 2
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 3
-   --> examples/cyclomatic_complexity.rs:247:1
+   --> cyclomatic_complexity.rs:247:1
     |
 247 | / fn barrrr2() {
 248 | |     match 99 {
@@ -186,7 +186,7 @@ error: the function has a cyclomatic complexity of 3
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
-   --> examples/cyclomatic_complexity.rs:263:1
+   --> cyclomatic_complexity.rs:263:1
     |
 263 | / fn cake() {
 264 | |     if 4 == 5 {
@@ -201,7 +201,7 @@ error: the function has a cyclomatic complexity of 2
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 4
-   --> examples/cyclomatic_complexity.rs:274:1
+   --> cyclomatic_complexity.rs:274:1
     |
 274 | / pub fn read_file(input_path: &str) -> String {
 275 | |     use std::fs::File;
@@ -216,7 +216,7 @@ error: the function has a cyclomatic complexity of 4
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
-   --> examples/cyclomatic_complexity.rs:305:1
+   --> cyclomatic_complexity.rs:305:1
     |
 305 | / fn void(void: Void) {
 306 | |     if true {
@@ -230,7 +230,7 @@ error: the function has a cyclomatic complexity of 1
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
-   --> examples/cyclomatic_complexity.rs:319:1
+   --> cyclomatic_complexity.rs:319:1
     |
 319 | / fn try() -> Result<i32, &'static str> {
 320 | |     match 5 {
@@ -244,7 +244,7 @@ error: the function has a cyclomatic complexity of 1
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
-   --> examples/cyclomatic_complexity.rs:327:1
+   --> cyclomatic_complexity.rs:327:1
     |
 327 | / fn try_again() -> Result<i32, &'static str> {
 328 | |     let _ = try!(Ok(42));
@@ -259,7 +259,7 @@ error: the function has a cyclomatic complexity of 1
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
-   --> examples/cyclomatic_complexity.rs:343:1
+   --> cyclomatic_complexity.rs:343:1
     |
 343 | / fn early() -> Result<i32, &'static str> {
 344 | |     return Ok(5);
@@ -274,7 +274,7 @@ error: the function has a cyclomatic complexity of 1
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 8
-   --> examples/cyclomatic_complexity.rs:356:1
+   --> cyclomatic_complexity.rs:356:1
     |
 356 | / fn early_ret() -> i32 {
 357 | |     let a = if true { 42 } else { return 0; };

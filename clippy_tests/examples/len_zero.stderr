@@ -1,5 +1,5 @@
 error: item `PubOne` has a public `len` method but no corresponding `is_empty` method
-  --> examples/len_zero.rs:9:1
+  --> len_zero.rs:9:1
    |
 9  | / impl PubOne {
 10 | |     pub fn len(self: &Self) -> isize {
@@ -11,7 +11,7 @@ error: item `PubOne` has a public `len` method but no corresponding `is_empty` m
    = note: `-D len-without-is-empty` implied by `-D warnings`
 
 error: trait `PubTraitsToo` has a `len` method but no `is_empty` method
-  --> examples/len_zero.rs:55:1
+  --> len_zero.rs:55:1
    |
 55 | / pub trait PubTraitsToo {
 56 | |     fn len(self: &Self) -> isize;
@@ -21,7 +21,7 @@ error: trait `PubTraitsToo` has a `len` method but no `is_empty` method
    = note: `-D len-without-is-empty` implied by `-D warnings`
 
 error: item `HasIsEmpty` has a public `len` method but a private `is_empty` method
-  --> examples/len_zero.rs:89:1
+  --> len_zero.rs:89:1
    |
 89 | / impl HasIsEmpty {
 90 | |     pub fn len(self: &Self) -> isize {
@@ -35,7 +35,7 @@ error: item `HasIsEmpty` has a public `len` method but a private `is_empty` meth
    = note: `-D len-without-is-empty` implied by `-D warnings`
 
 error: item `HasWrongIsEmpty` has a public `len` method but no corresponding `is_empty` method
-   --> examples/len_zero.rs:118:1
+   --> len_zero.rs:118:1
     |
 118 | / impl HasWrongIsEmpty {
 119 | |     pub fn len(self: &Self) -> isize {
@@ -49,7 +49,7 @@ error: item `HasWrongIsEmpty` has a public `len` method but no corresponding `is
     = note: `-D len-without-is-empty` implied by `-D warnings`
 
 error: length comparison to zero
-   --> examples/len_zero.rs:130:8
+   --> len_zero.rs:130:8
     |
 130 |     if x.len() == 0 {
     |        ^^^^^^^^^^^^ help: using `is_empty` is more concise: `x.is_empty()`
@@ -57,7 +57,7 @@ error: length comparison to zero
     = note: `-D len-zero` implied by `-D warnings`
 
 error: length comparison to zero
-   --> examples/len_zero.rs:134:8
+   --> len_zero.rs:134:8
     |
 134 |     if "".len() == 0 {
     |        ^^^^^^^^^^^^^ help: using `is_empty` is more concise: `"".is_empty()`
@@ -65,7 +65,7 @@ error: length comparison to zero
     = note: `-D len-zero` implied by `-D warnings`
 
 error: length comparison to zero
-   --> examples/len_zero.rs:148:8
+   --> len_zero.rs:148:8
     |
 148 |     if has_is_empty.len() == 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `has_is_empty.is_empty()`
@@ -73,7 +73,7 @@ error: length comparison to zero
     = note: `-D len-zero` implied by `-D warnings`
 
 error: length comparison to zero
-   --> examples/len_zero.rs:151:8
+   --> len_zero.rs:151:8
     |
 151 |     if has_is_empty.len() != 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
@@ -81,7 +81,7 @@ error: length comparison to zero
     = note: `-D len-zero` implied by `-D warnings`
 
 error: length comparison to zero
-   --> examples/len_zero.rs:154:8
+   --> len_zero.rs:154:8
     |
 154 |     if has_is_empty.len() > 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
@@ -89,7 +89,7 @@ error: length comparison to zero
     = note: `-D len-zero` implied by `-D warnings`
 
 error: length comparison to zero
-   --> examples/len_zero.rs:160:8
+   --> len_zero.rs:160:8
     |
 160 |     if with_is_empty.len() == 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `with_is_empty.is_empty()`
@@ -97,7 +97,7 @@ error: length comparison to zero
     = note: `-D len-zero` implied by `-D warnings`
 
 error: length comparison to zero
-   --> examples/len_zero.rs:172:8
+   --> len_zero.rs:172:8
     |
 172 |     if b.len() != 0 {
     |        ^^^^^^^^^^^^ help: using `is_empty` is more concise: `!b.is_empty()`

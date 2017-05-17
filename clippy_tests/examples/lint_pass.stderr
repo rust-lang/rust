@@ -1,5 +1,5 @@
 error: the lint `MISSING_LINT` is not added to any `LintPass`
-  --> examples/lint_pass.rs:12:1
+  --> lint_pass.rs:12:1
    |
 12 | declare_lint! { MISSING_LINT, Warn, "missing lint" }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

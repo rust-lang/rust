@@ -1,5 +1,5 @@
 error: struct update has no effect, all the fields in the struct have already been specified
-  --> examples/needless_update.rs:16:23
+  --> needless_update.rs:16:23
    |
 16 |     S { a: 1, b: 1, ..base };
    |                       ^^^^

@@ -1,5 +1,5 @@
 error: useless use of `vec!`
-  --> examples/vec.rs:24:14
+  --> vec.rs:24:14
    |
 24 |     on_slice(&vec![]);
    |              ^^^^^^^ help: you can use a slice directly `&[]`
@@ -7,7 +7,7 @@ error: useless use of `vec!`
    = note: `-D useless-vec` implied by `-D warnings`
 
 error: useless use of `vec!`
-  --> examples/vec.rs:27:14
+  --> vec.rs:27:14
    |
 27 |     on_slice(&vec![1, 2]);
    |              ^^^^^^^^^^^ help: you can use a slice directly `&[1, 2]`
@@ -15,7 +15,7 @@ error: useless use of `vec!`
    = note: `-D useless-vec` implied by `-D warnings`
 
 error: useless use of `vec!`
-  --> examples/vec.rs:30:14
+  --> vec.rs:30:14
    |
 30 |     on_slice(&vec ![1, 2]);
    |              ^^^^^^^^^^^^ help: you can use a slice directly `&[1, 2]`
@@ -23,7 +23,7 @@ error: useless use of `vec!`
    = note: `-D useless-vec` implied by `-D warnings`
 
 error: useless use of `vec!`
-  --> examples/vec.rs:33:14
+  --> vec.rs:33:14
    |
 33 |     on_slice(&vec!(1, 2));
    |              ^^^^^^^^^^^ help: you can use a slice directly `&[1, 2]`
@@ -31,7 +31,7 @@ error: useless use of `vec!`
    = note: `-D useless-vec` implied by `-D warnings`
 
 error: useless use of `vec!`
-  --> examples/vec.rs:36:14
+  --> vec.rs:36:14
    |
 36 |     on_slice(&vec![1; 2]);
    |              ^^^^^^^^^^^ help: you can use a slice directly `&[1; 2]`
@@ -39,7 +39,7 @@ error: useless use of `vec!`
    = note: `-D useless-vec` implied by `-D warnings`
 
 error: useless use of `vec!`
-  --> examples/vec.rs:49:14
+  --> vec.rs:49:14
    |
 49 |     for a in vec![1, 2, 3] {
    |              ^^^^^^^^^^^^^ help: you can use a slice directly `&[1, 2, 3]`

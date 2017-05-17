@@ -1,5 +1,5 @@
 error: the `y @ _` pattern can be written as just `y`
-  --> examples/patterns.rs:10:9
+  --> patterns.rs:10:9
    |
 10 |         y @ _   => (),
    |         ^^^^^

@@ -1,5 +1,5 @@
 error[E0463]: can't find crate for `regex`
- --> examples/regex.rs:7:1
+ --> regex.rs:7:1
   |
 7 | extern crate regex;
   | ^^^^^^^^^^^^^^^^^^^ can't find crate

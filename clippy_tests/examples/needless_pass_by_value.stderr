@@ -1,5 +1,5 @@
 error: this argument is passed by value, but not consumed in the function body
- --> examples/needless_pass_by_value.rs:9:23
+ --> needless_pass_by_value.rs:9:23
   |
 9 | fn foo<T: Default>(v: Vec<T>, w: Vec<T>, mut x: Vec<T>, y: Vec<T>) -> Vec<T> {
   |                       ^^^^^^ help: consider changing the type to `&[T]`
@@ -7,7 +7,7 @@ error: this argument is passed by value, but not consumed in the function body
   = note: `-D needless-pass-by-value` implied by `-D warnings`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> examples/needless_pass_by_value.rs:23:11
+  --> needless_pass_by_value.rs:23:11
    |
 23 | fn bar(x: String, y: Wrapper) {
    |           ^^^^^^ help: consider changing the type to `&str`
@@ -15,7 +15,7 @@ error: this argument is passed by value, but not consumed in the function body
    = note: `-D needless-pass-by-value` implied by `-D warnings`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> examples/needless_pass_by_value.rs:23:22
+  --> needless_pass_by_value.rs:23:22
    |
 23 | fn bar(x: String, y: Wrapper) {
    |                      ^^^^^^^ help: consider taking a reference instead `&Wrapper`
@@ -23,7 +23,7 @@ error: this argument is passed by value, but not consumed in the function body
    = note: `-D needless-pass-by-value` implied by `-D warnings`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> examples/needless_pass_by_value.rs:29:63
+  --> needless_pass_by_value.rs:29:63
    |
 29 | fn test_borrow_trait<T: std::borrow::Borrow<str>, U>(t: T, u: U) {
    |                                                               ^ help: consider taking a reference instead `&U`
@@ -31,7 +31,7 @@ error: this argument is passed by value, but not consumed in the function body
    = note: `-D needless-pass-by-value` implied by `-D warnings`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> examples/needless_pass_by_value.rs:40:18
+  --> needless_pass_by_value.rs:40:18
    |
 40 | fn test_match(x: Option<Option<String>>, y: Option<Option<String>>) {
    |                  ^^^^^^^^^^^^^^^^^^^^^^
@@ -42,7 +42,7 @@ help: consider taking a reference instead
    |     match *x {
 
 error: this argument is passed by value, but not consumed in the function body
-  --> examples/needless_pass_by_value.rs:53:24
+  --> needless_pass_by_value.rs:53:24
    |
 53 | fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
    |                        ^^^^^^^ help: consider taking a reference instead `&Wrapper`
@@ -50,7 +50,7 @@ error: this argument is passed by value, but not consumed in the function body
    = note: `-D needless-pass-by-value` implied by `-D warnings`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> examples/needless_pass_by_value.rs:53:36
+  --> needless_pass_by_value.rs:53:36
    |
 53 | fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
    |                                    ^^^^^^^

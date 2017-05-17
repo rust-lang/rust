@@ -1,5 +1,5 @@
 error: the function has a cyclomatic complexity of 3
-  --> examples/cyclomatic_complexity_attr_used.rs:11:1
+  --> cyclomatic_complexity_attr_used.rs:11:1
    |
 11 | / fn kaboom() {
 12 | |     if 42 == 43 {
