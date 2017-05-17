@@ -11,7 +11,7 @@ sudo: false
 cache:
   cargo: true
   directories:
-  - clippy_lints/target
+  - clippy_tests/target
 
 env:
  global:
@@ -31,7 +31,7 @@ script:
  - cargo build --features debugging
  - cargo test --features debugging
  - mkdir -p ~/rust/cargo/bin
- - cp target/debug/cargo-clippy ~/rust/cargo/bin/cargo-clippy
+ - cp clippy_tests/target/debug/cargo-clippy ~/rust/cargo/bin/cargo-clippy
  - PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy
  - cd clippy_lints && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy && cd ..
  - set +e

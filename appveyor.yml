@@ -26,7 +26,7 @@ test_script:
     - set RUST_BACKTRACE=1
     - cargo build --features debugging
     - cargo test --features debugging
-    - copy target\debug\cargo-clippy.exe C:\Users\appveyor\.cargo\bin\
+    - copy clippy_tests\target\debug\cargo-clippy.exe C:\Users\appveyor\.cargo\bin\
     - cargo clippy -- -D clippy
     - cd clippy_lints && cargo clippy -- -D clippy && cd ..
 
