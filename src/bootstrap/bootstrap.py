@@ -127,13 +127,13 @@ def unpack(tarball, dst, verbose=False, match=None):
             shutil.move(tp, fp)
     shutil.rmtree(os.path.join(dst, fname))
 
-def run(args, verbose=False, exception=False):
+def run(args, verbose=False, exception=False, cwd=None):
     if verbose:
         print("running: " + ' '.join(args))
     sys.stdout.flush()
     # Use Popen here instead of call() as it apparently allows powershell on
     # Windows to not lock up waiting for input presumably.
-    ret = subprocess.Popen(args)
+    ret = subprocess.Popen(args, cwd=cwd)
     code = ret.wait()
     if code != 0:
         err = "failed to run: " + ' '.join(args)
@@ -391,11 +391,20 @@ class RustBuild(object):
             args.append("--frozen")
         self.run(args, env)
 
-    def run(self, args, env=None):
-        proc = subprocess.Popen(args, env=env)
+    def run(self, args, env=None, cwd=None):
+        proc = subprocess.Popen(args, env=env, cwd=cwd)
         ret = proc.wait()
         if ret != 0:
             sys.exit(ret)
+
+    def output(self, args, env=None, cwd=None):
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE, env=env, cwd=cwd)
+        (out, err) = proc.communicate()
+        ret = proc.wait()
+        if ret != 0:
+            print(out)
+            sys.exit(ret)
+        return out
 
     def build_triple(self):
         default_encoding = sys.getdefaultencoding()
@@ -541,25 +550,47 @@ class RustBuild(object):
             return
 
         print('Updating submodules')
-        self.run(["git", "-C", self.rust_root, "submodule", "-q", "sync"])
-        # FIXME: nobody does, but this won't work well with whitespace in
-        # submodule path
-        submodules = [s.split()[1] for s in subprocess.check_output(
-            ["git", "config", "--file", os.path.join(
-                self.rust_root, ".gitmodules"), "--get-regexp", "path"]).splitlines()]
-        for module in submodules:
-            if module.endswith(b"llvm") and \
+        output = self.output(["git", "submodule", "status"], cwd=self.rust_root)
+        submodules = []
+        for line in output.splitlines():
+            # NOTE `git submodule status` output looks like this:
+            #
+            # -5066b7dcab7e700844b0e2ba71b8af9dc627a59b src/liblibc
+            # +b37ef24aa82d2be3a3cc0fe89bf82292f4ca181c src/compiler-rt (remotes/origin/..)
+            #  e058ca661692a8d01f8cf9d35939dfe3105ce968 src/jemalloc (3.6.0-533-ge058ca6)
+            #
+            # The first character can be '-', '+' or ' ' and denotes the
+            # `State` of the submodule Right next to this character is the
+            # SHA-1 of the submodule HEAD And after that comes the path to the
+            # submodule
+            path = line[1:].split(' ')[1]
+            submodules.append([path, line[0]])
+
+        self.run(["git", "submodule", "sync"], cwd=self.rust_root)
+
+        for submod in submodules:
+            path, status = submod
+            if path.endswith(b"llvm") and \
                 (self.get_toml('llvm-config') or self.get_mk('CFG_LLVM_ROOT')):
                 continue
-            if module.endswith(b"jemalloc") and \
+            if path.endswith(b"jemalloc") and \
                 (self.get_toml('jemalloc') or self.get_mk('CFG_JEMALLOC_ROOT')):
                 continue
-            self.run(["git", "-C", self.rust_root,
-                      "submodule", "update", "--init", module])
-        self.run(["git", "-C", self.rust_root, "submodule", "-q",
-                  "foreach", "git", "reset", "-q", "--hard"])
-        self.run(["git", "-C", self.rust_root, "submodule",
-                  "-q", "foreach", "git", "clean", "-qdfx"])
+            submod_path = os.path.join(self.rust_root, path)
+
+            if status == ' ':
+                self.run(["git", "reset", "--hard"], cwd=submod_path)
+                self.run(["git", "clean", "-fdx"], cwd=submod_path)
+            elif status == '+':
+                self.run(["git", "submodule", "update", path], cwd=self.rust_root)
+                self.run(["git", "reset", "--hard"], cwd=submod_path)
+                self.run(["git", "clean", "-fdx"], cwd=submod_path)
+            elif status == '-':
+                self.run(["git", "submodule", "init", path], cwd=self.rust_root)
+                self.run(["git", "submodule", "update", path], cwd=self.rust_root)
+            else:
+                raise ValueError('unknown submodule status: ' + status)
+
 def bootstrap():
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
