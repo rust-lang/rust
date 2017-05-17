@@ -32,6 +32,7 @@ static EXCEPTIONS: &'static [&'static str] = &[
     "openssl", // BSD+advertising clause, cargo, mdbook
     "pest", // MPL2, mdbook via handlebars
     "thread-id", // Apache-2.0, mdbook
+    "strings", // not in published manifest
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {
