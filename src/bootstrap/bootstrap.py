@@ -606,7 +606,26 @@ def bootstrap():
 
     # Run the bootstrap
     args = [rb.bootstrap_binary()]
-    args.extend(sys.argv[1:])
+
+    # Allow the subcommand to be last in the argv list
+    argv = sys.argv[1:]
+    subcommands = [
+        'build',
+        'test',
+        'bench',
+        'doc',
+        'clean',
+        'dist',
+    ]
+    for subcommand in subcommands:
+        try:
+            i = argv.index(subcommand)
+            argv = argv[i:] + argv[:i]
+            break
+        except ValueError:
+            pass
+
+    args.extend(argv)
     env = os.environ.copy()
     env["BUILD"] = rb.build
     env["SRC"] = rb.rust_root
