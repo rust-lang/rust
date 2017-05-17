@@ -596,7 +596,7 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
 
     // Prepare the image directory
     t!(fs::create_dir_all(image.join("share/zsh/site-functions")));
-    t!(fs::create_dir_all(image.join("etc/bash_completions.d")));
+    t!(fs::create_dir_all(image.join("etc/bash_completion.d")));
     let cargo = build.cargo_out(&compiler, Mode::Tool, target)
                      .join(exe("cargo", target));
     install(&cargo, &image.join("bin"), 0o755);
@@ -606,7 +606,7 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
     }
     install(&etc.join("_cargo"), &image.join("share/zsh/site-functions"), 0o644);
     copy(&etc.join("cargo.bashcomp.sh"),
-         &image.join("etc/bash_completions.d/cargo"));
+         &image.join("etc/bash_completion.d/cargo"));
     let doc = image.join("share/doc/cargo");
     install(&src.join("README.md"), &doc, 0o644);
     install(&src.join("LICENSE-MIT"), &doc, 0o644);
