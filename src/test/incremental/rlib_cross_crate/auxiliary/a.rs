@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z incremental-cc
 // no-prefer-dynamic
 
 #![crate_type="rlib"]

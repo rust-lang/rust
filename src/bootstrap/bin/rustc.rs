@@ -38,7 +38,24 @@ use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
 
 fn main() {
-    let args = env::args_os().skip(1).collect::<Vec<_>>();
+    let mut args = env::args_os().skip(1).collect::<Vec<_>>();
+
+    // Append metadata suffix for internal crates. See the corresponding entry
+    // in bootstrap/lib.rs for details.
+    if let Ok(s) = env::var("RUSTC_METADATA_SUFFIX") {
+        for i in 1..args.len() {
+            // Dirty code for borrowing issues
+            let mut new = None;
+            if let Some(current_as_str) = args[i].to_str() {
+                if (&*args[i - 1] == "-C" && current_as_str.starts_with("metadata")) ||
+                   current_as_str.starts_with("-Cmetadata") {
+                    new = Some(format!("{}-{}", current_as_str, s));
+                }
+            }
+            if let Some(new) = new { args[i] = new.into(); }
+        }
+    }
+
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
     let target = args.windows(2)
