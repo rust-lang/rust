@@ -32,7 +32,6 @@
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
-#![feature(untagged_unions)]
 #![feature(associated_consts)]
 #![feature(unsize)]
 #![feature(i128_type)]
