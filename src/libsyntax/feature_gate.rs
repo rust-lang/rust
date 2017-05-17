@@ -352,6 +352,9 @@ declare_features! (
 
     // Allows use of the :vis macro fragment specifier
     (active, macro_vis_matcher, "1.18.0", Some(41022)),
+
+    // rustc internal
+    (active, abi_thiscall, "1.19.0", None),
 );
 
 declare_features! (
@@ -1050,6 +1053,10 @@ impl<'a> PostExpansionVisitor<'a> {
             Abi::Vectorcall => {
                 gate_feature_post!(&self, abi_vectorcall, span,
                                    "vectorcall is experimental and subject to change");
+            },
+            Abi::Thiscall => {
+                gate_feature_post!(&self, abi_thiscall, span,
+                                   "thiscall is experimental and subject to change");
             },
             Abi::RustCall => {
                 gate_feature_post!(&self, unboxed_closures, span,

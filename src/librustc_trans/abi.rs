@@ -642,6 +642,7 @@ impl<'a, 'tcx> FnType<'tcx> {
             Stdcall => llvm::X86StdcallCallConv,
             Fastcall => llvm::X86FastcallCallConv,
             Vectorcall => llvm::X86_VectorCall,
+            Thiscall => llvm::X86_ThisCall,
             C => llvm::CCallConv,
             Unadjusted => llvm::CCallConv,
             Win64 => llvm::X86_64_Win64,

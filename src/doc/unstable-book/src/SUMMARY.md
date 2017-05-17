@@ -7,6 +7,7 @@
     - [abi_msp430_interrupt](language-features/abi-msp430-interrupt.md)
     - [abi_ptx](language-features/abi-ptx.md)
     - [abi_sysv64](language-features/abi-sysv64.md)
+    - [abi_thiscall](language-features/abi-thiscall.md)
     - [abi_unadjusted](language-features/abi-unadjusted.md)
     - [abi_vectorcall](language-features/abi-vectorcall.md)
     - [abi_x86_interrupt](language-features/abi-x86-interrupt.md)
