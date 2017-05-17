@@ -163,11 +163,10 @@ impl<'a> Rewrite for SegmentParam<'a> {
                     TypeDensity::Compressed => format!("{}=", binding.ident),
                 };
                 let budget = try_opt!(shape.width.checked_sub(result.len()));
-                let rewrite =
-                    try_opt!(binding
-                                 .ty
-                                 .rewrite(context,
-                                          Shape::legacy(budget, shape.indent + result.len())));
+                let rewrite = try_opt!(binding.ty.rewrite(context,
+                                                          Shape::legacy(budget,
+                                                                        shape.indent +
+                                                                        result.len())));
                 result.push_str(&rewrite);
                 Some(result)
             }
@@ -563,10 +562,10 @@ impl Rewrite for ast::PolyTraitRef {
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
             let max_path_width = try_opt!(shape.width.checked_sub(extra_offset));
-            let path_str = try_opt!(self.trait_ref
-                                        .rewrite(context,
-                                                 Shape::legacy(max_path_width,
-                                                               shape.indent + extra_offset)));
+            let path_str = try_opt!(self.trait_ref.rewrite(context,
+                                                           Shape::legacy(max_path_width,
+                                                                         shape.indent +
+                                                                         extra_offset)));
 
             Some(if context.config.spaces_within_angle_brackets && lifetime_str.len() > 0 {
                      format!("for< {} > {}", lifetime_str, path_str)
@@ -613,22 +612,20 @@ impl Rewrite for ast::Ty {
                              format!("&{} {}{}",
                                      lt_str,
                                      mut_str,
-                                     try_opt!(mt.ty
-                                                  .rewrite(context,
-                                                           Shape::legacy(budget,
-                                                                         shape.indent + 2 +
-                                                                         mut_len +
-                                                                         lt_len))))
+                                     try_opt!(mt.ty.rewrite(context,
+                                                            Shape::legacy(budget,
+                                                                          shape.indent + 2 +
+                                                                          mut_len +
+                                                                          lt_len))))
                          }
                          None => {
                              let budget = try_opt!(shape.width.checked_sub(1 + mut_len));
                              format!("&{}{}",
                                      mut_str,
-                                     try_opt!(mt.ty
-                                                  .rewrite(context,
-                                                           Shape::legacy(budget,
-                                                                         shape.indent + 1 +
-                                                                         mut_len))))
+                                     try_opt!(mt.ty.rewrite(context,
+                                                            Shape::legacy(budget,
+                                                                          shape.indent + 1 +
+                                                                          mut_len))))
                          }
                      })
             }

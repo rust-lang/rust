@@ -39,11 +39,10 @@ impl Rewrite for Pat {
                 let sub_pat = match *sub_pat {
                     Some(ref p) => {
                         // 3 - ` @ `.
-                        let width = try_opt!(shape
-                                                 .width
-                                                 .checked_sub(prefix.len() + mut_infix.len() +
-                                                              id_str.len() +
-                                                              3));
+                        let width = try_opt!(shape.width.checked_sub(prefix.len() +
+                                                                     mut_infix.len() +
+                                                                     id_str.len() +
+                                                                     3));
                         format!(" @ {}",
                                 try_opt!(p.rewrite(context, Shape::legacy(width, shape.indent))))
                     }
@@ -328,13 +327,11 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
 fn count_wildcard_suffix_len(items: &[ListItem]) -> usize {
     let mut suffix_len = 0;
 
-    for item in items
-            .iter()
-            .rev()
-            .take_while(|i| match i.item {
-                            Some(ref internal_string) if internal_string == "_" => true,
-                            _ => false,
-                        }) {
+    for item in items.iter().rev().take_while(|i| match i.item {
+                                                  Some(ref internal_string) if internal_string ==
+                                                                               "_" => true,
+                                                  _ => false,
+                                              }) {
         suffix_len += 1;
 
         if item.pre_comment.is_some() || item.post_comment.is_some() {

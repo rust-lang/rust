@@ -339,116 +339,114 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
     fn next(&mut self) -> Option<Self::Item> {
         let white_space: &[_] = &[' ', '\t'];
 
-        self.inner
-            .next()
-            .map(|item| {
-                let mut new_lines = false;
-                // Pre-comment
-                let pre_snippet = self.codemap
-                    .span_to_snippet(codemap::mk_sp(self.prev_span_end, (self.get_lo)(&item)))
-                    .unwrap();
-                let trimmed_pre_snippet = pre_snippet.trim();
-                let has_pre_comment = trimmed_pre_snippet.contains("//") ||
-                                      trimmed_pre_snippet.contains("/*");
-                let pre_comment = if has_pre_comment {
-                    Some(trimmed_pre_snippet.to_owned())
-                } else {
-                    None
-                };
+        self.inner.next().map(|item| {
+            let mut new_lines = false;
+            // Pre-comment
+            let pre_snippet = self.codemap
+                .span_to_snippet(codemap::mk_sp(self.prev_span_end, (self.get_lo)(&item)))
+                .unwrap();
+            let trimmed_pre_snippet = pre_snippet.trim();
+            let has_pre_comment = trimmed_pre_snippet.contains("//") ||
+                                  trimmed_pre_snippet.contains("/*");
+            let pre_comment = if has_pre_comment {
+                Some(trimmed_pre_snippet.to_owned())
+            } else {
+                None
+            };
 
-                // Post-comment
-                let next_start = match self.inner.peek() {
-                    Some(next_item) => (self.get_lo)(next_item),
-                    None => self.next_span_start,
-                };
-                let post_snippet = self.codemap
-                    .span_to_snippet(codemap::mk_sp((self.get_hi)(&item), next_start))
-                    .unwrap();
+            // Post-comment
+            let next_start = match self.inner.peek() {
+                Some(next_item) => (self.get_lo)(next_item),
+                None => self.next_span_start,
+            };
+            let post_snippet = self.codemap
+                .span_to_snippet(codemap::mk_sp((self.get_hi)(&item), next_start))
+                .unwrap();
 
-                let comment_end = match self.inner.peek() {
-                    Some(..) => {
-                        let mut block_open_index = post_snippet.find("/*");
-                        // check if it realy is a block comment (and not //*)
-                        if let Some(i) = block_open_index {
-                            if i > 0 && &post_snippet[i - 1..i] == "/" {
-                                block_open_index = None;
-                            }
-                        }
-                        let newline_index = post_snippet.find('\n');
-                        let separator_index = post_snippet.find_uncommented(",").unwrap();
-
-                        match (block_open_index, newline_index) {
-                            // Separator before comment, with the next item on same line.
-                            // Comment belongs to next item.
-                            (Some(i), None) if i > separator_index => separator_index + 1,
-                            // Block-style post-comment before the separator.
-                            (Some(i), None) => {
-                                cmp::max(find_comment_end(&post_snippet[i..]).unwrap() + i,
-                                         separator_index + 1)
-                            }
-                            // Block-style post-comment. Either before or after the separator.
-                            (Some(i), Some(j)) if i < j => {
-                                cmp::max(find_comment_end(&post_snippet[i..]).unwrap() + i,
-                                         separator_index + 1)
-                            }
-                            // Potential *single* line comment.
-                            (_, Some(j)) if j > separator_index => j + 1,
-                            _ => post_snippet.len(),
+            let comment_end = match self.inner.peek() {
+                Some(..) => {
+                    let mut block_open_index = post_snippet.find("/*");
+                    // check if it realy is a block comment (and not //*)
+                    if let Some(i) = block_open_index {
+                        if i > 0 && &post_snippet[i - 1..i] == "/" {
+                            block_open_index = None;
                         }
                     }
-                    None => {
-                        post_snippet
-                            .find_uncommented(self.terminator)
-                            .unwrap_or(post_snippet.len())
-                    }
-                };
+                    let newline_index = post_snippet.find('\n');
+                    let separator_index = post_snippet.find_uncommented(",").unwrap();
 
-                if !post_snippet.is_empty() && comment_end > 0 {
-                    // Account for extra whitespace between items. This is fiddly
-                    // because of the way we divide pre- and post- comments.
-
-                    // Everything from the separator to the next item.
-                    let test_snippet = &post_snippet[comment_end - 1..];
-                    let first_newline = test_snippet.find('\n').unwrap_or(test_snippet.len());
-                    // From the end of the first line of comments.
-                    let test_snippet = &test_snippet[first_newline..];
-                    let first = test_snippet
-                        .find(|c: char| !c.is_whitespace())
-                        .unwrap_or(test_snippet.len());
-                    // From the end of the first line of comments to the next non-whitespace char.
-                    let test_snippet = &test_snippet[..first];
-
-                    if test_snippet.chars().filter(|c| c == &'\n').count() > 1 {
-                        // There were multiple line breaks which got trimmed to nothing.
-                        new_lines = true;
+                    match (block_open_index, newline_index) {
+                        // Separator before comment, with the next item on same line.
+                        // Comment belongs to next item.
+                        (Some(i), None) if i > separator_index => separator_index + 1,
+                        // Block-style post-comment before the separator.
+                        (Some(i), None) => {
+                            cmp::max(find_comment_end(&post_snippet[i..]).unwrap() + i,
+                                     separator_index + 1)
+                        }
+                        // Block-style post-comment. Either before or after the separator.
+                        (Some(i), Some(j)) if i < j => {
+                            cmp::max(find_comment_end(&post_snippet[i..]).unwrap() + i,
+                                     separator_index + 1)
+                        }
+                        // Potential *single* line comment.
+                        (_, Some(j)) if j > separator_index => j + 1,
+                        _ => post_snippet.len(),
                     }
                 }
-
-                // Cleanup post-comment: strip separators and whitespace.
-                self.prev_span_end = (self.get_hi)(&item) + BytePos(comment_end as u32);
-                let post_snippet = post_snippet[..comment_end].trim();
-
-                let post_snippet_trimmed = if post_snippet.starts_with(',') {
-                    post_snippet[1..].trim_matches(white_space)
-                } else if post_snippet.ends_with(',') {
-                    post_snippet[..(post_snippet.len() - 1)].trim_matches(white_space)
-                } else {
+                None => {
                     post_snippet
-                };
-
-                let post_comment = if !post_snippet_trimmed.is_empty() {
-                    Some(post_snippet_trimmed.to_owned())
-                } else {
-                    None
-                };
-
-                ListItem {
-                    pre_comment: pre_comment,
-                    item: (self.get_item_string)(&item),
-                    post_comment: post_comment,
-                    new_lines: new_lines,
+                        .find_uncommented(self.terminator)
+                        .unwrap_or(post_snippet.len())
                 }
-            })
+            };
+
+            if !post_snippet.is_empty() && comment_end > 0 {
+                // Account for extra whitespace between items. This is fiddly
+                // because of the way we divide pre- and post- comments.
+
+                // Everything from the separator to the next item.
+                let test_snippet = &post_snippet[comment_end - 1..];
+                let first_newline = test_snippet.find('\n').unwrap_or(test_snippet.len());
+                // From the end of the first line of comments.
+                let test_snippet = &test_snippet[first_newline..];
+                let first = test_snippet
+                    .find(|c: char| !c.is_whitespace())
+                    .unwrap_or(test_snippet.len());
+                // From the end of the first line of comments to the next non-whitespace char.
+                let test_snippet = &test_snippet[..first];
+
+                if test_snippet.chars().filter(|c| c == &'\n').count() > 1 {
+                    // There were multiple line breaks which got trimmed to nothing.
+                    new_lines = true;
+                }
+            }
+
+            // Cleanup post-comment: strip separators and whitespace.
+            self.prev_span_end = (self.get_hi)(&item) + BytePos(comment_end as u32);
+            let post_snippet = post_snippet[..comment_end].trim();
+
+            let post_snippet_trimmed = if post_snippet.starts_with(',') {
+                post_snippet[1..].trim_matches(white_space)
+            } else if post_snippet.ends_with(',') {
+                post_snippet[..(post_snippet.len() - 1)].trim_matches(white_space)
+            } else {
+                post_snippet
+            };
+
+            let post_comment = if !post_snippet_trimmed.is_empty() {
+                Some(post_snippet_trimmed.to_owned())
+            } else {
+                None
+            };
+
+            ListItem {
+                pre_comment: pre_comment,
+                item: (self.get_item_string)(&item),
+                post_comment: post_comment,
+                new_lines: new_lines,
+            }
+        })
     }
 }
 
