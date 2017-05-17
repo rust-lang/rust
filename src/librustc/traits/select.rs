@@ -324,7 +324,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     }
 
     pub fn projection_mode(&self) -> Reveal {
-        self.infcx.projection_mode()
+        self.param_env().reveal
     }
 
     /// Wraps the inference context's in_snapshot s.t. snapshot handling is only from the selection

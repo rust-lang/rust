@@ -11,7 +11,6 @@
 use hir::def::Def;
 use hir::def_id::DefId;
 use infer::InferCtxt;
-use traits::Reveal;
 use ty::{self, Ty, TyCtxt};
 use ty::layout::{LayoutError, Pointer, SizeSkeleton};
 
@@ -140,7 +139,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ItemVisitor<'a, 'tcx> {
 
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let body = self.tcx.hir.body(body_id);
-        self.tcx.infer_ctxt(body_id, Reveal::All).enter(|infcx| {
+        self.tcx.infer_ctxt(body_id).enter(|infcx| {
             let mut visitor = ExprVisitor {
                 infcx: &infcx
             };

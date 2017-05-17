@@ -109,7 +109,7 @@ impl<'a, 'gcx, 'tcx> Children {
             let possible_sibling = *slot;
 
             let tcx = tcx.global_tcx();
-            let (le, ge) = tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
+            let (le, ge) = tcx.infer_ctxt(Reveal::UserFacing).enter(|infcx| {
                 let overlap = traits::overlapping_impls(&infcx,
                                                         possible_sibling,
                                                         impl_def_id);

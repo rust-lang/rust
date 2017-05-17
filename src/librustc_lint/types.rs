@@ -725,7 +725,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
             if gens.ty_params.is_empty() {
                 // sizes only make sense for non-generic types
                 let t = cx.tcx.type_of(cx.tcx.hir.local_def_id(it.id));
-                let layout = cx.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
+                let layout = cx.tcx.infer_ctxt(Reveal::All).enter(|infcx| {
                     let ty = cx.tcx.erase_regions(&t);
                     ty.layout(&infcx).unwrap_or_else(|e| {
                         bug!("failed to get layout for `{}`: {}", t, e)

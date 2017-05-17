@@ -138,7 +138,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
             self.check_const_eval(&body.value);
         }
 
-        let outer_penv = self.tcx.infer_ctxt(body_id, Reveal::UserFacing).enter(|infcx| {
+        let outer_penv = self.tcx.infer_ctxt(body_id).enter(|infcx| {
             let param_env = infcx.param_env.clone();
             let outer_penv = mem::replace(&mut self.param_env, param_env);
             let region_maps = &self.tcx.region_maps(item_def_id);
@@ -468,7 +468,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         in_fn: false,
         promotable: false,
         mut_rvalue_borrows: NodeSet(),
-        param_env: ty::ParamEnv::empty(),
+        param_env: ty::ParamEnv::empty(Reveal::UserFacing),
     }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }

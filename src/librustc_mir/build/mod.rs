@@ -18,7 +18,6 @@ use rustc::middle::region::CodeExtent;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use rustc::mir::visit::MutVisitor;
-use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::NodeMap;
@@ -84,7 +83,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
     };
 
     let src = MirSource::from_node(tcx, id);
-    tcx.infer_ctxt(body_id, Reveal::UserFacing).enter(|infcx| {
+    tcx.infer_ctxt(body_id).enter(|infcx| {
         let cx = Cx::new(&infcx, src);
         let mut mir = if cx.tables().tainted_by_errors {
             build::construct_error(cx, body_id)
@@ -173,7 +172,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let span = tcx.hir.span(ctor_id);
     if let hir::VariantData::Tuple(ref fields, ctor_id) = *v {
         let pe = tcx.param_env(tcx.hir.local_def_id(ctor_id));
-        tcx.infer_ctxt(pe, Reveal::UserFacing).enter(|infcx| {
+        tcx.infer_ctxt(pe).enter(|infcx| {
             let (mut mir, src) =
                 shim::build_adt_ctor(&infcx, ctor_id, fields, span);
 

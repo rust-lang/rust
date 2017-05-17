@@ -150,20 +150,32 @@ pub enum Representability {
 impl<'tcx> ty::ParamEnv<'tcx> {
     /// Construct a trait environment suitable for contexts where
     /// there are no where clauses in scope.
-    pub fn empty() -> Self {
-        Self::new(ty::Slice::empty())
+    pub fn empty(reveal: Reveal) -> Self {
+        Self::new(ty::Slice::empty(), reveal)
     }
 
     /// Construct a trait environment with the given set of predicates.
-    pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>) -> Self {
-        ty::ParamEnv { caller_bounds }
+    pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>,
+               reveal: Reveal)
+               -> Self {
+        ty::ParamEnv { caller_bounds, reveal }
+    }
+
+    /// Returns a new parameter environment with the same clauses, but
+    /// which "reveals" the true results of projections in all cases
+    /// (even for associated types that are specializable).  This is
+    /// the desired behavior during trans and certain other special
+    /// contexts; normally though we want to use `Reveal::UserFacing`,
+    /// which is the default.
+    pub fn reveal_all(self) -> Self {
+        ty::ParamEnv { reveal: Reveal::All, ..self }
     }
 
     pub fn can_type_implement_copy<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        self_type: Ty<'tcx>, span: Span)
                                        -> Result<(), CopyImplementationError> {
         // FIXME: (@jroesch) float this code up
-        tcx.infer_ctxt(self.clone(), Reveal::UserFacing).enter(|infcx| {
+        tcx.infer_ctxt(self.clone()).enter(|infcx| {
             let (adt, substs) = match self_type.sty {
                 ty::TyAdt(adt, substs) => (adt, substs),
                 _ => return Err(CopyImplementationError::NotAnAdt),
@@ -970,7 +982,7 @@ fn is_copy_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::CopyTraitLangItem);
-    tcx.infer_ctxt(param_env, Reveal::UserFacing)
+    tcx.infer_ctxt(param_env)
        .enter(|infcx| traits::type_known_to_meet_bound(&infcx, ty, trait_def_id, DUMMY_SP))
 }
 
@@ -980,7 +992,7 @@ fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::SizedTraitLangItem);
-    tcx.infer_ctxt(param_env, Reveal::UserFacing)
+    tcx.infer_ctxt(param_env)
        .enter(|infcx| traits::type_known_to_meet_bound(&infcx, ty, trait_def_id, DUMMY_SP))
 }
 
@@ -990,7 +1002,7 @@ fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::FreezeTraitLangItem);
-    tcx.infer_ctxt(param_env, Reveal::UserFacing)
+    tcx.infer_ctxt(param_env)
        .enter(|infcx| traits::type_known_to_meet_bound(&infcx, ty, trait_def_id, DUMMY_SP))
 }
 

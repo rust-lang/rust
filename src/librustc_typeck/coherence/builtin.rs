@@ -15,7 +15,7 @@ use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::region::RegionMaps;
 use rustc::middle::lang_items::UnsizeTraitLangItem;
 
-use rustc::traits::{self, ObligationCause, Reveal};
+use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::TypeFoldable;
 use rustc::ty::adjustment::CoerceUnsizedInfo;
@@ -208,7 +208,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            source,
            target);
 
-    tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
+    tcx.infer_ctxt(param_env).enter(|infcx| {
         let cause = ObligationCause::misc(span, impl_node_id);
         let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>,
                            mt_b: ty::TypeAndMut<'tcx>,

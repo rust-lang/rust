@@ -155,7 +155,7 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 expected: Ty<'tcx>,
                                 actual: Ty<'tcx>)
                                 -> bool {
-    tcx.infer_ctxt((), Reveal::UserFacing).enter(|ref infcx| {
+    tcx.infer_ctxt(Reveal::UserFacing).enter(|ref infcx| {
         let mut fulfill_cx = FulfillmentContext::new();
         match infcx.eq_types(false, &cause, expected, actual) {
             Ok(InferOk { obligations, .. }) => {

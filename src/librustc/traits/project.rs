@@ -36,7 +36,7 @@ use util::common::FN_OUTPUT_NAME;
 
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Reveal {
     /// At type-checking time, we refuse to project any associated
     /// type that is marked `default`. Non-`default` ("final") types
@@ -278,12 +278,14 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
         match ty.sty {
             ty::TyAnon(def_id, substs) if !substs.has_escaping_regions() => { // (*)
                 // Only normalize `impl Trait` after type-checking, usually in trans.
-                if self.selcx.projection_mode() == Reveal::All {
-                    let generic_ty = self.tcx().type_of(def_id);
-                    let concrete_ty = generic_ty.subst(self.tcx(), substs);
-                    self.fold_ty(concrete_ty)
-                } else {
-                    ty
+                match self.param_env.reveal {
+                    Reveal::UserFacing => ty,
+
+                    Reveal::All => {
+                        let generic_ty = self.tcx().type_of(def_id);
+                        let concrete_ty = generic_ty.subst(self.tcx(), substs);
+                        self.fold_ty(concrete_ty)
+                    }
                 }
             }
 

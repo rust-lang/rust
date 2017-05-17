@@ -12,7 +12,7 @@
 #![allow(unreachable_code)]
 
 use rustc::infer::{self, InferCtxt, InferOk};
-use rustc::traits::{self, Reveal};
+use rustc::traits;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt, TypeVariants};
 use rustc::middle::const_val::ConstVal;
@@ -752,7 +752,7 @@ impl MirPass for TypeckMir {
             return;
         }
         let param_env = tcx.param_env(def_id);
-        tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
+        tcx.infer_ctxt(param_env).enter(|infcx| {
             let mut checker = TypeChecker::new(&infcx, item_id);
             {
                 let mut verifier = TypeVerifier::new(&mut checker, mir);

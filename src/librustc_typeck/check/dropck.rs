@@ -16,7 +16,7 @@ use rustc::infer::{self, InferOk};
 use rustc::middle::region::{self, RegionMaps};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::traits::{self, ObligationCause, Reveal};
+use rustc::traits::{self, ObligationCause};
 use util::common::ErrorReported;
 use util::nodemap::FxHashSet;
 
@@ -80,7 +80,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
     // check that the impl type can be made to match the trait type.
 
     let impl_param_env = tcx.param_env(self_type_did);
-    tcx.infer_ctxt(impl_param_env, Reveal::UserFacing).enter(|ref infcx| {
+    tcx.infer_ctxt(impl_param_env).enter(|ref infcx| {
         let tcx = infcx.tcx;
         let mut fulfillment_cx = traits::FulfillmentContext::new();
 

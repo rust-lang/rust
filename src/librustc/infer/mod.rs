@@ -174,11 +174,6 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // avoid reporting the same error twice.
     pub reported_trait_errors: RefCell<FxHashSet<traits::TraitErrorKey<'tcx>>>,
 
-    // Sadly, the behavior of projection varies a bit depending on the
-    // stage of compilation. The specifics are given in the
-    // documentation for `Reveal`.
-    projection_mode: Reveal,
-
     // When an error occurs, we want to avoid reporting "derived"
     // errors that are due to this original failure. Normally, we
     // handle this with the `err_count_on_creation` count, which
@@ -406,15 +401,15 @@ pub trait InferEnv<'a, 'tcx> {
     fn to_parts(self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParamEnv<'tcx>>);
+                    ty::ParamEnv<'tcx>);
 }
 
-impl<'a, 'tcx> InferEnv<'a, 'tcx> for () {
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for Reveal {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParamEnv<'tcx>>) {
-        (None, None, None)
+                    ty::ParamEnv<'tcx>) {
+        (None, None, ty::ParamEnv::empty(self))
     }
 }
 
@@ -422,8 +417,8 @@ impl<'a, 'tcx> InferEnv<'a, 'tcx> for ty::ParamEnv<'tcx> {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParamEnv<'tcx>>) {
-        (None, None, Some(self))
+                    ty::ParamEnv<'tcx>) {
+        (None, None, self)
     }
 }
 
@@ -431,8 +426,8 @@ impl<'a, 'tcx> InferEnv<'a, 'tcx> for (&'a ty::TypeckTables<'tcx>, ty::ParamEnv<
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParamEnv<'tcx>>) {
-        (Some(self.0), None, Some(self.1))
+                    ty::ParamEnv<'tcx>) {
+        (Some(self.0), None, self.1)
     }
 }
 
@@ -440,8 +435,8 @@ impl<'a, 'tcx> InferEnv<'a, 'tcx> for (ty::TypeckTables<'tcx>, ty::ParamEnv<'tcx
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParamEnv<'tcx>>) {
-        (None, Some(self.0), Some(self.1))
+                    ty::ParamEnv<'tcx>) {
+        (None, Some(self.0), self.1)
     }
 }
 
@@ -449,11 +444,11 @@ impl<'a, 'tcx> InferEnv<'a, 'tcx> for hir::BodyId {
     fn to_parts(self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParamEnv<'tcx>>) {
+                    ty::ParamEnv<'tcx>) {
         let def_id = tcx.hir.body_owner_def_id(self);
         (Some(tcx.typeck_tables_of(def_id)),
          None,
-         Some(tcx.param_env(def_id)))
+         tcx.param_env(def_id))
     }
 }
 
@@ -465,15 +460,11 @@ pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     arena: DroplessArena,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
     tables: Option<&'a ty::TypeckTables<'gcx>>,
-    param_env: Option<ty::ParamEnv<'gcx>>,
-    projection_mode: Reveal,
+    param_env: ty::ParamEnv<'gcx>,
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
-    pub fn infer_ctxt<E: InferEnv<'a, 'gcx>>(self,
-                                             env: E,
-                                             projection_mode: Reveal)
-                                             -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
+    pub fn infer_ctxt<E: InferEnv<'a, 'gcx>>(self, env: E) -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         let (tables, fresh_tables, param_env) = env.to_parts(self);
         InferCtxtBuilder {
             global_tcx: self,
@@ -481,7 +472,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             fresh_tables: fresh_tables.map(RefCell::new),
             tables: tables,
             param_env: param_env,
-            projection_mode: projection_mode,
         }
     }
 
@@ -498,12 +488,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
             region_vars: RegionVarBindings::new(self),
-            param_env: param_env.unwrap(),
+            param_env: param_env,
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
             reported_trait_errors: RefCell::new(FxHashSet()),
-            projection_mode: Reveal::UserFacing,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: self.sess.err_count(),
             in_snapshot: Cell::new(false),
@@ -520,13 +509,11 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             ref arena,
             ref fresh_tables,
             tables,
-            ref mut param_env,
-            projection_mode,
+            param_env,
         } = *self;
         let tables = tables.map(InferTables::Interned).unwrap_or_else(|| {
             fresh_tables.as_ref().map_or(InferTables::Missing, InferTables::InProgress)
         });
-        let param_env = param_env.take().unwrap_or_else(|| ty::ParamEnv::empty());
         global_tcx.enter_local(arena, |tcx| f(InferCtxt {
             tcx: tcx,
             tables: tables,
@@ -539,7 +526,6 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             reported_trait_errors: RefCell::new(FxHashSet()),
-            projection_mode: projection_mode,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: tcx.sess.err_count(),
             in_snapshot: Cell::new(false),
@@ -643,11 +629,15 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return value;
         }
 
-        self.infer_ctxt((), Reveal::All).enter(|infcx| {
+        self.infer_ctxt(Reveal::All).enter(|infcx| {
             value.trans_normalize(&infcx)
         })
     }
 
+    /// Does a best-effort to normalize any associated types in
+    /// `value`; this includes revealing specializable types, so this
+    /// should be not be used during type-checking, but only during
+    /// optimization and code generation.
     pub fn normalize_associated_type_in_env<T>(
         self, value: &T, env: ty::ParamEnv<'tcx>
     ) -> T
@@ -661,7 +651,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return value;
         }
 
-        self.infer_ctxt(env, Reveal::All).enter(|infcx| {
+        self.infer_ctxt(env.reveal_all()).enter(|infcx| {
             value.trans_normalize(&infcx)
        })
     }
@@ -726,10 +716,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 span_bug!(span, "Uninferred types/regions in `{:?}`", result);
             }
         }
-    }
-
-    pub fn projection_mode(&self) -> Reveal {
-        self.projection_mode
     }
 
     pub fn is_in_snapshot(&self) -> bool {

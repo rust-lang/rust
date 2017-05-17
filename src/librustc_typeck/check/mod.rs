@@ -93,7 +93,7 @@ use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region::CodeExtent;
 use rustc::ty::subst::{Kind, Subst, Substs};
-use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode, Reveal};
+use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
 use rustc::ty::{ParamTy, LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, Ty, TyCtxt, Visibility};
 use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
@@ -530,7 +530,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
         let tables = ty::TypeckTables::empty();
         let param_env = tcx.param_env(def_id);
         InheritedBuilder {
-            infcx: tcx.infer_ctxt((tables, param_env), Reveal::UserFacing),
+            infcx: tcx.infer_ctxt((tables, param_env)),
             def_id,
         }
     }

@@ -1191,6 +1191,11 @@ pub struct ParamEnv<'tcx> {
     /// the set of bounds on the in-scope type parameters, translated
     /// into Obligations, and elaborated and normalized.
     pub caller_bounds: &'tcx Slice<ty::Predicate<'tcx>>,
+
+    /// Typically, this is `Reveal::UserFacing`, but during trans we
+    /// want `Reveal::All` -- note that this is always paired with an
+    /// empty environment. To get that, use `ParamEnv::reveal()`.
+    pub reveal: traits::Reveal,
 }
 
 impl<'tcx> ParamEnv<'tcx> {
@@ -1218,7 +1223,7 @@ impl<'tcx> ParamEnv<'tcx> {
             }
         } else {
             ParamEnvAnd {
-                param_env: ParamEnv::empty(),
+                param_env: ParamEnv::empty(self.reveal),
                 value: value,
             }
         }
@@ -2467,8 +2472,8 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
 
 /// See `ParamEnv` struct def'n for details.
 fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   def_id: DefId)
-                                   -> ParamEnv<'tcx> {
+                       def_id: DefId)
+                       -> ParamEnv<'tcx> {
     // Compute the bounds on Self and the type parameters.
 
     let bounds = tcx.predicates_of(def_id).instantiate_identity(tcx);
@@ -2486,7 +2491,8 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // are any errors at that point, so after type checking you can be
     // sure that this will succeed without errors anyway.
 
-    let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates));
+    let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
+                                             traits::Reveal::UserFacing);
 
     let body_id = tcx.hir.as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
         tcx.hir.maybe_body_owned_by(id).map_or(id, |body| body.node_id)

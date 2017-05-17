@@ -18,7 +18,6 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::mir::*;
 use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::*;
-use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Subst,Substs};
 
@@ -545,9 +544,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
     }
 }
 
-fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, param_env: ty::ParamEnv<'tcx>,
+fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          param_env: ty::ParamEnv<'tcx>,
                           ty: Ty<'tcx>) -> Option<u64> {
-    tcx.infer_ctxt(param_env, traits::Reveal::All).enter(|infcx| {
+    tcx.infer_ctxt(param_env.reveal_all()).enter(|infcx| {
         ty.layout(&infcx).ok().map(|layout| {
             layout.size(&tcx.data_layout).bytes()
         })

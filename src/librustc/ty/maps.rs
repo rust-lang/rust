@@ -906,6 +906,12 @@ define_maps! { <'tcx>
     [] specialization_graph_of: SpecializationGraph(DefId) -> Rc<specialization_graph::Graph>,
     [] is_object_safe: ObjectSafety(DefId) -> bool,
 
+    // Get the ParameterEnvironment for a given item; this environment
+    // will be in "user-facing" mode, meaning that it is suitabe for
+    // type-checking etc, and it does not normalize specializable
+    // associated types. This is almost always what you want,
+    // unless you are doing MIR optimizations, in which case you
+    // might want to use `reveal_all()` method to change modes.
     [] param_env: ParamEnv(DefId) -> ty::ParamEnv<'tcx>,
 
     // Trait selection queries. These are best used by invoking `ty.moves_by_default()`,

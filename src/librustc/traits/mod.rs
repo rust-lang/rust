@@ -477,9 +477,10 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}",
            predicates);
 
-    let elaborated_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates));
+    let elaborated_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
+                                           unnormalized_env.reveal);
 
-    tcx.infer_ctxt(elaborated_env, Reveal::UserFacing).enter(|infcx| {
+    tcx.infer_ctxt(elaborated_env).enter(|infcx| {
         let predicates = match fully_normalize(
                 &infcx, cause,
                 // You would really want to pass infcx.param_env.caller_bounds here,
@@ -528,7 +529,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("normalize_param_env_or_error: resolved predicates={:?}",
             predicates);
 
-        ty::ParamEnv::new(tcx.intern_predicates(&predicates))
+        ty::ParamEnv::new(tcx.intern_predicates(&predicates), unnormalized_env.reveal)
     })
 }
 
@@ -590,7 +591,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
 
-    tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
+    tcx.infer_ctxt(Reveal::All).enter(|infcx| {
         let mut selcx = SelectionContext::new(&infcx);
         let mut fulfill_cx = FulfillmentContext::new();
         let cause = ObligationCause::dummy();

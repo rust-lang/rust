@@ -320,15 +320,15 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     }
 
     pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        ty.needs_drop(self.tcx, ty::ParamEnv::empty())
+        ty.needs_drop(self.tcx, ty::ParamEnv::empty(traits::Reveal::All))
     }
 
     pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx, ty::ParamEnv::empty(), DUMMY_SP)
+        ty.is_sized(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
     }
 
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(self.tcx, ty::ParamEnv::empty(), DUMMY_SP)
+        ty.is_freeze(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
     }
 
     pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {
@@ -735,7 +735,7 @@ impl<'a, 'tcx> LayoutTyper<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
             return TyLayout { ty: ty, layout: layout, variant_index: None };
         }
 
-        self.tcx().infer_ctxt((), traits::Reveal::All).enter(|infcx| {
+        self.tcx().infer_ctxt(traits::Reveal::All).enter(|infcx| {
             infcx.layout_of(ty).unwrap_or_else(|e| {
                 match e {
                     ty::layout::LayoutError::SizeOverflow(_) =>
