@@ -509,6 +509,7 @@ actual:\n\
                                  self.config.adb_test_dir.clone()
                              ],
                              Vec::new(),
+                             None,
                              None)
                     .expect(&format!("failed to exec `{:?}`", self.config.adb_path));
 
@@ -521,6 +522,7 @@ actual:\n\
                                  "tcp:5039".to_owned()
                              ],
                              Vec::new(),
+                             None,
                              None)
                     .expect(&format!("failed to exec `{:?}`", self.config.adb_path));
 
@@ -543,6 +545,7 @@ actual:\n\
                                                               adb_arg.clone()
                                                           ],
                                                           Vec::new(),
+                                                          None,
                                                           None)
                     .expect(&format!("failed to exec `{:?}`", self.config.adb_path));
 
@@ -579,6 +582,7 @@ actual:\n\
                                  None,
                                  &debugger_opts,
                                  Vec::new(),
+                                 None,
                                  None)
                     .expect(&format!("failed to exec `{:?}`", gdb_path));
                 let cmdline = {
@@ -1542,6 +1546,12 @@ actual:\n\
             logv(self.config, format!("executing {}", cmdline));
             cmdline
         };
+        let working_dir = if self.config.target.contains("emscripten") {
+            Some(self.output_base_name().parent().unwrap().to_str().unwrap().to_owned())
+        } else {
+            None
+        };
+
         let procsrv::Result {
             out,
             err,
@@ -1551,7 +1561,8 @@ actual:\n\
                          aux_path,
                          &args,
                          env,
-                         input).expect(&format!("failed to exec `{}`", prog));
+                         input,
+                         working_dir).expect(&format!("failed to exec `{}`", prog));
         self.dump_output(&out, &err);
         ProcRes {
             status: status,

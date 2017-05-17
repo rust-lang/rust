@@ -53,7 +53,8 @@ pub fn run(lib_path: &str,
            aux_path: Option<&str>,
            args: &[String],
            env: Vec<(String, String)>,
-           input: Option<String>)
+           input: Option<String>,
+           current_dir: Option<String>)
            -> io::Result<Result> {
 
     let mut cmd = Command::new(prog);
@@ -65,6 +66,9 @@ pub fn run(lib_path: &str,
     add_target_env(&mut cmd, lib_path, aux_path);
     for (key, val) in env {
         cmd.env(&key, &val);
+    }
+    if let Some(cwd) = current_dir {
+        cmd.current_dir(cwd);
     }
 
     let mut process = cmd.spawn()?;
@@ -85,7 +89,8 @@ pub fn run_background(lib_path: &str,
                       aux_path: Option<&str>,
                       args: &[String],
                       env: Vec<(String, String)>,
-                      input: Option<String>)
+                      input: Option<String>,
+                      current_dir: Option<String>)
                       -> io::Result<Child> {
 
     let mut cmd = Command::new(prog);
@@ -95,6 +100,9 @@ pub fn run_background(lib_path: &str,
     add_target_env(&mut cmd, lib_path, aux_path);
     for (key, val) in env {
         cmd.env(&key, &val);
+    }
+    if let Some(cwd) = current_dir {
+        cmd.current_dir(cwd);
     }
 
     let mut process = cmd.spawn()?;
