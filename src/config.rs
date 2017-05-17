@@ -387,6 +387,7 @@ create_config! {
     chain_indent: IndentStyle, IndentStyle::Block, "Indentation of chain";
     chain_one_line_max: usize, 60, "Maximum length of a chain to fit on a single line";
     reorder_imports: bool, false, "Reorder import statements alphabetically";
+    reorder_imports_in_group: bool, false, "Reorder import statements in group";
     reorder_imported_names: bool, false,
         "Reorder lists of names in import statements alphabetically";
     single_line_if_else_max_width: usize, 50, "Maximum line length for single line if-else \
