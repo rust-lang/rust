@@ -222,7 +222,7 @@ impl ::serde::ser::Serialize for FileLines {
     fn serialize<S>(&self, _: S) -> Result<S::Ok, S::Error>
         where S: ::serde::ser::Serializer
     {
-        panic!("FileLines cannot be serialized. This is a rustfmt bug.");
+        unreachable!("FileLines cannot be serialized. This is a rustfmt bug.");
     }
 }
 
