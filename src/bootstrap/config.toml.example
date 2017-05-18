@@ -314,3 +314,9 @@
 # Note that this address should not contain a trailing slash as file names will
 # be appended to it.
 #upload-addr = "https://example.com/folder"
+
+# Whether to build a plain source tarball to upload
+# We disable that on Windows not to override the one already uploaded on S3
+# as the one built on Windows will contain backslashes in paths causing problems
+# on linux
+#src-tarball = true
