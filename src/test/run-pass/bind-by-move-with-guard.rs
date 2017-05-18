@@ -17,7 +17,7 @@ pub fn main() {
     let p = Arc::new(true);
     let x = Some(p);
     match x {
-        Some(z) if z == true => { dispose(z); },
-        None => panic!()
+        Some(z) if z == Arc::new(true) => { dispose(z); },
+        _ => panic!()
     }
 }
