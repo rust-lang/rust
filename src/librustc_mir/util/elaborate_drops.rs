@@ -493,13 +493,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let discr_ty = adt.repr.discr_type().to_ty(self.tcx());
         let discr = Lvalue::Local(self.new_temp(discr_ty));
         let discr_rv = Rvalue::Discriminant(self.lvalue.clone());
-        let switch_block = self.elaborator.patch().new_block(BasicBlockData {
-            statements: vec![
-                Statement {
-                    source_info: self.source_info,
-                    kind: StatementKind::Assign(discr.clone(), discr_rv),
-                }
-                ],
+        let switch_block = BasicBlockData {
+            statements: vec![self.assign(&discr, discr_rv)],
             terminator: Some(Terminator {
                 source_info: self.source_info,
                 kind: TerminatorKind::SwitchInt {
@@ -510,7 +505,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 }
             }),
             is_cleanup: unwind.is_cleanup(),
-        });
+        };
+        let switch_block = self.elaborator.patch().new_block(switch_block);
         self.drop_flag_test_block(switch_block, succ, unwind)
     }
 
@@ -531,14 +527,11 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let ref_lvalue = self.new_temp(ref_ty);
         let unit_temp = Lvalue::Local(self.new_temp(tcx.mk_nil()));
 
-        self.elaborator.patch().new_block(BasicBlockData {
-            statements: vec![Statement {
-                source_info: self.source_info,
-                kind: StatementKind::Assign(
-                    Lvalue::Local(ref_lvalue),
-                    Rvalue::Ref(tcx.types.re_erased, BorrowKind::Mut, self.lvalue.clone())
-                )
-            }],
+        let result = BasicBlockData {
+            statements: vec![self.assign(
+                &Lvalue::Local(ref_lvalue),
+                Rvalue::Ref(tcx.types.re_erased, BorrowKind::Mut, self.lvalue.clone())
+            )],
             terminator: Some(Terminator {
                 kind: TerminatorKind::Call {
                     func: Operand::function_handle(tcx, drop_fn.def_id, substs,
@@ -550,24 +543,33 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 source_info: self.source_info
             }),
             is_cleanup: unwind.is_cleanup(),
-        })
+        };
+        self.elaborator.patch().new_block(result)
     }
 
     /// create a loop that drops an array:
     ///
+
+    ///
     /// loop-block:
-    ///    can_go = index == len
+    ///    can_go = cur == length_or_end
     ///    if can_go then succ else drop-block
     /// drop-block:
-    ///    ptr = &mut LV[index]
-    ///    index = index + 1
+    ///    if ptr_based {
+    ///        ptr = cur
+    ///        cur = cur.offset(1)
+    ///    } else {
+    ///        ptr = &mut LV[cur]
+    ///        cur = cur + 1
+    ///    }
     ///    drop(ptr)
     fn drop_loop(&mut self,
                  succ: BasicBlock,
-                 index: &Lvalue<'tcx>,
-                 length: &Lvalue<'tcx>,
+                 cur: &Lvalue<'tcx>,
+                 length_or_end: &Lvalue<'tcx>,
                  ety: Ty<'tcx>,
-                 unwind: Unwind)
+                 unwind: Unwind,
+                 ptr_based: bool)
                  -> BasicBlock
     {
         let use_ = |lv: &Lvalue<'tcx>| Operand::Consume(lv.clone());
@@ -581,17 +583,21 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let can_go = &Lvalue::Local(self.new_temp(tcx.types.bool));
 
         let one = self.constant_usize(1);
-        let drop_block = self.elaborator.patch().new_block(BasicBlockData {
+        let (ptr_next, cur_next) = if ptr_based {
+            (Rvalue::Use(use_(cur)),
+             Rvalue::BinaryOp(BinOp::Offset, use_(cur), one))
+        } else {
+            (Rvalue::Ref(
+                 tcx.types.re_erased,
+                 BorrowKind::Mut,
+                 self.lvalue.clone().index(use_(cur))),
+             Rvalue::BinaryOp(BinOp::Add, use_(cur), one))
+        };
+
+        let drop_block = BasicBlockData {
             statements: vec![
-                Statement { source_info: self.source_info, kind: StatementKind::Assign(
-                    ptr.clone(), Rvalue::Ref(
-                        tcx.types.re_erased, BorrowKind::Mut,
-                        self.lvalue.clone().index(use_(index))
-                    ),
-                )},
-                Statement { source_info: self.source_info, kind: StatementKind::Assign(
-                    index.clone(), Rvalue::BinaryOp(BinOp::Add, use_(index), one)
-                )},
+                self.assign(ptr, ptr_next),
+                self.assign(cur, cur_next)
             ],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
@@ -599,20 +605,22 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 // this gets overwritten by drop elaboration.
                 kind: TerminatorKind::Unreachable,
             })
-        });
+        };
+        let drop_block = self.elaborator.patch().new_block(drop_block);
 
-        let loop_block = self.elaborator.patch().new_block(BasicBlockData {
+        let loop_block = BasicBlockData {
             statements: vec![
-                Statement { source_info: self.source_info, kind: StatementKind::Assign(
-                    can_go.clone(), Rvalue::BinaryOp(BinOp::Eq, use_(index), use_(length))
-                )},
+                self.assign(can_go, Rvalue::BinaryOp(BinOp::Eq,
+                                                     use_(cur),
+                                                     use_(length_or_end)))
             ],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
                 kind: TerminatorKind::if_(tcx, use_(can_go), succ, drop_block)
             })
-        });
+        };
+        let loop_block = self.elaborator.patch().new_block(loop_block);
 
         self.elaborator.patch().patch_terminator(drop_block, TerminatorKind::Drop {
             location: ptr.clone().deref(),
@@ -625,29 +633,97 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
     fn open_drop_for_array(&mut self, ety: Ty<'tcx>) -> BasicBlock {
         debug!("open_drop_for_array({:?})", ety);
-        // FIXME: using an index instead of a pointer to avoid
-        // special-casing ZSTs.
+
+        // if size_of::<ety>() == 0 {
+        //     index_based_loop
+        // } else {
+        //     ptr_based_loop
+        // }
+
         let tcx = self.tcx();
-        let index = &Lvalue::Local(self.new_temp(tcx.types.usize));
-        let length = &Lvalue::Local(self.new_temp(tcx.types.usize));
+
+        let use_ = |lv: &Lvalue<'tcx>| Operand::Consume(lv.clone());
+        let size = &Lvalue::Local(self.new_temp(tcx.types.usize));
+        let size_is_zero = &Lvalue::Local(self.new_temp(tcx.types.bool));
+        let base_block = BasicBlockData {
+            statements: vec![
+                self.assign(size, Rvalue::NullaryOp(NullOp::SizeOf, ety)),
+                self.assign(size_is_zero, Rvalue::BinaryOp(BinOp::Eq,
+                                                           use_(size),
+                                                           self.constant_usize(0)))
+            ],
+            is_cleanup: self.unwind.is_cleanup(),
+            terminator: Some(Terminator {
+                source_info: self.source_info,
+                kind: TerminatorKind::if_(
+                    tcx,
+                    use_(size_is_zero),
+                    self.drop_loop_pair(ety, false),
+                    self.drop_loop_pair(ety, true)
+                )
+            })
+        };
+        self.elaborator.patch().new_block(base_block)
+    }
+
+    // create a pair of drop-loops of `lvalue`, which drops its contents
+    // even in the case of 1 panic. If `ptr_based`, create a pointer loop,
+    // otherwise create an index loop.
+    fn drop_loop_pair(&mut self, ety: Ty<'tcx>, ptr_based: bool) -> BasicBlock {
+        debug!("drop_loop_pair({:?}, {:?})", ety, ptr_based);
+        let tcx = self.tcx();
+        let iter_ty = if ptr_based {
+            tcx.mk_ptr(ty::TypeAndMut { ty: ety, mutbl: hir::Mutability::MutMutable })
+        } else {
+            tcx.types.usize
+        };
+
+        let cur = Lvalue::Local(self.new_temp(iter_ty));
+        let length = Lvalue::Local(self.new_temp(tcx.types.usize));
+        let length_or_end = if ptr_based {
+            Lvalue::Local(self.new_temp(iter_ty))
+        } else {
+            length.clone()
+        };
 
         let unwind = self.unwind.map(|unwind| {
-            self.drop_loop(unwind, index, length, ety, Unwind::InCleanup)
+            self.drop_loop(unwind,
+                           &cur,
+                           &length_or_end,
+                           ety,
+                           Unwind::InCleanup,
+                           ptr_based)
         });
 
         let succ = self.succ; // FIXME(#6393)
-        let loop_block = self.drop_loop(succ, index, length, ety, unwind);
+        let loop_block = self.drop_loop(
+            succ,
+            &cur,
+            &length_or_end,
+            ety,
+            unwind,
+            ptr_based);
 
         let zero = self.constant_usize(0);
+        let mut drop_block_stmts = vec![];
+        drop_block_stmts.push(self.assign(&length, Rvalue::Len(self.lvalue.clone())));
+        if ptr_based {
+            // cur = &LV[0];
+            // end = &LV[len];
+            drop_block_stmts.push(self.assign(&cur, Rvalue::Ref(
+                tcx.types.re_erased, BorrowKind::Mut,
+                self.lvalue.clone().index(zero.clone())
+            )));
+            drop_block_stmts.push(self.assign(&length_or_end, Rvalue::Ref(
+                tcx.types.re_erased, BorrowKind::Mut,
+                self.lvalue.clone().index(Operand::Consume(length.clone()))
+            )));
+        } else {
+            // index = 0 (length already pushed)
+            drop_block_stmts.push(self.assign(&cur, Rvalue::Use(zero)));
+        }
         let drop_block = self.elaborator.patch().new_block(BasicBlockData {
-            statements: vec![
-                Statement { source_info: self.source_info, kind: StatementKind::Assign(
-                    length.clone(), Rvalue::Len(self.lvalue.clone())
-                )},
-                Statement { source_info: self.source_info, kind: StatementKind::Assign(
-                    index.clone(), Rvalue::Use(zero),
-                )},
-            ],
+            statements: drop_block_stmts,
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
@@ -835,5 +911,12 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             ty: self.tcx().types.usize,
             literal: Literal::Value { value: ConstVal::Integral(self.tcx().const_usize(val)) }
         })
+    }
+
+    fn assign(&self, lhs: &Lvalue<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {
+        Statement {
+            source_info: self.source_info,
+            kind: StatementKind::Assign(lhs.clone(), rhs)
+        }
     }
 }
