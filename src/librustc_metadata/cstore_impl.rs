@@ -106,6 +106,7 @@ provide! { <'tcx> tcx, def_id, cdata
     closure_type => { cdata.closure_ty(def_id.index, tcx) }
     inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
+    is_default_impl => { cdata.is_default_impl(def_id.index) }
     describe_def => { cdata.get_def(def_id.index) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
     stability => { cdata.get_stability(def_id.index) }
@@ -174,11 +175,6 @@ impl CrateStore for cstore::CStore {
     {
         self.dep_graph.read(DepNode::MetaData(did));
         self.get_crate_data(did.krate).is_const_fn(did.index)
-    }
-
-    fn is_default_impl(&self, impl_did: DefId) -> bool {
-        self.dep_graph.read(DepNode::MetaData(impl_did));
-        self.get_crate_data(impl_did.krate).is_default_impl(impl_did.index)
     }
 
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool
@@ -403,7 +399,7 @@ impl CrateStore for cstore::CStore {
         }
 
         self.dep_graph.read(DepNode::MetaData(def_id));
-        debug!("item_body({}): inlining item", tcx.item_path_str(def_id));
+        debug!("item_body({:?}): inlining item", def_id);
 
         self.get_crate_data(def_id.krate).item_body(tcx, def_id.index)
     }

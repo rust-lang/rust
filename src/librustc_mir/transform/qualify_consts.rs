@@ -361,7 +361,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
     /// Qualify a whole const, static initializer or const fn.
     fn qualify_const(&mut self) -> Qualif {
-        debug!("qualifying {} {}", self.mode, self.tcx.item_path_str(self.def_id));
+        debug!("qualifying {} {:?}", self.mode, self.def_id);
 
         let mir = self.mir;
 

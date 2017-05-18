@@ -290,7 +290,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     }
 
     // If this is a defaulted impl, then bail out early here
-    if tcx.sess.cstore.is_default_impl(did) {
+    if tcx.is_default_impl(did) {
         return ret.push(clean::Item {
             inner: clean::DefaultImplItem(clean::DefaultImpl {
                 // FIXME: this should be decoded

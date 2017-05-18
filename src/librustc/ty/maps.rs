@@ -774,6 +774,9 @@ define_maps! { <'tcx>
     /// True if this is a foreign item (i.e., linked via `extern { ... }`).
     [] is_foreign_item: IsForeignItem(DefId) -> bool,
 
+    /// True if this is a default impl (aka impl Foo for ..)
+    [] is_default_impl: ItemSignature(DefId) -> bool,
+
     /// Get a map with the variance of every item; use `item_variance`
     /// instead.
     [] crate_variances: crate_variances(CrateNum) -> Rc<ty::CrateVariancesMap>,

@@ -744,7 +744,7 @@ impl MirPass for TypeckMir {
                           mir: &mut Mir<'tcx>) {
         let item_id = src.item_id();
         let def_id = tcx.hir.local_def_id(item_id);
-        debug!("run_pass: {}", tcx.item_path_str(def_id));
+        debug!("run_pass: {:?}", def_id);
 
         if tcx.sess.err_count() > 0 {
             // compiling a broken program can obviously result in a

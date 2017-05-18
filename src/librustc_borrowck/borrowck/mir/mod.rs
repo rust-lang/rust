@@ -59,7 +59,7 @@ pub fn borrowck_mir(bcx: &mut BorrowckCtxt,
                     attributes: &[ast::Attribute]) {
     let tcx = bcx.tcx;
     let def_id = tcx.hir.local_def_id(id);
-    debug!("borrowck_mir({}) UNIMPLEMENTED", tcx.item_path_str(def_id));
+    debug!("borrowck_mir({:?}) UNIMPLEMENTED", def_id);
 
     // It is safe for us to borrow `mir_validated()`: `optimized_mir`
     // steals it, but it forces the `borrowck` query.

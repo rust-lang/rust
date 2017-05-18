@@ -100,6 +100,7 @@ pub fn provide(providers: &mut Providers) {
         impl_trait_ref,
         impl_polarity,
         is_foreign_item,
+        is_default_impl,
         ..*providers
     };
 }
@@ -1543,5 +1544,16 @@ fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Some(hir_map::NodeForeignItem(..)) => true,
         Some(_) => false,
         _ => bug!("is_foreign_item applied to non-local def-id {:?}", def_id)
+    }
+}
+
+fn is_default_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             def_id: DefId)
+                             -> bool {
+    match tcx.hir.get_if_local(def_id) {
+        Some(hir_map::NodeItem(&hir::Item { node: hir::ItemDefaultImpl(..), .. }))
+             => true,
+        Some(_) => false,
+        _ => bug!("is_default_impl applied to non-local def-id {:?}", def_id)
     }
 }
