@@ -43,16 +43,19 @@ use sys::os as os_imp;
 /// use std::env;
 ///
 /// // We assume that we are in a valid directory.
-/// let p = env::current_dir().unwrap();
-/// println!("The current directory is {}", p.display());
+/// let path = env::current_dir().unwrap();
+/// println!("The current directory is {}", path.display());
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn current_dir() -> io::Result<PathBuf> {
     os_imp::getcwd()
 }
 
-/// Changes the current working directory to the specified path, returning
-/// whether the change was completed successfully or not.
+/// Changes the current working directory to the specified path.
+///
+/// Returns an [`Err`] if the operation fails.
+///
+/// [`Err`]: ../../std/result/enum.Result.html#method.err
 ///
 /// # Examples
 ///
@@ -65,8 +68,8 @@ pub fn current_dir() -> io::Result<PathBuf> {
 /// println!("Successfully changed working directory to {}!", root.display());
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn set_current_dir<P: AsRef<Path>>(p: P) -> io::Result<()> {
-    os_imp::chdir(p.as_ref())
+pub fn set_current_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
+    os_imp::chdir(path.as_ref())
 }
 
 /// An iterator over a snapshot of the environment variables of this process.
@@ -175,10 +178,10 @@ impl fmt::Debug for VarsOs {
 ///
 /// The returned result is [`Ok(s)`] if the environment variable is present and is
 /// valid unicode. If the environment variable is not present, or it is not
-/// valid unicode, then [`Err`] will be returned.
+/// valid unicode, then [`VarError`] will be returned.
 ///
 /// [`Ok(s)`]: ../result/enum.Result.html#variant.Ok
-/// [`Err`]: ../result/enum.Result.html#variant.Err
+/// [`VarError`]: enum.VarError.html
 ///
 /// # Examples
 ///
@@ -199,7 +202,7 @@ pub fn var<K: AsRef<OsStr>>(key: K) -> Result<String, VarError> {
 fn _var(key: &OsStr) -> Result<String, VarError> {
     match var_os(key) {
         Some(s) => s.into_string().map_err(VarError::NotUnicode),
-        None => Err(VarError::NotPresent)
+        None => Err(VarError::NotPresent),
     }
 }
 
