@@ -225,8 +225,19 @@ macro_rules! create_config {
         // We first parse into `PartialConfig`, then create a default `Config`
         // and overwrite the properties with corresponding values from `PartialConfig`.
         #[derive(Deserialize, Serialize, Clone)]
-        struct PartialConfig {
+        pub struct PartialConfig {
             $(pub $i: Option<$ty>),+
+        }
+
+        impl PartialConfig {
+            pub fn to_toml(&self) -> Result<String, String> {
+                // file_lines can't be specified in TOML
+                let mut cloned = self.clone();
+                cloned.file_lines = None;
+
+                toml::to_string(&cloned)
+                    .map_err(|e| format!("Could not output config: {}", e.to_string()))
+            }
         }
 
         // Macro hygiene won't allow us to make `set_$i()` methods on Config
@@ -300,8 +311,8 @@ macro_rules! create_config {
                 }
             }
 
-            pub fn used_to_toml(&self) -> Result<String, String> {
-                let mut partial = PartialConfig {
+            pub fn used_options(&self) -> PartialConfig {
+                PartialConfig {
                     $(
                         $i: if self.$i.0.get() {
                                 Some(self.$i.1.clone())
@@ -309,27 +320,15 @@ macro_rules! create_config {
                                 None
                             },
                     )+
-                };
-
-                // file_lines is special and can't be specified in toml.
-                partial.file_lines = None;
-
-                toml::to_string(&partial)
-                    .map_err(|e| format!("Could not output config: {}", e.to_string()))
+                }
             }
 
-            pub fn to_toml(&self) -> Result<String, String> {
-                let mut partial = PartialConfig {
+            pub fn all_options(&self) -> PartialConfig {
+                PartialConfig {
                     $(
                         $i: Some(self.$i.1.clone()),
                     )+
-                };
-
-                // file_lines is special and can't be specified in toml.
-                partial.file_lines = None;
-
-                toml::to_string(&partial)
-                    .map_err(|e| format!("Could not output config: {}", e.to_string()))
+                }
             }
 
             pub fn override_value(&mut self, key: &str, val: &str)
@@ -492,22 +491,24 @@ mod test {
     use super::Config;
 
     #[test]
-    fn test_config_tracking() {
-        let config = Config::default();
-        assert!(!config.verbose.0.get());
-        config.verbose();
-        config.skip_children();
-        assert!(config.verbose.0.get());
-        assert!(config.skip_children.0.get());
-        assert!(!config.disable_all_formatting.0.get());
-    }
-
-    #[test]
     fn test_config_set() {
         let mut config = Config::default();
         config.set().verbose(false);
         assert_eq!(config.verbose(), false);
         config.set().verbose(true);
         assert_eq!(config.verbose(), true);
+    }
+
+    #[test]
+    fn test_config_used_to_toml() {
+        let config = Config::default();
+
+        let verbose = config.verbose();
+        let skip_children = config.skip_children();
+
+        let used_options = config.used_options();
+        let toml = used_options.to_toml().unwrap();
+        assert_eq!(toml,
+                   format!("verbose = {}\nskip_children = {}\n", verbose, skip_children));
     }
 }
