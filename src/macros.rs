@@ -159,15 +159,13 @@ pub fn rewrite_macro(mac: &ast::Mac,
             // Format macro invocation as array literal.
             let extra_offset = macro_name.len();
             let shape = try_opt!(shape.shrink_left(extra_offset));
-            let rewrite = try_opt!(rewrite_array(expr_vec.iter().map(|x| &**x),
-                                                 mk_sp(context
-                                                           .codemap
-                                                           .span_after(mac.span,
-                                                                       original_style
-                                                                           .opener()),
-                                                       mac.span.hi - BytePos(1)),
-                                                 context,
-                                                 shape));
+            let rewrite =
+                try_opt!(rewrite_array(expr_vec.iter().map(|x| &**x),
+                                       mk_sp(context.codemap.span_after(mac.span,
+                                                                        original_style.opener()),
+                                             mac.span.hi - BytePos(1)),
+                                       context,
+                                       shape));
 
             Some(format!("{}{}", macro_name, rewrite))
         }

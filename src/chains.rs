@@ -174,7 +174,8 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let almost_total = rewrites[..rewrites.len() - 1]
         .iter()
         .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
-    let one_line_len = rewrites.iter().fold(0, |a, r| a + r.len()) + parent_rewrite.len();
+    let one_line_len = rewrites.iter().fold(0, |a, r| a + first_line_width(r)) +
+                       parent_rewrite.len();
 
     let veto_single_line = if one_line_len > context.config.chain_one_line_max() {
         if rewrites.len() > 1 {
@@ -248,13 +249,11 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 
 // True if the chain is only `?`s.
 fn chain_only_try(exprs: &[ast::Expr]) -> bool {
-    exprs
-        .iter()
-        .all(|e| if let ast::ExprKind::Try(_) = e.node {
-                 true
-             } else {
-                 false
-             })
+    exprs.iter().all(|e| if let ast::ExprKind::Try(_) = e.node {
+                         true
+                     } else {
+                         false
+                     })
 }
 
 pub fn rewrite_try(expr: &ast::Expr,

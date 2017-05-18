@@ -1044,11 +1044,10 @@ impl<'a> Rewrite for ControlFlow<'a> {
             let between_kwd_else_block_comment =
                 extract_comment(between_kwd_else_block, context, shape);
 
-            let after_else =
-                mk_sp(context
-                          .codemap
-                          .span_after(mk_sp(self.block.span.hi, else_block.span.lo), "else"),
-                      else_block.span.lo);
+            let after_else = mk_sp(context.codemap.span_after(mk_sp(self.block.span.hi,
+                                                                    else_block.span.lo),
+                                                              "else"),
+                                   else_block.span.lo);
             let after_else_comment = extract_comment(after_else, context, shape);
 
             let between_sep = match context.config.control_brace_style() {

@@ -303,21 +303,18 @@ fn read_significant_comments(file_name: &str) -> HashMap<String, String> {
         .map(|line| line.expect("Failed getting line"))
         .take_while(|line| line_regex.is_match(&line))
         .filter_map(|line| {
-            regex
-                .captures_iter(&line)
-                .next()
-                .map(|capture| {
-                    (capture
-                         .get(1)
-                         .expect("Couldn't unwrap capture")
-                         .as_str()
-                         .to_owned(),
-                     capture
-                         .get(2)
-                         .expect("Couldn't unwrap capture")
-                         .as_str()
-                         .to_owned())
-                })
+            regex.captures_iter(&line).next().map(|capture| {
+                (capture
+                     .get(1)
+                     .expect("Couldn't unwrap capture")
+                     .as_str()
+                     .to_owned(),
+                 capture
+                     .get(2)
+                     .expect("Couldn't unwrap capture")
+                     .as_str()
+                     .to_owned())
+            })
         })
         .collect()
 }

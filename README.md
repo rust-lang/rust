@@ -5,6 +5,11 @@ A tool for formatting Rust code according to style guidelines.
 If you'd like to help out (and you should, it's a fun project!), see
 [Contributing.md](Contributing.md).
 
+If you want latest and greatest, you should use the [libsyntax](https://github.com/rust-lang-nursery/rustfmt/tree/libsyntax)
+branch. It supports some newer Rust syntax which is missing from master and
+fixes some bugs. However, it links against libsyntax from the Rust compiler, so
+you must be using a nightly version of Rust to use it.
+
 ## Quick start
 
 To install:
