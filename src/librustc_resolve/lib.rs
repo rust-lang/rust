@@ -2314,7 +2314,8 @@ impl<'a> Resolver<'a> {
                                         enum_path);
                         err.help(&msg);
                     } else {
-                        err.span_suggestion(span, "you can try using the variant's enum", enum_path);
+                        err.span_suggestion(span, "you can try using the variant's enum",
+                                            enum_path);
                     }
                 }
             }

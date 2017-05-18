@@ -649,7 +649,8 @@ impl<'a> Resolver<'a> {
         if let Some(suggestion) = suggestion {
             if suggestion != name {
                 if let MacroKind::Bang = kind {
-                    err.span_suggestion(span, "you could try the macro", format!("{}!", suggestion));
+                    err.span_suggestion(span, "you could try the macro",
+                                        format!("{}!", suggestion));
                 } else {
                     err.span_suggestion(span, "try", suggestion.to_string());
                 }
