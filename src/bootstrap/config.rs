@@ -94,6 +94,7 @@ pub struct Config {
     pub backtrace: bool, // support for RUST_BACKTRACE
 
     // misc
+    pub low_priority: bool,
     pub channel: String,
     pub quiet_tests: bool,
     // Fallback musl-root for all targets
@@ -148,6 +149,7 @@ struct Build {
     target: Vec<String>,
     cargo: Option<String>,
     rustc: Option<String>,
+    low_priority: Option<bool>,
     compiler_docs: Option<bool>,
     docs: Option<bool>,
     submodules: Option<bool>,
@@ -306,6 +308,7 @@ impl Config {
         config.nodejs = build.nodejs.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
         config.python = build.python.map(PathBuf::from);
+        set(&mut config.low_priority, build.low_priority);
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
