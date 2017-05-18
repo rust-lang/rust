@@ -1,5 +1,5 @@
 // rustfmt-normalize_comments: true
-// rustfmt-condense_wildcard_suffices: true
+// rustfmt-condense_wildcard_suffixes: true
 
 fn main() {
     match x {

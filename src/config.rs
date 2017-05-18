@@ -421,6 +421,6 @@ create_config! {
     use_try_shorthand: bool, false, "Replace uses of the try! macro by the ? shorthand";
     write_mode: WriteMode, WriteMode::Replace,
         "What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff, Coverage";
-    condense_wildcard_suffices: bool, false, "Replace strings of _ wildcards by a single .. in \
+    condense_wildcard_suffixes: bool, false, "Replace strings of _ wildcards by a single .. in \
                                               tuple patterns"
 }

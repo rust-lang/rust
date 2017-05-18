@@ -295,7 +295,7 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
     // Condense wildcard string suffix into a single ..
     let wildcard_suffix_len = count_wildcard_suffix_len(&items);
 
-    let list = if context.config.condense_wildcard_suffices && wildcard_suffix_len >= 2 {
+    let list = if context.config.condense_wildcard_suffixes && wildcard_suffix_len >= 2 {
         let new_item_count = 1 + pats.len() - wildcard_suffix_len;
         items[new_item_count - 1].item = Some("..".to_owned());
 

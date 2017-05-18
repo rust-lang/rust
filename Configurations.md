@@ -166,7 +166,7 @@ Maximum length of comments. No effect unless`wrap_comments = true`.
 
 See also [`wrap_comments`](#wrap_comments).
 
-## `condense_wildcard_suffices`
+## `condense_wildcard_suffixes`
 
 Replace strings of _ wildcards by a single .. in tuple patterns
 
