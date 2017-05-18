@@ -17,11 +17,11 @@ RUN apt-get update && \
   xz-utils
 
 # dumb-init
-COPY dumb-init.sh /scripts/
+COPY scripts/dumb-init.sh /scripts/
 RUN sh /scripts/dumb-init.sh
 
 # ndk
-COPY android-ndk.sh /scripts/
+COPY scripts/android-ndk.sh /scripts/
 RUN . /scripts/android-ndk.sh && \
     download_ndk android-ndk-r13b-linux-x86_64.zip && \
     make_standalone_toolchain arm 9 && \
@@ -49,7 +49,7 @@ ENV RUST_CONFIGURE_ARGS \
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
 
 # cache
-COPY sccache.sh /scripts/
+COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 # init
