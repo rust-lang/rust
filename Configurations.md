@@ -259,10 +259,10 @@ trait Lorem {
         // body
     }
 
-    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: onsectetur,
+    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
              adipiscing: Adipiscing, elit: Elit);
 
-    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: onsectetur,
+    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
              adipiscing: Adipiscing, elit: Elit) {
         // body
     }
@@ -279,7 +279,7 @@ trait Lorem {
         // body
     }
 
-    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: onsectetur,
+    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
              adipiscing: Adipiscing, elit: Elit);
 
     fn lorem(ipsum: Ipsum,
