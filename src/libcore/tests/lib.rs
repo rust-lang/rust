@@ -20,6 +20,7 @@
 #![feature(fixed_size_array)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
+#![feature(iterator_step_by)]
 #![feature(i128_type)]
 #![feature(iter_rfind)]
 #![feature(libc)]
