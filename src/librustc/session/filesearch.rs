@@ -159,9 +159,14 @@ pub fn get_or_default_sysroot() -> PathBuf {
         })
     }
 
-    match canonicalize(env::current_exe().ok()) {
-        Some(mut p) => { p.pop(); p.pop(); p }
-        None => bug!("can't determine value for sysroot")
+    match env::current_exe() {
+        Ok(exe) => {
+            match canonicalize(Some(exe)) {
+                Some(mut p) => { p.pop(); p.pop(); return p; },
+                None => bug!("can't determine value for sysroot")
+            }
+        }
+        Err(ref e) => panic!(format!("failed to get current_exe: {}", e))
     }
 }
 
