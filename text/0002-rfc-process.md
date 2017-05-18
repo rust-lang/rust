@@ -118,5 +118,5 @@ As an alternative alternative, we could adopt an even stricter RFC process than 
    informal RFC process?
 3. Should we retain rejected RFCs in the archive?
 
-[core team]: https://github.com/mozilla/rust/wiki/Note-core-team
+[core team]: https://www.rust-lang.org/en-US/team.html
 [PEP]: http://legacy.python.org/dev/peps/pep-0001/
