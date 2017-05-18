@@ -315,7 +315,8 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for mir::Rvalue<'tcx> 
             mir::Rvalue::Discriminant(ref lvalue) => {
                 lvalue.hash_stable(hcx, hasher);
             }
-            mir::Rvalue::Box(ty) => {
+            mir::Rvalue::NullaryOp(op, ty) => {
+                op.hash_stable(hcx, hasher);
                 ty.hash_stable(hcx, hasher);
             }
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
@@ -374,7 +375,8 @@ impl_stable_hash_for!(enum mir::BinOp {
     Le,
     Ne,
     Ge,
-    Gt
+    Gt,
+    Offset
 });
 
 impl_stable_hash_for!(enum mir::UnOp {
@@ -382,6 +384,10 @@ impl_stable_hash_for!(enum mir::UnOp {
     Neg
 });
 
+impl_stable_hash_for!(enum mir::NullOp {
+    Box,
+    SizeOf
+});
 
 impl_stable_hash_for!(struct mir::Constant<'tcx> { span, ty, literal });
 

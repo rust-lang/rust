@@ -186,7 +186,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             Rvalue::CheckedBinaryOp(..) => "Rvalue::CheckedBinaryOp",
             Rvalue::UnaryOp(..) => "Rvalue::UnaryOp",
             Rvalue::Discriminant(..) => "Rvalue::Discriminant",
-            Rvalue::Box(..) => "Rvalue::Box",
+            Rvalue::NullaryOp(..) => "Rvalue::NullaryOp",
             Rvalue::Aggregate(ref kind, ref _operands) => {
                 // AggregateKind is not distinguished by visit API, so
                 // record it. (`super_rvalue` handles `_operands`.)

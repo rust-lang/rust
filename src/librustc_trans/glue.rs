@@ -76,6 +76,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
         let align = C_uint(bcx.ccx, align);
         return (size, align);
     }
+    assert!(!info.is_null());
     match t.sty {
         ty::TyAdt(def, substs) => {
             let ccx = bcx.ccx;

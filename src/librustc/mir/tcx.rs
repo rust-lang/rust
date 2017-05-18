@@ -166,7 +166,8 @@ impl<'tcx> Rvalue<'tcx> {
                 let ty = op.ty(tcx, lhs_ty, rhs_ty);
                 tcx.intern_tup(&[ty, tcx.types.bool], false)
             }
-            Rvalue::UnaryOp(_, ref operand) => {
+            Rvalue::UnaryOp(UnOp::Not, ref operand) |
+            Rvalue::UnaryOp(UnOp::Neg, ref operand) => {
                 operand.ty(mir, tcx)
             }
             Rvalue::Discriminant(ref lval) => {
@@ -179,9 +180,8 @@ impl<'tcx> Rvalue<'tcx> {
                     bug!("Rvalue::Discriminant on Lvalue of type {:?}", ty);
                 }
             }
-            Rvalue::Box(t) => {
-                tcx.mk_box(t)
-            }
+            Rvalue::NullaryOp(NullOp::Box, t) => tcx.mk_box(t),
+            Rvalue::NullaryOp(NullOp::SizeOf, _) => tcx.types.usize,
             Rvalue::Aggregate(ref ak, ref ops) => {
                 match **ak {
                     AggregateKind::Array(ty) => {
@@ -227,7 +227,7 @@ impl<'tcx> BinOp {
                 assert_eq!(lhs_ty, rhs_ty);
                 lhs_ty
             }
-            &BinOp::Shl | &BinOp::Shr => {
+            &BinOp::Shl | &BinOp::Shr | &BinOp::Offset => {
                 lhs_ty // lhs_ty can be != rhs_ty
             }
             &BinOp::Eq | &BinOp::Lt | &BinOp::Le |
@@ -270,7 +270,8 @@ impl BinOp {
             BinOp::Lt => hir::BinOp_::BiLt,
             BinOp::Gt => hir::BinOp_::BiGt,
             BinOp::Le => hir::BinOp_::BiLe,
-            BinOp::Ge => hir::BinOp_::BiGe
+            BinOp::Ge => hir::BinOp_::BiGe,
+            BinOp::Offset => unreachable!()
         }
     }
 }

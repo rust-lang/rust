@@ -114,7 +114,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
     pub fn deref(self) -> LvalueRef<'tcx> {
         let projected_ty = self.ty.builtin_deref(true, ty::NoPreference)
-            .unwrap().ty;
+            .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self)).ty;
         let (llptr, llextra) = match self.val {
             OperandValue::Immediate(llptr) => (llptr, ptr::null_mut()),
             OperandValue::Pair(llptr, llextra) => (llptr, llextra),

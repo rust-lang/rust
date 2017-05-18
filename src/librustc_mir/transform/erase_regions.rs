@@ -53,7 +53,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
             Rvalue::CheckedBinaryOp(..) |
             Rvalue::UnaryOp(..) |
             Rvalue::Discriminant(..) |
-            Rvalue::Box(..) |
+            Rvalue::NullaryOp(..) |
             Rvalue::Aggregate(..) => {
                 // These variants don't contain regions.
             }

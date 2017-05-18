@@ -502,7 +502,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     _ => bug!(),
                 }
             }
-            mir::Rvalue::Box(..) => {
+            mir::Rvalue::NullaryOp(mir::NullOp::Box, _) => {
                 let tcx = self.scx.tcx();
                 let exchange_malloc_fn_def_id = tcx
                     .lang_items

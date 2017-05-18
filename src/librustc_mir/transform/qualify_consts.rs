@@ -595,7 +595,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         match *rvalue {
             Rvalue::Use(_) |
             Rvalue::Repeat(..) |
-            Rvalue::UnaryOp(..) |
+            Rvalue::UnaryOp(UnOp::Neg, _) |
+            Rvalue::UnaryOp(UnOp::Not, _) |
+            Rvalue::NullaryOp(NullOp::SizeOf, _) |
             Rvalue::CheckedBinaryOp(..) |
             Rvalue::Cast(CastKind::ReifyFnPointer, ..) |
             Rvalue::Cast(CastKind::UnsafeFnPointer, ..) |
@@ -703,7 +705,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 if let ty::TyRawPtr(_) = lhs.ty(self.mir, self.tcx).sty {
                     assert!(op == BinOp::Eq || op == BinOp::Ne ||
                             op == BinOp::Le || op == BinOp::Lt ||
-                            op == BinOp::Ge || op == BinOp::Gt);
+                            op == BinOp::Ge || op == BinOp::Gt ||
+                            op == BinOp::Offset);
 
                     self.add(Qualif::NOT_CONST);
                     if self.mode != Mode::Fn {
@@ -719,7 +722,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
             }
 
-            Rvalue::Box(_) => {
+            Rvalue::NullaryOp(NullOp::Box, _) => {
                 self.add(Qualif::NOT_CONST);
                 if self.mode != Mode::Fn {
                     struct_span_err!(self.tcx.sess, self.span, E0010,

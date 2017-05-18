@@ -509,7 +509,7 @@ macro_rules! make_mir_visitor {
                         self.visit_lvalue(lvalue, LvalueContext::Inspect, location);
                     }
 
-                    Rvalue::Box(ref $($mutability)* ty) => {
+                    Rvalue::NullaryOp(_op, ref $($mutability)* ty) => {
                         self.visit_ty(ty);
                     }
 
