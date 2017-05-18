@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cmp;
+
 use syntax::{ast, ptr, visit};
 use syntax::codemap::{self, CodeMap, Span, BytePos};
 use syntax::parse::ParseSess;
@@ -29,6 +31,19 @@ fn is_use_item(item: &ast::Item) -> bool {
         ast::ItemKind::Use(_) => true,
         _ => false,
     }
+}
+
+fn item_bound(item: &ast::Item) -> Span {
+    item.attrs
+        .iter()
+        .map(|attr| attr.span)
+        .fold(item.span, |bound, span| {
+            Span {
+                lo: cmp::min(bound.lo, span.lo),
+                hi: cmp::max(bound.hi, span.hi),
+                expn_id: span.expn_id,
+            }
+        })
 }
 
 pub struct FmtVisitor<'a> {
@@ -510,9 +525,20 @@ impl<'a> FmtVisitor<'a> {
             // to be potentially reordered within `format_imports`. Otherwise, just format the
             // next item for output.
             if self.config.reorder_imports && is_use_item(&*items_left[0]) {
+                let reorder_imports_in_group = self.config.reorder_imports_in_group;
+                let mut last = self.codemap.lookup_line_range(item_bound(&items_left[0]));
                 let use_item_length = items_left
                     .iter()
-                    .take_while(|ppi| is_use_item(&***ppi))
+                    .take_while(|ppi| {
+                        is_use_item(&***ppi) &&
+                        (!reorder_imports_in_group ||
+                         {
+                             let current = self.codemap.lookup_line_range(item_bound(&ppi));
+                             let in_same_group = current.lo < last.hi + 2;
+                             last = current;
+                             in_same_group
+                         })
+                    })
                     .count();
                 let (use_items, rest) = items_left.split_at(use_item_length);
                 self.format_imports(use_items);
