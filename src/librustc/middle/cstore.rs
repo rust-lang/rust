@@ -282,7 +282,7 @@ pub trait CrateStore {
                     -> Option<DefId>;
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
-    fn def_path_hash(&self, def: DefId) -> u64;
+    fn def_path_hash(&self, def: DefId) -> ich::Fingerprint;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children(&self, did: DefId) -> Vec<def::Export>;
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro;
@@ -414,7 +414,7 @@ impl CrateStore for DummyCrateStore {
     fn def_path(&self, def: DefId) -> hir_map::DefPath {
         bug!("relative_def_path")
     }
-    fn def_path_hash(&self, def: DefId) -> u64 {
+    fn def_path_hash(&self, def: DefId) -> ich::Fingerprint {
         bug!("wa")
     }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
