@@ -260,7 +260,9 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock
                         result[succ] = CleanupKind::Internal { funclet: funclet };
                     }
                     CleanupKind::Funclet => {
-                        set_successor(funclet, succ);
+                        if funclet != succ {
+                            set_successor(funclet, succ);
+                        }
                     }
                     CleanupKind::Internal { funclet: succ_funclet } => {
                         if funclet != succ_funclet {
