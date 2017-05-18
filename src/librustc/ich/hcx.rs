@@ -110,7 +110,7 @@ impl<'a, 'tcx: 'a> StableHashingContext<'a, 'tcx> {
     }
 
     #[inline]
-    pub fn def_path_hash(&mut self, def_id: DefId) -> u64 {
+    pub fn def_path_hash(&mut self, def_id: DefId) -> ich::Fingerprint {
         self.tcx.def_path_hash(def_id)
     }
 

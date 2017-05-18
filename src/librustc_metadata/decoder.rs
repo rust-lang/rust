@@ -16,6 +16,7 @@ use schema::*;
 use rustc::dep_graph::{DepGraph, DepNode, GlobalMetaDataKind};
 use rustc::hir::map::{DefKey, DefPath, DefPathData};
 use rustc::hir;
+use rustc::ich;
 
 use rustc::middle::cstore::LinkagePreference;
 use rustc::hir::def::{self, Def, CtorKind};
@@ -1106,7 +1107,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     #[inline]
-    pub fn def_path_hash(&self, index: DefIndex) -> u64 {
+    pub fn def_path_hash(&self, index: DefIndex) -> ich::Fingerprint {
         self.def_path_table.def_path_hash(index)
     }
 
