@@ -33,8 +33,7 @@ fn generic_noncopy<T: Default>() {
 
 fn generic_copy<T: Copy + Default>() {
     let mut u3 = U3 { a: T::default() };
-    // FIXME: it should be known here that `T: Copy`, need to use correct "parameter environment"
-    u3.a = T::default(); //~ ERROR assignment to non-`Copy` union field requires unsafe
+    u3.a = T::default(); // OK
     let mut u4 = U4 { a: T::default() };
     u4.a = T::default(); // OK
 }
