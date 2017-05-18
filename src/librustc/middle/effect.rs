@@ -218,6 +218,24 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
                     }
                 }
             }
+            hir::ExprAssign(ref lhs, ref rhs) => {
+                if let hir::ExprField(ref base_expr, field) = lhs.node {
+                    if let ty::TyAdt(adt, ..) = self.tables.expr_ty_adjusted(base_expr).sty {
+                        if adt.is_union() {
+                            let field_ty = self.tables.expr_ty_adjusted(lhs);
+                            let param_env = self.tcx.parameter_environment(adt.did);
+                            if field_ty.moves_by_default(self.tcx, &param_env, field.span) {
+                                self.require_unsafe(field.span,
+                                                    "assignment to non-`Copy` union field");
+                            }
+                            // Do not walk the field expr again.
+                            intravisit::walk_expr(self, base_expr);
+                            intravisit::walk_expr(self, rhs);
+                            return
+                        }
+                    }
+                }
+            }
             _ => {}
         }
 
