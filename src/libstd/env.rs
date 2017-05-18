@@ -13,6 +13,13 @@
 //! This module contains functions to inspect various aspects such as
 //! environment variables, process arguments, the current directory, and various
 //! other important directories.
+//!
+//! There are several functions and structs in this module that have a
+//! counterpart ending in `os`. Those ending in `os` will return an [`OsString`]
+//! and those without will be returning a [`String`].
+//!
+//! [`OsString`]: ../../std/ffi/struct.OsString.html
+//! [`String`]: ../string/struct.String.html
 
 #![stable(feature = "env", since = "1.0.0")]
 
@@ -71,7 +78,8 @@ pub fn set_current_dir<P: AsRef<Path>>(p: P) -> io::Result<()> {
 
 /// An iterator over a snapshot of the environment variables of this process.
 ///
-/// This structure is created through the [`std::env::vars`] function.
+/// This structure is created by the [`std::env::vars`] function. See its
+/// documentation for more.
 ///
 /// [`std::env::vars`]: fn.vars.html
 #[stable(feature = "env", since = "1.0.0")]
@@ -79,7 +87,8 @@ pub struct Vars { inner: VarsOs }
 
 /// An iterator over a snapshot of the environment variables of this process.
 ///
-/// This structure is created through the [`std::env::vars_os`] function.
+/// This structure is created by the [`std::env::vars_os`] function. See
+/// its documentation for more.
 ///
 /// [`std::env::vars_os`]: fn.vars_os.html
 #[stable(feature = "env", since = "1.0.0")]
@@ -173,12 +182,10 @@ impl fmt::Debug for VarsOs {
 
 /// Fetches the environment variable `key` from the current process.
 ///
-/// The returned result is [`Ok(s)`] if the environment variable is present and is
-/// valid unicode. If the environment variable is not present, or it is not
-/// valid unicode, then [`Err`] will be returned.
+/// # Errors
 ///
-/// [`Ok(s)`]: ../result/enum.Result.html#variant.Ok
-/// [`Err`]: ../result/enum.Result.html#variant.Err
+/// * Environment variable is not present
+/// * Environment variable is not valid unicode
 ///
 /// # Examples
 ///
@@ -230,7 +237,8 @@ fn _var_os(key: &OsStr) -> Option<OsString> {
     })
 }
 
-/// Possible errors from the [`env::var`] function.
+/// The error type for operations interacting with environment variables.
+/// Possibly returned from the [`env::var`] function.
 ///
 /// [`env::var`]: fn.var.html
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -353,10 +361,13 @@ fn _remove_var(k: &OsStr) {
     })
 }
 
-/// An iterator over `PathBuf` instances for parsing an environment variable
-/// according to platform-specific conventions.
+/// An iterator that splits an environment variable into paths according to
+/// platform-specific conventions.
 ///
-/// This structure is returned from `std::env::split_paths`.
+/// This structure is created by the [`std::env::split_paths`] function See its
+/// documentation for more.
+///
+/// [`std::env::split_paths`]: fn.split_paths.html
 #[stable(feature = "env", since = "1.0.0")]
 pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
 
@@ -399,8 +410,10 @@ impl<'a> fmt::Debug for SplitPaths<'a> {
     }
 }
 
-/// Error type returned from `std::env::join_paths` when paths fail to be
-/// joined.
+/// The error type for operations on the `PATH` variable. Possibly returned from
+/// the [`env::join_paths`] function.
+///
+/// [`env::join_paths`]: fn.join_paths.html
 #[derive(Debug)]
 #[stable(feature = "env", since = "1.0.0")]
 pub struct JoinPathsError {
@@ -410,15 +423,15 @@ pub struct JoinPathsError {
 /// Joins a collection of [`Path`]s appropriately for the `PATH`
 /// environment variable.
 ///
-/// Returns an [`OsString`] on success.
+/// # Errors
 ///
-/// Returns an [`Err`][err] (containing an error message) if one of the input
+/// Returns an [`Err`] (containing an error message) if one of the input
 /// [`Path`]s contains an invalid character for constructing the `PATH`
 /// variable (a double quote on Windows or a colon on Unix).
 ///
 /// [`Path`]: ../../std/path/struct.Path.html
 /// [`OsString`]: ../../std/ffi/struct.OsString.html
-/// [err]: ../../std/result/enum.Result.html#variant.Err
+/// [`Err`]: ../../std/result/enum.Result.html#variant.Err
 ///
 /// # Examples
 ///
@@ -490,12 +503,16 @@ pub fn home_dir() -> Option<PathBuf> {
 
 /// Returns the path of a temporary directory.
 ///
-/// On Unix, returns the value of the `TMPDIR` environment variable if it is
+/// # Unix
+///
+/// Returns the value of the `TMPDIR` environment variable if it is
 /// set, otherwise for non-Android it returns `/tmp`. If Android, since there
 /// is no global temporary folder (it is usually allocated per-app), it returns
 /// `/data/local/tmp`.
 ///
-/// On Windows, returns the value of, in order, the `TMP`, `TEMP`,
+/// # Windows
+///
+/// Returns the value of, in order, the `TMP`, `TEMP`,
 /// `USERPROFILE` environment variable if any are set and not the empty
 /// string. Otherwise, `temp_dir` returns the path of the Windows directory.
 /// This behavior is identical to that of [`GetTempPath`][msdn], which this
