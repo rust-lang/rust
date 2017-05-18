@@ -16,6 +16,12 @@ for example:
 
 Images will output artifacts in an `obj` dir at the root of a repository.
 
+## Filesystem layout
+
+- Each directory, excluding `scripts` and `disabled`, corresponds to a docker image
+- `scripts` contains files shared by docker images
+- `disabled` contains images that are not build travis
+
 ## Cross toolchains
 
 A number of these images take quite a long time to compile as they're building

@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   pkg-config
 
-COPY build-toolchain.sh /tmp/
+COPY dist-i686-freebsd/build-toolchain.sh /tmp/
 RUN /tmp/build-toolchain.sh i686
 
 RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
