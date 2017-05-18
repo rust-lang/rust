@@ -731,10 +731,8 @@ mod test {
     #[cfg_attr(rustfmt, rustfmt_skip)]
     fn format_comments() {
         let mut config: ::config::Config = Default::default();
-        config.override_value("wrap_comments", "true")
-            .expect("Could not set wrap_comments to true");
-        config.override_value("normalize_comments", "true")
-            .expect("Could not set normalize_comments to true");
+        config.set().wrap_comments(true);
+        config.set().normalize_comments(true);
 
         let comment = rewrite_comment(" //test",
                                       true,

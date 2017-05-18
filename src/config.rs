@@ -11,8 +11,6 @@
 extern crate toml;
 
 use std::cell::Cell;
-use std::error;
-use std::result;
 
 use file_lines::FileLines;
 use lists::{SeparatorTactic, ListTactic};
@@ -231,6 +229,21 @@ macro_rules! create_config {
             $(pub $i: Option<$ty>),+
         }
 
+        // Macro hygiene won't allow us to make `set_$i()` methods on Config
+        // for each item, so this struct is used to give the API to set values:
+        // `config.get().option(false)`. It's pretty ugly. Consider replacing
+        // with `config.set_option(false)` if we ever get a stable/usable
+        // `concat_idents!()`.
+        pub struct ConfigSetter<'a>(&'a mut Config);
+
+        impl<'a> ConfigSetter<'a> {
+            $(
+            pub fn $i(&mut self, value: $ty) {
+                (self.0).$i.1 = value;
+            }
+            )+
+        }
+
         impl Config {
 
             $(
@@ -239,6 +252,10 @@ macro_rules! create_config {
                 self.$i.1.clone()
             }
             )+
+
+            pub fn set<'a>(&'a mut self) -> ConfigSetter<'a> {
+                ConfigSetter(self)
+            }
 
             fn fill_from_parsed_config(mut self, parsed: PartialConfig) -> Config {
             $(
@@ -316,15 +333,19 @@ macro_rules! create_config {
             }
 
             pub fn override_value(&mut self, key: &str, val: &str)
-                -> result::Result<(), Box<error::Error + Send + Sync>>
             {
                 match key {
                     $(
-                        stringify!($i) => self.$i.1 = val.parse::<$ty>()?,
+                        stringify!($i) => {
+                            self.$i.1 = val.parse::<$ty>()
+                                .expect(&format!("Failed to parse override for {} (\"{}\") as a {}",
+                                                 stringify!($i),
+                                                 val,
+                                                 stringify!($ty)));
+                        }
                     )+
                     _ => panic!("Unknown config key in override: {}", key)
                 }
-                Ok(())
             }
 
             pub fn print_docs() {
@@ -479,5 +500,14 @@ mod test {
         assert!(config.verbose.0.get());
         assert!(config.skip_children.0.get());
         assert!(!config.disable_all_formatting.0.get());
+    }
+
+    #[test]
+    fn test_config_set() {
+        let mut config = Config::default();
+        config.set().verbose(false);
+        assert_eq!(config.verbose(), false);
+        config.set().verbose(true);
+        assert_eq!(config.verbose(), true);
     }
 }

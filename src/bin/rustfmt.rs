@@ -18,12 +18,14 @@ extern crate env_logger;
 extern crate getopts;
 
 use rustfmt::{run, Input, Summary};
-use rustfmt::config::Config;
+use rustfmt::file_lines::FileLines;
+use rustfmt::config::{Config, WriteMode};
 
 use std::{env, error};
 use std::fs::{self, File};
 use std::io::{self, ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
@@ -61,8 +63,8 @@ enum Operation {
 struct CliOptions {
     skip_children: bool,
     verbose: bool,
-    write_mode: Option<String>,
-    file_lines: Option<String>,
+    write_mode: Option<WriteMode>,
+    file_lines: FileLines, // Default is all lines in all files.
 }
 
 impl CliOptions {
@@ -71,29 +73,28 @@ impl CliOptions {
         options.skip_children = matches.opt_present("skip-children");
         options.verbose = matches.opt_present("verbose");
 
-        if let Some(write_mode) = matches.opt_str("write-mode") {
-            options.write_mode = Some(write_mode);
+        if let Some(ref write_mode) = matches.opt_str("write-mode") {
+            if let Ok(write_mode) = WriteMode::from_str(write_mode) {
+                options.write_mode = Some(write_mode);
+            } else {
+                return Err(FmtError::from(format!("Invalid write-mode: {}", write_mode)));
+            }
         }
 
-        if let Some(file_lines) = matches.opt_str("file-lines") {
-            options.file_lines = Some(file_lines);
+        if let Some(ref file_lines) = matches.opt_str("file-lines") {
+            options.file_lines = file_lines.parse()?;
         }
 
         Ok(options)
     }
 
-    fn apply_to(&self, config: &mut Config) -> FmtResult<()> {
-        let bool_to_str = |b| if b { "true" } else { "false" };
-        config
-            .override_value("skip_children", bool_to_str(self.skip_children))?;
-        config.override_value("verbose", bool_to_str(self.verbose))?;
-        if let Some(ref write_mode) = self.write_mode {
-            config.override_value("write_mode", &write_mode)?;
+    fn apply_to(self, config: &mut Config) {
+        config.set().skip_children(self.skip_children);
+        config.set().verbose(self.verbose);
+        config.set().file_lines(self.file_lines);
+        if let Some(write_mode) = self.write_mode {
+            config.set().write_mode(write_mode);
         }
-        if let Some(ref file_lines) = self.file_lines {
-            config.override_value("file_lines", &file_lines)?;
-        }
-        Ok(())
     }
 }
 
@@ -221,11 +222,11 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                                                          &env::current_dir().unwrap())?;
 
             // write_mode is always Plain for Stdin.
-            config.override_value("write_mode", "Plain")?;
+            config.set().write_mode(WriteMode::Plain);
 
             // parse file_lines
             if let Some(ref file_lines) = matches.opt_str("file-lines") {
-                config.override_value("file-lines", file_lines)?;
+                config.set().file_lines(file_lines.parse()?);
                 for f in config.file_lines().files() {
                     if f != "stdin" {
                         println!("Warning: Extra file listed in file_lines option '{}'", f);
@@ -238,6 +239,12 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
         Operation::Format { files, config_path } => {
             let options = CliOptions::from_matches(&matches)?;
 
+            for f in options.file_lines.files() {
+                if !files.contains(&PathBuf::from(f)) {
+                    println!("Warning: Extra file listed in file_lines option '{}'", f);
+                }
+            }
+
             let mut config = Config::default();
             let mut path = None;
             // Load the config path file if provided
@@ -246,13 +253,6 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                 config = cfg_tmp;
                 path = path_tmp;
             };
-            options.apply_to(&mut config)?;
-
-            for f in config.file_lines().files() {
-                if !files.contains(&PathBuf::from(f)) {
-                    println!("Warning: Extra file listed in file_lines option '{}'", f);
-                }
-            }
 
             if options.verbose {
                 if let Some(path) = path.as_ref() {
@@ -282,7 +282,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                         config = config_tmp;
                     }
 
-                    options.apply_to(&mut config)?;
+                    options.clone().apply_to(&mut config);
                     error_summary.add(run(Input::File(file), &config));
                 }
             }
