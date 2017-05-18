@@ -19,8 +19,9 @@ mod sub2 {
     pub fn foo() {} // implementation 2
 }
 
-use sub1::foo; //~ NOTE previous import of `foo` here
-use sub2::foo; //~ ERROR a value named `foo` has already been imported in this module [E0252]
-               //~| NOTE already imported
+use sub1::foo; //~ NOTE previous import of the value `foo` here
+use sub2::foo; //~ ERROR the name `foo` is defined multiple times
+               //~| NOTE `foo` reimported here
+               //~| NOTE `foo` must be defined only once in the value namespace of this module
 
 fn main() {}

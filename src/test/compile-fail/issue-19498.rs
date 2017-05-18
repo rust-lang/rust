@@ -8,16 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use self::A; //~ NOTE previous import of `A` here
-use self::B; //~ NOTE previous import of `B` here
-mod A {} //~ ERROR a module named `A` has already been imported in this module
-//~| `A` already imported
-pub mod B {} //~ ERROR a module named `B` has already been imported in this module
-//~| `B` already imported
+use self::A; //~ NOTE previous import of the module `A` here
+use self::B; //~ NOTE previous import of the module `B` here
+mod A {} //~ ERROR the name `A` is defined multiple times
+//~| `A` redefined here
+//~| NOTE `A` must be defined only once in the type namespace of this module
+pub mod B {} //~ ERROR the name `B` is defined multiple times
+//~| `B` redefined here
+//~| NOTE `B` must be defined only once in the type namespace of this module
 mod C {
-    use C::D; //~ NOTE previous import of `D` here
-    mod D {} //~ ERROR a module named `D` has already been imported in this module
-    //~| `D` already imported
+    use C::D; //~ NOTE previous import of the module `D` here
+    mod D {} //~ ERROR the name `D` is defined multiple times
+    //~| `D` redefined here
+    //~| NOTE `D` must be defined only once in the type namespace of this module
 }
 
 fn main() {}

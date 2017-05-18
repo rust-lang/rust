@@ -12,60 +12,66 @@
 
 #[allow(non_snake_case)]
 mod Foo { }
-//~^ NOTE previous definition of `Foo` here
+//~^ NOTE previous definition of the module `Foo` here
 
 #[allow(dead_code)]
 struct Foo;
-//~^ ERROR a module named `Foo` has already been defined in this module
-//~| NOTE already defined
+//~^ ERROR the name `Foo` is defined multiple times
+//~| NOTE `Foo` redefined here
+//~| NOTE `Foo` must be defined only once in the type namespace of this module
 
 #[allow(non_snake_case)]
 mod Bar { }
-//~^ NOTE previous definition of `Bar` here
+//~^ NOTE previous definition of the module `Bar` here
 
 #[allow(dead_code)]
 struct Bar(i32);
-//~^ ERROR a module named `Bar` has already been defined
-//~| NOTE already defined
+//~^ ERROR the name `Bar` is defined multiple times
+//~| NOTE `Bar` redefined here
+//~| NOTE `Bar` must be defined only once in the type namespace of this module
 
 
 #[allow(dead_code)]
 struct Baz(i32);
-//~^ NOTE previous definition
+//~^ NOTE previous definition of the type `Baz` here
 
 #[allow(non_snake_case)]
 mod Baz { }
-//~^ ERROR a type named `Baz` has already been defined
-//~| NOTE already defined
+//~^ ERROR the name `Baz` is defined multiple times
+//~| NOTE `Baz` redefined here
+//~| NOTE `Baz` must be defined only once in the type namespace of this module
 
 
 #[allow(dead_code)]
 struct Qux { x: bool }
-//~^ NOTE previous definition
+//~^ NOTE previous definition of the type `Qux` here
 
 #[allow(non_snake_case)]
 mod Qux { }
-//~^ ERROR a type named `Qux` has already been defined
-//~| NOTE already defined
+//~^ ERROR the name `Qux` is defined multiple times
+//~| NOTE `Qux` redefined here
+//~| NOTE `Qux` must be defined only once in the type namespace of this module
 
 
 #[allow(dead_code)]
 struct Quux;
-//~^ NOTE previous definition
+//~^ NOTE previous definition of the type `Quux` here
 
 #[allow(non_snake_case)]
 mod Quux { }
-//~^ ERROR a type named `Quux` has already been defined
-//~| NOTE already defined
+//~^ ERROR the name `Quux` is defined multiple times
+//~| NOTE `Quux` redefined here
+//~| NOTE `Quux` must be defined only once in the type namespace of this module
 
 
 #[allow(dead_code)]
 enum Corge { A, B }
-//~^ NOTE previous definition
+//~^ NOTE previous definition of the type `Corge` here
 
 #[allow(non_snake_case)]
 mod Corge { }
-//~^ ERROR a type named `Corge` has already been defined
-//~| NOTE already defined
+//~^ ERROR the name `Corge` is defined multiple times
+//~| NOTE `Corge` redefined here
+//~| NOTE `Corge` must be defined only once in the type namespace of this module
 
 fn main() { }

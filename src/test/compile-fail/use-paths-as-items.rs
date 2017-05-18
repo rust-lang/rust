@@ -14,6 +14,6 @@
 // Related issue: #25763
 
 use std::{mem, ptr};
-use std::mem; //~ ERROR has already been imported
+use std::mem; //~ ERROR the name `mem` is defined multiple times
 
 fn main() {}

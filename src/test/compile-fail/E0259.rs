@@ -11,10 +11,11 @@
 #![feature(alloc, libc)]
 
 extern crate alloc;
-//~^ NOTE previous import of `alloc` here
+//~^ NOTE previous import of the extern crate `alloc` here
 
 extern crate libc as alloc;
 //~^ ERROR E0259
-//~| NOTE `alloc` already imported
+//~| NOTE `alloc` reimported here
+//~| NOTE `alloc` must be defined only once in the type namespace of this module
 
 fn main() {}

@@ -32,12 +32,12 @@ const XUnit: u8 = 0;
 
 extern crate variant_namespacing;
 pub use variant_namespacing::XE::{XStruct, XTuple, XUnit};
-//~^ ERROR `XStruct` has already been defined
-//~| ERROR `XTuple` has already been defined
-//~| ERROR `XUnit` has already been defined
+//~^ ERROR the name `XStruct` is defined multiple times
+//~| ERROR the name `XTuple` is defined multiple times
+//~| ERROR the name `XUnit` is defined multiple times
 pub use E::{Struct, Tuple, Unit};
-//~^ ERROR `Struct` has already been defined
-//~| ERROR `Tuple` has already been defined
-//~| ERROR `Unit` has already been defined
+//~^ ERROR the name `Struct` is defined multiple times
+//~| ERROR the name `Tuple` is defined multiple times
+//~| ERROR the name `Unit` is defined multiple times
 
 fn main() {}
