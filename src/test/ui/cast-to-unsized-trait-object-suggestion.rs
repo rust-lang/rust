@@ -10,11 +10,5 @@
 
 fn main() {
     &1 as Send;
-    //~^ ERROR cast to unsized type
-    //~| HELP try casting to a reference instead:
-    //~| SUGGESTION &1 as &Send;
     Box::new(1) as Send;
-    //~^ ERROR cast to unsized type
-    //~| HELP try casting to a `Box` instead:
-    //~| SUGGESTION Box::new(1) as Box<Send>;
 }
