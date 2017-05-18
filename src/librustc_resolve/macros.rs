@@ -649,9 +649,9 @@ impl<'a> Resolver<'a> {
         if let Some(suggestion) = suggestion {
             if suggestion != name {
                 if let MacroKind::Bang = kind {
-                    err.span_suggestion(span, "did you mean", format!("{}!", suggestion));
+                    err.span_suggestion(span, "you could try the macro", format!("{}!", suggestion));
                 } else {
-                    err.span_suggestion(span, "did you mean", suggestion.to_string());
+                    err.span_suggestion(span, "try", suggestion.to_string());
                 }
             } else {
                 err.help("have you added the `#[macro_use]` on the module/import?");

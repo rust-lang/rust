@@ -2308,13 +2308,13 @@ impl<'a> Resolver<'a> {
                 enum_candidates.sort();
                 for (sp, variant_path, enum_path) in enum_candidates {
                     if sp == DUMMY_SP {
-                        let msg = format!("there is an enum variant `{}`,\
-                                        did you mean to use `{}`?",
+                        let msg = format!("there is an enum variant `{}`, \
+                                        try using `{}`?",
                                         variant_path,
                                         enum_path);
                         err.help(&msg);
                     } else {
-                        err.span_suggestion(span, "did you mean the variant's enum", enum_path);
+                        err.span_suggestion(span, "you can try using the variant's enum", enum_path);
                     }
                 }
             }
@@ -2323,7 +2323,7 @@ impl<'a> Resolver<'a> {
                     let self_is_available = this.self_value_is_available(path[0].ctxt, span);
                     match candidate {
                         AssocSuggestion::Field => {
-                            err.span_suggestion(span, "did you mean",
+                            err.span_suggestion(span, "try",
                                                 format!("self.{}", path_str));
                             if !self_is_available {
                                 err.span_label(span, format!("`self` value is only available in \
@@ -2331,11 +2331,11 @@ impl<'a> Resolver<'a> {
                             }
                         }
                         AssocSuggestion::MethodWithSelf if self_is_available => {
-                            err.span_suggestion(span, "did you mean",
+                            err.span_suggestion(span, "try",
                                                 format!("self.{}", path_str));
                         }
                         AssocSuggestion::MethodWithSelf | AssocSuggestion::AssocItem => {
-                            err.span_suggestion(span, "did you mean",
+                            err.span_suggestion(span, "try",
                                                 format!("Self::{}", path_str));
                         }
                     }
