@@ -29,6 +29,7 @@ use util::nodemap::FxHashMap;
 use serialize;
 
 use hir;
+use ich;
 
 use self::InferTy::*;
 use self::TypeVariants::*;
@@ -849,7 +850,7 @@ impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
         self.item_name // safe to skip the binder to access a name
     }
 
-    pub fn sort_key(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> (u64, InternedString) {
+    pub fn sort_key(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> (ich::Fingerprint, InternedString) {
         // We want something here that is stable across crate boundaries.
         // The DefId isn't but the `deterministic_hash` of the corresponding
         // DefPath is.
@@ -884,7 +885,7 @@ impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
         self.skip_binder().item_name()
     }
 
-    pub fn sort_key(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> (u64, InternedString) {
+    pub fn sort_key(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> (ich::Fingerprint, InternedString) {
         self.skip_binder().sort_key(tcx)
     }
 
