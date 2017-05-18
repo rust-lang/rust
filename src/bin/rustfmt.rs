@@ -44,6 +44,7 @@ enum Operation {
     Format {
         files: Vec<PathBuf>,
         config_path: Option<PathBuf>,
+        minimal_config_path: Option<String>,
     },
     /// Print the help message.
     Help,
@@ -51,6 +52,8 @@ enum Operation {
     Version,
     /// Print detailed configuration help.
     ConfigHelp,
+    /// Output default config to a file
+    ConfigOutputDefault { path: String },
     /// No file specified, read from stdin
     Stdin {
         input: String,
@@ -187,6 +190,14 @@ fn make_opts() -> Options {
                  "config-help",
                  "show details of rustfmt configuration options");
     opts.optopt("",
+                "dump-default-config",
+                "Dumps the default configuration to a file and exits.",
+                "PATH");
+    opts.optopt("",
+                "dump-minimal-config",
+                "Dumps configuration options that were checked during formatting to a file.",
+                "PATH");
+    opts.optopt("",
                 "config-path",
                 "Recursively searches the given path for the rustfmt.toml config file. If not \
                  found reverts to the input file path",
@@ -216,6 +227,12 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             Config::print_docs();
             Ok(Summary::new())
         }
+        Operation::ConfigOutputDefault { path } => {
+            let mut file = File::create(path)?;
+            let toml = Config::default().all_options().to_toml()?;
+            file.write_all(toml.as_bytes())?;
+            Ok(Summary::new())
+        }
         Operation::Stdin { input, config_path } => {
             // try to read config from local directory
             let (mut config, _) = match_cli_path_or_file(config_path,
@@ -236,7 +253,11 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
 
             Ok(run(Input::Text(input), &config))
         }
-        Operation::Format { files, config_path } => {
+        Operation::Format {
+            files,
+            config_path,
+            minimal_config_path,
+        } => {
             let options = CliOptions::from_matches(&matches)?;
 
             for f in options.file_lines.files() {
@@ -286,6 +307,15 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                     error_summary.add(run(Input::File(file), &config));
                 }
             }
+
+            // If we were given a path via dump-minimal-config, output any options
+            // that were used during formatting as TOML.
+            if let Some(path) = minimal_config_path {
+                let mut file = File::create(path)?;
+                let toml = config.used_options().to_toml()?;
+                file.write_all(toml.as_bytes())?;
+            }
+
             Ok(error_summary)
         }
     }
@@ -353,6 +383,10 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
         return Ok(Operation::ConfigHelp);
     }
 
+    if let Some(path) = matches.opt_str("dump-default-config") {
+        return Ok(Operation::ConfigOutputDefault { path });
+    }
+
     if matches.opt_present("version") {
         return Ok(Operation::Version);
     }
@@ -383,6 +417,9 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
         path @ _ => path,
     };
 
+    // If no path is given, we won't output a minimal config.
+    let minimal_config_path = matches.opt_str("dump-minimal-config");
+
     // if no file argument is supplied, read from stdin
     if matches.free.is_empty() {
         let mut buffer = String::new();
@@ -408,5 +445,6 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
     Ok(Operation::Format {
            files: files,
            config_path: config_path,
+           minimal_config_path: minimal_config_path,
        })
 }
