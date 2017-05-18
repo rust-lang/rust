@@ -754,6 +754,13 @@ impl fmt::Debug for Stdio {
 }
 
 /// Describes the result of a process after it has terminated.
+///
+/// This `struct` is used to represent the exit status of a child process.
+/// Child processes are created via the [`Command`] struct and their exit
+/// status is exposed through the [`status`] method.
+///
+/// [`Command`]: struct.Command.html
+/// [`status`]: struct.Command.html#method.status
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ExitStatus(imp::ExitStatus);
@@ -788,6 +795,22 @@ impl ExitStatus {
     /// On Unix, this will return `None` if the process was terminated
     /// by a signal; `std::os::unix` provides an extension trait for
     /// extracting the signal and other details from the `ExitStatus`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    ///
+    /// let status = Command::new("mkdir")
+    ///                      .arg("projects")
+    ///                      .status()
+    ///                      .expect("failed to execute mkdir");
+    ///
+    /// match status.code() {
+    ///     Some(code) => println!("Exited with status code: {}", code),
+    ///     None       => println!("Process terminated by signal")
+    /// }
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn code(&self) -> Option<i32> {
         self.0.code()
