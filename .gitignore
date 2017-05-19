@@ -101,3 +101,4 @@ version.ml
 version.texi
 .cargo
 !src/vendor/**
+/src/target/
