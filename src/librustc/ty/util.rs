@@ -12,7 +12,6 @@
 
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::map::DefPathData;
-use infer::InferCtxt;
 use ich::{StableHashingContext, NodeIdHashingMode};
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -791,34 +790,16 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         tcx.needs_drop_raw(param_env.and(self))
     }
 
+    /// Computes the layout of a type. Note that this implicitly
+    /// executes in "reveal all" mode.
     #[inline]
-    pub fn layout<'lcx>(&'tcx self, infcx: &InferCtxt<'a, 'tcx, 'lcx>)
+    pub fn layout<'lcx>(&'tcx self,
+                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        param_env: ty::ParamEnv<'tcx>)
                         -> Result<&'tcx Layout, LayoutError<'tcx>> {
-        let tcx = infcx.tcx.global_tcx();
-        let can_cache = !self.has_param_types() && !self.has_self_ty();
-        if can_cache {
-            if let Some(&cached) = tcx.layout_cache.borrow().get(&self) {
-                return Ok(cached);
-            }
-        }
-
-        let rec_limit = tcx.sess.recursion_limit.get();
-        let depth = tcx.layout_depth.get();
-        if depth > rec_limit {
-            tcx.sess.fatal(
-                &format!("overflow representing the type `{}`", self));
-        }
-
-        tcx.layout_depth.set(depth+1);
-        let layout = Layout::compute_uncached(self, infcx);
-        tcx.layout_depth.set(depth);
-        let layout = layout?;
-        if can_cache {
-            tcx.layout_cache.borrow_mut().insert(self, layout);
-        }
-        Ok(layout)
+        let ty = tcx.erase_regions(&self);
+        tcx.layout_raw(param_env.reveal_all().and(ty))
     }
-
 
     /// Check whether a type is representable. This means it cannot contain unboxed
     /// structural recursion. This check is needed for structs and enums.
@@ -1074,6 +1055,24 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
+fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
+                        -> Result<&'tcx Layout, LayoutError<'tcx>>
+{
+    let (param_env, ty) = query.into_parts();
+
+    let rec_limit = tcx.sess.recursion_limit.get();
+    let depth = tcx.layout_depth.get();
+    if depth > rec_limit {
+        tcx.sess.fatal(
+            &format!("overflow representing the type `{}`", ty));
+    }
+
+    tcx.layout_depth.set(depth+1);
+    let layout = Layout::compute_uncached(tcx, param_env, ty);
+    tcx.layout_depth.set(depth);
+    layout
+}
 
 pub fn provide(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
@@ -1081,6 +1080,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         is_sized_raw,
         is_freeze_raw,
         needs_drop_raw,
+        layout_raw,
         ..*providers
     };
 }

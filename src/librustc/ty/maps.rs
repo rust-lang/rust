@@ -20,6 +20,7 @@ use mir::transform::{MirSuite, MirPassIndex};
 use session::CompileResult;
 use traits::specialization_graph;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
+use ty::layout::{Layout, LayoutError};
 use ty::item_path;
 use ty::steal::Steal;
 use ty::subst::Substs;
@@ -290,6 +291,12 @@ impl<'tcx> QueryDescription for queries::is_freeze_raw<'tcx> {
 impl<'tcx> QueryDescription for queries::needs_drop_raw<'tcx> {
     fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
         format!("computing whether `{}` needs drop", env.value)
+    }
+}
+
+impl<'tcx> QueryDescription for queries::layout_raw<'tcx> {
+    fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
+        format!("computing layout of `{}`", env.value)
     }
 }
 
@@ -920,6 +927,8 @@ define_maps! { <'tcx>
     [] is_sized_raw: is_sized_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] is_freeze_raw: is_freeze_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] needs_drop_raw: needs_drop_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
+    [] layout_raw: layout_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
+                                  -> Result<&'tcx Layout, LayoutError<'tcx>>,
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -986,4 +995,10 @@ fn needs_drop_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<De
     let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
         .unwrap_or(DefId::local(CRATE_DEF_INDEX));
     DepNode::NeedsDrop(def_id)
+}
+
+fn layout_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
+    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
+        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
+    DepNode::Layout(def_id)
 }

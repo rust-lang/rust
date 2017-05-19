@@ -112,6 +112,7 @@ pub enum DepNode<D: Clone + Debug> {
     IsSized(D),
     IsFreeze(D),
     NeedsDrop(D),
+    Layout(D),
 
     // The set of impls for a given trait. Ultimately, it would be
     // nice to get more fine-grained here (e.g., to include a
@@ -241,6 +242,7 @@ impl<D: Clone + Debug> DepNode<D> {
             IsSized(ref d) => op(d).map(IsSized),
             IsFreeze(ref d) => op(d).map(IsFreeze),
             NeedsDrop(ref d) => op(d).map(NeedsDrop),
+            Layout(ref d) => op(d).map(Layout),
             Hir(ref d) => op(d).map(Hir),
             HirBody(ref d) => op(d).map(HirBody),
             MetaData(ref d) => op(d).map(MetaData),
