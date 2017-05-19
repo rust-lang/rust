@@ -2080,11 +2080,18 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
                               0
                           };
     // 1 = space between operator and rhs.
-    let max_width = try_opt!(shape.width.checked_sub(last_line_width + 1));
-    let rhs = ex.rewrite(context,
-                         Shape::offset(max_width,
-                                       shape.indent,
-                                       shape.indent.alignment + last_line_width + 1));
+    let orig_shape = try_opt!(shape.block_indent(0).offset_left(last_line_width + 1));
+    let rhs = match ex.node {
+        ast::ExprKind::Mac(ref mac) => {
+            match rewrite_macro(mac, None, context, orig_shape, MacroPosition::Expression) {
+                None if !context.snippet(ex.span).contains("\n") => {
+                    context.snippet(ex.span).rewrite(context, orig_shape)
+                }
+                rhs @ _ => rhs,
+            }
+        }
+        _ => ex.rewrite(context, orig_shape),
+    };
 
     fn count_line_breaks(src: &str) -> usize {
         src.chars().filter(|&x| x == '\n').count()
