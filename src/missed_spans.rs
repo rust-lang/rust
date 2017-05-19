@@ -163,7 +163,7 @@ impl<'a> FmtVisitor<'a> {
                                                           Shape::legacy(comment_width,
                                                                         self.block_indent),
                                                           self.config)
-                                                 .unwrap());
+                                             .unwrap());
 
                     last_wspace = None;
                     line_start = offset + subslice.len();

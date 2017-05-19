@@ -120,7 +120,7 @@ fn format_expr(expr: &ast::Expr,
                                 expr_type == ExprType::SubExpression,
                                 false,
                                 expr.span)
-                    .rewrite(context, shape)
+                .rewrite(context, shape)
         }
         ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref else_block) => {
             ControlFlow::new_if(cond,
@@ -130,7 +130,7 @@ fn format_expr(expr: &ast::Expr,
                                 expr_type == ExprType::SubExpression,
                                 false,
                                 expr.span)
-                    .rewrite(context, shape)
+                .rewrite(context, shape)
         }
         ast::ExprKind::Match(ref cond, ref arms) => {
             rewrite_match(context, cond, arms, shape, expr.span)
@@ -372,7 +372,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
                              |item| item.rewrite(context, nested_shape),
                              span.lo,
                              span.hi)
-            .collect::<Vec<_>>();
+        .collect::<Vec<_>>();
 
     if items.is_empty() {
         if context.config.spaces_within_square_brackets() {
@@ -716,7 +716,7 @@ impl Rewrite for ast::Stmt {
                             },
                             context,
                             try_opt!(shape.sub_width(suffix.len())))
-                        .map(|s| s + suffix)
+                    .map(|s| s + suffix)
             }
             ast::StmtKind::Mac(..) |
             ast::StmtKind::Item(..) => None,
@@ -1012,7 +1012,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                                         false,
                                         true,
                                         mk_sp(else_block.span.lo, self.span.hi))
-                            .rewrite(context, shape)
+                        .rewrite(context, shape)
                 }
                 ast::ExprKind::If(ref cond, ref if_block, ref next_else_block) => {
                     ControlFlow::new_if(cond,
@@ -1022,7 +1022,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                                         false,
                                         true,
                                         mk_sp(else_block.span.lo, self.span.hi))
-                            .rewrite(context, shape)
+                        .rewrite(context, shape)
                 }
                 _ => {
                     last_in_chain = true;
@@ -1065,7 +1065,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                                 .as_ref()
                                 .map_or(between_sep, |s| &**s),
                             after_else_comment.as_ref().map_or(after_sep, |s| &**s))
-                             .ok());
+                         .ok());
             result.push_str(&try_opt!(rewrite));
         }
 
