@@ -449,6 +449,7 @@ create_config! {
     chain_indent: IndentStyle, IndentStyle::Block, "Indentation of chain";
     chain_one_line_max: usize, 60, "Maximum length of a chain to fit on a single line";
     reorder_imports: bool, false, "Reorder import statements alphabetically";
+    reorder_imports_in_group: bool, false, "Reorder import statements in group";
     reorder_imported_names: bool, false,
         "Reorder lists of names in import statements alphabetically";
     single_line_if_else_max_width: usize, 50, "Maximum line length for single line if-else \
@@ -482,7 +483,7 @@ create_config! {
     use_try_shorthand: bool, false, "Replace uses of the try! macro by the ? shorthand";
     write_mode: WriteMode, WriteMode::Replace,
         "What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff, Coverage";
-    condense_wildcard_suffices: bool, false, "Replace strings of _ wildcards by a single .. in \
+    condense_wildcard_suffixes: bool, false, "Replace strings of _ wildcards by a single .. in \
                                               tuple patterns"
 }
 

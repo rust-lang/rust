@@ -166,7 +166,7 @@ Maximum length of comments. No effect unless`wrap_comments = true`.
 
 See also [`wrap_comments`](#wrap_comments).
 
-## `condense_wildcard_suffices`
+## `condense_wildcard_suffixes`
 
 Replace strings of _ wildcards by a single .. in tuple patterns
 
@@ -259,10 +259,10 @@ trait Lorem {
         // body
     }
 
-    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: onsectetur,
+    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
              adipiscing: Adipiscing, elit: Elit);
 
-    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: onsectetur,
+    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
              adipiscing: Adipiscing, elit: Elit) {
         // body
     }
@@ -279,7 +279,7 @@ trait Lorem {
         // body
     }
 
-    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: onsectetur,
+    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
              adipiscing: Adipiscing, elit: Elit);
 
     fn lorem(ipsum: Ipsum,
@@ -1007,7 +1007,42 @@ use lorem;
 use sit;
 ```
 
-See also [`reorder_imported_names`](#reorder_imported_names).
+See also [`reorder_imported_names`](#reorder_imported_names), [`reorder_imports_in_group`](#reorder_imports_in_group).
+
+## `reorder_imports_in_group`
+
+Reorder import statements in group
+
+- **Default value**: `false`
+- **Possible values**: `true`, `false`
+
+**Note:** This option takes effect only when [`reorder_imports`](#reorder_imports) is set to `true`.
+
+#### `false`:
+
+```rust
+use std::mem;
+use std::io;
+
+use lorem;
+use ipsum;
+use dolor;
+use sit;
+```
+
+#### `true`:
+
+```rust
+use std::io;
+use std::mem;
+
+use dolor;
+use ipsum;
+use lorem;
+use sit;
+```
+
+See also [`reorder_imports`](#reorder_imports).
 
 ## `single_line_if_else_max_width`
 
