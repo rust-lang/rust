@@ -241,7 +241,7 @@ pub trait OpenOptionsExt {
     ///     .create(true)
     ///
     ///     // Sets the flag value to `SecurityIdentification`.
-    ///     options.security_qos_flags(1)
+    ///     .security_qos_flags(1)
     ///
     ///     .open("foo.txt");
     /// ```
