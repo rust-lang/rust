@@ -1,21 +1,20 @@
-FROM centos:5
+FROM centos:6
 
-WORKDIR /build
-
-# Centos 5 is EOL and is no longer available from the usual mirrors, so switch
-# to http://vault.centos.org/
-RUN sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
-RUN sed -i 's/mirrorlist/#mirrorlist/' /etc/yum.repos.d/*.repo
-RUN sed -i 's|#\(baseurl.*\)mirror.centos.org/centos/$releasever|\1vault.centos.org/5.11|' /etc/yum.repos.d/*.repo
-
-RUN yum upgrade -y && yum install -y \
+RUN yum -y update \
+   && yum -y install centos-release-scl epel-release \
+   && yum -y install \
       curl \
       bzip2 \
-      gcc \
-      gcc-c++ \
-      make \
+      cmake3 \
+      devtoolset-6-binutils \
+      devtoolset-6-gcc \
+      devtoolset-6-gcc-c++ \
+      devtoolset-6-make \
+      git \
       glibc-devel \
+      openssl-devel \
       perl \
+      python27-python \
       zlib-devel \
       file \
       xz \
@@ -23,63 +22,16 @@ RUN yum upgrade -y && yum install -y \
       pkgconfig \
       wget \
       autoconf \
-      gettext
+      gettext \
+    && yum clean all
 
-ENV PATH=/rustroot/bin:$PATH
-ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib
-ENV PKG_CONFIG_PATH=/rustroot/lib/pkgconfig
-WORKDIR /tmp
-COPY shared.sh build-binutils.sh /tmp/
+# Unfortunately there's no wonderful packaging for cmake3
+RUN ln -s /usr/bin/cmake3 /usr/local/bin/cmake
 
-# We need a build of openssl which supports SNI to download artifacts from
-# static.rust-lang.org. This'll be used to link into libcurl below (and used
-# later as well), so build a copy of OpenSSL with dynamic libraries into our
-# generic root.
-COPY build-openssl.sh /tmp/
-RUN ./build-openssl.sh
-
-# The `curl` binary on CentOS doesn't support SNI which is needed for fetching
-# some https urls we have, so install a new version of libcurl + curl which is
-# using the openssl we just built previously.
-#
-# Note that we also disable a bunch of optional features of curl that we don't
-# really need.
-COPY build-curl.sh /tmp/
-RUN ./build-curl.sh
-
-# binutils < 2.22 has a bug where the 32-bit executables it generates
-# immediately segfault in Rust, so we need to install our own binutils.
-#
-# See https://github.com/rust-lang/rust/issues/20440 for more info
-RUN ./build-binutils.sh
-
-# Need a newer version of gcc than centos has to compile LLVM nowadays
-COPY build-gcc.sh /tmp/
-RUN ./build-gcc.sh
-
-# CentOS 5.5 has Python 2.4 by default, but LLVM needs 2.7+
-COPY build-python.sh /tmp/
-RUN ./build-python.sh
-
-# Apparently CentOS 5.5 desn't have `git` in yum, but we're gonna need it for
-# cloning, so download and build it here.
-COPY build-git.sh /tmp/
-RUN ./build-git.sh
-
-# libssh2 (a dependency of Cargo) requires cmake 2.8.11 or higher but CentOS
-# only has 2.6.4, so build our own
-COPY build-cmake.sh /tmp/
-RUN ./build-cmake.sh
-
-# for sanitizers, we need kernel headers files newer than the ones CentOS ships
-# with so we install newer ones here
-COPY build-headers.sh /tmp/
-RUN ./build-headers.sh
-
-RUN curl -Lo /rustroot/dumb-init \
+RUN curl -Lo /usr/local/bin/dumb-init \
       https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64 && \
-      chmod +x /rustroot/dumb-init
-ENTRYPOINT ["/rustroot/dumb-init", "--"]
+      chmod +x /usr/local/bin/dumb-init
+ENTRYPOINT ["/usr/local/bin/dumb-init", "--", "scl", "enable", "python27", "devtoolset-6"]
 
 RUN curl -o /usr/local/bin/sccache \
       https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
