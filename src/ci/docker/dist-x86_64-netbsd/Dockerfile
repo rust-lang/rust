@@ -56,7 +56,7 @@ RUN mkdir /x-tools && chown rustbuild:rustbuild /x-tools
 USER rustbuild
 WORKDIR /tmp
 
-COPY build-netbsd-toolchain.sh /tmp/
+COPY dist-x86_64-netbsd/build-netbsd-toolchain.sh /tmp/
 RUN ./build-netbsd-toolchain.sh
 
 USER root

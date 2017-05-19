@@ -24,7 +24,7 @@ RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-ini
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 WORKDIR /tmp
-COPY build-emscripten.sh /tmp/
+COPY emscripten/build-emscripten.sh /tmp/
 RUN ./build-emscripten.sh
 ENV PATH=$PATH:/tmp/emsdk_portable
 ENV PATH=$PATH:/tmp/emsdk_portable/clang/tag-e1.37.10/build_tag-e1.37.10_32/bin

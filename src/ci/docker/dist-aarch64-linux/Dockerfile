@@ -56,7 +56,7 @@ RUN mkdir /x-tools && chown rustbuild:rustbuild /x-tools
 USER rustbuild
 WORKDIR /tmp
 
-COPY aarch64-linux-gnu.config build-toolchains.sh /tmp/
+COPY dist-aarch64-linux/aarch64-linux-gnu.config dist-aarch64-linux/build-toolchains.sh /tmp/
 RUN ./build-toolchains.sh
 
 USER root

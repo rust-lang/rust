@@ -2,37 +2,36 @@ FROM ubuntu:16.04
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-  g++ \
-  make \
-  file \
-  curl \
   ca-certificates \
-  python2.7 \
-  git \
   cmake \
-  unzip \
-  sudo \
-  xz-utils \
+  curl \
+  file \
+  g++ \
+  git \
   libssl-dev \
-  pkg-config
+  make \
+  pkg-config \
+  python2.7 \
+  sudo \
+  unzip \
+  xz-utils
 
-RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
-    dpkg -i dumb-init_*.deb && \
-    rm dumb-init_*.deb
+# dumb-init
+COPY scripts/dumb-init.sh /scripts/
+RUN sh /scripts/dumb-init.sh
 
-RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
-      chmod +x /usr/local/bin/sccache
-
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-
-COPY android-ndk.sh /
-RUN . /android-ndk.sh && \
+# ndk
+COPY scripts/android-ndk.sh /scripts/
+RUN . /scripts/android-ndk.sh && \
     download_ndk android-ndk-r13b-linux-x86_64.zip && \
     make_standalone_toolchain arm 9 && \
     make_standalone_toolchain arm 21 && \
     remove_ndk
 
+RUN chmod 777 /android/ndk && \
+    ln -s /android/ndk/arm-21 /android/ndk/arm
+
+# env
 ENV PATH=$PATH:/android/ndk/arm-9/bin
 
 ENV DEP_Z_ROOT=/android/ndk/arm-9/sysroot/usr/
@@ -54,12 +53,16 @@ ENV RUST_CONFIGURE_ARGS \
 # level 9), the default linker behavior is to generate an error, to allow the
 # build to finish we use --warn-unresolved-symbols. Note that the missing
 # symbols does not affect std, only the compiler (llvm) and cargo (openssl).
-RUN chmod 777 /android/ndk && \
-    ln -s /android/ndk/arm-21 /android/ndk/arm
-
 ENV SCRIPT \
   python2.7 ../x.py build src/llvm --host $HOSTS --target $HOSTS && \
   (export RUSTFLAGS="\"-C link-arg=-Wl,--warn-unresolved-symbols\""; \
     rm /android/ndk/arm && \
     ln -s /android/ndk/arm-9 /android/ndk/arm && \
     python2.7 ../x.py dist --host $HOSTS --target $HOSTS)
+
+# sccache
+COPY scripts/sccache.sh /scripts/
+RUN sh /scripts/sccache.sh
+
+# init
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
