@@ -237,7 +237,7 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
         Categorization::Downcast(ref b, _) |
         Categorization::Interior(ref b, mc::InteriorField(_)) |
-        Categorization::Interior(ref b, mc::InteriorElement(Kind::Pattern, _)) => {
+        Categorization::Interior(ref b, mc::InteriorElement(Kind::Pattern)) => {
             match b.ty.sty {
                 ty::TyAdt(def, _) => {
                     if def.has_dtor(bccx.tcx) {
@@ -253,7 +253,7 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             }
         }
 
-        Categorization::Interior(_, mc::InteriorElement(Kind::Index, _)) => {
+        Categorization::Interior(_, mc::InteriorElement(Kind::Index)) => {
             // Forbid move of arr[i] for arr: [T; 3]; see RFC 533.
             Some(cmt.clone())
         }

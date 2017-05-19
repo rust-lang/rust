@@ -63,7 +63,6 @@
 pub use self::PointerKind::*;
 pub use self::InteriorKind::*;
 pub use self::FieldName::*;
-pub use self::ElementKind::*;
 pub use self::MutabilityCategory::*;
 pub use self::AliasableReason::*;
 pub use self::Note::*;
@@ -129,7 +128,7 @@ pub enum PointerKind<'tcx> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InteriorKind {
     InteriorField(FieldName),
-    InteriorElement(InteriorOffsetKind, ElementKind),
+    InteriorElement(InteriorOffsetKind),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -142,12 +141,6 @@ pub enum FieldName {
 pub enum InteriorOffsetKind {
     Index,            // e.g. `array_expr[index_expr]`
     Pattern,          // e.g. `fn foo([_, a, _, _]: [A; 4]) { ... }`
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum ElementKind {
-    VecElement,
-    OtherElement,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -492,7 +485,11 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                         debug!("cat_expr: autoderefs={:?}, cmt={:?}",
                                autoderefs, cmt);
                         for &overloaded in autoderefs {
-                            cmt = self.cat_deref(expr, cmt, overloaded)?;
+                            if let Some(method) = overloaded {
+                                cmt = self.cat_overloaded_autoderef(expr, method)?;
+                            } else {
+                                cmt = self.cat_deref(expr, cmt, false)?;
+                            }
                         }
                         return Ok(cmt);
                     }
@@ -518,10 +515,12 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let expr_ty = self.expr_ty(expr)?;
         match expr.node {
           hir::ExprUnary(hir::UnDeref, ref e_base) => {
-            let base_cmt = self.cat_expr(&e_base)?;
-            let method = self.infcx.tables.borrow().method_map
-                .get(&expr.id).cloned();
-            self.cat_deref(expr, base_cmt, method)
+            if self.infcx.tables.borrow().is_method_call(expr.id) {
+                self.cat_overloaded_lvalue(expr, e_base, false)
+            } else {
+                let base_cmt = self.cat_expr(&e_base)?;
+                self.cat_deref(expr, base_cmt, false)
+            }
           }
 
           hir::ExprField(ref base, f_name) => {
@@ -539,33 +538,16 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           }
 
           hir::ExprIndex(ref base, _) => {
-            let method = self.infcx.tables.borrow().method_map.get(&expr.id()).cloned();
-            match method {
-                Some(method) => {
-                    // If this is an index implemented by a method call, then it
-                    // will include an implicit deref of the result.
-                    let ret_ty = self.overloaded_method_return_ty(method);
-
-                    // The index method always returns an `&T`, so
-                    // dereference it to find the result type.
-                    let elem_ty = match ret_ty.sty {
-                        ty::TyRef(_, mt) => mt.ty,
-                        _ => {
-                            debug!("cat_expr_unadjusted: return type of overloaded index is {:?}?",
-                                   ret_ty);
-                            return Err(());
-                        }
-                    };
-
-                    // The call to index() returns a `&T` value, which
-                    // is an rvalue. That is what we will be
-                    // dereferencing.
-                    let base_cmt = self.cat_rvalue_node(expr.id(), expr.span(), ret_ty);
-                    Ok(self.cat_deref_common(expr, base_cmt, elem_ty, true))
-                }
-                None => {
-                    self.cat_index(expr, self.cat_expr(&base)?, InteriorOffsetKind::Index)
-                }
+            if self.infcx.tables.borrow().is_method_call(expr.id()) {
+                // If this is an index implemented by a method call, then it
+                // will include an implicit deref of the result.
+                // The call to index() returns a `&T` value, which
+                // is an rvalue. That is what we will be
+                // dereferencing.
+                self.cat_overloaded_lvalue(expr, base, true)
+            } else {
+                let base_cmt = self.cat_expr(&base)?;
+                self.cat_index(expr, base_cmt, expr_ty, InteriorOffsetKind::Index)
             }
           }
 
@@ -924,42 +906,63 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         ret
     }
 
+    fn cat_overloaded_lvalue(&self,
+                             expr: &hir::Expr,
+                             base: &hir::Expr,
+                             implicit: bool)
+                             -> McResult<cmt<'tcx>> {
+        debug!("cat_overloaded_lvalue: implicit={}", implicit);
+
+        // Reconstruct the output assuming it's a reference with the
+        // same region and mutability as the receiver. This holds for
+        // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
+        let lvalue_ty = self.expr_ty(expr)?;
+        let base_ty = self.expr_ty_adjusted(base)?;
+
+        let (region, mutbl) = match base_ty.sty {
+            ty::TyRef(region, mt) => (region, mt.mutbl),
+            _ => {
+                span_bug!(expr.span, "cat_overloaded_lvalue: base is not a reference")
+            }
+        };
+        let ref_ty = self.tcx().mk_ref(region, ty::TypeAndMut {
+            ty: lvalue_ty,
+            mutbl,
+        });
+
+        let base_cmt = self.cat_rvalue_node(expr.id, expr.span, ref_ty);
+        self.cat_deref(expr, base_cmt, implicit)
+    }
+
+    pub fn cat_overloaded_autoderef(&self,
+                                    expr: &hir::Expr,
+                                    method: ty::MethodCallee<'tcx>)
+                                    -> McResult<cmt<'tcx>> {
+        debug!("cat_overloaded_autoderef: method={:?}", method);
+
+        let ref_ty = method.sig.output();
+        let ref_ty = self.infcx.resolve_type_vars_if_possible(&ref_ty);
+        let base_cmt = self.cat_rvalue_node(expr.id, expr.span, ref_ty);
+        self.cat_deref(expr, base_cmt, false)
+    }
+
     pub fn cat_deref<N:ast_node>(&self,
                                  node: &N,
                                  base_cmt: cmt<'tcx>,
-                                 overloaded: Option<ty::MethodCallee<'tcx>>)
+                                 implicit: bool)
                                  -> McResult<cmt<'tcx>> {
-        debug!("cat_deref: overloaded={:?}", overloaded);
+        debug!("cat_deref: base_cmt={:?}", base_cmt);
 
-        let base_cmt = match overloaded {
-            Some(method) => {
-                let ref_ty = self.overloaded_method_return_ty(method);
-                self.cat_rvalue_node(node.id(), node.span(), ref_ty)
-            }
-            None => base_cmt
-        };
         let base_cmt_ty = base_cmt.ty;
-        match base_cmt_ty.builtin_deref(true, ty::NoPreference) {
-            Some(mt) => {
-                let ret = self.cat_deref_common(node, base_cmt, mt.ty, false);
-                debug!("cat_deref ret {:?}", ret);
-                Ok(ret)
-            }
+        let deref_ty = match base_cmt_ty.builtin_deref(true, ty::NoPreference) {
+            Some(mt) => mt.ty,
             None => {
                 debug!("Explicit deref of non-derefable type: {:?}",
                        base_cmt_ty);
                 return Err(());
             }
-        }
-    }
+        };
 
-    fn cat_deref_common<N:ast_node>(&self,
-                                    node: &N,
-                                    base_cmt: cmt<'tcx>,
-                                    deref_ty: Ty<'tcx>,
-                                    implicit: bool)
-                                    -> cmt<'tcx>
-    {
         let ptr = match base_cmt.ty.sty {
             ty::TyAdt(def, ..) if def.is_box() => Unique,
             ty::TyRawPtr(ref mt) => UnsafePtr(mt.mutbl),
@@ -967,7 +970,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 let bk = ty::BorrowKind::from_mutbl(mt.mutbl);
                 if implicit { Implicit(bk, r) } else { BorrowedPtr(bk, r) }
             }
-            ref ty => bug!("unexpected type in cat_deref_common: {:?}", ty)
+            ref ty => bug!("unexpected type in cat_deref: {:?}", ty)
         };
         let ret = Rc::new(cmt_ {
             id: node.id(),
@@ -978,15 +981,16 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             ty: deref_ty,
             note: NoteNone
         });
-        debug!("cat_deref_common ret {:?}", ret);
-        ret
+        debug!("cat_deref ret {:?}", ret);
+        Ok(ret)
     }
 
-    pub fn cat_index<N:ast_node>(&self,
-                                 elt: &N,
-                                 mut base_cmt: cmt<'tcx>,
-                                 context: InteriorOffsetKind)
-                                 -> McResult<cmt<'tcx>> {
+    fn cat_index<N:ast_node>(&self,
+                             elt: &N,
+                             base_cmt: cmt<'tcx>,
+                             element_ty: Ty<'tcx>,
+                             context: InteriorOffsetKind)
+                             -> McResult<cmt<'tcx>> {
         //! Creates a cmt for an indexing operation (`[]`).
         //!
         //! One subtle aspect of indexing that may not be
@@ -1004,29 +1008,9 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         //! - `elt`: the AST node being indexed
         //! - `base_cmt`: the cmt of `elt`
 
-        let method = self.infcx.tables.borrow().method_map.get(&elt.id()).cloned();
-        let (element_ty, element_kind) = match method {
-            Some(method) => {
-                let ref_ty = self.overloaded_method_return_ty(method);
-                base_cmt = self.cat_rvalue_node(elt.id(), elt.span(), ref_ty);
-
-                (ref_ty.builtin_deref(false, ty::NoPreference).unwrap().ty,
-                 ElementKind::OtherElement)
-            }
-            None => {
-                match base_cmt.ty.builtin_index() {
-                    Some(ty) => (ty, ElementKind::VecElement),
-                    None => {
-                        debug!("Explicit index of non-indexable type {:?}", base_cmt);
-                        return Err(());
-                    }
-                }
-            }
-        };
-
-        let interior_elem = InteriorElement(context, element_kind);
+        let interior_elem = InteriorElement(context);
         let ret =
-            self.cat_imm_interior(elt, base_cmt.clone(), element_ty, interior_elem);
+            self.cat_imm_interior(elt, base_cmt, element_ty, interior_elem);
         debug!("cat_index ret {:?}", ret);
         return Ok(ret);
     }
@@ -1216,15 +1200,20 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // box p1, &p1, &mut p1.  we can ignore the mutability of
             // PatKind::Ref since that information is already contained
             // in the type.
-            let method = self.infcx.tables.borrow().method_map
-                .get(&pat.id).cloned();
-            let subcmt = self.cat_deref(pat, cmt, method)?;
+            let subcmt = self.cat_deref(pat, cmt, false)?;
             self.cat_pattern_(subcmt, &subpat, op)?;
           }
 
           PatKind::Slice(ref before, ref slice, ref after) => {
+            let element_ty = match cmt.ty.builtin_index() {
+                Some(ty) => ty,
+                None => {
+                    debug!("Explicit index of non-indexable type {:?}", cmt);
+                    return Err(());
+                }
+            };
             let context = InteriorOffsetKind::Pattern;
-            let elt_cmt = self.cat_index(pat, cmt, context)?;
+            let elt_cmt = self.cat_index(pat, cmt, element_ty, context)?;
             for before_pat in before {
                 self.cat_pattern_(elt_cmt.clone(), &before_pat, op)?;
             }
@@ -1243,16 +1232,6 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         }
 
         Ok(())
-    }
-
-    fn overloaded_method_return_ty(&self,
-                                   method: ty::MethodCallee<'tcx>)
-                                   -> Ty<'tcx>
-    {
-        // When we process an overloaded `*` or `[]` etc, we often
-        // need to extract the return type of the method.
-        let ret_ty = method.sig.output();
-        self.infcx.resolve_type_vars_if_possible(&ret_ty)
     }
 }
 
@@ -1401,16 +1380,10 @@ impl<'tcx> cmt_<'tcx> {
             Categorization::Interior(_, InteriorField(PositionalField(_))) => {
                 "anonymous field".to_string()
             }
-            Categorization::Interior(_, InteriorElement(InteriorOffsetKind::Index,
-                                                        VecElement)) |
-            Categorization::Interior(_, InteriorElement(InteriorOffsetKind::Index,
-                                                        OtherElement)) => {
+            Categorization::Interior(_, InteriorElement(InteriorOffsetKind::Index)) => {
                 "indexed content".to_string()
             }
-            Categorization::Interior(_, InteriorElement(InteriorOffsetKind::Pattern,
-                                                        VecElement)) |
-            Categorization::Interior(_, InteriorElement(InteriorOffsetKind::Pattern,
-                                                        OtherElement)) => {
+            Categorization::Interior(_, InteriorElement(InteriorOffsetKind::Pattern)) => {
                 "pattern-bound indexed content".to_string()
             }
             Categorization::Upvar(ref var) => {

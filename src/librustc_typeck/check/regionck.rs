@@ -538,10 +538,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
             };
 
             self.substs_wf_in_scope(origin, &callee.substs, expr.span, expr_region);
-            for &ty in callee.sig.inputs() {
-                self.type_must_outlive(infer::ExprTypeIsNotInScope(ty, expr.span),
-                                       ty, expr_region);
-            }
+            // Arguments (sub-expressions) are checked via `constrain_call`, below.
         }
 
         // Check any autoderefs or autorefs that appear.
@@ -690,14 +687,13 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
 
             hir::ExprUnary(hir::UnDeref, ref base) => {
                 // For *a, the lifetime of a must enclose the deref
-                let base_ty = match self.tables.borrow().method_map.get(&expr.id) {
-                    Some(method) => {
-                        self.constrain_call(expr, Some(&base),
-                                            None::<hir::Expr>.iter(), true);
-                        method.sig.output()
-                    }
-                    None => self.resolve_node_type(base.id)
-                };
+                if self.tables.borrow().is_method_call(expr.id) {
+                    self.constrain_call(expr, Some(base),
+                                        None::<hir::Expr>.iter(), true);
+                }
+                // For overloaded derefs, base_ty is the input to `Deref::deref`,
+                // but it's a reference type uing the same region as the output.
+                let base_ty = self.resolve_expr_type_adjusted(base);
                 if let ty::TyRef(r_ptr, _) = base_ty.sty {
                     self.mk_subregion_due_to_dereference(expr.span, expr_region, r_ptr);
                 }
@@ -960,7 +956,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
             {
                 let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
-                cmt = mc.cat_deref(deref_expr, cmt, overloaded)?;
+                if let Some(method) = overloaded {
+                    cmt = mc.cat_overloaded_autoderef(deref_expr, method)?;
+                } else {
+                    cmt = mc.cat_deref(deref_expr, cmt, false)?;
+                }
             }
 
             if let Categorization::Deref(_, mc::BorrowedPtr(_, r_ptr)) = cmt.cat {

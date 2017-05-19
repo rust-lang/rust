@@ -152,7 +152,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             err
         }
 
-        Categorization::Interior(ref b, mc::InteriorElement(ik, _)) => {
+        Categorization::Interior(ref b, mc::InteriorElement(ik)) => {
             match (&b.ty.sty, ik) {
                 (&ty::TySlice(..), _) |
                 (_, Kind::Index) => {

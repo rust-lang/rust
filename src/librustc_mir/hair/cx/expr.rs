@@ -94,8 +94,8 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                         debug!("make_mirror: overloaded autoderef (method={:?})", method);
 
                         ref_ty = method.sig.output();
-                        let (region, mutbl) = match ref_ty.sty {
-                            ty::TyRef(region, mt) => (region, mt.mutbl),
+                        let (region, mt) = match ref_ty.sty {
+                            ty::TyRef(region, mt) => (region, mt),
                             _ => span_bug!(expr.span, "autoderef returned bad type"),
                         };
 
@@ -105,18 +105,19 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                             ty: cx.tcx.mk_ref(region,
                                               ty::TypeAndMut {
                                                   ty: expr.ty,
-                                                  mutbl: mutbl,
+                                                  mutbl: mt.mutbl,
                                               }),
                             span: expr.span,
                             kind: ExprKind::Borrow {
                                 region: region,
-                                borrow_kind: to_borrow_kind(mutbl),
+                                borrow_kind: to_borrow_kind(mt.mutbl),
                                 arg: expr.to_ref(),
                             },
                         };
 
                         overloaded_lvalue(cx,
                                           self,
+                                          mt.ty,
                                           method,
                                           PassArgs::ByRef,
                                           expr.to_ref(),
@@ -264,13 +265,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
                 // rewrite f(u, v) into FnOnce::call_once(f, (u, v))
 
-                let sig = method.sig;
                 let method = method_callee(cx, expr, method);
 
-                assert_eq!(sig.inputs().len(), 2);
-
+                let arg_tys = args.iter().map(|e| cx.tables().expr_ty_adjusted(e));
                 let tupled_args = Expr {
-                    ty: sig.inputs()[1],
+                    ty: cx.tcx.mk_tup(arg_tys, false),
                     temp_lifetime: temp_lifetime,
                     temp_lifetime_was_shrunk: was_shrunk,
                     span: expr.span,
@@ -435,6 +434,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             if let Some(&method) = cx.tables().method_map.get(&expr.id) {
                 overloaded_lvalue(cx,
                                   expr,
+                                  expr_ty,
                                   method,
                                   PassArgs::ByValue,
                                   lhs.to_ref(),
@@ -451,6 +451,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             if let Some(&method) = cx.tables().method_map.get(&expr.id) {
                 overloaded_lvalue(cx,
                                   expr,
+                                  expr_ty,
                                   method,
                                   PassArgs::ByValue,
                                   arg.to_ref(),
@@ -996,6 +997,7 @@ fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
 fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                      expr: &'tcx hir::Expr,
+                                     lvalue_ty: Ty<'tcx>,
                                      method: ty::MethodCallee<'tcx>,
                                      pass_args: PassArgs,
                                      receiver: ExprRef<'tcx>,
@@ -1005,8 +1007,22 @@ fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     // call returns an &T and we must add the deref so that the types
     // line up (this is because `*x` and `x[y]` represent lvalues):
 
-    // to find the type &T of the content returned by the method;
-    let ref_ty = method.sig.output();
+    let recv_ty = match receiver {
+        ExprRef::Hair(e) => cx.tables().expr_ty_adjusted(e),
+        ExprRef::Mirror(ref e) => e.ty
+    };
+
+    // Reconstruct the output assuming it's a reference with the
+    // same region and mutability as the receiver. This holds for
+    // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
+    let (region, mutbl) = match recv_ty.sty {
+        ty::TyRef(region, mt) => (region, mt.mutbl),
+        _ => span_bug!(expr.span, "overloaded_lvalue: receiver is not a reference"),
+    };
+    let ref_ty = cx.tcx.mk_ref(region, ty::TypeAndMut {
+        ty: lvalue_ty,
+        mutbl,
+    });
 
     // construct the complete expression `foo()` for the overloaded call,
     // which will yield the &T type

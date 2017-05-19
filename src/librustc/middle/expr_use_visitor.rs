@@ -761,8 +761,10 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 let bk = ty::BorrowKind::from_mutbl(m);
                 self.delegate.borrow(expr.id, expr.span, cmt.clone(),
                                      r, bk, AutoRef);
+                cmt = self.mc.cat_overloaded_autoderef(expr, method)?;
+            } else {
+                cmt = self.mc.cat_deref(expr, cmt, false)?;
             }
-            cmt = self.mc.cat_deref(expr, cmt, overloaded)?;
         }
         Ok(cmt)
     }
