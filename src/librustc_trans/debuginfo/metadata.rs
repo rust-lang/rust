@@ -762,23 +762,30 @@ fn pointer_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 }
 
 pub fn compile_unit_metadata(scc: &SharedCrateContext,
+                             codegen_unit_name: &str,
                              debug_context: &CrateDebugContext,
                              sess: &Session)
                              -> DIDescriptor {
-    let compile_unit_name = match sess.local_crate_source_file {
-        None => fallback_path(scc),
-        Some(ref path) => {
-            CString::new(&path[..]).unwrap()
-        }
+    let mut name_in_debuginfo = match sess.local_crate_source_file {
+        Some(ref path) => path.clone(),
+        None => scc.tcx().crate_name(LOCAL_CRATE).to_string(),
     };
 
-    debug!("compile_unit_metadata: {:?}", compile_unit_name);
+    // The OSX linker has an idiosyncrasy where it will ignore some debuginfo
+    // if multiple object files with the same DW_AT_name are linked together.
+    // As a workaround we generate unique names for each object file. Those do
+    // not correspond to an actual source file but that should be harmless.
+    if scc.sess().target.target.options.is_like_osx {
+        name_in_debuginfo.push_str("@");
+        name_in_debuginfo.push_str(codegen_unit_name);
+    }
+
+    debug!("compile_unit_metadata: {:?}", name_in_debuginfo);
     // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
     let producer = format!("clang LLVM (rustc version {})",
                            (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
 
-    let compile_unit_name = compile_unit_name.as_ptr();
-
+    let name_in_debuginfo = CString::new(name_in_debuginfo).unwrap();
     let work_dir = CString::new(&sess.working_dir.0[..]).unwrap();
     let producer = CString::new(producer).unwrap();
     let flags = "\0";
@@ -786,7 +793,7 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
 
     unsafe {
         let file_metadata = llvm::LLVMRustDIBuilderCreateFile(
-            debug_context.builder, compile_unit_name, work_dir.as_ptr());
+            debug_context.builder, name_in_debuginfo.as_ptr(), work_dir.as_ptr());
 
         return llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder,
@@ -798,10 +805,6 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
             0,
             split_name.as_ptr() as *const _)
     };
-
-    fn fallback_path(scc: &SharedCrateContext) -> CString {
-        CString::new(scc.tcx().crate_name(LOCAL_CRATE).to_string()).unwrap()
-    }
 }
 
 struct MetadataCreationResult {
