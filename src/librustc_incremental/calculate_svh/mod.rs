@@ -224,7 +224,7 @@ impl<'a, 'tcx: 'a> ComputeItemHashesVisitor<'a, 'tcx> {
     {
         let tcx = self.hcx.tcx();
 
-        let mut impls: Vec<(u64, Fingerprint)> = krate
+        let mut impls: Vec<(Fingerprint, Fingerprint)> = krate
             .trait_impls
             .iter()
             .map(|(&trait_id, impls)| {

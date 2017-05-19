@@ -1,4 +1,3 @@
-#!/bin/sh
 # Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -32,4 +31,10 @@ make_standalone_toolchain() {
 
 remove_ndk() {
     rm -rf /android/ndk/ndk
+}
+
+download_and_make_toolchain() {
+    download_ndk $1 && \
+    make_standalone_toolchain $2 $3 && \
+    remove_ndk
 }

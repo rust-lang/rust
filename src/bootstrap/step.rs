@@ -761,7 +761,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .run(move |s| dist::rls(build, s.stage, s.target));
     rules.dist("install", "path/to/nowhere")
          .dep(|s| s.name("default:dist"))
-         .run(move |s| install::install(build, s.stage, s.target));
+         .run(move |s| install::Installer::new(build).install(s.stage, s.target));
     rules.dist("dist-cargo", "cargo")
          .host(true)
          .only_host_build(true)

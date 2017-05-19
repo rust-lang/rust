@@ -700,7 +700,7 @@ impl<'a> ExtCtxt<'a> {
     /// Returns span for the macro which originally caused the current expansion to happen.
     ///
     /// Stops backtracing at include! boundary.
-    pub fn expansion_cause(&self) -> Span {
+    pub fn expansion_cause(&self) -> Option<Span> {
         let mut ctxt = self.backtrace();
         let mut last_macro = None;
         loop {
@@ -716,7 +716,7 @@ impl<'a> ExtCtxt<'a> {
                 break
             }
         }
-        last_macro.expect("missing expansion backtrace")
+        last_macro
     }
 
     pub fn struct_span_warn(&self,

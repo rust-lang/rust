@@ -215,14 +215,14 @@
         } else if (ev.target.tagName === 'SPAN' && hasClass(ev.target.parentNode, 'line-numbers')) {
             var prev_id = 0;
 
-            function set_fragment(name) {
+            var set_fragment = function (name) {
                 if (browserSupportsHistoryApi()) {
                     history.replaceState(null, null, '#' + name);
                     window.hashchange();
                 } else {
                     location.replace('#' + name);
                 }
-            }
+            };
 
             var cur_id = parseInt(ev.target.id, 10);
 
@@ -685,7 +685,7 @@
         }
 
         function escape(content) {
-            let h1 = document.createElement('h1');
+            var h1 = document.createElement('h1');
             h1.textContent = content;
             return h1.innerHTML;
         }

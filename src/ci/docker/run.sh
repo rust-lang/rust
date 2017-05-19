@@ -26,7 +26,8 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       build \
       --rm \
       -t rust-ci \
-      "$docker_dir/$image"
+      -f "$docker_dir/$image/Dockerfile" \
+      "$docker_dir"
 elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
     if [ -n "$TRAVIS_OS_NAME" ]; then
         echo Cannot run disabled images on travis!

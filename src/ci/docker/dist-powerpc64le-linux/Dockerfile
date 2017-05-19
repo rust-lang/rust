@@ -59,7 +59,7 @@ WORKDIR /tmp
 USER root
 
 RUN apt-get install -y --no-install-recommends rpm2cpio cpio
-COPY shared.sh build-powerpc64le-toolchain.sh /tmp/
+COPY dist-powerpc64le-linux/shared.sh dist-powerpc64le-linux/build-powerpc64le-toolchain.sh /tmp/
 RUN ./build-powerpc64le-toolchain.sh
 
 RUN curl -o /usr/local/bin/sccache \

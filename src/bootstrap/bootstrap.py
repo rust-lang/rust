@@ -398,13 +398,14 @@ class RustBuild(object):
             sys.exit(ret)
 
     def output(self, args, env=None, cwd=None):
+        default_encoding = sys.getdefaultencoding()
         proc = subprocess.Popen(args, stdout=subprocess.PIPE, env=env, cwd=cwd)
         (out, err) = proc.communicate()
         ret = proc.wait()
         if ret != 0:
             print(out)
             sys.exit(ret)
-        return out
+        return out.decode(default_encoding)
 
     def build_triple(self):
         default_encoding = sys.getdefaultencoding()
@@ -570,10 +571,10 @@ class RustBuild(object):
 
         for submod in submodules:
             path, status = submod
-            if path.endswith(b"llvm") and \
+            if path.endswith('llvm') and \
                 (self.get_toml('llvm-config') or self.get_mk('CFG_LLVM_ROOT')):
                 continue
-            if path.endswith(b"jemalloc") and \
+            if path.endswith('jemalloc') and \
                 (self.get_toml('jemalloc') or self.get_mk('CFG_JEMALLOC_ROOT')):
                 continue
             submod_path = os.path.join(self.rust_root, path)
