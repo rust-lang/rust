@@ -28,3 +28,33 @@ impl Foo {
         }
     }
 }
+
+fn issue1420() {
+    given(
+        r#"
+        # Getting started
+        ...
+    "#
+    )
+        .running(waltz)
+}
+
+// #1563
+fn query(conn: &Connection) -> Result<()> {
+    conn.query_row(
+        r#"
+            SELECT title, date
+            FROM posts,
+            WHERE DATE(date) = $1
+        "#,
+        &[],
+        |row| {
+            Post {
+                title: row.get(0),
+                date: row.get(1),
+            }
+        },
+    )?;
+
+    Ok(())
+}

@@ -183,7 +183,7 @@ pub fn rewrite_macro(mac: &ast::Mac,
             let mac_shape = try_opt!(shape.shrink_left(macro_name.len()));
             // Handle special case: `vec![expr; expr]`
             if vec_with_semi {
-                let (lbr, rbr) = if context.config.spaces_within_square_brackets {
+                let (lbr, rbr) = if context.config.spaces_within_square_brackets() {
                     ("[ ", " ]")
                 } else {
                     ("[", "]")
