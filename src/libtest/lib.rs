@@ -542,6 +542,7 @@ struct ConsoleTestState<T> {
     passed: usize,
     failed: usize,
     ignored: usize,
+    filtered_out: usize,
     measured: usize,
     metrics: MetricMap,
     failures: Vec<(TestDesc, Vec<u8>)>,
@@ -570,6 +571,7 @@ impl<T: Write> ConsoleTestState<T> {
             passed: 0,
             failed: 0,
             ignored: 0,
+            filtered_out: 0,
             measured: 0,
             metrics: MetricMap::new(),
             failures: Vec::new(),
@@ -775,11 +777,12 @@ impl<T: Write> ConsoleTestState<T> {
         } else {
             self.write_pretty("FAILED", term::color::RED)?;
         }
-        let s = format!(". {} passed; {} failed; {} ignored; {} measured\n\n",
+        let s = format!(". {} passed; {} failed; {} ignored; {} measured; {} filtered out\n\n",
                         self.passed,
                         self.failed,
                         self.ignored,
-                        self.measured);
+                        self.measured,
+                        self.filtered_out);
         self.write_plain(&s)?;
         return Ok(success);
     }
@@ -875,6 +878,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
     fn callback<T: Write>(event: &TestEvent, st: &mut ConsoleTestState<T>) -> io::Result<()> {
         match (*event).clone() {
             TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
+            TeFilteredOut(filtered_out) => Ok(st.filtered_out = filtered_out),
             TeWait(ref test, padding) => st.write_test_start(test, padding),
             TeTimeout(ref test) => st.write_timeout(test),
             TeResult(test, result, stdout) => {
@@ -957,6 +961,7 @@ fn should_sort_failures_before_printing_them() {
         passed: 0,
         failed: 0,
         ignored: 0,
+        filtered_out: 0,
         measured: 0,
         max_name_len: 10,
         metrics: MetricMap::new(),
@@ -1017,6 +1022,7 @@ pub enum TestEvent {
     TeWait(TestDesc, NamePadding),
     TeResult(TestDesc, TestResult, Vec<u8>),
     TeTimeout(TestDesc),
+    TeFilteredOut(usize),
 }
 
 pub type MonitorMsg = (TestDesc, TestResult, Vec<u8>);
@@ -1028,10 +1034,15 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
     use std::collections::HashMap;
     use std::sync::mpsc::RecvTimeoutError;
 
+    let tests_len = tests.len();
+
     let mut filtered_tests = filter_tests(opts, tests);
     if !opts.bench_benchmarks {
         filtered_tests = convert_benchmarks_to_tests(filtered_tests);
     }
+
+    let filtered_out = tests_len - filtered_tests.len();
+    callback(TeFilteredOut(filtered_out))?;
 
     let filtered_descs = filtered_tests.iter()
                                        .map(|t| t.desc.clone())

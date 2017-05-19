@@ -56,8 +56,8 @@ RUN mkdir /x-tools && chown rustbuild:rustbuild /x-tools
 USER rustbuild
 WORKDIR /tmp
 
-COPY patches/ /tmp/patches/
-COPY powerpc-linux-gnu.config build-powerpc-toolchain.sh /tmp/
+COPY dist-powerpc-linux/patches/ /tmp/patches/
+COPY dist-powerpc-linux/powerpc-linux-gnu.config dist-powerpc-linux/build-powerpc-toolchain.sh /tmp/
 RUN ./build-powerpc-toolchain.sh
 
 USER root

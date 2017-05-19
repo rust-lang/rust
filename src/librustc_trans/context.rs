@@ -375,7 +375,10 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
 
             let dbg_cx = if shared.tcx.sess.opts.debuginfo != NoDebugInfo {
                 let dctx = debuginfo::CrateDebugContext::new(llmod);
-                debuginfo::metadata::compile_unit_metadata(shared, &dctx, shared.tcx.sess);
+                debuginfo::metadata::compile_unit_metadata(shared,
+                                                           codegen_unit.name(),
+                                                           &dctx,
+                                                           shared.tcx.sess);
                 Some(dctx)
             } else {
                 None

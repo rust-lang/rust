@@ -56,7 +56,7 @@ RUN mkdir /x-tools && chown rustbuild:rustbuild /x-tools
 USER rustbuild
 WORKDIR /tmp
 
-COPY arm-linux-gnueabihf.config build-toolchains.sh /tmp/
+COPY dist-armhf-linux/arm-linux-gnueabihf.config dist-armhf-linux/build-toolchains.sh /tmp/
 RUN ./build-toolchains.sh
 
 USER root
