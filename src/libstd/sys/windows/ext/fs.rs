@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Windows-specific extensions for the primitives in `std::fs`
+//! Windows-specific extensions for the primitives in the `std::fs` module.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -18,7 +18,9 @@ use path::Path;
 use sys;
 use sys_common::{AsInnerMut, AsInner};
 
-/// Windows-specific extensions to `File`
+/// Windows-specific extensions to [`File`].
+///
+/// [`File`]: ../../../fs/struct.File.html
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
     /// Seeks to a given position and reads a number of bytes.
@@ -35,6 +37,24 @@ pub trait FileExt {
     /// Note that similar to `File::read`, it is not an error to return with a
     /// short read. When returning from such a short read, the file pointer is
     /// still updated.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::fs::File;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut file = File::open("foo.txt")?;
+    /// let mut buffer = [0; 10];
+    ///
+    /// // Read 10 bytes, starting 72 bytes from the
+    /// // start of the file.
+    /// file.seek_read(&mut buffer[..], 72)?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize>;
 
@@ -52,6 +72,22 @@ pub trait FileExt {
     /// Note that similar to `File::write`, it is not an error to return a
     /// short write. When returning from such a short write, the file pointer
     /// is still updated.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::File;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut buffer = File::create("foo.txt")?;
+    ///
+    /// // Write a byte string starting 72 bytes from
+    /// // the start of the file.
+    /// buffer.seek_write(b"some bytes", 72)?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize>;
 }
@@ -67,81 +103,94 @@ impl FileExt for fs::File {
     }
 }
 
-/// Windows-specific extensions to `OpenOptions`
+/// Windows-specific extensions to [`OpenOptions`].
+///
+/// [`OpenOptions`]: ../../../fs/struct.OpenOptions.html
 #[stable(feature = "open_options_ext", since = "1.10.0")]
 pub trait OpenOptionsExt {
-    /// Overrides the `dwDesiredAccess` argument to the call to `CreateFile`
+    /// Overrides the `dwDesiredAccess` argument to the call to [`CreateFile`]
     /// with the specified value.
     ///
     /// This will override the `read`, `write`, and `append` flags on the
     /// `OpenOptions` structure. This method provides fine-grained control over
     /// the permissions to read, write and append data, attributes (like hidden
-    /// and system) and extended attributes.
+    /// and system), and extended attributes.
     ///
     /// # Examples
     ///
     /// ```no_run
     /// use std::fs::OpenOptions;
-    /// use std::os::windows::fs::OpenOptionsExt;
+    /// use std::os::windows::prelude::*;
     ///
     /// // Open without read and write permission, for example if you only need
-    /// // to call `stat()` on the file
+    /// // to call `stat` on the file
     /// let file = OpenOptions::new().access_mode(0).open("foo.txt");
     /// ```
+    ///
+    /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn access_mode(&mut self, access: u32) -> &mut Self;
 
-    /// Overrides the `dwShareMode` argument to the call to `CreateFile` with
+    /// Overrides the `dwShareMode` argument to the call to [`CreateFile`] with
     /// the specified value.
     ///
     /// By default `share_mode` is set to
-    /// `FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE`. Specifying
-    /// less permissions denies others to read from, write to and/or delete the
-    /// file while it is open.
+    /// `FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE`. This allows
+    /// other processes to to read, write, and delete/rename the same file
+    /// while it is open. Removing any of the flags will prevent other
+    /// processes from performing the corresponding operation until the file
+    /// handle is closed.
     ///
     /// # Examples
     ///
     /// ```no_run
     /// use std::fs::OpenOptions;
-    /// use std::os::windows::fs::OpenOptionsExt;
+    /// use std::os::windows::prelude::*;
     ///
     /// // Do not allow others to read or modify this file while we have it open
-    /// // for writing
-    /// let file = OpenOptions::new().write(true)
-    ///                              .share_mode(0)
-    ///                              .open("foo.txt");
+    /// // for writing.
+    /// let file = OpenOptions::new()
+    ///     .write(true)
+    ///     .share_mode(0)
+    ///     .open("foo.txt");
     /// ```
+    ///
+    /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn share_mode(&mut self, val: u32) -> &mut Self;
 
     /// Sets extra flags for the `dwFileFlags` argument to the call to
-    /// `CreateFile2` (or combines it with `attributes` and `security_qos_flags`
-    /// to set the `dwFlagsAndAttributes` for `CreateFile`).
+    /// [`CreateFile2`] to the specified value (or combines it with
+    /// `attributes` and `security_qos_flags` to set the `dwFlagsAndAttributes`
+    /// for [`CreateFile`]).
     ///
-    /// Custom flags can only set flags, not remove flags set by Rusts options.
-    /// This options overwrites any previously set custom flags.
+    /// Custom flags can only set flags, not remove flags set by Rust's options.
+    /// This option overwrites any previously set custom flags.
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```ignore
     /// extern crate winapi;
-    /// use std::fs::OpenOptions;
-    /// use std::os::windows::fs::OpenOptionsExt;
     ///
-    /// let mut options = OpenOptions::new();
-    /// options.create(true).write(true);
-    /// if cfg!(windows) {
-    ///     options.custom_flags(winapi::FILE_FLAG_DELETE_ON_CLOSE);
-    /// }
-    /// let file = options.open("foo.txt");
+    /// use std::fs::OpenOptions;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// let file = OpenOptions::new()
+    ///     .create(true)
+    ///     .write(true)
+    ///     .custom_flags(winapi::FILE_FLAG_DELETE_ON_CLOSE)
+    ///     .open("foo.txt");
     /// ```
+    ///
+    /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
+    /// [`CreateFile2`]: https://msdn.microsoft.com/en-us/library/windows/desktop/hh449422.aspx
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn custom_flags(&mut self, flags: u32) -> &mut Self;
 
-    /// Sets the `dwFileAttributes` argument to the call to `CreateFile2` to
+    /// Sets the `dwFileAttributes` argument to the call to [`CreateFile2`] to
     /// the specified value (or combines it with `custom_flags` and
     /// `security_qos_flags` to set the `dwFlagsAndAttributes` for
-    /// `CreateFile`).
+    /// [`CreateFile`]).
     ///
     /// If a _new_ file is created because it does not yet exist and
     /// `.create(true)` or `.create_new(true)` are specified, the new file is
@@ -155,21 +204,52 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```ignore
     /// extern crate winapi;
-    /// use std::fs::OpenOptions;
-    /// use std::os::windows::fs::OpenOptionsExt;
     ///
-    /// let file = OpenOptions::new().write(true).create(true)
-    ///                              .attributes(winapi::FILE_ATTRIBUTE_HIDDEN)
-    ///                              .open("foo.txt");
+    /// use std::fs::OpenOptions;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// let file = OpenOptions::new()
+    ///     .write(true)
+    ///     .create(true)
+    ///     .attributes(winapi::FILE_ATTRIBUTE_HIDDEN)
+    ///     .open("foo.txt");
     /// ```
+    ///
+    /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
+    /// [`CreateFile2`]: https://msdn.microsoft.com/en-us/library/windows/desktop/hh449422.aspx
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn attributes(&mut self, val: u32) -> &mut Self;
 
-    /// Sets the `dwSecurityQosFlags` argument to the call to `CreateFile2` to
+    /// Sets the `dwSecurityQosFlags` argument to the call to [`CreateFile2`] to
     /// the specified value (or combines it with `custom_flags` and `attributes`
-    /// to set the `dwFlagsAndAttributes` for `CreateFile`).
+    /// to set the `dwFlagsAndAttributes` for [`CreateFile`]).
+    ///
+    /// By default, `security_qos_flags` is set to `SECURITY_ANONYMOUS`. For
+    /// information about possible values, see [Impersonation Levels] on the
+    /// Windows Dev Center site.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::OpenOptions;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// let file = OpenOptions::new()
+    ///     .write(true)
+    ///     .create(true)
+    ///
+    ///     // Sets the flag value to `SecurityIdentification`.
+    ///     .security_qos_flags(1)
+    ///
+    ///     .open("foo.txt");
+    /// ```
+    ///
+    /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
+    /// [`CreateFile2`]: https://msdn.microsoft.com/en-us/library/windows/desktop/hh449422.aspx
+    /// [Impersonation Levels]:
+    ///     https://msdn.microsoft.com/en-us/library/windows/desktop/aa379572.aspx
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn security_qos_flags(&mut self, flags: u32) -> &mut OpenOptions;
 }
@@ -197,35 +277,136 @@ impl OpenOptionsExt for OpenOptions {
     }
 }
 
-/// Extension methods for `fs::Metadata` to access the raw fields contained
+/// Extension methods for [`fs::Metadata`] to access the raw fields contained
 /// within.
+///
+/// The data members that this trait exposes correspond to the members
+/// of the [`BY_HANDLE_FILE_INFORMATION`] structure.
+///
+/// [`fs::Metadata`]: ../../../fs/struct.Metadata.html
+/// [`BY_HANDLE_FILE_INFORMATION`]:
+///     https://msdn.microsoft.com/en-us/library/windows/desktop/aa363788.aspx
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Returns the value of the `dwFileAttributes` field of this metadata.
     ///
     /// This field contains the file system attribute information for a file
-    /// or directory.
+    /// or directory. For possible values and their descriptions, see
+    /// [File Attribute Constants] in the Windows Dev Center.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::fs;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let metadata = fs::metadata("foo.txt")?;
+    /// let attributes = metadata.file_attributes();
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// [File Attribute Constants]:
+    ///     https://msdn.microsoft.com/en-us/library/windows/desktop/gg258117.aspx
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn file_attributes(&self) -> u32;
 
     /// Returns the value of the `ftCreationTime` field of this metadata.
     ///
-    /// The returned 64-bit value represents the number of 100-nanosecond
-    /// intervals since January 1, 1601 (UTC).
+    /// The returned 64-bit value is equivalent to a [`FILETIME`] struct,
+    /// which represents the number of 100-nanosecond intervals since
+    /// January 1, 1601 (UTC). The struct is automatically
+    /// converted to a `u64` value, as that is the recommended way
+    /// to use it.
+    ///
+    /// If the underlying filesystem does not support creation time, the
+    /// returned value is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::fs;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let metadata = fs::metadata("foo.txt")?;
+    /// let creation_time = metadata.creation_time();
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// [`FILETIME`]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724284.aspx
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn creation_time(&self) -> u64;
 
     /// Returns the value of the `ftLastAccessTime` field of this metadata.
     ///
-    /// The returned 64-bit value represents the number of 100-nanosecond
-    /// intervals since January 1, 1601 (UTC).
+    /// The returned 64-bit value is equivalent to a [`FILETIME`] struct,
+    /// which represents the number of 100-nanosecond intervals since
+    /// January 1, 1601 (UTC). The struct is automatically
+    /// converted to a `u64` value, as that is the recommended way
+    /// to use it.
+    ///
+    /// For a file, the value specifies the last time that a file was read
+    /// from or written to. For a directory, the value specifies when
+    /// the directory was created. For both files and directories, the
+    /// specified date is correct, but the time of day is always set to
+    /// midnight.
+    ///
+    /// If the underlying filesystem does not support last access time, the
+    /// returned value is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::fs;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let metadata = fs::metadata("foo.txt")?;
+    /// let last_access_time = metadata.last_access_time();
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// [`FILETIME`]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724284.aspx
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn last_access_time(&self) -> u64;
 
     /// Returns the value of the `ftLastWriteTime` field of this metadata.
     ///
-    /// The returned 64-bit value represents the number of 100-nanosecond
-    /// intervals since January 1, 1601 (UTC).
+    /// The returned 64-bit value is equivalent to a [`FILETIME`] struct,
+    /// which represents the number of 100-nanosecond intervals since
+    /// January 1, 1601 (UTC). The struct is automatically
+    /// converted to a `u64` value, as that is the recommended way
+    /// to use it.
+    ///
+    /// For a file, the value specifies the last time that a file was written
+    /// to. For a directory, the structure specifies when the directory was
+    /// created.
+    ///
+    /// If the underlying filesystem does not support the last write time
+    /// time, the returned value is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::fs;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let metadata = fs::metadata("foo.txt")?;
+    /// let last_write_time = metadata.last_write_time();
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// [`FILETIME`]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724284.aspx
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn last_write_time(&self) -> u64;
 
@@ -233,6 +414,20 @@ pub trait MetadataExt {
     /// metadata.
     ///
     /// The returned value does not have meaning for directories.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::fs;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let metadata = fs::metadata("foo.txt")?;
+    /// let file_size = metadata.file_size();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn file_size(&self) -> u64;
 }
@@ -253,7 +448,7 @@ impl MetadataExt for Metadata {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```no_run
 /// use std::os::windows::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
@@ -274,7 +469,7 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```no_run
 /// use std::os::windows::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
