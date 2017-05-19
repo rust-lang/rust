@@ -1083,10 +1083,10 @@
                 code.innerHTML = structs[j];
 
                 var x = code.getElementsByTagName('a');
-                for (var i = 0; i < x.length; i++) {
-                    var href = x[i].href;
+                for (var k = 0; k < x.length; k++) {
+                    var href = x[k].getAttribute('href');
                     if (href && href.indexOf('http') !== 0) {
-                        x[i].href = rootPath + href;
+                        x[k].setAttribute('href', rootPath + href);
                     }
                 }
                 var li = document.createElement('li');
