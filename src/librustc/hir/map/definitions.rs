@@ -16,6 +16,7 @@
 
 use hir;
 use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, DefIndexAddressSpace};
+use ich::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -34,7 +35,7 @@ use util::nodemap::NodeMap;
 pub struct DefPathTable {
     index_to_key: [Vec<DefKey>; 2],
     key_to_index: FxHashMap<DefKey, DefIndex>,
-    def_path_hashes: [Vec<u64>; 2],
+    def_path_hashes: [Vec<Fingerprint>; 2],
 }
 
 // Unfortunately we have to provide a manual impl of Clone because of the
@@ -55,7 +56,7 @@ impl DefPathTable {
 
     fn allocate(&mut self,
                 key: DefKey,
-                def_path_hash: u64,
+                def_path_hash: Fingerprint,
                 address_space: DefIndexAddressSpace)
                 -> DefIndex {
         let index = {
@@ -79,7 +80,7 @@ impl DefPathTable {
     }
 
     #[inline(always)]
-    pub fn def_path_hash(&self, index: DefIndex) -> u64 {
+    pub fn def_path_hash(&self, index: DefIndex) -> Fingerprint {
         self.def_path_hashes[index.address_space().index()]
                             [index.as_array_index()]
     }
@@ -146,8 +147,8 @@ impl Decodable for DefPathTable {
         let index_to_key_lo: Vec<DefKey> = Decodable::decode(d)?;
         let index_to_key_hi: Vec<DefKey> = Decodable::decode(d)?;
 
-        let def_path_hashes_lo: Vec<u64> = Decodable::decode(d)?;
-        let def_path_hashes_hi: Vec<u64> = Decodable::decode(d)?;
+        let def_path_hashes_lo: Vec<Fingerprint> = Decodable::decode(d)?;
+        let def_path_hashes_hi: Vec<Fingerprint> = Decodable::decode(d)?;
 
         let index_to_key = [index_to_key_lo, index_to_key_hi];
         let def_path_hashes = [def_path_hashes_lo, def_path_hashes_hi];
@@ -210,7 +211,7 @@ pub struct DefKey {
 }
 
 impl DefKey {
-    fn compute_stable_hash(&self, parent_hash: u64) -> u64 {
+    fn compute_stable_hash(&self, parent_hash: Fingerprint) -> Fingerprint {
         let mut hasher = StableHasher::new();
 
         // We hash a 0u8 here to disambiguate between regular DefPath hashes,
@@ -221,7 +222,7 @@ impl DefKey {
         hasher.finish()
     }
 
-    fn root_parent_stable_hash(crate_name: &str, crate_disambiguator: &str) -> u64 {
+    fn root_parent_stable_hash(crate_name: &str, crate_disambiguator: &str) -> Fingerprint {
         let mut hasher = StableHasher::new();
         // Disambiguate this from a regular DefPath hash,
         // see compute_stable_hash() above.
@@ -396,7 +397,7 @@ impl Definitions {
     }
 
     #[inline(always)]
-    pub fn def_path_hash(&self, index: DefIndex) -> u64 {
+    pub fn def_path_hash(&self, index: DefIndex) -> Fingerprint {
         self.table.def_path_hash(index)
     }
 
