@@ -1148,9 +1148,18 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     Registry::new(&all_errors)
 }
 
+fn get_args() -> Vec<String> {
+    env::args_os().enumerate()
+        .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
+             early_error(ErrorOutputType::default(),
+                         &format!("Argument {} is not valid Unicode: {:?}", i, arg))
+         }))
+        .collect()
+}
+
 pub fn main() {
     env_logger::init().unwrap();
-    let result = run(|| run_compiler(&env::args().collect::<Vec<_>>(),
+    let result = run(|| run_compiler(&get_args(),
                                      &mut RustcDefaultCalls,
                                      None,
                                      None));
