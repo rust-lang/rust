@@ -325,8 +325,6 @@ pub fn implements_trait<'a, 'tcx>(
     ty_params: &[ty::Ty<'tcx>],
     parent_node_id: Option<NodeId>
 ) -> bool {
-    cx.tcx.populate_implementations_for_trait_if_necessary(trait_id);
-
     let ty = cx.tcx.erase_regions(&ty);
     let mut b = if let Some(id) = parent_node_id {
         cx.tcx.infer_ctxt(BodyId { node_id: id }, Reveal::All)
