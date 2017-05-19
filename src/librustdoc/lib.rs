@@ -107,10 +107,17 @@ pub fn main() {
     const STACK_SIZE: usize = 32_000_000; // 32MB
     env_logger::init().unwrap();
     let res = std::thread::Builder::new().stack_size(STACK_SIZE).spawn(move || {
-        let s = env::args().collect::<Vec<_>>();
-        main_args(&s)
+        get_args().map(|args| main_args(&args)).unwrap_or(1)
     }).unwrap().join().unwrap_or(101);
     process::exit(res as i32);
+}
+
+fn get_args() -> Option<Vec<String>> {
+    env::args_os().enumerate()
+        .map(|(i, arg)| arg.into_string().map_err(|arg| {
+             print_error(format!("Argument {} is not valid Unicode: {:?}", i, arg));
+        }).ok())
+        .collect()
 }
 
 fn stable(g: getopts::OptGroup) -> RustcOptGroup { RustcOptGroup::stable(g) }

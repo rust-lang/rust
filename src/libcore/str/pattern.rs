@@ -429,7 +429,33 @@ impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
 
 /// Searches for chars that are equal to a given char
 impl<'a> Pattern<'a> for char {
-    pattern_methods!(CharSearcher<'a>, CharEqPattern, CharSearcher);
+    type Searcher = CharSearcher<'a>;
+
+    #[inline]
+    fn into_searcher(self, haystack: &'a str) -> Self::Searcher {
+        CharSearcher(CharEqPattern(self).into_searcher(haystack))
+    }
+
+    #[inline]
+    fn is_contained_in(self, haystack: &'a str) -> bool {
+        if (self as u32) < 128 {
+            haystack.as_bytes().contains(&(self as u8))
+        } else {
+            let mut buffer = [0u8; 4];
+            self.encode_utf8(&mut buffer).is_contained_in(haystack)
+        }
+    }
+
+    #[inline]
+    fn is_prefix_of(self, haystack: &'a str) -> bool {
+        CharEqPattern(self).is_prefix_of(haystack)
+    }
+
+    #[inline]
+    fn is_suffix_of(self, haystack: &'a str) -> bool where Self::Searcher: ReverseSearcher<'a>
+    {
+        CharEqPattern(self).is_suffix_of(haystack)
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////

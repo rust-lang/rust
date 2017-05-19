@@ -617,6 +617,11 @@ a.test-arrow:hover{
 	top: 0;
 }
 
+h3 > .collapse-toggle, h4 > .collapse-toggle {
+	font-size: 0.8em;
+	top: 5px;
+}
+
 .toggle-wrapper > .collapse-toggle {
 	left: -24px;
 	margin-top: 0px;

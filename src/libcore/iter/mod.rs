@@ -313,7 +313,7 @@ pub use self::iterator::Iterator;
 pub use self::range::Step;
 #[unstable(feature = "step_by", reason = "recent addition",
            issue = "27741")]
-pub use self::range::StepBy;
+pub use self::range::StepBy as DeprecatedStepBy;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::sources::{Repeat, repeat};
@@ -519,6 +519,41 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<I> FusedIterator for Cycle<I> where I: Clone + Iterator {}
+
+/// An iterator that steps by n elements every iteration.
+///
+/// This `struct` is created by the [`step_by`] method on [`Iterator`]. See
+/// its documentation for more.
+///
+/// [`step_by`]: trait.Iterator.html#method.step_by
+/// [`Iterator`]: trait.Iterator.html
+#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+#[unstable(feature = "iterator_step_by",
+           reason = "unstable replacement of Range::step_by",
+           issue = "27741")]
+#[derive(Clone, Debug)]
+pub struct StepBy<I> {
+    iter: I,
+    step: usize,
+    first_take: bool,
+}
+
+#[unstable(feature = "iterator_step_by",
+           reason = "unstable replacement of Range::step_by",
+           issue = "27741")]
+impl<I> Iterator for StepBy<I> where I: Iterator {
+    type Item = I::Item;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.first_take {
+            self.first_take = false;
+            self.iter.next()
+        } else {
+            self.iter.nth(self.step)
+        }
+    }
+}
 
 /// An iterator that strings two iterators together.
 ///

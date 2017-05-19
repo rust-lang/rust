@@ -106,6 +106,8 @@ pub enum DepNode<D: Clone + Debug> {
     UsedTraitImports(D),
     ConstEval(D),
     SymbolName(D),
+    SpecializationGraph(D),
+    ObjectSafety(D),
 
     // The set of impls for a given trait. Ultimately, it would be
     // nice to get more fine-grained here (e.g., to include a
@@ -115,6 +117,8 @@ pub enum DepNode<D: Clone + Debug> {
     // the impl and hence would require us to be more conservative
     // than changes in the impl body.
     TraitImpls(D),
+
+    AllLocalTraitImpls,
 
     // Nodes representing caches. To properly handle a true cache, we
     // don't use a DepTrackingMap, but rather we push a task node.
@@ -262,7 +266,10 @@ impl<D: Clone + Debug> DepNode<D> {
             UsedTraitImports(ref d) => op(d).map(UsedTraitImports),
             ConstEval(ref d) => op(d).map(ConstEval),
             SymbolName(ref d) => op(d).map(SymbolName),
+            SpecializationGraph(ref d) => op(d).map(SpecializationGraph),
+            ObjectSafety(ref d) => op(d).map(ObjectSafety),
             TraitImpls(ref d) => op(d).map(TraitImpls),
+            AllLocalTraitImpls => Some(AllLocalTraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),
             ReprHints(ref d) => op(d).map(ReprHints),
             TraitSelect { ref trait_def_id, ref input_def_id } => {

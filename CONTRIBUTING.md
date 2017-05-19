@@ -177,7 +177,7 @@ python x.py test src/test/rustdoc
 python x.py build src/libcore --stage 0
 ```
 
-You can explore the build system throught the various `--help` pages for each
+You can explore the build system through the various `--help` pages for each
 subcommand. For example to learn more about a command you can run:
 
 ```

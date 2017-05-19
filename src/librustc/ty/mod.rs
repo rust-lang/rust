@@ -19,7 +19,7 @@ use dep_graph::DepNode;
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
-use ich::StableHashingContext;
+use ich::{self, StableHashingContext};
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::privacy::AccessLevels;
@@ -80,7 +80,7 @@ pub use self::context::{Lift, TypeckTables};
 
 pub use self::instance::{Instance, InstanceDef};
 
-pub use self::trait_def::{TraitDef, TraitFlags};
+pub use self::trait_def::TraitDef;
 
 pub use self::maps::queries;
 
@@ -2248,7 +2248,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     #[inline]
-    pub fn def_path_hash(self, def_id: DefId) -> u64 {
+    pub fn def_path_hash(self, def_id: DefId) -> ich::Fingerprint {
         if def_id.is_local() {
             self.hir.definitions().def_path_hash(def_id.index)
         } else {
@@ -2324,37 +2324,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn trait_has_default_impl(self, trait_def_id: DefId) -> bool {
-        let def = self.trait_def(trait_def_id);
-        def.flags.get().intersects(TraitFlags::HAS_DEFAULT_IMPL)
-    }
-
-    /// Populates the type context with all the implementations for the given
-    /// trait if necessary.
-    pub fn populate_implementations_for_trait_if_necessary(self, trait_id: DefId) {
-        if trait_id.is_local() {
-            return
-        }
-
-        // The type is not local, hence we are reading this out of
-        // metadata and don't need to track edges.
-        let _ignore = self.dep_graph.in_ignore();
-
-        let def = self.trait_def(trait_id);
-        if def.flags.get().intersects(TraitFlags::HAS_REMOTE_IMPLS) {
-            return;
-        }
-
-        debug!("populate_implementations_for_trait_if_necessary: searching for {:?}", def);
-
-        for impl_def_id in self.sess.cstore.implementations_of_trait(Some(trait_id)) {
-            let trait_ref = self.impl_trait_ref(impl_def_id).unwrap();
-
-            // Record the trait->implementation mapping.
-            let parent = self.impl_parent(impl_def_id).unwrap_or(trait_id);
-            def.record_remote_impl(self, impl_def_id, trait_ref, parent);
-        }
-
-        def.flags.set(def.flags.get() | TraitFlags::HAS_REMOTE_IMPLS);
+        self.trait_def(trait_def_id).has_default_impl
     }
 
     /// Given the def_id of an impl, return the def_id of the trait it implements.
@@ -2603,6 +2573,8 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         adt_dtorck_constraint,
         def_span,
         trait_of_item,
+        trait_impls_of: trait_def::trait_impls_of_provider,
+        relevant_trait_impls_for: trait_def::relevant_trait_impls_provider,
         ..*providers
     };
 }
@@ -2611,6 +2583,8 @@ pub fn provide_extern(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
         adt_sized_constraint,
         adt_dtorck_constraint,
+        trait_impls_of: trait_def::trait_impls_of_provider,
+        relevant_trait_impls_for: trait_def::relevant_trait_impls_provider,
         ..*providers
     };
 }

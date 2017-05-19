@@ -10,14 +10,14 @@
 
 use cstore;
 use encoder;
-use locator;
 use schema;
 
 use rustc::dep_graph::DepTrackingMapConfig;
 use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind,
-                            ExternCrate, NativeLibrary, LinkMeta,
+                            ExternCrate, NativeLibrary, MetadataLoader, LinkMeta,
                             LinkagePreference, LoadedMacro, EncodedMetadata};
 use rustc::hir::def;
+use rustc::ich;
 use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
@@ -38,7 +38,6 @@ use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, NO_EXPANSION};
 use rustc::hir::svh::Svh;
-use rustc_back::target::Target;
 use rustc::hir;
 
 macro_rules! provide {
@@ -135,6 +134,10 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(krate)
     }
 
+    fn metadata_loader(&self) -> &MetadataLoader {
+        &*self.metadata_loader
+    }
+
     fn visibility(&self, def: DefId) -> ty::Visibility {
         self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).get_visibility(def.index)
@@ -147,10 +150,8 @@ impl CrateStore for cstore::CStore {
 
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>
     {
-        if let Some(def_id) = filter {
-            self.dep_graph.read(DepNode::MetaData(def_id));
-        }
         let mut result = vec![];
+
         self.iter_crate_data(|_, cdata| {
             cdata.get_implementations_for_trait(filter, &self.dep_graph, &mut result)
         });
@@ -337,7 +338,7 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(def.krate).def_path(def.index)
     }
 
-    fn def_path_hash(&self, def: DefId) -> u64 {
+    fn def_path_hash(&self, def: DefId) -> ich::Fingerprint {
         self.get_crate_data(def.krate).def_path_hash(def.index)
     }
 
@@ -420,17 +421,6 @@ impl CrateStore for cstore::CStore {
     {
         self.get_used_link_args().borrow().clone()
     }
-
-    fn metadata_filename(&self) -> &str
-    {
-        locator::METADATA_FILENAME
-    }
-
-    fn metadata_section_name(&self, target: &Target) -> &str
-    {
-        locator::meta_section_name(target)
-    }
-
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>
     {
         self.do_get_used_crates(prefer)

@@ -472,7 +472,7 @@ pub enum Stability {
 impl ::std::fmt::Debug for AttributeGate {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match *self {
-            Gated(ref stab, ref name, ref expl, _) =>
+            Gated(ref stab, name, expl, _) =>
                 write!(fmt, "Gated({:?}, {}, {})", stab, name, expl),
             Ungated => write!(fmt, "Ungated")
         }
@@ -816,7 +816,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
 ];
 
 // cfg(...)'s that are feature gated
-const GATED_CFGS: &'static [(&'static str, &'static str, fn(&Features) -> bool)] = &[
+const GATED_CFGS: &[(&str, &str, fn(&Features) -> bool)] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
     ("target_feature", "cfg_target_feature", cfg_fn!(cfg_target_feature)),
     ("target_vendor", "cfg_target_vendor", cfg_fn!(cfg_target_vendor)),
@@ -881,7 +881,7 @@ impl<'a> Context<'a> {
         let name = unwrap_or!(attr.name(), return).as_str();
         for &(n, ty, ref gateage) in BUILTIN_ATTRIBUTES {
             if name == n {
-                if let &Gated(_, ref name, ref desc, ref has_feature) = gateage {
+                if let Gated(_, name, desc, ref has_feature) = *gateage {
                     gate_feature_fn!(self, has_feature, attr.span, name, desc);
                 }
                 debug!("check_attribute: {:?} is builtin, {:?}, {:?}", attr.path, ty, gateage);
@@ -1098,7 +1098,7 @@ fn contains_novel_literal(item: &ast::MetaItem) -> bool {
         NameValue(ref lit) => !lit.node.is_str(),
         List(ref list) => list.iter().any(|li| {
             match li.node {
-                MetaItem(ref mi) => contains_novel_literal(&mi),
+                MetaItem(ref mi) => contains_novel_literal(mi),
                 Literal(_) => true,
             }
         }),
@@ -1120,7 +1120,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             return
         }
 
-        let meta = panictry!(attr.parse_meta(&self.context.parse_sess));
+        let meta = panictry!(attr.parse_meta(self.context.parse_sess));
         if contains_novel_literal(&meta) {
             gate_feature_post!(&self, attr_literals, attr.span,
                                "non-string literals in attributes, or string \
@@ -1216,14 +1216,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, _) => {
-                match polarity {
-                    ast::ImplPolarity::Negative => {
-                        gate_feature_post!(&self, optin_builtin_traits,
-                                           i.span,
-                                           "negative trait bounds are not yet fully implemented; \
-                                            use marker types for now");
-                    },
-                    _ => {}
+                if polarity == ast::ImplPolarity::Negative {
+                    gate_feature_post!(&self, optin_builtin_traits,
+                                       i.span,
+                                       "negative trait bounds are not yet fully implemented; \
+                                        use marker types for now");
                 }
 
                 if let ast::Defaultness::Default = defaultness {
@@ -1272,11 +1269,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FunctionRetTy) {
         if let ast::FunctionRetTy::Ty(ref output_ty) = *ret_ty {
-            match output_ty.node {
-                ast::TyKind::Never => return,
-                _ => (),
-            };
-            self.visit_ty(output_ty)
+            if output_ty.node != ast::TyKind::Never {
+                self.visit_ty(output_ty)
+            }
         }
     }
 
@@ -1373,17 +1368,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 span: Span,
                 _node_id: NodeId) {
         // check for const fn declarations
-        match fn_kind {
-            FnKind::ItemFn(_, _, _, Spanned { node: ast::Constness::Const, .. }, _, _, _) => {
-                gate_feature_post!(&self, const_fn, span, "const fn is unstable");
-            }
-            _ => {
-                // stability of const fn methods are covered in
-                // visit_trait_item and visit_impl_item below; this is
-                // because default methods don't pass through this
-                // point.
-            }
+        if let FnKind::ItemFn(_, _, _, Spanned { node: ast::Constness::Const, .. }, _, _, _) =
+            fn_kind {
+            gate_feature_post!(&self, const_fn, span, "const fn is unstable");
         }
+        // stability of const fn methods are covered in
+        // visit_trait_item and visit_impl_item below; this is
+        // because default methods don't pass through this
+        // point.
 
         match fn_kind {
             FnKind::ItemFn(_, _, _, _, abi, _, _) |

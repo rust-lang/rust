@@ -1067,7 +1067,7 @@ impl<T> Receiver<T> {
         Receiver { inner: UnsafeCell::new(inner) }
     }
 
-    /// Attempts to return a pending value on this receiver without blocking
+    /// Attempts to return a pending value on this receiver without blocking.
     ///
     /// This method will never block the caller in order to wait for data to
     /// become available. Instead, this will always return immediately with a

@@ -56,7 +56,6 @@ extern crate rustc_save_analysis;
 extern crate rustc_trans;
 extern crate rustc_typeck;
 extern crate serialize;
-extern crate rustc_llvm as llvm;
 #[macro_use]
 extern crate log;
 extern crate syntax;
@@ -70,7 +69,7 @@ use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_trans::back::link;
-use rustc_trans::back::write::{create_target_machine, RELOC_MODEL_ARGS, CODE_GEN_MODEL_ARGS};
+use rustc_trans::back::write::{RELOC_MODEL_ARGS, CODE_GEN_MODEL_ARGS};
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
@@ -182,7 +181,7 @@ pub fn run_compiler<'a>(args: &[String],
     let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
 
     if sopts.debugging_opts.debug_llvm {
-        unsafe { llvm::LLVMRustSetDebug(1); }
+        rustc_trans::enable_llvm_debug();
     }
 
     let descriptions = diagnostics_registry();
@@ -204,13 +203,14 @@ pub fn run_compiler<'a>(args: &[String],
     };
 
     let dep_graph = DepGraph::new(sopts.build_dep_graph());
-    let cstore = Rc::new(CStore::new(&dep_graph));
+    let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
 
     let loader = file_loader.unwrap_or(box RealFileLoader);
     let codemap = Rc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
     let mut sess = session::build_session_with_codemap(
         sopts, &dep_graph, input_file_path, descriptions, cstore.clone(), codemap, emitter_dest,
     );
+    rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess, cfg);
@@ -409,12 +409,13 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     return None;
                 }
                 let dep_graph = DepGraph::new(sopts.build_dep_graph());
-                let cstore = Rc::new(CStore::new(&dep_graph));
+                let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
                 let mut sess = build_session(sopts.clone(),
                     &dep_graph,
                     None,
                     descriptions.clone(),
                     cstore.clone());
+                rustc_trans::init(&sess);
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let mut cfg = config::build_configuration(&sess, cfg.clone());
                 target_features::add_configuration(&mut cfg, &sess);
@@ -558,7 +559,11 @@ impl RustcDefaultCalls {
                 &Input::File(ref ifile) => {
                     let path = &(*ifile);
                     let mut v = Vec::new();
-                    locator::list_file_metadata(&sess.target.target, path, &mut v).unwrap();
+                    locator::list_file_metadata(&sess.target.target,
+                                                path,
+                                                sess.cstore.metadata_loader(),
+                                                &mut v)
+                            .unwrap();
                     println!("{}", String::from_utf8(v).unwrap());
                 }
                 &Input::Str { .. } => {
@@ -665,14 +670,6 @@ impl RustcDefaultCalls {
                         println!("{}", cfg);
                     }
                 }
-                PrintRequest::TargetCPUs => {
-                    let tm = create_target_machine(sess);
-                    unsafe { llvm::LLVMRustPrintTargetCPUs(tm); }
-                }
-                PrintRequest::TargetFeatures => {
-                    let tm = create_target_machine(sess);
-                    unsafe { llvm::LLVMRustPrintTargetFeatures(tm); }
-                }
                 PrintRequest::RelocationModels => {
                     println!("Available relocation models:");
                     for &(name, _) in RELOC_MODEL_ARGS.iter() {
@@ -686,6 +683,9 @@ impl RustcDefaultCalls {
                         println!("    {}", name);
                     }
                     println!("");
+                }
+                PrintRequest::TargetCPUs | PrintRequest::TargetFeatures => {
+                    rustc_trans::print(*req, sess);
                 }
             }
         }
@@ -724,10 +724,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(release_str()));
-        unsafe {
-            println!("LLVM version: {}.{}",
-                     llvm::LLVMRustVersionMajor(), llvm::LLVMRustVersionMinor());
-        }
+        rustc_trans::print_version();
     }
 }
 
@@ -1020,9 +1017,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     if cg_flags.contains(&"passes=list".to_string()) {
-        unsafe {
-            ::llvm::LLVMRustPrintPasses();
-        }
+        rustc_trans::print_passes();
         return None;
     }
 
@@ -1153,9 +1148,18 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     Registry::new(&all_errors)
 }
 
+fn get_args() -> Vec<String> {
+    env::args_os().enumerate()
+        .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
+             early_error(ErrorOutputType::default(),
+                         &format!("Argument {} is not valid Unicode: {:?}", i, arg))
+         }))
+        .collect()
+}
+
 pub fn main() {
     env_logger::init().unwrap();
-    let result = run(|| run_compiler(&env::args().collect::<Vec<_>>(),
+    let result = run(|| run_compiler(&get_args(),
                                      &mut RustcDefaultCalls,
                                      None,
                                      None));

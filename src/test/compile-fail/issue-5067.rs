@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_macros)]
+
 macro_rules! foo {
     ( $()* ) => {};
     //~^ ERROR repetition matches empty token tree

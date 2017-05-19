@@ -27,6 +27,7 @@ use abi::Abi;
 use ast::*;
 use syntax_pos::Span;
 use codemap::Spanned;
+use tokenstream::ThinTokenStream;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
@@ -111,6 +112,9 @@ pub trait Visitor<'ast>: Sized {
         // works on macros, use this
         // definition in your trait impl:
         // visit::walk_mac(self, _mac)
+    }
+    fn visit_mac_def(&mut self, _mac: &'ast ThinTokenStream, _id: NodeId) {
+        // Nothing to do
     }
     fn visit_path(&mut self, path: &'ast Path, _id: NodeId) {
         walk_path(self, path)
@@ -290,7 +294,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             walk_list!(visitor, visit_trait_item, methods);
         }
         ItemKind::Mac(ref mac) => visitor.visit_mac(mac),
-        ItemKind::MacroDef(..) => {},
+        ItemKind::MacroDef(ref ts) => visitor.visit_mac_def(ts, item.id),
     }
     walk_list!(visitor, visit_attribute, &item.attrs);
 }
@@ -345,9 +349,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
             visitor.visit_ty(ty);
             visitor.visit_expr(expression)
         }
-        TyKind::TraitObject(ref bounds) => {
-            walk_list!(visitor, visit_ty_param_bound, bounds);
-        }
+        TyKind::TraitObject(ref bounds) |
         TyKind::ImplTrait(ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
@@ -542,7 +544,7 @@ pub fn walk_fn<'a, V>(visitor: &mut V, kind: FnKind<'a>, declaration: &'a FnDecl
             walk_fn_decl(visitor, declaration);
             visitor.visit_block(body);
         }
-        FnKind::Method(_, ref sig, _, body) => {
+        FnKind::Method(_, sig, _, body) => {
             visitor.visit_generics(&sig.generics);
             walk_fn_decl(visitor, declaration);
             visitor.visit_block(body);
@@ -778,7 +780,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         }
         ExprKind::InlineAsm(ref ia) => {
             for &(_, ref input) in &ia.inputs {
-                visitor.visit_expr(&input)
+                visitor.visit_expr(input)
             }
             for output in &ia.outputs {
                 visitor.visit_expr(&output.expr)

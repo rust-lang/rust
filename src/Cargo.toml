@@ -13,10 +13,7 @@ members = [
   "tools/build-manifest",
   "tools/remote-test-client",
   "tools/remote-test-server",
-]
-
-# These projects have their own Cargo.lock
-exclude = [
+  "tools/rust-installer",
   "tools/cargo",
   "tools/rls",
 ]
@@ -37,3 +34,6 @@ debug-assertions = false
 [profile.test]
 debug = false
 debug-assertions = false
+
+[replace]
+"https://github.com/rust-lang/cargo#0.20.0" = { path = "tools/cargo" }

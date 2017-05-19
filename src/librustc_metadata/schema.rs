@@ -221,6 +221,20 @@ impl<T> Tracked<T> {
     }
 }
 
+impl<'a, 'tcx, T> HashStable<StableHashingContext<'a, 'tcx>> for Tracked<T>
+    where T: HashStable<StableHashingContext<'a, 'tcx>>
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let Tracked {
+            ref state
+        } = *self;
+
+        state.hash_stable(hcx, hasher);
+    }
+}
+
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct CrateRoot {

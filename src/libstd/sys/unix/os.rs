@@ -253,7 +253,12 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(any(target_os = "linux", target_os = "android", target_os = "emscripten"))]
 pub fn current_exe() -> io::Result<PathBuf> {
-    ::fs::read_link("/proc/self/exe")
+    let selfexe = PathBuf::from("/proc/self/exe");
+    if selfexe.exists() {
+        ::fs::read_link(selfexe)
+    } else {
+        Err(io::Error::new(io::ErrorKind::Other, "no /proc/self/exe available. Is /proc mounted?"))
+    }
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]

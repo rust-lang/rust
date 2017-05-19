@@ -133,6 +133,14 @@ impl<'a> Quote for &'a str {
     }
 }
 
+impl Quote for usize {
+    fn quote(&self) -> TokenStream {
+        let integer_symbol = Symbol::intern(&self.to_string());
+        TokenTree::Token(DUMMY_SP, Token::Literal(token::Lit::Integer(integer_symbol), None))
+            .into()
+    }
+}
+
 impl Quote for Ident {
     fn quote(&self) -> TokenStream {
         // FIXME(jseyfried) quote hygiene
@@ -193,15 +201,17 @@ impl Quote for token::BinOpToken {
 impl Quote for Lit {
     fn quote(&self) -> TokenStream {
         macro_rules! gen_match {
-            ($($i:ident),*) => {
+            ($($i:ident),*; $($raw:ident),*) => {
                 match *self {
                     $( Lit::$i(lit) => quote!(::syntax::parse::token::Lit::$i((quote lit))), )*
-                    _ => panic!("Unsupported literal"),
+                    $( Lit::$raw(lit, n) => {
+                        quote!(::syntax::parse::token::Lit::$raw((quote lit), (quote n)))
+                    })*
                 }
             }
         }
 
-        gen_match!(Byte, Char, Float, Str_, Integer, ByteStr)
+        gen_match!(Byte, Char, Float, Str_, Integer, ByteStr; StrRaw, ByteStrRaw)
     }
 }
 

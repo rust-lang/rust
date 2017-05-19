@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-Zdump-mir=NEVER_MATCHED
-
 // Regression test for #41697. Using dump-mir was triggering
 // artificial cycles: during type-checking, we had to get the MIR for
 // the constant expressions in `[u8; 2]`, which in turn would trigger

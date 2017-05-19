@@ -315,11 +315,20 @@ impl<'a> CrateLoader<'a> {
         let exported_symbols = crate_root.exported_symbols
                                          .map(|x| x.decode(&metadata).collect());
 
+        let trait_impls = crate_root
+            .impls
+            .map(|impls| {
+                impls.decode(&metadata)
+                     .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
+                     .collect()
+            });
+
         let mut cmeta = cstore::CrateMetadata {
             name: name,
             extern_crate: Cell::new(None),
             def_path_table: def_path_table,
             exported_symbols: exported_symbols,
+            trait_impls: trait_impls,
             proc_macros: crate_root.macro_derive_registrar.map(|_| {
                 self.load_derive_macros(&crate_root, dylib.clone().map(|p| p.0), span)
             }),
@@ -393,6 +402,7 @@ impl<'a> CrateLoader<'a> {
                 rejected_via_filename: vec![],
                 should_match_name: true,
                 is_proc_macro: Some(false),
+                metadata_loader: &*self.cstore.metadata_loader,
             };
 
             self.load(&mut locate_ctxt).or_else(|| {
@@ -554,6 +564,7 @@ impl<'a> CrateLoader<'a> {
             rejected_via_filename: vec![],
             should_match_name: true,
             is_proc_macro: None,
+            metadata_loader: &*self.cstore.metadata_loader,
         };
         let library = self.load(&mut locate_ctxt).or_else(|| {
             if !is_cross {

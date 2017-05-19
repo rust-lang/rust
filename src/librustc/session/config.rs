@@ -328,7 +328,7 @@ top_level_options!(
     }
 );
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PrintRequest {
     FileNames,
     Sysroot,
@@ -824,9 +824,9 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     linker: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "system linker to link outputs with"),
     link_arg: Vec<String> = (vec![], parse_string_push, [UNTRACKED],
-        "a single extra argument to pass to the linker (can be used several times)"),
+        "a single extra argument to append to the linker invocation (can be used several times)"),
     link_args: Option<Vec<String>> = (None, parse_opt_list, [UNTRACKED],
-        "extra arguments to pass to the linker (space separated)"),
+        "extra arguments to append to the linker invocation (space separated)"),
     link_dead_code: bool = (false, parse_bool, [UNTRACKED],
         "don't let linker strip dead code (turning it on can be used for code coverage)"),
     lto: bool = (false, parse_bool, [TRACKED],
@@ -963,7 +963,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "attempt to recover from parse errors (experimental)"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
           "enable incremental compilation (experimental)"),
-    incremental_cc: bool = (false, parse_bool, [UNTRACKED],
+    incremental_cc: bool = (true, parse_bool, [UNTRACKED],
           "enable cross-crate incremental compilation (even more experimental)"),
     incremental_info: bool = (false, parse_bool, [UNTRACKED],
         "print high-level information about incremental reuse (or the lack thereof)"),
@@ -1029,6 +1029,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "add a mapping target to the file path remapping config"),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable"),
+    pre_link_arg: Vec<String> = (vec![], parse_string_push, [UNTRACKED],
+        "a single extra argument to prepend the linker invocation (can be used several times)"),
+    pre_link_args: Option<Vec<String>> = (None, parse_opt_list, [UNTRACKED],
+        "extra arguments to prepend to the linker invocation (space separated)"),
 }
 
 pub fn default_lib_output() -> CrateType {

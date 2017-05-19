@@ -415,19 +415,19 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         match *ext {
             MultiModifier(ref mac) => {
-                let meta = panictry!(attr.parse_meta(&self.cx.parse_sess));
+                let meta = panictry!(attr.parse_meta(self.cx.parse_sess));
                 let item = mac.expand(self.cx, attr.span, &meta, item);
                 kind.expect_from_annotatables(item)
             }
             MultiDecorator(ref mac) => {
                 let mut items = Vec::new();
-                let meta = panictry!(attr.parse_meta(&self.cx.parse_sess));
+                let meta = panictry!(attr.parse_meta(self.cx.parse_sess));
                 mac.expand(self.cx, attr.span, &meta, &item, &mut |item| items.push(item));
                 items.push(item);
                 kind.expect_from_annotatables(items)
             }
             SyntaxExtension::AttrProcMacro(ref mac) => {
-                let item_toks = stream_for_item(&item, &self.cx.parse_sess);
+                let item_toks = stream_for_item(&item, self.cx.parse_sess);
 
                 let span = Span { ctxt: self.cx.backtrace(), ..attr.span };
                 let tok_result = mac.expand(self.cx, attr.span, attr.tokens, item_toks);
@@ -439,7 +439,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             _ => {
                 let msg = &format!("macro `{}` may not be used in attributes", attr.path);
-                self.cx.span_err(attr.span, &msg);
+                self.cx.span_err(attr.span, msg);
                 kind.dummy(attr.span)
             }
         }
@@ -454,7 +454,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
         let path = &mac.node.path;
 
-        let ident = ident.unwrap_or(keywords::Invalid.ident());
+        let ident = ident.unwrap_or_else(|| keywords::Invalid.ident());
         let marked_tts = noop_fold_tts(mac.node.stream(), &mut Marker(mark));
         let opt_expanded = match *ext {
             NormalTT(ref expandfun, exp_span, allow_internal_unstable) => {
@@ -469,7 +469,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     call_site: span,
                     callee: NameAndSpan {
                         format: MacroBang(Symbol::intern(&format!("{}", path))),
-                        span: exp_span,
+                        span: exp_span.map(|(_, s)| s),
                         allow_internal_unstable: allow_internal_unstable,
                     },
                 });
@@ -591,7 +591,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             _ => {
                 let msg = &format!("macro `{}` may not be used for derive attributes", attr.path);
-                self.cx.span_err(span, &msg);
+                self.cx.span_err(span, msg);
                 kind.dummy(span)
             }
         }
@@ -749,19 +749,15 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn check_attributes(&mut self, attrs: &[ast::Attribute]) {
         let features = self.cx.ecfg.features.unwrap();
         for attr in attrs.iter() {
-            feature_gate::check_attribute(&attr, &self.cx.parse_sess, features);
+            feature_gate::check_attribute(attr, self.cx.parse_sess, features);
         }
     }
 }
 
 pub fn find_attr_invoc(attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
-    for i in 0 .. attrs.len() {
-        if !attr::is_known(&attrs[i]) && !is_builtin_attr(&attrs[i]) {
-             return Some(attrs.remove(i));
-        }
-    }
-
-    None
+    attrs.iter()
+         .position(|a| !attr::is_known(a) && !is_builtin_attr(a))
+         .map(|i| attrs.remove(i))
 }
 
 // These are pretty nasty. Ideally, we would keep the tokens around, linked from
@@ -923,7 +919,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 let result = noop_fold_item(item, self);
                 self.cx.current_expansion.module = orig_module;
                 self.cx.current_expansion.directory_ownership = orig_directory_ownership;
-                return result;
+                result
             }
             // Ensure that test functions are accessible from the test harness.
             ast::ItemKind::Fn(..) if self.cx.ecfg.should_test => {

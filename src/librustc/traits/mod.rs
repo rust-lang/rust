@@ -619,8 +619,6 @@ pub fn get_vtable_methods<'a, 'tcx>(
     debug!("get_vtable_methods({:?})", trait_ref);
 
     supertraits(tcx, trait_ref).flat_map(move |trait_ref| {
-        tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
-
         let trait_methods = tcx.associated_items(trait_ref.def_id())
             .filter(|item| item.kind == ty::AssociatedKind::Method);
 
@@ -781,4 +779,20 @@ impl<'tcx> TraitObligation<'tcx> {
     fn self_ty(&self) -> ty::Binder<Ty<'tcx>> {
         ty::Binder(self.predicate.skip_binder().self_ty())
     }
+}
+
+pub fn provide(providers: &mut ty::maps::Providers) {
+    *providers = ty::maps::Providers {
+        is_object_safe: object_safety::is_object_safe_provider,
+        specialization_graph_of: specialize::specialization_graph_provider,
+        ..*providers
+    };
+}
+
+pub fn provide_extern(providers: &mut ty::maps::Providers) {
+    *providers = ty::maps::Providers {
+        is_object_safe: object_safety::is_object_safe_provider,
+        specialization_graph_of: specialize::specialization_graph_provider,
+        ..*providers
+    };
 }

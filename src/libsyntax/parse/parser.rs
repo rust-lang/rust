@@ -248,7 +248,7 @@ impl TokenCursor {
     fn next_desugared(&mut self) -> TokenAndSpan {
         let (sp, name) = match self.next() {
             TokenAndSpan { sp, tok: token::DocComment(name) } => (sp, name),
-            tok @ _ => return tok,
+            tok => return tok,
         };
 
         let stripped = strip_doc_comment_decoration(&name.as_str());
@@ -354,7 +354,7 @@ pub enum Error {
 }
 
 impl Error {
-    pub fn span_err<'a>(self, sp: Span, handler: &'a errors::Handler) -> DiagnosticBuilder<'a> {
+    pub fn span_err(self, sp: Span, handler: &errors::Handler) -> DiagnosticBuilder {
         match self {
             Error::FileNotFoundForModule { ref mod_name,
                                            ref default_path,
@@ -478,9 +478,10 @@ impl<'a> Parser<'a> {
     }
 
     fn next_tok(&mut self) -> TokenAndSpan {
-        let mut next = match self.desugar_doc_comments {
-            true => self.token_cursor.next_desugared(),
-            false => self.token_cursor.next(),
+        let mut next = if self.desugar_doc_comments {
+            self.token_cursor.next_desugared()
+        } else {
+            self.token_cursor.next()
         };
         if next.sp == syntax_pos::DUMMY_SP {
             next.sp = self.prev_span;
@@ -551,7 +552,7 @@ impl<'a> Parser<'a> {
             // This might be a sign we need a connect method on Iterator.
             let b = i.next()
                      .map_or("".to_string(), |t| t.to_string());
-            i.enumerate().fold(b, |mut b, (i, ref a)| {
+            i.enumerate().fold(b, |mut b, (i, a)| {
                 if tokens.len() > 2 && i == tokens.len() - 2 {
                     b.push_str(", or ");
                 } else if tokens.len() == 2 && i == tokens.len() - 2 {
@@ -985,18 +986,15 @@ impl<'a> Parser<'a> {
                 token::CloseDelim(..) | token::Eof => break,
                 _ => {}
             };
-            match sep.sep {
-                Some(ref t) => {
-                    if first {
-                        first = false;
-                    } else {
-                        if let Err(e) = self.expect(t) {
-                            fe(e);
-                            break;
-                        }
+            if let Some(ref t) = sep.sep {
+                if first {
+                    first = false;
+                } else {
+                    if let Err(e) = self.expect(t) {
+                        fe(e);
+                        break;
                     }
                 }
-                _ => ()
             }
             if sep.trailing_sep_allowed && kets.iter().any(|k| self.check(k)) {
                 break;
@@ -1493,7 +1491,7 @@ impl<'a> Parser<'a> {
         let sum_span = ty.span.to(self.prev_span);
 
         let mut err = struct_span_err!(self.sess.span_diagnostic, sum_span, E0178,
-            "expected a path on the left-hand side of `+`, not `{}`", pprust::ty_to_string(&ty));
+            "expected a path on the left-hand side of `+`, not `{}`", pprust::ty_to_string(ty));
 
         match ty.node {
             TyKind::Rptr(ref lifetime, ref mut_ty) => {
@@ -1547,7 +1545,7 @@ impl<'a> Parser<'a> {
 
     pub fn is_named_argument(&mut self) -> bool {
         let offset = match self.token {
-            token::BinOp(token::And) => 1,
+            token::BinOp(token::And) |
             token::AndAnd => 1,
             _ if self.token.is_keyword(keywords::Mut) => 1,
             _ => 0
@@ -3154,10 +3152,11 @@ impl<'a> Parser<'a> {
 
         let attrs = self.parse_outer_attributes()?;
         let pats = self.parse_pats()?;
-        let mut guard = None;
-        if self.eat_keyword(keywords::If) {
-            guard = Some(self.parse_expr()?);
-        }
+        let guard = if self.eat_keyword(keywords::If) {
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
         self.expect(&token::FatArrow)?;
         let expr = self.parse_expr_res(RESTRICTION_STMT_EXPR, None)?;
 
@@ -3600,10 +3599,11 @@ impl<'a> Parser<'a> {
         let lo = self.span;
         let pat = self.parse_pat()?;
 
-        let mut ty = None;
-        if self.eat(&token::Colon) {
-            ty = Some(self.parse_ty()?);
-        }
+        let ty = if self.eat(&token::Colon) {
+            Some(self.parse_ty()?)
+        } else {
+            None
+        };
         let init = self.parse_initializer()?;
         Ok(P(ast::Local {
             ty: ty,
@@ -3929,7 +3929,7 @@ impl<'a> Parser<'a> {
                 },
                 None => {
                     let unused_attrs = |attrs: &[_], s: &mut Self| {
-                        if attrs.len() > 0 {
+                        if !attrs.is_empty() {
                             if s.prev_token_kind == PrevTokenKind::DocComment {
                                 s.span_fatal_err(s.prev_span, Error::UselessDocComment).emit();
                             } else {
@@ -4815,7 +4815,7 @@ impl<'a> Parser<'a> {
                 self.expect(&token::Not)?;
             }
 
-            self.complain_if_pub_macro(&vis, prev_span);
+            self.complain_if_pub_macro(vis, prev_span);
 
             // eat a matched-delimiter token tree:
             *at_end = true;
@@ -4917,13 +4917,10 @@ impl<'a> Parser<'a> {
                 }
             }
         } else {
-            match polarity {
-                ast::ImplPolarity::Negative => {
-                    // This is a negated type implementation
-                    // `impl !MyType {}`, which is not allowed.
-                    self.span_err(neg_span, "inherent implementation can't be negated");
-                },
-                _ => {}
+            if polarity == ast::ImplPolarity::Negative {
+                // This is a negated type implementation
+                // `impl !MyType {}`, which is not allowed.
+                self.span_err(neg_span, "inherent implementation can't be negated");
             }
             None
         };
@@ -5185,7 +5182,7 @@ impl<'a> Parser<'a> {
                 let path_span = self.prev_span;
                 let help_msg = format!("make this visible only to module `{}` with `in`:", path);
                 self.expect(&token::CloseDelim(token::Paren))?;  // `)`
-                let mut err = self.span_fatal_help(path_span, &msg, &suggestion);
+                let mut err = self.span_fatal_help(path_span, msg, suggestion);
                 err.span_suggestion(path_span, &help_msg, format!("in {}", path));
                 err.emit();  // emit diagnostic, but continue with public visibility
             }

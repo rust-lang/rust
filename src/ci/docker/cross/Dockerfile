@@ -32,10 +32,10 @@ ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 WORKDIR /tmp
 
-COPY build-rumprun.sh /tmp/
+COPY cross/build-rumprun.sh /tmp/
 RUN ./build-rumprun.sh
 
-COPY build-arm-musl.sh /tmp/
+COPY cross/build-arm-musl.sh /tmp/
 RUN ./build-arm-musl.sh
 
 # originally from

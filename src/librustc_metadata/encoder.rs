@@ -943,7 +943,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 let trait_ref = tcx.impl_trait_ref(def_id);
                 let parent = if let Some(trait_ref) = trait_ref {
                     let trait_def = tcx.trait_def(trait_ref.def_id);
-                    trait_def.ancestors(def_id).skip(1).next().and_then(|node| {
+                    trait_def.ancestors(tcx, def_id).skip(1).next().and_then(|node| {
                         match node {
                             specialization_graph::Node::Impl(parent) => Some(parent),
                             _ => None,
@@ -1295,23 +1295,37 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
     /// Encodes an index, mapping each trait to its (local) implementations.
     fn encode_impls(&mut self, _: ()) -> LazySeq<TraitImpls> {
+        debug!("IsolatedEncoder::encode_impls()");
+        let tcx = self.tcx;
         let mut visitor = ImplVisitor {
-            tcx: self.tcx,
+            tcx: tcx,
             impls: FxHashMap(),
         };
-        self.tcx.hir.krate().visit_all_item_likes(&mut visitor);
+        tcx.hir.krate().visit_all_item_likes(&mut visitor);
 
-        let all_impls: Vec<_> = visitor.impls
+        let mut all_impls: Vec<_> = visitor.impls.into_iter().collect();
+
+        // Bring everything into deterministic order for hashing
+        all_impls.sort_unstable_by_key(|&(trait_def_id, _)| {
+            tcx.def_path_hash(trait_def_id)
+        });
+
+        let all_impls: Vec<_> = all_impls
             .into_iter()
-            .map(|(trait_def_id, impls)| {
+            .map(|(trait_def_id, mut impls)| {
+                // Bring everything into deterministic order for hashing
+                impls.sort_unstable_by_key(|&def_index| {
+                    tcx.hir.definitions().def_path_hash(def_index)
+                });
+
                 TraitImpls {
                     trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
-                    impls: self.lazy_seq(impls),
+                    impls: self.lazy_seq_from_slice(&impls[..]),
                 }
             })
             .collect();
 
-        self.lazy_seq(all_impls)
+        self.lazy_seq_from_slice(&all_impls[..])
     }
 
     // Encodes all symbols exported from this crate into the metadata.

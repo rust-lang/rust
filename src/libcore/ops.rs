@@ -799,6 +799,7 @@ macro_rules! neg_impl_numeric {
     ($($t:ty)*) => { neg_impl_core!{ x => -x, $($t)*} }
 }
 
+#[allow(unused_macros)]
 macro_rules! neg_impl_unsigned {
     ($($t:ty)*) => {
         neg_impl_core!{ x => {

@@ -535,7 +535,7 @@ pub enum SyntaxExtension {
     ///
     /// The `bool` dictates whether the contents of the macro can
     /// directly use `#[unstable]` things (true == yes).
-    NormalTT(Box<TTMacroExpander>, Option<Span>, bool),
+    NormalTT(Box<TTMacroExpander>, Option<(ast::NodeId, Span)>, bool),
 
     /// A function-like syntax extension that has an extra ident before
     /// the block.
@@ -589,6 +589,7 @@ pub trait Resolver {
                      -> Result<Option<Rc<SyntaxExtension>>, Determinacy>;
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy>;
+    fn check_unused_macros(&self);
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -618,6 +619,7 @@ impl Resolver for DummyResolver {
                      _force: bool) -> Result<Rc<SyntaxExtension>, Determinacy> {
         Err(Determinacy::Determined)
     }
+    fn check_unused_macros(&self) {}
 }
 
 #[derive(Clone)]
@@ -635,8 +637,8 @@ pub struct ExpansionData {
 }
 
 /// One of these is made during expansion and incrementally updated as we go;
-/// when a macro expansion occurs, the resulting nodes have the backtrace()
-/// -> expn_info of their expansion context stored into their span.
+/// when a macro expansion occurs, the resulting nodes have the `backtrace()
+/// -> expn_info` of their expansion context stored into their span.
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,
@@ -698,7 +700,7 @@ impl<'a> ExtCtxt<'a> {
     /// Returns span for the macro which originally caused the current expansion to happen.
     ///
     /// Stops backtracing at include! boundary.
-    pub fn expansion_cause(&self) -> Span {
+    pub fn expansion_cause(&self) -> Option<Span> {
         let mut ctxt = self.backtrace();
         let mut last_macro = None;
         loop {
@@ -709,12 +711,12 @@ impl<'a> ExtCtxt<'a> {
                 }
                 ctxt = info.call_site.ctxt;
                 last_macro = Some(info.call_site);
-                return Some(());
+                Some(())
             }).is_none() {
                 break
             }
         }
-        last_macro.expect("missing expansion backtrace")
+        last_macro
     }
 
     pub fn struct_span_warn(&self,
@@ -770,9 +772,9 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn trace_macros_diag(&self) {
         for (sp, notes) in self.expansions.iter() {
-            let mut db = self.parse_sess.span_diagnostic.span_note_diag(*sp, &"trace_macro");
+            let mut db = self.parse_sess.span_diagnostic.span_note_diag(*sp, "trace_macro");
             for note in notes {
-                db.note(&note);
+                db.note(note);
             }
             db.emit();
         }
@@ -795,10 +797,14 @@ impl<'a> ExtCtxt<'a> {
             v.push(self.ident_of(s));
         }
         v.extend(components.iter().map(|s| self.ident_of(s)));
-        return v
+        v
     }
     pub fn name_of(&self, st: &str) -> ast::Name {
         Symbol::intern(st)
+    }
+
+    pub fn check_unused_macros(&self) {
+        self.resolver.check_unused_macros();
     }
 }
 

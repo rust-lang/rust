@@ -53,9 +53,10 @@ pub fn find_best_match_for_name<'a, T>(iter_names: T,
     iter_names
     .filter_map(|&name| {
         let dist = lev_distance(lookup, &name.as_str());
-        match dist <= max_dist {    // filter the unwanted cases
-            true => Some((name, dist)),
-            false => None,
+        if dist <= max_dist {    // filter the unwanted cases
+            Some((name, dist))
+        } else {
+            None
         }
     })
     .min_by_key(|&(_, val)| val)    // extract the tuple containing the minimum edit distance

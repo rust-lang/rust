@@ -1220,11 +1220,14 @@ impl<T> Vec<T> {
 }
 
 impl<T: Clone> Vec<T> {
-    /// Resizes the `Vec` in-place so that `len()` is equal to `new_len`.
+    /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
     ///
-    /// If `new_len` is greater than `len()`, the `Vec` is extended by the
+    /// If `new_len` is greater than `len`, the `Vec` is extended by the
     /// difference, with each additional slot filled with `value`.
-    /// If `new_len` is less than `len()`, the `Vec` is simply truncated.
+    /// If `new_len` is less than `len`, the `Vec` is simply truncated.
+    ///
+    /// This method requires `Clone` to clone the passed value. If you'd
+    /// rather create a value with `Default` instead, see [`resize_default`].
     ///
     /// # Examples
     ///
@@ -1237,43 +1240,16 @@ impl<T: Clone> Vec<T> {
     /// vec.resize(2, 0);
     /// assert_eq!(vec, [1, 2]);
     /// ```
+    ///
+    /// [`resize_default`]: #method.resize_default
     #[stable(feature = "vec_resize", since = "1.5.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
 
         if new_len > len {
-            self.extend_with_element(new_len - len, value);
+            self.extend_with(new_len - len, ExtendElement(value))
         } else {
             self.truncate(new_len);
-        }
-    }
-
-    /// Extend the vector by `n` additional clones of `value`.
-    fn extend_with_element(&mut self, n: usize, value: T) {
-        self.reserve(n);
-
-        unsafe {
-            let mut ptr = self.as_mut_ptr().offset(self.len() as isize);
-            // Use SetLenOnDrop to work around bug where compiler
-            // may not realize the store through `ptr` through self.set_len()
-            // don't alias.
-            let mut local_len = SetLenOnDrop::new(&mut self.len);
-
-            // Write all elements except the last one
-            for _ in 1..n {
-                ptr::write(ptr, value.clone());
-                ptr = ptr.offset(1);
-                // Increment the length in every step in case clone() panics
-                local_len.increment_len(1);
-            }
-
-            if n > 0 {
-                // We can write the last element directly without cloning needlessly
-                ptr::write(ptr, value);
-                local_len.increment_len(1);
-            }
-
-            // len set by scope guard
         }
     }
 
@@ -1297,6 +1273,92 @@ impl<T: Clone> Vec<T> {
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.spec_extend(other.iter())
+    }
+}
+
+impl<T: Default> Vec<T> {
+    /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
+    ///
+    /// If `new_len` is greater than `len`, the `Vec` is extended by the
+    /// difference, with each additional slot filled with `Default::default()`.
+    /// If `new_len` is less than `len`, the `Vec` is simply truncated.
+    ///
+    /// This method uses `Default` to create new values on every push. If
+    /// you'd rather `Clone` a given value, use [`resize`].
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_resize_default)]
+    ///
+    /// let mut vec = vec![1, 2, 3];
+    /// vec.resize_default(5);
+    /// assert_eq!(vec, [1, 2, 3, 0, 0]);
+    ///
+    /// let mut vec = vec![1, 2, 3, 4];
+    /// vec.resize_default(2);
+    /// assert_eq!(vec, [1, 2]);
+    /// ```
+    ///
+    /// [`resize`]: #method.resize
+    #[unstable(feature = "vec_resize_default", issue = "41758")]
+    pub fn resize_default(&mut self, new_len: usize) {
+        let len = self.len();
+
+        if new_len > len {
+            self.extend_with(new_len - len, ExtendDefault);
+        } else {
+            self.truncate(new_len);
+        }
+    }
+}
+
+// This code generalises `extend_with_{element,default}`.
+trait ExtendWith<T> {
+    fn next(&self) -> T;
+    fn last(self) -> T;
+}
+
+struct ExtendElement<T>(T);
+impl<T: Clone> ExtendWith<T> for ExtendElement<T> {
+    fn next(&self) -> T { self.0.clone() }
+    fn last(self) -> T { self.0 }
+}
+
+struct ExtendDefault;
+impl<T: Default> ExtendWith<T> for ExtendDefault {
+    fn next(&self) -> T { Default::default() }
+    fn last(self) -> T { Default::default() }
+}
+impl<T> Vec<T> {
+    /// Extend the vector by `n` values, using the given generator.
+    fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, value: E) {
+        self.reserve(n);
+
+        unsafe {
+            let mut ptr = self.as_mut_ptr().offset(self.len() as isize);
+            // Use SetLenOnDrop to work around bug where compiler
+            // may not realize the store through `ptr` through self.set_len()
+            // don't alias.
+            let mut local_len = SetLenOnDrop::new(&mut self.len);
+
+            // Write all elements except the last one
+            for _ in 1..n {
+                ptr::write(ptr, value.next());
+                ptr = ptr.offset(1);
+                // Increment the length in every step in case next() panics
+                local_len.increment_len(1);
+            }
+
+            if n > 0 {
+                // We can write the last element directly without cloning needlessly
+                ptr::write(ptr, value.last());
+                local_len.increment_len(1);
+            }
+
+            // len set by scope guard
+        }
     }
 }
 
@@ -1389,7 +1451,7 @@ trait SpecFromElem: Sized {
 impl<T: Clone> SpecFromElem for T {
     default fn from_elem(elem: Self, n: usize) -> Vec<Self> {
         let mut v = Vec::with_capacity(n);
-        v.extend_with_element(n, elem);
+        v.extend_with(n, ExtendElement(elem));
         v
     }
 }
@@ -1424,7 +1486,7 @@ macro_rules! impl_spec_from_elem {
                     }
                 }
                 let mut v = Vec::with_capacity(n);
-                v.extend_with_element(n, elem);
+                v.extend_with(n, ExtendElement(elem));
                 v
             }
         }

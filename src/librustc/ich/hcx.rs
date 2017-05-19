@@ -16,7 +16,7 @@ use ty;
 use util::nodemap::NodeMap;
 
 use std::hash as std_hash;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, BTreeMap};
 
 use syntax::ast;
 use syntax::attr;
@@ -110,7 +110,7 @@ impl<'a, 'tcx: 'a> StableHashingContext<'a, 'tcx> {
     }
 
     #[inline]
-    pub fn def_path_hash(&mut self, def_id: DefId) -> u64 {
+    pub fn def_path_hash(&mut self, def_id: DefId) -> ich::Fingerprint {
         self.tcx.def_path_hash(def_id)
     }
 
@@ -347,4 +347,26 @@ pub fn hash_stable_nodemap<'a, 'tcx, V, W>(hcx: &mut StableHashingContext<'a, 't
     hash_stable_hashmap(hcx, hasher, map, |hcx, node_id| {
         hcx.tcx.hir.definitions().node_to_hir_id(*node_id).local_id
     });
+}
+
+
+pub fn hash_stable_btreemap<'a, 'tcx, K, V, SK, F, W>(hcx: &mut StableHashingContext<'a, 'tcx>,
+                                                      hasher: &mut StableHasher<W>,
+                                                      map: &BTreeMap<K, V>,
+                                                      extract_stable_key: F)
+    where K: Eq + Ord,
+          V: HashStable<StableHashingContext<'a, 'tcx>>,
+          SK: HashStable<StableHashingContext<'a, 'tcx>> + Ord + Clone,
+          F: Fn(&mut StableHashingContext<'a, 'tcx>, &K) -> SK,
+          W: StableHasherResult,
+{
+    let mut keys: Vec<_> = map.keys()
+                              .map(|k| (extract_stable_key(hcx, k), k))
+                              .collect();
+    keys.sort_unstable_by_key(|&(ref stable_key, _)| stable_key.clone());
+    keys.len().hash_stable(hcx, hasher);
+    for (stable_key, key) in keys {
+        stable_key.hash_stable(hcx, hasher);
+        map[key].hash_stable(hcx, hasher);
+    }
 }

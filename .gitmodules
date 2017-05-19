@@ -13,7 +13,7 @@
 	path = src/jemalloc
 	url = https://github.com/rust-lang/jemalloc.git
 [submodule "src/rust-installer"]
-	path = src/rust-installer
+	path = src/tools/rust-installer
 	url = https://github.com/rust-lang/rust-installer.git
 [submodule "src/liblibc"]
 	path = src/liblibc
@@ -23,7 +23,7 @@
 	url = https://github.com/rust-lang-nursery/nomicon.git
 [submodule "src/tools/cargo"]
 	path = src/tools/cargo
-	url = https://github.com/rust-lang/cargo
+	url = https://github.com/rust-lang/cargo.git
 [submodule "reference"]
 	path = src/doc/reference
 	url = https://github.com/rust-lang-nursery/reference.git
@@ -32,4 +32,4 @@
 	url = https://github.com/rust-lang/book.git
 [submodule "src/tools/rls"]
 	path = src/tools/rls
-	url = https://github.com/rust-lang-nursery/rls
+	url = https://github.com/rust-lang-nursery/rls.git

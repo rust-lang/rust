@@ -10,16 +10,16 @@
 
 //! # Token Streams
 //!
-//! TokenStreams represent syntactic objects before they are converted into ASTs.
+//! `TokenStream`s represent syntactic objects before they are converted into ASTs.
 //! A `TokenStream` is, roughly speaking, a sequence (eg stream) of `TokenTree`s,
 //! which are themselves a single `Token` or a `Delimited` subsequence of tokens.
 //!
 //! ## Ownership
-//! TokenStreams are persistent data structures constructed as ropes with reference
-//! counted-children. In general, this means that calling an operation on a TokenStream
-//! (such as `slice`) produces an entirely new TokenStream from the borrowed reference to
-//! the original. This essentially coerces TokenStreams into 'views' of their subparts,
-//! and a borrowed TokenStream is sufficient to build an owned TokenStream without taking
+//! `TokenStreams` are persistent data structures constructed as ropes with reference
+//! counted-children. In general, this means that calling an operation on a `TokenStream`
+//! (such as `slice`) produces an entirely new `TokenStream` from the borrowed reference to
+//! the original. This essentially coerces `TokenStream`s into 'views' of their subparts,
+//! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
 use syntax_pos::{BytePos, Span, DUMMY_SP};
@@ -88,7 +88,7 @@ impl Delimited {
 /// If the syntax extension is an MBE macro, it will attempt to match its
 /// LHS token tree against the provided token tree, and if it finds a
 /// match, will transcribe the RHS token tree, splicing in any captured
-/// macro_parser::matched_nonterminals into the `SubstNt`s it finds.
+/// `macro_parser::matched_nonterminals` into the `SubstNt`s it finds.
 ///
 /// The RHS of an MBE macro is the only place `SubstNt`s are substituted.
 /// Nothing special happens to misnamed or misplaced `SubstNt`s.

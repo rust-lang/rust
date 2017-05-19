@@ -36,8 +36,9 @@ use session::search_paths::PathKind;
 use util::nodemap::{NodeSet, DefIdMap};
 
 use std::any::Any;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use owning_ref::ErasedBoxRef;
 use syntax::ast;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
@@ -201,10 +202,32 @@ impl EncodedMetadataHashes {
     }
 }
 
+/// The backend's way to give the crate store access to the metadata in a library.
+/// Note that it returns the raw metadata bytes stored in the library file, whether
+/// it is compressed, uncompressed, some weird mix, etc.
+/// rmeta files are backend independent and not handled here.
+///
+/// At the time of this writing, there is only one backend and one way to store
+/// metadata in library -- this trait just serves to decouple rustc_metadata from
+/// the archive reader, which depends on LLVM.
+pub trait MetadataLoader {
+    fn get_rlib_metadata(&self,
+                         target: &Target,
+                         filename: &Path)
+                         -> Result<ErasedBoxRef<[u8]>, String>;
+    fn get_dylib_metadata(&self,
+                          target: &Target,
+                          filename: &Path)
+                          -> Result<ErasedBoxRef<[u8]>, String>;
+}
+
 /// A store of Rust crates, through with their metadata
 /// can be accessed.
 pub trait CrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>;
+
+    // access to the metadata loader
+    fn metadata_loader(&self) -> &MetadataLoader;
 
     // item info
     fn visibility(&self, def: DefId) -> ty::Visibility;
@@ -259,7 +282,7 @@ pub trait CrateStore {
                     -> Option<DefId>;
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
-    fn def_path_hash(&self, def: DefId) -> u64;
+    fn def_path_hash(&self, def: DefId) -> ich::Fingerprint;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children(&self, did: DefId) -> Vec<def::Export>;
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro;
@@ -275,8 +298,6 @@ pub trait CrateStore {
     fn used_link_args(&self) -> Vec<String>;
 
     // utility functions
-    fn metadata_filename(&self) -> &str;
-    fn metadata_section_name(&self, target: &Target) -> &str;
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>;
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource;
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
@@ -393,7 +414,7 @@ impl CrateStore for DummyCrateStore {
     fn def_path(&self, def: DefId) -> hir_map::DefPath {
         bug!("relative_def_path")
     }
-    fn def_path_hash(&self, def: DefId) -> u64 {
+    fn def_path_hash(&self, def: DefId) -> ich::Fingerprint {
         bug!("wa")
     }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
@@ -413,8 +434,6 @@ impl CrateStore for DummyCrateStore {
     fn used_link_args(&self) -> Vec<String> { vec![] }
 
     // utility functions
-    fn metadata_filename(&self) -> &str { bug!("metadata_filename") }
-    fn metadata_section_name(&self, target: &Target) -> &str { bug!("metadata_section_name") }
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>
         { vec![] }
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource { bug!("used_crate_source") }
@@ -427,6 +446,9 @@ impl CrateStore for DummyCrateStore {
         bug!("encode_metadata")
     }
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
+
+    // access to the metadata loader
+    fn metadata_loader(&self) -> &MetadataLoader { bug!("metadata_loader") }
 }
 
 pub trait CrateLoader {

@@ -1,4 +1,3 @@
-#!/bin/sh
 # Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -47,3 +46,8 @@ create_avd() {
             --abi $abi
 }
 
+download_and_create_avd() {
+    download_sdk $1
+    download_sysimage $2 $3
+    create_avd $2 $3
+}

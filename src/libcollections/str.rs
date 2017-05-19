@@ -813,6 +813,7 @@ impl str {
     /// assert!(!bananas.contains("apples"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn contains<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
         core_str::StrExt::contains(self, pat)
     }
@@ -900,6 +901,7 @@ impl str {
     /// assert_eq!(s.find(x), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
         core_str::StrExt::find(self, pat)
     }
@@ -944,6 +946,7 @@ impl str {
     /// assert_eq!(s.rfind(x), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -1057,6 +1060,7 @@ impl str {
     ///
     /// [`split_whitespace`]: #method.split_whitespace
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
         core_str::StrExt::split(self, pat)
     }
@@ -1106,6 +1110,7 @@ impl str {
     /// assert_eq!(v, ["ghi", "def", "abc"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -1152,6 +1157,7 @@ impl str {
     /// assert_eq!(v, ["A", "", "B", ""]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
         core_str::StrExt::split_terminator(self, pat)
     }
@@ -1195,6 +1201,7 @@ impl str {
     /// assert_eq!(v, ["", "B", "", "A"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn rsplit_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplitTerminator<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -1247,6 +1254,7 @@ impl str {
     /// assert_eq!(v, ["abc", "defXghi"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn splitn<'a, P: Pattern<'a>>(&'a self, n: usize, pat: P) -> SplitN<'a, P> {
         core_str::StrExt::splitn(self, n, pat)
     }
@@ -1294,6 +1302,7 @@ impl str {
     /// assert_eq!(v, ["ghi", "abc1def"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn rsplitn<'a, P: Pattern<'a>>(&'a self, n: usize, pat: P) -> RSplitN<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -1334,6 +1343,7 @@ impl str {
     /// assert_eq!(v, ["1", "2", "3"]);
     /// ```
     #[stable(feature = "str_matches", since = "1.2.0")]
+    #[inline]
     pub fn matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> Matches<'a, P> {
         core_str::StrExt::matches(self, pat)
     }
@@ -1370,6 +1380,7 @@ impl str {
     /// assert_eq!(v, ["3", "2", "1"]);
     /// ```
     #[stable(feature = "str_matches", since = "1.2.0")]
+    #[inline]
     pub fn rmatches<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatches<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -1415,6 +1426,7 @@ impl str {
     /// assert_eq!(v, [(0, "aba")]); // only the first `aba`
     /// ```
     #[stable(feature = "str_match_indices", since = "1.5.0")]
+    #[inline]
     pub fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
         core_str::StrExt::match_indices(self, pat)
     }
@@ -1457,6 +1469,7 @@ impl str {
     /// assert_eq!(v, [(2, "aba")]); // only the last `aba`
     /// ```
     #[stable(feature = "str_match_indices", since = "1.5.0")]
+    #[inline]
     pub fn rmatch_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatchIndices<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -1737,6 +1750,7 @@ impl str {
     /// assert_eq!(s, s.replace("cookie monster", "little lamb"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn replace<'a, P: Pattern<'a>>(&'a self, from: P, to: &str) -> String {
         let mut result = String::new();
         let mut last_end = 0;

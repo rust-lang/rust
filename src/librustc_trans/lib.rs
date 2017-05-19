@@ -45,6 +45,7 @@ use syntax_pos::symbol::Symbol;
 
 extern crate flate;
 extern crate libc;
+extern crate owning_ref;
 #[macro_use] extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_data_structures;
@@ -69,6 +70,9 @@ pub use rustc::util;
 
 pub use base::trans_crate;
 pub use back::symbol_names::provide;
+
+pub use metadata::LlvmMetadataLoader;
+pub use llvm_util::{init, target_features, print_version, print_passes, print, enable_llvm_debug};
 
 pub mod back {
     pub use rustc::hir::svh;
@@ -119,7 +123,9 @@ mod debuginfo;
 mod declare;
 mod glue;
 mod intrinsic;
+mod llvm_util;
 mod machine;
+mod metadata;
 mod meth;
 mod mir;
 mod monomorphize;

@@ -29,6 +29,7 @@
 
 #![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
 #![cfg_attr(stage0, feature(staged_api))]
+#![feature(sort_unstable)]
 
 #[macro_use]
 extern crate log;
@@ -37,6 +38,7 @@ extern crate syntax;
 extern crate syntax_pos;
 extern crate flate;
 extern crate serialize as rustc_serialize; // used by deriving
+extern crate owning_ref;
 extern crate rustc_errors as errors;
 extern crate syntax_ext;
 extern crate proc_macro;
@@ -46,7 +48,6 @@ extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_const_math;
 extern crate rustc_data_structures;
-extern crate rustc_llvm;
 
 mod diagnostics;
 

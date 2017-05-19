@@ -18,7 +18,7 @@ use ptr::P;
 use tokenstream::TokenStream;
 
 /// Craft a span that will be ignored by the stability lint's
-/// call to codemap's is_internal check.
+/// call to codemap's `is_internal` check.
 /// The expanded code uses the unstable `#[prelude_import]` attribute.
 fn ignored_span(sp: Span) -> Span {
     let mark = Mark::fresh();
@@ -49,7 +49,7 @@ pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<Strin
         None => return krate,
     };
 
-    let crate_name = Symbol::intern(&alt_std_name.unwrap_or(name.to_string()));
+    let crate_name = Symbol::intern(&alt_std_name.unwrap_or_else(|| name.to_string()));
 
     krate.module.items.insert(0, P(ast::Item {
         attrs: vec![attr::mk_attr_outer(DUMMY_SP,
