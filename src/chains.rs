@@ -173,7 +173,6 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         if rewrites.len() > 1 {
             true
         } else if rewrites.len() == 1 {
-            let one_line_len = parent_rewrite.len() + first_line_width(&rewrites[0]);
             one_line_len > shape.width
         } else {
             false

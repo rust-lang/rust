@@ -286,7 +286,7 @@ pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
 
                 let remaining_width = shape
                     .width
-                    .checked_sub(last_line_width(&result))
+                    .checked_sub(last_line_width(&result) + suffix.len())
                     .unwrap_or(0);
 
                 if rhs_result.len() <= remaining_width {
@@ -2106,10 +2106,7 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
             // Expression did not fit on the same line as the identifier or is
             // at least three lines big. Try splitting the line and see
             // if that works better.
-            let new_offset = shape.indent.block_indent(context.config);
-            let max_width = try_opt!((shape.width + shape.indent.width())
-                                         .checked_sub(new_offset.width()));
-            let new_shape = Shape::legacy(max_width, new_offset);
+            let new_shape = try_opt!(shape.block_left(context.config.tab_spaces));
             let new_rhs = ex.rewrite(context, new_shape);
 
             // FIXME: DRY!
@@ -2118,11 +2115,11 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
                     if count_line_breaks(orig_rhs) > count_line_breaks(replacement_rhs) + 1 ||
                        (orig_rhs.rewrite(context, shape).is_none() &&
                         replacement_rhs.rewrite(context, new_shape).is_some()) => {
-                    result.push_str(&format!("\n{}", new_offset.to_string(context.config)));
+                    result.push_str(&format!("\n{}", new_shape.indent.to_string(context.config)));
                     result.push_str(replacement_rhs);
                 }
                 (None, Some(ref final_rhs)) => {
-                    result.push_str(&format!("\n{}", new_offset.to_string(context.config)));
+                    result.push_str(&format!("\n{}", new_shape.indent.to_string(context.config)));
                     result.push_str(final_rhs);
                 }
                 (None, None) => return None,
