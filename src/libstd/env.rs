@@ -425,13 +425,13 @@ pub struct JoinPathsError {
 ///
 /// # Errors
 ///
-/// Returns an [`Err`] (containing an error message) if one of the input
+/// Returns an [`Err`][err] (containing an error message) if one of the input
 /// [`Path`]s contains an invalid character for constructing the `PATH`
 /// variable (a double quote on Windows or a colon on Unix).
 ///
 /// [`Path`]: ../../std/path/struct.Path.html
 /// [`OsString`]: ../../std/ffi/struct.OsString.html
-/// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+/// [err]: ../../std/result/enum.Result.html#variant.Err
 ///
 /// # Examples
 ///
