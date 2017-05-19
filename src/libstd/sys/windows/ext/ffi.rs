@@ -26,7 +26,7 @@ pub trait OsStringExt {
     /// Creates an `OsString` from a potentially ill-formed UTF-16 slice of
     /// 16-bit code units.
     ///
-    /// This is lossless: calling [`encode_wide()`] on the resulting string
+    /// This is lossless: calling [`encode_wide`] on the resulting string
     /// will always return the original code units.
     ///
     /// # Examples
@@ -41,7 +41,7 @@ pub trait OsStringExt {
     /// let string = OsString::from_wide(&source[..]);
     /// ```
     ///
-    /// [`encode_wide()`]: ./trait.OsStrExt.html#tymethod.encode_wide
+    /// [`encode_wide`]: ./trait.OsStrExt.html#tymethod.encode_wide
     #[stable(feature = "rust1", since = "1.0.0")]
     fn from_wide(wide: &[u16]) -> Self;
 }
@@ -59,8 +59,8 @@ pub trait OsStrExt {
     /// Re-encodes an `OsStr` as a wide character sequence, i.e. potentially
     /// ill-formed UTF-16.
     ///
-    /// This is lossless: calling [`OsString::from_wide()`] and then
-    /// `encode_wide()` on the result will yield the original code units.
+    /// This is lossless: calling [`OsString::from_wide`] and then
+    /// `encode_wide` on the result will yield the original code units.
     /// Note that the encoding does not add a final null terminator.
     ///
     /// # Examples
@@ -78,7 +78,7 @@ pub trait OsStrExt {
     /// assert_eq!(&source[..], &result[..]);
     /// ```
     ///
-    /// [`OsString::from_wide()`]: ./trait.OsStringExt.html#tymethod.from_wide
+    /// [`OsString::from_wide`]: ./trait.OsStringExt.html#tymethod.from_wide
     #[stable(feature = "rust1", since = "1.0.0")]
     fn encode_wide(&self) -> EncodeWide;
 }

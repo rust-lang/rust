@@ -13,7 +13,7 @@
 //! Provides access to platform-level information for Windows, and exposes
 //! Windows-specific idioms that would otherwise be inappropriate as part
 //! the core `std` library. These extensions allow developers to use
-//! `std` types and idioms with Windows in a way that the noraml
+//! `std` types and idioms with Windows in a way that the normal
 //! platform-agnostic idioms would not normally support.
 
 #![stable(feature = "rust1", since = "1.0.0")]

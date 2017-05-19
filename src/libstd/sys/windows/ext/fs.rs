@@ -40,7 +40,7 @@ pub trait FileExt {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::io;
     /// use std::fs::File;
     /// use std::os::windows::prelude::*;
@@ -75,7 +75,7 @@ pub trait FileExt {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::fs::File;
     /// use std::os::windows::prelude::*;
     ///
@@ -120,10 +120,10 @@ pub trait OpenOptionsExt {
     ///
     /// ```no_run
     /// use std::fs::OpenOptions;
-    /// use std::os::windows::fs::OpenOptionsExt;
+    /// use std::os::windows::prelude::*;
     ///
     /// // Open without read and write permission, for example if you only need
-    /// // to call `stat()` on the file
+    /// // to call `stat` on the file
     /// let file = OpenOptions::new().access_mode(0).open("foo.txt");
     /// ```
     ///
@@ -145,13 +145,14 @@ pub trait OpenOptionsExt {
     ///
     /// ```no_run
     /// use std::fs::OpenOptions;
-    /// use std::os::windows::fs::OpenOptionsExt;
+    /// use std::os::windows::prelude::*;
     ///
     /// // Do not allow others to read or modify this file while we have it open
     /// // for writing.
-    /// let file = OpenOptions::new().write(true)
-    ///                              .share_mode(0)
-    ///                              .open("foo.txt");
+    /// let file = OpenOptions::new()
+    ///     .write(true)
+    ///     .share_mode(0)
+    ///     .open("foo.txt");
     /// ```
     ///
     /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
@@ -170,13 +171,15 @@ pub trait OpenOptionsExt {
     ///
     /// ```ignore
     /// extern crate winapi;
-    /// use std::fs::OpenOptions;
-    /// use std::os::windows::fs::OpenOptionsExt;
     ///
-    /// let mut options = OpenOptions::new();
-    /// options.create(true).write(true);
-    /// options.custom_flags(winapi::FILE_FLAG_DELETE_ON_CLOSE);
-    /// let file = options.open("foo.txt");
+    /// use std::fs::OpenOptions;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// let file = OpenOptions::new()
+    ///     .create(true)
+    ///     .write(true)
+    ///     .custom_flags(winapi::FILE_FLAG_DELETE_ON_CLOSE)
+    ///     .open("foo.txt");
     /// ```
     ///
     /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
@@ -203,12 +206,15 @@ pub trait OpenOptionsExt {
     ///
     /// ```ignore
     /// extern crate winapi;
-    /// use std::fs::OpenOptions;
-    /// use std::os::windows::fs::OpenOptionsExt;
     ///
-    /// let file = OpenOptions::new().write(true).create(true)
-    ///                              .attributes(winapi::FILE_ATTRIBUTE_HIDDEN)
-    ///                              .open("foo.txt");
+    /// use std::fs::OpenOptions;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// let file = OpenOptions::new()
+    ///     .write(true)
+    ///     .create(true)
+    ///     .attributes(winapi::FILE_ATTRIBUTE_HIDDEN)
+    ///     .open("foo.txt");
     /// ```
     ///
     /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
@@ -226,17 +232,18 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```no_run
     /// use std::fs::OpenOptions;
-    /// use std::os::windows::fs::OpenOptionsExt;
+    /// use std::os::windows::prelude::*;
     ///
-    /// let options = OpenOptions::new();
-    /// options.write(true).create(true);
+    /// let file = OpenOptions::new()
+    ///     .write(true)
+    ///     .create(true)
     ///
-    /// // Sets the flag value to `SecurityIdentification`.
-    /// options.security_qos_flags(1);
+    ///     // Sets the flag value to `SecurityIdentification`.
+    ///     options.security_qos_flags(1)
     ///
-    /// let file = options.open("foo.txt");
+    ///     .open("foo.txt");
     /// ```
     ///
     /// [`CreateFile`]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx
@@ -289,15 +296,15 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```no_run
     /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
+    /// use std::fs;
     /// use std::os::windows::prelude::*;
     ///
     /// # fn foo() -> io::Result<()> {
-    /// let mut file = File::open("foo.txt")?;
-    /// let attributes = file.file_attributes();
+    /// let metadata = fs::metadata("foo.txt")?;
+    /// let attributes = metadata.file_attributes();
+    /// # Ok(())
     /// # }
     /// ```
     ///
@@ -319,15 +326,15 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```no_run
     /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
+    /// use std::fs;
     /// use std::os::windows::prelude::*;
     ///
     /// # fn foo() -> io::Result<()> {
-    /// let mut file = File::open("foo.txt")?;
-    /// let creation_time = file.creation_time();
+    /// let metadata = fs::metadata("foo.txt")?;
+    /// let creation_time = metadata.creation_time();
+    /// # Ok(())
     /// # }
     /// ```
     ///
@@ -354,15 +361,15 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```no_run
     /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
+    /// use std::fs;
     /// use std::os::windows::prelude::*;
     ///
     /// # fn foo() -> io::Result<()> {
-    /// let mut file = File::open("foo.txt")?;
-    /// let last_access_time = file.last_access_time();
+    /// let metadata = fs::metadata("foo.txt")?;
+    /// let last_access_time = metadata.last_access_time();
+    /// # Ok(())
     /// # }
     /// ```
     ///
@@ -387,15 +394,15 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```no_run
     /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
+    /// use std::fs;
     /// use std::os::windows::prelude::*;
     ///
     /// # fn foo() -> io::Result<()> {
-    /// let mut file = File::open("foo.txt")?;
-    /// let last_write_time = file.last_write_time();
+    /// let metadata = fs::metadata("foo.txt")?;
+    /// let last_write_time = metadata.last_write_time();
+    /// # Ok(())
     /// # }
     /// ```
     ///
@@ -410,15 +417,15 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```no_run
     /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
+    /// use std::fs;
     /// use std::os::windows::prelude::*;
     ///
     /// # fn foo() -> io::Result<()> {
-    /// let mut file = File::open("foo.txt")?;
-    /// let file_size = file.file_size();
+    /// let metadata = fs::metadata("foo.txt")?;
+    /// let file_size = metadata.file_size();
+    /// # Ok(())
     /// # }
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
@@ -441,7 +448,7 @@ impl MetadataExt for Metadata {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```no_run
 /// use std::os::windows::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
@@ -462,7 +469,7 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```no_run
 /// use std::os::windows::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
