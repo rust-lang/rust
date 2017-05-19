@@ -115,17 +115,9 @@ mod job;
 mod job {
     use libc;
 
-    //apparently glibc defines their own enum for this parameter, in a different type
-    #[cfg(not(any(target_env = "musl", target_env = "musleabi", target_env = "musleabihf",
-                  target_os = "emscripten", target_arch = "mips", target_arch = "mipsel")))]
-    const PRIO_PGRP: libc::c_uint = libc::PRIO_PGRP as libc::c_uint;
-    #[cfg(any(target_env = "musl", target_env = "musleabi", target_env = "musleabihf",
-              target_os = "emscripten", target_arch = "mips", target_arch = "mipsel"))]
-    const PRIO_PGRP: libc::c_int = libc::PRIO_PGRP;
-
     pub unsafe fn setup(build: &mut ::Build) {
         if build.config.low_priority {
-            libc::setpriority(PRIO_PGRP, 0, 10);
+            libc::setpriority(libc::PRIO_PGRP as _, 0, 10);
         }
     }
 }
