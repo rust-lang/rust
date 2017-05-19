@@ -11,7 +11,7 @@
 use cmp::Ordering;
 
 use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, FlatMap, Fuse};
-use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, Take, TakeWhile, Rev};
+use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
 use super::{Zip, Sum, Product};
 use super::{ChainState, FromIterator, ZipImpl};
 
@@ -256,6 +256,39 @@ pub trait Iterator {
             n -= 1;
         }
         None
+    }
+
+    /// Creates an iterator starting at the same point, but stepping by
+    /// the given amount at each iteration.
+    ///
+    /// Note that it will always return the first element of the range,
+    /// regardless of the step given.
+    ///
+    /// # Panics
+    ///
+    /// The method will panic if the given step is `0`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iterator_step_by)]
+    /// let a = [0, 1, 2, 3, 4, 5];
+    /// let mut iter = a.into_iter().step_by(2);
+    ///
+    /// assert_eq!(iter.next(), Some(&0));
+    /// assert_eq!(iter.next(), Some(&2));
+    /// assert_eq!(iter.next(), Some(&4));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_step_by",
+               reason = "unstable replacement of Range::step_by",
+               issue = "27741")]
+    fn step_by(self, step: usize) -> StepBy<Self> where Self: Sized {
+        assert!(step != 0);
+        StepBy{iter: self, step: step - 1, first_take: true}
     }
 
     /// Takes two iterators and creates a new iterator over both in sequence.
