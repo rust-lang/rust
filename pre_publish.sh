@@ -4,7 +4,7 @@ set -e
 
 ./util/update_lints.py
 
-git status --short | sort | grep -v README.md | grep -v helper.txt > helper.txt
+git status --short | sort | grep -v README.md | grep -v helper.txt | sort > helper.txt
 
 # abort if the files differ
 diff "publish.files" "helper.txt"
