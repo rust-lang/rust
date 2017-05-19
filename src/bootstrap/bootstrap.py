@@ -565,15 +565,14 @@ class RustBuild(object):
         submodules = [s.split()[1] for s in subprocess.check_output(
             ["git", "config", "--file", os.path.join(
                 self.rust_root, ".gitmodules"), "--get-regexp", "path"]).splitlines()]
-        for module in submodules:
-            if module.endswith(b"llvm") and \
-                    (self.get_toml('llvm-config') or self.get_mk('CFG_LLVM_ROOT')):
-                continue
-            if module.endswith(b"jemalloc") and \
-                    (self.get_toml('jemalloc') or self.get_mk('CFG_JEMALLOC_ROOT')):
-                continue
-            run(["git", "submodule", "update",
-                      "--init", module], cwd=self.rust_root)
+        submodules = [module for module in submodules
+                      if not ((module.endswith(b"llvm") and
+                              (self.get_toml('llvm-config') or self.get_mk('CFG_LLVM_ROOT'))) or
+                      (module.endswith(b"jemalloc") and
+                       (self.get_toml('jemalloc') or self.get_mk('CFG_JEMALLOC_ROOT'))))
+                      ]
+        run(["git", "submodule", "update",
+                  "--init"] + submodules, cwd=self.rust_root)
         run(["git", "submodule", "-q", "foreach", "git",
                   "reset", "-q", "--hard"], cwd=self.rust_root)
         run(["git", "submodule", "-q", "foreach", "git",
