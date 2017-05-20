@@ -532,10 +532,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TypeAndMut<'tcx> {
         ty::TypeAndMut { ty: self.ty.fold_with(folder), mutbl: self.mutbl }
     }
 
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        folder.fold_mt(self)
-    }
-
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.ty.visit_with(visitor)
     }
@@ -550,10 +546,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::FnSig<'tcx> {
             unsafety: self.unsafety,
             abi: self.abi,
         }
-    }
-
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        folder.fold_fn_sig(self)
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
@@ -602,10 +594,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ImplHeader<'tcx> {
         }
     }
 
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        folder.fold_impl_header(self)
-    }
-
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.self_ty.visit_with(visitor) ||
             self.trait_ref.map(|r| r.visit_with(visitor)).unwrap_or(false) ||
@@ -651,10 +639,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::adjustment::AutoBorrow<'tcx> {
             }
             ty::adjustment::AutoBorrow::RawPtr(m) => ty::adjustment::AutoBorrow::RawPtr(m)
         }
-    }
-
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        folder.fold_autoref(self)
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
