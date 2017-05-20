@@ -383,7 +383,7 @@ impl Handler {
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> FatalError {
         self.emit(&sp.into(), msg, Fatal);
         self.panic_if_treat_err_as_bug();
-        return FatalError;
+        FatalError
     }
     pub fn span_fatal_with_code<S: Into<MultiSpan>>(&self,
                                                     sp: S,
@@ -392,7 +392,7 @@ impl Handler {
                                                     -> FatalError {
         self.emit_with_code(&sp.into(), msg, code, Fatal);
         self.panic_if_treat_err_as_bug();
-        return FatalError;
+        FatalError
     }
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.emit(&sp.into(), msg, Error);
