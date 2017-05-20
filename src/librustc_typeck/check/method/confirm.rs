@@ -475,7 +475,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     {
         debug!("convert_lvalue_op_to_mutable({:?}, {:?}, {:?}, {:?})",
                op, expr, base_expr, arg_tys);
-        if !self.tables.borrow().method_map.contains_key(&expr.id) {
+        if !self.tables.borrow().is_method_call(expr) {
             debug!("convert_lvalue_op_to_mutable - builtin, nothing to do");
             return
         }
@@ -497,7 +497,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         };
         let (_, method) = self.register_infer_ok_obligations(ok);
         debug!("convert_lvalue_op_to_mutable: method={:?}", method);
-        self.tables.borrow_mut().method_map.insert(expr.id, method);
+        self.write_method_call(expr.id, method);
 
         // Convert the autoref in the base expr to mutable with the correct
         // region and mutability.

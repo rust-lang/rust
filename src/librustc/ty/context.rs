@@ -206,8 +206,9 @@ pub struct CommonTypes<'tcx> {
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct TypeckTables<'tcx> {
-    /// Resolved definitions for `<T>::X` associated paths.
-    pub type_relative_path_defs: NodeMap<Def>,
+    /// Resolved definitions for `<T>::X` associated paths and
+    /// method calls, including those of overloaded operators.
+    pub type_dependent_defs: NodeMap<Def>,
 
     /// Stores the types for various nodes in the AST.  Note that this table
     /// is not guaranteed to be populated until after typeck.  See
@@ -221,8 +222,6 @@ pub struct TypeckTables<'tcx> {
     pub node_substs: NodeMap<&'tcx Substs<'tcx>>,
 
     pub adjustments: NodeMap<ty::adjustment::Adjustment<'tcx>>,
-
-    pub method_map: NodeMap<ty::MethodCallee<'tcx>>,
 
     /// Borrows
     pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
@@ -271,11 +270,10 @@ pub struct TypeckTables<'tcx> {
 impl<'tcx> TypeckTables<'tcx> {
     pub fn empty() -> TypeckTables<'tcx> {
         TypeckTables {
-            type_relative_path_defs: NodeMap(),
+            type_dependent_defs: NodeMap(),
             node_types: FxHashMap(),
             node_substs: NodeMap(),
             adjustments: NodeMap(),
-            method_map: FxHashMap(),
             upvar_capture_map: FxHashMap(),
             closure_tys: NodeMap(),
             closure_kinds: NodeMap(),
@@ -294,7 +292,7 @@ impl<'tcx> TypeckTables<'tcx> {
         match *qpath {
             hir::QPath::Resolved(_, ref path) => path.def,
             hir::QPath::TypeRelative(..) => {
-                self.type_relative_path_defs.get(&id).cloned().unwrap_or(Def::Err)
+                self.type_dependent_defs.get(&id).cloned().unwrap_or(Def::Err)
             }
         }
     }
@@ -357,8 +355,17 @@ impl<'tcx> TypeckTables<'tcx> {
             .map(|adj| adj.target).or_else(|| self.expr_ty_opt(expr))
     }
 
-    pub fn is_method_call(&self, expr_id: NodeId) -> bool {
-        self.method_map.contains_key(&expr_id)
+    pub fn is_method_call(&self, expr: &hir::Expr) -> bool {
+        // Only paths and method calls/overloaded operators have
+        // entries in type_dependent_defs, ignore the former here.
+        if let hir::ExprPath(_) = expr.node {
+            return false;
+        }
+
+        match self.type_dependent_defs.get(&expr.id) {
+            Some(&Def::Method(_)) => true,
+            _ => false
+        }
     }
 
     pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture<'tcx>> {

@@ -421,7 +421,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     },
                     target: method.sig.inputs()[0]
                 });
-                self.tables.borrow_mut().method_map.insert(expr.id, method);
+                self.write_method_call(expr.id, method);
 
                 Ok(method.sig.output())
             }

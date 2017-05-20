@@ -520,14 +520,13 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         self.type_must_outlive(infer::ExprTypeIsNotInScope(expr_ty, expr.span),
                                expr_ty, expr_region);
 
-        let opt_method_callee = self.tables.borrow().method_map.get(&expr.id).cloned();
-        let has_method_map = opt_method_callee.is_some();
+        let is_method_call = self.tables.borrow().is_method_call(expr);
 
         // If we are calling a method (either explicitly or via an
         // overloaded operator), check that all of the types provided as
         // arguments for its type parameters are well-formed, and all the regions
         // provided as arguments outlive the call.
-        if let Some(callee) = opt_method_callee {
+        if is_method_call {
             let origin = match expr.node {
                 hir::ExprMethodCall(..) =>
                     infer::ParameterOrigin::MethodCall,
@@ -537,7 +536,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                     infer::ParameterOrigin::OverloadedOperator
             };
 
-            self.substs_wf_in_scope(origin, &callee.substs, expr.span, expr_region);
+            let substs = self.tables.borrow().node_substs(expr.id);
+            self.substs_wf_in_scope(origin, substs, expr.span, expr_region);
             // Arguments (sub-expressions) are checked via `constrain_call`, below.
         }
 
@@ -614,7 +614,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
             }
 
             hir::ExprCall(ref callee, ref args) => {
-                if has_method_map {
+                if is_method_call {
                     self.constrain_call(expr, Some(&callee),
                                         args.iter().map(|e| &*e), false);
                 } else {
@@ -634,7 +634,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
             }
 
             hir::ExprAssignOp(_, ref lhs, ref rhs) => {
-                if has_method_map {
+                if is_method_call {
                     self.constrain_call(expr, Some(&lhs),
                                         Some(&**rhs).into_iter(), false);
                 }
@@ -642,14 +642,14 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprIndex(ref lhs, ref rhs) if has_method_map => {
+            hir::ExprIndex(ref lhs, ref rhs) if is_method_call => {
                 self.constrain_call(expr, Some(&lhs),
                                     Some(&**rhs).into_iter(), true);
 
                 intravisit::walk_expr(self, expr);
             },
 
-            hir::ExprBinary(op, ref lhs, ref rhs) if has_method_map => {
+            hir::ExprBinary(op, ref lhs, ref rhs) if is_method_call => {
                 let implicitly_ref_args = !op.node.is_by_value();
 
                 // As `expr_method_call`, but the call is via an
@@ -674,7 +674,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprUnary(op, ref lhs) if has_method_map => {
+            hir::ExprUnary(op, ref lhs) if is_method_call => {
                 let implicitly_ref_args = !op.is_by_value();
 
                 // As above.
@@ -686,7 +686,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
 
             hir::ExprUnary(hir::UnDeref, ref base) => {
                 // For *a, the lifetime of a must enclose the deref
-                if self.tables.borrow().is_method_call(expr.id) {
+                if self.tables.borrow().is_method_call(expr) {
                     self.constrain_call(expr, Some(base),
                                         None::<hir::Expr>.iter(), true);
                 }

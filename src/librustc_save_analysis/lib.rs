@@ -564,7 +564,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprKind::MethodCall(..) => {
-                let method_id = self.tables.method_map[&expr.id].def_id;
+                let method_id = self.tables.type_dependent_defs[&expr.id].def_id();
                 let (def_id, decl_id) = match self.tcx.associated_item(method_id).container {
                     ty::ImplContainer(_) => (Some(method_id), None),
                     ty::TraitContainer(_) => (None, Some(method_id)),

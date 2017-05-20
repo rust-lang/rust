@@ -141,8 +141,6 @@ pub enum TypeVariants<'tcx> {
     TyFnDef(DefId, &'tcx Substs<'tcx>, PolyFnSig<'tcx>),
 
     /// A pointer to a function.  Written as `fn() -> i32`.
-    /// FIXME: This is currently also used to represent the callee of a method;
-    /// see ty::MethodCallee etc.
     TyFnPtr(PolyFnSig<'tcx>),
 
     /// A trait, defined with `trait`.

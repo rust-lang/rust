@@ -95,7 +95,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn lookup_and_handle_method(&mut self, id: ast::NodeId) {
-        self.check_def_id(self.tables.method_map[&id].def_id);
+        self.check_def_id(self.tables.type_dependent_defs[&id].def_id());
     }
 
     fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {

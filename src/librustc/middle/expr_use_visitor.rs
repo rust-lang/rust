@@ -563,8 +563,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
             ty::TyError => { }
             _ => {
-                let method = self.mc.infcx.tables.borrow().method_map[&call.id];
-                match OverloadedCallType::from_method_id(self.tcx(), method.def_id) {
+                let def_id = self.mc.infcx.tables.borrow().type_dependent_defs[&call.id].def_id();
+                match OverloadedCallType::from_method_id(self.tcx(), def_id) {
                     FnMutOverloadedCall => {
                         let call_scope_r = self.tcx().node_scope_region(call.id);
                         self.borrow_expr(callee,
@@ -849,7 +849,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                                 pass_args: PassArgs)
                                 -> bool
     {
-        if !self.mc.infcx.tables.borrow().is_method_call(expr.id) {
+        if !self.mc.infcx.tables.borrow().is_method_call(expr) {
             return false;
         }
 

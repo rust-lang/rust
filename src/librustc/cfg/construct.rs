@@ -355,11 +355,11 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprIndex(ref l, ref r) |
-            hir::ExprBinary(_, ref l, ref r) if self.tables.is_method_call(expr.id) => {
+            hir::ExprBinary(_, ref l, ref r) if self.tables.is_method_call(expr) => {
                 self.call(expr, pred, &l, Some(&**r).into_iter())
             }
 
-            hir::ExprUnary(_, ref e) if self.tables.is_method_call(expr.id) => {
+            hir::ExprUnary(_, ref e) if self.tables.is_method_call(expr) => {
                 self.call(expr, pred, &e, None::<hir::Expr>.iter())
             }
 

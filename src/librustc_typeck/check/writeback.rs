@@ -106,7 +106,9 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 let inner_ty = self.fcx.resolve_type_vars_if_possible(&inner_ty);
 
                 if inner_ty.is_scalar() {
-                    self.fcx.tables.borrow_mut().method_map.remove(&e.id);
+                    let mut tables = self.fcx.tables.borrow_mut();
+                    tables.type_dependent_defs.remove(&e.id);
+                    tables.node_substs.remove(&e.id);
                 }
             }
             hir::ExprBinary(ref op, ref lhs, ref rhs) |
@@ -118,7 +120,9 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 let rhs_ty = self.fcx.resolve_type_vars_if_possible(&rhs_ty);
 
                 if lhs_ty.is_scalar() && rhs_ty.is_scalar() {
-                    self.fcx.tables.borrow_mut().method_map.remove(&e.id);
+                    let mut tables = self.fcx.tables.borrow_mut();
+                    tables.type_dependent_defs.remove(&e.id);
+                    tables.node_substs.remove(&e.id);
 
                     // weird but true: the by-ref binops put an
                     // adjustment on the lhs but not the rhs; the
@@ -127,11 +131,11 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     match e.node {
                         hir::ExprBinary(..) => {
                             if !op.node.is_by_value() {
-                                self.fcx.tables.borrow_mut().adjustments.remove(&lhs.id);
+                                tables.adjustments.remove(&lhs.id);
                             }
                         },
                         hir::ExprAssignOp(..) => {
-                            self.fcx.tables.borrow_mut().adjustments.remove(&lhs.id);
+                            tables.adjustments.remove(&lhs.id);
                         },
                         _ => {},
                     }
@@ -164,7 +168,6 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         self.fix_scalar_builtin_expr(e);
 
         self.visit_node_id(e.span, e.id);
-        self.visit_method_map_entry(e.span, e.id);
 
         if let hir::ExprClosure(_, _, body, _) = e.node {
             let body = self.fcx.tcx.hir.body(body);
@@ -280,9 +283,9 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_node_id(&mut self, span: Span, node_id: ast::NodeId) {
-        // Export associated path extensions.
-        if let Some(def) = self.fcx.tables.borrow_mut().type_relative_path_defs.remove(&node_id) {
-            self.tables.type_relative_path_defs.insert(node_id, def);
+        // Export associated path extensions and method resultions.
+        if let Some(def) = self.fcx.tables.borrow_mut().type_dependent_defs.remove(&node_id) {
+            self.tables.type_dependent_defs.insert(node_id, def);
         }
 
         // Resolve any borrowings for the node with id `node_id`
@@ -355,27 +358,6 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 debug!("Adjustments for node {}: {:?}", node_id, resolved_adjustment);
                 self.tables.adjustments.insert(node_id, resolved_adjustment);
             }
-        }
-    }
-
-    fn visit_method_map_entry(&mut self,
-                              method_span: Span,
-                              node_id: ast::NodeId) {
-        // Resolve any method map entry
-        let new_method = match self.fcx.tables.borrow_mut().method_map.remove(&node_id) {
-            Some(method) => {
-                Some(MethodCallee {
-                    def_id: method.def_id,
-                    substs: self.resolve(&method.substs, &method_span),
-                    sig: self.resolve(&method.sig, &method_span),
-                })
-            }
-            None => None
-        };
-
-        //NB(jroesch): We need to match twice to avoid a double borrow which would cause an ICE
-        if let Some(method) = new_method {
-            self.tables.method_map.insert(node_id, method);
         }
     }
 

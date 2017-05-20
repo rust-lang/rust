@@ -1045,7 +1045,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprAssignOp(_, ref l, ref r) => {
             // an overloaded assign op is like a method call
-            if self.tables.is_method_call(expr.id) {
+            if self.tables.is_method_call(expr) {
                 let succ = self.propagate_through_expr(&l, succ);
                 self.propagate_through_expr(&r, succ)
             } else {
@@ -1366,7 +1366,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
       }
 
       hir::ExprAssignOp(_, ref l, _) => {
-        if !this.tables.is_method_call(expr.id) {
+        if !this.tables.is_method_call(expr) {
             this.check_lvalue(&l);
         }
 

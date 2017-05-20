@@ -308,7 +308,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                            TupleArgumentsFlag::TupleArguments,
                                                            expected);
 
-        self.tables.borrow_mut().method_map.insert(call_expr.id, method_callee);
+        self.write_method_call(call_expr.id, method_callee);
         output_type
     }
 }
@@ -363,7 +363,7 @@ impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
                     target: method_sig.inputs()[0]
                 });
 
-                fcx.tables.borrow_mut().method_map.insert(self.call_expr.id, method_callee);
+                fcx.write_method_call(self.call_expr.id, method_callee);
             }
             None => {
                 span_bug!(self.call_expr.span,

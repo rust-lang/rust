@@ -283,7 +283,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
     match e.node {
         hir::ExprUnary(..) |
         hir::ExprBinary(..) |
-        hir::ExprIndex(..) if v.tables.method_map.contains_key(&e.id) => {
+        hir::ExprIndex(..) if v.tables.is_method_call(e) => {
             v.promotable = false;
         }
         hir::ExprBox(_) => {
@@ -380,9 +380,9 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
         hir::ExprMethodCall(..) => {
-            let method = v.tables.method_map[&e.id];
-            match v.tcx.associated_item(method.def_id).container {
-                ty::ImplContainer(_) => v.handle_const_fn_call(method.def_id, node_ty),
+            let def_id = v.tables.type_dependent_defs[&e.id].def_id();
+            match v.tcx.associated_item(def_id).container {
+                ty::ImplContainer(_) => v.handle_const_fn_call(def_id, node_ty),
                 ty::TraitContainer(_) => v.promotable = false
             }
         }

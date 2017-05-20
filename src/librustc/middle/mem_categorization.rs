@@ -515,7 +515,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let expr_ty = self.expr_ty(expr)?;
         match expr.node {
           hir::ExprUnary(hir::UnDeref, ref e_base) => {
-            if self.infcx.tables.borrow().is_method_call(expr.id) {
+            if self.infcx.tables.borrow().is_method_call(expr) {
                 self.cat_overloaded_lvalue(expr, e_base, false)
             } else {
                 let base_cmt = self.cat_expr(&e_base)?;
@@ -538,7 +538,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           }
 
           hir::ExprIndex(ref base, _) => {
-            if self.infcx.tables.borrow().is_method_call(expr.id()) {
+            if self.infcx.tables.borrow().is_method_call(expr) {
                 // If this is an index implemented by a method call, then it
                 // will include an implicit deref of the result.
                 // The call to index() returns a `&T` value, which

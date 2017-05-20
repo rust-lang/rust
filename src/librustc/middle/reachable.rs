@@ -110,8 +110,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
                 Some(self.tables.qpath_def(qpath, expr.id))
             }
             hir::ExprMethodCall(..) => {
-                let def_id = self.tables.method_map[&expr.id].def_id;
-                Some(Def::Method(def_id))
+                Some(self.tables.type_dependent_defs[&expr.id])
             }
             _ => None
         };

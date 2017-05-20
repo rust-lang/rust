@@ -881,17 +881,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                                       -> bool {
             use rustc::ty::adjustment::*;
 
-            // Check for method calls and overloaded operators.
-            if let Some(m) = cx.tables.method_map.get(&id).cloned() {
-                if method_call_refers_to_method(cx.tcx, method, m.def_id, m.substs, id) {
-                    return true;
-                }
-            }
+            // Ignore non-expressions.
+            let expr = if let hir_map::NodeExpr(e) = cx.tcx.hir.get(id) {
+                e
+            } else {
+                return false;
+            };
 
             // Check for overloaded autoderef method calls.
-            if let Some(Adjustment {
+            if let Some(&Adjustment {
                 kind: Adjust::DerefRef { ref autoderefs, .. }, ..
-            }) = cx.tables.adjustments.get(&id).cloned() {
+            }) = cx.tables.adjustments.get(&id) {
                 for &overloaded in autoderefs {
                     if let Some(m) = overloaded {
                         if method_call_refers_to_method(cx.tcx, method, m.def_id, m.substs, id) {
@@ -901,9 +901,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                 }
             }
 
+            // Check for method calls and overloaded operators.
+            if cx.tables.is_method_call(expr) {
+                let def_id = cx.tables.type_dependent_defs[&id].def_id();
+                let substs = cx.tables.node_substs(id);
+                if method_call_refers_to_method(cx.tcx, method, def_id, substs, id) {
+                    return true;
+                }
+            }
+
             // Check for calls to methods via explicit paths (e.g. `T::method()`).
-            match cx.tcx.hir.get(id) {
-                hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
+            match expr.node {
+                hir::ExprCall(ref callee, _) => {
                     let def = if let hir::ExprPath(ref qpath) = callee.node {
                         cx.tables.qpath_def(qpath, callee.id)
                     } else {

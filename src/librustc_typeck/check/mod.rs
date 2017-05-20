@@ -1758,6 +1758,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn write_method_call(&self, node_id: ast::NodeId, method: ty::MethodCallee<'tcx>) {
+        self.tables.borrow_mut().type_dependent_defs.insert(node_id, Def::Method(method.def_id));
+        self.write_substs(node_id, method.substs);
+    }
+
     pub fn write_substs(&self, node_id: ast::NodeId, substs: &'tcx Substs<'tcx>) {
         if !substs.is_noop() {
             debug!("write_substs({}, {:?}) in fcx {}",
@@ -2238,7 +2243,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     target: method.sig.inputs()[0]
                 });
 
-                self.tables.borrow_mut().method_map.insert(expr.id, method);
+                self.write_method_call(expr.id, method);
                 (input_ty, self.make_overloaded_lvalue_return_type(method).ty)
             });
             if result.is_some() {
@@ -2777,7 +2782,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                               expr,
                                               rcvr) {
             Ok(method) => {
-                self.tables.borrow_mut().method_map.insert(expr.id, method);
+                self.write_method_call(expr.id, method);
                 Ok(method)
             }
             Err(error) => {
@@ -3453,7 +3458,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 target: method.sig.inputs()[0]
                             });
                             oprnd_t = self.make_overloaded_lvalue_return_type(method).ty;
-                            self.tables.borrow_mut().method_map.insert(expr.id, method);
+                            self.write_method_call(expr.id, method);
                         } else {
                             self.type_error_message(expr.span, |actual| {
                                 format!("type `{}` cannot be \
@@ -3918,7 +3923,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     // Finish resolving a path in a struct expression or pattern `S::A { .. }` if necessary.
-    // The newly resolved definition is written into `type_relative_path_defs`.
+    // The newly resolved definition is written into `type_dependent_defs`.
     fn finish_resolving_struct_path(&self,
                                     qpath: &hir::QPath,
                                     path_span: Span,
@@ -3943,7 +3948,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                    ty, def, segment);
 
                 // Write back the new resolution.
-                self.tables.borrow_mut().type_relative_path_defs.insert(node_id, def);
+                self.tables.borrow_mut().type_dependent_defs.insert(node_id, def);
 
                 (def, ty)
             }
@@ -3951,7 +3956,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     // Resolve associated value path into a base type and associated constant or method definition.
-    // The newly resolved definition is written into `type_relative_path_defs`.
+    // The newly resolved definition is written into `type_dependent_defs`.
     pub fn resolve_ty_and_def_ufcs<'b>(&self,
                                        qpath: &'b hir::QPath,
                                        node_id: ast::NodeId,
@@ -3984,7 +3989,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Write back the new resolution.
-        self.tables.borrow_mut().type_relative_path_defs.insert(node_id, def);
+        self.tables.borrow_mut().type_dependent_defs.insert(node_id, def);
         (def, Some(ty), slice::ref_slice(&**item_segment))
     }
 
