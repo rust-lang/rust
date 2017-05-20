@@ -19,8 +19,6 @@ use std::mem;
 use syntax_pos::symbol::InternedString;
 use ty;
 
-impl_stable_hash_for!(struct ty::ItemSubsts<'tcx> { substs });
-
 impl<'a, 'tcx, T> HashStable<StableHashingContext<'a, 'tcx>> for &'tcx ty::Slice<T>
     where T: HashStable<StableHashingContext<'a, 'tcx>> {
     fn hash_stable<W: StableHasherResult>(&self,
@@ -602,7 +600,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::TypeckTables<'
         let ty::TypeckTables {
             ref type_relative_path_defs,
             ref node_types,
-            ref item_substs,
+            ref node_substs,
             ref adjustments,
             ref method_map,
             ref upvar_capture_map,
@@ -623,7 +621,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::TypeckTables<'
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
             ich::hash_stable_nodemap(hcx, hasher, type_relative_path_defs);
             ich::hash_stable_nodemap(hcx, hasher, node_types);
-            ich::hash_stable_nodemap(hcx, hasher, item_substs);
+            ich::hash_stable_nodemap(hcx, hasher, node_substs);
             ich::hash_stable_nodemap(hcx, hasher, adjustments);
             ich::hash_stable_nodemap(hcx, hasher, method_map);
             ich::hash_stable_hashmap(hcx, hasher, upvar_capture_map, |hcx, up_var_id| {

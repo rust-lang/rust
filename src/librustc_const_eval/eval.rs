@@ -286,8 +286,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
         }
       }
       hir::ExprPath(ref qpath) => {
-        let substs = cx.tables.node_id_item_substs(e.id)
-            .unwrap_or_else(|| tcx.intern_substs(&[]));
+        let substs = cx.tables.node_substs(e.id);
 
         // Avoid applying substitutions if they're empty, that'd ICE.
         let substs = if cx.substs.is_empty() {

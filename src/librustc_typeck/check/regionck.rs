@@ -608,10 +608,9 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                expr, self.repeating_scope);
         match expr.node {
             hir::ExprPath(_) => {
-                self.fcx.opt_node_ty_substs(expr.id, |item_substs| {
-                    let origin = infer::ParameterOrigin::Path;
-                    self.substs_wf_in_scope(origin, &item_substs.substs, expr.span, expr_region);
-                });
+                let substs = self.tables.borrow().node_substs(expr.id);
+                let origin = infer::ParameterOrigin::Path;
+                self.substs_wf_in_scope(origin, substs, expr.span, expr_region);
             }
 
             hir::ExprCall(ref callee, ref args) => {

@@ -295,14 +295,12 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         debug!("Node {} has type {:?}", node_id, n_ty);
 
         // Resolve any substitutions
-        self.fcx.opt_node_ty_substs(node_id, |item_substs| {
-            let item_substs = self.resolve(item_substs, &span);
-            if !item_substs.is_noop() {
-                debug!("write_substs_to_tcx({}, {:?})", node_id, item_substs);
-                assert!(!item_substs.substs.needs_infer());
-                self.tables.item_substs.insert(node_id, item_substs);
-            }
-        });
+        if let Some(&substs) = self.fcx.tables.borrow().node_substs.get(&node_id) {
+            let substs = self.resolve(&substs, &span);
+            debug!("write_substs_to_tcx({}, {:?})", node_id, substs);
+            assert!(!substs.needs_infer());
+            self.tables.node_substs.insert(node_id, substs);
+        }
     }
 
     fn visit_adjustments(&mut self, span: Span, node_id: ast::NodeId) {

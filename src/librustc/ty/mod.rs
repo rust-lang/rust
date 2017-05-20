@@ -1809,13 +1809,6 @@ impl<'a, 'gcx, 'tcx> FieldDef {
     }
 }
 
-/// Records the substitutions used to translate the polytype for an
-/// item into the monotype of an item reference.
-#[derive(Clone, RustcEncodable, RustcDecodable)]
-pub struct ItemSubsts<'tcx> {
-    pub substs: &'tcx Substs<'tcx>,
-}
-
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum ClosureKind {
     // Warning: Ordering is significant here! The ordering is chosen
@@ -1890,12 +1883,6 @@ impl<'tcx> TyS<'tcx> {
                 walker.skip_current_subtree();
             }
         }
-    }
-}
-
-impl<'tcx> ItemSubsts<'tcx> {
-    pub fn is_noop(&self) -> bool {
-        self.substs.is_noop()
     }
 }
 

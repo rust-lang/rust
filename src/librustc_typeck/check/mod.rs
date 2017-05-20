@@ -52,7 +52,7 @@ can be broken down into several distinct phases:
 
 While type checking a function, the intermediate types for the
 expressions, blocks, and so forth contained within the function are
-stored in `fcx.node_types` and `fcx.item_substs`.  These types
+stored in `fcx.node_types` and `fcx.node_substs`.  These types
 may contain unresolved type variables.  After type checking is
 complete, the functions in the writeback module are used to take the
 types from this table, resolve them, and then write them into their
@@ -1758,14 +1758,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn write_substs(&self, node_id: ast::NodeId, substs: ty::ItemSubsts<'tcx>) {
-        if !substs.substs.is_noop() {
+    pub fn write_substs(&self, node_id: ast::NodeId, substs: &'tcx Substs<'tcx>) {
+        if !substs.is_noop() {
             debug!("write_substs({}, {:?}) in fcx {}",
                    node_id,
                    substs,
                    self.tag());
 
-            self.tables.borrow_mut().item_substs.insert(node_id, substs);
+            self.tables.borrow_mut().node_substs.insert(node_id, substs);
         }
     }
 
@@ -1956,16 +1956,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                      id, self.tcx.hir.node_to_string(id),
                      self.tag());
             }
-        }
-    }
-
-    pub fn opt_node_ty_substs<F>(&self,
-                                 id: ast::NodeId,
-                                 f: F) where
-        F: FnOnce(&ty::ItemSubsts<'tcx>),
-    {
-        if let Some(s) = self.tables.borrow().item_substs.get(&id) {
-            f(s);
         }
     }
 
@@ -3550,9 +3540,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
               // We always require that the type provided as the value for
               // a type parameter outlives the moment of instantiation.
-              self.opt_node_ty_substs(expr.id, |item_substs| {
-                  self.add_wf_bounds(&item_substs.substs, expr);
-              });
+              let substs = self.tables.borrow().node_substs(expr.id);
+              self.add_wf_bounds(substs, expr);
 
               ty
           }
@@ -4375,9 +4364,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let ty = self.local_ty(span, nid);
                 let ty = self.normalize_associated_types_in(span, &ty);
                 self.write_ty(node_id, ty);
-                self.write_substs(node_id, ty::ItemSubsts {
-                    substs: self.tcx.intern_substs(&[])
-                });
                 return ty;
             }
             _ => {}
@@ -4509,9 +4495,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("instantiate_value_path: type of {:?} is {:?}",
                node_id,
                ty_substituted);
-        self.write_substs(node_id, ty::ItemSubsts {
-            substs: substs
-        });
+        self.write_substs(node_id, substs);
         ty_substituted
     }
 

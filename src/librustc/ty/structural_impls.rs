@@ -220,17 +220,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ClosureSubsts<'a> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for ty::ItemSubsts<'a> {
-    type Lifted = ty::ItemSubsts<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.substs).map(|substs| {
-            ty::ItemSubsts {
-                substs: substs
-            }
-        })
-    }
-}
-
 impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::AutoBorrow<'a> {
     type Lifted = ty::adjustment::AutoBorrow<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
@@ -645,18 +634,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Region<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for ty::ClosureSubsts<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::ClosureSubsts {
-            substs: self.substs.fold_with(folder),
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.substs.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for ty::ItemSubsts<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        ty::ItemSubsts {
             substs: self.substs.fold_with(folder),
         }
     }

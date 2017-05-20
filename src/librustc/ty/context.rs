@@ -218,7 +218,7 @@ pub struct TypeckTables<'tcx> {
     /// of this node.  This only applies to nodes that refer to entities
     /// parameterized by type parameters, such as generic fns, types, or
     /// other items.
-    pub item_substs: NodeMap<ty::ItemSubsts<'tcx>>,
+    pub node_substs: NodeMap<&'tcx Substs<'tcx>>,
 
     pub adjustments: NodeMap<ty::adjustment::Adjustment<'tcx>>,
 
@@ -273,7 +273,7 @@ impl<'tcx> TypeckTables<'tcx> {
         TypeckTables {
             type_relative_path_defs: NodeMap(),
             node_types: FxHashMap(),
-            item_substs: NodeMap(),
+            node_substs: NodeMap(),
             adjustments: NodeMap(),
             method_map: FxHashMap(),
             upvar_capture_map: FxHashMap(),
@@ -313,8 +313,8 @@ impl<'tcx> TypeckTables<'tcx> {
         self.node_types.get(&id).cloned()
     }
 
-    pub fn node_id_item_substs(&self, id: NodeId) -> Option<&'tcx Substs<'tcx>> {
-        self.item_substs.get(&id).map(|ts| ts.substs)
+    pub fn node_substs(&self, id: NodeId) -> &'tcx Substs<'tcx> {
+        self.node_substs.get(&id).cloned().unwrap_or(Substs::empty())
     }
 
     // Returns the type of a pattern as a monotype. Like @expr_ty, this function

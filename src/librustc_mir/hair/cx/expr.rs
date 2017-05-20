@@ -297,8 +297,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     None
                 };
                 if let Some((adt_def, index)) = adt_data {
-                    let substs = cx.tables().node_id_item_substs(fun.id)
-                        .unwrap_or_else(|| cx.tcx.intern_substs(&[]));
+                    let substs = cx.tables().node_substs(fun.id);
                     let field_refs = args.iter()
                         .enumerate()
                         .map(|(idx, e)| {
@@ -735,8 +734,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                      expr: &'tcx hir::Expr,
                                      def: Def)
                                      -> ExprKind<'tcx> {
-    let substs = cx.tables().node_id_item_substs(expr.id)
-        .unwrap_or_else(|| cx.tcx.intern_substs(&[]));
+    let substs = cx.tables().node_substs(expr.id);
     match def {
         // A regular function, constructor function or a constant.
         Def::Fn(def_id) |

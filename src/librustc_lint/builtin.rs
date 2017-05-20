@@ -911,8 +911,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                     };
                     match def {
                         Def::Method(def_id) => {
-                            let substs = cx.tables.node_id_item_substs(callee.id)
-                                .unwrap_or_else(|| cx.tcx.intern_substs(&[]));
+                            let substs = cx.tables.node_substs(callee.id);
                             method_call_refers_to_method(
                                 cx.tcx, method, def_id, substs, id)
                         }
