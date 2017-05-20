@@ -707,9 +707,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         let infcx = self.mc.infcx;
         //NOTE(@jroesch): mixed RefCell borrow causes crash
         let adj = infcx.tables.borrow().adjustments.get(&expr.id).cloned();
-        let cmt_unadjusted =
-            return_if_err!(self.mc.cat_expr_unadjusted(expr));
+        let mut cmt = return_if_err!(self.mc.cat_expr_unadjusted(expr));
         if let Some(adjustment) = adj {
+            debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
             match adjustment.kind {
                 adjustment::Adjust::NeverToAny |
                 adjustment::Adjust::ReifyFnPointer |
@@ -718,23 +718,20 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 adjustment::Adjust::MutToConstPointer => {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.
-                    debug!("walk_adjustment: trivial adjustment");
-                    self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
+                    self.delegate_consume(expr.id, expr.span, cmt);
+                    assert!(adjustment.autoref.is_none() && !adjustment.unsize);
+                    return;
                 }
-                adjustment::Adjust::DerefRef { ref autoderefs, autoref, unsize } => {
-                    debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
-
-                    let cmt_derefd =
-                        return_if_err!(self.walk_autoderefs(expr, cmt_unadjusted, autoderefs));
-
-                    let cmt_refd =
-                        self.walk_autoref(expr, cmt_derefd, autoref);
-
-                    if unsize {
-                        // Unsizing consumes the thin pointer and produces a fat one.
-                        self.delegate_consume(expr.id, expr.span, cmt_refd);
-                    }
+                adjustment::Adjust::Deref(ref autoderefs) => {
+                    cmt = return_if_err!(self.walk_autoderefs(expr, cmt, autoderefs));
                 }
+            }
+
+            cmt = self.walk_autoref(expr, cmt, adjustment.autoref);
+
+            if adjustment.unsize {
+                // Unsizing consumes the thin pointer and produces a fat one.
+                self.delegate_consume(expr.id, expr.span, cmt);
             }
         }
     }

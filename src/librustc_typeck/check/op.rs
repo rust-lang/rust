@@ -414,11 +414,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.select_obligations_where_possible();
 
                 self.apply_adjustment(lhs_expr.id, Adjustment {
-                    kind: Adjust::DerefRef {
-                        autoderefs: vec![],
-                        autoref,
-                        unsize: false
-                    },
+                    kind: Adjust::Deref(vec![]),
+                    autoref,
+                    unsize: false,
                     target: method.sig.inputs()[0]
                 });
                 self.write_method_call(expr.id, method);

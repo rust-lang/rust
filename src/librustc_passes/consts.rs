@@ -449,7 +449,7 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
         Some(&Adjust::ClosureFnPointer) |
         Some(&Adjust::MutToConstPointer) => {}
 
-        Some(&Adjust::DerefRef { ref autoderefs, .. }) => {
+        Some(&Adjust::Deref(ref autoderefs)) => {
             if autoderefs.iter().any(|overloaded| overloaded.is_some()) {
                 v.promotable = false;
             }

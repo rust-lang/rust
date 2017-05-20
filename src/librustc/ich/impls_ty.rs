@@ -100,16 +100,14 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::adjustment::Ad
             ty::adjustment::Adjust::UnsafeFnPointer |
             ty::adjustment::Adjust::ClosureFnPointer |
             ty::adjustment::Adjust::MutToConstPointer => {}
-            ty::adjustment::Adjust::DerefRef { ref autoderefs, ref autoref, unsize } => {
+            ty::adjustment::Adjust::Deref(ref autoderefs) => {
                 autoderefs.hash_stable(hcx, hasher);
-                autoref.hash_stable(hcx, hasher);
-                unsize.hash_stable(hcx, hasher);
             }
         }
     }
 }
 
-impl_stable_hash_for!(struct ty::adjustment::Adjustment<'tcx> { kind, target });
+impl_stable_hash_for!(struct ty::adjustment::Adjustment<'tcx> { kind, autoref, unsize, target });
 impl_stable_hash_for!(struct ty::adjustment::OverloadedDeref<'tcx> { region, mutbl, target });
 impl_stable_hash_for!(struct ty::UpvarId { var_id, closure_expr_id });
 impl_stable_hash_for!(struct ty::UpvarBorrow<'tcx> { kind, region });

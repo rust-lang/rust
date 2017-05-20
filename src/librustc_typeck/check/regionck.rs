@@ -546,9 +546,9 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         if let Some(adjustment) = adjustment {
             debug!("adjustment={:?}", adjustment);
             match adjustment.kind {
-                adjustment::Adjust::DerefRef { ref autoderefs, ref autoref, .. } => {
+                adjustment::Adjust::Deref(ref autoderefs) => {
                     let cmt = ignore_err!(self.constrain_autoderefs(expr, autoderefs));
-                    if let Some(ref autoref) = *autoref {
+                    if let Some(ref autoref) = adjustment.autoref {
                         self.link_autoref(expr, cmt, autoref);
 
                         // Require that the resulting region encompasses
@@ -569,7 +569,9 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                                            source_ty, bounds.region_bound);
                 }
                 */
-                _ => {}
+                _ => {
+                    assert!(adjustment.autoref.is_none());
+                }
             }
 
             // If necessary, constrain destructors in the unadjusted form of this

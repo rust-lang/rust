@@ -1779,11 +1779,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                       autoderefs: Vec<Option<OverloadedDeref<'tcx>>>,
                                       adjusted_ty: Ty<'tcx>) {
         self.apply_adjustment(node_id, Adjustment {
-            kind: Adjust::DerefRef {
-                autoderefs,
-                autoref: None,
-                unsize: false
-            },
+            kind: Adjust::Deref(autoderefs),
+            autoref: None,
+            unsize: false,
             target: adjusted_ty
         });
     }
@@ -1799,17 +1797,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Entry::Vacant(entry) => { entry.insert(adj); },
             Entry::Occupied(mut entry) => {
                 debug!(" - composing on top of {:?}", entry.get());
-                match (&entry.get().kind, &adj.kind) {
+                match (entry.get(), &adj) {
                     // Applying any adjustment on top of a NeverToAny
                     // is a valid NeverToAny adjustment, because it can't
                     // be reached.
-                    (&Adjust::NeverToAny, _) => return,
-                    (&Adjust::DerefRef {
-                        autoderefs: ref old,
+                    (&Adjustment { kind: Adjust::NeverToAny, .. }, _) => return,
+                    (&Adjustment {
+                        kind: Adjust::Deref(ref old),
                         autoref: Some(AutoBorrow::Ref(..)),
-                        unsize: false
-                    }, &Adjust::DerefRef {
-                        autoderefs: ref new, ..
+                        unsize: false, ..
+                    }, &Adjustment {
+                        kind: Adjust::Deref(ref new), ..
                     }) if old.len() == 1 && new.len() >= 1 => {
                         // A reborrow has no effect before a dereference.
                     }
@@ -2235,11 +2233,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 let autoderefs = autoderef.adjust_steps(lvalue_pref);
                 self.apply_adjustment(base_expr.id, Adjustment {
-                    kind: Adjust::DerefRef {
-                        autoderefs,
-                        autoref,
-                        unsize
-                    },
+                    kind: Adjust::Deref(autoderefs),
+                    autoref,
+                    unsize,
                     target: method.sig.inputs()[0]
                 });
 
@@ -2651,6 +2647,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 TypeVariableOrigin::AdjustmentType(expr.span));
             self.apply_adjustment(expr.id, Adjustment {
                 kind: Adjust::NeverToAny,
+                autoref: None,
+                unsize: false,
                 target: adj_ty
             });
             ty = adj_ty;
@@ -3450,11 +3448,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 expr.span, oprnd_t, lvalue_pref) {
                             let (autoref, method) = self.register_infer_ok_obligations(ok);
                             self.apply_adjustment(oprnd.id, Adjustment {
-                                kind: Adjust::DerefRef {
-                                    autoderefs: vec![],
-                                    autoref,
-                                    unsize: false
-                                },
+                                kind: Adjust::Deref(vec![]),
+                                autoref,
+                                unsize: false,
                                 target: method.sig.inputs()[0]
                             });
                             oprnd_t = self.make_overloaded_lvalue_return_type(method).ty;

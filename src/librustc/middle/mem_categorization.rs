@@ -475,11 +475,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             Some(adjustment) => {
                 debug!("cat_expr({:?}): {:?}", adjustment, expr);
                 match adjustment.kind {
-                    adjustment::Adjust::DerefRef {
-                        ref autoderefs,
-                        autoref: None,
-                        unsize: false
-                    } => {
+                    adjustment::Adjust::Deref(ref autoderefs)
+                    if adjustment.autoref.is_none() && !adjustment.unsize => {
                         // Equivalent to *expr or something similar.
                         let mut cmt = self.cat_expr_unadjusted(expr)?;
                         debug!("cat_expr: autoderefs={:?}, cmt={:?}",
@@ -499,7 +496,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                     adjustment::Adjust::UnsafeFnPointer |
                     adjustment::Adjust::ClosureFnPointer |
                     adjustment::Adjust::MutToConstPointer |
-                    adjustment::Adjust::DerefRef {..} => {
+                    adjustment::Adjust::Deref(_) => {
                         // Result is an rvalue.
                         let expr_ty = self.expr_ty_adjusted(expr)?;
                         Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))

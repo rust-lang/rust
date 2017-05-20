@@ -86,8 +86,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     kind: ExprKind::Cast { source: expr.to_ref() },
                 };
             }
-            Some((&ty::adjustment::Adjust::DerefRef { ref autoderefs, autoref, unsize },
-                  adjusted_ty)) => {
+            Some((&ty::adjustment::Adjust::Deref(ref autoderefs), _)) => {
                 for &overloaded in autoderefs {
                     let source = expr.ty;
                     let target;
@@ -143,64 +142,66 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                         kind: kind,
                     };
                 }
+            }
+        }
 
-                if let Some(autoref) = autoref {
-                    let adjusted_ty = expr.ty.adjust_for_autoref(cx.tcx, Some(autoref));
-                    match autoref {
-                        ty::adjustment::AutoBorrow::Ref(r, m) => {
-                            expr = Expr {
-                                temp_lifetime: temp_lifetime,
-                                temp_lifetime_was_shrunk: was_shrunk,
-                                ty: adjusted_ty,
-                                span: self.span,
-                                kind: ExprKind::Borrow {
-                                    region: r,
-                                    borrow_kind: to_borrow_kind(m),
-                                    arg: expr.to_ref(),
-                                },
-                            };
-                        }
-                        ty::adjustment::AutoBorrow::RawPtr(m) => {
-                            // Convert this to a suitable `&foo` and
-                            // then an unsafe coercion. Limit the region to be just this
-                            // expression.
-                            let region = ty::ReScope(expr_extent);
-                            let region = cx.tcx.mk_region(region);
-                            expr = Expr {
-                                temp_lifetime: temp_lifetime,
-                                temp_lifetime_was_shrunk: was_shrunk,
-                                ty: cx.tcx.mk_ref(region,
-                                                  ty::TypeAndMut {
-                                                      ty: expr.ty,
-                                                      mutbl: m,
-                                                  }),
-                                span: self.span,
-                                kind: ExprKind::Borrow {
-                                    region: region,
-                                    borrow_kind: to_borrow_kind(m),
-                                    arg: expr.to_ref(),
-                                },
-                            };
-                            expr = Expr {
-                                temp_lifetime: temp_lifetime,
-                                temp_lifetime_was_shrunk: was_shrunk,
-                                ty: adjusted_ty,
-                                span: self.span,
-                                kind: ExprKind::Cast { source: expr.to_ref() },
-                            };
-                        }
+        if let Some(adj) = adj {
+            if let Some(autoref) = adj.autoref {
+                let adjusted_ty = expr.ty.adjust_for_autoref(cx.tcx, Some(autoref));
+                match autoref {
+                    ty::adjustment::AutoBorrow::Ref(r, m) => {
+                        expr = Expr {
+                            temp_lifetime: temp_lifetime,
+                            temp_lifetime_was_shrunk: was_shrunk,
+                            ty: adjusted_ty,
+                            span: self.span,
+                            kind: ExprKind::Borrow {
+                                region: r,
+                                borrow_kind: to_borrow_kind(m),
+                                arg: expr.to_ref(),
+                            },
+                        };
+                    }
+                    ty::adjustment::AutoBorrow::RawPtr(m) => {
+                        // Convert this to a suitable `&foo` and
+                        // then an unsafe coercion. Limit the region to be just this
+                        // expression.
+                        let region = ty::ReScope(expr_extent);
+                        let region = cx.tcx.mk_region(region);
+                        expr = Expr {
+                            temp_lifetime: temp_lifetime,
+                            temp_lifetime_was_shrunk: was_shrunk,
+                            ty: cx.tcx.mk_ref(region,
+                                              ty::TypeAndMut {
+                                                    ty: expr.ty,
+                                                    mutbl: m,
+                                              }),
+                            span: self.span,
+                            kind: ExprKind::Borrow {
+                                region: region,
+                                borrow_kind: to_borrow_kind(m),
+                                arg: expr.to_ref(),
+                            },
+                        };
+                        expr = Expr {
+                            temp_lifetime: temp_lifetime,
+                            temp_lifetime_was_shrunk: was_shrunk,
+                            ty: adjusted_ty,
+                            span: self.span,
+                            kind: ExprKind::Cast { source: expr.to_ref() },
+                        };
                     }
                 }
+            }
 
-                if unsize {
-                    expr = Expr {
-                        temp_lifetime: temp_lifetime,
-                        temp_lifetime_was_shrunk: was_shrunk,
-                        ty: adjusted_ty,
-                        span: self.span,
-                        kind: ExprKind::Unsize { source: expr.to_ref() },
-                    };
-                }
+            if adj.unsize {
+                expr = Expr {
+                    temp_lifetime: temp_lifetime,
+                    temp_lifetime_was_shrunk: was_shrunk,
+                    ty: adj.target,
+                    span: self.span,
+                    kind: ExprKind::Unsize { source: expr.to_ref() },
+                };
             }
         }
 

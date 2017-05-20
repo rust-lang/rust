@@ -224,8 +224,13 @@ impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::Adjustment<'a> {
     type Lifted = ty::adjustment::Adjustment<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.kind).and_then(|kind| {
-            tcx.lift(&self.target).map(|target| {
-                ty::adjustment::Adjustment { kind, target }
+            tcx.lift(&(self.autoref, self.target)).map(|(autoref, target)| {
+                ty::adjustment::Adjustment {
+                    kind,
+                    autoref,
+                    unsize: self.unsize,
+                    target,
+                }
             })
         })
     }
@@ -245,12 +250,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::Adjust<'a> {
                 Some(ty::adjustment::Adjust::ClosureFnPointer),
             ty::adjustment::Adjust::MutToConstPointer =>
                 Some(ty::adjustment::Adjust::MutToConstPointer),
-            ty::adjustment::Adjust::DerefRef { ref autoderefs, ref autoref, unsize } => {
-                tcx.lift(autoderefs).and_then(|autoderefs| {
-                    tcx.lift(autoref).map(|autoref| {
-                        ty::adjustment::Adjust::DerefRef { autoderefs, autoref, unsize }
-                    })
-                })
+            ty::adjustment::Adjust::Deref(ref autoderefs) => {
+                tcx.lift(autoderefs).map(ty::adjustment::Adjust::Deref)
             }
         }
     }
@@ -684,12 +685,16 @@ impl<'tcx> TypeFoldable<'tcx> for ty::adjustment::Adjustment<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::adjustment::Adjustment {
             kind: self.kind.fold_with(folder),
+            autoref: self.autoref.fold_with(folder),
+            unsize: self.unsize,
             target: self.target.fold_with(folder),
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.kind.visit_with(visitor) || self.target.visit_with(visitor)
+        self.kind.visit_with(visitor) ||
+        self.autoref.visit_with(visitor) ||
+        self.target.visit_with(visitor)
     }
 }
 
@@ -701,12 +706,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::adjustment::Adjust<'tcx> {
             ty::adjustment::Adjust::UnsafeFnPointer |
             ty::adjustment::Adjust::ClosureFnPointer |
             ty::adjustment::Adjust::MutToConstPointer => self.clone(),
-            ty::adjustment::Adjust::DerefRef { ref autoderefs, ref autoref, unsize } => {
-                ty::adjustment::Adjust::DerefRef {
-                    autoderefs: autoderefs.fold_with(folder),
-                    autoref: autoref.fold_with(folder),
-                    unsize,
-                }
+            ty::adjustment::Adjust::Deref(ref autoderefs) => {
+                ty::adjustment::Adjust::Deref(autoderefs.fold_with(folder))
             }
         }
     }
@@ -718,8 +719,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::adjustment::Adjust<'tcx> {
             ty::adjustment::Adjust::UnsafeFnPointer |
             ty::adjustment::Adjust::ClosureFnPointer |
             ty::adjustment::Adjust::MutToConstPointer => false,
-            ty::adjustment::Adjust::DerefRef { ref autoderefs, ref autoref, unsize: _ } => {
-                autoderefs.visit_with(visitor) || autoref.visit_with(visitor)
+            ty::adjustment::Adjust::Deref(ref autoderefs) => {
+                autoderefs.visit_with(visitor)
             }
         }
     }

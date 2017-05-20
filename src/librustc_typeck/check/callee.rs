@@ -144,11 +144,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.try_overloaded_call_traits(call_expr, adjusted_ty).map(|(autoref, method)| {
             let autoderefs = autoderef.adjust_steps(LvaluePreference::NoPreference);
             self.apply_adjustment(callee_expr.id, Adjustment {
-                kind: Adjust::DerefRef {
-                    autoderefs,
-                    autoref,
-                    unsize: false
-                },
+                kind: Adjust::Deref(autoderefs),
+                autoref,
+                unsize: false,
                 target: method.sig.inputs()[0]
             });
             CallStep::Overloaded(method)
@@ -356,11 +354,9 @@ impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
                 fcx.demand_eqtype(self.call_expr.span, method_sig.output(), self.fn_sig.output());
 
                 fcx.apply_adjustment(self.callee_expr.id, Adjustment {
-                    kind: Adjust::DerefRef {
-                        autoderefs: self.autoderefs,
-                        autoref,
-                        unsize: false
-                    },
+                    kind: Adjust::Deref(self.autoderefs),
+                    autoref,
+                    unsize: false,
                     target: method_sig.inputs()[0]
                 });
 

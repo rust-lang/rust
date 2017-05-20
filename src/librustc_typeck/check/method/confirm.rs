@@ -147,12 +147,10 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         // Write out the final adjustment.
         self.apply_adjustment(self.self_expr.id, Adjustment {
-            kind: Adjust::DerefRef {
-                autoderefs,
-                autoref,
-                unsize: pick.unsize.is_some(),
-            },
-            target: target
+            kind: Adjust::Deref(autoderefs),
+            autoref,
+            unsize: pick.unsize.is_some(),
+            target,
         });
 
         target
@@ -440,7 +438,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             // the correct region.
             let expr_ty = self.node_ty(expr.id);
             if let Some(adj) = self.tables.borrow_mut().adjustments.get_mut(&expr.id) {
-                if let Adjust::DerefRef { ref mut autoderefs, .. } = adj.kind {
+                if let Adjust::Deref(ref mut autoderefs) = adj.kind {
                     let mut autoderef = self.autoderef(expr.span, expr_ty);
                     autoderef.nth(autoderefs.len()).unwrap_or_else(|| {
                         span_bug!(expr.span,
@@ -502,9 +500,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // Convert the autoref in the base expr to mutable with the correct
         // region and mutability.
         if let Some(&mut Adjustment {
-            ref mut target, kind: Adjust::DerefRef {
-                autoref: Some(AutoBorrow::Ref(ref mut r, ref mut mutbl)), ..
-            }
+            ref mut target,
+            autoref: Some(AutoBorrow::Ref(ref mut r, ref mut mutbl)), ..
         }) = self.tables.borrow_mut().adjustments.get_mut(&base_expr.id) {
             debug!("convert_lvalue_op_to_mutable: converting autoref of {:?}", target);
 
