@@ -330,7 +330,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T> {
     }
 }
 
-#[stable(feature = "rw_lock_default", since = "1.9.0")]
+#[stable(feature = "rw_lock_default", since = "1.10.0")]
 impl<T: Default> Default for RwLock<T> {
     /// Creates a new `RwLock<T>`, with the `Default` value for T.
     fn default() -> RwLock<T> {

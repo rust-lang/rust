@@ -419,14 +419,14 @@ impl<'a> From<&'a CStr> for Box<CStr> {
     }
 }
 
-#[stable(feature = "c_string_from_box", since = "1.17.0")]
+#[stable(feature = "c_string_from_box", since = "1.18.0")]
 impl From<Box<CStr>> for CString {
     fn from(s: Box<CStr>) -> CString {
         s.into_c_string()
     }
 }
 
-#[stable(feature = "box_from_c_string", since = "1.17.0")]
+#[stable(feature = "box_from_c_string", since = "1.18.0")]
 impl Into<Box<CStr>> for CString {
     fn into(self) -> Box<CStr> {
         self.into_boxed_c_str()

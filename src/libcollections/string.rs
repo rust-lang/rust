@@ -1869,28 +1869,28 @@ impl ops::Index<ops::RangeToInclusive<usize>> for String {
     }
 }
 
-#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+#[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::Range<usize>> for String {
     #[inline]
     fn index_mut(&mut self, index: ops::Range<usize>) -> &mut str {
         &mut self[..][index]
     }
 }
-#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+#[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::RangeTo<usize>> for String {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut str {
         &mut self[..][index]
     }
 }
-#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+#[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::RangeFrom<usize>> for String {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut str {
         &mut self[..][index]
     }
 }
-#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+#[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::RangeFull> for String {
     #[inline]
     fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {
@@ -1922,7 +1922,7 @@ impl ops::Deref for String {
     }
 }
 
-#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+#[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::DerefMut for String {
     #[inline]
     fn deref_mut(&mut self) -> &mut str {
@@ -2080,14 +2080,14 @@ impl<'a> From<&'a str> for String {
 
 // note: test pulls in libstd, which causes errors here
 #[cfg(not(test))]
-#[stable(feature = "string_from_box", since = "1.17.0")]
+#[stable(feature = "string_from_box", since = "1.18.0")]
 impl From<Box<str>> for String {
     fn from(s: Box<str>) -> String {
         s.into_string()
     }
 }
 
-#[stable(feature = "box_from_str", since = "1.17.0")]
+#[stable(feature = "box_from_str", since = "1.18.0")]
 impl Into<Box<str>> for String {
     fn into(self) -> Box<str> {
         self.into_boxed_str()

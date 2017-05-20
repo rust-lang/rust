@@ -2096,7 +2096,7 @@ impl<'a, T: Clone> From<&'a [T]> for Vec<T> {
     }
 }
 
-#[stable(feature = "vec_from_mut", since = "1.21.0")]
+#[stable(feature = "vec_from_mut", since = "1.19.0")]
 impl<'a, T: Clone> From<&'a mut [T]> for Vec<T> {
     #[cfg(not(test))]
     fn from(s: &'a mut [T]) -> Vec<T> {
@@ -2117,14 +2117,14 @@ impl<'a, T> From<Cow<'a, [T]>> for Vec<T> where [T]: ToOwned<Owned=Vec<T>> {
 
 // note: test pulls in libstd, which causes errors here
 #[cfg(not(test))]
-#[stable(feature = "vec_from_box", since = "1.17.0")]
+#[stable(feature = "vec_from_box", since = "1.18.0")]
 impl<T> From<Box<[T]>> for Vec<T> {
     fn from(s: Box<[T]>) -> Vec<T> {
         s.into_vec()
     }
 }
 
-#[stable(feature = "box_from_vec", since = "1.17.0")]
+#[stable(feature = "box_from_vec", since = "1.18.0")]
 impl<T> Into<Box<[T]>> for Vec<T> {
     fn into(self) -> Box<[T]> {
         self.into_boxed_slice()
@@ -2142,14 +2142,14 @@ impl<'a> From<&'a str> for Vec<u8> {
 // Clone-on-write
 ////////////////////////////////////////////////////////////////////////////////
 
-#[stable(feature = "cow_from_vec", since = "1.7.0")]
+#[stable(feature = "cow_from_vec", since = "1.8.0")]
 impl<'a, T: Clone> From<&'a [T]> for Cow<'a, [T]> {
     fn from(s: &'a [T]) -> Cow<'a, [T]> {
         Cow::Borrowed(s)
     }
 }
 
-#[stable(feature = "cow_from_vec", since = "1.7.0")]
+#[stable(feature = "cow_from_vec", since = "1.8.0")]
 impl<'a, T: Clone> From<Vec<T>> for Cow<'a, [T]> {
     fn from(v: Vec<T>) -> Cow<'a, [T]> {
         Cow::Owned(v)

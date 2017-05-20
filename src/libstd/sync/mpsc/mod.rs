@@ -921,7 +921,7 @@ impl<T> Drop for Sender<T> {
     }
 }
 
-#[stable(feature = "mpsc_debug", since = "1.7.0")]
+#[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for Sender<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Sender {{ .. }}")
@@ -1051,7 +1051,7 @@ impl<T> Drop for SyncSender<T> {
     }
 }
 
-#[stable(feature = "mpsc_debug", since = "1.7.0")]
+#[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for SyncSender<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "SyncSender {{ .. }}")
@@ -1517,7 +1517,7 @@ impl<T> Drop for Receiver<T> {
     }
 }
 
-#[stable(feature = "mpsc_debug", since = "1.7.0")]
+#[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for Receiver<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Receiver {{ .. }}")
@@ -1644,7 +1644,7 @@ impl error::Error for TryRecvError {
     }
 }
 
-#[stable(feature = "mpsc_recv_timeout_error", since = "1.14.0")]
+#[stable(feature = "mpsc_recv_timeout_error", since = "1.15.0")]
 impl fmt::Display for RecvTimeoutError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -1658,7 +1658,7 @@ impl fmt::Display for RecvTimeoutError {
     }
 }
 
-#[stable(feature = "mpsc_recv_timeout_error", since = "1.14.0")]
+#[stable(feature = "mpsc_recv_timeout_error", since = "1.15.0")]
 impl error::Error for RecvTimeoutError {
     fn description(&self) -> &str {
         match *self {
