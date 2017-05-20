@@ -36,6 +36,18 @@ mod suggest;
 
 use self::probe::IsSuggestion;
 
+#[derive(Clone, Copy, Debug)]
+pub struct MethodCallee<'tcx> {
+    /// Impl method ID, for inherent methods, or trait method ID, otherwise.
+    pub def_id: DefId,
+    pub substs: &'tcx Substs<'tcx>,
+
+    /// Instantiated method signature, i.e. it has been
+    /// substituted, normalized, and has had late-bound
+    /// lifetimes replaced with inference variables.
+    pub sig: ty::FnSig<'tcx>,
+}
+
 pub enum MethodError<'tcx> {
     // Did not find an applicable method, but we did find various near-misses that may work.
     NoMatch(NoMatchData<'tcx>),
@@ -125,7 +137,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          supplied_method_types: Vec<ty::Ty<'tcx>>,
                          call_expr: &'gcx hir::Expr,
                          self_expr: &'gcx hir::Expr)
-                         -> Result<ty::MethodCallee<'tcx>, MethodError<'tcx>> {
+                         -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
                method_name,
                self_ty,
@@ -172,7 +184,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                            opt_input_types: Option<&[ty::Ty<'tcx>]>)
                                            -> Option<InferOk<'tcx,
                                                 (Option<AutoBorrow<'tcx>>,
-                                                 ty::MethodCallee<'tcx>)>> {
+                                                 MethodCallee<'tcx>)>> {
         debug!("lookup_in_trait_adjusted(self_ty={:?}, \
                 m_name={}, trait_def_id={:?})",
                self_ty,
@@ -279,7 +291,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        let callee = ty::MethodCallee {
+        let callee = MethodCallee {
             def_id: def_id,
             substs: trait_ref.substs,
             sig: fn_sig,

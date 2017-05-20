@@ -16,8 +16,7 @@ use check::FnCtxt;
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::infer::{InferCtxt};
-use rustc::ty::{self, Ty, TyCtxt, MethodCallee};
-use rustc::ty::adjustment;
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::fold::{TypeFolder,TypeFoldable};
 use rustc::util::nodemap::DefIdSet;
 use syntax::ast;
@@ -307,54 +306,14 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_adjustments(&mut self, span: Span, node_id: ast::NodeId) {
-        let adjustments = self.fcx.tables.borrow_mut().adjustments.remove(&node_id);
-        match adjustments {
+        let adjustment = self.fcx.tables.borrow_mut().adjustments.remove(&node_id);
+        match adjustment {
             None => {
                 debug!("No adjustments for node {}", node_id);
             }
 
             Some(adjustment) => {
-                let resolved_adjustment = match adjustment.kind {
-                    adjustment::Adjust::NeverToAny => {
-                        adjustment::Adjust::NeverToAny
-                    }
-
-                    adjustment::Adjust::ReifyFnPointer => {
-                        adjustment::Adjust::ReifyFnPointer
-                    }
-
-                    adjustment::Adjust::MutToConstPointer => {
-                        adjustment::Adjust::MutToConstPointer
-                    }
-
-                    adjustment::Adjust::ClosureFnPointer => {
-                        adjustment::Adjust::ClosureFnPointer
-                    }
-
-                    adjustment::Adjust::UnsafeFnPointer => {
-                        adjustment::Adjust::UnsafeFnPointer
-                    }
-
-                    adjustment::Adjust::DerefRef { autoderefs, autoref, unsize } => {
-                        adjustment::Adjust::DerefRef {
-                            autoderefs: autoderefs.iter().map(|overloaded| {
-                                overloaded.map(|method| {
-                                    MethodCallee {
-                                        def_id: method.def_id,
-                                        substs: self.resolve(&method.substs, &span),
-                                        sig: self.resolve(&method.sig, &span),
-                                    }
-                                })
-                            }).collect(),
-                            autoref: self.resolve(&autoref, &span),
-                            unsize: unsize,
-                        }
-                    }
-                };
-                let resolved_adjustment = adjustment::Adjustment {
-                    kind: resolved_adjustment,
-                    target: self.resolve(&adjustment.target, &span)
-                };
+                let resolved_adjustment = self.resolve(&adjustment, &span);
                 debug!("Adjustments for node {}: {:?}", node_id, resolved_adjustment);
                 self.tables.adjustments.insert(node_id, resolved_adjustment);
             }

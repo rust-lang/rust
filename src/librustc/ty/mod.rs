@@ -390,18 +390,6 @@ impl Variance {
     }
 }
 
-#[derive(Clone, Copy, Debug, RustcDecodable, RustcEncodable)]
-pub struct MethodCallee<'tcx> {
-    /// Impl method ID, for inherent methods, or trait method ID, otherwise.
-    pub def_id: DefId,
-    pub substs: &'tcx Substs<'tcx>,
-
-    /// Instantiated method signature, i.e. it has been substituted,
-    /// normalized, and has had late-bound lifetimes replaced
-    /// (with inference variables, during type-checking).
-    pub sig: FnSig<'tcx>,
-}
-
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]

@@ -81,6 +81,7 @@ use self::autoderef::Autoderef;
 use self::callee::DeferredCallResolution;
 use self::coercion::{CoerceMany, DynamicCoerceMany};
 pub use self::compare_method::{compare_impl_method, compare_const_impl};
+use self::method::MethodCallee;
 use self::TupleArgumentsFlag::*;
 
 use astconv::AstConv;
@@ -95,8 +96,7 @@ use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::{ParamTy, LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, Ty, TyCtxt, Visibility};
-use rustc::ty::{MethodCallee};
-use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
+use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, OverloadedDeref};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::{Representability, IntTypeExt};
@@ -1758,7 +1758,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn write_method_call(&self, node_id: ast::NodeId, method: ty::MethodCallee<'tcx>) {
+    pub fn write_method_call(&self, node_id: ast::NodeId, method: MethodCallee<'tcx>) {
         self.tables.borrow_mut().type_dependent_defs.insert(node_id, Def::Method(method.def_id));
         self.write_substs(node_id, method.substs);
     }
@@ -1776,7 +1776,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn apply_autoderef_adjustment(&self,
                                       node_id: ast::NodeId,
-                                      autoderefs: Vec<Option<ty::MethodCallee<'tcx>>>,
+                                      autoderefs: Vec<Option<OverloadedDeref<'tcx>>>,
                                       adjusted_ty: Ty<'tcx>) {
         self.apply_adjustment(node_id, Adjustment {
             kind: Adjust::DerefRef {
@@ -2276,7 +2276,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 op: LvalueOp)
                                 -> Option<InferOk<'tcx,
                                     (Option<AutoBorrow<'tcx>>,
-                                     ty::MethodCallee<'tcx>)>>
+                                     MethodCallee<'tcx>)>>
     {
         debug!("try_overloaded_lvalue_op({:?},{:?},{:?},{:?})",
                span,
@@ -2315,7 +2315,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn check_method_argument_types(&self,
                                    sp: Span,
-                                   method: Result<ty::MethodCallee<'tcx>, ()>,
+                                   method: Result<MethodCallee<'tcx>, ()>,
                                    args_no_rcvr: &'gcx [hir::Expr],
                                    tuple_arguments: TupleArgumentsFlag,
                                    expected: Expectation<'tcx>)

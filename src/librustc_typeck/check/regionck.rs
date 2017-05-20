@@ -906,7 +906,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// dereferenced, the lifetime of the pointer includes the deref expr.
     fn constrain_autoderefs(&mut self,
                             deref_expr: &hir::Expr,
-                            autoderefs: &[Option<ty::MethodCallee<'tcx>>])
+                            autoderefs: &[Option<adjustment::OverloadedDeref<'tcx>>])
                             -> mc::McResult<mc::cmt<'tcx>>
     {
         debug!("constrain_autoderefs(deref_expr={:?}, autoderefs={:?})",
@@ -920,43 +920,35 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         let r_deref_expr = self.tcx.node_scope_region(deref_expr.id);
         for &overloaded in autoderefs {
-            if let Some(method) = overloaded {
-                debug!("constrain_autoderefs: overloaded, method={:?}", method);
-
-                let origin = infer::ParameterOrigin::OverloadedDeref;
-                self.substs_wf_in_scope(origin, method.substs, deref_expr.span, r_deref_expr);
+            if let Some(deref) = overloaded {
+                debug!("constrain_autoderefs: overloaded, {:?}", deref);
 
                 // Treat overloaded autoderefs as if an AutoBorrow adjustment
                 // was applied on the base type, as that is always the case.
-                let self_ty = method.sig.inputs()[0];
-                let (m, r) = match self_ty.sty {
-                    ty::TyRef(r, ref m) => (m.mutbl, r),
-                    _ => {
-                        span_bug!(
-                            deref_expr.span,
-                            "bad overloaded deref type {:?}",
-                            method.sig)
-                    }
-                };
-
-                debug!("constrain_autoderefs: receiver r={:?} m={:?}",
-                       r, m);
+                let input = self.tcx.mk_ref(deref.region, ty::TypeAndMut {
+                    ty: cmt.ty,
+                    mutbl: deref.mutbl,
+                });
+                let output = self.tcx.mk_ref(deref.region, ty::TypeAndMut {
+                    ty: deref.target,
+                    mutbl: deref.mutbl,
+                });
 
                 debug!("constrain_autoderefs: self_cmt={:?}", cmt);
-                self.link_region(deref_expr.span, r,
-                                 ty::BorrowKind::from_mutbl(m), cmt.clone());
+                self.link_region(deref_expr.span, deref.region,
+                                 ty::BorrowKind::from_mutbl(deref.mutbl), cmt.clone());
 
                 // Specialized version of constrain_call.
                 self.type_must_outlive(infer::CallRcvr(deref_expr.span),
-                                       self_ty, r_deref_expr);
+                                       input, r_deref_expr);
                 self.type_must_outlive(infer::CallReturn(deref_expr.span),
-                                       method.sig.output(), r_deref_expr);
+                                       output, r_deref_expr);
             }
 
             {
                 let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
-                if let Some(method) = overloaded {
-                    cmt = mc.cat_overloaded_autoderef(deref_expr, method)?;
+                if let Some(deref) = overloaded {
+                    cmt = mc.cat_overloaded_autoderef(deref_expr, deref)?;
                 } else {
                     cmt = mc.cat_deref(deref_expr, cmt, false)?;
                 }

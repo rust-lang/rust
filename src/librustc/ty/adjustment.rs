@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ty::{self, Ty, TyCtxt, TypeAndMut};
-
 use hir;
+use hir::def_id::DefId;
+use ty::{self, Ty, TyCtxt, TypeAndMut};
+use ty::subst::Substs;
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Adjustment<'tcx> {
@@ -105,7 +106,7 @@ pub enum Adjust<'tcx> {
     /// ```
     DerefRef {
         /// Step 1. Apply a number of dereferences, producing an lvalue.
-        autoderefs: Vec<Option<ty::MethodCallee<'tcx>>>,
+        autoderefs: Vec<Option<OverloadedDeref<'tcx>>>,
 
         /// Step 2. Optionally produce a pointer/reference from the value.
         autoref: Option<AutoBorrow<'tcx>>,
@@ -133,6 +134,30 @@ impl<'tcx> Adjustment<'tcx> {
             Adjust::MutToConstPointer |
             Adjust::DerefRef {..} => false,
         }
+    }
+}
+
+/// An overloaded autoderef step, representing a `Deref(Mut)::deref(_mut)`
+/// call, with the signature `&'a T -> &'a U` or `&'a mut T -> &'a mut U`.
+/// The target type is `U` in both cases, with the region and mutability
+/// being those shared by both the receiver and the returned reference.
+#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+pub struct OverloadedDeref<'tcx> {
+    pub region: ty::Region<'tcx>,
+    pub mutbl: hir::Mutability,
+    pub target: Ty<'tcx>,
+}
+
+impl<'a, 'gcx, 'tcx> OverloadedDeref<'tcx> {
+    pub fn method_call(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, source: Ty<'tcx>)
+                       -> (DefId, &'tcx Substs<'tcx>) {
+        let trait_def_id = match self.mutbl {
+            hir::MutImmutable => tcx.lang_items.deref_trait(),
+            hir::MutMutable => tcx.lang_items.deref_mut_trait()
+        };
+        let method_def_id = tcx.associated_items(trait_def_id.unwrap())
+            .find(|m| m.kind == ty::AssociatedKind::Method).unwrap().def_id;
+        (method_def_id, tcx.mk_substs_trait(source, &[]))
     }
 }
 

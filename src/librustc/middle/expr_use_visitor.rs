@@ -745,23 +745,16 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     fn walk_autoderefs(&mut self,
                        expr: &hir::Expr,
                        mut cmt: mc::cmt<'tcx>,
-                       autoderefs: &[Option<ty::MethodCallee<'tcx>>])
+                       autoderefs: &[Option<adjustment::OverloadedDeref<'tcx>>])
                        -> mc::McResult<mc::cmt<'tcx>> {
         debug!("walk_autoderefs expr={:?} autoderefs={:?}", expr, autoderefs);
 
         for &overloaded in autoderefs {
-            if let Some(method) = overloaded {
-                let self_ty = method.sig.inputs()[0];
-                let self_ty = self.mc.infcx.resolve_type_vars_if_possible(&self_ty);
-
-                let (m, r) = match self_ty.sty {
-                    ty::TyRef(r, ref m) => (m.mutbl, r),
-                    _ => span_bug!(expr.span, "bad overloaded deref type {:?}", self_ty)
-                };
-                let bk = ty::BorrowKind::from_mutbl(m);
+            if let Some(deref) = overloaded {
+                let bk = ty::BorrowKind::from_mutbl(deref.mutbl);
                 self.delegate.borrow(expr.id, expr.span, cmt.clone(),
-                                     r, bk, AutoRef);
-                cmt = self.mc.cat_overloaded_autoderef(expr, method)?;
+                                     deref.region, bk, AutoRef);
+                cmt = self.mc.cat_overloaded_autoderef(expr, deref)?;
             } else {
                 cmt = self.mc.cat_deref(expr, cmt, false)?;
             }

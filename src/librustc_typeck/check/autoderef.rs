@@ -11,13 +11,14 @@
 use astconv::AstConv;
 
 use super::{FnCtxt, LvalueOp};
+use super::method::MethodCallee;
 
 use rustc::infer::InferOk;
 use rustc::traits;
 use rustc::ty::{self, Ty, TraitRef};
 use rustc::ty::{ToPredicate, TypeFoldable};
 use rustc::ty::{LvaluePreference, NoPreference};
-use rustc::ty::adjustment::AutoBorrow;
+use rustc::ty::adjustment::{AutoBorrow, OverloadedDeref};
 
 use syntax_pos::Span;
 use syntax::symbol::Symbol;
@@ -153,19 +154,27 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
 
     /// Returns the steps required in adjustments (overloaded deref calls).
     pub fn adjust_steps(&self, pref: LvaluePreference)
-                        -> Vec<Option<ty::MethodCallee<'tcx>>> {
+                        -> Vec<Option<OverloadedDeref<'tcx>>> {
         self.fcx.register_infer_ok_obligations(self.adjust_steps_as_infer_ok(pref))
     }
 
     pub fn adjust_steps_as_infer_ok(&self, pref: LvaluePreference)
-                                    -> InferOk<'tcx, Vec<Option<ty::MethodCallee<'tcx>>>> {
+                                    -> InferOk<'tcx, Vec<Option<OverloadedDeref<'tcx>>>> {
         let mut obligations = vec![];
-        let steps: Vec<_> = self.steps.iter().map(|&(ty, kind)| {
+        let steps: Vec<_> = self.steps.iter().map(|&(source, kind)| {
             if let AutoderefKind::Overloaded = kind {
-                self.fcx.try_overloaded_deref(self.span, ty, pref)
-                    .map(|InferOk { value: (_, method), obligations: o }| {
+                self.fcx.try_overloaded_deref(self.span, source, pref)
+                    .and_then(|InferOk { value: (_, method), obligations: o }| {
                         obligations.extend(o);
-                        method
+                        if let ty::TyRef(region, mt) = method.sig.output().sty {
+                            Some(OverloadedDeref {
+                                region,
+                                mutbl: mt.mutbl,
+                                target: mt.ty
+                            })
+                        } else {
+                            None
+                        }
                     })
             } else {
                 None
@@ -206,7 +215,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 pref: LvaluePreference)
                                 -> Option<InferOk<'tcx,
                                     (Option<AutoBorrow<'tcx>>,
-                                     ty::MethodCallee<'tcx>)>> {
+                                     MethodCallee<'tcx>)>> {
         self.try_overloaded_lvalue_op(span, base_ty, &[], pref, LvalueOp::Deref)
     }
 }

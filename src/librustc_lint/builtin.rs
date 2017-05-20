@@ -892,11 +892,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             if let Some(&Adjustment {
                 kind: Adjust::DerefRef { ref autoderefs, .. }, ..
             }) = cx.tables.adjustments.get(&id) {
+                let mut source = cx.tables.expr_ty(expr);
                 for &overloaded in autoderefs {
-                    if let Some(m) = overloaded {
-                        if method_call_refers_to_method(cx.tcx, method, m.def_id, m.substs, id) {
+                    if let Some(deref) = overloaded {
+                        let (def_id, substs) = deref.method_call(cx.tcx, source);
+                        if method_call_refers_to_method(cx.tcx, method, def_id, substs, id) {
                             return true;
                         }
+                        source = deref.target;
+                    } else {
+                        source = source.builtin_deref(true,
+                            ty::LvaluePreference::NoPreference).unwrap().ty;
                     }
                 }
             }

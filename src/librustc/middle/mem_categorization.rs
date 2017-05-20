@@ -485,8 +485,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                         debug!("cat_expr: autoderefs={:?}, cmt={:?}",
                                autoderefs, cmt);
                         for &overloaded in autoderefs {
-                            if let Some(method) = overloaded {
-                                cmt = self.cat_overloaded_autoderef(expr, method)?;
+                            if let Some(deref) = overloaded {
+                                cmt = self.cat_overloaded_autoderef(expr, deref)?;
                             } else {
                                 cmt = self.cat_deref(expr, cmt, false)?;
                             }
@@ -936,12 +936,15 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
     pub fn cat_overloaded_autoderef(&self,
                                     expr: &hir::Expr,
-                                    method: ty::MethodCallee<'tcx>)
+                                    deref: adjustment::OverloadedDeref<'tcx>)
                                     -> McResult<cmt<'tcx>> {
-        debug!("cat_overloaded_autoderef: method={:?}", method);
+        debug!("cat_overloaded_autoderef: deref={:?}", deref);
 
-        let ref_ty = method.sig.output();
-        let ref_ty = self.infcx.resolve_type_vars_if_possible(&ref_ty);
+        let target = self.infcx.resolve_type_vars_if_possible(&deref.target);
+        let ref_ty = self.tcx().mk_ref(deref.region, ty::TypeAndMut {
+            ty: target,
+            mutbl: deref.mutbl,
+        });
         let base_cmt = self.cat_rvalue_node(expr.id, expr.span, ref_ty);
         self.cat_deref(expr, base_cmt, false)
     }

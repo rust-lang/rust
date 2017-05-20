@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::probe;
+use super::{probe, MethodCallee};
 
 use check::{FnCtxt, LvalueOp, callee};
 use hir::def_id::DefId;
@@ -45,7 +45,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           unadjusted_self_ty: Ty<'tcx>,
                           pick: probe::Pick<'tcx>,
                           supplied_method_types: Vec<Ty<'tcx>>)
-                          -> ty::MethodCallee<'tcx> {
+                          -> MethodCallee<'tcx> {
         debug!("confirm(unadjusted_self_ty={:?}, pick={:?}, supplied_method_types={:?})",
                unadjusted_self_ty,
                pick,
@@ -74,7 +74,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                unadjusted_self_ty: Ty<'tcx>,
                pick: probe::Pick<'tcx>,
                supplied_method_types: Vec<Ty<'tcx>>)
-               -> ty::MethodCallee<'tcx> {
+               -> MethodCallee<'tcx> {
         // Adjust the self expression the user provided and obtain the adjusted type.
         let self_ty = self.adjust_self_ty(unadjusted_self_ty, &pick);
 
@@ -98,7 +98,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         self.add_obligations(method_ty, all_substs, &method_predicates);
 
         // Create the final `MethodCallee`.
-        let callee = ty::MethodCallee {
+        let callee = MethodCallee {
             def_id: pick.item.def_id,
             substs: all_substs,
             sig: method_sig,

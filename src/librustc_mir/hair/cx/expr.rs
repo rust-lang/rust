@@ -89,55 +89,56 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             Some((&ty::adjustment::Adjust::DerefRef { ref autoderefs, autoref, unsize },
                   adjusted_ty)) => {
                 for &overloaded in autoderefs {
-                    let mut ref_ty = expr.ty;
-                    let kind = if let Some(method) = overloaded {
-                        debug!("make_mirror: overloaded autoderef (method={:?})", method);
-
-                        ref_ty = method.sig.output();
-                        let (region, mt) = match ref_ty.sty {
-                            ty::TyRef(region, mt) => (region, mt),
-                            _ => span_bug!(expr.span, "autoderef returned bad type"),
-                        };
+                    let source = expr.ty;
+                    let target;
+                    let kind = if let Some(deref) = overloaded {
+                        debug!("make_mirror: overloaded autoderef ({:?})", deref);
 
                         expr = Expr {
                             temp_lifetime: temp_lifetime,
                             temp_lifetime_was_shrunk: was_shrunk,
-                            ty: cx.tcx.mk_ref(region,
+                            ty: cx.tcx.mk_ref(deref.region,
                                               ty::TypeAndMut {
-                                                  ty: expr.ty,
-                                                  mutbl: mt.mutbl,
+                                                  ty: source,
+                                                  mutbl: deref.mutbl,
                                               }),
                             span: expr.span,
                             kind: ExprKind::Borrow {
-                                region: region,
-                                borrow_kind: to_borrow_kind(mt.mutbl),
+                                region: deref.region,
+                                borrow_kind: to_borrow_kind(deref.mutbl),
                                 arg: expr.to_ref(),
                             },
                         };
 
+                        target = deref.target;
+
+                        let call = deref.method_call(cx.tcx, source);
                         overloaded_lvalue(cx,
                                           self,
-                                          mt.ty,
-                                          Some(method),
+                                          deref.target,
+                                          Some(call),
                                           PassArgs::ByRef,
                                           expr.to_ref(),
                                           vec![])
                     } else {
+                        match source.builtin_deref(true,
+                                                   ty::LvaluePreference::NoPreference) {
+                            Some(mt) => {
+                                target = mt.ty;
+                            }
+                            None => {
+                                span_bug!(self.span, "autoderef for {} failed: {}",
+                                          self.id, source);
+                            }
+                        };
                         debug!("make_mirror: built-in autoderef");
                         ExprKind::Deref { arg: expr.to_ref() }
                     };
-                    let adjusted_ty = match ref_ty.builtin_deref(true,
-                                                ty::LvaluePreference::NoPreference) {
-                        Some(mt) => mt.ty,
-                        None => {
-                            span_bug!(self.span, "autoderef for {} failed: {}", self.id, ref_ty);
-                        }
-                    };
-                    debug!("make_mirror: autoderef adjusted_ty={:?}", adjusted_ty);
+                    debug!("make_mirror: autoderef target={:?}", target);
                     expr = Expr {
                         temp_lifetime: temp_lifetime,
                         temp_lifetime_was_shrunk: was_shrunk,
-                        ty: adjusted_ty,
+                        ty: target,
                         span: self.span,
                         kind: kind,
                     };
@@ -698,10 +699,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
 fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                  expr: &hir::Expr,
-                                 custom_callee: Option<ty::MethodCallee<'tcx>>)
+                                 custom_callee: Option<(DefId, &'tcx Substs<'tcx>)>)
                                  -> Expr<'tcx> {
     let (temp_lifetime, was_shrunk) = cx.region_maps.temporary_scope2(expr.id);
-    let (def_id, substs) = custom_callee.map(|m| (m.def_id, m.substs)).unwrap_or_else(|| {
+    let (def_id, substs) = custom_callee.unwrap_or_else(|| {
         (cx.tables().type_dependent_defs[&expr.id].def_id(),
          cx.tables().node_substs(expr.id))
     });
@@ -945,7 +946,7 @@ enum PassArgs {
 
 fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                        expr: &'tcx hir::Expr,
-                                       custom_callee: Option<ty::MethodCallee<'tcx>>,
+                                       custom_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
                                        pass_args: PassArgs,
                                        receiver: ExprRef<'tcx>,
                                        args: Vec<&'tcx P<hir::Expr>>)
@@ -999,7 +1000,7 @@ fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                      expr: &'tcx hir::Expr,
                                      lvalue_ty: Ty<'tcx>,
-                                     custom_callee: Option<ty::MethodCallee<'tcx>>,
+                                     custom_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
                                      pass_args: PassArgs,
                                      receiver: ExprRef<'tcx>,
                                      args: Vec<&'tcx P<hir::Expr>>)
@@ -1016,13 +1017,13 @@ fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     // Reconstruct the output assuming it's a reference with the
     // same region and mutability as the receiver. This holds for
     // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
-    let (region, mutbl) = match recv_ty.sty {
-        ty::TyRef(region, mt) => (region, mt.mutbl),
+    let (region, mt) = match recv_ty.sty {
+        ty::TyRef(region, mt) => (region, mt),
         _ => span_bug!(expr.span, "overloaded_lvalue: receiver is not a reference"),
     };
     let ref_ty = cx.tcx.mk_ref(region, ty::TypeAndMut {
         ty: lvalue_ty,
-        mutbl,
+        mutbl: mt.mutbl,
     });
 
     // construct the complete expression `foo()` for the overloaded call,

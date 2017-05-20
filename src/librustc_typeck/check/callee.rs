@@ -10,13 +10,14 @@
 
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 use super::autoderef::Autoderef;
+use super::method::MethodCallee;
 
 use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::{infer, traits};
 use rustc::ty::{self, TyCtxt, LvaluePreference, Ty};
 use rustc::ty::subst::Subst;
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, OverloadedDeref};
 use syntax::abi;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
@@ -37,7 +38,7 @@ pub fn check_legal_trait_for_method_call(tcx: TyCtxt, span: Span, trait_id: DefI
 enum CallStep<'tcx> {
     Builtin(Ty<'tcx>),
     DeferredClosure(ty::FnSig<'tcx>),
-    Overloaded(ty::MethodCallee<'tcx>),
+    Overloaded(MethodCallee<'tcx>),
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
@@ -158,7 +159,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   call_expr: &hir::Expr,
                                   adjusted_ty: Ty<'tcx>)
                                   -> Option<(Option<AutoBorrow<'tcx>>,
-                                             ty::MethodCallee<'tcx>)> {
+                                             MethodCallee<'tcx>)> {
         // Try the options that are least restrictive on the caller first.
         for &(opt_trait_def_id, method_name) in
             &[(self.tcx.lang_items.fn_trait(), Symbol::intern("call")),
@@ -300,7 +301,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                call_expr: &hir::Expr,
                                arg_exprs: &'gcx [hir::Expr],
                                expected: Expectation<'tcx>,
-                               method_callee: ty::MethodCallee<'tcx>)
+                               method_callee: MethodCallee<'tcx>)
                                -> Ty<'tcx> {
         let output_type = self.check_method_argument_types(call_expr.span,
                                                            Ok(method_callee),
@@ -318,7 +319,7 @@ pub struct DeferredCallResolution<'gcx: 'tcx, 'tcx> {
     call_expr: &'gcx hir::Expr,
     callee_expr: &'gcx hir::Expr,
     adjusted_ty: Ty<'tcx>,
-    autoderefs: Vec<Option<ty::MethodCallee<'tcx>>>,
+    autoderefs: Vec<Option<OverloadedDeref<'tcx>>>,
     fn_sig: ty::FnSig<'tcx>,
     closure_def_id: DefId,
 }
