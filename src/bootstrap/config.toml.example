@@ -152,6 +152,10 @@
 # known-good version of OpenSSL, compile it, and link it to Cargo.
 #openssl-static = false
 
+# Run the build with low priority, by setting the process group's "nice" value
+# to +10 on Unix platforms, and by using a "low priority" job object on Windows.
+#low-priority = false
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
