@@ -37,7 +37,7 @@ use filetime::FileTime;
 use getopts::{optopt, optflag, reqopt};
 use common::Config;
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Mode};
-use test::TestPaths;
+use test::{TestPaths, ColorConfig};
 use util::logv;
 
 use self::header::EarlyProps;
@@ -90,6 +90,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optopt("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS"),
           optflag("", "verbose", "run tests verbosely, showing all output"),
           optflag("", "quiet", "print one character per test instead of one line"),
+          optopt("", "color", "coloring: auto, always, never", "WHEN"),
           optopt("", "logfile", "file to log test execution to", "FILE"),
           optopt("", "target", "the target to build for", "TARGET"),
           optopt("", "host", "the host to build for", "HOST"),
@@ -147,6 +148,13 @@ pub fn parse_config(args: Vec<String> ) -> Config {
 
     let (gdb, gdb_version, gdb_native_rust) = analyze_gdb(matches.opt_str("gdb"));
 
+    let color = match matches.opt_str("color").as_ref().map(|x| &**x) {
+        Some("auto") | None => ColorConfig::AutoColor,
+        Some("always") => ColorConfig::AlwaysColor,
+        Some("never") => ColorConfig::NeverColor,
+        Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
+    };
+
     Config {
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
@@ -185,6 +193,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
         quiet: matches.opt_present("quiet"),
+        color: color,
         remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
 
         cc: matches.opt_str("cc").unwrap(),
@@ -332,7 +341,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
             Ok(val) => &val != "0",
             Err(_) => false
         },
-        color: test::AutoColor,
+        color: config.color,
         test_threads: None,
         skip: vec![],
         list: false,
