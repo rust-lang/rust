@@ -110,7 +110,7 @@ mod job;
 
 #[cfg(not(windows))]
 mod job {
-    pub unsafe fn setup() {}
+    pub unsafe fn setup(_build: &mut ::Build) {}
 }
 
 pub use config::Config;
@@ -263,7 +263,7 @@ impl Build {
     /// Executes the entire build, as configured by the flags and configuration.
     pub fn build(&mut self) {
         unsafe {
-            job::setup();
+            job::setup(self);
         }
 
         if let Subcommand::Clean = self.flags.cmd {
