@@ -10,7 +10,7 @@
 
 // Test inclusive range syntax.
 
-#![feature(inclusive_range_syntax, inclusive_range, step_by)]
+#![feature(inclusive_range_syntax, inclusive_range, iterator_step_by)]
 
 use std::ops::{RangeInclusive, RangeToInclusive};
 

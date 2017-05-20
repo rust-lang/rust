@@ -199,7 +199,6 @@
     - [sort_internals](library-features/sort-internals.md)
     - [sort_unstable](library-features/sort-unstable.md)
     - [splice](library-features/splice.md)
-    - [step_by](library-features/step-by.md)
     - [step_trait](library-features/step-trait.md)
     - [str_checked_slicing](library-features/str-checked-slicing.md)
     - [str_escape](library-features/str-escape.md)

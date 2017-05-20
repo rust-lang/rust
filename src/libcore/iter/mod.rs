@@ -311,9 +311,6 @@ pub use self::iterator::Iterator;
            reason = "likely to be replaced by finer-grained traits",
            issue = "27741")]
 pub use self::range::Step;
-#[unstable(feature = "step_by", reason = "recent addition",
-           issue = "27741")]
-pub use self::range::StepBy as DeprecatedStepBy;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::sources::{Repeat, repeat};
@@ -551,6 +548,19 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
             self.iter.next()
         } else {
             self.iter.nth(self.step)
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let inner_hint = self.iter.size_hint();
+
+        if self.first_take {
+            let f = |n| if n == 0 { 0 } else { 1 + (n-1)/(self.step+1) };
+            (f(inner_hint.0), inner_hint.1.map(f))
+        } else {
+            let f = |n| n / (self.step+1);
+            (f(inner_hint.0), inner_hint.1.map(f))
         }
     }
 }

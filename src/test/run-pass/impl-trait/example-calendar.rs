@@ -162,20 +162,8 @@ impl<'a, 'b> std::ops::Add<&'b NaiveDate> for &'a NaiveDate {
 }
 
 impl std::iter::Step for NaiveDate {
-    fn step(&self, by: &Self) -> Option<Self> {
-        Some(self + by)
-    }
-
-    fn steps_between(_: &Self, _: &Self, _: &Self) -> Option<usize> {
-        unimplemented!()
-    }
-
     fn steps_between_by_one(_: &Self, _: &Self) -> Option<usize> {
         unimplemented!()
-    }
-
-    fn is_negative(&self) -> bool {
-        false
     }
 
     fn replace_one(&mut self) -> Self {
