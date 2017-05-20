@@ -680,7 +680,7 @@ impl ExactSizeIterator for Args {
     fn is_empty(&self) -> bool { self.inner.is_empty() }
 }
 
-#[stable(feature = "env_iterators", since = "1.11.0")]
+#[stable(feature = "env_iterators", since = "1.12.0")]
 impl DoubleEndedIterator for Args {
     fn next_back(&mut self) -> Option<String> {
         self.inner.next_back().map(|s| s.into_string().unwrap())
@@ -707,7 +707,7 @@ impl ExactSizeIterator for ArgsOs {
     fn is_empty(&self) -> bool { self.inner.is_empty() }
 }
 
-#[stable(feature = "env_iterators", since = "1.11.0")]
+#[stable(feature = "env_iterators", since = "1.12.0")]
 impl DoubleEndedIterator for ArgsOs {
     fn next_back(&mut self) -> Option<OsString> { self.inner.next_back() }
 }

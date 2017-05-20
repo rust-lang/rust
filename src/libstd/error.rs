@@ -193,7 +193,7 @@ impl From<String> for Box<Error + Send + Sync> {
     }
 }
 
-#[stable(feature = "string_box_error", since = "1.7.0")]
+#[stable(feature = "string_box_error", since = "1.6.0")]
 impl From<String> for Box<Error> {
     fn from(str_err: String) -> Box<Error> {
         let err1: Box<Error + Send + Sync> = From::from(str_err);
@@ -209,7 +209,7 @@ impl<'a, 'b> From<&'b str> for Box<Error + Send + Sync + 'a> {
     }
 }
 
-#[stable(feature = "string_box_error", since = "1.7.0")]
+#[stable(feature = "string_box_error", since = "1.6.0")]
 impl<'a> From<&'a str> for Box<Error> {
     fn from(err: &'a str) -> Box<Error> {
         From::from(String::from(err))
@@ -282,7 +282,7 @@ impl Error for char::DecodeUtf16Error {
     }
 }
 
-#[stable(feature = "box_error", since = "1.7.0")]
+#[stable(feature = "box_error", since = "1.8.0")]
 impl<T: Error> Error for Box<T> {
     fn description(&self) -> &str {
         Error::description(&**self)

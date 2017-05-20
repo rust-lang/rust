@@ -1655,7 +1655,7 @@ impl<I> Iterator for Skip<I> where I: Iterator {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Skip<I> where I: ExactSizeIterator {}
 
-#[stable(feature = "double_ended_skip_iterator", since = "1.8.0")]
+#[stable(feature = "double_ended_skip_iterator", since = "1.9.0")]
 impl<I> DoubleEndedIterator for Skip<I> where I: DoubleEndedIterator + ExactSizeIterator {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.len() > 0 {

@@ -153,7 +153,7 @@ pub struct MutexGuard<'a, T: ?Sized + 'a> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> !Send for MutexGuard<'a, T> { }
-#[stable(feature = "mutexguard", since = "1.18.0")]
+#[stable(feature = "mutexguard", since = "1.19.0")]
 unsafe impl<'a, T: ?Sized + Sync> Sync for MutexGuard<'a, T> { }
 
 impl<T> Mutex<T> {
@@ -372,7 +372,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Mutex<T> {
     }
 }
 
-#[stable(feature = "mutex_default", since = "1.9.0")]
+#[stable(feature = "mutex_default", since = "1.10.0")]
 impl<T: ?Sized + Default> Default for Mutex<T> {
     /// Creates a `Mutex<T>`, with the `Default` value for T.
     fn default() -> Mutex<T> {

@@ -2682,8 +2682,8 @@ pub use num::dec2flt::ParseFloatError;
 // Conversions T -> T are covered by a blanket impl and therefore excluded
 // Some conversions from and to usize/isize are not implemented due to portability concerns
 macro_rules! impl_from {
-    ($Small: ty, $Large: ty) => {
-        #[stable(feature = "lossless_prim_conv", since = "1.5.0")]
+    ($Small: ty, $Large: ty, #[$attr:meta]) => {
+        #[$attr]
         impl From<$Small> for $Large {
             #[inline]
             fn from(small: $Small) -> $Large {
@@ -2694,60 +2694,60 @@ macro_rules! impl_from {
 }
 
 // Unsigned -> Unsigned
-impl_from! { u8, u16 }
-impl_from! { u8, u32 }
-impl_from! { u8, u64 }
-impl_from! { u8, u128 }
-impl_from! { u8, usize }
-impl_from! { u16, u32 }
-impl_from! { u16, u64 }
-impl_from! { u16, u128 }
-impl_from! { u32, u64 }
-impl_from! { u32, u128 }
-impl_from! { u64, u128 }
+impl_from! { u8, u16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u8, u32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u8, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u8, u128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u8, usize, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u16, u32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u16, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u16, u128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u32, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u32, u128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u64, u128, #[unstable(feature = "i128", issue = "35118")] }
 
 // Signed -> Signed
-impl_from! { i8, i16 }
-impl_from! { i8, i32 }
-impl_from! { i8, i64 }
-impl_from! { i8, i128 }
-impl_from! { i8, isize }
-impl_from! { i16, i32 }
-impl_from! { i16, i64 }
-impl_from! { i16, i128 }
-impl_from! { i32, i64 }
-impl_from! { i32, i128 }
-impl_from! { i64, i128 }
+impl_from! { i8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i8, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i8, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i8, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { i8, isize, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i16, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i16, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i16, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { i32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i32, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { i64, i128, #[unstable(feature = "i128", issue = "35118")] }
 
 // Unsigned -> Signed
-impl_from! { u8, i16 }
-impl_from! { u8, i32 }
-impl_from! { u8, i64 }
-impl_from! { u8, i128 }
-impl_from! { u16, i32 }
-impl_from! { u16, i64 }
-impl_from! { u16, i128 }
-impl_from! { u32, i64 }
-impl_from! { u32, i128 }
-impl_from! { u64, i128 }
+impl_from! { u8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u8, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u8, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u8, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u16, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u16, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u16, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u32, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u64, i128, #[unstable(feature = "i128", issue = "35118")] }
 
 // Note: integers can only be represented with full precision in a float if
 // they fit in the significand, which is 24 bits in f32 and 53 bits in f64.
 // Lossy float conversions are not implemented at this time.
 
 // Signed -> Float
-impl_from! { i8, f32 }
-impl_from! { i8, f64 }
-impl_from! { i16, f32 }
-impl_from! { i16, f64 }
-impl_from! { i32, f64 }
+impl_from! { i8, f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { i8, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { i16, f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { i16, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { i32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
 
 // Unsigned -> Float
-impl_from! { u8, f32 }
-impl_from! { u8, f64 }
-impl_from! { u16, f32 }
-impl_from! { u16, f64 }
-impl_from! { u32, f64 }
+impl_from! { u8, f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { u8, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { u16, f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { u16, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { u32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
 
 // Float -> Float
-impl_from! { f32, f64 }
+impl_from! { f32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }

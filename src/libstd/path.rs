@@ -1341,14 +1341,14 @@ impl<'a> From<&'a Path> for Box<Path> {
     }
 }
 
-#[stable(feature = "path_buf_from_box", since = "1.17.0")]
+#[stable(feature = "path_buf_from_box", since = "1.18.0")]
 impl<'a> From<Box<Path>> for PathBuf {
     fn from(boxed: Box<Path>) -> PathBuf {
         boxed.into_path_buf()
     }
 }
 
-#[stable(feature = "box_from_path_buf", since = "1.17.0")]
+#[stable(feature = "box_from_path_buf", since = "1.18.0")]
 impl Into<Box<Path>> for PathBuf {
     fn into(self) -> Box<Path> {
         self.into_boxed_path()
@@ -1424,7 +1424,7 @@ impl Borrow<Path> for PathBuf {
     }
 }
 
-#[stable(feature = "default_for_pathbuf", since = "1.16.0")]
+#[stable(feature = "default_for_pathbuf", since = "1.17.0")]
 impl Default for PathBuf {
     fn default() -> Self {
         PathBuf::new()

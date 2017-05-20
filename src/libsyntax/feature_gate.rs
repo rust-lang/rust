@@ -410,7 +410,7 @@ declare_features! (
     (accepted, question_mark, "1.13.0", Some(31436)),
     // Allows `..` in tuple (struct) patterns
     (accepted, dotdot_in_tuple_patterns, "1.14.0", Some(33627)),
-    (accepted, item_like_imports, "1.14.0", Some(35120)),
+    (accepted, item_like_imports, "1.15.0", Some(35120)),
     // Allows using `Self` and associated types in struct expressions and patterns.
     (accepted, more_struct_aliases, "1.16.0", Some(37544)),
     // elide `'static` lifetimes in `static`s and `const`s

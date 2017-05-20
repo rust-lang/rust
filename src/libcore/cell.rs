@@ -1145,7 +1145,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     }
 }
 
-#[stable(feature = "unsafe_cell_default", since = "1.9.0")]
+#[stable(feature = "unsafe_cell_default", since = "1.10.0")]
 impl<T: Default> Default for UnsafeCell<T> {
     /// Creates an `UnsafeCell`, with the `Default` value for T.
     fn default() -> UnsafeCell<T> {
