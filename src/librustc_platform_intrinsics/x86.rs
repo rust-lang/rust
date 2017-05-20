@@ -743,12 +743,12 @@ pub fn find(name: &str) -> Option<Intrinsic> {
             definition: Named("llvm.x86.bmi.pext.64")
         },
         "_bmi_bextr_32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32, &::U32]; &INPUTS },
+            inputs: { static INPUTS: [&'static Type; 3] = [&::U32, &::U32, &::U32]; &INPUTS },
             output: &::U32,
             definition: Named("llvm.x86.bmi.bextr.32")
         },
         "_bmi_bextr_64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64, &::U64]; &INPUTS },
+            inputs: { static INPUTS: [&'static Type; 3] = [&::U64, &::U32, &::U32]; &INPUTS },
             output: &::U64,
             definition: Named("llvm.x86.bmi.bextr.64")
         },

@@ -7,7 +7,7 @@
             "width": ["0"],
             "llvm": "bextr.{0.bitwidth}",
             "ret": "S(32-64)u",
-            "args": ["0", "0"]
+            "args": ["0", "U32", "U32"]
         }
     ]
 }
