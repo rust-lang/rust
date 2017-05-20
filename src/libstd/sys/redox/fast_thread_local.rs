@@ -12,8 +12,9 @@
 #![unstable(feature = "thread_local_internals", issue = "0")]
 
 use cell::{Cell, UnsafeCell};
-use intrinsics;
+use mem;
 use ptr;
+
 
 pub struct Key<T> {
     inner: UnsafeCell<Option<T>>,
@@ -37,7 +38,7 @@ impl<T> Key<T> {
 
     pub fn get(&'static self) -> Option<&'static UnsafeCell<Option<T>>> {
         unsafe {
-            if intrinsics::needs_drop::<T>() && self.dtor_running.get() {
+            if mem::needs_drop::<T>() && self.dtor_running.get() {
                 return None
             }
             self.register_dtor();
@@ -46,7 +47,7 @@ impl<T> Key<T> {
     }
 
     unsafe fn register_dtor(&self) {
-        if !intrinsics::needs_drop::<T>() || self.dtor_registered.get() {
+        if !mem::needs_drop::<T>() || self.dtor_registered.get() {
             return
         }
 

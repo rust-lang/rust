@@ -281,6 +281,7 @@
 #![feature(linkage)]
 #![feature(macro_reexport)]
 #![feature(needs_panic_runtime)]
+#![feature(needs_drop)]
 #![feature(never_type)]
 #![feature(num_bits_bytes)]
 #![feature(old_wrapping)]

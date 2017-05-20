@@ -302,6 +302,58 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
     unsafe { intrinsics::min_align_of_val(val) }
 }
 
+/// Returns whether dropping values of type `T` matters.
+///
+/// This is purely an optimization hint, and may be implemented conservatively.
+/// For instance, always returning `true` would be a valid implementation of
+/// this function.
+///
+/// Low level implementations of things like collections, which need to manually
+/// drop their data, should use this function to avoid unnecessarily
+/// trying to drop all their contents when they are destroyed. This might not
+/// make a difference in release builds (where a loop that has no side-effects
+/// is easily detected and eliminated), but is often a big win for debug builds.
+///
+/// Note that `ptr::drop_in_place` already performs this check, so if your workload
+/// can be reduced to some small number of drop_in_place calls, using this is
+/// unnecessary. In particular note that you can drop_in_place a slice, and that
+/// will do a single needs_drop check for all the values.
+///
+/// Types like Vec therefore just `drop_in_place(&mut self[..])` without using
+/// needs_drop explicitly. Types like HashMap, on the other hand, have to drop
+/// values one at a time and should use this API.
+///
+///
+/// # Examples
+///
+/// Here's an example of how a collection might make use of needs_drop:
+///
+/// ```ignore
+/// #![feature(needs_drop)]
+/// use std::{mem, ptr};
+///
+/// pub struct MyCollection<T> { /* ... */ }
+///
+/// impl<T> Drop for MyCollection<T> {
+///     fn drop(&mut self) {
+///         unsafe {
+///             // drop the data
+///             if mem::needs_drop::<T>() {
+///                 for x in self.iter_mut() {
+///                     ptr::drop_in_place(x);
+///                 }
+///             }
+///             self.free_buffer();
+///         }
+///     }
+/// }
+/// ```
+#[inline]
+#[unstable(feature = "needs_drop", issue = "41890")]
+pub fn needs_drop<T>() -> bool {
+    unsafe { intrinsics::needs_drop::<T>() }
+}
+
 /// Creates a value whose bytes are all zero.
 ///
 /// This has the same effect as allocating space with
