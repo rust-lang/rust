@@ -273,11 +273,8 @@ fn main() {
         }
     }
 
-    // LLVM requires symbols from this library, but apparently they're not printeds
+    // LLVM requires symbols from this library, but apparently they're not printed
     // during llvm-config?
-    if target.contains("windows") {
-        println!("cargo:rustc-link-lib=ole32");
-    }
     if target.contains("windows-gnu") {
         println!("cargo:rustc-link-lib=static-nobundle=gcc_s");
         println!("cargo:rustc-link-lib=static-nobundle=pthread");
