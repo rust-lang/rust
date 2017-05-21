@@ -1519,7 +1519,11 @@ impl<'a> Resolver<'a> {
                                       path_span: Span)
                                       -> Option<LexicalScopeBinding<'a>> {
         if ns == TypeNS {
-            ident.ctxt = ident.ctxt.modern();
+            ident.ctxt = if ident.name == keywords::SelfType.name() {
+                SyntaxContext::empty() // FIXME(jseyfried) improve `Self` hygiene
+            } else {
+                ident.ctxt.modern()
+            }
         }
 
         // Walk backwards up the ribs in scope.
