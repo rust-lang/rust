@@ -918,6 +918,7 @@ impl<T> AtomicPtr<T> {
     }
 }
 
+#[cfg(target_has_atomic = "ptr")]
 macro_rules! atomic_int {
     ($stable:meta,
      $stable_cxchg:meta,

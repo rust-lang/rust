@@ -1296,10 +1296,8 @@ impl Write for BufferedWriter {
     }
     fn flush(&mut self) -> io::Result<()> {
         let mut stderr = io::stderr();
-        let result = (|| {
-            stderr.write_all(&self.buffer)?;
-            stderr.flush()
-        })();
+        let result = stderr.write_all(&self.buffer)
+                           .and_then(|_| stderr.flush());
         self.buffer.clear();
         result
     }

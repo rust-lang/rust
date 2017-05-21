@@ -1342,7 +1342,7 @@ impl<'a> From<&'a Path> for Box<Path> {
 }
 
 #[stable(feature = "path_buf_from_box", since = "1.18.0")]
-impl<'a> From<Box<Path>> for PathBuf {
+impl From<Box<Path>> for PathBuf {
     fn from(boxed: Box<Path>) -> PathBuf {
         boxed.into_path_buf()
     }

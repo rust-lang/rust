@@ -530,7 +530,7 @@ impl<'a> From<&'a OsStr> for Box<OsStr> {
 }
 
 #[stable(feature = "os_string_from_box", since = "1.18.0")]
-impl<'a> From<Box<OsStr>> for OsString {
+impl From<Box<OsStr>> for OsString {
     fn from(boxed: Box<OsStr>) -> OsString {
         boxed.into_os_string()
     }

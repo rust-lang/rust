@@ -192,8 +192,8 @@ impl<'a> Debug for DiagnosticBuilder<'a> {
     }
 }
 
-/// Destructor bomb - a DiagnosticBuilder must be either emitted or cancelled or
-/// we emit a bug.
+/// Destructor bomb - a `DiagnosticBuilder` must be either emitted or cancelled
+/// or we emit a bug.
 impl<'a> Drop for DiagnosticBuilder<'a> {
     fn drop(&mut self) {
         if !panicking() && !self.cancelled() {

@@ -12,9 +12,8 @@ use alloc::heap::{allocate, deallocate};
 
 use cmp;
 use hash::{BuildHasher, Hash, Hasher};
-use intrinsics::needs_drop;
 use marker;
-use mem::{align_of, size_of};
+use mem::{align_of, size_of, needs_drop};
 use mem;
 use ops::{Deref, DerefMut};
 use ptr::{self, Unique, Shared};
