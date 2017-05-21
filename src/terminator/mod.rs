@@ -493,6 +493,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
 
+            "__rust_allocate_zeroed" => {
+                let size = self.value_to_primval(args[0], usize)?.to_u64()?;
+                let align = self.value_to_primval(args[1], usize)?.to_u64()?;
+                let ptr = self.memory.allocate(size, align)?;
+                self.memory.write_repeat(ptr, 0, size)?;
+                self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
+            }
+
             "__rust_deallocate" => {
                 let ptr = args[0].read_ptr(&self.memory)?;
                 // FIXME: insert sanity check for size and align?
