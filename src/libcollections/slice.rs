@@ -1342,13 +1342,11 @@ impl<T> [T] {
     /// slice.  Equivalently, rotates the slice `mid` places to the left
     /// or `k = self.len() - mid` places to the right.
     ///
-    /// Rotation by `mid` and rotation by `k` are inverse operations.
-    /// The method returns `k`, which is also the new location of
-    /// the formerly-first element.
-    ///
     /// This is a "k-rotation", a permutation in which item `i` moves to
     /// position `i + k`, modulo the length of the slice.  See _Elements
     /// of Programming_ [§10.4][eop].
+    ///
+    /// Rotation by `mid` and rotation by `k` are inverse operations.
     ///
     /// [eop]: https://books.google.com/books?id=CO9ULZGINlsC&pg=PA178&q=k-rotation
     ///
@@ -1368,8 +1366,10 @@ impl<T> [T] {
     /// #![feature(slice_rotate)]
     ///
     /// let mut a = [1, 2, 3, 4, 5, 6, 7];
-    /// let k = a.rotate(2);
+    /// let mid = 2;
+    /// a.rotate(mid);
     /// assert_eq!(&a, &[3, 4, 5, 6, 7, 1, 2]);
+    /// let k = a.len() - mid;
     /// a.rotate(k);
     /// assert_eq!(&a, &[1, 2, 3, 4, 5, 6, 7]);
     ///
@@ -1388,8 +1388,8 @@ impl<T> [T] {
     /// assert_eq!(&v, &[0, 3, 7, 4, 5, 6, 1, 2, 8, 9]);
     /// ```
     #[unstable(feature = "slice_rotate", issue = "41891")]
-    pub fn rotate(&mut self, mid: usize) -> usize {
-        core_slice::SliceExt::rotate(self, mid)
+    pub fn rotate(&mut self, mid: usize) {
+        core_slice::SliceExt::rotate(self, mid);
     }
 
     /// Copies the elements from `src` into `self`.

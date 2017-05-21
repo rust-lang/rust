@@ -482,9 +482,8 @@ fn test_rotate() {
 
     // happy path
     v = (5..13).chain(0..5).collect();
-    let k = v.rotate(8);
+    v.rotate(8);
     assert_eq!(v, expected);
-    assert_eq!(k, 5);
 
     let expected: Vec<_> = (0..1000).collect();
 

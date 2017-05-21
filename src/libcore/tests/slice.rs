@@ -246,9 +246,9 @@ fn test_rotate() {
         a[i] = i;
     }
 
-    let k = a.rotate(42);
+    a.rotate(42);
+    let k = N - 42;
 
-    assert_eq!(k, N - 42);
     for i in 0..N {
         assert_eq!(a[(i+k)%N], i);
     }
