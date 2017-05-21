@@ -928,8 +928,6 @@ impl Child {
     /// Basic usage:
     ///
     /// ```no_run
-    /// #![feature(process_try_wait)]
-    ///
     /// use std::process::Command;
     ///
     /// let mut child = Command::new("ls").spawn().unwrap();
@@ -944,7 +942,7 @@ impl Child {
     ///     Err(e) => println!("error attempting to wait: {}", e),
     /// }
     /// ```
-    #[unstable(feature = "process_try_wait", issue = "38903")]
+    #[stable(feature = "process_try_wait", since = "1.18.0")]
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
         Ok(self.handle.try_wait()?.map(ExitStatus))
     }

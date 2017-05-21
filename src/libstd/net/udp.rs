@@ -112,7 +112,6 @@ impl UdpSocket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(peek)]
     /// use std::net::UdpSocket;
     ///
     /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
@@ -120,7 +119,7 @@ impl UdpSocket {
     /// let (number_of_bytes, src_addr) = socket.peek_from(&mut buf)
     ///                                         .expect("Didn't receive data");
     /// ```
-    #[unstable(feature = "peek", issue = "38980")]
+    #[stable(feature = "peek", since = "1.18.0")]
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.0.peek_from(buf)
     }
@@ -638,7 +637,6 @@ impl UdpSocket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(peek)]
     /// use std::net::UdpSocket;
     ///
     /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
@@ -649,7 +647,7 @@ impl UdpSocket {
     ///     Err(e) => println!("peek function failed: {:?}", e),
     /// }
     /// ```
-    #[unstable(feature = "peek", issue = "38980")]
+    #[stable(feature = "peek", since = "1.18.0")]
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.peek(buf)
     }

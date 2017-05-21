@@ -343,7 +343,6 @@ impl TcpStream {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(peek)]
     /// use std::net::TcpStream;
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8000")
@@ -351,7 +350,7 @@ impl TcpStream {
     /// let mut buf = [0; 10];
     /// let len = stream.peek(&mut buf).expect("peek failed");
     /// ```
-    #[unstable(feature = "peek", issue = "38980")]
+    #[stable(feature = "peek", since = "1.18.0")]
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.peek(buf)
     }

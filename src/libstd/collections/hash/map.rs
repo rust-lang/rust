@@ -1231,14 +1231,13 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// #![feature(retain_hash_collection)]
     /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<isize, isize> = (0..8).map(|x|(x, x*10)).collect();
     /// map.retain(|&k, _| k % 2 == 0);
     /// assert_eq!(map.len(), 4);
     /// ```
-    #[unstable(feature = "retain_hash_collection", issue = "36648")]
+    #[stable(feature = "retain_hash_collection", since = "1.18.0")]
     pub fn retain<F>(&mut self, mut f: F)
         where F: FnMut(&K, &mut V) -> bool
     {
