@@ -13,6 +13,10 @@ fn make_vec_macro_repeat() -> Vec<u8> {
     vec![42; 5]
 }
 
+fn make_vec_macro_repeat_zeroed() -> Vec<u8> {
+    vec![0; 7]
+}
+
 fn vec_into_iter() -> u8 {
     vec![1, 2, 3, 4]
         .into_iter()
@@ -34,4 +38,5 @@ fn main() {
     assert_eq!(make_vec().capacity(), 4);
     assert_eq!(make_vec_macro(), [1, 2]);
     assert_eq!(make_vec_macro_repeat(), [42; 5]);
+    assert_eq!(make_vec_macro_repeat_zeroed(), [0; 7]);
 }
