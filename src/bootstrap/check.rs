@@ -132,6 +132,9 @@ pub fn tidy(build: &Build, host: &str) {
     if !build.config.vendor {
         cmd.arg("--no-vendor");
     }
+    if build.config.quiet_tests {
+        cmd.arg("--quiet");
+    }
     build.run(&mut cmd);
 }
 
@@ -355,13 +358,14 @@ fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
     cmd.arg(markdown);
     cmd.env("RUSTC_BOOTSTRAP", "1");
 
-    let mut test_args = build.flags.cmd.test_args().join(" ");
-    if build.config.quiet_tests {
-        test_args.push_str(" --quiet");
-    }
+    let test_args = build.flags.cmd.test_args().join(" ");
     cmd.arg("--test-args").arg(test_args);
 
-    build.run(&mut cmd);
+    if build.config.quiet_tests {
+        build.run_quiet(&mut cmd);
+    } else {
+        build.run(&mut cmd);
+    }
 }
 
 /// Run all unit tests plus documentation tests for an entire crate DAG defined
