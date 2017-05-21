@@ -9,9 +9,11 @@
 // except according to those terms.
 
 #![allow(unused)]
+#![deny(private_in_public)]
 
 extern crate core;
 pub use core as reexported_core; //~ ERROR `core` is private, and cannot be reexported
+                                 //~^ WARN this was previously accepted
 
 mod foo1 {
     extern crate core;
@@ -19,6 +21,7 @@ mod foo1 {
 
 mod foo2 {
     use foo1::core; //~ ERROR `core` is private, and cannot be reexported
+                    //~^ WARN this was previously accepted
     pub mod bar {
         extern crate core;
     }
@@ -26,6 +29,7 @@ mod foo2 {
 
 mod baz {
     pub use foo2::bar::core; //~ ERROR `core` is private, and cannot be reexported
+                             //~^ WARN this was previously accepted
 }
 
 fn main() {}
