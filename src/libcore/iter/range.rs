@@ -575,6 +575,10 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> where
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
+        if !(self.start <= self.end) {
+            return (0, Some(0));
+        }
+
         match Step::steps_between_by_one(&self.start, &self.end) {
             Some(hint) => (hint.saturating_add(1), hint.checked_add(1)),
             None => (0, None),

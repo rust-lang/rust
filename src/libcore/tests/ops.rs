@@ -62,4 +62,9 @@ fn test_range_inclusive() {
     r = RangeInclusive { start: -128i8, end: -128 };
     assert_eq!(r.next_back(), Some(-128));
     assert_eq!(r.next_back(), None);
+
+    // degenerate
+    r = RangeInclusive { start: 1, end: -1 };
+    assert_eq!(r.size_hint(), (0, Some(0)));
+    assert_eq!(r.next(), None);
 }
