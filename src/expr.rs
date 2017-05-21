@@ -1348,7 +1348,7 @@ impl Rewrite for ast::Arm {
             ast::ExprKind::Closure(..) => (true, &**body),
             _ => (false, &**body),
         };
-        extend &= context.config.fn_call_style == IndentStyle::Block;
+        extend &= context.config.fn_call_style() == IndentStyle::Block;
 
         let comma = arm_comma(&context.config, body);
         let alt_block_sep = String::from("\n") +
@@ -1746,9 +1746,9 @@ fn rewrite_call_args(context: &RewriteContext,
     if overflow_last {
         let last_arg = args.last().unwrap();
         let arg_shape = match last_arg.node {
-            ast::ExprKind::Closure(..) if context.config.fn_call_style == IndentStyle::Block => {
+            ast::ExprKind::Closure(..) if context.config.fn_call_style() == IndentStyle::Block => {
                 let mut arg_shape = shape.block();
-                arg_shape.indent.block_indent -= context.config.tab_spaces;
+                arg_shape.indent.block_indent -= context.config.tab_spaces();
                 arg_shape
             }
             _ => shape.block(),

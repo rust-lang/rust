@@ -13,18 +13,20 @@ fn main() {
         "elit",
     );
     // #1501
-    let hyper = Arc::new(
-        Client::with_connector(HttpsConnector::new(TlsClient::new())),
-    );
+    let hyper = Arc::new(Client::with_connector(HttpsConnector::new(
+        TlsClient::new(),
+    )));
 }
 
 // #1521
 impl Foo {
     fn map_pixel_to_coords(&self, point: &Vector2i, view: &View) -> Vector2f {
         unsafe {
-            Vector2f::from_raw(
-                ffi::sfRenderTexture_mapPixelToCoords(self.render_texture, point.raw(), view.raw()),
-            )
+            Vector2f::from_raw(ffi::sfRenderTexture_mapPixelToCoords(
+                self.render_texture,
+                point.raw(),
+                view.raw(),
+            ))
         }
     }
 }
@@ -57,4 +59,51 @@ fn query(conn: &Connection) -> Result<()> {
     )?;
 
     Ok(())
+}
+
+// #1449
+fn future_rayon_wait_1_thread() {
+    // run with only 1 worker thread; this would deadlock if we couldn't make progress
+    let mut result = None;
+    ThreadPool::new(Configuration::new().num_threads(1))
+        .unwrap()
+        .install(|| {
+            scope(|s| {
+                use std::sync::mpsc::channel;
+                let (tx, rx) = channel();
+                let a = s.spawn_future(lazy(move || Ok::<usize, ()>(rx.recv().unwrap())));
+                //                          ^^^^ FIXME: why is this needed?
+                let b = s.spawn_future(a.map(|v| v + 1));
+                let c = s.spawn_future(b.map(|v| v + 1));
+                s.spawn(move |_| tx.send(20).unwrap());
+                result = Some(c.rayon_wait().unwrap());
+            });
+        });
+    assert_eq!(result, Some(22));
+}
+
+// #1494
+impl Cursor {
+    fn foo() {
+        self.cur_type()
+            .num_template_args()
+            .or_else(|| {
+                let n: c_int = unsafe { clang_Cursor_getNumTemplateArguments(self.x) };
+
+                if n >= 0 {
+                    Some(n as u32)
+                } else {
+                    debug_assert_eq!(n, -1);
+                    None
+                }
+            })
+            .or_else(|| {
+                let canonical = self.canonical();
+                if canonical != *self {
+                    canonical.num_template_args()
+                } else {
+                    None
+                }
+            });
+    }
 }

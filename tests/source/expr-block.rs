@@ -143,3 +143,88 @@ fn foo() {
          DefinitiveListTactic::Horizontal
     }
 }
+
+fn combine_block() {
+    foo(
+        Bar {
+            x: value,
+            y: value2,
+        },
+    );
+
+    let opt = Some(
+        Struct(
+            long_argument_one,
+            long_argument_two,
+            long_argggggggg,
+        ),
+    );
+
+    do_thing(
+        |param| {
+            action();
+            foo(param)
+        },
+    );
+
+    do_thing(
+        x,
+        |param| {
+            action();
+            foo(param)
+        },
+    );
+
+    Ok(
+        some_function(
+            lllllllllong_argument_one,
+            lllllllllong_argument_two,
+            lllllllllllllllllllllllllllllong_argument_three,
+        ),
+    );
+
+    foo(
+        thing,
+        bar(
+            param2,
+            pparam1param1param1param1param1param1param1param1param1param1aram1,
+            param3,
+        ),
+    );
+
+    foo.map_or(
+        || {
+            Ok(
+                SomeStruct {
+                    f1: 0,
+                    f2: 0,
+                    f3: 0,
+                },
+            )
+        },
+    );
+
+    match opt {
+        Some(x) => somefunc(anotherfunc(
+            long_argument_one,
+            long_argument_two,
+            long_argument_three,
+        )),
+        None => Ok(SomeStruct {
+            f1: long_argument_one,
+            f2: long_argument_two,
+            f3: long_argument_three,
+        }),
+    };
+
+    match x {
+        y => func(
+            xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+        ),
+        _ => func(
+            x,
+            yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
+            zzz,
+        ),
+    }
+}
