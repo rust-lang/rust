@@ -1334,18 +1334,21 @@ impl Rewrite for ast::Arm {
 
         let pats_str = format!("{}{}", pats_str, guard_str);
 
-        let body = match body.node {
+        let (mut extend, body) = match body.node {
             ast::ExprKind::Block(ref block) if !is_unsafe_block(block) &&
                                                is_simple_block(block, context.codemap) &&
                                                context.config.wrap_match_arms() => {
                 if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
-                    expr
+                    (false, &**expr)
                 } else {
-                    &**body
+                    (false, &**body)
                 }
             }
-            _ => &**body,
+            ast::ExprKind::Call(_, ref args) => (args.len() == 1, &**body),
+            ast::ExprKind::Closure(..) => (true, &**body),
+            _ => (false, &**body),
         };
+        extend &= context.config.fn_call_style == IndentStyle::Block;
 
         let comma = arm_comma(&context.config, body);
         let alt_block_sep = String::from("\n") +
@@ -1371,6 +1374,7 @@ impl Rewrite for ast::Arm {
                 Some(ref body_str) if (!body_str.contains('\n') &&
                                        body_str.len() <= arm_shape.width) ||
                                       !context.config.wrap_match_arms() ||
+                                      (extend && first_line_width(body_str) <= arm_shape.width) ||
                                       is_block => {
                     let block_sep = match context.config.control_brace_style() {
                         ControlBraceStyle::AlwaysNextLine if is_block => alt_block_sep.as_str(),
@@ -1611,9 +1615,7 @@ pub fn rewrite_call<R>(context: &RewriteContext,
     let closure =
         |callee_max_width| rewrite_call_inner(context, callee, callee_max_width, args, span, shape);
 
-    // 2 is for parens
-    let max_width = try_opt!(shape.width.checked_sub(2));
-    binary_search(1, max_width, closure)
+    binary_search(1, shape.width, closure)
 }
 
 fn rewrite_call_inner<R>(context: &RewriteContext,
@@ -1635,25 +1637,43 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
         .rewrite(context, callee_shape)
         .ok_or(Ordering::Greater)?;
 
-    // 4 = `(  )`, 2 = `()`
+    // 2 = `( `, 1 = `(`
     let paren_overhead = if context.config.spaces_within_parens() {
-        4
-    } else {
         2
+    } else {
+        1
     };
     let used_width = extra_offset(&callee_str, shape);
     let one_line_width = shape
         .width
-        .checked_sub(used_width + paren_overhead)
+        .checked_sub(used_width + 2 * paren_overhead)
         .ok_or(Ordering::Greater)?;
+
+    // Try combining openings and closings
+    if args.len() == 1 && context.config.fn_call_style() == IndentStyle::Block {
+        let expr = &*args[0];
+        match expr.node {
+            ast::ExprKind::Struct(..) |
+            ast::ExprKind::Call(..) |
+            ast::ExprKind::Closure(..) => {
+                let max_width = min(one_line_width, context.config.fn_call_width());
+                let shape = Shape::legacy(max_width, shape.block().indent);
+                if let Some(expr_str) = expr.rewrite(context, shape) {
+                    if first_line_width(&expr_str) <= max_width {
+                        return Ok(format!("{}({})", callee_str, expr_str));
+                    }
+                }
+            }
+            _ => (),
+        }
+    }
 
     let nested_shape = match context.config.fn_call_style() {
             IndentStyle::Block => shape.block().block_left(context.config.tab_spaces()),
-            // 1 = (
             IndentStyle::Visual => {
                 shape
-                    .visual_indent(used_width + 1)
-                    .sub_width(used_width + paren_overhead)
+                    .visual_indent(used_width + paren_overhead)
+                    .sub_width(used_width + 2 * paren_overhead)
             }
         }
         .ok_or(Ordering::Greater)?;
@@ -1664,8 +1684,12 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
     let list_str = rewrite_call_args(context, args, span, nested_shape, one_line_width)
         .ok_or(Ordering::Less)?;
 
+    let arg_one_line_budget = min(one_line_width, context.config.fn_call_width());
     let result = if context.config.fn_call_style() == IndentStyle::Visual ||
-                    (!list_str.contains('\n') && list_str.chars().last().unwrap_or(' ') != ',') {
+                    (((can_be_overflowed(args) &&
+                       first_line_width(&list_str) <= arg_one_line_budget) ||
+                      !list_str.contains('\n')) &&
+                     list_str.chars().last().unwrap_or(' ') != ',') {
         if context.config.spaces_within_parens() && list_str.len() > 0 {
             format!("{}( {} )", callee_str, list_str)
         } else {
@@ -1680,6 +1704,15 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
     };
 
     Ok(result)
+}
+
+fn can_be_overflowed(args: &[ptr::P<ast::Expr>]) -> bool {
+    match args.last().map(|x| &x.node) {
+        Some(&ast::ExprKind::Closure(..)) |
+        Some(&ast::ExprKind::Block(..)) |
+        Some(&ast::ExprKind::Match(..)) if args.len() > 1 => true,
+        _ => false,
+    }
 }
 
 fn rewrite_call_args(context: &RewriteContext,
@@ -1703,12 +1736,7 @@ fn rewrite_call_args(context: &RewriteContext,
     // Try letting the last argument overflow to the next line with block
     // indentation. If its first line fits on one line with the other arguments,
     // we format the function arguments horizontally.
-    let overflow_last = match args.last().map(|x| &x.node) {
-        Some(&ast::ExprKind::Closure(..)) |
-        Some(&ast::ExprKind::Block(..)) |
-        Some(&ast::ExprKind::Match(..)) if arg_count > 1 => true,
-        _ => false,
-    };
+    let overflow_last = can_be_overflowed(args);
 
     let mut orig_last = None;
     let mut placeholder = None;
@@ -1716,11 +1744,16 @@ fn rewrite_call_args(context: &RewriteContext,
     // Replace the last item with its first line to see if it fits with
     // first arguments.
     if overflow_last {
-        let nested_shape = Shape {
-            indent: shape.indent.block_only(),
-            ..shape
+        let last_arg = args.last().unwrap();
+        let arg_shape = match last_arg.node {
+            ast::ExprKind::Closure(..) if context.config.fn_call_style == IndentStyle::Block => {
+                let mut arg_shape = shape.block();
+                arg_shape.indent.block_indent -= context.config.tab_spaces;
+                arg_shape
+            }
+            _ => shape.block(),
         };
-        let rewrite = args.last().unwrap().rewrite(context, nested_shape);
+        let rewrite = args.last().unwrap().rewrite(context, arg_shape);
 
         if let Some(rewrite) = rewrite {
             let rewrite_first_line = Some(rewrite[..first_line_width(&rewrite)].to_owned());
