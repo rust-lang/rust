@@ -1,4 +1,4 @@
-language: minimal
+language: generic
 sudo: required
 dist: trusty
 services:
