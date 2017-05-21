@@ -2106,7 +2106,7 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
             // Expression did not fit on the same line as the identifier or is
             // at least three lines big. Try splitting the line and see
             // if that works better.
-            let new_shape = try_opt!(shape.block_left(context.config.tab_spaces));
+            let new_shape = try_opt!(shape.block_left(context.config.tab_spaces()));
             let new_rhs = ex.rewrite(context, new_shape);
 
             // FIXME: DRY!
