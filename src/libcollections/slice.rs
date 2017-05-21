@@ -1337,8 +1337,8 @@ impl<T> [T] {
         core_slice::SliceExt::sort_unstable_by_key(self, f);
     }
 
-    /// Permutes the slice in-place such that `self[mid..]` move to the
-    /// beginning of the slice while `self[..mid]` move to the end of the
+    /// Permutes the slice in-place such that `self[mid..]` moves to the
+    /// beginning of the slice while `self[..mid]` moves to the end of the
     /// slice.  Equivalently, rotates the slice `mid` places to the left
     /// or `k = self.len() - mid` places to the right.
     ///
