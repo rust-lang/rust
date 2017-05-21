@@ -231,20 +231,12 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
                    -> (P<ast::Item>, Ident) {
     let super_ = Ident::from_str("super");
 
-    // Generate imports with `#[allow(private_in_public)]` to work around issue #36768.
-    let allow_private_in_public = cx.ext_cx.attribute(DUMMY_SP, cx.ext_cx.meta_list(
-        DUMMY_SP,
-        Symbol::intern("allow"),
-        vec![cx.ext_cx.meta_list_item_word(DUMMY_SP, Symbol::intern("private_in_public"))],
-    ));
     let items = tests.into_iter().map(|r| {
         cx.ext_cx.item_use_simple(DUMMY_SP, ast::Visibility::Public,
                                   cx.ext_cx.path(DUMMY_SP, vec![super_, r]))
-            .map_attrs(|_| vec![allow_private_in_public.clone()])
     }).chain(tested_submods.into_iter().map(|(r, sym)| {
         let path = cx.ext_cx.path(DUMMY_SP, vec![super_, r, sym]);
         cx.ext_cx.item_use_simple_(DUMMY_SP, ast::Visibility::Public, r, path)
-            .map_attrs(|_| vec![allow_private_in_public.clone()])
     })).collect();
 
     let reexport_mod = ast::Mod {

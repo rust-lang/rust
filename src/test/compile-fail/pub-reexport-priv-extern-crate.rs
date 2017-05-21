@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(private_in_public)]
+#![allow(unused)]
 
-mod foo {
+extern crate core;
+pub use core as reexported_core; //~ ERROR `core` is private, and cannot be reexported
+
+mod foo1 {
+    extern crate core;
+}
+
+mod foo2 {
+    use foo1::core; //~ ERROR `core` is private, and cannot be reexported
     pub mod bar {
         extern crate core;
     }
 }
 
 mod baz {
-    pub use foo::bar::core;
+    pub use foo2::bar::core; //~ ERROR `core` is private, and cannot be reexported
 }
 
-fn main() {
-    baz::core::cell::Cell::new(0u32);
-}
+fn main() {}

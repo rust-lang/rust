@@ -10,16 +10,11 @@
 
 // gate-test-default_type_parameter_fallback
 
-#![deny(future_incompatible)]
-#![allow(dead_code)]
-
 fn avg<T=i32>(_: T) {}
 //~^ ERROR defaults for type parameters are only allowed
-//~| WARNING hard error
 
 struct S<T>(T);
 impl<T=i32> S<T> {}
 //~^ ERROR defaults for type parameters are only allowed
-//~| WARNING hard error
 
 fn main() {}

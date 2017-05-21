@@ -8,21 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unused)]
-
 mod foo {
     extern crate core;
 }
 
 // Check that private crates can be used from outside their modules, albeit with warnings
-use foo::core; //~ WARN extern crate `core` is private
-//~^ WARN this was previously accepted by the compiler but is being phased out
 use foo::core::cell; //~ ERROR extern crate `core` is private
-//~^ WARN this was previously accepted by the compiler but is being phased out
 
 fn f() {
     foo::core::cell::Cell::new(0); //~ ERROR extern crate `core` is private
-    //~^ WARN this was previously accepted by the compiler but is being phased out
 
     use foo::*;
     mod core {} // Check that private crates are not glob imported

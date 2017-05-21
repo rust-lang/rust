@@ -18,7 +18,6 @@ use {names_to_string, module_to_string};
 use {resolve_error, ResolutionError};
 
 use rustc::ty;
-use rustc::lint::builtin::PRIVATE_IN_PUBLIC;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::*;
 use rustc::util::nodemap::FxHashMap;
@@ -295,8 +294,7 @@ impl<'a> Resolver<'a> {
     // return the corresponding binding defined by the import directive.
     pub fn import(&self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
                   -> &'a NameBinding<'a> {
-        let vis = if binding.pseudo_vis().is_at_least(directive.vis.get(), self) ||
-                     !directive.is_glob() && binding.is_extern_crate() { // c.f. `PRIVATE_IN_PUBLIC`
+        let vis = if binding.pseudo_vis().is_at_least(directive.vis.get(), self) {
             directive.vis.get()
         } else {
             binding.pseudo_vis()
@@ -720,13 +718,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         // All namespaces must be re-exported with extra visibility for an error to occur.
         if !any_successful_reexport {
-            let (ns, binding) = reexport_error.unwrap();
-            if ns == TypeNS && binding.is_extern_crate() {
-                let msg = format!("extern crate `{}` is private, and cannot be reexported \
-                                   (error E0364), consider declaring with `pub`",
-                                   ident);
-                self.session.add_lint(PRIVATE_IN_PUBLIC, directive.id, directive.span, msg);
-            } else if ns == TypeNS {
+            if reexport_error.unwrap().0 == TypeNS {
                 struct_span_err!(self.session, directive.span, E0365,
                                  "`{}` is private, and cannot be reexported", ident)
                     .span_label(directive.span, format!("reexport of private `{}`", ident))
@@ -792,8 +784,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         self.record_def(directive.id, PathResolution::new(module.def().unwrap()));
     }
 
-    // Miscellaneous post-processing, including recording reexports, reporting conflicts,
-    // reporting the PRIVATE_IN_PUBLIC lint, and reporting unresolved imports.
+    // Miscellaneous post-processing, including recording reexports,
+    // reporting conflicts, and reporting unresolved imports.
     fn finalize_resolutions_in(&mut self, module: Module<'b>) {
         // Since import resolution is finished, globs will not define any more names.
         *module.globs.borrow_mut() = Vec::new();
@@ -838,13 +830,12 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
 
             match binding.kind {
-                NameBindingKind::Import { binding: orig_binding, directive, .. } => {
+                NameBindingKind::Import { binding: orig_binding, .. } => {
                     if ns == TypeNS && orig_binding.is_variant() &&
                        !orig_binding.vis.is_at_least(binding.vis, &*self) {
-                        let msg = format!("variant `{}` is private, and cannot be reexported \
-                                           (error E0364), consider declaring its enum as `pub`",
-                                          ident);
-                        self.session.add_lint(PRIVATE_IN_PUBLIC, directive.id, binding.span, msg);
+                        let msg = format!("variant `{}` is private, and cannot be reexported, \
+                                           consider declaring its enum as `pub`", ident);
+                        self.session.span_err(binding.span, &msg);
                     }
                 }
                 NameBindingKind::Ambiguity { b1, b2, .. }

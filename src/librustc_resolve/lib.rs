@@ -1069,6 +1069,10 @@ impl<'a> NameBinding<'a> {
             _ => false,
         }
     }
+
+    fn descr(&self) -> &'static str {
+        if self.is_extern_crate() { "extern crate" } else { self.def().kind_name() }
+    }
 }
 
 /// Interns the names of the primitive types.
@@ -3424,18 +3428,7 @@ impl<'a> Resolver<'a> {
 
         for &PrivacyError(span, name, binding) in &self.privacy_errors {
             if !reported_spans.insert(span) { continue }
-            if binding.is_extern_crate() {
-                // Warn when using an inaccessible extern crate.
-                let node_id = match binding.kind {
-                    NameBindingKind::Import { directive, .. } => directive.id,
-                    _ => unreachable!(),
-                };
-                let msg = format!("extern crate `{}` is private", name);
-                self.session.add_lint(lint::builtin::INACCESSIBLE_EXTERN_CRATE, node_id, span, msg);
-            } else {
-                let def = binding.def();
-                self.session.span_err(span, &format!("{} `{}` is private", def.kind_name(), name));
-            }
+            self.session.span_err(span, &format!("{} `{}` is private", binding.descr(), name));
         }
     }
 
