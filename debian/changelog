@@ -1,0 +1,5 @@
+rustc (1.19.0-dev-git14f30da613-1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Onur Aslan <onur@onur.im>  Mon, 22 May 2017 20:18:15 +0300

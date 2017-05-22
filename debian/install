@@ -1,0 +1,6 @@
+# rustc
+rustc-1.19.0-dev-x86_64-unknown-linux-gnu/rustc/bin/* usr/bin
+rustc-1.19.0-dev-x86_64-unknown-linux-gnu/rustc/lib/* usr/lib
+
+# rust-std x86_64-unknown-linux-gnu
+rust-std-1.19.0-dev-x86_64-unknown-linux-gnu/rust-std-x86_64-unknown-linux-gnu/lib/rustlib/* usr/lib/rustlib
