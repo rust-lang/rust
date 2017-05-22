@@ -153,7 +153,13 @@ use marker::Unsize;
 /// The `Drop` trait is used to run some code when a value goes out of scope.
 /// This is sometimes called a 'destructor'.
 ///
-/// 
+/// When a value goes out of scope, if it implements this trait, it will have
+/// its `drop` method called. Then any fields the value contains will also
+/// be dropped recursively.
+///
+/// Because of the recursive dropping, even for types that do not implement
+/// this trait, you do not need to implement this trait unless your type
+/// needs its own destructor logic.
 ///
 /// # Examples
 ///
