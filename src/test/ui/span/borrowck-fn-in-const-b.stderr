@@ -6,5 +6,5 @@ error: cannot borrow immutable borrowed content `*x` as mutable
 17 |         x.push(format!("this is broken"));
    |         ^ cannot borrow as mutable
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

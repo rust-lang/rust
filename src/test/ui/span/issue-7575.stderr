@@ -61,5 +61,5 @@ note: candidate #1 is defined in the trait `ManyImplTrait`
    = help: items from traits can only be used if the trait is implemented and in scope; the following trait defines an item `is_str`, perhaps you need to implement it:
    = help: candidate #1: `ManyImplTrait`
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error(s)
 

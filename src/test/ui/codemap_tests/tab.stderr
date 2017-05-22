@@ -4,5 +4,5 @@ error[E0425]: cannot find value `bar` in this scope
 14 | \tbar;
    | \t^^^ not found in this scope
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

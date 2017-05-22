@@ -6,5 +6,5 @@ error[E0038]: the trait `issue_3907::Foo` cannot be made into an object
    |
    = note: method `bar` has no receiver
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

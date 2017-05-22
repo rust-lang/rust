@@ -28,5 +28,5 @@ error[E0532]: expected tuple struct/variant, found type alias `A`
    |         did you mean `S`?
    |         did you mean `A { /* fields */ }`?
 
-error: aborting due to 4 previous errors
+error: aborting due to previous error(s)
 

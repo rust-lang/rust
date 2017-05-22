@@ -7,5 +7,5 @@ error[E0499]: cannot borrow `v` as mutable more than once at a time
    |     |      second mutable borrow occurs here
    |     first mutable borrow occurs here
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

@@ -11,5 +11,5 @@ error[E0277]: the trait bound `u32: std::ops::Add<()>` is not satisfied
    |
    = note: no implementation for `u32 + ()`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

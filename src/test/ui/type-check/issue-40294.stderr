@@ -10,5 +10,5 @@ error[E0282]: type annotations needed
 21 | | }
    | |_^ cannot infer type for `&'a T`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

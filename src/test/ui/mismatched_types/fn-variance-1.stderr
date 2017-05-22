@@ -14,5 +14,5 @@ error[E0281]: type mismatch: `fn(&isize) {takes_imm}` implements the trait `for<
    |
    = note: required by `apply`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 

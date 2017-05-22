@@ -20,5 +20,5 @@ error[E0281]: type mismatch: `[closure@$DIR/closure-mismatch.rs:18:9: 18:15]` im
    = note: required because of the requirements on the impl of `Foo` for `[closure@$DIR/closure-mismatch.rs:18:9: 18:15]`
    = note: required by `baz`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 

@@ -54,5 +54,5 @@ error[E0277]: the trait bound `{integer}: std::cmp::PartialEq<std::result::Resul
    |
    = note: can't compare `{integer}` with `std::result::Result<{integer}, _>`
 
-error: aborting due to 7 previous errors
+error: aborting due to previous error(s)
 

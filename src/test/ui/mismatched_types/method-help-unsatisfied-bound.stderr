@@ -7,5 +7,5 @@ error: no method named `unwrap` found for type `std::result::Result<(), Foo>` in
    = note: the method `unwrap` exists but the following trait bounds were not satisfied:
            `Foo : std::fmt::Debug`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 
