@@ -35,7 +35,7 @@ pub enum ListTactic {
     Mixed,
 }
 
-impl_enum_decodable!(ListTactic, Vertical, Horizontal, HorizontalVertical, Mixed);
+impl_enum_serialize_and_deserialize!(ListTactic, Vertical, Horizontal, HorizontalVertical, Mixed);
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum SeparatorTactic {
@@ -44,7 +44,7 @@ pub enum SeparatorTactic {
     Vertical,
 }
 
-impl_enum_decodable!(SeparatorTactic, Always, Never, Vertical);
+impl_enum_serialize_and_deserialize!(SeparatorTactic, Always, Never, Vertical);
 
 impl SeparatorTactic {
     pub fn from_bool(b: bool) -> SeparatorTactic {
@@ -73,7 +73,7 @@ pub fn format_fn_args<I>(items: I, shape: Shape, config: &Config) -> Option<Stri
     list_helper(items,
                 shape,
                 config,
-                ListTactic::LimitedHorizontalVertical(config.fn_call_width))
+                ListTactic::LimitedHorizontalVertical(config.fn_call_width()))
 }
 
 pub fn format_item_list<I>(items: I, shape: Shape, config: &Config) -> Option<String>
@@ -525,14 +525,14 @@ pub fn struct_lit_shape(shape: Shape,
                         prefix_width: usize,
                         suffix_width: usize)
                         -> Option<(Option<Shape>, Shape)> {
-    let v_shape = match context.config.struct_lit_style {
+    let v_shape = match context.config.struct_lit_style() {
         IndentStyle::Visual => {
             try_opt!(try_opt!(shape.shrink_left(prefix_width)).sub_width(suffix_width))
         }
         IndentStyle::Block => {
-            let shape = shape.block_indent(context.config.tab_spaces);
+            let shape = shape.block_indent(context.config.tab_spaces());
             Shape {
-                width: try_opt!(context.config.max_width.checked_sub(shape.indent.width())),
+                width: try_opt!(context.config.max_width().checked_sub(shape.indent.width())),
                 ..shape
             }
         }
@@ -547,13 +547,14 @@ pub fn struct_lit_tactic(h_shape: Option<Shape>,
                          items: &[ListItem])
                          -> DefinitiveListTactic {
     if let Some(h_shape) = h_shape {
-        let mut prelim_tactic = match (context.config.struct_lit_style, items.len()) {
+        let mut prelim_tactic = match (context.config.struct_lit_style(), items.len()) {
             (IndentStyle::Visual, 1) => ListTactic::HorizontalVertical,
-            _ => context.config.struct_lit_multiline_style.to_list_tactic(),
+            _ => context.config.struct_lit_multiline_style().to_list_tactic(),
         };
 
         if prelim_tactic == ListTactic::HorizontalVertical && items.len() > 1 {
-            prelim_tactic = ListTactic::LimitedHorizontalVertical(context.config.struct_lit_width);
+            prelim_tactic =
+                ListTactic::LimitedHorizontalVertical(context.config.struct_lit_width());
         }
 
         definitive_tactic(items, prelim_tactic, h_shape.width)
@@ -581,7 +582,7 @@ pub fn struct_lit_formatting<'a>(shape: Shape,
                                  context: &'a RewriteContext,
                                  force_no_trailing_comma: bool)
                                  -> ListFormatting<'a> {
-    let ends_with_newline = context.config.struct_lit_style != IndentStyle::Visual &&
+    let ends_with_newline = context.config.struct_lit_style() != IndentStyle::Visual &&
                             tactic == DefinitiveListTactic::Vertical;
     ListFormatting {
         tactic: tactic,
@@ -589,7 +590,7 @@ pub fn struct_lit_formatting<'a>(shape: Shape,
         trailing_separator: if force_no_trailing_comma {
             SeparatorTactic::Never
         } else {
-            context.config.trailing_comma
+            context.config.trailing_comma()
         },
         shape: shape,
         ends_with_newline: ends_with_newline,

@@ -67,7 +67,7 @@ pub fn rewrite_macro(mac: &ast::Mac,
                      -> Option<String> {
     let mut context = &mut context.clone();
     context.inside_macro = true;
-    if context.config.use_try_shorthand {
+    if context.config.use_try_shorthand() {
         if let Some(expr) = convert_try_mac(mac, context) {
             return expr.rewrite(context, shape);
         }

@@ -229,7 +229,7 @@ fn read_config(filename: &str) -> Config {
     }
 
     // Don't generate warnings for to-do items.
-    config.report_todo = ReportTactic::Never;
+    config.set().report_todo(ReportTactic::Never);
 
     config
 }

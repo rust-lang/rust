@@ -10,6 +10,8 @@
 
 extern crate toml;
 
+use std::cell::Cell;
+
 use file_lines::FileLines;
 use lists::{SeparatorTactic, ListTactic};
 
@@ -20,7 +22,7 @@ macro_rules! configuration_option_enum{
             $( $x ),+
         }
 
-        impl_enum_decodable!($e, $( $x ),+);
+        impl_enum_serialize_and_deserialize!($e, $( $x ),+);
     }
 }
 
@@ -210,27 +212,66 @@ impl ConfigHelpItem {
 
 macro_rules! create_config {
     ($($i:ident: $ty:ty, $def:expr, $( $dstring:expr ),+ );+ $(;)*) => (
-        #[derive(Deserialize, Clone)]
+        #[derive(Clone)]
         pub struct Config {
-            $(pub $i: $ty),+
+            // For each config item, we store a bool indicating whether it has
+            // been accessed and the value.
+            $($i: (Cell<bool>, $ty)),+
         }
 
         // Just like the Config struct but with each property wrapped
         // as Option<T>. This is used to parse a rustfmt.toml that doesn't
         // specity all properties of `Config`.
-        // We first parse into `ParsedConfig`, then create a default `Config`
-        // and overwrite the properties with corresponding values from `ParsedConfig`
-        #[derive(Deserialize, Clone)]
-        pub struct ParsedConfig {
+        // We first parse into `PartialConfig`, then create a default `Config`
+        // and overwrite the properties with corresponding values from `PartialConfig`.
+        #[derive(Deserialize, Serialize, Clone)]
+        pub struct PartialConfig {
             $(pub $i: Option<$ty>),+
+        }
+
+        impl PartialConfig {
+            pub fn to_toml(&self) -> Result<String, String> {
+                // file_lines can't be specified in TOML
+                let mut cloned = self.clone();
+                cloned.file_lines = None;
+
+                toml::to_string(&cloned)
+                    .map_err(|e| format!("Could not output config: {}", e.to_string()))
+            }
+        }
+
+        // Macro hygiene won't allow us to make `set_$i()` methods on Config
+        // for each item, so this struct is used to give the API to set values:
+        // `config.get().option(false)`. It's pretty ugly. Consider replacing
+        // with `config.set_option(false)` if we ever get a stable/usable
+        // `concat_idents!()`.
+        pub struct ConfigSetter<'a>(&'a mut Config);
+
+        impl<'a> ConfigSetter<'a> {
+            $(
+            pub fn $i(&mut self, value: $ty) {
+                (self.0).$i.1 = value;
+            }
+            )+
         }
 
         impl Config {
 
-            fn fill_from_parsed_config(mut self, parsed: ParsedConfig) -> Config {
+            $(
+            pub fn $i(&self) -> $ty {
+                self.$i.0.set(true);
+                self.$i.1.clone()
+            }
+            )+
+
+            pub fn set<'a>(&'a mut self) -> ConfigSetter<'a> {
+                ConfigSetter(self)
+            }
+
+            fn fill_from_parsed_config(mut self, parsed: PartialConfig) -> Config {
             $(
                 if let Some(val) = parsed.$i {
-                    self.$i = val;
+                    self.$i.1 = val;
                 }
             )+
                 self
@@ -270,11 +311,32 @@ macro_rules! create_config {
                 }
             }
 
-            pub fn override_value(&mut self, key: &str, val: &str) {
+            pub fn used_options(&self) -> PartialConfig {
+                PartialConfig {
+                    $(
+                        $i: if self.$i.0.get() {
+                                Some(self.$i.1.clone())
+                            } else {
+                                None
+                            },
+                    )+
+                }
+            }
+
+            pub fn all_options(&self) -> PartialConfig {
+                PartialConfig {
+                    $(
+                        $i: Some(self.$i.1.clone()),
+                    )+
+                }
+            }
+
+            pub fn override_value(&mut self, key: &str, val: &str)
+            {
                 match key {
                     $(
                         stringify!($i) => {
-                            self.$i = val.parse::<$ty>()
+                            self.$i.1 = val.parse::<$ty>()
                                 .expect(&format!("Failed to parse override for {} (\"{}\") as a {}",
                                                  stringify!($i),
                                                  val,
@@ -319,7 +381,7 @@ macro_rules! create_config {
             fn default() -> Config {
                 Config {
                     $(
-                        $i: $def,
+                        $i: (Cell::new(false), $def),
                     )+
                 }
             }
@@ -423,4 +485,31 @@ create_config! {
         "What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff, Coverage";
     condense_wildcard_suffixes: bool, false, "Replace strings of _ wildcards by a single .. in \
                                               tuple patterns"
+}
+
+#[cfg(test)]
+mod test {
+    use super::Config;
+
+    #[test]
+    fn test_config_set() {
+        let mut config = Config::default();
+        config.set().verbose(false);
+        assert_eq!(config.verbose(), false);
+        config.set().verbose(true);
+        assert_eq!(config.verbose(), true);
+    }
+
+    #[test]
+    fn test_config_used_to_toml() {
+        let config = Config::default();
+
+        let verbose = config.verbose();
+        let skip_children = config.skip_children();
+
+        let used_options = config.used_options();
+        let toml = used_options.to_toml().unwrap();
+        assert_eq!(toml,
+                   format!("verbose = {}\nskip_children = {}\n", verbose, skip_children));
+    }
 }

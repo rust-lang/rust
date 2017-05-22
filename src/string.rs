@@ -119,7 +119,7 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     }
 
     result.push_str(fmt.closer);
-    wrap_str(result, fmt.config.max_width, fmt.shape)
+    wrap_str(result, fmt.config.max_width(), fmt.shape)
 }
 
 #[cfg(test)]

@@ -216,6 +216,16 @@ impl<'de> ::serde::de::Deserialize<'de> for FileLines {
     }
 }
 
+// We also want to avoid attempting to serialize a FileLines to toml. The
+// `Config` struct should ensure this impl is never reached.
+impl ::serde::ser::Serialize for FileLines {
+    fn serialize<S>(&self, _: S) -> Result<S::Ok, S::Error>
+        where S: ::serde::ser::Serializer
+    {
+        unreachable!("FileLines cannot be serialized. This is a rustfmt bug.");
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::Range;

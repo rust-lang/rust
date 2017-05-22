@@ -189,10 +189,29 @@ pub fn trim_newlines(input: &str) -> &str {
     }
 }
 
-// Macro for deriving implementations of Decodable for enums
+// Macro for deriving implementations of Serialize/Deserialize for enums
 #[macro_export]
-macro_rules! impl_enum_decodable {
+macro_rules! impl_enum_serialize_and_deserialize {
     ( $e:ident, $( $x:ident ),* ) => {
+        impl ::serde::ser::Serialize for $e {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where S: ::serde::ser::Serializer
+            {
+                use serde::ser::Error;
+
+                // We don't know whether the user of the macro has given us all options.
+                #[allow(unreachable_patterns)]
+                match *self {
+                    $(
+                        $e::$x => serializer.serialize_str(stringify!($x)),
+                    )*
+                    _ => {
+                        Err(S::Error::custom(format!("Cannot serialize {:?}", self)))
+                    }
+                }
+            }
+        }
+
         impl<'de> ::serde::de::Deserialize<'de> for $e {
             fn deserialize<D>(d: D) -> Result<Self, D::Error>
                     where D: ::serde::Deserializer<'de> {
@@ -312,7 +331,7 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, shape: Shape) -> Option<S
 
 impl Rewrite for String {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        wrap_str(self, context.config.max_width, shape).map(ToOwned::to_owned)
+        wrap_str(self, context.config.max_width(), shape).map(ToOwned::to_owned)
     }
 }
 

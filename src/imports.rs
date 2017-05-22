@@ -238,7 +238,7 @@ impl<'a> FmtVisitor<'a> {
         offset.alignment += vis.len() + "use ".len();
         // 1 = ";"
         match vp.rewrite(&self.get_context(),
-                         Shape::legacy(self.config.max_width - offset.width() - 1, offset)) {
+                         Shape::legacy(self.config.max_width() - offset.width() - 1, offset)) {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
                 let prev_span = codemap::mk_sp(self.last_pos, source!(self, span).lo);
@@ -339,7 +339,7 @@ pub fn rewrite_use_list(shape: Shape,
     let has_self = move_self_to_front(&mut items);
     let first_index = if has_self { 0 } else { 1 };
 
-    if context.config.reorder_imported_names {
+    if context.config.reorder_imported_names() {
         items[1..].sort_by(|a, b| a.item.cmp(&b.item));
     }
 

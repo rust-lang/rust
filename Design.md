@@ -150,7 +150,7 @@ for its configuration.
 
 Our visitor keeps track of the desired current indent due to blocks (
 `block_indent`). Each `visit_*` method reformats code according to this indent,
-`config.comment_width` and `config.max_width`. Most reformatting done in the
+`config.comment_width()` and `config.max_width()`. Most reformatting done in the
 `visit_*` methods is a bit hackey and is meant to be temporary until it can be
 done properly.
 
