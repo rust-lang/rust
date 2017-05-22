@@ -35,29 +35,39 @@ macro_rules! attr_proc_mac {
 }
 
 #[derive(FooWithLongNan)]
+//~^ ERROR cannot find derive macro `FooWithLongNan` in this scope
 struct Foo;
 
 #[attr_proc_macra]
+//~^ ERROR cannot find attribute macro `attr_proc_macra` in this scope
 struct Bar;
 
 #[FooWithLongNan]
+//~^ ERROR cannot find attribute macro `FooWithLongNan` in this scope
 struct Asdf;
 
 #[derive(Dlone)]
+//~^ ERROR cannot find derive macro `Dlone` in this scope
 struct A;
 
 #[derive(Dlona)]
+//~^ ERROR cannot find derive macro `Dlona` in this scope
 struct B;
 
 #[derive(attr_proc_macra)]
+//~^ ERROR cannot find derive macro `attr_proc_macra` in this scope
 struct C;
 
 fn main() {
     FooWithLongNama!();
+    //~^ ERROR cannot find macro `FooWithLongNama!` in this scope
 
     attr_proc_macra!();
+    //~^ ERROR cannot find macro `attr_proc_macra!` in this scope
 
     Dlona!();
+    //~^ ERROR cannot find macro `Dlona!` in this scope
 
     bang_proc_macrp!();
+    //~^ ERROR cannot find macro `bang_proc_macrp!` in this scope
 }

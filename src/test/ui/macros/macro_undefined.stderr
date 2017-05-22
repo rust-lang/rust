@@ -1,7 +1,7 @@
 error: cannot find macro `kl!` in this scope
-  --> $DIR/macro_undefined.rs:22:5
+  --> $DIR/macro_undefined.rs:23:5
    |
-22 |     kl!();
+23 |     kl!();
    |     ^^
    |
    = help: have you added the `#[macro_use]` on the module/import?

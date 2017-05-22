@@ -19,5 +19,7 @@ mod m {
 
 fn main() {
     k!();
+    //~^ ERROR cannot find macro `k!` in this scope
     kl!();
+    //~^ ERROR cannot find macro `kl!` in this scope
 }
