@@ -799,8 +799,21 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                         param_env: ty::ParamEnv<'tcx>)
                         -> Result<&'tcx Layout, LayoutError<'tcx>> {
         let ty = tcx.erase_regions(&self);
-        tcx.layout_raw(param_env.reveal_all().and(ty))
+        let layout = tcx.layout_raw(param_env.reveal_all().and(ty));
+
+        // NB: This recording is normally disabled; when enabled, it
+        // can however trigger recursive invocations of `layout()`.
+        // Therefore, we execute it *after* the main query has
+        // completed, to avoid problems around recursive structures
+        // and the like. (Admitedly, I wasn't able to reproduce a problem
+        // here, but it seems like the right thing to do. -nmatsakis)
+        if let Ok(l) = layout {
+            Layout::record_layout_for_printing(tcx, ty, param_env, l);
+        }
+
+        layout
     }
+
 
     /// Check whether a type is representable. This means it cannot contain unboxed
     /// structural recursion. This check is needed for structs and enums.
@@ -1084,6 +1097,7 @@ fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.layout_depth.set(depth+1);
     let layout = Layout::compute_uncached(tcx, param_env, ty);
     tcx.layout_depth.set(depth);
+
     layout
 }
 
