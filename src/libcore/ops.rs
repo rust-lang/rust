@@ -153,6 +153,8 @@ use marker::Unsize;
 /// The `Drop` trait is used to run some code when a value goes out of scope.
 /// This is sometimes called a 'destructor'.
 ///
+/// 
+///
 /// # Examples
 ///
 /// A trivial implementation of `Drop`. The `drop` method is called when `_x`
@@ -169,6 +171,32 @@ use marker::Unsize;
 ///
 /// fn main() {
 ///     let _x = HasDrop;
+/// }
+/// ```
+///
+/// Showing the recursive nature of `Drop`. When `outer` goes out of scope, the
+/// `drop` method will be called for `Outer` and then the `drop` method for
+/// `Inner` will be called. Therefore `main` prints `Dropping Outer!` and then
+/// `Dropping Inner!`.
+/// 
+/// ```
+/// struct Inner;
+/// struct Outer(Inner);
+///
+/// impl Drop for Inner {
+///     fn drop(&mut self) {
+///         println!("Dropping Inner!");
+///     }
+/// }
+///
+/// impl Drop for Outer {
+///     fn drop(&mut self) {
+///         println!("Dropping Outer!");
+///     }
+/// }
+///
+/// fn main() {
+///     let _x = Outer(Inner);
 /// }
 /// ```
 #[lang = "drop"]
