@@ -557,20 +557,19 @@ class RustBuild(object):
                 self.get_toml('submodules') == "false" or \
                 self.get_mk('CFG_DISABLE_MANAGE_SUBMODULES') == "1":
             return
-
         print('Updating submodules')
+        default_encoding = sys.getdefaultencoding()
         run(["git", "submodule", "-q", "sync"], cwd=self.rust_root)
-        # FIXME: nobody does, but this won't work well with whitespace in
-        # submodule path
-        submodules = [s.split()[1] for s in subprocess.check_output(
-            ["git", "config", "--file", os.path.join(
-                self.rust_root, ".gitmodules"), "--get-regexp", "path"]).splitlines()]
+        submodules = [s.split(' ', 1)[1] for s in subprocess.check_output(
+            ["git", "config", "--file", os.path.join(self.rust_root, ".gitmodules"),
+             "--get-regexp", "path"]
+        ).decode(default_encoding).splitlines()]
         submodules = [module for module in submodules
-                      if not ((module.endswith(b"llvm") and
-                              (self.get_toml('llvm-config') or self.get_mk('CFG_LLVM_ROOT'))) or
-                      (module.endswith(b"jemalloc") and
-                       (self.get_toml('jemalloc') or self.get_mk('CFG_JEMALLOC_ROOT'))))
-                      ]
+                      if not ((module.endswith("llvm") and
+                               (self.get_toml('llvm-config') or self.get_mk('CFG_LLVM_ROOT'))) or
+                              (module.endswith("jemalloc") and
+                               (self.get_toml('jemalloc') or self.get_mk('CFG_JEMALLOC_ROOT'))))
+                     ]
         run(["git", "submodule", "update",
                   "--init"] + submodules, cwd=self.rust_root)
         run(["git", "submodule", "-q", "foreach", "git",
