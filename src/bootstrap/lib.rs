@@ -211,7 +211,7 @@ pub enum Mode {
     /// output in the "stageN-rustc" directory.
     Librustc,
 
-    /// This cargo is going to some build tool, placing output in the
+    /// This cargo is going to build some tool, placing output in the
     /// "stageN-tools" directory.
     Tool,
 }
@@ -424,7 +424,7 @@ impl Build {
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
         }
 
-        // There are two invariants we try must maintain:
+        // There are two invariants we must maintain:
         // * stable crates cannot depend on unstable crates (general Rust rule),
         // * crates that end up in the sysroot must be unstable (rustbuild rule).
         //
@@ -438,7 +438,7 @@ impl Build {
         // feature and opt-in to `rustc_private`.
         //
         // We can't always pass `rustbuild` because crates which are outside of
-        // the comipiler, libs, and tests are stable and we don't want to make
+        // the compiler, libs, and tests are stable and we don't want to make
         // their deps unstable (since this would break the first invariant
         // above).
         //
@@ -448,7 +448,7 @@ impl Build {
         }
 
         // Ignore incremental modes except for stage0, since we're
-        // not guaranteeing correctness acros builds if the compiler
+        // not guaranteeing correctness across builds if the compiler
         // is changing under your feet.`
         if self.flags.incremental && compiler.stage == 0 {
             let incr_dir = self.incremental_dir(compiler);
@@ -489,7 +489,7 @@ impl Build {
             cargo.env_remove("MAKEFLAGS");
         }
 
-        // Environment variables *required* needed throughout the build
+        // Environment variables *required* throughout the build
         //
         // FIXME: should update code to not require this env var
         cargo.env("CFG_COMPILER_HOST_TRIPLE", target);
@@ -647,7 +647,7 @@ impl Build {
     }
 
     /// Returns the root output directory for all Cargo output in a given stage,
-    /// running a particular comipler, wehther or not we're building the
+    /// running a particular compiler, wehther or not we're building the
     /// standard library, and targeting the specified architecture.
     fn cargo_out(&self,
                  compiler: &Compiler,
