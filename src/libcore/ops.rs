@@ -184,7 +184,7 @@ use marker::Unsize;
 /// `drop` method will be called for `Outer` and then the `drop` method for
 /// `Inner` will be called. Therefore `main` prints `Dropping Outer!` and then
 /// `Dropping Inner!`.
-/// 
+///
 /// ```
 /// struct Inner;
 /// struct Outer(Inner);
@@ -211,7 +211,7 @@ use marker::Unsize;
 ///
 /// ```
 /// struct PrintOnDrop(&'static str);
-/// 
+///
 /// fn main() {
 ///     let _first = PrintOnDrop("Declared first!");
 ///     let _second = PrintOnDrop("Declared second!");
