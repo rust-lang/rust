@@ -441,6 +441,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// We wish to pop the storage for X and Y after `bar()` is
     /// called, not after the whole `let` is completed.
     ///
+    /// As another example, if the second argument diverges:
+    ///
+    ///     foo(Box::new(2), panic!())
+    ///
+    /// We would allocate the box but then free it on the unwinding
+    /// path; we would also emit a free on the 'success' path from
+    /// panic, but that will turn out to be removed as dead-code.
+    ///
     /// When building statics/constants, returns `None` since
     /// intermediate values do not have to be dropped in that case.
     pub fn local_scope(&self) -> Option<CodeExtent> {
