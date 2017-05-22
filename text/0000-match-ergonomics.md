@@ -218,7 +218,8 @@ No new behavior:
 match &Some(3) {
     p => {
         // `p` is a variable binding. Hence, this is **not** a ref-defaulting
-        // match, and `p` is bound with `move` semantics (and has type `&i32`).
+        // match, and `p` is bound with `move` semantics
+        // (and has type `&Option<i32>`).
     },
 }
 ```
