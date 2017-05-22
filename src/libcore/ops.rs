@@ -199,6 +199,18 @@ use marker::Unsize;
 ///     let _x = Outer(Inner);
 /// }
 /// ```
+///
+/// Because variables are dropped in the reverse order they are declared,
+/// `main` will print `Declared second!` and then `Declared first!`.
+///
+/// ```
+/// struct PrintOnDrop(&'static str);
+/// 
+/// fn main() {
+///     let _first = PrintOnDrop("Declared first!");
+///     let _second = PrintOnDrop("Declared second!");
+/// }
+/// ```
 #[lang = "drop"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Drop {
