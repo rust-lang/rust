@@ -2327,12 +2327,22 @@ macro_rules! uint_impl {
             (self.wrapping_sub(1)) & self == 0 && !(self == 0)
         }
 
+        // Returns one less than next greater power of two.
+        // (For 8u8 next greater power of two is 16u8 and for 6u8 it is 8u8)
+        //
+        // 8u8.round_up_to_one_less_than_a_power_of_two() == 15
+        // 6u8.round_up_to_one_less_than_a_power_of_two() == 7
         fn round_up_to_one_less_than_a_power_of_two(self) -> Self {
             let bits = size_of::<Self>() as u32 * 8;
             let z = self.leading_zeros();
             (if z == bits { 0 as Self } else { !0 }).wrapping_shr(z)
         }
 
+        // Returns one less than next power of two.
+        // (For 8u8 next power of two is 8u8 and for 6u8 it is 8u8)
+        //
+        // 8u8.one_less_than_next_power_of_two() == 7
+        // 6u8.one_less_than_next_power_of_two() == 7
         fn one_less_than_next_power_of_two(self) -> Self {
             self.wrapping_sub(1)
                 .round_up_to_one_less_than_a_power_of_two()
@@ -2340,10 +2350,10 @@ macro_rules! uint_impl {
         }
 
         /// Returns the smallest power of two greater than or equal to `self`.
-        /// When return value overflows, it panics in debug mode and return
-        /// value is wrapped in release mode.
         ///
-        /// More details about overflow behavior can be found in [RFC 560].
+        /// When return value overflows (i.e. `self > (1 << (N-1))` for type
+        /// `uN`), it panics in debug mode and return value is wrapped to 0 in
+        /// release mode (the only situation in which method can return 0).
         ///
         /// # Examples
         ///
@@ -2353,8 +2363,6 @@ macro_rules! uint_impl {
         /// assert_eq!(2u8.next_power_of_two(), 2);
         /// assert_eq!(3u8.next_power_of_two(), 4);
         /// ```
-        ///
-        /// [RFC 560]: https://github.com/rust-lang/rfcs/blob/master/text/0560-integer-overflow.md
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub fn next_power_of_two(self) -> Self {
