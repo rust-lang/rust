@@ -35,7 +35,8 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     let re = Regex::new(r"([^\\](\\\\)*)\\[\n\r][[:space:]]*").unwrap();
     let stripped_str = re.replace_all(orig, "$1");
 
-    let graphemes = UnicodeSegmentation::graphemes(&*stripped_str, false).collect::<Vec<&str>>();
+    let graphemes = UnicodeSegmentation::graphemes(&*stripped_str, false)
+        .collect::<Vec<&str>>();
     let shape = fmt.shape.visual_indent(0);
     let indent = shape.indent.to_string(fmt.config);
     let punctuation = ":,;.";
