@@ -16,7 +16,7 @@ rustup update nightly
 
 You should also make `nightly` the default version for your Miri directory by
 running the following command while you're in it. If you don't do this, you can
-run the later `cargo` commands by prefixing them with `rustup run nightly`.
+run the later `cargo` commands by using `cargo +nightly` instead.
 
 ```sh
 rustup override add nightly
