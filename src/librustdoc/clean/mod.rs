@@ -2618,7 +2618,7 @@ impl Clean<Vec<Item>> for doctree::Import {
         } else {
             let name = self.name;
             if !denied {
-                if let Some(items) = inline::try_inline(cx, path.def, Some(name)) {
+                if let Some(items) = inline::try_inline(cx, path.def, name) {
                     return items;
                 }
             }

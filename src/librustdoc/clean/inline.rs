@@ -41,26 +41,11 @@ use super::Clean;
 ///
 /// The returned value is `None` if the definition could not be inlined,
 /// and `Some` of a vector of items if it was successfully expanded.
-pub fn try_inline(cx: &DocContext, def: Def, into: Option<ast::Name>)
+pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name)
                   -> Option<Vec<clean::Item>> {
     if def == Def::Err { return None }
     let did = def.def_id();
     if did.is_local() { return None }
-    try_inline_def(cx, def).map(|vec| {
-        vec.into_iter().map(|mut item| {
-            match into {
-                Some(into) if item.name.is_some() => {
-                    item.name = Some(into.clean(cx));
-                }
-                _ => {}
-            }
-            item
-        }).collect()
-    })
-}
-
-fn try_inline_def(cx: &DocContext, def: Def) -> Option<Vec<clean::Item>> {
-    let tcx = cx.tcx;
     let mut ret = Vec::new();
     let inner = match def {
         Def::Trait(did) => {
@@ -112,16 +97,15 @@ fn try_inline_def(cx: &DocContext, def: Def) -> Option<Vec<clean::Item>> {
         }
         _ => return None,
     };
-    let did = def.def_id();
     cx.renderinfo.borrow_mut().inlined.insert(did);
     ret.push(clean::Item {
-        source: tcx.def_span(did).clean(cx),
-        name: Some(tcx.item_name(did).to_string()),
+        source: cx.tcx.def_span(did).clean(cx),
+        name: Some(name.clean(cx)),
         attrs: load_attrs(cx, did),
         inner: inner,
         visibility: Some(clean::Public),
-        stability: tcx.lookup_stability(did).clean(cx),
-        deprecation: tcx.lookup_deprecation(did).clean(cx),
+        stability: cx.tcx.lookup_stability(did).clean(cx),
+        deprecation: cx.tcx.lookup_deprecation(did).clean(cx),
         def_id: did,
     });
     Some(ret)
@@ -463,7 +447,7 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
             let def_id = item.def.def_id();
             if cx.tcx.sess.cstore.visibility(def_id) == ty::Visibility::Public {
                 if !visited.insert(def_id) { continue }
-                if let Some(i) = try_inline_def(cx, item.def) {
+                if let Some(i) = try_inline(cx, item.def, item.name) {
                     items.extend(i)
                 }
             }
