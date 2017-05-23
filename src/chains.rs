@@ -139,14 +139,8 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         (shape.block_indent(context.config.tab_spaces()), false)
     };
 
-    let max_width = try_opt!((shape.width + shape.indent.width() + shape.offset)
-                                 .checked_sub(nested_shape.indent.width() +
-                                              nested_shape.offset));
+    let other_child_shape = nested_shape.with_max_width(context.config);
 
-    let other_child_shape = Shape {
-        width: max_width,
-        ..nested_shape
-    };
     let first_child_shape = if extend {
         let overhead = last_line_width(&parent_rewrite);
         let offset = parent_rewrite.lines().rev().next().unwrap().trim().len();
