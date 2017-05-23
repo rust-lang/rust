@@ -37,8 +37,7 @@ fn issue1420() {
         # Getting started
         ...
     "#,
-    )
-        .running(waltz)
+    ).running(waltz)
 }
 
 // #1563

@@ -364,12 +364,11 @@ impl Rewrite for ast::WherePredicate {
                 let colon = type_bound_colon(context);
 
                 if !bound_lifetimes.is_empty() {
-                    let lifetime_str: String =
-                        try_opt!(bound_lifetimes
-                                     .iter()
-                                     .map(|lt| lt.rewrite(context, shape))
-                                     .intersperse(Some(", ".to_string()))
-                                     .collect());
+                    let lifetime_str: String = try_opt!(bound_lifetimes
+                                                            .iter()
+                                                            .map(|lt| lt.rewrite(context, shape))
+                                                            .intersperse(Some(", ".to_string()))
+                                                            .collect());
 
                     let joiner = match context.config.type_punctuation_density() {
                         TypeDensity::Compressed => "+",
@@ -378,17 +377,13 @@ impl Rewrite for ast::WherePredicate {
                     // 6 = "for<> ".len()
                     let used_width = lifetime_str.len() + type_str.len() + colon.len() + 6;
                     let budget = try_opt!(shape.width.checked_sub(used_width));
-                    let bounds_str: String =
-                        try_opt!(bounds
-                                     .iter()
-                                     .map(|ty_bound| {
-                                              ty_bound.rewrite(context,
-                                                               Shape::legacy(budget,
-                                                                             shape.indent +
-                                                                             used_width))
-                                          })
-                                     .intersperse(Some(joiner.to_string()))
-                                     .collect());
+                    let bounds_str: String = try_opt!(bounds
+                                                          .iter()
+                                                          .map(|ty_bound| {
+                        ty_bound.rewrite(context, Shape::legacy(budget, shape.indent + used_width))
+                    })
+                                                          .intersperse(Some(joiner.to_string()))
+                                                          .collect());
 
                     if context.config.spaces_within_angle_brackets() && lifetime_str.len() > 0 {
                         format!("for< {} > {}{}{}",
@@ -406,17 +401,13 @@ impl Rewrite for ast::WherePredicate {
                     };
                     let used_width = type_str.len() + colon.len();
                     let budget = try_opt!(shape.width.checked_sub(used_width));
-                    let bounds_str: String =
-                        try_opt!(bounds
-                                     .iter()
-                                     .map(|ty_bound| {
-                                              ty_bound.rewrite(context,
-                                                               Shape::legacy(budget,
-                                                                             shape.indent +
-                                                                             used_width))
-                                          })
-                                     .intersperse(Some(joiner.to_string()))
-                                     .collect());
+                    let bounds_str: String = try_opt!(bounds
+                                                          .iter()
+                                                          .map(|ty_bound| {
+                        ty_bound.rewrite(context, Shape::legacy(budget, shape.indent + used_width))
+                    })
+                                                          .intersperse(Some(joiner.to_string()))
+                                                          .collect());
 
                     format!("{}{}{}", type_str, colon, bounds_str)
                 }
@@ -532,12 +523,11 @@ impl Rewrite for ast::TyParam {
                 TypeDensity::Compressed => "+",
                 TypeDensity::Wide => " + ",
             };
-            let bounds: String =
-                try_opt!(self.bounds
-                             .iter()
-                             .map(|ty_bound| ty_bound.rewrite(context, shape))
-                             .intersperse(Some(joiner.to_string()))
-                             .collect());
+            let bounds: String = try_opt!(self.bounds
+                                              .iter()
+                                              .map(|ty_bound| ty_bound.rewrite(context, shape))
+                                              .intersperse(Some(joiner.to_string()))
+                                              .collect());
 
             result.push_str(&bounds);
         }
@@ -612,8 +602,7 @@ impl Rewrite for ast::Ty {
                              let lt_budget = try_opt!(shape.width.checked_sub(2 + mut_len));
                              let lt_str = try_opt!(lifetime.rewrite(context,
                                                                     Shape::legacy(lt_budget,
-                                                                                  shape.indent +
-                                                                                  2 +
+                                                                                  shape.indent + 2 +
                                                                                   mut_len)));
                              let lt_len = lt_str.len();
                              let budget = try_opt!(shape.width.checked_sub(2 + mut_len + lt_len));

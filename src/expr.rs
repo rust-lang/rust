@@ -316,8 +316,7 @@ pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
     let lhs_budget = try_opt!(context
                                   .config
                                   .max_width()
-                                  .checked_sub(shape.used_width() + prefix.len() +
-                                               infix.len()));
+                                  .checked_sub(shape.used_width() + prefix.len() + infix.len()));
     let rhs_shape = match context.config.control_style() {
         Style::Default => {
             try_opt!(shape.sub_width(suffix.len() + prefix.len())).visual_indent(prefix.len())
@@ -853,8 +852,8 @@ impl<'a> ControlFlow<'a> {
 
             let new_width = try_opt!(new_width.checked_sub(if_str.len()));
             let else_expr = &else_node.stmts[0];
-            let else_str = try_opt!(else_expr.rewrite(context,
-                                                      Shape::legacy(new_width, Indent::empty())));
+            let else_str =
+                try_opt!(else_expr.rewrite(context, Shape::legacy(new_width, Indent::empty())));
 
             if if_str.contains('\n') || else_str.contains('\n') {
                 return None;
@@ -953,14 +952,13 @@ impl<'a> Rewrite for ControlFlow<'a> {
         };
 
         // for event in event
-        let between_kwd_cond =
-            mk_sp(context.codemap.span_after(self.span, self.keyword.trim()),
-                  self.pat
-                      .map_or(cond_span.lo, |p| if self.matcher.is_empty() {
-                p.span.lo
-            } else {
-                context.codemap.span_before(self.span, self.matcher.trim())
-            }));
+        let between_kwd_cond = mk_sp(context.codemap.span_after(self.span, self.keyword.trim()),
+                                     self.pat
+                                         .map_or(cond_span.lo, |p| if self.matcher.is_empty() {
+            p.span.lo
+        } else {
+            context.codemap.span_before(self.span, self.matcher.trim())
+        }));
 
         let between_kwd_cond_comment = extract_comment(between_kwd_cond, context, shape);
 
@@ -1042,9 +1040,10 @@ impl<'a> Rewrite for ControlFlow<'a> {
             let between_kwd_else_block_comment =
                 extract_comment(between_kwd_else_block, context, shape);
 
-            let after_else = mk_sp(context.codemap.span_after(mk_sp(self.block.span.hi,
-                                                                    else_block.span.lo),
-                                                              "else"),
+            let after_else = mk_sp(context
+                                       .codemap
+                                       .span_after(mk_sp(self.block.span.hi, else_block.span.lo),
+                                                   "else"),
                                    else_block.span.lo);
             let after_else_comment = extract_comment(after_else, context, shape);
 

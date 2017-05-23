@@ -158,15 +158,14 @@ fn light_rewrite_comment(orig: &str, offset: Indent, config: &Config) -> Option<
             // `*` in `/*`.
             let first_non_whitespace = l.find(|c| !char::is_whitespace(c));
             if let Some(fnw) = first_non_whitespace {
-                    if l.as_bytes()[fnw] == '*' as u8 && fnw > 0 {
-                        &l[fnw - 1..]
-                    } else {
-                        &l[fnw..]
-                    }
+                if l.as_bytes()[fnw] == '*' as u8 && fnw > 0 {
+                    &l[fnw - 1..]
                 } else {
-                    ""
+                    &l[fnw..]
                 }
-                .trim_right()
+            } else {
+                ""
+            }.trim_right()
         })
         .collect();
     Some(lines.join(&format!("\n{}", offset.to_string(config))))

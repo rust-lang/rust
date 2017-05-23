@@ -66,38 +66,34 @@ fn floaters() {
     };
 
     let x = Foo {
-            field1: val1,
-            field2: val2,
-        }
-        .method_call()
+        field1: val1,
+        field2: val2,
+    }.method_call()
         .method_call();
 
     let y = if cond {
-            val1
-        } else {
-            val2
-        }
-        .method_call();
+        val1
+    } else {
+        val2
+    }.method_call();
 
     {
         match x {
             PushParam => {
                 // params are 1-indexed
                 stack.push(mparams[match cur.to_digit(10) {
-                                   Some(d) => d as usize - 1,
-                                   None => return Err("bad param number".to_owned()),
-                               }]
-                               .clone());
+                    Some(d) => d as usize - 1,
+                    None => return Err("bad param number".to_owned()),
+                }].clone());
             }
         }
     }
 
     if cond {
-            some();
-        } else {
-            none();
-        }
-        .bar()
+        some();
+    } else {
+        none();
+    }.bar()
         .baz();
 
     Foo { x: val }
@@ -108,21 +104,19 @@ fn floaters() {
         .quux();
 
     Foo {
-            y: i_am_multi_line,
-            z: ok,
-        }
-        .baz(|| {
-                 force();
-                 multiline();
-             })
+        y: i_am_multi_line,
+        z: ok,
+    }.baz(|| {
+              force();
+              multiline();
+          })
         .quux();
 
     a +
     match x {
-            true => "yay!",
-            false => "boo!",
-        }
-        .bar()
+        true => "yay!",
+        false => "boo!",
+    }.bar()
 }
 
 fn is_replaced_content() -> bool {

@@ -1062,11 +1062,11 @@ fn format_tuple_struct(context: &RewriteContext,
                          |field| field.rewrite(context, Shape::legacy(item_budget, item_indent)),
                          context.codemap.span_after(span, "("),
                          span.hi);
-        let body_budget = try_opt!(context
-                                       .config
-                                       .max_width()
-                                       .checked_sub(offset.block_only().width() + result.len() +
-                                                    3));
+        let body_budget =
+            try_opt!(context
+                         .config
+                         .max_width()
+                         .checked_sub(offset.block_only().width() + result.len() + 3));
         let body = try_opt!(list_helper(items,
                                         // TODO budget is wrong in block case
                                         Shape::legacy(body_budget, item_indent),
@@ -1126,8 +1126,7 @@ pub fn rewrite_type_alias(context: &RewriteContext,
 
     let generics_indent = indent + result.len();
     let generics_span = mk_sp(context.codemap.span_after(span, "type"), ty.span.lo);
-    let shape = try_opt!(Shape::indented(generics_indent, context.config)
-                             .sub_width(" =".len()));
+    let shape = try_opt!(Shape::indented(generics_indent, context.config).sub_width(" =".len()));
     let generics_str = try_opt!(rewrite_generics(context, generics, shape, generics_span));
 
     result.push_str(&generics_str);
@@ -1310,28 +1309,30 @@ pub fn rewrite_associated_type(ident: ast::Ident,
                                -> Option<String> {
     let prefix = format!("type {}", ident);
 
-    let type_bounds_str =
-        if let Some(ty_param_bounds) = ty_param_bounds_opt {
-            let joiner = match context.config.type_punctuation_density() {
-                TypeDensity::Compressed => "+",
-                TypeDensity::Wide => " + ",
-            };
-            let bounds: &[_] = ty_param_bounds;
-            let bound_str = try_opt!(bounds
-                                         .iter()
-                                         .map(|ty_bound| {
-                ty_bound.rewrite(context, Shape::legacy(context.config.max_width(), indent))
-            })
-                                         .intersperse(Some(joiner.to_string()))
-                                         .collect::<Option<String>>());
-            if bounds.len() > 0 {
-                format!(": {}", bound_str)
-            } else {
-                String::new()
-            }
+    let type_bounds_str = if let Some(ty_param_bounds) = ty_param_bounds_opt {
+        let joiner = match context.config.type_punctuation_density() {
+            TypeDensity::Compressed => "+",
+            TypeDensity::Wide => " + ",
+        };
+        let bounds: &[_] = ty_param_bounds;
+        let bound_str =
+            try_opt!(bounds
+                         .iter()
+                         .map(|ty_bound| {
+                                  ty_bound.rewrite(context,
+                                                   Shape::legacy(context.config.max_width(),
+                                                                 indent))
+                              })
+                         .intersperse(Some(joiner.to_string()))
+                         .collect::<Option<String>>());
+        if bounds.len() > 0 {
+            format!(": {}", bound_str)
         } else {
             String::new()
-        };
+        }
+    } else {
+        String::new()
+    };
 
     if let Some(ty) = ty_opt {
         let ty_str = try_opt!(ty.rewrite(context,
@@ -1931,8 +1932,7 @@ fn compute_budgets_for_args(context: &RewriteContext,
             let multi_line_budget = try_opt!(context
                                                  .config
                                                  .max_width()
-                                                 .checked_sub(indent.width() + result.len() +
-                                                              4));
+                                                 .checked_sub(indent.width() + result.len() + 4));
 
             return Some((one_line_budget, multi_line_budget, indent + result.len() + 1));
         }
