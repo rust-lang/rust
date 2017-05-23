@@ -981,6 +981,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "dump the dependency graph to $RUST_DEP_GRAPH (default: /tmp/dep_graph.gv)"),
     query_dep_graph: bool = (false, parse_bool, [UNTRACKED],
           "enable queries of the dependency graph for regression testing"),
+    profile_queries: bool = (false, parse_bool, [UNTRACKED],
+          "trace and profile the queries of the incremental compilation framework"),
     no_analysis: bool = (false, parse_bool, [UNTRACKED],
           "parse and expand the source, but run no analysis"),
     extra_plugins: Vec<String> = (Vec::new(), parse_list, [TRACKED],
@@ -2520,6 +2522,8 @@ mod tests {
         opts.debugging_opts.dump_dep_graph = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.query_dep_graph = true;
+        assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+        opts.profile_queries = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.no_analysis = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
