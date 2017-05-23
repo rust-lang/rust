@@ -299,29 +299,32 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, shape: Shape) -> Option<S
     {
         let snippet = s.as_ref();
 
-        if !snippet.contains('\n') && snippet.len() > shape.width {
-            return None;
-        } else {
-            let mut lines = snippet.lines();
-
-            // The caller of this function has already placed `shape.offset`
-            // characters on the first line.
-            let first_line_max_len = try_opt!(max_width.checked_sub(shape.indent.width()));
-            if lines.next().unwrap().len() > first_line_max_len {
+        if !snippet.is_empty() {
+            if !snippet.contains('\n') && snippet.len() > shape.width {
                 return None;
-            }
+            } else {
+                let mut lines = snippet.lines();
 
-            // The other lines must fit within the maximum width.
-            if lines.any(|line| line.len() > max_width) {
-                return None;
-            }
+                // The caller of this function has already placed `shape.offset`
+                // characters on the first line.
+                let first_line_max_len = try_opt!(max_width.checked_sub(shape.indent.width()));
+                if lines.next().unwrap().len() > first_line_max_len {
+                    return None;
+                }
 
-            // `width` is the maximum length of the last line, excluding
-            // indentation.
-            // A special check for the last line, since the caller may
-            // place trailing characters on this line.
-            if snippet.lines().rev().next().unwrap().len() > shape.indent.width() + shape.width {
-                return None;
+                // The other lines must fit within the maximum width.
+                if lines.any(|line| line.len() > max_width) {
+                    return None;
+                }
+
+                // `width` is the maximum length of the last line, excluding
+                // indentation.
+                // A special check for the last line, since the caller may
+                // place trailing characters on this line.
+                if snippet.lines().rev().next().unwrap().len() >
+                   shape.indent.width() + shape.width {
+                    return None;
+                }
             }
         }
     }
