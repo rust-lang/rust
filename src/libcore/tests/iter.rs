@@ -172,6 +172,79 @@ fn test_iterator_step_by_zero() {
 }
 
 #[test]
+fn test_iterator_step_by_size_hint() {
+    struct StubSizeHint(usize, Option<usize>);
+    impl Iterator for StubSizeHint {
+        type Item = ();
+        fn next(&mut self) -> Option<()> {
+            self.0 -= 1;
+            if let Some(ref mut upper) = self.1 {
+                *upper -= 1;
+            }
+            Some(())
+        }
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            (self.0, self.1)
+        }
+    }
+
+    // The two checks in each case are needed because the logic
+    // is different before the first call to `next()`.
+
+    let mut it = StubSizeHint(10, Some(10)).step_by(1);
+    assert_eq!(it.size_hint(), (10, Some(10)));
+    it.next();
+    assert_eq!(it.size_hint(), (9, Some(9)));
+
+    // exact multiple
+    let mut it = StubSizeHint(10, Some(10)).step_by(3);
+    assert_eq!(it.size_hint(), (4, Some(4)));
+    it.next();
+    assert_eq!(it.size_hint(), (3, Some(3)));
+
+    // larger base range, but not enough to get another element
+    let mut it = StubSizeHint(12, Some(12)).step_by(3);
+    assert_eq!(it.size_hint(), (4, Some(4)));
+    it.next();
+    assert_eq!(it.size_hint(), (3, Some(3)));
+
+    // smaller base range, so fewer resulting elements
+    let mut it = StubSizeHint(9, Some(9)).step_by(3);
+    assert_eq!(it.size_hint(), (3, Some(3)));
+    it.next();
+    assert_eq!(it.size_hint(), (2, Some(2)));
+
+    // infinite upper bound
+    let mut it = StubSizeHint(usize::MAX, None).step_by(1);
+    assert_eq!(it.size_hint(), (usize::MAX, None));
+    it.next();
+    assert_eq!(it.size_hint(), (usize::MAX-1, None));
+
+    // still infinite with larger step
+    let mut it = StubSizeHint(7, None).step_by(3);
+    assert_eq!(it.size_hint(), (3, None));
+    it.next();
+    assert_eq!(it.size_hint(), (2, None));
+
+    // propagates ExactSizeIterator
+    let a = [1,2,3,4,5];
+    let it = a.iter().step_by(2);
+    assert_eq!(it.len(), 3);
+
+    // Cannot be TrustedLen as a step greater than one makes an iterator
+    // with (usize::MAX, None) no longer meet the safety requirements
+    trait TrustedLenCheck { fn test(self) -> bool; }
+    impl<T:Iterator> TrustedLenCheck for T {
+        default fn test(self) -> bool { false }
+    }
+    impl<T:TrustedLen> TrustedLenCheck for T {
+        fn test(self) -> bool { true }
+    }
+    assert!(TrustedLenCheck::test(a.iter()));
+    assert!(!TrustedLenCheck::test(a.iter().step_by(1)));
+}
+
+#[test]
 fn test_filter_map() {
     let it = (0..).step_by(1).take(10)
         .filter_map(|x| if x % 2 == 0 { Some(x*x) } else { None });
