@@ -22,7 +22,7 @@ use codemap::SpanUtils;
 use lists::{format_item_list, itemize_list, format_fn_args};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, format_mutability, colon_spaces, wrap_str};
-use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
+use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple_type};
 use config::TypeDensity;
 use itertools::Itertools;
 
@@ -662,7 +662,7 @@ impl Rewrite for ast::Ty {
                          })
             }
             ast::TyKind::Tup(ref items) => {
-                rewrite_tuple(context, items.iter().map(|x| &**x), self.span, shape)
+                rewrite_tuple_type(context, items.iter().map(|x| &**x), self.span, shape)
             }
             ast::TyKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, PathContext::Type, q_self.as_ref(), path, shape)

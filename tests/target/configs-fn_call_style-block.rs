@@ -13,9 +13,9 @@ fn main() {
         "elit",
     );
     // #1501
-    let hyper = Arc::new(Client::with_connector(HttpsConnector::new(
-        TlsClient::new(),
-    )));
+    let hyper = Arc::new(Client::with_connector(
+        HttpsConnector::new(TlsClient::new()),
+    ));
 }
 
 // #1521

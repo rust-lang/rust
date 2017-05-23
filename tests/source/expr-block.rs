@@ -152,6 +152,22 @@ fn combine_block() {
         },
     );
 
+    foo((Bar {
+        x: value,
+        y: value2,
+    },));
+
+    foo((1, 2, 3, Bar {
+        x: value,
+        y: value2,
+    }));
+
+    foo((1, 2, 3, |x| {
+        let y = x + 1;
+        let z = y + 1;
+        z
+    }));
+
     let opt = Some(
         Struct(
             long_argument_one,
