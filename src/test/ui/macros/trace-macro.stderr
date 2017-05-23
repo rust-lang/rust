@@ -4,6 +4,9 @@ note: trace_macro
 14 |     println!("Hello, World!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expands to `println! { "Hello, World!" }`
-   = note: expands to `print! { concat ! ( "Hello, World!" , "/n" ) }`
+   = note: expanding `println! { "Hello, World!" }`
+   = note: to `print ! ( concat ! ( "Hello, World!" , "/n" ) )`
+   = note: expanding `print! { concat ! ( "Hello, World!" , "/n" ) }`
+   = note: to `$crate :: io :: _print ( format_args ! ( concat ! ( "Hello, World!" , "/n" ) )
+           )`
 
