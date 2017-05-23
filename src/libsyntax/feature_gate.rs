@@ -297,9 +297,6 @@ declare_features! (
 
     (active, use_extern_macros, "1.15.0", Some(35896)),
 
-    // Allows `break {expr}` with a value inside `loop`s.
-    (active, loop_break_value, "1.14.0", Some(37339)),
-
     // Allows #[target_feature(...)]
     (active, target_feature, "1.15.0", None),
 
@@ -423,6 +420,8 @@ declare_features! (
     (accepted, pub_restricted, "1.18.0", Some(32409)),
     // The #![windows_subsystem] attribute
     (accepted, windows_subsystem, "1.18.0", Some(37499)),
+    // Allows `break {expr}` with a value inside `loop`s.
+    (accepted, loop_break_value, "1.19.0", Some(37339)),
 );
 // If you change this, please modify src/doc/unstable-book as well. You must
 // move that documentation into the relevant place in the other docs, and
@@ -1300,10 +1299,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                           "numeric fields in struct expressions are unstable");
                     }
                 }
-            }
-            ast::ExprKind::Break(_, Some(_)) => {
-                gate_feature_post!(&self, loop_break_value, e.span,
-                                   "`break` with a value is experimental");
             }
             ast::ExprKind::Lit(ref lit) => {
                 if let ast::LitKind::Int(_, ref ty) = lit.node {

@@ -15,7 +15,6 @@
 // like to revisit these and potentially change them. --nmatsakis
 
 #![feature(never_type)]
-#![feature(loop_break_value)]
 
 trait BadDefault {
     fn default() -> Self;

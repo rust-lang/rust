@@ -30,7 +30,6 @@
 #![feature(core_intrinsics)]
 #![feature(i128_type)]
 #![feature(libc)]
-#![feature(loop_break_value)]
 #![feature(never_type)]
 #![feature(nonzero)]
 #![feature(quote)]
@@ -45,6 +44,7 @@
 #![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
 #![cfg_attr(stage0, feature(rustc_private))]
 #![cfg_attr(stage0, feature(staged_api))]
+#![cfg_attr(stage0, feature(loop_break_value))]
 
 #![recursion_limit="128"]
 
