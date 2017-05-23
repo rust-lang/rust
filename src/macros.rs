@@ -113,14 +113,14 @@ pub fn rewrite_macro(mac: &ast::Mac,
                 Ok(expr) => {
                     // Recovered errors.
                     if context.parse_session.span_diagnostic.has_errors() {
-                        return None;
+                        return Some(context.snippet(mac.span));
                     }
 
                     expr
                 }
                 Err(mut e) => {
                     e.cancel();
-                    return None;
+                    return Some(context.snippet(mac.span));
                 }
             };
 

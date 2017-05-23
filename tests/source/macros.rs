@@ -78,6 +78,11 @@ fn main() {
         // comment
         not function like
     );
+
+    // #1577
+    let json = json!({
+        "foo": "bar",
+    });
 }
 
 impl X {
