@@ -269,6 +269,23 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         res
     }
 
+    pub fn in_opt_scope<F, R>(&mut self,
+                              opt_extent: Option<CodeExtent>,
+                              mut block: BasicBlock,
+                              f: F)
+                              -> BlockAnd<R>
+        where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
+    {
+        debug!("in_opt_scope(opt_extent={:?}, block={:?})", opt_extent, block);
+        if let Some(extent) = opt_extent { self.push_scope(extent); }
+        let rv = unpack!(block = f(self));
+        if let Some(extent) = opt_extent {
+            unpack!(block = self.pop_scope(extent, block));
+        }
+        debug!("in_scope: exiting opt_extent={:?} block={:?}", opt_extent, block);
+        block.and(rv)
+    }
+
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
     pub fn in_scope<F, R>(&mut self,
