@@ -459,6 +459,15 @@ macro_rules! define_maps {
                        key,
                        span);
 
+                // XXX
+                if tcx.sess.profile_queries() {
+                    use ty::context::ProfileQueriesMsg;
+                    let s = span.clone();
+                    let q = Query::$name(key.clone());
+                    tcx.profile_queries_sender.borrow().as_ref().unwrap()
+                        .send(ProfileQueriesMsg::QueryBegin(s, q)).unwrap()
+                }
+
                 if let Some(result) = tcx.maps.$name.borrow().get(&key) {
                     return Ok(f(result));
                 }
