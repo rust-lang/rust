@@ -272,6 +272,8 @@ impl<A: Step> ops::RangeFrom<A> {
     /// ```
     #[unstable(feature = "step_by", reason = "recent addition",
                issue = "27741")]
+    #[rustc_deprecated(since = "1.19.0",
+                       reason = "replaced by `Iterator::step_by`")]
     pub fn step_by(self, by: A) -> StepBy<A, Self> {
         StepBy {
             step_by: by,
@@ -297,6 +299,8 @@ impl<A: Step> ops::Range<A> {
     /// ```
     #[unstable(feature = "step_by", reason = "recent addition",
                issue = "27741")]
+    #[rustc_deprecated(since = "1.19.0",
+                       reason = "replaced by `Iterator::step_by`")]
     pub fn step_by(self, by: A) -> StepBy<A, Self> {
         StepBy {
             step_by: by,
@@ -321,6 +325,8 @@ impl<A: Step> ops::RangeInclusive<A> {
     /// ```
     #[unstable(feature = "step_by", reason = "recent addition",
                issue = "27741")]
+    #[rustc_deprecated(since = "1.19.0",
+                       reason = "replaced by `Iterator::step_by`")]
     pub fn step_by(self, by: A) -> StepBy<A, Self> {
         StepBy {
             step_by: by,
