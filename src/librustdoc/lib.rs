@@ -162,8 +162,9 @@ pub fn opts() -> Vec<RustcOptGroup> {
                       "URL to send code snippets to", "URL")),
         stable(optflag("", "markdown-no-toc", "don't include table of contents")),
         stable(optopt("e", "extend-css",
-                      "to redefine some css rules with a given file to generate doc with your \
-                       own theme", "PATH")),
+                      "To add some CSS rules with a given file to generate doc with your \
+                       own theme. However, your theme might break if the rustdoc's generated HTML \
+                       changes, so be careful!", "PATH")),
         unstable(optmulti("Z", "",
                           "internal and debugging options (only on nightly build)", "FLAG")),
         stable(optopt("", "sysroot", "Override the system root", "PATH")),
