@@ -98,16 +98,20 @@ fn format_expr(expr: &ast::Expr,
         }
         ast::ExprKind::Tup(ref items) => rewrite_tuple(context, items, expr.span, shape),
         ast::ExprKind::While(ref cond, ref block, label) => {
-            ControlFlow::new_while(None, cond, block, label, expr.span).rewrite(context, shape)
+            ControlFlow::new_while(None, cond, block, label, expr.span)
+                .rewrite(context, shape)
         }
         ast::ExprKind::WhileLet(ref pat, ref cond, ref block, label) => {
-            ControlFlow::new_while(Some(pat), cond, block, label, expr.span).rewrite(context, shape)
+            ControlFlow::new_while(Some(pat), cond, block, label, expr.span)
+                .rewrite(context, shape)
         }
         ast::ExprKind::ForLoop(ref pat, ref cond, ref block, label) => {
-            ControlFlow::new_for(pat, cond, block, label, expr.span).rewrite(context, shape)
+            ControlFlow::new_for(pat, cond, block, label, expr.span)
+                .rewrite(context, shape)
         }
         ast::ExprKind::Loop(ref block, label) => {
-            ControlFlow::new_loop(block, label, expr.span).rewrite(context, shape)
+            ControlFlow::new_loop(block, label, expr.span)
+                .rewrite(context, shape)
         }
         ast::ExprKind::Block(ref block) => block.rewrite(context, shape),
         ast::ExprKind::If(ref cond, ref if_block, ref else_block) => {
@@ -175,11 +179,12 @@ fn format_expr(expr: &ast::Expr,
         ast::ExprKind::Mac(ref mac) => {
             // Failure to rewrite a marco should not imply failure to
             // rewrite the expression.
-            rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
-                wrap_str(context.snippet(expr.span),
-                         context.config.max_width(),
-                         shape)
-            })
+            rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
+                .or_else(|| {
+                             wrap_str(context.snippet(expr.span),
+                                      context.config.max_width(),
+                                      shape)
+                         })
         }
         ast::ExprKind::Ret(None) => {
             wrap_str("return".to_owned(), context.config.max_width(), shape)
@@ -316,11 +321,11 @@ pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
     let lhs_budget = try_opt!(context
                                   .config
                                   .max_width()
-                                  .checked_sub(shape.used_width() + prefix.len() +
-                                               infix.len()));
+                                  .checked_sub(shape.used_width() + prefix.len() + infix.len()));
     let rhs_shape = match context.config.control_style() {
         Style::Default => {
-            try_opt!(shape.sub_width(suffix.len() + prefix.len())).visual_indent(prefix.len())
+            try_opt!(shape.sub_width(suffix.len() + prefix.len()))
+                .visual_indent(prefix.len())
         }
         Style::Rfc => try_opt!(shape.block_left(context.config.tab_spaces())),
     };
@@ -511,7 +516,8 @@ fn rewrite_closure(capture: ast::CaptureBy,
 
     // 1 = space between `|...|` and body.
     let extra_offset = extra_offset(&prefix, shape) + 1;
-    let body_shape = try_opt!(shape.sub_width(extra_offset)).add_offset(extra_offset);
+    let body_shape = try_opt!(shape.sub_width(extra_offset))
+        .add_offset(extra_offset);
 
     if let ast::ExprKind::Block(ref block) = body.node {
         // The body of the closure is an empty block.
@@ -953,14 +959,13 @@ impl<'a> Rewrite for ControlFlow<'a> {
         };
 
         // for event in event
-        let between_kwd_cond =
-            mk_sp(context.codemap.span_after(self.span, self.keyword.trim()),
-                  self.pat
-                      .map_or(cond_span.lo, |p| if self.matcher.is_empty() {
-                p.span.lo
-            } else {
-                context.codemap.span_before(self.span, self.matcher.trim())
-            }));
+        let between_kwd_cond = mk_sp(context.codemap.span_after(self.span, self.keyword.trim()),
+                                     self.pat
+                                         .map_or(cond_span.lo, |p| if self.matcher.is_empty() {
+            p.span.lo
+        } else {
+            context.codemap.span_before(self.span, self.matcher.trim())
+        }));
 
         let between_kwd_cond_comment = extract_comment(between_kwd_cond, context, shape);
 
@@ -1042,9 +1047,10 @@ impl<'a> Rewrite for ControlFlow<'a> {
             let between_kwd_else_block_comment =
                 extract_comment(between_kwd_else_block, context, shape);
 
-            let after_else = mk_sp(context.codemap.span_after(mk_sp(self.block.span.hi,
-                                                                    else_block.span.lo),
-                                                              "else"),
+            let after_else = mk_sp(context
+                                       .codemap
+                                       .span_after(mk_sp(self.block.span.hi, else_block.span.lo),
+                                                   "else"),
                                    else_block.span.lo);
             let after_else_comment = extract_comment(after_else, context, shape);
 
@@ -1791,11 +1797,11 @@ fn rewrite_call_args(context: &RewriteContext,
 
 fn can_be_overflowed(context: &RewriteContext, args: &[ptr::P<ast::Expr>]) -> bool {
     match args.last().map(|x| &x.node) {
-        Some(&ast::ExprKind::Block(..)) |
         Some(&ast::ExprKind::Match(..)) => {
             (context.config.fn_call_style() == IndentStyle::Block && args.len() == 1) ||
             (context.config.fn_call_style() == IndentStyle::Visual && args.len() > 1)
         }
+        Some(&ast::ExprKind::Block(..)) |
         Some(&ast::ExprKind::Closure(..)) => {
             context.config.fn_call_style() == IndentStyle::Block ||
             context.config.fn_call_style() == IndentStyle::Visual && args.len() > 1
@@ -1822,6 +1828,7 @@ fn is_extendable(args: &[ptr::P<ast::Expr>]) -> bool {
         }
     } else if args.len() > 1 {
         match args[args.len() - 1].node {
+            ast::ExprKind::Block(..) |
             ast::ExprKind::Closure(..) |
             ast::ExprKind::Tup(..) => true,
             _ => false,

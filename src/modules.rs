@@ -68,7 +68,8 @@ fn module_file(id: ast::Ident,
         return path;
     }
 
-    match parser::Parser::default_submod_path(id, dir_path, codemap).result {
+    match parser::Parser::default_submod_path(id, dir_path, codemap)
+              .result {
         Ok(parser::ModulePathSuccess { path, .. }) => path,
         Err(_) => panic!("Couldn't find module {}", id),
     }

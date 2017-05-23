@@ -99,10 +99,14 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     }
 
     // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
-    let mut parent_shape = shape;
-    if is_block_expr(&parent, "\n") {
-        parent_shape = chain_indent(context, shape);
-    }
+    let parent_shape = if is_block_expr(context, &parent, "\n") {
+        match context.config.chain_indent() {
+            IndentStyle::Visual => shape.visual_indent(0),
+            IndentStyle::Block => shape.block(),
+        }
+    } else {
+        shape
+    };
     let parent_rewrite = try_opt!(parent.rewrite(context, parent_shape));
     let parent_rewrite_contains_newline = parent_rewrite.contains('\n');
 
@@ -121,30 +125,28 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         (nested_shape,
          context.config.chain_indent() == IndentStyle::Visual ||
          parent_rewrite.len() <= context.config.tab_spaces())
-    } else if is_block_expr(&parent, &parent_rewrite) {
-        // The parent is a block, so align the rest of the chain with the closing
-        // brace.
-        (parent_shape, false)
+    } else if is_block_expr(context, &parent, &parent_rewrite) {
+        match context.config.chain_indent() {
+            // Try to put the first child on the same line with parent's last line
+            IndentStyle::Block => (parent_shape.block_indent(context.config.tab_spaces()), true),
+            // The parent is a block, so align the rest of the chain with the closing
+            // brace.
+            IndentStyle::Visual => (parent_shape, false),
+        }
     } else if parent_rewrite_contains_newline {
         (chain_indent(context, parent_shape), false)
     } else {
         (shape.block_indent(context.config.tab_spaces()), false)
     };
 
-    let max_width = try_opt!((shape.width + shape.indent.width() + shape.offset)
-                                 .checked_sub(nested_shape.indent.width() +
-                                              nested_shape.offset));
+    let other_child_shape = nested_shape.with_max_width(context.config);
 
-    let other_child_shape = Shape {
-        width: max_width,
-        ..nested_shape
-    };
     let first_child_shape = if extend {
-        let first_child_shape = try_opt!(parent_shape
-                                             .offset_left(last_line_width(&parent_rewrite)));
+        let overhead = last_line_width(&parent_rewrite);
+        let offset = parent_rewrite.lines().rev().next().unwrap().trim().len();
         match context.config.chain_indent() {
-            IndentStyle::Visual => first_child_shape,
-            IndentStyle::Block => first_child_shape.block(),
+            IndentStyle::Visual => try_opt!(parent_shape.offset_left(overhead)),
+            IndentStyle::Block => try_opt!(parent_shape.block().offset_left(offset)),
         }
     } else {
         other_child_shape
@@ -153,10 +155,10 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
            first_child_shape,
            other_child_shape);
 
-    let child_shape_iter =
-        Some(first_child_shape)
-            .into_iter()
-            .chain(::std::iter::repeat(other_child_shape).take(subexpr_list.len() - 1));
+    let child_shape_iter = Some(first_child_shape)
+        .into_iter()
+        .chain(::std::iter::repeat(other_child_shape)
+                   .take(subexpr_list.len() - 1));
     let iter = subexpr_list.iter().rev().zip(child_shape_iter);
     let mut rewrites =
         try_opt!(iter.map(|(e, shape)| rewrite_chain_subexpr(e, total_span, context, shape))
@@ -173,7 +175,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         if rewrites.len() > 1 {
             true
         } else if rewrites.len() == 1 {
-            one_line_len > shape.width
+            parent_rewrite.len() > context.config.chain_one_line_max() / 2
         } else {
             false
         }
@@ -224,8 +226,16 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         format!("\n{}", nested_shape.indent.to_string(context.config))
     };
 
-    let first_connector = if extend || subexpr_list.is_empty() || first_subexpr_is_try {
+    let first_connector = if subexpr_list.is_empty() {
         ""
+    } else if extend || first_subexpr_is_try {
+        // 1 = ";", being conservative here.
+        if last_line_width(&parent_rewrite) + first_line_width(&rewrites[0]) + 1 <=
+           context.config.max_width() {
+            ""
+        } else {
+            &*connector
+        }
     } else {
         &*connector
     };
@@ -277,8 +287,11 @@ fn join_rewrites(rewrites: &[String], subexps: &[ast::Expr], connector: &str) ->
 
 // States whether an expression's last line exclusively consists of closing
 // parens, braces, and brackets in its idiomatic formatting.
-fn is_block_expr(expr: &ast::Expr, repr: &str) -> bool {
+fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool {
     match expr.node {
+        ast::ExprKind::Call(..) => {
+            context.config.fn_call_style() == IndentStyle::Block && repr.contains('\n')
+        }
         ast::ExprKind::Struct(..) |
         ast::ExprKind::While(..) |
         ast::ExprKind::WhileLet(..) |
@@ -291,7 +304,7 @@ fn is_block_expr(expr: &ast::Expr, repr: &str) -> bool {
         ast::ExprKind::Paren(ref expr) |
         ast::ExprKind::Binary(_, _, ref expr) |
         ast::ExprKind::Index(_, ref expr) |
-        ast::ExprKind::Unary(_, ref expr) => is_block_expr(expr, repr),
+        ast::ExprKind::Unary(_, ref expr) => is_block_expr(context, expr, repr),
         _ => false,
     }
 }
