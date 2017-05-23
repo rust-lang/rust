@@ -364,7 +364,9 @@ impl Rewrite for ast::WherePredicate {
                 let colon = type_bound_colon(context);
 
                 if !bound_lifetimes.is_empty() {
-                    let lifetime_str: String = try_opt!(bound_lifetimes.iter()
+                    let lifetime_str: String =
+                        try_opt!(bound_lifetimes
+                                     .iter()
                                      .map(|lt| lt.rewrite(context, shape))
                                      .intersperse(Some(", ".to_string()))
                                      .collect());
@@ -376,14 +378,17 @@ impl Rewrite for ast::WherePredicate {
                     // 6 = "for<> ".len()
                     let used_width = lifetime_str.len() + type_str.len() + colon.len() + 6;
                     let budget = try_opt!(shape.width.checked_sub(used_width));
-                    let bounds_str: String = try_opt!(bounds.iter()
-                                                    .map(|ty_bound| {
-                                                        ty_bound.rewrite(context,
-                                                                         Shape::legacy(budget,
-                                                                         shape.indent + used_width))
-                                                    })
-                                                    .intersperse(Some(joiner.to_string()))
-                                                    .collect());
+                    let bounds_str: String =
+                        try_opt!(bounds
+                                     .iter()
+                                     .map(|ty_bound| {
+                                              ty_bound.rewrite(context,
+                                                               Shape::legacy(budget,
+                                                                             shape.indent +
+                                                                             used_width))
+                                          })
+                                     .intersperse(Some(joiner.to_string()))
+                                     .collect());
 
                     if context.config.spaces_within_angle_brackets() && lifetime_str.len() > 0 {
                         format!("for< {} > {}{}{}",
@@ -401,14 +406,17 @@ impl Rewrite for ast::WherePredicate {
                     };
                     let used_width = type_str.len() + colon.len();
                     let budget = try_opt!(shape.width.checked_sub(used_width));
-                    let bounds_str: String = try_opt!(bounds.iter()
-                                                    .map(|ty_bound| {
-                                                        ty_bound.rewrite(context,
-                                                                         Shape::legacy(budget,
-                                                                         shape.indent + used_width))
-                                                    })
-                                                    .intersperse(Some(joiner.to_string()))
-                                                    .collect());
+                    let bounds_str: String =
+                        try_opt!(bounds
+                                     .iter()
+                                     .map(|ty_bound| {
+                                              ty_bound.rewrite(context,
+                                                               Shape::legacy(budget,
+                                                                             shape.indent +
+                                                                             used_width))
+                                          })
+                                     .intersperse(Some(joiner.to_string()))
+                                     .collect());
 
                     format!("{}{}{}", type_str, colon, bounds_str)
                 }

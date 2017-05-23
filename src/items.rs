@@ -332,7 +332,7 @@ impl<'a> FmtVisitor<'a> {
                             let suffix = if semicolon_for_expr(e) { ";" } else { "" };
 
                             e.rewrite(&self.get_context(),
-                                         Shape::indented(self.block_indent, self.config))
+                                      Shape::indented(self.block_indent, self.config))
                                 .map(|s| s + suffix)
                                 .or_else(|| Some(self.snippet(e.span)))
                         }
@@ -376,7 +376,7 @@ impl<'a> FmtVisitor<'a> {
                                            enum_def.variants.is_empty(),
                                            self.block_indent,
                                            mk_sp(span.lo, body_start))
-                .unwrap();
+            .unwrap();
         self.buffer.push_str(&generics_str);
 
         self.last_pos = body_start;
@@ -941,7 +941,7 @@ fn format_struct_struct(context: &RewriteContext,
                      |field| field.rewrite(context, Shape::legacy(item_budget, item_indent)),
                      context.codemap.span_after(span, "{"),
                      span.hi)
-                .collect::<Vec<_>>();
+            .collect::<Vec<_>>();
     // 1 = ,
     let budget = context.config.max_width() - offset.width() + context.config.tab_spaces() - 1;
 
@@ -1295,7 +1295,7 @@ pub fn rewrite_static(prefix: &str,
                            lhs,
                            expr,
                            Shape::legacy(remaining_width, offset.block_only()))
-                .map(|s| s + ";")
+            .map(|s| s + ";")
     } else {
         let lhs = format!("{}{};", prefix, ty_str);
         Some(lhs)

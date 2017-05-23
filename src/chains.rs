@@ -126,9 +126,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         // brace.
         (parent_shape, false)
     } else if parent_rewrite_contains_newline {
-        (chain_indent(context,
-                      parent_shape.block_indent(context.config.tab_spaces())),
-         false)
+        (chain_indent(context, parent_shape), false)
     } else {
         (shape.block_indent(context.config.tab_spaces()), false)
     };
@@ -142,17 +140,11 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         ..nested_shape
     };
     let first_child_shape = if extend {
-        let mut shape = try_opt!(parent_shape.offset_left(last_line_width(&parent_rewrite)));
+        let first_child_shape = try_opt!(parent_shape
+                                             .offset_left(last_line_width(&parent_rewrite)));
         match context.config.chain_indent() {
-            IndentStyle::Visual => shape,
-            IndentStyle::Block => {
-                shape.offset = shape
-                    .offset
-                    .checked_sub(context.config.tab_spaces())
-                    .unwrap_or(0);
-                shape.indent.block_indent += context.config.tab_spaces();
-                shape
-            }
+            IndentStyle::Visual => first_child_shape,
+            IndentStyle::Block => first_child_shape.block(),
         }
     } else {
         other_child_shape
@@ -181,7 +173,6 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         if rewrites.len() > 1 {
             true
         } else if rewrites.len() == 1 {
-            let one_line_len = parent_rewrite.len() + first_line_width(&rewrites[0]);
             one_line_len > shape.width
         } else {
             false

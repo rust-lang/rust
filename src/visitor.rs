@@ -282,10 +282,10 @@ impl<'a> FmtVisitor<'a> {
                                            item.span,
                                            indent,
                                            None)
-                            .map(|s| match *def {
-                                     ast::VariantData::Tuple(..) => s + ";",
-                                     _ => s,
-                                 })
+                        .map(|s| match *def {
+                                 ast::VariantData::Tuple(..) => s + ";",
+                                 _ => s,
+                             })
                 };
                 self.push_rewrite(item.span, rewrite);
             }

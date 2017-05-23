@@ -29,7 +29,7 @@ use syntax::util::ThinVec;
 use Shape;
 use codemap::SpanUtils;
 use rewrite::{Rewrite, RewriteContext};
-use expr::{rewrite_call, rewrite_array};
+use expr::{rewrite_call, rewrite_array, rewrite_pair};
 use comment::{FindUncommented, contains_comment};
 
 const FORCED_BRACKET_MACROS: &'static [&'static str] = &["vec!"];
@@ -105,6 +105,7 @@ pub fn rewrite_macro(mac: &ast::Mac,
 
     let mut parser = tts_to_parser(context.parse_session, mac.node.tts.clone());
     let mut expr_vec = Vec::new();
+    let mut vec_with_semi = false;
 
     if MacroStyle::Braces != style {
         loop {
@@ -128,6 +129,29 @@ pub fn rewrite_macro(mac: &ast::Mac,
             match parser.token {
                 Token::Eof => break,
                 Token::Comma => (),
+                Token::Semi => {
+                    // Try to parse `vec![expr; expr]`
+                    if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) {
+                        parser.bump();
+                        if parser.token != Token::Eof {
+                            match parser.parse_expr() {
+                                Ok(expr) => {
+                                    if context.parse_session.span_diagnostic.has_errors() {
+                                        return None;
+                                    }
+                                    expr_vec.push(expr);
+                                    parser.bump();
+                                    if parser.token == Token::Eof && expr_vec.len() == 2 {
+                                        vec_with_semi = true;
+                                        break;
+                                    }
+                                }
+                                Err(mut e) => e.cancel(),
+                            }
+                        }
+                    }
+                    return None;
+                }
                 _ => return None,
             }
 
@@ -156,18 +180,35 @@ pub fn rewrite_macro(mac: &ast::Mac,
             })
         }
         MacroStyle::Brackets => {
-            // Format macro invocation as array literal.
-            let extra_offset = macro_name.len();
-            let shape = try_opt!(shape.shrink_left(extra_offset));
-            let rewrite =
-                try_opt!(rewrite_array(expr_vec.iter().map(|x| &**x),
-                                       mk_sp(context.codemap.span_after(mac.span,
-                                                                        original_style.opener()),
-                                             mac.span.hi - BytePos(1)),
-                                       context,
-                                       shape));
+            let mac_shape = try_opt!(shape.shrink_left(macro_name.len()));
+            // Handle special case: `vec![expr; expr]`
+            if vec_with_semi {
+                let (lbr, rbr) = if context.config.spaces_within_square_brackets() {
+                    ("[ ", " ]")
+                } else {
+                    ("[", "]")
+                };
+                rewrite_pair(&*expr_vec[0],
+                             &*expr_vec[1],
+                             lbr,
+                             "; ",
+                             rbr,
+                             context,
+                             mac_shape)
+                    .map(|s| format!("{}{}", macro_name, s))
+            } else {
+                // Format macro invocation as array literal.
+                let rewrite =
+                    try_opt!(rewrite_array(expr_vec.iter().map(|x| &**x),
+                                           mk_sp(context.codemap.span_after(mac.span,
+                                                                            original_style
+                                                                                .opener()),
+                                                 mac.span.hi - BytePos(1)),
+                                           context,
+                                           mac_shape));
 
-            Some(format!("{}{}", macro_name, rewrite))
+                Some(format!("{}{}", macro_name, rewrite))
+            }
         }
         MacroStyle::Braces => {
             // Skip macro invocations with braces, for now.

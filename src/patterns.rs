@@ -293,7 +293,7 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
                                          |item| item.rewrite(context, nested_shape),
                                          context.codemap.span_after(span, "("),
                                          span.hi - BytePos(1))
-            .collect();
+        .collect();
 
     // Condense wildcard string suffix into a single ..
     let wildcard_suffix_len = count_wildcard_suffix_len(&items);

@@ -266,7 +266,8 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
         // Post-comments
         if tactic != DefinitiveListTactic::Vertical && item.post_comment.is_some() {
             let comment = item.post_comment.as_ref().unwrap();
-            let formatted_comment = try_opt!(rewrite_comment(comment,
+            let formatted_comment =
+                try_opt!(rewrite_comment(comment,
                                          true,
                                          Shape::legacy(formatting.shape.width, Indent::empty()),
                                          formatting.config));

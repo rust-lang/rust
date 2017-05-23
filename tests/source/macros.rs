@@ -34,6 +34,19 @@ fn main() {
     a,   
     ];
     
+    vec![a; b];
+    vec!(a; b);
+    vec!{a; b};
+
+    vec![a, b; c];
+    vec![a; b, c];
+
+    vec![a; (|x| { let y = x + 1; let z = y + 1; z })(2)];
+    vec![a; xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx];
+    vec![a; unsafe {
+        x + 1
+    }];
+
     unknown_bracket_macro__comma_should_not_be_stripped![
     a,
     ];

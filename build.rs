@@ -16,11 +16,11 @@ fn main() {
     writeln!(f,
              "const COMMIT_HASH: Option<&'static str> = {:?};",
              git_head_sha1())
-            .unwrap();
+        .unwrap();
     writeln!(f,
              "const WORKTREE_CLEAN: Option<bool> = {:?};",
              git_tree_is_clean())
-            .unwrap();
+        .unwrap();
 
     // cargo:rerun-if-changed requires one entry per individual file.
     for entry in WalkDir::new("src") {

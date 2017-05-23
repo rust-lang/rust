@@ -120,7 +120,7 @@ fn format_expr(expr: &ast::Expr,
                                 expr_type == ExprType::SubExpression,
                                 false,
                                 expr.span)
-                    .rewrite(context, shape)
+                .rewrite(context, shape)
         }
         ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref else_block) => {
             ControlFlow::new_if(cond,
@@ -130,7 +130,7 @@ fn format_expr(expr: &ast::Expr,
                                 expr_type == ExprType::SubExpression,
                                 false,
                                 expr.span)
-                    .rewrite(context, shape)
+                .rewrite(context, shape)
         }
         ast::ExprKind::Match(ref cond, ref arms) => {
             rewrite_match(context, cond, arms, shape, expr.span)
@@ -286,7 +286,7 @@ pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
 
                 let remaining_width = shape
                     .width
-                    .checked_sub(last_line_width(&result))
+                    .checked_sub(last_line_width(&result) + suffix.len())
                     .unwrap_or(0);
 
                 if rhs_result.len() <= remaining_width {
@@ -372,7 +372,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
                              |item| item.rewrite(context, nested_shape),
                              span.lo,
                              span.hi)
-            .collect::<Vec<_>>();
+        .collect::<Vec<_>>();
 
     if items.is_empty() {
         if context.config.spaces_within_square_brackets() {
@@ -716,7 +716,7 @@ impl Rewrite for ast::Stmt {
                             },
                             context,
                             try_opt!(shape.sub_width(suffix.len())))
-                        .map(|s| s + suffix)
+                    .map(|s| s + suffix)
             }
             ast::StmtKind::Mac(..) |
             ast::StmtKind::Item(..) => None,
@@ -1012,7 +1012,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                                         false,
                                         true,
                                         mk_sp(else_block.span.lo, self.span.hi))
-                            .rewrite(context, shape)
+                        .rewrite(context, shape)
                 }
                 ast::ExprKind::If(ref cond, ref if_block, ref next_else_block) => {
                     ControlFlow::new_if(cond,
@@ -1022,7 +1022,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                                         false,
                                         true,
                                         mk_sp(else_block.span.lo, self.span.hi))
-                            .rewrite(context, shape)
+                        .rewrite(context, shape)
                 }
                 _ => {
                     last_in_chain = true;
@@ -1065,7 +1065,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                                 .as_ref()
                                 .map_or(between_sep, |s| &**s),
                             after_else_comment.as_ref().map_or(after_sep, |s| &**s))
-                             .ok());
+                         .ok());
             result.push_str(&try_opt!(rewrite));
         }
 
@@ -2080,11 +2080,18 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
                               0
                           };
     // 1 = space between operator and rhs.
-    let max_width = try_opt!(shape.width.checked_sub(last_line_width + 1));
-    let rhs = ex.rewrite(context,
-                         Shape::offset(max_width,
-                                       shape.indent,
-                                       shape.indent.alignment + last_line_width + 1));
+    let orig_shape = try_opt!(shape.block_indent(0).offset_left(last_line_width + 1));
+    let rhs = match ex.node {
+        ast::ExprKind::Mac(ref mac) => {
+            match rewrite_macro(mac, None, context, orig_shape, MacroPosition::Expression) {
+                None if !context.snippet(ex.span).contains("\n") => {
+                    context.snippet(ex.span).rewrite(context, orig_shape)
+                }
+                rhs @ _ => rhs,
+            }
+        }
+        _ => ex.rewrite(context, orig_shape),
+    };
 
     fn count_line_breaks(src: &str) -> usize {
         src.chars().filter(|&x| x == '\n').count()
@@ -2099,10 +2106,7 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
             // Expression did not fit on the same line as the identifier or is
             // at least three lines big. Try splitting the line and see
             // if that works better.
-            let new_offset = shape.indent.block_indent(context.config);
-            let max_width = try_opt!((shape.width + shape.indent.width())
-                                         .checked_sub(new_offset.width()));
-            let new_shape = Shape::legacy(max_width, new_offset);
+            let new_shape = try_opt!(shape.block_left(context.config.tab_spaces()));
             let new_rhs = ex.rewrite(context, new_shape);
 
             // FIXME: DRY!
@@ -2111,11 +2115,11 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
                     if count_line_breaks(orig_rhs) > count_line_breaks(replacement_rhs) + 1 ||
                        (orig_rhs.rewrite(context, shape).is_none() &&
                         replacement_rhs.rewrite(context, new_shape).is_some()) => {
-                    result.push_str(&format!("\n{}", new_offset.to_string(context.config)));
+                    result.push_str(&format!("\n{}", new_shape.indent.to_string(context.config)));
                     result.push_str(replacement_rhs);
                 }
                 (None, Some(ref final_rhs)) => {
-                    result.push_str(&format!("\n{}", new_offset.to_string(context.config)));
+                    result.push_str(&format!("\n{}", new_shape.indent.to_string(context.config)));
                     result.push_str(final_rhs);
                 }
                 (None, None) => return None,
