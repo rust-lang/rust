@@ -15,7 +15,8 @@
                       tracing garbage collector",
             issue = "27700")]
 
-use core::{isize, usize};
+use allocator::{Alloc, AllocErr, CannotReallocInPlace, Layout};
+use core::{isize, usize, cmp, ptr};
 use core::intrinsics::{min_align_of_val, size_of_val};
 
 #[allow(improper_ctypes)]
@@ -42,6 +43,82 @@ fn check_size_and_alignment(size: usize, align: usize) {
     debug_assert!(usize::is_power_of_two(align),
                   "Invalid alignment of allocation: {}",
                   align);
+}
+
+#[derive(Copy, Clone, Default, Debug)]
+pub struct HeapAlloc;
+
+unsafe impl Alloc for HeapAlloc {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+        let addr = allocate(layout.size(), layout.align());
+        if addr.is_null() {
+            Err(AllocErr::Exhausted { request: layout })
+        } else {
+            Ok(addr)
+        }
+    }
+
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+        let addr = allocate_zeroed(layout.size(), layout.align());
+        if addr.is_null() {
+            Err(AllocErr::Exhausted { request: layout })
+        } else {
+            Ok(addr)
+        }
+    }
+
+    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+        deallocate(ptr, layout.size(), layout.align());
+    }
+
+    fn usable_size(&self, layout: &Layout) -> (usize, usize) {
+        (layout.size(), usable_size(layout.size(), layout.align()))
+    }
+
+    unsafe fn realloc(&mut self,
+                      ptr: *mut u8,
+                      layout: Layout,
+                      new_layout: Layout)
+                      -> Result<*mut u8, AllocErr>
+    {
+        let old_size = layout.size();
+        let new_size = new_layout.size();
+        if layout.align() == new_layout.align() {
+            let new_ptr = reallocate(ptr, old_size, new_size, layout.align());
+            if new_ptr.is_null() {
+                // We assume `reallocate` already tried alloc + copy +
+                // dealloc fallback; thus pointless to repeat effort
+                Err(AllocErr::Exhausted { request: new_layout })
+            } else {
+                Ok(new_ptr)
+            }
+        } else {
+            // if alignments don't match, fall back on alloc + copy + dealloc
+            let result = self.alloc(new_layout);
+            if let Ok(new_ptr) = result {
+                ptr::copy_nonoverlapping(ptr as *const u8, new_ptr, cmp::min(old_size, new_size));
+                self.dealloc(ptr, layout);
+            }
+            result
+        }
+    }
+
+    unsafe fn grow_in_place(&mut self,
+                            ptr: *mut u8,
+                            layout: Layout,
+                            new_layout: Layout)
+                            -> Result<(), CannotReallocInPlace>
+    {
+        // grow_in_place spec requires this, and the spec for reallocate_inplace
+        // makes it hard to detect failure if it does not hold.
+        debug_assert!(new_layout.size() >= layout.size());
+
+        if layout.align() != new_layout.align() { // reallocate_inplace requires this.
+            return Err(CannotReallocInPlace);
+        }
+        let usable = reallocate_inplace(ptr, layout.size(), new_layout.size(), layout.align());
+        if usable >= new_layout.size() { Ok(()) } else { Err(CannotReallocInPlace) }
+    }
 }
 
 // FIXME: #13996: mark the `allocate` and `reallocate` return value as `noalias`
