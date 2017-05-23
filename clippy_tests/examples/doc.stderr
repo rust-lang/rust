@@ -1,0 +1,237 @@
+error: you should put `DOC_MARKDOWN` between ticks in the documentation
+ --> doc.rs:1:29
+  |
+1 | //! This file tests for the DOC_MARKDOWN lint
+  |                             ^^^^^^^^^^^^
+  |
+  = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `foo_bar` between ticks in the documentation
+ --> doc.rs:8:9
+  |
+8 | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
+  |         ^^^^^^^
+  |
+  = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `foo::bar` between ticks in the documentation
+ --> doc.rs:8:51
+  |
+8 | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
+  |                                                   ^^^^^^^^
+  |
+  = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `Foo::some_fun` between ticks in the documentation
+ --> doc.rs:9:84
+  |
+9 | /// Markdown is _weird_. I mean _really weird_.  This \_ is ok. So is `_`. But not Foo::some_fun
+  |                                                                                    ^^^^^^^^^^^^^
+  |
+  = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `is::a::global:path` between ticks in the documentation
+  --> doc.rs:11:13
+   |
+11 | /// Here be ::is::a::global:path.
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `NotInCodeBlock` between ticks in the documentation
+  --> doc.rs:12:21
+   |
+12 | /// That's not code ~NotInCodeBlock~.
+   |                     ^^^^^^^^^^^^^^^
+   |
+   = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
+  --> doc.rs:13:5
+   |
+13 | /// be_sure_we_got_to_the_end_of_it
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
+  --> doc.rs:27:5
+   |
+27 | /// be_sure_we_got_to_the_end_of_it
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
+  --> doc.rs:34:5
+   |
+34 | /// be_sure_we_got_to_the_end_of_it
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
+  --> doc.rs:48:5
+   |
+48 | /// be_sure_we_got_to_the_end_of_it
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `ß_foo` between ticks in the documentation
+  --> doc.rs:57:5
+   |
+57 | /// ß_foo
+   |     ^^^^^
+   |
+   = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `ℝ_foo` between ticks in the documentation
+  --> doc.rs:58:5
+   |
+58 | /// ℝ_foo
+   |     ^^^^^
+   |
+   = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `foo_ß` between ticks in the documentation
+  --> doc.rs:61:5
+   |
+61 | /// foo_ß
+   |     ^^^^^
+   |
+   = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `foo_ℝ` between ticks in the documentation
+  --> doc.rs:62:5
+   |
+62 | /// foo_ℝ
+   |     ^^^^^
+   |
+   = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
+  --> doc.rs:77:5
+   |
+77 | /// be_sure_we_got_to_the_end_of_it
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `link_with_underscores` between ticks in the documentation
+  --> doc.rs:81:22
+   |
+81 | /// This test has [a link_with_underscores][chunked-example] inside it. See #823.
+   |                      ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `inline_link2` between ticks in the documentation
+  --> doc.rs:84:21
+   |
+84 | /// It can also be [inline_link2].
+   |                     ^^^^^^^^^^^^
+   |
+   = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
+  --> doc.rs:94:5
+   |
+94 | /// be_sure_we_got_to_the_end_of_it
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `CamelCaseThing` between ticks in the documentation
+   --> doc.rs:107:22
+    |
+107 | /// Not a title #897 CamelCaseThing
+    |                      ^^^^^^^^^^^^^^
+    |
+    = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
+   --> doc.rs:108:5
+    |
+108 | /// be_sure_we_got_to_the_end_of_it
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
+   --> doc.rs:115:5
+    |
+115 | /// be_sure_we_got_to_the_end_of_it
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
+   --> doc.rs:128:5
+    |
+128 | /// be_sure_we_got_to_the_end_of_it
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `FooBar` between ticks in the documentation
+   --> doc.rs:139:42
+    |
+139 | /** E.g. serialization of an empty list: FooBar
+    |                                          ^^^^^^
+    |
+    = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `BarQuz` between ticks in the documentation
+   --> doc.rs:144:5
+    |
+144 | And BarQuz too.
+    |     ^^^^^^
+    |
+    = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
+   --> doc.rs:145:1
+    |
+145 | be_sure_we_got_to_the_end_of_it
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `FooBar` between ticks in the documentation
+   --> doc.rs:150:42
+    |
+150 | /** E.g. serialization of an empty list: FooBar
+    |                                          ^^^^^^
+    |
+    = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `BarQuz` between ticks in the documentation
+   --> doc.rs:155:5
+    |
+155 | And BarQuz too.
+    |     ^^^^^^
+    |
+    = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
+   --> doc.rs:156:1
+    |
+156 | be_sure_we_got_to_the_end_of_it
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D doc-markdown` implied by `-D warnings`
+
+error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the documentation
+   --> doc.rs:167:5
+    |
+167 | /// be_sure_we_got_to_the_end_of_it
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D doc-markdown` implied by `-D warnings`
+
+error: aborting due to 29 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

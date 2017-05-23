@@ -1,0 +1,109 @@
+error: strict comparison of f32 or f64
+  --> float_cmp.rs:43:5
+   |
+43 |     ONE == 1f32;
+   |     ^^^^^^^^^^^ help: consider comparing them within some error `(ONE - 1f32).abs() < error`
+   |
+   = note: `-D float-cmp` implied by `-D warnings`
+note: std::f32::EPSILON and std::f64::EPSILON are available.
+  --> float_cmp.rs:43:5
+   |
+43 |     ONE == 1f32;
+   |     ^^^^^^^^^^^
+
+error: strict comparison of f32 or f64
+  --> float_cmp.rs:44:5
+   |
+44 |     ONE == 1.0 + 0.0;
+   |     ^^^^^^^^^^^^^^^^ help: consider comparing them within some error `(ONE - (1.0 + 0.0)).abs() < error`
+   |
+   = note: `-D float-cmp` implied by `-D warnings`
+note: std::f32::EPSILON and std::f64::EPSILON are available.
+  --> float_cmp.rs:44:5
+   |
+44 |     ONE == 1.0 + 0.0;
+   |     ^^^^^^^^^^^^^^^^
+
+error: strict comparison of f32 or f64
+  --> float_cmp.rs:45:5
+   |
+45 |     ONE + ONE == ZERO + ONE + ONE;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider comparing them within some error `(ONE + ONE - (ZERO + ONE + ONE)).abs() < error`
+   |
+   = note: `-D float-cmp` implied by `-D warnings`
+note: std::f32::EPSILON and std::f64::EPSILON are available.
+  --> float_cmp.rs:45:5
+   |
+45 |     ONE + ONE == ZERO + ONE + ONE;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: strict comparison of f32 or f64
+  --> float_cmp.rs:46:5
+   |
+46 |     ONE != 2.0;
+   |     ^^^^^^^^^^ help: consider comparing them within some error `(ONE - 2.0).abs() < error`
+   |
+   = note: `-D float-cmp` implied by `-D warnings`
+note: std::f32::EPSILON and std::f64::EPSILON are available.
+  --> float_cmp.rs:46:5
+   |
+46 |     ONE != 2.0;
+   |     ^^^^^^^^^^
+
+error: strict comparison of f32 or f64
+  --> float_cmp.rs:48:5
+   |
+48 |     twice(ONE) != ONE;
+   |     ^^^^^^^^^^^^^^^^^ help: consider comparing them within some error `(twice(ONE) - ONE).abs() < error`
+   |
+   = note: `-D float-cmp` implied by `-D warnings`
+note: std::f32::EPSILON and std::f64::EPSILON are available.
+  --> float_cmp.rs:48:5
+   |
+48 |     twice(ONE) != ONE;
+   |     ^^^^^^^^^^^^^^^^^
+
+error: strict comparison of f32 or f64
+  --> float_cmp.rs:49:5
+   |
+49 |     ONE as f64 != 2.0;
+   |     ^^^^^^^^^^^^^^^^^ help: consider comparing them within some error `(ONE as f64 - 2.0).abs() < error`
+   |
+   = note: `-D float-cmp` implied by `-D warnings`
+note: std::f32::EPSILON and std::f64::EPSILON are available.
+  --> float_cmp.rs:49:5
+   |
+49 |     ONE as f64 != 2.0;
+   |     ^^^^^^^^^^^^^^^^^
+
+error: strict comparison of f32 or f64
+  --> float_cmp.rs:54:5
+   |
+54 |     x == 1.0;
+   |     ^^^^^^^^ help: consider comparing them within some error `(x - 1.0).abs() < error`
+   |
+   = note: `-D float-cmp` implied by `-D warnings`
+note: std::f32::EPSILON and std::f64::EPSILON are available.
+  --> float_cmp.rs:54:5
+   |
+54 |     x == 1.0;
+   |     ^^^^^^^^
+
+error: strict comparison of f32 or f64
+  --> float_cmp.rs:57:5
+   |
+57 |     twice(x) != twice(ONE as f64);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider comparing them within some error `(twice(x) - twice(ONE as f64)).abs() < error`
+   |
+   = note: `-D float-cmp` implied by `-D warnings`
+note: std::f32::EPSILON and std::f64::EPSILON are available.
+  --> float_cmp.rs:57:5
+   |
+57 |     twice(x) != twice(ONE as f64);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

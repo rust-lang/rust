@@ -1,0 +1,41 @@
+error: you should consider deriving a `Default` implementation for `Foo`
+  --> new_without_default.rs:10:5
+   |
+10 |     pub fn new() -> Foo { Foo }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D new-without-default-derive` implied by `-D warnings`
+help: try this
+   | #[derive(Default)]
+
+error: you should consider deriving a `Default` implementation for `Bar`
+  --> new_without_default.rs:16:5
+   |
+16 |     pub fn new() -> Self { Bar }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D new-without-default-derive` implied by `-D warnings`
+help: try this
+   | #[derive(Default)]
+
+error: you should consider adding a `Default` implementation for `LtKo<'c>`
+  --> new_without_default.rs:64:5
+   |
+64 |     pub fn new() -> LtKo<'c> { unimplemented!() }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D new-without-default` implied by `-D warnings`
+help: try this
+   |     impl Default for LtKo<'c> {
+   |         fn default() -> Self {
+   |             Self::new()
+   |         }
+   |     }
+   | 
+...
+
+error: aborting due to 3 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

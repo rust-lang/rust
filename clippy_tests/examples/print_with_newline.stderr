@@ -1,0 +1,37 @@
+error: using `print!()` with a format string that ends in a newline, consider using `println!()` instead
+ --> print_with_newline.rs:6:5
+  |
+6 |     print!("Hello\n");
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D print-with-newline` implied by `-D warnings`
+
+error: using `print!()` with a format string that ends in a newline, consider using `println!()` instead
+ --> print_with_newline.rs:7:5
+  |
+7 |     print!("Hello {}\n", "world");
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D print-with-newline` implied by `-D warnings`
+
+error: using `print!()` with a format string that ends in a newline, consider using `println!()` instead
+ --> print_with_newline.rs:8:5
+  |
+8 |     print!("Hello {} {}\n\n", "world", "#2");
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D print-with-newline` implied by `-D warnings`
+
+error: using `print!()` with a format string that ends in a newline, consider using `println!()` instead
+ --> print_with_newline.rs:9:5
+  |
+9 |     print!("{}\n", 1265);
+  |     ^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D print-with-newline` implied by `-D warnings`
+
+error: aborting due to 4 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

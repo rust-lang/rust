@@ -1,0 +1,31 @@
+error: returning the result of a let binding from a block. Consider returning the expression directly.
+  --> let_return.rs:10:5
+   |
+10 |     x
+   |     ^
+   |
+   = note: `-D let-and-return` implied by `-D warnings`
+note: this expression can be directly returned
+  --> let_return.rs:9:13
+   |
+9  |     let x = 5;
+   |             ^
+
+error: returning the result of a let binding from a block. Consider returning the expression directly.
+  --> let_return.rs:16:9
+   |
+16 |         x
+   |         ^
+   |
+   = note: `-D let-and-return` implied by `-D warnings`
+note: this expression can be directly returned
+  --> let_return.rs:15:17
+   |
+15 |         let x = 5;
+   |                 ^
+
+error: aborting due to 2 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

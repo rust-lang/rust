@@ -1,0 +1,29 @@
+error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices. Consider changing the type to `&[...]`
+ --> ptr_arg.rs:6:14
+  |
+6 | fn do_vec(x: &Vec<i64>) {
+  |              ^^^^^^^^^
+  |
+  = note: `-D ptr-arg` implied by `-D warnings`
+
+error: writing `&String` instead of `&str` involves a new object where a slice will do. Consider changing the type to `&str`
+  --> ptr_arg.rs:14:14
+   |
+14 | fn do_str(x: &String) {
+   |              ^^^^^^^
+   |
+   = note: `-D ptr-arg` implied by `-D warnings`
+
+error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices. Consider changing the type to `&[...]`
+  --> ptr_arg.rs:27:18
+   |
+27 |     fn do_vec(x: &Vec<i64>);
+   |                  ^^^^^^^^^
+   |
+   = note: `-D ptr-arg` implied by `-D warnings`
+
+error: aborting due to 3 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

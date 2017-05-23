@@ -1,0 +1,84 @@
+error: you are deriving `Hash` but have implemented `PartialEq` explicitly
+  --> derive.rs:17:10
+   |
+17 | #[derive(Hash)]
+   |          ^^^^
+   |
+   = note: `-D derive-hash-xor-eq` implied by `-D warnings`
+note: `PartialEq` implemented here
+  --> derive.rs:20:1
+   |
+20 | / impl PartialEq for Bar {
+21 | |     fn eq(&self, _: &Bar) -> bool { true }
+22 | | }
+   | |_^
+
+error: you are deriving `Hash` but have implemented `PartialEq` explicitly
+  --> derive.rs:24:10
+   |
+24 | #[derive(Hash)]
+   |          ^^^^
+   |
+   = note: `-D derive-hash-xor-eq` implied by `-D warnings`
+note: `PartialEq` implemented here
+  --> derive.rs:27:1
+   |
+27 | / impl PartialEq<Baz> for Baz {
+28 | |     fn eq(&self, _: &Baz) -> bool { true }
+29 | | }
+   | |_^
+
+error: you are implementing `Hash` explicitly but have derived `PartialEq`
+  --> derive.rs:34:1
+   |
+34 | / impl Hash for Bah {
+35 | |     fn hash<H: Hasher>(&self, _: &mut H) {}
+36 | | }
+   | |_^
+   |
+   = note: `-D derive-hash-xor-eq` implied by `-D warnings`
+note: `PartialEq` implemented here
+  --> derive.rs:31:10
+   |
+31 | #[derive(PartialEq)]
+   |          ^^^^^^^^^
+
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> derive.rs:41:1
+   |
+41 | / impl Clone for Qux {
+42 | |     fn clone(&self) -> Self { Qux }
+43 | | }
+   | |_^
+   |
+   = note: `-D expl-impl-clone-on-copy` implied by `-D warnings`
+note: consider deriving `Clone` or removing `Copy`
+  --> derive.rs:41:1
+   |
+41 | / impl Clone for Qux {
+42 | |     fn clone(&self) -> Self { Qux }
+43 | | }
+   | |_^
+
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> derive.rs:65:1
+   |
+65 | / impl<'a> Clone for Lt<'a> {
+66 | |     fn clone(&self) -> Self { unimplemented!() }
+67 | | }
+   | |_^
+   |
+   = note: `-D expl-impl-clone-on-copy` implied by `-D warnings`
+note: consider deriving `Clone` or removing `Copy`
+  --> derive.rs:65:1
+   |
+65 | / impl<'a> Clone for Lt<'a> {
+66 | |     fn clone(&self) -> Self { unimplemented!() }
+67 | | }
+   | |_^
+
+error: aborting due to 5 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

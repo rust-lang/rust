@@ -1,0 +1,13 @@
+error: the lint `MISSING_LINT` is not added to any `LintPass`
+  --> lint_pass.rs:12:1
+   |
+12 | declare_lint! { MISSING_LINT, Warn, "missing lint" }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D lint-without-lint-pass` implied by `-D warnings`
+
+error: aborting due to previous error
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

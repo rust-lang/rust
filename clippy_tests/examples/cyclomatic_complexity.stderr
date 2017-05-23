@@ -1,0 +1,295 @@
+error: the function has a cyclomatic complexity of 28
+  --> cyclomatic_complexity.rs:7:1
+   |
+7  | / fn main() {
+8  | |     if true {
+9  | |         println!("a");
+10 | |     }
+...  |
+88 | |     }
+89 | | }
+   | |_^
+   |
+   = note: `-D cyclomatic-complexity` implied by `-D warnings`
+   = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 7
+   --> cyclomatic_complexity.rs:92:1
+    |
+92  | / fn kaboom() {
+93  | |     let n = 0;
+94  | |     'a: for i in 0..20 {
+95  | |         'b: for j in i..20 {
+...   |
+110 | |     }
+111 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 1
+   --> cyclomatic_complexity.rs:138:1
+    |
+138 | / fn lots_of_short_circuits() -> bool {
+139 | |     true && false && true && false && true && false && true
+140 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 1
+   --> cyclomatic_complexity.rs:143:1
+    |
+143 | / fn lots_of_short_circuits2() -> bool {
+144 | |     true || false || true || false || true || false || true
+145 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 2
+   --> cyclomatic_complexity.rs:148:1
+    |
+148 | / fn baa() {
+149 | |     let x = || match 99 {
+150 | |         0 => 0,
+151 | |         1 => 1,
+...   |
+162 | |     }
+163 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 2
+   --> cyclomatic_complexity.rs:149:13
+    |
+149 |       let x = || match 99 {
+    |  _____________^
+150 | |         0 => 0,
+151 | |         1 => 1,
+152 | |         2 => 2,
+...   |
+156 | |         _ => 42,
+157 | |     };
+    | |_____^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 2
+   --> cyclomatic_complexity.rs:166:1
+    |
+166 | / fn bar() {
+167 | |     match 99 {
+168 | |         0 => println!("hi"),
+169 | |         _ => println!("bye"),
+170 | |     }
+171 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 2
+   --> cyclomatic_complexity.rs:185:1
+    |
+185 | / fn barr() {
+186 | |     match 99 {
+187 | |         0 => println!("hi"),
+188 | |         1 => println!("bla"),
+...   |
+191 | |     }
+192 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 3
+   --> cyclomatic_complexity.rs:195:1
+    |
+195 | / fn barr2() {
+196 | |     match 99 {
+197 | |         0 => println!("hi"),
+198 | |         1 => println!("bla"),
+...   |
+207 | |     }
+208 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 2
+   --> cyclomatic_complexity.rs:211:1
+    |
+211 | / fn barrr() {
+212 | |     match 99 {
+213 | |         0 => println!("hi"),
+214 | |         1 => panic!("bla"),
+...   |
+217 | |     }
+218 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 3
+   --> cyclomatic_complexity.rs:221:1
+    |
+221 | / fn barrr2() {
+222 | |     match 99 {
+223 | |         0 => println!("hi"),
+224 | |         1 => panic!("bla"),
+...   |
+233 | |     }
+234 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 2
+   --> cyclomatic_complexity.rs:237:1
+    |
+237 | / fn barrrr() {
+238 | |     match 99 {
+239 | |         0 => println!("hi"),
+240 | |         1 => println!("bla"),
+...   |
+243 | |     }
+244 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 3
+   --> cyclomatic_complexity.rs:247:1
+    |
+247 | / fn barrrr2() {
+248 | |     match 99 {
+249 | |         0 => println!("hi"),
+250 | |         1 => println!("bla"),
+...   |
+259 | |     }
+260 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 2
+   --> cyclomatic_complexity.rs:263:1
+    |
+263 | / fn cake() {
+264 | |     if 4 == 5 {
+265 | |         println!("yea");
+266 | |     } else {
+...   |
+269 | |     println!("whee");
+270 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 4
+   --> cyclomatic_complexity.rs:274:1
+    |
+274 | / pub fn read_file(input_path: &str) -> String {
+275 | |     use std::fs::File;
+276 | |     use std::io::{Read, Write};
+277 | |     use std::path::Path;
+...   |
+299 | |     }
+300 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 1
+   --> cyclomatic_complexity.rs:305:1
+    |
+305 | / fn void(void: Void) {
+306 | |     if true {
+307 | |         match void {
+308 | |         }
+309 | |     }
+310 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 1
+   --> cyclomatic_complexity.rs:319:1
+    |
+319 | / fn try() -> Result<i32, &'static str> {
+320 | |     match 5 {
+321 | |         5 => Ok(5),
+322 | |         _ => return Err("bla"),
+323 | |     }
+324 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 1
+   --> cyclomatic_complexity.rs:327:1
+    |
+327 | / fn try_again() -> Result<i32, &'static str> {
+328 | |     let _ = try!(Ok(42));
+329 | |     let _ = try!(Ok(43));
+330 | |     let _ = try!(Ok(44));
+...   |
+339 | |     }
+340 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 1
+   --> cyclomatic_complexity.rs:343:1
+    |
+343 | / fn early() -> Result<i32, &'static str> {
+344 | |     return Ok(5);
+345 | |     return Ok(5);
+346 | |     return Ok(5);
+...   |
+352 | |     return Ok(5);
+353 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: the function has a cyclomatic complexity of 8
+   --> cyclomatic_complexity.rs:356:1
+    |
+356 | / fn early_ret() -> i32 {
+357 | |     let a = if true { 42 } else { return 0; };
+358 | |     let a = if a < 99 { 42 } else { return 0; };
+359 | |     let a = if a < 99 { 42 } else { return 0; };
+...   |
+372 | |     }
+373 | | }
+    | |_^
+    |
+    = note: `-D cyclomatic-complexity` implied by `-D warnings`
+    = help: you could split it up into multiple smaller functions
+
+error: aborting due to 20 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

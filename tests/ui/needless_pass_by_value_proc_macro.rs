@@ -1,7 +1,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 #![crate_type = "proc-macro"]
-#![deny(needless_pass_by_value)]
+#![warn(needless_pass_by_value)]
 
 extern crate proc_macro;
 

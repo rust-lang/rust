@@ -1,14 +1,10 @@
-error: This generic shadows the built-in type `u32`
+warning: This generic shadows the built-in type `u32`
  --> $DIR/builtin-type-shadow.rs:5:8
   |
 5 | fn foo<u32>(a: u32) -> u32 {
   |        ^^^
   |
-note: lint level defined here
- --> $DIR/builtin-type-shadow.rs:3:9
-  |
-3 | #![deny(builtin_type_shadow)]
-  |         ^^^^^^^^^^^^^^^^^^^
+  = note: #[warn(builtin_type_shadow)] on by default
 
 error[E0308]: mismatched types
  --> $DIR/builtin-type-shadow.rs:6:5

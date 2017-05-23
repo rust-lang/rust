@@ -1,0 +1,53 @@
+error: sub-expression diverges
+  --> diverging_sub_expression.rs:18:10
+   |
+18 |     b || diverge();
+   |          ^^^^^^^^^
+   |
+   = note: `-D diverging-sub-expression` implied by `-D warnings`
+
+error: sub-expression diverges
+  --> diverging_sub_expression.rs:19:10
+   |
+19 |     b || A.foo();
+   |          ^^^^^^^
+   |
+   = note: `-D diverging-sub-expression` implied by `-D warnings`
+
+error: sub-expression diverges
+  --> diverging_sub_expression.rs:28:26
+   |
+28 |             6 => true || return,
+   |                          ^^^^^^
+   |
+   = note: `-D diverging-sub-expression` implied by `-D warnings`
+
+error: sub-expression diverges
+  --> diverging_sub_expression.rs:29:26
+   |
+29 |             7 => true || continue,
+   |                          ^^^^^^^^
+   |
+   = note: `-D diverging-sub-expression` implied by `-D warnings`
+
+error: sub-expression diverges
+  --> diverging_sub_expression.rs:32:26
+   |
+32 |             3 => true || diverge(),
+   |                          ^^^^^^^^^
+   |
+   = note: `-D diverging-sub-expression` implied by `-D warnings`
+
+error: sub-expression diverges
+  --> diverging_sub_expression.rs:37:26
+   |
+37 |             _ => true || break,
+   |                          ^^^^^
+   |
+   = note: `-D diverging-sub-expression` implied by `-D warnings`
+
+error: aborting due to 6 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

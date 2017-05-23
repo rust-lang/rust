@@ -1,0 +1,45 @@
+error: Range::step_by(0) produces an infinite iterator. Consider using `std::iter::repeat()` instead
+  --> range.rs:13:5
+   |
+13 |     (0..1).step_by(0);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D range-step-by-zero` implied by `-D warnings`
+
+error: Range::step_by(0) produces an infinite iterator. Consider using `std::iter::repeat()` instead
+  --> range.rs:17:5
+   |
+17 |     (1..).step_by(0);
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D range-step-by-zero` implied by `-D warnings`
+
+error: Range::step_by(0) produces an infinite iterator. Consider using `std::iter::repeat()` instead
+  --> range.rs:18:5
+   |
+18 |     (1...2).step_by(0);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D range-step-by-zero` implied by `-D warnings`
+
+error: Range::step_by(0) produces an infinite iterator. Consider using `std::iter::repeat()` instead
+  --> range.rs:21:5
+   |
+21 |     x.step_by(0);
+   |     ^^^^^^^^^^^^
+   |
+   = note: `-D range-step-by-zero` implied by `-D warnings`
+
+error: It is more idiomatic to use v1.iter().enumerate()
+  --> range.rs:29:14
+   |
+29 |     let _x = v1.iter().zip(0..v1.len());
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D range-zip-with-len` implied by `-D warnings`
+
+error: aborting due to 5 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

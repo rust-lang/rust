@@ -1,0 +1,357 @@
+error: statement with no effect
+  --> no_effect.rs:34:5
+   |
+34 |     0;
+   |     ^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:35:5
+   |
+35 |     s2;
+   |     ^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:36:5
+   |
+36 |     Unit;
+   |     ^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:37:5
+   |
+37 |     Tuple(0);
+   |     ^^^^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:38:5
+   |
+38 |     Struct { field: 0 };
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:39:5
+   |
+39 |     Struct { ..s };
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:40:5
+   |
+40 |     Union { a: 0 };
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:41:5
+   |
+41 |     Enum::Tuple(0);
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:42:5
+   |
+42 |     Enum::Struct { field: 0 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:43:5
+   |
+43 |     5 + 6;
+   |     ^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:44:5
+   |
+44 |     *&42;
+   |     ^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:45:5
+   |
+45 |     &6;
+   |     ^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:46:5
+   |
+46 |     (5, 6, 7);
+   |     ^^^^^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:47:5
+   |
+47 |     box 42;
+   |     ^^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:48:5
+   |
+48 |     ..;
+   |     ^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:49:5
+   |
+49 |     5..;
+   |     ^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:50:5
+   |
+50 |     ..5;
+   |     ^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:51:5
+   |
+51 |     5..6;
+   |     ^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:52:5
+   |
+52 |     5...6;
+   |     ^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:53:5
+   |
+53 |     [42, 55];
+   |     ^^^^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:54:5
+   |
+54 |     [42, 55][1];
+   |     ^^^^^^^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:55:5
+   |
+55 |     (42, 55).1;
+   |     ^^^^^^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:56:5
+   |
+56 |     [42; 55];
+   |     ^^^^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:57:5
+   |
+57 |     [42; 55][13];
+   |     ^^^^^^^^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement with no effect
+  --> no_effect.rs:59:5
+   |
+59 |     || x += 5;
+   |     ^^^^^^^^^^
+   |
+   = note: `-D no-effect` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:65:5
+   |
+65 |     Tuple(get_number());
+   |     ^^^^^^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:66:5
+   |
+66 |     Struct { field: get_number() };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:67:5
+   |
+67 |     Struct { ..get_struct() };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with `get_struct();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:68:5
+   |
+68 |     Enum::Tuple(get_number());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:69:5
+   |
+69 |     Enum::Struct { field: get_number() };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:70:5
+   |
+70 |     5 + get_number();
+   |     ^^^^^^^^^^^^^^^^^ help: replace it with `5;get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:71:5
+   |
+71 |     *&get_number();
+   |     ^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:72:5
+   |
+72 |     &get_number();
+   |     ^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:73:5
+   |
+73 |     (5, 6, get_number());
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: replace it with `5;6;get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:74:5
+   |
+74 |     box get_number();
+   |     ^^^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:75:5
+   |
+75 |     get_number()..;
+   |     ^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:76:5
+   |
+76 |     ..get_number();
+   |     ^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:77:5
+   |
+77 |     5..get_number();
+   |     ^^^^^^^^^^^^^^^^ help: replace it with `5;get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:78:5
+   |
+78 |     [42, get_number()];
+   |     ^^^^^^^^^^^^^^^^^^^ help: replace it with `42;get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:79:5
+   |
+79 |     [42, 55][get_number() as usize];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with `[42, 55];get_number() as usize;`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:80:5
+   |
+80 |     (42, get_number()).1;
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: replace it with `42;get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:81:5
+   |
+81 |     [get_number(); 55];
+   |     ^^^^^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:82:5
+   |
+82 |     [42; 55][get_number() as usize];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with `[42; 55];get_number() as usize;`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: statement can be reduced
+  --> no_effect.rs:83:5
+   |
+83 |     {get_number()};
+   |     ^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |
+   = note: `-D unnecessary-operation` implied by `-D warnings`
+
+error: aborting due to 44 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

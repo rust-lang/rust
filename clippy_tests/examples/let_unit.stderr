@@ -1,0 +1,21 @@
+error: this let-binding has unit value. Consider omitting `let _x =`
+  --> let_unit.rs:14:5
+   |
+14 |     let _x = println!("x");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D let-unit-value` implied by `-D warnings`
+
+error: this let-binding has unit value. Consider omitting `let _a =`
+  --> let_unit.rs:18:9
+   |
+18 |         let _a = ();
+   |         ^^^^^^^^^^^^
+   |
+   = note: `-D let-unit-value` implied by `-D warnings`
+
+error: aborting due to 2 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

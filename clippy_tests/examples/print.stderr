@@ -1,0 +1,69 @@
+error: use of `Debug`-based formatting
+  --> print.rs:12:27
+   |
+12 |         write!(f, "{:?}", 43.1415)
+   |                           ^^^^^^^
+   |
+   = note: `-D use-debug` implied by `-D warnings`
+
+error: use of `println!`
+  --> print.rs:24:5
+   |
+24 |     println!("Hello");
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D print-stdout` implied by `-D warnings`
+
+error: use of `print!`
+  --> print.rs:25:5
+   |
+25 |     print!("Hello");
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D print-stdout` implied by `-D warnings`
+
+error: use of `print!`
+  --> print.rs:27:5
+   |
+27 |     print!("Hello {}", "World");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D print-stdout` implied by `-D warnings`
+
+error: use of `print!`
+  --> print.rs:29:5
+   |
+29 |     print!("Hello {:?}", "World");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D print-stdout` implied by `-D warnings`
+
+error: use of `Debug`-based formatting
+  --> print.rs:29:26
+   |
+29 |     print!("Hello {:?}", "World");
+   |                          ^^^^^^^
+   |
+   = note: `-D use-debug` implied by `-D warnings`
+
+error: use of `print!`
+  --> print.rs:31:5
+   |
+31 |     print!("Hello {:#?}", "#orld");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D print-stdout` implied by `-D warnings`
+
+error: use of `Debug`-based formatting
+  --> print.rs:31:27
+   |
+31 |     print!("Hello {:#?}", "#orld");
+   |                           ^^^^^^^
+   |
+   = note: `-D use-debug` implied by `-D warnings`
+
+error: aborting due to 8 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

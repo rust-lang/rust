@@ -1,0 +1,25 @@
+error: module has the same name as its containing module
+ --> module_inception.rs:7:9
+  |
+7 | /         mod bar {
+8 | |             mod foo {}
+9 | |         }
+  | |_________^
+  |
+  = note: `-D module-inception` implied by `-D warnings`
+
+error: module has the same name as its containing module
+  --> module_inception.rs:12:5
+   |
+12 | /     mod foo {
+13 | |         mod bar {}
+14 | |     }
+   | |_____^
+   |
+   = note: `-D module-inception` implied by `-D warnings`
+
+error: aborting due to 2 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

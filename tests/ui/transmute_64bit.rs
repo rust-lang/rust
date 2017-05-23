@@ -3,7 +3,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-#[deny(wrong_transmute)]
+#[warn(wrong_transmute)]
 fn main() {
     unsafe {
         let _: *const usize = std::mem::transmute(6.0f64);

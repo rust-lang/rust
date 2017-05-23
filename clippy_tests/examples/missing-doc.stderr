@@ -1,0 +1,355 @@
+error: missing documentation for a type alias
+  --> missing-doc.rs:26:1
+   |
+26 | type Typedef = String;
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a type alias
+  --> missing-doc.rs:27:1
+   |
+27 | pub type PubTypedef = String;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a struct
+  --> missing-doc.rs:29:1
+   |
+29 | / struct Foo {
+30 | |     a: isize,
+31 | |     b: isize,
+32 | | }
+   | |_^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a struct field
+  --> missing-doc.rs:30:5
+   |
+30 |     a: isize,
+   |     ^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a struct field
+  --> missing-doc.rs:31:5
+   |
+31 |     b: isize,
+   |     ^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a struct
+  --> missing-doc.rs:34:1
+   |
+34 | / pub struct PubFoo {
+35 | |     pub a: isize,
+36 | |     b: isize,
+37 | | }
+   | |_^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a struct field
+  --> missing-doc.rs:35:5
+   |
+35 |     pub a: isize,
+   |     ^^^^^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a struct field
+  --> missing-doc.rs:36:5
+   |
+36 |     b: isize,
+   |     ^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a module
+  --> missing-doc.rs:45:1
+   |
+45 | mod module_no_dox {}
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a module
+  --> missing-doc.rs:46:1
+   |
+46 | pub mod pub_module_no_dox {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a function
+  --> missing-doc.rs:50:1
+   |
+50 | pub fn foo2() {}
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a function
+  --> missing-doc.rs:51:1
+   |
+51 | fn foo3() {}
+   | ^^^^^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a trait
+  --> missing-doc.rs:68:1
+   |
+68 | / pub trait C {
+69 | |     fn foo(&self);
+70 | |     fn foo_with_impl(&self) {}
+71 | | }
+   | |_^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a trait method
+  --> missing-doc.rs:69:5
+   |
+69 |     fn foo(&self);
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a trait method
+  --> missing-doc.rs:70:5
+   |
+70 |     fn foo_with_impl(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for an associated type
+  --> missing-doc.rs:80:5
+   |
+80 |     type AssociatedType;
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for an associated type
+  --> missing-doc.rs:81:5
+   |
+81 |     type AssociatedTypeDef = Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a method
+  --> missing-doc.rs:92:5
+   |
+92 |     pub fn foo() {}
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a method
+  --> missing-doc.rs:93:5
+   |
+93 |     fn bar() {}
+   |     ^^^^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a method
+  --> missing-doc.rs:97:5
+   |
+97 |     pub fn foo() {}
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a method
+   --> missing-doc.rs:100:5
+    |
+100 |     fn foo2() {}
+    |     ^^^^^^^^^^^^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for an enum
+   --> missing-doc.rs:126:1
+    |
+126 | / enum Baz {
+127 | |     BazA {
+128 | |         a: isize,
+129 | |         b: isize
+130 | |     },
+131 | |     BarB
+132 | | }
+    | |_^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a variant
+   --> missing-doc.rs:127:5
+    |
+127 | /     BazA {
+128 | |         a: isize,
+129 | |         b: isize
+130 | |     },
+    | |_____^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a struct field
+   --> missing-doc.rs:128:9
+    |
+128 |         a: isize,
+    |         ^^^^^^^^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a struct field
+   --> missing-doc.rs:129:9
+    |
+129 |         b: isize
+    |         ^^^^^^^^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a variant
+   --> missing-doc.rs:131:5
+    |
+131 |     BarB
+    |     ^^^^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for an enum
+   --> missing-doc.rs:134:1
+    |
+134 | / pub enum PubBaz {
+135 | |     PubBazA {
+136 | |         a: isize,
+137 | |     },
+138 | | }
+    | |_^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a variant
+   --> missing-doc.rs:135:5
+    |
+135 | /     PubBazA {
+136 | |         a: isize,
+137 | |     },
+    | |_____^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a struct field
+   --> missing-doc.rs:136:9
+    |
+136 |         a: isize,
+    |         ^^^^^^^^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a constant
+   --> missing-doc.rs:160:1
+    |
+160 | const FOO: u32 = 0;
+    | ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a constant
+   --> missing-doc.rs:167:1
+    |
+167 | pub const FOO4: u32 = 0;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a static
+   --> missing-doc.rs:170:1
+    |
+170 | static BAR: u32 = 0;
+    | ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a static
+   --> missing-doc.rs:177:1
+    |
+177 | pub static BAR4: u32 = 0;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a module
+   --> missing-doc.rs:180:1
+    |
+180 | / mod internal_impl {
+181 | |     /// dox
+182 | |     pub fn documented() {}
+183 | |     pub fn undocumented1() {}
+...   |
+192 | |     }
+193 | | }
+    | |_^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a function
+   --> missing-doc.rs:183:5
+    |
+183 |     pub fn undocumented1() {}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a function
+   --> missing-doc.rs:184:5
+    |
+184 |     pub fn undocumented2() {}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a function
+   --> missing-doc.rs:185:5
+    |
+185 |     fn undocumented3() {}
+    |     ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a function
+   --> missing-doc.rs:190:9
+    |
+190 |         pub fn also_undocumented1() {}
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a function
+   --> missing-doc.rs:191:9
+    |
+191 |         fn also_undocumented2() {}
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: missing documentation for a function
+   --> missing-doc.rs:202:1
+    |
+202 | fn main() {}
+    | ^^^^^^^^^^^^
+    |
+    = note: `-D missing-docs-in-private-items` implied by `-D warnings`
+
+error: aborting due to 40 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

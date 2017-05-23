@@ -1,0 +1,221 @@
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> invalid_upcast_comparisons.rs:16:5
+   |
+16 |     (u8 as u32) > 300;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> invalid_upcast_comparisons.rs:17:5
+   |
+17 |     (u8 as i32) > 300;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> invalid_upcast_comparisons.rs:18:5
+   |
+18 |     (u8 as u32) == 300;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> invalid_upcast_comparisons.rs:19:5
+   |
+19 |     (u8 as i32) == 300;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> invalid_upcast_comparisons.rs:20:5
+   |
+20 |     300 < (u8 as u32);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> invalid_upcast_comparisons.rs:21:5
+   |
+21 |     300 < (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> invalid_upcast_comparisons.rs:22:5
+   |
+22 |     300 == (u8 as u32);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> invalid_upcast_comparisons.rs:23:5
+   |
+23 |     300 == (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> invalid_upcast_comparisons.rs:25:5
+   |
+25 |     (u8 as u32) <= 300;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> invalid_upcast_comparisons.rs:26:5
+   |
+26 |     (u8 as i32) <= 300;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> invalid_upcast_comparisons.rs:27:5
+   |
+27 |     (u8 as u32) != 300;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> invalid_upcast_comparisons.rs:28:5
+   |
+28 |     (u8 as i32) != 300;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> invalid_upcast_comparisons.rs:29:5
+   |
+29 |     300 >= (u8 as u32);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> invalid_upcast_comparisons.rs:30:5
+   |
+30 |     300 >= (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> invalid_upcast_comparisons.rs:31:5
+   |
+31 |     300 != (u8 as u32);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> invalid_upcast_comparisons.rs:32:5
+   |
+32 |     300 != (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> invalid_upcast_comparisons.rs:35:5
+   |
+35 |     (u8 as i32) < 0;
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> invalid_upcast_comparisons.rs:36:5
+   |
+36 |     -5 != (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> invalid_upcast_comparisons.rs:38:5
+   |
+38 |     (u8 as i32) >= 0;
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> invalid_upcast_comparisons.rs:39:5
+   |
+39 |     -5 == (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> invalid_upcast_comparisons.rs:42:5
+   |
+42 |     1337 == (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> invalid_upcast_comparisons.rs:43:5
+   |
+43 |     1337 == (u8 as u32);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> invalid_upcast_comparisons.rs:45:5
+   |
+45 |     1337 != (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> invalid_upcast_comparisons.rs:46:5
+   |
+46 |     1337 != (u8 as u32);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always true
+  --> invalid_upcast_comparisons.rs:61:5
+   |
+61 |     (u8 as i32) > -1;
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> invalid_upcast_comparisons.rs:62:5
+   |
+62 |     (u8 as i32) < -1;
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: because of the numeric bounds on `u8` prior to casting, this expression is always false
+  --> invalid_upcast_comparisons.rs:78:5
+   |
+78 |     -5 >= (u8 as i32);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+
+error: aborting due to 27 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

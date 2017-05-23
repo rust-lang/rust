@@ -1,0 +1,35 @@
+error: zero-width space detected
+ --> unicode.rs:6:12
+  |
+6 |     print!("Here >​< is a ZWS, and ​another");
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D zero-width-space` implied by `-D warnings`
+  = help: Consider replacing the string with:
+          ""Here >\u{200B}< is a ZWS, and \u{200B}another""
+
+error: non-nfc unicode sequence detected
+  --> unicode.rs:12:12
+   |
+12 |     print!("̀àh?");
+   |            ^^^^^^^
+   |
+   = note: `-D unicode-not-nfc` implied by `-D warnings`
+   = help: Consider replacing the string with:
+           ""̀àh?""
+
+error: literal non-ASCII character detected
+  --> unicode.rs:18:12
+   |
+18 |     print!("Üben!");
+   |            ^^^^^^^
+   |
+   = note: `-D non-ascii-literal` implied by `-D warnings`
+   = help: Consider replacing the string with:
+           ""\u{dc}ben!""
+
+error: aborting due to 3 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

@@ -22,8 +22,8 @@ fn dogfood() {
 
     let cfg_mode = "run-fail".parse().expect("Invalid mode");
     let mut s = String::new();
-    s.push_str(" -L target/debug/");
-    s.push_str(" -L target/debug/deps");
+    s.push_str(" -L clippy_tests/target/debug/");
+    s.push_str(" -L clippy_tests/target/debug/deps");
     s.push_str(" -Zextra-plugins=clippy -Ltarget_recur/debug -Dwarnings -Dclippy_pedantic -Dclippy -Dclippy_internal");
     config.target_rustcflags = Some(s);
     if let Ok(name) = var("TESTNAME") {

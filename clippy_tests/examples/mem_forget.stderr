@@ -1,0 +1,29 @@
+error: usage of mem::forget on Drop type
+  --> mem_forget.rs:18:5
+   |
+18 |     memstuff::forget(six);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D mem-forget` implied by `-D warnings`
+
+error: usage of mem::forget on Drop type
+  --> mem_forget.rs:21:5
+   |
+21 |     std::mem::forget(seven);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D mem-forget` implied by `-D warnings`
+
+error: usage of mem::forget on Drop type
+  --> mem_forget.rs:24:5
+   |
+24 |     forgetSomething(eight);
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D mem-forget` implied by `-D warnings`
+
+error: aborting due to 3 previous errors
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

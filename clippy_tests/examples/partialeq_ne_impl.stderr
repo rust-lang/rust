@@ -1,0 +1,13 @@
+error: re-implementing `PartialEq::ne` is unnecessary
+  --> partialeq_ne_impl.rs:10:5
+   |
+10 |     fn ne(&self, _: &Foo) -> bool { false }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D partialeq-ne-impl` implied by `-D warnings`
+
+error: aborting due to previous error
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.
