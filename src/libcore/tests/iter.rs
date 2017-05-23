@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use core::iter::*;
-use core::{i8, i16, isize};
+use core::{i16, isize};
 use core::usize;
 
 #[test]
@@ -147,15 +147,13 @@ fn test_iterator_chain_find() {
 #[test]
 fn test_iterator_step_by() {
     // Identity
-    // Replace with (0..).step_by(1) after Range::step_by gets removed
-    let mut it = Iterator::step_by((0..), 1).take(3);
+    let mut it = (0..).step_by(1).take(3);
     assert_eq!(it.next(), Some(0));
     assert_eq!(it.next(), Some(1));
     assert_eq!(it.next(), Some(2));
     assert_eq!(it.next(), None);
 
-    // Replace with (0..).step_by(3) after Range::step_by gets removed
-    let mut it = Iterator::step_by((0..), 3).take(4);
+    let mut it = (0..).step_by(3).take(4);
     assert_eq!(it.next(), Some(0));
     assert_eq!(it.next(), Some(3));
     assert_eq!(it.next(), Some(6));
@@ -166,9 +164,64 @@ fn test_iterator_step_by() {
 #[test]
 #[should_panic]
 fn test_iterator_step_by_zero() {
-    // Replace with (0..).step_by(0) after Range::step_by gets removed
-    let mut it = Iterator::step_by((0..), 0);
+    let mut it = (0..).step_by(0);
     it.next();
+}
+
+#[test]
+fn test_iterator_step_by_size_hint() {
+    struct StubSizeHint(usize, Option<usize>);
+    impl Iterator for StubSizeHint {
+        type Item = ();
+        fn next(&mut self) -> Option<()> {
+            self.0 -= 1;
+            if let Some(ref mut upper) = self.1 {
+                *upper -= 1;
+            }
+            Some(())
+        }
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            (self.0, self.1)
+        }
+    }
+
+    // The two checks in each case are needed because the logic
+    // is different before the first call to `next()`.
+
+    let mut it = StubSizeHint(10, Some(10)).step_by(1);
+    assert_eq!(it.size_hint(), (10, Some(10)));
+    it.next();
+    assert_eq!(it.size_hint(), (9, Some(9)));
+
+    // exact multiple
+    let mut it = StubSizeHint(10, Some(10)).step_by(3);
+    assert_eq!(it.size_hint(), (4, Some(4)));
+    it.next();
+    assert_eq!(it.size_hint(), (3, Some(3)));
+
+    // larger base range, but not enough to get another element
+    let mut it = StubSizeHint(12, Some(12)).step_by(3);
+    assert_eq!(it.size_hint(), (4, Some(4)));
+    it.next();
+    assert_eq!(it.size_hint(), (3, Some(3)));
+
+    // smaller base range, so fewer resulting elements
+    let mut it = StubSizeHint(9, Some(9)).step_by(3);
+    assert_eq!(it.size_hint(), (3, Some(3)));
+    it.next();
+    assert_eq!(it.size_hint(), (2, Some(2)));
+
+    // infinite upper bound
+    let mut it = StubSizeHint(usize::MAX, None).step_by(1);
+    assert_eq!(it.size_hint(), (usize::MAX, None));
+    it.next();
+    assert_eq!(it.size_hint(), (usize::MAX-1, None));
+
+    // still infinite with larger step
+    let mut it = StubSizeHint(7, None).step_by(3);
+    assert_eq!(it.size_hint(), (3, None));
+    it.next();
+    assert_eq!(it.size_hint(), (2, None));
 }
 
 #[test]
@@ -1008,8 +1061,6 @@ fn test_range() {
 #[test]
 fn test_range_step() {
     assert_eq!((0..20).step_by(5).collect::<Vec<isize>>(), [0, 5, 10, 15]);
-    assert_eq!((20..0).step_by(-5).collect::<Vec<isize>>(), [20, 15, 10, 5]);
-    assert_eq!((20..0).step_by(-6).collect::<Vec<isize>>(), [20, 14, 8, 2]);
     assert_eq!((200..255).step_by(50).collect::<Vec<u8>>(), [200, 250]);
     assert_eq!((200..-5).step_by(1).collect::<Vec<isize>>(), []);
     assert_eq!((200..200).step_by(1).collect::<Vec<isize>>(), []);
@@ -1017,13 +1068,9 @@ fn test_range_step() {
     assert_eq!((0..20).step_by(1).size_hint(), (20, Some(20)));
     assert_eq!((0..20).step_by(21).size_hint(), (1, Some(1)));
     assert_eq!((0..20).step_by(5).size_hint(), (4, Some(4)));
-    assert_eq!((20..0).step_by(-5).size_hint(), (4, Some(4)));
-    assert_eq!((20..0).step_by(-6).size_hint(), (4, Some(4)));
     assert_eq!((20..-5).step_by(1).size_hint(), (0, Some(0)));
     assert_eq!((20..20).step_by(1).size_hint(), (0, Some(0)));
-    assert_eq!((0..1).step_by(0).size_hint(), (0, None));
-    assert_eq!((i8::MAX..i8::MIN).step_by(i8::MIN).size_hint(), (2, Some(2)));
-    assert_eq!((i16::MIN..i16::MAX).step_by(i16::MAX).size_hint(), (3, Some(3)));
+    assert_eq!((i16::MIN..i16::MAX).step_by(i16::MAX as usize).size_hint(), (3, Some(3)));
     assert_eq!((isize::MIN..isize::MAX).step_by(1).size_hint(), (usize::MAX, Some(usize::MAX)));
 }
 

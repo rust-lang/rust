@@ -20,7 +20,7 @@
 #![feature(placement_in_syntax)]
 #![feature(rand)]
 #![feature(splice)]
-#![feature(step_by)]
+#![feature(iterator_step_by)]
 #![feature(str_escape)]
 #![feature(test)]
 #![feature(unboxed_closures)]
