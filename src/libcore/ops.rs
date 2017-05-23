@@ -157,9 +157,8 @@ use marker::Unsize;
 /// its `drop` method called. Then any fields the value contains will also
 /// be dropped recursively.
 ///
-/// Because of the recursive dropping, even for types that do not implement
-/// this trait, you do not need to implement this trait unless your type
-/// needs its own destructor logic.
+/// Because of the recursive dropping, you do not need to implement this trait
+/// unless your type needs its own destructor logic.
 ///
 /// # Examples
 ///
@@ -181,9 +180,8 @@ use marker::Unsize;
 /// ```
 ///
 /// Showing the recursive nature of `Drop`. When `outer` goes out of scope, the
-/// `drop` method will be called for `Outer` and then the `drop` method for
-/// `Inner` will be called. Therefore `main` prints `Dropping Outer!` and then
-/// `Dropping Inner!`.
+/// `drop` method will be called first for `Outer`, then for `Inner`. Therefore
+/// `main` prints `Dropping Outer!` and then `Dropping Inner!`.
 ///
 /// ```
 /// struct Inner;
