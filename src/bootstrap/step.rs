@@ -1395,10 +1395,6 @@ mod tests {
     use config::Config;
     use flags::Flags;
 
-    macro_rules! a {
-        ($($a:expr),*) => (vec![$($a.to_string()),*])
-    }
-
     fn build(args: &[&str],
              extra_host: &[&str],
              extra_target: &[&str]) -> Build {
