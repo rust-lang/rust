@@ -165,10 +165,6 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Finally we register each of these predicates as an obligation in
     // a fresh FulfillmentCtxt, and invoke select_all_or_error.
 
-    // Create a parameter environment that represents the implementation's
-    // method.
-    let impl_param_env = tcx.parameter_environment(impl_m.def_id);
-
     // Create mapping from impl to skolemized.
     let impl_to_skol_substs = Substs::identity_for_item(tcx, impl_m.def_id);
 
@@ -216,19 +212,18 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_node_id);
-    let trait_param_env = impl_param_env.with_caller_bounds(
-        tcx.intern_predicates(&hybrid_preds.predicates));
-    let trait_param_env = traits::normalize_param_env_or_error(tcx,
-                                                               impl_m.def_id,
-                                                               trait_param_env,
-                                                               normalize_cause.clone());
+    let param_env = ty::ParamEnv::new(tcx.intern_predicates(&hybrid_preds.predicates));
+    let param_env = traits::normalize_param_env_or_error(tcx,
+                                                         impl_m.def_id,
+                                                         param_env,
+                                                         normalize_cause.clone());
 
-    tcx.infer_ctxt(trait_param_env, Reveal::UserFacing).enter(|infcx| {
+    tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
         let inh = Inherited::new(infcx, impl_m.def_id);
         let infcx = &inh.infcx;
 
         debug!("compare_impl_method: caller_bounds={:?}",
-               infcx.parameter_environment.caller_bounds);
+               infcx.param_env.caller_bounds);
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
@@ -350,7 +345,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let region_maps = RegionMaps::new();
             let mut free_regions = FreeRegionMap::new();
             free_regions.relate_free_regions_from_predicates(
-                &infcx.parameter_environment.caller_bounds);
+                &infcx.param_env.caller_bounds);
             infcx.resolve_regions_and_report_errors(impl_m.def_id, &region_maps, &free_regions);
         } else {
             let fcx = FnCtxt::new(&inh, impl_m_node_id);

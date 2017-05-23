@@ -35,7 +35,6 @@ use util::common::ErrorReported;
 use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
 
 use serialize::{self, Encodable, Encoder};
-use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 use std::cmp;
 use std::fmt;
@@ -503,22 +502,12 @@ bitflags! {
                                   TypeFlags::HAS_TY_CLOSURE.bits |
                                   TypeFlags::HAS_LOCAL_NAMES.bits |
                                   TypeFlags::KEEP_IN_LOCAL_TCX.bits,
-
-        // Caches for type_is_sized, type_moves_by_default
-        const SIZEDNESS_CACHED  = 1 << 16,
-        const IS_SIZED          = 1 << 17,
-        const MOVENESS_CACHED   = 1 << 18,
-        const MOVES_BY_DEFAULT  = 1 << 19,
-        const FREEZENESS_CACHED = 1 << 20,
-        const IS_FREEZE         = 1 << 21,
-        const NEEDS_DROP_CACHED = 1 << 22,
-        const NEEDS_DROP        = 1 << 23,
     }
 }
 
 pub struct TyS<'tcx> {
     pub sty: TypeVariants<'tcx>,
-    pub flags: Cell<TypeFlags>,
+    pub flags: TypeFlags,
 
     // the maximal depth of any bound regions appearing in this type.
     region_depth: u32,
@@ -1249,46 +1238,58 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     }
 }
 
-/// When type checking, we use the `ParameterEnvironment` to track
-/// details about the type/lifetime parameters that are in scope.
-/// It primarily stores the bounds information.
-///
-/// Note: This information might seem to be redundant with the data in
-/// `tcx.ty_param_defs`, but it is not. That table contains the
-/// parameter definitions from an "outside" perspective, but this
-/// struct will contain the bounds for a parameter as seen from inside
-/// the function body. Currently the only real distinction is that
-/// bound lifetime parameters are replaced with free ones, but in the
-/// future I hope to refine the representation of types so as to make
-/// more distinctions clearer.
-#[derive(Clone)]
-pub struct ParameterEnvironment<'tcx> {
+/// When type checking, we use the `ParamEnv` to track
+/// details about the set of where-clauses that are in scope at this
+/// particular point.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ParamEnv<'tcx> {
     /// Obligations that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
     /// into Obligations, and elaborated and normalized.
-    pub caller_bounds: &'tcx [ty::Predicate<'tcx>],
-
-    /// A cache for `moves_by_default`.
-    pub is_copy_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
-
-    /// A cache for `type_is_sized`
-    pub is_sized_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
-
-    /// A cache for `type_is_freeze`
-    pub is_freeze_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
+    pub caller_bounds: &'tcx Slice<ty::Predicate<'tcx>>,
 }
 
-impl<'a, 'tcx> ParameterEnvironment<'tcx> {
-    pub fn with_caller_bounds(&self,
-                              caller_bounds: &'tcx [ty::Predicate<'tcx>])
-                              -> ParameterEnvironment<'tcx>
-    {
-        ParameterEnvironment {
-            caller_bounds: caller_bounds,
-            is_copy_cache: RefCell::new(FxHashMap()),
-            is_sized_cache: RefCell::new(FxHashMap()),
-            is_freeze_cache: RefCell::new(FxHashMap()),
+impl<'tcx> ParamEnv<'tcx> {
+    /// Creates a suitable environment in which to perform trait
+    /// queries on the given value. This will either be `self` *or*
+    /// the empty environment, depending on whether `value` references
+    /// type parameters that are in scope. (If it doesn't, then any
+    /// judgements should be completely independent of the context,
+    /// and hence we can safely use the empty environment so as to
+    /// enable more sharing across functions.)
+    ///
+    /// NB: This is a mildly dubious thing to do, in that a function
+    /// (or other environment) might have wacky where-clauses like
+    /// `where Box<u32>: Copy`, which are clearly never
+    /// satisfiable. The code will at present ignore these,
+    /// effectively, when type-checking the body of said
+    /// function. This preserves existing behavior in any
+    /// case. --nmatsakis
+    pub fn and<T: TypeFoldable<'tcx>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
+        assert!(!value.needs_infer());
+        if value.has_param_types() || value.has_self_ty() {
+            ParamEnvAnd {
+                param_env: self,
+                value: value,
+            }
+        } else {
+            ParamEnvAnd {
+                param_env: ParamEnv::empty(),
+                value: value,
+            }
         }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ParamEnvAnd<'tcx, T> {
+    pub param_env: ParamEnv<'tcx>,
+    pub value: T,
+}
+
+impl<'tcx, T> ParamEnvAnd<'tcx, T> {
+    pub fn into_parts(self) -> (ParamEnv<'tcx>, T) {
+        (self.param_env, self.value)
     }
 }
 
@@ -2357,54 +2358,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Construct a parameter environment suitable for static contexts or other contexts where there
-    /// are no free type/lifetime parameters in scope.
-    pub fn empty_parameter_environment(self) -> ParameterEnvironment<'tcx> {
-        ty::ParameterEnvironment {
-            caller_bounds: Slice::empty(),
-            is_copy_cache: RefCell::new(FxHashMap()),
-            is_sized_cache: RefCell::new(FxHashMap()),
-            is_freeze_cache: RefCell::new(FxHashMap()),
-        }
-    }
-
-    /// See `ParameterEnvironment` struct def'n for details.
-    pub fn parameter_environment(self, def_id: DefId) -> ParameterEnvironment<'gcx> {
-        //
-        // Compute the bounds on Self and the type parameters.
-        //
-
-        let tcx = self.global_tcx();
-        let bounds = tcx.predicates_of(def_id).instantiate_identity(tcx);
-        let predicates = bounds.predicates;
-
-        // Finally, we have to normalize the bounds in the environment, in
-        // case they contain any associated type projections. This process
-        // can yield errors if the put in illegal associated types, like
-        // `<i32 as Foo>::Bar` where `i32` does not implement `Foo`. We
-        // report these errors right here; this doesn't actually feel
-        // right to me, because constructing the environment feels like a
-        // kind of a "idempotent" action, but I'm not sure where would be
-        // a better place. In practice, we construct environments for
-        // every fn once during type checking, and we'll abort if there
-        // are any errors at that point, so after type checking you can be
-        // sure that this will succeed without errors anyway.
-        //
-
-        let unnormalized_env = ty::ParameterEnvironment {
-            caller_bounds: tcx.intern_predicates(&predicates),
-            is_copy_cache: RefCell::new(FxHashMap()),
-            is_sized_cache: RefCell::new(FxHashMap()),
-            is_freeze_cache: RefCell::new(FxHashMap()),
-        };
-
-        let body_id = self.hir.as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
-            self.hir.maybe_body_owned_by(id).map_or(id, |body| body.node_id)
-        });
-        let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
-        traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
-    }
-
     pub fn node_scope_region(self, id: NodeId) -> Region<'tcx> {
         self.mk_region(ty::ReScope(CodeExtent::Misc(id)))
     }
@@ -2564,14 +2517,45 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
         })
 }
 
+/// See `ParamEnv` struct def'n for details.
+fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   def_id: DefId)
+                                   -> ParamEnv<'tcx> {
+    // Compute the bounds on Self and the type parameters.
+
+    let bounds = tcx.predicates_of(def_id).instantiate_identity(tcx);
+    let predicates = bounds.predicates;
+
+    // Finally, we have to normalize the bounds in the environment, in
+    // case they contain any associated type projections. This process
+    // can yield errors if the put in illegal associated types, like
+    // `<i32 as Foo>::Bar` where `i32` does not implement `Foo`. We
+    // report these errors right here; this doesn't actually feel
+    // right to me, because constructing the environment feels like a
+    // kind of a "idempotent" action, but I'm not sure where would be
+    // a better place. In practice, we construct environments for
+    // every fn once during type checking, and we'll abort if there
+    // are any errors at that point, so after type checking you can be
+    // sure that this will succeed without errors anyway.
+
+    let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates));
+
+    let body_id = tcx.hir.as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
+        tcx.hir.maybe_body_owned_by(id).map_or(id, |body| body.node_id)
+    });
+    let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
+    traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
+}
 
 pub fn provide(providers: &mut ty::maps::Providers) {
+    util::provide(providers);
     *providers = ty::maps::Providers {
         associated_item,
         associated_item_def_ids,
         adt_sized_constraint,
         adt_dtorck_constraint,
         def_span,
+        param_env,
         trait_of_item,
         trait_impls_of: trait_def::trait_impls_of_provider,
         relevant_trait_impls_for: trait_def::relevant_trait_impls_provider,
@@ -2585,6 +2569,7 @@ pub fn provide_extern(providers: &mut ty::maps::Providers) {
         adt_dtorck_constraint,
         trait_impls_of: trait_def::trait_impls_of_provider,
         relevant_trait_impls_for: trait_def::relevant_trait_impls_provider,
+        param_env,
         ..*providers
     };
 }

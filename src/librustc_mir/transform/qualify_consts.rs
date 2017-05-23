@@ -78,7 +78,7 @@ impl<'a, 'tcx> Qualif {
     /// Remove flags which are impossible for the given type.
     fn restrict(&mut self, ty: Ty<'tcx>,
                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                param_env: &ty::ParameterEnvironment<'tcx>) {
+                param_env: ty::ParamEnv<'tcx>) {
         if ty.is_freeze(tcx, param_env, DUMMY_SP) {
             *self = *self - Qualif::MUTABLE_INTERIOR;
         }
@@ -128,7 +128,7 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     rpo: ReversePostorder<'a, 'tcx>,
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    param_env: ty::ParameterEnvironment<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     temp_qualif: IndexVec<Local, Option<Qualif>>,
     return_qualif: Option<Qualif>,
     qualif: Qualif,
@@ -139,7 +139,7 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-           param_env: ty::ParameterEnvironment<'tcx>,
+           param_env: ty::ParamEnv<'tcx>,
            def_id: DefId,
            mir: &'a Mir<'tcx>,
            mode: Mode)
@@ -193,7 +193,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     /// Add the given type's qualification to self.qualif.
     fn add_type(&mut self, ty: Ty<'tcx>) {
         self.add(Qualif::MUTABLE_INTERIOR | Qualif::NEEDS_DROP);
-        self.qualif.restrict(ty, self.tcx, &self.param_env);
+        self.qualif.restrict(ty, self.tcx, self.param_env);
     }
 
     /// Within the provided closure, self.qualif will start
@@ -544,7 +544,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                            static, use a constant instead");
                             }
                             let ty = lvalue.ty(this.mir, this.tcx).to_ty(this.tcx);
-                            this.qualif.restrict(ty, this.tcx, &this.param_env);
+                            this.qualif.restrict(ty, this.tcx, this.param_env);
                         }
 
                         ProjectionElem::ConstantIndex {..} |
@@ -937,7 +937,7 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return Qualif::NOT_CONST.bits();
     }
 
-    let param_env = tcx.parameter_environment(def_id);
+    let param_env = tcx.param_env(def_id);
 
     let mut qualifier = Qualifier::new(tcx, param_env, def_id, mir, Mode::Const);
     qualifier.qualify_const().bits()
@@ -965,7 +965,7 @@ impl MirPass for QualifyAndPromoteConstants {
             MirSource::Const(_) |
             MirSource::Promoted(..) => return
         };
-        let param_env = tcx.parameter_environment(def_id);
+        let param_env = tcx.param_env(def_id);
 
         if mode == Mode::Fn || mode == Mode::ConstFn {
             // This is ugly because Qualifier holds onto mir,

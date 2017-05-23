@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig};
-use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use hir::def::Def;
 use hir;
 use middle::const_val;
@@ -136,6 +136,15 @@ impl Key for (MirSuite, MirPassIndex, DefId) {
     }
 }
 
+impl<'tcx, T: Clone + Hash + Eq + Debug> Key for ty::ParamEnvAnd<'tcx, T> {
+    fn map_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+    fn default_span(&self, _: TyCtxt) -> Span {
+        DUMMY_SP
+    }
+}
+
 trait Value<'tcx>: Sized {
     fn from_cycle_error<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self;
 }
@@ -241,6 +250,30 @@ trait QueryDescription: DepTrackingMapConfig {
 impl<M: DepTrackingMapConfig<Key=DefId>> QueryDescription for M {
     default fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("processing `{}`", tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_copy_raw<'tcx> {
+    fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
+        format!("computing whether `{}` is `Copy`", env.value)
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_sized_raw<'tcx> {
+    fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
+        format!("computing whether `{}` is `Sized`", env.value)
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_freeze_raw<'tcx> {
+    fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
+        format!("computing whether `{}` is freeze", env.value)
+    }
+}
+
+impl<'tcx> QueryDescription for queries::needs_drop_raw<'tcx> {
+    fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
+        format!("computing whether `{}` needs drop", env.value)
     }
 }
 
@@ -856,6 +889,15 @@ define_maps! { <'tcx>
         -> ty::trait_def::TraitImpls,
     [] specialization_graph_of: SpecializationGraph(DefId) -> Rc<specialization_graph::Graph>,
     [] is_object_safe: ObjectSafety(DefId) -> bool,
+
+    [] param_env: ParamEnv(DefId) -> ty::ParamEnv<'tcx>,
+
+    // Trait selection queries. These are best used by invoking `ty.moves_by_default()`,
+    // `ty.is_copy()`, etc, since that will prune the environment where possible.
+    [] is_copy_raw: is_copy_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
+    [] is_sized_raw: is_sized_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
+    [] is_freeze_raw: is_freeze_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
+    [] needs_drop_raw: needs_drop_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -898,4 +940,28 @@ fn crate_variances(_: CrateNum) -> DepNode<DefId> {
 
 fn relevant_trait_impls_for((def_id, _): (DefId, SimplifiedType)) -> DepNode<DefId> {
     DepNode::TraitImpls(def_id)
+}
+
+fn is_copy_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
+    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
+        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
+    DepNode::IsCopy(def_id)
+}
+
+fn is_sized_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
+    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
+        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
+    DepNode::IsSized(def_id)
+}
+
+fn is_freeze_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
+    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
+        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
+    DepNode::IsFreeze(def_id)
+}
+
+fn needs_drop_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
+    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
+        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
+    DepNode::NeedsDrop(def_id)
 }

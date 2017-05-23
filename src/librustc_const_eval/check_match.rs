@@ -52,7 +52,7 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
             tcx: self.tcx,
             tables: self.tcx.body_tables(b),
             region_maps: &self.tcx.region_maps(def_id),
-            param_env: &self.tcx.parameter_environment(def_id)
+            param_env: self.tcx.param_env(def_id)
         }.visit_body(self.tcx.hir.body(b));
     }
 }
@@ -69,7 +69,7 @@ fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> Diagn
 struct MatchVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
-    param_env: &'a ty::ParameterEnvironment<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     region_maps: &'a RegionMaps,
 }
 
@@ -518,7 +518,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
 ///
 /// FIXME: this should be done by borrowck.
 fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Expr) {
-    cx.tcx.infer_ctxt((cx.tables, cx.param_env.clone()), Reveal::UserFacing).enter(|infcx| {
+    cx.tcx.infer_ctxt((cx.tables, cx.param_env), Reveal::UserFacing).enter(|infcx| {
         let mut checker = MutationChecker {
             cx: cx,
         };

@@ -220,7 +220,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // FIXME: Give a bonus to functions with only a single caller
 
         let def_id = tcx.hir.local_def_id(self.source.item_id());
-        let param_env = tcx.parameter_environment(def_id);
+        let param_env = tcx.param_env(def_id);
 
         let mut first_block = true;
         let mut cost = 0;
@@ -253,7 +253,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     // a regular goto.
                     let ty = location.ty(&callee_mir, tcx).subst(tcx, callsite.substs);
                     let ty = ty.to_ty(tcx);
-                    if ty.needs_drop(tcx, &param_env) {
+                    if ty.needs_drop(tcx, param_env) {
                         cost += CALL_PENALTY;
                         if let Some(unwind) = unwind {
                             work_list.push(unwind);
@@ -545,7 +545,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
     }
 }
 
-fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, param_env: ty::ParameterEnvironment<'tcx>,
+fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, param_env: ty::ParamEnv<'tcx>,
                           ty: Ty<'tcx>) -> Option<u64> {
     tcx.infer_ctxt(param_env, traits::Reveal::All).enter(|infcx| {
         ty.layout(&infcx).ok().map(|layout| {

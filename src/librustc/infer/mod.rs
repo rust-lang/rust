@@ -161,7 +161,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // For region variables.
     region_vars: RegionVarBindings<'a, 'gcx, 'tcx>,
 
-    pub parameter_environment: ty::ParameterEnvironment<'gcx>,
+    pub param_env: ty::ParamEnv<'gcx>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that have to do with the parameters in scope.
@@ -406,41 +406,41 @@ pub trait InferEnv<'a, 'tcx> {
     fn to_parts(self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParameterEnvironment<'tcx>>);
+                    Option<ty::ParamEnv<'tcx>>);
 }
 
 impl<'a, 'tcx> InferEnv<'a, 'tcx> for () {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParameterEnvironment<'tcx>>) {
+                    Option<ty::ParamEnv<'tcx>>) {
         (None, None, None)
     }
 }
 
-impl<'a, 'tcx> InferEnv<'a, 'tcx> for ty::ParameterEnvironment<'tcx> {
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for ty::ParamEnv<'tcx> {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParameterEnvironment<'tcx>>) {
+                    Option<ty::ParamEnv<'tcx>>) {
         (None, None, Some(self))
     }
 }
 
-impl<'a, 'tcx> InferEnv<'a, 'tcx> for (&'a ty::TypeckTables<'tcx>, ty::ParameterEnvironment<'tcx>) {
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for (&'a ty::TypeckTables<'tcx>, ty::ParamEnv<'tcx>) {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParameterEnvironment<'tcx>>) {
+                    Option<ty::ParamEnv<'tcx>>) {
         (Some(self.0), None, Some(self.1))
     }
 }
 
-impl<'a, 'tcx> InferEnv<'a, 'tcx> for (ty::TypeckTables<'tcx>, ty::ParameterEnvironment<'tcx>) {
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for (ty::TypeckTables<'tcx>, ty::ParamEnv<'tcx>) {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParameterEnvironment<'tcx>>) {
+                    Option<ty::ParamEnv<'tcx>>) {
         (None, Some(self.0), Some(self.1))
     }
 }
@@ -449,11 +449,11 @@ impl<'a, 'tcx> InferEnv<'a, 'tcx> for hir::BodyId {
     fn to_parts(self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParameterEnvironment<'tcx>>) {
+                    Option<ty::ParamEnv<'tcx>>) {
         let def_id = tcx.hir.body_owner_def_id(self);
         (Some(tcx.typeck_tables_of(def_id)),
          None,
-         Some(tcx.parameter_environment(def_id)))
+         Some(tcx.param_env(def_id)))
     }
 }
 
@@ -465,7 +465,7 @@ pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     arena: DroplessArena,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
     tables: Option<&'a ty::TypeckTables<'gcx>>,
-    param_env: Option<ty::ParameterEnvironment<'gcx>>,
+    param_env: Option<ty::ParamEnv<'gcx>>,
     projection_mode: Reveal,
 }
 
@@ -498,7 +498,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
             region_vars: RegionVarBindings::new(self),
-            parameter_environment: param_env.unwrap(),
+            param_env: param_env.unwrap(),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
@@ -526,9 +526,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         let tables = tables.map(InferTables::Interned).unwrap_or_else(|| {
             fresh_tables.as_ref().map_or(InferTables::Missing, InferTables::InProgress)
         });
-        let param_env = param_env.take().unwrap_or_else(|| {
-            global_tcx.empty_parameter_environment()
-        });
+        let param_env = param_env.take().unwrap_or_else(|| ty::ParamEnv::empty());
         global_tcx.enter_local(arena, |tcx| f(InferCtxt {
             tcx: tcx,
             tables: tables,
@@ -537,7 +535,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
             region_vars: RegionVarBindings::new(tcx),
-            parameter_environment: param_env,
+            param_env: param_env,
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             reported_trait_errors: RefCell::new(FxHashSet()),
@@ -650,7 +648,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     }
 
     pub fn normalize_associated_type_in_env<T>(
-        self, value: &T, env: &'a ty::ParameterEnvironment<'tcx>
+        self, value: &T, env: ty::ParamEnv<'tcx>
     ) -> T
         where T: TransNormalize<'tcx>
     {
@@ -662,7 +660,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return value;
         }
 
-        self.infer_ctxt(env.clone(), Reveal::All).enter(|infcx| {
+        self.infer_ctxt(env, Reveal::All).enter(|infcx| {
             value.trans_normalize(&infcx)
        })
     }
@@ -1674,8 +1672,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tables.borrow().upvar_capture_map.get(&upvar_id).cloned()
     }
 
-    pub fn param_env(&self) -> &ty::ParameterEnvironment<'gcx> {
-        &self.parameter_environment
+    pub fn param_env(&self) -> ty::ParamEnv<'gcx> {
+        self.param_env
     }
 
     pub fn closure_kind(&self,

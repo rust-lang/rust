@@ -105,7 +105,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            self_type);
 
     let span = tcx.hir.span(impl_node_id);
-    let param_env = tcx.parameter_environment(impl_did);
+    let param_env = tcx.param_env(impl_did);
     assert!(!self_type.has_escaping_regions());
 
     debug!("visit_implementation_of_copy: self_type={:?} (free)",
@@ -199,7 +199,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            target);
 
     let span = tcx.hir.span(impl_node_id);
-    let param_env = tcx.parameter_environment(impl_did);
+    let param_env = tcx.param_env(impl_did);
     assert!(!source.has_escaping_regions());
 
     let err_info = CoerceUnsizedInfo { custom_kind: None };
@@ -387,7 +387,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Finally, resolve all regions.
         let region_maps = RegionMaps::new();
         let mut free_regions = FreeRegionMap::new();
-        free_regions.relate_free_regions_from_predicates(&infcx.parameter_environment
+        free_regions.relate_free_regions_from_predicates(&infcx.param_env
             .caller_bounds);
         infcx.resolve_regions_and_report_errors(impl_did, &region_maps, &free_regions);
 

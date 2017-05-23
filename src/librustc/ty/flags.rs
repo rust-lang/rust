@@ -167,7 +167,7 @@ impl FlagComputation {
     }
 
     fn add_ty(&mut self, ty: Ty) {
-        self.add_flags(ty.flags.get());
+        self.add_flags(ty.flags);
         self.add_depth(ty.region_depth);
     }
 

@@ -58,7 +58,7 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
     in_fn: bool,
     promotable: bool,
     mut_rvalue_borrows: NodeSet,
-    param_env: ty::ParameterEnvironment<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
 }
 
@@ -85,11 +85,11 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
 
     // Adds the worst effect out of all the values of one type.
     fn add_type(&mut self, ty: Ty<'gcx>) {
-        if !ty.is_freeze(self.tcx, &self.param_env, DUMMY_SP) {
+        if !ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {
             self.promotable = false;
         }
 
-        if ty.needs_drop(self.tcx, &self.param_env) {
+        if ty.needs_drop(self.tcx, self.param_env) {
             self.promotable = false;
         }
     }
@@ -139,7 +139,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         }
 
         let outer_penv = self.tcx.infer_ctxt(body_id, Reveal::UserFacing).enter(|infcx| {
-            let param_env = infcx.parameter_environment.clone();
+            let param_env = infcx.param_env.clone();
             let outer_penv = mem::replace(&mut self.param_env, param_env);
             let region_maps = &self.tcx.region_maps(item_def_id);;
             euv::ExprUseVisitor::new(self, region_maps, &infcx).consume_body(body);
@@ -466,7 +466,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         in_fn: false,
         promotable: false,
         mut_rvalue_borrows: NodeSet(),
-        param_env: tcx.empty_parameter_environment(),
+        param_env: ty::ParamEnv::empty(),
     }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }

@@ -40,8 +40,6 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                        -> &'tcx Mir<'tcx>
 {
     debug!("make_shim({:?})", instance);
-    let did = instance.def_id();
-    let param_env = tcx.parameter_environment(did);
 
     let mut result = match instance {
         ty::InstanceDef::Item(..) =>
@@ -98,7 +96,7 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             )
         }
         ty::InstanceDef::DropGlue(def_id, ty) => {
-            build_drop_shim(tcx, &param_env, def_id, ty)
+            build_drop_shim(tcx, def_id, ty)
         }
         ty::InstanceDef::Intrinsic(_) => {
             bug!("creating shims from intrinsics ({:?}) is unsupported", instance)
@@ -144,7 +142,6 @@ fn local_decls_for_sig<'tcx>(sig: &ty::FnSig<'tcx>, span: Span)
 }
 
 fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-                             param_env: &ty::ParameterEnvironment<'tcx>,
                              def_id: DefId,
                              ty: Option<Ty<'tcx>>)
                              -> Mir<'tcx>
@@ -189,10 +186,12 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 
     if let Some(..) = ty {
         let patch = {
+            let param_env = tcx.param_env(def_id);
             let mut elaborator = DropShimElaborator {
                 mir: &mir,
                 patch: MirPatch::new(&mir),
-                tcx, param_env
+                tcx,
+                param_env
             };
             let dropee = Lvalue::Local(Local::new(1+0)).deref();
             let resume_block = elaborator.patch.resume_block();
@@ -218,7 +217,7 @@ pub struct DropShimElaborator<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     patch: MirPatch<'tcx>,
     tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-    param_env: &'a ty::ParameterEnvironment<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'a, 'tcx> fmt::Debug for DropShimElaborator<'a, 'tcx> {
@@ -233,7 +232,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     fn patch(&mut self) -> &mut MirPatch<'tcx> { &mut self.patch }
     fn mir(&self) -> &'a Mir<'tcx> { self.mir }
     fn tcx(&self) -> ty::TyCtxt<'a, 'tcx, 'tcx> { self.tcx }
-    fn param_env(&self) -> &'a ty::ParameterEnvironment<'tcx> { self.param_env }
+    fn param_env(&self) -> ty::ParamEnv<'tcx> { self.param_env }
 
     fn drop_style(&self, _path: Self::Path, mode: DropFlagMode) -> DropStyle {
         if let DropFlagMode::Shallow = mode {

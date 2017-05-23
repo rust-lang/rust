@@ -168,7 +168,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                   type with inference types/regions",
                  ty);
         });
-        ty.needs_drop(self.tcx.global_tcx(), &self.infcx.parameter_environment)
+        ty.needs_drop(self.tcx.global_tcx(), self.infcx.param_env)
     }
 
     pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {

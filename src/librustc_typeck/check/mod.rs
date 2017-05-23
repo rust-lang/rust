@@ -539,7 +539,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
     pub fn build(tcx: TyCtxt<'a, 'gcx, 'gcx>, def_id: DefId)
                  -> InheritedBuilder<'a, 'gcx, 'tcx> {
         let tables = ty::TypeckTables::empty();
-        let param_env = tcx.parameter_environment(def_id);
+        let param_env = tcx.param_env(def_id);
         InheritedBuilder {
             infcx: tcx.infer_ctxt((tables, param_env), Reveal::UserFacing),
             def_id,
@@ -1561,7 +1561,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         let index = generics.type_param_to_index[&def_id.index];
         ty::GenericPredicates {
             parent: None,
-            predicates: self.parameter_environment.caller_bounds.iter().filter(|predicate| {
+            predicates: self.param_env.caller_bounds.iter().filter(|predicate| {
                 match **predicate {
                     ty::Predicate::Trait(ref data) => {
                         data.0.self_ty().is_param(index)

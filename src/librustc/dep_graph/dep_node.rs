@@ -108,6 +108,10 @@ pub enum DepNode<D: Clone + Debug> {
     SymbolName(D),
     SpecializationGraph(D),
     ObjectSafety(D),
+    IsCopy(D),
+    IsSized(D),
+    IsFreeze(D),
+    NeedsDrop(D),
 
     // The set of impls for a given trait. Ultimately, it would be
     // nice to get more fine-grained here (e.g., to include a
@@ -159,6 +163,7 @@ pub enum DepNode<D: Clone + Debug> {
     // not a hotspot.
     ProjectionCache { def_ids: Vec<D> },
 
+    ParamEnv(D),
     DescribeDef(D),
     DefSpan(D),
     Stability(D),
@@ -233,6 +238,10 @@ impl<D: Clone + Debug> DepNode<D> {
             // they are always absolute.
             WorkProduct(ref id) => Some(WorkProduct(id.clone())),
 
+            IsCopy(ref d) => op(d).map(IsCopy),
+            IsSized(ref d) => op(d).map(IsSized),
+            IsFreeze(ref d) => op(d).map(IsFreeze),
+            NeedsDrop(ref d) => op(d).map(NeedsDrop),
             Hir(ref d) => op(d).map(Hir),
             HirBody(ref d) => op(d).map(HirBody),
             MetaData(ref d) => op(d).map(MetaData),
@@ -284,6 +293,7 @@ impl<D: Clone + Debug> DepNode<D> {
                 let def_ids: Option<Vec<E>> = def_ids.iter().map(op).collect();
                 def_ids.map(|d| ProjectionCache { def_ids: d })
             }
+            ParamEnv(ref d) => op(d).map(ParamEnv),
             DescribeDef(ref d) => op(d).map(DescribeDef),
             DefSpan(ref d) => op(d).map(DefSpan),
             Stability(ref d) => op(d).map(Stability),
