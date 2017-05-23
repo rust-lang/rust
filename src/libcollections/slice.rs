@@ -1410,6 +1410,9 @@ impl<T> [T] {
 
     /// Converts `self` into a vector without clones or allocation.
     ///
+    /// The resulting vector can be converted back into a box via
+    /// `Vec<T>`'s `into_boxed_slice` method.
+    ///
     /// # Examples
     ///
     /// ```
