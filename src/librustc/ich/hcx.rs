@@ -74,6 +74,11 @@ impl<'a, 'tcx: 'a> StableHashingContext<'a, 'tcx> {
         }
     }
 
+    pub fn force_span_hashing(mut self) -> Self {
+        self.hash_spans = true;
+        self
+    }
+
     #[inline]
     pub fn while_hashing_hir_bodies<F: FnOnce(&mut Self)>(&mut self,
                                                           hash_bodies: bool,
