@@ -35,9 +35,8 @@ pub fn main() {
     //~^ ERROR
     //~^^ NOTE a collection of type `std::option::Option<std::vec::Vec<u8>>` cannot be built from an iterator over elements of type `&u8`
     //~^^^ NOTE required by `collect`
-    //~| NOTE the trait `MyFromIterator<&u8>` is not implemented for `std::option::Option<std::vec::Vec<u8>>`
+
     let x: String = foobar(); //~ ERROR
     //~^ NOTE test error `std::string::String` with `u8` `_` `u32`
     //~^^ NOTE required by `foobar`
-    //~| NOTE the trait `Foo<u8, _, u32>` is not implemented for `std::string::String`
 }
