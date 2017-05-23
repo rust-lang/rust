@@ -35,7 +35,7 @@ use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use std::fmt;
 use syntax::ast::{self, NodeId};
 use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable, TyInfer, TyVar};
-use ty::error::ExpectedFound;
+use ty::error::{ExpectedFound, TypeError};
 use ty::fast_reject;
 use ty::fold::TypeFolder;
 use ty::subst::Subst;
@@ -258,7 +258,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let mut self_match_impls = vec![];
         let mut fuzzy_match_impls = vec![];
 
-        self.tcx.lookup_trait_def(trait_ref.def_id)
+        self.tcx.trait_def(trait_ref.def_id)
             .for_each_relevant_impl(self.tcx, trait_self_ty, |def_id| {
                 let impl_substs = self.fresh_substs_for_item(obligation.cause.span, def_id);
                 let impl_trait_ref = tcx
@@ -314,7 +314,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let trait_str = self.tcx.item_path_str(trait_ref.def_id);
             if let Some(istring) = item.value_str() {
                 let istring = &*istring.as_str();
-                let generics = self.tcx.item_generics(trait_ref.def_id);
+                let generics = self.tcx.generics_of(trait_ref.def_id);
                 let generic_map = generics.types.iter().map(|param| {
                     (param.name.as_str().to_string(),
                         trait_ref.substs.type_for_def(param).to_string())
@@ -372,7 +372,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                               trait_ref.skip_binder().self_ty(),
                                               true);
         let mut impl_candidates = Vec::new();
-        let trait_def = self.tcx.lookup_trait_def(trait_ref.def_id());
+        let trait_def = self.tcx.trait_def(trait_ref.def_id());
 
         match simp {
             Some(simp) => trait_def.for_each_impl(self.tcx, |def_id| {
@@ -484,12 +484,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         if let Some(trait_item_span) = self.tcx.hir.span_if_local(trait_item_def_id) {
             let span = self.tcx.sess.codemap().def_span(trait_item_span);
-            err.span_label(span, &format!("definition of `{}` from trait", item_name));
+            err.span_label(span, format!("definition of `{}` from trait", item_name));
         }
 
         err.span_label(
             error_span,
-            &format!("impl has extra requirement {}", requirement));
+            format!("impl has extra requirement {}", requirement));
 
         if let Some(node_id) = lint_id {
             self.tcx.sess.add_lint_diagnostic(EXTRA_REQUIREMENT_IN_IMPL,
@@ -559,6 +559,23 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             trait_ref.to_predicate(),
                             post_message);
 
+                        let unimplemented_note = self.on_unimplemented_note(trait_ref, obligation);
+                        if let Some(ref s) = unimplemented_note {
+                            // If it has a custom "#[rustc_on_unimplemented]"
+                            // error message, let's display it as the label!
+                            err.span_label(span, s.as_str());
+                            err.help(&format!("{}the trait `{}` is not implemented for `{}`",
+                                              pre_message,
+                                              trait_ref,
+                                              trait_ref.self_ty()));
+                        } else {
+                            err.span_label(span,
+                                           &*format!("{}the trait `{}` is not implemented for `{}`",
+                                                     pre_message,
+                                                     trait_ref,
+                                                     trait_ref.self_ty()));
+                        }
+
                         // Try to report a help message
                         if !trait_ref.has_infer_types() &&
                             self.predicate_can_apply(trait_ref) {
@@ -571,21 +588,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             // which is somewhat confusing.
                             err.help(&format!("consider adding a `where {}` bound",
                                                 trait_ref.to_predicate()));
-                        } else if let Some(s) = self.on_unimplemented_note(trait_ref, obligation) {
-                            // If it has a custom "#[rustc_on_unimplemented]"
-                            // error message, let's display it!
-                            err.note(&s);
-                        } else {
+                        } else if unimplemented_note.is_none() {
                             // Can't show anything else useful, try to find similar impls.
                             let impl_candidates = self.find_similar_impl_candidates(trait_ref);
                             self.report_similar_impl_candidates(impl_candidates, &mut err);
                         }
 
-                        err.span_label(span,
-                                       &format!("{}the trait `{}` is not implemented for `{}`",
-                                                pre_message,
-                                                trait_ref,
-                                                trait_ref.self_ty()));
                         err
                     }
 
@@ -663,13 +671,54 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 if actual_trait_ref.self_ty().references_error() {
                     return;
                 }
-                struct_span_err!(self.tcx.sess, span, E0281,
-                    "type mismatch: the type `{}` implements the trait `{}`, \
-                     but the trait `{}` is required ({})",
-                    expected_trait_ref.self_ty(),
-                    expected_trait_ref,
-                    actual_trait_ref,
-                    e)
+                let expected_trait_ty = expected_trait_ref.self_ty();
+                let found_span = expected_trait_ty.ty_to_def_id().and_then(|did| {
+                    self.tcx.hir.span_if_local(did)
+                });
+
+                if let &TypeError::TupleSize(ref expected_found) = e {
+                    // Expected `|x| { }`, found `|x, y| { }`
+                    self.report_arg_count_mismatch(span,
+                                                   found_span,
+                                                   expected_found.expected,
+                                                   expected_found.found,
+                                                   expected_trait_ty.is_closure())
+                } else if let &TypeError::Sorts(ref expected_found) = e {
+                    let expected = if let ty::TyTuple(tys, _) = expected_found.expected.sty {
+                        tys.len()
+                    } else {
+                        1
+                    };
+                    let found = if let ty::TyTuple(tys, _) = expected_found.found.sty {
+                        tys.len()
+                    } else {
+                        1
+                    };
+
+                    if expected != found {
+                        // Expected `|| { }`, found `|x, y| { }`
+                        // Expected `fn(x) -> ()`, found `|| { }`
+                        self.report_arg_count_mismatch(span,
+                                                       found_span,
+                                                       expected,
+                                                       found,
+                                                       expected_trait_ty.is_closure())
+                    } else {
+                        self.report_type_argument_mismatch(span,
+                                                            found_span,
+                                                            expected_trait_ty,
+                                                            expected_trait_ref,
+                                                            actual_trait_ref,
+                                                            e)
+                    }
+                } else {
+                    self.report_type_argument_mismatch(span,
+                                                        found_span,
+                                                        expected_trait_ty,
+                                                        expected_trait_ref,
+                                                        actual_trait_ref,
+                                                        e)
+                }
             }
 
             TraitNotObjectSafe(did) => {
@@ -680,6 +729,60 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
         self.note_obligation_cause(&mut err, obligation);
         err.emit();
+    }
+
+    fn report_type_argument_mismatch(&self,
+                                      span: Span,
+                                      found_span: Option<Span>,
+                                      expected_ty: Ty<'tcx>,
+                                      expected_ref: ty::PolyTraitRef<'tcx>,
+                                      found_ref: ty::PolyTraitRef<'tcx>,
+                                      type_error: &TypeError<'tcx>)
+        -> DiagnosticBuilder<'tcx>
+    {
+        let mut err = struct_span_err!(self.tcx.sess, span, E0281,
+            "type mismatch: `{}` implements the trait `{}`, but the trait `{}` is required",
+            expected_ty,
+            expected_ref,
+            found_ref);
+
+        err.span_label(span, format!("{}", type_error));
+
+        if let Some(sp) = found_span {
+            err.span_label(span, format!("requires `{}`", found_ref));
+            err.span_label(sp, format!("implements `{}`", expected_ref));
+        }
+
+        err
+    }
+
+    fn report_arg_count_mismatch(&self,
+                                 span: Span,
+                                 found_span: Option<Span>,
+                                 expected: usize,
+                                 found: usize,
+                                 is_closure: bool)
+        -> DiagnosticBuilder<'tcx>
+    {
+        let mut err = struct_span_err!(self.tcx.sess, span, E0593,
+            "{} takes {} argument{} but {} argument{} {} required",
+            if is_closure { "closure" } else { "function" },
+            found,
+            if found == 1 { "" } else { "s" },
+            expected,
+            if expected == 1 { "" } else { "s" },
+            if expected == 1 { "is" } else { "are" });
+
+        err.span_label(span, format!("expected {} that takes {} argument{}",
+                                      if is_closure { "closure" } else { "function" },
+                                      expected,
+                                      if expected == 1 { "" } else { "s" }));
+        if let Some(span) = found_span {
+            err.span_label(span, format!("takes {} argument{}",
+                                          found,
+                                          if found == 1 { "" } else { "s" }));
+        }
+        err
     }
 }
 
@@ -694,7 +797,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let mut err = struct_span_err!(self.sess, span, E0072,
                                        "recursive type `{}` has infinite size",
                                        self.item_path_str(type_def_id));
-        err.span_label(span, &format!("recursive type has infinite size"));
+        err.span_label(span, "recursive type has infinite size");
         err.help(&format!("insert indirection (e.g., a `Box`, `Rc`, or `&`) \
                            at some point to make `{}` representable",
                           self.item_path_str(type_def_id)));
@@ -713,7 +816,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.sess, span, E0038,
             "the trait `{}` cannot be made into an object",
             trait_str);
-        err.span_label(span, &format!("the trait `{}` cannot be made into an object", trait_str));
+        err.span_label(span, format!("the trait `{}` cannot be made into an object", trait_str));
 
         let mut reported_violations = FxHashSet();
         for violation in violations {
@@ -948,7 +1051,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                        "type annotations needed");
 
         for (target_span, label_message) in labels {
-            err.span_label(target_span, &label_message);
+            err.span_label(target_span, label_message);
         }
 
         err.emit();

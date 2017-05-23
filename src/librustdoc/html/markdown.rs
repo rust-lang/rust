@@ -66,18 +66,47 @@ pub struct MarkdownHtml<'a>(pub &'a str, pub RenderType);
 /// A unit struct like `Markdown`, that renders only the first paragraph.
 pub struct MarkdownSummaryLine<'a>(pub &'a str);
 
-/// Returns Some(code) if `s` is a line that should be stripped from
-/// documentation but used in example code. `code` is the portion of
-/// `s` that should be used in tests. (None for lines that should be
-/// left as-is.)
-fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
+/// Controls whether a line will be hidden or shown in HTML output.
+///
+/// All lines are used in documentation tests.
+enum Line<'a> {
+    Hidden(&'a str),
+    Shown(&'a str),
+}
+
+impl<'a> Line<'a> {
+    fn for_html(self) -> Option<&'a str> {
+        match self {
+            Line::Shown(l) => Some(l),
+            Line::Hidden(_) => None,
+        }
+    }
+
+    fn for_code(self) -> &'a str {
+        match self {
+            Line::Shown(l) |
+            Line::Hidden(l) => l,
+        }
+    }
+}
+
+// FIXME: There is a minor inconsistency here. For lines that start with ##, we
+// have no easy way of removing a potential single space after the hashes, which
+// is done in the single # case. This inconsistency seems okay, if non-ideal. In
+// order to fix it we'd have to iterate to find the first non-# character, and
+// then reallocate to remove it; which would make us return a String.
+fn map_line(s: &str) -> Line {
     let trimmed = s.trim();
-    if trimmed == "#" {
-        Some("")
+    if trimmed.starts_with("##") {
+        Line::Shown(&trimmed[1..])
     } else if trimmed.starts_with("# ") {
-        Some(&trimmed[2..])
+        // # text
+        Line::Hidden(&trimmed[2..])
+    } else if trimmed == "#" {
+        // We cannot handle '#text' because it could be #[attr].
+        Line::Hidden("")
     } else {
-        None
+        Line::Shown(s)
     }
 }
 
@@ -148,9 +177,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                 _ => {}
             }
         }
-        let lines = origtext.lines().filter(|l| {
-            stripped_filtered_line(*l).is_none()
-        });
+        let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
         let text = lines.collect::<Vec<&str>>().join("\n");
         PLAYGROUND.with(|play| {
             // insert newline to clearly separate it from the
@@ -160,9 +187,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                 if url.is_empty() {
                     return None;
                 }
-                let test = origtext.lines().map(|l| {
-                    stripped_filtered_line(l).unwrap_or(l)
-                }).collect::<Vec<&str>>().join("\n");
+                let test = origtext.lines()
+                    .map(|l| map_line(l).for_code())
+                    .collect::<Vec<&str>>().join("\n");
                 let krate = krate.as_ref().map(|s| &**s);
                 let test = test::maketest(&test, krate, false,
                                         &Default::default());
@@ -543,9 +570,7 @@ pub fn render(w: &mut fmt::Formatter,
                 }
             };
 
-            let lines = origtext.lines().filter(|l| {
-                stripped_filtered_line(*l).is_none()
-            });
+            let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
             let text = lines.collect::<Vec<&str>>().join("\n");
             if rendered { return }
             PLAYGROUND.with(|play| {
@@ -556,9 +581,9 @@ pub fn render(w: &mut fmt::Formatter,
                     if url.is_empty() {
                         return None;
                     }
-                    let test = origtext.lines().map(|l| {
-                        stripped_filtered_line(l).unwrap_or(l)
-                    }).collect::<Vec<&str>>().join("\n");
+                    let test = origtext.lines()
+                        .map(|l| map_line(l).for_code())
+                        .collect::<Vec<&str>>().join("\n");
                     let krate = krate.as_ref().map(|s| &**s);
                     let test = test::maketest(&test, krate, false,
                                               &Default::default());
@@ -734,9 +759,7 @@ pub fn old_find_testable_code(doc: &str, tests: &mut ::test::Collector, position
             let opaque = (*data).opaque as *mut hoedown_html_renderer_state;
             let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
             let text = str::from_utf8(text).unwrap();
-            let lines = text.lines().map(|l| {
-                stripped_filtered_line(l).unwrap_or(l)
-            });
+            let lines = text.lines().map(|l| map_line(l).for_code());
             let text = lines.collect::<Vec<&str>>().join("\n");
             let filename = tests.get_filename();
 
@@ -827,9 +850,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
                     }
                 }
                 let offset = offset.unwrap_or(0);
-                let lines = test_s.lines().map(|l| {
-                    stripped_filtered_line(l).unwrap_or(l)
-                });
+                let lines = test_s.lines().map(|l| map_line(l).for_code());
                 let text = lines.collect::<Vec<&str>>().join("\n");
                 nb_lines += doc[prev_offset..offset].lines().count();
                 let line = tests.get_line() + (nb_lines - 1);

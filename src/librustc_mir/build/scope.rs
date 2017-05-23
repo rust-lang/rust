@@ -87,7 +87,7 @@ should go to.
 */
 
 use build::{BlockAnd, BlockAndExtension, Builder, CFG};
-use rustc::middle::region::{CodeExtent, CodeExtentData};
+use rustc::middle::region::CodeExtent;
 use rustc::middle::lang_items;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::subst::{Kind, Subst};
@@ -248,10 +248,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ///
     /// Returns the might_break attribute of the BreakableScope used.
     pub fn in_breakable_scope<F, R>(&mut self,
-                            loop_block: Option<BasicBlock>,
-                            break_block: BasicBlock,
-                            break_destination: Lvalue<'tcx>,
-                            f: F) -> R
+                                    loop_block: Option<BasicBlock>,
+                                    break_block: BasicBlock,
+                                    break_destination: Lvalue<'tcx>,
+                                    f: F) -> R
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> R
     {
         let extent = self.topmost_scope();
@@ -270,7 +270,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
-    pub fn in_scope<F, R>(&mut self, extent: CodeExtent, mut block: BasicBlock, f: F) -> BlockAnd<R>
+    pub fn in_scope<F, R>(&mut self,
+                          extent: CodeExtent,
+                          mut block: BasicBlock,
+                          f: F)
+                          -> BlockAnd<R>
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
@@ -411,8 +415,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // The outermost scope (`scopes[0]`) will be the `CallSiteScope`.
         // We want `scopes[1]`, which is the `ParameterScope`.
         assert!(self.scopes.len() >= 2);
-        assert!(match self.hir.tcx().region_maps.code_extent_data(self.scopes[1].extent) {
-            CodeExtentData::ParameterScope { .. } => true,
+        assert!(match self.scopes[1].extent {
+            CodeExtent::ParameterScope(_) => true,
             _ => false,
         });
         self.scopes[1].extent
@@ -499,7 +503,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     scope.needs_cleanup = true;
                 }
                 let tcx = self.hir.tcx();
-                let extent_span = extent.span(&tcx.region_maps, &tcx.hir).unwrap();
+                let extent_span = extent.span(&tcx.hir).unwrap();
                 // Attribute scope exit drops to scope's closing brace
                 let scope_end = Span { lo: extent_span.hi, .. extent_span};
                 scope.drops.push(DropData {
@@ -782,9 +786,9 @@ fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
     let substs = tcx.intern_substs(&[Kind::from(data.item_ty)]);
     TerminatorKind::Call {
-        func: Operand::Constant(Constant {
+        func: Operand::Constant(box Constant {
             span: data.span,
-            ty: tcx.item_type(free_func).subst(tcx, substs),
+            ty: tcx.type_of(free_func).subst(tcx, substs),
             literal: Literal::Value {
                 value: ConstVal::Function(free_func, substs),
             }

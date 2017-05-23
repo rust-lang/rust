@@ -27,7 +27,7 @@ use rustc::hir;
 pub fn check_legal_trait_for_method_call(tcx: TyCtxt, span: Span, trait_id: DefId) {
     if tcx.lang_items.drop_trait() == Some(trait_id) {
         struct_span_err!(tcx.sess, span, E0040, "explicit use of destructor method")
-            .span_label(span, &format!("explicit destructor calls not allowed"))
+            .span_label(span, "explicit destructor calls not allowed")
             .emit();
     }
 }
@@ -165,11 +165,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             match self.lookup_method_in_trait_adjusted(call_expr.span,
-                                                       Some(&callee_expr),
+                                                       Some(super::AdjustedRcvr {
+                                                           rcvr_expr: callee_expr,
+                                                           autoderefs,
+                                                           unsize: false
+                                                       }),
                                                        method_name,
                                                        trait_def_id,
-                                                       autoderefs,
-                                                       false,
                                                        adjusted_ty,
                                                        None) {
                 None => continue,

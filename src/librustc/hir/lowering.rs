@@ -1326,7 +1326,13 @@ impl<'a> LoweringContext<'a> {
                 hir::ItemDefaultImpl(self.lower_unsafety(unsafety),
                                      trait_ref)
             }
-            ItemKind::Impl(unsafety, polarity, ref generics, ref ifce, ref ty, ref impl_items) => {
+            ItemKind::Impl(unsafety,
+                           polarity,
+                           defaultness,
+                           ref generics,
+                           ref ifce,
+                           ref ty,
+                           ref impl_items) => {
                 let new_impl_items = impl_items.iter()
                                                .map(|item| self.lower_impl_item_ref(item))
                                                .collect();
@@ -1340,6 +1346,7 @@ impl<'a> LoweringContext<'a> {
 
                 hir::ItemImpl(self.lower_unsafety(unsafety),
                               self.lower_impl_polarity(polarity),
+                              self.lower_defaultness(defaultness, true /* [1] */),
                               self.lower_generics(generics),
                               ifce,
                               self.lower_ty(ty),
@@ -1355,6 +1362,9 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::MacroDef(..) | ItemKind::Mac(..) => panic!("Shouldn't still be around"),
         }
+
+        // [1] `defaultness.has_value()` is never called for an `impl`, always `true` in order to
+        //     not cause an assertion failure inside the `lower_defaultness` function
     }
 
     fn lower_trait_item(&mut self, i: &TraitItem) -> hir::TraitItem {

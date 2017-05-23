@@ -12,11 +12,11 @@
 #![allow(dead_code)]
 #![cfg(windows)]
 
-use libc::{c_long, c_ulong, c_ulonglong, c_void};
+use libc::{c_long, c_ulong, c_void};
 
 pub type DWORD = c_ulong;
 pub type LONG = c_long;
-pub type ULONG_PTR = c_ulonglong;
+pub type ULONG_PTR = usize;
 pub type LPVOID = *mut c_void;
 
 pub const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;

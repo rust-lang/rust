@@ -27,6 +27,7 @@ use abi::Abi;
 use ast::*;
 use syntax_pos::Span;
 use codemap::Spanned;
+use tokenstream::ThinTokenStream;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
@@ -56,7 +57,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_ident(&mut self, span: Span, ident: Ident) {
         walk_ident(self, span, ident);
     }
-    fn visit_mod(&mut self, m: &'ast Mod, _s: Span, _n: NodeId) { walk_mod(self, m) }
+    fn visit_mod(&mut self, m: &'ast Mod, _s: Span, _attrs: &[Attribute], _n: NodeId) {
+        walk_mod(self, m);
+    }
     fn visit_foreign_item(&mut self, i: &'ast ForeignItem) { walk_foreign_item(self, i) }
     fn visit_global_asm(&mut self, ga: &'ast GlobalAsm) { walk_global_asm(self, ga) }
     fn visit_item(&mut self, i: &'ast Item) { walk_item(self, i) }
@@ -109,6 +112,9 @@ pub trait Visitor<'ast>: Sized {
         // works on macros, use this
         // definition in your trait impl:
         // visit::walk_mac(self, _mac)
+    }
+    fn visit_mac_def(&mut self, _mac: &'ast ThinTokenStream, _id: NodeId) {
+        // Nothing to do
     }
     fn visit_path(&mut self, path: &'ast Path, _id: NodeId) {
         walk_path(self, path)
@@ -172,7 +178,7 @@ pub fn walk_ident<'a, V: Visitor<'a>>(visitor: &mut V, span: Span, ident: Ident)
 }
 
 pub fn walk_crate<'a, V: Visitor<'a>>(visitor: &mut V, krate: &'a Crate) {
-    visitor.visit_mod(&krate.module, krate.span, CRATE_NODE_ID);
+    visitor.visit_mod(&krate.module, krate.span, &krate.attrs, CRATE_NODE_ID);
     walk_list!(visitor, visit_attribute, &krate.attrs);
 }
 
@@ -249,7 +255,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
                              item.id)
         }
         ItemKind::Mod(ref module) => {
-            visitor.visit_mod(module, item.span, item.id)
+            visitor.visit_mod(module, item.span, &item.attrs, item.id)
         }
         ItemKind::ForeignMod(ref foreign_module) => {
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
@@ -266,7 +272,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         ItemKind::DefaultImpl(_, ref trait_ref) => {
             visitor.visit_trait_ref(trait_ref)
         }
-        ItemKind::Impl(_, _,
+        ItemKind::Impl(_, _, _,
                  ref type_parameters,
                  ref opt_trait_reference,
                  ref typ,
@@ -288,7 +294,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             walk_list!(visitor, visit_trait_item, methods);
         }
         ItemKind::Mac(ref mac) => visitor.visit_mac(mac),
-        ItemKind::MacroDef(..) => {},
+        ItemKind::MacroDef(ref ts) => visitor.visit_mac_def(ts, item.id),
     }
     walk_list!(visitor, visit_attribute, &item.attrs);
 }
@@ -343,9 +349,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
             visitor.visit_ty(ty);
             visitor.visit_expr(expression)
         }
-        TyKind::TraitObject(ref bounds) => {
-            walk_list!(visitor, visit_ty_param_bound, bounds);
-        }
+        TyKind::TraitObject(ref bounds) |
         TyKind::ImplTrait(ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
@@ -540,7 +544,7 @@ pub fn walk_fn<'a, V>(visitor: &mut V, kind: FnKind<'a>, declaration: &'a FnDecl
             walk_fn_decl(visitor, declaration);
             visitor.visit_block(body);
         }
-        FnKind::Method(_, ref sig, _, body) => {
+        FnKind::Method(_, sig, _, body) => {
             visitor.visit_generics(&sig.generics);
             walk_fn_decl(visitor, declaration);
             visitor.visit_block(body);
@@ -776,7 +780,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         }
         ExprKind::InlineAsm(ref ia) => {
             for &(_, ref input) in &ia.inputs {
-                visitor.visit_expr(&input)
+                visitor.visit_expr(input)
             }
             for output in &ia.outputs {
                 visitor.visit_expr(&output.expr)

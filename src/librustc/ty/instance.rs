@@ -52,7 +52,7 @@ impl<'tcx> InstanceDef<'tcx> {
 
     #[inline]
     pub fn def_ty<'a>(&self, tcx: ty::TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
-        tcx.item_type(self.def_id())
+        tcx.type_of(self.def_id())
     }
 
     #[inline]

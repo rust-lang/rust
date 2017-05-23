@@ -9,10 +9,11 @@
 // except according to those terms.
 
 use rustc::hir;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::*;
-use rustc::mir::transform::MirSource;
+use rustc::mir::transform::{MirSuite, MirPassIndex, MirSource};
 use rustc::ty::TyCtxt;
+use rustc::ty::item_path;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx};
 use std::fmt::Display;
@@ -28,7 +29,7 @@ const ALIGN: usize = 40;
 /// representation of the mir into:
 ///
 /// ```text
-/// rustc.node<node_id>.<pass_name>.<disambiguator>
+/// rustc.node<node_id>.<pass_num>.<pass_name>.<disambiguator>
 /// ```
 ///
 /// Output from this function is controlled by passing `-Z dump-mir=<filter>`,
@@ -39,30 +40,70 @@ const ALIGN: usize = 40;
 ///   that can appear in the pass-name or the `item_path_str` for the given
 ///   node-id. If any one of the substrings match, the data is dumped out.
 pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          pass_num: Option<(MirSuite, MirPassIndex)>,
                           pass_name: &str,
                           disambiguator: &Display,
-                          src: MirSource,
+                          source: MirSource,
                           mir: &Mir<'tcx>) {
-    let filters = match tcx.sess.opts.debugging_opts.dump_mir {
-        None => return,
-        Some(ref filters) => filters,
-    };
-    let node_id = src.item_id();
-    let node_path = tcx.item_path_str(tcx.hir.local_def_id(node_id));
-    let is_matched =
-        filters.split("&")
-               .any(|filter| {
-                   filter == "all" ||
-                       pass_name.contains(filter) ||
-                       node_path.contains(filter)
-               });
-    if !is_matched {
+    if !dump_enabled(tcx, pass_name, source) {
         return;
     }
 
-    let promotion_id = match src {
+    let node_path = item_path::with_forced_impl_filename_line(|| { // see notes on #41697 below
+        tcx.item_path_str(tcx.hir.local_def_id(source.item_id()))
+    });
+    dump_matched_mir_node(tcx, pass_num, pass_name, &node_path,
+                          disambiguator, source, mir);
+    for (index, promoted_mir) in mir.promoted.iter_enumerated() {
+        let promoted_source = MirSource::Promoted(source.item_id(), index);
+        dump_matched_mir_node(tcx, pass_num, pass_name, &node_path, disambiguator,
+                              promoted_source, promoted_mir);
+    }
+}
+
+pub fn dump_enabled<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              pass_name: &str,
+                              source: MirSource)
+                              -> bool {
+    let filters = match tcx.sess.opts.debugging_opts.dump_mir {
+        None => return false,
+        Some(ref filters) => filters,
+    };
+    let node_id = source.item_id();
+    let node_path = item_path::with_forced_impl_filename_line(|| { // see notes on #41697 below
+        tcx.item_path_str(tcx.hir.local_def_id(node_id))
+    });
+    filters.split("&")
+           .any(|filter| {
+               filter == "all" ||
+                   pass_name.contains(filter) ||
+                   node_path.contains(filter)
+           })
+}
+
+// #41697 -- we use `with_forced_impl_filename_line()` because
+// `item_path_str()` would otherwise trigger `type_of`, and this can
+// run while we are already attempting to evaluate `type_of`.
+
+fn dump_matched_mir_node<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   pass_num: Option<(MirSuite, MirPassIndex)>,
+                                   pass_name: &str,
+                                   node_path: &str,
+                                   disambiguator: &Display,
+                                   source: MirSource,
+                                   mir: &Mir<'tcx>) {
+    let promotion_id = match source {
         MirSource::Promoted(_, id) => format!("-{:?}", id),
         _ => String::new()
+    };
+
+    let pass_num = if tcx.sess.opts.debugging_opts.dump_mir_exclude_pass_number {
+        format!("")
+    } else {
+        match pass_num {
+            None => format!(".-------"),
+            Some((suite, pass_num)) => format!(".{:03}-{:03}", suite.0, pass_num.0),
+        }
     };
 
     let mut file_path = PathBuf::new();
@@ -70,33 +111,32 @@ pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let p = Path::new(file_dir);
         file_path.push(p);
     };
-    let file_name = format!("rustc.node{}{}.{}.{}.mir",
-                            node_id, promotion_id, pass_name, disambiguator);
+    let file_name = format!("rustc.node{}{}{}.{}.{}.mir",
+                            source.item_id(), promotion_id, pass_num, pass_name, disambiguator);
     file_path.push(&file_name);
     let _ = fs::File::create(&file_path).and_then(|mut file| {
         writeln!(file, "// MIR for `{}`", node_path)?;
-        writeln!(file, "// node_id = {}", node_id)?;
+        writeln!(file, "// source = {:?}", source)?;
         writeln!(file, "// pass_name = {}", pass_name)?;
         writeln!(file, "// disambiguator = {}", disambiguator)?;
         writeln!(file, "")?;
-        write_mir_fn(tcx, src, mir, &mut file)?;
+        write_mir_fn(tcx, source, mir, &mut file)?;
         Ok(())
     });
 }
 
 /// Write out a human-readable textual representation for the given MIR.
-pub fn write_mir_pretty<'a, 'b, 'tcx, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
-                                         iter: I,
-                                         w: &mut Write)
-                                         -> io::Result<()>
-    where I: Iterator<Item=DefId>, 'tcx: 'a
+pub fn write_mir_pretty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  single: Option<DefId>,
+                                  w: &mut Write)
+                                  -> io::Result<()>
 {
     writeln!(w, "// WARNING: This output format is intended for human consumers only")?;
     writeln!(w, "// and is subject to change without notice. Knock yourself out.")?;
 
     let mut first = true;
-    for def_id in iter.filter(DefId::is_local) {
-        let mir = &tcx.item_mir(def_id);
+    for def_id in dump_mir_def_ids(tcx, single) {
+        let mir = &tcx.optimized_mir(def_id);
 
         if first {
             first = false;
@@ -284,7 +324,9 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
         MirSource::Promoted(_, i) => write!(w, "{:?} in", i)?
     }
 
-    write!(w, " {}", tcx.node_path_str(src.item_id()))?;
+    item_path::with_forced_impl_filename_line(|| { // see notes on #41697 elsewhere
+        write!(w, " {}", tcx.node_path_str(src.item_id()))
+    })?;
 
     if let MirSource::Fn(_) = src {
         write!(w, "(")?;
@@ -311,4 +353,12 @@ fn write_temp_decls(mir: &Mir, w: &mut Write) -> io::Result<()> {
     }
 
     Ok(())
+}
+
+pub fn dump_mir_def_ids(tcx: TyCtxt, single: Option<DefId>) -> Vec<DefId> {
+    if let Some(i) = single {
+        vec![i]
+    } else {
+        tcx.mir_keys(LOCAL_CRATE).iter().cloned().collect()
+    }
 }

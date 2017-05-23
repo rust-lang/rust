@@ -11,9 +11,9 @@ error[E0277]: the trait bound `u32: std::ops::Add<impl Foo>` is not satisfied
   --> $DIR/equality.rs:34:9
    |
 34 |         n + sum_to(n - 1)
-   |         ^^^^^^^^^^^^^^^^^ the trait `std::ops::Add<impl Foo>` is not implemented for `u32`
+   |         ^^^^^^^^^^^^^^^^^ no implementation for `u32 + impl Foo`
    |
-   = note: no implementation for `u32 + impl Foo`
+   = help: the trait `std::ops::Add<impl Foo>` is not implemented for `u32`
 
 error[E0308]: mismatched types
   --> $DIR/equality.rs:53:18

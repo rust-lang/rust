@@ -23,7 +23,7 @@ use tokenstream::{TokenStream, TokenTree};
 ///
 /// This is registered as a set of expression syntax extension called quote!
 /// that lifts its argument token-tree to an AST representing the
-/// construction of the same token tree, with token::SubstNt interpreted
+/// construction of the same token tree, with `token::SubstNt` interpreted
 /// as antiquotes (splices).
 
 pub mod rt {
@@ -389,7 +389,7 @@ pub fn unflatten(tts: Vec<TokenTree>) -> Vec<TokenTree> {
                 result = results.pop().unwrap();
                 result.push(tree);
             }
-            tree @ _ => result.push(tree),
+            tree => result.push(tree),
         }
     }
     result
@@ -612,8 +612,11 @@ fn mk_delim(cx: &ExtCtxt, sp: Span, delim: token::DelimToken) -> P<ast::Expr> {
 #[allow(non_upper_case_globals)]
 fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
     macro_rules! mk_lit {
-        ($name: expr, $suffix: expr, $($args: expr),*) => {{
-            let inner = cx.expr_call(sp, mk_token_path(cx, sp, $name), vec![$($args),*]);
+        ($name: expr, $suffix: expr, $content: expr $(, $count: expr)*) => {{
+            let name = mk_name(cx, sp, ast::Ident::with_empty_ctxt($content));
+            let inner = cx.expr_call(sp, mk_token_path(cx, sp, $name), vec![
+                name $(, cx.expr_usize(sp, $count))*
+            ]);
             let suffix = match $suffix {
                 Some(name) => cx.expr_some(sp, mk_name(cx, sp, ast::Ident::with_empty_ctxt(name))),
                 None => cx.expr_none(sp)
@@ -621,7 +624,8 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
             cx.expr_call(sp, mk_token_path(cx, sp, "Literal"), vec![inner, suffix])
         }}
     }
-    match *tok {
+
+    let name = match *tok {
         token::BinOp(binop) => {
             return cx.expr_call(sp, mk_token_path(cx, sp, "BinOp"), vec![mk_binop(cx, sp, binop)]);
         }
@@ -639,34 +643,14 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
                                 vec![mk_delim(cx, sp, delim)]);
         }
 
-        token::Literal(token::Byte(i), suf) => {
-            let e_byte = mk_name(cx, sp, ast::Ident::with_empty_ctxt(i));
-            return mk_lit!("Byte", suf, e_byte);
-        }
-
-        token::Literal(token::Char(i), suf) => {
-            let e_char = mk_name(cx, sp, ast::Ident::with_empty_ctxt(i));
-            return mk_lit!("Char", suf, e_char);
-        }
-
-        token::Literal(token::Integer(i), suf) => {
-            let e_int = mk_name(cx, sp, ast::Ident::with_empty_ctxt(i));
-            return mk_lit!("Integer", suf, e_int);
-        }
-
-        token::Literal(token::Float(fident), suf) => {
-            let e_fident = mk_name(cx, sp, ast::Ident::with_empty_ctxt(fident));
-            return mk_lit!("Float", suf, e_fident);
-        }
-
-        token::Literal(token::Str_(ident), suf) => {
-            return mk_lit!("Str_", suf, mk_name(cx, sp, ast::Ident::with_empty_ctxt(ident)))
-        }
-
-        token::Literal(token::StrRaw(ident, n), suf) => {
-            return mk_lit!("StrRaw", suf, mk_name(cx, sp, ast::Ident::with_empty_ctxt(ident)),
-                           cx.expr_usize(sp, n))
-        }
+        token::Literal(token::Byte(i), suf) => return mk_lit!("Byte", suf, i),
+        token::Literal(token::Char(i), suf) => return mk_lit!("Char", suf, i),
+        token::Literal(token::Integer(i), suf) => return mk_lit!("Integer", suf, i),
+        token::Literal(token::Float(i), suf) => return mk_lit!("Float", suf, i),
+        token::Literal(token::Str_(i), suf) => return mk_lit!("Str_", suf, i),
+        token::Literal(token::StrRaw(i, n), suf) => return mk_lit!("StrRaw", suf, i, n),
+        token::Literal(token::ByteStr(i), suf) => return mk_lit!("ByteStr", suf, i),
+        token::Literal(token::ByteStrRaw(i, n), suf) => return mk_lit!("ByteStrRaw", suf, i, n),
 
         token::Ident(ident) => {
             return cx.expr_call(sp,
@@ -688,10 +672,6 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
 
         token::Interpolated(_) => panic!("quote! with interpolated token"),
 
-        _ => ()
-    }
-
-    let name = match *tok {
         token::Eq           => "Eq",
         token::Lt           => "Lt",
         token::Le           => "Le",
@@ -706,6 +686,7 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         token::At           => "At",
         token::Dot          => "Dot",
         token::DotDot       => "DotDot",
+        token::DotDotDot    => "DotDotDot",
         token::Comma        => "Comma",
         token::Semi         => "Semi",
         token::Colon        => "Colon",
@@ -718,7 +699,10 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         token::Question     => "Question",
         token::Underscore   => "Underscore",
         token::Eof          => "Eof",
-        _                   => panic!("unhandled token in quote!"),
+
+        token::Whitespace | token::SubstNt(_) | token::Comment | token::Shebang(_) => {
+            panic!("unhandled token in quote!");
+        }
     };
     mk_token_path(cx, sp, name)
 }

@@ -133,7 +133,7 @@ impl<'tcx> Adjustment<'tcx> {
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 pub enum AutoBorrow<'tcx> {
     /// Convert from T to &T.
-    Ref(&'tcx ty::Region, hir::Mutability),
+    Ref(ty::Region<'tcx>, hir::Mutability),
 
     /// Convert from T to *T.
     RawPtr(hir::Mutability),

@@ -52,7 +52,7 @@ pub trait AstBuilder {
     fn ty_mt(&self, ty: P<ast::Ty>, mutbl: ast::Mutability) -> ast::MutTy;
 
     fn ty(&self, span: Span, ty: ast::TyKind) -> P<ast::Ty>;
-    fn ty_path(&self, ast::Path) -> P<ast::Ty>;
+    fn ty_path(&self, path: ast::Path) -> P<ast::Ty>;
     fn ty_ident(&self, span: Span, idents: ast::Ident) -> P<ast::Ty>;
 
     fn ty_rptr(&self, span: Span,

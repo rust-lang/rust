@@ -16,7 +16,6 @@
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
@@ -27,7 +26,7 @@ use rustc::ty::cast::CastTy;
 use rustc::ty::maps::Providers;
 use rustc::mir::*;
 use rustc::mir::traversal::ReversePostorder;
-use rustc::mir::transform::{Pass, MirMapPass, MirPassHook, MirSource};
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::{LvalueContext, Visitor};
 use rustc::middle::lang_items;
 use syntax::abi::Abi;
@@ -243,9 +242,9 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                    to the crate attributes to enable");
         } else {
             self.find_drop_implementation_method_span()
-                .map(|span| err.span_label(span, &format!("destructor defined here")));
+                .map(|span| err.span_label(span, "destructor defined here"));
 
-            err.span_label(self.span, &format!("constants cannot have destructors"));
+            err.span_label(self.span, "constants cannot have destructors");
         }
 
         err.emit();
@@ -258,7 +257,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 let mut span = None;
 
                 self.tcx
-                    .lookup_trait_def(drop_trait_id)
+                    .trait_def(drop_trait_id)
                     .for_each_relevant_impl(self.tcx, self.mir.return_ty, |impl_did| {
                         self.tcx.hir
                             .as_local_node_id(impl_did)
@@ -292,8 +291,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 "cannot refer to statics by value, use a constant instead"
             };
             struct_span_err!(self.tcx.sess, self.span, E0394, "{}", msg)
-                .span_label(self.span, &format!("referring to another static by value"))
-                .note(&format!("use the address-of operator or a constant instead"))
+                .span_label(self.span, "referring to another static by value")
+                .note("use the address-of operator or a constant instead")
                 .emit();
 
             // Replace STATIC with NOT_CONST to avoid further errors.
@@ -530,7 +529,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                         "raw pointers cannot be dereferenced in {}s",
                                         this.mode)
                                     .span_label(this.span,
-                                        &format!("dereference of raw pointer in constant"))
+                                        "dereference of raw pointer in constant")
                                     .emit();
                                 }
                             }
@@ -573,9 +572,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     if substs.types().next().is_some() {
                         self.add_type(constant.ty);
                     } else {
-                        let bits = ty::queries::mir_const_qualif::get(self.tcx,
-                                                                      constant.span,
-                                                                      def_id);
+                        let bits = self.tcx.at(constant.span).mir_const_qualif(def_id);
 
                         let qualif = Qualif::from_bits(bits).expect("invalid mir_const_qualif");
                         self.add(qualif);
@@ -648,7 +645,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             struct_span_err!(self.tcx.sess,  self.span, E0017,
                                              "references in {}s may only refer \
                                               to immutable values", self.mode)
-                                .span_label(self.span, &format!("{}s require immutable values",
+                                .span_label(self.span, format!("{}s require immutable values",
                                                                 self.mode))
                                 .emit();
                         }
@@ -716,7 +713,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             self.mode)
                         .span_label(
                             self.span,
-                            &format!("comparing raw pointers in static"))
+                            "comparing raw pointers in static")
                         .emit();
                     }
                 }
@@ -727,13 +724,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 if self.mode != Mode::Fn {
                     struct_span_err!(self.tcx.sess, self.span, E0010,
                                      "allocations are not allowed in {}s", self.mode)
-                        .span_label(self.span, &format!("allocation not allowed in {}s", self.mode))
+                        .span_label(self.span, format!("allocation not allowed in {}s", self.mode))
                         .emit();
                 }
             }
 
             Rvalue::Aggregate(ref kind, _) => {
-                if let AggregateKind::Adt(def, ..) = *kind {
+                if let AggregateKind::Adt(def, ..) = **kind {
                     if def.has_dtor(self.tcx) {
                         self.add(Qualif::NEEDS_DROP);
                         self.deny_drop();
@@ -921,19 +918,26 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.mir_const_qualif = qualify_const_item;
+    *providers = Providers {
+        mir_const_qualif,
+        ..*providers
+    };
 }
 
-fn qualify_const_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                def_id: DefId)
-                                -> u8 {
-    let mir = &tcx.item_mir(def_id);
+fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              def_id: DefId)
+                              -> u8 {
+    // NB: This `borrow()` is guaranteed to be valid (i.e., the value
+    // cannot yet be stolen), because `mir_validated()`, which steals
+    // from `mir_const(), forces this query to execute before
+    // performing the steal.
+    let mir = &tcx.mir_const(def_id).borrow();
+
     if mir.return_ty.references_error() {
         return Qualif::NOT_CONST.bits();
     }
 
-    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-    let param_env = ty::ParameterEnvironment::for_item(tcx, node_id);
+    let param_env = tcx.parameter_environment(def_id);
 
     let mut qualifier = Qualifier::new(tcx, param_env, def_id, mir, Mode::Const);
     qualifier.qualify_const().bits()
@@ -941,45 +945,11 @@ fn qualify_const_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub struct QualifyAndPromoteConstants;
 
-impl Pass for QualifyAndPromoteConstants {}
-
-impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
-    fn run_pass<'a>(&mut self,
-                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    hooks: &mut [Box<for<'s> MirPassHook<'s>>])
-    {
-        let def_ids = tcx.maps.mir.borrow().keys();
-        for def_id in def_ids {
-            if !def_id.is_local() {
-                continue;
-            }
-
-            let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
-            let id = tcx.hir.as_local_node_id(def_id).unwrap();
-            let src = MirSource::from_node(tcx, id);
-
-            if let MirSource::Const(_) = src {
-                ty::queries::mir_const_qualif::get(tcx, DUMMY_SP, def_id);
-                continue;
-            }
-
-            let mir = &mut tcx.maps.mir.borrow()[&def_id].borrow_mut();
-            tcx.dep_graph.write(DepNode::Mir(def_id));
-
-            for hook in &mut *hooks {
-                hook.on_mir_pass(tcx, src, mir, self, false);
-            }
-            self.run_pass(tcx, src, mir);
-            for hook in &mut *hooks {
-                hook.on_mir_pass(tcx, src, mir, self, true);
-            }
-        }
-    }
-}
-
-impl<'tcx> QualifyAndPromoteConstants {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    src: MirSource, mir: &mut Mir<'tcx>) {
+impl MirPass for QualifyAndPromoteConstants {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          src: MirSource,
+                          mir: &mut Mir<'tcx>) {
         let id = src.item_id();
         let def_id = tcx.hir.local_def_id(id);
         let mode = match src {
@@ -995,7 +965,7 @@ impl<'tcx> QualifyAndPromoteConstants {
             MirSource::Const(_) |
             MirSource::Promoted(..) => return
         };
-        let param_env = ty::ParameterEnvironment::for_item(tcx, id);
+        let param_env = tcx.parameter_environment(def_id);
 
         if mode == Mode::Fn || mode == Mode::ConstFn {
             // This is ugly because Qualifier holds onto mir,

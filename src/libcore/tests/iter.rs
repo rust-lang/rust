@@ -145,6 +145,33 @@ fn test_iterator_chain_find() {
 }
 
 #[test]
+fn test_iterator_step_by() {
+    // Identity
+    // Replace with (0..).step_by(1) after Range::step_by gets removed
+    let mut it = Iterator::step_by((0..), 1).take(3);
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.next(), Some(1));
+    assert_eq!(it.next(), Some(2));
+    assert_eq!(it.next(), None);
+
+    // Replace with (0..).step_by(3) after Range::step_by gets removed
+    let mut it = Iterator::step_by((0..), 3).take(4);
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.next(), Some(3));
+    assert_eq!(it.next(), Some(6));
+    assert_eq!(it.next(), Some(9));
+    assert_eq!(it.next(), None);
+}
+
+#[test]
+#[should_panic]
+fn test_iterator_step_by_zero() {
+    // Replace with (0..).step_by(0) after Range::step_by gets removed
+    let mut it = Iterator::step_by((0..), 0);
+    it.next();
+}
+
+#[test]
 fn test_filter_map() {
     let it = (0..).step_by(1).take(10)
         .filter_map(|x| if x % 2 == 0 { Some(x*x) } else { None });
@@ -1082,3 +1109,41 @@ fn test_chain_fold() {
     assert_eq!(&[2, 3, 1, 2, 0], &result[..]);
 }
 
+#[test]
+fn test_step_replace_unsigned() {
+    let mut x = 4u32;
+    let y = x.replace_zero();
+    assert_eq!(x, 0);
+    assert_eq!(y, 4);
+
+    x = 5;
+    let y = x.replace_one();
+    assert_eq!(x, 1);
+    assert_eq!(y, 5);
+}
+
+#[test]
+fn test_step_replace_signed() {
+    let mut x = 4i32;
+    let y = x.replace_zero();
+    assert_eq!(x, 0);
+    assert_eq!(y, 4);
+
+    x = 5;
+    let y = x.replace_one();
+    assert_eq!(x, 1);
+    assert_eq!(y, 5);
+}
+
+#[test]
+fn test_step_replace_no_between() {
+    let mut x = 4u128;
+    let y = x.replace_zero();
+    assert_eq!(x, 0);
+    assert_eq!(y, 4);
+
+    x = 5;
+    let y = x.replace_one();
+    assert_eq!(x, 1);
+    assert_eq!(y, 5);
+}

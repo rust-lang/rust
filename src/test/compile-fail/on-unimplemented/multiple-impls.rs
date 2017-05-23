@@ -42,17 +42,14 @@ impl Index<Bar<usize>> for [i32] {
 fn main() {
     Index::index(&[] as &[i32], 2u32);
     //~^ ERROR E0277
-    //~| NOTE the trait `Index<u32>` is not implemented for `[i32]`
     //~| NOTE trait message
     //~| NOTE required by
     Index::index(&[] as &[i32], Foo(2u32));
     //~^ ERROR E0277
-    //~| NOTE the trait `Index<Foo<u32>>` is not implemented for `[i32]`
     //~| NOTE on impl for Foo
     //~| NOTE required by
     Index::index(&[] as &[i32], Bar(2u32));
     //~^ ERROR E0277
-    //~| NOTE the trait `Index<Bar<u32>>` is not implemented for `[i32]`
     //~| NOTE on impl for Bar
     //~| NOTE required by
 }

@@ -35,7 +35,7 @@ pub enum PatternError<'tcx> {
 #[derive(Copy, Clone, Debug)]
 pub enum BindingMode<'tcx> {
     ByValue,
-    ByRef(&'tcx Region, BorrowKind),
+    ByRef(Region<'tcx>, BorrowKind),
 }
 
 #[derive(Clone, Debug)]
@@ -547,7 +547,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
         match def {
             Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
                 let enum_id = self.tcx.parent_def_id(variant_id).unwrap();
-                let adt_def = self.tcx.lookup_adt_def(enum_id);
+                let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.variants.len() > 1 {
                     let substs = match ty.sty {
                         TypeVariants::TyAdt(_, substs) => substs,
@@ -591,7 +591,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                     Some((def_id, _substs)) => {
                         // Enter the inlined constant's tables temporarily.
                         let old_tables = self.tables;
-                        self.tables = tcx.item_tables(def_id);
+                        self.tables = tcx.typeck_tables_of(def_id);
                         let body = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
                             tcx.hir.body(tcx.hir.body_owned_by(id))
                         } else {
@@ -811,7 +811,7 @@ macro_rules! CloneImpls {
 }
 
 CloneImpls!{ <'tcx>
-    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ConstVal<'tcx>, Region,
+    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ConstVal<'tcx>, Region<'tcx>,
     Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef,
     &'tcx Substs<'tcx>, &'tcx Kind<'tcx>
 }

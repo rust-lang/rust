@@ -539,6 +539,55 @@ impl<T> SliceExt for [T] {
     fn reverse(&mut self) {
         let mut i: usize = 0;
         let ln = self.len();
+
+        // For very small types, all the individual reads in the normal
+        // path perform poorly.  We can do better, given efficient unaligned
+        // load/store, by loading a larger chunk and reversing a register.
+
+        // Ideally LLVM would do this for us, as it knows better than we do
+        // whether unaligned reads are efficient (since that changes between
+        // different ARM versions, for example) and what the best chunk size
+        // would be.  Unfortunately, as of LLVM 4.0 (2017-05) it only unrolls
+        // the loop, so we need to do this ourselves.  (Hypothesis: reverse
+        // is troublesome because the sides can be aligned differently --
+        // will be, when the length is odd -- so there's no way of emitting
+        // pre- and postludes to use fully-aligned SIMD in the middle.)
+
+        let fast_unaligned =
+            cfg!(any(target_arch = "x86", target_arch = "x86_64"));
+
+        if fast_unaligned && mem::size_of::<T>() == 1 {
+            // Use the llvm.bswap intrinsic to reverse u8s in a usize
+            let chunk = mem::size_of::<usize>();
+            while i + chunk - 1 < ln / 2 {
+                unsafe {
+                    let pa: *mut T = self.get_unchecked_mut(i);
+                    let pb: *mut T = self.get_unchecked_mut(ln - i - chunk);
+                    let va = ptr::read_unaligned(pa as *mut usize);
+                    let vb = ptr::read_unaligned(pb as *mut usize);
+                    ptr::write_unaligned(pa as *mut usize, vb.swap_bytes());
+                    ptr::write_unaligned(pb as *mut usize, va.swap_bytes());
+                }
+                i += chunk;
+            }
+        }
+
+        if fast_unaligned && mem::size_of::<T>() == 2 {
+            // Use rotate-by-16 to reverse u16s in a u32
+            let chunk = mem::size_of::<u32>() / 2;
+            while i + chunk - 1 < ln / 2 {
+                unsafe {
+                    let pa: *mut T = self.get_unchecked_mut(i);
+                    let pb: *mut T = self.get_unchecked_mut(ln - i - chunk);
+                    let va = ptr::read_unaligned(pa as *mut u32);
+                    let vb = ptr::read_unaligned(pb as *mut u32);
+                    ptr::write_unaligned(pa as *mut u32, vb.rotate_left(16));
+                    ptr::write_unaligned(pb as *mut u32, va.rotate_left(16));
+                }
+                i += chunk;
+            }
+        }
+
         while i < ln / 2 {
             // Unsafe swap to avoid the bounds check in safe swap.
             unsafe {
@@ -1401,7 +1450,7 @@ impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { Iter { ptr: self.ptr, end: self.end, _marker: self._marker } }
 }
 
-#[stable(feature = "slice_iter_as_ref", since = "1.12.0")]
+#[stable(feature = "slice_iter_as_ref", since = "1.13.0")]
 impl<'a, T> AsRef<[T]> for Iter<'a, T> {
     fn as_ref(&self) -> &[T] {
         self.as_slice()
@@ -2354,7 +2403,10 @@ impl<'a, T> FusedIterator for ChunksMut<'a, T> {}
 /// valid for `len` elements, nor whether the lifetime inferred is a suitable
 /// lifetime for the returned slice.
 ///
-/// `p` must be non-null, even for zero-length slices.
+/// `p` must be non-null, even for zero-length slices, because non-zero bits
+/// are required to distinguish between a zero-length slice within `Some()`
+/// from `None`. `p` can be a bogus non-dereferencable pointer, such as `0x1`,
+/// for zero-length slices, though.
 ///
 /// # Caveat
 ///
@@ -2387,7 +2439,8 @@ pub unsafe fn from_raw_parts<'a, T>(p: *const T, len: usize) -> &'a [T] {
 ///
 /// This function is unsafe for the same reasons as `from_raw_parts`, as well
 /// as not being able to provide a non-aliasing guarantee of the returned
-/// mutable slice.
+/// mutable slice. `p` must be non-null even for zero-length slices as with
+/// `from_raw_parts`.
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {

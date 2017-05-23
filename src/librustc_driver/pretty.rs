@@ -41,7 +41,6 @@ use graphviz as dot;
 use std::cell::Cell;
 use std::fs::File;
 use std::io::{self, Write};
-use std::iter;
 use std::option;
 use std::path::Path;
 use std::str::FromStr;
@@ -999,22 +998,14 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                 if let Some(nodeid) = nodeid {
                     let def_id = tcx.hir.local_def_id(nodeid);
                     match ppm {
-                        PpmMir => write_mir_pretty(tcx, iter::once(def_id), &mut out),
-                        PpmMirCFG => write_mir_graphviz(tcx, iter::once(def_id), &mut out),
+                        PpmMir => write_mir_pretty(tcx, Some(def_id), &mut out),
+                        PpmMirCFG => write_mir_graphviz(tcx, Some(def_id), &mut out),
                         _ => unreachable!(),
                     }?;
                 } else {
                     match ppm {
-                        PpmMir => {
-                            write_mir_pretty(tcx,
-                                             tcx.maps.mir.borrow().keys().into_iter(),
-                                             &mut out)
-                        }
-                        PpmMirCFG => {
-                            write_mir_graphviz(tcx,
-                                               tcx.maps.mir.borrow().keys().into_iter(),
-                                               &mut out)
-                        }
+                        PpmMir => write_mir_pretty(tcx, None, &mut out),
+                        PpmMirCFG => write_mir_graphviz(tcx, None, &mut out),
                         _ => unreachable!(),
                     }?;
                 }

@@ -95,9 +95,9 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                  impl_item_refs: &[hir::ImplItemRef])
 {
     // Every lifetime used in an associated type must be constrained.
-    let impl_self_ty = tcx.item_type(impl_def_id);
-    let impl_generics = tcx.item_generics(impl_def_id);
-    let impl_predicates = tcx.item_predicates(impl_def_id);
+    let impl_self_ty = tcx.type_of(impl_def_id);
+    let impl_generics = tcx.generics_of(impl_def_id);
+    let impl_predicates = tcx.predicates_of(impl_def_id);
     let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
 
     let mut input_parameters = ctp::parameters_for_impl(impl_self_ty, impl_trait_ref);
@@ -120,7 +120,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             item.kind == ty::AssociatedKind::Type && item.defaultness.has_value()
         })
         .flat_map(|def_id| {
-            ctp::parameters_for(&tcx.item_type(def_id), true)
+            ctp::parameters_for(&tcx.type_of(def_id), true)
         }).collect();
     for (ty_lifetime, lifetime) in impl_generics.regions.iter()
         .zip(&impl_hir_generics.lifetimes)
@@ -166,7 +166,7 @@ fn report_unused_parameter(tcx: TyCtxt,
         "the {} parameter `{}` is not constrained by the \
         impl trait, self type, or predicates",
         kind, name)
-        .span_label(span, &format!("unconstrained {} parameter", kind))
+        .span_label(span, format!("unconstrained {} parameter", kind))
         .emit();
 }
 
@@ -188,9 +188,9 @@ fn enforce_impl_items_are_distinct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                "duplicate definitions with name `{}`:",
                                                impl_item.name);
                 err.span_label(*entry.get(),
-                               &format!("previous definition of `{}` here",
+                               format!("previous definition of `{}` here",
                                         impl_item.name));
-                err.span_label(impl_item.span, &format!("duplicate definition"));
+                err.span_label(impl_item.span, "duplicate definition");
                 err.emit();
             }
             Vacant(entry) => {

@@ -26,12 +26,6 @@ use std::process::{Command, Stdio};
 
 use build_helper::output;
 
-#[cfg(not(target_os = "solaris"))]
-const SH_CMD: &'static str = "sh";
-// On Solaris, sh is the historical bourne shell, not a POSIX shell, or bash.
-#[cfg(target_os = "solaris")]
-const SH_CMD: &'static str = "bash";
-
 use {Build, Compiler, Mode};
 use channel;
 use util::{cp_r, libdir, is_dylib, cp_filtered, copy, exe};
@@ -55,6 +49,10 @@ pub fn tmpdir(build: &Build) -> PathBuf {
     build.out.join("tmp/dist")
 }
 
+fn rust_installer(build: &Build) -> Command {
+    build.tool_cmd(&Compiler::new(0, &build.config.build), "rust-installer")
+}
+
 /// Builds the `rust-docs` installer component.
 ///
 /// Slurps up documentation from the `stage`'s `host`.
@@ -74,14 +72,14 @@ pub fn docs(build: &Build, stage: u32, host: &str) {
     let src = build.out.join(host).join("doc");
     cp_r(&src, &dst);
 
-    let mut cmd = Command::new(SH_CMD);
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
        .arg("--product-name=Rust-Documentation")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Rust-documentation-is-installed.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
        .arg(format!("--package-name={}-{}", name, host))
        .arg("--component-name=rust-docs")
        .arg("--legacy-manifest-dirs=rustlib,cargo")
@@ -124,14 +122,14 @@ pub fn mingw(build: &Build, host: &str) {
        .arg(host);
     build.run(&mut cmd);
 
-    let mut cmd = Command::new(SH_CMD);
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
        .arg("--product-name=Rust-MinGW")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Rust-MinGW-is-installed.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
        .arg(format!("--package-name={}-{}", name, host))
        .arg("--component-name=rust-mingw")
        .arg("--legacy-manifest-dirs=rustlib,cargo");
@@ -190,15 +188,15 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
     }
 
     // Finally, wrap everything up in a nice tarball!
-    let mut cmd = Command::new(SH_CMD);
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Rust-is-ready-to-roll.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
-       .arg(format!("--non-installed-overlay={}", sanitize_sh(&overlay)))
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
+       .arg("--non-installed-overlay").arg(&overlay)
        .arg(format!("--package-name={}-{}", name, host))
        .arg("--component-name=rustc")
        .arg("--legacy-manifest-dirs=rustlib,cargo");
@@ -254,7 +252,12 @@ pub fn debugger_scripts(build: &Build,
         install(&build.src.join("src/etc/").join(file), &dst, 0o644);
     };
     if host.contains("windows-msvc") {
-        // no debugger scripts
+        // windbg debugger scripts
+        install(&build.src.join("src/etc/rust-windbg.cmd"), &sysroot.join("bin"),
+            0o755);
+
+        cp_debugger_script("natvis/libcore.natvis");
+        cp_debugger_script("natvis/libcollections.natvis");
     } else {
         cp_debugger_script("debugger_pretty_printers_common.py");
 
@@ -295,14 +298,14 @@ pub fn std(build: &Build, compiler: &Compiler, target: &str) {
     let src = build.sysroot(compiler).join("lib/rustlib");
     cp_r(&src.join(target), &dst);
 
-    let mut cmd = Command::new(SH_CMD);
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=std-is-standing-at-the-ready.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
        .arg(format!("--package-name={}-{}", name, target))
        .arg(format!("--component-name=rust-std-{}", target))
        .arg("--legacy-manifest-dirs=rustlib,cargo");
@@ -310,9 +313,16 @@ pub fn std(build: &Build, compiler: &Compiler, target: &str) {
     t!(fs::remove_dir_all(&image));
 }
 
+/// The path to the complete rustc-src tarball
 pub fn rust_src_location(build: &Build) -> PathBuf {
     let plain_name = format!("rustc-{}-src", build.rust_package_vers());
     distdir(build).join(&format!("{}.tar.gz", plain_name))
+}
+
+/// The path to the rust-src component installer
+pub fn rust_src_installer(build: &Build) -> PathBuf {
+    let name = pkgname(build, "rust-src");
+    distdir(build).join(&format!("{}.tar.gz", name))
 }
 
 /// Creates a tarball of save-analysis metadata, if available.
@@ -344,14 +354,14 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
     println!("image_src: {:?}, dst: {:?}", image_src, dst);
     cp_r(&image_src, &dst);
 
-    let mut cmd = Command::new(SH_CMD);
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=save-analysis-saved.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
        .arg(format!("--package-name={}-{}", name, target))
        .arg(format!("--component-name=rust-analysis-{}", target))
        .arg("--legacy-manifest-dirs=rustlib,cargo");
@@ -369,13 +379,11 @@ pub fn rust_src(build: &Build) {
 
     println!("Dist src");
 
-    let name = pkgname(build, "rust-src");
-    let image = tmpdir(build).join(format!("{}-image", name));
-    let _ = fs::remove_dir_all(&image);
-
-    let dst = image.join("lib/rustlib/src");
-    let dst_src = dst.join("rust");
-    t!(fs::create_dir_all(&dst_src));
+    // Make sure that the root folder of tarball has the correct name
+    let plain_name = format!("rustc-{}-src", build.rust_package_vers());
+    let plain_dst_src = tmpdir(build).join(&plain_name);
+    let _ = fs::remove_dir_all(&plain_dst_src);
+    t!(fs::create_dir_all(&plain_dst_src));
 
     // This is the set of root paths which will become part of the source package
     let src_files = [
@@ -391,8 +399,6 @@ pub fn rust_src(build: &Build) {
     let src_dirs = [
         "man",
         "src",
-        "cargo",
-        "rls",
     ];
 
     let filter_fn = move |path: &Path| {
@@ -424,13 +430,13 @@ pub fn rust_src(build: &Build) {
 
     // Copy the directories using our filter
     for item in &src_dirs {
-        let dst = &dst_src.join(item);
+        let dst = &plain_dst_src.join(item);
         t!(fs::create_dir(dst));
         cp_filtered(&build.src.join(item), dst, &filter_fn);
     }
     // Copy the files normally
     for item in &src_files {
-        copy(&build.src.join(item), &dst_src.join(item));
+        copy(&build.src.join(item), &plain_dst_src.join(item));
     }
 
     // If we're building from git sources, we need to vendor a complete distribution.
@@ -455,39 +461,79 @@ pub fn rust_src(build: &Build) {
         // Vendor all Cargo dependencies
         let mut cmd = Command::new(&build.cargo);
         cmd.arg("vendor")
-           .current_dir(&dst_src.join("src"));
+           .current_dir(&plain_dst_src.join("src"));
         build.run(&mut cmd);
     }
-
-    // Create source tarball in rust-installer format
-    let mut cmd = Command::new(SH_CMD);
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
-       .arg("--product-name=Rust")
-       .arg("--rel-manifest-dir=rustlib")
-       .arg("--success-message=Awesome-Source.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
-       .arg(format!("--package-name={}", name))
-       .arg("--component-name=rust-src")
-       .arg("--legacy-manifest-dirs=rustlib,cargo");
-    build.run(&mut cmd);
-
-    // Rename directory, so that root folder of tarball has the correct name
-    let plain_name = format!("rustc-{}-src", build.rust_package_vers());
-    let plain_dst_src = tmpdir(build).join(&plain_name);
-    let _ = fs::remove_dir_all(&plain_dst_src);
-    t!(fs::create_dir_all(&plain_dst_src));
-    cp_r(&dst_src, &plain_dst_src);
 
     // Create the version file
     write_file(&plain_dst_src.join("version"), build.rust_version().as_bytes());
 
     // Create plain source tarball
-    let mut cmd = Command::new("tar");
-    cmd.arg("-czf").arg(sanitize_sh(&rust_src_location(build)))
-       .arg(&plain_name)
+    let mut tarball = rust_src_location(build);
+    tarball.set_extension(""); // strip .gz
+    tarball.set_extension(""); // strip .tar
+    if let Some(dir) = tarball.parent() {
+        t!(fs::create_dir_all(dir));
+    }
+    let mut cmd = rust_installer(build);
+    cmd.arg("tarball")
+       .arg("--input").arg(&plain_name)
+       .arg("--output").arg(&tarball)
+       .arg("--work-dir=.")
        .current_dir(tmpdir(build));
+    build.run(&mut cmd);
+
+
+    let name = pkgname(build, "rust-src");
+    let image = tmpdir(build).join(format!("{}-image", name));
+    let _ = fs::remove_dir_all(&image);
+
+    let dst = image.join("lib/rustlib/src");
+    let dst_src = dst.join("rust");
+    t!(fs::create_dir_all(&dst_src));
+
+    // This is the reduced set of paths which will become the rust-src component
+    // (essentially libstd and all of its path dependencies)
+    let std_src_dirs = [
+        "src/build_helper",
+        "src/liballoc",
+        "src/liballoc_jemalloc",
+        "src/liballoc_system",
+        "src/libcollections",
+        "src/libcompiler_builtins",
+        "src/libcore",
+        "src/liblibc",
+        "src/libpanic_abort",
+        "src/libpanic_unwind",
+        "src/librand",
+        "src/librustc_asan",
+        "src/librustc_lsan",
+        "src/librustc_msan",
+        "src/librustc_tsan",
+        "src/libstd",
+        "src/libstd_unicode",
+        "src/libunwind",
+        "src/rustc/libc_shim",
+    ];
+
+    for item in &std_src_dirs {
+        let dst = &dst_src.join(item);
+        t!(fs::create_dir_all(dst));
+        cp_r(&plain_dst_src.join(item), dst);
+    }
+
+    // Create source tarball in rust-installer format
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
+       .arg("--product-name=Rust")
+       .arg("--rel-manifest-dir=rustlib")
+       .arg("--success-message=Awesome-Source.")
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
+       .arg(format!("--package-name={}", name))
+       .arg("--component-name=rust-src")
+       .arg("--legacy-manifest-dirs=rustlib,cargo");
     build.run(&mut cmd);
 
     t!(fs::remove_dir_all(&image));
@@ -537,7 +583,7 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
     println!("Dist cargo stage{} ({})", stage, target);
     let compiler = Compiler::new(stage, &build.config.build);
 
-    let src = build.src.join("cargo");
+    let src = build.src.join("src/tools/cargo");
     let etc = src.join("src/etc");
     let release_num = build.release_num("cargo");
     let name = pkgname(build, "cargo");
@@ -550,7 +596,7 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
 
     // Prepare the image directory
     t!(fs::create_dir_all(image.join("share/zsh/site-functions")));
-    t!(fs::create_dir_all(image.join("etc/bash_completions.d")));
+    t!(fs::create_dir_all(image.join("etc/bash_completion.d")));
     let cargo = build.cargo_out(&compiler, Mode::Tool, target)
                      .join(exe("cargo", target));
     install(&cargo, &image.join("bin"), 0o755);
@@ -560,7 +606,7 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
     }
     install(&etc.join("_cargo"), &image.join("share/zsh/site-functions"), 0o644);
     copy(&etc.join("cargo.bashcomp.sh"),
-         &image.join("etc/bash_completions.d/cargo"));
+         &image.join("etc/bash_completion.d/cargo"));
     let doc = image.join("share/doc/cargo");
     install(&src.join("README.md"), &doc, 0o644);
     install(&src.join("LICENSE-MIT"), &doc, 0o644);
@@ -578,15 +624,15 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
     t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
 
     // Generate the installer tarball
-    let mut cmd = Command::new("sh");
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Rust-is-ready-to-roll.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
-       .arg(format!("--non-installed-overlay={}", sanitize_sh(&overlay)))
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
+       .arg("--non-installed-overlay").arg(&overlay)
        .arg(format!("--package-name={}-{}", name, target))
        .arg("--component-name=cargo")
        .arg("--legacy-manifest-dirs=rustlib,cargo");
@@ -598,7 +644,7 @@ pub fn rls(build: &Build, stage: u32, target: &str) {
     println!("Dist RLS stage{} ({})", stage, target);
     let compiler = Compiler::new(stage, &build.config.build);
 
-    let src = build.src.join("rls");
+    let src = build.src.join("src/tools/rls");
     let release_num = build.release_num("rls");
     let name = pkgname(build, "rls");
     let version = build.rls_info.version(build, &release_num);
@@ -627,15 +673,15 @@ pub fn rls(build: &Build, stage: u32, target: &str) {
     t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
 
     // Generate the installer tarball
-    let mut cmd = Command::new("sh");
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("generate")
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=RLS-ready-to-serve.")
-       .arg(format!("--image-dir={}", sanitize_sh(&image)))
-       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
-       .arg(format!("--non-installed-overlay={}", sanitize_sh(&overlay)))
+       .arg("--image-dir").arg(&image)
+       .arg("--work-dir").arg(&tmpdir(build))
+       .arg("--output-dir").arg(&distdir(build))
+       .arg("--non-installed-overlay").arg(&overlay)
        .arg(format!("--package-name={}-{}", name, target))
        .arg("--component-name=rls")
        .arg("--legacy-manifest-dirs=rustlib,cargo");
@@ -686,29 +732,28 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
     // upgrades rustc was upgraded before rust-std. To avoid rustc clobbering
     // the std files during uninstall. To do this ensure that rustc comes
     // before rust-std in the list below.
-    let mut input_tarballs = format!("{},{},{},{},{},{}",
-                                     sanitize_sh(&rustc_installer),
-                                     sanitize_sh(&cargo_installer),
-                                     sanitize_sh(&rls_installer),
-                                     sanitize_sh(&analysis_installer),
-                                     sanitize_sh(&docs_installer),
-                                     sanitize_sh(&std_installer));
+    let mut tarballs = vec![rustc_installer, cargo_installer, rls_installer,
+                            analysis_installer, docs_installer, std_installer];
     if target.contains("pc-windows-gnu") {
-        input_tarballs.push_str(",");
-        input_tarballs.push_str(&sanitize_sh(&mingw_installer));
+        tarballs.push(mingw_installer);
+    }
+    let mut input_tarballs = tarballs[0].as_os_str().to_owned();
+    for tarball in &tarballs[1..] {
+        input_tarballs.push(",");
+        input_tarballs.push(tarball);
     }
 
-    let mut cmd = Command::new(SH_CMD);
-    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/combine-installers.sh")))
+    let mut cmd = rust_installer(build);
+    cmd.arg("combine")
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
        .arg("--success-message=Rust-is-ready-to-roll.")
-       .arg(format!("--work-dir={}", sanitize_sh(&work)))
-       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg("--work-dir").arg(&work)
+       .arg("--output-dir").arg(&distdir(build))
        .arg(format!("--package-name={}-{}", pkgname(build, "rust"), target))
        .arg("--legacy-manifest-dirs=rustlib,cargo")
-       .arg(format!("--input-tarballs={}", input_tarballs))
-       .arg(format!("--non-installed-overlay={}", sanitize_sh(&overlay)));
+       .arg("--input-tarballs").arg(input_tarballs)
+       .arg("--non-installed-overlay").arg(&overlay);
     build.run(&mut cmd);
 
     let mut license = String::new();

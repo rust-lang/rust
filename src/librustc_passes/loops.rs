@@ -118,7 +118,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                              "`break` with value from a `{}` loop",
                                              kind.name())
                                 .span_label(e.span,
-                                            &format!("can only break with a value inside `loop`"))
+                                            "can only break with a value inside `loop`")
                                 .emit();
                         }
                     }
@@ -154,12 +154,12 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
             Loop(_) => {}
             Closure => {
                 struct_span_err!(self.sess, span, E0267, "`{}` inside of a closure", name)
-                .span_label(span, &format!("cannot break inside of a closure"))
+                .span_label(span, "cannot break inside of a closure")
                 .emit();
             }
             Normal => {
                 struct_span_err!(self.sess, span, E0268, "`{}` outside of loop", name)
-                .span_label(span, &format!("cannot break outside of a loop"))
+                .span_label(span, "cannot break outside of a loop")
                 .emit();
             }
         }
@@ -169,7 +169,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
         struct_span_err!(self.sess, span, E0590,
                          "`break` or `continue` with no label in the condition of a `while` loop")
             .span_label(span,
-                        &format!("unlabeled `{}` in the condition of a `while` loop", cf_type))
+                        format!("unlabeled `{}` in the condition of a `while` loop", cf_type))
             .emit();
     }
 }

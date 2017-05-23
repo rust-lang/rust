@@ -41,15 +41,15 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource, Pass};
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::{MutVisitor, Visitor, LvalueContext};
-use std::fmt;
+use std::borrow::Cow;
 
-pub struct SimplifyCfg<'a> { label: &'a str }
+pub struct SimplifyCfg { label: String }
 
-impl<'a> SimplifyCfg<'a> {
-    pub fn new(label: &'a str) -> Self {
-        SimplifyCfg { label: label }
+impl SimplifyCfg {
+    pub fn new(label: &str) -> Self {
+        SimplifyCfg { label: format!("SimplifyCfg-{}", label) }
     }
 }
 
@@ -61,20 +61,18 @@ pub fn simplify_cfg(mir: &mut Mir) {
     mir.basic_blocks_mut().raw.shrink_to_fit();
 }
 
-impl<'l, 'tcx> MirPass<'tcx> for SimplifyCfg<'l> {
-    fn run_pass<'a>(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
+impl MirPass for SimplifyCfg {
+    fn name<'a>(&'a self) -> Cow<'a, str> {
+        Cow::Borrowed(&self.label)
+    }
+
+    fn run_pass<'a, 'tcx>(&self,
+                          _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          _src: MirSource,
+                          mir: &mut Mir<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, mir);
         simplify_cfg(mir);
     }
-}
-
-impl<'l> Pass for SimplifyCfg<'l> {
-    fn disambiguator<'a>(&'a self) -> Option<Box<fmt::Display+'a>> {
-        Some(Box::new(self.label))
-    }
-
-    // avoid calling `type_name` - it contains `<'static>`
-    fn name(&self) -> ::std::borrow::Cow<'static, str> { "SimplifyCfg".into() }
 }
 
 pub struct CfgSimplifier<'a, 'tcx: 'a> {
@@ -315,12 +313,11 @@ pub fn remove_dead_blocks(mir: &mut Mir) {
 
 pub struct SimplifyLocals;
 
-impl Pass for SimplifyLocals {
-    fn name(&self) -> ::std::borrow::Cow<'static, str> { "SimplifyLocals".into() }
-}
-
-impl<'tcx> MirPass<'tcx> for SimplifyLocals {
-    fn run_pass<'a>(&mut self, _: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
+impl MirPass for SimplifyLocals {
+    fn run_pass<'a, 'tcx>(&self,
+                          _: TyCtxt<'a, 'tcx, 'tcx>,
+                          _: MirSource,
+                          mir: &mut Mir<'tcx>) {
         let mut marker = DeclMarker { locals: BitVector::new(mir.local_decls.len()) };
         marker.visit_mir(mir);
         // Return pointer and arguments are always live

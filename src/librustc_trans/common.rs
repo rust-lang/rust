@@ -537,6 +537,12 @@ pub fn requests_inline<'a, 'tcx>(
     if is_inline_instance(tcx, instance) {
         return true
     }
+    if let ty::InstanceDef::DropGlue(..) = instance.def {
+        // Drop glue wants to be instantiated at every translation
+        // unit, but without an #[inline] hint. We should make this
+        // available to normal end-users.
+        return true
+    }
     attr::requests_inline(&instance.def.attrs(tcx)[..])
 }
 
@@ -563,7 +569,7 @@ pub fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
                         substs: &'tcx Substs<'tcx>)
                         -> Ty<'tcx>
 {
-    let ty = shared.tcx().item_type(def_id);
+    let ty = shared.tcx().type_of(def_id);
     shared.tcx().trans_apply_param_substs(substs, &ty)
 }
 

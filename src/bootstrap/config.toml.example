@@ -51,7 +51,7 @@
 # support. You'll need to write a target specification at least, and most
 # likely, teach rustc about the C ABI of the target. Get in touch with the
 # Rust team and file an issue if you need assistance in porting!
-#targets = "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX"
+#targets = "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX;Hexagon"
 
 # Cap the number of parallel linker invocations when compiling LLVM.
 # This can be useful when building LLVM with debug info, which significantly
@@ -152,6 +152,10 @@
 # known-good version of OpenSSL, compile it, and link it to Cargo.
 #openssl-static = false
 
+# Run the build with low priority, by setting the process group's "nice" value
+# to +10 on Unix platforms, and by using a "low priority" job object on Windows.
+#low-priority = false
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
@@ -160,14 +164,21 @@
 # Instead of installing to /usr/local, install to this path instead.
 #prefix = "/usr/local"
 
+# Where to install system configuration files
+# If this is a relative path, it will get installed in `prefix` above
+#sysconfdir = "/etc"
+
+# Where to install documentation in `prefix` above
+#docdir = "share/doc/rust"
+
+# Where to install binaries in `prefix` above
+#bindir = "bin"
+
 # Where to install libraries in `prefix` above
 #libdir = "lib"
 
 # Where to install man pages in `prefix` above
 #mandir = "share/man"
-
-# Where to install documentation in `prefix` above
-#docdir = "share/doc/rust"
 
 # =============================================================================
 # Options for compiling Rust code itself
@@ -175,6 +186,9 @@
 [rust]
 
 # Whether or not to optimize the compiler and standard library
+# Note: the slowness of the non optimized compiler compiling itself usually
+#       outweighs the time gains in not doing optimizations, therefore a
+#       full bootstrap takes much more time with optimize set to false.
 #optimize = true
 
 # Number of codegen units to use for each compiler invocation. A value of 0

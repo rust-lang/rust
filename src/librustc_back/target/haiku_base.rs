@@ -16,9 +16,10 @@ pub fn opts() -> TargetOptions {
         linker: "cc".to_string(),
         dynamic_linking: true,
         executables: true,
-        has_rpath: true,
+        has_rpath: false,
         target_family: Some("unix".to_string()),
         linker_is_gnu: true,
+        no_integrated_as: true,
         .. Default::default()
     }
 }

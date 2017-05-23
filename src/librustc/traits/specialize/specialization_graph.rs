@@ -12,8 +12,9 @@ use super::{OverlapError, specializes};
 
 use hir::def_id::DefId;
 use traits::{self, Reveal};
-use ty::{self, TyCtxt, TraitDef, TypeFoldable};
+use ty::{self, TyCtxt, TypeFoldable};
 use ty::fast_reject::{self, SimplifiedType};
+use std::rc::Rc;
 use syntax::ast::Name;
 use util::nodemap::{DefIdMap, FxHashMap};
 
@@ -301,18 +302,19 @@ impl<'a, 'gcx, 'tcx> Node {
     }
 }
 
-pub struct Ancestors<'a> {
-    trait_def: &'a TraitDef,
+pub struct Ancestors {
+    trait_def_id: DefId,
+    specialization_graph: Rc<Graph>,
     current_source: Option<Node>,
 }
 
-impl<'a> Iterator for Ancestors<'a> {
+impl Iterator for Ancestors {
     type Item = Node;
     fn next(&mut self) -> Option<Node> {
         let cur = self.current_source.take();
         if let Some(Node::Impl(cur_impl)) = cur {
-            let parent = self.trait_def.specialization_graph.borrow().parent(cur_impl);
-            if parent == self.trait_def.def_id {
+            let parent = self.specialization_graph.parent(cur_impl);
+            if parent == self.trait_def_id {
                 self.current_source = Some(Node::Trait(parent));
             } else {
                 self.current_source = Some(Node::Impl(parent));
@@ -336,7 +338,7 @@ impl<T> NodeItem<T> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> Ancestors<'a> {
+impl<'a, 'gcx, 'tcx> Ancestors {
     /// Search the items from the given ancestors, returning each definition
     /// with the given name and the given kind.
     #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
@@ -351,9 +353,14 @@ impl<'a, 'gcx, 'tcx> Ancestors<'a> {
 
 /// Walk up the specialization ancestors of a given impl, starting with that
 /// impl itself.
-pub fn ancestors<'a>(trait_def: &'a TraitDef, start_from_impl: DefId) -> Ancestors<'a> {
+pub fn ancestors(tcx: TyCtxt,
+                 trait_def_id: DefId,
+                 start_from_impl: DefId)
+                 -> Ancestors {
+    let specialization_graph = tcx.specialization_graph_of(trait_def_id);
     Ancestors {
-        trait_def: trait_def,
+        trait_def_id,
+        specialization_graph,
         current_source: Some(Node::Impl(start_from_impl)),
     }
 }

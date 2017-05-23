@@ -34,6 +34,7 @@ use back::linker::LinkerInfo;
 use back::symbol_export::{self, ExportedSymbols};
 use llvm::{ContextRef, Linkage, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
+use metadata;
 use rustc::hir::def_id::LOCAL_CRATE;
 use middle::lang_items::StartFnLangItem;
 use middle::cstore::EncodedMetadata;
@@ -65,8 +66,6 @@ use meth;
 use mir;
 use monomorphize::{self, Instance};
 use partitioning::{self, PartitioningStrategy, CodegenUnit};
-use symbol_cache::SymbolCache;
-use symbol_map::SymbolMap;
 use symbol_names_test;
 use trans_item::{TransItem, DefPathBasedNames};
 use type_::Type;
@@ -756,10 +755,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     }).max().unwrap();
 
     if kind == MetadataKind::None {
-        return (metadata_llcx, metadata_llmod, EncodedMetadata {
-            raw_data: vec![],
-            hashes: vec![],
-        });
+        return (metadata_llcx, metadata_llmod, EncodedMetadata::new());
     }
 
     let cstore = &tcx.sess.cstore;
@@ -783,8 +779,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
-        let section_name =
-            tcx.sess.cstore.metadata_section_name(&tcx.sess.target.target);
+        let section_name = metadata::metadata_section_name(&tcx.sess.target.target);
         let name = CString::new(section_name).unwrap();
         llvm::LLVMSetSection(llglobal, name.as_ptr());
 
@@ -804,7 +799,6 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
                                  scx: &SharedCrateContext<'a, 'tcx>,
                                  translation_items: &FxHashSet<TransItem<'tcx>>,
                                  llvm_modules: &[ModuleLlvm],
-                                 symbol_map: &SymbolMap<'tcx>,
                                  exported_symbols: &ExportedSymbols) {
     let export_threshold =
         symbol_export::crates_export_threshold(&sess.crate_types.borrow());
@@ -856,7 +850,7 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
             let mut linkage_fixed_explicitly = FxHashSet();
 
             for trans_item in translation_items {
-                let symbol_name = symbol_map.get_or_compute(scx, *trans_item);
+                let symbol_name = str::to_owned(&trans_item.symbol_name(tcx));
                 if trans_item.explicit_linkage(tcx).is_some() {
                     linkage_fixed_explicitly.insert(symbol_name.clone());
                 }
@@ -1041,7 +1035,7 @@ pub fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
             hir_map::NodeImplItem(&hir::ImplItem {
                 node: hir::ImplItemKind::Method(..), .. }) => {
                 let def_id = tcx.hir.local_def_id(id);
-                let generics = tcx.item_generics(def_id);
+                let generics = tcx.generics_of(def_id);
                 let attributes = tcx.get_attrs(def_id);
                 (generics.parent_types == 0 && generics.types.is_empty()) &&
                 // Functions marked with #[inline] are only ever translated
@@ -1110,7 +1104,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Run the translation item collector and partition the collected items into
     // codegen units.
-    let (translation_items, codegen_units, symbol_map) =
+    let (translation_items, codegen_units) =
         collect_and_partition_translation_items(&shared_ccx);
 
     let mut all_stats = Stats::default();
@@ -1139,8 +1133,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         let cgu_name = String::from(cgu.name());
         let cgu_id = cgu.work_product_id();
-        let symbol_cache = SymbolCache::new(scx.tcx());
-        let symbol_name_hash = cgu.compute_symbol_name_hash(scx, &symbol_cache);
+        let symbol_name_hash = cgu.compute_symbol_name_hash(scx);
 
         // Check whether there is a previous work-product we can
         // re-use.  Not only must the file exist, and the inputs not
@@ -1175,11 +1168,11 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         // Instantiate translation items without filling out definitions yet...
-        let lcx = LocalCrateContext::new(scx, cgu, &symbol_cache);
+        let lcx = LocalCrateContext::new(scx, cgu);
         let module = {
             let ccx = CrateContext::new(scx, &lcx);
             let trans_items = ccx.codegen_unit()
-                                 .items_in_deterministic_order(ccx.tcx(), &symbol_cache);
+                                 .items_in_deterministic_order(ccx.tcx());
             for &(trans_item, linkage) in &trans_items {
                 trans_item.predefine(&ccx, linkage);
             }
@@ -1271,8 +1264,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let sess = shared_ccx.sess();
 
-    let exported_symbols = ExportedSymbols::compute_from(&shared_ccx,
-                                                         &symbol_map);
+    let exported_symbols = ExportedSymbols::compute(&shared_ccx);
 
     // Get the list of llvm modules we created. We'll do a few wacky
     // transforms on them now.
@@ -1292,7 +1284,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             &shared_ccx,
                             &translation_items,
                             &llvm_modules,
-                            &symbol_map,
                             &exported_symbols);
     });
 
@@ -1518,10 +1509,57 @@ fn gather_type_sizes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 }
 
+#[inline(never)] // give this a place in the profiler
+fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trans_items: I)
+    where I: Iterator<Item=&'a TransItem<'tcx>>
+{
+    let mut symbols: Vec<_> = trans_items.map(|trans_item| {
+        (trans_item, trans_item.symbol_name(tcx))
+    }).collect();
+
+    (&mut symbols[..]).sort_by(|&(_, ref sym1), &(_, ref sym2)|{
+        sym1.cmp(sym2)
+    });
+
+    for pair in (&symbols[..]).windows(2) {
+        let sym1 = &pair[0].1;
+        let sym2 = &pair[1].1;
+
+        if *sym1 == *sym2 {
+            let trans_item1 = pair[0].0;
+            let trans_item2 = pair[1].0;
+
+            let span1 = trans_item1.local_span(tcx);
+            let span2 = trans_item2.local_span(tcx);
+
+            // Deterministically select one of the spans for error reporting
+            let span = match (span1, span2) {
+                (Some(span1), Some(span2)) => {
+                    Some(if span1.lo.0 > span2.lo.0 {
+                        span1
+                    } else {
+                        span2
+                    })
+                }
+                (Some(span), None) |
+                (None, Some(span)) => Some(span),
+                _ => None
+            };
+
+            let error_message = format!("symbol `{}` is already defined", sym1);
+
+            if let Some(span) = span {
+                tcx.sess.span_fatal(span, &error_message)
+            } else {
+                tcx.sess.fatal(&error_message)
+            }
+        }
+    }
+}
+
 fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>)
                                                      -> (FxHashSet<TransItem<'tcx>>,
-                                                         Vec<CodegenUnit<'tcx>>,
-                                                         SymbolMap<'tcx>) {
+                                                         Vec<CodegenUnit<'tcx>>) {
     let time_passes = scx.sess().time_passes();
 
     let collection_mode = match scx.sess().opts.debugging_opts.print_trans_items {
@@ -1549,7 +1587,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
             collector::collect_crate_translation_items(&scx, collection_mode)
     });
 
-    let symbol_map = SymbolMap::build(scx, items.iter().cloned());
+    assert_symbols_are_distinct(scx.tcx(), items.iter());
 
     let strategy = if scx.sess().opts.debugging_opts.incremental.is_some() {
         PartitioningStrategy::PerModule
@@ -1622,5 +1660,5 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
         }
     }
 
-    (translation_items, codegen_units, symbol_map)
+    (translation_items, codegen_units)
 }

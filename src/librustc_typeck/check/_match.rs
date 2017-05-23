@@ -97,7 +97,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                     struct_span_err!(tcx.sess, span, E0029,
                         "only char and numeric types are allowed in range patterns")
-                        .span_label(span, &format!("ranges require char or numeric types"))
+                        .span_label(span, "ranges require char or numeric types")
                         .note(&format!("start type: {}", self.ty_to_string(lhs_ty)))
                         .note(&format!("end type: {}", self.ty_to_string(rhs_ty)))
                         .emit();
@@ -263,7 +263,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     tcx.sess, pat.span, E0527,
                                     "pattern requires {} elements but array has {}",
                                     min_len, size)
-                                    .span_label(pat.span, &format!("expected {} elements",size))
+                                    .span_label(pat.span, format!("expected {} elements",size))
                                     .emit();
                             }
                             (inner_ty, tcx.types.err)
@@ -274,7 +274,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     "pattern requires at least {} elements but array has {}",
                                     min_len, size)
                                 .span_label(pat.span,
-                                    &format!("pattern cannot match array of {} elements", size))
+                                    format!("pattern cannot match array of {} elements", size))
                                 .emit();
                             (inner_ty, tcx.types.err)
                         }
@@ -297,7 +297,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             }
 
                             err.span_label( pat.span,
-                                &format!("pattern cannot match with input type `{}`", expected_ty)
+                                format!("pattern cannot match with input type `{}`", expected_ty)
                             ).emit();
                         }
                         (tcx.types.err, tcx.types.err)
@@ -379,7 +379,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let type_str = self.ty_to_string(expected);
                     struct_span_err!(self.tcx.sess, span, E0033,
                               "type `{}` cannot be dereferenced", type_str)
-                        .span_label(span, &format!("type `{}` cannot be dereferenced", type_str))
+                        .span_label(span, format!("type `{}` cannot be dereferenced", type_str))
                         .emit();
                     return false
                 }
@@ -498,7 +498,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if is_if_let_fallback {
                 let cause = self.cause(expr.span, ObligationCauseCode::IfExpressionWithNoElse);
                 assert!(arm_ty.is_nil());
-                coercion.coerce_forced_unit(self, &cause, &mut |_| ());
+                coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
             } else {
                 let cause = self.cause(expr.span, ObligationCauseCode::MatchExpressionArm {
                     arm_span: arm.body.span,
@@ -593,7 +593,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               def.kind_name(),
                               hir::print::to_string(&tcx.hir, |s| s.print_qpath(qpath, false)));
             struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg)
-                .span_label(pat.span, &format!("not a tuple variant or struct")).emit();
+                .span_label(pat.span, "not a tuple variant or struct").emit();
             on_error();
         };
 
@@ -642,7 +642,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                              "this pattern has {} field{}, but the corresponding {} has {} field{}",
                              subpats.len(), subpats_ending, def.kind_name(),
                              variant.fields.len(),  fields_ending)
-                .span_label(pat.span, &format!("expected {} field{}, found {}",
+                .span_label(pat.span, format!("expected {} field{}, found {}",
                                                variant.fields.len(), fields_ending, subpats.len()))
                 .emit();
             on_error();
@@ -683,8 +683,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                       in the pattern",
                                      field.name)
                         .span_label(span,
-                                    &format!("multiple uses of `{}` in pattern", field.name))
-                        .span_label(*occupied.get(), &format!("first use of `{}`", field.name))
+                                    format!("multiple uses of `{}` in pattern", field.name))
+                        .span_label(*occupied.get(), format!("first use of `{}`", field.name))
                         .emit();
                     tcx.types.err
                 }
@@ -703,7 +703,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                              tcx.item_path_str(variant.did),
                                              field.name)
                                 .span_label(span,
-                                            &format!("{} `{}` does not have field `{}`",
+                                            format!("{} `{}` does not have field `{}`",
                                                      kind_name,
                                                      tcx.item_path_str(variant.did),
                                                      field.name))
@@ -732,7 +732,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 struct_span_err!(tcx.sess, span, E0027,
                                 "pattern does not mention field `{}`",
                                 field.name)
-                                .span_label(span, &format!("missing field `{}`", field.name))
+                                .span_label(span, format!("missing field `{}`", field.name))
                                 .emit();
             }
         }

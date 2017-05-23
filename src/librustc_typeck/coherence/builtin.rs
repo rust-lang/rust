@@ -12,14 +12,13 @@
 //! up data structures required by type-checking/translation.
 
 use rustc::middle::free_region::FreeRegionMap;
+use rustc::middle::region::RegionMaps;
 use rustc::middle::lang_items::UnsizeTraitLangItem;
 
 use rustc::traits::{self, ObligationCause, Reveal};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::ParameterEnvironment;
 use rustc::ty::TypeFoldable;
 use rustc::ty::adjustment::CoerceUnsizedInfo;
-use rustc::ty::subst::Subst;
 use rustc::ty::util::CopyImplementationError;
 use rustc::infer;
 
@@ -57,7 +56,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                           _drop_did: DefId,
                                           impl_did: DefId) {
-    match tcx.item_type(impl_did).sty {
+    match tcx.type_of(impl_did).sty {
         ty::TyAdt(..) => {}
         _ => {
             // Destructors only work on nominal types.
@@ -73,7 +72,7 @@ fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                          E0120,
                                          "the Drop trait may only be implemented on \
                                          structures")
-                            .span_label(span, &format!("implementing Drop requires a struct"))
+                            .span_label(span, "implementing Drop requires a struct")
                             .emit();
                     }
                     _ => {
@@ -101,13 +100,12 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return;
     };
 
-    let self_type = tcx.item_type(impl_did);
+    let self_type = tcx.type_of(impl_did);
     debug!("visit_implementation_of_copy: self_type={:?} (bound)",
            self_type);
 
     let span = tcx.hir.span(impl_node_id);
-    let param_env = ParameterEnvironment::for_item(tcx, impl_node_id);
-    let self_type = self_type.subst(tcx, &param_env.free_substs);
+    let param_env = tcx.parameter_environment(impl_did);
     assert!(!self_type.has_escaping_regions());
 
     debug!("visit_implementation_of_copy: self_type={:?} (free)",
@@ -129,7 +127,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              "the trait `Copy` may not be implemented for this type")
                 .span_label(
                     tcx.def_span(field.did),
-                    &"this field does not implement `Copy`")
+                    "this field does not implement `Copy`")
                 .emit()
         }
         Err(CopyImplementationError::NotAnAdt) => {
@@ -144,7 +142,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              span,
                              E0206,
                              "the trait `Copy` may not be implemented for this type")
-                .span_label(span, &format!("type is not a structure or enumeration"))
+                .span_label(span, "type is not a structure or enumeration")
                 .emit();
         }
         Err(CopyImplementationError::HasDestructor) => {
@@ -153,7 +151,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              E0184,
                              "the trait `Copy` may not be implemented for this type; the \
                               type has a destructor")
-                .span_label(span, &format!("Copy not allowed on types with destructors"))
+                .span_label(span, "Copy not allowed on types with destructors")
                 .emit();
         }
     }
@@ -170,7 +168,7 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // course.
     if impl_did.is_local() {
         let span = tcx.def_span(impl_did);
-        ty::queries::coerce_unsized_info::get(tcx, span, impl_did);
+        tcx.at(span).coerce_unsized_info(impl_did);
     }
 }
 
@@ -192,7 +190,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         bug!("coerce_unsized_info: invoked for non-local def-id {:?}", impl_did)
     });
 
-    let source = tcx.item_type(impl_did);
+    let source = tcx.type_of(impl_did);
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap();
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
     let target = trait_ref.substs.type_at(1);
@@ -201,9 +199,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            target);
 
     let span = tcx.hir.span(impl_node_id);
-    let param_env = ParameterEnvironment::for_item(tcx, impl_node_id);
-    let source = source.subst(tcx, &param_env.free_substs);
-    let target = target.subst(tcx, &param_env.free_substs);
+    let param_env = tcx.parameter_environment(impl_did);
     assert!(!source.has_escaping_regions());
 
     let err_info = CoerceUnsizedInfo { custom_kind: None };
@@ -253,19 +249,66 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     return err_info;
                 }
 
+                // Here we are considering a case of converting
+                // `S<P0...Pn>` to S<Q0...Qn>`. As an example, let's imagine a struct `Foo<T, U>`,
+                // which acts like a pointer to `U`, but carries along some extra data of type `T`:
+                //
+                //     struct Foo<T, U> {
+                //         extra: T,
+                //         ptr: *mut U,
+                //     }
+                //
+                // We might have an impl that allows (e.g.) `Foo<T, [i32; 3]>` to be unsized
+                // to `Foo<T, [i32]>`. That impl would look like:
+                //
+                //   impl<T, U: Unsize<V>, V> CoerceUnsized<Foo<T, V>> for Foo<T, U> {}
+                //
+                // Here `U = [i32; 3]` and `V = [i32]`. At runtime,
+                // when this coercion occurs, we would be changing the
+                // field `ptr` from a thin pointer of type `*mut [i32;
+                // 3]` to a fat pointer of type `*mut [i32]` (with
+                // extra data `3`).  **The purpose of this check is to
+                // make sure that we know how to do this conversion.**
+                //
+                // To check if this impl is legal, we would walk down
+                // the fields of `Foo` and consider their types with
+                // both substitutes. We are looking to find that
+                // exactly one (non-phantom) field has changed its
+                // type, which we will expect to be the pointer that
+                // is becoming fat (we could probably generalize this
+                // to mutiple thin pointers of the same type becoming
+                // fat, but we don't). In this case:
+                //
+                // - `extra` has type `T` before and type `T` after
+                // - `ptr` has type `*mut U` before and type `*mut V` after
+                //
+                // Since just one field changed, we would then check
+                // that `*mut U: CoerceUnsized<*mut V>` is implemented
+                // (in other words, that we know how to do this
+                // conversion). This will work out because `U:
+                // Unsize<V>`, and we have a builtin rule that `*mut
+                // U` can be coerced to `*mut V` if `U: Unsize<V>`.
                 let fields = &def_a.struct_variant().fields;
                 let diff_fields = fields.iter()
                     .enumerate()
                     .filter_map(|(i, f)| {
                         let (a, b) = (f.ty(tcx, substs_a), f.ty(tcx, substs_b));
 
-                        if tcx.item_type(f.did).is_phantom_data() {
+                        if tcx.type_of(f.did).is_phantom_data() {
                             // Ignore PhantomData fields
                             return None;
                         }
 
-                        // Ignore fields that aren't significantly changed
-                        if let Ok(ok) = infcx.sub_types(false, &cause, b, a) {
+                        // Ignore fields that aren't changed; it may
+                        // be that we could get away with subtyping or
+                        // something more accepting, but we use
+                        // equality because we want to be able to
+                        // perform this check without computing
+                        // variance where possible. (This is because
+                        // we may have to evaluate constraint
+                        // expressions in the course of execution.)
+                        // See e.g. #41936.
+                        if let Ok(ok) = infcx.eq_types(false, &cause, b, a) {
                             if ok.obligations.is_empty() {
                                 return None;
                             }
@@ -309,7 +352,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                           })
                                           .collect::<Vec<_>>()
                                           .join(", ")));
-                    err.span_label(span, &format!("requires multiple coercions"));
+                    err.span_label(span, "requires multiple coercions");
                     err.emit();
                     return err_info;
                 }
@@ -342,10 +385,11 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         // Finally, resolve all regions.
+        let region_maps = RegionMaps::new();
         let mut free_regions = FreeRegionMap::new();
         free_regions.relate_free_regions_from_predicates(&infcx.parameter_environment
             .caller_bounds);
-        infcx.resolve_regions_and_report_errors(&free_regions, impl_node_id);
+        infcx.resolve_regions_and_report_errors(impl_did, &region_maps, &free_regions);
 
         CoerceUnsizedInfo {
             custom_kind: kind

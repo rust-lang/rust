@@ -27,7 +27,7 @@ use rustc::util::nodemap::DefIdMap;
 
 use syntax::ast;
 use rustc::hir::{self, Expr};
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 
 use std::cmp::Ordering;
 
@@ -68,13 +68,13 @@ pub fn lookup_const_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             _ => Some((def_id, substs))
         }
     } else {
-        match tcx.sess.cstore.describe_def(def_id) {
+        match tcx.describe_def(def_id) {
             Some(Def::AssociatedConst(_)) => {
                 // As mentioned in the comments above for in-crate
                 // constants, we only try to find the expression for a
                 // trait-associated const if the caller gives us the
                 // substitutions for the reference to it.
-                if tcx.sess.cstore.trait_of_item(def_id).is_some() {
+                if tcx.trait_of_item(def_id).is_some() {
                     resolve_trait_associated_const(tcx, def_id, substs)
                 } else {
                     Some((def_id, substs))
@@ -299,7 +299,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
           match cx.tables.qpath_def(qpath, e.id) {
               Def::Const(def_id) |
               Def::AssociatedConst(def_id) => {
-                    match ty::queries::const_eval::get(tcx, e.span, (def_id, substs)) {
+                    match tcx.at(e.span).const_eval((def_id, substs)) {
                         Ok(val) => val,
                         Err(ConstEvalErr { kind: TypeckError, .. }) => {
                             signal!(e, TypeckError);
@@ -376,7 +376,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
           debug!("const call({:?})", call_args);
           let callee_cx = ConstContext {
             tcx: tcx,
-            tables: tcx.item_tables(def_id),
+            tables: tcx.typeck_tables_of(def_id),
             substs: substs,
             fn_args: Some(call_args)
           };
@@ -607,7 +607,7 @@ fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Float(f) => cast_const_float(tcx, f, ty),
         Char(c) => cast_const_int(tcx, U32(c as u32), ty),
         Variant(v) => {
-            let adt = tcx.lookup_adt_def(tcx.parent_def_id(v).unwrap());
+            let adt = tcx.adt_def(tcx.parent_def_id(v).unwrap());
             let idx = adt.variant_index_with_id(v);
             cast_const_int(tcx, adt.discriminant_for_variant(tcx, idx), ty)
         }
@@ -767,13 +767,13 @@ fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let cx = ConstContext {
         tcx,
-        tables: tcx.item_tables(def_id),
+        tables: tcx.typeck_tables_of(def_id),
         substs: substs,
         fn_args: None
     };
 
     let body = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
-        ty::queries::mir_const_qualif::get(tcx, DUMMY_SP, def_id);
+        tcx.mir_const_qualif(def_id);
         tcx.hir.body(tcx.hir.body_owned_by(id))
     } else {
         tcx.sess.cstore.item_body(tcx, def_id)

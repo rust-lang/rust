@@ -70,6 +70,7 @@ pub use self::Note::*;
 
 use self::Aliasability::*;
 
+use middle::region::RegionMaps;
 use hir::def_id::DefId;
 use hir::map as hir_map;
 use infer::InferCtxt;
@@ -89,7 +90,7 @@ use std::rc::Rc;
 #[derive(Clone, PartialEq)]
 pub enum Categorization<'tcx> {
     // temporary val, argument is its scope
-    Rvalue(&'tcx ty::Region, &'tcx ty::Region),
+    Rvalue(ty::Region<'tcx>, ty::Region<'tcx>),
     StaticItem,
     Upvar(Upvar),                          // upvar referenced by closure env
     Local(ast::NodeId),                    // local variable
@@ -114,13 +115,13 @@ pub enum PointerKind<'tcx> {
     Unique,
 
     /// `&T`
-    BorrowedPtr(ty::BorrowKind, &'tcx ty::Region),
+    BorrowedPtr(ty::BorrowKind, ty::Region<'tcx>),
 
     /// `*T`
     UnsafePtr(hir::Mutability),
 
     /// Implicit deref of the `&T` that results from an overloaded index `[]`.
-    Implicit(ty::BorrowKind, &'tcx ty::Region),
+    Implicit(ty::BorrowKind, ty::Region<'tcx>),
 }
 
 // We use the term "interior" to mean "something reachable from the
@@ -286,9 +287,10 @@ impl ast_node for hir::Pat {
     fn span(&self) -> Span { self.span }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    pub region_maps: &'a RegionMaps,
     options: MemCategorizationOptions,
 }
 
@@ -402,16 +404,22 @@ impl MutabilityCategory {
 }
 
 impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
+    /// Context should be the `DefId` we use to fetch region-maps.
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+               region_maps: &'a RegionMaps)
                -> MemCategorizationContext<'a, 'gcx, 'tcx> {
-        MemCategorizationContext::with_options(infcx, MemCategorizationOptions::default())
+        MemCategorizationContext::with_options(infcx,
+                                               region_maps,
+                                               MemCategorizationOptions::default())
     }
 
     pub fn with_options(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                        region_maps: &'a RegionMaps,
                         options: MemCategorizationOptions)
                         -> MemCategorizationContext<'a, 'gcx, 'tcx> {
         MemCategorizationContext {
             infcx: infcx,
+            region_maps: region_maps,
             options: options,
         }
     }
@@ -451,7 +459,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 // So peel off one-level, turning the &T into T.
                 match base_ty.builtin_deref(false, ty::NoPreference) {
                     Some(t) => t.ty,
-                    None => { return Err(()); }
+                    None => {
+                        debug!("By-ref binding of non-derefable type {:?}", base_ty);
+                        return Err(());
+                    }
                 }
             }
             _ => base_ty,
@@ -774,26 +785,12 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                  cmt_result: cmt_<'tcx>)
                  -> cmt_<'tcx>
     {
-        // Look up the node ID of the closure body so we can construct
-        // a free region within it
-        let fn_body_id = {
-            let fn_expr = match self.tcx().hir.find(upvar_id.closure_expr_id) {
-                Some(hir_map::NodeExpr(e)) => e,
-                _ => bug!()
-            };
-
-            match fn_expr.node {
-                hir::ExprClosure(.., body_id, _) => body_id.node_id,
-                _ => bug!()
-            }
-        };
-
         // Region of environment pointer
         let env_region = self.tcx().mk_region(ty::ReFree(ty::FreeRegion {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
-            scope: self.tcx().region_maps.item_extent(fn_body_id),
+            scope: self.tcx().hir.local_def_id(upvar_id.closure_expr_id),
             bound_region: ty::BrEnv
         }));
 
@@ -839,10 +836,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
     /// Returns the lifetime of a temporary created by expr with id `id`.
     /// This could be `'static` if `id` is part of a constant expression.
-    pub fn temporary_scope(&self, id: ast::NodeId) -> (&'tcx ty::Region, &'tcx ty::Region)
+    pub fn temporary_scope(&self, id: ast::NodeId) -> (ty::Region<'tcx>, ty::Region<'tcx>)
     {
         let (scope, old_scope) =
-            self.tcx().region_maps.old_and_new_temporary_scope(id);
+            self.region_maps.old_and_new_temporary_scope(id);
         (self.tcx().mk_region(match scope {
             Some(scope) => ty::ReScope(scope),
             None => ty::ReStatic
@@ -884,8 +881,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn cat_rvalue(&self,
                       cmt_id: ast::NodeId,
                       span: Span,
-                      temp_scope: &'tcx ty::Region,
-                      old_temp_scope: &'tcx ty::Region,
+                      temp_scope: ty::Region<'tcx>,
+                      old_temp_scope: ty::Region<'tcx>,
                       expr_ty: Ty<'tcx>) -> cmt<'tcx> {
         let ret = Rc::new(cmt_ {
             id:cmt_id,
@@ -1039,6 +1036,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 match base_cmt.ty.builtin_index() {
                     Some(ty) => (ty, ElementKind::VecElement),
                     None => {
+                        debug!("Explicit index of non-indexable type {:?}", base_cmt);
                         return Err(());
                     }
                 }
@@ -1154,12 +1152,15 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             PatKind::TupleStruct(hir::QPath::Resolved(_, ref path), ..) |
             PatKind::Struct(hir::QPath::Resolved(_, ref path), ..) => {
                 match path.def {
-                    Def::Err => return Err(()),
+                    Def::Err => {
+                        debug!("access to unresolvable pattern {:?}", pat);
+                        return Err(())
+                    }
                     Def::Variant(variant_did) |
                     Def::VariantCtor(variant_did, ..) => {
                         // univariant enums do not need downcasts
                         let enum_did = self.tcx().parent_def_id(variant_did).unwrap();
-                        if !self.tcx().lookup_adt_def(enum_did).is_univariant() {
+                        if !self.tcx().adt_def(enum_did).is_univariant() {
                             self.cat_downcast(pat, cmt.clone(), cmt.ty, variant_did)
                         } else {
                             cmt
@@ -1177,7 +1178,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             let expected_len = match def {
                 Def::VariantCtor(def_id, CtorKind::Fn) => {
                     let enum_def = self.tcx().parent_def_id(def_id).unwrap();
-                    self.tcx().lookup_adt_def(enum_def).variant_with_id(def_id).fields.len()
+                    self.tcx().adt_def(enum_def).variant_with_id(def_id).fields.len()
                 }
                 Def::StructCtor(_, CtorKind::Fn) => {
                     match self.pat_ty(&pat)?.sty {

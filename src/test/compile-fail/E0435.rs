@@ -10,6 +10,6 @@
 
 fn main () {
     let foo = 42u32;
-    const FOO : u32 = foo; //~ ERROR E0435
+    let _: [u8; foo]; //~ ERROR E0435
     //~| NOTE non-constant used with constant
 }

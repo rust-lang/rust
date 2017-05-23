@@ -15,6 +15,7 @@ use super::{check_fn, Expectation, FnCtxt};
 use astconv::AstConv;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::ty::{self, ToPolyTraitRef, Ty};
+use rustc::ty::subst::Substs;
 use std::cmp;
 use std::iter;
 use syntax::abi::Abi;
@@ -60,12 +61,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                          decl,
                                          Abi::RustCall,
                                          expected_sig);
+        // `deduce_expectations_from_expected_type` introduces late-bound
+        // lifetimes defined elsewhere, which we need to anonymize away.
+        let sig = self.tcx.anonymize_late_bound_regions(&sig);
 
         // Create type variables (for now) to represent the transformed
         // types of upvars. These will be unified during the upvar
         // inference phase (`upvar.rs`).
+        let base_substs = Substs::identity_for_item(self.tcx,
+            self.tcx.closure_base_def_id(expr_def_id));
         let closure_type = self.tcx.mk_closure(expr_def_id,
-            self.parameter_environment.free_substs.extend_to(self.tcx, expr_def_id,
+            base_substs.extend_to(self.tcx, expr_def_id,
                 |_, _| span_bug!(expr.span, "closure has region param"),
                 |_, _| self.infcx.next_ty_var(TypeVariableOrigin::TransformedUpvar(expr.span))
             )
@@ -73,8 +79,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         debug!("check_closure: expr.id={:?} closure_type={:?}", expr.id, closure_type);
 
-        let extent = self.tcx.region_maps.call_site_extent(expr.id, body.value.id);
-        let fn_sig = self.tcx.liberate_late_bound_regions(extent, &sig);
+        let fn_sig = self.liberate_late_bound_regions(expr_def_id, &sig);
         let fn_sig = self.inh.normalize_associated_types_in(body.value.span,
                                                             body.value.id, &fn_sig);
 
@@ -126,6 +131,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 (sig, kind)
             }
             ty::TyInfer(ty::TyVar(vid)) => self.deduce_expectations_from_obligations(vid),
+            ty::TyFnPtr(sig) => (Some(sig.skip_binder().clone()), Some(ty::ClosureKind::Fn)),
             _ => (None, None),
         }
     }

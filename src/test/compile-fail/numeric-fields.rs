@@ -17,6 +17,6 @@ fn main() {
     match s {
         S{0: a, 0x1: b, ..} => {}
         //~^ ERROR does not have a field named `0x1`
-        //~| NOTE struct `S::{{constructor}}` does not have field `0x1`
+        //~| NOTE struct `S` does not have field `0x1`
     }
 }

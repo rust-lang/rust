@@ -157,7 +157,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         if pos < self.scopes[scope_id].file_start_pos ||
            pos >= self.scopes[scope_id].file_end_pos {
             let cm = self.ccx.sess().codemap();
-            debuginfo::extend_scope_to_file(self.ccx, scope_metadata, &cm.lookup_char_pos(pos).file)
+            let defining_crate = self.debug_context.get_ref(DUMMY_SP).defining_crate;
+            debuginfo::extend_scope_to_file(self.ccx,
+                                            scope_metadata,
+                                            &cm.lookup_char_pos(pos).file,
+                                            defining_crate)
         } else {
             scope_metadata
         }

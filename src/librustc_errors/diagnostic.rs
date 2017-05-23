@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use CodeSuggestion;
+use Substitution;
 use Level;
 use RenderSpan;
-use RenderSpan::Suggestion;
 use std::fmt;
 use syntax_pos::{MultiSpan, Span};
 use snippet::Style;
@@ -24,6 +24,7 @@ pub struct Diagnostic {
     pub code: Option<String>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
+    pub suggestions: Vec<CodeSuggestion>,
 }
 
 /// For example a note attached to an error.
@@ -87,6 +88,7 @@ impl Diagnostic {
             code: code,
             span: MultiSpan::new(),
             children: vec![],
+            suggestions: vec![],
         }
     }
 
@@ -113,9 +115,8 @@ impl Diagnostic {
     /// all, and you just supplied a `Span` to create the diagnostic,
     /// then the snippet will just include that `Span`, which is
     /// called the primary span.
-    pub fn span_label(&mut self, span: Span, label: &fmt::Display)
-                      -> &mut Self {
-        self.span.push_span_label(span, format!("{}", label));
+    pub fn span_label<T: Into<String>>(&mut self, span: Span, label: T) -> &mut Self {
+        self.span.push_span_label(span, label.into());
         self
     }
 
@@ -202,19 +203,26 @@ impl Diagnostic {
 
     /// Prints out a message with a suggested edit of the code.
     ///
-    /// See `diagnostic::RenderSpan::Suggestion` for more information.
-    pub fn span_suggestion<S: Into<MultiSpan>>(&mut self,
-                                               sp: S,
-                                               msg: &str,
-                                               suggestion: String)
-                                               -> &mut Self {
-        self.sub(Level::Help,
-                 msg,
-                 MultiSpan::new(),
-                 Some(Suggestion(CodeSuggestion {
-                     msp: sp.into(),
-                     substitutes: vec![suggestion],
-                 })));
+    /// See `diagnostic::CodeSuggestion` for more information.
+    pub fn span_suggestion(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitution_parts: vec![Substitution {
+                span: sp,
+                substitutions: vec![suggestion],
+            }],
+            msg: msg.to_owned(),
+        });
+        self
+    }
+
+    pub fn span_suggestions(&mut self, sp: Span, msg: &str, suggestions: Vec<String>) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitution_parts: vec![Substitution {
+                span: sp,
+                substitutions: suggestions,
+            }],
+            msg: msg.to_owned(),
+        });
         self
     }
 

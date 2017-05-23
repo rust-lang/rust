@@ -209,9 +209,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                               expr_string,
                                                               item_name));
                                         }
-                                        err.span_label(span, &"field, not a method");
+                                        err.span_label(span, "field, not a method");
                                     } else {
-                                        err.span_label(span, &"private field, not a method");
+                                        err.span_label(span, "private field, not a method");
                                     }
                                     break;
                                 }
@@ -251,9 +251,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let bound_list = unsatisfied_predicates.iter()
                         .map(|p| format!("`{} : {}`", p.self_ty(), p))
                         .collect::<Vec<_>>()
-                        .join(", ");
+                        .join("\n");
                     err.note(&format!("the method `{}` exists but the following trait bounds \
-                                       were not satisfied: {}",
+                                       were not satisfied:\n{}",
                                       item_name,
                                       bound_list));
                 }
@@ -272,7 +272,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                span,
                                                E0034,
                                                "multiple applicable items in scope");
-                err.span_label(span, &format!("multiple `{}` found", item_name));
+                err.span_label(span, format!("multiple `{}` found", item_name));
 
                 report_candidates(&mut err, sources);
                 err.emit();

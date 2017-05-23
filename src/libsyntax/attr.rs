@@ -112,7 +112,7 @@ impl NestedMetaItem {
     /// Returns the MetaItem if self is a NestedMetaItemKind::MetaItem.
     pub fn meta_item(&self) -> Option<&MetaItem> {
         match self.node {
-            NestedMetaItemKind::MetaItem(ref item) => Some(&item),
+            NestedMetaItemKind::MetaItem(ref item) => Some(item),
             _ => None
         }
     }
@@ -120,7 +120,7 @@ impl NestedMetaItem {
     /// Returns the Lit if self is a NestedMetaItemKind::Literal.
     pub fn literal(&self) -> Option<&Lit> {
         match self.node {
-            NestedMetaItemKind::Literal(ref lit) => Some(&lit),
+            NestedMetaItemKind::Literal(ref lit) => Some(lit),
             _ => None
         }
     }
@@ -259,7 +259,7 @@ impl MetaItem {
         match self.node {
             MetaItemKind::NameValue(ref v) => {
                 match v.node {
-                    LitKind::Str(ref s, _) => Some((*s).clone()),
+                    LitKind::Str(ref s, _) => Some(*s),
                     _ => None,
                 }
             },
@@ -511,8 +511,7 @@ pub fn find_export_name_attr(diag: &Handler, attrs: &[Attribute]) -> Option<Symb
             } else {
                 struct_span_err!(diag, attr.span, E0558,
                                  "export_name attribute has invalid format")
-                    .span_label(attr.span,
-                                &format!("did you mean #[export_name=\"*\"]?"))
+                    .span_label(attr.span, "did you mean #[export_name=\"*\"]?")
                     .emit();
                 None
             }
@@ -1218,9 +1217,10 @@ impl LitKind {
                 Token::Literal(token::Lit::Float(symbol), Some(Symbol::intern(ty.ty_to_string())))
             }
             LitKind::FloatUnsuffixed(symbol) => Token::Literal(token::Lit::Float(symbol), None),
-            LitKind::Bool(value) => Token::Ident(Ident::with_empty_ctxt(Symbol::intern(match value {
-                true => "true",
-                false => "false",
+            LitKind::Bool(value) => Token::Ident(Ident::with_empty_ctxt(Symbol::intern(if value {
+                "true"
+            } else {
+                "false"
             }))),
         }
     }
@@ -1262,7 +1262,7 @@ impl<T: HasAttrs> HasAttrs for Spanned<T> {
 
 impl HasAttrs for Vec<Attribute> {
     fn attrs(&self) -> &[Attribute] {
-        &self
+        self
     }
     fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
         f(self)
@@ -1271,7 +1271,7 @@ impl HasAttrs for Vec<Attribute> {
 
 impl HasAttrs for ThinVec<Attribute> {
     fn attrs(&self) -> &[Attribute] {
-        &self
+        self
     }
     fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
         f(self.into()).into()

@@ -8,3 +8,4 @@ log = "0.3"
 env_logger = { version = "0.4", default-features = false }
 rustc-serialize = "0.3"
 filetime = "0.1"
+diff = "0.1.10"

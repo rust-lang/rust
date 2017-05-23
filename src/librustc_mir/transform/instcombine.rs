@@ -11,32 +11,20 @@
 //! Performs various peephole optimizations.
 
 use rustc::mir::{Location, Lvalue, Mir, Operand, ProjectionElem, Rvalue, Local};
-use rustc::mir::transform::{MirPass, MirSource, Pass};
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::{MutVisitor, Visitor};
 use rustc::ty::TyCtxt;
 use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;
 use std::mem;
 
-pub struct InstCombine {
-    optimizations: OptimizationList,
-}
+pub struct InstCombine;
 
-impl InstCombine {
-    pub fn new() -> InstCombine {
-        InstCombine {
-            optimizations: OptimizationList::default(),
-        }
-    }
-}
-
-impl Pass for InstCombine {}
-
-impl<'tcx> MirPass<'tcx> for InstCombine {
-    fn run_pass<'a>(&mut self,
-                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    _: MirSource,
-                    mir: &mut Mir<'tcx>) {
+impl MirPass for InstCombine {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          _: MirSource,
+                          mir: &mut Mir<'tcx>) {
         // We only run when optimizing MIR (at any level).
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return
@@ -45,18 +33,22 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
         // First, find optimization opportunities. This is done in a pre-pass to keep the MIR
         // read-only so that we can do global analyses on the MIR in the process (e.g.
         // `Lvalue::ty()`).
-        {
+        let optimizations = {
             let mut optimization_finder = OptimizationFinder::new(mir, tcx);
             optimization_finder.visit_mir(mir);
-            self.optimizations = optimization_finder.optimizations
-        }
+            optimization_finder.optimizations
+        };
 
         // Then carry out those optimizations.
-        MutVisitor::visit_mir(&mut *self, mir);
+        MutVisitor::visit_mir(&mut InstCombineVisitor { optimizations }, mir);
     }
 }
 
-impl<'tcx> MutVisitor<'tcx> for InstCombine {
+pub struct InstCombineVisitor {
+    optimizations: OptimizationList,
+}
+
+impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor {
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
         if self.optimizations.and_stars.remove(&location) {
             debug!("Replacing `&*`: {:?}", rvalue);

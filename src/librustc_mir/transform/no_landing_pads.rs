@@ -14,9 +14,24 @@
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc::mir::visit::MutVisitor;
-use rustc::mir::transform::{Pass, MirPass, MirSource};
+use rustc::mir::transform::{MirPass, MirSource};
 
 pub struct NoLandingPads;
+
+impl MirPass for NoLandingPads {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          _: MirSource,
+                          mir: &mut Mir<'tcx>) {
+        no_landing_pads(tcx, mir)
+    }
+}
+
+pub fn no_landing_pads<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &mut Mir<'tcx>) {
+    if tcx.sess.no_landing_pads() {
+        NoLandingPads.visit_mir(mir);
+    }
+}
 
 impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
     fn visit_terminator(&mut self,
@@ -41,18 +56,3 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
         self.super_terminator(bb, terminator, location);
     }
 }
-
-pub fn no_landing_pads<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &mut Mir<'tcx>) {
-    if tcx.sess.no_landing_pads() {
-        NoLandingPads.visit_mir(mir);
-    }
-}
-
-impl<'tcx> MirPass<'tcx> for NoLandingPads {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    _: MirSource, mir: &mut Mir<'tcx>) {
-        no_landing_pads(tcx, mir)
-    }
-}
-
-impl Pass for NoLandingPads {}

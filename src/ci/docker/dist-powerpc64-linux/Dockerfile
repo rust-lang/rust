@@ -56,14 +56,14 @@ RUN mkdir /x-tools && chown rustbuild:rustbuild /x-tools
 USER rustbuild
 WORKDIR /tmp
 
-COPY patches/ /tmp/patches/
-COPY shared.sh powerpc64-linux-gnu.config build-powerpc64-toolchain.sh /tmp/
+COPY dist-powerpc64-linux/patches/ /tmp/patches/
+COPY dist-powerpc64-linux/shared.sh dist-powerpc64-linux/powerpc64-linux-gnu.config dist-powerpc64-linux/build-powerpc64-toolchain.sh /tmp/
 RUN ./build-powerpc64-toolchain.sh
 
 USER root
 
 RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-04-04-sccache-x86_64-unknown-linux-musl && \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
       chmod +x /usr/local/bin/sccache
 
 ENV PATH=$PATH:/x-tools/powerpc64-unknown-linux-gnu/bin

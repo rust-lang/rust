@@ -10,14 +10,17 @@
 
 use rustc_data_structures::graph;
 use cfg::*;
+use middle::region::CodeExtent;
 use ty::{self, TyCtxt};
 use syntax::ast;
 use syntax::ptr::P;
 
 use hir::{self, PatKind};
+use hir::def_id::DefId;
 
 struct CFGBuilder<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    owner_def_id: DefId,
     tables: &'a ty::TypeckTables<'tcx>,
     graph: CFGGraph,
     fn_exit: CFGIndex,
@@ -52,10 +55,11 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Find the tables for this body.
     let owner_def_id = tcx.hir.local_def_id(tcx.hir.body_owner(body.id()));
-    let tables = tcx.item_tables(owner_def_id);
+    let tables = tcx.typeck_tables_of(owner_def_id);
 
     let mut cfg_builder = CFGBuilder {
         tcx: tcx,
+        owner_def_id,
         tables: tables,
         graph: graph,
         fn_exit: fn_exit,
@@ -583,11 +587,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                         scope_id: ast::NodeId,
                         to_index: CFGIndex) {
         let mut data = CFGEdgeData { exiting_scopes: vec![] };
-        let mut scope = self.tcx.region_maps.node_extent(from_expr.id);
-        let target_scope = self.tcx.region_maps.node_extent(scope_id);
+        let mut scope = CodeExtent::Misc(from_expr.id);
+        let target_scope = CodeExtent::Misc(scope_id);
+        let region_maps = self.tcx.region_maps(self.owner_def_id);
         while scope != target_scope {
-            data.exiting_scopes.push(scope.node_id(&self.tcx.region_maps));
-            scope = self.tcx.region_maps.encl_scope(scope);
+            data.exiting_scopes.push(scope.node_id());
+            scope = region_maps.encl_scope(scope);
         }
         self.graph.add_edge(from_index, to_index, data);
     }

@@ -21,11 +21,28 @@ root_dir="`dirname $src_dir`"
 
 source "$ci_dir/shared.sh"
 
-retry docker \
-  build \
-  --rm \
-  -t rust-ci \
-  "`dirname "$script"`/$image"
+if [ -f "$docker_dir/$image/Dockerfile" ]; then
+    retry docker \
+      build \
+      --rm \
+      -t rust-ci \
+      -f "$docker_dir/$image/Dockerfile" \
+      "$docker_dir"
+elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
+    if [ -n "$TRAVIS_OS_NAME" ]; then
+        echo Cannot run disabled images on travis!
+        exit 1
+    fi
+    retry docker \
+      build \
+      --rm \
+      -t rust-ci \
+      -f "$docker_dir/disabled/$image/Dockerfile" \
+      "$docker_dir"
+else
+    echo Invalid image: $image
+    exit 1
+fi
 
 objdir=$root_dir/obj
 

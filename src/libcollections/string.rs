@@ -56,10 +56,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use alloc::str as alloc_str;
+
 use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
-use core::mem;
 use core::ops::{self, Add, AddAssign, Index, IndexMut};
 use core::ptr;
 use core::str as core_str;
@@ -1316,7 +1317,7 @@ impl String {
         self.vec.clear()
     }
 
-    /// Create a draining iterator that removes the specified range in the string
+    /// Creates a draining iterator that removes the specified range in the string
     /// and yields the removed chars.
     ///
     /// Note: The element range is removed even if the iterator is not
@@ -1382,6 +1383,71 @@ impl String {
         }
     }
 
+    /// Creates a splicing iterator that removes the specified range in the string,
+    /// replaces with the given string, and yields the removed chars.
+    /// The given string doesn’t need to be the same length as the range.
+    ///
+    /// Note: The element range is removed when the `Splice` is dropped,
+    /// even if the iterator is not consumed until the end.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the starting point or end point do not lie on a [`char`]
+    /// boundary, or if they're out of bounds.
+    ///
+    /// [`char`]: ../../std/primitive.char.html
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(splice)]
+    /// let mut s = String::from("α is alpha, β is beta");
+    /// let beta_offset = s.find('β').unwrap_or(s.len());
+    ///
+    /// // Replace the range up until the β from the string
+    /// let t: String = s.splice(..beta_offset, "Α is capital alpha; ").collect();
+    /// assert_eq!(t, "α is alpha, ");
+    /// assert_eq!(s, "Α is capital alpha; β is beta");
+    /// ```
+    #[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+    pub fn splice<'a, 'b, R>(&'a mut self, range: R, replace_with: &'b str) -> Splice<'a, 'b>
+        where R: RangeArgument<usize>
+    {
+        // Memory safety
+        //
+        // The String version of Splice does not have the memory safety issues
+        // of the vector version. The data is just plain bytes.
+        // Because the range removal happens in Drop, if the Splice iterator is leaked,
+        // the removal will not happen.
+        let len = self.len();
+        let start = match range.start() {
+             Included(&n) => n,
+             Excluded(&n) => n + 1,
+             Unbounded => 0,
+        };
+        let end = match range.end() {
+             Included(&n) => n + 1,
+             Excluded(&n) => n,
+             Unbounded => len,
+        };
+
+        // Take out two simultaneous borrows. The &mut String won't be accessed
+        // until iteration is over, in Drop.
+        let self_ptr = self as *mut _;
+        // slicing does the appropriate bounds checks
+        let chars_iter = self[start..end].chars();
+
+        Splice {
+            start: start,
+            end: end,
+            iter: chars_iter,
+            string: self_ptr,
+            replace_with: replace_with
+        }
+    }
+
     /// Converts this `String` into a `Box<str>`.
     ///
     /// This will drop any excess capacity.
@@ -1398,7 +1464,7 @@ impl String {
     #[stable(feature = "box_str", since = "1.4.0")]
     pub fn into_boxed_str(self) -> Box<str> {
         let slice = self.vec.into_boxed_slice();
-        unsafe { mem::transmute::<Box<[u8]>, Box<str>>(slice) }
+        unsafe { alloc_str::from_boxed_utf8_unchecked(slice) }
     }
 }
 
@@ -1538,6 +1604,15 @@ impl FromIterator<String> for String {
     }
 }
 
+#[stable(feature = "herd_cows", since = "1.19.0")]
+impl<'a> FromIterator<Cow<'a, str>> for String {
+    fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String {
+        let mut buf = String::new();
+        buf.extend(iter);
+        buf
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<char> for String {
     fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {
@@ -1569,6 +1644,15 @@ impl<'a> Extend<&'a str> for String {
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl Extend<String> for String {
     fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
+        for s in iter {
+            self.push_str(&s)
+        }
+    }
+}
+
+#[stable(feature = "herd_cows", since = "1.19.0")]
+impl<'a> Extend<Cow<'a, str>> for String {
+    fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
         for s in iter {
             self.push_str(&s)
         }
@@ -1785,28 +1869,28 @@ impl ops::Index<ops::RangeToInclusive<usize>> for String {
     }
 }
 
-#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+#[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::Range<usize>> for String {
     #[inline]
     fn index_mut(&mut self, index: ops::Range<usize>) -> &mut str {
         &mut self[..][index]
     }
 }
-#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+#[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::RangeTo<usize>> for String {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut str {
         &mut self[..][index]
     }
 }
-#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+#[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::RangeFrom<usize>> for String {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut str {
         &mut self[..][index]
     }
 }
-#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+#[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::RangeFull> for String {
     #[inline]
     fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {
@@ -1838,7 +1922,7 @@ impl ops::Deref for String {
     }
 }
 
-#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+#[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::DerefMut for String {
     #[inline]
     fn deref_mut(&mut self) -> &mut str {
@@ -1996,14 +2080,14 @@ impl<'a> From<&'a str> for String {
 
 // note: test pulls in libstd, which causes errors here
 #[cfg(not(test))]
-#[stable(feature = "string_from_box", since = "1.17.0")]
+#[stable(feature = "string_from_box", since = "1.18.0")]
 impl From<Box<str>> for String {
     fn from(s: Box<str>) -> String {
         s.into_string()
     }
 }
 
-#[stable(feature = "box_from_str", since = "1.17.0")]
+#[stable(feature = "box_from_str", since = "1.18.0")]
 impl Into<Box<str>> for String {
     fn into(self) -> Box<str> {
         self.into_boxed_str()
@@ -2145,3 +2229,61 @@ impl<'a> DoubleEndedIterator for Drain<'a> {
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a> FusedIterator for Drain<'a> {}
+
+/// A splicing iterator for `String`.
+///
+/// This struct is created by the [`splice()`] method on [`String`]. See its
+/// documentation for more.
+///
+/// [`splice()`]: struct.String.html#method.splice
+/// [`String`]: struct.String.html
+#[derive(Debug)]
+#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+pub struct Splice<'a, 'b> {
+    /// Will be used as &'a mut String in the destructor
+    string: *mut String,
+    /// Start of part to remove
+    start: usize,
+    /// End of part to remove
+    end: usize,
+    /// Current remaining range to remove
+    iter: Chars<'a>,
+    replace_with: &'b str,
+}
+
+#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+unsafe impl<'a, 'b> Sync for Splice<'a, 'b> {}
+#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+unsafe impl<'a, 'b> Send for Splice<'a, 'b> {}
+
+#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+impl<'a, 'b> Drop for Splice<'a, 'b> {
+    fn drop(&mut self) {
+        unsafe {
+            let vec = (*self.string).as_mut_vec();
+            vec.splice(self.start..self.end, self.replace_with.bytes());
+        }
+    }
+}
+
+#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+impl<'a, 'b> Iterator for Splice<'a, 'b> {
+    type Item = char;
+
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        self.iter.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+impl<'a, 'b> DoubleEndedIterator for Splice<'a, 'b> {
+    #[inline]
+    fn next_back(&mut self) -> Option<char> {
+        self.iter.next_back()
+    }
+}

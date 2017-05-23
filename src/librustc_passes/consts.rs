@@ -130,7 +130,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         };
 
         let outer_tables = self.tables;
-        self.tables = self.tcx.item_tables(self.tcx.hir.local_def_id(item_id));
+        let item_def_id = self.tcx.hir.local_def_id(item_id);
+        self.tables = self.tcx.typeck_tables_of(item_def_id);
 
         let body = self.tcx.hir.body(body_id);
         if !self.in_fn {
@@ -140,7 +141,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         let outer_penv = self.tcx.infer_ctxt(body_id, Reveal::UserFacing).enter(|infcx| {
             let param_env = infcx.parameter_environment.clone();
             let outer_penv = mem::replace(&mut self.param_env, param_env);
-            euv::ExprUseVisitor::new(self, &infcx).consume_body(body);
+            let region_maps = &self.tcx.region_maps(item_def_id);;
+            euv::ExprUseVisitor::new(self, region_maps, &infcx).consume_body(body);
             outer_penv
         });
 
@@ -178,7 +180,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
                     Ok(Ordering::Greater) => {
                         struct_span_err!(self.tcx.sess, start.span, E0030,
                             "lower range bound must be less than or equal to upper")
-                            .span_label(start.span, &format!("lower bound larger than upper bound"))
+                            .span_label(start.span, "lower bound larger than upper bound")
                             .emit();
                     }
                     Err(ErrorReported) => {}
@@ -336,7 +338,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                             _ => false
                         }
                     } else {
-                        v.tcx.sess.cstore.const_is_rvalue_promotable_to_static(did)
+                        v.tcx.const_is_rvalue_promotable_to_static(did)
                     };
                 }
                 _ => {
@@ -480,7 +482,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
               borrow_id: ast::NodeId,
               _borrow_span: Span,
               cmt: mc::cmt<'tcx>,
-              _loan_region: &'tcx ty::Region,
+              _loan_region: ty::Region<'tcx>,
               bk: ty::BorrowKind,
               loan_cause: euv::LoanCause) {
         // Kind of hacky, but we allow Unsafe coercions in constants.

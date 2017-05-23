@@ -37,6 +37,7 @@ use rustc::ty::{self, TyCtxt, AssociatedItemContainer};
 use std::collections::HashSet;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::*;
+use std::path::Path;
 
 use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
 use syntax::parse::token;
@@ -114,20 +115,21 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         where F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, D>)
     {
         let item_def_id = self.tcx.hir.local_def_id(item_id);
-        match self.tcx.maps.typeck_tables.borrow().get(&item_def_id) {
-            Some(tables) => {
-                let old_tables = self.save_ctxt.tables;
-                self.save_ctxt.tables = tables;
-                f(self);
-                self.save_ctxt.tables = old_tables;
-            }
-            None => f(self),
+        if self.tcx.has_typeck_tables(item_def_id) {
+            let tables = self.tcx.typeck_tables_of(item_def_id);
+            let old_tables = self.save_ctxt.tables;
+            self.save_ctxt.tables = tables;
+            f(self);
+            self.save_ctxt.tables = old_tables;
+        } else {
+            f(self);
         }
     }
 
     pub fn dump_crate_info(&mut self, name: &str, krate: &ast::Crate) {
         let source_file = self.tcx.sess.local_crate_source_file.as_ref();
         let crate_root = source_file.map(|source_file| {
+            let source_file = Path::new(source_file);
             match source_file.file_name() {
                 Some(_) => source_file.parent().unwrap().display().to_string(),
                 None => source_file.display().to_string(),
@@ -430,7 +432,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             }
                             None => {
                                 if let Some(NodeItem(item)) = self.tcx.hir.get_if_local(id) {
-                                    if let hir::ItemImpl(_, _, _, _, ref ty, _) = item.node {
+                                    if let hir::ItemImpl(_, _, _, _, _, ref ty, _) = item.node {
                                         trait_id = self.lookup_def_id(ty.id);
                                     }
                                 }
@@ -1209,6 +1211,31 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 }
 
 impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll, D> {
+    fn visit_mod(&mut self, m: &'l ast::Mod, span: Span, attrs: &[ast::Attribute], id: NodeId) {
+        // Since we handle explicit modules ourselves in visit_item, this should
+        // only get called for the root module of a crate.
+        assert_eq!(id, ast::CRATE_NODE_ID);
+
+        let qualname = format!("::{}", self.tcx.node_path_str(id));
+
+        let cm = self.tcx.sess.codemap();
+        let filename = cm.span_to_filename(span);
+        self.dumper.mod_data(ModData {
+            id: id,
+            name: String::new(),
+            qualname: qualname,
+            span: span,
+            scope: id,
+            filename: filename,
+            items: m.items.iter().map(|i| i.id).collect(),
+            visibility: Visibility::Public,
+            docs: docs_for_attrs(attrs),
+            sig: None,
+            attributes: attrs.to_owned(),
+        }.lower(self.tcx));
+        self.nest_scope(id, |v| visit::walk_mod(v, m));
+    }
+
     fn visit_item(&mut self, item: &'l ast::Item) {
         use syntax::ast::ItemKind::*;
         self.process_macro_use(item.span, item.id);

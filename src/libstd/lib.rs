@@ -281,6 +281,7 @@
 #![feature(linkage)]
 #![feature(macro_reexport)]
 #![feature(needs_panic_runtime)]
+#![feature(needs_drop)]
 #![feature(never_type)]
 #![feature(num_bits_bytes)]
 #![feature(old_wrapping)]
@@ -318,7 +319,6 @@
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![cfg_attr(test, feature(update_panic_count))]
-#![cfg_attr(stage0, feature(pub_restricted))]
 #![cfg_attr(test, feature(float_bits_conv))]
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute

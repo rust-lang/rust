@@ -30,7 +30,7 @@
 //! future.
 
 use rustc::mir::{Constant, Local, LocalKind, Location, Lvalue, Mir, Operand, Rvalue, StatementKind};
-use rustc::mir::transform::{MirPass, MirSource, Pass};
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
 use util::def_use::DefUseAnalysis;
@@ -38,13 +38,11 @@ use transform::qualify_consts;
 
 pub struct CopyPropagation;
 
-impl Pass for CopyPropagation {}
-
-impl<'tcx> MirPass<'tcx> for CopyPropagation {
-    fn run_pass<'a>(&mut self,
-                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    source: MirSource,
-                    mir: &mut Mir<'tcx>) {
+impl MirPass for CopyPropagation {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          source: MirSource,
+                          mir: &mut Mir<'tcx>) {
         match source {
             MirSource::Const(_) => {
                 // Don't run on constants, because constant qualification might reject the
@@ -318,7 +316,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstantPropagationVisitor<'tcx> {
             _ => return,
         }
 
-        *operand = Operand::Constant(self.constant.clone());
+        *operand = Operand::Constant(box self.constant.clone());
         self.uses_replaced += 1
     }
 }

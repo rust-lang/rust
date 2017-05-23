@@ -10,7 +10,7 @@
 
 use super::probe;
 
-use check::{FnCtxt, callee};
+use check::{FnCtxt, LvalueOp, callee};
 use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
@@ -276,7 +276,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // If they were not explicitly supplied, just construct fresh
         // variables.
         let num_supplied_types = supplied_method_types.len();
-        let method_generics = self.tcx.item_generics(pick.item.def_id);
+        let method_generics = self.tcx.generics_of(pick.item.def_id);
         let num_method_types = method_generics.types.len();
 
         if num_supplied_types > 0 && num_supplied_types != num_method_types {
@@ -285,7 +285,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                  self.span,
                                  E0035,
                                  "does not take type parameters")
-                    .span_label(self.span, &"called with unneeded type parameters")
+                    .span_label(self.span, "called with unneeded type parameters")
                     .emit();
             } else {
                 struct_span_err!(self.tcx.sess,
@@ -296,7 +296,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                  num_method_types,
                                  num_supplied_types)
                     .span_label(self.span,
-                                &format!("Passed {} type argument{}, expected {}",
+                                format!("Passed {} type argument{}, expected {}",
                                          num_supplied_types,
                                          if num_supplied_types != 1 { "s" } else { "" },
                                          num_method_types))
@@ -358,14 +358,14 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // type/early-bound-regions substitutions performed. There can
         // be no late-bound regions appearing here.
         let def_id = pick.item.def_id;
-        let method_predicates = self.tcx.item_predicates(def_id)
+        let method_predicates = self.tcx.predicates_of(def_id)
                                     .instantiate(self.tcx, all_substs);
         let method_predicates = self.normalize_associated_types_in(self.span,
                                                                    &method_predicates);
 
         debug!("method_predicates after subst = {:?}", method_predicates);
 
-        let sig = self.tcx.item_type(def_id).fn_sig();
+        let sig = self.tcx.type_of(def_id).fn_sig();
 
         // Instantiate late-bound regions and substitute the trait
         // parameters into the method type to get the actual method type.
@@ -433,122 +433,91 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         for (i, &expr) in exprs.iter().rev().enumerate() {
             debug!("convert_lvalue_derefs_to_mutable: i={} expr={:?}", i, expr);
 
-            // Count autoderefs. We don't need to fix up the autoref - the parent
-            // expression will fix them up for us.
-            let adjustment = self.tables.borrow().adjustments.get(&expr.id).cloned();
-            match adjustment {
-                Some(Adjustment { kind: Adjust::DerefRef { autoderefs, .. }, .. }) => {
-                    if autoderefs > 0 {
-                        let mut autoderef = self.autoderef(expr.span, self.node_ty(expr.id));
-                        autoderef.nth(autoderefs).unwrap_or_else(|| {
-                            span_bug!(expr.span,
-                                      "expr was deref-able {} times but now isn't?",
-                                      autoderefs);
-                        });
-                        autoderef.finalize(PreferMutLvalue, expr);
-                    }
-                }
-                Some(_) | None => {}
+            // Fix up the autoderefs. Autorefs can only occur immediately preceding
+            // overloaded lvalue ops, and will be fixed by them in order to get
+            // the correct region.
+            let autoderefs = match self.tables.borrow().adjustments.get(&expr.id) {
+                Some(&Adjustment { kind: Adjust::DerefRef { autoderefs, .. }, .. }) => autoderefs,
+                Some(_) | None => 0
+            };
+
+            if autoderefs > 0 {
+                let mut autoderef = self.autoderef(expr.span, self.node_ty(expr.id));
+                autoderef.nth(autoderefs).unwrap_or_else(|| {
+                    span_bug!(expr.span,
+                              "expr was deref-able {} times but now isn't?",
+                              autoderefs);
+                });
+                autoderef.finalize(PreferMutLvalue, expr);
             }
 
-            // Don't retry the first one or we might infinite loop!
-            if i == 0 {
-                continue;
-            }
             match expr.node {
                 hir::ExprIndex(ref base_expr, ref index_expr) => {
-                    // If this is an overloaded index, the
-                    // adjustment will include an extra layer of
-                    // autoref because the method is an &self/&mut
-                    // self method. We have to peel it off to get
-                    // the raw adjustment that `try_index_step`
-                    // expects. This is annoying and horrible. We
-                    // ought to recode this routine so it doesn't
-                    // (ab)use the normal type checking paths.
-                    let adj = self.tables.borrow_mut().adjustments.remove(&base_expr.id);
-                    let (autoderefs, unsize, adjusted_base_ty) = match adj {
-                        Some(Adjustment {
-                            kind: Adjust::DerefRef { autoderefs, autoref, unsize },
-                            target
-                        }) => {
-                            match autoref {
-                                None => {
-                                    assert!(!unsize);
-                                }
-                                Some(AutoBorrow::Ref(..)) => {}
-                                Some(_) => {
-                                    span_bug!(base_expr.span,
-                                              "unexpected adjustment autoref {:?}",
-                                              adj);
-                                }
-                            }
-
-                            (autoderefs, unsize, if unsize {
-                                target.builtin_deref(false, NoPreference)
-                                      .expect("fixup: AutoBorrow::Ref is not &T")
-                                      .ty
-                            } else {
-                                let ty = self.node_ty(base_expr.id);
-                                let mut ty = self.shallow_resolve(ty);
-                                let mut method_type = |method_call: ty::MethodCall| {
-                                    self.tables.borrow().method_map.get(&method_call).map(|m| {
-                                        self.resolve_type_vars_if_possible(&m.ty)
-                                    })
-                                };
-
-                                if !ty.references_error() {
-                                    for i in 0..autoderefs {
-                                        ty = ty.adjust_for_autoderef(self.tcx,
-                                                                     base_expr.id,
-                                                                     base_expr.span,
-                                                                     i as u32,
-                                                                     &mut method_type);
-                                    }
-                                }
-
-                                ty
-                            })
-                        }
-                        None => (0, false, self.node_ty(base_expr.id)),
-                        Some(_) => {
-                            span_bug!(base_expr.span, "unexpected adjustment type");
-                        }
-                    };
-
                     let index_expr_ty = self.node_ty(index_expr.id);
-
-                    let result = self.try_index_step(ty::MethodCall::expr(expr.id),
-                                                     expr,
-                                                     &base_expr,
-                                                     adjusted_base_ty,
-                                                     autoderefs,
-                                                     unsize,
-                                                     PreferMutLvalue,
-                                                     index_expr_ty);
-
-                    if let Some((input_ty, return_ty)) = result {
-                        self.demand_suptype(index_expr.span, input_ty, index_expr_ty);
-
-                        let expr_ty = self.node_ty(expr.id);
-                        self.demand_suptype(expr.span, expr_ty, return_ty);
-                    }
+                    self.convert_lvalue_op_to_mutable(
+                        LvalueOp::Index, expr, base_expr, &[index_expr_ty]);
                 }
                 hir::ExprUnary(hir::UnDeref, ref base_expr) => {
-                    // if this is an overloaded deref, then re-evaluate with
-                    // a preference for mut
-                    let method_call = ty::MethodCall::expr(expr.id);
-                    if self.tables.borrow().method_map.contains_key(&method_call) {
-                        self.tables.borrow_mut().adjustments.remove(&base_expr.id);
-                        let method = self.try_overloaded_deref(expr.span,
-                                                               Some(&base_expr),
-                                                               self.node_ty(base_expr.id),
-                                                               PreferMutLvalue);
-                        let ok = method.expect("re-trying deref failed");
-                        let method = self.register_infer_ok_obligations(ok);
-                        self.tables.borrow_mut().method_map.insert(method_call, method);
-                    }
+                    self.convert_lvalue_op_to_mutable(
+                        LvalueOp::Deref, expr, base_expr, &[]);
                 }
                 _ => {}
+            }
+        }
+    }
+
+    fn convert_lvalue_op_to_mutable(&self,
+                                    op: LvalueOp,
+                                    expr: &hir::Expr,
+                                    base_expr: &hir::Expr,
+                                    arg_tys: &[Ty<'tcx>])
+    {
+        debug!("convert_lvalue_op_to_mutable({:?}, {:?}, {:?}, {:?})",
+               op, expr, base_expr, arg_tys);
+        let method_call = ty::MethodCall::expr(expr.id);
+        if !self.tables.borrow().method_map.contains_key(&method_call) {
+            debug!("convert_lvalue_op_to_mutable - builtin, nothing to do");
+            return
+        }
+
+        let base_ty = self.tables.borrow().adjustments.get(&base_expr.id)
+            .map_or_else(|| self.node_ty(expr.id), |adj| adj.target);
+        let base_ty = self.resolve_type_vars_if_possible(&base_ty);
+
+        // Need to deref because overloaded lvalue ops take self by-reference.
+        let base_ty = base_ty.builtin_deref(false, NoPreference)
+            .expect("lvalue op takes something that is not a ref")
+            .ty;
+
+        let method = self.try_overloaded_lvalue_op(
+            expr.span, None, base_ty, arg_tys, PreferMutLvalue, op);
+        let ok = match method {
+            Some(method) => method,
+            None => return self.tcx.sess.delay_span_bug(expr.span, "re-trying op failed")
+        };
+        let method = self.register_infer_ok_obligations(ok);
+        debug!("convert_lvalue_op_to_mutable: method={:?}", method);
+        self.tables.borrow_mut().method_map.insert(method_call, method);
+
+        // Convert the autoref in the base expr to mutable with the correct
+        // region and mutability.
+        if let Some(&mut Adjustment {
+            ref mut target, kind: Adjust::DerefRef {
+                autoref: Some(AutoBorrow::Ref(ref mut r, ref mut mutbl)), ..
+            }
+        }) = self.tables.borrow_mut().adjustments.get_mut(&base_expr.id) {
+            debug!("convert_lvalue_op_to_mutable: converting autoref of {:?}", target);
+
+            // extract method return type, which will be &mut T;
+            // all LB regions should have been instantiated during method lookup
+            let method_sig = self.tcx.no_late_bound_regions(&method.ty.fn_sig()).unwrap();
+
+            *target = method_sig.inputs()[0];
+            if let ty::TyRef(r_, mt) = target.sty {
+                *r = r_;
+                *mutbl = mt.mutbl;
+            } else {
+                span_bug!(expr.span, "input to lvalue op is not a ref?");
             }
         }
     }

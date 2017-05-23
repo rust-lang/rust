@@ -70,13 +70,16 @@ pub use core::str::{Matches, RMatches};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{MatchIndices, RMatchIndices};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{from_utf8, Chars, CharIndices, Bytes};
+pub use core::str::{from_utf8, from_utf8_mut, Chars, CharIndices, Bytes};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{from_utf8_unchecked, from_utf8_unchecked_mut, ParseBoolError};
+#[unstable(feature = "str_box_extras", issue = "41119")]
+pub use alloc::str::from_boxed_utf8_unchecked;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use std_unicode::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
+
 
 #[unstable(feature = "slice_concat_ext",
            reason = "trait should not have to exist",
@@ -172,18 +175,6 @@ impl<'a> Iterator for EncodeUtf16<'a> {
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a> FusedIterator for EncodeUtf16<'a> {}
-
-// Return the initial codepoint accumulator for the first byte.
-// The first byte is special, only want bottom 5 bits for width 2, 4 bits
-// for width 3, and 3 bits for width 4
-macro_rules! utf8_first_byte {
-    ($byte:expr, $width:expr) => (($byte & (0x7F >> $width)) as u32)
-}
-
-// return the value of $ch updated with continuation byte $byte
-macro_rules! utf8_acc_cont_byte {
-    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63) as u32)
-}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Borrow<str> for String {
@@ -822,6 +813,7 @@ impl str {
     /// assert!(!bananas.contains("apples"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn contains<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
         core_str::StrExt::contains(self, pat)
     }
@@ -909,6 +901,7 @@ impl str {
     /// assert_eq!(s.find(x), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
         core_str::StrExt::find(self, pat)
     }
@@ -953,6 +946,7 @@ impl str {
     /// assert_eq!(s.rfind(x), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -1066,6 +1060,7 @@ impl str {
     ///
     /// [`split_whitespace`]: #method.split_whitespace
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
         core_str::StrExt::split(self, pat)
     }
@@ -1115,6 +1110,7 @@ impl str {
     /// assert_eq!(v, ["ghi", "def", "abc"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -1161,6 +1157,7 @@ impl str {
     /// assert_eq!(v, ["A", "", "B", ""]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
         core_str::StrExt::split_terminator(self, pat)
     }
@@ -1204,6 +1201,7 @@ impl str {
     /// assert_eq!(v, ["", "B", "", "A"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn rsplit_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplitTerminator<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -1256,6 +1254,7 @@ impl str {
     /// assert_eq!(v, ["abc", "defXghi"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn splitn<'a, P: Pattern<'a>>(&'a self, n: usize, pat: P) -> SplitN<'a, P> {
         core_str::StrExt::splitn(self, n, pat)
     }
@@ -1303,6 +1302,7 @@ impl str {
     /// assert_eq!(v, ["ghi", "abc1def"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn rsplitn<'a, P: Pattern<'a>>(&'a self, n: usize, pat: P) -> RSplitN<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -1343,6 +1343,7 @@ impl str {
     /// assert_eq!(v, ["1", "2", "3"]);
     /// ```
     #[stable(feature = "str_matches", since = "1.2.0")]
+    #[inline]
     pub fn matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> Matches<'a, P> {
         core_str::StrExt::matches(self, pat)
     }
@@ -1379,6 +1380,7 @@ impl str {
     /// assert_eq!(v, ["3", "2", "1"]);
     /// ```
     #[stable(feature = "str_matches", since = "1.2.0")]
+    #[inline]
     pub fn rmatches<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatches<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -1424,6 +1426,7 @@ impl str {
     /// assert_eq!(v, [(0, "aba")]); // only the first `aba`
     /// ```
     #[stable(feature = "str_match_indices", since = "1.5.0")]
+    #[inline]
     pub fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
         core_str::StrExt::match_indices(self, pat)
     }
@@ -1466,6 +1469,7 @@ impl str {
     /// assert_eq!(v, [(2, "aba")]); // only the last `aba`
     /// ```
     #[stable(feature = "str_match_indices", since = "1.5.0")]
+    #[inline]
     pub fn rmatch_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatchIndices<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -1715,6 +1719,12 @@ impl str {
         core_str::StrExt::parse(self)
     }
 
+    /// Converts a `Box<str>` into a `Box<[u8]>` without copying or allocating.
+    #[unstable(feature = "str_box_extras", issue = "41119")]
+    pub fn into_boxed_bytes(self: Box<str>) -> Box<[u8]> {
+        self.into()
+    }
+
     /// Replaces all matches of a pattern with another string.
     ///
     /// `replace` creates a new [`String`], and copies the data from this string slice into it.
@@ -1740,6 +1750,7 @@ impl str {
     /// assert_eq!(s, s.replace("cookie monster", "little lamb"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn replace<'a, P: Pattern<'a>>(&'a self, from: P, to: &str) -> String {
         let mut result = String::new();
         let mut last_end = 0;

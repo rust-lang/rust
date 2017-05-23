@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   lib32stdc++6
 
 RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-04-04-sccache-x86_64-unknown-linux-musl && \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
       chmod +x /usr/local/bin/sccache
 
 RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
@@ -24,13 +24,13 @@ RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-ini
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 WORKDIR /tmp
-COPY build-emscripten.sh /tmp/
+COPY emscripten/build-emscripten.sh /tmp/
 RUN ./build-emscripten.sh
 ENV PATH=$PATH:/tmp/emsdk_portable
-ENV PATH=$PATH:/tmp/emsdk_portable/clang/tag-e1.37.1/build_tag-e1.37.1_32/bin
+ENV PATH=$PATH:/tmp/emsdk_portable/clang/tag-e1.37.10/build_tag-e1.37.10_32/bin
 ENV PATH=$PATH:/tmp/emsdk_portable/node/4.1.1_32bit/bin
-ENV PATH=$PATH:/tmp/emsdk_portable/emscripten/tag-1.37.1
-ENV EMSCRIPTEN=/tmp/emsdk_portable/emscripten/tag-1.37.1
+ENV PATH=$PATH:/tmp/emsdk_portable/emscripten/tag-1.37.10
+ENV EMSCRIPTEN=/tmp/emsdk_portable/emscripten/tag-1.37.10
 
 ENV RUST_CONFIGURE_ARGS --target=asmjs-unknown-emscripten
 

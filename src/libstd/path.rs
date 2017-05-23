@@ -51,10 +51,17 @@
 //! ```
 //! use std::path::PathBuf;
 //!
+//! // This way works...
 //! let mut path = PathBuf::from("c:\\");
+//!
 //! path.push("windows");
 //! path.push("system32");
+//!
 //! path.set_extension("dll");
+//!
+//! // ... but push is best used if you don't know everything up
+//! // front. If you do, this way is better:
+//! let path: PathBuf = ["c:\\", "windows", "system32.dll"].iter().collect();
 //! ```
 //!
 //! [`Component`]: ../../std/path/enum.Component.html
@@ -63,6 +70,7 @@
 //! [`Path`]: ../../std/path/struct.Path.html
 //! [`push`]: ../../std/path/struct.PathBuf.html#method.push
 //! [`String`]: ../../std/string/struct.String.html
+//!
 //! [`str`]: ../../std/primitive.str.html
 //! [`OsString`]: ../../std/ffi/struct.OsString.html
 //! [`OsStr`]: ../../std/ffi/struct.OsStr.html
@@ -1036,14 +1044,40 @@ impl<'a> cmp::Ord for Components<'a> {
 ///
 /// # Examples
 ///
+/// You can use [`push`] to build up a `PathBuf` from
+/// components:
+///
 /// ```
 /// use std::path::PathBuf;
 ///
-/// let mut path = PathBuf::from("c:\\");
+/// let mut path = PathBuf::new();
+///
+/// path.push(r"C:\");
 /// path.push("windows");
 /// path.push("system32");
+///
 /// path.set_extension("dll");
 /// ```
+///
+/// However, [`push`] is best used for dynamic situations. This is a better way
+/// to do this when you know all of the components ahead of time:
+///
+/// ```
+/// use std::path::PathBuf;
+///
+/// let path: PathBuf = [r"C:\", "windows", "system32.dll"].iter().collect();
+/// ```
+///
+/// We can still do better than this! Since these are all strings, we can use
+/// `From::from`:
+///
+/// ```
+/// use std::path::PathBuf;
+///
+/// let path = PathBuf::from(r"C:\windows\system32.dll");
+/// ```
+///
+/// Which method works best depends on what kind of situation you're in.
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PathBuf {
@@ -1307,14 +1341,14 @@ impl<'a> From<&'a Path> for Box<Path> {
     }
 }
 
-#[stable(feature = "path_buf_from_box", since = "1.17.0")]
-impl<'a> From<Box<Path>> for PathBuf {
+#[stable(feature = "path_buf_from_box", since = "1.18.0")]
+impl From<Box<Path>> for PathBuf {
     fn from(boxed: Box<Path>) -> PathBuf {
         boxed.into_path_buf()
     }
 }
 
-#[stable(feature = "box_from_path_buf", since = "1.17.0")]
+#[stable(feature = "box_from_path_buf", since = "1.18.0")]
 impl Into<Box<Path>> for PathBuf {
     fn into(self) -> Box<Path> {
         self.into_boxed_path()
@@ -1390,7 +1424,7 @@ impl Borrow<Path> for PathBuf {
     }
 }
 
-#[stable(feature = "default_for_pathbuf", since = "1.16.0")]
+#[stable(feature = "default_for_pathbuf", since = "1.17.0")]
 impl Default for PathBuf {
     fn default() -> Self {
         PathBuf::new()

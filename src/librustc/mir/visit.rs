@@ -515,6 +515,7 @@ macro_rules! make_mir_visitor {
 
                     Rvalue::Aggregate(ref $($mutability)* kind,
                                       ref $($mutability)* operands) => {
+                        let kind = &$($mutability)* **kind;
                         match *kind {
                             AggregateKind::Array(ref $($mutability)* ty) => {
                                 self.visit_ty(ty);
@@ -747,7 +748,7 @@ pub enum LvalueContext<'tcx> {
     Inspect,
 
     // Being borrowed
-    Borrow { region: &'tcx Region, kind: BorrowKind },
+    Borrow { region: Region<'tcx>, kind: BorrowKind },
 
     // Used as base for another lvalue, e.g. `x` in `x.y`.
     //

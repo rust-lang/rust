@@ -11,9 +11,10 @@ crate-type = ["dylib"]
 [dependencies]
 log = "0.3"
 rustc = { path = "../librustc" }
+rustc_typeck = { path = "../librustc_typeck" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
-rls-data = "0.1"
-rls-span = "0.1"
+rls-data = "0.3"
+rls-span = "0.4"
 # FIXME(#40527) should move rustc serialize out of tree
 rustc-serialize = "0.3"

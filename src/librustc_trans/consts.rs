@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use back::symbol_names;
 use llvm;
 use llvm::{SetUnnamedAddr};
 use llvm::{ValueRef, True};
@@ -93,8 +91,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
             hir_map::NodeItem(&hir::Item {
                 ref attrs, span, node: hir::ItemStatic(..), ..
             }) => {
-                let sym = ccx.symbol_cache()
-                             .get(TransItem::Static(id));
+                let sym = TransItem::Static(id).symbol_name(ccx.tcx());
 
                 let defined_in_current_codegen_unit = ccx.codegen_unit()
                                                          .items()
@@ -113,7 +110,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
             hir_map::NodeForeignItem(&hir::ForeignItem {
                 ref attrs, span, node: hir::ForeignItemStatic(..), ..
             }) => {
-                let sym = symbol_names::symbol_name(instance, ccx.tcx());
+                let sym = ccx.tcx().symbol_name(instance);
                 let g = if let Some(name) =
                         attr::first_attr_value_str_by_name(&attrs, "linkage") {
                     // If this is a static with a linkage specified, then we need to handle
@@ -173,7 +170,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
 
         g
     } else {
-        let sym = symbol_names::symbol_name(instance, ccx.tcx());
+        let sym = ccx.tcx().symbol_name(instance);
 
         // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
         // FIXME(nagisa): investigate whether it can be changed into define_global
@@ -189,7 +186,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                 llvm::set_thread_local(g, true);
             }
         }
-        if ccx.use_dll_storage_attrs() && !ccx.sess().cstore.is_foreign_item(def_id) {
+        if ccx.use_dll_storage_attrs() && !ccx.tcx().is_foreign_item(def_id) {
             // This item is external but not foreign, i.e. it originates from an external Rust
             // crate. Since we don't know whether this crate will be linked dynamically or
             // statically in the final application, we always mark such symbols as 'dllimport'.

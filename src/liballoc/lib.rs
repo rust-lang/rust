@@ -87,7 +87,6 @@
 #![feature(needs_allocator)]
 #![feature(optin_builtin_traits)]
 #![feature(placement_in_syntax)]
-#![cfg_attr(stage0, feature(pub_restricted))]
 #![feature(shared)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
@@ -129,6 +128,8 @@ mod boxed_test;
 pub mod arc;
 pub mod rc;
 pub mod raw_vec;
+#[unstable(feature = "str_box_extras", issue = "41119")]
+pub mod str;
 pub mod oom;
 
 pub use oom::oom;

@@ -113,22 +113,22 @@
 //! between using 'left' and 'right' terms to denote the wrapped-to-ring-buffer
 //! and point-in-infinite-stream senses freely.
 //!
-//! There is a parallel ring buffer, 'size', that holds the calculated size of
+//! There is a parallel ring buffer, `size`, that holds the calculated size of
 //! each token. Why calculated? Because for Begin/End pairs, the "size"
 //! includes everything between the pair. That is, the "size" of Begin is
 //! actually the sum of the sizes of everything between Begin and the paired
-//! End that follows. Since that is arbitrarily far in the future, 'size' is
+//! End that follows. Since that is arbitrarily far in the future, `size` is
 //! being rewritten regularly while the printer runs; in fact most of the
-//! machinery is here to work out 'size' entries on the fly (and give up when
+//! machinery is here to work out `size` entries on the fly (and give up when
 //! they're so obviously over-long that "infinity" is a good enough
 //! approximation for purposes of line breaking).
 //!
 //! The "input side" of the printer is managed as an abstract process called
-//! SCAN, which uses 'scan_stack', to manage calculating 'size'. SCAN is, in
+//! SCAN, which uses `scan_stack`, to manage calculating `size`. SCAN is, in
 //! other words, the process of calculating 'size' entries.
 //!
 //! The "output side" of the printer is managed by an abstract process called
-//! PRINT, which uses 'print_stack', 'margin' and 'space' to figure out what to
+//! PRINT, which uses `print_stack`, `margin` and `space` to figure out what to
 //! do with each token/size pair it consumes as it goes. It's trying to consume
 //! the entire buffered window, but can't output anything until the size is >=
 //! 0 (sizes are set to negative while they're pending calculation).
@@ -409,7 +409,7 @@ impl<'a> Printer<'a> {
     pub fn advance_right(&mut self) {
         self.right += 1;
         self.right %= self.buf_len;
-        assert!(self.right != self.left);
+        assert_ne!(self.right, self.left);
     }
     pub fn advance_left(&mut self) -> io::Result<()> {
         debug!("advance_left Vec<{},{}>, sizeof({})={}", self.left, self.right,

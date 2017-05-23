@@ -56,14 +56,14 @@ RUN mkdir /x-tools && chown rustbuild:rustbuild /x-tools
 USER rustbuild
 WORKDIR /tmp
 
-COPY patches/ /tmp/patches/
-COPY s390x-linux-gnu.config build-s390x-toolchain.sh /tmp/
+COPY dist-s390x-linux/patches/ /tmp/patches/
+COPY dist-s390x-linux/s390x-linux-gnu.config dist-s390x-linux/build-s390x-toolchain.sh /tmp/
 RUN ./build-s390x-toolchain.sh
 
 USER root
 
 RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-04-04-sccache-x86_64-unknown-linux-musl && \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
       chmod +x /usr/local/bin/sccache
 
 ENV PATH=$PATH:/x-tools/s390x-ibm-linux-gnu/bin

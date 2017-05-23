@@ -198,7 +198,11 @@ pub fn native_lib_boilerplate(src_name: &str,
     let out_dir = env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or(env::var_os("OUT_DIR").unwrap());
     let out_dir = PathBuf::from(out_dir).join(out_name);
     t!(create_dir_racy(&out_dir));
-    println!("cargo:rustc-link-lib=static={}", link_name);
+    if link_name.contains('=') {
+        println!("cargo:rustc-link-lib={}", link_name);
+    } else {
+        println!("cargo:rustc-link-lib=static={}", link_name);
+    }
     println!("cargo:rustc-link-search=native={}", out_dir.join(search_subdir).display());
 
     let timestamp = out_dir.join("rustbuild.timestamp");
@@ -207,6 +211,21 @@ pub fn native_lib_boilerplate(src_name: &str,
     } else {
         Err(())
     }
+}
+
+pub fn sanitizer_lib_boilerplate(sanitizer_name: &str) -> Result<NativeLibBoilerplate, ()> {
+    let (link_name, search_path) = match &*env::var("TARGET").unwrap() {
+        "x86_64-unknown-linux-gnu" => (
+            format!("clang_rt.{}-x86_64", sanitizer_name),
+            "build/lib/linux",
+        ),
+        "x86_64-apple-darwin" => (
+            format!("dylib=clang_rt.{}_osx_dynamic", sanitizer_name),
+            "build/lib/darwin",
+        ),
+        _ => return Err(()),
+    };
+    native_lib_boilerplate("compiler-rt", sanitizer_name, &link_name, search_path)
 }
 
 fn dir_up_to_date(src: &Path, threshold: &FileTime) -> bool {

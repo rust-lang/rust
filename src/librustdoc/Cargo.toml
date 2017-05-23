@@ -21,6 +21,7 @@ rustc_errors = { path = "../librustc_errors" }
 rustc_lint = { path = "../librustc_lint" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_resolve = { path = "../librustc_resolve" }
+rustc_typeck = { path = "../librustc_typeck" }
 rustc_trans = { path = "../librustc_trans" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }

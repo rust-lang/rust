@@ -17,6 +17,7 @@ pub use self::ObligationCauseCode::*;
 
 use hir;
 use hir::def_id::DefId;
+use middle::region::RegionMaps;
 use middle::free_region::FreeRegionMap;
 use ty::subst::Substs;
 use ty::{self, Ty, TyCtxt, TypeFoldable, ToPredicate};
@@ -112,7 +113,7 @@ pub enum ObligationCauseCode<'tcx> {
     ReferenceOutlivesReferent(Ty<'tcx>),
 
     /// A type like `Box<Foo<'a> + 'b>` is WF only if `'b: 'a`.
-    ObjectTypeBound(Ty<'tcx>, &'tcx ty::Region),
+    ObjectTypeBound(Ty<'tcx>, ty::Region<'tcx>),
 
     /// Obligation incurred due to an object cast.
     ObjectCastObligation(/* Object type */ Ty<'tcx>),
@@ -435,9 +436,10 @@ pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx
 // FIXME: this is gonna need to be removed ...
 /// Normalizes the parameter environment, reporting errors if they occur.
 pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    unnormalized_env: ty::ParameterEnvironment<'tcx>,
-    cause: ObligationCause<'tcx>)
-    -> ty::ParameterEnvironment<'tcx>
+                                              region_context: DefId,
+                                              unnormalized_env: ty::ParameterEnvironment<'tcx>,
+                                              cause: ObligationCause<'tcx>)
+                                              -> ty::ParameterEnvironment<'tcx>
 {
     // I'm not wild about reporting errors here; I'd prefer to
     // have the errors get reported at a defined place (e.g.,
@@ -455,13 +457,12 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // can be sure that no errors should occur.
 
     let span = cause.span;
-    let body_id = cause.body_id;
 
     debug!("normalize_param_env_or_error(unnormalized_env={:?})",
            unnormalized_env);
 
     let predicates: Vec<_> =
-        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.clone())
+        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.to_vec())
         .filter(|p| !p.is_global()) // (*)
         .collect();
 
@@ -476,11 +477,19 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}",
            predicates);
 
-    let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
+    let elaborated_env = unnormalized_env.with_caller_bounds(tcx.intern_predicates(&predicates));
 
     tcx.infer_ctxt(elaborated_env, Reveal::UserFacing).enter(|infcx| {
-        let predicates = match fully_normalize(&infcx, cause,
-                                               &infcx.parameter_environment.caller_bounds) {
+        let predicates = match fully_normalize(
+                &infcx, cause,
+                // You would really want to pass infcx.parameter_environment.caller_bounds here,
+                // but that is an interned slice, and fully_normalize takes &T and returns T, so
+                // without further refactoring, a slice can't be used. Luckily, we still have the
+                // predicate vector from which we created the ParameterEnvironment in infcx, so we
+                // can pass that instead. It's roundabout and a bit brittle, but this code path
+                // ought to be refactored anyway, and until then it saves us from having to copy.
+                &predicates,
+        ) {
             Ok(predicates) => predicates,
             Err(errors) => {
                 infcx.report_fulfillment_errors(&errors);
@@ -492,8 +501,9 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("normalize_param_env_or_error: normalized predicates={:?}",
             predicates);
 
+        let region_maps = RegionMaps::new();
         let free_regions = FreeRegionMap::new();
-        infcx.resolve_regions_and_report_errors(&free_regions, body_id);
+        infcx.resolve_regions_and_report_errors(region_context, &region_maps, &free_regions);
         let predicates = match infcx.fully_resolve(&predicates) {
             Ok(predicates) => predicates,
             Err(fixup_err) => {
@@ -518,7 +528,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("normalize_param_env_or_error: resolved predicates={:?}",
             predicates);
 
-        infcx.parameter_environment.with_caller_bounds(predicates)
+        infcx.parameter_environment.with_caller_bounds(tcx.intern_predicates(&predicates))
     })
 }
 
@@ -609,8 +619,6 @@ pub fn get_vtable_methods<'a, 'tcx>(
     debug!("get_vtable_methods({:?})", trait_ref);
 
     supertraits(tcx, trait_ref).flat_map(move |trait_ref| {
-        tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
-
         let trait_methods = tcx.associated_items(trait_ref.def_id())
             .filter(|item| item.kind == ty::AssociatedKind::Method);
 
@@ -641,7 +649,7 @@ pub fn get_vtable_methods<'a, 'tcx>(
             // do not hold for this particular set of type parameters.
             // Note that this method could then never be called, so we
             // do not want to try and trans it, in that case (see #23435).
-            let predicates = tcx.item_predicates(def_id).instantiate_own(tcx, substs);
+            let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
             if !normalize_and_test_predicates(tcx, predicates.predicates) {
                 debug!("get_vtable_methods: predicates do not hold");
                 return None;
@@ -771,4 +779,20 @@ impl<'tcx> TraitObligation<'tcx> {
     fn self_ty(&self) -> ty::Binder<Ty<'tcx>> {
         ty::Binder(self.predicate.skip_binder().self_ty())
     }
+}
+
+pub fn provide(providers: &mut ty::maps::Providers) {
+    *providers = ty::maps::Providers {
+        is_object_safe: object_safety::is_object_safe_provider,
+        specialization_graph_of: specialize::specialization_graph_provider,
+        ..*providers
+    };
+}
+
+pub fn provide_extern(providers: &mut ty::maps::Providers) {
+    *providers = ty::maps::Providers {
+        is_object_safe: object_safety::is_object_safe_provider,
+        specialization_graph_of: specialize::specialization_graph_provider,
+        ..*providers
+    };
 }

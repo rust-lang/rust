@@ -529,14 +529,14 @@ impl<'a> From<&'a OsStr> for Box<OsStr> {
     }
 }
 
-#[stable(feature = "os_string_from_box", since = "1.17.0")]
-impl<'a> From<Box<OsStr>> for OsString {
+#[stable(feature = "os_string_from_box", since = "1.18.0")]
+impl From<Box<OsStr>> for OsString {
     fn from(boxed: Box<OsStr>) -> OsString {
         boxed.into_os_string()
     }
 }
 
-#[stable(feature = "box_from_c_string", since = "1.17.0")]
+#[stable(feature = "box_from_os_string", since = "1.18.0")]
 impl Into<Box<OsStr>> for OsString {
     fn into(self) -> Box<OsStr> {
         self.into_boxed_os_str()

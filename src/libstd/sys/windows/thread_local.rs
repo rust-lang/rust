@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use mem;
 use ptr;
+use sync::atomic::AtomicPtr;
+use sync::atomic::Ordering::SeqCst;
 use sys::c;
-use sys_common::mutex::Mutex;
-use sys_common;
 
 pub type Key = c::DWORD;
 pub type Dtor = unsafe extern fn(*mut u8);
@@ -34,8 +35,6 @@ pub type Dtor = unsafe extern fn(*mut u8);
 // * All TLS destructors are tracked by *us*, not the windows runtime. This
 //   means that we have a global list of destructors for each TLS key that
 //   we know about.
-// * When a TLS key is destroyed, we're sure to remove it from the dtor list
-//   if it's in there.
 // * When a thread exits, we run over the entire list and run dtors for all
 //   non-null keys. This attempts to match Unix semantics in this regard.
 //
@@ -49,13 +48,6 @@ pub type Dtor = unsafe extern fn(*mut u8);
 // [1]: http://www.codeproject.com/Articles/8113/Thread-Local-Storage-The-C-Way
 // [2]: https://github.com/ChromiumWebApps/chromium/blob/master/base
 //                        /threading/thread_local_storage_win.cc#L42
-
-// NB these are specifically not types from `std::sync` as they currently rely
-// on poisoning and this module needs to operate at a lower level than requiring
-// the thread infrastructure to be in place (useful on the borders of
-// initialization/destruction).
-static DTOR_LOCK: Mutex = Mutex::new();
-static mut DTORS: *mut Vec<(Key, Dtor)> = ptr::null_mut();
 
 // -------------------------------------------------------------------------
 // Native bindings
@@ -85,81 +77,64 @@ pub unsafe fn get(key: Key) -> *mut u8 {
 }
 
 #[inline]
-pub unsafe fn destroy(key: Key) {
-    if unregister_dtor(key) {
-        // FIXME: Currently if a key has a destructor associated with it we
-        // can't actually ever unregister it. If we were to
-        // unregister it, then any key destruction would have to be
-        // serialized with respect to actually running destructors.
-        //
-        // We want to avoid a race where right before run_dtors runs
-        // some destructors TlsFree is called. Allowing the call to
-        // TlsFree would imply that the caller understands that *all
-        // known threads* are not exiting, which is quite a difficult
-        // thing to know!
-        //
-        // For now we just leak all keys with dtors to "fix" this.
-        // Note that source [2] above shows precedent for this sort
-        // of strategy.
-    } else {
-        let r = c::TlsFree(key);
-        debug_assert!(r != 0);
-    }
+pub unsafe fn destroy(_key: Key) {
+    rtabort!("can't destroy tls keys on windows")
+}
+
+#[inline]
+pub fn requires_synchronized_create() -> bool {
+    true
 }
 
 // -------------------------------------------------------------------------
 // Dtor registration
 //
-// These functions are associated with registering and unregistering
-// destructors. They're pretty simple, they just push onto a vector and scan
-// a vector currently.
+// Windows has no native support for running destructors so we manage our own
+// list of destructors to keep track of how to destroy keys. We then install a
+// callback later to get invoked whenever a thread exits, running all
+// appropriate destructors.
 //
-// FIXME: This could probably be at least a little faster with a BTree.
+// Currently unregistration from this list is not supported. A destructor can be
+// registered but cannot be unregistered. There's various simplifying reasons
+// for doing this, the big ones being:
+//
+// 1. Currently we don't even support deallocating TLS keys, so normal operation
+//    doesn't need to deallocate a destructor.
+// 2. There is no point in time where we know we can unregister a destructor
+//    because it could always be getting run by some remote thread.
+//
+// Typically processes have a statically known set of TLS keys which is pretty
+// small, and we'd want to keep this memory alive for the whole process anyway
+// really.
+//
+// Perhaps one day we can fold the `Box` here into a static allocation,
+// expanding the `StaticKey` structure to contain not only a slot for the TLS
+// key but also a slot for the destructor queue on windows. An optimization for
+// another day!
 
-unsafe fn init_dtors() {
-    if !DTORS.is_null() { return }
+static DTORS: AtomicPtr<Node> = AtomicPtr::new(ptr::null_mut());
 
-    let dtors = box Vec::<(Key, Dtor)>::new();
-
-    let res = sys_common::at_exit(move|| {
-        DTOR_LOCK.lock();
-        let dtors = DTORS;
-        DTORS = 1 as *mut _;
-        Box::from_raw(dtors);
-        assert!(DTORS as usize == 1); // can't re-init after destructing
-        DTOR_LOCK.unlock();
-    });
-    if res.is_ok() {
-        DTORS = Box::into_raw(dtors);
-    } else {
-        DTORS = 1 as *mut _;
-    }
+struct Node {
+    dtor: Dtor,
+    key: Key,
+    next: *mut Node,
 }
 
 unsafe fn register_dtor(key: Key, dtor: Dtor) {
-    DTOR_LOCK.lock();
-    init_dtors();
-    assert!(DTORS as usize != 0);
-    assert!(DTORS as usize != 1,
-            "cannot create new TLS keys after the main thread has exited");
-    (*DTORS).push((key, dtor));
-    DTOR_LOCK.unlock();
-}
+    let mut node = Box::new(Node {
+        key: key,
+        dtor: dtor,
+        next: ptr::null_mut(),
+    });
 
-unsafe fn unregister_dtor(key: Key) -> bool {
-    DTOR_LOCK.lock();
-    init_dtors();
-    assert!(DTORS as usize != 0);
-    assert!(DTORS as usize != 1,
-            "cannot unregister destructors after the main thread has exited");
-    let ret = {
-        let dtors = &mut *DTORS;
-        let before = dtors.len();
-        dtors.retain(|&(k, _)| k != key);
-        dtors.len() != before
-    };
-    DTOR_LOCK.unlock();
-    ret
+    let mut head = DTORS.load(SeqCst);
+    loop {
+        node.next = head;
+        match DTORS.compare_exchange(head, &mut *node, SeqCst, SeqCst) {
+            Ok(_) => return mem::forget(node),
+            Err(cur) => head = cur,
+        }
+    }
 }
 
 // -------------------------------------------------------------------------
@@ -196,16 +171,12 @@ unsafe fn unregister_dtor(key: Key) -> bool {
 // # Ok, what's up with running all these destructors?
 //
 // This will likely need to be improved over time, but this function
-// attempts a "poor man's" destructor callback system. To do this we clone a
-// local copy of the dtor list to start out with. This is our fudgy attempt
-// to not hold the lock while destructors run and not worry about the list
-// changing while we're looking at it.
-//
-// Once we've got a list of what to run, we iterate over all keys, check
-// their values, and then run destructors if the values turn out to be non
-// null (setting them to null just beforehand). We do this a few times in a
-// loop to basically match Unix semantics. If we don't reach a fixed point
-// after a short while then we just inevitably leak something most likely.
+// attempts a "poor man's" destructor callback system. Once we've got a list
+// of what to run, we iterate over all keys, check their values, and then run
+// destructors if the values turn out to be non null (setting them to null just
+// beforehand). We do this a few times in a loop to basically match Unix
+// semantics. If we don't reach a fixed point after a short while then we just
+// inevitably leak something most likely.
 //
 // # The article mentions weird stuff about "/INCLUDE"?
 //
@@ -259,25 +230,21 @@ unsafe extern "system" fn on_tls_callback(h: c::LPVOID,
 unsafe fn run_dtors() {
     let mut any_run = true;
     for _ in 0..5 {
-        if !any_run { break }
+        if !any_run {
+            break
+        }
         any_run = false;
-        let dtors = {
-            DTOR_LOCK.lock();
-            let ret = if DTORS as usize <= 1 {
-                Vec::new()
-            } else {
-                (*DTORS).iter().map(|s| *s).collect()
-            };
-            DTOR_LOCK.unlock();
-            ret
-        };
-        for &(key, dtor) in &dtors {
-            let ptr = c::TlsGetValue(key);
+        let mut cur = DTORS.load(SeqCst);
+        while !cur.is_null() {
+            let ptr = c::TlsGetValue((*cur).key);
+
             if !ptr.is_null() {
-                c::TlsSetValue(key, ptr::null_mut());
-                dtor(ptr as *mut _);
+                c::TlsSetValue((*cur).key, ptr::null_mut());
+                ((*cur).dtor)(ptr as *mut _);
                 any_run = true;
             }
+
+            cur = (*cur).next;
         }
     }
 }

@@ -49,5 +49,5 @@ chmod 755 emsdk_portable
 
 source emsdk_portable/emsdk_env.sh
 hide_output emsdk update
-hide_output emsdk install --build=Release sdk-tag-1.37.1-32bit
-hide_output emsdk activate --build=Release sdk-tag-1.37.1-32bit
+hide_output emsdk install --build=Release sdk-tag-1.37.10-32bit
+hide_output emsdk activate --build=Release sdk-tag-1.37.10-32bit

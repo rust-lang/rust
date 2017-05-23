@@ -7,9 +7,9 @@ error[E0277]: the trait bound `u32: std::ops::Add<()>` is not satisfied
 25 | |         bar(x,
 26 | |
 27 | |             y),
-   | |______________^ the trait `std::ops::Add<()>` is not implemented for `u32`
+   | |______________^ no implementation for `u32 + ()`
    |
-   = note: no implementation for `u32 + ()`
+   = help: the trait `std::ops::Add<()>` is not implemented for `u32`
 
 error: aborting due to previous error
 

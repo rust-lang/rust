@@ -13,6 +13,7 @@ use super::linker::Linker;
 use super::rpath::RPathConfig;
 use super::rpath;
 use super::msvc;
+use metadata::METADATA_FILENAME;
 use session::config;
 use session::config::NoDebugInfo;
 use session::config::{OutputFilenames, Input, OutputType};
@@ -521,7 +522,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // contain the metadata in a separate file. We use a temp directory
             // here so concurrent builds in the same directory don't try to use
             // the same filename for metadata (stomping over one another)
-            let metadata = tmpdir.join(sess.cstore.metadata_filename());
+            let metadata = tmpdir.join(METADATA_FILENAME);
             emit_metadata(sess, trans, &metadata);
             ab.add_file(&metadata);
 
@@ -714,6 +715,10 @@ fn link_natively(sess: &Session,
     if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {
         cmd.args(args);
     }
+    if let Some(ref args) = sess.opts.debugging_opts.pre_link_args {
+        cmd.args(args);
+    }
+    cmd.args(&sess.opts.debugging_opts.pre_link_arg);
 
     let pre_link_objects = if crate_type == config::CrateTypeExecutable {
         &sess.target.target.options.pre_link_objects_exe
@@ -1122,14 +1127,26 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                               cnum: CrateNum) {
         let src = sess.cstore.used_crate_source(cnum);
         let cratepath = &src.rlib.unwrap().0;
+
+        if sess.target.target.options.is_like_osx {
+            // On Apple platforms, the sanitizer is always built as a dylib, and
+            // LLVM will link to `@rpath/*.dylib`, so we need to specify an
+            // rpath to the library as well (the rpath should be absolute, see
+            // PR #41352 for details).
+            //
+            // FIXME: Remove this logic into librustc_*san once Cargo supports it
+            let rpath = cratepath.parent().unwrap();
+            let rpath = rpath.to_str().expect("non-utf8 component in path");
+            cmd.args(&["-Wl,-rpath".into(), "-Xlinker".into(), rpath.into()]);
+        }
+
         let dst = tmpdir.join(cratepath.file_name().unwrap());
         let cfg = archive_config(sess, &dst, Some(cratepath));
         let mut archive = ArchiveBuilder::new(cfg);
         archive.update_symbols();
 
         for f in archive.src_files() {
-            if f.ends_with("bytecode.deflate") ||
-                f == sess.cstore.metadata_filename() {
+            if f.ends_with("bytecode.deflate") || f == METADATA_FILENAME {
                     archive.remove_file(&f);
                     continue
                 }
@@ -1204,8 +1221,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
 
             let mut any_objects = false;
             for f in archive.src_files() {
-                if f.ends_with("bytecode.deflate") ||
-                   f == sess.cstore.metadata_filename() {
+                if f.ends_with("bytecode.deflate") || f == METADATA_FILENAME {
                     archive.remove_file(&f);
                     continue
                 }

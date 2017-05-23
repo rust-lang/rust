@@ -20,7 +20,8 @@ pub use self::region_inference::{GenericKind, VerifyBound};
 
 use hir::def_id::DefId;
 use hir;
-use middle::free_region::FreeRegionMap;
+use middle::free_region::{FreeRegionMap, RegionRelations};
+use middle::region::RegionMaps;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::lang_items;
@@ -205,7 +206,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
 /// region that each late-bound region was replaced with.
-pub type SkolemizationMap<'tcx> = FxHashMap<ty::BoundRegion, &'tcx ty::Region>;
+pub type SkolemizationMap<'tcx> = FxHashMap<ty::BoundRegion, ty::Region<'tcx>>;
 
 /// See `error_reporting` module for more details
 #[derive(Clone, Debug)]
@@ -449,10 +450,10 @@ impl<'a, 'tcx> InferEnv<'a, 'tcx> for hir::BodyId {
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
                     Option<ty::ParameterEnvironment<'tcx>>) {
-        let item_id = tcx.hir.body_owner(self);
-        (Some(tcx.item_tables(tcx.hir.local_def_id(item_id))),
+        let def_id = tcx.hir.body_owner_def_id(self);
+        (Some(tcx.typeck_tables_of(def_id)),
          None,
-         Some(ty::ParameterEnvironment::for_item(tcx, item_id)))
+         Some(tcx.parameter_environment(def_id)))
     }
 }
 
@@ -1008,7 +1009,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn add_given(&self,
-                     sub: ty::FreeRegion,
+                     sub: ty::Region<'tcx>,
                      sup: ty::RegionVid)
     {
         self.region_vars.add_given(sub, sup);
@@ -1107,8 +1108,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn sub_regions(&self,
                        origin: SubregionOrigin<'tcx>,
-                       a: &'tcx ty::Region,
-                       b: &'tcx ty::Region) {
+                       a: ty::Region<'tcx>,
+                       b: ty::Region<'tcx>) {
         debug!("sub_regions({:?} <: {:?})", a, b);
         self.region_vars.make_subregion(origin, a, b);
     }
@@ -1210,7 +1211,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn next_region_var(&self, origin: RegionVariableOrigin)
-                           -> &'tcx ty::Region {
+                           -> ty::Region<'tcx> {
         self.tcx.mk_region(ty::ReVar(self.region_vars.new_region_var(origin)))
     }
 
@@ -1219,7 +1220,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn region_var_for_def(&self,
                               span: Span,
                               def: &ty::RegionParameterDef)
-                              -> &'tcx ty::Region {
+                              -> ty::Region<'tcx> {
         self.next_region_var(EarlyBoundRegion(span, def.name, def.issue_32330))
     }
 
@@ -1237,7 +1238,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             substs: &[Kind<'tcx>])
                             -> Ty<'tcx> {
         let default = if def.has_default {
-            let default = self.tcx.item_type(def.def_id);
+            let default = self.tcx.type_of(def.def_id);
             Some(type_variable::Default {
                 ty: default.subst_spanned(self.tcx, substs, Some(span)),
                 origin_span: span,
@@ -1270,7 +1271,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> &'tcx ty::Region {
+    pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> ty::Region<'tcx> {
         self.region_vars.new_bound(debruijn)
     }
 
@@ -1322,9 +1323,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn resolve_regions_and_report_errors(&self,
-                                             free_regions: &FreeRegionMap,
-                                             subject_node_id: ast::NodeId) {
-        let errors = self.region_vars.resolve_regions(free_regions, subject_node_id);
+                                             region_context: DefId,
+                                             region_map: &RegionMaps,
+                                             free_regions: &FreeRegionMap<'tcx>) {
+        let region_rels = RegionRelations::new(self.tcx,
+                                               region_context,
+                                               region_map,
+                                               free_regions);
+        let errors = self.region_vars.resolve_regions(&region_rels);
         if !self.is_tainted_by_errors() {
             // As a heuristic, just skip reporting region errors
             // altogether if other errors have been reported while
@@ -1531,7 +1537,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         span: Span,
         lbrct: LateBoundRegionConversionTime,
         value: &ty::Binder<T>)
-        -> (T, FxHashMap<ty::BoundRegion, &'tcx ty::Region>)
+        -> (T, FxHashMap<ty::BoundRegion, ty::Region<'tcx>>)
         where T : TypeFoldable<'tcx>
     {
         self.tcx.replace_late_bound_regions(
@@ -1577,7 +1583,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn verify_generic_bound(&self,
                                 origin: SubregionOrigin<'tcx>,
                                 kind: GenericKind<'tcx>,
-                                a: &'tcx ty::Region,
+                                a: ty::Region<'tcx>,
                                 bound: VerifyBound<'tcx>) {
         debug!("verify_generic_bound({:?}, {:?} <: {:?})",
                kind,

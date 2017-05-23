@@ -409,6 +409,67 @@ RFC. It is, however, [currently unimplemented][iss15872].
 [iss15872]: https://github.com/rust-lang/rust/issues/15872
 "##,
 
+E0119: r##"
+There are conflicting trait implementations for the same type.
+Example of erroneous code:
+
+```compile_fail,E0119
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+impl<T> MyTrait for T {
+    fn get(&self) -> usize { 0 }
+}
+
+struct Foo {
+    value: usize
+}
+
+impl MyTrait for Foo { // error: conflicting implementations of trait
+                       //        `MyTrait` for type `Foo`
+    fn get(&self) -> usize { self.value }
+}
+```
+
+When looking for the implementation for the trait, the compiler finds
+both the `impl<T> MyTrait for T` where T is all types and the `impl
+MyTrait for Foo`. Since a trait cannot be implemented multiple times,
+this is an error. So, when you write:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+impl<T> MyTrait for T {
+    fn get(&self) -> usize { 0 }
+}
+```
+
+This makes the trait implemented on all types in the scope. So if you
+try to implement it on another one after that, the implementations will
+conflict. Example:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+impl<T> MyTrait for T {
+    fn get(&self) -> usize { 0 }
+}
+
+struct Foo;
+
+fn main() {
+    let f = Foo;
+
+    f.get(); // the trait is implemented so we can use it
+}
+```
+"##,
+
 E0133: r##"
 Unsafe code was used outside of an unsafe function or block.
 
@@ -1049,18 +1110,19 @@ which expected that trait. This error typically occurs when working with
 `Fn`-based types. Erroneous code example:
 
 ```compile_fail,E0281
-fn foo<F: Fn()>(x: F) { }
+fn foo<F: Fn(usize)>(x: F) { }
 
 fn main() {
-    // type mismatch: the type ... implements the trait `core::ops::Fn<(_,)>`,
-    // but the trait `core::ops::Fn<()>` is required (expected (), found tuple
+    // type mismatch: ... implements the trait `core::ops::Fn<(String,)>`,
+    // but the trait `core::ops::Fn<(usize,)>` is required
     // [E0281]
-    foo(|y| { });
+    foo(|y: String| { });
 }
 ```
 
-The issue in this case is that `foo` is defined as accepting a `Fn` with no
-arguments, but the closure we attempted to pass to it requires one argument.
+The issue in this case is that `foo` is defined as accepting a `Fn` with one
+argument of type `String`, but the closure we attempted to pass to it requires
+one arguments of type `usize`.
 "##,
 
 E0282: r##"
@@ -1805,6 +1867,20 @@ alone suffices for that. `*mut fn()` is a pointer to a fn pointer.
 makes a difference in practice.)
 
 [rfc401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
+"##,
+
+E0593: r##"
+You tried to supply an `Fn`-based type with an incorrect number of arguments
+than what was expected. Erroneous code example:
+
+```compile_fail,E0593
+fn foo<F: Fn()>(x: F) { }
+
+fn main() {
+    // [E0593] closure takes 1 argument but 0 arguments are required
+    foo(|y| { });
+}
+```
 "##,
 
 }

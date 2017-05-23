@@ -287,9 +287,11 @@ pub use self::error::{Result, Error, ErrorKind};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::util::{copy, sink, Sink, empty, Empty, repeat, Repeat};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::stdio::{stdin, stdout, stderr, _print, Stdin, Stdout, Stderr};
+pub use self::stdio::{stdin, stdout, stderr, Stdin, Stdout, Stderr};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
+#[unstable(feature = "print_internals", issue = "0")]
+pub use self::stdio::{_print, _eprint};
 #[unstable(feature = "libstd_io_internals", issue = "0")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_panic, set_print};
@@ -466,6 +468,9 @@ pub trait Read {
     /// variant will be returned. If an error is returned then it must be
     /// guaranteed that no bytes were read.
     ///
+    /// An error of the `ErrorKind::Interrupted` kind is non-fatal and the read
+    /// operation should be retried if there is nothing else to do.
+    ///
     /// # Examples
     ///
     /// [`File`][file]s implement `Read`:
@@ -481,7 +486,7 @@ pub trait Read {
     /// let mut f = File::open("foo.txt")?;
     /// let mut buffer = [0; 10];
     ///
-    /// // read 10 bytes
+    /// // read up to 10 bytes
     /// f.read(&mut buffer[..])?;
     /// # Ok(())
     /// # }
@@ -885,6 +890,9 @@ pub trait Write {
     /// It is **not** considered an error if the entire buffer could not be
     /// written to this writer.
     ///
+    /// An error of the `ErrorKind::Interrupted` kind is non-fatal and the
+    /// write operation should be retried if there is nothing else to do.
+    ///
     /// # Examples
     ///
     /// ```
@@ -894,6 +902,7 @@ pub trait Write {
     /// # fn foo() -> std::io::Result<()> {
     /// let mut buffer = File::create("foo.txt")?;
     ///
+    /// // Writes some prefix of the byte string, not necessarily all of it.
     /// buffer.write(b"some bytes")?;
     /// # Ok(())
     /// # }
@@ -929,14 +938,17 @@ pub trait Write {
 
     /// Attempts to write an entire buffer into this write.
     ///
-    /// This method will continuously call `write` while there is more data to
-    /// write. This method will not return until the entire buffer has been
-    /// successfully written or an error occurs. The first error generated from
-    /// this method will be returned.
+    /// This method will continuously call `write` until there is no more data
+    /// to be written or an error of non-`ErrorKind::Interrupted` kind is
+    /// returned. This method will not return until the entire buffer has been
+    /// successfully written or such an error occurs. The first error that is
+    /// not of `ErrorKind::Interrupted` kind generated from this method will be
+    /// returned.
     ///
     /// # Errors
     ///
-    /// This function will return the first error that `write` returns.
+    /// This function will return the first error of
+    /// non-`ErrorKind::Interrupted` kind that `write` returns.
     ///
     /// # Examples
     ///
@@ -1494,6 +1506,87 @@ pub struct Chain<T, U> {
     done_first: bool,
 }
 
+impl<T, U> Chain<T, U> {
+    /// Consumes the `Chain`, returning the wrapped readers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(more_io_inner_methods)]
+    ///
+    /// # use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut foo_file = File::open("foo.txt")?;
+    /// let mut bar_file = File::open("bar.txt")?;
+    ///
+    /// let chain = foo_file.chain(bar_file);
+    /// let (foo_file, bar_file) = chain.into_inner();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "more_io_inner_methods", issue="41519")]
+    pub fn into_inner(self) -> (T, U) {
+        (self.first, self.second)
+    }
+
+    /// Gets references to the underlying readers in this `Chain`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(more_io_inner_methods)]
+    ///
+    /// # use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut foo_file = File::open("foo.txt")?;
+    /// let mut bar_file = File::open("bar.txt")?;
+    ///
+    /// let chain = foo_file.chain(bar_file);
+    /// let (foo_file, bar_file) = chain.get_ref();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "more_io_inner_methods", issue="41519")]
+    pub fn get_ref(&self) -> (&T, &U) {
+        (&self.first, &self.second)
+    }
+
+    /// Gets mutable references to the underlying readers in this `Chain`.
+    ///
+    /// Care should be taken to avoid modifying the internal I/O state of the
+    /// underlying readers as doing so may corrupt the internal state of this
+    /// `Chain`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(more_io_inner_methods)]
+    ///
+    /// # use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut foo_file = File::open("foo.txt")?;
+    /// let mut bar_file = File::open("bar.txt")?;
+    ///
+    /// let mut chain = foo_file.chain(bar_file);
+    /// let (foo_file, bar_file) = chain.get_mut();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "more_io_inner_methods", issue="41519")]
+    pub fn get_mut(&mut self) -> (&mut T, &mut U) {
+        (&mut self.first, &mut self.second)
+    }
+}
+
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: fmt::Debug, U: fmt::Debug> fmt::Debug for Chain<T, U> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1605,6 +1698,64 @@ impl<T> Take<T> {
     #[stable(feature = "io_take_into_inner", since = "1.15.0")]
     pub fn into_inner(self) -> T {
         self.inner
+    }
+
+    /// Gets a reference to the underlying reader.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(more_io_inner_methods)]
+    ///
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut file = File::open("foo.txt")?;
+    ///
+    /// let mut buffer = [0; 5];
+    /// let mut handle = file.take(5);
+    /// handle.read(&mut buffer)?;
+    ///
+    /// let file = handle.get_ref();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "more_io_inner_methods", issue="41519")]
+    pub fn get_ref(&self) -> &T {
+        &self.inner
+    }
+
+    /// Gets a mutable reference to the underlying reader.
+    ///
+    /// Care should be taken to avoid modifying the internal I/O state of the
+    /// underlying reader as doing so may corrupt the internal limit of this
+    /// `Take`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(more_io_inner_methods)]
+    ///
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut file = File::open("foo.txt")?;
+    ///
+    /// let mut buffer = [0; 5];
+    /// let mut handle = file.take(5);
+    /// handle.read(&mut buffer)?;
+    ///
+    /// let file = handle.get_mut();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "more_io_inner_methods", issue="41519")]
+    pub fn get_mut(&mut self) -> &mut T {
+        &mut self.inner
     }
 }
 

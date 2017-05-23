@@ -27,19 +27,15 @@ pub enum MethodLateContext {
     PlainImpl,
 }
 
-pub fn method_context(cx: &LateContext, id: ast::NodeId, span: Span) -> MethodLateContext {
+pub fn method_context(cx: &LateContext, id: ast::NodeId) -> MethodLateContext {
     let def_id = cx.tcx.hir.local_def_id(id);
-    match cx.tcx.maps.associated_item.borrow().get(&def_id) {
-        None => span_bug!(span, "missing method descriptor?!"),
-        Some(item) => {
-            match item.container {
-                ty::TraitContainer(..) => MethodLateContext::TraitDefaultImpl,
-                ty::ImplContainer(cid) => {
-                    match cx.tcx.impl_trait_ref(cid) {
-                        Some(_) => MethodLateContext::TraitImpl,
-                        None => MethodLateContext::PlainImpl,
-                    }
-                }
+    let item = cx.tcx.associated_item(def_id);
+    match item.container {
+        ty::TraitContainer(..) => MethodLateContext::TraitDefaultImpl,
+        ty::ImplContainer(cid) => {
+            match cx.tcx.impl_trait_ref(cid) {
+                Some(_) => MethodLateContext::TraitImpl,
+                None => MethodLateContext::PlainImpl,
             }
         }
     }
@@ -244,7 +240,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
                 id: ast::NodeId) {
         match fk {
             FnKind::Method(name, ..) => {
-                match method_context(cx, id, span) {
+                match method_context(cx, id) {
                     MethodLateContext::PlainImpl => {
                         self.check_snake_case(cx, "method", &name.as_str(), Some(span))
                     }

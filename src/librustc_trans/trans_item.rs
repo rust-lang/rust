@@ -30,8 +30,9 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::Substs;
 use syntax::ast::{self, NodeId};
 use syntax::attr;
+use syntax_pos::Span;
+use syntax_pos::symbol::Symbol;
 use type_of;
-use back::symbol_names;
 use std::fmt::Write;
 use std::iter;
 
@@ -118,7 +119,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                self.to_raw_string(),
                ccx.codegen_unit().name());
 
-        let symbol_name = ccx.symbol_cache().get(*self);
+        let symbol_name = self.symbol_name(ccx.tcx());
 
         debug!("symbol {}", &symbol_name);
 
@@ -184,18 +185,32 @@ impl<'a, 'tcx> TransItem<'tcx> {
         ccx.instances().borrow_mut().insert(instance, lldecl);
     }
 
-    pub fn compute_symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
+    pub fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::SymbolName {
         match *self {
-            TransItem::Fn(instance) => symbol_names::symbol_name(instance, tcx),
+            TransItem::Fn(instance) => tcx.symbol_name(instance),
             TransItem::Static(node_id) => {
                 let def_id = tcx.hir.local_def_id(node_id);
-                symbol_names::symbol_name(Instance::mono(tcx, def_id), tcx)
+                tcx.symbol_name(Instance::mono(tcx, def_id))
             }
             TransItem::GlobalAsm(node_id) => {
                 let def_id = tcx.hir.local_def_id(node_id);
-                format!("global_asm_{:?}", def_id)
+                ty::SymbolName {
+                    name: Symbol::intern(&format!("global_asm_{:?}", def_id)).as_str()
+                }
             }
         }
+    }
+
+    pub fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
+        match *self {
+            TransItem::Fn(Instance { def, .. }) => {
+                tcx.hir.as_local_node_id(def.def_id())
+            }
+            TransItem::Static(node_id) |
+            TransItem::GlobalAsm(node_id) => {
+                Some(node_id)
+            }
+        }.map(|node_id| tcx.hir.span(node_id))
     }
 
     pub fn instantiation_mode(&self,
@@ -444,7 +459,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             },
             ty::TyClosure(def_id, ref closure_substs) => {
                 self.push_def_path(def_id, output);
-                let generics = self.tcx.item_generics(self.tcx.closure_base_def_id(def_id));
+                let generics = self.tcx.generics_of(self.tcx.closure_base_def_id(def_id));
                 let substs = closure_substs.substs.truncate_to(self.tcx, generics);
                 self.push_type_params(substs, iter::empty(), output);
             }

@@ -8,4 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_macros)]
+
 macro_rules! macro_rules { () => {} } //~ ERROR user-defined macros may not be named `macro_rules`

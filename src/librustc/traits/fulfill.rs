@@ -84,7 +84,7 @@ pub struct FulfillmentContext<'tcx> {
 
 #[derive(Clone)]
 pub struct RegionObligation<'tcx> {
-    pub sub_region: &'tcx ty::Region,
+    pub sub_region: ty::Region<'tcx>,
     pub sup_type: Ty<'tcx>,
     pub cause: ObligationCause<'tcx>,
 }
@@ -155,7 +155,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
 
     pub fn register_region_obligation(&mut self,
                                       t_a: Ty<'tcx>,
-                                      r_b: &'tcx ty::Region,
+                                      r_b: ty::Region<'tcx>,
                                       cause: ObligationCause<'tcx>)
     {
         register_region_obligation(t_a, r_b, cause, &mut self.region_obligations);
@@ -566,7 +566,7 @@ fn coinductive_obligation<'a,'gcx,'tcx>(selcx: &SelectionContext<'a,'gcx,'tcx>,
 }
 
 fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
-                                    r_b: &'tcx ty::Region,
+                                    r_b: ty::Region<'tcx>,
                                     cause: ObligationCause<'tcx>,
                                     region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
 {

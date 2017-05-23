@@ -42,6 +42,7 @@
 use std::env;
 use std::io;
 use std::mem;
+use Build;
 
 type HANDLE = *mut u8;
 type BOOL = i32;
@@ -60,8 +61,10 @@ const DUPLICATE_SAME_ACCESS: DWORD = 0x2;
 const PROCESS_DUP_HANDLE: DWORD = 0x40;
 const JobObjectExtendedLimitInformation: JOBOBJECTINFOCLASS = 9;
 const JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE: DWORD = 0x2000;
+const JOB_OBJECT_LIMIT_PRIORITY_CLASS: DWORD = 0x00000020;
 const SEM_FAILCRITICALERRORS: UINT = 0x0001;
 const SEM_NOGPFAULTERRORBOX: UINT = 0x0002;
+const BELOW_NORMAL_PRIORITY_CLASS: DWORD = 0x00004000;
 
 extern "system" {
     fn CreateJobObjectW(lpJobAttributes: *mut u8, lpName: *const u8) -> HANDLE;
@@ -118,7 +121,7 @@ struct JOBOBJECT_BASIC_LIMIT_INFORMATION {
     SchedulingClass: DWORD,
 }
 
-pub unsafe fn setup() {
+pub unsafe fn setup(build: &mut Build) {
     // Tell Windows to not show any UI on errors (such as not finding a required dll
     // during startup or terminating abnormally).  This is important for running tests,
     // since some of them use abnormal termination by design.
@@ -136,6 +139,10 @@ pub unsafe fn setup() {
     // children will reside in the job by default.
     let mut info = mem::zeroed::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>();
     info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    if build.config.low_priority {
+        info.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_PRIORITY_CLASS;
+        info.BasicLimitInformation.PriorityClass = BELOW_NORMAL_PRIORITY_CLASS;
+    }
     let r = SetInformationJobObject(job,
                                     JobObjectExtendedLimitInformation,
                                     &mut info as *mut _ as LPVOID,

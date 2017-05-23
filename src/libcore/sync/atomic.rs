@@ -94,6 +94,29 @@ use intrinsics;
 use cell::UnsafeCell;
 use fmt;
 
+/// Save power or switch hyperthreads in a busy-wait spin-loop.
+///
+/// This function is deliberately more primitive than
+/// `std::thread::yield_now` and does not directly yield to the
+/// system's scheduler.  In some cases it might be useful to use a
+/// combination of both functions.  Careful benchmarking is advised.
+///
+/// On some platforms this function may not do anything at all.
+#[inline]
+#[unstable(feature = "hint_core_should_pause", issue = "41196")]
+pub fn hint_core_should_pause()
+{
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    unsafe {
+        asm!("pause" ::: "memory" : "volatile");
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    unsafe {
+        asm!("yield" ::: "memory" : "volatile");
+    }
+}
+
 /// A boolean type which can be safely shared between threads.
 ///
 /// This type has the same in-memory representation as a `bool`.
@@ -895,6 +918,7 @@ impl<T> AtomicPtr<T> {
     }
 }
 
+#[cfg(target_has_atomic = "ptr")]
 macro_rules! atomic_int {
     ($stable:meta,
      $stable_cxchg:meta,
@@ -1550,11 +1574,29 @@ unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 /// An atomic fence.
 ///
-/// A fence 'A' which has [`Release`] ordering semantics, synchronizes with a
-/// fence 'B' with (at least) [`Acquire`] semantics, if and only if there exists
-/// atomic operations X and Y, both operating on some atomic object 'M' such
+/// Depending on the specified order, a fence prevents the compiler and CPU from
+/// reordering certain types of memory operations around it.
+/// That creates synchronizes-with relationships between it and atomic operations
+/// or fences in other threads.
+///
+/// A fence 'A' which has (at least) [`Release`] ordering semantics, synchronizes
+/// with a fence 'B' with (at least) [`Acquire`] semantics, if and only if there
+/// exist operations X and Y, both operating on some atomic object 'M' such
 /// that A is sequenced before X, Y is synchronized before B and Y observes
 /// the change to M. This provides a happens-before dependence between A and B.
+///
+/// ```text
+///     Thread 1                                          Thread 2
+///
+/// fence(Release);      A --------------
+/// x.store(3, Relaxed); X ---------    |
+///                                |    |
+///                                |    |
+///                                -------------> Y  if x.load(Relaxed) == 3 {
+///                                     |-------> B      fence(Acquire);
+///                                                      ...
+///                                                  }
+/// ```
 ///
 /// Atomic operations with [`Release`] or [`Acquire`] semantics can also synchronize
 /// with a fence.
@@ -1568,6 +1610,37 @@ unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
 /// # Panics
 ///
 /// Panics if `order` is [`Relaxed`].
+///
+/// # Examples
+///
+/// ```
+/// use std::sync::atomic::AtomicBool;
+/// use std::sync::atomic::fence;
+/// use std::sync::atomic::Ordering;
+///
+/// // A mutual exclusion primitive based on spinlock.
+/// pub struct Mutex {
+///     flag: AtomicBool,
+/// }
+///
+/// impl Mutex {
+///     pub fn new() -> Mutex {
+///         Mutex {
+///             flag: AtomicBool::new(false),
+///         }
+///     }
+///
+///     pub fn lock(&self) {
+///         while !self.flag.compare_and_swap(false, true, Ordering::Relaxed) {}
+///         // This fence syncronizes-with store in `unlock`.
+///         fence(Ordering::Acquire);
+///     }
+///
+///     pub fn unlock(&self) {
+///         self.flag.store(false, Ordering::Release);
+///     }
+/// }
+/// ```
 ///
 /// [`Ordering`]: enum.Ordering.html
 /// [`Acquire`]: enum.Ordering.html#variant.Acquire

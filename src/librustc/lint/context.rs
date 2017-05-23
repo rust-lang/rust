@@ -43,12 +43,13 @@ use std::fmt;
 use syntax::attr;
 use syntax::ast;
 use syntax::symbol::Symbol;
-use syntax_pos::{DUMMY_SP, MultiSpan, Span};
+use syntax_pos::{MultiSpan, Span};
 use errors::{self, Diagnostic, DiagnosticBuilder};
 use hir;
 use hir::def_id::LOCAL_CRATE;
 use hir::intravisit as hir_visit;
 use syntax::visit as ast_visit;
+use syntax::tokenstream::ThinTokenStream;
 
 /// Information about the registered lints.
 ///
@@ -680,12 +681,12 @@ pub trait LintContext<'tcx>: Sized {
                                                             "{}({}) overruled by outer forbid({})",
                                                             level.as_str(), lint_name,
                                                             lint_name);
-                    diag_builder.span_label(span, &format!("overruled by previous forbid"));
+                    diag_builder.span_label(span, "overruled by previous forbid");
                     match now_source {
                         LintSource::Default => &mut diag_builder,
                         LintSource::Node(_, forbid_source_span) => {
                             diag_builder.span_label(forbid_source_span,
-                                                    &format!("`forbid` level set here"))
+                                                    "`forbid` level set here")
                         },
                         LintSource::CommandLine(_) => {
                             diag_builder.note("`forbid` lint level was set on command line")
@@ -1055,7 +1056,7 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
         run_lints!(self, check_ident, early_passes, sp, id);
     }
 
-    fn visit_mod(&mut self, m: &'a ast::Mod, s: Span, n: ast::NodeId) {
+    fn visit_mod(&mut self, m: &'a ast::Mod, s: Span, _a: &[ast::Attribute], n: ast::NodeId) {
         run_lints!(self, check_mod, early_passes, m, s, n);
         ast_visit::walk_mod(self, m);
         run_lints!(self, check_mod_post, early_passes, m, s, n);
@@ -1124,6 +1125,13 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
 
     fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
         run_lints!(self, check_attribute, early_passes, attr);
+    }
+
+    fn visit_mac_def(&mut self, _mac: &'a ThinTokenStream, id: ast::NodeId) {
+        let lints = self.sess.lints.borrow_mut().take(id);
+        for early_lint in lints {
+            self.early_lint(&early_lint);
+        }
     }
 }
 
@@ -1234,7 +1242,7 @@ fn check_lint_name_cmdline(sess: &Session, lint_cx: &LintStore,
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _task = tcx.dep_graph.in_task(DepNode::LateLintCheck);
 
-    let access_levels = &ty::queries::privacy_access_levels::get(tcx, DUMMY_SP, LOCAL_CRATE);
+    let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
 

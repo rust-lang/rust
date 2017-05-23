@@ -18,7 +18,7 @@ use rustc::ty::{self, Ty, TyCtxt, TypeVariants};
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::tcx::LvalueTy;
-use rustc::mir::transform::{MirPass, MirSource, Pass};
+use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::Visitor;
 use std::fmt;
 use syntax::ast;
@@ -133,7 +133,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             Lvalue::Local(index) => LvalueTy::Ty { ty: self.mir.local_decls[index].ty },
             Lvalue::Static(box Static { def_id, ty: sty }) => {
                 let sty = self.sanitize_type(lvalue, sty);
-                let ty = self.tcx().item_type(def_id);
+                let ty = self.tcx().type_of(def_id);
                 let ty = self.cx.normalize(&ty);
                 if let Err(terr) = self.cx.eq_types(self.last_span, ty, sty) {
                     span_mirbug!(
@@ -534,7 +534,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn is_box_free(&self, operand: &Operand<'tcx>) -> bool {
         match operand {
-            &Operand::Constant(Constant {
+            &Operand::Constant(box Constant {
                 literal: Literal::Value {
                     value: ConstVal::Function(def_id, _), ..
                 }, ..
@@ -737,9 +737,11 @@ impl TypeckMir {
     }
 }
 
-impl<'tcx> MirPass<'tcx> for TypeckMir {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    src: MirSource, mir: &mut Mir<'tcx>) {
+impl MirPass for TypeckMir {
+    fn run_pass<'a, 'tcx>(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          src: MirSource,
+                          mir: &mut Mir<'tcx>) {
         let item_id = src.item_id();
         let def_id = tcx.hir.local_def_id(item_id);
         debug!("run_pass: {}", tcx.item_path_str(def_id));
@@ -749,7 +751,7 @@ impl<'tcx> MirPass<'tcx> for TypeckMir {
             // broken MIR, so try not to report duplicate errors.
             return;
         }
-        let param_env = ty::ParameterEnvironment::for_item(tcx, item_id);
+        let param_env = tcx.parameter_environment(def_id);
         tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
             let mut checker = TypeChecker::new(&infcx, item_id);
             {
@@ -764,7 +766,4 @@ impl<'tcx> MirPass<'tcx> for TypeckMir {
             checker.verify_obligations(mir);
         });
     }
-}
-
-impl Pass for TypeckMir {
 }

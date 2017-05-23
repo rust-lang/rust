@@ -13,7 +13,8 @@ use target::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::android_base::opts();
-    base.features = "+v7,+vfp3,+d16".to_string();
+    // https://developer.android.com/ndk/guides/abis.html#armeabi
+    base.features = "+v5te".to_string();
     base.max_atomic_width = Some(64);
 
     Ok(Target {

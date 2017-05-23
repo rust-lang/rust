@@ -193,6 +193,7 @@ nav.sub {
 	font-size: 17px;
 	margin: 30px 0 20px 0;
 	text-align: center;
+	word-wrap: break-word;
 }
 
 .location:empty {
@@ -235,6 +236,9 @@ nav.sub {
 	white-space: pre;
 	overflow: auto;
 	padding-left: 0;
+}
+#search {
+	margin-left: 230px;
 }
 .content pre.line-numbers {
 	float: left;
@@ -378,6 +382,8 @@ h4 > code, h3 > code, .invisible > code {
 .content .fn .where,
 .content .where.fmt-newline {
 	display: block;
+	color: #4E4C4C;
+	font-size: 0.8em;
 }
 
 .content .methods > div { margin-left: 40px; }
@@ -611,6 +617,11 @@ a.test-arrow:hover{
 	left: -23px;
 	color: #999;
 	top: 0;
+}
+
+h3 > .collapse-toggle, h4 > .collapse-toggle {
+	font-size: 0.8em;
+	top: 5px;
 }
 
 .toggle-wrapper > .collapse-toggle {

@@ -657,7 +657,7 @@ impl PartialEq for Ipv4Addr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialEq<Ipv4Addr> for IpAddr {
     fn eq(&self, other: &Ipv4Addr) -> bool {
         match *self {
@@ -667,7 +667,7 @@ impl PartialEq<Ipv4Addr> for IpAddr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialEq<IpAddr> for Ipv4Addr {
     fn eq(&self, other: &IpAddr) -> bool {
         match *other {
@@ -694,7 +694,7 @@ impl PartialOrd for Ipv4Addr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialOrd<Ipv4Addr> for IpAddr {
     fn partial_cmp(&self, other: &Ipv4Addr) -> Option<Ordering> {
         match *self {
@@ -704,7 +704,7 @@ impl PartialOrd<Ipv4Addr> for IpAddr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialOrd<IpAddr> for Ipv4Addr {
     fn partial_cmp(&self, other: &IpAddr) -> Option<Ordering> {
         match *other {
@@ -1200,7 +1200,7 @@ impl PartialEq for Ipv6Addr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialEq<IpAddr> for Ipv6Addr {
     fn eq(&self, other: &IpAddr) -> bool {
         match *other {
@@ -1210,7 +1210,7 @@ impl PartialEq<IpAddr> for Ipv6Addr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialEq<Ipv6Addr> for IpAddr {
     fn eq(&self, other: &Ipv6Addr) -> bool {
         match *self {
@@ -1237,7 +1237,7 @@ impl PartialOrd for Ipv6Addr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialOrd<Ipv6Addr> for IpAddr {
     fn partial_cmp(&self, other: &Ipv6Addr) -> Option<Ordering> {
         match *self {
@@ -1247,7 +1247,7 @@ impl PartialOrd<Ipv6Addr> for IpAddr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialOrd<IpAddr> for Ipv6Addr {
     fn partial_cmp(&self, other: &IpAddr) -> Option<Ordering> {
         match *other {
@@ -1302,7 +1302,7 @@ impl From<[u8; 16]> for Ipv6Addr {
     }
 }
 
-#[stable(feature = "ipv6_from_segments", since = "1.15.0")]
+#[stable(feature = "ipv6_from_segments", since = "1.16.0")]
 impl From<[u16; 8]> for Ipv6Addr {
     fn from(segments: [u16; 8]) -> Ipv6Addr {
         let [a, b, c, d, e, f, g, h] = segments;

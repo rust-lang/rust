@@ -16,7 +16,7 @@ use resolve_imports::ImportResolver;
 use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex};
 use rustc::hir::def::{Def, Export};
 use rustc::hir::map::{self, DefCollector};
-use rustc::ty;
+use rustc::{ty, lint};
 use syntax::ast::{self, Name, Ident};
 use syntax::attr::{self, HasAttrs};
 use syntax::errors::DiagnosticBuilder;
@@ -123,14 +123,14 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item> {
-        struct EliminateCrateVar<'b, 'a: 'b>(&'b mut Resolver<'a>);
+        struct EliminateCrateVar<'b, 'a: 'b>(&'b mut Resolver<'a>, Span);
 
         impl<'a, 'b> Folder for EliminateCrateVar<'a, 'b> {
             fn fold_path(&mut self, mut path: ast::Path) -> ast::Path {
                 let ident = path.segments[0].identifier;
                 if ident.name == "$crate" {
                     path.segments[0].identifier.name = keywords::CrateRoot.name();
-                    let module = self.0.resolve_crate_var(ident.ctxt);
+                    let module = self.0.resolve_crate_var(ident.ctxt, self.1);
                     if !module.is_local() {
                         let span = path.segments[0].span;
                         path.segments.insert(1, match module.kind {
@@ -149,7 +149,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             }
         }
 
-        EliminateCrateVar(self).fold_item(item).expect_one("")
+        EliminateCrateVar(self, item.span).fold_item(item).expect_one("")
     }
 
     fn is_whitelisted_legacy_custom_derive(&self, name: Name) -> bool {
@@ -291,12 +291,32 @@ impl<'a> base::Resolver for Resolver<'a> {
             },
         };
         self.macro_defs.insert(invoc.expansion_data.mark, def.def_id());
+        self.unused_macros.remove(&def.def_id());
         Ok(Some(self.get_macro(def)))
     }
 
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy> {
-        self.resolve_macro_to_def(scope, path, kind, force).map(|def| self.get_macro(def))
+        self.resolve_macro_to_def(scope, path, kind, force).map(|def| {
+            self.unused_macros.remove(&def.def_id());
+            self.get_macro(def)
+        })
+    }
+
+    fn check_unused_macros(&self) {
+        for did in self.unused_macros.iter() {
+            let id_span = match *self.macro_map[did] {
+                SyntaxExtension::NormalTT(_, isp, _) => isp,
+                _ => None,
+            };
+            if let Some((id, span)) = id_span {
+                let lint = lint::builtin::UNUSED_MACROS;
+                let msg = "unused macro definition".to_string();
+                self.session.add_lint(lint, id, span, msg);
+            } else {
+                bug!("attempted to create unused macro error, but span not available");
+            }
+        }
     }
 }
 
@@ -379,7 +399,7 @@ impl<'a> Resolver<'a> {
                 return Err(Determinacy::Determined);
             }
 
-            let def = match self.resolve_path(&path, Some(MacroNS), None) {
+            let def = match self.resolve_path(&path, Some(MacroNS), false, span) {
                 PathResult::NonModule(path_res) => match path_res.base_def() {
                     Def::Err => Err(Determinacy::Determined),
                     def @ _ => Ok(def),
@@ -401,7 +421,7 @@ impl<'a> Resolver<'a> {
         let result = if let Some(MacroBinding::Legacy(binding)) = legacy_resolution {
             Ok(Def::Macro(binding.def_id, MacroKind::Bang))
         } else {
-            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, None) {
+            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, false, span) {
                 Ok(binding) => Ok(binding.binding().def_ignoring_ambiguity()),
                 Err(Determinacy::Undetermined) if !force => return Err(Determinacy::Undetermined),
                 Err(_) => {
@@ -421,18 +441,19 @@ impl<'a> Resolver<'a> {
     pub fn resolve_lexical_macro_path_segment(&mut self,
                                               ident: Ident,
                                               ns: Namespace,
-                                              record_used: Option<Span>)
+                                              record_used: bool,
+                                              path_span: Span)
                                               -> Result<MacroBinding<'a>, Determinacy> {
         let mut module = Some(self.current_module);
         let mut potential_illegal_shadower = Err(Determinacy::Determined);
         let determinacy =
-            if record_used.is_some() { Determinacy::Determined } else { Determinacy::Undetermined };
+            if record_used { Determinacy::Determined } else { Determinacy::Undetermined };
         loop {
             let result = if let Some(module) = module {
                 // Since expanded macros may not shadow the lexical scope and
                 // globs may not shadow global macros (both enforced below),
                 // we resolve with restricted shadowing (indicated by the penultimate argument).
-                self.resolve_ident_in_module(module, ident, ns, true, record_used)
+                self.resolve_ident_in_module(module, ident, ns, true, record_used, path_span)
                     .map(MacroBinding::Modern)
             } else {
                 self.global_macros.get(&ident.name).cloned().ok_or(determinacy)
@@ -441,15 +462,18 @@ impl<'a> Resolver<'a> {
 
             match result.map(MacroBinding::binding) {
                 Ok(binding) => {
-                    let span = match record_used {
-                        Some(span) => span,
-                        None => return result,
-                    };
+                    if !record_used {
+                        return result;
+                    }
                     if let Ok(MacroBinding::Modern(shadower)) = potential_illegal_shadower {
                         if shadower.def() != binding.def() {
                             let name = ident.name;
                             self.ambiguity_errors.push(AmbiguityError {
-                                span: span, name: name, b1: shadower, b2: binding, lexical: true,
+                                span: path_span,
+                                name: name,
+                                b1: shadower,
+                                b2: binding,
+                                lexical: true,
                                 legacy: false,
                             });
                             return potential_illegal_shadower;
@@ -543,7 +567,7 @@ impl<'a> Resolver<'a> {
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
         for &(ref path, span) in module.macro_resolutions.borrow().iter() {
-            match self.resolve_path(path, Some(MacroNS), Some(span)) {
+            match self.resolve_path(path, Some(MacroNS), true, span) {
                 PathResult::NonModule(_) => {},
                 PathResult::Failed(msg, _) => {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
@@ -555,7 +579,7 @@ impl<'a> Resolver<'a> {
         for &(mark, ident, span, kind) in module.legacy_macro_resolutions.borrow().iter() {
             let legacy_scope = &self.invocations[&mark].legacy_scope;
             let legacy_resolution = self.resolve_legacy_scope(legacy_scope, ident.name, true);
-            let resolution = self.resolve_lexical_macro_path_segment(ident, MacroNS, Some(span));
+            let resolution = self.resolve_lexical_macro_path_segment(ident, MacroNS, true, span);
             match (legacy_resolution, resolution) {
                 (Some(MacroBinding::Legacy(legacy_binding)), Ok(MacroBinding::Modern(binding))) => {
                     let msg1 = format!("`{}` could refer to the macro defined here", ident);
@@ -579,7 +603,7 @@ impl<'a> Resolver<'a> {
                             format!("cannot find derive macro `{}` in this scope", ident),
                     };
                     let mut err = self.session.struct_span_err(span, &msg);
-                    self.suggest_macro_name(&ident.name.as_str(), kind, &mut err);
+                    self.suggest_macro_name(&ident.name.as_str(), kind, &mut err, span);
                     err.emit();
                 },
                 _ => {},
@@ -588,7 +612,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn suggest_macro_name(&mut self, name: &str, kind: MacroKind,
-                          err: &mut DiagnosticBuilder<'a>) {
+                          err: &mut DiagnosticBuilder<'a>, span: Span) {
         // First check if this is a locally-defined bang macro.
         let suggestion = if let MacroKind::Bang = kind {
             find_best_match_for_name(self.macro_names.iter(), name, None)
@@ -619,7 +643,7 @@ impl<'a> Resolver<'a> {
                 }
             };
             let ident = Ident::from_str(name);
-            self.lookup_typo_candidate(&vec![ident], MacroNS, is_macro)
+            self.lookup_typo_candidate(&vec![ident], MacroNS, is_macro, span)
         });
 
         if let Some(suggestion) = suggestion {
@@ -630,7 +654,7 @@ impl<'a> Resolver<'a> {
                     err.help(&format!("did you mean `{}`?", suggestion));
                 }
             } else {
-                err.help(&format!("have you added the `#[macro_use]` on the module/import?"));
+                err.help("have you added the `#[macro_use]` on the module/import?");
             }
         }
     }
@@ -683,6 +707,8 @@ impl<'a> Resolver<'a> {
         if attr::contains_name(&item.attrs, "macro_export") {
             let def = Def::Macro(def_id, MacroKind::Bang);
             self.macro_exports.push(Export { name: ident.name, def: def, span: item.span });
+        } else {
+            self.unused_macros.insert(def_id);
         }
     }
 

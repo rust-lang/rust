@@ -22,7 +22,8 @@
 // are *mostly* used as a part of that interface, but these should
 // probably get a better home if someone can find one.
 
-use hir::def::{self, Def};
+use hir::def;
+use dep_graph::DepNode;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::map as hir_map;
 use hir::map::definitions::{Definitions, DefKey, DisambiguatedDefPathData};
@@ -35,11 +36,10 @@ use session::search_paths::PathKind;
 use util::nodemap::{NodeSet, DefIdMap};
 
 use std::any::Any;
-use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use owning_ref::ErasedBoxRef;
 use syntax::ast;
-use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
@@ -163,7 +163,16 @@ pub struct ExternCrate {
 
 pub struct EncodedMetadata {
     pub raw_data: Vec<u8>,
-    pub hashes: Vec<EncodedMetadataHash>,
+    pub hashes: EncodedMetadataHashes,
+}
+
+impl EncodedMetadata {
+    pub fn new() -> EncodedMetadata {
+        EncodedMetadata {
+            raw_data: Vec::new(),
+            hashes: EncodedMetadataHashes::new(),
+        }
+    }
 }
 
 /// The hash for some metadata that (when saving) will be exported
@@ -175,39 +184,70 @@ pub struct EncodedMetadataHash {
     pub hash: ich::Fingerprint,
 }
 
+/// The hash for some metadata that (when saving) will be exported
+/// from this crate, or which (when importing) was exported by an
+/// upstream crate.
+#[derive(Debug, RustcEncodable, RustcDecodable, Clone)]
+pub struct EncodedMetadataHashes {
+    pub entry_hashes: Vec<EncodedMetadataHash>,
+    pub global_hashes: Vec<(DepNode<()>, ich::Fingerprint)>,
+}
+
+impl EncodedMetadataHashes {
+    pub fn new() -> EncodedMetadataHashes {
+        EncodedMetadataHashes {
+            entry_hashes: Vec::new(),
+            global_hashes: Vec::new(),
+        }
+    }
+}
+
+/// The backend's way to give the crate store access to the metadata in a library.
+/// Note that it returns the raw metadata bytes stored in the library file, whether
+/// it is compressed, uncompressed, some weird mix, etc.
+/// rmeta files are backend independent and not handled here.
+///
+/// At the time of this writing, there is only one backend and one way to store
+/// metadata in library -- this trait just serves to decouple rustc_metadata from
+/// the archive reader, which depends on LLVM.
+pub trait MetadataLoader {
+    fn get_rlib_metadata(&self,
+                         target: &Target,
+                         filename: &Path)
+                         -> Result<ErasedBoxRef<[u8]>, String>;
+    fn get_dylib_metadata(&self,
+                          target: &Target,
+                          filename: &Path)
+                          -> Result<ErasedBoxRef<[u8]>, String>;
+}
+
 /// A store of Rust crates, through with their metadata
 /// can be accessed.
 pub trait CrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>;
 
+    // access to the metadata loader
+    fn metadata_loader(&self) -> &MetadataLoader;
+
     // item info
-    fn describe_def(&self, def: DefId) -> Option<Def>;
-    fn def_span(&self, sess: &Session, def: DefId) -> Span;
-    fn stability(&self, def: DefId) -> Option<attr::Stability>;
-    fn deprecation(&self, def: DefId) -> Option<attr::Deprecation>;
     fn visibility(&self, def: DefId) -> ty::Visibility;
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>>;
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics;
-    fn item_attrs(&self, def_id: DefId) -> Rc<[ast::Attribute]>;
-    fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name>;
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>;
 
     // impl info
-    fn impl_parent(&self, impl_def_id: DefId) -> Option<DefId>;
+    fn impl_defaultness(&self, def: DefId) -> hir::Defaultness;
 
     // trait/impl-item info
-    fn trait_of_item(&self, def_id: DefId) -> Option<DefId>;
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem;
 
     // flags
     fn is_const_fn(&self, did: DefId) -> bool;
     fn is_default_impl(&self, impl_did: DefId) -> bool;
-    fn is_foreign_item(&self, did: DefId) -> bool;
     fn is_dllimport_foreign_item(&self, def: DefId) -> bool;
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool;
-    fn is_exported_symbol(&self, def_id: DefId) -> bool;
 
     // crate metadata
     fn dylib_dependency_formats(&self, cnum: CrateNum)
@@ -216,7 +256,6 @@ pub trait CrateStore {
     fn export_macros(&self, cnum: CrateNum);
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>;
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>;
-    fn is_staged_api(&self, cnum: CrateNum) -> bool;
     fn is_allocator(&self, cnum: CrateNum) -> bool;
     fn is_panic_runtime(&self, cnum: CrateNum) -> bool;
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool;
@@ -243,7 +282,7 @@ pub trait CrateStore {
                     -> Option<DefId>;
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
-    fn def_path_hash(&self, def: DefId) -> u64;
+    fn def_path_hash(&self, def: DefId) -> ich::Fingerprint;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children(&self, did: DefId) -> Vec<def::Export>;
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro;
@@ -251,10 +290,6 @@ pub trait CrateStore {
     // misc. metadata
     fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
                            -> &'tcx hir::Body;
-    fn item_body_nested_bodies(&self, def: DefId) -> BTreeMap<hir::BodyId, hir::Body>;
-    fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool;
-
-    fn is_item_mir_available(&self, def: DefId) -> bool;
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
@@ -263,8 +298,6 @@ pub trait CrateStore {
     fn used_link_args(&self) -> Vec<String>;
 
     // utility functions
-    fn metadata_filename(&self) -> &str;
-    fn metadata_section_name(&self, target: &Target) -> &str;
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>;
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource;
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
@@ -312,37 +345,28 @@ impl CrateStore for DummyCrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>
         { bug!("crate_data_as_rc_any") }
     // item info
-    fn describe_def(&self, def: DefId) -> Option<Def> { bug!("describe_def") }
-    fn def_span(&self, sess: &Session, def: DefId) -> Span { bug!("def_span") }
-    fn stability(&self, def: DefId) -> Option<attr::Stability> { bug!("stability") }
-    fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> { bug!("deprecation") }
     fn visibility(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>> {
         bug!("visible_parent_map")
     }
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics
         { bug!("item_generics_cloned") }
-    fn item_attrs(&self, def_id: DefId) -> Rc<[ast::Attribute]> { bug!("item_attrs") }
-    fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name> { bug!("fn_arg_names") }
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId> { vec![] }
 
     // impl info
-    fn impl_parent(&self, def: DefId) -> Option<DefId> { bug!("impl_parent") }
+    fn impl_defaultness(&self, def: DefId) -> hir::Defaultness { bug!("impl_defaultness") }
 
     // trait/impl-item info
-    fn trait_of_item(&self, def_id: DefId) -> Option<DefId> { bug!("trait_of_item") }
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem
         { bug!("associated_item_cloned") }
 
     // flags
     fn is_const_fn(&self, did: DefId) -> bool { bug!("is_const_fn") }
     fn is_default_impl(&self, impl_did: DefId) -> bool { bug!("is_default_impl") }
-    fn is_foreign_item(&self, did: DefId) -> bool { bug!("is_foreign_item") }
     fn is_dllimport_foreign_item(&self, id: DefId) -> bool { false }
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool { false }
-    fn is_exported_symbol(&self, def_id: DefId) -> bool { false }
 
     // crate metadata
     fn dylib_dependency_formats(&self, cnum: CrateNum)
@@ -352,7 +376,6 @@ impl CrateStore for DummyCrateStore {
         { bug!("lang_items") }
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>
         { bug!("missing_lang_items") }
-    fn is_staged_api(&self, cnum: CrateNum) -> bool { bug!("is_staged_api") }
     fn dep_kind(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
     fn export_macros(&self, cnum: CrateNum) { bug!("export_macros") }
     fn is_allocator(&self, cnum: CrateNum) -> bool { bug!("is_allocator") }
@@ -391,7 +414,7 @@ impl CrateStore for DummyCrateStore {
     fn def_path(&self, def: DefId) -> hir_map::DefPath {
         bug!("relative_def_path")
     }
-    fn def_path_hash(&self, def: DefId) -> u64 {
+    fn def_path_hash(&self, def: DefId) -> ich::Fingerprint {
         bug!("wa")
     }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
@@ -403,16 +426,6 @@ impl CrateStore for DummyCrateStore {
                            -> &'tcx hir::Body {
         bug!("item_body")
     }
-    fn item_body_nested_bodies(&self, def: DefId) -> BTreeMap<hir::BodyId, hir::Body> {
-        bug!("item_body_nested_bodies")
-    }
-    fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool {
-        bug!("const_is_rvalue_promotable_to_static")
-    }
-
-    fn is_item_mir_available(&self, def: DefId) -> bool {
-        bug!("is_item_mir_available")
-    }
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
@@ -421,8 +434,6 @@ impl CrateStore for DummyCrateStore {
     fn used_link_args(&self) -> Vec<String> { vec![] }
 
     // utility functions
-    fn metadata_filename(&self) -> &str { bug!("metadata_filename") }
-    fn metadata_section_name(&self, target: &Target) -> &str { bug!("metadata_section_name") }
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>
         { vec![] }
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource { bug!("used_crate_source") }
@@ -435,6 +446,9 @@ impl CrateStore for DummyCrateStore {
         bug!("encode_metadata")
     }
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
+
+    // access to the metadata loader
+    fn metadata_loader(&self) -> &MetadataLoader { bug!("metadata_loader") }
 }
 
 pub trait CrateLoader {

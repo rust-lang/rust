@@ -23,7 +23,7 @@ use build_helper::output;
 use Build;
 
 // The version number
-pub const CFG_RELEASE_NUM: &'static str = "1.18.0";
+pub const CFG_RELEASE_NUM: &'static str = "1.19.0";
 
 // An optional number to put after the label, e.g. '.2' -> '-beta.2'
 // Be sure to make this starts with a dot to conform to semver pre-release

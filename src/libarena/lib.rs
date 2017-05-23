@@ -19,7 +19,7 @@
 //! objects of a single type.
 
 #![crate_name = "arena"]
-#![unstable(feature = "rustc_private", issue = "27812")]
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -31,9 +31,9 @@
 #![feature(alloc)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
-#![feature(heap_api)]
 #![feature(generic_param_attrs)]
-#![feature(staged_api)]
+#![feature(needs_drop)]
+#![cfg_attr(stage0, feature(staged_api))]
 #![cfg_attr(test, feature(test))]
 
 #![allow(deprecated)]
@@ -48,7 +48,6 @@ use std::mem;
 use std::ptr;
 use std::slice;
 
-use alloc::heap;
 use alloc::raw_vec::RawVec;
 
 /// An arena that can hold objects of only one type.
@@ -84,7 +83,7 @@ impl<T> TypedArenaChunk<T> {
     unsafe fn destroy(&mut self, len: usize) {
         // The branch on needs_drop() is an -O1 performance optimization.
         // Without the branch, dropping TypedArena<u8> takes linear time.
-        if intrinsics::needs_drop::<T>() {
+        if mem::needs_drop::<T>() {
             let mut start = self.start();
             // Destroy all allocated objects.
             for _ in 0..len {
@@ -140,7 +139,7 @@ impl<T> TypedArena<T> {
         unsafe {
             if mem::size_of::<T>() == 0 {
                 self.ptr.set(intrinsics::arith_offset(self.ptr.get() as *mut u8, 1) as *mut T);
-                let ptr = heap::EMPTY as *mut T;
+                let ptr = mem::align_of::<T>() as *mut T;
                 // Don't drop the object. This `write` is equivalent to `forget`.
                 ptr::write(ptr, object);
                 &mut *ptr
@@ -352,7 +351,7 @@ impl DroplessArena {
     #[inline]
     pub fn alloc<T>(&self, object: T) -> &mut T {
         unsafe {
-            assert!(!intrinsics::needs_drop::<T>());
+            assert!(!mem::needs_drop::<T>());
             assert!(mem::size_of::<T>() != 0);
 
             self.align_for::<T>();
@@ -381,9 +380,7 @@ impl DroplessArena {
     #[inline]
     pub fn alloc_slice<T>(&self, slice: &[T]) -> &mut [T]
         where T: Copy {
-        unsafe {
-            assert!(!intrinsics::needs_drop::<T>());
-        }
+        assert!(!mem::needs_drop::<T>());
         assert!(mem::size_of::<T>() != 0);
         assert!(slice.len() != 0);
         self.align_for::<T>();

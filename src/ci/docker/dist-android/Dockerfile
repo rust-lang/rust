@@ -1,40 +1,36 @@
 FROM ubuntu:16.04
 
-RUN dpkg --add-architecture i386 && \
-    apt-get update && \
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-  g++ \
-  make \
-  file \
-  curl \
   ca-certificates \
-  python2.7 \
-  git \
   cmake \
-  unzip \
-  expect \
-  openjdk-9-jre \
-  sudo \
-  libstdc++6:i386 \
-  xz-utils \
+  curl \
+  file \
+  g++ \
+  git \
   libssl-dev \
-  pkg-config
+  make \
+  pkg-config \
+  python2.7 \
+  sudo \
+  unzip \
+  xz-utils
 
-WORKDIR /android/
-ENV PATH=$PATH:/android/ndk-arm-9/bin:/android/sdk/tools:/android/sdk/platform-tools
+# dumb-init
+COPY scripts/dumb-init.sh /scripts/
+RUN sh /scripts/dumb-init.sh
 
-COPY install-ndk.sh /android/
-RUN sh /android/install-ndk.sh
+# ndk
+COPY scripts/android-ndk.sh /scripts/
+RUN . /scripts/android-ndk.sh && \
+    download_ndk android-ndk-r13b-linux-x86_64.zip && \
+    make_standalone_toolchain arm 9 && \
+    make_standalone_toolchain x86 9 && \
+    make_standalone_toolchain arm64 21 && \
+    make_standalone_toolchain x86_64 21 && \
+    remove_ndk
 
-RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
-    dpkg -i dumb-init_*.deb && \
-    rm dumb-init_*.deb
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-
-RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-04-04-sccache-x86_64-unknown-linux-musl && \
-      chmod +x /usr/local/bin/sccache
-
+# env
 ENV TARGETS=arm-linux-androideabi
 ENV TARGETS=$TARGETS,armv7-linux-androideabi
 ENV TARGETS=$TARGETS,i686-linux-android
@@ -44,10 +40,17 @@ ENV TARGETS=$TARGETS,x86_64-linux-android
 ENV RUST_CONFIGURE_ARGS \
       --target=$TARGETS \
       --enable-extended \
-      --arm-linux-androideabi-ndk=/android/ndk-arm-9 \
-      --armv7-linux-androideabi-ndk=/android/ndk-arm-9 \
-      --i686-linux-android-ndk=/android/ndk-x86-9 \
-      --aarch64-linux-android-ndk=/android/ndk-arm64-21 \
-      --x86_64-linux-android-ndk=/android/ndk-x86_64-21
+      --arm-linux-androideabi-ndk=/android/ndk/arm-9 \
+      --armv7-linux-androideabi-ndk=/android/ndk/arm-9 \
+      --i686-linux-android-ndk=/android/ndk/x86-9 \
+      --aarch64-linux-android-ndk=/android/ndk/arm64-21 \
+      --x86_64-linux-android-ndk=/android/ndk/x86_64-21
 
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
+
+# cache
+COPY scripts/sccache.sh /scripts/
+RUN sh /scripts/sccache.sh
+
+# init
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]

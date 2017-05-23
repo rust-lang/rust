@@ -29,13 +29,13 @@ ENV PATH=/rustroot/bin:$PATH
 ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib
 ENV PKG_CONFIG_PATH=/rustroot/lib/pkgconfig
 WORKDIR /tmp
-COPY shared.sh build-binutils.sh /tmp/
+COPY dist-x86_64-linux/shared.sh dist-x86_64-linux/build-binutils.sh /tmp/
 
 # We need a build of openssl which supports SNI to download artifacts from
 # static.rust-lang.org. This'll be used to link into libcurl below (and used
 # later as well), so build a copy of OpenSSL with dynamic libraries into our
 # generic root.
-COPY build-openssl.sh /tmp/
+COPY dist-x86_64-linux/build-openssl.sh /tmp/
 RUN ./build-openssl.sh
 
 # The `curl` binary on CentOS doesn't support SNI which is needed for fetching
@@ -44,7 +44,7 @@ RUN ./build-openssl.sh
 #
 # Note that we also disable a bunch of optional features of curl that we don't
 # really need.
-COPY build-curl.sh /tmp/
+COPY dist-x86_64-linux/build-curl.sh /tmp/
 RUN ./build-curl.sh
 
 # binutils < 2.22 has a bug where the 32-bit executables it generates
@@ -54,26 +54,26 @@ RUN ./build-curl.sh
 RUN ./build-binutils.sh
 
 # Need a newer version of gcc than centos has to compile LLVM nowadays
-COPY build-gcc.sh /tmp/
+COPY dist-x86_64-linux/build-gcc.sh /tmp/
 RUN ./build-gcc.sh
 
 # CentOS 5.5 has Python 2.4 by default, but LLVM needs 2.7+
-COPY build-python.sh /tmp/
+COPY dist-x86_64-linux/build-python.sh /tmp/
 RUN ./build-python.sh
 
 # Apparently CentOS 5.5 desn't have `git` in yum, but we're gonna need it for
 # cloning, so download and build it here.
-COPY build-git.sh /tmp/
+COPY dist-x86_64-linux/build-git.sh /tmp/
 RUN ./build-git.sh
 
 # libssh2 (a dependency of Cargo) requires cmake 2.8.11 or higher but CentOS
 # only has 2.6.4, so build our own
-COPY build-cmake.sh /tmp/
+COPY dist-x86_64-linux/build-cmake.sh /tmp/
 RUN ./build-cmake.sh
 
 # for sanitizers, we need kernel headers files newer than the ones CentOS ships
 # with so we install newer ones here
-COPY build-headers.sh /tmp/
+COPY dist-x86_64-linux/build-headers.sh /tmp/
 RUN ./build-headers.sh
 
 RUN curl -Lo /rustroot/dumb-init \
@@ -82,7 +82,7 @@ RUN curl -Lo /rustroot/dumb-init \
 ENTRYPOINT ["/rustroot/dumb-init", "--"]
 
 RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-04-04-sccache-x86_64-unknown-linux-musl && \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
       chmod +x /usr/local/bin/sccache
 
 ENV HOSTS=x86_64-unknown-linux-gnu

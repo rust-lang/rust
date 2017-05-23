@@ -9,10 +9,10 @@
 // except according to those terms.
 
 #![crate_name = "rustc_platform_intrinsics"]
-#![unstable(feature = "rustc_private", issue = "27812")]
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
-#![feature(staged_api)]
+#![cfg_attr(stage0, feature(staged_api))]
 #![deny(warnings)]
 #![allow(bad_style)]
 
@@ -29,7 +29,7 @@ pub enum Type {
     Integer(/* signed */ bool, u8, /* llvm width */ u8),
     Float(u8),
     Pointer(&'static Type, Option<&'static Type>, /* const */ bool),
-    Vector(&'static Type, Option<&'static Type>, u8),
+    Vector(&'static Type, Option<&'static Type>, u16),
     Aggregate(bool, &'static [&'static Type]),
 }
 
@@ -56,6 +56,12 @@ static I8x16: Type = Type::Vector(&I8, None, 16);
 static U8x16: Type = Type::Vector(&U8, None, 16);
 static I8x32: Type = Type::Vector(&I8, None, 32);
 static U8x32: Type = Type::Vector(&U8, None, 32);
+static I8x64: Type = Type::Vector(&I8, None, 64);
+static U8x64: Type = Type::Vector(&U8, None, 64);
+static I8x128: Type = Type::Vector(&I8, None, 128);
+static U8x128: Type = Type::Vector(&U8, None, 128);
+static I8x256: Type = Type::Vector(&I8, None, 256);
+static U8x256: Type = Type::Vector(&U8, None, 256);
 
 static I16x4: Type = Type::Vector(&I16, None, 4);
 static U16x4: Type = Type::Vector(&U16, None, 4);
@@ -63,6 +69,12 @@ static I16x8: Type = Type::Vector(&I16, None, 8);
 static U16x8: Type = Type::Vector(&U16, None, 8);
 static I16x16: Type = Type::Vector(&I16, None, 16);
 static U16x16: Type = Type::Vector(&U16, None, 16);
+static I16x32: Type = Type::Vector(&I16, None, 32);
+static U16x32: Type = Type::Vector(&U16, None, 32);
+static I16x64: Type = Type::Vector(&I16, None, 64);
+static U16x64: Type = Type::Vector(&U16, None, 64);
+static I16x128: Type = Type::Vector(&I16, None, 128);
+static U16x128: Type = Type::Vector(&U16, None, 128);
 
 static I32x2: Type = Type::Vector(&I32, None, 2);
 static U32x2: Type = Type::Vector(&U32, None, 2);
@@ -70,6 +82,12 @@ static I32x4: Type = Type::Vector(&I32, None, 4);
 static U32x4: Type = Type::Vector(&U32, None, 4);
 static I32x8: Type = Type::Vector(&I32, None, 8);
 static U32x8: Type = Type::Vector(&U32, None, 8);
+static I32x16: Type = Type::Vector(&I32, None, 16);
+static U32x16: Type = Type::Vector(&U32, None, 16);
+static I32x32: Type = Type::Vector(&I32, None, 32);
+static U32x32: Type = Type::Vector(&U32, None, 32);
+static I32x64: Type = Type::Vector(&I32, None, 64);
+static U32x64: Type = Type::Vector(&U32, None, 64);
 
 static I64x1: Type = Type::Vector(&I64, None, 1);
 static U64x1: Type = Type::Vector(&U64, None, 1);
@@ -96,6 +114,7 @@ mod x86;
 mod arm;
 mod aarch64;
 mod nvptx;
+mod hexagon;
 
 impl Intrinsic {
     pub fn find(name: &str) -> Option<Intrinsic> {
@@ -107,6 +126,8 @@ impl Intrinsic {
             aarch64::find(name)
         } else if name.starts_with("nvptx_") {
             nvptx::find(name)
+        } else if name.starts_with("Q6_") {
+            hexagon::find(name)
         } else {
             None
         }

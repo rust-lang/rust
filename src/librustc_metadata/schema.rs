@@ -13,7 +13,7 @@ use index;
 
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
-use rustc::hir::def_id::{DefIndex, DefId};
+use rustc::hir::def_id::{DefIndex, DefId, CrateNum};
 use rustc::ich::StableHashingContext;
 use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibrary};
 use rustc::middle::lang_items;
@@ -31,6 +31,8 @@ use std::mem;
 
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable,
                                            StableHasherResult};
+
+use rustc::dep_graph::{DepGraph, DepNode};
 
 pub fn rustc_version() -> String {
     format!("rustc {}",
@@ -186,25 +188,73 @@ pub enum LazyState {
     Previous(usize),
 }
 
+/// A `Tracked<T>` wraps a value so that one can only access it when specifying
+/// the `DepNode` for that value. This makes it harder to forget registering
+/// reads.
+#[derive(RustcEncodable, RustcDecodable)]
+pub struct Tracked<T> {
+    state: T,
+}
+
+impl<T> Tracked<T> {
+    pub fn new(state: T) -> Tracked<T> {
+        Tracked {
+            state: state,
+        }
+    }
+
+    pub fn get(&self, dep_graph: &DepGraph, dep_node: DepNode<DefId>) -> &T {
+        dep_graph.read(dep_node);
+        &self.state
+    }
+
+    pub fn get_untracked(&self) -> &T {
+        &self.state
+    }
+
+    pub fn map<F, R>(&self, f: F) -> Tracked<R>
+        where F: FnOnce(&T) -> R
+    {
+        Tracked {
+            state: f(&self.state),
+        }
+    }
+}
+
+impl<'a, 'tcx, T> HashStable<StableHashingContext<'a, 'tcx>> for Tracked<T>
+    where T: HashStable<StableHashingContext<'a, 'tcx>>
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let Tracked {
+            ref state
+        } = *self;
+
+        state.hash_stable(hcx, hasher);
+    }
+}
+
+
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct CrateRoot {
     pub name: Symbol,
     pub triple: String,
     pub hash: hir::svh::Svh,
     pub disambiguator: Symbol,
-    pub panic_strategy: PanicStrategy,
+    pub panic_strategy: Tracked<PanicStrategy>,
     pub plugin_registrar_fn: Option<DefIndex>,
     pub macro_derive_registrar: Option<DefIndex>,
 
-    pub crate_deps: LazySeq<CrateDep>,
-    pub dylib_dependency_formats: LazySeq<Option<LinkagePreference>>,
-    pub lang_items: LazySeq<(DefIndex, usize)>,
-    pub lang_items_missing: LazySeq<lang_items::LangItem>,
-    pub native_libraries: LazySeq<NativeLibrary>,
+    pub crate_deps: Tracked<LazySeq<CrateDep>>,
+    pub dylib_dependency_formats: Tracked<LazySeq<Option<LinkagePreference>>>,
+    pub lang_items: Tracked<LazySeq<(DefIndex, usize)>>,
+    pub lang_items_missing: Tracked<LazySeq<lang_items::LangItem>>,
+    pub native_libraries: Tracked<LazySeq<NativeLibrary>>,
     pub codemap: LazySeq<syntax_pos::FileMap>,
     pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
-    pub impls: LazySeq<TraitImpls>,
-    pub exported_symbols: LazySeq<DefIndex>,
+    pub impls: Tracked<LazySeq<TraitImpls>>,
+    pub exported_symbols: Tracked<LazySeq<DefIndex>>,
     pub index: LazySeq<index::Index>,
 }
 
@@ -215,10 +265,33 @@ pub struct CrateDep {
     pub kind: DepKind,
 }
 
+impl_stable_hash_for!(struct CrateDep {
+    name,
+    hash,
+    kind
+});
+
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct TraitImpls {
     pub trait_id: (u32, DefIndex),
     pub impls: LazySeq<DefIndex>,
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for TraitImpls {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let TraitImpls {
+            trait_id: (krate, def_index),
+            ref impls,
+        } = *self;
+
+        DefId {
+            krate: CrateNum::from_u32(krate),
+            index: def_index
+        }.hash_stable(hcx, hasher);
+        impls.hash_stable(hcx, hasher);
+    }
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -406,6 +479,7 @@ impl_stable_hash_for!(struct TraitData<'tcx> {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ImplData<'tcx> {
     pub polarity: hir::ImplPolarity,
+    pub defaultness: hir::Defaultness,
     pub parent_impl: Option<DefId>,
 
     /// This is `Some` only for impls of `CoerceUnsized`.
@@ -415,6 +489,7 @@ pub struct ImplData<'tcx> {
 
 impl_stable_hash_for!(struct ImplData<'tcx> {
     polarity,
+    defaultness,
     parent_impl,
     coerce_unsized_info,
     trait_ref

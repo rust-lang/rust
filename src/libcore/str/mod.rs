@@ -319,7 +319,10 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 ///
 /// The data must be valid UTF-8
 ///
-/// `p` must be non-null, even for zero-length str.
+/// `p` must be non-null, even for zero-length strs, because non-zero bits
+/// are required to distinguish between a zero-length str within `Some()`
+/// from `None`. `p` can be a bogus non-dereferencable pointer, such as `0x1`,
+/// for zero-length strs, though.
 ///
 /// # Caveat
 ///
@@ -1594,7 +1597,7 @@ mod traits {
     /// byte offset of a character (as defined by `is_char_boundary`).
     /// Requires that `begin <= end` and `end <= len` where `len` is the
     /// length of the string.
-    #[stable(feature = "derefmut_for_string", since = "1.2.0")]
+    #[stable(feature = "derefmut_for_string", since = "1.3.0")]
     impl ops::IndexMut<ops::Range<usize>> for str {
         #[inline]
         fn index_mut(&mut self, index: ops::Range<usize>) -> &mut str {
@@ -1629,7 +1632,7 @@ mod traits {
     /// `end`.
     ///
     /// Equivalent to `&mut self[0 .. end]`.
-    #[stable(feature = "derefmut_for_string", since = "1.2.0")]
+    #[stable(feature = "derefmut_for_string", since = "1.3.0")]
     impl ops::IndexMut<ops::RangeTo<usize>> for str {
         #[inline]
         fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut str {
@@ -1669,7 +1672,7 @@ mod traits {
     /// to the end of the string.
     ///
     /// Equivalent to `&mut self[begin .. len]`.
-    #[stable(feature = "derefmut_for_string", since = "1.2.0")]
+    #[stable(feature = "derefmut_for_string", since = "1.3.0")]
     impl ops::IndexMut<ops::RangeFrom<usize>> for str {
         #[inline]
         fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut str {
@@ -1705,7 +1708,7 @@ mod traits {
     /// never panic.
     ///
     /// Equivalent to `&mut self[0 .. len]`.
-    #[stable(feature = "derefmut_for_string", since = "1.2.0")]
+    #[stable(feature = "derefmut_for_string", since = "1.3.0")]
     impl ops::IndexMut<ops::RangeFull> for str {
         #[inline]
         fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {

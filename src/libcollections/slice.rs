@@ -1341,6 +1341,9 @@ impl<T> [T] {
     ///
     /// The length of `src` must be the same as `self`.
     ///
+    /// If `src` implements `Copy`, it can be more performant to use
+    /// [`copy_from_slice`].
+    ///
     /// # Panics
     ///
     /// This function will panic if the two slices have different lengths.
@@ -1354,6 +1357,8 @@ impl<T> [T] {
     /// dst.clone_from_slice(&src);
     /// assert!(dst == [1, 2, 3]);
     /// ```
+    ///
+    /// [`copy_from_slice`]: #method.copy_from_slice
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
     pub fn clone_from_slice(&mut self, src: &[T]) where T: Clone {
         core_slice::SliceExt::clone_from_slice(self, src)
@@ -1362,6 +1367,8 @@ impl<T> [T] {
     /// Copies all elements from `src` into `self`, using a memcpy.
     ///
     /// The length of `src` must be the same as `self`.
+    ///
+    /// If `src` does not implement `Copy`, use [`clone_from_slice`].
     ///
     /// # Panics
     ///
@@ -1376,6 +1383,8 @@ impl<T> [T] {
     /// dst.copy_from_slice(&src);
     /// assert_eq!(src, dst);
     /// ```
+    ///
+    /// [`clone_from_slice`]: #method.clone_from_slice
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     pub fn copy_from_slice(&mut self, src: &[T]) where T: Copy {
         core_slice::SliceExt::copy_from_slice(self, src)
@@ -1400,6 +1409,9 @@ impl<T> [T] {
     }
 
     /// Converts `self` into a vector without clones or allocation.
+    ///
+    /// The resulting vector can be converted back into a box via
+    /// `Vec<T>`'s `into_boxed_slice` method.
     ///
     /// # Examples
     ///
@@ -1519,13 +1531,9 @@ impl<T: Clone> ToOwned for [T] {
         self.to_vec()
     }
 
-    // HACK(japaric): with cfg(test) the inherent `[T]::to_vec`, which is required for this method
-    // definition, is not available. Since we don't require this method for testing purposes, I'll
-    // just stub it
-    // NB see the slice::hack module in slice.rs for more information
     #[cfg(test)]
     fn to_owned(&self) -> Vec<T> {
-        panic!("not available with cfg(test)")
+        hack::to_vec(self)
     }
 
     fn clone_into(&self, target: &mut Vec<T>) {

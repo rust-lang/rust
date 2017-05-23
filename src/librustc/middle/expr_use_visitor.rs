@@ -23,6 +23,7 @@ use hir::def::Def;
 use hir::def_id::{DefId};
 use infer::InferCtxt;
 use middle::mem_categorization as mc;
+use middle::region::RegionMaps;
 use ty::{self, TyCtxt, adjustment};
 
 use hir::{self, PatKind};
@@ -75,7 +76,7 @@ pub trait Delegate<'tcx> {
               borrow_id: ast::NodeId,
               borrow_span: Span,
               cmt: mc::cmt<'tcx>,
-              loan_region: &'tcx ty::Region,
+              loan_region: ty::Region<'tcx>,
               bk: ty::BorrowKind,
               loan_cause: LoanCause);
 
@@ -270,19 +271,24 @@ enum PassArgs {
 
 impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     pub fn new(delegate: &'a mut (Delegate<'tcx>+'a),
+               region_maps: &'a RegionMaps,
                infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
                -> Self
     {
-        ExprUseVisitor::with_options(delegate, infcx, mc::MemCategorizationOptions::default())
+        ExprUseVisitor::with_options(delegate,
+                                     infcx,
+                                     region_maps,
+                                     mc::MemCategorizationOptions::default())
     }
 
     pub fn with_options(delegate: &'a mut (Delegate<'tcx>+'a),
                         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                        region_maps: &'a RegionMaps,
                         options: mc::MemCategorizationOptions)
                -> Self
     {
         ExprUseVisitor {
-            mc: mc::MemCategorizationContext::with_options(infcx, options),
+            mc: mc::MemCategorizationContext::with_options(infcx, region_maps, options),
             delegate: delegate
         }
     }
@@ -347,7 +353,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
     fn borrow_expr(&mut self,
                    expr: &hir::Expr,
-                   r: &'tcx ty::Region,
+                   r: ty::Region<'tcx>,
                    bk: ty::BorrowKind,
                    cause: LoanCause) {
         debug!("borrow_expr(expr={:?}, r={:?}, bk={:?})",
@@ -998,7 +1004,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 Def::Variant(variant_did) |
                 Def::VariantCtor(variant_did, ..) => {
                     let enum_did = tcx.parent_def_id(variant_did).unwrap();
-                    let downcast_cmt = if tcx.lookup_adt_def(enum_did).is_univariant() {
+                    let downcast_cmt = if tcx.adt_def(enum_did).is_univariant() {
                         cmt_pat
                     } else {
                         let cmt_pat_ty = cmt_pat.ty;

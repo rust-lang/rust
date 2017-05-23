@@ -39,7 +39,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::subst::Kind<'t
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::Region {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::RegionKind {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -54,7 +54,8 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::Region {
                 db.depth.hash_stable(hcx, hasher);
                 i.hash_stable(hcx, hasher);
             }
-            ty::ReEarlyBound(ty::EarlyBoundRegion { index, name }) => {
+            ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index, name }) => {
+                def_id.hash_stable(hcx, hasher);
                 index.hash_stable(hcx, hasher);
                 name.hash_stable(hcx, hasher);
             }
@@ -409,11 +410,6 @@ impl_stable_hash_for!(enum ::middle::resolve_lifetime::Region {
     Free(call_site_scope_data, decl)
 });
 
-impl_stable_hash_for!(struct ::middle::region::CallSiteScopeData {
-    fn_id,
-    body_id
-});
-
 impl_stable_hash_for!(struct ty::DebruijnIndex {
     depth
 });
@@ -437,31 +433,19 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ::middle::region::
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            hcx.tcx().region_maps.code_extent_data(*self).hash_stable(hcx, hasher);
-        });
-    }
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ::middle::region::CodeExtentData
-{
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
-                                          hasher: &mut StableHasher<W>) {
-        use middle::region::CodeExtentData;
+        use middle::region::CodeExtent;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            CodeExtentData::Misc(node_id) |
-            CodeExtentData::DestructionScope(node_id) => {
+            CodeExtent::Misc(node_id) |
+            CodeExtent::DestructionScope(node_id) => {
                 node_id.hash_stable(hcx, hasher);
             }
-            CodeExtentData::CallSiteScope { fn_id, body_id } |
-            CodeExtentData::ParameterScope { fn_id, body_id } => {
-                fn_id.hash_stable(hcx, hasher);
+            CodeExtent::CallSiteScope(body_id) |
+            CodeExtent::ParameterScope(body_id) => {
                 body_id.hash_stable(hcx, hasher);
             }
-            CodeExtentData::Remainder(block_remainder) => {
+            CodeExtent::Remainder(block_remainder) => {
                 block_remainder.hash_stable(hcx, hasher);
             }
         }

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![crate_name = "rustc_save_analysis"]
-#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -19,14 +18,17 @@
 
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
-#![feature(rustc_private)]
-#![feature(staged_api)]
+
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(rustc_private))]
+#![cfg_attr(stage0, feature(staged_api))]
 
 #[macro_use] extern crate rustc;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 extern crate rustc_serialize;
+extern crate rustc_typeck;
 extern crate syntax_pos;
 
 extern crate rls_data;
@@ -50,6 +52,7 @@ use rustc::hir::def_id::DefId;
 use rustc::session::config::CrateType::CrateTypeExecutable;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
+use rustc_typeck::hir_ty_to_ty;
 
 use std::env;
 use std::fs::File;
@@ -255,7 +258,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     items: m.items.iter().map(|i| i.id).collect(),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
-                    sig: self.sig_base(item),
+                    sig: Some(self.sig_base(item)),
                     attributes: item.attrs.clone(),
                 }))
             }
@@ -341,7 +344,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
             filter!(self.span_utils, sub_span, field.span, None);
             let def_id = self.tcx.hir.local_def_id(field.id);
-            let typ = self.tcx.item_type(def_id).to_string();
+            let typ = self.tcx.type_of(def_id).to_string();
 
             let span = field.span;
             let text = self.span_utils.snippet(field.span);
@@ -606,11 +609,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 Def::Local(def_id)
             }
 
-            Node::NodeTy(&hir::Ty { node: hir::TyPath(ref qpath), .. }) => {
-                match *qpath {
-                    hir::QPath::Resolved(_, ref path) => path.def,
-                    hir::QPath::TypeRelative(..) => {
-                        if let Some(ty) = self.tcx.ast_ty_to_ty_cache.borrow().get(&id) {
+            Node::NodeTy(ty) => {
+                if let hir::Ty { node: hir::TyPath(ref qpath), .. } = *ty {
+                    match *qpath {
+                        hir::QPath::Resolved(_, ref path) => path.def,
+                        hir::QPath::TypeRelative(..) => {
+                            let ty = hir_ty_to_ty(self.tcx, ty);
                             if let ty::TyProjection(proj) = ty.sty {
                                 for item in self.tcx.associated_items(proj.trait_ref.def_id) {
                                     if item.kind == ty::AssociatedKind::Type {
@@ -620,9 +624,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                     }
                                 }
                             }
+                            Def::Err
                         }
-                        Def::Err
                     }
+                } else {
+                    Def::Err
                 }
             }
 

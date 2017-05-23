@@ -19,16 +19,16 @@ use mem;
 /// A thread local storage key which owns its contents.
 ///
 /// This key uses the fastest possible implementation available to it for the
-/// target platform. It is instantiated with the `thread_local!` macro and the
-/// primary method is the `with` method.
+/// target platform. It is instantiated with the [`thread_local!`] macro and the
+/// primary method is the [`with`] method.
 ///
-/// The `with` method yields a reference to the contained value which cannot be
+/// The [`with`] method yields a reference to the contained value which cannot be
 /// sent across threads or escape the given closure.
 ///
 /// # Initialization and Destruction
 ///
-/// Initialization is dynamically performed on the first call to `with()`
-/// within a thread, and values that implement `Drop` get destructed when a
+/// Initialization is dynamically performed on the first call to [`with`]
+/// within a thread, and values that implement [`Drop`] get destructed when a
 /// thread exits. Some caveats apply, which are explained below.
 ///
 /// # Examples
@@ -77,6 +77,10 @@ use mem;
 /// 3. On macOS, initializing TLS during destruction of other TLS slots can
 ///    sometimes cancel *all* destructors for the current thread, whether or not
 ///    the slots have already had their destructors run or not.
+///
+/// [`with`]: ../../std/thread/struct.LocalKey.html#method.with
+/// [`thread_local!`]: ../../std/macro.thread_local.html
+/// [`Drop`]: ../../std/ops/trait.Drop.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LocalKey<T: 'static> {
     // This outer `LocalKey<T>` type is what's going to be stored in statics,
@@ -106,7 +110,7 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
     }
 }
 
-/// Declare a new thread local storage key of type `std::thread::LocalKey`.
+/// Declare a new thread local storage key of type [`std::thread::LocalKey`].
 ///
 /// # Syntax
 ///
@@ -124,8 +128,10 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// # fn main() {}
 /// ```
 ///
-/// See [LocalKey documentation](thread/struct.LocalKey.html) for more
+/// See [LocalKey documentation][`std::thread::LocalKey`] for more
 /// information.
+///
+/// [`std::thread::LocalKey`]: ../std/thread/struct.LocalKey.html
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
@@ -195,11 +201,13 @@ macro_rules! __thread_local_inner {
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum LocalKeyState {
     /// All keys are in this state whenever a thread starts. Keys will
-    /// transition to the `Valid` state once the first call to `with` happens
+    /// transition to the `Valid` state once the first call to [`with`] happens
     /// and the initialization expression succeeds.
     ///
     /// Keys in the `Uninitialized` state will yield a reference to the closure
-    /// passed to `with` so long as the initialization routine does not panic.
+    /// passed to [`with`] so long as the initialization routine does not panic.
+    ///
+    /// [`with`]: ../../std/thread/struct.LocalKey.html#method.with
     Uninitialized,
 
     /// Once a key has been accessed successfully, it will enter the `Valid`
@@ -208,7 +216,9 @@ pub enum LocalKeyState {
     /// `Destroyed` state.
     ///
     /// Keys in the `Valid` state will be guaranteed to yield a reference to the
-    /// closure passed to `with`.
+    /// closure passed to [`with`].
+    ///
+    /// [`with`]: ../../std/thread/struct.LocalKey.html#method.with
     Valid,
 
     /// When a thread exits, the destructors for keys will be run (if
@@ -216,7 +226,9 @@ pub enum LocalKeyState {
     /// destructor has run, a key is in the `Destroyed` state.
     ///
     /// Keys in the `Destroyed` states will trigger a panic when accessed via
-    /// `with`.
+    /// [`with`].
+    ///
+    /// [`with`]: ../../std/thread/struct.LocalKey.html#method.with
     Destroyed,
 }
 
@@ -283,23 +295,26 @@ impl<T: 'static> LocalKey<T> {
     /// Query the current state of this key.
     ///
     /// A key is initially in the `Uninitialized` state whenever a thread
-    /// starts. It will remain in this state up until the first call to `with`
+    /// starts. It will remain in this state up until the first call to [`with`]
     /// within a thread has run the initialization expression successfully.
     ///
     /// Once the initialization expression succeeds, the key transitions to the
-    /// `Valid` state which will guarantee that future calls to `with` will
+    /// `Valid` state which will guarantee that future calls to [`with`] will
     /// succeed within the thread.
     ///
     /// When a thread exits, each key will be destroyed in turn, and as keys are
     /// destroyed they will enter the `Destroyed` state just before the
     /// destructor starts to run. Keys may remain in the `Destroyed` state after
     /// destruction has completed. Keys without destructors (e.g. with types
-    /// that are `Copy`), may never enter the `Destroyed` state.
+    /// that are [`Copy`]), may never enter the `Destroyed` state.
     ///
     /// Keys in the `Uninitialized` state can be accessed so long as the
     /// initialization does not panic. Keys in the `Valid` state are guaranteed
     /// to be able to be accessed. Keys in the `Destroyed` state will panic on
-    /// any call to `with`.
+    /// any call to [`with`].
+    ///
+    /// [`with`]: ../../std/thread/struct.LocalKey.html#method.with
+    /// [`Copy`]: ../../std/marker/trait.Copy.html
     #[unstable(feature = "thread_local_state",
                reason = "state querying was recently added",
                issue = "27716")]

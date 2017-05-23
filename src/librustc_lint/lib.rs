@@ -20,7 +20,6 @@
 //! This API is completely unstable and subject to change.
 
 #![crate_name = "rustc_lint"]
-#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -34,9 +33,11 @@
 #![feature(i128_type)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(rustc_private)]
 #![feature(slice_patterns)]
-#![feature(staged_api)]
+
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(rustc_private))]
+#![cfg_attr(stage0, feature(staged_api))]
 
 #[macro_use]
 extern crate syntax;
@@ -112,6 +113,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     add_early_builtin!(sess,
                        UnusedParens,
                        UnusedImportBraces,
+                       AnonymousParameters,
+                       IllegalFloatLiteralPattern,
                        );
 
     add_early_builtin_with_new!(sess,
@@ -168,7 +171,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     UNUSED_MUST_USE,
                     UNUSED_UNSAFE,
                     PATH_STATEMENTS,
-                    UNUSED_ATTRIBUTES);
+                    UNUSED_ATTRIBUTES,
+                    UNUSED_MACROS);
 
     // Guidelines for creating a future incompatibility lint:
     //
@@ -199,6 +203,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(ILLEGAL_FLOATING_POINT_CONSTANT_PATTERN),
             reference: "issue #36890 <https://github.com/rust-lang/rust/issues/36890>",
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(ILLEGAL_FLOATING_POINT_LITERAL_PATTERN),
+            reference: "issue #41620 <https://github.com/rust-lang/rust/issues/41620>",
         },
         FutureIncompatibleInfo {
             id: LintId::of(ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN),
@@ -243,6 +251,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(MISSING_FRAGMENT_SPECIFIER),
             reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(ANONYMOUS_PARAMETERS),
+            reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
         },
         ]);
 

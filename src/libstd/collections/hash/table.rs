@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc::heap::{EMPTY, allocate, deallocate};
+use alloc::heap::{allocate, deallocate};
 
 use cmp;
 use hash::{BuildHasher, Hash, Hasher};
-use intrinsics::needs_drop;
 use marker;
-use mem::{align_of, size_of};
+use mem::{align_of, size_of, needs_drop};
 use mem;
 use ops::{Deref, DerefMut};
 use ptr::{self, Unique, Shared};
@@ -33,6 +32,7 @@ use self::BucketState::*;
 type HashUint = usize;
 
 const EMPTY_BUCKET: HashUint = 0;
+const EMPTY: usize = 1;
 
 /// Special `Unique<HashUint>` that uses the lower bit of the pointer
 /// to expose a boolean tag.
@@ -49,24 +49,25 @@ impl TaggedHashUintPtr {
 
     #[inline]
     fn set_tag(&mut self, value: bool) {
-        let usize_ptr = &*self.0 as *const *mut HashUint as *mut usize;
+        let mut usize_ptr = self.0.as_ptr() as usize;
         unsafe {
             if value {
-                *usize_ptr |= 1;
+                usize_ptr |= 1;
             } else {
-                *usize_ptr &= !1;
+                usize_ptr &= !1;
             }
+            self.0 = Unique::new(usize_ptr as *mut HashUint)
         }
     }
 
     #[inline]
     fn tag(&self) -> bool {
-        (*self.0 as usize) & 1 == 1
+        (self.0.as_ptr() as usize) & 1 == 1
     }
 
     #[inline]
     fn ptr(&self) -> *mut HashUint {
-        (*self.0 as usize & !1) as *mut HashUint
+        (self.0.as_ptr() as usize & !1) as *mut HashUint
     }
 }
 
@@ -1112,10 +1113,12 @@ impl<'a, K, V> Iterator for Drain<'a, K, V> {
 
     #[inline]
     fn next(&mut self) -> Option<(SafeHash, K, V)> {
-        self.iter.next().map(|raw| unsafe {
-            (*self.table.as_mut_ptr()).size -= 1;
-            let (k, v) = ptr::read(raw.pair());
-            (SafeHash { hash: ptr::replace(&mut *raw.hash(), EMPTY_BUCKET) }, k, v)
+        self.iter.next().map(|raw| {
+            unsafe {
+                self.table.as_mut().size -= 1;
+                let (k, v) = ptr::read(raw.pair());
+                (SafeHash { hash: ptr::replace(&mut *raw.hash(), EMPTY_BUCKET) }, k, v)
+            }
         })
     }
 

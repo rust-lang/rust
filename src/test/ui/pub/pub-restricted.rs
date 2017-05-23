@@ -35,3 +35,7 @@ mod y {
 }
 
 fn main() {}
+
+// test multichar names
+mod xyz {}
+pub (xyz) fn xyz() {}

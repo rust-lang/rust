@@ -23,12 +23,16 @@ static LICENSES: &'static [&'static str] = &[
     "Unlicense/MIT",
 ];
 
-/// These MPL licensed projects are acceptable, but only these.
+// These are exceptions to Rust's permissive licensing policy, and
+// should be considered bugs. Exceptions are only allowed in Rust
+// tooling. It is _crucial_ that no exception crates be dependencies
+// of the Rust runtime (std / test).
 static EXCEPTIONS: &'static [&'static str] = &[
-    "mdbook",
-    "openssl",
-    "pest",
-    "thread-id",
+    "mdbook", // MPL2, mdbook
+    "openssl", // BSD+advertising clause, cargo, mdbook
+    "pest", // MPL2, mdbook via handlebars
+    "thread-id", // Apache-2.0, mdbook
+    "strings", // this is actually MIT/Apache-2.0 but it's not in the manifest yet
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {

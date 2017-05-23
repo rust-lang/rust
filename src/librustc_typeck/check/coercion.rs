@@ -250,7 +250,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                                   exprs: &[E],
                                   a: Ty<'tcx>,
                                   b: Ty<'tcx>,
-                                  r_b: &'tcx ty::Region,
+                                  r_b: ty::Region<'tcx>,
                                   mt_b: TypeAndMut<'tcx>)
                                   -> CoerceResult<'tcx>
         where E: AsCoercionSite
@@ -965,10 +965,6 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.pushed == 0
-    }
-
     /// Return the "expected type" with which this coercion was
     /// constructed.  This represents the "downward propagated" type
     /// that was given to us at the start of typing whatever construct
@@ -1001,7 +997,12 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                       expression_ty: Ty<'tcx>,
                       expression_diverges: Diverges)
     {
-        self.coerce_inner(fcx, cause, Some(expression), expression_ty, expression_diverges, None)
+        self.coerce_inner(fcx,
+                          cause,
+                          Some(expression),
+                          expression_ty,
+                          expression_diverges,
+                          None, false)
     }
 
     /// Indicates that one of the inputs is a "forced unit". This
@@ -1019,14 +1020,16 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     pub fn coerce_forced_unit<'a>(&mut self,
                                   fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                                   cause: &ObligationCause<'tcx>,
-                                  augment_error: &mut FnMut(&mut DiagnosticBuilder))
+                                  augment_error: &mut FnMut(&mut DiagnosticBuilder),
+                                  label_unit_as_expected: bool)
     {
         self.coerce_inner(fcx,
                           cause,
                           None,
                           fcx.tcx.mk_nil(),
                           Diverges::Maybe,
-                          Some(augment_error))
+                          Some(augment_error),
+                          label_unit_as_expected)
     }
 
     /// The inner coercion "engine". If `expression` is `None`, this
@@ -1038,7 +1041,8 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         expression: Option<&'gcx hir::Expr>,
                         mut expression_ty: Ty<'tcx>,
                         expression_diverges: Diverges,
-                        augment_error: Option<&mut FnMut(&mut DiagnosticBuilder)>)
+                        augment_error: Option<&mut FnMut(&mut DiagnosticBuilder)>,
+                        label_expression_as_expected: bool)
     {
         // Incorporate whatever type inference information we have
         // until now; in principle we might also want to process
@@ -1096,7 +1100,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
             // Another example is `break` with no argument expression.
             assert!(expression_ty.is_nil());
             assert!(expression_ty.is_nil(), "if let hack without unit type");
-            fcx.eq_types(true, cause, expression_ty, self.merged_ty())
+            fcx.eq_types(label_expression_as_expected, cause, expression_ty, self.merged_ty())
                .map(|infer_ok| {
                    fcx.register_infer_ok_obligations(infer_ok);
                    expression_ty
@@ -1119,11 +1123,11 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                 }
             }
             Err(err) => {
-                let (expected, found) = if expression.is_none() {
+                let (expected, found) = if label_expression_as_expected {
                     // In the case where this is a "forced unit", like
                     // `break`, we want to call the `()` "expected"
                     // since it is implied by the syntax.
-                    assert!(expression_ty.is_nil());
+                    // (Note: not all force-units work this way.)"
                     (expression_ty, self.final_ty.unwrap_or(self.expected_ty))
                 } else {
                     // Otherwise, the "expected" type for error
@@ -1140,7 +1144,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         db = struct_span_err!(
                             fcx.tcx.sess, cause.span, E0069,
                             "`return;` in a function whose return type is not `()`");
-                        db.span_label(cause.span, &format!("return type is not ()"));
+                        db.span_label(cause.span, "return type is not ()");
                     }
                     _ => {
                         db = fcx.report_mismatched_types(cause, expected, found, err);

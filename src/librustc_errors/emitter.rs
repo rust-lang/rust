@@ -34,6 +34,36 @@ impl Emitter for EmitterWriter {
     fn emit(&mut self, db: &DiagnosticBuilder) {
         let mut primary_span = db.span.clone();
         let mut children = db.children.clone();
+
+        if let Some((sugg, rest)) = db.suggestions.split_first() {
+            if rest.is_empty() &&
+               // don't display multipart suggestions as labels
+               sugg.substitution_parts.len() == 1 &&
+               // don't display multi-suggestions as labels
+               sugg.substitutions() == 1 &&
+               // don't display long messages as labels
+               sugg.msg.split_whitespace().count() < 10 &&
+               // don't display multiline suggestions as labels
+               sugg.substitution_parts[0].substitutions[0].find('\n').is_none() {
+                let substitution = &sugg.substitution_parts[0].substitutions[0];
+                let msg = format!("help: {} `{}`", sugg.msg, substitution);
+                primary_span.push_span_label(sugg.substitution_spans().next().unwrap(), msg);
+            } else {
+                // if there are multiple suggestions, print them all in full
+                // to be consistent. We could try to figure out if we can
+                // make one (or the first one) inline, but that would give
+                // undue importance to a semi-random suggestion
+                for sugg in &db.suggestions {
+                    children.push(SubDiagnostic {
+                        level: Level::Help,
+                        message: Vec::new(),
+                        span: MultiSpan::new(),
+                        render_span: Some(Suggestion(sugg.clone())),
+                    });
+                }
+            }
+        }
+
         self.fix_multispans_in_std_macros(&mut primary_span, &mut children);
         self.emit_messages_default(&db.level,
                                    &db.styled_message(),
@@ -45,6 +75,10 @@ impl Emitter for EmitterWriter {
 
 /// maximum number of lines we will print for each error; arbitrary.
 pub const MAX_HIGHLIGHT_LINES: usize = 6;
+/// maximum number of suggestions to be shown
+///
+/// Arbitrary, but taken from trait import suggestion limit
+pub const MAX_SUGGESTIONS: usize = 4;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ColorConfig {
@@ -72,21 +106,6 @@ struct FileWithAnnotatedLines {
     file: Rc<FileMap>,
     lines: Vec<Line>,
     multiline_depth: usize,
-}
-
-
-/// Do not use this for messages that end in `\n` – use `println_maybe_styled` instead. See
-/// `EmitterWriter::print_maybe_styled` for details.
-macro_rules! print_maybe_styled {
-    ($dst: expr, $style: expr, $($arg: tt)*) => {
-        $dst.print_maybe_styled(format_args!($($arg)*), $style, false)
-    }
-}
-
-macro_rules! println_maybe_styled {
-    ($dst: expr, $style: expr, $($arg: tt)*) => {
-        $dst.print_maybe_styled(format_args!($($arg)*), $style, true)
-    }
 }
 
 impl EmitterWriter {
@@ -249,8 +268,10 @@ impl EmitterWriter {
                           line: &Line,
                           width_offset: usize,
                           code_offset: usize) -> Vec<(usize, Style)> {
-        let source_string = file.get_line(line.line_index - 1)
-            .unwrap_or("");
+        let source_string = match file.get_line(line.line_index - 1) {
+            Some(s) => s,
+            None => return Vec::new(),
+        };
 
         let line_offset = buffer.num_lines();
 
@@ -756,7 +777,7 @@ impl EmitterWriter {
     /// displayed, keeping the provided highlighting.
     fn msg_to_buffer(&self,
                      buffer: &mut StyledBuffer,
-                     msg: &Vec<(String, Style)>,
+                     msg: &[(String, Style)],
                      padding: usize,
                      label: &str,
                      override_style: Option<Style>) {
@@ -888,6 +909,11 @@ impl EmitterWriter {
 
         // Print out the annotate source lines that correspond with the error
         for annotated_file in annotated_files {
+            // we can't annotate anything if the source is unavailable.
+            if annotated_file.file.src.is_none() {
+                continue;
+            }
+
             // print out the span location and spacer before we print the annotated source
             // to do this, we need to know if this span will be primary
             let is_primary = primary_lo.file.name == annotated_file.file.name;
@@ -1022,43 +1048,48 @@ impl EmitterWriter {
     fn emit_suggestion_default(&mut self,
                                suggestion: &CodeSuggestion,
                                level: &Level,
-                               msg: &Vec<(String, Style)>,
                                max_line_num_len: usize)
                                -> io::Result<()> {
         use std::borrow::Borrow;
 
-        let primary_span = suggestion.msp.primary_span().unwrap();
+        let primary_span = suggestion.substitution_spans().next().unwrap();
         if let Some(ref cm) = self.cm {
             let mut buffer = StyledBuffer::new();
-
-            buffer.append(0, &level.to_string(), Style::Level(level.clone()));
-            buffer.append(0, ": ", Style::HeaderMsg);
-            self.msg_to_buffer(&mut buffer,
-                               msg,
-                               max_line_num_len,
-                               "suggestion",
-                               Some(Style::HeaderMsg));
 
             let lines = cm.span_to_lines(primary_span).unwrap();
 
             assert!(!lines.lines.is_empty());
 
-            let complete = suggestion.splice_lines(cm.borrow());
+            buffer.append(0, &level.to_string(), Style::Level(level.clone()));
+            buffer.append(0, ": ", Style::HeaderMsg);
+            self.msg_to_buffer(&mut buffer,
+                            &[(suggestion.msg.to_owned(), Style::NoStyle)],
+                            max_line_num_len,
+                            "suggestion",
+                            Some(Style::HeaderMsg));
 
-            // print the suggestion without any line numbers, but leave
-            // space for them. This helps with lining up with previous
-            // snippets from the actual error being reported.
-            let mut lines = complete.lines();
+            let suggestions = suggestion.splice_lines(cm.borrow());
             let mut row_num = 1;
-            for line in lines.by_ref().take(MAX_HIGHLIGHT_LINES) {
-                draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
-                buffer.append(row_num, line, Style::NoStyle);
-                row_num += 1;
-            }
+            for complete in suggestions.iter().take(MAX_SUGGESTIONS) {
 
-            // if we elided some lines, add an ellipsis
-            if let Some(_) = lines.next() {
-                buffer.append(row_num, "...", Style::NoStyle);
+                // print the suggestion without any line numbers, but leave
+                // space for them. This helps with lining up with previous
+                // snippets from the actual error being reported.
+                let mut lines = complete.lines();
+                for line in lines.by_ref().take(MAX_HIGHLIGHT_LINES) {
+                    draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
+                    buffer.append(row_num, line, Style::NoStyle);
+                    row_num += 1;
+                }
+
+                // if we elided some lines, add an ellipsis
+                if let Some(_) = lines.next() {
+                    buffer.append(row_num, "...", Style::NoStyle);
+                }
+            }
+            if suggestions.len() > MAX_SUGGESTIONS {
+                let msg = format!("and {} other candidates", suggestions.len() - MAX_SUGGESTIONS);
+                buffer.append(row_num, &msg, Style::NoStyle);
             }
             emit_to_destination(&buffer.render(), level, &mut self.dst)?;
         }
@@ -1099,7 +1130,6 @@ impl EmitterWriter {
                         Some(Suggestion(ref cs)) => {
                             match self.emit_suggestion_default(cs,
                                                                &child.level,
-                                                               &child.styled_message(),
                                                                max_line_num_len) {
                                 Err(e) => panic!("failed to emit error: {}", e),
                                 _ => ()
@@ -1266,10 +1296,8 @@ impl Write for BufferedWriter {
     }
     fn flush(&mut self) -> io::Result<()> {
         let mut stderr = io::stderr();
-        let result = (|| {
-            stderr.write_all(&self.buffer)?;
-            stderr.flush()
-        })();
+        let result = stderr.write_all(&self.buffer)
+                           .and_then(|_| stderr.flush());
         self.buffer.clear();
         result
     }

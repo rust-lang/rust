@@ -15,7 +15,6 @@
 //! This API is completely unstable and subject to change.
 
 #![crate_name = "syntax_pos"]
-#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -27,9 +26,11 @@
 #![feature(custom_attribute)]
 #![feature(optin_builtin_traits)]
 #![allow(unused_attributes)]
-#![feature(rustc_private)]
-#![feature(staged_api)]
 #![feature(specialization)]
+
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(rustc_private))]
+#![cfg_attr(stage0, feature(staged_api))]
 
 use std::cell::{Cell, RefCell};
 use std::ops::{Add, Sub};
@@ -369,13 +370,16 @@ pub struct MultiByteChar {
 }
 
 /// A single source in the CodeMap.
+#[derive(Clone)]
 pub struct FileMap {
     /// The name of the file that the source came from, source that doesn't
     /// originate from files has names between angle brackets by convention,
     /// e.g. `<anon>`
     pub name: FileName,
-    /// The absolute path of the file that the source came from.
-    pub abs_path: Option<FileName>,
+    /// True if the `name` field above has been modified by -Zremap-path-prefix
+    pub name_was_remapped: bool,
+    /// Indicates which crate this FileMap was imported from.
+    pub crate_of_origin: u32,
     /// The complete source code
     pub src: Option<Rc<String>>,
     /// The start position of this source in the CodeMap
@@ -392,7 +396,7 @@ impl Encodable for FileMap {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_struct("FileMap", 6, |s| {
             s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
-            s.emit_struct_field("abs_path", 1, |s| self.abs_path.encode(s))?;
+            s.emit_struct_field("name_was_remapped", 1, |s| self.name_was_remapped.encode(s))?;
             s.emit_struct_field("start_pos", 2, |s| self.start_pos.encode(s))?;
             s.emit_struct_field("end_pos", 3, |s| self.end_pos.encode(s))?;
             s.emit_struct_field("lines", 4, |s| {
@@ -453,8 +457,8 @@ impl Decodable for FileMap {
 
         d.read_struct("FileMap", 6, |d| {
             let name: String = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
-            let abs_path: Option<String> =
-                d.read_struct_field("abs_path", 1, |d| Decodable::decode(d))?;
+            let name_was_remapped: bool =
+                d.read_struct_field("name_was_remapped", 1, |d| Decodable::decode(d))?;
             let start_pos: BytePos = d.read_struct_field("start_pos", 2, |d| Decodable::decode(d))?;
             let end_pos: BytePos = d.read_struct_field("end_pos", 3, |d| Decodable::decode(d))?;
             let lines: Vec<BytePos> = d.read_struct_field("lines", 4, |d| {
@@ -489,7 +493,11 @@ impl Decodable for FileMap {
                 d.read_struct_field("multibyte_chars", 5, |d| Decodable::decode(d))?;
             Ok(FileMap {
                 name: name,
-                abs_path: abs_path,
+                name_was_remapped: name_was_remapped,
+                // `crate_of_origin` has to be set by the importer.
+                // This value matches up with rustc::hir::def_id::INVALID_CRATE.
+                // That constant is not available here unfortunately :(
+                crate_of_origin: ::std::u32::MAX - 1,
                 start_pos: start_pos,
                 end_pos: end_pos,
                 src: None,

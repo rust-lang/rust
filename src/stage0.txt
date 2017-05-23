@@ -8,8 +8,30 @@
 # release.
 #
 # If you're looking at this file on the master branch, you'll likely see that
-# rustc bootstraps from `beta-$date`, whereas if you're looking at a source
-# tarball for a stable release you'll likely see `1.x.0-$date` where `1.x.0` was
-# released on `$date`
+# rustc and cargo are configured to `beta`, whereas if you're looking at a
+# source tarball for a stable release you'll likely see `1.x.0` for rustc and
+# `0.x.0` for Cargo where they were released on `date`.
 
-rustc: beta-2017-04-05
+date: 2017-04-25
+rustc: beta
+cargo: beta
+
+# When making a stable release the process currently looks like:
+#
+#   1. Produce stable build, upload it to dev-static
+#   2. Produce a beta build from the previous stable build, upload to static
+#   3. Produce a nightly build from previous beta, upload to static
+#   4. Upload stable build to static, publish full release
+#
+# This means that there's a small window of time (a few days) where artifacts
+# are downloaded from dev-static.rust-lang.org instead of static.rust-lang.org.
+# In order to ease this transition we have an extra key is in this configuration
+# file below. When uncommented this will instruct the bootstrap.py script to
+# download from dev-static.rust-lang.org.
+#
+# This key is typically commented out at all times. If you're looking at a
+# stable release tarball it should *definitely* be commented out. If you're
+# looking at a beta source tarball and it's uncommented we'll shortly comment it
+# out.
+
+#dev: 1

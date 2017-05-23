@@ -27,11 +27,6 @@ included, and carry their own copyright notices and license terms:
     Licensed under the SIL Open Font License, Version 1.1.
     See Heuristica-LICENSE.txt.
 
-* jQuery (jquery-2.1.4.min.js):
-
-    Copyright 2005, 2015 jQuery Foundation, Inc.
-    Licensed under the MIT license (see LICENSE-MIT.txt).
-
 * rustdoc.css, main.js, and playpen.js:
 
     Copyright 2015 The Rust Developers.

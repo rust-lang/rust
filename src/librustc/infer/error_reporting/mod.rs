@@ -69,6 +69,7 @@ use traits::{ObligationCause, ObligationCauseCode};
 use ty::{self, TyCtxt, TypeFoldable};
 use ty::{Region, Issue32330};
 use ty::error::TypeError;
+use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
 use errors::{DiagnosticBuilder, DiagnosticStyledString};
 
@@ -78,7 +79,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(self,
                                    err: &mut DiagnosticBuilder,
                                    prefix: &str,
-                                   region: &'tcx ty::Region,
+                                   region: ty::Region<'tcx>,
                                    suffix: &str) {
         fn item_scope_tag(item: &hir::Item) -> &'static str {
             match item.node {
@@ -112,7 +113,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                         heading: &str, span: Span)
                                         -> (String, Option<Span>) {
             let lo = tcx.sess.codemap().lookup_char_pos_adj(span.lo);
-            (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize()),
+            (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize() + 1),
              Some(span))
         }
 
@@ -123,14 +124,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     format!("{}unknown scope: {:?}{}.  Please report a bug.",
                             prefix, scope, suffix)
                 };
-                let span = match scope.span(&self.region_maps, &self.hir) {
+                let span = match scope.span(&self.hir) {
                     Some(s) => s,
                     None => {
                         err.note(&unknown_scope());
                         return;
                     }
                 };
-                let tag = match self.hir.find(scope.node_id(&self.region_maps)) {
+                let tag = match self.hir.find(scope.node_id()) {
                     Some(hir_map::NodeBlock(_)) => "block",
                     Some(hir_map::NodeExpr(expr)) => match expr.node {
                         hir::ExprCall(..) => "call",
@@ -150,19 +151,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         return;
                     }
                 };
-                let scope_decorated_tag = match self.region_maps.code_extent_data(scope) {
-                    region::CodeExtentData::Misc(_) => tag,
-                    region::CodeExtentData::CallSiteScope { .. } => {
+                let scope_decorated_tag = match scope {
+                    region::CodeExtent::Misc(_) => tag,
+                    region::CodeExtent::CallSiteScope(_) => {
                         "scope of call-site for function"
                     }
-                    region::CodeExtentData::ParameterScope { .. } => {
+                    region::CodeExtent::ParameterScope(_) => {
                         "scope of function body"
                     }
-                    region::CodeExtentData::DestructionScope(_) => {
+                    region::CodeExtent::DestructionScope(_) => {
                         new_string = format!("destruction scope surrounding {}", tag);
                         &new_string[..]
                     }
-                    region::CodeExtentData::Remainder(r) => {
+                    region::CodeExtent::Remainder(r) => {
                         new_string = format!("block suffix following statement {}",
                                              r.first_statement_index);
                         &new_string[..]
@@ -171,19 +172,36 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 explain_span(self, scope_decorated_tag, span)
             }
 
-            ty::ReFree(ref fr) => {
-                let prefix = match fr.bound_region {
-                    ty::BrAnon(idx) => {
-                        format!("the anonymous lifetime #{} defined on", idx + 1)
+            ty::ReEarlyBound(_) |
+            ty::ReFree(_) => {
+                let scope = match *region {
+                    ty::ReEarlyBound(ref br) => {
+                        self.parent_def_id(br.def_id).unwrap()
                     }
-                    ty::BrFresh(_) => "an anonymous lifetime defined on".to_owned(),
-                    _ => {
-                        format!("the lifetime {} as defined on",
-                                fr.bound_region)
+                    ty::ReFree(ref fr) => fr.scope,
+                    _ => bug!()
+                };
+                let prefix = match *region {
+                    ty::ReEarlyBound(ref br) => {
+                        format!("the lifetime {} as defined on", br.name)
                     }
+                    ty::ReFree(ref fr) => {
+                        match fr.bound_region {
+                            ty::BrAnon(idx) => {
+                                format!("the anonymous lifetime #{} defined on", idx + 1)
+                            }
+                            ty::BrFresh(_) => "an anonymous lifetime defined on".to_owned(),
+                            _ => {
+                                format!("the lifetime {} as defined on",
+                                        fr.bound_region)
+                            }
+                        }
+                    }
+                    _ => bug!()
                 };
 
-                let node = fr.scope.node_id(&self.region_maps);
+                let node = self.hir.as_local_node_id(scope)
+                                   .unwrap_or(DUMMY_NODE_ID);
                 let unknown;
                 let tag = match self.hir.find(node) {
                     Some(hir_map::NodeBlock(_)) |
@@ -197,12 +215,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     Some(_) => {
                         unknown = format!("unexpected node ({}) for scope {:?}.  \
                                            Please report a bug.",
-                                          self.hir.node_to_string(node), fr.scope);
+                                          self.hir.node_to_string(node), scope);
                         &unknown
                     }
                     None => {
                         unknown = format!("unknown node for scope {:?}.  \
-                                           Please report a bug.", fr.scope);
+                                           Please report a bug.", scope);
                         &unknown
                     }
                 };
@@ -213,8 +231,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::ReStatic => ("the static lifetime".to_owned(), None),
 
             ty::ReEmpty => ("the empty lifetime".to_owned(), None),
-
-            ty::ReEarlyBound(ref data) => (data.name.to_string(), None),
 
             // FIXME(#13998) ReSkolemized should probably print like
             // ReFree rather than dumping Debug output on the user.
@@ -515,7 +531,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         values.1.push_normal("<");
                     }
 
-                    fn lifetime_display(lifetime: &Region) -> String {
+                    fn lifetime_display(lifetime: Region) -> String {
                         let s = format!("{}", lifetime);
                         if s.is_empty() {
                             "'_".to_string()
@@ -666,9 +682,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        diag.span_label(span, &terr);
+        diag.span_label(span, terr.to_string());
         if let Some((sp, msg)) = secondary_span {
-            diag.span_label(sp, &msg);
+            diag.span_label(sp, msg);
         }
 
         self.note_error_origin(diag, &cause);
@@ -767,7 +783,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn report_generic_bound_failure(&self,
                                     origin: SubregionOrigin<'tcx>,
                                     bound_kind: GenericKind<'tcx>,
-                                    sub: &'tcx Region)
+                                    sub: Region<'tcx>)
     {
         // FIXME: it would be better to report the first error message
         // with the span of the parameter itself, rather than the span
@@ -795,6 +811,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         let mut err = match *sub {
+            ty::ReEarlyBound(_) |
             ty::ReFree(ty::FreeRegion {bound_region: ty::BrNamed(..), ..}) => {
                 // Does the required lifetime have a nice name we can print?
                 let mut err = struct_span_err!(self.tcx.sess,
@@ -846,9 +863,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn report_sub_sup_conflict(&self,
                                var_origin: RegionVariableOrigin,
                                sub_origin: SubregionOrigin<'tcx>,
-                               sub_region: &'tcx Region,
+                               sub_region: Region<'tcx>,
                                sup_origin: SubregionOrigin<'tcx>,
-                               sup_region: &'tcx Region) {
+                               sup_region: Region<'tcx>) {
         let mut err = self.report_inference_failure(var_origin);
 
         self.tcx.note_and_explain_region(&mut err,

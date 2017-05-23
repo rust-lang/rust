@@ -13,6 +13,7 @@
 // completely accurate (some things might be counted twice, others missed).
 
 use rustc_const_math::{ConstUsize};
+use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::const_val::{ConstVal};
 use rustc::mir::{AggregateKind, AssertMessage, BasicBlock, BasicBlockData};
 use rustc::mir::{Constant, Literal, Location, LocalDecl};
@@ -44,10 +45,9 @@ pub fn print_mir_stats<'tcx, 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, title: &str) {
     // For debugging instrumentation like this, we don't need to worry
     // about maintaining the dep graph.
     let _ignore = tcx.dep_graph.in_ignore();
-    let mir_map = tcx.maps.mir.borrow();
-    for def_id in mir_map.keys() {
-        let mir = mir_map.get(&def_id).unwrap();
-        collector.visit_mir(&mir.borrow());
+    for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
+        let mir = tcx.optimized_mir(def_id);
+        collector.visit_mir(&mir);
     }
     collector.print(title);
 }
@@ -190,7 +190,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             Rvalue::Aggregate(ref kind, ref _operands) => {
                 // AggregateKind is not distinguished by visit API, so
                 // record it. (`super_rvalue` handles `_operands`.)
-                self.record(match *kind {
+                self.record(match **kind {
                     AggregateKind::Array(_) => "AggregateKind::Array",
                     AggregateKind::Tuple => "AggregateKind::Tuple",
                     AggregateKind::Adt(..) => "AggregateKind::Adt",

@@ -115,6 +115,13 @@ pub fn std_link(build: &Build,
     if target.contains("musl") && !target.contains("mips") {
         copy_musl_third_party_objects(build, target, &libdir);
     }
+
+    if build.config.sanitizers && compiler.stage != 0 && target == "x86_64-apple-darwin" {
+        // The sanitizers are only built in stage1 or above, so the dylibs will
+        // be missing in stage0 and causes panic. See the `std()` function above
+        // for reason why the sanitizers are not built in stage0.
+        copy_apple_sanitizer_dylibs(&build.native_dir(target), "osx", &libdir);
+    }
 }
 
 /// Copies the crt(1,i,n).o startup objects
@@ -123,6 +130,18 @@ pub fn std_link(build: &Build,
 fn copy_musl_third_party_objects(build: &Build, target: &str, into: &Path) {
     for &obj in &["crt1.o", "crti.o", "crtn.o"] {
         copy(&build.musl_root(target).unwrap().join("lib").join(obj), &into.join(obj));
+    }
+}
+
+fn copy_apple_sanitizer_dylibs(native_dir: &Path, platform: &str, into: &Path) {
+    for &sanitizer in &["asan", "tsan"] {
+        let filename = format!("libclang_rt.{}_{}_dynamic.dylib", sanitizer, platform);
+        let mut src_path = native_dir.join(sanitizer);
+        src_path.push("build");
+        src_path.push("lib");
+        src_path.push("darwin");
+        src_path.push(&filename);
+        copy(&src_path, &into.join(filename));
     }
 }
 
@@ -442,10 +461,7 @@ pub fn tool(build: &Build, stage: u32, target: &str, tool: &str) {
     let compiler = Compiler::new(stage, &build.config.build);
 
     let mut cargo = build.cargo(&compiler, Mode::Tool, target, "build");
-    let mut dir = build.src.join(tool);
-    if !dir.exists() {
-        dir = build.src.join("src/tools").join(tool);
-    }
+    let dir = build.src.join("src/tools").join(tool);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
     // We don't want to build tools dynamically as they'll be running across

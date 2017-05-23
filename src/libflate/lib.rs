@@ -15,7 +15,7 @@
 //! [mz]: https://code.google.com/p/miniz/
 
 #![crate_name = "flate"]
-#![unstable(feature = "rustc_private", issue = "27812")]
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -25,7 +25,7 @@
 #![deny(warnings)]
 
 #![feature(libc)]
-#![feature(staged_api)]
+#![cfg_attr(stage0, feature(staged_api))]
 #![feature(unique)]
 #![cfg_attr(test, feature(rand))]
 
@@ -62,14 +62,14 @@ pub struct Bytes {
 impl Deref for Bytes {
     type Target = [u8];
     fn deref(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts(*self.ptr, self.len) }
+        unsafe { slice::from_raw_parts(self.ptr.as_ptr(), self.len) }
     }
 }
 
 impl Drop for Bytes {
     fn drop(&mut self) {
         unsafe {
-            libc::free(*self.ptr as *mut _);
+            libc::free(self.ptr.as_ptr() as *mut _);
         }
     }
 }

@@ -20,39 +20,28 @@ environment:
 
   # 32/64-bit MinGW builds.
   #
-  # The MinGW builds unfortunately have to both download a custom toolchain and
-  # avoid the one installed by AppVeyor by default. Interestingly, though, for
-  # different reasons!
+  # We are using MinGW with posix threads since LLVM does not compile with
+  # the win32 threads version due to missing support for C++'s std::thread.
   #
-  # For 32-bit the installed gcc toolchain on AppVeyor uses the pthread
-  # threading model. This is unfortunately not what we want, and if we compile
-  # with it then there's lots of link errors in the standard library (undefined
-  # references to pthread symbols).
-  #
-  # For 64-bit the installed gcc toolchain is currently 5.3.0 which
-  # unfortunately segfaults on Windows with --enable-llvm-assertions (segfaults
-  # in LLVM). See rust-lang/rust#28445 for more information, but to work around
-  # this we go back in time to 4.9.2 specifically.
+  # Instead of relying on the MinGW version installed on appveryor we download
+  # and install one ourselves so we won't be surprised by changes to appveyor's
+  # build image.
   #
   # Finally, note that the downloads below are all in the `rust-lang-ci` S3
   # bucket, but they cleraly didn't originate there! The downloads originally
   # came from the mingw-w64 SourceForge download site. Unfortunately
   # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
-  #
-  # And as a final point of note, the 32-bit MinGW build using the makefiles do
-  # *not* use debug assertions and llvm assertions. This is because they take
-  # too long on appveyor and this is tested by rustbuild below.
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-ninja
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
     SCRIPT: python x.py test
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
-    MINGW_ARCHIVE: i686-6.2.0-release-win32-dwarf-rt_v5-rev1.7z
+    MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
   - MSYS_BITS: 64
     SCRIPT: python x.py test
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-ninja
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
-    MINGW_ARCHIVE: x86_64-6.2.0-release-win32-seh-rt_v5-rev1.7z
+    MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
     MINGW_DIR: mingw64
 
   # 32/64 bit MSVC and GNU deployment
@@ -68,17 +57,17 @@ environment:
     SCRIPT: python x.py dist
     DEPLOY: 1
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended --enable-ninja
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended
     SCRIPT: python x.py dist
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
-    MINGW_ARCHIVE: i686-6.2.0-release-win32-dwarf-rt_v5-rev1.7z
+    MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
     DEPLOY: 1
   - MSYS_BITS: 64
     SCRIPT: python x.py dist
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended --enable-ninja
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
-    MINGW_ARCHIVE: x86_64-6.2.0-release-win32-seh-rt_v5-rev1.7z
+    MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
     MINGW_DIR: mingw64
     DEPLOY: 1
 
@@ -107,6 +96,26 @@ install:
   - if defined MINGW_URL 7z x -y %MINGW_ARCHIVE% > nul
   - if defined MINGW_URL set PATH=%CD%\%MINGW_DIR%\bin;C:\msys64\usr\bin;%PATH%
 
+  # Here we do a pretty heinous thing which is to mangle the MinGW installation
+  # we just had above. Currently, as of this writing, we're using MinGW-w64
+  # builds of gcc, and that's currently at 6.3.0. We use 6.3.0 as it appears to
+  # be the first version which contains a fix for #40546, builds randomly
+  # failing during LLVM due to ar.exe/ranlib.exe failures.
+  #
+  # Unfortunately, though, 6.3.0 *also* is the first version of MinGW-w64 builds
+  # to contain a regression in gdb (#40184). As a result if we were to use the
+  # gdb provided (7.11.1) then we would fail all debuginfo tests.
+  #
+  # In order to fix spurious failures (pretty high priority) we use 6.3.0. To
+  # avoid disabling gdb tests we download an *old* version of gdb, specifically
+  # that found inside the 6.2.0 distribution. We then overwrite the 6.3.0 gdb
+  # with the 6.2.0 gdb to get tests passing.
+  #
+  # Note that we don't literally overwrite the gdb.exe binary because it appears
+  # to just use gdborig.exe, so that's the binary we deal with instead.
+  - if defined MINGW_URL appveyor-retry appveyor DownloadFile %MINGW_URL%/2017-04-20-%MSYS_BITS%bit-gdborig.exe
+  - if defined MINGW_URL mv 2017-04-20-%MSYS_BITS%bit-gdborig.exe %MINGW_DIR%\bin\gdborig.exe
+
   # Otherwise pull in the MinGW installed on appveyor
   - if NOT defined MINGW_URL set PATH=C:\msys64\mingw%MSYS_BITS%\bin;C:\msys64\usr\bin;%PATH%
 
@@ -115,8 +124,8 @@ install:
   - set PATH=C:\Python27;%PATH%
 
   # Download and install sccache
-  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-04-04-sccache-x86_64-pc-windows-msvc
-  - mv 2017-04-04-sccache-x86_64-pc-windows-msvc sccache.exe
+  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-pc-windows-msvc
+  - mv 2017-05-12-sccache-x86_64-pc-windows-msvc sccache.exe
   - set PATH=%PATH%;%CD%
 
   # Download and install ninja
@@ -124,6 +133,7 @@ install:
   # Note that this is originally from the github releases patch of Ninja
   - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-15-ninja-win.zip
   - 7z x 2017-03-15-ninja-win.zip
+  - set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --enable-ninja
   # - set PATH=%PATH%;%CD% -- this already happens above for sccache
 
   # Install InnoSetup to get `iscc` used to produce installers
@@ -131,9 +141,9 @@ install:
   - set PATH="C:\Program Files (x86)\Inno Setup 5";%PATH%
 
   # Help debug some handle issues on AppVeyor
-  - ps: Invoke-WebRequest -Uri https://download.sysinternals.com/files/Handle.zip -OutFile handle.zip
+  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-15-Handle.zip
   - mkdir handle
-  - ps: Expand-Archive handle.zip -dest handle
+  - 7z x -ohandle 2017-05-15-Handle.zip
   - set PATH=%PATH%;%CD%\handle
   - handle.exe -accepteula -help
 
@@ -149,12 +159,6 @@ test_script:
 
 on_failure:
   - cat %CD%\sccache.log || exit 0
-
-cache:
-  - "build/i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
-  - "build/x86_64-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
-  - "i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
-  - "x86_64-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
 
 branches:
   only:

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! MIR datatypes and passes. See [the README](README.md) for details.
+
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
@@ -797,7 +799,7 @@ pub enum StatementKind<'tcx> {
     StorageDead(Lvalue<'tcx>),
 
     InlineAsm {
-        asm: InlineAsm,
+        asm: Box<InlineAsm>,
         outputs: Vec<Lvalue<'tcx>>,
         inputs: Vec<Operand<'tcx>>
     },
@@ -993,7 +995,7 @@ pub struct VisibilityScopeData {
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Operand<'tcx> {
     Consume(Lvalue<'tcx>),
-    Constant(Constant<'tcx>),
+    Constant(Box<Constant<'tcx>>),
 }
 
 impl<'tcx> Debug for Operand<'tcx> {
@@ -1013,9 +1015,9 @@ impl<'tcx> Operand<'tcx> {
         substs: &'tcx Substs<'tcx>,
         span: Span,
     ) -> Self {
-        Operand::Constant(Constant {
+        Operand::Constant(box Constant {
             span: span,
-            ty: tcx.item_type(def_id).subst(tcx, substs),
+            ty: tcx.type_of(def_id).subst(tcx, substs),
             literal: Literal::Value { value: ConstVal::Function(def_id, substs) },
         })
     }
@@ -1034,7 +1036,7 @@ pub enum Rvalue<'tcx> {
     Repeat(Operand<'tcx>, ConstUsize),
 
     /// &x or &mut x
-    Ref(&'tcx Region, BorrowKind, Lvalue<'tcx>),
+    Ref(Region<'tcx>, BorrowKind, Lvalue<'tcx>),
 
     /// length of a [X] or [X;n] value
     Len(Lvalue<'tcx>),
@@ -1060,7 +1062,7 @@ pub enum Rvalue<'tcx> {
     /// ..., y: ... }` from `dest.x = ...; dest.y = ...;` in the case
     /// that `Foo` has a destructor. These rvalues can be optimized
     /// away after type-checking and before lowering.
-    Aggregate(AggregateKind<'tcx>, Vec<Operand<'tcx>>),
+    Aggregate(Box<AggregateKind<'tcx>>, Vec<Operand<'tcx>>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
@@ -1183,7 +1185,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     tuple_fmt.finish()
                 }
 
-                match *kind {
+                match **kind {
                     AggregateKind::Array(_) => write!(fmt, "{:?}", lvs),
 
                     AggregateKind::Tuple => {
@@ -1601,7 +1603,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
             Discriminant(ref lval) => Discriminant(lval.fold_with(folder)),
             Box(ty) => Box(ty.fold_with(folder)),
             Aggregate(ref kind, ref fields) => {
-                let kind = match *kind {
+                let kind = box match **kind {
                     AggregateKind::Array(ty) => AggregateKind::Array(ty.fold_with(folder)),
                     AggregateKind::Tuple => AggregateKind::Tuple,
                     AggregateKind::Adt(def, v, substs, n) =>
@@ -1629,7 +1631,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
             Discriminant(ref lval) => lval.visit_with(visitor),
             Box(ty) => ty.visit_with(visitor),
             Aggregate(ref kind, ref fields) => {
-                (match *kind {
+                (match **kind {
                     AggregateKind::Array(ty) => ty.visit_with(visitor),
                     AggregateKind::Tuple => false,
                     AggregateKind::Adt(_, _, substs, _) => substs.visit_with(visitor),

@@ -34,6 +34,7 @@ use rustc_driver::{self, driver, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
+use rustc_trans;
 use rustc_trans::back::link;
 use syntax::ast;
 use syntax::codemap::CodeMap;
@@ -58,7 +59,8 @@ pub fn run(input: &str,
            mut test_args: Vec<String>,
            crate_name: Option<String>,
            maybe_sysroot: Option<PathBuf>,
-           render_type: RenderType)
+           render_type: RenderType,
+           display_warnings: bool)
            -> isize {
     let input_path = PathBuf::from(input);
     let input = config::Input::File(input_path.clone());
@@ -74,16 +76,17 @@ pub fn run(input: &str,
         ..config::basic_options().clone()
     };
 
-    let codemap = Rc::new(CodeMap::new());
+    let codemap = Rc::new(CodeMap::new(sessopts.file_path_mapping()));
     let handler =
         errors::Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()));
 
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
-    let cstore = Rc::new(CStore::new(&dep_graph));
+    let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
         sessopts, &dep_graph, Some(input_path.clone()), handler, codemap.clone(), cstore.clone(),
     );
+    rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     sess.parse_sess.config =
         config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
@@ -127,7 +130,8 @@ pub fn run(input: &str,
     test_args.insert(0, "rustdoctest".to_string());
 
     testing::test_main(&test_args,
-                       collector.tests.into_iter().collect());
+                       collector.tests.into_iter().collect(),
+                       testing::Options::new().display_output(display_warnings));
     0
 }
 
@@ -217,7 +221,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
         }
     }
     let data = Arc::new(Mutex::new(Vec::new()));
-    let codemap = Rc::new(CodeMap::new());
+    let codemap = Rc::new(CodeMap::new(sessopts.file_path_mapping()));
     let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
                                                       Some(codemap.clone()));
     let old = io::set_panic(Some(box Sink(data.clone())));
@@ -227,10 +231,11 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
 
     let dep_graph = DepGraph::new(false);
-    let cstore = Rc::new(CStore::new(&dep_graph));
+    let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
         sessopts, &dep_graph, None, diagnostic_handler, codemap, cstore.clone(),
     );
+    rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let outdir = Mutex::new(TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir"));

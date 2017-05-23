@@ -379,6 +379,16 @@ fn test_reverse() {
     let mut v3 = Vec::<i32>::new();
     v3.reverse();
     assert!(v3.is_empty());
+
+    // check the 1-byte-types path
+    let mut v = (-50..51i8).collect::<Vec<_>>();
+    v.reverse();
+    assert_eq!(v, (-50..51i8).rev().collect::<Vec<_>>());
+
+    // check the 2-byte-types path
+    let mut v = (-50..51i16).collect::<Vec<_>>();
+    v.reverse();
+    assert_eq!(v, (-50..51i16).rev().collect::<Vec<_>>());
 }
 
 #[test]

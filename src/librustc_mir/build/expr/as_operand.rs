@@ -66,7 +66,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         match category {
             Category::Constant => {
                 let constant = this.as_constant(expr);
-                block.and(Operand::Constant(constant))
+                block.and(Operand::Constant(box constant))
             }
             Category::Lvalue |
             Category::Rvalue(..) => {

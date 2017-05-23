@@ -145,11 +145,11 @@ pub enum CopyImplementationError<'tcx> {
 ///
 /// The ordering of the cases is significant. They are sorted so that cmp::max
 /// will keep the "more erroneous" of two values.
-#[derive(Copy, Clone, PartialOrd, Ord, Eq, PartialEq, Debug)]
+#[derive(Clone, PartialOrd, Ord, Eq, PartialEq, Debug)]
 pub enum Representability {
     Representable,
     ContainsRecursive,
-    SelfRecursive,
+    SelfRecursive(Vec<Span>),
 }
 
 impl<'tcx> ParameterEnvironment<'tcx> {
@@ -313,10 +313,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     ///
     /// Requires that trait definitions have been processed so that we can
     /// elaborate predicates and walk supertraits.
+    ///
+    /// FIXME callers may only have a &[Predicate], not a Vec, so that's
+    /// what this code should accept.
     pub fn required_region_bounds(self,
                                   erased_self_ty: Ty<'tcx>,
                                   predicates: Vec<ty::Predicate<'tcx>>)
-                                  -> Vec<&'tcx ty::Region>    {
+                                  -> Vec<ty::Region<'tcx>>    {
         debug!("required_region_bounds(erased_self_ty={:?}, predicates={:?})",
                erased_self_ty,
                predicates);
@@ -369,11 +372,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return None;
         };
 
-        ty::queries::coherent_trait::get(self, DUMMY_SP, (LOCAL_CRATE, drop_trait));
+        self.coherent_trait((LOCAL_CRATE, drop_trait));
 
         let mut dtor_did = None;
-        let ty = self.item_type(adt_did);
-        self.lookup_trait_def(drop_trait).for_each_relevant_impl(self, ty, |impl_did| {
+        let ty = self.type_of(adt_did);
+        self.trait_def(drop_trait).for_each_relevant_impl(self, ty, |impl_did| {
             if let Some(item) = self.associated_items(impl_did).next() {
                 if let Ok(()) = validate(self, impl_did) {
                     dtor_did = Some(item.def_id);
@@ -422,7 +425,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         let impl_def_id = self.associated_item(dtor).container.id();
-        let impl_generics = self.item_generics(impl_def_id);
+        let impl_generics = self.generics_of(impl_def_id);
 
         // We have a destructor - all the parameters that are not
         // pure_wrt_drop (i.e, don't have a #[may_dangle] attribute)
@@ -445,19 +448,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // <P1, P2, P0>, and then look up which of the impl substs refer to
         // parameters marked as pure.
 
-        let impl_substs = match self.item_type(impl_def_id).sty {
+        let impl_substs = match self.type_of(impl_def_id).sty {
             ty::TyAdt(def_, substs) if def_ == def => substs,
             _ => bug!()
         };
 
-        let item_substs = match self.item_type(def.did).sty {
+        let item_substs = match self.type_of(def.did).sty {
             ty::TyAdt(def_, substs) if def_ == def => substs,
             _ => bug!()
         };
 
         let result = item_substs.iter().zip(impl_substs.iter())
             .filter(|&(_, &k)| {
-                if let Some(&ty::Region::ReEarlyBound(ref ebr)) = k.as_region() {
+                if let Some(&ty::RegionKind::ReEarlyBound(ref ebr)) = k.as_region() {
                     !impl_generics.region_param(ebr).pure_wrt_drop
                 } else if let Some(&ty::TyS {
                     sty: ty::TypeVariants::TyParam(ref pt), ..
@@ -522,7 +525,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::TyAdt(def, substs) => {
                 let ty::DtorckConstraint {
                     dtorck_types, outlives
-                } = ty::queries::adt_dtorck_constraint::get(self, span, def.did);
+                } = self.at(span).adt_dtorck_constraint(def.did);
                 Ok(ty::DtorckConstraint {
                     // FIXME: we can try to recursively `dtorck_constraint_on_ty`
                     // there, but that needs some way to handle cycles.
@@ -673,7 +676,7 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
         ty.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: &'tcx ty::Region) -> bool {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
         self.hash_discriminant_u8(r);
         match *r {
             ty::ReErased |
@@ -685,9 +688,8 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
                 self.hash(db.depth);
                 self.hash(i);
             }
-            ty::ReEarlyBound(ty::EarlyBoundRegion { index, name }) => {
-                self.hash(index);
-                self.hash(name.as_str());
+            ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, .. }) => {
+                self.def_id(def_id);
             }
             ty::ReLateBound(..) |
             ty::ReFree(..) |
@@ -1003,18 +1005,22 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
     /// Check whether a type is representable. This means it cannot contain unboxed
     /// structural recursion. This check is needed for structs and enums.
-    pub fn is_representable(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span)
+    pub fn is_representable(&'tcx self,
+                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            sp: Span)
                             -> Representability {
 
         // Iterate until something non-representable is found
-        fn find_nonrepresentable<'a, 'tcx, It>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                               sp: Span,
-                                               seen: &mut Vec<Ty<'tcx>>,
-                                               iter: It)
-                                               -> Representability
-        where It: Iterator<Item=Ty<'tcx>> {
-            iter.fold(Representability::Representable,
-                      |r, ty| cmp::max(r, is_type_structurally_recursive(tcx, sp, seen, ty)))
+        fn fold_repr<It: Iterator<Item=Representability>>(iter: It) -> Representability {
+            iter.fold(Representability::Representable, |r1, r2| {
+                match (r1, r2) {
+                    (Representability::SelfRecursive(v1),
+                     Representability::SelfRecursive(v2)) => {
+                        Representability::SelfRecursive(v1.iter().map(|s| *s).chain(v2).collect())
+                    }
+                    (r1, r2) => cmp::max(r1, r2)
+                }
+            })
         }
 
         fn are_inner_types_recursive<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span,
@@ -1022,7 +1028,10 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                                                -> Representability {
             match ty.sty {
                 TyTuple(ref ts, _) => {
-                    find_nonrepresentable(tcx, sp, seen, ts.iter().cloned())
+                    // Find non representable
+                    fold_repr(ts.iter().map(|ty| {
+                        is_type_structurally_recursive(tcx, sp, seen, ty)
+                    }))
                 }
                 // Fixed-length vectors.
                 // FIXME(#11924) Behavior undecided for zero-length vectors.
@@ -1030,10 +1039,17 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                     is_type_structurally_recursive(tcx, sp, seen, ty)
                 }
                 TyAdt(def, substs) => {
-                    find_nonrepresentable(tcx,
-                                          sp,
-                                          seen,
-                                          def.all_fields().map(|f| f.ty(tcx, substs)))
+                    // Find non representable fields with their spans
+                    fold_repr(def.all_fields().map(|field| {
+                        let ty = field.ty(tcx, substs);
+                        let span = tcx.hir.span_if_local(field.did).unwrap_or(sp);
+                        match is_type_structurally_recursive(tcx, span, seen, ty) {
+                            Representability::SelfRecursive(_) => {
+                                Representability::SelfRecursive(vec![span])
+                            }
+                            x => x,
+                        }
+                    }))
                 }
                 TyClosure(..) => {
                     // this check is run on type definitions, so we don't expect
@@ -1072,7 +1088,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                                                     sp: Span,
                                                     seen: &mut Vec<Ty<'tcx>>,
                                                     ty: Ty<'tcx>) -> Representability {
-            debug!("is_type_structurally_recursive: {:?}", ty);
+            debug!("is_type_structurally_recursive: {:?} {:?}", ty, sp);
 
             match ty.sty {
                 TyAdt(def, _) => {
@@ -1093,7 +1109,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                                 debug!("SelfRecursive: {:?} contains {:?}",
                                        seen_type,
                                        ty);
-                                return Representability::SelfRecursive;
+                                return Representability::SelfRecursive(vec![sp]);
                             }
                         }
 

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use ast::{self, Ident};
+use codemap::FilePathMapping;
 use parse::{ParseSess, PResult, filemap_to_stream};
 use parse::{lexer, new_parser_from_source_str};
 use parse::parser::Parser;
@@ -18,8 +19,8 @@ use std::iter::Peekable;
 
 /// Map a string to tts, using a made-up filename:
 pub fn string_to_stream(source_str: String) -> TokenStream {
-    let ps = ParseSess::new();
-    filemap_to_stream(&ps, ps.codemap().new_filemap("bogofile".to_string(), None, source_str))
+    let ps = ParseSess::new(FilePathMapping::empty());
+    filemap_to_stream(&ps, ps.codemap().new_filemap("bogofile".to_string(), source_str))
 }
 
 /// Map string to parser (via tts)
@@ -38,7 +39,7 @@ fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> T 
 
 /// Parse a string, return a crate.
 pub fn string_to_crate (source_str : String) -> ast::Crate {
-    let ps = ParseSess::new();
+    let ps = ParseSess::new(FilePathMapping::empty());
     with_error_checking_parse(source_str, &ps, |p| {
         p.parse_crate_mod()
     })
@@ -46,7 +47,7 @@ pub fn string_to_crate (source_str : String) -> ast::Crate {
 
 /// Parse a string, return an expr
 pub fn string_to_expr (source_str : String) -> P<ast::Expr> {
-    let ps = ParseSess::new();
+    let ps = ParseSess::new(FilePathMapping::empty());
     with_error_checking_parse(source_str, &ps, |p| {
         p.parse_expr()
     })
@@ -54,7 +55,7 @@ pub fn string_to_expr (source_str : String) -> P<ast::Expr> {
 
 /// Parse a string, return an item
 pub fn string_to_item (source_str : String) -> Option<P<ast::Item>> {
-    let ps = ParseSess::new();
+    let ps = ParseSess::new(FilePathMapping::empty());
     with_error_checking_parse(source_str, &ps, |p| {
         p.parse_item()
     })
@@ -62,7 +63,7 @@ pub fn string_to_item (source_str : String) -> Option<P<ast::Item>> {
 
 /// Parse a string, return a stmt
 pub fn string_to_stmt(source_str : String) -> Option<ast::Stmt> {
-    let ps = ParseSess::new();
+    let ps = ParseSess::new(FilePathMapping::empty());
     with_error_checking_parse(source_str, &ps, |p| {
         p.parse_stmt()
     })
@@ -71,7 +72,7 @@ pub fn string_to_stmt(source_str : String) -> Option<ast::Stmt> {
 /// Parse a string, return a pat. Uses "irrefutable"... which doesn't
 /// (currently) affect parsing.
 pub fn string_to_pat(source_str: String) -> P<ast::Pat> {
-    let ps = ParseSess::new();
+    let ps = ParseSess::new(FilePathMapping::empty());
     with_error_checking_parse(source_str, &ps, |p| {
         p.parse_pat()
     })

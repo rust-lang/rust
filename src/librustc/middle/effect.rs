@@ -74,7 +74,7 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
                     struct_span_err!(
                         self.tcx.sess, span, E0133,
                         "{} requires unsafe function or block", description)
-                        .span_label(span, &description)
+                        .span_label(span, description)
                         .emit();
                 }
             }
@@ -205,7 +205,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
                     } else if match self.tcx.hir.get_if_local(def_id) {
                         Some(hir::map::NodeForeignItem(..)) => true,
                         Some(..) => false,
-                        None => self.tcx.sess.cstore.is_foreign_item(def_id),
+                        None => self.tcx.is_foreign_item(def_id),
                     } {
                         self.require_unsafe_ext(expr.id, expr.span, "use of extern static", true);
                     }

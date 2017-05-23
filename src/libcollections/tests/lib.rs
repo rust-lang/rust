@@ -10,7 +10,6 @@
 
 #![deny(warnings)]
 
-#![feature(binary_heap_peek_mut_pop)]
 #![feature(box_syntax)]
 #![feature(inclusive_range_syntax)]
 #![feature(collection_placement)]
@@ -20,6 +19,7 @@
 #![feature(pattern)]
 #![feature(placement_in_syntax)]
 #![feature(rand)]
+#![feature(splice)]
 #![feature(step_by)]
 #![feature(str_escape)]
 #![feature(test)]

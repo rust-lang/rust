@@ -96,13 +96,6 @@ pub mod dec2flt;
 pub mod bignum;
 pub mod diy_float;
 
-macro_rules! checked_op {
-    ($U:ty, $op:path, $x:expr, $y:expr) => {{
-        let (result, overflowed) = unsafe { $op($x as $U, $y as $U) };
-        if overflowed { None } else { Some(result as Self) }
-    }}
-}
-
 // `Int` + `SignedInt` implemented for signed integers
 macro_rules! int_impl {
     ($SelfT:ty, $ActualT:ident, $UnsignedT:ty, $BITS:expr,
@@ -778,19 +771,10 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
-        #[cfg(not(stage0))]
         pub fn wrapping_shl(self, rhs: u32) -> Self {
             unsafe {
                 intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
             }
-        }
-
-        /// Stage 0
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
-        #[cfg(stage0)]
-        pub fn wrapping_shl(self, rhs: u32) -> Self {
-            self.overflowing_shl(rhs).0
         }
 
         /// Panic-free bitwise shift-right; yields `self >> mask(rhs)`,
@@ -814,19 +798,10 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
-        #[cfg(not(stage0))]
         pub fn wrapping_shr(self, rhs: u32) -> Self {
             unsafe {
                 intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
             }
-        }
-
-        /// Stage 0
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
-        #[cfg(stage0)]
-        pub fn wrapping_shr(self, rhs: u32) -> Self {
-            self.overflowing_shr(rhs).0
         }
 
         /// Wrapping (modular) absolute value. Computes `self.abs()`,
@@ -1039,17 +1014,8 @@ macro_rules! int_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(not(stage0))]
         pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
             (self.wrapping_shl(rhs), (rhs > ($BITS - 1)))
-        }
-
-        /// Stage 0
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(stage0)]
-        pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
-            (self << (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }
 
         /// Shifts self right by `rhs` bits.
@@ -1070,17 +1036,8 @@ macro_rules! int_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(not(stage0))]
         pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
             (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
-        }
-
-        /// Stage 0
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(stage0)]
-        pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
-            (self >> (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }
 
         /// Computes the absolute value of `self`.
@@ -1946,19 +1903,10 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
-        #[cfg(not(stage0))]
         pub fn wrapping_shl(self, rhs: u32) -> Self {
             unsafe {
                 intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
             }
-        }
-
-        /// Stage 0
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
-        #[cfg(stage0)]
-        pub fn wrapping_shl(self, rhs: u32) -> Self {
-            self.overflowing_shl(rhs).0
         }
 
         /// Panic-free bitwise shift-right; yields `self >> mask(rhs)`,
@@ -1982,19 +1930,10 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
-        #[cfg(not(stage0))]
         pub fn wrapping_shr(self, rhs: u32) -> Self {
             unsafe {
                 intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
             }
-        }
-
-        /// Stage 0
-        #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
-        #[cfg(stage0)]
-        pub fn wrapping_shr(self, rhs: u32) -> Self {
-            self.overflowing_shr(rhs).0
         }
 
         /// Calculates `self` + `rhs`
@@ -2160,17 +2099,8 @@ macro_rules! uint_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(not(stage0))]
         pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
             (self.wrapping_shl(rhs), (rhs > ($BITS - 1)))
-        }
-
-        /// Stage 0
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(stage0)]
-        pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
-            (self << (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }
 
         /// Shifts self right by `rhs` bits.
@@ -2191,18 +2121,9 @@ macro_rules! uint_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(not(stage0))]
         pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
             (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
 
-        }
-
-        /// Stage 0
-        #[inline]
-        #[stable(feature = "wrapping", since = "1.7.0")]
-        #[cfg(stage0)]
-        pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
-            (self >> (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }
 
         /// Raises self to the power of `exp`, using exponentiation by squaring.
@@ -2761,8 +2682,8 @@ pub use num::dec2flt::ParseFloatError;
 // Conversions T -> T are covered by a blanket impl and therefore excluded
 // Some conversions from and to usize/isize are not implemented due to portability concerns
 macro_rules! impl_from {
-    ($Small: ty, $Large: ty) => {
-        #[stable(feature = "lossless_prim_conv", since = "1.5.0")]
+    ($Small: ty, $Large: ty, #[$attr:meta]) => {
+        #[$attr]
         impl From<$Small> for $Large {
             #[inline]
             fn from(small: $Small) -> $Large {
@@ -2773,60 +2694,60 @@ macro_rules! impl_from {
 }
 
 // Unsigned -> Unsigned
-impl_from! { u8, u16 }
-impl_from! { u8, u32 }
-impl_from! { u8, u64 }
-impl_from! { u8, u128 }
-impl_from! { u8, usize }
-impl_from! { u16, u32 }
-impl_from! { u16, u64 }
-impl_from! { u16, u128 }
-impl_from! { u32, u64 }
-impl_from! { u32, u128 }
-impl_from! { u64, u128 }
+impl_from! { u8, u16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u8, u32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u8, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u8, u128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u8, usize, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u16, u32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u16, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u16, u128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u32, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u32, u128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u64, u128, #[unstable(feature = "i128", issue = "35118")] }
 
 // Signed -> Signed
-impl_from! { i8, i16 }
-impl_from! { i8, i32 }
-impl_from! { i8, i64 }
-impl_from! { i8, i128 }
-impl_from! { i8, isize }
-impl_from! { i16, i32 }
-impl_from! { i16, i64 }
-impl_from! { i16, i128 }
-impl_from! { i32, i64 }
-impl_from! { i32, i128 }
-impl_from! { i64, i128 }
+impl_from! { i8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i8, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i8, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i8, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { i8, isize, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i16, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i16, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i16, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { i32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i32, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { i64, i128, #[unstable(feature = "i128", issue = "35118")] }
 
 // Unsigned -> Signed
-impl_from! { u8, i16 }
-impl_from! { u8, i32 }
-impl_from! { u8, i64 }
-impl_from! { u8, i128 }
-impl_from! { u16, i32 }
-impl_from! { u16, i64 }
-impl_from! { u16, i128 }
-impl_from! { u32, i64 }
-impl_from! { u32, i128 }
-impl_from! { u64, i128 }
+impl_from! { u8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u8, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u8, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u8, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u16, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u16, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u16, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u32, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u64, i128, #[unstable(feature = "i128", issue = "35118")] }
 
 // Note: integers can only be represented with full precision in a float if
 // they fit in the significand, which is 24 bits in f32 and 53 bits in f64.
 // Lossy float conversions are not implemented at this time.
 
 // Signed -> Float
-impl_from! { i8, f32 }
-impl_from! { i8, f64 }
-impl_from! { i16, f32 }
-impl_from! { i16, f64 }
-impl_from! { i32, f64 }
+impl_from! { i8, f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { i8, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { i16, f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { i16, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { i32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
 
 // Unsigned -> Float
-impl_from! { u8, f32 }
-impl_from! { u8, f64 }
-impl_from! { u16, f32 }
-impl_from! { u16, f64 }
-impl_from! { u32, f64 }
+impl_from! { u8, f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { u8, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { u16, f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { u16, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+impl_from! { u32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
 
 // Float -> Float
-impl_from! { f32, f64 }
+impl_from! { f32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }

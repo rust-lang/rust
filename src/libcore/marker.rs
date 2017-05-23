@@ -559,7 +559,7 @@ mod impls {
 /// any `UnsafeCell` internally, but not through an indirection.
 /// This affects, for example, whether a `static` of that type is
 /// placed in read-only static memory or writable static memory.
-#[cfg_attr(not(stage0), lang = "freeze")]
+#[lang = "freeze"]
 unsafe trait Freeze {}
 
 unsafe impl Freeze for .. {}

@@ -34,9 +34,16 @@ trait Sync {}
 impl Sync for .. {}
 #[lang = "copy"]
 trait Copy {}
-#[cfg_attr(not(stage0), lang = "freeze")]
+#[lang = "freeze"]
 trait Freeze {}
 impl Freeze for .. {}
+
+#[lang="drop_in_place"]
+#[inline]
+#[allow(unconditional_recursion)]
+pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+    drop_in_place(to_drop);
+}
 
 #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
 pub mod eh_frames {

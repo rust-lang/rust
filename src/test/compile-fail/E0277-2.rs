@@ -25,7 +25,6 @@ fn is_send<T: Send>() { }
 fn main() {
     is_send::<Foo>();
     //~^ ERROR the trait bound `*const u8: std::marker::Send` is not satisfied in `Foo`
-    //~| NOTE within `Foo`, the trait `std::marker::Send` is not implemented for `*const u8`
     //~| NOTE: `*const u8` cannot be sent between threads safely
     //~| NOTE: required because it appears within the type `Baz`
     //~| NOTE: required because it appears within the type `Bar`

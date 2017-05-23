@@ -205,7 +205,7 @@ pub enum ExprKind<'tcx> {
         id: DefId,
     },
     Borrow {
-        region: &'tcx Region,
+        region: Region<'tcx>,
         borrow_kind: BorrowKind,
         arg: ExprRef<'tcx>,
     },

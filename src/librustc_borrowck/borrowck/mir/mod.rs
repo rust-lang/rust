@@ -61,8 +61,11 @@ pub fn borrowck_mir(bcx: &mut BorrowckCtxt,
     let def_id = tcx.hir.local_def_id(id);
     debug!("borrowck_mir({}) UNIMPLEMENTED", tcx.item_path_str(def_id));
 
-    let mir = &tcx.item_mir(def_id);
-    let param_env = ty::ParameterEnvironment::for_item(tcx, id);
+    // It is safe for us to borrow `mir_validated()`: `optimized_mir`
+    // steals it, but it forces the `borrowck` query.
+    let mir = &tcx.mir_validated(def_id).borrow();
+
+    let param_env = tcx.parameter_environment(def_id);
     let move_data = MoveData::gather_moves(mir, tcx, &param_env);
     let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
     let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());

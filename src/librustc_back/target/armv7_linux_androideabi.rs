@@ -18,6 +18,8 @@ pub fn target() -> TargetResult {
     let mut base = super::android_base::opts();
     base.features = "+v7,+thumb2,+vfp3,+d16,-neon".to_string();
     base.max_atomic_width = Some(64);
+    base.pre_link_args
+        .get_mut(&LinkerFlavor::Gcc).unwrap().push("-march=armv7-a".to_string());
 
     Ok(Target {
         llvm_target: "armv7-none-linux-android".to_string(),

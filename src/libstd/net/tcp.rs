@@ -72,24 +72,23 @@ pub struct TcpStream(net_imp::TcpStream);
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```
+/// # use std::io;
 /// use std::net::{TcpListener, TcpStream};
-///
-/// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
 ///
 /// fn handle_client(stream: TcpStream) {
 ///     // ...
 /// }
 ///
+/// # fn process() -> io::Result<()> {
+/// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+///
 /// // accept connections and process them serially
 /// for stream in listener.incoming() {
-///     match stream {
-///         Ok(stream) => {
-///             handle_client(stream);
-///         }
-///         Err(e) => { /* connection failed */ }
-///     }
+///     handle_client(stream?);
 /// }
+/// # Ok(())
+/// # }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TcpListener(net_imp::TcpListener);
@@ -176,6 +175,13 @@ impl TcpStream {
     /// documentation of [`Shutdown`]).
     ///
     /// [`Shutdown`]: ../../std/net/enum.Shutdown.html
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// Calling this function multiple times may result in different behavior,
+    /// depending on the operating system. On Linux, the second call will
+    /// return `Ok(())`, but on macOS, it will return `ErrorKind::NotConnected`.
+    /// This may change in the future.
     ///
     /// # Examples
     ///
@@ -337,7 +343,6 @@ impl TcpStream {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(peek)]
     /// use std::net::TcpStream;
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8000")
@@ -345,7 +350,7 @@ impl TcpStream {
     /// let mut buf = [0; 10];
     /// let len = stream.peek(&mut buf).expect("peek failed");
     /// ```
-    #[unstable(feature = "peek", issue = "38980")]
+    #[stable(feature = "peek", since = "1.18.0")]
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.peek(buf)
     }

@@ -54,7 +54,7 @@ matrix:
     # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
     - env: >
         RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin
+        RUST_CONFIGURE_ARGS="--build=x86_64-apple-darwin --enable-sanitizers"
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
@@ -63,7 +63,7 @@ matrix:
       os: osx
       osx_image: xcode8.2
       install: &osx_install_sccache >
-        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-04-04-sccache-x86_64-apple-darwin &&
+        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-apple-darwin &&
           chmod +x /usr/local/bin/sccache &&
         travis_retry curl -o /usr/local/bin/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
           chmod +x /usr/local/bin/stamp
@@ -95,10 +95,13 @@ matrix:
         MACOSX_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode7
-      install: *osx_install_sccache
+      install:
+        - travis_retry brew update
+        - travis_retry brew install xz
+        - *osx_install_sccache
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended"
+        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended --enable-sanitizers"
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
@@ -106,7 +109,10 @@ matrix:
         MACOSX_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode7
-      install: *osx_install_sccache
+      install:
+        - travis_retry brew update
+        - travis_retry brew install xz
+        - *osx_install_sccache
 
     # "alternate" deployments, these are "nightlies" but don't have assertions
     # turned on, they're deployed to a different location primarily for projects
@@ -123,7 +129,10 @@ matrix:
         MACOSX_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode7
-      install: *osx_install_sccache
+      install:
+        - travis_retry brew update
+        - travis_retry brew install xz
+        - *osx_install_sccache
 
 env:
   global:
@@ -185,7 +194,7 @@ after_failure:
 
 # Save tagged docker images we created and load them if they're available
 # Travis saves caches whether the build failed or not, nuke rustsrc if
-# the failure was while updating it (as it may be in an bad state)
+# the failure was while updating it (as it may be in a bad state)
 # https://github.com/travis-ci/travis-ci/issues/4472
 before_cache:
   - docker history -q rust-ci |
