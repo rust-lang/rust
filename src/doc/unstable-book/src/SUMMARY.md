@@ -49,7 +49,6 @@
     - [link_llvm_intrinsics](language-features/link-llvm-intrinsics.md)
     - [linkage](language-features/linkage.md)
     - [log_syntax](language-features/log-syntax.md)
-    - [loop_break_value](language-features/loop-break-value.md)
     - [macro_reexport](language-features/macro-reexport.md)
     - [macro_vis_matcher](language-features/macro-vis-matcher.md)
     - [main](language-features/main.md)
