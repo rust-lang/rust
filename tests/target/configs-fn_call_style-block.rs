@@ -36,7 +36,7 @@ fn issue1420() {
         r#"
         # Getting started
         ...
-    "#
+    "#,
     )
         .running(waltz)
 }

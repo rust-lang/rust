@@ -1655,24 +1655,24 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                                                 shape,
                                                 used_width + 2 * paren_overhead,
                                                 used_width + paren_overhead)
-            .ok_or(Ordering::Greater)?;
+        .ok_or(Ordering::Greater)?;
 
     let span_lo = context.codemap.span_after(span, "(");
     let span = mk_sp(span_lo, span.hi);
 
-    let list_str = rewrite_call_args(context,
-                                     args,
-                                     span,
-                                     nested_shape,
-                                     one_line_width,
-                                     force_trailing_comma)
-            .ok_or(Ordering::Less)?;
+    let (extendable, list_str) = rewrite_call_args(context,
+                                                   args,
+                                                   span,
+                                                   nested_shape,
+                                                   one_line_width,
+                                                   force_trailing_comma)
+        .ok_or(Ordering::Less)?;
     let arg_one_line_budget = min(one_line_width, context.config.fn_call_width());
     Ok(format!("{}{}",
                callee_str,
                wrap_args_with_parens(context,
                                      &list_str,
-                                     is_extendable(args),
+                                     extendable,
                                      arg_one_line_budget,
                                      shape,
                                      nested_shape)))
@@ -1684,7 +1684,7 @@ fn rewrite_call_args(context: &RewriteContext,
                      shape: Shape,
                      one_line_width: usize,
                      force_trailing_comma: bool)
-                     -> Option<String> {
+                     -> Option<(bool, String)> {
     let items = itemize_list(context.codemap,
                              args.iter(),
                              ")",
@@ -1717,12 +1717,12 @@ fn rewrite_call_args(context: &RewriteContext,
             shape.block()
         };
         let rewrite = args.last().unwrap().rewrite(context, arg_shape);
+        swap(&mut item_vec[args.len() - 1].item, &mut orig_last);
 
         if let Some(rewrite) = rewrite {
             let rewrite_first_line = Some(rewrite[..first_line_width(&rewrite)].to_owned());
             placeholder = Some(rewrite);
 
-            swap(&mut item_vec[args.len() - 1].item, &mut orig_last);
             item_vec[args.len() - 1].item = rewrite_first_line;
         }
     }
@@ -1765,18 +1765,27 @@ fn rewrite_call_args(context: &RewriteContext,
         config: context.config,
     };
 
+    let args_in_single_line =
+        item_vec
+            .iter()
+            .rev()
+            .skip(1)
+            .all(|item| item.item.as_ref().map_or(false, |s| !s.contains('\n')));
+
     match write_list(&item_vec, &fmt) {
         // If arguments do not fit in a single line and do not contain newline,
         // try to put it on the next line. Try this only when we are in block mode
         // and not rewriting macro.
         Some(ref s) if context.config.fn_call_style() == IndentStyle::Block &&
                        !context.inside_macro &&
-                       (first_line_width(s) > one_line_width ||
+                       (!can_be_overflowed(context, args) && args.len() == 1 && s.contains('\n') ||
+                        first_line_width(s) > one_line_width ||
                         first_line_width(s) > context.config.fn_call_width()) => {
             fmt.trailing_separator = SeparatorTactic::Vertical;
-            write_list(&item_vec, &fmt)
+            fmt.tactic = DefinitiveListTactic::Vertical;
+            write_list(&item_vec, &fmt).map(|rw| (false, rw))
         }
-        rewrite @ _ => rewrite,
+        rewrite @ _ => rewrite.map(|rw| (args_in_single_line && is_extendable(args), rw)),
     }
 }
 
@@ -2091,7 +2100,7 @@ pub fn rewrite_tuple(context: &RewriteContext,
         return rewrite_tuple_type(context, items.iter().map(|x| &**x), span, shape);
     }
 
-    // We use the same rule as funcation call for rewriting tuple with multiple expressions.
+    // We use the same rule as funcation call for rewriting tuple.
     // 1 = ","
     rewrite_call_inner(context,
                        &String::new(),
@@ -2100,7 +2109,7 @@ pub fn rewrite_tuple(context: &RewriteContext,
                        span,
                        shape,
                        items.len() == 1)
-            .ok()
+        .ok()
 }
 
 pub fn rewrite_unary_prefix<R: Rewrite>(context: &RewriteContext,

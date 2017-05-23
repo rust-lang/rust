@@ -191,6 +191,19 @@ fn combine_block() {
         },
     );
 
+    do_thing(
+        x,
+        (
+            1,
+            2,
+            3,
+            |param| {
+                action();
+                foo(param)
+            },
+        ),
+    );
+
     Ok(
         some_function(
             lllllllllong_argument_one,
@@ -226,6 +239,21 @@ fn combine_block() {
             long_argument_two,
             long_argument_three,
         )),
+        Some(x) => |x| {
+            let y = x + 1;
+            let z = y + 1;
+            z
+        },
+        Some(x) => (1, 2, |x| {
+            let y = x + 1;
+            let z = y + 1;
+            z
+        }),
+        Some(x) => SomeStruct {
+            f1: long_argument_one,
+            f2: long_argument_two,
+            f3: long_argument_three,
+        },
         None => Ok(SomeStruct {
             f1: long_argument_one,
             f2: long_argument_two,

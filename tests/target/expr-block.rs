@@ -102,7 +102,7 @@ fn arrays() {
             Weighted { weight: 1, item: 1 },
             Weighted { weight: x, item: 2 },
             Weighted { weight: 1, item: 3 },
-        ]
+        ],
     );
 
     let z = [
@@ -257,6 +257,11 @@ fn combine_block() {
         foo(param)
     });
 
+    do_thing(x, (1, 2, 3, |param| {
+        action();
+        foo(param)
+    }));
+
     Ok(some_function(
         lllllllllong_argument_one,
         lllllllllong_argument_two,
@@ -286,6 +291,21 @@ fn combine_block() {
             long_argument_two,
             long_argument_three,
         )),
+        Some(x) => |x| {
+            let y = x + 1;
+            let z = y + 1;
+            z
+        },
+        Some(x) => (1, 2, |x| {
+            let y = x + 1;
+            let z = y + 1;
+            z
+        }),
+        Some(x) => SomeStruct {
+            f1: long_argument_one,
+            f2: long_argument_two,
+            f3: long_argument_three,
+        },
         None => Ok(SomeStruct {
             f1: long_argument_one,
             f2: long_argument_two,
