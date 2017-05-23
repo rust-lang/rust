@@ -69,7 +69,7 @@ distcheck:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
 	$(Q)$(BOOTSTRAP) test distcheck $(BOOTSTRAP_ARGS)
 install:
-	$(Q)$(BOOTSTRAP) dist --install $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) install $(BOOTSTRAP_ARGS)
 tidy:
 	$(Q)$(BOOTSTRAP) test src/tools/tidy $(BOOTSTRAP_ARGS)
 prepare:
