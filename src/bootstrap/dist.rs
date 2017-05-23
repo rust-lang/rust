@@ -212,6 +212,7 @@ fn make_win_dist(rust_root: &Path, plat_root: &Path, target_triple: &str, build:
 
     //Copy runtime dlls next to rustc.exe
     let dist_bin_dir = rust_root.join("bin/");
+    fs::create_dir_all(&dist_bin_dir).expect("creating dist_bin_dir failed");
     for src in rustc_dlls {
         copy_to_folder(&src, &dist_bin_dir);
     }
