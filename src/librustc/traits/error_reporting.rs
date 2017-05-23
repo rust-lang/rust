@@ -179,12 +179,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     data);
                 let normalized = super::normalize_projection_type(
                     &mut selcx,
+                    obligation.param_env,
                     data.projection_ty,
                     obligation.cause.clone(),
                     0
                 );
                 if let Err(error) = self.eq_types(
-                    false, &obligation.cause,
+                    false, &obligation.cause, obligation.param_env,
                     data.ty, normalized.value
                 ) {
                     values = Some(infer::ValuePairs::Types(ExpectedFound {
@@ -251,7 +252,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                        -> Option<DefId>
     {
         let tcx = self.tcx;
-
+        let param_env = obligation.param_env;
         let trait_ref = tcx.erase_late_bound_regions(&trait_ref);
         let trait_self_ty = trait_ref.self_ty();
 
@@ -268,7 +269,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
                 let impl_self_ty = impl_trait_ref.self_ty();
 
-                if let Ok(..) = self.can_equate(&trait_self_ty, &impl_self_ty) {
+                if let Ok(..) = self.can_equate(param_env, &trait_self_ty, &impl_self_ty) {
                     self_match_impls.push(def_id);
 
                     if trait_ref.substs.types().skip(1)
@@ -578,7 +579,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
                         // Try to report a help message
                         if !trait_ref.has_infer_types() &&
-                            self.predicate_can_apply(trait_ref) {
+                            self.predicate_can_apply(obligation.param_env, trait_ref) {
                             // If a where-clause may be useful, remind the
                             // user that they can add it.
                             //
@@ -607,7 +608,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     ty::Predicate::Equate(ref predicate) => {
                         let predicate = self.resolve_type_vars_if_possible(predicate);
                         let err = self.equality_predicate(&obligation.cause,
-                                                            &predicate).err().unwrap();
+                                                          obligation.param_env,
+                                                          &predicate).err().unwrap();
                         struct_span_err!(self.tcx.sess, span, E0278,
                             "the requirement `{}` is not satisfied (`{}`)",
                             predicate, err)
@@ -936,7 +938,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     /// Returns whether the trait predicate may apply for *some* assignment
     /// to the type parameters.
-    fn predicate_can_apply(&self, pred: ty::PolyTraitRef<'tcx>) -> bool {
+    fn predicate_can_apply(&self,
+                           param_env: ty::ParamEnv<'tcx>,
+                           pred: ty::PolyTraitRef<'tcx>)
+                           -> bool {
         struct ParamToVarFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
             infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
             var_map: FxHashMap<Ty<'tcx>, Ty<'tcx>>
@@ -967,12 +972,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
             let cleaned_pred = super::project::normalize(
                 &mut selcx,
+                param_env,
                 ObligationCause::dummy(),
                 &cleaned_pred
             ).value;
 
             let obligation = Obligation::new(
                 ObligationCause::dummy(),
+                param_env,
                 cleaned_pred.to_predicate()
             );
 

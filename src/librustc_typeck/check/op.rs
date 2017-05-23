@@ -238,9 +238,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             lhs_ty);
 
                         if let TypeVariants::TyRef(_, ref ty_mut) = lhs_ty.sty {
-                            if !self.infcx.type_moves_by_default(ty_mut.ty, lhs_expr.span) &&
-                                self.lookup_op_method(ty_mut.ty, &[rhs_ty],
-                                                      Op::Binary(op, is_assign)).is_ok() {
+                            if {
+                                !self.infcx.type_moves_by_default(self.param_env,
+                                                                  ty_mut.ty,
+                                                                  lhs_expr.span) &&
+                                    self.lookup_op_method(ty_mut.ty,
+                                                          &[rhs_ty],
+                                                          Op::Binary(op, is_assign))
+                                        .is_ok()
+                            } {
                                 err.note(
                                     &format!(
                                         "this is a reference to a type that `{}` can be applied \

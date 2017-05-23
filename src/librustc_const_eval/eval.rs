@@ -483,9 +483,11 @@ fn resolve_trait_associated_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("resolve_trait_associated_const: trait_ref={:?}",
            trait_ref);
 
-    tcx.infer_ctxt(Reveal::UserFacing).enter(|infcx| {
+    tcx.infer_ctxt(()).enter(|infcx| {
+        let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
         let mut selcx = traits::SelectionContext::new(&infcx);
         let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
+                                                 param_env,
                                                  trait_ref.to_poly_trait_predicate());
         let selection = match selcx.select(&obligation) {
             Ok(Some(vtable)) => vtable,

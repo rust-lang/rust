@@ -79,8 +79,8 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
 
     // check that the impl type can be made to match the trait type.
 
-    let impl_param_env = tcx.param_env(self_type_did);
-    tcx.infer_ctxt(impl_param_env).enter(|ref infcx| {
+    tcx.infer_ctxt(()).enter(|ref infcx| {
+        let impl_param_env = tcx.param_env(self_type_did);
         let tcx = infcx.tcx;
         let mut fulfillment_cx = traits::FulfillmentContext::new();
 
@@ -92,7 +92,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
         let fresh_impl_self_ty = drop_impl_ty.subst(tcx, fresh_impl_substs);
 
         let cause = &ObligationCause::misc(drop_impl_span, drop_impl_node_id);
-        match infcx.eq_types(true, cause, named_type, fresh_impl_self_ty) {
+        match infcx.eq_types(true, cause, impl_param_env, named_type, fresh_impl_self_ty) {
             Ok(InferOk { obligations, .. }) => {
                 fulfillment_cx.register_predicate_obligations(infcx, obligations);
             }

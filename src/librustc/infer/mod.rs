@@ -161,8 +161,6 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // For region variables.
     region_vars: RegionVarBindings<'a, 'gcx, 'tcx>,
 
-    pub param_env: ty::ParamEnv<'gcx>,
-
     /// Caches the results of trait selection. This cache is used
     /// for things that have to do with the parameters in scope.
     pub selection_cache: traits::SelectionCache<'tcx>,
@@ -400,55 +398,39 @@ impl fmt::Display for FixupError {
 pub trait InferEnv<'a, 'tcx> {
     fn to_parts(self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
-                    Option<ty::TypeckTables<'tcx>>,
-                    ty::ParamEnv<'tcx>);
+                    Option<ty::TypeckTables<'tcx>>);
 }
 
-impl<'a, 'tcx> InferEnv<'a, 'tcx> for Reveal {
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for () {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
-                    Option<ty::TypeckTables<'tcx>>,
-                    ty::ParamEnv<'tcx>) {
-        (None, None, ty::ParamEnv::empty(self))
+                    Option<ty::TypeckTables<'tcx>>) {
+        (None, None)
     }
 }
 
-impl<'a, 'tcx> InferEnv<'a, 'tcx> for ty::ParamEnv<'tcx> {
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for &'a ty::TypeckTables<'tcx> {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
-                    Option<ty::TypeckTables<'tcx>>,
-                    ty::ParamEnv<'tcx>) {
-        (None, None, self)
+                    Option<ty::TypeckTables<'tcx>>) {
+        (Some(self), None)
     }
 }
 
-impl<'a, 'tcx> InferEnv<'a, 'tcx> for (&'a ty::TypeckTables<'tcx>, ty::ParamEnv<'tcx>) {
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for ty::TypeckTables<'tcx> {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
-                    Option<ty::TypeckTables<'tcx>>,
-                    ty::ParamEnv<'tcx>) {
-        (Some(self.0), None, self.1)
-    }
-}
-
-impl<'a, 'tcx> InferEnv<'a, 'tcx> for (ty::TypeckTables<'tcx>, ty::ParamEnv<'tcx>) {
-    fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
-                -> (Option<&'a ty::TypeckTables<'tcx>>,
-                    Option<ty::TypeckTables<'tcx>>,
-                    ty::ParamEnv<'tcx>) {
-        (None, Some(self.0), self.1)
+                    Option<ty::TypeckTables<'tcx>>) {
+        (None, Some(self))
     }
 }
 
 impl<'a, 'tcx> InferEnv<'a, 'tcx> for hir::BodyId {
     fn to_parts(self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
-                    Option<ty::TypeckTables<'tcx>>,
-                    ty::ParamEnv<'tcx>) {
+                    Option<ty::TypeckTables<'tcx>>) {
         let def_id = tcx.hir.body_owner_def_id(self);
-        (Some(tcx.typeck_tables_of(def_id)),
-         None,
-         tcx.param_env(def_id))
+        (Some(tcx.typeck_tables_of(def_id)), None)
     }
 }
 
@@ -460,18 +442,16 @@ pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     arena: DroplessArena,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
     tables: Option<&'a ty::TypeckTables<'gcx>>,
-    param_env: ty::ParamEnv<'gcx>,
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
     pub fn infer_ctxt<E: InferEnv<'a, 'gcx>>(self, env: E) -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
-        let (tables, fresh_tables, param_env) = env.to_parts(self);
+        let (tables, fresh_tables) = env.to_parts(self);
         InferCtxtBuilder {
             global_tcx: self,
             arena: DroplessArena::new(),
             fresh_tables: fresh_tables.map(RefCell::new),
             tables: tables,
-            param_env: param_env,
         }
     }
 
@@ -480,7 +460,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
     /// If any inference functionality is used, ICEs will occur.
     pub fn borrowck_fake_infer_ctxt(self, body: hir::BodyId)
                                     -> InferCtxt<'a, 'gcx, 'gcx> {
-        let (tables, _, param_env) = body.to_parts(self);
+        let (tables, _) = body.to_parts(self);
         InferCtxt {
             tcx: self,
             tables: InferTables::Interned(tables.unwrap()),
@@ -488,7 +468,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
             region_vars: RegionVarBindings::new(self),
-            param_env: param_env,
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
@@ -509,7 +488,6 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             ref arena,
             ref fresh_tables,
             tables,
-            param_env,
         } = *self;
         let tables = tables.map(InferTables::Interned).unwrap_or_else(|| {
             fresh_tables.as_ref().map_or(InferTables::Missing, InferTables::InProgress)
@@ -522,7 +500,6 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
             region_vars: RegionVarBindings::new(tcx),
-            param_env: param_env,
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             reported_trait_errors: RefCell::new(FxHashSet()),
@@ -563,7 +540,10 @@ pub struct CombinedSnapshot<'a, 'tcx:'a> {
 /// Helper trait for shortening the lifetimes inside a
 /// value for post-type-checking normalization.
 pub trait TransNormalize<'gcx>: TypeFoldable<'gcx> {
-    fn trans_normalize<'a, 'tcx>(&self, infcx: &InferCtxt<'a, 'gcx, 'tcx>) -> Self;
+    fn trans_normalize<'a, 'tcx>(&self,
+                                 infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                 param_env: ty::ParamEnv<'tcx>)
+                                 -> Self;
 }
 
 macro_rules! items { ($($item:item)+) => ($($item)+) }
@@ -571,9 +551,10 @@ macro_rules! impl_trans_normalize {
     ($lt_gcx:tt, $($ty:ty),+) => {
         items!($(impl<$lt_gcx> TransNormalize<$lt_gcx> for $ty {
             fn trans_normalize<'a, 'tcx>(&self,
-                                         infcx: &InferCtxt<'a, $lt_gcx, 'tcx>)
+                                         infcx: &InferCtxt<'a, $lt_gcx, 'tcx>,
+                                         param_env: ty::ParamEnv<'tcx>)
                                          -> Self {
-                infcx.normalize_projections_in(self)
+                infcx.normalize_projections_in(param_env, self)
             }
         })+);
     }
@@ -590,13 +571,16 @@ impl_trans_normalize!('gcx,
 );
 
 impl<'gcx> TransNormalize<'gcx> for LvalueTy<'gcx> {
-    fn trans_normalize<'a, 'tcx>(&self, infcx: &InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+    fn trans_normalize<'a, 'tcx>(&self,
+                                 infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                 param_env: ty::ParamEnv<'tcx>)
+                                 -> Self {
         match *self {
-            LvalueTy::Ty { ty } => LvalueTy::Ty { ty: ty.trans_normalize(infcx) },
+            LvalueTy::Ty { ty } => LvalueTy::Ty { ty: ty.trans_normalize(infcx, param_env) },
             LvalueTy::Downcast { adt_def, substs, variant_index } => {
                 LvalueTy::Downcast {
                     adt_def: adt_def,
-                    substs: substs.trans_normalize(infcx),
+                    substs: substs.trans_normalize(infcx, param_env),
                     variant_index: variant_index
                 }
             }
@@ -618,19 +602,23 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         self.normalize_associated_type(&value)
     }
 
+    /// Fully normalizes any associated types in `value`, using an
+    /// empty environment and `Reveal::All` mode (therefore, suitable
+    /// only for monomorphized code during trans, basically).
     pub fn normalize_associated_type<T>(self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
         debug!("normalize_associated_type(t={:?})", value);
 
+        let param_env = ty::ParamEnv::empty(Reveal::All);
         let value = self.erase_regions(value);
 
         if !value.has_projection_types() {
             return value;
         }
 
-        self.infer_ctxt(Reveal::All).enter(|infcx| {
-            value.trans_normalize(&infcx)
+        self.infer_ctxt(()).enter(|infcx| {
+            value.trans_normalize(&infcx, param_env)
         })
     }
 
@@ -651,20 +639,20 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return value;
         }
 
-        self.infer_ctxt(env.reveal_all()).enter(|infcx| {
-            value.trans_normalize(&infcx)
+        self.infer_ctxt(()).enter(|infcx| {
+            value.trans_normalize(&infcx, env.reveal_all())
        })
     }
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    fn normalize_projections_in<T>(&self, value: &T) -> T::Lifted
+    fn normalize_projections_in<T>(&self, param_env: ty::ParamEnv<'tcx>, value: &T) -> T::Lifted
         where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
     {
         let mut selcx = traits::SelectionContext::new(self);
         let cause = traits::ObligationCause::dummy();
         let traits::Normalized { value: result, obligations } =
-            traits::normalize(&mut selcx, cause, value);
+            traits::normalize(&mut selcx, param_env, cause, value);
 
         debug!("normalize_projections_in: result={:?} obligations={:?}",
                 result, obligations);
@@ -803,48 +791,69 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         return variables;
     }
 
-    fn combine_fields(&'a self, trace: TypeTrace<'tcx>)
+    fn combine_fields(&'a self, trace: TypeTrace<'tcx>, param_env: ty::ParamEnv<'tcx>)
                       -> CombineFields<'a, 'gcx, 'tcx> {
         CombineFields {
             infcx: self,
             trace: trace,
             cause: None,
+            param_env,
             obligations: PredicateObligations::new(),
         }
     }
 
-    pub fn equate<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
+    pub fn equate<T>(&'a self,
+                     a_is_expected: bool,
+                     trace: TypeTrace<'tcx>,
+                     param_env: ty::ParamEnv<'tcx>,
+                     a: &T,
+                     b: &T)
         -> InferResult<'tcx, T>
         where T: Relate<'tcx>
     {
-        let mut fields = self.combine_fields(trace);
+        let mut fields = self.combine_fields(trace, param_env);
         let result = fields.equate(a_is_expected).relate(a, b);
         result.map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 
-    pub fn sub<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
+    pub fn sub<T>(&'a self,
+                  a_is_expected: bool,
+                  trace: TypeTrace<'tcx>,
+                  param_env: ty::ParamEnv<'tcx>,
+                  a: &T,
+                  b: &T)
         -> InferResult<'tcx, T>
         where T: Relate<'tcx>
     {
-        let mut fields = self.combine_fields(trace);
+        let mut fields = self.combine_fields(trace, param_env);
         let result = fields.sub(a_is_expected).relate(a, b);
         result.map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 
-    pub fn lub<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
+    pub fn lub<T>(&'a self,
+                  a_is_expected: bool,
+                  trace: TypeTrace<'tcx>,
+                  param_env: ty::ParamEnv<'tcx>,
+                  a: &T,
+                  b: &T)
         -> InferResult<'tcx, T>
         where T: Relate<'tcx>
     {
-        let mut fields = self.combine_fields(trace);
+        let mut fields = self.combine_fields(trace, param_env);
         let result = fields.lub(a_is_expected).relate(a, b);
         result.map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 
-    pub fn glb<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
+    pub fn glb<T>(&'a self,
+                  a_is_expected: bool,
+                  trace: TypeTrace<'tcx>,
+                  param_env: ty::ParamEnv<'tcx>,
+                  a: &T,
+                  b: &T)
         -> InferResult<'tcx, T>
         where T: Relate<'tcx>
     {
-        let mut fields = self.combine_fields(trace);
+        let mut fields = self.combine_fields(trace, param_env);
         let result = fields.glb(a_is_expected).relate(a, b);
         result.map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
@@ -1011,18 +1020,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn sub_types(&self,
                      a_is_expected: bool,
                      cause: &ObligationCause<'tcx>,
+                     param_env: ty::ParamEnv<'tcx>,
                      a: Ty<'tcx>,
                      b: Ty<'tcx>)
-        -> InferResult<'tcx, ()>
+                     -> InferResult<'tcx, ()>
     {
         debug!("sub_types({:?} <: {:?})", a, b);
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(cause, a_is_expected, a, b);
-            self.sub(a_is_expected, trace, &a, &b).map(|ok| ok.unit())
+            self.sub(a_is_expected, trace, param_env, &a, &b).map(|ok| ok.unit())
         })
     }
 
     pub fn can_sub_types(&self,
+                         param_env: ty::ParamEnv<'tcx>,
                          a: Ty<'tcx>,
                          b: Ty<'tcx>)
                          -> UnitResult<'tcx>
@@ -1030,7 +1041,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.probe(|_| {
             let origin = &ObligationCause::dummy();
             let trace = TypeTrace::types(origin, true, a, b);
-            self.sub(true, trace, &a, &b).map(|InferOk { obligations: _, .. }| {
+            self.sub(true, trace, param_env, &a, &b).map(|InferOk { obligations: _, .. }| {
                 // Ignore obligations, since we are unrolling
                 // everything anyway.
             })
@@ -1040,21 +1051,23 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn eq_types(&self,
                     a_is_expected: bool,
                     cause: &ObligationCause<'tcx>,
+                    param_env: ty::ParamEnv<'tcx>,
                     a: Ty<'tcx>,
                     b: Ty<'tcx>)
         -> InferResult<'tcx, ()>
     {
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(cause, a_is_expected, a, b);
-            self.equate(a_is_expected, trace, &a, &b).map(|ok| ok.unit())
+            self.equate(a_is_expected, trace, param_env, &a, &b).map(|ok| ok.unit())
         })
     }
 
     pub fn eq_trait_refs(&self,
-                          a_is_expected: bool,
-                          cause: &ObligationCause<'tcx>,
-                          a: ty::TraitRef<'tcx>,
-                          b: ty::TraitRef<'tcx>)
+                         a_is_expected: bool,
+                         cause: &ObligationCause<'tcx>,
+                         param_env: ty::ParamEnv<'tcx>,
+                         a: ty::TraitRef<'tcx>,
+                         b: ty::TraitRef<'tcx>)
         -> InferResult<'tcx, ()>
     {
         debug!("eq_trait_refs({:?} = {:?})", a, b);
@@ -1063,21 +1076,24 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 cause: cause.clone(),
                 values: TraitRefs(ExpectedFound::new(a_is_expected, a, b))
             };
-            self.equate(a_is_expected, trace, &a, &b).map(|ok| ok.unit())
+            self.equate(a_is_expected, trace, param_env, &a, &b).map(|ok| ok.unit())
         })
     }
 
     pub fn eq_impl_headers(&self,
                            a_is_expected: bool,
                            cause: &ObligationCause<'tcx>,
+                           param_env: ty::ParamEnv<'tcx>,
                            a: &ty::ImplHeader<'tcx>,
                            b: &ty::ImplHeader<'tcx>)
                            -> InferResult<'tcx, ()>
     {
         debug!("eq_impl_header({:?} = {:?})", a, b);
         match (a.trait_ref, b.trait_ref) {
-            (Some(a_ref), Some(b_ref)) => self.eq_trait_refs(a_is_expected, cause, a_ref, b_ref),
-            (None, None) => self.eq_types(a_is_expected, cause, a.self_ty, b.self_ty),
+            (Some(a_ref), Some(b_ref)) =>
+                self.eq_trait_refs(a_is_expected, cause, param_env, a_ref, b_ref),
+            (None, None) =>
+                self.eq_types(a_is_expected, cause, param_env, a.self_ty, b.self_ty),
             _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
         }
     }
@@ -1085,6 +1101,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn sub_poly_trait_refs(&self,
                                a_is_expected: bool,
                                cause: ObligationCause<'tcx>,
+                               param_env: ty::ParamEnv<'tcx>,
                                a: ty::PolyTraitRef<'tcx>,
                                b: ty::PolyTraitRef<'tcx>)
         -> InferResult<'tcx, ()>
@@ -1095,7 +1112,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 cause: cause,
                 values: PolyTraitRefs(ExpectedFound::new(a_is_expected, a, b))
             };
-            self.sub(a_is_expected, trace, &a, &b).map(|ok| ok.unit())
+            self.sub(a_is_expected, trace, param_env, &a, &b).map(|ok| ok.unit())
         })
     }
 
@@ -1109,6 +1126,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn equality_predicate(&self,
                               cause: &ObligationCause<'tcx>,
+                              param_env: ty::ParamEnv<'tcx>,
                               predicate: &ty::PolyEquatePredicate<'tcx>)
         -> InferResult<'tcx, ()>
     {
@@ -1116,7 +1134,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let (ty::EquatePredicate(a, b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
             let cause_span = cause.span;
-            let eqty_ok = self.eq_types(false, cause, a, b)?;
+            let eqty_ok = self.eq_types(false, cause, param_env, a, b)?;
             self.leak_check(false, cause_span, &skol_map, snapshot)?;
             self.pop_skolemized(skol_map, snapshot);
             Ok(eqty_ok.unit())
@@ -1125,6 +1143,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn subtype_predicate(&self,
                              cause: &ObligationCause<'tcx>,
+                             param_env: ty::ParamEnv<'tcx>,
                              predicate: &ty::PolySubtypePredicate<'tcx>)
         -> Option<InferResult<'tcx, ()>>
     {
@@ -1153,7 +1172,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self.skolemize_late_bound_regions(predicate, snapshot);
 
             let cause_span = cause.span;
-            let ok = self.sub_types(a_is_expected, cause, a, b)?;
+            let ok = self.sub_types(a_is_expected, cause, param_env, a, b)?;
             self.leak_check(false, cause_span, &skol_map, snapshot)?;
             self.pop_skolemized(skol_map, snapshot);
             Ok(ok.unit())
@@ -1555,6 +1574,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// details.
     pub fn match_poly_projection_predicate(&self,
                                            cause: ObligationCause<'tcx>,
+                                           param_env: ty::ParamEnv<'tcx>,
                                            match_a: ty::PolyProjectionPredicate<'tcx>,
                                            match_b: ty::TraitRef<'tcx>)
                                            -> InferResult<'tcx, HrMatchResult<Ty<'tcx>>>
@@ -1567,7 +1587,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
 
         let match_pair = match_a.map_bound(|p| (p.projection_ty.trait_ref, p.ty));
-        let mut combine = self.combine_fields(trace);
+        let mut combine = self.combine_fields(trace, param_env);
         let result = combine.higher_ranked_match(span, &match_pair, &match_b, true)?;
         Ok(InferOk { value: result, obligations: combine.obligations })
     }
@@ -1586,7 +1606,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.region_vars.verify_generic_bound(origin, kind, a, bound);
     }
 
-    pub fn can_equate<T>(&self, a: &T, b: &T) -> UnitResult<'tcx>
+    pub fn can_equate<T>(&self, param_env: ty::ParamEnv<'tcx>, a: &T, b: &T) -> UnitResult<'tcx>
         where T: Relate<'tcx> + fmt::Debug
     {
         debug!("can_equate({:?}, {:?})", a, b);
@@ -1596,7 +1616,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // generic so we don't have to do anything quite this
             // terrible.
             let trace = TypeTrace::dummy(self.tcx);
-            self.equate(true, trace, a, b).map(|InferOk { obligations: _, .. }| {
+            self.equate(true, trace, param_env, a, b).map(|InferOk { obligations: _, .. }| {
                 // We can intentionally ignore obligations here, since
                 // this is part of a simple test for general
                 // "equatability". However, it's not entirely clear
@@ -1617,9 +1637,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.resolve_type_vars_or_error(&ty)
     }
 
-    pub fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
+    pub fn type_moves_by_default(&self,
+                                 param_env: ty::ParamEnv<'tcx>,
+                                 ty: Ty<'tcx>,
+                                 span: Span)
+                                 -> bool {
         let ty = self.resolve_type_vars_if_possible(&ty);
-        if let Some(ty) = self.tcx.lift_to_global(&ty) {
+        if let Some((param_env, ty)) = self.tcx.lift_to_global(&(param_env, ty)) {
             // Even if the type may have no inference variables, during
             // type-checking closure types are in local tables only.
             let local_closures = match self.tables {
@@ -1627,7 +1651,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 _ => false
             };
             if !local_closures {
-                return ty.moves_by_default(self.tcx.global_tcx(), self.param_env(), span);
+                return ty.moves_by_default(self.tcx.global_tcx(), param_env, span);
             }
         }
 
@@ -1637,15 +1661,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // rightly refuses to work with inference variables, but
         // moves_by_default has a cache, which we want to use in other
         // cases.
-        !traits::type_known_to_meet_bound(self, ty, copy_def_id, span)
+        !traits::type_known_to_meet_bound(self, param_env, ty, copy_def_id, span)
     }
 
     pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture<'tcx>> {
         self.tables.borrow().upvar_capture_map.get(&upvar_id).cloned()
-    }
-
-    pub fn param_env(&self) -> ty::ParamEnv<'gcx> {
-        self.param_env
     }
 
     pub fn closure_kind(&self,

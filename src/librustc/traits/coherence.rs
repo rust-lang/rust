@@ -10,10 +10,11 @@
 
 //! See `README.md` for high-level documentation
 
-use super::{SelectionContext, Obligation, ObligationCause};
-
 use hir::def_id::{DefId, LOCAL_CRATE};
+use syntax_pos::DUMMY_SP;
+use traits::{self, Normalized, SelectionContext, Obligation, ObligationCause, Reveal};
 use ty::{self, Ty, TyCtxt};
+use ty::subst::Subst;
 
 use infer::{InferCtxt, InferOk};
 
@@ -37,6 +38,28 @@ pub fn overlapping_impls<'cx, 'gcx, 'tcx>(infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     overlap(selcx, impl1_def_id, impl2_def_id)
 }
 
+fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+                                       param_env: ty::ParamEnv<'tcx>,
+                                       impl_def_id: DefId)
+                                       -> ty::ImplHeader<'tcx>
+{
+    let tcx = selcx.tcx();
+    let impl_substs = selcx.infcx().fresh_substs_for_item(DUMMY_SP, impl_def_id);
+
+    let header = ty::ImplHeader {
+        impl_def_id: impl_def_id,
+        self_ty: tcx.type_of(impl_def_id),
+        trait_ref: tcx.impl_trait_ref(impl_def_id),
+        predicates: tcx.predicates_of(impl_def_id).predicates
+    }.subst(tcx, impl_substs);
+
+    let Normalized { value: mut header, obligations } =
+        traits::normalize(selcx, param_env, ObligationCause::dummy(), &header);
+
+    header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
+    header
+}
+
 /// Can both impl `a` and impl `b` be satisfied by a common type (including
 /// `where` clauses)? If so, returns an `ImplHeader` that unifies the two impls.
 fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
@@ -48,17 +71,24 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
            a_def_id,
            b_def_id);
 
-    let a_impl_header = ty::ImplHeader::with_fresh_ty_vars(selcx, a_def_id);
-    let b_impl_header = ty::ImplHeader::with_fresh_ty_vars(selcx, b_def_id);
+    // For the purposes of this check, we don't bring any skolemized
+    // types into scope; instead, we replace the generic types with
+    // fresh type variables, and hence we do our evaluations in an
+    // empty environment.
+    let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+
+    let a_impl_header = with_fresh_ty_vars(selcx, param_env, a_def_id);
+    let b_impl_header = with_fresh_ty_vars(selcx, param_env, b_def_id);
 
     debug!("overlap: a_impl_header={:?}", a_impl_header);
     debug!("overlap: b_impl_header={:?}", b_impl_header);
 
     // Do `a` and `b` unify? If not, no overlap.
     let obligations = match selcx.infcx().eq_impl_headers(true,
-                                        &ObligationCause::dummy(),
-                                        &a_impl_header,
-                                        &b_impl_header) {
+                                                          &ObligationCause::dummy(),
+                                                          param_env,
+                                                          &a_impl_header,
+                                                          &b_impl_header) {
         Ok(InferOk { obligations, .. }) => {
             obligations
         }
@@ -75,6 +105,7 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
                      .chain(&b_impl_header.predicates)
                      .map(|p| infcx.resolve_type_vars_if_possible(p))
                      .map(|p| Obligation { cause: ObligationCause::dummy(),
+                                           param_env: param_env,
                                            recursion_depth: 0,
                                            predicate: p })
                      .chain(obligations)

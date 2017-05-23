@@ -526,7 +526,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                      lp: &LoanPath<'tcx>,
                                      the_move: &move_data::Move,
                                      moved_lp: &LoanPath<'tcx>,
-                                     _param_env: &ty::ParamEnv<'tcx>) {
+                                     _param_env: ty::ParamEnv<'tcx>) {
         let (verb, verb_participle) = match use_kind {
             MovedInUse => ("use", "used"),
             MovedInCapture => ("capture", "captured"),

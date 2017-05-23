@@ -137,9 +137,9 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(&self.cause, false, a, b);
             if self.use_lub {
-                self.lub(false, trace, &a, &b)
+                self.lub(false, trace, self.fcx.param_env, &a, &b)
             } else {
-                self.sub(false, trace, &a, &b)
+                self.sub(false, trace, self.fcx.param_env, &a, &b)
             }
         })
     }
@@ -511,9 +511,12 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
         let cause = ObligationCause::misc(self.cause.span, self.body_id);
-        queue.push_back(self.tcx
-            .predicate_for_trait_def(cause, coerce_unsized_did, 0,
-                                     coerce_source, &[coerce_target]));
+        queue.push_back(self.tcx.predicate_for_trait_def(self.fcx.param_env,
+                                                         cause,
+                                                         coerce_unsized_did,
+                                                         0,
+                                                         coerce_source,
+                                                         &[coerce_target]));
 
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
@@ -775,13 +778,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match (&prev_ty.sty, &new_ty.sty) {
             (&ty::TyFnDef(a_def_id, a_substs, a_fty), &ty::TyFnDef(b_def_id, b_substs, b_fty)) => {
                 // The signature must always match.
-                let fty = self.lub(true, trace.clone(), &a_fty, &b_fty)
+                let fty = self.lub(true, trace.clone(), self.param_env, &a_fty, &b_fty)
                               .map(|ok| self.register_infer_ok_obligations(ok))?;
 
                 if a_def_id == b_def_id {
                     // Same function, maybe the parameters match.
                     let substs = self.commit_if_ok(|_| {
-                        self.lub(true, trace.clone(), &a_substs, &b_substs)
+                        self.lub(true, trace.clone(), self.param_env, &a_substs, &b_substs)
                             .map(|ok| self.register_infer_ok_obligations(ok))
                     });
 
@@ -850,7 +853,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             if !noop {
                 return self.commit_if_ok(|_| {
-                    self.lub(true, trace.clone(), &prev_ty, &new_ty)
+                    self.lub(true, trace.clone(), self.param_env, &prev_ty, &new_ty)
                         .map(|ok| self.register_infer_ok_obligations(ok))
                 });
             }
@@ -863,7 +866,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     Err(e)
                 } else {
                     self.commit_if_ok(|_| {
-                        self.lub(true, trace, &prev_ty, &new_ty)
+                        self.lub(true, trace, self.param_env, &prev_ty, &new_ty)
                             .map(|ok| self.register_infer_ok_obligations(ok))
                     })
                 }
@@ -1106,7 +1109,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
             // Another example is `break` with no argument expression.
             assert!(expression_ty.is_nil());
             assert!(expression_ty.is_nil(), "if let hack without unit type");
-            fcx.eq_types(label_expression_as_expected, cause, expression_ty, self.merged_ty())
+            fcx.eq_types(label_expression_as_expected, cause, fcx.param_env, expression_ty, self.merged_ty())
                .map(|infer_ok| {
                    fcx.register_infer_ok_obligations(infer_ok);
                    expression_ty

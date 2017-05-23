@@ -205,7 +205,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Construct an obligation
         let poly_trait_ref = trait_ref.to_poly_trait_ref();
         let obligation =
-            traits::Obligation::misc(span, self.body_id, poly_trait_ref.to_predicate());
+            traits::Obligation::misc(span,
+                                     self.body_id,
+                                     self.param_env,
+                                     poly_trait_ref.to_predicate());
 
         // Now we want to know if this can be matched
         let mut selcx = traits::SelectionContext::new(self);
@@ -262,14 +265,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert!(!bounds.has_escaping_regions());
 
         let cause = traits::ObligationCause::misc(span, self.body_id);
-        obligations.extend(traits::predicates_for_generics(cause.clone(), &bounds));
+        obligations.extend(traits::predicates_for_generics(cause.clone(),
+                                                           self.param_env,
+                                                           &bounds));
 
         // Also add an obligation for the method type being well-formed.
         let method_ty = tcx.mk_fn_ptr(ty::Binder(fn_sig));
         debug!("lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
                method_ty,
                obligation);
-        obligations.push(traits::Obligation::new(cause, ty::Predicate::WellFormed(method_ty)));
+        obligations.push(traits::Obligation::new(cause,
+                                                 self.param_env,
+                                                 ty::Predicate::WellFormed(method_ty)));
 
         let callee = MethodCallee {
             def_id: def_id,

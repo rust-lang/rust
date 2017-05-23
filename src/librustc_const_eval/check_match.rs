@@ -517,11 +517,11 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
 ///
 /// FIXME: this should be done by borrowck.
 fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Expr) {
-    cx.tcx.infer_ctxt((cx.tables, cx.param_env)).enter(|infcx| {
+    cx.tcx.infer_ctxt(cx.tables).enter(|infcx| {
         let mut checker = MutationChecker {
             cx: cx,
         };
-        ExprUseVisitor::new(&mut checker, cx.region_maps, &infcx).walk_expr(guard);
+        ExprUseVisitor::new(&mut checker, cx.region_maps, &infcx, cx.param_env).walk_expr(guard);
     });
 }
 

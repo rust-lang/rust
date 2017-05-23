@@ -23,12 +23,12 @@ use monomorphize::Instance;
 use partitioning::CodegenUnit;
 use type_::Type;
 use rustc_data_structures::base_n;
+use rustc::session::config::{self, NoDebugInfo};
+use rustc::session::Session;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{LayoutCx, LayoutError, LayoutTyper, TyLayout};
-use session::config::{self, NoDebugInfo};
-use session::Session;
-use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
+use rustc::util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};

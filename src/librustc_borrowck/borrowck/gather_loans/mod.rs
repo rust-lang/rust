@@ -38,9 +38,10 @@ mod move_error;
 
 pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                     body: hir::BodyId)
-                                    -> (Vec<Loan<'tcx>>,
-                                        move_data::MoveData<'tcx>) {
+                                    -> (Vec<Loan<'tcx>>, move_data::MoveData<'tcx>) {
+    let def_id = bccx.tcx.hir.body_owner_def_id(body);
     let infcx = bccx.tcx.borrowck_fake_infer_ctxt(body);
+    let param_env = bccx.tcx.param_env(def_id);
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
         infcx: &infcx,
@@ -51,7 +52,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     };
 
     let body = glcx.bccx.tcx.hir.body(body);
-    euv::ExprUseVisitor::new(&mut glcx, &bccx.region_maps, &infcx).consume_body(body);
+    euv::ExprUseVisitor::new(&mut glcx, &bccx.region_maps, &infcx, param_env).consume_body(body);
 
     glcx.report_potential_errors();
     let GatherLoanCtxt { all_loans, move_data, .. } = glcx;

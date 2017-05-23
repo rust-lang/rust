@@ -27,7 +27,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // they don't.
     pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
         let cause = self.misc(sp);
-        match self.sub_types(false, &cause, actual, expected) {
+        match self.sub_types(false, &cause, self.param_env, actual, expected) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
             },
@@ -54,7 +54,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                      cause: &ObligationCause<'tcx>,
                                      expected: Ty<'tcx>,
                                      actual: Ty<'tcx>) -> Option<DiagnosticBuilder<'tcx>> {
-        match self.eq_types(false, cause, actual, expected) {
+        match self.eq_types(false, cause, self.param_env, actual, expected) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
                 None

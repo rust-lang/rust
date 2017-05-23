@@ -35,6 +35,7 @@ use std::rc::Rc;
 pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    pub param_env: ty::ParamEnv<'tcx>,
     pub region_maps: Rc<RegionMaps>,
 
     /// This is `Constness::Const` if we are compiling a `static`,
@@ -64,6 +65,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         let src_id = src.item_id();
         let src_def_id = tcx.hir.local_def_id(src_id);
 
+        let param_env = tcx.param_env(src_def_id);
         let region_maps = tcx.region_maps(src_def_id);
 
         let attrs = tcx.hir.attrs(src_id);
@@ -80,7 +82,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         // Constants and const fn's always need overflow checks.
         check_overflow |= constness == hir::Constness::Const;
 
-        Cx { tcx, infcx, region_maps, constness, src, check_overflow }
+        Cx { tcx, infcx, param_env, region_maps, constness, src, check_overflow }
     }
 }
 
@@ -169,12 +171,12 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn needs_drop(&mut self, ty: Ty<'tcx>) -> bool {
-        let ty = self.tcx.lift_to_global(&ty).unwrap_or_else(|| {
-            bug!("MIR: Cx::needs_drop({}) got \
+        let (ty, param_env) = self.tcx.lift_to_global(&(ty, self.param_env)).unwrap_or_else(|| {
+            bug!("MIR: Cx::needs_drop({:?}, {:?}) got \
                   type with inference types/regions",
-                 ty);
+                 ty, self.param_env);
         });
-        ty.needs_drop(self.tcx.global_tcx(), self.infcx.param_env)
+        ty.needs_drop(self.tcx.global_tcx(), param_env)
     }
 
     pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {

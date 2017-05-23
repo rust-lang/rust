@@ -37,7 +37,8 @@ struct CheckWfFcxBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     inherited: super::InheritedBuilder<'a, 'gcx, 'tcx>,
     code: ObligationCauseCode<'gcx>,
     id: ast::NodeId,
-    span: Span
+    span: Span,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
@@ -48,8 +49,9 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
         let code = self.code.clone();
         let id = self.id;
         let span = self.span;
+        let param_env = self.param_env;
         self.inherited.enter(|inh| {
-            let fcx = FnCtxt::new(&inh, id);
+            let fcx = FnCtxt::new(&inh, param_env, id);
             let wf_tys = f(&fcx, &mut CheckTypeWellFormedVisitor {
                 tcx: fcx.tcx.global_tcx(),
                 code: code
@@ -206,11 +208,13 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
     fn for_id<'tcx>(&self, id: ast::NodeId, span: Span)
                     -> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
+        let def_id = self.tcx.hir.local_def_id(id);
         CheckWfFcxBuilder {
-            inherited: Inherited::build(self.tcx, self.tcx.hir.local_def_id(id)),
+            inherited: Inherited::build(self.tcx, def_id),
             code: self.code.clone(),
             id: id,
-            span: span
+            span: span,
+            param_env: self.tcx.param_env(def_id),
         }
     }
 
@@ -374,6 +378,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                             ast_trait_ref.path.span, &trait_ref);
                     let obligations =
                         ty::wf::trait_obligations(fcx,
+                                                  fcx.param_env,
                                                   fcx.body_id,
                                                   &trait_ref,
                                                   ast_trait_ref.path.span);
@@ -405,6 +410,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             predicates.predicates
                       .iter()
                       .flat_map(|p| ty::wf::predicate_obligations(fcx,
+                                                                  fcx.param_env,
                                                                   fcx.body_id,
                                                                   p,
                                                                   span));

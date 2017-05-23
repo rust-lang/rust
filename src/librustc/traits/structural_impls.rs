@@ -341,6 +341,7 @@ impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx
             cause: self.cause.clone(),
             recursion_depth: self.recursion_depth,
             predicate: self.predicate.fold_with(folder),
+            param_env: self.param_env.fold_with(folder),
         }
     }
 

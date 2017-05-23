@@ -11,7 +11,7 @@
 use super::{OverlapError, specializes};
 
 use hir::def_id::DefId;
-use traits::{self, Reveal};
+use traits;
 use ty::{self, TyCtxt, TypeFoldable};
 use ty::fast_reject::{self, SimplifiedType};
 use std::rc::Rc;
@@ -109,7 +109,7 @@ impl<'a, 'gcx, 'tcx> Children {
             let possible_sibling = *slot;
 
             let tcx = tcx.global_tcx();
-            let (le, ge) = tcx.infer_ctxt(Reveal::UserFacing).enter(|infcx| {
+            let (le, ge) = tcx.infer_ctxt(()).enter(|infcx| {
                 let overlap = traits::overlapping_impls(&infcx,
                                                         possible_sibling,
                                                         impl_def_id);

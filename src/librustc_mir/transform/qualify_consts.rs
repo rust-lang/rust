@@ -998,10 +998,13 @@ impl MirPass for QualifyAndPromoteConstants {
         // Statics must be Sync.
         if mode == Mode::Static {
             let ty = mir.return_ty;
-            tcx.infer_ctxt(Reveal::UserFacing).enter(|infcx| {
+            tcx.infer_ctxt(()).enter(|infcx| {
+                let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
                 let cause = traits::ObligationCause::new(mir.span, id, traits::SharedStatic);
                 let mut fulfillment_cx = traits::FulfillmentContext::new();
-                fulfillment_cx.register_bound(&infcx, ty,
+                fulfillment_cx.register_bound(&infcx,
+                                              param_env,
+                                              ty,
                                               tcx.require_lang_item(lang_items::SyncTraitLangItem),
                                               cause);
                 if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {

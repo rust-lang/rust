@@ -951,12 +951,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                     let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, callee_substs);
                     let trait_ref = ty::Binder(trait_ref);
                     let span = tcx.hir.span(expr_id);
+                    let param_env = tcx.param_env(method.def_id);
                     let obligation =
                         traits::Obligation::new(traits::ObligationCause::misc(span, expr_id),
+                                                param_env,
                                                 trait_ref.to_poly_trait_predicate());
 
-                    let param_env = tcx.param_env(method.def_id);
-                    tcx.infer_ctxt(param_env).enter(|infcx| {
+                    tcx.infer_ctxt(()).enter(|infcx| {
                         let mut selcx = traits::SelectionContext::new(&infcx);
                         match selcx.select(&obligation) {
                             // The method comes from a `T: Trait` bound.

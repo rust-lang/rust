@@ -139,10 +139,10 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         }
 
         let outer_penv = self.tcx.infer_ctxt(body_id).enter(|infcx| {
-            let param_env = infcx.param_env.clone();
+            let param_env = self.tcx.param_env(item_def_id);
             let outer_penv = mem::replace(&mut self.param_env, param_env);
             let region_maps = &self.tcx.region_maps(item_def_id);
-            euv::ExprUseVisitor::new(self, region_maps, &infcx).consume_body(body);
+            euv::ExprUseVisitor::new(self, region_maps, &infcx, param_env).consume_body(body);
             outer_penv
         });
 

@@ -96,6 +96,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                 self.fields.obligations.push(
                     Obligation::new(
                         self.fields.trace.cause.clone(),
+                        self.fields.param_env,
                         ty::Predicate::Subtype(
                             ty::Binder(ty::SubtypePredicate {
                                 a_is_expected: self.a_is_expected,

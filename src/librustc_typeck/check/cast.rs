@@ -555,6 +555,6 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn type_is_known_to_be_sized(&self, ty: Ty<'tcx>, span: Span) -> bool {
         let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem);
-        traits::type_known_to_meet_bound(self, ty, lang_item, span)
+        traits::type_known_to_meet_bound(self, self.param_env, ty, lang_item, span)
     }
 }
