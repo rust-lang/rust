@@ -197,6 +197,16 @@ pub enum CleanupKind {
     Internal { funclet: mir::BasicBlock }
 }
 
+impl CleanupKind {
+    pub fn funclet_bb(self, for_bb: mir::BasicBlock) -> Option<mir::BasicBlock> {
+        match self {
+            CleanupKind::NotCleanup => None,
+            CleanupKind::Funclet => Some(for_bb),
+            CleanupKind::Internal { funclet } => Some(funclet),
+        }
+    }
+}
+
 pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock, CleanupKind> {
     fn discover_masters<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
                               mir: &mir::Mir<'tcx>) {

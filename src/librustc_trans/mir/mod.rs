@@ -69,6 +69,10 @@ pub struct MirContext<'a, 'tcx:'a> {
     /// The funclet status of each basic block
     cleanup_kinds: IndexVec<mir::BasicBlock, analyze::CleanupKind>,
 
+    /// When targeting MSVC, this stores the cleanup info for each funclet
+    /// BB. This is initialized as we compute the funclets' head block in RPO.
+    funclets: &'a IndexVec<mir::BasicBlock, Option<Funclet>>,
+
     /// This stores the landing-pad block for a given BB, computed lazily on GNU
     /// and eagerly on MSVC.
     landing_pads: IndexVec<mir::BasicBlock, Option<BasicBlockRef>>,
@@ -202,8 +206,11 @@ pub fn trans_mir<'a, 'tcx: 'a>(
         debuginfo::create_function_debug_context(ccx, instance, sig, llfn, mir);
     let bcx = Builder::new_block(ccx, llfn, "start");
 
-    let cleanup_kinds = analyze::cleanup_kinds(&mir);
+    if mir.basic_blocks().iter().any(|bb| bb.is_cleanup) {
+        bcx.set_personality_fn(ccx.eh_personality());
+    }
 
+    let cleanup_kinds = analyze::cleanup_kinds(&mir);
     // Allocate a `Block` for every basic block, except
     // the start block, if nothing loops back to it.
     let reentrant_start_block = !mir.predecessors_for(mir::START_BLOCK).is_empty();
@@ -218,6 +225,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 
     // Compute debuginfo scopes from MIR scopes.
     let scopes = debuginfo::create_mir_scopes(ccx, mir, &debug_context);
+    let (landing_pads, funclets) = create_funclets(&bcx, &cleanup_kinds, &block_bcxs);
 
     let mut mircx = MirContext {
         mir: mir,
@@ -228,7 +236,8 @@ pub fn trans_mir<'a, 'tcx: 'a>(
         blocks: block_bcxs,
         unreachable_block: None,
         cleanup_kinds: cleanup_kinds,
-        landing_pads: IndexVec::from_elem(None, mir.basic_blocks()),
+        landing_pads: landing_pads,
+        funclets: &funclets,
         scopes: scopes,
         locals: IndexVec::new(),
         debug_context: debug_context,
@@ -306,28 +315,13 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     // emitting should be enabled.
     debuginfo::start_emitting_source_locations(&mircx.debug_context);
 
-    let funclets: IndexVec<mir::BasicBlock, Option<Funclet>> =
-    mircx.cleanup_kinds.iter_enumerated().map(|(bb, cleanup_kind)| {
-        if let CleanupKind::Funclet = *cleanup_kind {
-            let bcx = mircx.get_builder(bb);
-            unsafe {
-                llvm::LLVMSetPersonalityFn(mircx.llfn, mircx.ccx.eh_personality());
-            }
-            if base::wants_msvc_seh(ccx.sess()) {
-                return Some(Funclet::new(bcx.cleanup_pad(None, &[])));
-            }
-        }
-
-        None
-    }).collect();
-
     let rpo = traversal::reverse_postorder(&mir);
     let mut visited = BitVector::new(mir.basic_blocks().len());
 
     // Translate the body of each block using reverse postorder
     for (bb, _) in rpo {
         visited.insert(bb.index());
-        mircx.trans_block(bb, &funclets);
+        mircx.trans_block(bb);
     }
 
     // Remove blocks that haven't been visited, or have no
@@ -341,6 +335,26 @@ pub fn trans_mir<'a, 'tcx: 'a>(
             }
         }
     }
+}
+
+fn create_funclets<'a, 'tcx>(
+    bcx: &Builder<'a, 'tcx>,
+    cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
+    block_bcxs: &IndexVec<mir::BasicBlock, BasicBlockRef>)
+    -> (IndexVec<mir::BasicBlock, Option<BasicBlockRef>>,
+        IndexVec<mir::BasicBlock, Option<Funclet>>)
+{
+    block_bcxs.iter_enumerated().zip(cleanup_kinds).map(|((bb, &llbb), cleanup_kind)| {
+        match *cleanup_kind {
+            CleanupKind::Funclet if base::wants_msvc_seh(bcx.sess()) => {
+                let cleanup_bcx = bcx.build_sibling_block(&format!("funclet_{:?}", bb));
+                let cleanup = cleanup_bcx.cleanup_pad(None, &[]);
+                cleanup_bcx.br(llbb);
+                (Some(cleanup_bcx.llbb()), Some(Funclet::new(cleanup)))
+            }
+            _ => (None, None)
+        }
+    }).unzip()
 }
 
 /// Produce, for each argument, a `ValueRef` pointing at the
