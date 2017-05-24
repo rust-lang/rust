@@ -82,7 +82,7 @@ pub fn main() {
     short.next();
     assert_eq!(long.size_hint(), (255, Some(255)));
     assert_eq!(short.size_hint(), (0, Some(0)));
-    assert_eq!(short, RangeInclusive::Empty { at: 42 });
+    assert_eq!(short, 1...0);
 
     assert_eq!(long.len(), 255);
     assert_eq!(short.len(), 0);
@@ -97,28 +97,28 @@ pub fn main() {
     for i in 3...251 {
         assert_eq!(long.next(), Some(i));
     }
-    assert_eq!(long, RangeInclusive::Empty { at: 251 });
+    assert_eq!(long, 1...0);
 
     // check underflow
     let mut narrow = 1...0;
     assert_eq!(narrow.next_back(), None);
-    assert_eq!(narrow, RangeInclusive::Empty { at: 0 });
+    assert_eq!(narrow, 1...0);
     let mut zero = 0u8...0;
     assert_eq!(zero.next_back(), Some(0));
     assert_eq!(zero.next_back(), None);
-    assert_eq!(zero, RangeInclusive::Empty { at: 0 });
+    assert_eq!(zero, 1...0);
     let mut high = 255u8...255;
     assert_eq!(high.next_back(), Some(255));
     assert_eq!(high.next_back(), None);
-    assert_eq!(high, RangeInclusive::Empty { at: 255 });
+    assert_eq!(high, 1...0);
 
     // what happens if you have a nonsense range?
     let mut nonsense = 10...5;
     assert_eq!(nonsense.next(), None);
-    assert_eq!(nonsense, RangeInclusive::Empty { at: 10 });
+    assert_eq!(nonsense, 10...5);
 
     // output
     assert_eq!(format!("{:?}", 0...10), "0...10");
     assert_eq!(format!("{:?}", ...10), "...10");
-    assert_eq!(format!("{:?}", long), "[empty range @ 251]");
+    assert_eq!(format!("{:?}", long), "1...0");
 }

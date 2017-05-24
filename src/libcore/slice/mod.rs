@@ -981,61 +981,48 @@ impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        match self {
-            ops::RangeInclusive::Empty { .. } => Some(&[]),
-            ops::RangeInclusive::NonEmpty { end, .. } if end == usize::max_value() => None,
-            ops::RangeInclusive::NonEmpty { start, end } => (start..end + 1).get(slice),
-        }
+        if self.end == usize::max_value() { None }
+        else { (self.start..self.end + 1).get(slice) }
     }
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        match self {
-            ops::RangeInclusive::Empty { .. } => Some(&mut []),
-            ops::RangeInclusive::NonEmpty { end, .. } if end == usize::max_value() => None,
-            ops::RangeInclusive::NonEmpty { start, end } => (start..end + 1).get_mut(slice),
-        }
+        if self.end == usize::max_value() { None }
+        else { (self.start..self.end + 1).get_mut(slice) }
     }
 
     #[inline]
     unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
-        match self {
-            ops::RangeInclusive::Empty { .. } => &[],
-            ops::RangeInclusive::NonEmpty { start, end } => (start..end + 1).get_unchecked(slice),
-        }
+        (self.start..self.end + 1).get_unchecked(slice)
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
-        match self {
-            ops::RangeInclusive::Empty { .. } => &mut [],
-            ops::RangeInclusive::NonEmpty { start, end } => {
-                (start..end + 1).get_unchecked_mut(slice)
-            }
-        }
+        (self.start..self.end + 1).get_unchecked_mut(slice)
     }
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        match self {
-            ops::RangeInclusive::Empty { .. } => &[],
-            ops::RangeInclusive::NonEmpty { end, .. } if end == usize::max_value() => {
-                panic!("attempted to index slice up to maximum usize");
-            },
-            ops::RangeInclusive::NonEmpty { start, end } => (start..end + 1).index(slice),
-        }
+        assert!(self.end != usize::max_value(),
+            "attempted to index slice up to maximum usize");
+        (self.start..self.end + 1).index(slice)
     }
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        match self {
-            ops::RangeInclusive::Empty { .. } => &mut [],
-            ops::RangeInclusive::NonEmpty { end, .. } if end == usize::max_value() => {
-                panic!("attempted to index slice up to maximum usize");
-            },
-            ops::RangeInclusive::NonEmpty { start, end } => (start..end + 1).index_mut(slice),
-        }
+        assert!(self.end != usize::max_value(),
+            "attempted to index slice up to maximum usize");
+        (self.start..self.end + 1).index_mut(slice)
     }
+}
+
+#[cfg(stage0)] // The bootstrap compiler has a different `...` desugar
+fn inclusive(start: usize, end: usize) -> ops::RangeInclusive<usize> {
+    ops::RangeInclusive { start, end }
+}
+#[cfg(not(stage0))]
+fn inclusive(start: usize, end: usize) -> ops::RangeInclusive<usize> {
+    start...end
 }
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
@@ -1044,32 +1031,32 @@ impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        (0...self.end).get(slice)
+        inclusive(0, self.end).get(slice)
     }
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        (0...self.end).get_mut(slice)
+        inclusive(0, self.end).get_mut(slice)
     }
 
     #[inline]
     unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
-        (0...self.end).get_unchecked(slice)
+        inclusive(0, self.end).get_unchecked(slice)
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
-        (0...self.end).get_unchecked_mut(slice)
+        inclusive(0, self.end).get_unchecked_mut(slice)
     }
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        (0...self.end).index(slice)
+        inclusive(0, self.end).index(slice)
     }
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        (0...self.end).index_mut(slice)
+        inclusive(0, self.end).index_mut(slice)
     }
 }
 

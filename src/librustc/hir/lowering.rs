@@ -1934,13 +1934,13 @@ impl<'a> LoweringContext<'a> {
             ExprKind::Range(ref e1, ref e2, lims) => {
                 use syntax::ast::RangeLimits::*;
 
-                let (path, variant) = match (e1, e2, lims) {
-                    (&None, &None, HalfOpen) => ("RangeFull", None),
-                    (&Some(..), &None, HalfOpen) => ("RangeFrom", None),
-                    (&None, &Some(..), HalfOpen) => ("RangeTo", None),
-                    (&Some(..), &Some(..), HalfOpen) => ("Range", None),
-                    (&None, &Some(..), Closed) => ("RangeToInclusive", None),
-                    (&Some(..), &Some(..), Closed) => ("RangeInclusive", Some("NonEmpty")),
+                let path = match (e1, e2, lims) {
+                    (&None, &None, HalfOpen) => "RangeFull",
+                    (&Some(..), &None, HalfOpen) => "RangeFrom",
+                    (&None, &Some(..), HalfOpen) => "RangeTo",
+                    (&Some(..), &Some(..), HalfOpen) => "Range",
+                    (&None, &Some(..), Closed) => "RangeToInclusive",
+                    (&Some(..), &Some(..), Closed) => "RangeInclusive",
                     (_, &None, Closed) =>
                         panic!(self.diagnostic().span_fatal(
                             e.span, "inclusive range with no end")),
@@ -1957,7 +1957,7 @@ impl<'a> LoweringContext<'a> {
                 let is_unit = fields.is_empty();
                 let unstable_span = self.allow_internal_unstable("...", e.span);
                 let struct_path =
-                    iter::once("ops").chain(iter::once(path)).chain(variant)
+                    iter::once("ops").chain(iter::once(path))
                     .collect::<Vec<_>>();
                 let struct_path = self.std_path(unstable_span, &struct_path, is_unit);
                 let struct_path = hir::QPath::Resolved(None, P(struct_path));
