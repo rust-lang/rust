@@ -1673,15 +1673,9 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                                                    one_line_width,
                                                    force_trailing_comma)
         .ok_or(Ordering::Less)?;
-    let arg_one_line_budget = min(one_line_width, context.config.fn_call_width());
     Ok(format!("{}{}",
                callee_str,
-               wrap_args_with_parens(context,
-                                     &list_str,
-                                     extendable,
-                                     arg_one_line_budget,
-                                     shape,
-                                     nested_shape)))
+               wrap_args_with_parens(context, &list_str, extendable, shape, nested_shape)))
 }
 
 fn rewrite_call_args(context: &RewriteContext,
@@ -1771,12 +1765,16 @@ fn rewrite_call_args(context: &RewriteContext,
         config: context.config,
     };
 
-    let args_in_single_line =
+    let almost_no_newline =
         item_vec
             .iter()
             .rev()
             .skip(1)
             .all(|item| item.item.as_ref().map_or(false, |s| !s.contains('\n')));
+    let extendable = almost_no_newline &&
+                     item_vec.iter().fold(0, |acc, item| {
+        acc + item.item.as_ref().map_or(0, |s| 2 + first_line_width(s))
+    }) <= min(one_line_width, context.config.fn_call_width()) + 2;
 
     match write_list(&item_vec, &fmt) {
         // If arguments do not fit in a single line and do not contain newline,
@@ -1791,7 +1789,15 @@ fn rewrite_call_args(context: &RewriteContext,
             fmt.tactic = DefinitiveListTactic::Vertical;
             write_list(&item_vec, &fmt).map(|rw| (false, rw))
         }
-        rewrite @ _ => rewrite.map(|rw| (args_in_single_line && is_extendable(args), rw)),
+        rewrite @ _ => {
+            rewrite.map(|rw| {
+                            (extendable &&
+                             rw.chars()
+                                 .last()
+                                 .map_or(true, |c| force_trailing_comma || c != ','),
+                             rw)
+                        })
+        }
     }
 }
 
@@ -1841,14 +1847,11 @@ fn is_extendable(args: &[ptr::P<ast::Expr>]) -> bool {
 fn wrap_args_with_parens(context: &RewriteContext,
                          args_str: &str,
                          is_extendable: bool,
-                         one_line_budget: usize,
                          shape: Shape,
                          nested_shape: Shape)
                          -> String {
     if context.config.fn_call_style() == IndentStyle::Visual ||
-       (context.inside_macro && !args_str.contains('\n')) ||
-       ((is_extendable || !args_str.contains('\n')) &&
-        first_line_width(&args_str) <= one_line_budget) {
+       (context.inside_macro && !args_str.contains('\n')) || is_extendable {
         if context.config.spaces_within_parens() && args_str.len() > 0 {
             format!("( {} )", args_str)
         } else {
