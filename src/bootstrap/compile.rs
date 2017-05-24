@@ -277,6 +277,13 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
     if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
         cargo.env("CFG_LLVM_ROOT", s);
     }
+    // Set CC and CXX for crates that use extern crate gcc.
+    if let Some(s) = target_config.and_then(|c| c.cc.as_ref()) {
+        cargo.env("CC", s);
+    }
+    if let Some(s) = target_config.and_then(|c| c.cxx.as_ref()) {
+        cargo.env("CXX", s);
+    }
     // Building with a static libstdc++ is only supported on linux right now,
     // not for MSVC or macOS
     if build.config.llvm_static_stdcpp &&
