@@ -70,7 +70,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
 
         let filen_underscore = filename.replace("-","_").replace(".rs","");
-        test_filen_gate(&filen_underscore, &mut features);
+        let filename_is_gate_test = test_filen_gate(&filen_underscore, &mut features);
 
         contents.truncate(0);
         t!(t!(File::open(&file), &file).read_to_string(&mut contents));
@@ -92,17 +92,20 @@ pub fn check(path: &Path, bad: &mut bool) {
                 },
                 None => continue,
             };
-            let found_feature = features.get_mut(feature_name)
-                                        .map(|v| { v.has_gate_test = true; () })
-                                        .is_some();
-
-            let found_lib_feature = features.get_mut(feature_name)
-                                            .map(|v| { v.has_gate_test = true; () })
-                                            .is_some();
-
-            if !(found_feature || found_lib_feature) {
-                err(&format!("gate-test test found referencing a nonexistent feature '{}'",
-                             feature_name));
+            match features.get_mut(feature_name) {
+                Some(f) => {
+                    if filename_is_gate_test {
+                        err(&format!("The file is already marked as gate test \
+                                      through its name, no need for a \
+                                      'gate-test-{}' comment",
+                                     feature_name));
+                    }
+                    f.has_gate_test = true;
+                }
+                None => {
+                    err(&format!("gate-test test found referencing a nonexistent feature '{}'",
+                                 feature_name));
+                }
             }
         }
     });

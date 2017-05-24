@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:attr_proc_macro.rs
-// gate-test-proc_macro
 #![feature(use_extern_macros)]
 
 extern crate attr_proc_macro;
