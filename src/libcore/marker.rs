@@ -120,7 +120,7 @@ pub trait Sized {
 /// [coerceunsized]: ../ops/trait.CoerceUnsized.html
 /// [rc]: ../../std/rc/struct.Rc.html
 /// [RFC982]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
-
+/// [nomicon-coerce]: ../../nomicon/coercions.html
 #[unstable(feature = "unsize", issue = "27732")]
 #[lang="unsize"]
 pub trait Unsize<T: ?Sized> {
