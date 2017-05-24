@@ -620,6 +620,11 @@ def bootstrap():
     except:
         pass
 
+    if '\nverbose = 2' in rb.config_toml:
+        rb.verbose = 2
+    elif '\nverbose = 1' in rb.config_toml:
+        rb.verbose = 1
+
     rb.use_vendored_sources = '\nvendor = true' in rb.config_toml or \
                               'CFG_ENABLE_VENDOR' in rb.config_mk
 
