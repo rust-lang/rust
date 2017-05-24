@@ -127,13 +127,13 @@ def unpack(tarball, dst, verbose=False, match=None):
             shutil.move(tp, fp)
     shutil.rmtree(os.path.join(dst, fname))
 
-def run(args, verbose=False, exception=False, cwd=None):
+def run(args, verbose=False, exception=False, cwd=None, env=None):
     if verbose:
         print("running: " + ' '.join(args))
     sys.stdout.flush()
     # Use Popen here instead of call() as it apparently allows powershell on
     # Windows to not lock up waiting for input presumably.
-    ret = subprocess.Popen(args, cwd=cwd)
+    ret = subprocess.Popen(args, cwd=cwd, env=env)
     code = ret.wait()
     if code != 0:
         err = "failed to run: " + ' '.join(args)
@@ -393,13 +393,7 @@ class RustBuild(object):
             args.append("--locked")
         if self.use_vendored_sources:
             args.append("--frozen")
-        self.run(args, env)
-
-    def run(self, args, env=None, cwd=None):
-        proc = subprocess.Popen(args, env=env, cwd=cwd)
-        ret = proc.wait()
-        if ret != 0:
-            sys.exit(ret)
+        run(args, env=env, verbose=self.verbose)
 
     def output(self, args, env=None, cwd=None):
         default_encoding = sys.getdefaultencoding()
@@ -571,7 +565,7 @@ class RustBuild(object):
             path = line[1:].split(' ')[1]
             submodules.append([path, line[0]])
 
-        self.run(["git", "submodule", "sync"], cwd=self.rust_root)
+        run(["git", "submodule", "sync"], cwd=self.rust_root)
 
         for submod in submodules:
             path, status = submod
@@ -584,15 +578,15 @@ class RustBuild(object):
             submod_path = os.path.join(self.rust_root, path)
 
             if status == ' ':
-                self.run(["git", "reset", "--hard"], cwd=submod_path)
-                self.run(["git", "clean", "-fdx"], cwd=submod_path)
+                run(["git", "reset", "--hard"], cwd=submod_path)
+                run(["git", "clean", "-fdx"], cwd=submod_path)
             elif status == '+':
-                self.run(["git", "submodule", "update", path], cwd=self.rust_root)
-                self.run(["git", "reset", "--hard"], cwd=submod_path)
-                self.run(["git", "clean", "-fdx"], cwd=submod_path)
+                run(["git", "submodule", "update", path], cwd=self.rust_root)
+                run(["git", "reset", "--hard"], cwd=submod_path)
+                run(["git", "clean", "-fdx"], cwd=submod_path)
             elif status == '-':
-                self.run(["git", "submodule", "init", path], cwd=self.rust_root)
-                self.run(["git", "submodule", "update", path], cwd=self.rust_root)
+                run(["git", "submodule", "init", path], cwd=self.rust_root)
+                run(["git", "submodule", "update", path], cwd=self.rust_root)
             else:
                 raise ValueError('unknown submodule status: ' + status)
 
@@ -685,7 +679,7 @@ def bootstrap():
     env["BUILD"] = rb.build
     env["SRC"] = rb.rust_root
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
-    rb.run(args, env)
+    run(args, env=env, verbose=rb.verbose)
 
 def main():
     start_time = time()
