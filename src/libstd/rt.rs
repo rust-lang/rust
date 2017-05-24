@@ -35,6 +35,8 @@ fn lang_start(main: fn(), argc: isize, argv: *const *const u8) -> isize {
     use sys_common;
     use sys_common::thread_info;
     use thread::Thread;
+    #[cfg(not(feature = "backtrace"))]
+    use mem;
 
     sys::init();
 
@@ -53,9 +55,12 @@ fn lang_start(main: fn(), argc: isize, argv: *const *const u8) -> isize {
         sys::args::init(argc, argv);
 
         // Let's run some code!
+        #[cfg(feature = "backtrace")]
         let res = panic::catch_unwind(|| {
             ::sys_common::backtrace::__rust_begin_short_backtrace(main)
         });
+        #[cfg(not(feature = "backtrace"))]
+        let res = panic::catch_unwind(mem::transmute::<_, fn()>(main));
         sys_common::cleanup();
         res.is_err()
     };
