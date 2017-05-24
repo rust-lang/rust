@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf, Component};
 use std::process::Command;
 
 use Build;
-use dist::{sanitize_sh, tmpdir};
+use dist::{pkgname, sanitize_sh, tmpdir};
 
 pub struct Installer<'a> {
     build: &'a Build,
@@ -29,6 +29,13 @@ pub struct Installer<'a> {
     bindir: PathBuf,
     libdir: PathBuf,
     mandir: PathBuf,
+    empty_dir: PathBuf,
+}
+
+impl<'a> Drop for Installer<'a> {
+    fn drop(&mut self) {
+        t!(fs::remove_dir_all(&self.empty_dir));
+    }
 }
 
 impl<'a> Installer<'a> {
@@ -61,6 +68,10 @@ impl<'a> Installer<'a> {
         let libdir = add_destdir(&libdir, &destdir);
         let mandir = add_destdir(&mandir, &destdir);
 
+        let empty_dir = build.out.join("tmp/empty_dir");
+
+        t!(fs::create_dir_all(&empty_dir));
+
         Installer {
             build,
             prefix,
@@ -69,52 +80,49 @@ impl<'a> Installer<'a> {
             bindir,
             libdir,
             mandir,
+            empty_dir,
         }
     }
 
-    /// Installs everything.
-    pub fn install(&self, stage: u32, host: &str) {
-        let empty_dir = self.build.out.join("tmp/empty_dir");
-        t!(fs::create_dir_all(&empty_dir));
+    pub fn install_docs(&self, stage: u32, host: &str) {
+        self.install_sh("docs", "rust-docs", stage, Some(host));
+    }
 
-        if self.build.config.docs {
-            self.install_sh("docs", "rust-docs", &self.build.rust_package_vers(),
-                            stage, Some(host), &empty_dir);
-        }
-
+    pub fn install_std(&self, stage: u32) {
         for target in self.build.config.target.iter() {
-            self.install_sh("std", "rust-std", &self.build.rust_package_vers(),
-                            stage, Some(target), &empty_dir);
+            self.install_sh("std", "rust-std", stage, Some(target));
         }
-
-        if self.build.config.extended {
-            self.install_sh("cargo", "cargo", &self.build.cargo_package_vers(),
-                            stage, Some(host), &empty_dir);
-            self.install_sh("rls", "rls", &self.build.rls_package_vers(),
-                            stage, Some(host), &empty_dir);
-            self.install_sh("analysis", "rust-analysis", &self.build.rust_package_vers(),
-                            stage, Some(host), &empty_dir);
-            self.install_sh("src", "rust-src", &self.build.rust_package_vers(),
-                            stage, None, &empty_dir);
-        }
-
-        self.install_sh("rustc", "rustc", &self.build.rust_package_vers(),
-                        stage, Some(host), &empty_dir);
-
-        t!(fs::remove_dir_all(&empty_dir));
     }
 
-    fn install_sh(&self, package: &str, name: &str, version: &str,
-                  stage: u32, host: Option<&str>,  empty_dir: &Path) {
+    pub fn install_cargo(&self, stage: u32, host: &str) {
+        self.install_sh("cargo", "cargo", stage, Some(host));
+    }
+
+    pub fn install_rls(&self, stage: u32, host: &str) {
+        self.install_sh("rls", "rls", stage, Some(host));
+    }
+
+    pub fn install_analysis(&self, stage: u32, host: &str) {
+        self.install_sh("analysis", "rust-analysis", stage, Some(host));
+    }
+
+    pub fn install_src(&self, stage: u32) {
+        self.install_sh("src", "rust-src", stage, None);
+    }
+    pub fn install_rustc(&self, stage: u32, host: &str) {
+        self.install_sh("rustc", "rustc", stage, Some(host));
+    }
+
+    fn install_sh(&self, package: &str, name: &str, stage: u32, host: Option<&str>) {
         println!("Install {} stage{} ({:?})", package, stage, host);
         let package_name = if let Some(host) = host {
-            format!("{}-{}-{}", name, version, host)
+            format!("{}-{}", pkgname(self.build, name), host)
         } else {
-            format!("{}-{}", name, version)
+            pkgname(self.build, name)
         };
 
         let mut cmd = Command::new("sh");
-        cmd.current_dir(empty_dir)
+        cmd.current_dir(&self.empty_dir)
            .arg(sanitize_sh(&tmpdir(self.build).join(&package_name).join("install.sh")))
            .arg(format!("--prefix={}", sanitize_sh(&self.prefix)))
            .arg(format!("--sysconfdir={}", sanitize_sh(&self.sysconfdir)))

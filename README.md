@@ -35,7 +35,7 @@ Read ["Installing Rust"] from [The Book].
 3. Build and install:
 
     ```sh
-    $ ./x.py build && sudo ./x.py dist --install
+    $ ./x.py build && sudo ./x.py install
     ```
 
     > ***Note:*** Install locations can be adjusted by copying the config file
@@ -43,7 +43,7 @@ Read ["Installing Rust"] from [The Book].
     > adjusting the `prefix` option under `[install]`. Various other options are
     > also supported, and are documented in the config file.
 
-    When complete, `sudo ./x.py dist --install` will place several programs into
+    When complete, `sudo ./x.py install` will place several programs into
     `/usr/local/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
     API-documentation tool. This install does not include [Cargo],
     Rust's package manager, which you may also want to build.
@@ -96,7 +96,7 @@ build.
 4. Navigate to Rust's source code (or clone it), then build it:
 
    ```sh
-   $ ./x.py build && ./x.py dist --install
+   $ ./x.py build && ./x.py install
    ```
 
 #### MSVC
