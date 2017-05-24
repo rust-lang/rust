@@ -58,6 +58,7 @@ use syntax::abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::symbol::{Symbol, keywords};
+use syntax_pos::Span;
 
 use hir;
 
@@ -229,8 +230,9 @@ pub struct TypeckTables<'tcx> {
     /// Records the type of each closure.
     pub closure_tys: NodeMap<ty::PolyFnSig<'tcx>>,
 
-    /// Records the kind of each closure.
-    pub closure_kinds: NodeMap<ty::ClosureKind>,
+    /// Records the kind of each closure and the span of the variable that
+    /// cause the closure to be this kind.
+    pub closure_kinds: NodeMap<(ty::ClosureKind, Option<Span>)>,
 
     /// For each fn, records the "liberated" types of its arguments
     /// and return type. Liberated means that all bound regions

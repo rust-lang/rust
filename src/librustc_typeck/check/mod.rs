@@ -702,7 +702,7 @@ fn closure_kind<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           def_id: DefId)
                           -> ty::ClosureKind {
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-    tcx.typeck_tables_of(def_id).closure_kinds[&node_id]
+    tcx.typeck_tables_of(def_id).closure_kinds[&node_id].0
 }
 
 fn adt_destructor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
