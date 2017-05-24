@@ -65,7 +65,7 @@ if [ ! -d "$cache_src_dir/.git" ]; then
 fi
 retry sh -c "cd $cache_src_dir && git reset --hard && git pull"
 retry sh -c "cd $cache_src_dir && \
-    git submodule deinit -f . && git submodule sync && git submodule update --init"
+    git submodule deinit -f . && git submodule sync && git submodule update --depth 1 --init"
 
 # Cache was updated without errors, mark it as valid
 touch "$cache_valid_file"
@@ -78,9 +78,9 @@ modules="$(git config --file .gitmodules --get-regexp '\.path$' | cut -d' ' -f2)
 for module in $modules; do
     if [ ! -d "$cache_src_dir/$module" ]; then
         echo "WARNING: $module not found in pristine repo"
-        retry sh -c "git submodule deinit -f $module && git submodule update --init $module"
+        retry sh -c "git submodule deinit -f $module && git submodule update --depth 1 --init $module"
         continue
     fi
     retry sh -c "git submodule deinit -f $module && \
-        git submodule update --init --reference $cache_src_dir/$module $module"
+        git submodule update --init --depth 1 --reference $cache_src_dir/$module $module"
 done
