@@ -1,7 +1,7 @@
-- Feature Name: (fill me in with a unique ident, my_awesome_feature)
+- Feature Name: expanded_impl_trait
 - Start Date: 2017-03-12
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1951
+- Rust Issue: https://github.com/rust-lang/rust/issues/42183
 
 # Summary
 [summary]: #summary
