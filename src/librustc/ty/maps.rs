@@ -392,6 +392,7 @@ impl<'tcx> QueryDescription for queries::is_mir_available<'tcx> {
     }
 }
 
+// If enabled, send a message to the profile-queries thread
 macro_rules! profile_queries_msg {
     ($tcx:expr, $msg:expr) => {
         if $tcx.sess.profile_queries() {

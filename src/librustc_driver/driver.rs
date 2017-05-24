@@ -21,7 +21,7 @@ use rustc::lint;
 use rustc::middle::{self, dependency_format, stability, reachable};
 use rustc::middle::privacy::AccessLevels;
 use rustc::mir::transform::{MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED, Passes};
-use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
+use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas, ProfileQueriesMsg};
 use rustc::util::common::time;
 use rustc::util::nodemap::NodeSet;
 use rustc::util::fs::rename_or_copy_remove;
@@ -49,6 +49,8 @@ use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::mpsc::{channel,Receiver};
+
 use syntax::{ast, diagnostics, visit};
 use syntax::attr;
 use syntax::ext::base::ExtCtxt;
@@ -826,6 +828,11 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     })
 }
 
+pub fn profile_queries_thread<'tcx>(r:Receiver<ProfileQueriesMsg<'tcx>>) {
+    // XXX
+    panic!("TODO")
+}
+
 /// Run the resolution, typechecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
@@ -952,6 +959,15 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              index,
                              name,
                              |tcx| {
+    
+        if tcx.sess.profile_queries() {
+            use std::thread;            
+            use std::sync::mpsc::{channel,Receiver};
+            let (tx, rx) = channel();
+            *tcx.profile_queries_sender.borrow_mut() = Some(tx);
+            thread::spawn(move||profile_queries_thread(rx));
+        }
+
         let incremental_hashes_map =
             time(time_passes,
                  "compute_incremental_hashes_map",
