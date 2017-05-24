@@ -103,7 +103,7 @@ build.
 
 MSVC builds of Rust additionally require an installation of Visual Studio 2013
 (or later) so `rustc` can use its linker. Make sure to check the “C++ tools”
-option.
+option. You also need to have `PowerShell` in your path.
 
 With these dependencies installed, you can build the compiler in a `cmd.exe`
 shell with:
