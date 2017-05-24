@@ -22,6 +22,7 @@ use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::item_path;
 use ty::steal::Steal;
 use ty::subst::Substs;
+use ty::context::ProfileQueriesMsg;
 use util::nodemap::{DefIdSet, NodeSet};
 
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -391,6 +392,15 @@ impl<'tcx> QueryDescription for queries::is_mir_available<'tcx> {
     }
 }
 
+macro_rules! profile_queries_msg {
+    ($tcx:expr, $msg:expr) => {
+        if $tcx.sess.profile_queries() {
+            $tcx.profile_queries_sender.borrow().as_ref().unwrap()
+                .send($msg).unwrap()
+        }
+    }
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -459,16 +469,13 @@ macro_rules! define_maps {
                        key,
                        span);
 
-                // XXX
-                if tcx.sess.profile_queries() {
-                    use ty::context::ProfileQueriesMsg;
-                    let s = span.clone();
-                    let q = Query::$name(key.clone());
-                    tcx.profile_queries_sender.borrow().as_ref().unwrap()
-                        .send(ProfileQueriesMsg::QueryBegin(s, q)).unwrap()
-                }
+                profile_queries_msg!
+                    (tcx,
+                     ProfileQueriesMsg::QueryBegin(span.clone(),
+                                                   Query::$name(key.clone())));
 
                 if let Some(result) = tcx.maps.$name.borrow().get(&key) {
+                    profile_queries_msg!(tcx, ProfileQueriesMsg::CacheHit);
                     return Ok(f(result));
                 }
 
@@ -481,10 +488,12 @@ macro_rules! define_maps {
 
                 let _task = tcx.dep_graph.in_task(Self::to_dep_node(&key));
 
+                profile_queries_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
                 let result = tcx.cycle_check(span, Query::$name(key), || {
                     let provider = tcx.maps.providers[key.map_crate()].$name;
                     provider(tcx.global_tcx(), key)
                 })?;
+                profile_queries_msg!(tcx, ProfileQueriesMsg::ProviderEnd);
 
                 Ok(f(tcx.maps.$name.borrow_mut().entry(key).or_insert(result)))
             }
