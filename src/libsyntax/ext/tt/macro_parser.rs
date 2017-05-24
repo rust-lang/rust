@@ -418,9 +418,13 @@ fn inner_parse_loop(sess: &ParseSess,
     Success(())
 }
 
-pub fn parse(sess: &ParseSess, tts: TokenStream, ms: &[TokenTree], directory: Option<Directory>)
+pub fn parse(sess: &ParseSess,
+             tts: TokenStream,
+             ms: &[TokenTree],
+             directory: Option<Directory>,
+             recurse_into_modules: bool)
              -> NamedParseResult {
-    let mut parser = Parser::new(sess, tts, directory, true);
+    let mut parser = Parser::new(sess, tts, directory, recurse_into_modules, true);
     let mut cur_eis = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo));
     let mut next_eis = Vec::new(); // or proceed normally
 

@@ -109,7 +109,7 @@ impl TokenTree {
             path: cx.current_expansion.module.directory.clone(),
             ownership: cx.current_expansion.directory_ownership,
         };
-        macro_parser::parse(cx.parse_sess(), tts, mtch, Some(directory))
+        macro_parser::parse(cx.parse_sess(), tts, mtch, Some(directory), true)
     }
 
     /// Check if this TokenTree is equal to the other, regardless of span information.

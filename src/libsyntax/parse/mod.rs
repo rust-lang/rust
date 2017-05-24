@@ -149,7 +149,9 @@ pub fn parse_stream_from_source_str(name: String, source: String, sess: &ParseSe
 // Create a new parser from a source string
 pub fn new_parser_from_source_str(sess: &ParseSess, name: String, source: String)
                                       -> Parser {
-    filemap_to_parser(sess, sess.codemap().new_filemap(name, source))
+    let mut parser = filemap_to_parser(sess, sess.codemap().new_filemap(name, source));
+    parser.recurse_into_file_modules = false;
+    parser
 }
 
 /// Create a new parser, handling errors as appropriate
@@ -218,7 +220,7 @@ pub fn filemap_to_stream(sess: &ParseSess, filemap: Rc<FileMap>) -> TokenStream 
 
 /// Given stream and the `ParseSess`, produce a parser
 pub fn stream_to_parser(sess: &ParseSess, stream: TokenStream) -> Parser {
-    Parser::new(sess, stream, None, false)
+    Parser::new(sess, stream, None, true, false)
 }
 
 /// Parse a string representing a character literal into its final form.
@@ -1030,6 +1032,25 @@ mod tests {
         match sess.codemap().span_to_snippet(span) {
             Ok(s) => assert_eq!(&s[..], "{ body }"),
             Err(_) => panic!("could not get snippet"),
+        }
+    }
+
+    // This tests that when parsing a string (rather than a file) we don't try
+    // and read in a file for a module declaration and just parse a stub.
+    // See `recurse_into_file_modules` in the parser.
+    #[test]
+    fn out_of_line_mod() {
+        let sess = ParseSess::new(FilePathMapping::empty());
+        let item = parse_item_from_source_str(
+            "foo".to_owned(),
+            "mod foo { struct S; mod this_does_not_exist; }".to_owned(),
+            &sess,
+        ).unwrap().unwrap();
+
+        if let ast::ItemKind::Mod(ref m) = item.node {
+            assert!(m.items.len() == 2);
+        } else {
+            panic!();
         }
     }
 }
