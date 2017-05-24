@@ -103,18 +103,11 @@ impl FileLoader for RealFileLoader {
 //
 
 pub struct CodeMap {
-    // The `files` field should not be visible outside of libsyntax so that we
-    // can do proper dependency tracking.
     pub(super) files: RefCell<Vec<Rc<FileMap>>>,
     file_loader: Box<FileLoader>,
     // This is used to apply the file path remapping as specified via
     // -Zremap-path-prefix to all FileMaps allocated within this CodeMap.
     path_mapping: FilePathMapping,
-    // The CodeMap will invoke this callback whenever a specific FileMap is
-    // accessed. The callback starts out as a no-op but when the dependency
-    // graph becomes available later during the compilation process, it is
-    // be replaced with something that notifies the dep-tracking system.
-    dep_tracking_callback: RefCell<Box<Fn(&FileMap)>>,
 }
 
 impl CodeMap {
@@ -123,7 +116,6 @@ impl CodeMap {
             files: RefCell::new(Vec::new()),
             file_loader: Box::new(RealFileLoader),
             path_mapping: path_mapping,
-            dep_tracking_callback: RefCell::new(Box::new(|_| {})),
         }
     }
 
@@ -134,16 +126,11 @@ impl CodeMap {
             files: RefCell::new(Vec::new()),
             file_loader: file_loader,
             path_mapping: path_mapping,
-            dep_tracking_callback: RefCell::new(Box::new(|_| {})),
         }
     }
 
     pub fn path_mapping(&self) -> &FilePathMapping {
         &self.path_mapping
-    }
-
-    pub fn set_dep_tracking_callback(&self, cb: Box<Fn(&FileMap)>) {
-        *self.dep_tracking_callback.borrow_mut() = cb;
     }
 
     pub fn file_exists(&self, path: &Path) -> bool {
@@ -156,15 +143,6 @@ impl CodeMap {
     }
 
     pub fn files(&self) -> Ref<Vec<Rc<FileMap>>> {
-        let files = self.files.borrow();
-        for file in files.iter() {
-            (self.dep_tracking_callback.borrow())(file);
-        }
-        files
-    }
-
-    /// Only use this if you do your own dependency tracking!
-    pub fn files_untracked(&self) -> Ref<Vec<Rc<FileMap>>> {
         self.files.borrow()
     }
 
@@ -310,8 +288,6 @@ impl CodeMap {
 
         let files = self.files.borrow();
         let f = (*files)[idx].clone();
-
-        (self.dep_tracking_callback.borrow())(&f);
 
         match f.lookup_line(pos) {
             Some(line) => Ok(FileMapAndLine { fm: f, line: line }),
@@ -502,7 +478,6 @@ impl CodeMap {
     pub fn get_filemap(&self, filename: &str) -> Option<Rc<FileMap>> {
         for fm in self.files.borrow().iter() {
             if filename == fm.name {
-               (self.dep_tracking_callback.borrow())(fm);
                 return Some(fm.clone());
             }
         }
@@ -513,7 +488,6 @@ impl CodeMap {
     pub fn lookup_byte_offset(&self, bpos: BytePos) -> FileMapAndBytePos {
         let idx = self.lookup_filemap_idx(bpos);
         let fm = (*self.files.borrow())[idx].clone();
-        (self.dep_tracking_callback.borrow())(&fm);
         let offset = bpos - fm.start_pos;
         FileMapAndBytePos {fm: fm, pos: offset}
     }
@@ -523,8 +497,6 @@ impl CodeMap {
         let idx = self.lookup_filemap_idx(bpos);
         let files = self.files.borrow();
         let map = &(*files)[idx];
-
-        (self.dep_tracking_callback.borrow())(map);
 
         // The number of extra bytes due to multibyte chars in the FileMap
         let mut total_extra_bytes = 0;
