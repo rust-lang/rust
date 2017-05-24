@@ -12,7 +12,6 @@ use super::archive::{ArchiveBuilder, ArchiveConfig};
 use super::linker::Linker;
 use super::rpath::RPathConfig;
 use super::rpath;
-use super::msvc;
 use metadata::METADATA_FILENAME;
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames, Input, OutputType};
 use rustc::session::filesearch;
@@ -142,18 +141,39 @@ pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap) -> LinkMet
     return r;
 }
 
-// The third parameter is for an extra path to add to PATH for MSVC
-// cross linkers for host toolchain DLL dependencies
-pub fn get_linker(sess: &Session) -> (String, Command, Option<PathBuf>) {
+// The third parameter is for an env vars, used to set up the path for MSVC
+// to find its DLLs
+pub fn get_linker(sess: &Session) -> (String, Command, Vec<(OsString, OsString)>) {
     if let Some(ref linker) = sess.opts.cg.linker {
-        (linker.clone(), Command::new(linker), None)
+        (linker.clone(), Command::new(linker), vec![])
     } else if sess.target.target.options.is_like_msvc {
-        let (cmd, host) = msvc::link_exe_cmd(sess);
-        ("link.exe".to_string(), cmd, host)
+        let (cmd, envs) = msvc_link_exe_cmd(sess);
+        ("link.exe".to_string(), cmd, envs)
     } else {
         (sess.target.target.options.linker.clone(),
-         Command::new(&sess.target.target.options.linker), None)
+         Command::new(&sess.target.target.options.linker), vec![])
     }
+}
+
+#[cfg(windows)]
+pub fn msvc_link_exe_cmd(sess: &Session) -> (Command, Vec<(OsString, OsString)>) {
+    use gcc::windows_registry;
+
+    let target = &sess.opts.target_triple;
+    let tool = windows_registry::find_tool(target, "link.exe");
+
+    if let Some(tool) = tool {
+        let envs = tool.env().to_vec();
+        (tool.to_command(), envs)
+    } else {
+        debug!("Failed to locate linker.");
+        (Command::new("link.exe"), vec![])
+    }
+}
+
+#[cfg(not(windows))]
+pub fn msvc_link_exe_cmd(_sess: &Session) -> (Command, Vec<(OsString, OsString)>) {
+    (Command::new("link.exe"), vec![])
 }
 
 pub fn get_ar_prog(sess: &Session) -> String {
@@ -706,8 +726,9 @@ fn link_natively(sess: &Session,
     let flavor = sess.linker_flavor();
 
     // The invocations of cc share some flags across platforms
-    let (pname, mut cmd, extra) = get_linker(sess);
-    cmd.env("PATH", command_path(sess, extra));
+    let (pname, mut cmd, envs) = get_linker(sess);
+    // This will set PATH on MSVC
+    cmd.envs(envs);
 
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {

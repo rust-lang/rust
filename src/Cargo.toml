@@ -37,3 +37,4 @@ debug-assertions = false
 
 [replace]
 "https://github.com/rust-lang/cargo#0.20.0" = { path = "tools/cargo" }
+"gcc:0.3.49" = { git = "https://github.com/brson/gcc-rs", branch = "vs2017" }
