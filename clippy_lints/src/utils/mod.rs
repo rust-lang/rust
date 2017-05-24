@@ -787,7 +787,7 @@ pub fn same_tys<'a, 'tcx>(
     b: ty::Ty<'tcx>,
     parameter_item: DefId
 ) -> bool {
-    let parameter_env = cx.tcx.parameter_environment(parameter_item);
+    let parameter_env = cx.tcx.param_env(parameter_item);
     cx.tcx.infer_ctxt(parameter_env, Reveal::All).enter(|infcx| {
         let substs = Substs::identity_for_item(cx.tcx, parameter_item);
         let new_a = a.subst(infcx.tcx, substs);
@@ -807,8 +807,8 @@ pub fn type_is_unsafe_function(ty: ty::Ty) -> bool {
 
 pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, env: DefId) -> bool {
     let substs = Substs::identity_for_item(cx.tcx, env);
-    let env = cx.tcx.parameter_environment(env);
-    !ty.subst(cx.tcx, substs).moves_by_default(cx.tcx.global_tcx(), &env, DUMMY_SP)
+    let env = cx.tcx.param_env(env);
+    !ty.subst(cx.tcx, substs).moves_by_default(cx.tcx.global_tcx(), env, DUMMY_SP)
 }
 
 /// Return whether a pattern is refutable.
