@@ -597,6 +597,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         if let Ok(ty::ClosureKind::FnOnce) =
                            ty::queries::closure_kind::try_get(self.tcx, DUMMY_SP, id) {
                             err.help("closure was moved because it only implements `FnOnce`");
+                            if let Some(&(_kind, Some(span))) = self.tables.closure_kinds.get( ) {
+                                err.span_label(span, "move occured here");
+                            }
                             false
                         } else {
                             true
