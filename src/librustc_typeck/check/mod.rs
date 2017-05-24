@@ -1908,7 +1908,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                     -> InferOk<'tcx, T>
         where T : TypeFoldable<'tcx>
     {
-        self.inh.normalize_associated_types_in_as_infer_ok(span, self.body_id, self.param_env, value)
+        self.inh.normalize_associated_types_in_as_infer_ok(span,
+                                                           self.body_id,
+                                                           self.param_env,
+                                                           value)
     }
 
     pub fn write_nil(&self, node_id: ast::NodeId) {

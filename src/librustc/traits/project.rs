@@ -500,7 +500,10 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                    cacheable);
 
             let result = if projected_ty.has_projection_types() {
-                let mut normalizer = AssociatedTypeNormalizer::new(selcx, param_env, cause, depth+1);
+                let mut normalizer = AssociatedTypeNormalizer::new(selcx,
+                                                                   param_env,
+                                                                   cause,
+                                                                   depth+1);
                 let normalized_ty = normalizer.fold(&projected_ty);
 
                 debug!("opt_normalize_projection_type: \

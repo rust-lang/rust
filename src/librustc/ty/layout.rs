@@ -1788,10 +1788,11 @@ impl<'a, 'tcx> Layout {
                 Fields::WithDiscrim(s) => (s, &s.offsets[1..]),
                 Fields::NoDiscrim(s) => (s, &s.offsets[0..]),
             };
-            let field_info: Vec<_> = flds.iter()
-                                         .zip(field_offsets.iter())
-                                         .map(|(&field_name_ty, offset)| build_field_info(field_name_ty, offset))
-                                         .collect();
+            let field_info: Vec<_> =
+                flds.iter()
+                    .zip(field_offsets.iter())
+                    .map(|(&field_name_ty, offset)| build_field_info(field_name_ty, offset))
+                    .collect();
 
             session::VariantInfo {
                 name: n.map(|n|n.to_string()),
@@ -1814,9 +1815,10 @@ impl<'a, 'tcx> Layout {
                 debug!("print-type-size t: `{:?}` adt struct-wrapped nullable nndiscr {} is {:?}",
                        ty, nndiscr, variant_layout);
                 let variant_def = &adt_def.variants[nndiscr as usize];
-                let fields: Vec<_> = variant_def.fields.iter()
-                                                       .map(|field_def| (field_def.name, field_def.ty(tcx, substs)))
-                                                       .collect();
+                let fields: Vec<_> =
+                    variant_def.fields.iter()
+                                      .map(|field_def| (field_def.name, field_def.ty(tcx, substs)))
+                                      .collect();
                 record(adt_kind.into(),
                        None,
                        vec![build_variant_info(Some(variant_def.name),
@@ -1840,9 +1842,10 @@ impl<'a, 'tcx> Layout {
                         "univariant with variants {:?}", variant_names());
                 if adt_def.variants.len() == 1 {
                     let variant_def = &adt_def.variants[0];
-                    let fields: Vec<_> = variant_def.fields.iter()
-                                                           .map(|field_def| (field_def.name, field_def.ty(tcx, substs)))
-                                                           .collect();
+                    let fields: Vec<_> =
+                        variant_def.fields.iter()
+                                          .map(|f| (f.name, f.ty(tcx, substs)))
+                                          .collect();
                     record(adt_kind.into(),
                            None,
                            vec![build_variant_info(Some(variant_def.name),
@@ -1858,17 +1861,20 @@ impl<'a, 'tcx> Layout {
             Layout::General { ref variants, discr, .. } => {
                 debug!("print-type-size t: `{:?}` adt general variants def {} layouts {} {:?}",
                        ty, adt_def.variants.len(), variants.len(), variants);
-                let variant_infos: Vec<_> = adt_def.variants.iter()
-                                                            .zip(variants.iter())
-                                                            .map(|(variant_def, variant_layout)| {
-                                                                let fields: Vec<_> = variant_def.fields.iter()
-                                                                                                       .map(|field_def| (field_def.name, field_def.ty(tcx, substs)))
-                                                                                                       .collect();
-                                                                build_variant_info(Some(variant_def.name),
-                                                                                   &fields,
-                                                                                   Fields::WithDiscrim(variant_layout))
-                                                            })
-                                                            .collect();
+                let variant_infos: Vec<_> =
+                    adt_def.variants.iter()
+                                    .zip(variants.iter())
+                                    .map(|(variant_def, variant_layout)| {
+                                        let fields: Vec<_> =
+                                            variant_def.fields
+                                                       .iter()
+                                                       .map(|f| (f.name, f.ty(tcx, substs)))
+                                                       .collect();
+                                        build_variant_info(Some(variant_def.name),
+                                                           &fields,
+                                                           Fields::WithDiscrim(variant_layout))
+                                    })
+                                    .collect();
                 record(adt_kind.into(), Some(discr.size()), variant_infos);
             }
 

@@ -1183,7 +1183,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 traits::normalize(selcx, self.param_env, cause.clone(), &impl_bounds);
 
             // Convert the bounds into obligations.
-            let obligations = traits::predicates_for_generics(cause.clone(), self.param_env, &impl_bounds);
+            let obligations = traits::predicates_for_generics(cause.clone(),
+                                                              self.param_env,
+                                                              &impl_bounds);
             debug!("impl_obligations={:?}", obligations);
 
             // Evaluate those obligations to see if they might possibly hold.

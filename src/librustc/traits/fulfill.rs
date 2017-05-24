@@ -420,7 +420,9 @@ fn process_predicate<'a, 'gcx, 'tcx>(
         }
 
         ty::Predicate::Equate(ref binder) => {
-            match selcx.infcx().equality_predicate(&obligation.cause, obligation.param_env, binder) {
+            match selcx.infcx().equality_predicate(&obligation.cause,
+                                                   obligation.param_env,
+                                                   binder) {
                 Ok(InferOk { obligations, value: () }) => {
                     Ok(Some(obligations))
                 },
@@ -508,7 +510,9 @@ fn process_predicate<'a, 'gcx, 'tcx>(
         }
 
         ty::Predicate::WellFormed(ty) => {
-            match ty::wf::obligations(selcx.infcx(), obligation.param_env, obligation.cause.body_id,
+            match ty::wf::obligations(selcx.infcx(),
+                                      obligation.param_env,
+                                      obligation.cause.body_id,
                                       ty, obligation.cause.span) {
                 None => {
                     pending_obligation.stalled_on = vec![ty];
@@ -519,7 +523,9 @@ fn process_predicate<'a, 'gcx, 'tcx>(
         }
 
         ty::Predicate::Subtype(ref subtype) => {
-            match selcx.infcx().subtype_predicate(&obligation.cause, obligation.param_env, subtype) {
+            match selcx.infcx().subtype_predicate(&obligation.cause,
+                                                  obligation.param_env,
+                                                  subtype) {
                 None => {
                     // none means that both are unresolved
                     pending_obligation.stalled_on = vec![subtype.skip_binder().a,
