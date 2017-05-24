@@ -769,7 +769,7 @@ pub fn old_find_testable_code(doc: &str, tests: &mut ::test::Collector, position
                                block_info.should_panic, block_info.no_run,
                                block_info.ignore, block_info.test_harness,
                                block_info.compile_fail, block_info.error_codes,
-                               line, filename);
+                               line, filename, block_info.allow_fail);
             } else {
                 tests.add_old_test(text, filename);
             }
@@ -859,7 +859,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
                                block_info.should_panic, block_info.no_run,
                                block_info.ignore, block_info.test_harness,
                                block_info.compile_fail, block_info.error_codes,
-                               line, filename);
+                               line, filename, block_info.allow_fail);
                 prev_offset = offset;
             }
             Event::Start(Tag::Header(level)) => {
@@ -889,6 +889,7 @@ struct LangString {
     test_harness: bool,
     compile_fail: bool,
     error_codes: Vec<String>,
+    allow_fail: bool,
 }
 
 impl LangString {
@@ -902,6 +903,7 @@ impl LangString {
             test_harness: false,
             compile_fail: false,
             error_codes: Vec::new(),
+            allow_fail: false,
         }
     }
 
@@ -930,6 +932,7 @@ impl LangString {
                 }
                 "no_run" => { data.no_run = true; seen_rust_tags = !seen_other_tags; }
                 "ignore" => { data.ignore = true; seen_rust_tags = !seen_other_tags; }
+                "allow_fail" => { data.allow_fail = true; seen_rust_tags = !seen_other_tags; }
                 "rust" => { data.rust = true; seen_rust_tags = true; }
                 "test_harness" => {
                     data.test_harness = true;
@@ -1118,7 +1121,7 @@ mod tests {
     fn test_lang_string_parse() {
         fn t(s: &str,
             should_panic: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool,
-            compile_fail: bool, error_codes: Vec<String>) {
+            compile_fail: bool, allow_fail: bool, error_codes: Vec<String>) {
             assert_eq!(LangString::parse(s), LangString {
                 should_panic: should_panic,
                 no_run: no_run,
@@ -1128,25 +1131,27 @@ mod tests {
                 compile_fail: compile_fail,
                 error_codes: error_codes,
                 original: s.to_owned(),
+                allow_fail: allow_fail,
             })
         }
 
         // marker                | should_panic| no_run| ignore| rust | test_harness| compile_fail
-        //                       | error_codes
-        t("",                      false,        false,  false,  true,  false, false, Vec::new());
-        t("rust",                  false,        false,  false,  true,  false, false, Vec::new());
-        t("sh",                    false,        false,  false,  false, false, false, Vec::new());
-        t("ignore",                false,        false,  true,   true,  false, false, Vec::new());
-        t("should_panic",          true,         false,  false,  true,  false, false, Vec::new());
-        t("no_run",                false,        true,   false,  true,  false, false, Vec::new());
-        t("test_harness",          false,        false,  false,  true,  true,  false, Vec::new());
-        t("compile_fail",          false,        true,   false,  true,  false, true,  Vec::new());
-        t("{.no_run .example}",    false,        true,   false,  true,  false, false, Vec::new());
-        t("{.sh .should_panic}",   true,         false,  false,  false, false, false, Vec::new());
-        t("{.example .rust}",      false,        false,  false,  true,  false, false, Vec::new());
-        t("{.test_harness .rust}", false,        false,  false,  true,  true,  false, Vec::new());
-        t("text, no_run",          false,        true,   false,  false, false, false, Vec::new());
-        t("text,no_run",           false,        true,   false,  false, false, false, Vec::new());
+        //                       | allow_fail | error_codes
+        t("",                      false,        false,  false,  true,  false, false, false, Vec::new());
+        t("rust",                  false,        false,  false,  true,  false, false, false, Vec::new());
+        t("sh",                    false,        false,  false,  false, false, false, false, Vec::new());
+        t("ignore",                false,        false,  true,   true,  false, false, false, Vec::new());
+        t("should_panic",          true,         false,  false,  true,  false, false, false, Vec::new());
+        t("no_run",                false,        true,   false,  true,  false, false, false, Vec::new());
+        t("test_harness",          false,        false,  false,  true,  true,  false, false, Vec::new());
+        t("compile_fail",          false,        true,   false,  true,  false, true,  false, Vec::new());
+        t("allow_fail",            false,        false,  false,  true,  false, false, true, Vec::new());
+        t("{.no_run .example}",    false,        true,   false,  true,  false, false, false, Vec::new());
+        t("{.sh .should_panic}",   true,         false,  false,  false, false, false, false, Vec::new());
+        t("{.example .rust}",      false,        false,  false,  true,  false, false, false, Vec::new());
+        t("{.test_harness .rust}", false,        false,  false,  true,  true,  false, false, Vec::new());
+        t("text, no_run",          false,        true,   false,  false, false, false, false, Vec::new());
+        t("text,no_run",           false,        true,   false,  false, false, false, false, Vec::new());
     }
 
     #[test]

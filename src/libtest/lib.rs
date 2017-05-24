@@ -212,6 +212,7 @@ pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,
     pub should_panic: ShouldPanic,
+    pub allow_fail: bool,
 }
 
 #[derive(Clone)]
@@ -523,6 +524,7 @@ pub enum TestResult {
     TrFailed,
     TrFailedMsg(String),
     TrIgnored,
+    TrAllowedFail,
     TrMetrics(MetricMap),
     TrBench(BenchSamples),
 }
@@ -543,6 +545,7 @@ struct ConsoleTestState<T> {
     passed: usize,
     failed: usize,
     ignored: usize,
+    allowed_fail: usize,
     filtered_out: usize,
     measured: usize,
     metrics: MetricMap,
@@ -572,6 +575,7 @@ impl<T: Write> ConsoleTestState<T> {
             passed: 0,
             failed: 0,
             ignored: 0,
+            allowed_fail: 0,
             filtered_out: 0,
             measured: 0,
             metrics: MetricMap::new(),
@@ -592,6 +596,10 @@ impl<T: Write> ConsoleTestState<T> {
 
     pub fn write_ignored(&mut self) -> io::Result<()> {
         self.write_short_result("ignored", "i", term::color::YELLOW)
+    }
+
+    pub fn write_allowed_fail(&mut self) -> io::Result<()> {
+        self.write_short_result("FAILED (allowed)", "a", term::color::YELLOW)
     }
 
     pub fn write_metric(&mut self) -> io::Result<()> {
@@ -669,6 +677,7 @@ impl<T: Write> ConsoleTestState<T> {
             TrOk => self.write_ok(),
             TrFailed | TrFailedMsg(_) => self.write_failed(),
             TrIgnored => self.write_ignored(),
+            TrAllowedFail => self.write_allowed_fail(),
             TrMetrics(ref mm) => {
                 self.write_metric()?;
                 self.write_plain(&format!(": {}\n", mm.fmt_metrics()))
@@ -702,6 +711,7 @@ impl<T: Write> ConsoleTestState<T> {
                         TrFailed => "failed".to_owned(),
                         TrFailedMsg(ref msg) => format!("failed: {}", msg),
                         TrIgnored => "ignored".to_owned(),
+                        TrAllowedFail => "failed (allowed)".to_owned(),
                         TrMetrics(ref mm) => mm.fmt_metrics(),
                         TrBench(ref bs) => fmt_bench_samples(bs),
                     },
@@ -761,7 +771,7 @@ impl<T: Write> ConsoleTestState<T> {
     }
 
     pub fn write_run_finish(&mut self) -> io::Result<bool> {
-        assert!(self.passed + self.failed + self.ignored + self.measured == self.total);
+        assert!(self.passed + self.failed + self.ignored + self.measured + self.allowed_fail == self.total);
 
         if self.options.display_output {
             self.write_outputs()?;
@@ -778,9 +788,10 @@ impl<T: Write> ConsoleTestState<T> {
         } else {
             self.write_pretty("FAILED", term::color::RED)?;
         }
-        let s = format!(". {} passed; {} failed; {} ignored; {} measured; {} filtered out\n\n",
+        let s = format!(". {} passed; {} failed; {} allowed to fail; {} ignored; {} measured; {} filtered out\n\n",
                         self.passed,
                         self.failed,
+                        self.allowed_fail,
                         self.ignored,
                         self.measured,
                         self.filtered_out);
@@ -891,6 +902,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
                         st.not_failures.push((test, stdout));
                     }
                     TrIgnored => st.ignored += 1,
+                    TrAllowedFail => st.allowed_fail += 1,
                     TrMetrics(mm) => {
                         let tname = test.name;
                         let MetricMap(mm) = mm;
@@ -1471,8 +1483,13 @@ fn calc_result(desc: &TestDesc, task_result: Result<(), Box<Any + Send>>) -> Tes
                   .unwrap_or(false) {
                 TrOk
             } else {
-                TrFailedMsg(format!("Panic did not include expected string '{}'", msg))
+                if desc.allow_fail {
+                    TrAllowedFail
+                } else {
+                    TrFailedMsg(format!("Panic did not include expected string '{}'", msg))
+                }
             },
+        _ if desc.allow_fail => TrAllowedFail,
         _ => TrFailed,
     }
 }

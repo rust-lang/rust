@@ -534,6 +534,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("derive", Normal, Ungated),
     ("should_panic", Normal, Ungated),
     ("ignore", Normal, Ungated),
+    ("allow_fail", Normal, Ungated),
     ("no_implicit_prelude", Normal, Ungated),
     ("reexport_test_harness_main", Normal, Ungated),
     ("link_args", Normal, Ungated),

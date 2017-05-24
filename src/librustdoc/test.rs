@@ -467,7 +467,7 @@ impl Collector {
     pub fn add_test(&mut self, test: String,
                     should_panic: bool, no_run: bool, should_ignore: bool,
                     as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
-                    line: usize, filename: String) {
+                    line: usize, filename: String, allow_fail: bool) {
         let name = self.generate_name(line, &filename);
         // to be removed when hoedown is removed
         if self.render_type == RenderType::Pulldown {
@@ -499,6 +499,7 @@ impl Collector {
                 ignore: should_ignore,
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
+                allow_fail: allow_fail,
             },
             testfn: testing::DynTestFn(box move |()| {
                 let panic = io::set_panic(None);
