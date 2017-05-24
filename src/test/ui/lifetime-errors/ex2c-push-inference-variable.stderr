@@ -31,5 +31,5 @@ note: ...so that expression is assignable (expected Ref<'b, _>, found Ref<'_, _>
 17 |     x.push(z);
    |            ^
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

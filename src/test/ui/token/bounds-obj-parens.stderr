@@ -4,5 +4,5 @@ error: expected one of `!` or `::`, found `<eof>`
 15 | FAIL
    | ^^^^ expected one of `!` or `::` here
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

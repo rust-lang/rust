@@ -4,5 +4,5 @@ error[E0535]: invalid argument
 11 | #[inline(unknown)] //~ ERROR E0535
    |          ^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

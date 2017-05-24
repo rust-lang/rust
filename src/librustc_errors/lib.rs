@@ -501,10 +501,7 @@ impl Handler {
 
                 return;
             }
-            1 => s = "aborting due to previous error".to_string(),
-            _ => {
-                s = format!("aborting due to {} previous errors", self.err_count.get());
-            }
+            _ => s = "aborting due to previous error(s)".to_string(),
         }
 
         panic!(self.fatal(&s));

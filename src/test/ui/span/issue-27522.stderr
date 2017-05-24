@@ -7,5 +7,5 @@ error[E0308]: mismatched method receiver
    = note: expected type `&Self`
               found type `&SomeType`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

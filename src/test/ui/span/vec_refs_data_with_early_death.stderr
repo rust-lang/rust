@@ -20,5 +20,5 @@ error: `y` does not live long enough
    |
    = note: values in a scope are dropped in the opposite order they are created
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 

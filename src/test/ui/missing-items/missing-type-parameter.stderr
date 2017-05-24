@@ -4,5 +4,5 @@ error[E0282]: type annotations needed
 14 |     foo();
    |     ^^^ cannot infer type for `X`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

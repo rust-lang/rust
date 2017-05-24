@@ -4,5 +4,5 @@ error: expected a literal
 12 |     println!(3 + 4);
    |              ^^^^^
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

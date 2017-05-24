@@ -27,5 +27,5 @@ error[E0072]: recursive type `Bar` has infinite size
    |
    = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Bar` representable
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 

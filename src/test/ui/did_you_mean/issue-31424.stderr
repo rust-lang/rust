@@ -15,5 +15,5 @@ error: cannot borrow immutable argument `self` as mutable
 23 |         (&mut self).bar();
    |               ^^^^ cannot borrow mutably
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 

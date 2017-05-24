@@ -6,5 +6,5 @@ error[E0389]: cannot borrow data mutably in a `&` reference
 27 |         self.s.push('x');
    |         ^^^^^^ assignment into an immutable reference
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

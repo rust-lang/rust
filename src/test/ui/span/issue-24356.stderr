@@ -11,5 +11,5 @@ error[E0046]: not all trait items implemented, missing: `Target`
    |
    = note: `Target` from trait: `type Target;`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

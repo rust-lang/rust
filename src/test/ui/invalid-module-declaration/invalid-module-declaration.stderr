@@ -10,5 +10,5 @@ note: maybe move this module `$DIR/auxiliary/foo/bar.rs` to its own directory vi
 11 | pub mod baz;
    |         ^^^
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

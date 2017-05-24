@@ -6,5 +6,5 @@ error: no method named `closure` found for type `Obj<[closure@$DIR/issue-18343.r
    |
    = help: use `(o.closure)(...)` if you meant to call the function stored in the `closure` field
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 
