@@ -429,6 +429,12 @@ macro_rules! define_maps {
             $($(#[$attr])* $name($K)),*
         }
 
+        #[allow(bad_style)]
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        pub enum QueryMsg {
+            $($name(String)),*
+        }
+
         impl<$tcx> Query<$tcx> {
             pub fn describe(&self, tcx: TyCtxt) -> String {
                 match *self {
@@ -473,7 +479,7 @@ macro_rules! define_maps {
                 profile_queries_msg!
                     (tcx,
                      ProfileQueriesMsg::QueryBegin(span.clone(),
-                                                   Query::$name(key.clone())));
+                                                   QueryMsg::$name(format!("{:?}", key))));
 
                 if let Some(result) = tcx.maps.$name.borrow().get(&key) {
                     profile_queries_msg!(tcx, ProfileQueriesMsg::CacheHit);

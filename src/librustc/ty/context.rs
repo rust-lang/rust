@@ -40,7 +40,7 @@ use ty::layout::{Layout, TargetDataLayout};
 use ty::inhabitedness::DefIdForest;
 use ty::maps;
 use ty::steal::Steal;
-use ty::maps::{Query};
+use ty::maps::{QueryMsg};
 
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::{FxHashMap, FxHashSet};
@@ -430,9 +430,9 @@ impl<'a, 'gcx, 'tcx> Deref for TyCtxt<'a, 'gcx, 'tcx> {
 /// A sequence of these messages induce a trace of query-based incremental compilation.
 /// TODO(matthewhammer): Determine whether we should include cycle detection here or not.
 #[derive(Clone)]
-pub enum ProfileQueriesMsg<'a> {
+pub enum ProfileQueriesMsg {
     /// begin a new query
-    QueryBegin(Span,Query<'a>),
+    QueryBegin(Span,QueryMsg),
     /// query is satisfied by using an already-known value for the given key
     CacheHit,
     /// query requires running a provider; providers may nest, permitting queries to nest.
@@ -454,7 +454,7 @@ pub struct GlobalCtxt<'tcx> {
     pub dep_graph: DepGraph,
 
     /// Initialized for -Z profile-queries
-    pub profile_queries_sender: RefCell<Option<Sender<ProfileQueriesMsg<'tcx>>>>,
+    pub profile_queries_sender: RefCell<Option<Sender<ProfileQueriesMsg>>>,
 
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,

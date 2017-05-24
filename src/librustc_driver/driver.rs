@@ -49,7 +49,7 @@ use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::sync::mpsc::{channel,Receiver};
+use std::sync::mpsc::{Receiver};
 
 use syntax::{ast, diagnostics, visit};
 use syntax::attr;
@@ -828,7 +828,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     })
 }
 
-pub fn profile_queries_thread<'tcx>(r:Receiver<ProfileQueriesMsg<'tcx>>) {
+pub fn profile_queries_thread(_r:Receiver<ProfileQueriesMsg>) {
     // XXX
     panic!("TODO")
 }
@@ -962,7 +962,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     
         if tcx.sess.profile_queries() {
             use std::thread;            
-            use std::sync::mpsc::{channel,Receiver};
+            use std::sync::mpsc::{channel};
             let (tx, rx) = channel();
             *tcx.profile_queries_sender.borrow_mut() = Some(tx);
             thread::spawn(move||profile_queries_thread(rx));
