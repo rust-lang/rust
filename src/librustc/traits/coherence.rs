@@ -84,12 +84,9 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     debug!("overlap: b_impl_header={:?}", b_impl_header);
 
     // Do `a` and `b` unify? If not, no overlap.
-    let obligations = match selcx.infcx().eq_impl_headers(true,
-                                                          &ObligationCause::dummy(),
-                                                          param_env,
-                                                          &a_impl_header,
-                                                          &b_impl_header) {
-        Ok(InferOk { obligations, .. }) => {
+    let obligations = match selcx.infcx().at(&ObligationCause::dummy(), param_env)
+                                         .eq_impl_headers(&a_impl_header, &b_impl_header) {
+        Ok(InferOk { obligations, value: () }) => {
             obligations
         }
         Err(_) => return None

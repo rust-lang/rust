@@ -184,10 +184,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     obligation.cause.clone(),
                     0
                 );
-                if let Err(error) = self.eq_types(
-                    false, &obligation.cause, obligation.param_env,
-                    data.ty, normalized.value
-                ) {
+                if let Err(error) = self.at(&obligation.cause, obligation.param_env)
+                                        .eq(normalized.value, data.ty) {
                     values = Some(infer::ValuePairs::Types(ExpectedFound {
                         expected: normalized.value,
                         found: data.ty,
@@ -269,7 +267,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
                 let impl_self_ty = impl_trait_ref.self_ty();
 
-                if let Ok(..) = self.can_equate(param_env, &trait_self_ty, &impl_self_ty) {
+                if let Ok(..) = self.can_eq(param_env, trait_self_ty, impl_self_ty) {
                     self_match_impls.push(def_id);
 
                     if trait_ref.substs.types().skip(1)

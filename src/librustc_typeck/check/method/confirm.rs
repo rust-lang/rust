@@ -340,7 +340,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     }
 
     fn unify_receivers(&mut self, self_ty: Ty<'tcx>, method_self_ty: Ty<'tcx>) {
-        match self.sub_types(false, &self.misc(self.span), self.param_env, self_ty, method_self_ty) {
+        match self.at(&self.misc(self.span), self.param_env).sup(method_self_ty, self_ty) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
             }

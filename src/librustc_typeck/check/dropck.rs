@@ -92,7 +92,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
         let fresh_impl_self_ty = drop_impl_ty.subst(tcx, fresh_impl_substs);
 
         let cause = &ObligationCause::misc(drop_impl_span, drop_impl_node_id);
-        match infcx.eq_types(true, cause, impl_param_env, named_type, fresh_impl_self_ty) {
+        match infcx.at(cause, impl_param_env).eq(named_type, fresh_impl_self_ty) {
             Ok(InferOk { obligations, .. }) => {
                 fulfillment_cx.register_predicate_obligations(infcx, obligations);
             }

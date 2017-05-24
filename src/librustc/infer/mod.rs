@@ -31,7 +31,7 @@ use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use ty::relate::{Relate, RelateResult, TypeRelation};
+use ty::relate::RelateResult;
 use traits::{self, ObligationCause, PredicateObligations, Reveal};
 use rustc_data_structures::unify::{self, UnificationTable};
 use std::cell::{Cell, RefCell, Ref, RefMut};
@@ -49,6 +49,7 @@ use self::region_inference::{RegionVarBindings, RegionSnapshot};
 use self::type_variable::TypeVariableOrigin;
 use self::unify_key::ToType;
 
+pub mod at;
 mod combine;
 mod equate;
 pub mod error_reporting;
@@ -802,62 +803,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn equate<T>(&'a self,
-                     a_is_expected: bool,
-                     trace: TypeTrace<'tcx>,
-                     param_env: ty::ParamEnv<'tcx>,
-                     a: &T,
-                     b: &T)
-        -> InferResult<'tcx, T>
-        where T: Relate<'tcx>
-    {
-        let mut fields = self.combine_fields(trace, param_env);
-        let result = fields.equate(a_is_expected).relate(a, b);
-        result.map(move |t| InferOk { value: t, obligations: fields.obligations })
-    }
-
-    pub fn sub<T>(&'a self,
-                  a_is_expected: bool,
-                  trace: TypeTrace<'tcx>,
-                  param_env: ty::ParamEnv<'tcx>,
-                  a: &T,
-                  b: &T)
-        -> InferResult<'tcx, T>
-        where T: Relate<'tcx>
-    {
-        let mut fields = self.combine_fields(trace, param_env);
-        let result = fields.sub(a_is_expected).relate(a, b);
-        result.map(move |t| InferOk { value: t, obligations: fields.obligations })
-    }
-
-    pub fn lub<T>(&'a self,
-                  a_is_expected: bool,
-                  trace: TypeTrace<'tcx>,
-                  param_env: ty::ParamEnv<'tcx>,
-                  a: &T,
-                  b: &T)
-        -> InferResult<'tcx, T>
-        where T: Relate<'tcx>
-    {
-        let mut fields = self.combine_fields(trace, param_env);
-        let result = fields.lub(a_is_expected).relate(a, b);
-        result.map(move |t| InferOk { value: t, obligations: fields.obligations })
-    }
-
-    pub fn glb<T>(&'a self,
-                  a_is_expected: bool,
-                  trace: TypeTrace<'tcx>,
-                  param_env: ty::ParamEnv<'tcx>,
-                  a: &T,
-                  b: &T)
-        -> InferResult<'tcx, T>
-        where T: Relate<'tcx>
-    {
-        let mut fields = self.combine_fields(trace, param_env);
-        let result = fields.glb(a_is_expected).relate(a, b);
-        result.map(move |t| InferOk { value: t, obligations: fields.obligations })
-    }
-
     // Clear the "currently in a snapshot" flag, invoke the closure,
     // then restore the flag to its original value. This flag is a
     // debugging measure designed to detect cases where we start a
@@ -1017,102 +962,35 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.region_vars.add_given(sub, sup);
     }
 
-    pub fn sub_types(&self,
-                     a_is_expected: bool,
-                     cause: &ObligationCause<'tcx>,
-                     param_env: ty::ParamEnv<'tcx>,
-                     a: Ty<'tcx>,
-                     b: Ty<'tcx>)
-                     -> InferResult<'tcx, ()>
+    pub fn can_sub<T>(&self,
+                      param_env: ty::ParamEnv<'tcx>,
+                      a: T,
+                      b: T)
+                      -> UnitResult<'tcx>
+        where T: at::ToTrace<'tcx>
     {
-        debug!("sub_types({:?} <: {:?})", a, b);
-        self.commit_if_ok(|_| {
-            let trace = TypeTrace::types(cause, a_is_expected, a, b);
-            self.sub(a_is_expected, trace, param_env, &a, &b).map(|ok| ok.unit())
-        })
-    }
-
-    pub fn can_sub_types(&self,
-                         param_env: ty::ParamEnv<'tcx>,
-                         a: Ty<'tcx>,
-                         b: Ty<'tcx>)
-                         -> UnitResult<'tcx>
-    {
+        let origin = &ObligationCause::dummy();
         self.probe(|_| {
-            let origin = &ObligationCause::dummy();
-            let trace = TypeTrace::types(origin, true, a, b);
-            self.sub(true, trace, param_env, &a, &b).map(|InferOk { obligations: _, .. }| {
+            self.at(origin, param_env).sub(a, b).map(|InferOk { obligations: _, .. }| {
                 // Ignore obligations, since we are unrolling
                 // everything anyway.
             })
         })
     }
 
-    pub fn eq_types(&self,
-                    a_is_expected: bool,
-                    cause: &ObligationCause<'tcx>,
-                    param_env: ty::ParamEnv<'tcx>,
-                    a: Ty<'tcx>,
-                    b: Ty<'tcx>)
-        -> InferResult<'tcx, ()>
+    pub fn can_eq<T>(&self,
+                      param_env: ty::ParamEnv<'tcx>,
+                      a: T,
+                      b: T)
+                      -> UnitResult<'tcx>
+        where T: at::ToTrace<'tcx>
     {
-        self.commit_if_ok(|_| {
-            let trace = TypeTrace::types(cause, a_is_expected, a, b);
-            self.equate(a_is_expected, trace, param_env, &a, &b).map(|ok| ok.unit())
-        })
-    }
-
-    pub fn eq_trait_refs(&self,
-                         a_is_expected: bool,
-                         cause: &ObligationCause<'tcx>,
-                         param_env: ty::ParamEnv<'tcx>,
-                         a: ty::TraitRef<'tcx>,
-                         b: ty::TraitRef<'tcx>)
-        -> InferResult<'tcx, ()>
-    {
-        debug!("eq_trait_refs({:?} = {:?})", a, b);
-        self.commit_if_ok(|_| {
-            let trace = TypeTrace {
-                cause: cause.clone(),
-                values: TraitRefs(ExpectedFound::new(a_is_expected, a, b))
-            };
-            self.equate(a_is_expected, trace, param_env, &a, &b).map(|ok| ok.unit())
-        })
-    }
-
-    pub fn eq_impl_headers(&self,
-                           a_is_expected: bool,
-                           cause: &ObligationCause<'tcx>,
-                           param_env: ty::ParamEnv<'tcx>,
-                           a: &ty::ImplHeader<'tcx>,
-                           b: &ty::ImplHeader<'tcx>)
-                           -> InferResult<'tcx, ()>
-    {
-        debug!("eq_impl_header({:?} = {:?})", a, b);
-        match (a.trait_ref, b.trait_ref) {
-            (Some(a_ref), Some(b_ref)) =>
-                self.eq_trait_refs(a_is_expected, cause, param_env, a_ref, b_ref),
-            (None, None) =>
-                self.eq_types(a_is_expected, cause, param_env, a.self_ty, b.self_ty),
-            _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
-        }
-    }
-
-    pub fn sub_poly_trait_refs(&self,
-                               a_is_expected: bool,
-                               cause: ObligationCause<'tcx>,
-                               param_env: ty::ParamEnv<'tcx>,
-                               a: ty::PolyTraitRef<'tcx>,
-                               b: ty::PolyTraitRef<'tcx>)
-        -> InferResult<'tcx, ()>
-    {
-        debug!("sub_poly_trait_refs({:?} <: {:?})", a, b);
-        self.commit_if_ok(|_| {
-            let trace = TypeTrace {
-                cause: cause,
-                values: PolyTraitRefs(ExpectedFound::new(a_is_expected, a, b))
-            };
-            self.sub(a_is_expected, trace, param_env, &a, &b).map(|ok| ok.unit())
+        let origin = &ObligationCause::dummy();
+        self.probe(|_| {
+            self.at(origin, param_env).eq(a, b).map(|InferOk { obligations: _, .. }| {
+                // Ignore obligations, since we are unrolling
+                // everything anyway.
+            })
         })
     }
 
@@ -1134,7 +1012,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let (ty::EquatePredicate(a, b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
             let cause_span = cause.span;
-            let eqty_ok = self.eq_types(false, cause, param_env, a, b)?;
+            let eqty_ok = self.at(cause, param_env).eq(b, a)?;
             self.leak_check(false, cause_span, &skol_map, snapshot)?;
             self.pop_skolemized(skol_map, snapshot);
             Ok(eqty_ok.unit())
@@ -1172,7 +1050,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self.skolemize_late_bound_regions(predicate, snapshot);
 
             let cause_span = cause.span;
-            let ok = self.sub_types(a_is_expected, cause, param_env, a, b)?;
+            let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
             self.leak_check(false, cause_span, &skol_map, snapshot)?;
             self.pop_skolemized(skol_map, snapshot);
             Ok(ok.unit())
@@ -1604,27 +1482,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                bound);
 
         self.region_vars.verify_generic_bound(origin, kind, a, bound);
-    }
-
-    pub fn can_equate<T>(&self, param_env: ty::ParamEnv<'tcx>, a: &T, b: &T) -> UnitResult<'tcx>
-        where T: Relate<'tcx> + fmt::Debug
-    {
-        debug!("can_equate({:?}, {:?})", a, b);
-        self.probe(|_| {
-            // Gin up a dummy trace, since this won't be committed
-            // anyhow. We should make this typetrace stuff more
-            // generic so we don't have to do anything quite this
-            // terrible.
-            let trace = TypeTrace::dummy(self.tcx);
-            self.equate(true, trace, param_env, a, b).map(|InferOk { obligations: _, .. }| {
-                // We can intentionally ignore obligations here, since
-                // this is part of a simple test for general
-                // "equatability". However, it's not entirely clear
-                // that we *ought* to be, perhaps a better thing would
-                // be to use a mini-fulfillment context or something
-                // like that.
-            })
-        })
     }
 
     pub fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {

@@ -353,18 +353,20 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         infer_ok.value
     }
 
-    fn sub_types(&mut self, sup: Ty<'tcx>, sub: Ty<'tcx>)
+    fn sub_types(&mut self, sub: Ty<'tcx>, sup: Ty<'tcx>)
                  -> infer::UnitResult<'tcx>
     {
-        self.infcx.sub_types(false, &self.misc(self.last_span), self.param_env, sup, sub)
-            .map(|ok| self.register_infer_ok_obligations(ok))
+        self.infcx.at(&self.misc(self.last_span), self.param_env)
+                  .sup(sup, sub)
+                  .map(|ok| self.register_infer_ok_obligations(ok))
     }
 
     fn eq_types(&mut self, span: Span, a: Ty<'tcx>, b: Ty<'tcx>)
                 -> infer::UnitResult<'tcx>
     {
-        self.infcx.eq_types(false, &self.misc(span), self.param_env, a, b)
-            .map(|ok| self.register_infer_ok_obligations(ok))
+        self.infcx.at(&self.misc(span), self.param_env)
+                  .eq(b, a)
+                  .map(|ok| self.register_infer_ok_obligations(ok))
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {

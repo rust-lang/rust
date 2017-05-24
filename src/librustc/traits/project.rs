@@ -181,11 +181,8 @@ fn project_and_unify_type<'cx, 'gcx, 'tcx>(
            obligations);
 
     let infcx = selcx.infcx();
-    match infcx.eq_types(true,
-                         &obligation.cause,
-                         obligation.param_env,
-                         normalized_ty,
-                         obligation.predicate.ty) {
+    match infcx.at(&obligation.cause, obligation.param_env)
+               .eq(normalized_ty, obligation.predicate.ty) {
         Ok(InferOk { obligations: inferred_obligations, value: () }) => {
             obligations.extend(inferred_obligations);
             Ok(Some(obligations))
@@ -840,16 +837,13 @@ fn assemble_candidates_from_predicates<'cx, 'gcx, 'tcx, I>(
                         data.to_poly_trait_ref();
                     let obligation_poly_trait_ref =
                         obligation_trait_ref.to_poly_trait_ref();
-                    infcx.sub_poly_trait_refs(false,
-                                              obligation.cause.clone(),
-                                              obligation.param_env,
-                                              data_poly_trait_ref,
-                                              obligation_poly_trait_ref)
-                        .map(|InferOk { obligations: _, value: () }| {
-                            // FIXME(#32730) -- do we need to take obligations
-                            // into account in any way? At the moment, no.
-                        })
-                        .is_ok()
+                    infcx.at(&obligation.cause, obligation.param_env)
+                         .sup(obligation_poly_trait_ref, data_poly_trait_ref)
+                         .map(|InferOk { obligations: _, value: () }| {
+                             // FIXME(#32730) -- do we need to take obligations
+                             // into account in any way? At the moment, no.
+                         })
+                         .is_ok()
                 });
 
                 debug!("assemble_candidates_from_predicates: candidate={:?} \
@@ -1110,11 +1104,9 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
             let data_poly_trait_ref = data.to_poly_trait_ref();
             let obligation_poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
             selcx.infcx().probe(|_| {
-                selcx.infcx().sub_poly_trait_refs(false,
-                                                  obligation.cause.clone(),
-                                                  obligation.param_env,
-                                                  data_poly_trait_ref,
-                                                  obligation_poly_trait_ref).is_ok()
+                selcx.infcx().at(&obligation.cause, obligation.param_env)
+                             .sup(obligation_poly_trait_ref, data_poly_trait_ref)
+                             .is_ok()
             })
         });
 

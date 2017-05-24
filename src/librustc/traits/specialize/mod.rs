@@ -228,11 +228,8 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                                                        target_substs);
 
     // do the impls unify? If not, no specialization.
-    match infcx.eq_trait_refs(true,
-                              &ObligationCause::dummy(),
-                              param_env,
-                              source_trait_ref,
-                              target_trait_ref) {
+    match infcx.at(&ObligationCause::dummy(), param_env)
+               .eq(source_trait_ref, target_trait_ref) {
         Ok(InferOk { obligations: o, .. }) => {
             obligations.extend(o);
         }

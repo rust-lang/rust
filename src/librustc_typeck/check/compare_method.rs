@@ -289,7 +289,8 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         debug!("compare_impl_method: trait_fty={:?}", trait_fty);
 
-        let sub_result = infcx.sub_types(false, &cause, param_env, impl_fty, trait_fty)
+        let sub_result = infcx.at(&cause, param_env)
+                              .sup(trait_fty, impl_fty)
                               .map(|InferOk { obligations, .. }| {
                                   inh.register_predicates(obligations);
                               });
@@ -460,28 +461,23 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                 impl_iter.zip(trait_iter)
                          .zip(impl_m_iter)
                          .zip(trait_m_iter)
-                         .filter_map(|(((impl_arg_ty, trait_arg_ty), impl_arg), trait_arg)| {
-                             match infcx.sub_types(true,
-                                                   &cause,
-                                                   param_env,
-                                                   trait_arg_ty,
-                                                   impl_arg_ty) {
+                         .filter_map(|(((&impl_arg_ty, &trait_arg_ty), impl_arg), trait_arg)| {
+                             match infcx.at(&cause, param_env).sub(trait_arg_ty, impl_arg_ty) {
                                  Ok(_) => None,
                                  Err(_) => Some((impl_arg.span, Some(trait_arg.span))),
                              }
                          })
                          .next()
                          .unwrap_or_else(|| {
-                             if infcx.sub_types(false,
-                                                &cause,
-                                                param_env,
-                                                impl_sig.output(),
-                                                trait_sig.output())
-                                     .is_err() {
-                                         (impl_m_output.span(), Some(trait_m_output.span()))
-                                     } else {
-                                         (cause.span, tcx.hir.span_if_local(trait_m.def_id))
-                                     }
+                             if
+                                 infcx.at(&cause, param_env)
+                                      .sup(trait_sig.output(), impl_sig.output())
+                                      .is_err()
+                             {
+                                 (impl_m_output.span(), Some(trait_m_output.span()))
+                             } else {
+                                 (cause.span, tcx.hir.span_if_local(trait_m.def_id))
+                             }
                          })
             } else {
                 (cause.span, tcx.hir.span_if_local(trait_m.def_id))
@@ -760,8 +756,9 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         debug!("compare_const_impl: trait_ty={:?}", trait_ty);
 
-        let err = infcx.sub_types(false, &cause, param_env, impl_ty, trait_ty)
-            .map(|ok| inh.register_infer_ok_obligations(ok));
+        let err = infcx.at(&cause, param_env)
+                       .sup(trait_ty, impl_ty)
+                       .map(|ok| inh.register_infer_ok_obligations(ok));
 
         if let Err(terr) = err {
             debug!("checking associated const for compatibility: impl ty {:?}, trait ty {:?}",

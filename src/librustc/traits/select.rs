@@ -1269,12 +1269,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         -> bool
     {
         assert!(!skol_trait_ref.has_escaping_regions());
-        let cause = obligation.cause.clone();
-        match self.infcx.sub_poly_trait_refs(false,
-                                             cause,
-                                             obligation.param_env,
-                                             trait_bound.clone(),
-                                             ty::Binder(skol_trait_ref.clone())) {
+        match self.infcx.at(&obligation.cause, obligation.param_env)
+                        .sup(ty::Binder(skol_trait_ref), trait_bound) {
             Ok(InferOk { obligations, .. }) => {
                 self.inferred_obligations.extend(obligations);
             }
@@ -2436,11 +2432,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                -> Result<(), SelectionError<'tcx>>
     {
         let obligation_trait_ref = obligation_trait_ref.clone();
-        self.infcx.sub_poly_trait_refs(false,
-                                       obligation_cause.clone(),
-                                       obligation_param_env,
-                                       expected_trait_ref.clone(),
-                                       obligation_trait_ref.clone())
+        self.infcx
+            .at(&obligation_cause, obligation_param_env)
+            .sup(obligation_trait_ref, expected_trait_ref)
             .map(|InferOk { obligations, .. }| self.inferred_obligations.extend(obligations))
             .map_err(|e| OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e))
     }
@@ -2475,12 +2469,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let new_trait = tcx.mk_dynamic(
                     ty::Binder(tcx.mk_existential_predicates(iter)), r_b);
                 let InferOk { obligations, .. } =
-                    self.infcx.eq_types(false,
-                                        &obligation.cause,
-                                        obligation.param_env,
-                                        new_trait,
-                                        target)
-                    .map_err(|_| Unimplemented)?;
+                    self.infcx.at(&obligation.cause, obligation.param_env)
+                              .eq(target, new_trait)
+                              .map_err(|_| Unimplemented)?;
                 self.inferred_obligations.extend(obligations);
 
                 // Register one obligation for 'a: 'b.
@@ -2540,8 +2531,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             // [T; n] -> [T].
             (&ty::TyArray(a, _), &ty::TySlice(b)) => {
                 let InferOk { obligations, .. } =
-                    self.infcx.eq_types(false, &obligation.cause, obligation.param_env, a, b)
-                    .map_err(|_| Unimplemented)?;
+                    self.infcx.at(&obligation.cause, obligation.param_env)
+                              .eq(b, a)
+                              .map_err(|_| Unimplemented)?;
                 self.inferred_obligations.extend(obligations);
             }
 
@@ -2603,12 +2595,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 });
                 let new_struct = tcx.mk_adt(def, tcx.mk_substs(params));
                 let InferOk { obligations, .. } =
-                    self.infcx.eq_types(false,
-                                        &obligation.cause,
-                                        obligation.param_env,
-                                        new_struct,
-                                        target)
-                    .map_err(|_| Unimplemented)?;
+                    self.infcx.at(&obligation.cause, obligation.param_env)
+                              .eq(target, new_struct)
+                              .map_err(|_| Unimplemented)?;
                 self.inferred_obligations.extend(obligations);
 
                 // Construct the nested Field<T>: Unsize<Field<U>> predicate.
@@ -2696,15 +2685,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                skol_obligation_trait_ref);
 
         let InferOk { obligations, .. } =
-            self.infcx.eq_trait_refs(false,
-                                     &obligation.cause,
-                                     obligation.param_env,
-                                     impl_trait_ref.value.clone(),
-                                     skol_obligation_trait_ref)
-            .map_err(|e| {
-                debug!("match_impl: failed eq_trait_refs due to `{}`", e);
-                ()
-            })?;
+            self.infcx.at(&obligation.cause, obligation.param_env)
+                      .eq(skol_obligation_trait_ref, impl_trait_ref.value)
+                      .map_err(|e| {
+                          debug!("match_impl: failed eq_trait_refs due to `{}`", e);
+                          ()
+                      })?;
         self.inferred_obligations.extend(obligations);
 
         if let Err(e) = self.infcx.leak_check(false,
@@ -2770,13 +2756,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                obligation,
                poly_trait_ref);
 
-        self.infcx.sub_poly_trait_refs(false,
-                                       obligation.cause.clone(),
-                                       obligation.param_env,
-                                       poly_trait_ref,
-                                       obligation.predicate.to_poly_trait_ref())
-            .map(|InferOk { obligations, .. }| self.inferred_obligations.extend(obligations))
-            .map_err(|_| ())
+        self.infcx.at(&obligation.cause, obligation.param_env)
+                  .sup(obligation.predicate.to_poly_trait_ref(), poly_trait_ref)
+                  .map(|InferOk { obligations, .. }| self.inferred_obligations.extend(obligations))
+                  .map_err(|_| ())
     }
 
     ///////////////////////////////////////////////////////////////////////////

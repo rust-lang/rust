@@ -2723,7 +2723,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // is polymorphic) and the expected return type.
                 // No argument expectations are produced if unification fails.
                 let origin = self.misc(call_span);
-                let ures = self.sub_types(false, &origin, self.param_env, formal_ret, ret_ty);
+                let ures = self.at(&origin, self.param_env).sup(ret_ty, formal_ret);
 
                 // FIXME(#15760) can't use try! here, FromError doesn't default
                 // to identity so the resulting type is not constrained.
@@ -4218,7 +4218,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => return,
         };
         let last_expr_ty = self.expr_ty(last_expr);
-        if self.can_sub_types(self.param_env, last_expr_ty, expected_ty).is_err() {
+        if self.can_sub(self.param_env, last_expr_ty, expected_ty).is_err() {
             return;
         }
         let original_span = original_sp(last_stmt.span, blk.span);
@@ -4478,7 +4478,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let ty = self.tcx.type_of(impl_def_id);
 
             let impl_ty = self.instantiate_type_scheme(span, &substs, &ty);
-            match self.sub_types(false, &self.misc(span), self.param_env, self_ty, impl_ty) {
+            match self.at(&self.misc(span), self.param_env).sup(impl_ty, self_ty) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
                     span_bug!(span,

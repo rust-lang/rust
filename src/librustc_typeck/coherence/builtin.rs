@@ -308,7 +308,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         // we may have to evaluate constraint
                         // expressions in the course of execution.)
                         // See e.g. #41936.
-                        if let Ok(ok) = infcx.eq_types(false, &cause, param_env, b, a) {
+                        if let Ok(ok) = infcx.at(&cause, param_env).eq(a, b) {
                             if ok.obligations.is_empty() {
                                 return None;
                             }
