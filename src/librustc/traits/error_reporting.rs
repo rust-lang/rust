@@ -15,6 +15,7 @@ use super::{
     Obligation,
     ObligationCause,
     ObligationCauseCode,
+    ParameterCountMismatch,
     OutputTypeParameterMismatch,
     TraitNotObjectSafe,
     PredicateObligation,
@@ -54,11 +55,11 @@ pub struct TraitErrorKey<'tcx> {
 impl<'a, 'gcx, 'tcx> TraitErrorKey<'tcx> {
     fn from_error(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                   e: &FulfillmentError<'tcx>) -> Self {
-        let predicate =
-            infcx.resolve_type_vars_if_possible(&e.obligation.predicate);
+        let predicate = infcx.resolve_type_vars_if_possible(&e.obligation.predicate);
+        let predicate = infcx.tcx.erase_regions(&predicate);
         TraitErrorKey {
             span: e.obligation.cause.span,
-            predicate: infcx.tcx.erase_regions(&predicate)
+            predicate: predicate,
         }
     }
 }
@@ -523,6 +524,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         let span = obligation.cause.span;
 
+        if !self.reported_selection_errors.borrow_mut().insert((span, error.clone())) {
+            debug!("report_selection_error: skipping duplicate {:?}", error);
+            return;
+        }
+
         let mut err = match *error {
             SelectionError::Unimplemented => {
                 if let ObligationCauseCode::CompareImplMethodObligation {
@@ -665,6 +671,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
+            ParameterCountMismatch(expected_found, ty, def_id) => {
+                let found_span = self.tcx.hir.span_if_local(def_id);
+                self.report_arg_count_mismatch(span,
+                                               found_span,
+                                               expected_found.expected,
+                                               expected_found.found,
+                                               ty.is_closure())
+            }
             OutputTypeParameterMismatch(ref expected_trait_ref, ref actual_trait_ref, ref e) => {
                 let expected_trait_ref = self.resolve_type_vars_if_possible(&*expected_trait_ref);
                 let actual_trait_ref = self.resolve_type_vars_if_possible(&*actual_trait_ref);
@@ -676,49 +690,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     self.tcx.hir.span_if_local(did)
                 });
 
-                if let &TypeError::TupleSize(ref expected_found) = e {
-                    // Expected `|x| { }`, found `|x, y| { }`
-                    self.report_arg_count_mismatch(span,
-                                                   found_span,
-                                                   expected_found.expected,
-                                                   expected_found.found,
-                                                   expected_trait_ty.is_closure())
-                } else if let &TypeError::Sorts(ref expected_found) = e {
-                    let expected = if let ty::TyTuple(tys, _) = expected_found.expected.sty {
-                        tys.len()
-                    } else {
-                        1
-                    };
-                    let found = if let ty::TyTuple(tys, _) = expected_found.found.sty {
-                        tys.len()
-                    } else {
-                        1
-                    };
-
-                    if expected != found {
-                        // Expected `|| { }`, found `|x, y| { }`
-                        // Expected `fn(x) -> ()`, found `|| { }`
-                        self.report_arg_count_mismatch(span,
-                                                       found_span,
-                                                       expected,
-                                                       found,
-                                                       expected_trait_ty.is_closure())
-                    } else {
-                        self.report_type_argument_mismatch(span,
-                                                            found_span,
-                                                            expected_trait_ty,
-                                                            expected_trait_ref,
-                                                            actual_trait_ref,
-                                                            e)
-                    }
-                } else {
-                    self.report_type_argument_mismatch(span,
-                                                        found_span,
-                                                        expected_trait_ty,
-                                                        expected_trait_ref,
-                                                        actual_trait_ref,
-                                                        e)
-                }
+                self.report_type_argument_mismatch(span,
+                                                    found_span,
+                                                    expected_trait_ty,
+                                                    expected_trait_ref,
+                                                    actual_trait_ref,
+                                                    e)
             }
 
             TraitNotObjectSafe(did) => {

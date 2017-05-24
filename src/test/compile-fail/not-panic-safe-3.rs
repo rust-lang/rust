@@ -19,5 +19,4 @@ fn assert<T: UnwindSafe + ?Sized>() {}
 fn main() {
     assert::<Arc<RefCell<i32>>>();
     //~^ ERROR `std::cell::UnsafeCell<i32>: std::panic::RefUnwindSafe` is not satisfied
-    //~^^ ERROR `std::cell::UnsafeCell<usize>: std::panic::RefUnwindSafe` is not satisfied
 }

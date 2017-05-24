@@ -685,7 +685,7 @@ pub struct ClosureUpvar<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IntVarValue {
     IntType(ast::IntTy),
     UintType(ast::UintTy),

@@ -19,7 +19,7 @@ use super::project;
 use super::project::{normalize_with_depth, Normalized};
 use super::{PredicateObligation, TraitObligation, ObligationCause};
 use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation};
-use super::{SelectionError, Unimplemented, OutputTypeParameterMismatch};
+use super::{SelectionError, Unimplemented, ParameterCountMismatch, OutputTypeParameterMismatch};
 use super::{ObjectCastObligation, Obligation};
 use super::Reveal;
 use super::TraitNotObjectSafe;
@@ -39,6 +39,7 @@ use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use traits;
 use ty::fast_reject;
 use ty::relate::TypeRelation;
+use ty::error::TypeError::{TupleSize, Sorts};
 use middle::lang_items;
 
 use rustc_data_structures::bitvec::BitVector;
@@ -2425,7 +2426,42 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                        expected_trait_ref.clone(),
                                        obligation_trait_ref.clone())
             .map(|InferOk { obligations, .. }| self.inferred_obligations.extend(obligations))
-            .map_err(|e| OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e))
+            .map_err(|e| {
+                let self_ty = expected_trait_ref.self_ty();
+                match (&self_ty.sty, &e) {
+                    (&ty::TyClosure(def_id, ..), &TupleSize(expected_found)) |
+                    (&ty::TyFnDef(def_id, ..), &TupleSize(expected_found)) => {
+                        // Expected `fn(x)`/`|x| { }`, found `fn(x, y)`/`|x, y| { }`
+                        ParameterCountMismatch(expected_found, self_ty, def_id)
+                    }
+                    (&ty::TyClosure(def_id, ..), &Sorts(expected_found)) |
+                    (&ty::TyFnDef(def_id, ..), &Sorts(expected_found)) => {
+                        // Expected `|| { }`, found `|x, y| { }`
+                        // Expected `fn(x)`, found `|| { }`
+                        let expected = if let ty::TyTuple(tys, _) = expected_found.expected.sty {
+                            tys.len()
+                        } else {
+                            1
+                        };
+                        let found = if let ty::TyTuple(tys, _) = expected_found.found.sty {
+                            tys.len()
+                        } else {
+                            1
+                        };
+
+                        if expected != found {
+                            let expected_found = ty::error::ExpectedFound {
+                                expected: expected,
+                                found: found,
+                            };
+                            ParameterCountMismatch(expected_found, self_ty, def_id)
+                        } else {
+                            OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e)
+                        }
+                    }
+                    _ => OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e),
+                }
+            })
     }
 
     fn confirm_builtin_unsize_candidate(&mut self,

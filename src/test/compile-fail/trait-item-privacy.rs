@@ -108,10 +108,8 @@ fn check_assoc_const() {
     S::C; // OK
     // A, B, C are resolved as inherent items, their traits don't need to be in scope
     C::A; //~ ERROR associated constant `A` is private
-          //~^ ERROR the trait `assoc_const::C` cannot be made into an object
-          //~| ERROR the trait bound `assoc_const::C: assoc_const::A` is not satisfied
-    C::B; // ERROR the trait `assoc_const::C` cannot be made into an object
-          //~^ ERROR the trait bound `assoc_const::C: assoc_const::B` is not satisfied
+          //~^ ERROR the trait bound `assoc_const::C: assoc_const::A` is not satisfied
+    C::B; //~ ERROR the trait bound `assoc_const::C: assoc_const::B` is not satisfied
     C::C; // OK
 }
 

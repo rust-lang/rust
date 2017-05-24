@@ -170,9 +170,11 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// Caches the results of trait evaluation.
     pub evaluation_cache: traits::EvaluationCache<'tcx>,
 
-    // the set of predicates on which errors have been reported, to
-    // avoid reporting the same error twice.
+    /// Set of predicates on which errors have been reported, to
+    /// avoid reporting the same error twice.
     pub reported_trait_errors: RefCell<FxHashSet<traits::TraitErrorKey<'tcx>>>,
+    /// Set of selection errors have been reported, to avoid reporting them twice.
+    pub reported_selection_errors: RefCell<FxHashSet<(Span, traits::SelectionError<'tcx>)>>,
 
     // Sadly, the behavior of projection varies a bit depending on the
     // stage of compilation. The specifics are given in the
@@ -503,6 +505,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             evaluation_cache: traits::EvaluationCache::new(),
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
             reported_trait_errors: RefCell::new(FxHashSet()),
+            reported_selection_errors: RefCell::new(FxHashSet()),
             projection_mode: Reveal::UserFacing,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: self.sess.err_count(),
@@ -539,6 +542,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             reported_trait_errors: RefCell::new(FxHashSet()),
+            reported_selection_errors: RefCell::new(FxHashSet()),
             projection_mode: projection_mode,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: tcx.sess.err_count(),

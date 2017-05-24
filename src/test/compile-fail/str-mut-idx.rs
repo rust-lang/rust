@@ -16,7 +16,6 @@ fn mutate(s: &mut str) {
     //~| ERROR `str: std::marker::Sized` is not satisfied
     s[1usize] = bot();
     //~^ ERROR `str: std::ops::Index<usize>` is not satisfied
-    //~| ERROR `str: std::ops::IndexMut<usize>` is not satisfied
 }
 
 pub fn main() {}

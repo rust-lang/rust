@@ -197,12 +197,13 @@ pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SelectionError<'tcx> {
     Unimplemented,
     OutputTypeParameterMismatch(ty::PolyTraitRef<'tcx>,
                                 ty::PolyTraitRef<'tcx>,
                                 ty::error::TypeError<'tcx>),
+    ParameterCountMismatch(ExpectedFound<usize>, Ty<'tcx>, DefId),
     TraitNotObjectSafe(DefId),
 }
 

@@ -17,76 +17,70 @@ use std::ops::*;
 struct AllTheRanges {
     a: Range<usize>,
     //~^ ERROR PartialOrd
-    //~^^ ERROR PartialOrd
-    //~^^^ ERROR Ord
-    //~^^^^ ERROR binary operation
-    //~^^^^^ ERROR binary operation
-    //~^^^^^^ ERROR binary operation
-    //~^^^^^^^ ERROR binary operation
-    //~^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^^^ ERROR binary operation
+    //~| ERROR PartialOrd
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
     b: RangeTo<usize>,
     //~^ ERROR PartialOrd
-    //~^^ ERROR PartialOrd
-    //~^^^ ERROR Ord
-    //~^^^^ ERROR binary operation
-    //~^^^^^ ERROR binary operation
-    //~^^^^^^ ERROR binary operation
-    //~^^^^^^^ ERROR binary operation
-    //~^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^^^ ERROR binary operation
+    //~| ERROR PartialOrd
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
     c: RangeFrom<usize>,
     //~^ ERROR PartialOrd
-    //~^^ ERROR PartialOrd
-    //~^^^ ERROR Ord
-    //~^^^^ ERROR binary operation
-    //~^^^^^ ERROR binary operation
-    //~^^^^^^ ERROR binary operation
-    //~^^^^^^^ ERROR binary operation
-    //~^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^^^ ERROR binary operation
+    //~| ERROR PartialOrd
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
     d: RangeFull,
     //~^ ERROR PartialOrd
-    //~^^ ERROR PartialOrd
-    //~^^^ ERROR Ord
-    //~^^^^ ERROR binary operation
-    //~^^^^^ ERROR binary operation
-    //~^^^^^^ ERROR binary operation
-    //~^^^^^^^ ERROR binary operation
-    //~^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^^^ ERROR binary operation
+    //~| ERROR PartialOrd
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
     e: RangeInclusive<usize>,
     //~^ ERROR PartialOrd
-    //~^^ ERROR PartialOrd
-    //~^^^ ERROR Ord
-    //~^^^^ ERROR binary operation
-    //~^^^^^ ERROR binary operation
-    //~^^^^^^ ERROR binary operation
-    //~^^^^^^^ ERROR binary operation
-    //~^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^^^ ERROR binary operation
+    //~| ERROR PartialOrd
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
     f: RangeToInclusive<usize>,
     //~^ ERROR PartialOrd
-    //~^^ ERROR PartialOrd
-    //~^^^ ERROR Ord
-    //~^^^^ ERROR binary operation
-    //~^^^^^ ERROR binary operation
-    //~^^^^^^ ERROR binary operation
-    //~^^^^^^^ ERROR binary operation
-    //~^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^^ ERROR binary operation
-    //~^^^^^^^^^^^ ERROR binary operation
+    //~| ERROR PartialOrd
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
+    //~| ERROR binary operation
 }
 
 fn main() {}
