@@ -153,6 +153,13 @@ use marker::Unsize;
 /// The `Drop` trait is used to run some code when a value goes out of scope.
 /// This is sometimes called a 'destructor'.
 ///
+/// When a value goes out of scope, if it implements this trait, it will have
+/// its `drop` method called. Then any fields the value contains will also
+/// be dropped recursively.
+///
+/// Because of the recursive dropping, you do not need to implement this trait
+/// unless your type needs its own destructor logic.
+///
 /// # Examples
 ///
 /// A trivial implementation of `Drop`. The `drop` method is called when `_x`
@@ -169,6 +176,43 @@ use marker::Unsize;
 ///
 /// fn main() {
 ///     let _x = HasDrop;
+/// }
+/// ```
+///
+/// Showing the recursive nature of `Drop`. When `outer` goes out of scope, the
+/// `drop` method will be called first for `Outer`, then for `Inner`. Therefore
+/// `main` prints `Dropping Outer!` and then `Dropping Inner!`.
+///
+/// ```
+/// struct Inner;
+/// struct Outer(Inner);
+///
+/// impl Drop for Inner {
+///     fn drop(&mut self) {
+///         println!("Dropping Inner!");
+///     }
+/// }
+///
+/// impl Drop for Outer {
+///     fn drop(&mut self) {
+///         println!("Dropping Outer!");
+///     }
+/// }
+///
+/// fn main() {
+///     let _x = Outer(Inner);
+/// }
+/// ```
+///
+/// Because variables are dropped in the reverse order they are declared,
+/// `main` will print `Declared second!` and then `Declared first!`.
+///
+/// ```
+/// struct PrintOnDrop(&'static str);
+///
+/// fn main() {
+///     let _first = PrintOnDrop("Declared first!");
+///     let _second = PrintOnDrop("Declared second!");
 /// }
 /// ```
 #[lang = "drop"]
