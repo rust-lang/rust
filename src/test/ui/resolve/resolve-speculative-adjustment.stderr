@@ -14,13 +14,13 @@ error[E0425]: cannot find value `field` in this scope
   --> $DIR/resolve-speculative-adjustment.rs:35:9
    |
 35 |         field;
-   |         ^^^^^ did you mean `self.field`?
+   |         ^^^^^ help: try: `self.field`
 
 error[E0425]: cannot find function `method` in this scope
   --> $DIR/resolve-speculative-adjustment.rs:38:9
    |
 38 |         method();
-   |         ^^^^^^ did you mean `self.method(...)`?
+   |         ^^^^^^ help: try: `self.method`
 
 error: aborting due to 4 previous errors
 
