@@ -385,6 +385,10 @@ class RustBuild(object):
             raise Exception("no cargo executable found at `%s`" % self.cargo())
         args = [self.cargo(), "build", "--manifest-path",
                 os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")]
+        if self.verbose:
+            args.append("--verbose")
+            if self.verbose > 1:
+                args.append("--verbose")
         if self.use_locked_deps:
             args.append("--locked")
         if self.use_vendored_sources:
