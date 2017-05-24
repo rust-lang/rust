@@ -69,7 +69,9 @@ pub enum Subcommand {
     Clean,
     Dist {
         paths: Vec<PathBuf>,
-        install: bool,
+    },
+    Install {
+        paths: Vec<PathBuf>,
     },
 }
 
@@ -85,7 +87,8 @@ Subcommands:
     bench       Build and run some benchmarks
     doc         Build documentation
     clean       Clean out build directories
-    dist        Build and/or install distribution artifacts
+    dist        Build distribution artifacts
+    install     Install distribution artifacts
 
 To learn more about a subcommand, run `./x.py <subcommand> -h`");
 
@@ -125,7 +128,8 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
                                         || (s == "bench")
                                         || (s == "doc")
                                         || (s == "clean")
-                                        || (s == "dist"));
+                                        || (s == "dist")
+                                        || (s == "install"));
         let subcommand = match possible_subcommands.first() {
             Some(s) => s,
             None => {
@@ -139,7 +143,6 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         match subcommand.as_str() {
             "test"  => { opts.optmulti("", "test-args", "extra arguments", "ARGS"); },
             "bench" => { opts.optmulti("", "test-args", "extra arguments", "ARGS"); },
-            "dist"  => { opts.optflag("", "install", "run installer as well"); },
             _ => { },
         };
 
@@ -281,7 +284,11 @@ Arguments:
             "dist" => {
                 Subcommand::Dist {
                     paths: paths,
-                    install: matches.opt_present("install"),
+                }
+            }
+            "install" => {
+                Subcommand::Install {
+                    paths: paths,
                 }
             }
             _ => {
