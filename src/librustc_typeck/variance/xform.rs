@@ -10,35 +10,6 @@
 
 use rustc::ty;
 
-pub trait Xform {
-    fn xform(self, v: Self) -> Self;
-}
-
-impl Xform for ty::Variance {
-    fn xform(self, v: ty::Variance) -> ty::Variance {
-        // "Variance transformation", Figure 1 of The Paper
-        match (self, v) {
-            // Figure 1, column 1.
-            (ty::Covariant, ty::Covariant) => ty::Covariant,
-            (ty::Covariant, ty::Contravariant) => ty::Contravariant,
-            (ty::Covariant, ty::Invariant) => ty::Invariant,
-            (ty::Covariant, ty::Bivariant) => ty::Bivariant,
-
-            // Figure 1, column 2.
-            (ty::Contravariant, ty::Covariant) => ty::Contravariant,
-            (ty::Contravariant, ty::Contravariant) => ty::Covariant,
-            (ty::Contravariant, ty::Invariant) => ty::Invariant,
-            (ty::Contravariant, ty::Bivariant) => ty::Bivariant,
-
-            // Figure 1, column 3.
-            (ty::Invariant, _) => ty::Invariant,
-
-            // Figure 1, column 4.
-            (ty::Bivariant, _) => ty::Bivariant,
-        }
-    }
-}
-
 pub fn glb(v1: ty::Variance, v2: ty::Variance) -> ty::Variance {
     // Greatest lower bound of the variance lattice as
     // defined in The Paper:

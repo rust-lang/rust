@@ -24,7 +24,6 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
 use super::terms::*;
 use super::terms::VarianceTerm::*;
-use super::xform::*;
 
 use dep_graph::DepNode::ItemSignature as VarianceDepNode;
 
