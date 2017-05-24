@@ -7,5 +7,5 @@ error: cannot borrow immutable borrowed content `*self.s` as mutable
 17 |         self.s.push('x');
    |         ^^^^^^ cannot borrow as mutable
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

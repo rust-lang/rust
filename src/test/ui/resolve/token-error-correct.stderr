@@ -52,5 +52,5 @@ error[E0425]: cannot find function `bar` in this scope
 14 |     foo(bar(;
    |         ^^^ not found in this scope
 
-error: aborting due to 7 previous errors
+error: aborting due to previous error(s)
 

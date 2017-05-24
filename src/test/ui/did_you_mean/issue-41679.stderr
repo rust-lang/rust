@@ -6,5 +6,5 @@ error: `~` can not be used as a unary operator
    |
    = help: use `!` instead of `~` if you meant to perform bitwise negation
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

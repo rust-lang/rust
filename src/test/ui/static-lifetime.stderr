@@ -6,5 +6,5 @@ error[E0477]: the type `std::borrow::Cow<'a, A>` does not fulfill the required l
    |
    = note: type must satisfy the static lifetime
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

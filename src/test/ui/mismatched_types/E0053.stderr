@@ -22,5 +22,5 @@ error[E0053]: method `bar` has an incompatible type for trait
    = note: expected type `fn(&Bar)`
               found type `fn(&mut Bar)`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 

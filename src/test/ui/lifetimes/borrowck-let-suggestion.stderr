@@ -10,5 +10,5 @@ error: borrowed value does not live long enough
    |
    = note: consider using a `let` binding to increase its lifetime
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

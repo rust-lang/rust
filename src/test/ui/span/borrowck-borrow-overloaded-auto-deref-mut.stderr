@@ -82,5 +82,5 @@ error: cannot borrow immutable borrowed content `*x` as mutable
 143 |     *x.y_mut() = 3; //~ ERROR cannot borrow
     |      ^ cannot borrow as mutable
 
-error: aborting due to 10 previous errors
+error: aborting due to previous error(s)
 

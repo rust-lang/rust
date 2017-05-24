@@ -15,5 +15,5 @@ error[E0308]: mismatched types
    = note: expected type `&{integer}`
               found type `{integer}`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

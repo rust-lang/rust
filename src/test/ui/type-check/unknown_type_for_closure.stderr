@@ -4,5 +4,5 @@ error[E0282]: type annotations needed
 12 |     let x = |_| {    };
    |              ^ consider giving this closure parameter a type
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

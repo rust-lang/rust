@@ -4,5 +4,5 @@ error[E0220]: associated type `Trget` not found for `std::ops::Deref`
 16 | fn homura<T: Deref<Trget = i32>>(_: T) {}
    |                    ^^^^^^^^^^^ associated type `Trget` not found
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 
