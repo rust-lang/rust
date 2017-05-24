@@ -1,7 +1,7 @@
 # `step_trait`
 
-The tracking issue for this feature is: [#27741]
+The tracking issue for this feature is: [#42168]
 
-[#27741]: https://github.com/rust-lang/rust/issues/27741
+[#42168]: https://github.com/rust-lang/rust/issues/42168
 
 ------------------------

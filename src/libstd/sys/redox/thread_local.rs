@@ -64,3 +64,8 @@ pub unsafe fn set(key: Key, value: *mut u8) {
 pub unsafe fn destroy(key: Key) {
     keys().remove(&key);
 }
+
+#[inline]
+pub fn requires_synchronized_create() -> bool {
+    false
+}
