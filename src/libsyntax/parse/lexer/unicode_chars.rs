@@ -238,7 +238,7 @@ pub fn check_for_substitution<'a>(reader: &StringReader<'a>,
         match ASCII_ARRAY.iter().find(|&&(c, _)| c == ascii_char) {
             Some(&(ascii_char, ascii_name)) => {
                 let msg =
-                    format!("unicode character '{}' ({}) looks much like '{}' ({}), but it's not",
+                    format!("unicode character '{}' ({}) looks like '{}' ({}), but it's not",
                             ch, u_name, ascii_char, ascii_name);
                 err.span_help(span, &msg);
             },
