@@ -394,6 +394,26 @@ impl Builder {
 /// want to specify the stack size or the name of the thread, use this API
 /// instead.
 ///
+/// As you can see in the signature of `spawn` there are two constraints on
+/// both the closure given to `spawn` and its return value, let's explain them:
+///
+/// - The `'static` constraint means that the closure and its return value
+///   must have a lifetime of the whole program execution. The reason for this
+///   is that threads can `detach` and outlive the lifetime they have been
+///   created in.
+///   Indeed if the thread, and by extension its return value, can outlive their
+///   caller, we need to make sure that they will be valid afterwards, and since
+///   we *can't* know when it will return we need to have them valid as long as
+///   possible, that is until the end of the program, hence the `'static`
+///   lifetime.
+/// - The [`Send`] constraint is because the closure will need to be passed
+///   *by value* from the thread where it is spawned to the new thread. Its
+///   return value will need to be passed from the new thread to the thread
+///   where it is `join`ed.
+///   As a reminder, the [`Send`] marker trait, expresses that it is safe to be
+///   passed from thread to thread. [`Sync`] expresses that it is safe to have a
+///   reference be passed from thread to thread.
+///
 /// # Panics
 ///
 /// Panics if the OS fails to create a thread; use [`Builder::spawn`]
@@ -460,6 +480,8 @@ impl Builder {
 /// [`panic`]: ../../std/macro.panic.html
 /// [`Builder::spawn`]: ../../std/thread/struct.Builder.html#method.spawn
 /// [`Builder`]: ../../std/thread/struct.Builder.html
+/// [`Send`]: ../../std/marker/trait.Send.html
+/// [`Sync`]: ../../std/marker/trait.Sync.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
     F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
