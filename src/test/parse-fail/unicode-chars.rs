@@ -9,10 +9,9 @@
 // except according to those terms.
 
 // compile-flags: -Z parse-only
-// ignore-tidy-linelength
 
 fn main() {
     let y = 0;
     //~^ ERROR unknown start of token: \u{37e}
-    //~^^ HELP unicode character ';' (Greek Question Mark) looks much like ';' (Semicolon), but it's not
+    //~^^ HELP unicode character ';' (Greek Question Mark) looks like ';' (Semicolon), but it's not
 }
