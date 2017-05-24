@@ -732,6 +732,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
                 match err.cause {
                     MutabilityViolation => {
+                        local_def = err.cmt.get_def().map(|nid| self.tcx.hir.span(nid));
                         format!("cannot assign to {}", descr)
                     }
                     BorrowViolation(euv::ClosureCapture(_)) => {
@@ -1203,6 +1204,7 @@ before rustc 1.16, this temporary lived longer - see issue #39283 \
             }
         }
     }
+
     pub fn append_loan_path_to_string(&self,
                                       loan_path: &LoanPath<'tcx>,
                                       out: &mut String) {
