@@ -164,7 +164,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
             let mutable = !shared ||
                 !mir.return_ty.is_freeze(
                     this.ecx.tcx,
-                    &this.ecx.tcx.empty_parameter_environment(),
+                    ty::ParamEnv::empty(),
                     span);
             let cleanup = StackPopCleanup::MarkStatic(mutable);
             let name = ty::tls::with(|tcx| tcx.item_path_str(def_id));
