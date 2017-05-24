@@ -493,6 +493,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .run(move |s| check::docs(build, &s.compiler()));
     rules.test("check-distcheck", "distcheck")
          .dep(|s| s.name("dist-plain-source-tarball"))
+         .dep(|s| s.name("dist-src"))
          .run(move |_| check::distcheck(build));
 
     rules.build("test-helpers", "src/rt/rust_test_helpers.c")
