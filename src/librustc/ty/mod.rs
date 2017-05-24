@@ -443,17 +443,6 @@ pub struct CReaderCacheKey {
     pub pos: usize,
 }
 
-/// Describes the fragment-state associated with a NodeId.
-///
-/// Currently only unfragmented paths have entries in the table,
-/// but longer-term this enum is expected to expand to also
-/// include data for fragmented paths.
-#[derive(Copy, Clone, Debug)]
-pub enum FragmentInfo {
-    Moved { var: NodeId, move_expr: NodeId },
-    Assigned { var: NodeId, assign_expr: NodeId, assignee_id: NodeId },
-}
-
 // Flags that we track on types. These flags are propagated upwards
 // through the type during type construction, so that we can quickly
 // check whether the type has various kinds of types in it without

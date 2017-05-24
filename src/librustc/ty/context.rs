@@ -40,7 +40,7 @@ use ty::layout::{Layout, TargetDataLayout};
 use ty::inhabitedness::DefIdForest;
 use ty::maps;
 use ty::steal::Steal;
-use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
+use util::nodemap::{NodeMap, NodeSet, DefIdSet};
 use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 
@@ -499,33 +499,6 @@ pub struct GlobalCtxt<'tcx> {
     /// Maps Expr NodeId's to `true` iff `&expr` can have 'static lifetime.
     pub rvalue_promotable_to_static: RefCell<NodeMap<bool>>,
 
-    /// Maps Fn items to a collection of fragment infos.
-    ///
-    /// The main goal is to identify data (each of which may be moved
-    /// or assigned) whose subparts are not moved nor assigned
-    /// (i.e. their state is *unfragmented*) and corresponding ast
-    /// nodes where the path to that data is moved or assigned.
-    ///
-    /// In the long term, unfragmented values will have their
-    /// destructor entirely driven by a single stack-local drop-flag,
-    /// and their parents, the collections of the unfragmented values
-    /// (or more simply, "fragmented values"), are mapped to the
-    /// corresponding collections of stack-local drop-flags.
-    ///
-    /// (However, in the short term that is not the case; e.g. some
-    /// unfragmented paths still need to be zeroed, namely when they
-    /// reference parent data from an outer scope that was not
-    /// entirely moved, and therefore that needs to be zeroed so that
-    /// we do not get double-drop when we hit the end of the parent
-    /// scope.)
-    ///
-    /// Also: currently the table solely holds keys for node-ids of
-    /// unfragmented values (see `FragmentInfo` enum definition), but
-    /// longer-term we will need to also store mappings from
-    /// fragmented data to the set of unfragmented pieces that
-    /// constitute it.
-    pub fragment_infos: RefCell<DefIdMap<Vec<ty::FragmentInfo>>>,
-
     /// The definite name of the current crate after taking into account
     /// attributes, commandline parameters, etc.
     pub crate_name: Symbol,
@@ -730,7 +703,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             rvalue_promotable_to_static: RefCell::new(NodeMap()),
-            fragment_infos: RefCell::new(DefIdMap()),
             crate_name: Symbol::intern(crate_name),
             data_layout: data_layout,
             layout_cache: RefCell::new(FxHashMap()),
