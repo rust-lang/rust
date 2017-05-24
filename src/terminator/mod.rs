@@ -367,19 +367,32 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         // Only trait methods can have a Self parameter.
 
+        // Intercept some methods (even if we can find MIR for them)
+        if let ty::InstanceDef::Item(def_id) = instance.def {
+            match &self.tcx.item_path_str(def_id)[..] {
+                "std::sys::imp::fast_thread_local::register_dtor" => {
+                    // Just don't execute this one, we don't handle all this thread-local stuff anyway.
+                    self.goto_block(destination.unwrap().1);
+                    return Ok(true)
+                }
+                _ => {}
+            }
+        }
+        
         let mir = match self.load_mir(instance.def) {
             Ok(mir) => mir,
             Err(EvalError::NoMirFor(path)) => {
-                match &path[..] {
-                    // let's just ignore all output for now
+                return match &path[..] {
+                    // Intercept some methods if we cannot find their MIR.
                     "std::io::_print" => {
+                        trace!("Ignoring output.");
                         self.goto_block(destination.unwrap().1);
-                        return Ok(true);
+                        Ok(true)
                     },
-                    "std::thread::Builder::new" => return Err(EvalError::Unimplemented("miri does not support threading".to_owned())),
-                    "std::env::args" => return Err(EvalError::Unimplemented("miri does not support program arguments".to_owned())),
+                    "std::thread::Builder::new" => Err(EvalError::Unimplemented("miri does not support threading".to_owned())),
+                    "std::env::args" => Err(EvalError::Unimplemented("miri does not support program arguments".to_owned())),
                     "std::panicking::rust_panic_with_hook" |
-                    "std::rt::begin_panic_fmt" => return Err(EvalError::Panic),
+                    "std::rt::begin_panic_fmt" => Err(EvalError::Panic),
                     "std::panicking::panicking" |
                     "std::rt::panicking" => {
                         let (lval, block) = destination.expect("std::rt::panicking does not diverge");
@@ -387,11 +400,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let bool = self.tcx.types.bool;
                         self.write_primval(lval, PrimVal::from_bool(false), bool)?;
                         self.goto_block(block);
-                        return Ok(true);
+                        Ok(true)
                     }
-                    _ => {},
-                }
-                return Err(EvalError::NoMirFor(path));
+                    _ => Err(EvalError::NoMirFor(path)),
+                };
             },
             Err(other) => return Err(other),
         };
@@ -568,6 +580,24 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     info!("ignored env var request for `{:?}`", ::std::str::from_utf8(name));
                 }
                 self.write_value(Value::ByVal(PrimVal::Bytes(0)), dest, dest_ty)?;
+            }
+            
+            "write" => {
+                let fd = self.value_to_primval(args[0], usize)?.to_u64()?;
+                let buf = args[1].read_ptr(&self.memory)?;
+                let n = self.value_to_primval(args[2], usize)?.to_u64()?;
+                trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
+                let result = if fd == 1 { // stdout
+                    use std::io::{self, Write};
+                
+                    let buf_cont = self.memory.read_bytes(buf, n)?;
+                    let res = io::stdout().write(buf_cont);
+                    match res { Ok(n) => n as isize, Err(_) => -1 }
+                } else {
+                    info!("Ignored output to FD {}", fd);
+                    n as isize // pretend it all went well
+                }; // now result is the value we return back to the program
+                self.write_primval(dest, PrimVal::Bytes(result as u128), dest_ty)?;
             }
 
             // unix panic code inside libstd will read the return value of this function
