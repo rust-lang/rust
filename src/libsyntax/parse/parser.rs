@@ -179,6 +179,8 @@ pub struct Parser<'a> {
     pub obsolete_set: HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
     pub directory: Directory,
+    /// Whether to parse sub-modules in other files.
+    pub recurse_into_file_modules: bool,
     /// Name of the root module this parser originated from. If `None`, then the
     /// name is not known. This does not change while the parser is descending
     /// into modules, and sub-parsers have new values for this name.
@@ -189,6 +191,7 @@ pub struct Parser<'a> {
     /// Whether we should configure out of line modules as we parse.
     pub cfg_mods: bool,
 }
+
 
 struct TokenCursor {
     frame: TokenCursorFrame,
@@ -439,6 +442,7 @@ impl<'a> Parser<'a> {
     pub fn new(sess: &'a ParseSess,
                tokens: TokenStream,
                directory: Option<Directory>,
+               recurse_into_file_modules: bool,
                desugar_doc_comments: bool)
                -> Self {
         let mut parser = Parser {
@@ -450,6 +454,7 @@ impl<'a> Parser<'a> {
             prev_token_kind: PrevTokenKind::Other,
             restrictions: Restrictions::empty(),
             obsolete_set: HashSet::new(),
+            recurse_into_file_modules: recurse_into_file_modules,
             directory: Directory { path: PathBuf::new(), ownership: DirectoryOwnership::Owned },
             root_module_name: None,
             expected_tokens: Vec::new(),
@@ -467,12 +472,14 @@ impl<'a> Parser<'a> {
         let tok = parser.next_tok();
         parser.token = tok.tok;
         parser.span = tok.sp;
+
         if let Some(directory) = directory {
             parser.directory = directory;
         } else if parser.span != syntax_pos::DUMMY_SP {
             parser.directory.path = PathBuf::from(sess.codemap().span_to_filename(parser.span));
             parser.directory.path.pop();
         }
+
         parser.process_potential_macro_variable();
         parser
     }
@@ -3921,6 +3928,7 @@ impl<'a> Parser<'a> {
                 mem::replace(&mut self.directory.ownership, DirectoryOwnership::UnownedViaBlock);
             let item = self.parse_item_(attrs.clone(), false, true)?;
             self.directory.ownership = old_directory_ownership;
+
             match item {
                 Some(i) => Stmt {
                     id: ast::DUMMY_NODE_ID,
@@ -5254,7 +5262,7 @@ impl<'a> Parser<'a> {
         let id = self.parse_ident()?;
         if self.check(&token::Semi) {
             self.bump();
-            if in_cfg {
+            if in_cfg && self.recurse_into_file_modules {
                 // This mod is in an external file. Let's go get it!
                 let ModulePathSuccess { path, directory_ownership, warn } =
                     self.submod_path(id, &outer_attrs, id_span)?;
@@ -5281,10 +5289,12 @@ impl<'a> Parser<'a> {
         } else {
             let old_directory = self.directory.clone();
             self.push_directory(id, &outer_attrs);
+
             self.expect(&token::OpenDelim(token::Brace))?;
             let mod_inner_lo = self.span;
             let attrs = self.parse_inner_attributes()?;
             let module = self.parse_mod_items(&token::CloseDelim(token::Brace), mod_inner_lo)?;
+
             self.directory = old_directory;
             Ok((id, ItemKind::Mod(module), Some(attrs)))
         }
@@ -5347,7 +5357,8 @@ impl<'a> Parser<'a> {
     fn submod_path(&mut self,
                    id: ast::Ident,
                    outer_attrs: &[ast::Attribute],
-                   id_sp: Span) -> PResult<'a, ModulePathSuccess> {
+                   id_sp: Span)
+                   -> PResult<'a, ModulePathSuccess> {
         if let Some(path) = Parser::submod_path_from_attr(outer_attrs, &self.directory.path) {
             return Ok(ModulePathSuccess {
                 directory_ownership: match path.file_name().and_then(|s| s.to_str()) {
