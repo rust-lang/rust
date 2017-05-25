@@ -571,11 +571,11 @@ class RustBuild(object):
                                (self.get_toml('jemalloc') or self.get_mk('CFG_JEMALLOC_ROOT'))))
                      ]
         run(["git", "submodule", "update",
-                  "--init"] + submodules, cwd=self.rust_root)
+                  "--init"] + submodules, cwd=self.rust_root, verbose=self.verbose)
         run(["git", "submodule", "-q", "foreach", "git",
-                  "reset", "-q", "--hard"], cwd=self.rust_root)
+                  "reset", "-q", "--hard"], cwd=self.rust_root, verbose=self.verbose)
         run(["git", "submodule", "-q", "foreach", "git",
-                  "clean", "-qdfx"], cwd=self.rust_root)
+                  "clean", "-qdfx"], cwd=self.rust_root, verbose=self.verbose)
 
 
 def bootstrap():
