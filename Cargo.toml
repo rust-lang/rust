@@ -1,0 +1,9 @@
+[package]
+name = "semverver"
+version = "0.1.0"
+authors = ["Inokentiy Babushkin <twk@twki.de>"]
+
+[lib]
+plugin = true
+
+[dependencies]
