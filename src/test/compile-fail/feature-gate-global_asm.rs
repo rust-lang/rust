@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-global_asm
-
 global_asm!(""); //~ ERROR `global_asm!` is not stable
 
 fn main() {}
