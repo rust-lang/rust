@@ -16,17 +16,7 @@ fn main() {
 		..something
 	};
 
-	fn foo(a: i32,
-	       a: i32,
-	       a: i32,
-	       a: i32,
-	       a: i32,
-	       a: i32,
-	       a: i32,
-	       a: i32,
-	       a: i32,
-	       a: i32,
-	       a: i32) {
+	fn foo(a: i32, a: i32, a: i32, a: i32, a: i32, a: i32, a: i32, a: i32, a: i32, a: i32, a: i32) {
 	}
 
 	let str = "AAAAAAAAAAAAAAaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaAa";
