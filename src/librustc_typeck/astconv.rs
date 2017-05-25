@@ -962,7 +962,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     pub fn prohibit_projection(&self, span: Span) {
         let mut err = struct_span_err!(self.tcx().sess, span, E0229,
                                        "associated type bindings are not allowed here");
-        err.span_label(span, "associate type not allowed here").emit();
+        err.span_label(span, "associated type not allowed here").emit();
     }
 
     // Check a type Path and convert it to a Ty.
