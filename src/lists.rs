@@ -430,8 +430,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
             let post_snippet_trimmed = if post_snippet.starts_with(',') {
                 post_snippet[1..].trim_matches(white_space)
             } else if post_snippet.ends_with(',') {
-                post_snippet[..(post_snippet.len() - 1)]
-                    .trim_matches(white_space)
+                post_snippet[..(post_snippet.len() - 1)].trim_matches(white_space)
             } else {
                 post_snippet
             };
@@ -529,8 +528,7 @@ pub fn struct_lit_shape(shape: Shape,
                         -> Option<(Option<Shape>, Shape)> {
     let v_shape = match context.config.struct_lit_style() {
         IndentStyle::Visual => {
-            try_opt!(try_opt!(shape.shrink_left(prefix_width))
-                         .sub_width(suffix_width))
+            try_opt!(try_opt!(shape.shrink_left(prefix_width)).sub_width(suffix_width))
         }
         IndentStyle::Block => {
             let shape = shape.block_indent(context.config.tab_spaces());

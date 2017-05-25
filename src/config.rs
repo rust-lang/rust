@@ -448,6 +448,8 @@ create_config! {
         "Report all, none or unnumbered occurrences of FIXME in source file comments";
     chain_indent: IndentStyle, IndentStyle::Block, "Indentation of chain";
     chain_one_line_max: usize, 60, "Maximum length of a chain to fit on a single line";
+    chain_split_single_child: bool, false, "Split a chain with a single child if its length \
+                                            exceeds `chain_one_line_max`";
     reorder_imports: bool, false, "Reorder import statements alphabetically";
     reorder_imports_in_group: bool, false, "Reorder import statements in group";
     reorder_imported_names: bool, false,
