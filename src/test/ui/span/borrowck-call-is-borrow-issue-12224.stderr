@@ -47,5 +47,5 @@ error[E0507]: cannot move out of captured outer variable in an `FnMut` closure
 72 |         foo(f);
    |             ^ cannot move out of captured outer variable in an `FnMut` closure
 
-error: aborting due to 5 previous errors
+error: aborting due to previous error(s)
 

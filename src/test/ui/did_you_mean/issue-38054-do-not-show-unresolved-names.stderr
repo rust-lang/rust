@@ -10,5 +10,5 @@ error[E0432]: unresolved import `Foo1`
 13 | use Foo1;
    |     ^^^^ no `Foo1` in the root
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 

@@ -10,5 +10,5 @@ error[E0053]: method `b` has an incompatible type for trait
    = note: expected type `fn(&E, F) -> F`
               found type `fn(&E, G) -> G`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

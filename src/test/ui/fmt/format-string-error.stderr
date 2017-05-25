@@ -16,5 +16,5 @@ error: invalid format string: unmatched `}` found
    = note: if you intended to print `}`, you can escape it using `}}`
    = note: this error originates in a macro outside of the current crate
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 

@@ -4,5 +4,5 @@ error[E0282]: type annotations needed
 14 |     [];
    |     ^^ cannot infer type for `[_; 0]`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

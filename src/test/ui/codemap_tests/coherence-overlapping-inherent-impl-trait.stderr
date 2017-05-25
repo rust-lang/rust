@@ -6,5 +6,5 @@ error[E0592]: duplicate definitions with name `f`
 15 | impl C { fn f() {} }
    |          --------- other definition for `f`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

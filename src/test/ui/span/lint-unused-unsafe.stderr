@@ -106,5 +106,5 @@ note: because it's nested under this `unsafe` fn
 44 | | }
    | |_^
 
-error: aborting due to 8 previous errors
+error: aborting due to previous error(s)
 

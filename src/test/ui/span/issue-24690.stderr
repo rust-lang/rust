@@ -32,5 +32,5 @@ note: lint level defined here
 16 | #![deny(warnings)]
    |         ^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error(s)
 

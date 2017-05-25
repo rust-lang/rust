@@ -4,5 +4,5 @@ error: unmatched visibility `pub`
 13 | pub(crate) () fn foo() {}
    |          ^
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

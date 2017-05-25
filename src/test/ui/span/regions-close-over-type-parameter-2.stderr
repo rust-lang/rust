@@ -9,5 +9,5 @@ error: `tmp0` does not live long enough
    |     |
    |     `tmp0` dropped here while still borrowed
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

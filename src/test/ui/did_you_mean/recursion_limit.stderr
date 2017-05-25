@@ -17,5 +17,5 @@ error[E0275]: overflow evaluating the requirement `K: std::marker::Send`
    = note: required because it appears within the type `A`
    = note: required by `is_send`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

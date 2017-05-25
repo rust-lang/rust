@@ -33,5 +33,5 @@ note: ...so that expression is assignable (expected &mut std::vec::Vec<Ref<'_, i
 16 |     let a: &mut Vec<Ref<i32>> = x;
    |                                 ^
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

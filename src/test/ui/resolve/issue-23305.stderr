@@ -11,5 +11,5 @@ note: the cycle begins when processing `<impl at $DIR/issue-23305.rs:15:1: 15:20
    | ^^^^^^^^^^^^^^^^^^^
    = note: ...which then again requires processing `<impl at $DIR/issue-23305.rs:15:1: 15:20>`, completing the cycle.
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 
