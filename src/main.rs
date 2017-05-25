@@ -67,8 +67,60 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
                         -> driver::CompileController<'a> {
         let mut controller = self.default.build_controller(sess, matches);
 
+        let old_callback = std::mem::replace(&mut controller.after_hir_lowering.callback,
+                                             box |_| {});
+        controller.after_hir_lowering.callback = box move |state| { old_callback(state); };
+
         controller
     }
 }
 
-pub fn main() {}
+const CARGO_SEMVER_HELP: &str = r#"Checks a package's SemVer compatibility with already published versions.
+
+Usage:
+    cargo semver [options] [--] [<opts>...]
+
+Common options:
+    -h, --help               Print this message
+    --features               Features to compile for the package
+    -V, --version            Print version info and exit
+
+Other options are the same as `cargo rustc`.
+"#;
+
+fn help() {
+    println!("{}", CARGO_SEMVER_HELP);
+}
+
+fn version() {
+    println!("{}", env!("CARGO_PKG_VERSION"));
+}
+
+pub fn main() {
+    if std::env::args().any(|arg| arg == "-h" || arg == "--help") {
+        help();
+        return;
+    }
+
+    if std::env::args().any(|arg| arg == "-V" || arg == "--version") {
+        version();
+        return;
+    }
+
+    rustc_driver::in_rustc_thread(|| {
+        let args: Vec<String> = std::env::args().collect(); // TODO: look at clippy here
+
+        // let checks_enabled = std::env::args().any(|s| s == "-Zno-trans");
+
+        let mut cc = SemVerVerCompilerCalls::new(); // TODO: use `checks_enabled`
+        // TODO: the second result is a `Session` - maybe we'll need it
+        let (result, _) = rustc_driver::run_compiler(&args, &mut cc, None, None);
+
+        if let Err(count) = result {
+            if count > 0 {
+                std::process::exit(1);
+            }
+        }
+    })
+    .expect("rustc thread failed");
+}

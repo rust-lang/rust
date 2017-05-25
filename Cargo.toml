@@ -6,4 +6,7 @@ authors = ["Inokentiy Babushkin <twk@twki.de>"]
 [lib]
 plugin = true
 
+[[bin]]
+name = "cargo-semver"
+
 [dependencies]
