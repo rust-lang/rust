@@ -587,11 +587,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let buf = args[1].read_ptr(&self.memory)?;
                 let n = self.value_to_primval(args[2], usize)?.to_u64()?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
-                let result = if fd == 1 { // stdout
+                let result = if fd == 1 || fd == 2 { // stdout/stderr
                     use std::io::{self, Write};
                 
                     let buf_cont = self.memory.read_bytes(buf, n)?;
-                    let res = io::stdout().write(buf_cont);
+                    let res = if fd == 1 { io::stdout().write(buf_cont) } else { io::stderr().write(buf_cont) };
                     match res { Ok(n) => n as isize, Err(_) => -1 }
                 } else {
                     info!("Ignored output to FD {}", fd);
