@@ -12,9 +12,10 @@
 set -ex
 source shared.sh
 
-VERSION=1.0.2j
+VERSION=1.0.2k
+URL=https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/openssl-$VERSION.tar.gz
 
-curl https://www.openssl.org/source/openssl-$VERSION.tar.gz | tar xzf -
+curl $URL | tar xzf -
 
 cd openssl-$VERSION
 hide_output ./config --prefix=/rustroot shared -fPIC
