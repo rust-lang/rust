@@ -499,6 +499,7 @@ pub fn rust_src(build: &Build) {
         "src/liballoc",
         "src/liballoc_jemalloc",
         "src/liballoc_system",
+        "src/libbacktrace",
         "src/libcollections",
         "src/libcompiler_builtins",
         "src/libcore",
@@ -514,12 +515,25 @@ pub fn rust_src(build: &Build) {
         "src/libstd_unicode",
         "src/libunwind",
         "src/rustc/libc_shim",
+        "src/libtest",
+        "src/libterm",
+        "src/libgetopts",
+        "src/compiler-rt",
+        "src/jemalloc",
+    ];
+    let std_src_dirs_exclude = [
+        "src/compiler-rt/test",
+        "src/jemalloc/test/unit",
     ];
 
     for item in &std_src_dirs {
         let dst = &dst_src.join(item);
         t!(fs::create_dir_all(dst));
-        cp_r(&plain_dst_src.join(item), dst);
+        cp_filtered(&plain_dst_src.join(item), dst,
+            &|path| {
+                let item_path = Path::new(item).join(path);
+                !std_src_dirs_exclude.iter().any(|excl| item_path == Path::new(excl))
+            } );
     }
 
     // Create source tarball in rust-installer format
