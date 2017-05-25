@@ -38,6 +38,8 @@ pub enum EvalError<'tcx> {
     },
     ExecutionTimeLimitReached,
     StackFrameLimitReached,
+    OutOfTls,
+    TlsOutOfBounds,
     AlignmentCheckFailed {
         required: u64,
         has: u64,
@@ -101,6 +103,10 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "reached the configured maximum execution time",
             EvalError::StackFrameLimitReached =>
                 "reached the configured maximum number of stack frames",
+            EvalError::OutOfTls =>
+                "reached the maximum number of representable TLS keys",
+            EvalError::TlsOutOfBounds =>
+                "accessed an invalid (unallocated) TLS key",
             EvalError::AlignmentCheckFailed{..} =>
                 "tried to execute a misaligned read or write",
             EvalError::CalledClosureAsFunction =>

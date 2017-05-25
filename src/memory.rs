@@ -15,6 +15,8 @@ use value::PrimVal;
 #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AllocId(pub u64);
 
+pub type TlsKey = usize;
+
 impl fmt::Display for AllocId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
@@ -149,6 +151,12 @@ pub struct Memory<'a, 'tcx> {
     /// A cache for basic byte allocations keyed by their contents. This is used to deduplicate
     /// allocations for string and bytestring literals.
     literal_alloc_cache: HashMap<Vec<u8>, AllocId>,
+    
+    /// pthreads-style Thread-local storage.  We only have one thread, so this is just a map from TLS keys (indices into the vector) to the pointer stored there.
+    thread_local: HashMap<TlsKey, Pointer>,
+
+    /// The Key to use for the next thread-local allocation.
+    next_thread_local: TlsKey,
 }
 
 const ZST_ALLOC_ID: AllocId = AllocId(0);
@@ -167,6 +175,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             packed: BTreeSet::new(),
             static_alloc: HashSet::new(),
             literal_alloc_cache: HashMap::new(),
+            thread_local: HashMap::new(),
+            next_thread_local: 0,
         }
     }
 
@@ -344,6 +354,45 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub(crate) fn clear_packed(&mut self) {
         self.packed.clear();
+    }
+
+    pub(crate) fn create_tls_key(&mut self) -> TlsKey {
+        let new_key = self.next_thread_local;
+        self.next_thread_local += 1;
+        self.thread_local.insert(new_key, Pointer::from_int(0));
+        trace!("New TLS key allocated: {}", new_key);
+        return new_key;
+    }
+
+    pub(crate) fn delete_tls_key(&mut self, key: TlsKey) -> EvalResult<'tcx> {
+        return match self.thread_local.remove(&key) {
+            Some(_) => {
+                trace!("TLS key {} removed", key);
+                Ok(())
+            },
+            None => Err(EvalError::TlsOutOfBounds)
+        }
+    }
+
+    pub(crate) fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Pointer> {
+        return match self.thread_local.get(&key) {
+            Some(&ptr) => {
+                trace!("TLS key {} loaded: {:?}", key, ptr);
+                Ok(ptr)
+            },
+            None => Err(EvalError::TlsOutOfBounds)
+        }
+    }
+
+    pub(crate) fn store_tls(&mut self, key: TlsKey, new_ptr: Pointer) -> EvalResult<'tcx> {
+        return match self.thread_local.get_mut(&key) {
+            Some(ptr) => {
+                trace!("TLS key {} stored: {:?}", key, new_ptr);
+                *ptr = new_ptr;
+                Ok(())
+            },
+            None => Err(EvalError::TlsOutOfBounds)
+        }
     }
 }
 

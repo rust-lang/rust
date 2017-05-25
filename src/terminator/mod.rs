@@ -1,6 +1,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, TypeVariants, Ty, TyS, TypeAndMut};
 use rustc::ty::layout::Layout;
 use syntax::codemap::Span;
 use syntax::attr;
@@ -9,7 +9,7 @@ use syntax::abi::Abi;
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext, IntegerExt, StackPopCleanup, is_inhabited};
 use lvalue::Lvalue;
-use memory::Pointer;
+use memory::{Pointer, TlsKey};
 use value::PrimVal;
 use value::Value;
 use rustc_data_structures::indexed_vec::Idx;
@@ -367,18 +367,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         // Only trait methods can have a Self parameter.
 
-        // Intercept some methods (even if we can find MIR for them)
-        if let ty::InstanceDef::Item(def_id) = instance.def {
-            match &self.tcx.item_path_str(def_id)[..] {
-                "std::sys::imp::fast_thread_local::register_dtor" => {
-                    // Just don't execute this one, we don't handle all this thread-local stuff anyway.
-                    self.goto_block(destination.unwrap().1);
-                    return Ok(true)
-                }
-                _ => {}
-            }
-        }
-        
         let mir = match self.load_mir(instance.def) {
             Ok(mir) => mir,
             Err(EvalError::NoMirFor(path)) => {
@@ -480,7 +468,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn call_c_abi(
         &mut self,
         def_id: DefId,
-        args: &[mir::Operand<'tcx>],
+        arg_operands: &[mir::Operand<'tcx>],
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
@@ -490,7 +478,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             .unwrap_or(name)
             .as_str();
 
-        let args_res: EvalResult<Vec<Value>> = args.iter()
+        let args_res: EvalResult<Vec<Value>> = arg_operands.iter()
             .map(|arg| self.eval_operand(arg))
             .collect();
         let args = args_res?;
@@ -555,9 +543,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().rev().position(|&c| c == val) {
                     let new_ptr = ptr.offset(num - idx as u64 - 1);
-                    self.write_value(Value::ByVal(PrimVal::Ptr(new_ptr)), dest, dest_ty)?;
+                    self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
                 } else {
-                    self.write_value(Value::ByVal(PrimVal::Bytes(0)), dest, dest_ty)?;
+                    self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
                 }
             }
 
@@ -567,9 +555,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().position(|&c| c == val) {
                     let new_ptr = ptr.offset(idx as u64);
-                    self.write_value(Value::ByVal(PrimVal::Ptr(new_ptr)), dest, dest_ty)?;
+                    self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
                 } else {
-                    self.write_value(Value::ByVal(PrimVal::Bytes(0)), dest, dest_ty)?;
+                    self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
                 }
             }
 
@@ -579,7 +567,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let name = self.memory.read_c_str(name_ptr)?;
                     info!("ignored env var request for `{:?}`", ::std::str::from_utf8(name));
                 }
-                self.write_value(Value::ByVal(PrimVal::Bytes(0)), dest, dest_ty)?;
+                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
             }
             
             "write" => {
@@ -605,9 +593,54 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
             }
 
+            // Hook pthread calls that go to the thread-local storage memory subsystem
+            "pthread_key_create" => {
+                let key = self.memory.create_tls_key();
+                let key_ptr = args[0].read_ptr(&self.memory)?;
+
+                // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
+                let key_size = match self.operand_ty(&arg_operands[0]) {
+                    &TyS { sty: TypeVariants::TyRawPtr(TypeAndMut { ty, .. }), .. } => {
+                        let layout = self.type_layout(ty)?;
+                        layout.size(&self.tcx.data_layout)
+                    }
+                    _ => return Err(EvalError::Unimplemented("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))
+                };
+                
+                // Write the key into the memory where key_ptr wants it
+                if key >= (1 << key_size.bits()) {
+                    return Err(EvalError::OutOfTls);
+                }
+                self.memory.write_int(key_ptr, key as i128, key_size.bytes())?;
+                
+                // Return success (0)
+                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+            }
+            "pthread_key_delete" => {
+                // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
+                let key = self.value_to_primval(args[0], usize)?.to_u64()? as TlsKey;
+                self.memory.delete_tls_key(key)?;
+                // Return success (0)
+                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+            }
+            "pthread_getspecific" => {
+                // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
+                let key = self.value_to_primval(args[0], usize)?.to_u64()? as TlsKey;
+                let ptr = self.memory.load_tls(key)?;
+                self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
+            }
+            "pthread_setspecific" => {
+                // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
+                let key = self.value_to_primval(args[0], usize)?.to_u64()? as TlsKey;
+                let new_ptr = args[1].read_ptr(&self.memory)?;
+                self.memory.store_tls(key, new_ptr)?;
+                
+                // Return success (0)
+                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+            }
+
             link_name if link_name.starts_with("pthread_") => {
                 warn!("ignoring C ABI call: {}", link_name);
-                return Ok(());
             },
 
             _ => {
