@@ -16,7 +16,6 @@ use std::mem;
 use syntax::abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::tokenstream::TokenStream;
 use syntax_pos::Span;
 
 use rustc::hir::map as hir_map;
@@ -214,8 +213,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         LoadedMacro::ProcMacro(..) => continue,
                     };
 
-                    let matchers = if let ast::ItemKind::MacroDef(ref tokens) = def.node {
-                        let tts: Vec<_> = TokenStream::from(tokens.clone()).into_trees().collect();
+                    let matchers = if let ast::ItemKind::MacroDef(ref def) = def.node {
+                        let tts: Vec<_> = def.stream().into_trees().collect();
                         tts.chunks(4).map(|arm| arm[0].span()).collect()
                     } else {
                         unreachable!()

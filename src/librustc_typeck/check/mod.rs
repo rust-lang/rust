@@ -2916,9 +2916,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match base_t.sty {
                 ty::TyAdt(base_def, substs) if !base_def.is_enum() => {
                     debug!("struct named {:?}",  base_t);
-                    if let Some(field) = base_def.struct_variant().find_field_named(field.node) {
+                    let (ident, def_scope) =
+                        self.tcx.adjust(field.node, base_def.did, self.body_id);
+                    let fields = &base_def.struct_variant().fields;
+                    if let Some(field) = fields.iter().find(|f| f.name.to_ident() == ident) {
                         let field_ty = self.field_ty(expr.span, field, substs);
-                        if self.tcx.vis_is_accessible_from(field.vis, self.body_id) {
+                        if field.vis.is_accessible_from(def_scope, self.tcx) {
                             autoderef.finalize(lvalue_pref, base);
                             self.apply_autoderef_adjustment(base.id, autoderefs, base_t);
 
@@ -3024,16 +3027,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if !tuple_like { continue }
 
                     debug!("tuple struct named {:?}",  base_t);
-                    base_def.struct_variant().fields.get(idx.node).and_then(|field| {
+                    let ident = ast::Ident {
+                        name: Symbol::intern(&idx.node.to_string()),
+                        ctxt: idx.span.ctxt.modern(),
+                    };
+                    let (ident, def_scope) =
+                        self.tcx.adjust_ident(ident, base_def.did, self.body_id);
+                    let fields = &base_def.struct_variant().fields;
+                    if let Some(field) = fields.iter().find(|f| f.name.to_ident() == ident) {
                         let field_ty = self.field_ty(expr.span, field, substs);
-                        private_candidate = Some((base_def.did, field_ty));
-                        if self.tcx.vis_is_accessible_from(field.vis, self.body_id) {
+                        if field.vis.is_accessible_from(def_scope, self.tcx) {
                             self.tcx.check_stability(field.did, expr.id, expr.span);
                             Some(field_ty)
                         } else {
+                            private_candidate = Some((base_def.did, field_ty));
                             None
                         }
-                    })
+                    } else {
+                        None
+                    }
                 }
                 ty::TyTuple(ref v, _) => {
                     tuple_like = true;
@@ -3142,7 +3154,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let mut remaining_fields = FxHashMap();
         for field in &variant.fields {
-            remaining_fields.insert(field.name, field);
+            remaining_fields.insert(field.name.to_ident(), field);
         }
 
         let mut seen_fields = FxHashMap();
@@ -3154,7 +3166,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let final_field_type;
             let field_type_hint;
 
-            if let Some(v_field) = remaining_fields.remove(&field.name.node) {
+            let ident = tcx.adjust(field.name.node, variant.did, self.body_id).0;
+            if let Some(v_field) = remaining_fields.remove(&ident) {
                 final_field_type = self.field_ty(field.span, v_field, substs);
                 field_type_hint = self.field_ty(field.span, v_field, hint_substs);
 
@@ -3205,7 +3218,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             let mut displayable_field_names = remaining_fields
                                               .keys()
-                                              .map(|x| x.as_str())
+                                              .map(|ident| ident.name.as_str())
                                               .collect::<Vec<_>>();
 
             displayable_field_names.sort();

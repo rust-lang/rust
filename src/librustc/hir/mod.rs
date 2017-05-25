@@ -162,7 +162,7 @@ impl Lifetime {
     }
 
     pub fn is_static(&self) -> bool {
-        self.name == keywords::StaticLifetime.name()
+        self.name == "'static"
     }
 }
 
@@ -532,10 +532,12 @@ impl Crate {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct MacroDef {
     pub name: Name,
+    pub vis: Visibility,
     pub attrs: HirVec<Attribute>,
     pub id: NodeId,
     pub span: Span,
     pub body: TokenStream,
+    pub legacy: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

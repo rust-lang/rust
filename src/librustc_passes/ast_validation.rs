@@ -103,11 +103,11 @@ impl<'a> AstValidator<'a> {
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_lifetime(&mut self, lt: &'a Lifetime) {
-        if lt.name == "'_" {
+        if lt.ident.name == "'_" {
             self.session.add_lint(lint::builtin::LIFETIME_UNDERSCORE,
                                   lt.id,
                                   lt.span,
-                                  format!("invalid lifetime name `{}`", lt.name));
+                                  format!("invalid lifetime name `{}`", lt.ident));
         }
 
         visit::walk_lifetime(self, lt)

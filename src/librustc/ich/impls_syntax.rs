@@ -130,7 +130,7 @@ impl_stable_hash_for!(enum ::syntax::ast::FloatTy { F32, F64 });
 impl_stable_hash_for!(enum ::syntax::ast::Unsafety { Unsafe, Normal });
 impl_stable_hash_for!(enum ::syntax::ast::Constness { Const, NotConst });
 impl_stable_hash_for!(enum ::syntax::ast::Defaultness { Default, Final });
-impl_stable_hash_for!(struct ::syntax::ast::Lifetime { id, span, name });
+impl_stable_hash_for!(struct ::syntax::ast::Lifetime { id, span, ident });
 impl_stable_hash_for!(enum ::syntax::ast::StrStyle { Cooked, Raw(pounds) });
 impl_stable_hash_for!(enum ::syntax::ast::AttrStyle { Outer, Inner });
 

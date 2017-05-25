@@ -433,9 +433,10 @@ impl_stable_hash_for!(struct ModData { reexports });
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct MacroDef {
     pub body: String,
+    pub legacy: bool,
 }
 
-impl_stable_hash_for!(struct MacroDef { body });
+impl_stable_hash_for!(struct MacroDef { body, legacy });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct FnData {

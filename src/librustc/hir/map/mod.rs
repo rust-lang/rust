@@ -637,14 +637,15 @@ impl<'hir> Map<'hir> {
 
     /// Returns the NodeId of `id`'s nearest module parent, or `id` itself if no
     /// module parent is in this map.
-    pub fn get_module_parent(&self, id: NodeId) -> NodeId {
-        match self.walk_parent_nodes(id, |node| match *node {
+    pub fn get_module_parent(&self, id: NodeId) -> DefId {
+        let id = match self.walk_parent_nodes(id, |node| match *node {
             NodeItem(&Item { node: Item_::ItemMod(_), .. }) => true,
             _ => false,
         }) {
             Ok(id) => id,
             Err(id) => id,
-        }
+        };
+        self.local_def_id(id)
     }
 
     /// Returns the nearest enclosing scope. A scope is an item or block.

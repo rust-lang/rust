@@ -16,7 +16,7 @@
 //! DOI=10.1017/S0956796812000093 http://dx.doi.org/10.1017/S0956796812000093
 
 use Span;
-use symbol::Symbol;
+use symbol::{Ident, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::cell::RefCell;
@@ -24,23 +24,31 @@ use std::collections::HashMap;
 use std::fmt;
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
 pub struct SyntaxContext(u32);
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct SyntaxContextData {
     pub outer_mark: Mark,
     pub prev_ctxt: SyntaxContext,
+    pub modern: SyntaxContext,
 }
 
 /// A mark is a unique id associated with a macro expansion.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default, RustcEncodable, RustcDecodable)]
 pub struct Mark(u32);
 
+#[derive(Default)]
+struct MarkData {
+    parent: Mark,
+    modern: bool,
+    expn_info: Option<ExpnInfo>,
+}
+
 impl Mark {
-    pub fn fresh() -> Self {
+    pub fn fresh(parent: Mark) -> Self {
         HygieneData::with(|data| {
-            data.marks.push(None);
+            data.marks.push(MarkData { parent: parent, modern: false, expn_info: None });
             Mark(data.marks.len() as u32 - 1)
         })
     }
@@ -59,29 +67,59 @@ impl Mark {
     }
 
     pub fn expn_info(self) -> Option<ExpnInfo> {
-        HygieneData::with(|data| data.marks[self.0 as usize].clone())
+        HygieneData::with(|data| data.marks[self.0 as usize].expn_info.clone())
     }
 
     pub fn set_expn_info(self, info: ExpnInfo) {
-        HygieneData::with(|data| data.marks[self.0 as usize] = Some(info))
+        HygieneData::with(|data| data.marks[self.0 as usize].expn_info = Some(info))
+    }
+
+    pub fn modern(mut self) -> Mark {
+        HygieneData::with(|data| {
+            loop {
+                if self == Mark::root() || data.marks[self.0 as usize].modern {
+                    return self;
+                }
+                self = data.marks[self.0 as usize].parent;
+            }
+        })
+    }
+
+    pub fn is_modern(self) -> bool {
+        HygieneData::with(|data| data.marks[self.0 as usize].modern)
+    }
+
+    pub fn set_modern(self) {
+        HygieneData::with(|data| data.marks[self.0 as usize].modern = true)
+    }
+
+    pub fn is_descendant_of(mut self, ancestor: Mark) -> bool {
+        HygieneData::with(|data| {
+            while self != ancestor {
+                if self == Mark::root() {
+                    return false;
+                }
+                self = data.marks[self.0 as usize].parent;
+            }
+            true
+        })
     }
 }
 
 struct HygieneData {
-    marks: Vec<Option<ExpnInfo>>,
+    marks: Vec<MarkData>,
     syntax_contexts: Vec<SyntaxContextData>,
     markings: HashMap<(SyntaxContext, Mark), SyntaxContext>,
+    gensym_to_ctxt: HashMap<Symbol, SyntaxContext>,
 }
 
 impl HygieneData {
     fn new() -> Self {
         HygieneData {
-            marks: vec![None],
-            syntax_contexts: vec![SyntaxContextData {
-                outer_mark: Mark::root(),
-                prev_ctxt: SyntaxContext::empty(),
-            }],
+            marks: vec![MarkData::default()],
+            syntax_contexts: vec![SyntaxContextData::default()],
             markings: HashMap::new(),
+            gensym_to_ctxt: HashMap::new(),
         }
     }
 
@@ -102,28 +140,144 @@ impl SyntaxContext {
         SyntaxContext(0)
     }
 
-    pub fn data(self) -> SyntaxContextData {
-        HygieneData::with(|data| data.syntax_contexts[self.0 as usize])
-    }
-
     /// Extend a syntax context with a given mark
     pub fn apply_mark(self, mark: Mark) -> SyntaxContext {
-        // Applying the same mark twice is a no-op
-        let ctxt_data = self.data();
-        if mark == ctxt_data.outer_mark {
-            return ctxt_data.prev_ctxt;
-        }
-
         HygieneData::with(|data| {
             let syntax_contexts = &mut data.syntax_contexts;
+            let ctxt_data = syntax_contexts[self.0 as usize];
+            if mark == ctxt_data.outer_mark {
+                return ctxt_data.prev_ctxt;
+            }
+
+            let modern = if data.marks[mark.0 as usize].modern {
+                *data.markings.entry((ctxt_data.modern, mark)).or_insert_with(|| {
+                    let modern = SyntaxContext(syntax_contexts.len() as u32);
+                    syntax_contexts.push(SyntaxContextData {
+                        outer_mark: mark,
+                        prev_ctxt: ctxt_data.modern,
+                        modern: modern,
+                    });
+                    modern
+                })
+            } else {
+                ctxt_data.modern
+            };
+
             *data.markings.entry((self, mark)).or_insert_with(|| {
                 syntax_contexts.push(SyntaxContextData {
                     outer_mark: mark,
                     prev_ctxt: self,
+                    modern: modern,
                 });
                 SyntaxContext(syntax_contexts.len() as u32 - 1)
             })
         })
+    }
+
+    pub fn remove_mark(&mut self) -> Mark {
+        HygieneData::with(|data| {
+            let outer_mark = data.syntax_contexts[self.0 as usize].outer_mark;
+            *self = data.syntax_contexts[self.0 as usize].prev_ctxt;
+            outer_mark
+        })
+    }
+
+    /// Adjust this context for resolution in a scope created by the given expansion.
+    /// For example, consider the following three resolutions of `f`:
+    /// ```rust
+    /// mod foo { pub fn f() {} } // `f`'s `SyntaxContext` is empty.
+    /// m!(f);
+    /// macro m($f:ident) {
+    ///     mod bar {
+    ///         pub fn f() {} // `f`'s `SyntaxContext` has a single `Mark` from `m`.
+    ///         pub fn $f() {} // `$f`'s `SyntaxContext` is empty.
+    ///     }
+    ///     foo::f(); // `f`'s `SyntaxContext` has a single `Mark` from `m`
+    ///     //^ Since `mod foo` is outside this expansion, `adjust` removes the mark from `f`,
+    ///     //| and it resolves to `::foo::f`.
+    ///     bar::f(); // `f`'s `SyntaxContext` has a single `Mark` from `m`
+    ///     //^ Since `mod bar` not outside this expansion, `adjust` does not change `f`,
+    ///     //| and it resolves to `::bar::f`.
+    ///     bar::$f(); // `f`'s `SyntaxContext` is empty.
+    ///     //^ Since `mod bar` is not outside this expansion, `adjust` does not change `$f`,
+    ///     //| and it resolves to `::bar::$f`.
+    /// }
+    /// ```
+    /// This returns the expansion whose definition scope we use to privacy check the resolution,
+    /// or `None` if we privacy check as usual (i.e. not w.r.t. a macro definition scope).
+    pub fn adjust(&mut self, expansion: Mark) -> Option<Mark> {
+        let mut scope = None;
+        while !expansion.is_descendant_of(self.outer()) {
+            scope = Some(self.remove_mark());
+        }
+        scope
+    }
+
+    /// Adjust this context for resolution in a scope created by the given expansion
+    /// via a glob import with the given `SyntaxContext`.
+    /// For example,
+    /// ```rust
+    /// m!(f);
+    /// macro m($i:ident) {
+    ///     mod foo {
+    ///         pub fn f() {} // `f`'s `SyntaxContext` has a single `Mark` from `m`.
+    ///         pub fn $i() {} // `$i`'s `SyntaxContext` is empty.
+    ///     }
+    ///     n(f);
+    ///     macro n($j:ident) {
+    ///         use foo::*;
+    ///         f(); // `f`'s `SyntaxContext` has a mark from `m` and a mark from `n`
+    ///         //^ `glob_adjust` removes the mark from `n`, so this resolves to `foo::f`.
+    ///         $i(); // `$i`'s `SyntaxContext` has a mark from `n`
+    ///         //^ `glob_adjust` removes the mark from `n`, so this resolves to `foo::$i`.
+    ///         $j(); // `$j`'s `SyntaxContext` has a mark from `m`
+    ///         //^ This cannot be glob-adjusted, so this is a resolution error.
+    ///     }
+    /// }
+    /// ```
+    /// This returns `None` if the context cannot be glob-adjusted.
+    /// Otherwise, it returns the scope to use when privacy checking (see `adjust` for details).
+    pub fn glob_adjust(&mut self, expansion: Mark, mut glob_ctxt: SyntaxContext)
+                       -> Option<Option<Mark>> {
+        let mut scope = None;
+        while !expansion.is_descendant_of(glob_ctxt.outer()) {
+            scope = Some(glob_ctxt.remove_mark());
+            if self.remove_mark() != scope.unwrap() {
+                return None;
+            }
+        }
+        if self.adjust(expansion).is_some() {
+            return None;
+        }
+        Some(scope)
+    }
+
+    /// Undo `glob_adjust` if possible:
+    /// ```rust
+    /// if let Some(privacy_checking_scope) = self.reverse_glob_adjust(expansion, glob_ctxt) {
+    ///     assert!(self.glob_adjust(expansion, glob_ctxt) == Some(privacy_checking_scope));
+    /// }
+    /// ```
+    pub fn reverse_glob_adjust(&mut self, expansion: Mark, mut glob_ctxt: SyntaxContext)
+                               -> Option<Option<Mark>> {
+        if self.adjust(expansion).is_some() {
+            return None;
+        }
+
+        let mut marks = Vec::new();
+        while !expansion.is_descendant_of(glob_ctxt.outer()) {
+            marks.push(glob_ctxt.remove_mark());
+        }
+
+        let scope = marks.last().cloned();
+        while let Some(mark) = marks.pop() {
+            *self = self.apply_mark(mark);
+        }
+        Some(scope)
+    }
+
+    pub fn modern(self) -> SyntaxContext {
+        HygieneData::with(|data| data.syntax_contexts[self.0 as usize].modern)
     }
 
     pub fn outer(self) -> Mark {
@@ -198,5 +352,24 @@ impl Encodable for SyntaxContext {
 impl Decodable for SyntaxContext {
     fn decode<D: Decoder>(_: &mut D) -> Result<SyntaxContext, D::Error> {
         Ok(SyntaxContext::empty()) // FIXME(jseyfried) intercrate hygiene
+    }
+}
+
+impl Symbol {
+    pub fn from_ident(ident: Ident) -> Symbol {
+        HygieneData::with(|data| {
+            let gensym = ident.name.gensymed();
+            data.gensym_to_ctxt.insert(gensym, ident.ctxt);
+            gensym
+        })
+    }
+
+    pub fn to_ident(self) -> Ident {
+        HygieneData::with(|data| {
+            match data.gensym_to_ctxt.get(&self) {
+                Some(&ctxt) => Ident { name: self.interned(), ctxt: ctxt },
+                None => Ident::with_empty_ctxt(self),
+            }
+        })
     }
 }

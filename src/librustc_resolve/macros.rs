@@ -76,7 +76,7 @@ pub enum LegacyScope<'a> {
 
 pub struct LegacyBinding<'a> {
     pub parent: Cell<LegacyScope<'a>>,
-    pub name: ast::Name,
+    pub ident: Ident,
     def_id: DefId,
     pub span: Span,
 }
@@ -110,7 +110,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn get_module_scope(&mut self, id: ast::NodeId) -> Mark {
-        let mark = Mark::fresh();
+        let mark = Mark::fresh(Mark::root());
         let module = self.module_map[&self.definitions.local_def_id(id)];
         self.invocations.insert(mark, self.arenas.alloc_invocation_data(InvocationData {
             module: Cell::new(module),
@@ -130,7 +130,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                 let ident = path.segments[0].identifier;
                 if ident.name == "$crate" {
                     path.segments[0].identifier.name = keywords::CrateRoot.name();
-                    let module = self.0.resolve_crate_var(ident.ctxt, self.1);
+                    let module = self.0.resolve_crate_root(ident.ctxt);
                     if !module.is_local() {
                         let span = path.segments[0].span;
                         path.segments.insert(1, match module.kind {
@@ -158,7 +158,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion, derives: &[Mark]) {
         let invocation = self.invocations[&mark];
-        self.collect_def_ids(invocation, expansion);
+        self.collect_def_ids(mark, invocation, expansion);
 
         self.current_module = invocation.module.get();
         self.current_module.unresolved_invocations.borrow_mut().remove(&mark);
@@ -290,9 +290,18 @@ impl<'a> base::Resolver for Resolver<'a> {
                 Err(determinacy) => return Err(determinacy),
             },
         };
+
         self.macro_defs.insert(invoc.expansion_data.mark, def.def_id());
+        let normal_module_def_id =
+            self.macro_def_scope(invoc.expansion_data.mark).normal_ancestor_id;
+        self.definitions.add_macro_def_scope(invoc.expansion_data.mark, normal_module_def_id);
+
         self.unused_macros.remove(&def.def_id());
-        Ok(Some(self.get_macro(def)))
+        let ext = self.get_macro(def);
+        if ext.is_modern() {
+            invoc.expansion_data.mark.set_modern();
+        }
+        Ok(Some(ext))
     }
 
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
@@ -416,8 +425,7 @@ impl<'a> Resolver<'a> {
             return def;
         }
 
-        let name = path[0].name;
-        let legacy_resolution = self.resolve_legacy_scope(&invocation.legacy_scope, name, false);
+        let legacy_resolution = self.resolve_legacy_scope(&invocation.legacy_scope, path[0], false);
         let result = if let Some(MacroBinding::Legacy(binding)) = legacy_resolution {
             Ok(Def::Macro(binding.def_id, MacroKind::Bang))
         } else {
@@ -439,26 +447,31 @@ impl<'a> Resolver<'a> {
 
     // Resolve the initial segment of a non-global macro path (e.g. `foo` in `foo::bar!();`)
     pub fn resolve_lexical_macro_path_segment(&mut self,
-                                              ident: Ident,
+                                              mut ident: Ident,
                                               ns: Namespace,
                                               record_used: bool,
                                               path_span: Span)
                                               -> Result<MacroBinding<'a>, Determinacy> {
+        ident = ident.modern();
         let mut module = Some(self.current_module);
         let mut potential_illegal_shadower = Err(Determinacy::Determined);
         let determinacy =
             if record_used { Determinacy::Determined } else { Determinacy::Undetermined };
         loop {
+            let orig_current_module = self.current_module;
             let result = if let Some(module) = module {
+                self.current_module = module; // Lexical resolutions can never be a privacy error.
                 // Since expanded macros may not shadow the lexical scope and
                 // globs may not shadow global macros (both enforced below),
                 // we resolve with restricted shadowing (indicated by the penultimate argument).
-                self.resolve_ident_in_module(module, ident, ns, true, record_used, path_span)
-                    .map(MacroBinding::Modern)
+                self.resolve_ident_in_module_unadjusted(
+                    module, ident, ns, true, record_used, path_span,
+                ).map(MacroBinding::Modern)
             } else {
                 self.global_macros.get(&ident.name).cloned().ok_or(determinacy)
                     .map(MacroBinding::Global)
             };
+            self.current_module = orig_current_module;
 
             match result.map(MacroBinding::binding) {
                 Ok(binding) => {
@@ -491,10 +504,7 @@ impl<'a> Resolver<'a> {
             }
 
             module = match module {
-                Some(module) => match module.kind {
-                    ModuleKind::Block(..) => module.parent,
-                    ModuleKind::Def(..) => None,
-                },
+                Some(module) => self.hygienic_lexical_parent(module, &mut ident.ctxt),
                 None => return potential_illegal_shadower,
             }
         }
@@ -502,9 +512,10 @@ impl<'a> Resolver<'a> {
 
     pub fn resolve_legacy_scope(&mut self,
                                 mut scope: &'a Cell<LegacyScope<'a>>,
-                                name: Name,
+                                ident: Ident,
                                 record_used: bool)
                                 -> Option<MacroBinding<'a>> {
+        let ident = ident.modern();
         let mut possible_time_travel = None;
         let mut relative_depth: u32 = 0;
         let mut binding = None;
@@ -531,7 +542,7 @@ impl<'a> Resolver<'a> {
                     scope = &invocation.legacy_scope;
                 }
                 LegacyScope::Binding(potential_binding) => {
-                    if potential_binding.name == name {
+                    if potential_binding.ident == ident {
                         if (!self.use_extern_macros || record_used) && relative_depth > 0 {
                             self.disallowed_shadowing.push(potential_binding);
                         }
@@ -545,9 +556,9 @@ impl<'a> Resolver<'a> {
 
         let binding = if let Some(binding) = binding {
             MacroBinding::Legacy(binding)
-        } else if let Some(binding) = self.global_macros.get(&name).cloned() {
+        } else if let Some(binding) = self.global_macros.get(&ident.name).cloned() {
             if !self.use_extern_macros {
-                self.record_use(Ident::with_empty_ctxt(name), MacroNS, binding, DUMMY_SP);
+                self.record_use(ident, MacroNS, binding, DUMMY_SP);
             }
             MacroBinding::Global(binding)
         } else {
@@ -557,7 +568,7 @@ impl<'a> Resolver<'a> {
         if !self.use_extern_macros {
             if let Some(scope) = possible_time_travel {
                 // Check for disallowed shadowing later
-                self.lexical_macro_resolutions.push((name, scope));
+                self.lexical_macro_resolutions.push((ident, scope));
             }
         }
 
@@ -578,7 +589,7 @@ impl<'a> Resolver<'a> {
 
         for &(mark, ident, span, kind) in module.legacy_macro_resolutions.borrow().iter() {
             let legacy_scope = &self.invocations[&mark].legacy_scope;
-            let legacy_resolution = self.resolve_legacy_scope(legacy_scope, ident.name, true);
+            let legacy_resolution = self.resolve_legacy_scope(legacy_scope, ident, true);
             let resolution = self.resolve_lexical_macro_path_segment(ident, MacroNS, true, span);
             match (legacy_resolution, resolution) {
                 (Some(MacroBinding::Legacy(legacy_binding)), Ok(MacroBinding::Modern(binding))) => {
@@ -615,7 +626,7 @@ impl<'a> Resolver<'a> {
                           err: &mut DiagnosticBuilder<'a>, span: Span) {
         // First check if this is a locally-defined bang macro.
         let suggestion = if let MacroKind::Bang = kind {
-            find_best_match_for_name(self.macro_names.iter(), name, None)
+            find_best_match_for_name(self.macro_names.iter().map(|ident| &ident.name), name, None)
         } else {
             None
         // Then check global macros.
@@ -659,7 +670,10 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn collect_def_ids(&mut self, invocation: &'a InvocationData<'a>, expansion: &Expansion) {
+    fn collect_def_ids(&mut self,
+                       mark: Mark,
+                       invocation: &'a InvocationData<'a>,
+                       expansion: &Expansion) {
         let Resolver { ref mut invocations, arenas, graph_root, .. } = *self;
         let InvocationData { def_index, const_expr, .. } = *invocation;
 
@@ -675,7 +689,7 @@ impl<'a> Resolver<'a> {
             });
         };
 
-        let mut def_collector = DefCollector::new(&mut self.definitions);
+        let mut def_collector = DefCollector::new(&mut self.definitions, mark);
         def_collector.visit_macro_invoc = Some(visit_macro_invoc);
         def_collector.with_parent(def_index, |def_collector| {
             if const_expr {
@@ -687,7 +701,10 @@ impl<'a> Resolver<'a> {
         });
     }
 
-    pub fn define_macro(&mut self, item: &ast::Item, legacy_scope: &mut LegacyScope<'a>) {
+    pub fn define_macro(&mut self,
+                        item: &ast::Item,
+                        expansion: Mark,
+                        legacy_scope: &mut LegacyScope<'a>) {
         self.local_macro_def_scopes.insert(item.id, self.current_module);
         let ident = item.ident;
         if ident.name == "macro_rules" {
@@ -699,16 +716,26 @@ impl<'a> Resolver<'a> {
                                                &self.session.features,
                                                item));
         self.macro_map.insert(def_id, ext);
-        *legacy_scope = LegacyScope::Binding(self.arenas.alloc_legacy_binding(LegacyBinding {
-            parent: Cell::new(*legacy_scope), name: ident.name, def_id: def_id, span: item.span,
-        }));
-        self.macro_names.insert(ident.name);
 
-        if attr::contains_name(&item.attrs, "macro_export") {
-            let def = Def::Macro(def_id, MacroKind::Bang);
-            self.macro_exports.push(Export { name: ident.name, def: def, span: item.span });
+        let def = match item.node { ast::ItemKind::MacroDef(ref def) => def, _ => unreachable!() };
+        if def.legacy {
+            let ident = ident.modern();
+            self.macro_names.insert(ident);
+            *legacy_scope = LegacyScope::Binding(self.arenas.alloc_legacy_binding(LegacyBinding {
+                parent: Cell::new(*legacy_scope), ident: ident, def_id: def_id, span: item.span,
+            }));
+            if attr::contains_name(&item.attrs, "macro_export") {
+                let def = Def::Macro(def_id, MacroKind::Bang);
+                self.macro_exports
+                    .push(Export { ident: ident.modern(), def: def, span: item.span });
+            } else {
+                self.unused_macros.insert(def_id);
+            }
         } else {
-            self.unused_macros.insert(def_id);
+            let module = self.current_module;
+            let def = Def::Macro(def_id, MacroKind::Bang);
+            let vis = self.resolve_visibility(&item.vis);
+            self.define(module, ident, MacroNS, (def, vis, item.span, expansion));
         }
     }
 

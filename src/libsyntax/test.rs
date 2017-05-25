@@ -276,7 +276,7 @@ fn generate_test_harness(sess: &ParseSess,
     let mut cleaner = EntryPointCleaner { depth: 0 };
     let krate = cleaner.fold_crate(krate);
 
-    let mark = Mark::fresh();
+    let mark = Mark::fresh(Mark::root());
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
         span_diagnostic: sd,
@@ -591,7 +591,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
     let struct_type = ecx.ty_path(ecx.path(sp, vec![ecx.ident_of("self"),
                                                     ecx.ident_of("test"),
                                                     ecx.ident_of("TestDescAndFn")]));
-    let static_lt = ecx.lifetime(sp, keywords::StaticLifetime.name());
+    let static_lt = ecx.lifetime(sp, keywords::StaticLifetime.ident());
     // &'static [self::test::TestDescAndFn]
     let static_type = ecx.ty_rptr(sp,
                                   ecx.ty(sp, ast::TyKind::Slice(struct_type)),

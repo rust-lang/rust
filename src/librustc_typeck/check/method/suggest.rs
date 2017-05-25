@@ -195,8 +195,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     };
 
                                     let field_ty = field.ty(tcx, substs);
-
-                                    if tcx.vis_is_accessible_from(field.vis, self.body_id) {
+                                    let scope = self.tcx.hir.get_module_parent(self.body_id);
+                                    if field.vis.is_accessible_from(scope, self.tcx) {
                                         if self.is_fn_ty(&field_ty, span) {
                                             err.help(&format!("use `({0}.{1})(...)` if you \
                                                                meant to call the function \

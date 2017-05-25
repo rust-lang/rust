@@ -189,6 +189,10 @@ pub trait Folder : Sized {
         // fold::noop_fold_mac(_mac, self)
     }
 
+    fn fold_macro_def(&mut self, def: MacroDef) -> MacroDef {
+        noop_fold_macro_def(def, self)
+    }
+
     fn fold_lifetime(&mut self, l: Lifetime) -> Lifetime {
         noop_fold_lifetime(l, self)
     }
@@ -424,7 +428,7 @@ pub fn noop_fold_global_asm<T: Folder>(ga: P<GlobalAsm>,
 pub fn noop_fold_variant<T: Folder>(v: Variant, fld: &mut T) -> Variant {
     Spanned {
         node: Variant_ {
-            name: v.node.name,
+            name: fld.fold_ident(v.node.name),
             attrs: fold_attrs(v.node.attrs, fld),
             data: fld.fold_variant_data(v.node.data),
             disr_expr: v.node.disr_expr.map(|e| fld.fold_expr(e)),
@@ -512,6 +516,13 @@ pub fn noop_fold_mac<T: Folder>(Spanned {node, span}: Mac, fld: &mut T) -> Mac {
             path: fld.fold_path(node.path),
         },
         span: fld.new_span(span)
+    }
+}
+
+pub fn noop_fold_macro_def<T: Folder>(def: MacroDef, fld: &mut T) -> MacroDef {
+    MacroDef {
+        tokens: fld.fold_tts(def.tokens.into()).into(),
+        legacy: def.legacy,
     }
 }
 
@@ -683,7 +694,7 @@ pub fn noop_fold_ty_params<T: Folder>(tps: Vec<TyParam>, fld: &mut T) -> Vec<TyP
 pub fn noop_fold_lifetime<T: Folder>(l: Lifetime, fld: &mut T) -> Lifetime {
     Lifetime {
         id: fld.new_id(l.id),
-        name: l.name,
+        ident: fld.fold_ident(l.ident),
         span: fld.new_span(l.span)
     }
 }
@@ -919,7 +930,7 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             items.move_flat_map(|item| folder.fold_trait_item(item)),
         ),
         ItemKind::Mac(m) => ItemKind::Mac(folder.fold_mac(m)),
-        ItemKind::MacroDef(tts) => ItemKind::MacroDef(folder.fold_tts(tts.into()).into()),
+        ItemKind::MacroDef(def) => ItemKind::MacroDef(folder.fold_macro_def(def)),
     }
 }
 

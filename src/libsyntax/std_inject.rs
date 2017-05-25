@@ -21,7 +21,7 @@ use tokenstream::TokenStream;
 /// call to codemap's `is_internal` check.
 /// The expanded code uses the unstable `#[prelude_import]` attribute.
 fn ignored_span(sp: Span) -> Span {
-    let mark = Mark::fresh();
+    let mark = Mark::fresh(Mark::root());
     mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {

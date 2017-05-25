@@ -1392,7 +1392,7 @@ impl<'a> State<'a> {
                 self.print_ident(item.ident)?;
                 self.cbox(INDENT_UNIT)?;
                 self.popen()?;
-                self.print_tts(tts.clone().into())?;
+                self.print_tts(tts.stream())?;
                 self.pclose()?;
                 word(&mut self.s, ";")?;
                 self.end()?;
@@ -2764,7 +2764,7 @@ impl<'a> State<'a> {
                           lifetime: &ast::Lifetime)
                           -> io::Result<()>
     {
-        self.print_name(lifetime.name)
+        self.print_name(lifetime.ident.name)
     }
 
     pub fn print_lifetime_bounds(&mut self,

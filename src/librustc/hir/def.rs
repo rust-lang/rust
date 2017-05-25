@@ -117,7 +117,7 @@ pub type ExportMap = NodeMap<Vec<Export>>;
 
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Export {
-    pub name: ast::Name, // The name of the target.
+    pub ident: ast::Ident, // The name of the target.
     pub def: Def, // The definition of the target.
     pub span: Span, // The span of the target definition.
 }

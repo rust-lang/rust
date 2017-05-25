@@ -23,7 +23,8 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::fmt::Write;
 use std::hash::Hash;
-use syntax::ast;
+use syntax::ast::{self, Ident};
+use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::symbol::{Symbol, InternedString};
 use ty::TyCtxt;
 use util::nodemap::NodeMap;
@@ -180,6 +181,8 @@ pub struct Definitions {
     node_to_def_index: NodeMap<DefIndex>,
     def_index_to_node: [Vec<ast::NodeId>; 2],
     pub(super) node_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
+    macro_def_scopes: FxHashMap<Mark, DefId>,
+    expansions: FxHashMap<DefIndex, Mark>,
 }
 
 // Unfortunately we have to provide a manual impl of Clone because of the
@@ -194,6 +197,8 @@ impl Clone for Definitions {
                 self.def_index_to_node[1].clone(),
             ],
             node_to_hir_id: self.node_to_hir_id.clone(),
+            macro_def_scopes: self.macro_def_scopes.clone(),
+            expansions: self.expansions.clone(),
         }
     }
 }
@@ -322,7 +327,7 @@ impl DefPath {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum DefPathData {
     // Root: these should only be used for the root nodes, because
     // they are treated specially by the `def_path` function.
@@ -336,31 +341,31 @@ pub enum DefPathData {
     /// An impl
     Impl,
     /// Something in the type NS
-    TypeNs(InternedString),
+    TypeNs(Ident),
     /// Something in the value NS
-    ValueNs(InternedString),
+    ValueNs(Ident),
     /// A module declaration
-    Module(InternedString),
+    Module(Ident),
     /// A macro rule
-    MacroDef(InternedString),
+    MacroDef(Ident),
     /// A closure expression
     ClosureExpr,
 
     // Subportions of items
     /// A type parameter (generic parameter)
-    TypeParam(InternedString),
+    TypeParam(Ident),
     /// A lifetime definition
-    LifetimeDef(InternedString),
+    LifetimeDef(Ident),
     /// A variant of a enum
-    EnumVariant(InternedString),
+    EnumVariant(Ident),
     /// A struct field
-    Field(InternedString),
+    Field(Ident),
     /// Implicit ctor for a tuple-like struct
     StructCtor,
     /// Initializer for a const
     Initializer,
     /// Pattern binding
-    Binding(InternedString),
+    Binding(Ident),
     /// An `impl Trait` type node.
     ImplTrait,
     /// A `typeof` type node.
@@ -379,6 +384,8 @@ impl Definitions {
             node_to_def_index: NodeMap(),
             def_index_to_node: [vec![], vec![]],
             node_to_hir_id: IndexVec::new(),
+            macro_def_scopes: FxHashMap(),
+            expansions: FxHashMap(),
         }
     }
 
@@ -472,7 +479,8 @@ impl Definitions {
                                   parent: DefIndex,
                                   node_id: ast::NodeId,
                                   data: DefPathData,
-                                  address_space: DefIndexAddressSpace)
+                                  address_space: DefIndexAddressSpace,
+                                  expansion: Mark)
                                   -> DefIndex {
         debug!("create_def_with_parent(parent={:?}, node_id={:?}, data={:?})",
                parent, node_id, data);
@@ -510,6 +518,9 @@ impl Definitions {
         assert_eq!(index.as_array_index(),
                    self.def_index_to_node[address_space.index()].len());
         self.def_index_to_node[address_space.index()].push(node_id);
+        if expansion.is_modern() {
+            self.expansions.insert(index, expansion);
+        }
 
         debug!("create_def_with_parent: def_index_to_node[{:?} <-> {:?}", index, node_id);
         self.node_to_def_index.insert(node_id, index);
@@ -525,21 +536,33 @@ impl Definitions {
                 "Trying initialize NodeId -> HirId mapping twice");
         self.node_to_hir_id = mapping;
     }
+
+    pub fn expansion(&self, index: DefIndex) -> Mark {
+        self.expansions.get(&index).cloned().unwrap_or(Mark::root())
+    }
+
+    pub fn macro_def_scope(&self, mark: Mark) -> DefId {
+        self.macro_def_scopes[&mark]
+    }
+
+    pub fn add_macro_def_scope(&mut self, mark: Mark, scope: DefId) {
+        self.macro_def_scopes.insert(mark, scope);
+    }
 }
 
 impl DefPathData {
-    pub fn get_opt_name(&self) -> Option<ast::Name> {
+    pub fn get_opt_ident(&self) -> Option<Ident> {
         use self::DefPathData::*;
         match *self {
-            TypeNs(ref name) |
-            ValueNs(ref name) |
-            Module(ref name) |
-            MacroDef(ref name) |
-            TypeParam(ref name) |
-            LifetimeDef(ref name) |
-            EnumVariant(ref name) |
-            Binding(ref name) |
-            Field(ref name) => Some(Symbol::intern(name)),
+            TypeNs(ident) |
+            ValueNs(ident) |
+            Module(ident) |
+            MacroDef(ident) |
+            TypeParam(ident) |
+            LifetimeDef(ident) |
+            EnumVariant(ident) |
+            Binding(ident) |
+            Field(ident) => Some(ident),
 
             Impl |
             CrateRoot |
@@ -552,19 +575,23 @@ impl DefPathData {
         }
     }
 
+    pub fn get_opt_name(&self) -> Option<ast::Name> {
+        self.get_opt_ident().map(|ident| ident.name)
+    }
+
     pub fn as_interned_str(&self) -> InternedString {
         use self::DefPathData::*;
         let s = match *self {
-            TypeNs(ref name) |
-            ValueNs(ref name) |
-            Module(ref name) |
-            MacroDef(ref name) |
-            TypeParam(ref name) |
-            LifetimeDef(ref name) |
-            EnumVariant(ref name) |
-            Binding(ref name) |
-            Field(ref name) => {
-                return name.clone();
+            TypeNs(ident) |
+            ValueNs(ident) |
+            Module(ident) |
+            MacroDef(ident) |
+            TypeParam(ident) |
+            LifetimeDef(ident) |
+            EnumVariant(ident) |
+            Binding(ident) |
+            Field(ident) => {
+                return ident.name.as_str();
             }
 
             // note that this does not show up in user printouts
@@ -584,5 +611,27 @@ impl DefPathData {
 
     pub fn to_string(&self) -> String {
         self.as_interned_str().to_string()
+    }
+}
+
+impl Eq for DefPathData {}
+impl PartialEq for DefPathData {
+    fn eq(&self, other: &DefPathData) -> bool {
+        ::std::mem::discriminant(self) == ::std::mem::discriminant(other) &&
+        self.get_opt_ident() == other.get_opt_ident()
+    }
+}
+
+impl ::std::hash::Hash for DefPathData {
+    fn hash<H: ::std::hash::Hasher>(&self, hasher: &mut H) {
+        ::std::mem::discriminant(self).hash(hasher);
+        if let Some(ident) = self.get_opt_ident() {
+            if ident.ctxt == SyntaxContext::empty() && ident.name == ident.name.interned() {
+                ident.name.as_str().hash(hasher)
+            } else {
+                // FIXME(jseyfried) implement stable hashing for idents with macros 2.0 hygiene info
+                ident.hash(hasher)
+            }
+        }
     }
 }

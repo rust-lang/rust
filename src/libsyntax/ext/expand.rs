@@ -288,7 +288,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let derives = derives.entry(invoc.expansion_data.mark).or_insert_with(Vec::new);
 
                     for path in &traits {
-                        let mark = Mark::fresh();
+                        let mark = Mark::fresh(self.cx.current_expansion.mark);
                         derives.push(mark);
                         let item = match self.cx.resolver.resolve_macro(
                                 Mark::root(), path, MacroKind::Derive, false) {
@@ -455,25 +455,37 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let path = &mac.node.path;
 
         let ident = ident.unwrap_or_else(|| keywords::Invalid.ident());
+        let validate_and_set_expn_info = |def_site_span, allow_internal_unstable| {
+            if ident.name != keywords::Invalid.name() {
+                return Err(format!("macro {}! expects no ident argument, given '{}'", path, ident));
+            }
+            mark.set_expn_info(ExpnInfo {
+                call_site: span,
+                callee: NameAndSpan {
+                    format: MacroBang(Symbol::intern(&format!("{}", path))),
+                    span: def_site_span,
+                    allow_internal_unstable: allow_internal_unstable,
+                },
+            });
+            Ok(())
+        };
+
         let marked_tts = noop_fold_tts(mac.node.stream(), &mut Marker(mark));
         let opt_expanded = match *ext {
-            NormalTT(ref expandfun, exp_span, allow_internal_unstable) => {
-                if ident.name != keywords::Invalid.name() {
-                    let msg =
-                        format!("macro {}! expects no ident argument, given '{}'", path, ident);
+            SyntaxExtension::DeclMacro(ref expand, def_site_span) => {
+                if let Err(msg) = validate_and_set_expn_info(def_site_span, false) {
                     self.cx.span_err(path.span, &msg);
                     return kind.dummy(span);
                 }
+                kind.make_from(expand.expand(self.cx, span, marked_tts))
+            }
 
-                invoc.expansion_data.mark.set_expn_info(ExpnInfo {
-                    call_site: span,
-                    callee: NameAndSpan {
-                        format: MacroBang(Symbol::intern(&format!("{}", path))),
-                        span: exp_span.map(|(_, s)| s),
-                        allow_internal_unstable: allow_internal_unstable,
-                    },
-                });
-
+            NormalTT(ref expandfun, def_info, allow_internal_unstable) => {
+                if let Err(msg) = validate_and_set_expn_info(def_info.map(|(_, s)| s),
+                                                             allow_internal_unstable) {
+                    self.cx.span_err(path.span, &msg);
+                    return kind.dummy(span);
+                }
                 kind.make_from(expandfun.expand(self.cx, span, marked_tts))
             }
 
@@ -687,7 +699,7 @@ macro_rules! fully_configure {
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect(&mut self, expansion_kind: ExpansionKind, kind: InvocationKind) -> Expansion {
-        let mark = Mark::fresh();
+        let mark = Mark::fresh(self.cx.current_expansion.mark);
         self.invocations.push(Invocation {
             kind: kind,
             expansion_kind: expansion_kind,

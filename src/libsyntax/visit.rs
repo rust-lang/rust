@@ -27,7 +27,6 @@ use abi::Abi;
 use ast::*;
 use syntax_pos::Span;
 use codemap::Spanned;
-use tokenstream::ThinTokenStream;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
@@ -113,7 +112,7 @@ pub trait Visitor<'ast>: Sized {
         // definition in your trait impl:
         // visit::walk_mac(self, _mac)
     }
-    fn visit_mac_def(&mut self, _mac: &'ast ThinTokenStream, _id: NodeId) {
+    fn visit_mac_def(&mut self, _mac: &'ast MacroDef, _id: NodeId) {
         // Nothing to do
     }
     fn visit_path(&mut self, path: &'ast Path, _id: NodeId) {
@@ -196,7 +195,7 @@ pub fn walk_local<'a, V: Visitor<'a>>(visitor: &mut V, local: &'a Local) {
 }
 
 pub fn walk_lifetime<'a, V: Visitor<'a>>(visitor: &mut V, lifetime: &'a Lifetime) {
-    visitor.visit_name(lifetime.span, lifetime.name);
+    visitor.visit_ident(lifetime.span, lifetime.ident);
 }
 
 pub fn walk_lifetime_def<'a, V: Visitor<'a>>(visitor: &mut V, lifetime_def: &'a LifetimeDef) {

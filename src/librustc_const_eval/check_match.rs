@@ -154,7 +154,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             }
         }
 
-        let module = self.tcx.hir.local_def_id(self.tcx.hir.get_module_parent(scrut.id));
+        let module = self.tcx.hir.get_module_parent(scrut.id);
         MatchCheckCtxt::create_and_enter(self.tcx, module, |ref mut cx| {
             let mut have_errors = false;
 
@@ -182,7 +182,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Then, if the match has no arms, check whether the scrutinee
             // is uninhabited.
             let pat_ty = self.tables.node_id_to_type(scrut.id);
-            let module = self.tcx.hir.local_def_id(self.tcx.hir.get_module_parent(scrut.id));
+            let module = self.tcx.hir.get_module_parent(scrut.id);
             if inlined_arms.is_empty() {
                 let scrutinee_is_uninhabited = if self.tcx.sess.features.borrow().never_type {
                     pat_ty.is_uninhabited_from(module, self.tcx)
@@ -231,7 +231,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             "local binding"
         };
 
-        let module = self.tcx.hir.local_def_id(self.tcx.hir.get_module_parent(pat.id));
+        let module = self.tcx.hir.get_module_parent(pat.id);
         MatchCheckCtxt::create_and_enter(self.tcx, module, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx, self.tables);
             let pattern = patcx.lower_pattern(pat);

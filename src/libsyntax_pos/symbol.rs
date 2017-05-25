@@ -35,8 +35,8 @@ impl Ident {
         Ident::with_empty_ctxt(Symbol::intern(string))
     }
 
-    pub fn unhygienize(self) -> Ident {
-        Ident { name: self.name, ctxt: SyntaxContext::empty() }
+    pub fn modern(self) -> Ident {
+        Ident { name: self.name, ctxt: self.ctxt.modern() }
     }
 }
 
@@ -54,13 +54,24 @@ impl fmt::Display for Ident {
 
 impl Encodable for Ident {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        self.name.encode(s)
+        if self.ctxt.modern() == SyntaxContext::empty() {
+            s.emit_str(&self.name.as_str())
+        } else { // FIXME(jseyfried) intercrate hygiene
+            let mut string = "#".to_owned();
+            string.push_str(&self.name.as_str());
+            s.emit_str(&string)
+        }
     }
 }
 
 impl Decodable for Ident {
     fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
-        Ok(Ident::with_empty_ctxt(Symbol::decode(d)?))
+        let string = d.read_str()?;
+        Ok(if !string.starts_with('#') {
+            Ident::from_str(&string)
+        } else { // FIXME(jseyfried) intercrate hygiene
+            Ident::with_empty_ctxt(Symbol::gensym(&string[1..]))
+        })
     }
 }
 
@@ -77,9 +88,17 @@ impl Symbol {
         with_interner(|interner| interner.intern(string))
     }
 
+    pub fn interned(self) -> Self {
+        with_interner(|interner| interner.interned(self))
+    }
+
     /// gensym's a new usize, using the current interner.
     pub fn gensym(string: &str) -> Self {
         with_interner(|interner| interner.gensym(string))
+    }
+
+    pub fn gensymed(self) -> Self {
+        with_interner(|interner| interner.gensymed(self))
     }
 
     pub fn as_str(self) -> InternedString {
@@ -129,6 +148,7 @@ impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
 pub struct Interner {
     names: HashMap<Box<str>, Symbol>,
     strings: Vec<Box<str>>,
+    gensyms: Vec<Symbol>,
 }
 
 impl Interner {
@@ -156,15 +176,29 @@ impl Interner {
         name
     }
 
-    fn gensym(&mut self, string: &str) -> Symbol {
-        let gensym = Symbol(self.strings.len() as u32);
-        // leave out of `names` to avoid colliding
-        self.strings.push(string.to_string().into_boxed_str());
-        gensym
+    pub fn interned(&self, symbol: Symbol) -> Symbol {
+        if (symbol.0 as usize) < self.strings.len() {
+            symbol
+        } else {
+            self.interned(self.gensyms[(!0 - symbol.0) as usize])
+        }
     }
 
-    pub fn get(&self, name: Symbol) -> &str {
-        &self.strings[name.0 as usize]
+    fn gensym(&mut self, string: &str) -> Symbol {
+        let symbol = self.intern(string);
+        self.gensymed(symbol)
+    }
+
+    fn gensymed(&mut self, symbol: Symbol) -> Symbol {
+        self.gensyms.push(symbol);
+        Symbol(!0 - self.gensyms.len() as u32 + 1)
+    }
+
+    pub fn get(&self, symbol: Symbol) -> &str {
+        match self.strings.get(symbol.0 as usize) {
+            Some(ref string) => string,
+            None => self.get(self.gensyms[(!0 - symbol.0) as usize]),
+        }
     }
 }
 
@@ -379,11 +413,10 @@ mod tests {
         assert_eq!(i.intern("cat"), Symbol(1));
         // dog is still at zero
         assert_eq!(i.intern("dog"), Symbol(0));
-        // gensym gets 3
-        assert_eq!(i.gensym("zebra"), Symbol(2));
+        assert_eq!(i.gensym("zebra"), Symbol(4294967295));
         // gensym of same string gets new number :
-        assert_eq!(i.gensym("zebra"), Symbol(3));
+        assert_eq!(i.gensym("zebra"), Symbol(4294967294));
         // gensym of *existing* string gets new number:
-        assert_eq!(i.gensym("dog"), Symbol(4));
+        assert_eq!(i.gensym("dog"), Symbol(4294967293));
     }
 }

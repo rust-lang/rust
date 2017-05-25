@@ -37,7 +37,7 @@ use std::u32;
 pub struct Lifetime {
     pub id: NodeId,
     pub span: Span,
-    pub name: Name
+    pub ident: Ident,
 }
 
 impl fmt::Debug for Lifetime {
@@ -1019,6 +1019,18 @@ impl Mac_ {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct MacroDef {
+    pub tokens: ThinTokenStream,
+    pub legacy: bool,
+}
+
+impl MacroDef {
+    pub fn stream(&self) -> TokenStream {
+        self.tokens.clone().into()
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum StrStyle {
     /// A regular string, like `"foo"`
@@ -1863,7 +1875,7 @@ pub enum ItemKind {
     Mac(Mac),
 
     /// A macro definition.
-    MacroDef(ThinTokenStream),
+    MacroDef(MacroDef),
 }
 
 impl ItemKind {

@@ -306,8 +306,11 @@ declare_features! (
     // The `unadjusted` ABI. Perma unstable.
     (active, abi_unadjusted, "1.16.0", None),
 
-    // Macros 1.1
+    // Procedural macros 2.0.
     (active, proc_macro, "1.16.0", Some(38356)),
+
+    // Declarative macros 2.0 (`macro`).
+    (active, decl_macro, "1.17.0", Some(39412)),
 
     // Allows attributes on struct literal fields.
     (active, struct_field_attributes, "1.16.0", Some(38814)),
@@ -1223,6 +1226,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                        i.span,
                                        "specialization is unstable");
                 }
+            }
+
+            ast::ItemKind::MacroDef(ast::MacroDef { legacy: false, .. }) => {
+                let msg = "`macro` is experimental";
+                gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
             _ => {}
