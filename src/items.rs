@@ -1125,8 +1125,7 @@ pub fn rewrite_type_alias(context: &RewriteContext,
 
     let generics_indent = indent + result.len();
     let generics_span = mk_sp(context.codemap.span_after(span, "type"), ty.span.lo);
-    let shape = try_opt!(Shape::indented(generics_indent, context.config)
-                             .sub_width(" =".len()));
+    let shape = try_opt!(Shape::indented(generics_indent, context.config).sub_width(" =".len()));
     let generics_str = try_opt!(rewrite_generics(context, generics, shape, generics_span));
 
     result.push_str(&generics_str);

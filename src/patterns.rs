@@ -39,10 +39,10 @@ impl Rewrite for Pat {
                 let sub_pat = match *sub_pat {
                     Some(ref p) => {
                         // 3 - ` @ `.
-                        let width = try_opt!(shape.width.checked_sub(prefix.len() +
-                                                                     mut_infix.len() +
-                                                                     id_str.len() +
-                                                                     3));
+                        let width =
+                            try_opt!(shape.width.checked_sub(prefix.len() + mut_infix.len() +
+                                                             id_str.len() +
+                                                             3));
                         format!(" @ {}",
                                 try_opt!(p.rewrite(context, Shape::legacy(width, shape.indent))))
                     }

@@ -98,20 +98,16 @@ fn format_expr(expr: &ast::Expr,
         }
         ast::ExprKind::Tup(ref items) => rewrite_tuple(context, items, expr.span, shape),
         ast::ExprKind::While(ref cond, ref block, label) => {
-            ControlFlow::new_while(None, cond, block, label, expr.span)
-                .rewrite(context, shape)
+            ControlFlow::new_while(None, cond, block, label, expr.span).rewrite(context, shape)
         }
         ast::ExprKind::WhileLet(ref pat, ref cond, ref block, label) => {
-            ControlFlow::new_while(Some(pat), cond, block, label, expr.span)
-                .rewrite(context, shape)
+            ControlFlow::new_while(Some(pat), cond, block, label, expr.span).rewrite(context, shape)
         }
         ast::ExprKind::ForLoop(ref pat, ref cond, ref block, label) => {
-            ControlFlow::new_for(pat, cond, block, label, expr.span)
-                .rewrite(context, shape)
+            ControlFlow::new_for(pat, cond, block, label, expr.span).rewrite(context, shape)
         }
         ast::ExprKind::Loop(ref block, label) => {
-            ControlFlow::new_loop(block, label, expr.span)
-                .rewrite(context, shape)
+            ControlFlow::new_loop(block, label, expr.span).rewrite(context, shape)
         }
         ast::ExprKind::Block(ref block) => block.rewrite(context, shape),
         ast::ExprKind::If(ref cond, ref if_block, ref else_block) => {
@@ -179,12 +175,11 @@ fn format_expr(expr: &ast::Expr,
         ast::ExprKind::Mac(ref mac) => {
             // Failure to rewrite a marco should not imply failure to
             // rewrite the expression.
-            rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
-                .or_else(|| {
-                             wrap_str(context.snippet(expr.span),
-                                      context.config.max_width(),
-                                      shape)
-                         })
+            rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
+                wrap_str(context.snippet(expr.span),
+                         context.config.max_width(),
+                         shape)
+            })
         }
         ast::ExprKind::Ret(None) => {
             wrap_str("return".to_owned(), context.config.max_width(), shape)
@@ -324,8 +319,7 @@ pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
                                   .checked_sub(shape.used_width() + prefix.len() + infix.len()));
     let rhs_shape = match context.config.control_style() {
         Style::Default => {
-            try_opt!(shape.sub_width(suffix.len() + prefix.len()))
-                .visual_indent(prefix.len())
+            try_opt!(shape.sub_width(suffix.len() + prefix.len())).visual_indent(prefix.len())
         }
         Style::Rfc => try_opt!(shape.block_left(context.config.tab_spaces())),
     };
@@ -516,8 +510,7 @@ fn rewrite_closure(capture: ast::CaptureBy,
 
     // 1 = space between `|...|` and body.
     let extra_offset = extra_offset(&prefix, shape) + 1;
-    let body_shape = try_opt!(shape.sub_width(extra_offset))
-        .add_offset(extra_offset);
+    let body_shape = try_opt!(shape.sub_width(extra_offset)).add_offset(extra_offset);
 
     if let ast::ExprKind::Block(ref block) = body.node {
         // The body of the closure is an empty block.
@@ -859,8 +852,8 @@ impl<'a> ControlFlow<'a> {
 
             let new_width = try_opt!(new_width.checked_sub(if_str.len()));
             let else_expr = &else_node.stmts[0];
-            let else_str = try_opt!(else_expr.rewrite(context,
-                                                      Shape::legacy(new_width, Indent::empty())));
+            let else_str =
+                try_opt!(else_expr.rewrite(context, Shape::legacy(new_width, Indent::empty())));
 
             if if_str.contains('\n') || else_str.contains('\n') {
                 return None;
@@ -1765,6 +1758,7 @@ fn rewrite_call_args(context: &RewriteContext,
         config: context.config,
     };
 
+    let one_line_budget = min(one_line_width, context.config.fn_call_width());
     let almost_no_newline =
         item_vec
             .iter()
@@ -1774,7 +1768,7 @@ fn rewrite_call_args(context: &RewriteContext,
     let extendable = almost_no_newline &&
                      item_vec.iter().fold(0, |acc, item| {
         acc + item.item.as_ref().map_or(0, |s| 2 + first_line_width(s))
-    }) <= min(one_line_width, context.config.fn_call_width()) + 2;
+    }) <= one_line_budget + 2;
 
     match write_list(&item_vec, &fmt) {
         // If arguments do not fit in a single line and do not contain newline,
@@ -1782,9 +1776,9 @@ fn rewrite_call_args(context: &RewriteContext,
         // and not rewriting macro.
         Some(ref s) if context.config.fn_call_style() == IndentStyle::Block &&
                        !context.inside_macro &&
-                       (!can_be_overflowed(context, args) && args.len() == 1 && s.contains('\n') ||
-                        first_line_width(s) > one_line_width ||
-                        first_line_width(s) > context.config.fn_call_width()) => {
+                       ((!can_be_overflowed(context, args) && args.len() == 1 &&
+                         s.contains('\n')) ||
+                        first_line_width(s) > one_line_budget) => {
             fmt.trailing_separator = SeparatorTactic::Vertical;
             fmt.tactic = DefinitiveListTactic::Vertical;
             write_list(&item_vec, &fmt).map(|rw| (false, rw))

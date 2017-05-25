@@ -112,6 +112,28 @@ let lorem = ipsum.dolor().sit().amet().consectetur().adipiscing().elit();
 #### Lines longer than `chain_one_line_max`:
 See [`chain_indent`](#chain_indent).
 
+## `chain_split_single_child`
+
+Split a chain with a single child if its length exceeds [`chain_one_line_max`](#chain_one_line_max).
+
+- **Default value**: `false`
+- **Possible values**: `false`, `true`
+
+#### `false`
+
+```rust
+let files = fs::read_dir("tests/coverage/source").expect("Couldn't read source dir");
+```
+
+#### `true`
+
+```rust
+let files = fs::read_dir("tests/coverage/source")
+    .expect("Couldn't read source dir");
+```
+
+See also [`chain_one_line_max`](#chain_one_line_max).
+
 ## `closure_block_indent_threshold`
 
 How many lines a closure must have before it is block indented. -1 means never use block indent.

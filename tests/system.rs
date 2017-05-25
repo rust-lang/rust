@@ -55,8 +55,7 @@ fn system_tests() {
 // the only difference is the coverage mode
 #[test]
 fn coverage_tests() {
-    let files = fs::read_dir("tests/coverage/source")
-        .expect("Couldn't read source dir");
+    let files = fs::read_dir("tests/coverage/source").expect("Couldn't read source dir");
     let files = files.map(get_path_string);
     let (_reports, count, fails) = check_files(files);
 
@@ -83,8 +82,7 @@ fn assert_output(source: &str, expected_filename: &str) {
     let _ = filemap::write_all_files(&file_map, &mut out, &config);
     let output = String::from_utf8(out).unwrap();
 
-    let mut expected_file = fs::File::open(&expected_filename)
-        .expect("Couldn't open target");
+    let mut expected_file = fs::File::open(&expected_filename).expect("Couldn't open target");
     let mut expected_text = String::new();
     expected_file
         .read_to_string(&mut expected_text)
@@ -279,8 +277,7 @@ fn get_config(config_file: Option<&str>) -> Config {
         }
     };
 
-    let mut def_config_file = fs::File::open(config_file_name)
-        .expect("Couldn't open config");
+    let mut def_config_file = fs::File::open(config_file_name).expect("Couldn't open config");
     let mut def_config = String::new();
     def_config_file
         .read_to_string(&mut def_config)

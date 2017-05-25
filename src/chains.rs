@@ -83,6 +83,7 @@ use expr::rewrite_call;
 use config::IndentStyle;
 use macros::convert_try_mac;
 
+use std::cmp::min;
 use std::iter;
 use syntax::{ast, ptr};
 use syntax::codemap::{mk_sp, Span};
@@ -97,6 +98,13 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     if chain_only_try(&subexpr_list) {
         return rewrite_try(&parent, subexpr_list.len(), context, shape);
     }
+    let trailing_try_num = subexpr_list
+        .iter()
+        .take_while(|e| match e.node {
+                        ast::ExprKind::Try(..) => true,
+                        _ => false,
+                    })
+        .count();
 
     // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
     let parent_shape = if is_block_expr(context, &parent, "\n") {
@@ -155,10 +163,10 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
            first_child_shape,
            other_child_shape);
 
-    let child_shape_iter = Some(first_child_shape)
-        .into_iter()
-        .chain(::std::iter::repeat(other_child_shape)
-                   .take(subexpr_list.len() - 1));
+    let child_shape_iter =
+        Some(first_child_shape)
+            .into_iter()
+            .chain(::std::iter::repeat(other_child_shape).take(subexpr_list.len() - 1));
     let iter = subexpr_list.iter().rev().zip(child_shape_iter);
     let mut rewrites = try_opt!(iter.map(|(e, shape)| {
                                              rewrite_chain_subexpr(e, total_span, context, shape)
@@ -166,17 +174,19 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
                                     .collect::<Option<Vec<_>>>());
 
     // Total of all items excluding the last.
-    let almost_total = rewrites[..rewrites.len() - 1]
+    let last_non_try_index = rewrites.len() - (1 + trailing_try_num);
+    let almost_total = rewrites[..last_non_try_index]
         .iter()
         .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
     let one_line_len = rewrites.iter().fold(0, |a, r| a + first_line_width(r)) +
                        parent_rewrite.len();
 
-    let veto_single_line = if one_line_len > context.config.chain_one_line_max() {
+    let one_line_budget = min(shape.width, context.config.chain_one_line_max());
+    let veto_single_line = if one_line_len > one_line_budget {
         if rewrites.len() > 1 {
             true
         } else if rewrites.len() == 1 {
-            parent_rewrite.len() > context.config.chain_one_line_max() / 2
+            context.config.chain_split_single_child() || one_line_len > shape.width
         } else {
             false
         }
@@ -195,7 +205,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let mut fits_single_line = !veto_single_line && almost_total <= shape.width;
     if fits_single_line {
         let len = rewrites.len();
-        let (init, last) = rewrites.split_at_mut(len - 1);
+        let (init, last) = rewrites.split_at_mut(len - (1 + trailing_try_num));
         fits_single_line = init.iter().all(|s| !s.contains('\n'));
 
         if fits_single_line {
@@ -216,6 +226,25 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
                 }
                 _ => !last[0].contains('\n'),
             }
+        }
+    }
+
+    // Try overflowing the last element if we are using block indent.
+    if !fits_single_line && context.config.fn_call_style() == IndentStyle::Block {
+        let (init, last) = rewrites.split_at_mut(last_non_try_index);
+        let almost_single_line = init.iter().all(|s| !s.contains('\n'));
+        if almost_single_line {
+            let overflow_shape = Shape {
+                width: one_line_budget,
+                ..parent_shape
+            };
+            fits_single_line = rewrite_last_child_with_overflow(context,
+                                                                &subexpr_list[trailing_try_num],
+                                                                overflow_shape,
+                                                                total_span,
+                                                                almost_total,
+                                                                one_line_budget,
+                                                                &mut last[0]);
         }
     }
 
@@ -256,6 +285,27 @@ fn chain_only_try(exprs: &[ast::Expr]) -> bool {
                      } else {
                          false
                      })
+}
+
+// Try to rewrite and replace the last non-try child. Return `true` if
+// replacing succeeds.
+fn rewrite_last_child_with_overflow(context: &RewriteContext,
+                                    expr: &ast::Expr,
+                                    shape: Shape,
+                                    span: Span,
+                                    almost_total: usize,
+                                    one_line_budget: usize,
+                                    last_child: &mut String)
+                                    -> bool {
+    if let Some(shape) = shape.shrink_left(almost_total) {
+        if let Some(ref mut rw) = rewrite_chain_subexpr(expr, span, context, shape) {
+            if almost_total + first_line_width(rw) <= one_line_budget {
+                ::std::mem::swap(last_child, rw);
+                return true;
+            }
+        }
+    }
+    false
 }
 
 pub fn rewrite_try(expr: &ast::Expr,

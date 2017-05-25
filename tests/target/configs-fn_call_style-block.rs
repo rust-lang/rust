@@ -16,6 +16,22 @@ fn main() {
     let hyper = Arc::new(Client::with_connector(
         HttpsConnector::new(TlsClient::new()),
     ));
+
+    // chain
+    let x = yooooooooooooo.fooooooooooooooo.baaaaaaaaaaaaar(
+        hello,
+        world,
+    );
+
+    // #1380
+    {
+        {
+            let creds = self.client.client_credentials(
+                &self.config.auth.oauth2.id,
+                &self.config.auth.oauth2.secret,
+            )?;
+        }
+    }
 }
 
 // #1521
