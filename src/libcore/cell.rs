@@ -219,6 +219,19 @@ unsafe impl<T> Send for Cell<T> where T: Send {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> !Sync for Cell<T> {}
 
+#[unstable(feature = "move_cell", issue = "39264")]
+impl<T:Clone> Clone for Cell<T> {
+    #[inline]
+    default fn clone(&self) -> Cell<T> {
+        // convert `*mut T` to `&T`, because we can ensure that
+        // there are no mutations or mutable aliases going on when casting to &T.
+        let inner : &T = unsafe { self.value.get().as_ref().unwrap() };
+        // If `clone` panics, the `Cell` itself is in a valid state.
+        let another = inner.clone();
+        Cell::new(another)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Copy> Clone for Cell<T> {
     #[inline]
@@ -236,6 +249,18 @@ impl<T:Default> Default for Cell<T> {
     }
 }
 
+#[unstable(feature = "move_cell", issue = "39264")]
+impl<T:PartialEq> PartialEq for Cell<T> {
+    #[inline]
+    default fn eq(&self, other: &Cell<T>) -> bool {
+        if ptr::eq(self, other) {
+            true
+        } else {
+            unsafe { Cell::take_and_restore(self, other, |l, r| l == r) }
+        }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T:PartialEq + Copy> PartialEq for Cell<T> {
     #[inline]
@@ -244,8 +269,59 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
     }
 }
 
+#[unstable(feature = "move_cell", issue = "39264")]
+impl<T:Eq> Eq for Cell<T> {}
+
 #[stable(feature = "cell_eq", since = "1.2.0")]
 impl<T:Eq + Copy> Eq for Cell<T> {}
+
+#[unstable(feature = "move_cell", issue = "39264")]
+impl<T:PartialOrd> PartialOrd for Cell<T> {
+    #[inline]
+    default fn partial_cmp(&self, other: &Cell<T>) -> Option<Ordering> {
+        if ptr::eq(self, other) {
+            Some(Ordering::Equal)
+        } else {
+            unsafe { Cell::take_and_restore(self, other, |l, r| l.partial_cmp(r)) }
+        }
+    }
+
+    #[inline]
+    default fn lt(&self, other: &Cell<T>) -> bool {
+        if ptr::eq(self, other) {
+            true
+        } else {
+            unsafe { Cell::take_and_restore(self, other, |l, r| l < r) }
+        }
+    }
+
+    #[inline]
+    default fn le(&self, other: &Cell<T>) -> bool {
+        if ptr::eq(self, other) {
+            true
+        } else {
+            unsafe { Cell::take_and_restore(self, other, |l, r| l <= r) }
+        }
+    }
+
+    #[inline]
+    default fn gt(&self, other: &Cell<T>) -> bool {
+        if ptr::eq(self, other) {
+            true
+        } else {
+            unsafe { Cell::take_and_restore(self, other, |l, r| l > r) }
+        }
+    }
+
+    #[inline]
+    default fn ge(&self, other: &Cell<T>) -> bool {
+        if ptr::eq(self, other) {
+            true
+        } else {
+            unsafe { Cell::take_and_restore(self, other, |l, r| l >= r) }
+        }
+    }
+}
 
 #[stable(feature = "cell_ord", since = "1.10.0")]
 impl<T:PartialOrd + Copy> PartialOrd for Cell<T> {
@@ -272,6 +348,18 @@ impl<T:PartialOrd + Copy> PartialOrd for Cell<T> {
     #[inline]
     fn ge(&self, other: &Cell<T>) -> bool {
         self.get() >= other.get()
+    }
+}
+
+#[unstable(feature = "move_cell", issue = "39264")]
+impl<T:Ord> Ord for Cell<T> {
+    #[inline]
+    default fn cmp(&self, other: &Cell<T>) -> Ordering {
+        if ptr::eq(self, other) {
+            Ordering::Equal
+        } else {
+            unsafe { Cell::take_and_restore(self, other, |l, r| l.cmp(r)) }
+        }
     }
 }
 
@@ -423,6 +511,22 @@ impl<T> Cell<T> {
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn into_inner(self) -> T {
         unsafe { self.value.into_inner() }
+    }
+
+    /// Private function used for implementing other methods when `T` is not `Copy`.
+    ///
+    /// This is `unsafe` because `left` and `right` may point to the same object.
+    #[unstable(feature = "move_cell", issue = "39264")]
+    unsafe fn take_and_restore<Result, F>(left: &Self, right: &Self, f: F) -> Result
+        where F: FnOnce(&T, &T) -> Result
+    {
+        // convert `*mut T` to `&T`, because we can ensure that
+        // there are no mutations or mutable aliases going on when casting to &T.
+        let lhs = left.value.get().as_ref().unwrap();
+        let rhs = right.value.get().as_ref().unwrap();
+        // If panic happens in `f`, both `Cell`s are in a valid state.
+        let result = f(lhs, rhs);
+        return result;
     }
 }
 
