@@ -959,12 +959,14 @@ fn should_sort_failures_before_printing_them() {
         name: StaticTestName("a"),
         ignore: false,
         should_panic: ShouldPanic::No,
+        allow_fail: false,
     };
 
     let test_b = TestDesc {
         name: StaticTestName("b"),
         ignore: false,
         should_panic: ShouldPanic::No,
+        allow_fail: false,
     };
 
     let mut st = ConsoleTestState {
@@ -976,6 +978,7 @@ fn should_sort_failures_before_printing_them() {
         passed: 0,
         failed: 0,
         ignored: 0,
+        allowed_fail: 0,
         filtered_out: 0,
         measured: 0,
         max_name_len: 10,
@@ -1725,6 +1728,7 @@ mod tests {
                 name: StaticTestName("whatever"),
                 ignore: true,
                 should_panic: ShouldPanic::No,
+                allow_fail: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1742,6 +1746,7 @@ mod tests {
                 name: StaticTestName("whatever"),
                 ignore: true,
                 should_panic: ShouldPanic::No,
+                allow_fail: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1761,6 +1766,7 @@ mod tests {
                 name: StaticTestName("whatever"),
                 ignore: false,
                 should_panic: ShouldPanic::Yes,
+                allow_fail: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1780,6 +1786,7 @@ mod tests {
                 name: StaticTestName("whatever"),
                 ignore: false,
                 should_panic: ShouldPanic::YesWithMessage("error message"),
+                allow_fail: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1801,6 +1808,7 @@ mod tests {
                 name: StaticTestName("whatever"),
                 ignore: false,
                 should_panic: ShouldPanic::YesWithMessage(expected),
+                allow_fail: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1818,6 +1826,7 @@ mod tests {
                 name: StaticTestName("whatever"),
                 ignore: false,
                 should_panic: ShouldPanic::Yes,
+                allow_fail: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1851,6 +1860,7 @@ mod tests {
                                  name: StaticTestName("1"),
                                  ignore: true,
                                  should_panic: ShouldPanic::No,
+                                 allow_fail: false,
                              },
                              testfn: DynTestFn(Box::new(move |()| {})),
                          },
@@ -1859,6 +1869,7 @@ mod tests {
                                  name: StaticTestName("2"),
                                  ignore: false,
                                  should_panic: ShouldPanic::No,
+                                 allow_fail: false,
                              },
                              testfn: DynTestFn(Box::new(move |()| {})),
                          }];
@@ -1882,6 +1893,7 @@ mod tests {
                     name: StaticTestName(name),
                     ignore: false,
                     should_panic: ShouldPanic::No,
+                    allow_fail: false,
                 },
                 testfn: DynTestFn(Box::new(move |()| {}))
             })
@@ -1963,6 +1975,7 @@ mod tests {
                         name: DynTestName((*name).clone()),
                         ignore: false,
                         should_panic: ShouldPanic::No,
+                        allow_fail: false,
                     },
                     testfn: DynTestFn(Box::new(move |()| testfn())),
                 };
