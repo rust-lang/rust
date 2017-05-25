@@ -447,7 +447,7 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
             let def_id = item.def.def_id();
             if cx.tcx.sess.cstore.visibility(def_id) == ty::Visibility::Public {
                 if !visited.insert(def_id) { continue }
-                if let Some(i) = try_inline(cx, item.def, item.name) {
+                if let Some(i) = try_inline(cx, item.def, item.ident.name) {
                     items.extend(i)
                 }
             }
