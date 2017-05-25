@@ -771,7 +771,8 @@ impl<T: Write> ConsoleTestState<T> {
     }
 
     pub fn write_run_finish(&mut self) -> io::Result<bool> {
-        assert!(self.passed + self.failed + self.ignored + self.measured + self.allowed_fail == self.total);
+        assert!(self.passed + self.failed + self.ignored + self.measured +
+                    self.allowed_fail == self.total);
 
         if self.options.display_output {
             self.write_outputs()?;
@@ -788,13 +789,14 @@ impl<T: Write> ConsoleTestState<T> {
         } else {
             self.write_pretty("FAILED", term::color::RED)?;
         }
-        let s = format!(". {} passed; {} failed; {} allowed to fail; {} ignored; {} measured; {} filtered out\n\n",
-                        self.passed,
-                        self.failed,
-                        self.allowed_fail,
-                        self.ignored,
-                        self.measured,
-                        self.filtered_out);
+        let s = format!(
+                ". {} passed; {} failed ({} allowed); {} ignored; {} measured; {} filtered out\n\n",
+                self.passed,
+                self.failed,
+                self.allowed_fail,
+                self.ignored,
+                self.measured,
+                self.filtered_out);
         self.write_plain(&s)?;
         return Ok(success);
     }

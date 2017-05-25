@@ -1135,23 +1135,27 @@ mod tests {
             })
         }
 
+        fn v() -> Vec<String> {
+            Vec::new()
+        }
+
         // marker                | should_panic| no_run| ignore| rust | test_harness| compile_fail
         //                       | allow_fail | error_codes
-        t("",                      false,        false,  false,  true,  false, false, false, Vec::new());
-        t("rust",                  false,        false,  false,  true,  false, false, false, Vec::new());
-        t("sh",                    false,        false,  false,  false, false, false, false, Vec::new());
-        t("ignore",                false,        false,  true,   true,  false, false, false, Vec::new());
-        t("should_panic",          true,         false,  false,  true,  false, false, false, Vec::new());
-        t("no_run",                false,        true,   false,  true,  false, false, false, Vec::new());
-        t("test_harness",          false,        false,  false,  true,  true,  false, false, Vec::new());
-        t("compile_fail",          false,        true,   false,  true,  false, true,  false, Vec::new());
-        t("allow_fail",            false,        false,  false,  true,  false, false, true, Vec::new());
-        t("{.no_run .example}",    false,        true,   false,  true,  false, false, false, Vec::new());
-        t("{.sh .should_panic}",   true,         false,  false,  false, false, false, false, Vec::new());
-        t("{.example .rust}",      false,        false,  false,  true,  false, false, false, Vec::new());
-        t("{.test_harness .rust}", false,        false,  false,  true,  true,  false, false, Vec::new());
-        t("text, no_run",          false,        true,   false,  false, false, false, false, Vec::new());
-        t("text,no_run",           false,        true,   false,  false, false, false, false, Vec::new());
+        t("",                      false,        false,  false,  true,  false, false, false, v());
+        t("rust",                  false,        false,  false,  true,  false, false, false, v());
+        t("sh",                    false,        false,  false,  false, false, false, false, v());
+        t("ignore",                false,        false,  true,   true,  false, false, false, v());
+        t("should_panic",          true,         false,  false,  true,  false, false, false, v());
+        t("no_run",                false,        true,   false,  true,  false, false, false, v());
+        t("test_harness",          false,        false,  false,  true,  true,  false, false, v());
+        t("compile_fail",          false,        true,   false,  true,  false, true,  false, v());
+        t("allow_fail",            false,        false,  false,  true,  false, false, true,  v());
+        t("{.no_run .example}",    false,        true,   false,  true,  false, false, false, v());
+        t("{.sh .should_panic}",   true,         false,  false,  false, false, false, false, v());
+        t("{.example .rust}",      false,        false,  false,  true,  false, false, false, v());
+        t("{.test_harness .rust}", false,        false,  false,  true,  true,  false, false, v());
+        t("text, no_run",          false,        true,   false,  false, false, false, false, v());
+        t("text,no_run",           false,        true,   false,  false, false, false, false, v());
     }
 
     #[test]
