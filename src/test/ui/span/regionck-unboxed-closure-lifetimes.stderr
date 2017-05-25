@@ -9,5 +9,5 @@ error: `c` does not live long enough
 20 | }
    | - borrowed value needs to live until here
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

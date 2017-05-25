@@ -8,5 +8,5 @@ error: no method named `f` found for type `{integer}` in the current scope
 note: candidate #1 is defined in the trait `issue_41652_b::Tr`
    = help: to disambiguate the method call, write `issue_41652_b::Tr::f(3)` instead
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

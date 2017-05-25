@@ -7,5 +7,5 @@ error: invalid reference to argument `0` (no arguments given)
 28 |     myprintln!("{}");
    |     ----------------- in this macro invocation
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

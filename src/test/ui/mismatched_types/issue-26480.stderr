@@ -16,5 +16,5 @@ error: non-scalar cast: `{integer}` as `()`
 38 |     cast!(2);
    |     --------- in this macro invocation
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 

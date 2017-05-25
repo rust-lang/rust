@@ -247,7 +247,9 @@ impl OsString {
         self.inner.shrink_to_fit()
     }
 
-    /// Converts this `OsString` into a boxed `OsStr`.
+    /// Converts this `OsString` into a boxed [`OsStr`].
+    ///
+    /// [`OsStr`]: struct.OsStr.html
     ///
     /// # Examples
     ///
@@ -482,12 +484,13 @@ impl OsStr {
     /// Returns the length of this `OsStr`.
     ///
     /// Note that this does **not** return the number of bytes in this string
-    /// as, for example, OS strings on Windows are encoded as a list of `u16`
+    /// as, for example, OS strings on Windows are encoded as a list of [`u16`]
     /// rather than a list of bytes. This number is simply useful for passing to
     /// other methods like [`OsString::with_capacity`] to avoid reallocations.
     ///
     /// See `OsStr` introduction for more information about encoding.
     ///
+    /// [`u16`]: ../primitive.u16.html
     /// [`OsString::with_capacity`]: struct.OsString.html#method.with_capacity
     ///
     /// # Examples
@@ -506,7 +509,10 @@ impl OsStr {
         self.inner.inner.len()
     }
 
-    /// Converts a `Box<OsStr>` into an `OsString` without copying or allocating.
+    /// Converts a [`Box`]`<OsStr>` into an [`OsString`] without copying or allocating.
+    ///
+    /// [`Box`]: ../boxed/struct.Box.html
+    /// [`OsString`]: struct.OsString.html
     #[unstable(feature = "into_boxed_os_str", issue = "40380")]
     pub fn into_os_string(self: Box<OsStr>) -> OsString {
         let inner: Box<Slice> = unsafe { mem::transmute(self) };

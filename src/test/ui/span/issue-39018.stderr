@@ -15,5 +15,5 @@ error[E0369]: binary operation `+` cannot be applied to type `World`
    |
    = note: an implementation of `std::ops::Add` might be missing for `World`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 

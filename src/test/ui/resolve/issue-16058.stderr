@@ -9,5 +9,5 @@ help: possible better candidates are found in other modules, you can import them
    | use std::io::Result;
    | use std::thread::Result;
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

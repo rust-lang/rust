@@ -4,5 +4,5 @@ error[E0571]: `break` with value from a `for` loop
 22 |         break 22
    |         ^^^^^^^^ can only break with a value inside `loop`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

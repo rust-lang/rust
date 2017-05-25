@@ -52,5 +52,5 @@ error[E0425]: cannot find value `method` in this scope
 52 |         method;
    |         ^^^^^^ did you mean `self.method(...)`?
 
-error: aborting due to 9 previous errors
+error: aborting due to previous error(s)
 

@@ -22,6 +22,7 @@
 #![feature(fmt_internals)]
 #![feature(iterator_step_by)]
 #![feature(i128_type)]
+#![feature(inclusive_range)]
 #![feature(iter_rfind)]
 #![feature(libc)]
 #![feature(nonzero)]

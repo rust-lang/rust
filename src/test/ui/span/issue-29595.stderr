@@ -6,5 +6,5 @@ error[E0277]: the trait bound `u8: Tr` is not satisfied
    |
    = note: required by `Tr::C`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

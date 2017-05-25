@@ -121,7 +121,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                     path: cx.current_expansion.module.directory.clone(),
                     ownership: cx.current_expansion.directory_ownership,
                 };
-                let mut p = Parser::new(cx.parse_sess(), tts, Some(directory), false);
+                let mut p = Parser::new(cx.parse_sess(), tts, Some(directory), true, false);
                 p.root_module_name = cx.current_expansion.module.mod_path.last()
                     .map(|id| id.name.as_str().to_string());
 
@@ -192,7 +192,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
         ast::ItemKind::MacroDef(ref body) => body.clone().into(),
         _ => unreachable!(),
     };
-    let argument_map = match parse(sess, body, &argument_gram, None) {
+    let argument_map = match parse(sess, body, &argument_gram, None, true) {
         Success(m) => m,
         Failure(sp, tok) => {
             let s = parse_failure_msg(tok);

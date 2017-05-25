@@ -52,5 +52,5 @@ error: attempted tuple index `0` on type `{integer}`, but the type was not a tup
 56 |     let _ = fake_anon_field_expr!();
    |             ----------------------- in this macro invocation
 
-error: aborting due to 6 previous errors
+error: aborting due to previous error(s)
 

@@ -7,5 +7,5 @@ error[E0308]: mismatched types
    = note: expected type `std::boxed::Box<Foo + std::marker::Send + 'static>`
               found type `std::boxed::Box<Foo + 'static>`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

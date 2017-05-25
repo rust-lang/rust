@@ -20,5 +20,5 @@ error[E0281]: type mismatch: `[closure@$DIR/E0281.rs:14:9: 14:24]` implements th
    |
    = note: required by `foo`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 

@@ -96,5 +96,5 @@ error: cannot assign to immutable borrowed content `*x.0`
 58 |     *x.0 = 1;
    |     ^^^^^^^^ cannot borrow as mutable
 
-error: aborting due to 12 previous errors
+error: aborting due to previous error(s)
 

@@ -153,6 +153,13 @@ use marker::Unsize;
 /// The `Drop` trait is used to run some code when a value goes out of scope.
 /// This is sometimes called a 'destructor'.
 ///
+/// When a value goes out of scope, if it implements this trait, it will have
+/// its `drop` method called. Then any fields the value contains will also
+/// be dropped recursively.
+///
+/// Because of the recursive dropping, you do not need to implement this trait
+/// unless your type needs its own destructor logic.
+///
 /// # Examples
 ///
 /// A trivial implementation of `Drop`. The `drop` method is called when `_x`
@@ -169,6 +176,43 @@ use marker::Unsize;
 ///
 /// fn main() {
 ///     let _x = HasDrop;
+/// }
+/// ```
+///
+/// Showing the recursive nature of `Drop`. When `outer` goes out of scope, the
+/// `drop` method will be called first for `Outer`, then for `Inner`. Therefore
+/// `main` prints `Dropping Outer!` and then `Dropping Inner!`.
+///
+/// ```
+/// struct Inner;
+/// struct Outer(Inner);
+///
+/// impl Drop for Inner {
+///     fn drop(&mut self) {
+///         println!("Dropping Inner!");
+///     }
+/// }
+///
+/// impl Drop for Outer {
+///     fn drop(&mut self) {
+///         println!("Dropping Outer!");
+///     }
+/// }
+///
+/// fn main() {
+///     let _x = Outer(Inner);
+/// }
+/// ```
+///
+/// Because variables are dropped in the reverse order they are declared,
+/// `main` will print `Declared second!` and then `Declared first!`.
+///
+/// ```
+/// struct PrintOnDrop(&'static str);
+///
+/// fn main() {
+///     let _first = PrintOnDrop("Declared first!");
+///     let _second = PrintOnDrop("Declared second!");
 /// }
 /// ```
 #[lang = "drop"]
@@ -2271,7 +2315,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// ```
 /// #![feature(inclusive_range,inclusive_range_syntax)]
 /// fn main() {
-///     assert_eq!((3...5), std::ops::RangeInclusive::NonEmpty{ start: 3, end: 5 });
+///     assert_eq!((3...5), std::ops::RangeInclusive{ start: 3, end: 5 });
 ///     assert_eq!(3+4+5, (3...5).sum());
 ///
 ///     let arr = [0, 1, 2, 3];
@@ -2281,45 +2325,23 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// ```
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-pub enum RangeInclusive<Idx> {
-    /// Empty range (iteration has finished)
+pub struct RangeInclusive<Idx> {
+    /// The lower bound of the range (inclusive).
     #[unstable(feature = "inclusive_range",
                reason = "recently added, follows RFC",
                issue = "28237")]
-    Empty {
-        /// The point at which iteration finished
-        #[unstable(feature = "inclusive_range",
-                   reason = "recently added, follows RFC",
-                   issue = "28237")]
-        at: Idx
-    },
-    /// Non-empty range (iteration will yield value(s))
+    pub start: Idx,
+    /// The upper bound of the range (inclusive).
     #[unstable(feature = "inclusive_range",
                reason = "recently added, follows RFC",
                issue = "28237")]
-    NonEmpty {
-        /// The lower bound of the range (inclusive).
-        #[unstable(feature = "inclusive_range",
-                   reason = "recently added, follows RFC",
-                   issue = "28237")]
-        start: Idx,
-        /// The upper bound of the range (inclusive).
-        #[unstable(feature = "inclusive_range",
-                   reason = "recently added, follows RFC",
-                   issue = "28237")]
-        end: Idx,
-    },
+    pub end: Idx,
 }
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        use self::RangeInclusive::*;
-
-        match *self {
-            Empty { ref at } => write!(fmt, "[empty range @ {:?}]", at),
-            NonEmpty { ref start, ref end } => write!(fmt, "{:?}...{:?}", start, end),
-        }
+        write!(fmt, "{:?}...{:?}", self.start, self.end)
     }
 }
 
@@ -2341,9 +2363,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// }
     /// ```
     pub fn contains(&self, item: Idx) -> bool {
-        if let &RangeInclusive::NonEmpty{ref start, ref end} = self {
-            (*start <= item) && (item <= *end)
-        } else { false }
+        self.start <= item && item <= self.end
     }
 }
 

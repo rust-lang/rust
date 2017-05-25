@@ -12,5 +12,5 @@ error[E0072]: recursive type `ListNode` has infinite size
    |
    = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `ListNode` representable
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

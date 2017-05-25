@@ -64,6 +64,7 @@ if [ ! -d "$cache_src_dir/.git" ]; then
         git clone https://github.com/rust-lang/rust.git $cache_src_dir"
 fi
 retry sh -c "cd $cache_src_dir && git reset --hard && git pull"
+(cd $cache_src_dir && git rm src/llvm)
 retry sh -c "cd $cache_src_dir && \
     git submodule deinit -f . && git submodule sync && git submodule update --init"
 
@@ -76,6 +77,15 @@ touch "$cache_valid_file"
 # http://stackoverflow.com/questions/12641469/list-submodules-in-a-git-repository
 modules="$(git config --file .gitmodules --get-regexp '\.path$' | cut -d' ' -f2)"
 for module in $modules; do
+    if [ "$module" = src/llvm ]; then
+        commit="$(git ls-tree HEAD src/llvm | awk '{print $3}')"
+        git rm src/llvm
+        curl -sSL -O "https://github.com/rust-lang/llvm/archive/$commit.tar.gz"
+        tar -C src/ -xf "$commit.tar.gz"
+        rm "$commit.tar.gz"
+        mv "src/llvm-$commit" src/llvm
+        continue
+    fi
     if [ ! -d "$cache_src_dir/$module" ]; then
         echo "WARNING: $module not found in pristine repo"
         retry sh -c "git submodule deinit -f $module && git submodule update --init $module"

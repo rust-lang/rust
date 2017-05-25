@@ -48,5 +48,5 @@ error: named argument never used
    = help: `$NAME` should be written as `{NAME}`
    = note: shell formatting not supported; see the documentation for `std::fmt`
 
-error: aborting due to 4 previous errors
+error: aborting due to previous error(s)
 

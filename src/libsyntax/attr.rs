@@ -320,7 +320,7 @@ impl Attribute {
     pub fn parse<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, T>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     {
-        let mut parser = Parser::new(sess, self.tokens.clone(), None, false);
+        let mut parser = Parser::new(sess, self.tokens.clone(), None, false, false);
         let result = f(&mut parser)?;
         if parser.token != token::Eof {
             parser.unexpected()?;

@@ -6,5 +6,5 @@ error: variable `_InappropriateCamelCasing` should have a snake case name such a
    |
    = note: `-D non-snake-case` implied by `-D bad-style`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 
