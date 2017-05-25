@@ -51,8 +51,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         match *dep_node {
             DepNode::Krate |
             DepNode::Hir(_) |
-            DepNode::HirBody(_) |
-            DepNode::FileMap(..) =>
+            DepNode::HirBody(_) =>
                 true,
             DepNode::MetaData(def_id) |
             DepNode::GlobalMetaData(def_id, _) => !def_id.is_local(),
@@ -75,20 +74,6 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
                         self.tcx.item_path_str(def_id));
 
                 Some(self.incremental_hashes_map[dep_node])
-            }
-
-            DepNode::FileMap(def_id, ref name) => {
-                if def_id.is_local() {
-                    // We will have been able to retrace the DefId (which is
-                    // always the local CRATE_DEF_INDEX), but the file with the
-                    // given name might have been removed, so we use get() in
-                    // order to allow for that case.
-                    self.incremental_hashes_map.get(dep_node).map(|x| *x)
-                } else {
-                    Some(self.metadata_hash(DepNode::FileMap(def_id, name.clone()),
-                                            def_id.krate,
-                                            |this| &mut this.global_metadata_hashes))
-                }
             }
 
             // MetaData from other crates is an *input* to us.
@@ -242,7 +227,6 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
             let dep_node = match dep_node {
                 DepNode::GlobalMetaData(_, kind) => DepNode::GlobalMetaData(def_id, kind),
-                DepNode::FileMap(_, name) => DepNode::FileMap(def_id, name),
                 other => {
                     bug!("unexpected DepNode variant: {:?}", other)
                 }

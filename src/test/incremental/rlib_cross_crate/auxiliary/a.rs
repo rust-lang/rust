@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // no-prefer-dynamic
+// compile-flags: -Z query-dep-graph
 
 #![crate_type="rlib"]
 
