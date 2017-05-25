@@ -1765,6 +1765,7 @@ fn rewrite_call_args(context: &RewriteContext,
         config: context.config,
     };
 
+    let one_line_budget = min(one_line_width, context.config.fn_call_width());
     let almost_no_newline =
         item_vec
             .iter()
@@ -1774,7 +1775,7 @@ fn rewrite_call_args(context: &RewriteContext,
     let extendable = almost_no_newline &&
                      item_vec.iter().fold(0, |acc, item| {
         acc + item.item.as_ref().map_or(0, |s| 2 + first_line_width(s))
-    }) <= min(one_line_width, context.config.fn_call_width()) + 2;
+    }) <= one_line_budget + 2;
 
     match write_list(&item_vec, &fmt) {
         // If arguments do not fit in a single line and do not contain newline,
@@ -1782,9 +1783,9 @@ fn rewrite_call_args(context: &RewriteContext,
         // and not rewriting macro.
         Some(ref s) if context.config.fn_call_style() == IndentStyle::Block &&
                        !context.inside_macro &&
-                       (!can_be_overflowed(context, args) && args.len() == 1 && s.contains('\n') ||
-                        first_line_width(s) > one_line_width ||
-                        first_line_width(s) > context.config.fn_call_width()) => {
+                       ((!can_be_overflowed(context, args) && args.len() == 1 &&
+                         s.contains('\n')) ||
+                        first_line_width(s) > one_line_budget) => {
             fmt.trailing_separator = SeparatorTactic::Vertical;
             fmt.tactic = DefinitiveListTactic::Vertical;
             write_list(&item_vec, &fmt).map(|rw| (false, rw))
