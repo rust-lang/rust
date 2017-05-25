@@ -106,16 +106,10 @@ impl<T> RangeArgument<T> for Range<T> {
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 impl<T> RangeArgument<T> for RangeInclusive<T> {
     fn start(&self) -> Bound<&T> {
-        match *self {
-            RangeInclusive::Empty{ ref at }            => Included(at),
-            RangeInclusive::NonEmpty { ref start, .. } => Included(start),
-        }
+        Included(&self.start)
     }
     fn end(&self) -> Bound<&T> {
-        match *self {
-            RangeInclusive::Empty{ ref at }            => Excluded(at),
-            RangeInclusive::NonEmpty { ref end, .. }   => Included(end),
-        }
+        Included(&self.end)
     }
 }
 

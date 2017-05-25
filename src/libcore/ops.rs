@@ -2271,7 +2271,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// ```
 /// #![feature(inclusive_range,inclusive_range_syntax)]
 /// fn main() {
-///     assert_eq!((3...5), std::ops::RangeInclusive::NonEmpty{ start: 3, end: 5 });
+///     assert_eq!((3...5), std::ops::RangeInclusive{ start: 3, end: 5 });
 ///     assert_eq!(3+4+5, (3...5).sum());
 ///
 ///     let arr = [0, 1, 2, 3];
@@ -2281,45 +2281,23 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// ```
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-pub enum RangeInclusive<Idx> {
-    /// Empty range (iteration has finished)
+pub struct RangeInclusive<Idx> {
+    /// The lower bound of the range (inclusive).
     #[unstable(feature = "inclusive_range",
                reason = "recently added, follows RFC",
                issue = "28237")]
-    Empty {
-        /// The point at which iteration finished
-        #[unstable(feature = "inclusive_range",
-                   reason = "recently added, follows RFC",
-                   issue = "28237")]
-        at: Idx
-    },
-    /// Non-empty range (iteration will yield value(s))
+    pub start: Idx,
+    /// The upper bound of the range (inclusive).
     #[unstable(feature = "inclusive_range",
                reason = "recently added, follows RFC",
                issue = "28237")]
-    NonEmpty {
-        /// The lower bound of the range (inclusive).
-        #[unstable(feature = "inclusive_range",
-                   reason = "recently added, follows RFC",
-                   issue = "28237")]
-        start: Idx,
-        /// The upper bound of the range (inclusive).
-        #[unstable(feature = "inclusive_range",
-                   reason = "recently added, follows RFC",
-                   issue = "28237")]
-        end: Idx,
-    },
+    pub end: Idx,
 }
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        use self::RangeInclusive::*;
-
-        match *self {
-            Empty { ref at } => write!(fmt, "[empty range @ {:?}]", at),
-            NonEmpty { ref start, ref end } => write!(fmt, "{:?}...{:?}", start, end),
-        }
+        write!(fmt, "{:?}...{:?}", self.start, self.end)
     }
 }
 
@@ -2341,9 +2319,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// }
     /// ```
     pub fn contains(&self, item: Idx) -> bool {
-        if let &RangeInclusive::NonEmpty{ref start, ref end} = self {
-            (*start <= item) && (item <= *end)
-        } else { false }
+        self.start <= item && item <= self.end
     }
 }
 
