@@ -269,9 +269,6 @@ declare_features! (
     // Allows `impl Trait` in function return types.
     (active, conservative_impl_trait, "1.12.0", Some(34511)),
 
-    // Permits numeric fields in struct expressions and patterns.
-    (active, relaxed_adts, "1.12.0", Some(35626)),
-
     // The `!` type
     (active, never_type, "1.13.0", Some(35121)),
 
@@ -422,7 +419,10 @@ declare_features! (
     (accepted, windows_subsystem, "1.18.0", Some(37499)),
     // Allows `break {expr}` with a value inside `loop`s.
     (accepted, loop_break_value, "1.19.0", Some(37339)),
+    // Permits numeric fields in struct expressions and patterns.
+    (accepted, relaxed_adts, "1.19.0", Some(35626)),
 );
+
 // If you change this, please modify src/doc/unstable-book as well. You must
 // move that documentation into the relevant place in the other docs, and
 // remove the chapter on the flag.
@@ -1104,10 +1104,6 @@ fn contains_novel_literal(item: &ast::MetaItem) -> bool {
     }
 }
 
-fn starts_with_digit(s: &str) -> bool {
-    s.as_bytes().first().cloned().map_or(false, |b| b >= b'0' && b <= b'9')
-}
-
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
         if !attr.span.allows_unstable() {
@@ -1291,15 +1287,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::InPlace(..) => {
                 gate_feature_post!(&self, placement_in_syntax, e.span, EXPLAIN_PLACEMENT_IN);
             }
-            ast::ExprKind::Struct(_, ref fields, _) => {
-                for field in fields {
-                    if starts_with_digit(&field.ident.node.name.as_str()) {
-                        gate_feature_post!(&self, relaxed_adts,
-                                          field.span,
-                                          "numeric fields in struct expressions are unstable");
-                    }
-                }
-            }
             ast::ExprKind::Lit(ref lit) => {
                 if let ast::LitKind::Int(_, ref ty) = lit.node {
                     match *ty {
@@ -1338,15 +1325,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, box_patterns,
                                   pattern.span,
                                   "box pattern syntax is experimental");
-            }
-            PatKind::Struct(_, ref fields, _) => {
-                for field in fields {
-                    if starts_with_digit(&field.node.ident.name.as_str()) {
-                        gate_feature_post!(&self, relaxed_adts,
-                                          field.span,
-                                          "numeric fields in struct patterns are unstable");
-                    }
-                }
             }
             PatKind::Range(_, _, RangeEnd::Excluded) => {
                 gate_feature_post!(&self, exclusive_range_pattern, pattern.span,
