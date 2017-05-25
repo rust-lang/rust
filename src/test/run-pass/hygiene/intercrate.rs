@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty pretty-printing is unhygienic
+
 // aux-build:intercrate.rs
 
 #![feature(decl_macro)]
