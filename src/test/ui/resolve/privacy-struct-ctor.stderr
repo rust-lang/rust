@@ -65,5 +65,5 @@ error: tuple struct `Z` is private
 45 |     xcrate::m::n::Z; //~ ERROR tuple struct `Z` is private
    |     ^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: aborting due to previous error(s)
 

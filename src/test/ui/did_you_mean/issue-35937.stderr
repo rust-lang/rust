@@ -22,5 +22,5 @@ error: cannot assign to immutable field `s.x`
 30 |     s.x += 1;
    |     ^^^^^^^^ cannot mutably borrow immutable field
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error(s)
 

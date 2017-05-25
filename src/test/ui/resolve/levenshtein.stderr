@@ -46,5 +46,5 @@ error[E0425]: cannot find value `second` in module `m`
 32 |     let b: m::first = m::second; // Misspelled item in module.
    |                          ^^^^^^ did you mean `Second`?
 
-error: aborting due to 8 previous errors
+error: aborting due to previous error(s)
 

@@ -63,5 +63,5 @@ note: lint level defined here
 28 |         #![warn(bad_style)]
    |                 ^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error(s)
 

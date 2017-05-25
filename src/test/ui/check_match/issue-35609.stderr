@@ -46,5 +46,5 @@ error[E0004]: non-exhaustive patterns: `Some(B)`, `Some(C)`, `Some(D)` and 2 mor
 49 |     match Some(A) {
    |           ^^^^^^^ patterns `Some(B)`, `Some(C)`, `Some(D)` and 2 more not covered
 
-error: aborting due to 8 previous errors
+error: aborting due to previous error(s)
 

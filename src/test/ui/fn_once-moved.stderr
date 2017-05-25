@@ -8,5 +8,5 @@ error[E0382]: use of moved value: `debug_dump_dict`
    |
    = help: closure was moved because it only implements `FnOnce`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

@@ -20,5 +20,5 @@ error[E0569]: requires an `unsafe impl` declaration due to `#[may_dangle]` attri
 43 | | }
    | |_^
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 

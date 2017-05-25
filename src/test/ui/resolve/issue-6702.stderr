@@ -4,5 +4,5 @@ error[E0423]: expected function, found struct `Monster`
 17 |     let _m = Monster(); //~ ERROR expected function, found struct `Monster`
    |              ^^^^^^^ did you mean `Monster { /* fields */ }`?
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

@@ -6,5 +6,5 @@ error: no method named `example` found for type `Example` in the current scope
    |
    = help: use `(demo.example)(...)` if you meant to call the function stored in the `example` field
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 
