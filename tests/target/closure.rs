@@ -144,9 +144,9 @@ fn issue470() {
 impl Foo {
     pub fn bar(&self) {
         Some(SomeType {
-                 push_closure_out_to_100_chars: iter(otherwise_it_works_ok.into_iter().map(|f| {
-                                                                                               Ok(f)
-                                                                                           })),
+                 push_closure_out_to_100_chars: iter(otherwise_it_works_ok
+                                                         .into_iter()
+                                                         .map(|f| Ok(f))),
              })
     }
 }

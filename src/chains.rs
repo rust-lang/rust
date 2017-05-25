@@ -99,11 +99,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     }
     let trailing_try_num = subexpr_list
         .iter()
-        .take_while(|e| {
-                        match e.node {
-                            ast::ExprKind::Try(..) => true,
-                            _ => false,
-                        }
+        .take_while(|e| match e.node {
+                        ast::ExprKind::Try(..) => true,
+                        _ => false,
                     })
         .count();
 
