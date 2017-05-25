@@ -10,3 +10,4 @@ plugin = true
 name = "cargo-semver"
 
 [dependencies]
+cargo_metadata = "^0.2.1"

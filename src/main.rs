@@ -1,6 +1,7 @@
 #![feature(box_syntax)]
 #![feature(rustc_private)]
 
+extern crate cargo_metadata;
 extern crate getopts;
 extern crate rustc;
 extern crate rustc_driver;
@@ -12,6 +13,7 @@ use rustc::session::config::{Input, ErrorOutputType};
 
 use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
 
+use std::io::{self, Write};
 use std::path::PathBuf;
 
 use syntax::ast;
@@ -97,6 +99,9 @@ fn version() {
 }
 
 pub fn main() {
+    // TODO: use getopt, as we import it anyway
+    // TODO: maybe don't use cargo_metadata, as it pulls in tons of deps
+
     if std::env::args().any(|arg| arg == "-h" || arg == "--help") {
         help();
         return;
@@ -105,6 +110,27 @@ pub fn main() {
     if std::env::args().any(|arg| arg == "-V" || arg == "--version") {
         version();
         return;
+    }
+
+    if std::env::args()
+           .nth(1)
+           .map(|arg| arg == "semver")
+           .unwrap_or(false) {
+        // first run (we blatantly copy clippy's code structure here)
+        let manifest_path_arg = std::env::args()
+            .skip(2)
+            .find(|val| val.starts_with("--manifest-path="));
+
+        let mut metadata = if let Ok(data) =
+            cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)) {
+            data
+        } else {
+            let _ = io::stderr()
+                .write_fmt(format_args!("error: could not obtain cargo metadata.\n"));
+            std::process::exit(1);
+        };
+    } else {
+        // second run TODO: elaborate etc
     }
 
     rustc_driver::in_rustc_thread(|| {
@@ -122,5 +148,5 @@ pub fn main() {
             }
         }
     })
-    .expect("rustc thread failed");
+            .expect("rustc thread failed");
 }
