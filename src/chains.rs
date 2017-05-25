@@ -97,6 +97,15 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     if chain_only_try(&subexpr_list) {
         return rewrite_try(&parent, subexpr_list.len(), context, shape);
     }
+    let trailing_try_num = subexpr_list
+        .iter()
+        .take_while(|e| {
+                        match e.node {
+                            ast::ExprKind::Try(..) => true,
+                            _ => false,
+                        }
+                    })
+        .count();
 
     // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
     let parent_shape = if is_block_expr(context, &parent, "\n") {
@@ -166,7 +175,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
                                     .collect::<Option<Vec<_>>>());
 
     // Total of all items excluding the last.
-    let almost_total = rewrites[..rewrites.len() - 1]
+    let almost_total = rewrites[..rewrites.len() - (1 + trailing_try_num)]
         .iter()
         .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
     let one_line_len = rewrites.iter().fold(0, |a, r| a + first_line_width(r)) +
@@ -195,7 +204,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let mut fits_single_line = !veto_single_line && almost_total <= shape.width;
     if fits_single_line {
         let len = rewrites.len();
-        let (init, last) = rewrites.split_at_mut(len - 1);
+        let (init, last) = rewrites.split_at_mut(len - (1 + trailing_try_num));
         fits_single_line = init.iter().all(|s| !s.contains('\n'));
 
         if fits_single_line {
