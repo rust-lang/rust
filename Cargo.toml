@@ -34,7 +34,6 @@ log = "0.3"
 env_logger = "0.4"
 getopts = "0.2"
 itertools = "0.5.8"
-multimap = "0.3"
 
 [build-dependencies]
 walkdir = "1.0.3"

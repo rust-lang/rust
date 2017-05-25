@@ -30,7 +30,6 @@ extern crate regex;
 extern crate diff;
 extern crate term;
 extern crate itertools;
-extern crate multimap;
 
 use errors::{Handler, DiagnosticBuilder};
 use errors::emitter::{ColorConfig, EmitterWriter};

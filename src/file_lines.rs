@@ -11,18 +11,17 @@
 //! This module contains types and functions to support formatting specific line ranges.
 
 use std::{cmp, iter, path, str};
+use std::collections::HashMap;
 
-use itertools::Itertools;
-use multimap::MultiMap;
 use serde_json as json;
 
 use codemap::LineRange;
 
 /// A range that is inclusive of both ends.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Deserialize)]
 struct Range {
-    pub lo: usize,
-    pub hi: usize,
+    lo: usize,
+    hi: usize,
 }
 
 impl<'a> From<&'a LineRange> for Range {
@@ -82,18 +81,30 @@ impl Range {
 /// non-overlapping ranges sorted by their start point. An inner `None` is interpreted to mean all
 /// lines in all files.
 #[derive(Clone, Debug, Default)]
-pub struct FileLines(Option<MultiMap<String, Range>>);
+pub struct FileLines(Option<HashMap<String, Vec<Range>>>);
 
 /// Normalizes the ranges so that the invariants for `FileLines` hold: ranges are non-overlapping,
 /// and ordered by their start point.
-fn normalize_ranges(map: &mut MultiMap<String, Range>) {
-    for (_, ranges) in map.iter_all_mut() {
-        ranges.sort_by_key(|x| x.lo);
-        let merged = ranges
-            .drain(..)
-            .coalesce(|x, y| x.merge(y).ok_or((x, y)))
-            .collect();
-        *ranges = merged;
+fn normalize_ranges(ranges: &mut HashMap<String, Vec<Range>>) {
+    for ranges in ranges.values_mut() {
+        ranges.sort();
+        let mut result = vec![];
+        {
+            let mut iter = ranges.into_iter().peekable();
+            while let Some(next) = iter.next() {
+                let mut next = next.clone();
+                while let Some(&&mut peek) = iter.peek() {
+                    if let Some(merged) = next.merge(peek) {
+                        iter.next().unwrap();
+                        next = merged;
+                    } else {
+                        break;
+                    }
+                }
+                result.push(next)
+            }
+        }
+        *ranges = result;
     }
 }
 
@@ -103,16 +114,14 @@ impl FileLines {
         FileLines(None)
     }
 
-    /// Creates a `FileLines` from a `MultiMap`, ensuring that the invariants hold.
-    fn from_multimap(map: MultiMap<String, Range>) -> FileLines {
-        let mut map = map;
-        normalize_ranges(&mut map);
-        FileLines(Some(map))
+    fn from_ranges(mut ranges: HashMap<String, Vec<Range>>) -> FileLines {
+        normalize_ranges(&mut ranges);
+        FileLines(Some(ranges))
     }
 
     /// Returns an iterator over the files contained in `self`.
     pub fn files(&self) -> Files {
-        Files(self.0.as_ref().map(MultiMap::keys))
+        Files(self.0.as_ref().map(|m| m.keys()))
     }
 
     /// Returns true if `self` includes all lines in all files. Otherwise runs `f` on all ranges in
@@ -127,9 +136,9 @@ impl FileLines {
         };
 
         match canonicalize_path_string(file_name)
-                  .and_then(|file| map.get_vec(&file).ok_or(())) {
-            Ok(ranges) => ranges.iter().any(f),
-            Err(_) => false,
+                  .and_then(|file| map.get(&file)) {
+            Some(ranges) => ranges.iter().any(f),
+            None => false,
         }
     }
 
@@ -165,14 +174,14 @@ impl<'a> iter::Iterator for Files<'a> {
     }
 }
 
-fn canonicalize_path_string(s: &str) -> Result<String, ()> {
+fn canonicalize_path_string(s: &str) -> Option<String> {
     if s == "stdin" {
-        return Ok(s.to_string());
+        return Some(s.to_string());
     }
 
     match path::PathBuf::from(s).canonicalize() {
-        Ok(canonicalized) => canonicalized.to_str().map(|s| s.to_string()).ok_or(()),
-        _ => Err(()),
+        Ok(canonicalized) => canonicalized.to_str().map(|s| s.to_string()),
+        _ => None,
     }
 }
 
@@ -182,10 +191,12 @@ impl str::FromStr for FileLines {
 
     fn from_str(s: &str) -> Result<FileLines, String> {
         let v: Vec<JsonSpan> = json::from_str(s).map_err(|e| e.to_string())?;
-        let m = v.into_iter()
-            .map(JsonSpan::into_tuple)
-            .collect::<Result<_, _>>()?;
-        Ok(FileLines::from_multimap(m))
+        let mut m = HashMap::new();
+        for js in v.into_iter() {
+            let (s, r) = JsonSpan::into_tuple(js)?;
+            m.entry(s).or_insert(vec![]).push(r);
+        }
+        Ok(FileLines::from_ranges(m))
     }
 }
 
@@ -197,11 +208,10 @@ struct JsonSpan {
 }
 
 impl JsonSpan {
-    // To allow `collect()`ing into a `MultiMap`.
     fn into_tuple(self) -> Result<(String, Range), String> {
         let (lo, hi) = self.range;
         let canonical = canonicalize_path_string(&self.file)
-            .map_err(|_| format!("Can't canonicalize {}", &self.file))?;
+            .ok_or_else(|| format!("Can't canonicalize {}", &self.file))?;
         Ok((canonical, Range::new(lo, hi)))
     }
 }
