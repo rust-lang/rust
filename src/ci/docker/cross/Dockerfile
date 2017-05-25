@@ -33,23 +33,11 @@ RUN ./build-rumprun.sh
 COPY cross/build-arm-musl.sh /tmp/
 RUN ./build-arm-musl.sh
 
-# originally from
-# https://downloads.openwrt.org/snapshots/trunk/ar71xx/generic/OpenWrt-Toolchain-ar71xx-generic_gcc-5.3.0_musl-1.1.16.Linux-x86_64.tar.bz2
-RUN mkdir /usr/local/mips-linux-musl
-RUN curl -L https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/OpenWrt-Toolchain-ar71xx-generic_gcc-5.3.0_musl-1.1.16.Linux-x86_64.tar.bz2 | \
-      tar xjf - -C /usr/local/mips-linux-musl --strip-components=2
-RUN for file in /usr/local/mips-linux-musl/bin/mips-openwrt-linux-*; do \
-      ln -s $file /usr/local/bin/`basename $file`; \
-    done
+COPY cross/install-mips-musl.sh /tmp/
+RUN ./install-mips-musl.sh
 
-# Note that this originally came from:
-# https://downloads.openwrt.org/snapshots/trunk/malta/generic/OpenWrt-Toolchain-malta-le_gcc-5.3.0_musl-1.1.15.Linux-x86_64.tar.bz2
-RUN mkdir /usr/local/mipsel-linux-musl
-RUN curl -L https://s3.amazonaws.com/rust-lang-ci/libc/OpenWrt-Toolchain-malta-le_gcc-5.3.0_musl-1.1.15.Linux-x86_64.tar.bz2 | \
-      tar xjf - -C /usr/local/mipsel-linux-musl --strip-components=2
-RUN for file in /usr/local/mipsel-linux-musl/bin/mipsel-openwrt-linux-*; do \
-      ln -s $file /usr/local/bin/`basename $file`; \
-    done
+COPY cross/install-mipsel-musl.sh /tmp/
+RUN ./install-mipsel-musl.sh
 
 ENV TARGETS=asmjs-unknown-emscripten
 ENV TARGETS=$TARGETS,wasm32-unknown-emscripten
