@@ -11,8 +11,6 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
 
-use itertools::Itertools;
-
 use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItemKind, NestedMetaItem,
                   NestedMetaItemKind, Path};
 use syntax::codemap::BytePos;
@@ -44,14 +42,14 @@ pub fn format_visibility(vis: &Visibility) -> Cow<'static, str> {
         Visibility::Crate(_) => Cow::from("pub(crate) "),
         Visibility::Restricted { ref path, .. } => {
             let Path { ref segments, .. } = **path;
-            let mut segments_iter = segments.iter().map(|seg| seg.identifier.name.as_str());
+            let mut segments_iter = segments.iter().map(|seg| seg.identifier.name.to_string());
             if path.is_global() {
                 segments_iter
                     .next()
                     .expect("Non-global path in pub(restricted)?");
             }
 
-            Cow::from(format!("pub({}) ", segments_iter.join("::")))
+            Cow::from(format!("pub({}) ", segments_iter.collect::<Vec<_>>().join("::")))
         }
     }
 }

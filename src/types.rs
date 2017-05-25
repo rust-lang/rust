@@ -24,7 +24,6 @@ use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, format_mutability, colon_spaces, wrap_str};
 use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple_type};
 use config::TypeDensity;
-use itertools::Itertools;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PathContext {
@@ -367,8 +366,8 @@ impl Rewrite for ast::WherePredicate {
                     let lifetime_str: String = try_opt!(bound_lifetimes
                                                             .iter()
                                                             .map(|lt| lt.rewrite(context, shape))
-                                                            .intersperse(Some(", ".to_string()))
-                                                            .collect());
+                                                            .collect::<Option<Vec<_>>>())
+                        .join(", ");
 
                     let joiner = match context.config.type_punctuation_density() {
                         TypeDensity::Compressed => "+",
@@ -382,8 +381,8 @@ impl Rewrite for ast::WherePredicate {
                                                           .map(|ty_bound| {
                         ty_bound.rewrite(context, Shape::legacy(budget, shape.indent + used_width))
                     })
-                                                          .intersperse(Some(joiner.to_string()))
-                                                          .collect());
+                                                          .collect::<Option<Vec<_>>>())
+                        .join(joiner);
 
                     if context.config.spaces_within_angle_brackets() && lifetime_str.len() > 0 {
                         format!("for< {} > {}{}{}",
@@ -406,8 +405,8 @@ impl Rewrite for ast::WherePredicate {
                                                           .map(|ty_bound| {
                         ty_bound.rewrite(context, Shape::legacy(budget, shape.indent + used_width))
                     })
-                                                          .intersperse(Some(joiner.to_string()))
-                                                          .collect());
+                                                          .collect::<Option<Vec<_>>>())
+                        .join(joiner);
 
                     format!("{}{}{}", type_str, colon, bounds_str)
                 }
@@ -526,8 +525,8 @@ impl Rewrite for ast::TyParam {
             let bounds: String = try_opt!(self.bounds
                                               .iter()
                                               .map(|ty_bound| ty_bound.rewrite(context, shape))
-                                              .intersperse(Some(joiner.to_string()))
-                                              .collect());
+                                              .collect::<Option<Vec<_>>>())
+                .join(joiner);
 
             result.push_str(&bounds);
         }
@@ -554,8 +553,8 @@ impl Rewrite for ast::PolyTraitRef {
             let lifetime_str: String = try_opt!(self.bound_lifetimes
                                                     .iter()
                                                     .map(|lt| lt.rewrite(context, shape))
-                                                    .intersperse(Some(", ".to_string()))
-                                                    .collect());
+                                                    .collect::<Option<Vec<_>>>())
+                .join(", ");
 
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
@@ -701,8 +700,8 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
             l.rewrite(context,
                       Shape::legacy(try_opt!(shape.width.checked_sub(6)), shape.indent + 4))
         })
-                                      .intersperse(Some(", ".to_string()))
-                                      .collect::<Option<String>>()));
+                                      .collect::<Option<Vec<_>>>())
+                            .join(", "));
         result.push_str("> ");
     }
 

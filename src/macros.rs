@@ -198,13 +198,17 @@ pub fn rewrite_macro(mac: &ast::Mac,
             } else {
                 // Format macro invocation as array literal.
                 let rewrite =
-                    try_opt!(rewrite_array(expr_vec.iter().map(|x| &**x),
-                                           mk_sp(context.codemap.span_after(mac.span,
-                                                                            original_style
-                                                                                .opener()),
-                                                 mac.span.hi - BytePos(1)),
-                                           context,
-                                           mac_shape));
+                    try_opt!(rewrite_array(
+                    expr_vec.iter().map(|x| &**x),
+                    mk_sp(
+                        context
+                            .codemap
+                            .span_after(mac.span, original_style.opener()),
+                        mac.span.hi - BytePos(1)
+                    ),
+                    context,
+                    mac_shape
+                ));
 
                 Some(format!("{}{}", macro_name, rewrite))
             }

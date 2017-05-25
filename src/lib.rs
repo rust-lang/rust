@@ -29,7 +29,6 @@ extern crate unicode_segmentation;
 extern crate regex;
 extern crate diff;
 extern crate term;
-extern crate itertools;
 
 use errors::{Handler, DiagnosticBuilder};
 use errors::emitter::{ColorConfig, EmitterWriter};

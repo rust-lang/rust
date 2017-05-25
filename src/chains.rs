@@ -160,9 +160,10 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         .chain(::std::iter::repeat(other_child_shape)
                    .take(subexpr_list.len() - 1));
     let iter = subexpr_list.iter().rev().zip(child_shape_iter);
-    let mut rewrites =
-        try_opt!(iter.map(|(e, shape)| rewrite_chain_subexpr(e, total_span, context, shape))
-                     .collect::<Option<Vec<_>>>());
+    let mut rewrites = try_opt!(iter.map(|(e, shape)| {
+                                             rewrite_chain_subexpr(e, total_span, context, shape)
+                                         })
+                                    .collect::<Option<Vec<_>>>());
 
     // Total of all items excluding the last.
     let almost_total = rewrites[..rewrites.len() - 1]

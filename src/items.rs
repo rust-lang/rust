@@ -22,7 +22,6 @@ use comment::{FindUncommented, contains_comment};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
 use config::{Config, IndentStyle, Density, ReturnIndent, BraceStyle, Style, TypeDensity};
-use itertools::Itertools;
 
 use syntax::{ast, abi, codemap, ptr, symbol};
 use syntax::codemap::{Span, BytePos, mk_sp};
@@ -1324,8 +1323,8 @@ pub fn rewrite_associated_type(ident: ast::Ident,
                                                    Shape::legacy(context.config.max_width(),
                                                                  indent))
                               })
-                         .intersperse(Some(joiner.to_string()))
-                         .collect::<Option<String>>());
+                         .collect::<Option<Vec<_>>>())
+                .join(joiner);
         if bounds.len() > 0 {
             format!(": {}", bound_str)
         } else {
@@ -2041,26 +2040,14 @@ fn rewrite_trait_bounds(context: &RewriteContext,
     let bound_str = try_opt!(bounds
                                  .iter()
                                  .map(|ty_bound| ty_bound.rewrite(&context, shape))
-                                 .intersperse(Some(joiner.to_string()))
-                                 .collect::<Option<String>>());
+                                 .collect::<Option<Vec<_>>>())
+        .join(joiner);
 
     let mut result = String::new();
     result.push_str(": ");
     result.push_str(&bound_str);
     Some(result)
 }
-
-//   fn reflow_list_node_with_rule(
-//        &self,
-//        node: &CompoundNode,
-//        rule: &Rule,
-//        args: &[Arg],
-//        shape: &Shape
-//    ) -> Result<String, ()>
-//    where
-//        T: Foo,
-//    {
-
 
 fn rewrite_where_clause_rfc_style(context: &RewriteContext,
                                   where_clause: &ast::WhereClause,
