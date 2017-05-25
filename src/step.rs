@@ -13,6 +13,7 @@ use error::{EvalResult, EvalError};
 use eval_context::{EvalContext, StackPopCleanup};
 use lvalue::{Global, GlobalId, Lvalue};
 use value::{Value, PrimVal};
+use memory::Pointer;
 use syntax::codemap::Span;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
@@ -158,6 +159,11 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         if self.ecx.globals.contains_key(&cid) {
             return;
         }
+        if self.ecx.tcx.has_attr(def_id, "linkage") {
+            trace!("Initializing an extern global with NULL");
+            self.ecx.globals.insert(cid, Global::initialized(self.ecx.tcx.type_of(def_id), Value::ByVal(PrimVal::Ptr(Pointer::from_int(0))), !shared));
+            return;
+        }
         self.try(|this| {
             let mir = this.ecx.load_mir(instance.def)?;
             this.ecx.globals.insert(cid, Global::uninitialized(mir.return_ty));
@@ -178,6 +184,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
             )
         });
     }
+
     fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx>>(&mut self, f: F) {
         if let Ok(ref mut n) = *self.new_constants {
             *n += 1;
