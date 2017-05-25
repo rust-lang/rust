@@ -1,57 +1,50 @@
-extern crate walkdir;
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 
 use std::env;
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 
-use walkdir::WalkDir;
 
 fn main() {
-    let out_dir = env::var("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir).join("git_info.rs");
-    let mut f = File::create(&dest_path).unwrap();
+    let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
 
-    writeln!(f,
-             "const COMMIT_HASH: Option<&'static str> = {:?};",
-             git_head_sha1())
+    File::create(out_dir.join("commit-info.txt"))
+        .unwrap()
+        .write_all(commit_info().as_bytes())
         .unwrap();
-    writeln!(f,
-             "const WORKTREE_CLEAN: Option<bool> = {:?};",
-             git_tree_is_clean())
-        .unwrap();
+}
 
-    // cargo:rerun-if-changed requires one entry per individual file.
-    for entry in WalkDir::new("src") {
-        let entry = entry.unwrap();
-        println!("cargo:rerun-if-changed={}", entry.path().display());
+// Try to get hash and date of the last commit on a best effort basis. If anything goes wrong
+// (git not installed or if this is not a git repository) just return an empty string.
+fn commit_info() -> String {
+    match (commit_hash(), commit_date()) {
+        (Some(hash), Some(date)) => format!(" ({} {})", hash.trim_right(), date),
+        _ => String::new(),
     }
 }
 
-// Returns `None` if git is not available.
-fn git_head_sha1() -> Option<String> {
+fn commit_hash() -> Option<String> {
     Command::new("git")
-        .arg("rev-parse")
-        .arg("--short")
-        .arg("HEAD")
+        .args(&["rev-parse", "--short", "HEAD"])
         .output()
         .ok()
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .map(|mut s| {
-                 let len = s.trim_right().len();
-                 s.truncate(len);
-                 s
-             })
+        .and_then(|r| String::from_utf8(r.stdout).ok())
 }
 
-// Returns `None` if git is not available.
-fn git_tree_is_clean() -> Option<bool> {
+fn commit_date() -> Option<String> {
     Command::new("git")
-        .arg("status")
-        .arg("--porcelain")
-        .arg("--untracked-files=no")
+        .args(&["log", "-1", "--date=short", "--pretty=format:%cd"])
         .output()
         .ok()
-        .map(|o| o.stdout.is_empty())
+        .and_then(|r| String::from_utf8(r.stdout).ok())
 }
