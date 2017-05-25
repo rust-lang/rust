@@ -163,10 +163,10 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
            first_child_shape,
            other_child_shape);
 
-    let child_shape_iter = Some(first_child_shape)
-        .into_iter()
-        .chain(::std::iter::repeat(other_child_shape)
-                   .take(subexpr_list.len() - 1));
+    let child_shape_iter =
+        Some(first_child_shape)
+            .into_iter()
+            .chain(::std::iter::repeat(other_child_shape).take(subexpr_list.len() - 1));
     let iter = subexpr_list.iter().rev().zip(child_shape_iter);
     let mut rewrites = try_opt!(iter.map(|(e, shape)| {
                                              rewrite_chain_subexpr(e, total_span, context, shape)
@@ -186,7 +186,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         if rewrites.len() > 1 {
             true
         } else if rewrites.len() == 1 {
-            parent_rewrite.len() > context.config.chain_one_line_max() / 2
+            context.config.chain_split_single_child() || one_line_len > shape.width
         } else {
             false
         }
