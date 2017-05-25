@@ -14,3 +14,5 @@ impl Handle {
 fn veeeeeeeeeeeeeeeeeeeeery_long_name(a: FirstTypeeeeeeeeee, b: SecondTypeeeeeeeeeeeeeeeeeeeeeee) {}
 
 fn veeeeeeeeeeeeeeeeeeeeeery_long_name(a: FirstTypeeeeeeeeee, b: SecondTypeeeeeeeeeeeeeeeeeeeeeee) {}
+
+fn veeeeeeeeeeeeeeeeeeeeeeery_long_name(a: FirstTypeeeeeeeeee, b: SecondTypeeeeeeeeeeeeeeeeeeeeeee) {}

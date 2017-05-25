@@ -1564,7 +1564,12 @@ fn rewrite_fn_base(context: &RewriteContext,
 
     // Args.
     let (mut one_line_budget, mut multi_line_budget, mut arg_indent) =
-        try_opt!(compute_budgets_for_args(context, &result, indent, ret_str_len, newline_brace));
+        try_opt!(compute_budgets_for_args(context,
+                                          &result,
+                                          indent,
+                                          ret_str_len,
+                                          newline_brace,
+                                          has_braces));
 
     if context.config.fn_args_layout() == IndentStyle::Block {
         arg_indent = indent.block_indent(context.config);
@@ -1906,7 +1911,8 @@ fn compute_budgets_for_args(context: &RewriteContext,
                             result: &str,
                             indent: Indent,
                             ret_str_len: usize,
-                            newline_brace: bool)
+                            newline_brace: bool,
+                            has_braces: bool)
                             -> Option<((usize, usize, Indent))> {
     debug!("compute_budgets_for_args {} {:?}, {}, {}",
            result.len(),
@@ -1915,10 +1921,17 @@ fn compute_budgets_for_args(context: &RewriteContext,
            newline_brace);
     // Try keeping everything on the same line.
     if !result.contains('\n') {
-        // 3 = `() `, space is before ret_string.
-        let mut used_space = indent.width() + result.len() + ret_str_len + 3;
-        if !newline_brace {
-            used_space += 2;
+        // 2 = `()`, 3 = `() `, space is before ret_string.
+        let overhead = if ret_str_len == 0 { 2 } else { 3 };
+        let mut used_space = indent.width() + result.len() + ret_str_len + overhead;
+        if has_braces {
+            if !newline_brace {
+                // 2 = `{}`
+                used_space += 2;
+            }
+        } else {
+            // 1 = `;`
+            used_space += 1;
         }
         let one_line_budget = context
             .config
