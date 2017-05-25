@@ -1893,13 +1893,11 @@ fn rewrite_index(expr: &ast::Expr,
         ("[", "]")
     };
 
-    let budget = shape
-        .width
-        .checked_sub(expr_str.len() + lbr.len() + rbr.len())
-        .unwrap_or(0);
-    let index_str = index.rewrite(context, Shape::legacy(budget, shape.indent));
-    if let Some(index_str) = index_str {
-        return Some(format!("{}{}{}{}", expr_str, lbr, index_str, rbr));
+    let offset = expr_str.len() + lbr.len();
+    if let Some(index_shape) = shape.visual_indent(offset).sub_width(offset + rbr.len()) {
+        if let Some(index_str) = index.rewrite(context, index_shape) {
+            return Some(format!("{}{}{}{}", expr_str, lbr, index_str, rbr));
+        }
     }
 
     let indent = shape.indent.block_indent(&context.config);
