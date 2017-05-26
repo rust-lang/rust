@@ -493,7 +493,7 @@ error: you seem to want to iterate on a map's keys
 help: use the corresponding method
     |     for k in rm.keys() {
 
-error: aborting due to 49 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

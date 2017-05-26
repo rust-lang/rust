@@ -28,7 +28,7 @@ error: literal non-ASCII character detected
    = help: Consider replacing the string with:
            ""\u{dc}ben!""
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

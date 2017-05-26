@@ -24,7 +24,7 @@ note: this expression can be directly returned
 15 |         let x = 5;
    |                 ^
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

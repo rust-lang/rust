@@ -50,7 +50,7 @@ error: `if _ { .. } else { .. }` is an expression
     = note: `-D useless-let-if-seq` implied by `-D warnings`
     = note: you might not need `mut` at all
 
-error: aborting due to 4 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

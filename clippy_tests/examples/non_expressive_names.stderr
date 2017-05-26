@@ -141,7 +141,7 @@ error: 5th binding whose name is just one char
     |
     = note: `-D many-single-char-names` implied by `-D warnings`
 
-error: aborting due to 11 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

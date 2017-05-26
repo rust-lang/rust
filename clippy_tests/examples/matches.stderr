@@ -289,7 +289,7 @@ error: Err(_) will match all errors, maybe not a good idea
     = note: `-D match-wild-err-arm` implied by `-D warnings`
     = note: to remove this warning, match each error seperately or use unreachable macro
 
-error: aborting due to 26 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

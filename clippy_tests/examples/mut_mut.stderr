@@ -105,7 +105,7 @@ error: generally you want to avoid `&mut &mut _` if possible
    |
    = note: `-D mut-mut` implied by `-D warnings`
 
-error: aborting due to 13 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

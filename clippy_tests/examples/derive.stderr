@@ -77,7 +77,7 @@ note: consider deriving `Clone` or removing `Copy`
 67 | | }
    | |_^
 
-error: aborting due to 5 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

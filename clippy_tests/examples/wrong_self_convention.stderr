@@ -94,7 +94,7 @@ error: methods called `from_*` usually take no self; consider choosing a less am
    |
    = note: `-D wrong-self-convention` implied by `-D warnings`
 
-error: aborting due to 12 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

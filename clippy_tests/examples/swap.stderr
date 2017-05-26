@@ -72,7 +72,7 @@ error: this looks like you are trying to swap `c.0` and `a`
    = note: `-D almost-swapped` implied by `-D warnings`
    = note: or maybe you should use `std::mem::replace`?
 
-error: aborting due to 7 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

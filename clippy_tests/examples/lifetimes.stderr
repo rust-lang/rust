@@ -112,7 +112,7 @@ error: explicit lifetimes given in parameter types where they could be elided
     |
     = note: `-D needless-lifetimes` implied by `-D warnings`
 
-error: aborting due to 14 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

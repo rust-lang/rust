@@ -38,7 +38,7 @@ error: Consider removing unnecessary double parentheses
    |
    = note: `-D double-parens` implied by `-D warnings`
 
-error: aborting due to 5 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

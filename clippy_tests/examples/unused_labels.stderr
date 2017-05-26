@@ -26,7 +26,7 @@ error: unused label `'same_label_in_two_fns`
    |
    = note: `-D unused-label` implied by `-D warnings`
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

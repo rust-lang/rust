@@ -104,7 +104,7 @@ error: length comparison to zero
     |
     = note: `-D len-zero` implied by `-D warnings`
 
-error: aborting due to 11 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

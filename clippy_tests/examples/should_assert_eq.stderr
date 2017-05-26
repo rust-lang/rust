@@ -61,7 +61,7 @@ error: use `assert_ne` for better reporting
    = note: `-D should-assert-eq` implied by `-D warnings`
    = note: this error originates in a macro outside of the current crate
 
-error: aborting due to 7 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

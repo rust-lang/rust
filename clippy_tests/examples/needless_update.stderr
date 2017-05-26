@@ -6,7 +6,7 @@ error: struct update has no effect, all the fields in the struct have already be
    |
    = note: `-D needless-update` implied by `-D warnings`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

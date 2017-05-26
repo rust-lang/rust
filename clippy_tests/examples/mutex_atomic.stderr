@@ -54,7 +54,7 @@ error: Consider using an AtomicIsize instead of a Mutex here. If you just want t
    |
    = note: `-D mutex-integer` implied by `-D warnings`
 
-error: aborting due to 7 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

@@ -54,7 +54,7 @@ error: usage of `contains_key` followed by `insert` on a `BTreeMap`
    |
    = note: `-D map-entry` implied by `-D warnings`
 
-error: aborting due to 7 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

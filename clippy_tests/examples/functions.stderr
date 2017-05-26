@@ -95,7 +95,7 @@ error: this public function dereferences a raw pointer but is not marked `unsafe
    |
    = note: `-D not-unsafe-ptr-arg-deref` implied by `-D warnings`
 
-error: aborting due to 12 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

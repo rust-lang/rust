@@ -22,7 +22,7 @@ error: The function/method "takes_an_immutable_reference" doesn't need a mutable
    |
    = note: `-D unnecessary-mut-passed` implied by `-D warnings`
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

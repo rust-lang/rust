@@ -117,7 +117,7 @@ error: empty `loop {}` detected. You may want to either use `panic!()` or add `s
     |
     = note: `-D empty-loop` implied by `-D warnings`
 
-error: aborting due to 10 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

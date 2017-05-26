@@ -86,7 +86,7 @@ error: this if-then-else expression returns a bool literal
    |
    = note: `-D needless-bool` implied by `-D warnings`
 
-error: aborting due to 11 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

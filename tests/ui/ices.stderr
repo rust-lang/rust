@@ -4,5 +4,5 @@ error: cannot find macro `fubar!` in this scope
 3 | fubar!();
   | ^^^^^
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

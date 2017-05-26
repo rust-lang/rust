@@ -214,7 +214,7 @@ error: because of the numeric bounds on `u8` prior to casting, this expression i
    |
    = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
 
-error: aborting due to 27 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

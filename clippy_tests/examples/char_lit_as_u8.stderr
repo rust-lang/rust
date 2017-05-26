@@ -8,7 +8,7 @@ error: casting character literal to u8. `char`s are 4 bytes wide in rust, so cas
   = help: Consider using a byte literal instead:
           b'a'
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

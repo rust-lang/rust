@@ -108,7 +108,7 @@ error: you seem to be using .map() to clone the contents of an Option, consider 
    = help: try
            x.as_ref().cloned()
 
-error: aborting due to 11 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

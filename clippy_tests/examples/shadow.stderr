@@ -140,7 +140,7 @@ note: previous binding is here
 21 |     let x = y;
    |         ^
 
-error: aborting due to 9 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

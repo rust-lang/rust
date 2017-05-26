@@ -93,7 +93,7 @@ error: possibly missing a comma here
    = note: `-D possible-missing-comma` implied by `-D warnings`
    = note: to remove this lint, add a comma or write the expr in a single line
 
-error: aborting due to 10 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

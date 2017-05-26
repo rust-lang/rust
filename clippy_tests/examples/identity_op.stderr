@@ -54,7 +54,7 @@ error: the operation is ineffective. Consider reducing it to `x`
    |
    = note: `-D identity-op` implied by `-D warnings`
 
-error: aborting due to 7 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

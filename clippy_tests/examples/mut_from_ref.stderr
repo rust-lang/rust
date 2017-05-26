@@ -63,7 +63,7 @@ note: immutable borrow here
 32 | fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
    |                           ^^^^^^^     ^^^^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

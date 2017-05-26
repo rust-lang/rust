@@ -14,7 +14,7 @@ error: Negation by multiplying with -1
    |
    = note: `-D neg-multiply` implied by `-D warnings`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

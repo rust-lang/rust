@@ -52,7 +52,7 @@ error: I see you're using a LinkedList! Perhaps you meant some other data struct
    = note: `-D linkedlist` implied by `-D warnings`
    = help: a VecDeque might work
 
-error: aborting due to 6 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

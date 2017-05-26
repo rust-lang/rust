@@ -31,7 +31,7 @@ error: you probably are missing some parameter in your format string
    = note: `-D panic-params` implied by `-D warnings`
    = note: this error originates in a macro outside of the current crate
 
-error: aborting due to 4 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

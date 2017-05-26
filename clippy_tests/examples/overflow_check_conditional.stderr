@@ -62,7 +62,7 @@ error: You are trying to use classic C underflow conditions that will fail in Ru
    |
    = note: `-D overflow-check-conditional` implied by `-D warnings`
 
-error: aborting due to 8 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

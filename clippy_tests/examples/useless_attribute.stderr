@@ -4,7 +4,7 @@ error[E0463]: can't find crate for `clippy_lints`
 6 | extern crate clippy_lints;
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ can't find crate
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

@@ -62,7 +62,7 @@ error: variable appears on both sides of an assignment operation
    |
    = note: `-D misrefactored-assign-op` implied by `-D warnings`
 
-error: aborting due to 8 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

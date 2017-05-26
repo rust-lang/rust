@@ -108,7 +108,7 @@ error: All variants have the same prefix: `With`
    = note: `-D pub-enum-variant-names` implied by `-D warnings`
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
-error: aborting due to 10 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

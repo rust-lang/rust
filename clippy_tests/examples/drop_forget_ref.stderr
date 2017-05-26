@@ -232,7 +232,7 @@ note: argument has type &SomeStruct
 59 |     std::mem::forget(&SomeStruct);
    |                      ^^^^^^^^^^^
 
-error: aborting due to 18 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

@@ -11,7 +11,7 @@ error: Matching on `Some` with `ok()` is redundant
    = note: `-D if-let-some-result` implied by `-D warnings`
    = help: Consider matching on `Ok(y)` and removing the call to `ok` instead
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

@@ -1,4 +1,4 @@
 error: error reading Clippy's configuration file: unknown field `foobar`, expected one of `blacklisted-names`, `cyclomatic-complexity-threshold`, `doc-valid-idents`, `too-many-arguments-threshold`, `type-complexity-threshold`, `single-char-binding-names-threshold`, `too-large-for-stack`, `enum-variant-name-threshold`, `enum-variant-size-threshold`, `third-party`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 
