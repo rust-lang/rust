@@ -1634,6 +1634,7 @@ fn rewrite_fn_base(context: &RewriteContext,
         _ => false,
     } && !fd.inputs.is_empty();
 
+    let mut args_last_line_contains_comment = false;
     if put_args_in_block {
         arg_indent = indent.block_indent(context.config);
         result.push('\n');
@@ -1646,6 +1647,16 @@ fn rewrite_fn_base(context: &RewriteContext,
         result.push_str(&arg_str);
         if context.config.spaces_within_parens() && fd.inputs.len() > 0 {
             result.push(' ')
+        }
+        // If the last line of args contains comment, we cannot put the closing paren
+        // on the same line.
+        if arg_str
+               .lines()
+               .last()
+               .map_or(false, |last_line| last_line.contains("//")) {
+            args_last_line_contains_comment = true;
+            result.push('\n');
+            result.push_str(&arg_indent.to_string(context.config));
         }
         result.push(')');
     }
@@ -1670,7 +1681,8 @@ fn rewrite_fn_base(context: &RewriteContext,
 
                 let overlong_sig = sig_length > context.config.max_width();
 
-                result.contains('\n') || multi_line_ret_str || overlong_sig
+                (!args_last_line_contains_comment) &&
+                (result.contains('\n') || multi_line_ret_str || overlong_sig)
             }
         };
         let ret_indent = if ret_should_indent {
