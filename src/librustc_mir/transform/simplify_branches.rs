@@ -30,7 +30,7 @@ impl<'l, 'tcx> MirPass<'tcx> for SimplifyBranches<'l> {
         for block in mir.basic_blocks_mut() {
             let terminator = block.terminator_mut();
             terminator.kind = match terminator.kind {
-                TerminatorKind::SwitchInt { discr: Operand::Constant(Constant {
+                TerminatorKind::SwitchInt { discr: Operand::Constant(box Constant {
                     literal: Literal::Value { ref value }, ..
                 }), ref values, ref targets, .. } => {
                     if let Some(ref constint) = value.to_const_int() {
@@ -47,7 +47,7 @@ impl<'l, 'tcx> MirPass<'tcx> for SimplifyBranches<'l> {
                         continue
                     }
                 },
-                TerminatorKind::Assert { target, cond: Operand::Constant(Constant {
+                TerminatorKind::Assert { target, cond: Operand::Constant(box Constant {
                     literal: Literal::Value {
                         value: ConstVal::Bool(cond)
                     }, ..

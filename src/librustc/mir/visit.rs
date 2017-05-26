@@ -515,6 +515,7 @@ macro_rules! make_mir_visitor {
 
                     Rvalue::Aggregate(ref $($mutability)* kind,
                                       ref $($mutability)* operands) => {
+                        let kind = &$($mutability)* **kind;
                         match *kind {
                             AggregateKind::Array(ref $($mutability)* ty) => {
                                 self.visit_ty(ty);

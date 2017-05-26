@@ -190,7 +190,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             Rvalue::Aggregate(ref kind, ref _operands) => {
                 // AggregateKind is not distinguished by visit API, so
                 // record it. (`super_rvalue` handles `_operands`.)
-                self.record(match *kind {
+                self.record(match **kind {
                     AggregateKind::Array(_) => "AggregateKind::Array",
                     AggregateKind::Tuple => "AggregateKind::Tuple",
                     AggregateKind::Adt(..) => "AggregateKind::Adt",
