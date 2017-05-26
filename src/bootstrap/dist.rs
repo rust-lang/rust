@@ -30,11 +30,11 @@ use {Build, Compiler, Mode};
 use channel;
 use util::{cp_r, libdir, is_dylib, cp_filtered, copy, exe};
 
-fn pkgname(build: &Build, component: &str) -> String {
+pub fn pkgname(build: &Build, component: &str) -> String {
     if component == "cargo" {
         format!("{}-{}", component, build.cargo_package_vers())
     } else if component == "rls" {
-        format!("{}-{}", component, build.package_vers(&build.release_num("rls")))
+        format!("{}-{}", component, build.rls_package_vers())
     } else {
         assert!(component.starts_with("rust"));
         format!("{}-{}", component, build.rust_package_vers())
@@ -489,38 +489,7 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
     t!(fs::remove_dir_all(&image));
 }
 
-const CARGO_VENDOR_VERSION: &'static str = "0.1.4";
-
-/// Creates the `rust-src` installer component and the plain source tarball
-pub fn rust_src(build: &Build) {
-    if !build.config.rust_dist_src {
-        return
-    }
-
-    println!("Dist src");
-
-    // Make sure that the root folder of tarball has the correct name
-    let plain_name = format!("rustc-{}-src", build.rust_package_vers());
-    let plain_dst_src = tmpdir(build).join(&plain_name);
-    let _ = fs::remove_dir_all(&plain_dst_src);
-    t!(fs::create_dir_all(&plain_dst_src));
-
-    // This is the set of root paths which will become part of the source package
-    let src_files = [
-        "COPYRIGHT",
-        "LICENSE-APACHE",
-        "LICENSE-MIT",
-        "CONTRIBUTING.md",
-        "README.md",
-        "RELEASES.md",
-        "configure",
-        "x.py",
-    ];
-    let src_dirs = [
-        "man",
-        "src",
-    ];
-
+fn copy_src_dirs(build: &Build, src_dirs: &[&str], dst_dir: &Path) {
     let filter_fn = move |path: &Path| {
         let spath = match path.to_str() {
             Some(path) => path,
@@ -549,60 +518,16 @@ pub fn rust_src(build: &Build) {
     };
 
     // Copy the directories using our filter
-    for item in &src_dirs {
-        let dst = &plain_dst_src.join(item);
-        t!(fs::create_dir(dst));
+    for item in src_dirs {
+        let dst = &dst_dir.join(item);
+        t!(fs::create_dir_all(dst));
         cp_filtered(&build.src.join(item), dst, &filter_fn);
     }
-    // Copy the files normally
-    for item in &src_files {
-        copy(&build.src.join(item), &plain_dst_src.join(item));
-    }
+}
 
-    // If we're building from git sources, we need to vendor a complete distribution.
-    if build.src_is_git {
-        // Get cargo-vendor installed, if it isn't already.
-        let mut has_cargo_vendor = false;
-        let mut cmd = Command::new(&build.cargo);
-        for line in output(cmd.arg("install").arg("--list")).lines() {
-            has_cargo_vendor |= line.starts_with("cargo-vendor ");
-        }
-        if !has_cargo_vendor {
-            let mut cmd = Command::new(&build.cargo);
-            cmd.arg("install")
-               .arg("--force")
-               .arg("--debug")
-               .arg("--vers").arg(CARGO_VENDOR_VERSION)
-               .arg("cargo-vendor")
-               .env("RUSTC", &build.rustc);
-            build.run(&mut cmd);
-        }
-
-        // Vendor all Cargo dependencies
-        let mut cmd = Command::new(&build.cargo);
-        cmd.arg("vendor")
-           .current_dir(&plain_dst_src.join("src"));
-        build.run(&mut cmd);
-    }
-
-    // Create the version file
-    write_file(&plain_dst_src.join("version"), build.rust_version().as_bytes());
-
-    // Create plain source tarball
-    let mut tarball = rust_src_location(build);
-    tarball.set_extension(""); // strip .gz
-    tarball.set_extension(""); // strip .tar
-    if let Some(dir) = tarball.parent() {
-        t!(fs::create_dir_all(dir));
-    }
-    let mut cmd = rust_installer(build);
-    cmd.arg("tarball")
-       .arg("--input").arg(&plain_name)
-       .arg("--output").arg(&tarball)
-       .arg("--work-dir=.")
-       .current_dir(tmpdir(build));
-    build.run(&mut cmd);
-
+/// Creates the `rust-src` installer component
+pub fn rust_src(build: &Build) {
+    println!("Dist src");
 
     let name = pkgname(build, "rust-src");
     let image = tmpdir(build).join(format!("{}-image", name));
@@ -636,11 +561,7 @@ pub fn rust_src(build: &Build) {
         "src/rustc/libc_shim",
     ];
 
-    for item in &std_src_dirs {
-        let dst = &dst_src.join(item);
-        t!(fs::create_dir_all(dst));
-        cp_r(&plain_dst_src.join(item), dst);
-    }
+    copy_src_dirs(build, &std_src_dirs[..], &dst_src);
 
     // Create source tarball in rust-installer format
     let mut cmd = rust_installer(build);
@@ -657,7 +578,86 @@ pub fn rust_src(build: &Build) {
     build.run(&mut cmd);
 
     t!(fs::remove_dir_all(&image));
-    t!(fs::remove_dir_all(&plain_dst_src));
+}
+
+const CARGO_VENDOR_VERSION: &'static str = "0.1.4";
+
+/// Creates the plain source tarball
+pub fn plain_source_tarball(build: &Build) {
+    println!("Create plain source tarball");
+
+    // Make sure that the root folder of tarball has the correct name
+    let plain_name = format!("{}-src", pkgname(build, "rustc"));
+    let plain_dst_src = tmpdir(build).join(&plain_name);
+    let _ = fs::remove_dir_all(&plain_dst_src);
+    t!(fs::create_dir_all(&plain_dst_src));
+
+    // This is the set of root paths which will become part of the source package
+    let src_files = [
+        "COPYRIGHT",
+        "LICENSE-APACHE",
+        "LICENSE-MIT",
+        "CONTRIBUTING.md",
+        "README.md",
+        "RELEASES.md",
+        "configure",
+        "x.py",
+    ];
+    let src_dirs = [
+        "man",
+        "src",
+    ];
+
+    copy_src_dirs(build, &src_dirs[..], &plain_dst_src);
+
+    // Copy the files normally
+    for item in &src_files {
+        copy(&build.src.join(item), &plain_dst_src.join(item));
+    }
+
+    // Create the version file
+    write_file(&plain_dst_src.join("version"), build.rust_version().as_bytes());
+
+    // If we're building from git sources, we need to vendor a complete distribution.
+    if build.src_is_git {
+        // Get cargo-vendor installed, if it isn't already.
+        let mut has_cargo_vendor = false;
+        let mut cmd = Command::new(&build.cargo);
+        for line in output(cmd.arg("install").arg("--list")).lines() {
+            has_cargo_vendor |= line.starts_with("cargo-vendor ");
+        }
+        if !has_cargo_vendor {
+            let mut cmd = Command::new(&build.cargo);
+            cmd.arg("install")
+               .arg("--force")
+               .arg("--debug")
+               .arg("--vers").arg(CARGO_VENDOR_VERSION)
+               .arg("cargo-vendor")
+               .env("RUSTC", &build.rustc);
+            build.run(&mut cmd);
+        }
+
+        // Vendor all Cargo dependencies
+        let mut cmd = Command::new(&build.cargo);
+        cmd.arg("vendor")
+           .current_dir(&plain_dst_src.join("src"));
+        build.run(&mut cmd);
+    }
+
+    // Create plain source tarball
+    let mut tarball = rust_src_location(build);
+    tarball.set_extension(""); // strip .gz
+    tarball.set_extension(""); // strip .tar
+    if let Some(dir) = tarball.parent() {
+        t!(fs::create_dir_all(dir));
+    }
+    let mut cmd = rust_installer(build);
+    cmd.arg("tarball")
+       .arg("--input").arg(&plain_name)
+       .arg("--output").arg(&tarball)
+       .arg("--work-dir=.")
+       .current_dir(tmpdir(build));
+    build.run(&mut cmd);
 }
 
 fn install(src: &Path, dstdir: &Path, perms: u32) {

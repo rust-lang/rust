@@ -492,6 +492,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .host(true)
          .run(move |s| check::docs(build, &s.compiler()));
     rules.test("check-distcheck", "distcheck")
+         .dep(|s| s.name("dist-plain-source-tarball"))
          .dep(|s| s.name("dist-src"))
          .run(move |_| check::distcheck(build));
 
@@ -734,6 +735,13 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                  dist::mingw(build, s.target)
              }
          });
+    rules.dist("dist-plain-source-tarball", "src")
+         .default(build.config.rust_dist_src)
+         .host(true)
+         .only_build(true)
+         .only_host_build(true)
+         .dep(move |s| tool_rust_installer(build, s))
+         .run(move |_| dist::plain_source_tarball(build));
     rules.dist("dist-src", "src")
          .default(true)
          .host(true)
@@ -759,9 +767,6 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|s| s.name("tool-rls"))
          .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| dist::rls(build, s.stage, s.target));
-    rules.dist("install", "path/to/nowhere")
-         .dep(|s| s.name("default:dist"))
-         .run(move |s| install::Installer::new(build).install(s.stage, s.target));
     rules.dist("dist-cargo", "cargo")
          .host(true)
          .only_host_build(true)
@@ -788,6 +793,47 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .only_host_build(true)
          .dep(move |s| s.name("tool-build-manifest").target(&build.config.build).stage(0))
          .run(move |_| dist::hash_and_sign(build));
+
+    rules.install("install-docs", "src/doc")
+         .default(build.config.docs)
+         .only_host_build(true)
+         .dep(|s| s.name("dist-docs"))
+         .run(move |s| install::Installer::new(build).install_docs(s.stage, s.target));
+    rules.install("install-std", "src/libstd")
+         .default(true)
+         .only_host_build(true)
+         .dep(|s| s.name("dist-std"))
+         .run(move |s| install::Installer::new(build).install_std(s.stage));
+    rules.install("install-cargo", "cargo")
+         .default(build.config.extended)
+         .host(true)
+         .only_host_build(true)
+         .dep(|s| s.name("dist-cargo"))
+         .run(move |s| install::Installer::new(build).install_cargo(s.stage, s.target));
+    rules.install("install-rls", "rls")
+         .default(build.config.extended)
+         .host(true)
+         .only_host_build(true)
+         .dep(|s| s.name("dist-rls"))
+         .run(move |s| install::Installer::new(build).install_rls(s.stage, s.target));
+    rules.install("install-analysis", "analysis")
+         .default(build.config.extended)
+         .only_host_build(true)
+         .dep(|s| s.name("dist-analysis"))
+         .run(move |s| install::Installer::new(build).install_analysis(s.stage, s.target));
+    rules.install("install-src", "src")
+         .default(build.config.extended)
+         .host(true)
+         .only_build(true)
+         .only_host_build(true)
+         .dep(|s| s.name("dist-src"))
+         .run(move |s| install::Installer::new(build).install_src(s.stage));
+    rules.install("install-rustc", "src/librustc")
+         .default(true)
+         .host(true)
+         .only_host_build(true)
+         .dep(|s| s.name("dist-rustc"))
+         .run(move |s| install::Installer::new(build).install_rustc(s.stage, s.target));
 
     rules.verify();
     return rules;
@@ -902,6 +948,7 @@ enum Kind {
     Bench,
     Dist,
     Doc,
+    Install,
 }
 
 impl<'a> Rule<'a> {
@@ -1033,6 +1080,12 @@ impl<'a> Rules<'a> {
         self.rule(name, path, Kind::Dist)
     }
 
+    /// Same as `build`, but for `Kind::Install`.
+    fn install<'b>(&'b mut self, name: &'a str, path: &'a str)
+                -> RuleBuilder<'a, 'b> {
+        self.rule(name, path, Kind::Install)
+    }
+
     fn rule<'b>(&'b mut self,
                 name: &'a str,
                 path: &'a str,
@@ -1073,6 +1126,7 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             "test" => Kind::Test,
             "bench" => Kind::Bench,
             "dist" => Kind::Dist,
+            "install" => Kind::Install,
             _ => return None,
         };
         let rules = self.rules.values().filter(|r| r.kind == kind);
@@ -1122,13 +1176,8 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             Subcommand::Doc { ref paths } => (Kind::Doc, &paths[..]),
             Subcommand::Test { ref paths, test_args: _ } => (Kind::Test, &paths[..]),
             Subcommand::Bench { ref paths, test_args: _ } => (Kind::Bench, &paths[..]),
-            Subcommand::Dist { ref paths, install } => {
-                if install {
-                    return vec![self.sbuild.name("install")]
-                } else {
-                    (Kind::Dist, &paths[..])
-                }
-            }
+            Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
+            Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
             Subcommand::Clean => panic!(),
         };
 
@@ -1346,10 +1395,6 @@ mod tests {
     use Build;
     use config::Config;
     use flags::Flags;
-
-    macro_rules! a {
-        ($($a:expr),*) => (vec![$($a.to_string()),*])
-    }
 
     fn build(args: &[&str],
              extra_host: &[&str],
