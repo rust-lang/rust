@@ -63,6 +63,7 @@ impl_stable_hash_for!(enum ::syntax::abi::Abi {
     Stdcall,
     Fastcall,
     Vectorcall,
+    Thiscall,
     Aapcs,
     Win64,
     SysV64,
