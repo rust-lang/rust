@@ -901,7 +901,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let llty = type_of::type_of(bcx.ccx, val.ty);
         let cast_ptr = bcx.pointercast(dst.llval, llty.ptr_to());
         let in_type = val.ty;
-        let out_type = dst.ty.to_ty(bcx.tcx());;
+        let out_type = dst.ty.to_ty(bcx.tcx());
         let llalign = cmp::min(bcx.ccx.align_of(in_type), bcx.ccx.align_of(out_type));
         self.store_operand(bcx, cast_ptr, Some(llalign), val);
     }
