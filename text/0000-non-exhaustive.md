@@ -7,12 +7,13 @@
 
 This RFC introduces the `#[non_exhaustive]` attribute for enums and structs,
 which indicates that more variants/public fields may be added to an enum in the
-future. Adding this hint will force downstream crates to add a wildcard arm to
-`match` statements involving the enum, ensuring that adding new variants is not
-a breaking change.
+future. Adding this hint to enums will force downstream crates to add a wildcard
+arm to `match` statements, ensuring that adding new variants is not a breaking
+change. Adding this hint to structs will prevent downstream crates from
+constructing values, because more fields may be added.
 
 This is a post-1.0 version of [RFC 757], modified to use an attribute instead of
-a custom syntax.
+a custom syntax, and extended to structs.
 
 # Motivation
 
