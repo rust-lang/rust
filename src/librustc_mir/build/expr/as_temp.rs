@@ -39,14 +39,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                block, temp_lifetime, expr);
         let this = self;
 
+        let expr_span = expr.span;
+        let source_info = this.source_info(expr_span);
         if let ExprKind::Scope { extent, value } = expr.kind {
-            return this.in_scope(extent, block, |this| {
+            return this.in_scope((extent, source_info), block, |this| {
                 this.as_temp(block, temp_lifetime, value)
             });
         }
 
         let expr_ty = expr.ty.clone();
-        let expr_span = expr.span;
         let temp = this.temp(expr_ty.clone(), expr_span);
         let source_info = this.source_info(expr_span);
 

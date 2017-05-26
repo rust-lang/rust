@@ -339,8 +339,9 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let call_site_extent = CodeExtent::CallSiteScope(body.id());
     let arg_extent = CodeExtent::ParameterScope(body.id());
     let mut block = START_BLOCK;
-    unpack!(block = builder.in_scope(call_site_extent, block, |builder| {
-        unpack!(block = builder.in_scope(arg_extent, block, |builder| {
+    let source_info = builder.source_info(span);
+    unpack!(block = builder.in_scope((call_site_extent, source_info), block, |builder| {
+        unpack!(block = builder.in_scope((arg_extent, source_info), block, |builder| {
             builder.args_and_body(block, &arguments, arg_extent, &body.value)
         }));
         // Attribute epilogue to function's closing brace

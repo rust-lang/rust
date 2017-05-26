@@ -270,14 +270,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub fn in_opt_scope<F, R>(&mut self,
-                              opt_extent: Option<CodeExtent>,
+                              opt_extent: Option<(CodeExtent, SourceInfo)>,
                               mut block: BasicBlock,
                               f: F)
                               -> BlockAnd<R>
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_opt_scope(opt_extent={:?}, block={:?})", opt_extent, block);
-        if let Some(extent) = opt_extent { self.push_scope(extent); }
+        if let Some(extent) = opt_extent { self.push_scope(extent.0); }
         let rv = unpack!(block = f(self));
         if let Some(extent) = opt_extent {
             unpack!(block = self.pop_scope(extent, block));
@@ -289,14 +289,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
     pub fn in_scope<F, R>(&mut self,
-                          extent: CodeExtent,
+                          extent: (CodeExtent, SourceInfo),
                           mut block: BasicBlock,
                           f: F)
                           -> BlockAnd<R>
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
-        self.push_scope(extent);
+        self.push_scope(extent.0);
         let rv = unpack!(block = f(self));
         unpack!(block = self.pop_scope(extent, block));
         debug!("in_scope: exiting extent={:?} block={:?}", extent, block);
@@ -324,7 +324,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// drops onto the end of `block` that are needed.  This must
     /// match 1-to-1 with `push_scope`.
     pub fn pop_scope(&mut self,
-                     extent: CodeExtent,
+                     extent: (CodeExtent, SourceInfo),
                      mut block: BasicBlock)
                      -> BlockAnd<()> {
         debug!("pop_scope({:?}, {:?})", extent, block);
@@ -332,7 +332,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // to make sure all the `cached_block`s are filled in.
         self.diverge_cleanup();
         let scope = self.scopes.pop().unwrap();
-        assert_eq!(scope.extent, extent);
+        assert_eq!(scope.extent, extent.0);
         unpack!(block = build_scope_drops(&mut self.cfg,
                                           &scope,
                                           &self.scopes,
@@ -348,11 +348,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// module comment for details.
     pub fn exit_scope(&mut self,
                       span: Span,
-                      extent: CodeExtent,
+                      extent: (CodeExtent, SourceInfo),
                       mut block: BasicBlock,
                       target: BasicBlock) {
         debug!("exit_scope(extent={:?}, block={:?}, target={:?})", extent, block, target);
-        let scope_count = 1 + self.scopes.iter().rev().position(|scope| scope.extent == extent)
+        let scope_count = 1 + self.scopes.iter().rev().position(|scope| scope.extent == extent.0)
                                                       .unwrap_or_else(||{
             span_bug!(span, "extent {:?} does not enclose", extent)
         });
@@ -363,7 +363,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let mut rest = &mut self.scopes[(len - scope_count)..];
         while let Some((scope, rest_)) = {rest}.split_last_mut() {
             rest = rest_;
-            block = if let Some(&e) = scope.cached_exits.get(&(target, extent)) {
+            block = if let Some(&e) = scope.cached_exits.get(&(target, extent.0)) {
                 self.cfg.terminate(block, scope.source_info(span),
                                    TerminatorKind::Goto { target: e });
                 return;
@@ -371,7 +371,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let b = self.cfg.start_new_block();
                 self.cfg.terminate(block, scope.source_info(span),
                                    TerminatorKind::Goto { target: b });
-                scope.cached_exits.insert((target, extent), b);
+                scope.cached_exits.insert((target, extent.0), b);
                 b
             };
             unpack!(block = build_scope_drops(&mut self.cfg,
