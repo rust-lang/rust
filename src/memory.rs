@@ -100,7 +100,6 @@ impl Pointer {
     }
     
     pub fn is_null_ptr(&self) -> bool {
-        // FIXME: Is this the right way?
         return *self == Pointer::from_int(0)
     }
 }

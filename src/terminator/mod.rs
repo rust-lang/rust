@@ -1,6 +1,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir;
-use rustc::ty::{self, TypeVariants, Ty, TyS, TypeAndMut};
+use rustc::ty::{self, TypeVariants, Ty, TypeAndMut};
 use rustc::ty::layout::Layout;
 use syntax::codemap::Span;
 use syntax::attr;
@@ -600,19 +600,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let key_ptr = args[0].read_ptr(&self.memory)?;
                 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
-                // FIXME: Or should we instead construct the type we expect it to have?
-                let dtor_fn_ty = match self.operand_ty(&arg_operands[1]) {
-                    &TyS { sty: TypeVariants::TyAdt(_, ref substs), .. } => {
+                let dtor_fn_ty = match self.operand_ty(&arg_operands[1]).sty {
+                    TypeVariants::TyAdt(_, ref substs) => {
                         substs.type_at(0)
                     }
                     _ => return Err(EvalError::AbiViolation("Wrong signature used for pthread_key_create: Second argument must be option of a function pointer.".to_owned()))
                 };
                 let dtor_ptr = self.value_to_primval(args[1], dtor_fn_ty)?.to_ptr()?;
+                // TODO: The null-pointer case here is entirely untested
                 let dtor = if dtor_ptr.is_null_ptr() { None } else { Some(self.memory.get_fn(dtor_ptr.alloc_id)?) };
                 
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
-                let key_size = match self.operand_ty(&arg_operands[0]) {
-                    &TyS { sty: TypeVariants::TyRawPtr(TypeAndMut { ty, .. }), .. } => {
+                let key_size = match self.operand_ty(&arg_operands[0]).sty {
+                    TypeVariants::TyRawPtr(TypeAndMut { ty, .. }) => {
                         let layout = self.type_layout(ty)?;
                         layout.size(&self.tcx.data_layout)
                     }

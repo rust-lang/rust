@@ -14,7 +14,7 @@ use eval_context::{EvalContext, StackPopCleanup};
 use lvalue::{Global, GlobalId, Lvalue};
 use value::{Value, PrimVal};
 use memory::Pointer;
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax::codemap::Span;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn inc_step_counter_and_check_limit(&mut self, n: u64) -> EvalResult<'tcx> {
@@ -36,10 +36,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
                 // TODO: Potientiually, this has to support all the other possible instances? See eval_fn_call in terminator/mod.rs
                 let mir = self.load_mir(instance.def)?;
-                // FIXME: Are these the right dummy values?
                 self.push_stack_frame(
                     instance,
-                    DUMMY_SP,
+                    mir.span,
                     mir,
                     Lvalue::from_ptr(Pointer::zst_ptr()),
                     StackPopCleanup::None,
@@ -51,7 +50,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 } else {
                     return Err(EvalError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()));
                 }
-                
+
                 return Ok(true);
             }
             return Ok(false);
