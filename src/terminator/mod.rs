@@ -172,7 +172,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if self.eval_fn_call_inner(
                     instance,
                     destination,
+                    arg_operands,
                     span,
+                    sig,
                 )? {
                     return Ok(());
                 }
@@ -202,18 +204,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(())
             }
             ty::InstanceDef::Item(_) => {
-                match sig.abi {
-                    Abi::C => {
-                        let ty = sig.output();
-                        let (ret, target) = destination.unwrap();
-                        self.call_c_abi(instance.def_id(), arg_operands, ret, ty)?;
-                        self.dump_local(ret);
-                        self.goto_block(target);
-                        return Ok(());
-                    },
-                    Abi::Rust | Abi::RustCall => {},
-                    _ => unimplemented!(),
-                }
                 let mut args = Vec::new();
                 for arg in arg_operands {
                     let arg_val = self.eval_operand(arg)?;
@@ -225,7 +215,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if self.eval_fn_call_inner(
                     instance,
                     destination,
+                    arg_operands,
                     span,
+                    sig,
                 )? {
                     return Ok(());
                 }
@@ -236,7 +228,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 trace!("arg_locals: {:?}", self.frame().mir.args_iter().collect::<Vec<_>>());
                 trace!("arg_operands: {:?}", arg_operands);
                 match sig.abi {
-                    Abi::Rust => {
+                    Abi::Rust | Abi::C => {
                         for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
                             let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
                             self.write_value(arg_val, dest, arg_ty)?;
@@ -316,7 +308,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if self.eval_fn_call_inner(
                     instance,
                     destination,
+                    arg_operands,
                     span,
+                    sig,
                 )? {
                     return Ok(());
                 }
@@ -363,7 +357,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+        arg_operands: &[mir::Operand<'tcx>],
         span: Span,
+        sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool> {
         trace!("eval_fn_call_inner: {:#?}, {:#?}", instance, destination);
 
@@ -372,28 +368,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let mir = match self.load_mir(instance.def) {
             Ok(mir) => mir,
             Err(EvalError::NoMirFor(path)) => {
-                return match &path[..] {
-                    // Intercept some methods if we cannot find their MIR.
-                    "std::io::_print" => {
-                        trace!("Ignoring output.");
-                        self.goto_block(destination.unwrap().1);
-                        Ok(true)
-                    },
-                    "std::thread::Builder::new" => Err(EvalError::Unimplemented("miri does not support threading".to_owned())),
-                    "std::env::args" => Err(EvalError::Unimplemented("miri does not support program arguments".to_owned())),
-                    "std::panicking::rust_panic_with_hook" |
-                    "std::rt::begin_panic_fmt" => Err(EvalError::Panic),
-                    "std::panicking::panicking" |
-                    "std::rt::panicking" => {
-                        let (lval, block) = destination.expect("std::rt::panicking does not diverge");
-                        // we abort on panic -> `std::rt::panicking` always returns false
-                        let bool = self.tcx.types.bool;
-                        self.write_primval(lval, PrimVal::from_bool(false), bool)?;
-                        self.goto_block(block);
-                        Ok(true)
-                    }
-                    _ => Err(EvalError::NoMirFor(path)),
-                };
+                self.call_missing_fn(instance, destination, arg_operands, sig, path)?;
+                return Ok(true);
             },
             Err(other) => return Err(other),
         };
@@ -465,6 +441,50 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         };
         assert!(nndiscr == 0 || nndiscr == 1);
         Ok(if not_null { nndiscr } else { 1 - nndiscr })
+    }
+    
+    /// Returns Ok() when the function was handled, fail otherwise
+    fn call_missing_fn(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+        arg_operands: &[mir::Operand<'tcx>],
+        sig: ty::FnSig<'tcx>,
+        path: String,
+    ) -> EvalResult<'tcx> {
+        if sig.abi == Abi::C {
+            // An external C function
+            let ty = sig.output();
+            let (ret, target) = destination.unwrap();
+            self.call_c_abi(instance.def_id(), arg_operands, ret, ty)?;
+            self.dump_local(ret);
+            self.goto_block(target);
+            return Ok(());
+        }
+    
+        // A Rust function is missing, which means we are running with MIR missing for libstd (or other dependencies).
+        // Still, we can make many things mostly work by "emulating" or ignoring some functions.
+        match &path[..] {
+            "std::io::_print" => {
+                trace!("Ignoring output.");
+                self.goto_block(destination.unwrap().1);
+                Ok(())
+            },
+            "std::thread::Builder::new" => Err(EvalError::Unimplemented("miri does not support threading".to_owned())),
+            "std::env::args" => Err(EvalError::Unimplemented("miri does not support program arguments".to_owned())),
+            "std::panicking::rust_panic_with_hook" |
+            "std::rt::begin_panic_fmt" => Err(EvalError::Panic),
+            "std::panicking::panicking" |
+            "std::rt::panicking" => {
+                let (lval, block) = destination.expect("std::rt::panicking does not diverge");
+                // we abort on panic -> `std::rt::panicking` always returns false
+                let bool = self.tcx.types.bool;
+                self.write_primval(lval, PrimVal::from_bool(false), bool)?;
+                self.goto_block(block);
+                Ok(())
+            }
+            _ => Err(EvalError::NoMirFor(path)),
+        }
     }
 
     fn call_c_abi(
