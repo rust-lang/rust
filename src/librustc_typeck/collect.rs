@@ -54,6 +54,7 @@ There are some shortcomings in this design:
 */
 
 use astconv::{AstConv, Bounds};
+use lint;
 use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::const_val::ConstVal;
@@ -896,8 +897,12 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         if !allow_defaults && p.default.is_some() {
             if !tcx.sess.features.borrow().default_type_parameter_fallback {
-                tcx.sess.span_err(p.span, "defaults for type parameters are only allowed in \
-                                           `struct`, `enum`, `type`, or `trait` definitions.");
+                tcx.sess.add_lint(
+                    lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
+                    p.id,
+                    p.span,
+                    format!("defaults for type parameters are only allowed in `struct`, \
+                             `enum`, `type`, or `trait` definitions."));
             }
         }
 

@@ -197,6 +197,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "issue #36247 <https://github.com/rust-lang/rust/issues/36247>",
         },
         FutureIncompatibleInfo {
+            id: LintId::of(INVALID_TYPE_PARAM_DEFAULT),
+            reference: "issue #36887 <https://github.com/rust-lang/rust/issues/36887>",
+        },
+        FutureIncompatibleInfo {
             id: LintId::of(EXTRA_REQUIREMENT_IN_IMPL),
             reference: "issue #37166 <https://github.com/rust-lang/rust/issues/37166>",
         },
@@ -251,8 +255,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/33685");
     store.register_removed("inaccessible_extern_crate",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/36886");
-    store.register_removed("invalid_type_param_default",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36887");
     store.register_removed("super_or_self_in_global_path",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/36888");
     store.register_removed("overlapping_inherent_impls",
