@@ -352,6 +352,9 @@ declare_features! (
 
     // Allows use of the :vis macro fragment specifier
     (active, macro_vis_matcher, "1.18.0", Some(41022)),
+
+    // Allows use of pattern guards with Bind-By-Move
+    (active, bind_by_move_pattern_guards, "1.18.0", Some(15287)),
 );
 
 declare_features! (

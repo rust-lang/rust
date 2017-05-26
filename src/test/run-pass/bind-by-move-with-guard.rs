@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-bind_by_move_pattern_guards
-use std::sync::mpsc::channel;
+#![feature(bind_by_move_pattern_guards)]
 
-fn main() {
-    let (tx, rx) = channel();
-    let x = Some(rx);
-    tx.send(false);
+use std::sync::Arc;
+fn dispose(_x: Arc<bool>) { }
+
+pub fn main() {
+    let p = Arc::new(true);
+    let x = Some(p);
     match x {
-        Some(z) if z.recv().unwrap() => { panic!() },
-            //~^ ERROR cannot bind by-move into a pattern guard
-        Some(z) => { assert!(!z.recv().unwrap()); },
-        None => panic!()
+        Some(z) if z == Arc::new(true) => { dispose(z); },
+        _ => panic!()
     }
 }

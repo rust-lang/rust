@@ -17,6 +17,7 @@
     - [associated_consts](language-features/associated-consts.md)
     - [associated_type_defaults](language-features/associated-type-defaults.md)
     - [attr_literals](language-features/attr-literals.md)
+    - [bind_by_move_pattern_guards](language-features/bind_by_move_pattern_guards.md)
     - [box_patterns](language-features/box-patterns.md)
     - [box_syntax](language-features/box-syntax.md)
     - [catch_expr](language-features/catch-expr.md)
