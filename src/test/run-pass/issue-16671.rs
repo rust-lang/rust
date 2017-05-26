@@ -13,7 +13,7 @@
 fn foo<F: FnOnce()>(_f: F) { }
 
 fn main() {
-    let mut var = Vec::new();;
+    let mut var = Vec::new();
     foo(move|| {
         var.push(1);
     });
