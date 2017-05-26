@@ -176,7 +176,6 @@ pub enum DepNode<D: Clone + Debug> {
     IsMirAvailable(D),
     ItemAttrs(D),
     FnArgNames(D),
-    FileMap(D, Arc<String>),
 }
 
 impl<D: Clone + Debug> DepNode<D> {
@@ -307,7 +306,6 @@ impl<D: Clone + Debug> DepNode<D> {
             ConstIsRvaluePromotableToStatic(ref d) => op(d).map(ConstIsRvaluePromotableToStatic),
             IsMirAvailable(ref d) => op(d).map(IsMirAvailable),
             GlobalMetaData(ref d, kind) => op(d).map(|d| GlobalMetaData(d, kind)),
-            FileMap(ref d, ref file_name) => op(d).map(|d| FileMap(d, file_name.clone())),
         }
     }
 }
