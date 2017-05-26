@@ -261,7 +261,7 @@ fn print_diagnostics_for_error<E: Error>(err: &E) {
     if let Some(ref cause) = err.cause() {
         print_diagnostics_for_error(cause);
     }
-    eprintln!("{}: {}", get_program_name(), err.description());
+    eprintln!("{}: {}", get_program_name(), err);
 }
 
 impl<E: Error> Termination for Result<(), E> {
