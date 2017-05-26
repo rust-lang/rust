@@ -1782,7 +1782,7 @@ fn rewrite_call_args(context: &RewriteContext,
         // and not rewriting macro.
         Some(ref s) if context.config.fn_call_style() == IndentStyle::Block &&
                        !context.inside_macro &&
-                       ((!can_be_overflowed(&context, args) && last_char_is_not_comma &&
+                       ((!can_be_overflowed(context, args) && last_char_is_not_comma &&
                          s.contains('\n')) ||
                         first_line_width(s) > one_line_budget) => {
             fmt.trailing_separator = SeparatorTactic::Vertical;

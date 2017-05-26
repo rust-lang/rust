@@ -16,6 +16,10 @@ fn main() {
                 .client_credentials(&self.config.auth.oauth2.id, &self.config.auth.oauth2.secret)?;
         }
     }
+
+    // nesting macro and function call
+    try!(foo(xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx));
+    try!(foo(try!(xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)));
 }
 
 // #1521
