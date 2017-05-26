@@ -124,6 +124,9 @@ pub fn main() {
            .unwrap_or(false) {
         // first run (we blatantly copy clippy's code structure here)
         // we are being run as `cargo semver`
+        //
+        // TODO: maybe it would make sense to reuse cargo internals here to avoid the quite ugly
+        // dance this turns out to be :)
 
         let manifest_path_arg = std::env::args()
             .skip(2)
