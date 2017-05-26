@@ -520,7 +520,7 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
 #[unstable(feature = "fused", issue = "35602")]
 impl<I> FusedIterator for Cycle<I> where I: Clone + Iterator {}
 
-/// An iterator that steps by n elements every iteration.
+/// An adapter for stepping iterators by a custom amount.
 ///
 /// This `struct` is created by the [`step_by`] method on [`Iterator`]. See
 /// its documentation for more.
@@ -553,7 +553,26 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
             self.iter.nth(self.step)
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let inner_hint = self.iter.size_hint();
+
+        if self.first_take {
+            let f = |n| if n == 0 { 0 } else { 1 + (n-1)/(self.step+1) };
+            (f(inner_hint.0), inner_hint.1.map(f))
+        } else {
+            let f = |n| n / (self.step+1);
+            (f(inner_hint.0), inner_hint.1.map(f))
+        }
+    }
 }
+
+// StepBy can only make the iterator shorter, so the len will still fit.
+#[unstable(feature = "iterator_step_by",
+           reason = "unstable replacement of Range::step_by",
+           issue = "27741")]
+impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
 
 /// An iterator that strings two iterators together.
 ///
