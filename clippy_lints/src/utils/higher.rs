@@ -76,8 +76,8 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
                     end: None,
                     limits: ast::RangeLimits::HalfOpen,
                 })
-            } else if match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY_STD) ||
-                      match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY) {
+            } else if match_path(path, &paths::RANGE_INCLUSIVE_STD) ||
+                      match_path(path, &paths::RANGE_INCLUSIVE) {
                 Some(Range {
                     start: get_field("start", fields),
                     end: get_field("end", fields),
