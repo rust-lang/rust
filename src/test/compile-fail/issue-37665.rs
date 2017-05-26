@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait A: Copy {}
+// compile-flags: -Z unstable-options --unpretty=mir
 
-pub trait D {
-    fn f<T>(self)
-        where T<Bogus = Self::AlsoBogus>: A;
-        //~^ ERROR associated type bindings are not allowed here [E0229]
-        //~| NOTE associated type not allowed here
+use std::path::MAIN_SEPARATOR;
+
+fn main() {
+    let mut foo : String = "hello".to_string();
+    foo.push(MAIN_SEPARATOR);
+    println!("{}", foo);
+    let x: () = 0; //~ ERROR: mismatched types
 }
-
-fn main() {}

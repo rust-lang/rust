@@ -435,6 +435,12 @@ impl str {
     /// Creates a string slice from another string slice, bypassing safety
     /// checks.
     ///
+    /// This is generally not recommended, use with caution! For a safe
+    /// alternative see [`str`] and [`Index`].
+    ///
+    /// [`str`]: primitive.str.html
+    /// [`Index`]: ops/trait.Index.html
+    ///
     /// This new slice goes from `begin` to `end`, including `begin` but
     /// excluding `end`.
     ///
@@ -477,6 +483,11 @@ impl str {
 
     /// Creates a string slice from another string slice, bypassing safety
     /// checks.
+    /// This is generally not recommended, use with caution! For a safe
+    /// alternative see [`str`] and [`IndexMut`].
+    ///
+    /// [`str`]: primitive.str.html
+    /// [`IndexMut`]: ops/trait.IndexMut.html
     ///
     /// This new slice goes from `begin` to `end`, including `begin` but
     /// excluding `end`.
@@ -1018,7 +1029,7 @@ impl str {
     ///
     /// ```
     /// let x = "(///)".to_string();
-    /// let d: Vec<_> = x.split('/').collect();;
+    /// let d: Vec<_> = x.split('/').collect();
     ///
     /// assert_eq!(d, &["(", "", "", ")"]);
     /// ```

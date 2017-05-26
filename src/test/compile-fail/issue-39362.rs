@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait A: Copy {}
+enum Foo {
+    Bar { bar: Bar, id: usize }
+}
 
-pub trait D {
-    fn f<T>(self)
-        where T<Bogus = Self::AlsoBogus>: A;
-        //~^ ERROR associated type bindings are not allowed here [E0229]
-        //~| NOTE associated type not allowed here
+enum Bar {
+    A, B, C, D, E, F
+}
+
+fn test(f: Foo) {
+    match f {
+        //~^ ERROR non-exhaustive patterns
+        //~| patterns
+        Foo::Bar { bar: Bar::A, .. } => (),
+        Foo::Bar { bar: Bar::B, .. } => (),
+    }
 }
 
 fn main() {}

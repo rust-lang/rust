@@ -309,7 +309,7 @@ pub use self::iterator::Iterator;
 
 #[unstable(feature = "step_trait",
            reason = "likely to be replaced by finer-grained traits",
-           issue = "27741")]
+           issue = "42168")]
 pub use self::range::Step;
 #[unstable(feature = "step_by", reason = "recent addition",
            issue = "27741")]
