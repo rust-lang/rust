@@ -20,7 +20,7 @@ use super::{FusedIterator, TrustedLen};
 /// two `Step` objects.
 #[unstable(feature = "step_trait",
            reason = "likely to be replaced by finer-grained traits",
-           issue = "27741")]
+           issue = "42168")]
 pub trait Step: PartialOrd + Sized {
     /// Steps `self` if possible.
     fn step(&self, by: &Self) -> Option<Self>;
@@ -55,7 +55,7 @@ macro_rules! step_impl_unsigned {
     ($($t:ty)*) => ($(
         #[unstable(feature = "step_trait",
                    reason = "likely to be replaced by finer-grained traits",
-                   issue = "27741")]
+                   issue = "42168")]
         impl Step for $t {
             #[inline]
             fn step(&self, by: &$t) -> Option<$t> {
@@ -115,7 +115,7 @@ macro_rules! step_impl_signed {
     ($($t:ty)*) => ($(
         #[unstable(feature = "step_trait",
                    reason = "likely to be replaced by finer-grained traits",
-                   issue = "27741")]
+                   issue = "42168")]
         impl Step for $t {
             #[inline]
             fn step(&self, by: &$t) -> Option<$t> {
@@ -187,7 +187,7 @@ macro_rules! step_impl_no_between {
     ($($t:ty)*) => ($(
         #[unstable(feature = "step_trait",
                    reason = "likely to be replaced by finer-grained traits",
-                   issue = "27741")]
+                   issue = "42168")]
         impl Step for $t {
             #[inline]
             fn step(&self, by: &$t) -> Option<$t> {
