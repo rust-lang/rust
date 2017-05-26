@@ -1813,10 +1813,6 @@ impl<B, I, St, F> Iterator for Scan<I, St, F> where
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
-impl<B, I, St, F> FusedIterator for Scan<I, St, F>
-    where I: FusedIterator, F: FnMut(&mut St, I::Item) -> Option<B> {}
-
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.
 ///
