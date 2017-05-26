@@ -1879,12 +1879,21 @@ fn rewrite_args(context: &RewriteContext,
         item.item = Some(arg);
     }
 
+    let last_line_ends_with_comment = arg_items
+        .iter()
+        .last()
+        .and_then(|item| item.post_comment.as_ref())
+        .map_or(false, |s| s.trim().starts_with("//"));
+
     let (indent, trailing_comma, end_with_newline) = match context.config.fn_args_layout() {
         IndentStyle::Block if fits_in_one_line => {
             (indent.block_indent(context.config), SeparatorTactic::Never, true)
         }
         IndentStyle::Block => {
             (indent.block_indent(context.config), SeparatorTactic::Vertical, true)
+        }
+        IndentStyle::Visual if last_line_ends_with_comment => {
+            (arg_indent, SeparatorTactic::Vertical, true)
         }
         IndentStyle::Visual => (arg_indent, SeparatorTactic::Never, false),
     };
