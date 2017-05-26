@@ -14,7 +14,7 @@ use eval_context::{EvalContext, StackPopCleanup};
 use lvalue::{Global, GlobalId, Lvalue};
 use value::{Value, PrimVal};
 use memory::Pointer;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, DUMMY_SP};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn inc_step_counter_and_check_limit(&mut self, n: u64) -> EvalResult<'tcx> {
@@ -32,6 +32,28 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.memory.clear_packed();
         self.inc_step_counter_and_check_limit(1)?;
         if self.stack.is_empty() {
+            if let Some((instance, ptr)) = self.memory.fetch_tls_dtor() {
+                trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
+                // TODO: Potientiually, this has to support all the other possible instances? See eval_fn_call in terminator/mod.rs
+                let mir = self.load_mir(instance.def)?;
+                // FIXME: Are these the right dummy values?
+                self.push_stack_frame(
+                    instance,
+                    DUMMY_SP,
+                    mir,
+                    Lvalue::from_ptr(Pointer::zst_ptr()),
+                    StackPopCleanup::None,
+                )?;
+                if let Some(arg_local) = self.frame().mir.args_iter().next() {
+                    let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                    let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
+                    self.write_value(Value::ByVal(PrimVal::Ptr(ptr)), dest, ty)?;
+                } else {
+                    return Err(EvalError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()));
+                }
+                
+                return Ok(true);
+            }
             return Ok(false);
         }
 
@@ -49,11 +71,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 mir,
                 new_constants: &mut new,
             }.visit_statement(block, stmt, mir::Location { block, statement_index: stmt_id });
+            // if ConstantExtractor added new frames, we don't execute anything here
+            // but await the next call to step
             if new? == 0 {
                 self.statement(stmt)?;
             }
-            // if ConstantExtractor added new frames, we don't execute anything here
-            // but await the next call to step
             return Ok(true);
         }
 
@@ -66,11 +88,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             mir,
             new_constants: &mut new,
         }.visit_terminator(block, terminator, mir::Location { block, statement_index: stmt_id });
+        // if ConstantExtractor added new frames, we don't execute anything here
+        // but await the next call to step
         if new? == 0 {
             self.terminator(terminator)?;
         }
-        // if ConstantExtractor added new frames, we don't execute anything here
-        // but await the next call to step
         Ok(true)
     }
 

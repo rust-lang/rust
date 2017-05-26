@@ -221,6 +221,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     args.push((arg_val, arg_ty));
                 }
 
+                // Push the stack frame, and potentially be entirely done if the call got hooked
                 if self.eval_fn_call_inner(
                     instance,
                     destination,
@@ -229,6 +230,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     return Ok(());
                 }
 
+                // Pass the arguments
                 let mut arg_locals = self.frame().mir.args_iter();
                 trace!("ABI: {:?}", sig.abi);
                 trace!("arg_locals: {:?}", self.frame().mir.args_iter().collect::<Vec<_>>());
@@ -595,19 +597,30 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             // Hook pthread calls that go to the thread-local storage memory subsystem
             "pthread_key_create" => {
-                let key = self.memory.create_tls_key();
                 let key_ptr = args[0].read_ptr(&self.memory)?;
-
+                
+                // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
+                // FIXME: Or should we instead construct the type we expect it to have?
+                let dtor_fn_ty = match self.operand_ty(&arg_operands[1]) {
+                    &TyS { sty: TypeVariants::TyAdt(_, ref substs), .. } => {
+                        substs.type_at(0)
+                    }
+                    _ => return Err(EvalError::AbiViolation("Wrong signature used for pthread_key_create: Second argument must be option of a function pointer.".to_owned()))
+                };
+                let dtor_ptr = self.value_to_primval(args[1], dtor_fn_ty)?.to_ptr()?;
+                let dtor = if dtor_ptr.is_null_ptr() { None } else { Some(self.memory.get_fn(dtor_ptr.alloc_id)?) };
+                
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
                 let key_size = match self.operand_ty(&arg_operands[0]) {
                     &TyS { sty: TypeVariants::TyRawPtr(TypeAndMut { ty, .. }), .. } => {
                         let layout = self.type_layout(ty)?;
                         layout.size(&self.tcx.data_layout)
                     }
-                    _ => return Err(EvalError::Unimplemented("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))
+                    _ => return Err(EvalError::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))
                 };
                 
-                // Write the key into the memory where key_ptr wants it
+                // Create key and write it into the memory where key_ptr wants it
+                let key = self.memory.create_tls_key(dtor);
                 if key >= (1 << key_size.bits()) {
                     return Err(EvalError::OutOfTls);
                 }

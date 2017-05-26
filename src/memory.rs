@@ -15,8 +15,6 @@ use value::PrimVal;
 #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AllocId(pub u64);
 
-pub type TlsKey = usize;
-
 impl fmt::Display for AllocId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
@@ -100,6 +98,19 @@ impl Pointer {
     pub fn never_ptr() -> Self {
         Pointer::new(NEVER_ALLOC_ID, 0)
     }
+    
+    pub fn is_null_ptr(&self) -> bool {
+        // FIXME: Is this the right way?
+        return *self == Pointer::from_int(0)
+    }
+}
+
+pub type TlsKey = usize;
+
+#[derive(Copy, Clone, Debug)]
+pub struct TlsEntry<'tcx> {
+    data: Pointer, // will eventually become a map from thread IDs to pointers
+    dtor: Option<ty::Instance<'tcx>>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,7 +164,7 @@ pub struct Memory<'a, 'tcx> {
     literal_alloc_cache: HashMap<Vec<u8>, AllocId>,
     
     /// pthreads-style Thread-local storage.  We only have one thread, so this is just a map from TLS keys (indices into the vector) to the pointer stored there.
-    thread_local: HashMap<TlsKey, Pointer>,
+    thread_local: HashMap<TlsKey, TlsEntry<'tcx>>,
 
     /// The Key to use for the next thread-local allocation.
     next_thread_local: TlsKey,
@@ -356,11 +367,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.packed.clear();
     }
 
-    pub(crate) fn create_tls_key(&mut self) -> TlsKey {
+    pub(crate) fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
         let new_key = self.next_thread_local;
         self.next_thread_local += 1;
-        self.thread_local.insert(new_key, Pointer::from_int(0));
-        trace!("New TLS key allocated: {}", new_key);
+        self.thread_local.insert(new_key, TlsEntry { data: Pointer::from_int(0), dtor });
+        trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
         return new_key;
     }
 
@@ -376,23 +387,37 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub(crate) fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Pointer> {
         return match self.thread_local.get(&key) {
-            Some(&ptr) => {
-                trace!("TLS key {} loaded: {:?}", key, ptr);
-                Ok(ptr)
+            Some(&TlsEntry { data, .. }) => {
+                trace!("TLS key {} loaded: {:?}", key, data);
+                Ok(data)
             },
             None => Err(EvalError::TlsOutOfBounds)
         }
     }
 
-    pub(crate) fn store_tls(&mut self, key: TlsKey, new_ptr: Pointer) -> EvalResult<'tcx> {
+    pub(crate) fn store_tls(&mut self, key: TlsKey, new_data: Pointer) -> EvalResult<'tcx> {
         return match self.thread_local.get_mut(&key) {
-            Some(ptr) => {
-                trace!("TLS key {} stored: {:?}", key, new_ptr);
-                *ptr = new_ptr;
+            Some(&mut TlsEntry { ref mut data, .. }) => {
+                trace!("TLS key {} stored: {:?}", key, new_data);
+                *data = new_data;
                 Ok(())
             },
             None => Err(EvalError::TlsOutOfBounds)
         }
+    }
+    
+    // Returns a dtor and its argument, if one is supposed to run
+    pub(crate) fn fetch_tls_dtor(&mut self) -> Option<(ty::Instance<'tcx>, Pointer)> {
+        for (_, &mut TlsEntry { ref mut data, dtor }) in self.thread_local.iter_mut() {
+            if !data.is_null_ptr() {
+                if let Some(dtor) = dtor {
+                    let old_data = *data;
+                    *data = Pointer::from_int(0);
+                    return Some((dtor, old_data));
+                }
+            }
+        }
+        return None;
     }
 }
 
