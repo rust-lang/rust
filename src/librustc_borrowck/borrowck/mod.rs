@@ -129,13 +129,6 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
                        move_data: flowed_moves } =
         build_borrowck_dataflow_data(bccx, &cfg, body_id);
 
-    move_data::fragments::instrument_move_fragments(&flowed_moves.move_data,
-                                                    bccx.tcx,
-                                                    owner_id);
-    move_data::fragments::build_unfragmented_map(bccx,
-                                                 &flowed_moves.move_data,
-                                                 owner_id);
-
     check_loans::check_loans(bccx, &loan_dfcx, &flowed_moves, &all_loans, body);
 }
 
