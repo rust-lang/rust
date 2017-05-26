@@ -5,10 +5,11 @@
 
 # Summary
 
-This RFC introduces the `#[non_exhaustive]` attribute for enums, which indicates
-that more variants may be added to an enum in the future. Adding this hint
-will force downstream crates to add a wildcard arm to `match` statements
-involving the enum, ensuring that adding new variants is not a breaking change.
+This RFC introduces the `#[non_exhaustive]` attribute for enums and structs,
+which indicates that more variants/public fields may be added to an enum in the
+future. Adding this hint will force downstream crates to add a wildcard arm to
+`match` statements involving the enum, ensuring that adding new variants is not
+a breaking change.
 
 This is a post-1.0 version of [RFC 757], modified to use an attribute instead of
 a custom syntax.
@@ -203,10 +204,68 @@ Although these options will unlikely matter in this example because
 error-handling code (hopefully) shouldn't run very often, it could matter for
 other use cases.
 
+## A case for structs
+
+In addition to enums, it makes sense to extend this feature to structs as well.
+For example, consider [`syn::Generics`]:
+
+```rust
+pub struct Generics {
+    pub lifetimes: Vec<LifetimeDef>,
+    pub ty_params: Vec<TyParam>,
+    pub where_clause: WhereClause,
+}
+```
+
+Let's say that the language introduces `use` clauses, as described by
+@petrochenkov [here][use clauses]. Now, it seems natural to add a new field to
+this struct:
+
+```rust
+pub struct Generics {
+    pub lifetimes: Vec<LifetimeDef>,
+    pub ty_params: Vec<TyParam>,
+    pub where_clause: WhereClause,
+    pub use_clause: UseClause,
+}
+```
+
+Unfortunately, this is a breaking change. Because we have full knowledge of the
+fields in the struct, we can construct `Generics` without a special constructor:
+
+```rust
+let gens = Generics {
+    lifetimes: Vec::new(),
+    ty_params: Vec::new(),
+    where_clause: WhereClause::none(),
+};
+```
+
+If we add this field, this will turn into a compiler error; we didn't add a
+value for the use clause!
+
+To rectify this, we can add a private field to the struct:
+
+```rust
+pub struct Generics {
+    pub lifetimes: Vec<LifetimeDef>,
+    pub ty_params: Vec<TyParam>,
+    pub where_clause: WhereClause,
+    non_exhaustive: (),
+}
+```
+
+But this makes it more difficult for the crate itself to construct `Generics`,
+because they have to add a `non_exhaustive: ()` field every time they make a new
+value.
+
 # Detailed design
 
 An attribute `#[non_exhaustive]` is added to the language, which will (for now)
-fail to compile if it's used on anything other than an enum definition.
+fail to compile if it's used on anything other than an enum or struct
+definition.
+
+## Enums
 
 Within the crate that defines the enum, this attribute is essentially ignored,
 so that the current crate can continue to exhaustively match the enum. The
@@ -252,43 +311,74 @@ match error {
 And it should *not* be marked as dead code, even if the compiler does mark it as
 dead and remove it.
 
+## Structs
+
+Like with enums, the attribute is essentially ignored in the crate that defines
+the struct, so that users can continue to construct values for the struct.
+However, this will prevent downstream users from constructing values, because
+fields may be added to the struct in the future.
+
+For example, using [`syn::Generics`] again:
+
+```rust
+#[non_exhaustive]
+pub struct Generics {
+    pub lifetimes: Vec<LifetimeDef>,
+    pub ty_params: Vec<TyParam>,
+    pub where_clause: WhereClause,
+}
+```
+
+This will still allow the crate to create values of `Generics`, but it will
+prevent the user from doing so, because more fields might be added in the
+future.
+
+Although it should not be explicitly forbidden by the language to mark a struct
+with some private fields as non-exhaustive, it should emit a warning to tell the
+user that the attribute has no effect.
+
 ## Changes to rustdoc
 
-Right now, the only indicator that rustdoc gives for non-exhaustive enums is a
-comment saying "some variants omitted." This shows up whenever variants are
-marked as `#[doc(hidden)]`, and rustdoc should continue to emit this message.
+Right now, the only indicator that rustdoc gives for non-exhaustive enums and
+structs is a comment saying "some variants/fields omitted." This shows up
+whenever variants or fields are marked as `#[doc(hidden)]`, or when fields are
+private. rustdoc should continue to emit this message in these cases.
 
 However, after this message (if any), it should offer an additional message
-saying "more variants may be added in the future," to clarify that the enum is
-non-exhaustive. It also hints to the user that in the future, they may want to
-fine-tune their match code to include future variants when they are added.
+saying "more variants/fields may be added in the future," to clarify that the
+enum/struct is non-exhaustive. It also hints to the user that in the future,
+they may want to fine-tune any match code for enums to include future variants
+when they are added.
 
-These two messages should be distinct; the former says "this enum has stuff
-that you shouldn't see," while the latter says "this enum is incomplete and may
-be extended in the future."
+These two messages should be distinct; the former says "this enum/struct has
+stuff that you shouldn't see," while the latter says "this enum/struct is
+incomplete and may be extended in the future."
 
 # How We Teach This
 
 Changes to rustdoc should make it easier for users to understand the concept of
-non-exhaustive enums in the wild.
+non-exhaustive enums and structs in the wild.
 
-Additionally, in the chapter on enums, a section should be added specifically
-for non-exhaustive enums. Because error types are common in almost all crates,
-this case is important enough to be taught when a user learns Rust for the first
+In the chapter on enums, a section should be added specifically for
+non-exhaustive enums. Because error types are common in almost all crates, this
+case is important enough to be taught when a user learns Rust for the first
 time.
+
+Additionally, non-exhaustive structs should be documented in an early chapter on
+structs. Public fields should be preferred over getter/setter methods in Rust,
+although users should be aware that adding extra fields is a potentially
+breaking change.
 
 # Drawbacks
 
 * The `#[doc(hidden)]` hack in practice is usually good enough.
 * An attribute may be more confusing than a dedicated syntax.
 * `non_exhaustive` may not be the clearest name.
-* It's unclear if this attribute should apply to other aspects of the language
-  than just enums.
 
 # Alternatives
 
-* Provide a dedicated syntax for enums instead of an attribute. This would
-  likely be done by adding a `..` variant, as proposed by the original
+* Provide a dedicated syntax instead of an attribute. This would likely be done
+  by adding a `...` variant or field, as proposed by the original
   [extensible enums RFC][RFC 757].
 * Allow creating private enum variants, giving a less-hacky way to create a
   hidden variant.
@@ -301,39 +391,7 @@ non-exuhaustive? What if a user wants to add a warning to their matches using
 non-exhaustive enums, to indicate that more code should be added to handle a new
 variant?
 
-Should the below extensions be added?
-
-## Extensions to structs
-
-It makes sense to eventually allow this attribute on structs as well. Unlike
-enums, it's very easy to make a struct non-exhaustive:
-
-```rust
-pub struct Thing {
-    pub number_of_eggs: usize,
-    pub friction_constant: f64,
-    pub can_swim: bool,
-    non_exhaustive: (),
-}
-```
-
-Because the `non_exhaustive` field is private, downstream crates cannot
-construct a value of `Thing` or exhaustively match its fields, even though they
-can access other fields. However, this seems less ergonomic than:
-
-```rust
-#[non_exhaustive]
-pub struct Thing {
-    pub number_of_eggs: usize,
-    pub friction_constant: f64,
-    pub can_swim: bool,
-}
-```
-
-Because then the upstream crate won't have to add the `non_exhaustive` field
-when constructing a value, or exhaustively matching patterns.
-
-## Extensions to traits
+## Extending to traits
 
 Tangentially, it also makes sense to have non-exhaustive traits as well, even
 though they'd be non-exhaustive in a different way. Take this example from
@@ -387,4 +445,6 @@ implemented downstream.
 [RFC 757]: https://github.com/rust-lang/rfcs/pull/757
 [`std::io::ErrorKind`]: https://doc.rust-lang.org/1.17.0/std/io/enum.ErrorKind.html
 [`diesel::result::Error`]: https://docs.rs/diesel/0.13.0/diesel/result/enum.Error.html
+[`syn::Generics`]: https://dtolnay.github.io/syn/syn/struct.Generics.html
+[use clauses]: https://github.com/rust-lang/rfcs/pull/1976#issuecomment-301903528
 [`byteorder`]: https://github.com/BurntSushi/byteorder/tree/f8e7685b3a81c52f5448fd77fb4e0535bc92f880
