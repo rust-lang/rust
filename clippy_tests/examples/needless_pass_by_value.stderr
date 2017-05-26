@@ -62,7 +62,7 @@ help: consider taking a reference instead
    |     let Wrapper(ref t) = *y; // not moved
    |     let Wrapper(_) = *y; // still not moved
 
-error: aborting due to 7 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

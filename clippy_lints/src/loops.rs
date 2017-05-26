@@ -285,12 +285,15 @@ declare_lint! {
     "looping on a map using `iter` when `keys` or `values` would do"
 }
 
-/// **What it does:** Checks for loops that contain an unconditional `break`.
+/// **What it does:** Checks for loops that contain an unconditional `break`
+/// or `return`.
 ///
 /// **Why is this bad?** This loop never loops, all it does is obfuscating the
 /// code.
 ///
-/// **Known problems:** None.
+/// **Known problems:** Ignores `continue` statements in the loop that create
+/// nontrivial control flow. Therefore set to `Allow` by default.
+/// See https://github.com/Manishearth/rust-clippy/issues/1586
 ///
 /// **Example:**
 /// ```rust
@@ -298,8 +301,8 @@ declare_lint! {
 /// ```
 declare_lint! {
     pub NEVER_LOOP,
-    Warn,
-    "any loop with an unconditional `break` statement"
+    Allow,
+    "any loop with an unconditional `break` or `return` statement"
 }
 
 #[derive(Copy, Clone)]

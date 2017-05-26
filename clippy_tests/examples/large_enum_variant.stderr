@@ -67,7 +67,7 @@ error: large size difference between variants
 help: consider boxing the large fields to reduce the total size of the enum
    |     StructLikeLarge2 { x: Box<[i32; 8000]> },
 
-error: aborting due to 6 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

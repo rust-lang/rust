@@ -118,7 +118,7 @@ error: very complex type used. Consider factoring parts into `type` definitions
    |
    = note: `-D type-complexity` implied by `-D warnings`
 
-error: aborting due to 15 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

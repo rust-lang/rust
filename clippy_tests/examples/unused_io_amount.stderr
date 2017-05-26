@@ -48,7 +48,7 @@ error: handle read amount returned or use `Read::read_exact` instead
    |
    = note: `-D unused-io-amount` implied by `-D warnings`
 
-error: aborting due to 6 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

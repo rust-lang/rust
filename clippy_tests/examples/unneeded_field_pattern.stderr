@@ -16,7 +16,7 @@ error: All the struct fields are matched to a wildcard pattern, consider using `
    = note: `-D unneeded-field-pattern` implied by `-D warnings`
    = help: Try with `Foo { .. }` instead
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

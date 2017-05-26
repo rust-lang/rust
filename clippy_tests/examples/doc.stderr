@@ -230,7 +230,7 @@ error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the doc
     |
     = note: `-D doc-markdown` implied by `-D warnings`
 
-error: aborting due to 29 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

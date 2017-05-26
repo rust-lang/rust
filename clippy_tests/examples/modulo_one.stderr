@@ -6,7 +6,7 @@ error: any number modulo 1 will be 0
   |
   = note: `-D modulo-one` implied by `-D warnings`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

@@ -14,7 +14,7 @@ error: adding items after statements is confusing, since items exist from the st
    |
    = note: `-D items-after-statements` implied by `-D warnings`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

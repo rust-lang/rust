@@ -70,7 +70,7 @@ error: unary minus has lower precedence than method call
    |
    = note: `-D precedence` implied by `-D warnings`
 
-error: aborting due to 9 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

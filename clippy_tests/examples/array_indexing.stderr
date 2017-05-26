@@ -150,7 +150,7 @@ error: range is out of bounds
    |
    = note: `-D out-of-bounds-indexing` implied by `-D warnings`
 
-error: aborting due to 19 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

@@ -30,7 +30,7 @@ error: equality checks against false can be replaced by a negation
    |
    = note: `-D bool-comparison` implied by `-D warnings`
 
-error: aborting due to 4 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

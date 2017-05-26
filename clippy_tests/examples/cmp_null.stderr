@@ -14,7 +14,7 @@ error: Comparing with null is better expressed by the .is_null() method
    |
    = note: `-D cmp-null` implied by `-D warnings`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

@@ -14,7 +14,7 @@ error: `0 as *mut _` detected. Consider using `ptr::null_mut()`
   |
   = note: `-D zero-ptr` implied by `-D warnings`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

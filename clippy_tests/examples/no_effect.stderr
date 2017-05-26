@@ -350,7 +350,7 @@ error: statement can be reduced
    |
    = note: `-D unnecessary-operation` implied by `-D warnings`
 
-error: aborting due to 44 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

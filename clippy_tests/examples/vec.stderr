@@ -46,7 +46,7 @@ error: useless use of `vec!`
    |
    = note: `-D useless-vec` implied by `-D warnings`
 
-error: aborting due to 6 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

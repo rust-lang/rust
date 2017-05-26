@@ -136,7 +136,7 @@ help: try
    |     let _ = c != d || a != b;
    |     let _ = !(a == b && c == d);
 
-error: aborting due to 13 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

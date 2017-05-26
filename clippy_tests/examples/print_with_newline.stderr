@@ -30,7 +30,7 @@ error: using `print!()` with a format string that ends in a newline, consider us
   |
   = note: `-D print-with-newline` implied by `-D warnings`
 
-error: aborting due to 4 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

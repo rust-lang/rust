@@ -22,7 +22,7 @@ error: writing `&Vec<_>` instead of `&[_]` involves one more reference and canno
    |
    = note: `-D ptr-arg` implied by `-D warnings`
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

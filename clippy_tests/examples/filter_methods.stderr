@@ -42,7 +42,7 @@ error: called `filter_map(p).map(q)` on an `Iterator`. This is more succinctly e
    |
    = note: `-D filter-map` implied by `-D warnings`
 
-error: aborting due to 4 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

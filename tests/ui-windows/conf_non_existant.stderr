@@ -1,4 +1,4 @@
 error: error reading Clippy's configuration file: The system cannot find the file specified. (os error 2)
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

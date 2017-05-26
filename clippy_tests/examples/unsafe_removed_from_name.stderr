@@ -22,7 +22,7 @@ error: removed "unsafe" from the name of `Unsafe` in use as `LieAboutModSafety`
    |
    = note: `-D unsafe-removed-from-name` implied by `-D warnings`
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

@@ -94,7 +94,7 @@ error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
    |
    = note: `-D cmp-nan` implied by `-D warnings`
 
-error: aborting due to 12 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

@@ -118,7 +118,7 @@ error: ineffective bit mask: `x | 1` compared to `8`, is the same as x compared 
    |
    = note: `-D ineffective-bit-mask` implied by `-D warnings`
 
-error: aborting due to 15 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

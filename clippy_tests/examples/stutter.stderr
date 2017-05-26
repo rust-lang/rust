@@ -30,7 +30,7 @@ error: item name ends with its containing module's name
    |
    = note: `-D stutter` implied by `-D warnings`
 
-error: aborting due to 4 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

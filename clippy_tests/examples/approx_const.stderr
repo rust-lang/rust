@@ -150,7 +150,7 @@ error: approximate value of `f{32, 64}::consts::SQRT_2` found. Consider using it
    |
    = note: `-D approx-constant` implied by `-D warnings`
 
-error: aborting due to 19 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

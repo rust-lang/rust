@@ -358,7 +358,7 @@ error: casting to the same type is unnecessary (`bool` -> `bool`)
    |
    = note: `-D unnecessary-cast` implied by `-D warnings`
 
-error: aborting due to 45 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

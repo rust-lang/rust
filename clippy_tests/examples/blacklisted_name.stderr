@@ -110,7 +110,7 @@ error: use of a blacklisted/placeholder name `baz`
    |
    = note: `-D blacklisted-name` implied by `-D warnings`
 
-error: aborting due to 14 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 

@@ -54,7 +54,7 @@ error: this boolean expression can be simplified
    |
    = note: `-D nonminimal-bool` implied by `-D warnings`
 
-error: aborting due to 5 previous errors
+error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.
 
