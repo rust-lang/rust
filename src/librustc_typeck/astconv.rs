@@ -22,6 +22,7 @@ use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
+use rustc::lint::builtin::PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES;
 use rustc_back::slice;
 use require_c_abi_if_variadic;
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
@@ -161,7 +162,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         match item_segment.parameters {
             hir::AngleBracketedParameters(_) => {}
             hir::ParenthesizedParameters(..) => {
-                self.prohibit_parenthesized_params(item_segment);
+                self.prohibit_parenthesized_params(item_segment, true);
 
                 return Substs::for_item(tcx, def_id, |_, _| {
                     tcx.types.re_static
@@ -957,7 +958,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     pub fn prohibit_type_params(&self, segments: &[hir::PathSegment]) {
         for segment in segments {
             if let hir::ParenthesizedParameters(_) = segment.parameters {
-                self.prohibit_parenthesized_params(segment);
+                self.prohibit_parenthesized_params(segment, false);
                 break;
             }
             for typ in segment.parameters.types() {
@@ -982,12 +983,18 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
     }
 
-    pub fn prohibit_parenthesized_params(&self, segment: &hir::PathSegment) {
+    pub fn prohibit_parenthesized_params(&self, segment: &hir::PathSegment, emit_error: bool) {
         if let hir::ParenthesizedParameters(ref data) = segment.parameters {
-            struct_span_err!(self.tcx().sess, data.span, E0214,
-                      "parenthesized parameters may only be used with a trait")
-                .span_label(data.span, "only traits may use parentheses")
-                .emit();
+            if emit_error {
+                struct_span_err!(self.tcx().sess, data.span, E0214,
+                          "parenthesized parameters may only be used with a trait")
+                    .span_label(data.span, "only traits may use parentheses")
+                    .emit();
+            } else {
+                let msg = "parenthesized parameters may only be used with a trait".to_string();
+                self.tcx().sess.add_lint(PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
+                                         ast::CRATE_NODE_ID, data.span, msg);
+            }
         }
     }
 

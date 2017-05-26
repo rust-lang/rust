@@ -4495,7 +4495,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     (&data.lifetimes[..], &data.types[..], data.infer_types, &data.bindings[..])
                 }
                 Some(&hir::ParenthesizedParameters(_)) => {
-                    AstConv::prohibit_parenthesized_params(self, &segment.as_ref().unwrap().0);
+                    AstConv::prohibit_parenthesized_params(self, &segment.as_ref().unwrap().0,
+                                                           false);
                     (&[][..], &[][..], true, &[][..])
                 }
                 None => (&[][..], &[][..], true, &[][..])
