@@ -1772,13 +1772,17 @@ fn rewrite_call_args(context: &RewriteContext,
         acc + item.item.as_ref().map_or(0, |s| 2 + first_line_width(s))
     }) <= one_line_budget + 2;
 
-    match write_list(&item_vec, &fmt) {
+    let result = write_list(&item_vec, &fmt);
+    let last_char_is_not_comma = result
+        .as_ref()
+        .map_or(false, |r| r.chars().last().unwrap_or(' ') != ',');
+    match result {
         // If arguments do not fit in a single line and do not contain newline,
         // try to put it on the next line. Try this only when we are in block mode
         // and not rewriting macro.
         Some(ref s) if context.config.fn_call_style() == IndentStyle::Block &&
                        !context.inside_macro &&
-                       ((!can_be_overflowed(context, args) && args.len() == 1 &&
+                       ((!can_be_overflowed(&context, args) && last_char_is_not_comma &&
                          s.contains('\n')) ||
                         first_line_width(s) > one_line_budget) => {
             fmt.trailing_separator = SeparatorTactic::Vertical;
@@ -1786,13 +1790,7 @@ fn rewrite_call_args(context: &RewriteContext,
             write_list(&item_vec, &fmt).map(|rw| (false, rw))
         }
         rewrite @ _ => {
-            rewrite.map(|rw| {
-                            (extendable &&
-                             rw.chars()
-                                 .last()
-                                 .map_or(true, |c| force_trailing_comma || c != ','),
-                             rw)
-                        })
+            rewrite.map(|rw| (extendable && (last_char_is_not_comma || force_trailing_comma), rw))
         }
     }
 }
@@ -1809,6 +1807,7 @@ fn can_be_overflowed(context: &RewriteContext, args: &[ptr::P<ast::Expr>]) -> bo
             context.config.fn_call_style() == IndentStyle::Visual && args.len() > 1
         }
         Some(&ast::ExprKind::Call(..)) |
+        Some(&ast::ExprKind::Mac(..)) |
         Some(&ast::ExprKind::Struct(..)) => {
             context.config.fn_call_style() == IndentStyle::Block && args.len() == 1
         }
@@ -1824,6 +1823,7 @@ fn is_extendable(args: &[ptr::P<ast::Expr>]) -> bool {
             ast::ExprKind::Call(..) |
             ast::ExprKind::Closure(..) |
             ast::ExprKind::Match(..) |
+            ast::ExprKind::Mac(..) |
             ast::ExprKind::Struct(..) |
             ast::ExprKind::Tup(..) => true,
             _ => false,
