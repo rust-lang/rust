@@ -306,7 +306,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let bool_ty = self.hir.bool_ty();
                     let eq_result = self.temp(bool_ty, test.span);
                     let eq_block = self.cfg.start_new_block();
-                    let cleanup = self.diverge_cleanup();
+                    let cleanup = self.diverge_cleanup(test.span);
                     self.cfg.terminate(block, source_info, TerminatorKind::Call {
                         func: Operand::Constant(box Constant {
                             span: test.span,

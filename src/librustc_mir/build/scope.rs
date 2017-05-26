@@ -330,7 +330,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         debug!("pop_scope({:?}, {:?})", extent, block);
         // We need to have `cached_block`s available for all the drops, so we call diverge_cleanup
         // to make sure all the `cached_block`s are filled in.
-        self.diverge_cleanup();
+        self.diverge_cleanup(extent.1.span);
         let scope = self.scopes.pop().unwrap();
         assert_eq!(scope.extent, extent.0);
         unpack!(block = build_scope_drops(&mut self.cfg,
@@ -607,7 +607,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// This path terminates in Resume. Returns the start of the path.
     /// See module comment for more details. None indicates there’s no
     /// cleanup to do at this point.
-    pub fn diverge_cleanup(&mut self) -> Option<BasicBlock> {
+    pub fn diverge_cleanup(&mut self, span: Span) -> Option<BasicBlock> {
         if !self.scopes.iter().any(|scope| scope.needs_cleanup) {
             return None;
         }
@@ -641,7 +641,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         for scope in scopes.iter_mut().filter(|s| s.needs_cleanup) {
-            target = build_diverge_scope(hir.tcx(), cfg, &unit_temp, scope, target);
+            target = build_diverge_scope(hir.tcx(), cfg, &unit_temp, span, scope, target);
         }
         Some(target)
     }
@@ -657,7 +657,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
         let source_info = self.source_info(span);
         let next_target = self.cfg.start_new_block();
-        let diverge_target = self.diverge_cleanup();
+        let diverge_target = self.diverge_cleanup(span);
         self.cfg.terminate(block, source_info,
                            TerminatorKind::Drop {
                                location: location,
@@ -675,7 +675,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                   value: Operand<'tcx>) -> BlockAnd<()> {
         let source_info = self.source_info(span);
         let next_target = self.cfg.start_new_block();
-        let diverge_target = self.diverge_cleanup();
+        let diverge_target = self.diverge_cleanup(span);
         self.cfg.terminate(block, source_info,
                            TerminatorKind::DropAndReplace {
                                location: location,
@@ -698,7 +698,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = self.source_info(span);
 
         let success_block = self.cfg.start_new_block();
-        let cleanup = self.diverge_cleanup();
+        let cleanup = self.diverge_cleanup(span);
 
         self.cfg.terminate(block, source_info,
                            TerminatorKind::Assert {
@@ -767,6 +767,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
 fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                        cfg: &mut CFG<'tcx>,
                                        unit_temp: &Lvalue<'tcx>,
+                                       span: Span,
                                        scope: &mut Scope<'tcx>,
                                        mut target: BasicBlock)
                                        -> BasicBlock
