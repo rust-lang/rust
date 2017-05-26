@@ -106,7 +106,6 @@ fn version() {
 }
 
 pub fn main() {
-    // TODO: use getopt, as we import it anyway
     // TODO: maybe don't use cargo_metadata, as it pulls in tons of deps
 
     if std::env::args().any(|arg| arg == "-h" || arg == "--help") {
@@ -196,8 +195,7 @@ pub fn main() {
                 .map(|s| s.to_owned())
                 .or_else(|| {
                     Command::new("rustc")
-                        .arg("--print")
-                        .arg("sysroot")
+                        .args(&["--print", "sysroot"])
                         .output()
                         .ok()
                         .and_then(|out| String::from_utf8(out.stdout).ok())
@@ -236,6 +234,7 @@ pub fn main() {
     }
 }
 
+// run `cargo rustc` with `RUSTC` set to our path
 fn process<I>(old_args: I) -> Result<(), i32>
     where I: Iterator<Item = String>
 {
