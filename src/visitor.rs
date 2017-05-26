@@ -19,6 +19,7 @@ use strings::string_buffer::StringBuffer;
 use {Indent, Shape};
 use utils;
 use codemap::{LineRangeUtils, SpanUtils};
+use comment::FindUncommented;
 use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
@@ -249,7 +250,15 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ItemKind::Impl(..) => {
                 self.format_missing_with_indent(source!(self, item.span).lo);
-                if let Some(impl_str) = format_impl(&self.get_context(), item, self.block_indent) {
+                let snippet = self.get_context().snippet(item.span);
+                let where_span_end =
+                    snippet
+                        .find_uncommented("{")
+                        .map(|x| (BytePos(x as u32)) + source!(self, item.span).lo);
+                if let Some(impl_str) = format_impl(&self.get_context(),
+                                                    item,
+                                                    self.block_indent,
+                                                    where_span_end) {
                     self.buffer.push_str(&impl_str);
                     self.last_pos = source!(self, item.span).hi;
                 }
