@@ -1678,12 +1678,14 @@ fn rewrite_call_args(context: &RewriteContext,
                      one_line_width: usize,
                      force_trailing_comma: bool)
                      -> Option<(bool, String)> {
+    let mut item_context = context.clone();
+    item_context.inside_macro = false;
     let items = itemize_list(context.codemap,
                              args.iter(),
                              ")",
                              |item| item.span.lo,
                              |item| item.span.hi,
-                             |item| item.rewrite(context, shape),
+                             |item| item.rewrite(&item_context, shape),
                              span.lo,
                              span.hi);
     let mut item_vec: Vec<_> = items.collect();
@@ -1691,7 +1693,7 @@ fn rewrite_call_args(context: &RewriteContext,
     // Try letting the last argument overflow to the next line with block
     // indentation. If its first line fits on one line with the other arguments,
     // we format the function arguments horizontally.
-    let overflow_last = can_be_overflowed(context, args);
+    let overflow_last = can_be_overflowed(&item_context, args);
 
     let mut orig_last = None;
     let mut placeholder = None;
@@ -1709,7 +1711,7 @@ fn rewrite_call_args(context: &RewriteContext,
         } else {
             shape.block()
         };
-        let rewrite = args.last().unwrap().rewrite(context, arg_shape);
+        let rewrite = args.last().unwrap().rewrite(&item_context, arg_shape);
         swap(&mut item_vec[args.len() - 1].item, &mut orig_last);
 
         if let Some(rewrite) = rewrite {
