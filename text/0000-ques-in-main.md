@@ -202,7 +202,7 @@ allowed to be `()`, but other types in that position may also make
 sense.  The appropriate bound for E is unclear; there are plausible
 arguments for at least `Error`, `Debug`, and `Display`.  This proposal
 starts from the narrowest possibility and provides for only
-`Result<() E> where E: Error`.
+`Result<(), E> where E: Error`.
 
 ## The `Termination` trait
 [the-termination-trait]: #the-termination-trait
@@ -474,13 +474,8 @@ Any other argument has an implementation-defined effect.
 
 Within the Unix ecosystem, `exit` can be relied upon to pass values in
 the range 0 through 255 up to the parent process; this is the range
-proposed for `ExitStatus::from_code`.  (POSIX says that one should be
-able to pass a full C `int` through `exit` as long as the parent uses
-`waitid` to retrieve the value, but this is not widely implemented.
-Also, values 128 through 255 have historically been avoided because
-older implementations were unreliable about zero- rather than
-sign-extending in `WEXITSTATUS`.)  There is no general agreement on
-the meaning of specific nonzero exit codes, but there are many
+proposed for `ExitStatus::from_code`.  There is no general agreement
+on the meaning of specific nonzero exit codes, but there are many
 contexts that give specific codes a meaning, such as:
 
 * POSIX reserves status 127 for certain internal failures in `system`
@@ -647,7 +642,6 @@ surprising than the status quo.
 Do nothing; continue to live with the trip hazard, the extra
 boilerplate required to comply with platform conventions, and people
 using `panic!` to report ordinary errors because it's less hassle.
-
 "Template projects" (e.g. [quickstart][]) mean that one need not write
 out all the boilerplate by hand, but it's still there.
 
@@ -690,6 +684,32 @@ think it is mostly orthogonal to this proposal, but we should make
 sure it doesn't conflict and we should also figure out whether we
 would need more impls of `Termination` to make them play well
 together.
+
+Limiting `ExitStatus::from_code` to the range of a `u8` is somewhat
+arbitrary.  There is an argument for allowing the full range of `i32`,
+consistent with `process::exit`.  On Windows, arbitrary `DWORD`
+quantities can pass through `ExitProcess` to `GetExitCodeProcess`,
+except that the value 259 is reserved to mean "this process is still
+running."  On fully POSIX-compliant systems, it is possible to pass an
+arbitrary `int` through `_exit` to `waitid`, but not `waitpid`;
+`waitid` is not available on all contemporary Unixes (e.g. NetBSD
+doesn't have it) and transmission of arbitrary `int`s is not
+implemented by all those that do have it (e.g. Linux and FreeBSD
+truncate the exit status to `u8`, same as for `waitpid`, and OSX
+truncates it to 24 *signed* bits).  The core Rust stdlib generally
+refrains from providing features that work on some but not all
+supported platforms, so I think the restriction to `u8` is
+appropriate.
+
+There is also an argument for limiting `ExitStatus::from_code` to the
+range 0 through 127, because some shells conflate exit codes above 127
+with *signal* statuses (e.g. in Bourne shell, `$?` having the value
+130 could mean either exit code 130, or killed by signal 2), and
+because some old C libraries would sign- rather than zero-extend in
+`WEXITSTATUS`.  However, these would not affect Rust programs
+communicating with other Rust programs so I do not think the
+limitation is appropriate.  Also, there is currently no way to express
+the range 0 through 127 in the type system.
 
 Most operating systems accept only a scalar exit status, but
 [Plan 9][], uniquely (to my knowledge), takes an entire string (see
