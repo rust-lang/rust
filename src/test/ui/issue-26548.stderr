@@ -5,5 +5,5 @@ note: ...which then requires computing layout of `std::option::Option<<S as Mirr
 note: ...which then requires computing layout of `<S as Mirror>::It`...
   = note: ...which then again requires computing layout of `S`, completing the cycle.
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 
