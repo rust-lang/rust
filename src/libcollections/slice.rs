@@ -393,7 +393,12 @@ impl<T> [T] {
     }
 
     /// Returns a reference to an element or subslice, without doing bounds
-    /// checking. So use it very carefully!
+    /// checking.
+    ///
+    /// This is generally not recommended, use with caution! For a safe
+    /// alternative see [`get`].
+    ///
+    /// [`get`]: #method.get
     ///
     /// # Examples
     ///
@@ -413,7 +418,12 @@ impl<T> [T] {
     }
 
     /// Returns a mutable reference to an element or subslice, without doing
-    /// bounds checking. So use it very carefully!
+    /// bounds checking.
+    ///
+    /// This is generally not recommended, use with caution! For a safe
+    /// alternative see [`get_mut`].
+    ///
+    /// [`get_mut`]: #method.get_mut
     ///
     /// # Examples
     ///
