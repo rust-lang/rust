@@ -1,4 +1,4 @@
-error: cannot apply unary operator `!` to type `&'static str`
+error[E0600]: cannot apply unary operator `!` to type `&'static str`
   --> $DIR/issue-28308.rs:12:5
    |
 12 |     assert!("foo");
