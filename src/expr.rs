@@ -74,7 +74,7 @@ fn format_expr(expr: &ast::Expr,
         }
         ast::ExprKind::Call(ref callee, ref args) => {
             let inner_span = mk_sp(callee.span.hi, expr.span.hi);
-            rewrite_call(context, &**callee, args, inner_span, shape)
+            rewrite_call_with_binary_search(context, &**callee, args, inner_span, shape)
         }
         ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape),
         ast::ExprKind::Binary(ref op, ref lhs, ref rhs) => {
@@ -1603,41 +1603,47 @@ fn string_requires_rewrite(context: &RewriteContext,
     false
 }
 
-pub fn rewrite_call<R>(context: &RewriteContext,
-                       callee: &R,
-                       args: &[ptr::P<ast::Expr>],
-                       span: Span,
-                       shape: Shape)
-                       -> Option<String>
+pub fn rewrite_call_with_binary_search<R>(context: &RewriteContext,
+                                          callee: &R,
+                                          args: &[ptr::P<ast::Expr>],
+                                          span: Span,
+                                          shape: Shape)
+                                          -> Option<String>
     where R: Rewrite
 {
     let closure = |callee_max_width| {
-        rewrite_call_inner(context, callee, callee_max_width, args, span, shape, false)
+        // FIXME using byte lens instead of char lens (and probably all over the
+        // place too)
+        let callee_shape = Shape {
+            width: callee_max_width,
+            ..shape
+        };
+        let callee_str = callee
+            .rewrite(context, callee_shape)
+            .ok_or(Ordering::Greater)?;
+
+        rewrite_call_inner(context, &callee_str, args, span, shape, false)
     };
 
     binary_search(1, shape.width, closure)
 }
 
-fn rewrite_call_inner<R>(context: &RewriteContext,
-                         callee: &R,
-                         max_callee_width: usize,
-                         args: &[ptr::P<ast::Expr>],
-                         span: Span,
-                         shape: Shape,
-                         force_trailing_comma: bool)
-                         -> Result<String, Ordering>
-    where R: Rewrite
-{
-    // FIXME using byte lens instead of char lens (and probably all over the
-    // place too)
-    let callee_shape = Shape {
-        width: max_callee_width,
-        ..shape
-    };
-    let callee_str = callee
-        .rewrite(context, callee_shape)
-        .ok_or(Ordering::Greater)?;
+pub fn rewrite_call(context: &RewriteContext,
+                    callee: &str,
+                    args: &[ptr::P<ast::Expr>],
+                    span: Span,
+                    shape: Shape)
+                    -> Option<String> {
+    rewrite_call_inner(context, &callee, args, span, shape, false).ok()
+}
 
+fn rewrite_call_inner(context: &RewriteContext,
+                      callee_str: &str,
+                      args: &[ptr::P<ast::Expr>],
+                      span: Span,
+                      shape: Shape,
+                      force_trailing_comma: bool)
+                      -> Result<String, Ordering> {
     // 2 = `( `, 1 = `(`
     let paren_overhead = if context.config.spaces_within_parens() {
         2
@@ -2108,7 +2114,6 @@ pub fn rewrite_tuple(context: &RewriteContext,
     // 1 = ","
     rewrite_call_inner(context,
                        &String::new(),
-                       shape.width.checked_sub(1).unwrap_or(0),
                        items,
                        span,
                        shape,
