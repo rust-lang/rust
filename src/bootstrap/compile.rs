@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::env;
 
 use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
@@ -44,6 +45,11 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     build.clear_if_dirty(&out_dir, &build.compiler_path(compiler));
     let mut cargo = build.cargo(compiler, Mode::Libstd, target, "build");
     let mut features = build.std_features();
+
+    if let Ok(target) = env::var("MACOSX_STD_DEPLOYMENT_TARGET") {
+        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
+    }
+
     // When doing a local rebuild we tell cargo that we're stage1 rather than
     // stage0. This works fine if the local rust and being-built rust have the
     // same view of what the default allocator is, but fails otherwise. Since
@@ -109,6 +115,13 @@ pub fn std_link(build: &Build,
     if target.contains("musl") && !target.contains("mips") {
         copy_musl_third_party_objects(build, target, &libdir);
     }
+
+    if build.config.sanitizers && compiler.stage != 0 && target == "x86_64-apple-darwin" {
+        // The sanitizers are only built in stage1 or above, so the dylibs will
+        // be missing in stage0 and causes panic. See the `std()` function above
+        // for reason why the sanitizers are not built in stage0.
+        copy_apple_sanitizer_dylibs(&build.native_dir(target), "osx", &libdir);
+    }
 }
 
 /// Copies the crt(1,i,n).o startup objects
@@ -117,6 +130,18 @@ pub fn std_link(build: &Build,
 fn copy_musl_third_party_objects(build: &Build, target: &str, into: &Path) {
     for &obj in &["crt1.o", "crti.o", "crtn.o"] {
         copy(&build.musl_root(target).unwrap().join("lib").join(obj), &into.join(obj));
+    }
+}
+
+fn copy_apple_sanitizer_dylibs(native_dir: &Path, platform: &str, into: &Path) {
+    for &sanitizer in &["asan", "tsan"] {
+        let filename = format!("libclang_rt.{}_{}_dynamic.dylib", sanitizer, platform);
+        let mut src_path = native_dir.join(sanitizer);
+        src_path.push("build");
+        src_path.push("lib");
+        src_path.push("darwin");
+        src_path.push(&filename);
+        copy(&src_path, &into.join(filename));
     }
 }
 
@@ -145,6 +170,7 @@ pub fn build_startup_objects(build: &Build, for_compiler: &Compiler, target: &st
         if !up_to_date(src_file, dst_file) {
             let mut cmd = Command::new(&compiler_path);
             build.run(cmd.env("RUSTC_BOOTSTRAP", "1")
+                        .arg("--cfg").arg(format!("stage{}", compiler.stage))
                         .arg("--target").arg(target)
                         .arg("--emit=obj")
                         .arg("--out-dir").arg(dst_dir)
@@ -170,6 +196,9 @@ pub fn test(build: &Build, target: &str, compiler: &Compiler) {
     let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
     build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
     let mut cargo = build.cargo(compiler, Mode::Libtest, target, "build");
+    if let Ok(target) = env::var("MACOSX_STD_DEPLOYMENT_TARGET") {
+        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
+    }
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/libtest/Cargo.toml"));
     build.run(&mut cargo);
@@ -249,7 +278,7 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
         cargo.env("CFG_LLVM_ROOT", s);
     }
     // Building with a static libstdc++ is only supported on linux right now,
-    // not for MSVC or OSX
+    // not for MSVC or macOS
     if build.config.llvm_static_stdcpp &&
        !target.contains("windows") &&
        !target.contains("apple") {
@@ -266,6 +295,7 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
         cargo.env("CFG_DEFAULT_AR", s);
     }
     build.run(&mut cargo);
+    update_mtime(build, &librustc_stamp(build, compiler, target));
 }
 
 /// Same as `std_link`, only for librustc
@@ -294,6 +324,12 @@ fn libstd_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
 /// compiler for the specified target.
 fn libtest_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
     build.cargo_out(compiler, Mode::Libtest, target).join(".libtest.stamp")
+}
+
+/// Cargo's output path for librustc in a given stage, compiled by a particular
+/// compiler for the specified target.
+fn librustc_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
+    build.cargo_out(compiler, Mode::Librustc, target).join(".librustc.stamp")
 }
 
 fn compiler_file(compiler: &Path, file: &str) -> PathBuf {
@@ -402,25 +438,30 @@ fn add_to_sysroot(out_dir: &Path, sysroot_dst: &Path) {
 ///
 /// This will build the specified tool with the specified `host` compiler in
 /// `stage` into the normal cargo output directory.
+pub fn maybe_clean_tools(build: &Build, stage: u32, target: &str, mode: Mode) {
+    let compiler = Compiler::new(stage, &build.config.build);
+
+    let stamp = match mode {
+        Mode::Libstd => libstd_stamp(build, &compiler, target),
+        Mode::Libtest => libtest_stamp(build, &compiler, target),
+        Mode::Librustc => librustc_stamp(build, &compiler, target),
+        _ => panic!(),
+    };
+    let out_dir = build.cargo_out(&compiler, Mode::Tool, target);
+    build.clear_if_dirty(&out_dir, &stamp);
+}
+
+/// Build a tool in `src/tools`
+///
+/// This will build the specified tool with the specified `host` compiler in
+/// `stage` into the normal cargo output directory.
 pub fn tool(build: &Build, stage: u32, target: &str, tool: &str) {
     println!("Building stage{} tool {} ({})", stage, tool, target);
 
     let compiler = Compiler::new(stage, &build.config.build);
 
-    // FIXME: need to clear out previous tool and ideally deps, may require
-    //        isolating output directories or require a pseudo shim step to
-    //        clear out all the info.
-    //
-    //        Maybe when libstd is compiled it should clear out the rustc of the
-    //        corresponding stage?
-    // let out_dir = build.cargo_out(stage, &host, Mode::Librustc, target);
-    // build.clear_if_dirty(&out_dir, &libstd_stamp(build, stage, &host, target));
-
     let mut cargo = build.cargo(&compiler, Mode::Tool, target, "build");
-    let mut dir = build.src.join(tool);
-    if !dir.exists() {
-        dir = build.src.join("src/tools").join(tool);
-    }
+    let dir = build.src.join("src/tools").join(tool);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
     // We don't want to build tools dynamically as they'll be running across

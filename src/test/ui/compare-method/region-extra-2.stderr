@@ -4,12 +4,11 @@ error[E0276]: impl has stricter requirements than trait
 15 |       fn renew<'b: 'a>(self) -> &'b mut [T];
    |       -------------------------------------- definition of `renew` from trait
 ...
-19 |       fn renew<'b: 'a>(self) -> &'b mut [T] where 'a: 'b {
-   |  _____^ starting here...
+19 | /     fn renew<'b: 'a>(self) -> &'b mut [T] where 'a: 'b {
 20 | |         //~^ ERROR E0276
 21 | |         &mut self[..]
 22 | |     }
-   | |_____^ ...ending here: impl has extra requirement `'a: 'b`
+   | |_____^ impl has extra requirement `'a: 'b`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

@@ -23,6 +23,6 @@ impl NodeIndex {
     }
 
     pub fn get(self) -> usize {
-        (*self.index - 1) as usize
+        (self.index.get() - 1) as usize
     }
 }

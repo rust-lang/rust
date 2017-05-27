@@ -31,6 +31,7 @@ pub use rustc_const_eval::pattern::{BindingMode, Pattern, PatternKind, FieldPatt
 
 #[derive(Clone, Debug)]
 pub struct Block<'tcx> {
+    pub targeted_by_break: bool,
     pub extent: CodeExtent,
     pub span: Span,
     pub stmts: Vec<StmtRef<'tcx>>,
@@ -204,7 +205,7 @@ pub enum ExprKind<'tcx> {
         id: DefId,
     },
     Borrow {
-        region: &'tcx Region,
+        region: Region<'tcx>,
         borrow_kind: BorrowKind,
         arg: ExprRef<'tcx>,
     },

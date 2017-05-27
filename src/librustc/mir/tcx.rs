@@ -183,7 +183,7 @@ impl<'tcx> Rvalue<'tcx> {
                 tcx.mk_box(t)
             }
             Rvalue::Aggregate(ref ak, ref ops) => {
-                match *ak {
+                match **ak {
                     AggregateKind::Array(ty) => {
                         tcx.mk_array(ty, ops.len())
                     }
@@ -194,7 +194,7 @@ impl<'tcx> Rvalue<'tcx> {
                         )
                     }
                     AggregateKind::Adt(def, _, substs, _) => {
-                        tcx.item_type(def.did).subst(tcx, substs)
+                        tcx.type_of(def.did).subst(tcx, substs)
                     }
                     AggregateKind::Closure(did, substs) => {
                         tcx.mk_closure_from_closure_substs(did, substs)

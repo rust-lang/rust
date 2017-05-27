@@ -24,12 +24,12 @@
 // - It's not possible to take the address of a static item with unsafe interior. This is enforced
 // by borrowck::gather_loans
 
-use rustc::dep_graph::DepNode;
 use rustc::ty::cast::CastKind;
-use rustc_const_eval::{ConstEvalErr, ConstContext};
-use rustc_const_eval::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal, MiscCatchAll, Math};
-use rustc_const_eval::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp, NonConstPath};
-use rustc_const_eval::ErrKind::{TypeckError};
+use rustc_const_eval::ConstContext;
+use rustc::middle::const_val::ConstEvalErr;
+use rustc::middle::const_val::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal, MiscCatchAll};
+use rustc::middle::const_val::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp, NonConstPath};
+use rustc::middle::const_val::ErrKind::{TypeckError, Math};
 use rustc_const_math::{ConstMathErr, Op};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
@@ -46,7 +46,7 @@ use rustc::lint::builtin::CONST_ERR;
 
 use rustc::hir::{self, PatKind, RangeEnd};
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 
 use std::collections::hash_map::Entry;
@@ -58,7 +58,7 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
     in_fn: bool,
     promotable: bool,
     mut_rvalue_borrows: NodeSet,
-    param_env: ty::ParameterEnvironment<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
 }
 
@@ -85,11 +85,11 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
 
     // Adds the worst effect out of all the values of one type.
     fn add_type(&mut self, ty: Ty<'gcx>) {
-        if ty.type_contents(self.tcx).interior_unsafe() {
+        if !ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {
             self.promotable = false;
         }
 
-        if self.tcx.type_needs_drop_given_env(ty, &self.param_env) {
+        if ty.needs_drop(self.tcx, self.param_env) {
             self.promotable = false;
         }
     }
@@ -130,7 +130,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         };
 
         let outer_tables = self.tables;
-        self.tables = self.tcx.item_tables(self.tcx.hir.local_def_id(item_id));
+        let item_def_id = self.tcx.hir.local_def_id(item_id);
+        self.tables = self.tcx.typeck_tables_of(item_def_id);
 
         let body = self.tcx.hir.body(body_id);
         if !self.in_fn {
@@ -138,9 +139,10 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         }
 
         let outer_penv = self.tcx.infer_ctxt(body_id, Reveal::UserFacing).enter(|infcx| {
-            let param_env = infcx.parameter_environment.clone();
+            let param_env = infcx.param_env.clone();
             let outer_penv = mem::replace(&mut self.param_env, param_env);
-            euv::ExprUseVisitor::new(self, &infcx).consume_body(body);
+            let region_maps = &self.tcx.region_maps(item_def_id);
+            euv::ExprUseVisitor::new(self, region_maps, &infcx).consume_body(body);
             outer_penv
         });
 
@@ -178,7 +180,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
                     Ok(Ordering::Greater) => {
                         struct_span_err!(self.tcx.sess, start.span, E0030,
                             "lower range bound must be less than or equal to upper")
-                            .span_label(start.span, &format!("lower bound larger than upper bound"))
+                            .span_label(start.span, "lower bound larger than upper bound")
                             .emit();
                     }
                     Err(ErrorReported) => {}
@@ -336,7 +338,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                             _ => false
                         }
                     } else {
-                        v.tcx.sess.cstore.const_is_rvalue_promotable_to_static(did)
+                        v.tcx.const_is_rvalue_promotable_to_static(did)
                     };
                 }
                 _ => {
@@ -458,15 +460,14 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.visit_all_item_likes_in_krate(DepNode::CheckConst,
-                                      &mut CheckCrateVisitor {
-                                          tcx: tcx,
-                                          tables: &ty::TypeckTables::empty(),
-                                          in_fn: false,
-                                          promotable: false,
-                                          mut_rvalue_borrows: NodeSet(),
-                                          param_env: tcx.empty_parameter_environment(),
-                                      }.as_deep_visitor());
+    tcx.hir.krate().visit_all_item_likes(&mut CheckCrateVisitor {
+        tcx: tcx,
+        tables: &ty::TypeckTables::empty(),
+        in_fn: false,
+        promotable: false,
+        mut_rvalue_borrows: NodeSet(),
+        param_env: ty::ParamEnv::empty(),
+    }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }
 
@@ -481,7 +482,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
               borrow_id: ast::NodeId,
               _borrow_span: Span,
               cmt: mc::cmt<'tcx>,
-              _loan_region: &'tcx ty::Region,
+              _loan_region: ty::Region<'tcx>,
               bk: ty::BorrowKind,
               loan_cause: euv::LoanCause) {
         // Kind of hacky, but we allow Unsafe coercions in constants.

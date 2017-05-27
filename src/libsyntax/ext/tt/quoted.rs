@@ -34,17 +34,19 @@ impl Delimited {
     }
 
     pub fn open_tt(&self, span: Span) -> TokenTree {
-        let open_span = match span {
-            DUMMY_SP => DUMMY_SP,
-            _ => Span { hi: span.lo + BytePos(self.delim.len() as u32), ..span },
+        let open_span = if span == DUMMY_SP {
+            DUMMY_SP
+        } else {
+            Span { hi: span.lo + BytePos(self.delim.len() as u32), ..span }
         };
         TokenTree::Token(open_span, self.open_token())
     }
 
     pub fn close_tt(&self, span: Span) -> TokenTree {
-        let close_span = match span {
-            DUMMY_SP => DUMMY_SP,
-            _ => Span { lo: span.hi - BytePos(self.delim.len() as u32), ..span },
+        let close_span = if span == DUMMY_SP {
+            DUMMY_SP
+        } else {
+            Span { lo: span.hi - BytePos(self.delim.len() as u32), ..span }
         };
         TokenTree::Token(close_span, self.close_token())
     }
@@ -94,6 +96,17 @@ impl TokenTree {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        match *self {
+            TokenTree::Delimited(_, ref delimed) => match delimed.delim {
+                token::NoDelim => delimed.tts.is_empty(),
+                _ => false,
+            },
+            TokenTree::Sequence(_, ref seq) => seq.tts.is_empty(),
+            _ => true,
+        }
+    }
+
     pub fn get_tt(&self, index: usize) -> TokenTree {
         match (self, index) {
             (&TokenTree::Delimited(_, ref delimed), _) if delimed.delim == token::NoDelim => {
@@ -134,14 +147,17 @@ pub fn parse(input: tokenstream::TokenStream, expect_matchers: bool, sess: &Pars
             TokenTree::Token(start_sp, token::SubstNt(ident)) if expect_matchers => {
                 let span = match trees.next() {
                     Some(tokenstream::TokenTree::Token(span, token::Colon)) => match trees.next() {
-                        Some(tokenstream::TokenTree::Token(end_sp, token::Ident(kind))) => {
-                            let span = Span { lo: start_sp.lo, ..end_sp };
-                            result.push(TokenTree::MetaVarDecl(span, ident, kind));
-                            continue
-                        }
-                        tree @ _ => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
+                        Some(tokenstream::TokenTree::Token(end_sp, ref tok)) => match tok.ident() {
+                            Some(kind) => {
+                                let span = Span { lo: start_sp.lo, ..end_sp };
+                                result.push(TokenTree::MetaVarDecl(span, ident, kind));
+                                continue
+                            }
+                            _ => end_sp,
+                        },
+                        tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
                     },
-                    tree @ _ => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp),
+                    tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp),
                 };
                 sess.missing_fragment_specifiers.borrow_mut().insert(span);
                 result.push(TokenTree::MetaVarDecl(span, ident, keywords::Invalid.ident()));
@@ -223,10 +239,10 @@ fn parse_sep_and_kleene_op<I>(input: &mut I, span: Span, sess: &ParseSess)
                     Some(op) => return (Some(tok), op),
                     None => span,
                 },
-                tree @ _ => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
+                tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
             }
         },
-        tree @ _ => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
+        tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
     };
 
     sess.span_diagnostic.span_err(span, "expected `*` or `+`");

@@ -22,16 +22,6 @@ impl Deserialize for () {
     }
 }
 
-fn doit() -> Result<(), String> {
-    let _ = match Deserialize::deserialize() {
-        //~^ ERROR code relies on type
-        //~| WARNING previously accepted
-        Ok(x) => x,
-        Err(e) => return Err(e),
-    };
-    Ok(())
-}
-
 trait ImplementedForUnitButNotNever {}
 
 impl ImplementedForUnitButNotNever for () {}
@@ -46,6 +36,6 @@ fn smeg() {
 }
 
 fn main() {
-    let _ = doit();
+    smeg();
 }
 

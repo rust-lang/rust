@@ -1,4 +1,3 @@
-verify
 *.class
 *.java
 *.tokens

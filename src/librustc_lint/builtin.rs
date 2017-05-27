@@ -45,6 +45,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_attributes};
 use syntax_pos::Span;
+use syntax::symbol::keywords;
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::intravisit::FnKind;
@@ -118,7 +119,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
             hir::ItemStruct(..) |
             hir::ItemUnion(..) => {
                 let def_id = cx.tcx.hir.local_def_id(it.id);
-                self.check_heap_type(cx, it.span, cx.tcx.item_type(def_id))
+                self.check_heap_type(cx, it.span, cx.tcx.type_of(def_id))
             }
             _ => ()
         }
@@ -130,7 +131,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
                 for struct_field in struct_def.fields() {
                     let def_id = cx.tcx.hir.local_def_id(struct_field.id);
                     self.check_heap_type(cx, struct_field.span,
-                                         cx.tcx.item_type(def_id));
+                                         cx.tcx.type_of(def_id));
                 }
             }
             _ => (),
@@ -312,7 +313,7 @@ impl MissingDoc {
             }
         }
 
-        let has_doc = attrs.iter().any(|a| a.is_value_str() && a.name() == "doc");
+        let has_doc = attrs.iter().any(|a| a.is_value_str() && a.check_name("doc"));
         if !has_doc {
             cx.span_lint(MISSING_DOCS,
                          sp,
@@ -334,7 +335,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             attr.check_name("doc") &&
             match attr.meta_item_list() {
                 None => false,
-                Some(l) => attr::list_contains_name(&l[..], "hidden"),
+                Some(l) => attr::list_contains_name(&l, "hidden"),
             }
         });
         self.doc_hidden_stack.push(doc_hidden);
@@ -432,7 +433,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
     fn check_impl_item(&mut self, cx: &LateContext, impl_item: &hir::ImplItem) {
         // If the method is an impl for a trait, don't doc.
-        if method_context(cx, impl_item.id, impl_item.span) == MethodLateContext::TraitImpl {
+        if method_context(cx, impl_item.id) == MethodLateContext::TraitImpl {
             return;
         }
 
@@ -504,21 +505,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                let def = cx.tcx.lookup_adt_def(cx.tcx.hir.local_def_id(item.id));
+                let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemUnion(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                let def = cx.tcx.lookup_adt_def(cx.tcx.hir.local_def_id(item.id));
+                let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                let def = cx.tcx.lookup_adt_def(cx.tcx.hir.local_def_id(item.id));
+                let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             _ => return,
@@ -526,13 +527,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
         if def.has_dtor(cx.tcx) {
             return;
         }
-        let parameter_environment = cx.tcx.empty_parameter_environment();
-        // FIXME (@jroesch) should probably inver this so that the parameter env still impls this
-        // method
-        if !ty.moves_by_default(cx.tcx, &parameter_environment, item.span) {
+        let param_env = ty::ParamEnv::empty();
+        if !ty.moves_by_default(cx.tcx, param_env, item.span) {
             return;
         }
-        if parameter_environment.can_type_implement_copy(cx.tcx, ty, item.span).is_ok() {
+        if param_env.can_type_implement_copy(cx.tcx, ty, item.span).is_ok() {
             cx.span_lint(MISSING_COPY_IMPLEMENTATIONS,
                          item.span,
                          "type could implement `Copy`; consider adding `impl \
@@ -582,10 +581,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
         };
 
         if self.impling_types.is_none() {
-            let debug_def = cx.tcx.lookup_trait_def(debug);
+            let debug_def = cx.tcx.trait_def(debug);
             let mut impls = NodeSet();
             debug_def.for_each_impl(cx.tcx, |d| {
-                if let Some(ty_def) = cx.tcx.item_type(d).ty_to_def_id() {
+                if let Some(ty_def) = cx.tcx.type_of(d).ty_to_def_id() {
                     if let Some(node_id) = cx.tcx.hir.as_local_node_id(ty_def) {
                         impls.insert(node_id);
                     }
@@ -601,6 +600,44 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
                          item.span,
                          "type does not implement `fmt::Debug`; consider adding #[derive(Debug)] \
                           or a manual implementation")
+        }
+    }
+}
+
+declare_lint! {
+    pub ANONYMOUS_PARAMETERS,
+    Allow,
+    "detects anonymous parameters"
+}
+
+/// Checks for use of anonymous parameters (RFC 1685)
+#[derive(Clone)]
+pub struct AnonymousParameters;
+
+impl LintPass for AnonymousParameters {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(ANONYMOUS_PARAMETERS)
+    }
+}
+
+impl EarlyLintPass for AnonymousParameters {
+    fn check_trait_item(&mut self, cx: &EarlyContext, it: &ast::TraitItem) {
+        match it.node {
+            ast::TraitItemKind::Method(ref sig, _) => {
+                for arg in sig.decl.inputs.iter() {
+                    match arg.pat.node {
+                        ast::PatKind::Ident(_, ident, None) => {
+                            if ident.node.name == keywords::Invalid.name() {
+                                cx.span_lint(ANONYMOUS_PARAMETERS,
+                                             arg.pat.span,
+                                             "use of deprecated anonymous parameter");
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+            },
+            _ => (),
         }
     }
 }
@@ -635,7 +672,7 @@ impl LintPass for DeprecatedAttr {
 
 impl EarlyLintPass for DeprecatedAttr {
     fn check_attribute(&mut self, cx: &EarlyContext, attr: &ast::Attribute) {
-        let name = attr.name();
+        let name = unwrap_or!(attr.name(), return);
         for &&(n, _, ref g) in &self.depr_attrs {
             if name == n {
                 if let &AttributeGate::Gated(Stability::Deprecated(link),
@@ -650,6 +687,81 @@ impl EarlyLintPass for DeprecatedAttr {
                 return;
             }
         }
+    }
+}
+
+declare_lint! {
+    pub ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
+    Warn,
+    "floating-point literals cannot be used in patterns"
+}
+
+/// Checks for floating point literals in patterns.
+#[derive(Clone)]
+pub struct IllegalFloatLiteralPattern;
+
+impl LintPass for IllegalFloatLiteralPattern {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(ILLEGAL_FLOATING_POINT_LITERAL_PATTERN)
+    }
+}
+
+fn fl_lit_check_expr(cx: &EarlyContext, expr: &ast::Expr) {
+    use self::ast::{ExprKind, LitKind};
+    match expr.node {
+        ExprKind::Lit(ref l) => {
+            match l.node {
+                LitKind::FloatUnsuffixed(..) |
+                LitKind::Float(..) => {
+                    cx.span_lint(ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
+                                 l.span,
+                                 "floating-point literals cannot be used in patterns");
+                    },
+                _ => (),
+            }
+        }
+        // These may occur in patterns
+        // and can maybe contain float literals
+        ExprKind::Unary(_, ref f) => fl_lit_check_expr(cx, f),
+        // These may occur in patterns
+        // and can't contain float literals
+        ExprKind::Path(..) => (),
+        // If something unhandled is encountered, we need to expand the
+        // search or ignore more ExprKinds.
+        _ => span_bug!(expr.span, "Unhandled expression {:?} in float lit pattern lint",
+                       expr.node),
+    }
+}
+
+impl EarlyLintPass for IllegalFloatLiteralPattern {
+    fn check_pat(&mut self, cx: &EarlyContext, pat: &ast::Pat) {
+        use self::ast::PatKind;
+        pat.walk(&mut |p| {
+            match p.node {
+                // Wildcard patterns and paths are uninteresting for the lint
+                PatKind::Wild |
+                PatKind::Path(..) => (),
+
+                // The walk logic recurses inside these
+                PatKind::Ident(..) |
+                PatKind::Struct(..) |
+                PatKind::Tuple(..) |
+                PatKind::TupleStruct(..) |
+                PatKind::Ref(..) |
+                PatKind::Box(..) |
+                PatKind::Slice(..) => (),
+
+                // Extract the expressions and check them
+                PatKind::Lit(ref e) => fl_lit_check_expr(cx, e),
+                PatKind::Range(ref st, ref en, _) => {
+                    fl_lit_check_expr(cx, st);
+                    fl_lit_check_expr(cx, en);
+                },
+
+                PatKind::Mac(_) => bug!("lint must run post-expansion"),
+            }
+            true
+        });
     }
 }
 
@@ -876,12 +988,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                         traits::Obligation::new(traits::ObligationCause::misc(span, expr_id),
                                                 trait_ref.to_poly_trait_predicate());
 
-                    // unwrap() is ok here b/c `method` is the method
-                    // defined in this crate whose body we are
-                    // checking, so it's always local
-                    let node_id = tcx.hir.as_local_node_id(method.def_id).unwrap();
-
-                    let param_env = ty::ParameterEnvironment::for_item(tcx, node_id);
+                    let param_env = tcx.param_env(method.def_id);
                     tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
                         let mut selcx = traits::SelectionContext::new(&infcx);
                         match selcx.select(&obligation) {
@@ -1094,7 +1201,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
         }
 
         fn def_id_is_transmute(cx: &LateContext, def_id: DefId) -> bool {
-            match cx.tcx.item_type(def_id).sty {
+            match cx.tcx.type_of(def_id).sty {
                 ty::TyFnDef(.., bfty) if bfty.abi() == RustIntrinsic => (),
                 _ => return false,
             }
@@ -1121,8 +1228,8 @@ impl LintPass for UnstableFeatures {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnstableFeatures {
     fn check_attribute(&mut self, ctx: &LateContext, attr: &ast::Attribute) {
-        if attr.meta().check_name("feature") {
-            if let Some(items) = attr.meta().meta_item_list() {
+        if attr.check_name("feature") {
+            if let Some(items) = attr.meta_item_list() {
                 for item in items {
                     ctx.span_lint(UNSTABLE_FEATURES, item.span(), "unstable feature");
                 }
@@ -1149,10 +1256,11 @@ impl LintPass for UnionsWithDropFields {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
     fn check_item(&mut self, ctx: &LateContext, item: &hir::Item) {
         if let hir::ItemUnion(ref vdata, _) = item.node {
-            let param_env = &ty::ParameterEnvironment::for_item(ctx.tcx, item.id);
+            let item_def_id = ctx.tcx.hir.local_def_id(item.id);
+            let param_env = ctx.tcx.param_env(item_def_id);
             for field in vdata.fields() {
-                let field_ty = ctx.tcx.item_type(ctx.tcx.hir.local_def_id(field.id));
-                if ctx.tcx.type_needs_drop_given_env(field_ty, param_env) {
+                let field_ty = ctx.tcx.type_of(ctx.tcx.hir.local_def_id(field.id));
+                if field_ty.needs_drop(ctx.tcx, param_env) {
                     ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
                                   field.span,
                                   "union contains a field with possibly non-trivial drop code, \

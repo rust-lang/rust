@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(core_float)]
-#![feature(float_extras)]
-#![feature(untagged_unions)]
-
 extern crate core;
-use core::num::Float;
+use core::f32;
 
 union U {
     a: (u8, u8),
@@ -33,8 +29,8 @@ fn main() {
         assert_eq!(u.a, (2, 2));
 
         let mut w = W { a: 0b0_11111111_00000000000000000000000 };
-        assert_eq!(w.b, f32::infinity());
-        w.b = f32::neg_infinity();
+        assert_eq!(w.b, f32::INFINITY);
+        w.b = f32::NEG_INFINITY;
         assert_eq!(w.a, 0b1_11111111_00000000000000000000000);
     }
 }

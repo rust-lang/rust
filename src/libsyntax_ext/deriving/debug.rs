@@ -66,8 +66,8 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<E
         StaticEnum(..) => cx.span_bug(span, "nonsensical .fields in `#[derive(Debug)]`"),
     };
 
-    // We want to make sure we have the expn_id set so that we can use unstable methods
-    let span = Span { expn_id: cx.backtrace(), ..span };
+    // We want to make sure we have the ctxt set so that we can use unstable methods
+    let span = Span { ctxt: cx.backtrace(), ..span };
     let name = cx.expr_lit(span, ast::LitKind::Str(ident.name, ast::StrStyle::Cooked));
     let builder = Ident::from_str("builder");
     let builder_expr = cx.expr_ident(span, builder.clone());

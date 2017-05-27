@@ -10,10 +10,9 @@
 
 #![feature(core_intrinsics)]
 
-use std::intrinsics::{init, forget};
+use std::intrinsics::{init};
 
 // Test that the `forget` and `init` intrinsics are really unsafe
 pub fn main() {
     let stuff = init::<isize>(); //~ ERROR call to unsafe function requires unsafe
-    forget(stuff);             //~ ERROR call to unsafe function requires unsafe
 }

@@ -10,13 +10,14 @@
 
 use std::io::Write;
 
-use rustc::hir::def_id::DefId;
 use rustc_serialize::json::as_json;
 
 use external_data::*;
-use data::{VariableKind, Visibility, SigElement};
+use data::{VariableKind, Visibility};
 use dump::Dump;
-use super::Format;
+use json_dumper::id_from_def_id;
+
+use rls_data::{Analysis, Import, ImportKind, Def, DefKind, CratePreludeData};
 
 
 // A dumper to dump a restricted set of JSON information, designed for use with
@@ -24,8 +25,7 @@ use super::Format;
 // information here, and (for example) generate Rustdoc URLs, but don't need
 // information for navigating the source of the crate.
 // Relative to the regular JSON save-analysis info, this form is filtered to
-// remove non-visible items, but includes some extra info for items (e.g., the
-// parent field for finding the struct to which a field belongs).
+// remove non-visible items.
 pub struct JsonApiDumper<'b, W: Write + 'b> {
     output: &'b mut W,
     result: Analysis,
@@ -48,7 +48,7 @@ impl<'b, W: Write> Drop for JsonApiDumper<'b, W> {
 macro_rules! impl_fn {
     ($fn_name: ident, $data_type: ident, $bucket: ident) => {
         fn $fn_name(&mut self, data: $data_type) {
-            if let Some(datum) = From::from(data) {
+            if let Some(datum) = data.into() {
                 self.result.$bucket.push(datum);
             }
         }
@@ -77,11 +77,11 @@ impl<'b, W: Write + 'b> Dump for JsonApiDumper<'b, W> {
 
     fn impl_data(&mut self, data: ImplData) {
         if data.self_ref.is_some() {
-            self.result.relations.push(From::from(data));
+            self.result.relations.push(data.into());
         }
     }
     fn inheritance(&mut self, data: InheritanceData) {
-        self.result.relations.push(From::from(data));
+        self.result.relations.push(data.into());
     }
 }
 
@@ -90,426 +90,261 @@ impl<'b, W: Write + 'b> Dump for JsonApiDumper<'b, W> {
 // method, but not the supplied method). In both cases, we are currently
 // ignoring it.
 
-#[derive(Debug, RustcEncodable)]
-struct Analysis {
-    kind: Format,
-    prelude: Option<CratePreludeData>,
-    imports: Vec<Import>,
-    defs: Vec<Def>,
-    relations: Vec<Relation>,
-    // These two fields are dummies so that clients can parse the two kinds of
-    // JSON data in the same way.
-    refs: Vec<()>,
-    macro_refs: Vec<()>,
-}
-
-impl Analysis {
-    fn new() -> Analysis {
-        Analysis {
-            kind: Format::JsonApi,
-            prelude: None,
-            imports: vec![],
-            defs: vec![],
-            relations: vec![],
-            refs: vec![],
-            macro_refs: vec![],
-        }
-    }
-}
-
-// DefId::index is a newtype and so the JSON serialisation is ugly. Therefore
-// we use our own Id which is the same, but without the newtype.
-#[derive(Debug, RustcEncodable)]
-struct Id {
-    krate: u32,
-    index: u32,
-}
-
-impl From<DefId> for Id {
-    fn from(id: DefId) -> Id {
-        Id {
-            krate: id.krate.as_u32(),
-            index: id.index.as_u32(),
-        }
-    }
-}
-
-#[derive(Debug, RustcEncodable)]
-struct Import {
-    kind: ImportKind,
-    id: Id,
-    span: SpanData,
-    name: String,
-    value: String,
-}
-
-#[derive(Debug, RustcEncodable)]
-enum ImportKind {
-    Use,
-    GlobUse,
-}
-
-impl From<UseData> for Option<Import> {
-    fn from(data: UseData) -> Option<Import> {
-        match data.visibility {
+impl Into<Option<Import>> for UseData {
+    fn into(self) -> Option<Import> {
+        match self.visibility {
             Visibility::Public => Some(Import {
                 kind: ImportKind::Use,
-                id: From::from(data.id),
-                span: data.span,
-                name: data.name,
+                ref_id: self.mod_id.map(|id| id_from_def_id(id)),
+                span: self.span,
+                name: self.name,
                 value: String::new(),
             }),
             _ => None,
         }
     }
 }
-impl From<UseGlobData> for Option<Import> {
-    fn from(data: UseGlobData) -> Option<Import> {
-        match data.visibility {
+impl Into<Option<Import>> for UseGlobData {
+    fn into(self) -> Option<Import> {
+        match self.visibility {
             Visibility::Public => Some(Import {
                 kind: ImportKind::GlobUse,
-                id: From::from(data.id),
-                span: data.span,
+                ref_id: None,
+                span: self.span,
                 name: "*".to_owned(),
-                value: data.names.join(", "),
+                value: self.names.join(", "),
             }),
             _ => None,
         }
     }
 }
 
-#[derive(Debug, RustcEncodable)]
-struct Def {
-    kind: DefKind,
-    id: Id,
-    span: SpanData,
-    name: String,
-    qualname: String,
-    value: String,
-    parent: Option<Id>,
-    children: Vec<Id>,
-    decl_id: Option<Id>,
-    docs: String,
-    sig: Option<JsonSignature>,
-}
-
-#[derive(Debug, RustcEncodable)]
-enum DefKind {
-    // value = variant names
-    Enum,
-    // value = enum name + variant name + types
-    Tuple,
-    // value = [enum name +] name + fields
-    Struct,
-    // value = signature
-    Trait,
-    // value = type + generics
-    Function,
-    // value = type + generics
-    Method,
-    // No id, no value.
-    Macro,
-    // value = file_name
-    Mod,
-    // value = aliased type
-    Type,
-    // value = type and init expression (for all variable kinds).
-    Static,
-    Const,
-    Field,
-}
-
-impl From<EnumData> for Option<Def> {
-    fn from(data: EnumData) -> Option<Def> {
-        match data.visibility {
+impl Into<Option<Def>> for EnumData {
+    fn into(self) -> Option<Def> {
+        match self.visibility {
             Visibility::Public => Some(Def {
                 kind: DefKind::Enum,
-                id: From::from(data.id),
-                span: data.span,
-                name: data.name,
-                qualname: data.qualname,
-                value: data.value,
+                id: id_from_def_id(self.id),
+                span: self.span,
+                name: self.name,
+                qualname: self.qualname,
+                value: self.value,
                 parent: None,
-                children: data.variants.into_iter().map(|id| From::from(id)).collect(),
+                children: self.variants.into_iter().map(|id| id_from_def_id(id)).collect(),
                 decl_id: None,
-                docs: data.docs,
-                sig: Some(From::from(data.sig)),
+                docs: self.docs,
+                sig: Some(self.sig.into()),
+                attributes: vec![],
             }),
             _ => None,
         }
     }
 }
 
-impl From<TupleVariantData> for Option<Def> {
-    fn from(data: TupleVariantData) -> Option<Def> {
+impl Into<Option<Def>> for TupleVariantData {
+    fn into(self) -> Option<Def> {
         Some(Def {
             kind: DefKind::Tuple,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
-            parent: data.parent.map(|id| From::from(id)),
+            id: id_from_def_id(self.id),
+            span: self.span,
+            name: self.name,
+            qualname: self.qualname,
+            value: self.value,
+            parent: self.parent.map(|id| id_from_def_id(id)),
             children: vec![],
             decl_id: None,
-            docs: data.docs,
-            sig: Some(From::from(data.sig)),
+            docs: self.docs,
+            sig: Some(self.sig.into()),
+            attributes: vec![],
         })
     }
 }
-impl From<StructVariantData> for Option<Def> {
-    fn from(data: StructVariantData) -> Option<Def> {
+impl Into<Option<Def>> for StructVariantData {
+    fn into(self) -> Option<Def> {
         Some(Def {
             kind: DefKind::Struct,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
-            parent: data.parent.map(|id| From::from(id)),
+            id: id_from_def_id(self.id),
+            span: self.span,
+            name: self.name,
+            qualname: self.qualname,
+            value: self.value,
+            parent: self.parent.map(|id| id_from_def_id(id)),
             children: vec![],
             decl_id: None,
-            docs: data.docs,
-            sig: Some(From::from(data.sig)),
+            docs: self.docs,
+            sig: Some(self.sig.into()),
+            attributes: vec![],
         })
     }
 }
-impl From<StructData> for Option<Def> {
-    fn from(data: StructData) -> Option<Def> {
-        match data.visibility {
+impl Into<Option<Def>> for StructData {
+    fn into(self) -> Option<Def> {
+        match self.visibility {
             Visibility::Public => Some(Def {
             kind: DefKind::Struct,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
+            id: id_from_def_id(self.id),
+            span: self.span,
+            name: self.name,
+            qualname: self.qualname,
+            value: self.value,
             parent: None,
-            children: data.fields.into_iter().map(|id| From::from(id)).collect(),
+            children: self.fields.into_iter().map(|id| id_from_def_id(id)).collect(),
             decl_id: None,
-            docs: data.docs,
-            sig: Some(From::from(data.sig)),
+            docs: self.docs,
+            sig: Some(self.sig.into()),
+            attributes: vec![],
         }),
             _ => None,
         }
     }
 }
-impl From<TraitData> for Option<Def> {
-    fn from(data: TraitData) -> Option<Def> {
-        match data.visibility {
+impl Into<Option<Def>> for TraitData {
+    fn into(self) -> Option<Def> {
+        match self.visibility {
             Visibility::Public => Some(Def {
                 kind: DefKind::Trait,
-                id: From::from(data.id),
-                span: data.span,
-                name: data.name,
-                qualname: data.qualname,
-                value: data.value,
-                children: data.items.into_iter().map(|id| From::from(id)).collect(),
+                id: id_from_def_id(self.id),
+                span: self.span,
+                name: self.name,
+                qualname: self.qualname,
+                value: self.value,
+                children: self.items.into_iter().map(|id| id_from_def_id(id)).collect(),
                 parent: None,
                 decl_id: None,
-                docs: data.docs,
-                sig: Some(From::from(data.sig)),
+                docs: self.docs,
+                sig: Some(self.sig.into()),
+                attributes: vec![],
             }),
             _ => None,
         }
     }
 }
-impl From<FunctionData> for Option<Def> {
-    fn from(data: FunctionData) -> Option<Def> {
-        match data.visibility {
+impl Into<Option<Def>> for FunctionData {
+    fn into(self) -> Option<Def> {
+        match self.visibility {
             Visibility::Public => Some(Def {
                 kind: DefKind::Function,
-                id: From::from(data.id),
-                span: data.span,
-                name: data.name,
-                qualname: data.qualname,
-                value: data.value,
+                id: id_from_def_id(self.id),
+                span: self.span,
+                name: self.name,
+                qualname: self.qualname,
+                value: self.value,
                 children: vec![],
-                parent: data.parent.map(|id| From::from(id)),
+                parent: self.parent.map(|id| id_from_def_id(id)),
                 decl_id: None,
-                docs: data.docs,
-                sig: Some(From::from(data.sig)),
+                docs: self.docs,
+                sig: Some(self.sig.into()),
+                attributes: vec![],
             }),
             _ => None,
         }
     }
 }
-impl From<MethodData> for Option<Def> {
-    fn from(data: MethodData) -> Option<Def> {
-        match data.visibility {
+impl Into<Option<Def>> for MethodData {
+    fn into(self) -> Option<Def> {
+        match self.visibility {
             Visibility::Public => Some(Def {
                 kind: DefKind::Method,
-                id: From::from(data.id),
-                span: data.span,
-                name: data.name,
-                qualname: data.qualname,
-                value: data.value,
+                id: id_from_def_id(self.id),
+                span: self.span,
+                name: self.name,
+                qualname: self.qualname,
+                value: self.value,
                 children: vec![],
-                parent: data.parent.map(|id| From::from(id)),
-                decl_id: data.decl_id.map(|id| From::from(id)),
-                docs: data.docs,
-                sig: Some(From::from(data.sig)),
+                parent: self.parent.map(|id| id_from_def_id(id)),
+                decl_id: self.decl_id.map(|id| id_from_def_id(id)),
+                docs: self.docs,
+                sig: Some(self.sig.into()),
+                attributes: vec![],
             }),
             _ => None,
         }
     }
 }
-impl From<MacroData> for Option<Def> {
-    fn from(data: MacroData) -> Option<Def> {
+impl Into<Option<Def>> for MacroData {
+    fn into(self) -> Option<Def> {
         Some(Def {
             kind: DefKind::Macro,
-            id: From::from(null_def_id()),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
+            id: id_from_def_id(null_def_id()),
+            span: self.span,
+            name: self.name,
+            qualname: self.qualname,
             value: String::new(),
             children: vec![],
             parent: None,
             decl_id: None,
-            docs: data.docs,
+            docs: self.docs,
             sig: None,
+            attributes: vec![],
         })
     }
 }
-impl From<ModData> for Option<Def> {
-    fn from(data:ModData) -> Option<Def> {
-        match data.visibility {
+impl Into<Option<Def>> for ModData {
+    fn into(self) -> Option<Def> {
+        match self.visibility {
             Visibility::Public => Some(Def {
                 kind: DefKind::Mod,
-                id: From::from(data.id),
-                span: data.span,
-                name: data.name,
-                qualname: data.qualname,
-                value: data.filename,
-                children: data.items.into_iter().map(|id| From::from(id)).collect(),
+                id: id_from_def_id(self.id),
+                span: self.span,
+                name: self.name,
+                qualname: self.qualname,
+                value: self.filename,
+                children: self.items.into_iter().map(|id| id_from_def_id(id)).collect(),
                 parent: None,
                 decl_id: None,
-                docs: data.docs,
-                sig: Some(From::from(data.sig)),
+                docs: self.docs,
+                sig: self.sig.map(|s| s.into()),
+                attributes: vec![],
             }),
             _ => None,
         }
     }
 }
-impl From<TypeDefData> for Option<Def> {
-    fn from(data: TypeDefData) -> Option<Def> {
-        match data.visibility {
+impl Into<Option<Def>> for TypeDefData {
+    fn into(self) -> Option<Def> {
+        match self.visibility {
             Visibility::Public => Some(Def {
                 kind: DefKind::Type,
-                id: From::from(data.id),
-                span: data.span,
-                name: data.name,
-                qualname: data.qualname,
-                value: data.value,
+                id: id_from_def_id(self.id),
+                span: self.span,
+                name: self.name,
+                qualname: self.qualname,
+                value: self.value,
                 children: vec![],
-                parent: data.parent.map(|id| From::from(id)),
+                parent: self.parent.map(|id| id_from_def_id(id)),
                 decl_id: None,
                 docs: String::new(),
-                sig: data.sig.map(|s| From::from(s)),
+                sig: self.sig.map(|s| s.into()),
+                attributes: vec![],
             }),
             _ => None,
         }
     }
 }
 
-impl From<VariableData> for Option<Def> {
-    fn from(data: VariableData) -> Option<Def> {
-        match data.visibility {
+impl Into<Option<Def>> for VariableData {
+    fn into(self) -> Option<Def> {
+        match self.visibility {
             Visibility::Public => Some(Def {
-                kind: match data.kind {
+                kind: match self.kind {
                     VariableKind::Static => DefKind::Static,
                     VariableKind::Const => DefKind::Const,
                     VariableKind::Local => { return None }
                     VariableKind::Field => DefKind::Field,
                 },
-                id: From::from(data.id),
-                span: data.span,
-                name: data.name,
-                qualname: data.qualname,
-                value: data.value,
+                id: id_from_def_id(self.id),
+                span: self.span,
+                name: self.name,
+                qualname: self.qualname,
+                value: self.value,
                 children: vec![],
-                parent: data.parent.map(|id| From::from(id)),
+                parent: self.parent.map(|id| id_from_def_id(id)),
                 decl_id: None,
-                docs: data.docs,
-                sig: data.sig.map(|s| From::from(s)),
+                docs: self.docs,
+                sig: self.sig.map(|s| s.into()),
+                attributes: vec![],
             }),
             _ => None,
-        }
-    }
-}
-
-#[derive(Debug, RustcEncodable)]
-struct Relation {
-    span: SpanData,
-    kind: RelationKind,
-    from: Id,
-    to: Id,
-}
-
-#[derive(Debug, RustcEncodable)]
-enum RelationKind {
-    Impl,
-    SuperTrait,
-}
-
-impl From<ImplData> for Relation {
-    fn from(data: ImplData) -> Relation {
-        Relation {
-            span: data.span,
-            kind: RelationKind::Impl,
-            from: From::from(data.self_ref.unwrap_or(null_def_id())),
-            to: From::from(data.trait_ref.unwrap_or(null_def_id())),
-        }
-    }
-}
-
-impl From<InheritanceData> for Relation {
-    fn from(data: InheritanceData) -> Relation {
-        Relation {
-            span: data.span,
-            kind: RelationKind::SuperTrait,
-            from: From::from(data.base_id),
-            to: From::from(data.deriv_id),
-        }
-    }
-}
-
-#[derive(Debug, RustcEncodable)]
-pub struct JsonSignature {
-    span: SpanData,
-    text: String,
-    ident_start: usize,
-    ident_end: usize,
-    defs: Vec<JsonSigElement>,
-    refs: Vec<JsonSigElement>,
-}
-
-impl From<Signature> for JsonSignature {
-    fn from(data: Signature) -> JsonSignature {
-        JsonSignature {
-            span: data.span,
-            text: data.text,
-            ident_start: data.ident_start,
-            ident_end: data.ident_end,
-            defs: data.defs.into_iter().map(|s| From::from(s)).collect(),
-            refs: data.refs.into_iter().map(|s| From::from(s)).collect(),
-        }
-    }
-}
-
-#[derive(Debug, RustcEncodable)]
-pub struct JsonSigElement {
-    id: Id,
-    start: usize,
-    end: usize,
-}
-
-impl From<SigElement> for JsonSigElement {
-    fn from(data: SigElement) -> JsonSigElement {
-        JsonSigElement {
-            id: From::from(data.id),
-            start: data.start,
-            end: data.end,
         }
     }
 }

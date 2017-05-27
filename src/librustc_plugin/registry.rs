@@ -103,7 +103,8 @@ impl<'a> Registry<'a> {
         }
         self.syntax_exts.push((name, match extension {
             NormalTT(ext, _, allow_internal_unstable) => {
-                NormalTT(ext, Some(self.krate_span), allow_internal_unstable)
+                let nid = ast::CRATE_NODE_ID;
+                NormalTT(ext, Some((nid, self.krate_span)), allow_internal_unstable)
             }
             IdentTT(ext, _, allow_internal_unstable) => {
                 IdentTT(ext, Some(self.krate_span), allow_internal_unstable)

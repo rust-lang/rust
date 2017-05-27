@@ -17,19 +17,18 @@
 use core::ops::{RangeFull, Range, RangeTo, RangeFrom, RangeInclusive, RangeToInclusive};
 use Bound::{self, Excluded, Included, Unbounded};
 
-/// **RangeArgument** is implemented by Rust's built-in range types, produced
+/// `RangeArgument` is implemented by Rust's built-in range types, produced
 /// by range syntax like `..`, `a..`, `..b` or `c..d`.
 pub trait RangeArgument<T: ?Sized> {
-    /// Start index bound
+    /// Start index bound.
     ///
-    /// Return start value as a `Bound`
+    /// Returns the start value as a `Bound`.
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(collections)]
     /// #![feature(collections_range)]
-    /// #![feature(collections_bound)]
     ///
     /// extern crate collections;
     ///
@@ -43,16 +42,15 @@ pub trait RangeArgument<T: ?Sized> {
     /// ```
     fn start(&self) -> Bound<&T>;
 
-    /// End index bound
+    /// End index bound.
     ///
-    /// Return end value as a `Bound`
+    /// Returns the end value as a `Bound`.
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(collections)]
     /// #![feature(collections_range)]
-    /// #![feature(collections_bound)]
     ///
     /// extern crate collections;
     ///
@@ -108,16 +106,10 @@ impl<T> RangeArgument<T> for Range<T> {
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 impl<T> RangeArgument<T> for RangeInclusive<T> {
     fn start(&self) -> Bound<&T> {
-        match *self {
-            RangeInclusive::Empty{ ref at }            => Included(at),
-            RangeInclusive::NonEmpty { ref start, .. } => Included(start),
-        }
+        Included(&self.start)
     }
     fn end(&self) -> Bound<&T> {
-        match *self {
-            RangeInclusive::Empty{ ref at }            => Excluded(at),
-            RangeInclusive::NonEmpty { ref end, .. }   => Included(end),
-        }
+        Included(&self.end)
     }
 }
 

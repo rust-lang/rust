@@ -890,19 +890,23 @@ match (A, B, C) {
 E0422: r##"
 You are trying to use an identifier that is either undefined or not a struct.
 Erroneous code example:
-``` compile_fail,E0422
+
+```compile_fail,E0422
 fn main () {
     let x = Foo { x: 1, y: 2 };
 }
 ```
+
 In this case, `Foo` is undefined, so it inherently isn't anything, and
 definitely not a struct.
+
 ```compile_fail
 fn main () {
     let foo = 1;
     let x = foo { x: 1, y: 2 };
 }
 ```
+
 In this case, `foo` is defined, but is not a struct, so Rust can't use it as
 one.
 "##,
@@ -1218,27 +1222,26 @@ fn foo() {
 "##,
 
 E0435: r##"
-A non-constant value was used to initialise a constant.
+A non-constant value was used in a constant expression.
 
 Erroneous code example:
 
 ```compile_fail,E0435
-let foo = 42u32;
-const FOO : u32 = foo; // error: attempt to use a non-constant value in a
-                       //        constant
+let foo = 42;
+let a: [u8; foo]; // error: attempt to use a non-constant value in a constant
 ```
 
 To fix this error, please replace the value with a constant. Example:
 
 ```
-const FOO : u32 = 42u32; // ok!
+let a: [u8; 42]; // ok!
 ```
 
 Or:
 
 ```
-const OTHER_FOO : u32 = 42u32;
-const FOO : u32 = OTHER_FOO; // ok!
+const FOO: usize = 42;
+let a: [u8; FOO]; // ok!
 ```
 "##,
 
@@ -1556,7 +1559,7 @@ register_diagnostics! {
 //  E0157, unused error code
 //  E0257,
 //  E0258,
-    E0402, // cannot use an outer type parameter in this context
+//  E0402, // cannot use an outer type parameter in this context
 //  E0406, merged into 420
 //  E0410, merged into 408
 //  E0413, merged into 530

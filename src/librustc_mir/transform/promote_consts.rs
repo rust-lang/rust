@@ -208,7 +208,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         let no_stmts = self.source[loc.block].statements.len();
         let new_temp = self.promoted.local_decls.push(
-            LocalDecl::new_temp(self.source.local_decls[temp].ty));
+            LocalDecl::new_temp(self.source.local_decls[temp].ty,
+                                self.source.local_decls[temp].source_info.span));
 
         debug!("promote({:?} @ {:?}/{:?}, {:?})",
                temp, loc, no_stmts, self.keep_original);
@@ -229,7 +230,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 (if self.keep_original {
                     rhs.clone()
                 } else {
-                    let unit = Rvalue::Aggregate(AggregateKind::Tuple, vec![]);
+                    let unit = Rvalue::Aggregate(box AggregateKind::Tuple, vec![]);
                     mem::replace(rhs, unit)
                 }, statement.source_info)
             };
@@ -287,7 +288,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
     fn promote_candidate(mut self, candidate: Candidate) {
         let span = self.promoted.span;
-        let new_operand = Operand::Constant(Constant {
+        let new_operand = Operand::Constant(box Constant {
             span: span,
             ty: self.promoted.return_ty,
             literal: Literal::Promoted {
@@ -379,7 +380,8 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
         };
 
         // Declare return pointer local
-        let initial_locals = iter::once(LocalDecl::new_return_pointer(ty)).collect();
+        let initial_locals = iter::once(LocalDecl::new_return_pointer(ty, span))
+            .collect();
 
         let mut promoter = Promoter {
             promoted: Mir::new(

@@ -16,6 +16,7 @@ use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::ObligationCauseCode;
 use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{FnCtxt, Expectation, Diverges};
+use check::coercion::CoerceMany;
 use util::nodemap::FxHashMap;
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -54,7 +55,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let expected_ty = self.structurally_resolved_type(pat.span, expected);
                         if let ty::TyRef(_, mt) = expected_ty.sty {
                             if let ty::TySlice(_) = mt.ty.sty {
-                                pat_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic),
+                                pat_ty = tcx.mk_imm_ref(tcx.types.re_static,
                                                          tcx.mk_slice(tcx.types.u8))
                             }
                         }
@@ -96,7 +97,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                     struct_span_err!(tcx.sess, span, E0029,
                         "only char and numeric types are allowed in range patterns")
-                        .span_label(span, &format!("ranges require char or numeric types"))
+                        .span_label(span, "ranges require char or numeric types")
                         .note(&format!("start type: {}", self.ty_to_string(lhs_ty)))
                         .note(&format!("end type: {}", self.ty_to_string(rhs_ty)))
                         .emit();
@@ -262,7 +263,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     tcx.sess, pat.span, E0527,
                                     "pattern requires {} elements but array has {}",
                                     min_len, size)
-                                    .span_label(pat.span, &format!("expected {} elements",size))
+                                    .span_label(pat.span, format!("expected {} elements",size))
                                     .emit();
                             }
                             (inner_ty, tcx.types.err)
@@ -273,7 +274,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     "pattern requires at least {} elements but array has {}",
                                     min_len, size)
                                 .span_label(pat.span,
-                                    &format!("pattern cannot match array of {} elements", size))
+                                    format!("pattern cannot match array of {} elements", size))
                                 .emit();
                             (inner_ty, tcx.types.err)
                         }
@@ -296,7 +297,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             }
 
                             err.span_label( pat.span,
-                                &format!("pattern cannot match with input type `{}`", expected_ty)
+                                format!("pattern cannot match with input type `{}`", expected_ty)
                             ).emit();
                         }
                         (tcx.types.err, tcx.types.err)
@@ -378,7 +379,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let type_str = self.ty_to_string(expected);
                     struct_span_err!(self.tcx.sess, span, E0033,
                               "type `{}` cannot be dereferenced", type_str)
-                        .span_label(span, &format!("type `{}` cannot be dereferenced", type_str))
+                        .span_label(span, format!("type `{}` cannot be dereferenced", type_str))
                         .emit();
                     return false
                 }
@@ -414,6 +415,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             discrim_ty = self.next_ty_var(TypeVariableOrigin::TypeInference(discrim.span));
             self.check_expr_has_type(discrim, discrim_ty);
         };
+
+        // If the discriminant diverges, the match is pointless (e.g.,
+        // `match (return) { }`).
+        self.warn_if_unreachable(expr.id, expr.span, "expression");
+
+        // If there are no arms, that is a diverging match; a special case.
+        if arms.is_empty() {
+            self.diverges.set(self.diverges.get() | Diverges::Always);
+            return tcx.types.never;
+        }
+
+        // Otherwise, we have to union together the types that the
+        // arms produce and so forth.
+
         let discrim_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);
 
@@ -426,6 +441,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.check_pat(&p, discrim_ty);
                 all_pats_diverge &= self.diverges.get();
             }
+
             // As discussed with @eddyb, this is for disabling unreachable_code
             // warnings on patterns (they're now subsumed by unreachable_patterns
             // warnings).
@@ -444,20 +460,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // on any empty type and is therefore unreachable; should the flow
         // of execution reach it, we will panic, so bottom is an appropriate
         // type in that case)
-        let expected = expected.adjust_for_branches(self);
-        let mut result_ty = self.next_diverging_ty_var(
-            TypeVariableOrigin::DivergingBlockExpr(expr.span));
         let mut all_arms_diverge = Diverges::WarnedAlways;
-        let coerce_first = match expected {
-            // We don't coerce to `()` so that if the match expression is a
-            // statement it's branches can have any consistent type. That allows
-            // us to give better error messages (pointing to a usually better
-            // arm for inconsistent arms or to the whole match when a `()` type
-            // is required).
-            Expectation::ExpectHasType(ety) if ety != self.tcx.mk_nil() => {
-                ety
-            }
-            _ => result_ty
+
+        let expected = expected.adjust_for_branches(self);
+
+        let mut coercion = {
+            let coerce_first = match expected {
+                // We don't coerce to `()` so that if the match expression is a
+                // statement it's branches can have any consistent type. That allows
+                // us to give better error messages (pointing to a usually better
+                // arm for inconsistent arms or to the whole match when a `()` type
+                // is required).
+                Expectation::ExpectHasType(ety) if ety != self.tcx.mk_nil() => ety,
+                _ => self.next_ty_var(TypeVariableOrigin::MiscVariable(expr.span)),
+            };
+            CoerceMany::with_coercion_sites(coerce_first, arms)
         };
 
         for (i, (arm, pats_diverge)) in arms.iter().zip(all_arm_pats_diverge).enumerate() {
@@ -470,11 +487,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
             all_arms_diverge &= self.diverges.get();
 
-            if result_ty.references_error() || arm_ty.references_error() {
-                result_ty = tcx.types.err;
-                continue;
-            }
-
             // Handle the fallback arm of a desugared if-let like a missing else.
             let is_if_let_fallback = match match_src {
                 hir::MatchSource::IfLetDesugar { contains_else_clause: false } => {
@@ -483,47 +495,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 _ => false
             };
 
-            let cause = if is_if_let_fallback {
-                self.cause(expr.span, ObligationCauseCode::IfExpressionWithNoElse)
+            if is_if_let_fallback {
+                let cause = self.cause(expr.span, ObligationCauseCode::IfExpressionWithNoElse);
+                assert!(arm_ty.is_nil());
+                coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
             } else {
-                self.cause(expr.span, ObligationCauseCode::MatchExpressionArm {
+                let cause = self.cause(expr.span, ObligationCauseCode::MatchExpressionArm {
                     arm_span: arm.body.span,
                     source: match_src
-                })
-            };
-
-            let result = if is_if_let_fallback {
-                self.eq_types(true, &cause, arm_ty, result_ty)
-                    .map(|infer_ok| {
-                        self.register_infer_ok_obligations(infer_ok);
-                        arm_ty
-                    })
-            } else if i == 0 {
-                // Special-case the first arm, as it has no "previous expressions".
-                self.try_coerce(&arm.body, arm_ty, coerce_first)
-            } else {
-                let prev_arms = || arms[..i].iter().map(|arm| &*arm.body);
-                self.try_find_coercion_lub(&cause, prev_arms, result_ty, &arm.body, arm_ty)
-            };
-
-            result_ty = match result {
-                Ok(ty) => ty,
-                Err(e) => {
-                    let (expected, found) = if is_if_let_fallback {
-                        (arm_ty, result_ty)
-                    } else {
-                        (result_ty, arm_ty)
-                    };
-                    self.report_mismatched_types(&cause, expected, found, e).emit();
-                    self.tcx.types.err
-                }
-            };
+                });
+                coercion.coerce(self, &cause, &arm.body, arm_ty, self.diverges.get());
+            }
         }
 
         // We won't diverge unless the discriminant or all arms diverge.
         self.diverges.set(discrim_diverges | all_arms_diverge);
 
-        result_ty
+        coercion.complete(self)
     }
 
     fn check_pat_struct(&self,
@@ -605,7 +593,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               def.kind_name(),
                               hir::print::to_string(&tcx.hir, |s| s.print_qpath(qpath, false)));
             struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg)
-                .span_label(pat.span, &format!("not a tuple variant or struct")).emit();
+                .span_label(pat.span, "not a tuple variant or struct").emit();
             on_error();
         };
 
@@ -654,7 +642,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                              "this pattern has {} field{}, but the corresponding {} has {} field{}",
                              subpats.len(), subpats_ending, def.kind_name(),
                              variant.fields.len(),  fields_ending)
-                .span_label(pat.span, &format!("expected {} field{}, found {}",
+                .span_label(pat.span, format!("expected {} field{}, found {}",
                                                variant.fields.len(), fields_ending, subpats.len()))
                 .emit();
             on_error();
@@ -695,8 +683,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                       in the pattern",
                                      field.name)
                         .span_label(span,
-                                    &format!("multiple uses of `{}` in pattern", field.name))
-                        .span_label(*occupied.get(), &format!("first use of `{}`", field.name))
+                                    format!("multiple uses of `{}` in pattern", field.name))
+                        .span_label(*occupied.get(), format!("first use of `{}`", field.name))
                         .emit();
                     tcx.types.err
                 }
@@ -715,7 +703,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                              tcx.item_path_str(variant.did),
                                              field.name)
                                 .span_label(span,
-                                            &format!("{} `{}` does not have field `{}`",
+                                            format!("{} `{}` does not have field `{}`",
                                                      kind_name,
                                                      tcx.item_path_str(variant.did),
                                                      field.name))
@@ -744,7 +732,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 struct_span_err!(tcx.sess, span, E0027,
                                 "pattern does not mention field `{}`",
                                 field.name)
-                                .span_label(span, &format!("missing field `{}`", field.name))
+                                .span_label(span, format!("missing field `{}`", field.name))
                                 .emit();
             }
         }

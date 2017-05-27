@@ -54,15 +54,32 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// exception. If you need to mutate through an `Arc`, use [`Mutex`][mutex],
 /// [`RwLock`][rwlock], or one of the [`Atomic`][atomic] types.
 ///
-/// `Arc` uses atomic operations for reference counting, so `Arc`s can be
-/// sent between threads. In other words, `Arc<T>` implements [`Send`]
-/// as long as `T` implements [`Send`] and [`Sync`][sync]. The disadvantage is
-/// that atomic operations are more expensive than ordinary memory accesses.
-/// If you are not sharing reference-counted values between threads, consider
-/// using [`rc::Rc`][`Rc`] for lower overhead. [`Rc`] is a safe default, because
-/// the compiler will catch any attempt to send an [`Rc`] between threads.
-/// However, a library might choose `Arc` in order to give library consumers
+/// ## Thread Safety
+///
+/// Unlike [`Rc<T>`], `Arc<T>` uses atomic operations for its reference
+/// counting  This means that it is thread-safe. The disadvantage is that
+/// atomic operations are more expensive than ordinary memory accesses. If you
+/// are not sharing reference-counted values between threads, consider using
+/// [`Rc<T>`] for lower overhead. [`Rc<T>`] is a safe default, because the
+/// compiler will catch any attempt to send an [`Rc<T>`] between threads.
+/// However, a library might choose `Arc<T>` in order to give library consumers
 /// more flexibility.
+///
+/// `Arc<T>` will implement [`Send`] and [`Sync`] as long as the `T` implements
+/// [`Send`] and [`Sync`]. Why can't you put a non-thread-safe type `T` in an
+/// `Arc<T>` to make it thread-safe? This may be a bit counter-intuitive at
+/// first: after all, isn't the point of `Arc<T>` thread safety? The key is
+/// this: `Arc<T>` makes it thread safe to have multiple ownership of the same
+/// data, but it  doesn't add thread safety to its data. Consider
+/// `Arc<RefCell<T>>`. `RefCell<T>` isn't [`Sync`], and if `Arc<T>` was always
+/// [`Send`], `Arc<RefCell<T>>` would be as well. But then we'd have a problem:
+/// `RefCell<T>` is not thread safe; it keeps track of the borrowing count using
+/// non-atomic operations.
+///
+/// In the end, this means that you may need to pair `Arc<T>` with some sort of
+/// `std::sync` type, usually `Mutex<T>`.
+///
+/// ## Breaking cycles with `Weak`
 ///
 /// The [`downgrade`][downgrade] method can be used to create a non-owning
 /// [`Weak`][weak] pointer. A [`Weak`][weak] pointer can be [`upgrade`][upgrade]d
@@ -73,6 +90,8 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// [`Weak`][weak] is used to break cycles. For example, a tree could have
 /// strong `Arc` pointers from parent nodes to children, and [`Weak`][weak]
 /// pointers from children back to their parents.
+///
+/// ## `Deref` behavior
 ///
 /// `Arc<T>` automatically dereferences to `T` (via the [`Deref`][deref] trait),
 /// so you can call `T`'s methods on a value of type `Arc<T>`. To avoid name
@@ -91,18 +110,18 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 ///
 /// [arc]: struct.Arc.html
 /// [weak]: struct.Weak.html
-/// [`Rc`]: ../../std/rc/struct.Rc.html
+/// [`Rc<T>`]: ../../std/rc/struct.Rc.html
 /// [clone]: ../../std/clone/trait.Clone.html#tymethod.clone
 /// [mutex]: ../../std/sync/struct.Mutex.html
 /// [rwlock]: ../../std/sync/struct.RwLock.html
 /// [atomic]: ../../std/sync/atomic/index.html
 /// [`Send`]: ../../std/marker/trait.Send.html
-/// [sync]: ../../std/marker/trait.Sync.html
+/// [`Sync`]: ../../std/marker/trait.Sync.html
 /// [deref]: ../../std/ops/trait.Deref.html
 /// [downgrade]: struct.Arc.html#method.downgrade
 /// [upgrade]: struct.Weak.html#method.upgrade
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
-/// [assoc]: ../../book/method-syntax.html#associated-functions
+/// [assoc]: ../../book/first-edition/method-syntax.html#associated-functions
 ///
 /// # Examples
 ///
@@ -165,18 +184,29 @@ unsafe impl<T: ?Sized + Sync + Send> Sync for Arc<T> {}
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 
-/// A weak version of [`Arc`][arc].
+/// `Weak` is a version of [`Arc`] that holds a non-owning reference to the
+/// managed value. The value is accessed by calling [`upgrade`] on the `Weak`
+/// pointer, which returns an [`Option`]`<`[`Arc`]`<T>>`.
 ///
-/// `Weak` pointers do not count towards determining if the inner value
-/// should be dropped.
+/// Since a `Weak` reference does not count towards ownership, it will not
+/// prevent the inner value from being dropped, and `Weak` itself makes no
+/// guarantees about the value still being present and may return [`None`]
+/// when [`upgrade`]d.
 ///
-/// The typical way to obtain a `Weak` pointer is to call
-/// [`Arc::downgrade`][downgrade].
+/// A `Weak` pointer is useful for keeping a temporary reference to the value
+/// within [`Arc`] without extending its lifetime. It is also used to prevent
+/// circular references between [`Arc`] pointers, since mutual owning references
+/// would never allow either [`Arc`] to be dropped. For example, a tree could
+/// have strong [`Arc`] pointers from parent nodes to children, and `Weak`
+/// pointers from children back to their parents.
 ///
-/// See the [`Arc`][arc] documentation for more details.
+/// The typical way to obtain a `Weak` pointer is to call [`Arc::downgrade`].
 ///
-/// [arc]: struct.Arc.html
-/// [downgrade]: struct.Arc.html#method.downgrade
+/// [`Arc`]: struct.Arc.html
+/// [`Arc::downgrade`]: struct.Arc.html#method.downgrade
+/// [`upgrade`]: struct.Weak.html#method.upgrade
+/// [`Option`]: ../../std/option/enum.Option.html
+/// [`None`]: ../../std/option/enum.Option.html#variant.None
 #[stable(feature = "arc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
     ptr: Shared<ArcInner<T>>,
@@ -266,8 +296,7 @@ impl<T> Arc<T> {
         atomic::fence(Acquire);
 
         unsafe {
-            let ptr = *this.ptr;
-            let elem = ptr::read(&(*ptr).data);
+            let elem = ptr::read(&this.ptr.as_ref().data);
 
             // Make a weak pointer to clean up the implicit strong-weak reference
             let _weak = Weak { ptr: this.ptr };
@@ -287,17 +316,15 @@ impl<T> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_raw)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let x = Arc::new(10);
     /// let x_ptr = Arc::into_raw(x);
     /// assert_eq!(unsafe { *x_ptr }, 10);
     /// ```
-    #[unstable(feature = "rc_raw", issue = "37197")]
-    pub fn into_raw(this: Self) -> *mut T {
-        let ptr = unsafe { &mut (**this.ptr).data as *mut _ };
+    #[stable(feature = "rc_raw", since = "1.17.0")]
+    pub fn into_raw(this: Self) -> *const T {
+        let ptr: *const T = &*this;
         mem::forget(this);
         ptr
     }
@@ -315,8 +342,6 @@ impl<T> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_raw)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let x = Arc::new(10);
@@ -332,11 +357,14 @@ impl<T> Arc<T> {
     ///
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
     /// ```
-    #[unstable(feature = "rc_raw", issue = "37197")]
-    pub unsafe fn from_raw(ptr: *mut T) -> Self {
+    #[stable(feature = "rc_raw", since = "1.17.0")]
+    pub unsafe fn from_raw(ptr: *const T) -> Self {
         // To find the corresponding pointer to the `ArcInner` we need to subtract the offset of the
         // `data` field from the pointer.
-        Arc { ptr: Shared::new((ptr as *mut u8).offset(-offset_of!(ArcInner<T>, data)) as *mut _) }
+        let ptr = (ptr as *const u8).offset(-offset_of!(ArcInner<T>, data));
+        Arc {
+            ptr: Shared::new(ptr as *mut u8 as *mut _),
+        }
     }
 }
 
@@ -442,17 +470,17 @@ impl<T: ?Sized> Arc<T> {
         // `ArcInner` structure itself is `Sync` because the inner data is
         // `Sync` as well, so we're ok loaning out an immutable pointer to these
         // contents.
-        unsafe { &**self.ptr }
+        unsafe { self.ptr.as_ref() }
     }
 
     // Non-inlined part of `drop`.
     #[inline(never)]
     unsafe fn drop_slow(&mut self) {
-        let ptr = *self.ptr;
+        let ptr = self.ptr.as_ptr();
 
         // Destroy the data at this time, even though we may not free the box
         // allocation itself (there may still be weak pointers lying around).
-        ptr::drop_in_place(&mut (*ptr).data);
+        ptr::drop_in_place(&mut self.ptr.as_mut().data);
 
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
@@ -461,17 +489,13 @@ impl<T: ?Sized> Arc<T> {
     }
 
     #[inline]
-    #[unstable(feature = "ptr_eq",
-               reason = "newly added",
-               issue = "36497")]
+    #[stable(feature = "ptr_eq", since = "1.17.0")]
     /// Returns true if the two `Arc`s point to the same value (not
     /// just values that compare as equal).
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_eq)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
@@ -482,9 +506,7 @@ impl<T: ?Sized> Arc<T> {
     /// assert!(!Arc::ptr_eq(&five, &other_five));
     /// ```
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
-        let this_ptr: *const ArcInner<T> = *this.ptr;
-        let other_ptr: *const ArcInner<T> = *other.ptr;
-        this_ptr == other_ptr
+        this.ptr.as_ptr() == other.ptr.as_ptr()
     }
 }
 
@@ -615,7 +637,7 @@ impl<T: Clone> Arc<T> {
                 // here (due to zeroing) because data is no longer accessed by
                 // other threads (due to there being no more strong refs at this
                 // point).
-                let mut swap = Arc::new(ptr::read(&(**weak.ptr).data));
+                let mut swap = Arc::new(ptr::read(&weak.ptr.as_ref().data));
                 mem::swap(this, &mut swap);
                 mem::forget(swap);
             }
@@ -628,8 +650,7 @@ impl<T: Clone> Arc<T> {
         // As with `get_mut()`, the unsafety is ok because our reference was
         // either unique to begin with, or became one upon cloning the contents.
         unsafe {
-            let inner = &mut **this.ptr;
-            &mut inner.data
+            &mut this.ptr.as_mut().data
         }
     }
 }
@@ -671,8 +692,7 @@ impl<T: ?Sized> Arc<T> {
             // the Arc itself to be `mut`, so we're returning the only possible
             // reference to the inner data.
             unsafe {
-                let inner = &mut **this.ptr;
-                Some(&mut inner.data)
+                Some(&mut this.ptr.as_mut().data)
             }
         } else {
             None
@@ -761,7 +781,18 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
         // > through this reference must obviously happened before), and an
         // > "acquire" operation before deleting the object.
         //
+        // In particular, while the contents of an Arc are usually immutable, it's
+        // possible to have interior writes to something like a Mutex<T>. Since a
+        // Mutex is not acquired when it is deleted, we can't rely on its
+        // synchronization logic to make writes in thread A visible to a destructor
+        // running in thread B.
+        //
+        // Also note that the Acquire fence here could probably be replaced with an
+        // Acquire load, which could improve performance in highly-contended
+        // situations. See [2].
+        //
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
+        // [2]: (https://github.com/rust-lang/rust/pull/41714)
         atomic::fence(Acquire);
 
         unsafe {
@@ -771,14 +802,11 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
 }
 
 impl<T> Weak<T> {
-    /// Constructs a new `Weak<T>`, without an accompanying instance of `T`.
+    /// Constructs a new `Weak<T>`, allocating memory for `T` without initializing
+    /// it. Calling [`upgrade`] on the return value always gives [`None`].
     ///
-    /// This allocates memory for `T`, but does not initialize it. Calling
-    /// [`upgrade`][upgrade] on the return value always gives
-    /// [`None`][option].
-    ///
-    /// [upgrade]: struct.Weak.html#method.upgrade
-    /// [option]: ../../std/option/enum.Option.html
+    /// [`upgrade`]: struct.Weak.html#method.upgrade
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -803,13 +831,13 @@ impl<T> Weak<T> {
 }
 
 impl<T: ?Sized> Weak<T> {
-    /// Upgrades the `Weak` pointer to an [`Arc`][arc], if possible.
+    /// Attempts to upgrade the `Weak` pointer to an [`Arc`], extending
+    /// the lifetime of the value if successful.
     ///
-    /// Returns [`None`][option] if the strong count has reached zero and the
-    /// inner value was destroyed.
+    /// Returns [`None`] if the value has since been dropped.
     ///
-    /// [arc]: struct.Arc.html
-    /// [option]: ../../std/option/enum.Option.html
+    /// [`Arc`]: struct.Arc.html
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -864,16 +892,13 @@ impl<T: ?Sized> Weak<T> {
     #[inline]
     fn inner(&self) -> &ArcInner<T> {
         // See comments above for why this is "safe"
-        unsafe { &**self.ptr }
+        unsafe { self.ptr.as_ref() }
     }
 }
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
 impl<T: ?Sized> Clone for Weak<T> {
-    /// Makes a clone of the `Weak` pointer.
-    ///
-    /// This creates another pointer to the same inner value, increasing the
-    /// weak reference count.
+    /// Makes a clone of the `Weak` pointer that points to the same value.
     ///
     /// # Examples
     ///
@@ -905,14 +930,11 @@ impl<T: ?Sized> Clone for Weak<T> {
 
 #[stable(feature = "downgraded_weak", since = "1.10.0")]
 impl<T> Default for Weak<T> {
-    /// Constructs a new `Weak<T>`, without an accompanying instance of `T`.
+    /// Constructs a new `Weak<T>`, allocating memory for `T` without initializing
+    /// it. Calling [`upgrade`] on the return value always gives [`None`].
     ///
-    /// This allocates memory for `T`, but does not initialize it. Calling
-    /// [`upgrade`][upgrade] on the return value always gives
-    /// [`None`][option].
-    ///
-    /// [upgrade]: struct.Weak.html#method.upgrade
-    /// [option]: ../../std/option/enum.Option.html
+    /// [`upgrade`]: struct.Weak.html#method.upgrade
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -930,8 +952,6 @@ impl<T> Default for Weak<T> {
 #[stable(feature = "arc_weak", since = "1.4.0")]
 impl<T: ?Sized> Drop for Weak<T> {
     /// Drops the `Weak` pointer.
-    ///
-    /// This will decrement the weak reference count.
     ///
     /// # Examples
     ///
@@ -956,7 +976,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// assert!(other_weak_foo.upgrade().is_none());
     /// ```
     fn drop(&mut self) {
-        let ptr = *self.ptr;
+        let ptr = self.ptr.as_ptr();
 
         // If we find out that we were the last weak pointer, then its time to
         // deallocate the data entirely. See the discussion in Arc::drop() about
@@ -1137,7 +1157,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Arc<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Pointer::fmt(&*self.ptr, f)
+        fmt::Pointer::fmt(&self.ptr, f)
     }
 }
 

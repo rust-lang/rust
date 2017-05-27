@@ -19,12 +19,13 @@ pub use self::DebugInfoLevel::*;
 use session::{early_error, early_warn, Session};
 use session::search_paths::SearchPaths;
 
-use rustc_back::PanicStrategy;
+use rustc_back::{LinkerFlavor, PanicStrategy};
 use rustc_back::target::Target;
 use lint;
 use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
+use syntax::codemap::FilePathMapping;
 use syntax::parse::token;
 use syntax::parse;
 use syntax::symbol::Symbol;
@@ -51,7 +52,7 @@ pub struct Config {
     pub uint_type: UintTy,
 }
 
-#[derive(Clone, Hash)]
+#[derive(Clone, Hash, Debug)]
 pub enum Sanitizer {
     Address,
     Leak,
@@ -82,6 +83,7 @@ pub enum OutputType {
     Bitcode,
     Assembly,
     LlvmAssembly,
+    Mir,
     Metadata,
     Object,
     Exe,
@@ -96,6 +98,7 @@ impl OutputType {
             OutputType::Bitcode |
             OutputType::Assembly |
             OutputType::LlvmAssembly |
+            OutputType::Mir |
             OutputType::Object |
             OutputType::Metadata => false,
         }
@@ -106,6 +109,7 @@ impl OutputType {
             OutputType::Bitcode => "llvm-bc",
             OutputType::Assembly => "asm",
             OutputType::LlvmAssembly => "llvm-ir",
+            OutputType::Mir => "mir",
             OutputType::Object => "obj",
             OutputType::Metadata => "metadata",
             OutputType::Exe => "link",
@@ -118,6 +122,7 @@ impl OutputType {
             OutputType::Bitcode => "bc",
             OutputType::Assembly => "s",
             OutputType::LlvmAssembly => "ll",
+            OutputType::Mir => "mir",
             OutputType::Object => "o",
             OutputType::Metadata => "rmeta",
             OutputType::DepInfo => "d",
@@ -172,6 +177,7 @@ impl OutputTypes {
             OutputType::Bitcode |
             OutputType::Assembly |
             OutputType::LlvmAssembly |
+            OutputType::Mir |
             OutputType::Object |
             OutputType::Exe => true,
             OutputType::Metadata |
@@ -322,7 +328,7 @@ top_level_options!(
     }
 );
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PrintRequest {
     FileNames,
     Sysroot,
@@ -487,6 +493,14 @@ impl Options {
         self.incremental.is_none() ||
         self.cg.codegen_units == 1
     }
+
+    pub fn file_path_mapping(&self) -> FilePathMapping {
+        FilePathMapping::new(
+            self.debugging_opts.remap_path_prefix_from.iter().zip(
+                self.debugging_opts.remap_path_prefix_to.iter()
+            ).map(|(src, dst)| (src.clone(), dst.clone())).collect()
+        )
+    }
 }
 
 // The type of entry function, so
@@ -636,12 +650,16 @@ macro_rules! options {
             Some("either `panic` or `abort`");
         pub const parse_sanitizer: Option<&'static str> =
             Some("one of: `address`, `leak`, `memory` or `thread`");
+        pub const parse_linker_flavor: Option<&'static str> =
+            Some(::rustc_back::LinkerFlavor::one_of());
+        pub const parse_optimization_fuel: Option<&'static str> =
+            Some("crate=integer");
     }
 
     #[allow(dead_code)]
     mod $mod_set {
         use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer};
-        use rustc_back::PanicStrategy;
+        use rustc_back::{LinkerFlavor, PanicStrategy};
 
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
@@ -772,6 +790,29 @@ macro_rules! options {
             }
             true
         }
+
+        fn parse_linker_flavor(slote: &mut Option<LinkerFlavor>, v: Option<&str>) -> bool {
+            match v.and_then(LinkerFlavor::from_str) {
+                Some(lf) => *slote = Some(lf),
+                _ => return false,
+            }
+            true
+        }
+
+        fn parse_optimization_fuel(slot: &mut Option<(String, u64)>, v: Option<&str>) -> bool {
+            match v {
+                None => false,
+                Some(s) => {
+                    let parts = s.split('=').collect::<Vec<_>>();
+                    if parts.len() != 2 { return false; }
+                    let crate_name = parts[0].to_string();
+                    let fuel = parts[1].parse::<u64>();
+                    if fuel.is_err() { return false; }
+                    *slot = Some((crate_name, fuel.unwrap()));
+                    true
+                }
+            }
+        }
     }
 ) }
 
@@ -783,9 +824,9 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     linker: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "system linker to link outputs with"),
     link_arg: Vec<String> = (vec![], parse_string_push, [UNTRACKED],
-        "a single extra argument to pass to the linker (can be used several times)"),
+        "a single extra argument to append to the linker invocation (can be used several times)"),
     link_args: Option<Vec<String>> = (None, parse_opt_list, [UNTRACKED],
-        "extra arguments to pass to the linker (space separated)"),
+        "extra arguments to append to the linker invocation (space separated)"),
     link_dead_code: bool = (false, parse_bool, [UNTRACKED],
         "don't let linker strip dead code (turning it on can be used for code coverage)"),
     lto: bool = (false, parse_bool, [TRACKED],
@@ -922,7 +963,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "attempt to recover from parse errors (experimental)"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
           "enable incremental compilation (experimental)"),
-    incremental_cc: bool = (false, parse_bool, [UNTRACKED],
+    incremental_cc: bool = (true, parse_bool, [UNTRACKED],
           "enable cross-crate incremental compilation (even more experimental)"),
     incremental_info: bool = (false, parse_bool, [UNTRACKED],
         "print high-level information about incremental reuse (or the lack thereof)"),
@@ -962,6 +1003,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "dump MIR state at various points in translation"),
     dump_mir_dir: Option<String> = (None, parse_opt_string, [UNTRACKED],
           "the directory the MIR is dumped into"),
+    dump_mir_exclude_pass_number: bool = (false, parse_bool, [UNTRACKED],
+          "if set, exclude the pass number when dumping MIR (used in tests)"),
     perf_stats: bool = (false, parse_bool, [UNTRACKED],
           "print some performance-related statistics"),
     hir_stats: bool = (false, parse_bool, [UNTRACKED],
@@ -971,9 +1014,25 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
           "encode MIR of all functions into the crate metadata"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
-          "pass `-install_name @rpath/...` to the OSX linker"),
+          "pass `-install_name @rpath/...` to the macOS linker"),
     sanitizer: Option<Sanitizer> = (None, parse_sanitizer, [TRACKED],
                                    "Use a sanitizer"),
+    linker_flavor: Option<LinkerFlavor> = (None, parse_linker_flavor, [UNTRACKED],
+                                           "Linker flavor"),
+    fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],
+        "Set the optimization fuel quota for a crate."),
+    print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
+        "Make Rustc print the total optimization fuel used by a crate."),
+    remap_path_prefix_from: Vec<String> = (vec![], parse_string_push, [TRACKED],
+        "add a source pattern to the file path remapping config"),
+    remap_path_prefix_to: Vec<String> = (vec![], parse_string_push, [TRACKED],
+        "add a mapping target to the file path remapping config"),
+    force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
+        "force all crates to be `rustc_private` unstable"),
+    pre_link_arg: Vec<String> = (vec![], parse_string_push, [UNTRACKED],
+        "a single extra argument to prepend the linker invocation (can be used several times)"),
+    pre_link_args: Option<Vec<String>> = (None, parse_opt_list, [UNTRACKED],
+        "extra arguments to prepend to the linker invocation (space separated)"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1069,14 +1128,6 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
 pub enum OptionStability {
     Stable,
 
-    // FIXME: historically there were some options which were either `-Z` or
-    //        required the `-Z unstable-options` flag, which were all intended
-    //        to be unstable. Unfortunately we didn't actually gate usage of
-    //        these options on the stable compiler, so we still allow them there
-    //        today. There are some warnings printed out about this in the
-    //        driver.
-    UnstableButNotReally,
-
     Unstable,
 }
 
@@ -1095,16 +1146,8 @@ impl RustcOptGroup {
         RustcOptGroup { opt_group: g, stability: OptionStability::Stable }
     }
 
-    #[allow(dead_code)] // currently we have no "truly unstable" options
     pub fn unstable(g: getopts::OptGroup) -> RustcOptGroup {
         RustcOptGroup { opt_group: g, stability: OptionStability::Unstable }
-    }
-
-    fn unstable_bnr(g: getopts::OptGroup) -> RustcOptGroup {
-        RustcOptGroup {
-            opt_group: g,
-            stability: OptionStability::UnstableButNotReally,
-        }
     }
 }
 
@@ -1127,7 +1170,6 @@ mod opt {
 
     fn stable(g: getopts::OptGroup) -> R { RustcOptGroup::stable(g) }
     fn unstable(g: getopts::OptGroup) -> R { RustcOptGroup::unstable(g) }
-    fn unstable_bnr(g: getopts::OptGroup) -> R { RustcOptGroup::unstable_bnr(g) }
 
     pub fn opt_s(a: S, b: S, c: S, d: S) -> R {
         stable(getopts::optopt(a, b, c, d))
@@ -1160,24 +1202,6 @@ mod opt {
     pub fn flagmulti(a: S, b: S, c: S) -> R {
         unstable(getopts::optflagmulti(a, b, c))
     }
-
-    // Do not use these functions for any new options added to the compiler, all
-    // new options should use the `*_u` variants above to be truly unstable.
-    pub fn opt_ubnr(a: S, b: S, c: S, d: S) -> R {
-        unstable_bnr(getopts::optopt(a, b, c, d))
-    }
-    pub fn multi_ubnr(a: S, b: S, c: S, d: S) -> R {
-        unstable_bnr(getopts::optmulti(a, b, c, d))
-    }
-    pub fn flag_ubnr(a: S, b: S, c: S) -> R {
-        unstable_bnr(getopts::optflag(a, b, c))
-    }
-    pub fn flagopt_ubnr(a: S, b: S, c: S, d: S) -> R {
-        unstable_bnr(getopts::optflagopt(a, b, c, d))
-    }
-    pub fn flagmulti_ubnr(a: S, b: S, c: S) -> R {
-        unstable_bnr(getopts::optflagmulti(a, b, c))
-    }
 }
 
 /// Returns the "short" subset of the rustc command line options,
@@ -1208,7 +1232,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                "NAME"),
         opt::multi_s("", "emit", "Comma separated list of types of output for \
                               the compiler to emit",
-                 "[asm|llvm-bc|llvm-ir|obj|metadata|link|dep-info]"),
+                 "[asm|llvm-bc|llvm-ir|obj|metadata|link|dep-info|mir]"),
         opt::multi_s("", "print", "Comma separated list of compiler information to \
                                print on stdout", &format!("[{}]",
                                &print_opts.join("|"))),
@@ -1243,7 +1267,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
         opt::multi_s("", "extern", "Specify where an external rust library is located",
                      "NAME=PATH"),
         opt::opt_s("", "sysroot", "Override the system root", "PATH"),
-        opt::multi_ubnr("Z", "", "Set internal debugging options", "FLAG"),
+        opt::multi("Z", "", "Set internal debugging options", "FLAG"),
         opt::opt_s("", "error-format",
                       "How errors and other messages are produced",
                       "human|json"),
@@ -1252,28 +1276,20 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                                  always = always colorize output;
                                  never  = never colorize output", "auto|always|never"),
 
-        opt::flagopt_ubnr("", "pretty",
-                          "Pretty-print the input instead of compiling;
-                           valid types are: `normal` (un-annotated source),
-                           `expanded` (crates expanded), or
-                           `expanded,identified` (fully parenthesized, AST nodes with IDs).",
-                          "TYPE"),
-        opt::flagopt_ubnr("", "unpretty",
-                          "Present the input source, unstable (and less-pretty) variants;
-                           valid types are any of the types for `--pretty`, as well as:
-                           `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
-                           `everybody_loops` (all function bodies replaced with `loop {}`),
-                           `hir` (the HIR), `hir,identified`, or
-                           `hir,typed` (HIR with types for each node).",
-                          "TYPE"),
-
-        // new options here should **not** use the `_ubnr` functions, all new
-        // unstable options should use the short variants to indicate that they
-        // are truly unstable. All `_ubnr` flags are just that way because they
-        // were so historically.
-        //
-        // You may also wish to keep this comment at the bottom of this list to
-        // ensure that others see it.
+        opt::flagopt("", "pretty",
+                     "Pretty-print the input instead of compiling;
+                      valid types are: `normal` (un-annotated source),
+                      `expanded` (crates expanded), or
+                      `expanded,identified` (fully parenthesized, AST nodes with IDs).",
+                     "TYPE"),
+        opt::flagopt("", "unpretty",
+                     "Present the input source, unstable (and less-pretty) variants;
+                      valid types are any of the types for `--pretty`, as well as:
+                      `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
+                      `everybody_loops` (all function bodies replaced with `loop {}`),
+                      `hir` (the HIR), `hir,identified`, or
+                      `hir,typed` (HIR with types for each node).",
+                     "TYPE"),
     ]);
     opts
 }
@@ -1281,7 +1297,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
 pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
     cfgspecs.into_iter().map(|s| {
-        let sess = parse::ParseSess::new();
+        let sess = parse::ParseSess::new(FilePathMapping::empty());
         let mut parser =
             parse::new_parser_from_source_str(&sess, "cfgspec".to_string(), s.to_string());
 
@@ -1370,6 +1386,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
                 let output_type = match parts.next().unwrap() {
                     "asm" => OutputType::Assembly,
                     "llvm-ir" => OutputType::LlvmAssembly,
+                    "mir" => OutputType::Mir,
                     "llvm-bc" => OutputType::Bitcode,
                     "obj" => OutputType::Object,
                     "metadata" => OutputType::Metadata,
@@ -1389,6 +1406,23 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         output_types.insert(OutputType::Metadata, None);
     } else if output_types.is_empty() {
         output_types.insert(OutputType::Exe, None);
+    }
+
+    let remap_path_prefix_sources = debugging_opts.remap_path_prefix_from.len();
+    let remap_path_prefix_targets = debugging_opts.remap_path_prefix_from.len();
+
+    if remap_path_prefix_targets < remap_path_prefix_sources {
+        for source in &debugging_opts.remap_path_prefix_from[remap_path_prefix_targets..] {
+            early_error(error_format,
+                &format!("option `-Zremap-path-prefix-from='{}'` does not have \
+                         a corresponding `-Zremap-path-prefix-to`", source))
+        }
+    } else if remap_path_prefix_targets > remap_path_prefix_sources {
+        for target in &debugging_opts.remap_path_prefix_to[remap_path_prefix_sources..] {
+            early_error(error_format,
+                &format!("option `-Zremap-path-prefix-to='{}'` does not have \
+                          a corresponding `-Zremap-path-prefix-from`", target))
+        }
     }
 
     let mut cg = build_codegen_options(matches, error_format);
@@ -1633,7 +1667,7 @@ pub mod nightly_options {
     use getopts;
     use syntax::feature_gate::UnstableFeatures;
     use super::{ErrorOutputType, OptionStability, RustcOptGroup};
-    use session::{early_error, early_warn};
+    use session::early_error;
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
         is_nightly_build() && matches.opt_strs("Z").iter().any(|x| *x == "unstable-options")
@@ -1674,15 +1708,6 @@ pub mod nightly_options {
                     let msg = format!("the option `{}` is only accepted on the \
                                        nightly compiler", opt_name);
                     early_error(ErrorOutputType::default(), &msg);
-                }
-                OptionStability::UnstableButNotReally => {
-                    let msg = format!("the option `{}` is unstable and should \
-                                       only be used on the nightly compiler, but \
-                                       it is currently accepted for backwards \
-                                       compatibility; this will soon change, \
-                                       see issue #31847 for more details",
-                                      opt_name);
-                    early_warn(ErrorOutputType::default(), &msg);
                 }
                 OptionStability::Stable => {}
             }
@@ -1735,7 +1760,7 @@ mod dep_tracking {
     use rustc_back::PanicStrategy;
 
     pub trait DepTrackingHash {
-        fn hash(&self, &mut DefaultHasher, ErrorOutputType);
+        fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType);
     }
 
     macro_rules! impl_dep_tracking_hash_via_hash {
@@ -1766,11 +1791,13 @@ mod dep_tracking {
 
     impl_dep_tracking_hash_via_hash!(bool);
     impl_dep_tracking_hash_via_hash!(usize);
+    impl_dep_tracking_hash_via_hash!(u64);
     impl_dep_tracking_hash_via_hash!(String);
     impl_dep_tracking_hash_via_hash!(lint::Level);
     impl_dep_tracking_hash_via_hash!(Option<bool>);
     impl_dep_tracking_hash_via_hash!(Option<usize>);
     impl_dep_tracking_hash_via_hash!(Option<String>);
+    impl_dep_tracking_hash_via_hash!(Option<(String, u64)>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
@@ -1792,6 +1819,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_for_sortable_vec_of!((String, lint::Level));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, Option<String>,
                                                  Option<cstore::NativeLibraryKind>));
+    impl_dep_tracking_hash_for_sortable_vec_of!((String, u64));
     impl DepTrackingHash for SearchPaths {
         fn hash(&self, hasher: &mut DefaultHasher, _: ErrorOutputType) {
             let mut elems: Vec<_> = self

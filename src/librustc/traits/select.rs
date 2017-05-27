@@ -10,8 +10,6 @@
 
 //! See `README.md` for high-level documentation
 
-pub use self::MethodMatchResult::*;
-pub use self::MethodMatchedData::*;
 use self::SelectionCandidate::*;
 use self::EvaluationResult::*;
 
@@ -108,23 +106,6 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
 pub struct SelectionCache<'tcx> {
     hashmap: RefCell<FxHashMap<ty::TraitRef<'tcx>,
                                SelectionResult<'tcx, SelectionCandidate<'tcx>>>>,
-}
-
-pub enum MethodMatchResult {
-    MethodMatched(MethodMatchedData),
-    MethodAmbiguous(/* list of impls that could apply */ Vec<DefId>),
-    MethodDidNotMatch,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum MethodMatchedData {
-    // In the case of a precise match, we don't really need to store
-    // how the match was found. So don't.
-    PreciseMethodMatch,
-
-    // In the case of a coercion, we need to know the precise impl so
-    // that we can determine the type to which things were coerced.
-    CoerciveMethodMatch(/* impl we matched */ DefId)
 }
 
 /// The selection process begins by considering all impls, where
@@ -334,7 +315,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn param_env(&self) -> &'cx ty::ParameterEnvironment<'gcx> {
+    pub fn param_env(&self) -> ty::ParamEnv<'gcx> {
         self.infcx.param_env()
     }
 
@@ -565,6 +546,18 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         EvaluatedToOk
                     },
                     Err(_) => EvaluatedToErr
+                }
+            }
+
+            ty::Predicate::Subtype(ref p) => {
+                // does this code ever run?
+                match self.infcx.subtype_predicate(&obligation.cause, p) {
+                    Some(Ok(InferOk { obligations, .. })) => {
+                        self.inferred_obligations.extend(obligations);
+                        EvaluatedToOk
+                    },
+                    Some(Err(_)) => EvaluatedToErr,
+                    None => EvaluatedToAmbig,
                 }
             }
 
@@ -849,7 +842,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn filter_negative_impls(&self, candidate: SelectionCandidate<'tcx>)
                              -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         if let ImplCandidate(def_id) = candidate {
-            if self.tcx().trait_impl_polarity(def_id) == hir::ImplPolarity::Negative {
+            if self.tcx().impl_polarity(def_id) == hir::ImplPolarity::Negative {
                 return Err(Unimplemented)
             }
         }
@@ -950,15 +943,15 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     debug!("Retaining candidate #{}/{}: {:?}",
                            i, candidates.len(), candidates[i]);
                     i += 1;
+
+                    // If there are *STILL* multiple candidates, give up
+                    // and report ambiguity.
+                    if i > 1 {
+                        debug!("multiple matches, ambig");
+                        return Ok(None);
+                    }
                 }
             }
-        }
-
-        // If there are *STILL* multiple candidates, give up and
-        // report ambiguity.
-        if candidates.len() > 1 {
-            debug!("multiple matches, ambig");
-            return Ok(None);
         }
 
         // If there are *NO* candidates, then there are no impls --
@@ -1229,8 +1222,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 def_id={:?}, substs={:?}",
                def_id, substs);
 
-        let item_predicates = self.tcx().item_predicates(def_id);
-        let bounds = item_predicates.instantiate(self.tcx(), substs);
+        let predicates_of = self.tcx().predicates_of(def_id);
+        let bounds = predicates_of.instantiate(self.tcx(), substs);
         debug!("match_projection_obligation_against_definition_bounds: \
                 bounds={:?}",
                bounds);
@@ -1307,8 +1300,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                             .iter()
                             .filter_map(|o| o.to_opt_poly_trait_ref());
 
+        // micro-optimization: filter out predicates relating to different
+        // traits.
         let matching_bounds =
-            all_bounds.filter(
+            all_bounds.filter(|p| p.def_id() == stack.obligation.predicate.def_id());
+
+        let matching_bounds =
+            matching_bounds.filter(
                 |bound| self.evaluate_where_clause(stack, bound.clone()).may_apply());
 
         let param_candidates =
@@ -1434,7 +1432,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     {
         debug!("assemble_candidates_from_impls(obligation={:?})", obligation);
 
-        let def = self.tcx().lookup_trait_def(obligation.predicate.def_id());
+        let def = self.tcx().trait_def(obligation.predicate.def_id());
 
         def.for_each_relevant_impl(
             self.tcx(),
@@ -1724,7 +1722,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 if other.evaluation == EvaluatedToOk {
                     if let ImplCandidate(victim_def) = victim.candidate {
                         let tcx = self.tcx().global_tcx();
-                        return traits::specializes(tcx, other_def, victim_def);
+                        return traits::specializes(tcx, other_def, victim_def) ||
+                            tcx.impls_are_allowed_to_overlap(other_def, victim_def);
                     }
                 }
 
@@ -1796,11 +1795,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyAdt(def, substs) => {
                 let sized_crit = def.sized_constraint(self.tcx());
                 // (*) binder moved here
-                Where(ty::Binder(match sized_crit.sty {
-                    ty::TyTuple(tys, _) => tys.to_vec().subst(self.tcx(), substs),
-                    ty::TyBool => vec![],
-                    _ => vec![sized_crit.subst(self.tcx(), substs)]
-                }))
+                Where(ty::Binder(
+                    sized_crit.iter().map(|ty| ty.subst(self.tcx(), substs)).collect()
+                ))
             }
 
             ty::TyProjection(_) | ty::TyParam(_) | ty::TyAnon(..) => None,
@@ -1950,7 +1947,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // We can resolve the `impl Trait` to its concrete type,
                 // which enforces a DAG between the functions requiring
                 // the auto trait bounds in question.
-                vec![self.tcx().item_type(def_id).subst(self.tcx(), substs)]
+                vec![self.tcx().type_of(def_id).subst(self.tcx(), substs)]
             }
         }
     }
@@ -2529,7 +2526,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             (&ty::TyAdt(def, substs_a), &ty::TyAdt(_, substs_b)) => {
                 let fields = def
                     .all_fields()
-                    .map(|f| tcx.item_type(f.did))
+                    .map(|f| tcx.type_of(f.did))
                     .collect::<Vec<_>>();
 
                 // The last field of the structure has to exist and contain type parameters.
@@ -2847,7 +2844,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // obligation will normalize to `<$0 as Iterator>::Item = $1` and
         // `$1: Copy`, so we must ensure the obligations are emitted in
         // that order.
-        let predicates = tcx.item_predicates(def_id);
+        let predicates = tcx.predicates_of(def_id);
         assert_eq!(predicates.parent, None);
         let predicates = predicates.predicates.iter().flat_map(|predicate| {
             let predicate = normalize_with_depth(self, cause.clone(), recursion_depth,
@@ -2966,16 +2963,6 @@ impl EvaluationResult {
             EvaluatedToUnknown => true,
 
             EvaluatedToErr => false
-        }
-    }
-}
-
-impl MethodMatchResult {
-    pub fn may_apply(&self) -> bool {
-        match *self {
-            MethodMatched(_) => true,
-            MethodAmbiguous(_) => true,
-            MethodDidNotMatch => false,
         }
     }
 }

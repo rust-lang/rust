@@ -284,8 +284,8 @@
 //! * [DOT language](http://www.graphviz.org/doc/info/lang.html)
 
 #![crate_name = "graphviz"]
-#![unstable(feature = "rustc_private", issue = "27812")]
-#![feature(staged_api)]
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(staged_api))]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -554,7 +554,7 @@ impl<'a> LabelText<'a> {
     pub fn to_dot_string(&self) -> String {
         match self {
             &LabelStr(ref s) => format!("\"{}\"", s.escape_default()),
-            &EscStr(ref s) => format!("\"{}\"", LabelText::escape_str(&s[..])),
+            &EscStr(ref s) => format!("\"{}\"", LabelText::escape_str(&s)),
             &HtmlStr(ref s) => format!("<{}>", s),
         }
     }
@@ -587,7 +587,7 @@ impl<'a> LabelText<'a> {
         let mut prefix = self.pre_escaped_content().into_owned();
         let suffix = suffix.pre_escaped_content();
         prefix.push_str(r"\n\n");
-        prefix.push_str(&suffix[..]);
+        prefix.push_str(&suffix);
         EscStr(prefix.into_cow())
     }
 }
@@ -878,7 +878,7 @@ mod tests {
         type Node = Node;
         type Edge = &'a Edge;
         fn graph_id(&'a self) -> Id<'a> {
-            Id::new(&self.name[..]).unwrap()
+            Id::new(self.name).unwrap()
         }
         fn node_id(&'a self, n: &Node) -> Id<'a> {
             id_name(n)

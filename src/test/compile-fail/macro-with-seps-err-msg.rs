@@ -14,4 +14,5 @@ fn main() {
     globnar::brotz!(); //~ ERROR non-ident macro paths are experimental
     ::foo!(); //~ ERROR non-ident macro paths are experimental
     foo::<T>!(); //~ ERROR type parameters are not allowed on macros
+    #[derive(foo::Bar)] struct T; //~ ERROR non-ident macro paths are experimental
 }

@@ -37,11 +37,14 @@ use std::sync::mpsc::channel;
 use std::thread;
 use libc::{c_uint, c_void};
 
-pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 4] = [
+pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 7] = [
     ("pic", llvm::RelocMode::PIC),
     ("static", llvm::RelocMode::Static),
     ("default", llvm::RelocMode::Default),
     ("dynamic-no-pic", llvm::RelocMode::DynamicNoPic),
+    ("ropi", llvm::RelocMode::ROPI),
+    ("rwpi", llvm::RelocMode::RWPI),
+    ("ropi-rwpi", llvm::RelocMode::ROPI_RWPI),
 ];
 
 pub const CODE_GEN_MODEL_ARGS : [(&'static str, llvm::CodeModel); 5] = [
@@ -105,7 +108,7 @@ impl SharedEmitter {
                 Some(ref code) => {
                     handler.emit_with_code(&MultiSpan::new(),
                                            &diag.msg,
-                                           &code[..],
+                                           &code,
                                            diag.lvl);
                 },
                 None => {
@@ -189,8 +192,8 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
     let fdata_sections = ffunction_sections;
 
     let code_model_arg = match sess.opts.cg.code_model {
-        Some(ref s) => &s[..],
-        None => &sess.target.target.options.code_model[..],
+        Some(ref s) => &s,
+        None => &sess.target.target.options.code_model,
     };
 
     let code_model = match CODE_GEN_MODEL_ARGS.iter().find(
@@ -371,14 +374,14 @@ struct HandlerFreeVars<'a> {
 unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext<'a>,
                                                msg: &'b str,
                                                cookie: c_uint) {
-    use syntax_pos::ExpnId;
+    use syntax::ext::hygiene::Mark;
 
     match cgcx.lto_ctxt {
         Some((sess, _)) => {
-            sess.codemap().with_expn_info(ExpnId::from_u32(cookie), |info| match info {
+            match Mark::from_u32(cookie).expn_info() {
                 Some(ei) => sess.span_err(ei.call_site, msg),
                 None     => sess.err(msg),
-            });
+            };
         }
 
         None => {
@@ -397,7 +400,7 @@ unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
     let msg = llvm::build_string(|s| llvm::LLVMRustWriteSMDiagnosticToString(diag, s))
         .expect("non-UTF8 SMDiagnostic");
 
-    report_inline_asm(cgcx, &msg[..], cookie);
+    report_inline_asm(cgcx, &msg, cookie);
 }
 
 unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_void) {
@@ -741,6 +744,7 @@ pub fn run_passes(sess: &Session,
                 modules_config.emit_obj = true;
                 metadata_config.emit_obj = true;
             },
+            OutputType::Mir => {}
             OutputType::DepInfo => {}
         }
     }
@@ -822,7 +826,7 @@ pub fn run_passes(sess: &Session,
         if trans.modules.len() == 1 {
             // 1) Only one codegen unit.  In this case it's no difficulty
             //    to copy `foo.0.x` to `foo.x`.
-            let module_name = Some(&(trans.modules[0].name)[..]);
+            let module_name = Some(&trans.modules[0].name[..]);
             let path = crate_output.temp_path(output_type, module_name);
             copy_gracefully(&path,
                             &crate_output.path(output_type));
@@ -880,6 +884,7 @@ pub fn run_passes(sess: &Session,
                 user_wants_objects = true;
                 copy_if_one_unit(OutputType::Object, true);
             }
+            OutputType::Mir |
             OutputType::Metadata |
             OutputType::Exe |
             OutputType::DepInfo => {}
@@ -937,7 +942,7 @@ pub fn run_passes(sess: &Session,
 
         if metadata_config.emit_bc && !user_wants_bitcode {
             let path = crate_output.temp_path(OutputType::Bitcode,
-                                              Some(&trans.metadata_module.name[..]));
+                                              Some(&trans.metadata_module.name));
             remove(sess, &path);
         }
     }

@@ -104,7 +104,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
                 }
             }
         }
-        let mut generics = tcx.item_generics(item_def_id);
+        let mut generics = tcx.generics_of(item_def_id);
         let mut path_def_id = did;
         verbose = tcx.sess.verbose();
         has_self = generics.has_self;
@@ -114,7 +114,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
             // Methods.
             assert!(is_value_path);
             child_types = generics.types.len();
-            generics = tcx.item_generics(def_id);
+            generics = tcx.generics_of(def_id);
             num_regions = generics.regions.len();
             num_types = generics.types.len();
 
@@ -144,7 +144,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
                         if !def.has_default {
                             break;
                         }
-                        if tcx.item_type(def.def_id).subst(tcx, substs) != actual {
+                        if tcx.type_of(def.def_id).subst(tcx, substs) != actual {
                             break;
                         }
                         num_supplied_defaults += 1;
@@ -177,12 +177,12 @@ pub fn parameterized(f: &mut fmt::Formatter,
     let print_regions = |f: &mut fmt::Formatter, start: &str, skip, count| {
         // Don't print any regions if they're all erased.
         let regions = || substs.regions().skip(skip).take(count);
-        if regions().all(|r: &ty::Region| *r == ty::ReErased) {
+        if regions().all(|r: ty::Region| *r == ty::ReErased) {
             return Ok(());
         }
 
         for region in regions() {
-            let region: &ty::Region = region;
+            let region: ty::Region = region;
             start_or_continue(f, start, ", ")?;
             if verbose {
                 write!(f, "{:?}", region)?;
@@ -416,6 +416,7 @@ impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
         match *self {
             ty::Predicate::Trait(ref a) => write!(f, "{:?}", a),
             ty::Predicate::Equate(ref pair) => write!(f, "{:?}", pair),
+            ty::Predicate::Subtype(ref pair) => write!(f, "{:?}", pair),
             ty::Predicate::RegionOutlives(ref pair) => write!(f, "{:?}", pair),
             ty::Predicate::TypeOutlives(ref pair) => write!(f, "{:?}", pair),
             ty::Predicate::Projection(ref pair) => write!(f, "{:?}", pair),
@@ -457,7 +458,7 @@ impl fmt::Debug for ty::BoundRegion {
     }
 }
 
-impl fmt::Debug for ty::Region {
+impl fmt::Debug for ty::RegionKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ty::ReEarlyBound(ref data) => {
@@ -503,19 +504,7 @@ impl<'tcx> fmt::Debug for ty::ClosureUpvar<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::ParameterEnvironment<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ParameterEnvironment(\
-            free_substs={:?}, \
-            implicit_region_bound={:?}, \
-            caller_bounds={:?})",
-            self.free_substs,
-            self.implicit_region_bound,
-            self.caller_bounds)
-    }
-}
-
-impl fmt::Display for ty::Region {
+impl fmt::Display for ty::RegionKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if verbose() {
             return write!(f, "{:?}", *self);
@@ -676,20 +665,26 @@ impl<'tcx> fmt::Display for ty::Binder<ty::EquatePredicate<'tcx>> {
     }
 }
 
+impl<'tcx> fmt::Display for ty::Binder<ty::SubtypePredicate<'tcx>> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
+    }
+}
+
 impl<'tcx> fmt::Display for ty::Binder<ty::ProjectionPredicate<'tcx>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
     }
 }
 
-impl<'tcx> fmt::Display for ty::Binder<ty::OutlivesPredicate<Ty<'tcx>, &'tcx ty::Region>> {
+impl<'tcx> fmt::Display for ty::Binder<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
     }
 }
 
-impl<'tcx> fmt::Display for ty::Binder<ty::OutlivesPredicate<&'tcx ty::Region,
-                                                             &'tcx ty::Region>> {
+impl<'tcx> fmt::Display for ty::Binder<ty::OutlivesPredicate<ty::Region<'tcx>,
+                                                             ty::Region<'tcx>>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
     }
@@ -765,11 +760,11 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 ty::tls::with(|tcx| {
                     // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                     // by looking up the projections associated with the def_id.
-                    let item_predicates = tcx.item_predicates(def_id);
+                    let predicates_of = tcx.predicates_of(def_id);
                     let substs = tcx.lift(&substs).unwrap_or_else(|| {
                         tcx.intern_substs(&[])
                     });
-                    let bounds = item_predicates.instantiate(tcx, substs);
+                    let bounds = predicates_of.instantiate(tcx, substs);
 
                     let mut first = true;
                     let mut is_sized = false;
@@ -897,6 +892,12 @@ impl<'tcx> fmt::Display for ty::EquatePredicate<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Display for ty::SubtypePredicate<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} <: {}", self.a, self.b)
+    }
+}
+
 impl<'tcx> fmt::Debug for ty::TraitPredicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "TraitPredicate({:?})",
@@ -949,6 +950,7 @@ impl<'tcx> fmt::Display for ty::Predicate<'tcx> {
         match *self {
             ty::Predicate::Trait(ref data) => write!(f, "{}", data),
             ty::Predicate::Equate(ref predicate) => write!(f, "{}", predicate),
+            ty::Predicate::Subtype(ref predicate) => write!(f, "{}", predicate),
             ty::Predicate::RegionOutlives(ref predicate) => write!(f, "{}", predicate),
             ty::Predicate::TypeOutlives(ref predicate) => write!(f, "{}", predicate),
             ty::Predicate::Projection(ref predicate) => write!(f, "{}", predicate),

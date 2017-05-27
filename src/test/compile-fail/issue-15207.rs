@@ -10,7 +10,7 @@
 
 fn main() {
     loop {
-        break.push(1) //~ ERROR the type of this value must be known in this context
+        break.push(1) //~ ERROR no method named `push` found for type `!`
         ;
     }
 }

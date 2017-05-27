@@ -140,13 +140,13 @@ pub enum ErrorKind {
     #[stable(feature = "rust1", since = "1.0.0")]
     TimedOut,
     /// An error returned when an operation could not be completed because a
-    /// call to [`write()`] returned [`Ok(0)`].
+    /// call to [`write`] returned [`Ok(0)`].
     ///
     /// This typically means that an operation could only succeed if it wrote a
     /// particular number of bytes but only a smaller number of bytes could be
     /// written.
     ///
-    /// [`write()`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
     /// [`Ok(0)`]: ../../std/io/type.Result.html
     #[stable(feature = "rust1", since = "1.0.0")]
     WriteZero,

@@ -28,7 +28,7 @@ extern crate allocator_dylib2;
 // that this just passes on those platforms we link in some other allocator to
 // ensure we get the same error.
 //
-// So long as we CI linux/OSX we should be good.
+// So long as we CI linux/macOS we should be good.
 #[cfg(any(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")),
           target_os = "macos"))]
 extern crate alloc_system;

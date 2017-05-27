@@ -53,8 +53,7 @@ fn main() {
 
 // Build command implementation
 fn build(args: &ArgMatches) -> Result<(), Box<Error>> {
-    let book_dir = get_book_dir(args);
-    let book = MDBook::new(&book_dir).read_config();
+    let book = build_mdbook_struct(args);
 
     let mut book = match args.value_of("dest-dir") {
         Some(dest_dir) => book.set_dest(Path::new(dest_dir)),
@@ -67,12 +66,24 @@ fn build(args: &ArgMatches) -> Result<(), Box<Error>> {
 }
 
 fn test(args: &ArgMatches) -> Result<(), Box<Error>> {
-    let book_dir = get_book_dir(args);
-    let mut book = MDBook::new(&book_dir).read_config();
+    let mut book = build_mdbook_struct(args);
 
     try!(book.test());
 
     Ok(())
+}
+
+fn build_mdbook_struct(args: &ArgMatches) -> mdbook::MDBook {
+    let book_dir = get_book_dir(args);
+    let mut book = MDBook::new(&book_dir).read_config();
+
+    // By default mdbook will attempt to create non-existent files referenced
+    // from SUMMARY.md files. This is problematic on CI where we mount the
+    // source directory as readonly. To avoid any issues, we'll disabled
+    // mdbook's implicit file creation feature.
+    book.create_missing = false;
+
+    book
 }
 
 fn get_book_dir(args: &ArgMatches) -> PathBuf {

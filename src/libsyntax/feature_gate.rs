@@ -28,7 +28,7 @@ use self::AttributeGate::*;
 use abi::Abi;
 use ast::{self, NodeId, PatKind, RangeEnd};
 use attr;
-use codemap::{CodeMap, Spanned};
+use codemap::Spanned;
 use syntax_pos::Span;
 use errors::{DiagnosticBuilder, Handler, FatalError};
 use visit::{self, FnKind, Visitor};
@@ -260,9 +260,6 @@ declare_features! (
     // impl specialization (RFC 1210)
     (active, specialization, "1.7.0", Some(31844)),
 
-    // pub(restricted) visibilities (RFC 1422)
-    (active, pub_restricted, "1.9.0", Some(32409)),
-
     // Allow Drop types in statics/const functions (RFC 1440)
     (active, drop_types_in_const, "1.9.0", Some(33156)),
 
@@ -271,9 +268,6 @@ declare_features! (
 
     // Allows `impl Trait` in function return types.
     (active, conservative_impl_trait, "1.12.0", Some(34511)),
-
-    // Permits numeric fields in struct expressions and patterns.
-    (active, relaxed_adts, "1.12.0", Some(35626)),
 
     // The `!` type
     (active, never_type, "1.13.0", Some(35121)),
@@ -295,16 +289,10 @@ declare_features! (
     // Allows attributes on lifetime/type formal parameters in generics (RFC 1327)
     (active, generic_param_attrs, "1.11.0", Some(34761)),
 
-    // The #![windows_subsystem] attribute
-    (active, windows_subsystem, "1.14.0", Some(37499)),
-
     // Allows #[link(..., cfg(..))]
     (active, link_cfg, "1.14.0", Some(37406)),
 
     (active, use_extern_macros, "1.15.0", Some(35896)),
-
-    // Allows `break {expr}` with a value inside `loop`s.
-    (active, loop_break_value, "1.14.0", Some(37339)),
 
     // Allows #[target_feature(...)]
     (active, target_feature, "1.15.0", None),
@@ -318,8 +306,11 @@ declare_features! (
     // The `unadjusted` ABI. Perma unstable.
     (active, abi_unadjusted, "1.16.0", None),
 
-    // Macros 1.1
+    // Procedural macros 2.0.
     (active, proc_macro, "1.16.0", Some(38356)),
+
+    // Declarative macros 2.0 (`macro`).
+    (active, decl_macro, "1.17.0", Some(39412)),
 
     // Allows attributes on struct literal fields.
     (active, struct_field_attributes, "1.16.0", Some(38814)),
@@ -339,6 +330,31 @@ declare_features! (
 
     // `extern "x86-interrupt" fn()`
     (active, abi_x86_interrupt, "1.17.0", Some(40180)),
+
+
+    // Allows the `catch {...}` expression
+    (active, catch_expr, "1.17.0", Some(31436)),
+
+    // Allows `repr(align(u16))` struct attribute (RFC 1358)
+    (active, repr_align, "1.17.0", Some(33626)),
+
+    // See rust-lang/rfcs#1414. Allows code like `let x: &'static u32 = &42` to work.
+    (active, rvalue_static_promotion, "1.15.1", Some(38865)),
+
+    // Used to preserve symbols (see llvm.used)
+    (active, used, "1.18.0", Some(40289)),
+
+    // Allows module-level inline assembly by way of global_asm!()
+    (active, global_asm, "1.18.0", Some(35119)),
+
+    // Allows overlapping impls of marker traits
+    (active, overlapping_marker_traits, "1.18.0", Some(29864)),
+
+    // Allows use of the :vis macro fragment specifier
+    (active, macro_vis_matcher, "1.18.0", Some(41022)),
+
+    // rustc internal
+    (active, abi_thiscall, "1.19.0", None),
 );
 
 declare_features! (
@@ -394,7 +410,7 @@ declare_features! (
     (accepted, question_mark, "1.13.0", Some(31436)),
     // Allows `..` in tuple (struct) patterns
     (accepted, dotdot_in_tuple_patterns, "1.14.0", Some(33627)),
-    (accepted, item_like_imports, "1.14.0", Some(35120)),
+    (accepted, item_like_imports, "1.15.0", Some(35120)),
     // Allows using `Self` and associated types in struct expressions and patterns.
     (accepted, more_struct_aliases, "1.16.0", Some(37544)),
     // elide `'static` lifetimes in `static`s and `const`s
@@ -403,7 +419,16 @@ declare_features! (
     (accepted, field_init_shorthand, "1.17.0", Some(37340)),
     // Allows the definition recursive static items.
     (accepted, static_recursion, "1.17.0", Some(29719)),
+    // pub(restricted) visibilities (RFC 1422)
+    (accepted, pub_restricted, "1.18.0", Some(32409)),
+    // The #![windows_subsystem] attribute
+    (accepted, windows_subsystem, "1.18.0", Some(37499)),
+    // Allows `break {expr}` with a value inside `loop`s.
+    (accepted, loop_break_value, "1.19.0", Some(37339)),
+    // Permits numeric fields in struct expressions and patterns.
+    (accepted, relaxed_adts, "1.19.0", Some(35626)),
 );
+
 // If you change this, please modify src/doc/unstable-book as well. You must
 // move that documentation into the relevant place in the other docs, and
 // remove the chapter on the flag.
@@ -452,7 +477,7 @@ pub enum Stability {
 impl ::std::fmt::Debug for AttributeGate {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match *self {
-            Gated(ref stab, ref name, ref expl, _) =>
+            Gated(ref stab, name, expl, _) =>
                 write!(fmt, "Gated({:?}, {}, {})", stab, name, expl),
             Ungated => write!(fmt, "Ungated")
         }
@@ -742,6 +767,10 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                   "unwind_attributes",
                                   "#[unwind] is experimental",
                                   cfg_fn!(unwind_attributes))),
+    ("used", Whitelisted, Gated(
+        Stability::Unstable, "used",
+        "the `#[used]` attribute is an experimental feature",
+        cfg_fn!(used))),
 
     // used in resolve
     ("prelude_import", Whitelisted, Gated(Stability::Unstable,
@@ -762,11 +791,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                         "unboxed_closures are still evolving",
                                         cfg_fn!(unboxed_closures))),
 
-    ("windows_subsystem", Whitelisted, Gated(Stability::Unstable,
-                                             "windows_subsystem",
-                                             "the windows subsystem attribute \
-                                              is currently unstable",
-                                             cfg_fn!(windows_subsystem))),
+    ("windows_subsystem", Whitelisted, Ungated),
 
     ("proc_macro_attribute", Normal, Gated(Stability::Unstable,
                                            "proc_macro",
@@ -796,7 +821,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
 ];
 
 // cfg(...)'s that are feature gated
-const GATED_CFGS: &'static [(&'static str, &'static str, fn(&Features) -> bool)] = &[
+const GATED_CFGS: &[(&str, &str, fn(&Features) -> bool)] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
     ("target_feature", "cfg_target_feature", cfg_fn!(cfg_target_feature)),
     ("target_vendor", "cfg_target_vendor", cfg_fn!(cfg_target_vendor)),
@@ -812,7 +837,7 @@ pub struct GatedCfg {
 
 impl GatedCfg {
     pub fn gate(cfg: &ast::MetaItem) -> Option<GatedCfg> {
-        let name = &*cfg.name().as_str();
+        let name = cfg.name().as_str();
         GATED_CFGS.iter()
                   .position(|info| info.0 == name)
                   .map(|idx| {
@@ -825,7 +850,7 @@ impl GatedCfg {
 
     pub fn check_and_emit(&self, sess: &ParseSess, features: &Features) {
         let (cfg, feature, has_feature) = GATED_CFGS[self.index];
-        if !has_feature(features) && !sess.codemap().span_allows_unstable(self.span) {
+        if !has_feature(features) && !self.span.allows_unstable() {
             let explain = format!("`cfg({})` is experimental and subject to change", cfg);
             emit_feature_err(sess, feature, self.span, GateIssue::Language, &explain);
         }
@@ -835,7 +860,6 @@ impl GatedCfg {
 struct Context<'a> {
     features: &'a Features,
     parse_sess: &'a ParseSess,
-    cm: &'a CodeMap,
     plugin_attributes: &'a [(String, AttributeType)],
 }
 
@@ -844,7 +868,7 @@ macro_rules! gate_feature_fn {
         let (cx, has_feature, span, name, explain) = ($cx, $has_feature, $span, $name, $explain);
         let has_feature: bool = has_feature(&$cx.features);
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
-        if !has_feature && !cx.cm.span_allows_unstable(span) {
+        if !has_feature && !span.allows_unstable() {
             emit_feature_err(cx.parse_sess, name, span, GateIssue::Language, explain);
         }
     }}
@@ -859,22 +883,22 @@ macro_rules! gate_feature {
 impl<'a> Context<'a> {
     fn check_attribute(&self, attr: &ast::Attribute, is_macro: bool) {
         debug!("check_attribute(attr = {:?})", attr);
-        let name = &*attr.name().as_str();
+        let name = unwrap_or!(attr.name(), return).as_str();
         for &(n, ty, ref gateage) in BUILTIN_ATTRIBUTES {
-            if n == name {
-                if let &Gated(_, ref name, ref desc, ref has_feature) = gateage {
+            if name == n {
+                if let Gated(_, name, desc, ref has_feature) = *gateage {
                     gate_feature_fn!(self, has_feature, attr.span, name, desc);
                 }
-                debug!("check_attribute: {:?} is builtin, {:?}, {:?}", name, ty, gateage);
+                debug!("check_attribute: {:?} is builtin, {:?}, {:?}", attr.path, ty, gateage);
                 return;
             }
         }
         for &(ref n, ref ty) in self.plugin_attributes {
-            if n == name {
+            if attr.path == &**n {
                 // Plugins can't gate attributes, so we don't check for it
                 // unlike the code above; we only use this loop to
                 // short-circuit to avoid the checks below
-                debug!("check_attribute: {:?} is registered by a plugin, {:?}", name, ty);
+                debug!("check_attribute: {:?} is registered by a plugin, {:?}", attr.path, ty);
                 return;
             }
         }
@@ -885,9 +909,7 @@ impl<'a> Context<'a> {
                            are reserved for internal compiler diagnostics");
         } else if name.starts_with("derive_") {
             gate_feature!(self, custom_derive, attr.span, EXPLAIN_DERIVE_UNDERSCORE);
-        } else if attr::is_known(attr) {
-            debug!("check_attribute: {:?} is known", name);
-        } else {
+        } else if !attr::is_known(attr) {
             // Only run the custom attribute lint during regular
             // feature gate checking. Macro gating runs
             // before the plugin attributes are registered
@@ -898,18 +920,14 @@ impl<'a> Context<'a> {
                                         unknown to the compiler and \
                                         may have meaning \
                                         added to it in the future",
-                                       name));
+                                       attr.path));
             }
         }
     }
 }
 
-pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess,
-                       cm: &CodeMap, features: &Features) {
-    let cx = Context {
-        features: features, parse_sess: parse_sess,
-        cm: cm, plugin_attributes: &[]
-    };
+pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
+    let cx = Context { features: features, parse_sess: parse_sess, plugin_attributes: &[] };
     cx.check_attribute(attr, true);
 }
 
@@ -978,6 +996,9 @@ pub const EXPLAIN_STMT_ATTR_SYNTAX: &'static str =
 pub const EXPLAIN_ASM: &'static str =
     "inline assembly is not stable enough for use and is subject to change";
 
+pub const EXPLAIN_GLOBAL_ASM: &'static str =
+    "`global_asm!` is not stable enough for use and is subject to change";
+
 pub const EXPLAIN_LOG_SYNTAX: &'static str =
     "`log_syntax!` is not stable enough for use and is subject to change";
 
@@ -999,6 +1020,9 @@ pub const EXPLAIN_DEPR_CUSTOM_DERIVE: &'static str =
 pub const EXPLAIN_DERIVE_UNDERSCORE: &'static str =
     "attributes of the form `#[derive_*]` are reserved for the compiler";
 
+pub const EXPLAIN_VIS_MATCHER: &'static str =
+    ":vis fragment specifier is experimental and subject to change";
+
 pub const EXPLAIN_PLACEMENT_IN: &'static str =
     "placement-in expression syntax is experimental and subject to change.";
 
@@ -1012,7 +1036,7 @@ struct PostExpansionVisitor<'a> {
 macro_rules! gate_feature_post {
     ($cx: expr, $feature: ident, $span: expr, $explain: expr) => {{
         let (cx, span) = ($cx, $span);
-        if !cx.context.cm.span_allows_unstable(span) {
+        if !span.allows_unstable() {
             gate_feature!(cx.context, $feature, span, $explain)
         }
     }}
@@ -1032,6 +1056,10 @@ impl<'a> PostExpansionVisitor<'a> {
             Abi::Vectorcall => {
                 gate_feature_post!(&self, abi_vectorcall, span,
                                    "vectorcall is experimental and subject to change");
+            },
+            Abi::Thiscall => {
+                gate_feature_post!(&self, abi_thiscall, span,
+                                   "thiscall is experimental and subject to change");
             },
             Abi::RustCall => {
                 gate_feature_post!(&self, unboxed_closures, span,
@@ -1079,25 +1107,26 @@ fn contains_novel_literal(item: &ast::MetaItem) -> bool {
         NameValue(ref lit) => !lit.node.is_str(),
         List(ref list) => list.iter().any(|li| {
             match li.node {
-                MetaItem(ref mi) => contains_novel_literal(&mi),
+                MetaItem(ref mi) => contains_novel_literal(mi),
                 Literal(_) => true,
             }
         }),
     }
 }
 
-fn starts_with_digit(s: &str) -> bool {
-    s.as_bytes().first().cloned().map_or(false, |b| b >= b'0' && b <= b'9')
-}
-
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        if !self.context.cm.span_allows_unstable(attr.span) {
+        if !attr.span.allows_unstable() {
             // check for gated attributes
             self.context.check_attribute(attr, false);
         }
 
-        if contains_novel_literal(&attr.value) {
+        if self.context.features.proc_macro && attr::is_known(attr) {
+            return
+        }
+
+        let meta = panictry!(attr.parse_meta(self.context.parse_sess));
+        if contains_novel_literal(&meta) {
             gate_feature_post!(&self, attr_literals, attr.span,
                                "non-string literals in attributes, or string \
                                literals in top-level positions, are experimental");
@@ -1160,23 +1189,22 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                                                        `#[repr(simd)]` instead");
                 }
                 for attr in &i.attrs {
-                    if attr.name() == "repr" {
-                        for item in attr.meta_item_list().unwrap_or(&[]) {
+                    if attr.path == "repr" {
+                        for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
                             if item.check_name("simd") {
                                 gate_feature_post!(&self, repr_simd, i.span,
                                                    "SIMD types are experimental \
                                                     and possibly buggy");
 
                             }
+                            if item.check_name("align") {
+                                gate_feature_post!(&self, repr_align, i.span,
+                                                   "the struct `#[repr(align(u16))]` attribute \
+                                                    is experimental");
+                            }
                         }
                     }
                 }
-            }
-
-            ast::ItemKind::Union(..) => {
-                gate_feature_post!(&self, untagged_unions,
-                                   i.span,
-                                   "unions are unstable and possibly buggy");
             }
 
             ast::ItemKind::DefaultImpl(..) => {
@@ -1186,16 +1214,24 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                     and possibly buggy");
             }
 
-            ast::ItemKind::Impl(_, polarity, _, _, _, _) => {
-                match polarity {
-                    ast::ImplPolarity::Negative => {
-                        gate_feature_post!(&self, optin_builtin_traits,
-                                           i.span,
-                                           "negative trait bounds are not yet fully implemented; \
-                                            use marker types for now");
-                    },
-                    _ => {}
+            ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, _) => {
+                if polarity == ast::ImplPolarity::Negative {
+                    gate_feature_post!(&self, optin_builtin_traits,
+                                       i.span,
+                                       "negative trait bounds are not yet fully implemented; \
+                                        use marker types for now");
                 }
+
+                if let ast::Defaultness::Default = defaultness {
+                    gate_feature_post!(&self, specialization,
+                                       i.span,
+                                       "specialization is unstable");
+                }
+            }
+
+            ast::ItemKind::MacroDef(ast::MacroDef { legacy: false, .. }) => {
+                let msg = "`macro` is experimental";
+                gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
             _ => {}
@@ -1237,11 +1273,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FunctionRetTy) {
         if let ast::FunctionRetTy::Ty(ref output_ty) = *ret_ty {
-            match output_ty.node {
-                ast::TyKind::Never => return,
-                _ => (),
-            };
-            self.visit_ty(output_ty)
+            if output_ty.node != ast::TyKind::Never {
+                self.visit_ty(output_ty)
+            }
         }
     }
 
@@ -1262,19 +1296,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::InPlace(..) => {
                 gate_feature_post!(&self, placement_in_syntax, e.span, EXPLAIN_PLACEMENT_IN);
             }
-            ast::ExprKind::Struct(_, ref fields, _) => {
-                for field in fields {
-                    if starts_with_digit(&field.ident.node.name.as_str()) {
-                        gate_feature_post!(&self, relaxed_adts,
-                                          field.span,
-                                          "numeric fields in struct expressions are unstable");
-                    }
-                }
-            }
-            ast::ExprKind::Break(_, Some(_)) => {
-                gate_feature_post!(&self, loop_break_value, e.span,
-                                   "`break` with a value is experimental");
-            }
             ast::ExprKind::Lit(ref lit) => {
                 if let ast::LitKind::Int(_, ref ty) = lit.node {
                     match *ty {
@@ -1286,6 +1307,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         _ => {}
                     }
                 }
+            }
+            ast::ExprKind::Catch(_) => {
+                gate_feature_post!(&self, catch_expr, e.span, "`catch` expression is experimental");
             }
             _ => {}
         }
@@ -1311,15 +1335,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                   pattern.span,
                                   "box pattern syntax is experimental");
             }
-            PatKind::Struct(_, ref fields, _) => {
-                for field in fields {
-                    if starts_with_digit(&field.node.ident.name.as_str()) {
-                        gate_feature_post!(&self, relaxed_adts,
-                                          field.span,
-                                          "numeric fields in struct patterns are unstable");
-                    }
-                }
-            }
             PatKind::Range(_, _, RangeEnd::Excluded) => {
                 gate_feature_post!(&self, exclusive_range_pattern, pattern.span,
                                    "exclusive range pattern syntax is experimental");
@@ -1335,17 +1350,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 span: Span,
                 _node_id: NodeId) {
         // check for const fn declarations
-        match fn_kind {
-            FnKind::ItemFn(_, _, _, Spanned { node: ast::Constness::Const, .. }, _, _, _) => {
-                gate_feature_post!(&self, const_fn, span, "const fn is unstable");
-            }
-            _ => {
-                // stability of const fn methods are covered in
-                // visit_trait_item and visit_impl_item below; this is
-                // because default methods don't pass through this
-                // point.
-            }
+        if let FnKind::ItemFn(_, _, _, Spanned { node: ast::Constness::Const, .. }, _, _, _) =
+            fn_kind {
+            gate_feature_post!(&self, const_fn, span, "const fn is unstable");
         }
+        // stability of const fn methods are covered in
+        // visit_trait_item and visit_impl_item below; this is
+        // because default methods don't pass through this
+        // point.
 
         match fn_kind {
             FnKind::ItemFn(_, _, _, _, abi, _, _) |
@@ -1402,17 +1414,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_impl_item(self, ii);
-    }
-
-    fn visit_vis(&mut self, vis: &'a ast::Visibility) {
-        let span = match *vis {
-            ast::Visibility::Crate(span) => span,
-            ast::Visibility::Restricted { ref path, .. } => path.span,
-            _ => return,
-        };
-        gate_feature_post!(&self, pub_restricted, span, "`pub(restricted)` syntax is experimental");
-
-        visit::walk_vis(self, vis)
     }
 
     fn visit_generics(&mut self, g: &'a ast::Generics) {
@@ -1529,7 +1530,6 @@ pub fn check_crate(krate: &ast::Crate,
     let ctx = Context {
         features: features,
         parse_sess: sess,
-        cm: sess.codemap(),
         plugin_attributes: plugin_attributes,
     };
     visit::walk_crate(&mut PostExpansionVisitor { context: &ctx }, krate);

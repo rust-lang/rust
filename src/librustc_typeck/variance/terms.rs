@@ -32,8 +32,6 @@ use self::VarianceTerm::*;
 
 pub type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
 
-use dep_graph::DepNode::ItemSignature as VarianceDepNode;
-
 #[derive(Copy, Clone, Debug)]
 pub struct InferredIndex(pub usize);
 
@@ -109,7 +107,7 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
     };
 
     // See README.md for a discussion on dep-graph management.
-    tcx.visit_all_item_likes_in_krate(|def_id| VarianceDepNode(def_id), &mut terms_cx);
+    tcx.hir.krate().visit_all_item_likes(&mut terms_cx);
 
     terms_cx
 }
@@ -139,7 +137,6 @@ fn lang_items(tcx: TyCtxt) -> Vec<(ast::NodeId, Vec<ty::Variance>)> {
 impl<'a, 'tcx> TermsContext<'a, 'tcx> {
     fn add_inferreds_for_item(&mut self,
                               item_id: ast::NodeId,
-                              has_self: bool,
                               generics: &hir::Generics) {
         //! Add "inferreds" for the generic parameters declared on this
         //! item. This has a lot of annoying parameters because we are
@@ -149,38 +146,16 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         //!
 
         // NB: In the code below for writing the results back into the
-        // tcx, we rely on the fact that all inferreds for a particular
-        // item are assigned continuous indices.
+        // `CrateVariancesMap`, we rely on the fact that all inferreds
+        // for a particular item are assigned continuous indices.
 
-        let inferreds_on_entry = self.num_inferred();
-
-        if has_self {
-            self.add_inferred(item_id, 0, item_id);
-        }
-
-        for (i, p) in generics.lifetimes.iter().enumerate() {
+        for (p, i) in generics.lifetimes.iter().zip(0..) {
             let id = p.lifetime.id;
-            let i = has_self as usize + i;
             self.add_inferred(item_id, i, id);
         }
 
-        for (i, p) in generics.ty_params.iter().enumerate() {
-            let i = has_self as usize + generics.lifetimes.len() + i;
+        for (p, i) in generics.ty_params.iter().zip(generics.lifetimes.len()..) {
             self.add_inferred(item_id, i, p.id);
-        }
-
-        // If this item has no type or lifetime parameters,
-        // then there are no variances to infer, so just
-        // insert an empty entry into the variance map.
-        // Arguably we could just leave the map empty in this
-        // case but it seems cleaner to be able to distinguish
-        // "invalid item id" from "item id with no
-        // parameters".
-        if self.num_inferred() == inferreds_on_entry {
-            let item_def_id = self.tcx.hir.local_def_id(item_id);
-            self.tcx.maps.variances
-                .borrow_mut()
-                .insert(item_def_id, self.empty_variances.clone());
         }
     }
 
@@ -233,15 +208,10 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
             hir::ItemEnum(_, ref generics) |
             hir::ItemStruct(_, ref generics) |
             hir::ItemUnion(_, ref generics) => {
-                self.add_inferreds_for_item(item.id, false, generics);
-            }
-            hir::ItemTrait(_, ref generics, ..) => {
-                // Note: all inputs for traits are ultimately
-                // constrained to be invariant. See `visit_item` in
-                // the impl for `ConstraintContext` in `constraints.rs`.
-                self.add_inferreds_for_item(item.id, true, generics);
+                self.add_inferreds_for_item(item.id, generics);
             }
 
+            hir::ItemTrait(..) |
             hir::ItemExternCrate(_) |
             hir::ItemUse(..) |
             hir::ItemDefaultImpl(..) |
@@ -251,6 +221,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
             hir::ItemFn(..) |
             hir::ItemMod(..) |
             hir::ItemForeignMod(..) |
+            hir::ItemGlobalAsm(..) |
             hir::ItemTy(..) => {}
         }
     }

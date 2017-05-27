@@ -9,22 +9,25 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::ty::Ty;
-use rustc::ty::layout::Layout;
+use rustc::ty::{self, Ty};
+use rustc::ty::layout::{Layout, LayoutTyper};
 use rustc::mir;
+use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
 
+use adt;
 use base;
-use common;
+use common::{self, CrateContext, C_null};
 use builder::Builder;
 use value::Value;
 use type_of;
 use type_::Type;
 
 use std::fmt;
+use std::ptr;
 
 use super::{MirContext, LocalRef};
-use super::lvalue::Alignment;
+use super::lvalue::{Alignment, LvalueRef};
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -77,12 +80,51 @@ impl<'tcx> fmt::Debug for OperandRef<'tcx> {
 }
 
 impl<'a, 'tcx> OperandRef<'tcx> {
+    pub fn new_zst(ccx: &CrateContext<'a, 'tcx>,
+                   ty: Ty<'tcx>) -> OperandRef<'tcx> {
+        assert!(common::type_is_zero_size(ccx, ty));
+        let llty = type_of::type_of(ccx, ty);
+        let val = if common::type_is_imm_pair(ccx, ty) {
+            let layout = ccx.layout_of(ty);
+            let (ix0, ix1) = if let Layout::Univariant { ref variant, .. } = *layout {
+                (adt::struct_llfields_index(variant, 0),
+                adt::struct_llfields_index(variant, 1))
+            } else {
+                (0, 1)
+            };
+            let fields = llty.field_types();
+            OperandValue::Pair(C_null(fields[ix0]), C_null(fields[ix1]))
+        } else {
+            OperandValue::Immediate(C_null(llty))
+        };
+        OperandRef {
+            val: val,
+            ty: ty
+        }
+    }
+
     /// Asserts that this operand refers to a scalar and returns
     /// a reference to its value.
     pub fn immediate(self) -> ValueRef {
         match self.val {
             OperandValue::Immediate(s) => s,
             _ => bug!("not immediate: {:?}", self)
+        }
+    }
+
+    pub fn deref(self) -> LvalueRef<'tcx> {
+        let projected_ty = self.ty.builtin_deref(true, ty::NoPreference)
+            .unwrap().ty;
+        let (llptr, llextra) = match self.val {
+            OperandValue::Immediate(llptr) => (llptr, ptr::null_mut()),
+            OperandValue::Pair(llptr, llextra) => (llptr, llextra),
+            OperandValue::Ref(..) => bug!("Deref of by-Ref operand {:?}", self)
+        };
+        LvalueRef {
+            llval: llptr,
+            llextra: llextra,
+            ty: LvalueTy::from_ty(projected_ty),
+            alignment: Alignment::AbiAligned,
         }
     }
 
@@ -100,6 +142,12 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                 if common::val_ty(elem) == Type::i1(bcx.ccx) {
                     elem = bcx.zext(elem, Type::i8(bcx.ccx));
                 }
+                let layout = bcx.ccx.layout_of(self.ty);
+                let i = if let Layout::Univariant { ref variant, .. } = *layout {
+                    adt::struct_llfields_index(variant, i)
+                } else {
+                    i
+                };
                 llpair = bcx.insert_value(llpair, elem, i);
             }
             self.val = OperandValue::Immediate(llpair);
@@ -115,8 +163,16 @@ impl<'a, 'tcx> OperandRef<'tcx> {
             if common::type_is_imm_pair(bcx.ccx, self.ty) {
                 debug!("Operand::unpack_if_pair: unpacking {:?}", self);
 
-                let mut a = bcx.extract_value(llval, 0);
-                let mut b = bcx.extract_value(llval, 1);
+                let layout = bcx.ccx.layout_of(self.ty);
+                let (ix0, ix1) = if let Layout::Univariant { ref variant, .. } = *layout {
+                    (adt::struct_llfields_index(variant, 0),
+                    adt::struct_llfields_index(variant, 1))
+                } else {
+                    (0, 1)
+                };
+
+                let mut a = bcx.extract_value(llval, ix0);
+                let mut b = bcx.extract_value(llval, ix1);
 
                 let pair_fields = common::type_pair_fields(bcx.ccx, self.ty);
                 if let Some([a_ty, b_ty]) = pair_fields {
@@ -149,14 +205,17 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             let (lldata, llextra) = base::load_fat_ptr(bcx, llval, align, ty);
             OperandValue::Pair(lldata, llextra)
         } else if common::type_is_imm_pair(bcx.ccx, ty) {
-            let f_align = match *bcx.ccx.layout_of(ty) {
-                Layout::Univariant { ref variant, .. } =>
-                    Alignment::from_packed(variant.packed) | align,
-                _ => align
+            let (ix0, ix1, f_align) = match *bcx.ccx.layout_of(ty) {
+                Layout::Univariant { ref variant, .. } => {
+                    (adt::struct_llfields_index(variant, 0),
+                    adt::struct_llfields_index(variant, 1),
+                    Alignment::from_packed(variant.packed) | align)
+                },
+                _ => (0, 1, align)
             };
             let [a_ty, b_ty] = common::type_pair_fields(bcx.ccx, ty).unwrap();
-            let a_ptr = bcx.struct_gep(llval, 0);
-            let b_ptr = bcx.struct_gep(llval, 1);
+            let a_ptr = bcx.struct_gep(llval, ix0);
+            let b_ptr = bcx.struct_gep(llval, ix1);
 
             OperandValue::Pair(
                 base::load_ty(bcx, a_ptr, f_align, a_ty),
@@ -236,7 +295,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             mir::Operand::Constant(ref constant) => {
-                let val = self.trans_constant(bcx, constant);
+                let val = self.trans_constant(&bcx, constant);
                 let operand = val.to_operand(bcx.ccx);
                 if let OperandValue::Ref(ptr, align) = operand.val {
                     // If this is a OperandValue::Ref to an immediate constant, load it.
@@ -268,10 +327,19 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 bcx.store(base::from_immediate(bcx, s), lldest, align);
             }
             OperandValue::Pair(a, b) => {
+                let (ix0, ix1, f_align) = match *bcx.ccx.layout_of(operand.ty) {
+                    Layout::Univariant { ref variant, .. } => {
+                        (adt::struct_llfields_index(variant, 0),
+                        adt::struct_llfields_index(variant, 1),
+                        if variant.packed { Some(1) } else { None })
+                    }
+                    _ => (0, 1, align)
+                };
+
                 let a = base::from_immediate(bcx, a);
                 let b = base::from_immediate(bcx, b);
-                bcx.store(a, bcx.struct_gep(lldest, 0), align);
-                bcx.store(b, bcx.struct_gep(lldest, 1), align);
+                bcx.store(a, bcx.struct_gep(lldest, ix0), f_align);
+                bcx.store(b, bcx.struct_gep(lldest, ix1), f_align);
             }
         }
     }

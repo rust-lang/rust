@@ -69,8 +69,9 @@ use traits::{ObligationCause, ObligationCauseCode};
 use ty::{self, TyCtxt, TypeFoldable};
 use ty::{Region, Issue32330};
 use ty::error::TypeError;
+use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
-use errors::DiagnosticBuilder;
+use errors::{DiagnosticBuilder, DiagnosticStyledString};
 
 mod note;
 
@@ -78,7 +79,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(self,
                                    err: &mut DiagnosticBuilder,
                                    prefix: &str,
-                                   region: &'tcx ty::Region,
+                                   region: ty::Region<'tcx>,
                                    suffix: &str) {
         fn item_scope_tag(item: &hir::Item) -> &'static str {
             match item.node {
@@ -112,7 +113,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                         heading: &str, span: Span)
                                         -> (String, Option<Span>) {
             let lo = tcx.sess.codemap().lookup_char_pos_adj(span.lo);
-            (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize()),
+            (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize() + 1),
              Some(span))
         }
 
@@ -123,14 +124,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     format!("{}unknown scope: {:?}{}.  Please report a bug.",
                             prefix, scope, suffix)
                 };
-                let span = match scope.span(&self.region_maps, &self.hir) {
+                let span = match scope.span(&self.hir) {
                     Some(s) => s,
                     None => {
                         err.note(&unknown_scope());
                         return;
                     }
                 };
-                let tag = match self.hir.find(scope.node_id(&self.region_maps)) {
+                let tag = match self.hir.find(scope.node_id()) {
                     Some(hir_map::NodeBlock(_)) => "block",
                     Some(hir_map::NodeExpr(expr)) => match expr.node {
                         hir::ExprCall(..) => "call",
@@ -150,19 +151,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         return;
                     }
                 };
-                let scope_decorated_tag = match self.region_maps.code_extent_data(scope) {
-                    region::CodeExtentData::Misc(_) => tag,
-                    region::CodeExtentData::CallSiteScope { .. } => {
+                let scope_decorated_tag = match scope {
+                    region::CodeExtent::Misc(_) => tag,
+                    region::CodeExtent::CallSiteScope(_) => {
                         "scope of call-site for function"
                     }
-                    region::CodeExtentData::ParameterScope { .. } => {
+                    region::CodeExtent::ParameterScope(_) => {
                         "scope of function body"
                     }
-                    region::CodeExtentData::DestructionScope(_) => {
+                    region::CodeExtent::DestructionScope(_) => {
                         new_string = format!("destruction scope surrounding {}", tag);
                         &new_string[..]
                     }
-                    region::CodeExtentData::Remainder(r) => {
+                    region::CodeExtent::Remainder(r) => {
                         new_string = format!("block suffix following statement {}",
                                              r.first_statement_index);
                         &new_string[..]
@@ -171,19 +172,36 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 explain_span(self, scope_decorated_tag, span)
             }
 
-            ty::ReFree(ref fr) => {
-                let prefix = match fr.bound_region {
-                    ty::BrAnon(idx) => {
-                        format!("the anonymous lifetime #{} defined on", idx + 1)
+            ty::ReEarlyBound(_) |
+            ty::ReFree(_) => {
+                let scope = match *region {
+                    ty::ReEarlyBound(ref br) => {
+                        self.parent_def_id(br.def_id).unwrap()
                     }
-                    ty::BrFresh(_) => "an anonymous lifetime defined on".to_owned(),
-                    _ => {
-                        format!("the lifetime {} as defined on",
-                                fr.bound_region)
+                    ty::ReFree(ref fr) => fr.scope,
+                    _ => bug!()
+                };
+                let prefix = match *region {
+                    ty::ReEarlyBound(ref br) => {
+                        format!("the lifetime {} as defined on", br.name)
                     }
+                    ty::ReFree(ref fr) => {
+                        match fr.bound_region {
+                            ty::BrAnon(idx) => {
+                                format!("the anonymous lifetime #{} defined on", idx + 1)
+                            }
+                            ty::BrFresh(_) => "an anonymous lifetime defined on".to_owned(),
+                            _ => {
+                                format!("the lifetime {} as defined on",
+                                        fr.bound_region)
+                            }
+                        }
+                    }
+                    _ => bug!()
                 };
 
-                let node = fr.scope.node_id(&self.region_maps);
+                let node = self.hir.as_local_node_id(scope)
+                                   .unwrap_or(DUMMY_NODE_ID);
                 let unknown;
                 let tag = match self.hir.find(node) {
                     Some(hir_map::NodeBlock(_)) |
@@ -197,12 +215,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     Some(_) => {
                         unknown = format!("unexpected node ({}) for scope {:?}.  \
                                            Please report a bug.",
-                                          self.hir.node_to_string(node), fr.scope);
+                                          self.hir.node_to_string(node), scope);
                         &unknown
                     }
                     None => {
                         unknown = format!("unknown node for scope {:?}.  \
-                                           Please report a bug.", fr.scope);
+                                           Please report a bug.", scope);
                         &unknown
                     }
                 };
@@ -213,8 +231,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::ReStatic => ("the static lifetime".to_owned(), None),
 
             ty::ReEmpty => ("the empty lifetime".to_owned(), None),
-
-            ty::ReEarlyBound(ref data) => (data.name.to_string(), None),
 
             // FIXME(#13998) ReSkolemized should probably print like
             // ReFree rather than dumping Debug output on the user.
@@ -365,6 +381,262 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// Given that `other_ty` is the same as a type argument for `name` in `sub`, populate `value`
+    /// highlighting `name` and every type argument that isn't at `pos` (which is `other_ty`), and
+    /// populate `other_value` with `other_ty`.
+    ///
+    /// ```text
+    /// Foo<Bar<Qux>>
+    /// ^^^^--------^ this is highlighted
+    /// |   |
+    /// |   this type argument is exactly the same as the other type, not highlighted
+    /// this is highlighted
+    /// Bar<Qux>
+    /// -------- this type is the same as a type argument in the other type, not highlighted
+    /// ```
+    fn highlight_outer(&self,
+                       mut value: &mut DiagnosticStyledString,
+                       mut other_value: &mut DiagnosticStyledString,
+                       name: String,
+                       sub: &ty::subst::Substs<'tcx>,
+                       pos: usize,
+                       other_ty: &ty::Ty<'tcx>) {
+        // `value` and `other_value` hold two incomplete type representation for display.
+        // `name` is the path of both types being compared. `sub`
+        value.push_highlighted(name);
+        let len = sub.len();
+        if len > 0 {
+            value.push_highlighted("<");
+        }
+
+        // Output the lifetimes fot the first type
+        let lifetimes = sub.regions().map(|lifetime| {
+            let s = format!("{}", lifetime);
+            if s.is_empty() {
+                "'_".to_string()
+            } else {
+                s
+            }
+        }).collect::<Vec<_>>().join(", ");
+        if !lifetimes.is_empty() {
+            if sub.regions().count() < len {
+                value.push_normal(lifetimes + &", ");
+            } else {
+                value.push_normal(lifetimes);
+            }
+        }
+
+        // Highlight all the type arguments that aren't at `pos` and compare the type argument at
+        // `pos` and `other_ty`.
+        for (i, type_arg) in sub.types().enumerate() {
+            if i == pos {
+                let values = self.cmp(type_arg, other_ty);
+                value.0.extend((values.0).0);
+                other_value.0.extend((values.1).0);
+            } else {
+                value.push_highlighted(format!("{}", type_arg));
+            }
+
+            if len > 0 && i != len - 1 {
+                value.push_normal(", ");
+            }
+            //self.push_comma(&mut value, &mut other_value, len, i);
+        }
+        if len > 0 {
+            value.push_highlighted(">");
+        }
+    }
+
+    /// If `other_ty` is the same as a type argument present in `sub`, highlight `path` in `t1_out`,
+    /// as that is the difference to the other type.
+    ///
+    /// For the following code:
+    ///
+    /// ```norun
+    /// let x: Foo<Bar<Qux>> = foo::<Bar<Qux>>();
+    /// ```
+    ///
+    /// The type error output will behave in the following way:
+    ///
+    /// ```text
+    /// Foo<Bar<Qux>>
+    /// ^^^^--------^ this is highlighted
+    /// |   |
+    /// |   this type argument is exactly the same as the other type, not highlighted
+    /// this is highlighted
+    /// Bar<Qux>
+    /// -------- this type is the same as a type argument in the other type, not highlighted
+    /// ```
+    fn cmp_type_arg(&self,
+                    mut t1_out: &mut DiagnosticStyledString,
+                    mut t2_out: &mut DiagnosticStyledString,
+                    path: String,
+                    sub: &ty::subst::Substs<'tcx>,
+                    other_path: String,
+                    other_ty: &ty::Ty<'tcx>) -> Option<()> {
+        for (i, ta) in sub.types().enumerate() {
+            if &ta == other_ty {
+                self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
+                return Some(());
+            }
+            if let &ty::TyAdt(def, _) = &ta.sty {
+                let path_ = self.tcx.item_path_str(def.did.clone());
+                if path_ == other_path {
+                    self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
+                    return Some(());
+                }
+            }
+        }
+        None
+    }
+
+    /// Add a `,` to the type representation only if it is appropriate.
+    fn push_comma(&self,
+                  value: &mut DiagnosticStyledString,
+                  other_value: &mut DiagnosticStyledString,
+                  len: usize,
+                  pos: usize) {
+        if len > 0 && pos != len - 1 {
+            value.push_normal(", ");
+            other_value.push_normal(", ");
+        }
+    }
+
+    /// Compare two given types, eliding parts that are the same between them and highlighting
+    /// relevant differences, and return two representation of those types for highlighted printing.
+    fn cmp(&self, t1: ty::Ty<'tcx>, t2: ty::Ty<'tcx>)
+        -> (DiagnosticStyledString, DiagnosticStyledString)
+    {
+        match (&t1.sty, &t2.sty) {
+            (&ty::TyAdt(def1, sub1), &ty::TyAdt(def2, sub2)) => {
+                let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
+                let path1 = self.tcx.item_path_str(def1.did.clone());
+                let path2 = self.tcx.item_path_str(def2.did.clone());
+                if def1.did == def2.did {
+                    // Easy case. Replace same types with `_` to shorten the output and highlight
+                    // the differing ones.
+                    //     let x: Foo<Bar, Qux> = y::<Foo<Quz, Qux>>();
+                    //     Foo<Bar, _>
+                    //     Foo<Quz, _>
+                    //         ---  ^ type argument elided
+                    //         |
+                    //         highlighted in output
+                    values.0.push_normal(path1);
+                    values.1.push_normal(path2);
+
+                    // Only draw `<...>` if there're lifetime/type arguments.
+                    let len = sub1.len();
+                    if len > 0 {
+                        values.0.push_normal("<");
+                        values.1.push_normal("<");
+                    }
+
+                    fn lifetime_display(lifetime: Region) -> String {
+                        let s = format!("{}", lifetime);
+                        if s.is_empty() {
+                            "'_".to_string()
+                        } else {
+                            s
+                        }
+                    }
+                    // At one point we'd like to elide all lifetimes here, they are irrelevant for
+                    // all diagnostics that use this output
+                    //
+                    //     Foo<'x, '_, Bar>
+                    //     Foo<'y, '_, Qux>
+                    //         ^^  ^^  --- type arguments are not elided
+                    //         |   |
+                    //         |   elided as they were the same
+                    //         not elided, they were different, but irrelevant
+                    let lifetimes = sub1.regions().zip(sub2.regions());
+                    for (i, lifetimes) in lifetimes.enumerate() {
+                        let l1 = lifetime_display(lifetimes.0);
+                        let l2 = lifetime_display(lifetimes.1);
+                        if l1 == l2 {
+                            values.0.push_normal("'_");
+                            values.1.push_normal("'_");
+                        } else {
+                            values.0.push_highlighted(l1);
+                            values.1.push_highlighted(l2);
+                        }
+                        self.push_comma(&mut values.0, &mut values.1, len, i);
+                    }
+
+                    // We're comparing two types with the same path, so we compare the type
+                    // arguments for both. If they are the same, do not highlight and elide from the
+                    // output.
+                    //     Foo<_, Bar>
+                    //     Foo<_, Qux>
+                    //         ^ elided type as this type argument was the same in both sides
+                    let type_arguments = sub1.types().zip(sub2.types());
+                    let regions_len = sub1.regions().collect::<Vec<_>>().len();
+                    for (i, (ta1, ta2)) in type_arguments.enumerate() {
+                        let i = i + regions_len;
+                        if ta1 == ta2 {
+                            values.0.push_normal("_");
+                            values.1.push_normal("_");
+                        } else {
+                            let (x1, x2) = self.cmp(ta1, ta2);
+                            (values.0).0.extend(x1.0);
+                            (values.1).0.extend(x2.0);
+                        }
+                        self.push_comma(&mut values.0, &mut values.1, len, i);
+                    }
+
+                    // Close the type argument bracket.
+                    // Only draw `<...>` if there're lifetime/type arguments.
+                    if len > 0 {
+                        values.0.push_normal(">");
+                        values.1.push_normal(">");
+                    }
+                    values
+                } else {
+                    // Check for case:
+                    //     let x: Foo<Bar<Qux> = foo::<Bar<Qux>>();
+                    //     Foo<Bar<Qux>
+                    //         ------- this type argument is exactly the same as the other type
+                    //     Bar<Qux>
+                    if self.cmp_type_arg(&mut values.0,
+                                         &mut values.1,
+                                         path1.clone(),
+                                         sub1,
+                                         path2.clone(),
+                                         &t2).is_some() {
+                        return values;
+                    }
+                    // Check for case:
+                    //     let x: Bar<Qux> = y:<Foo<Bar<Qux>>>();
+                    //     Bar<Qux>
+                    //     Foo<Bar<Qux>>
+                    //         ------- this type argument is exactly the same as the other type
+                    if self.cmp_type_arg(&mut values.1,
+                                         &mut values.0,
+                                         path2,
+                                         sub2,
+                                         path1,
+                                         &t1).is_some() {
+                        return values;
+                    }
+
+                    // We couldn't find anything in common, highlight everything.
+                    //     let x: Bar<Qux> = y::<Foo<Zar>>();
+                    (DiagnosticStyledString::highlighted(format!("{}", t1)),
+                     DiagnosticStyledString::highlighted(format!("{}", t2)))
+                }
+            }
+            _ => {
+                if t1 == t2 {
+                    // The two types are the same, elide and don't highlight.
+                    (DiagnosticStyledString::normal("_"), DiagnosticStyledString::normal("_"))
+                } else {
+                    // We couldn't find anything in common, highlight everything.
+                    (DiagnosticStyledString::highlighted(format!("{}", t1)),
+                     DiagnosticStyledString::highlighted(format!("{}", t2)))
+                }
+            }
+        }
+    }
+
     pub fn note_type_err(&self,
                          diag: &mut DiagnosticBuilder<'tcx>,
                          cause: &ObligationCause<'tcx>,
@@ -397,22 +669,22 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         if let Some((expected, found)) = expected_found {
             match (terr, is_simple_error, expected == found) {
-                (&TypeError::Sorts(ref values), false,  true) => {
+                (&TypeError::Sorts(ref values), false, true) => {
                     diag.note_expected_found_extra(
-                        &"type", &expected, &found,
+                        &"type", expected, found,
                         &format!(" ({})", values.expected.sort_string(self.tcx)),
                         &format!(" ({})", values.found.sort_string(self.tcx)));
                 }
                 (_, false,  _) => {
-                    diag.note_expected_found(&"type", &expected, &found);
+                    diag.note_expected_found(&"type", expected, found);
                 }
                 _ => (),
             }
         }
 
-        diag.span_label(span, &terr);
+        diag.span_label(span, terr.to_string());
         if let Some((sp, msg)) = secondary_span {
-            diag.span_label(sp, &msg);
+            diag.span_label(sp, msg);
         }
 
         self.note_error_origin(diag, &cause);
@@ -426,30 +698,26 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         debug!("note_issue_32330: terr={:?}", terr);
         match *terr {
-            TypeError::RegionsInsufficientlyPolymorphic(_, &Region::ReVar(vid)) |
-            TypeError::RegionsOverlyPolymorphic(_, &Region::ReVar(vid)) => {
-                match self.region_vars.var_origin(vid) {
-                    RegionVariableOrigin::EarlyBoundRegion(_, _, Some(Issue32330 {
-                        fn_def_id,
-                        region_name
-                    })) => {
-                        diag.note(
-                            &format!("lifetime parameter `{0}` declared on fn `{1}` \
-                                      appears only in the return type, \
-                                      but here is required to be higher-ranked, \
-                                      which means that `{0}` must appear in both \
-                                      argument and return types",
-                                     region_name,
-                                     self.tcx.item_path_str(fn_def_id)));
-                        diag.note(
-                            &format!("this error is the result of a recent bug fix; \
-                                      for more information, see issue #33685 \
-                                      <https://github.com/rust-lang/rust/issues/33685>"));
-                    }
-                    _ => { }
-                }
+            TypeError::RegionsInsufficientlyPolymorphic(_, _, Some(box Issue32330 {
+                fn_def_id, region_name
+            })) |
+            TypeError::RegionsOverlyPolymorphic(_, _, Some(box Issue32330 {
+                fn_def_id, region_name
+            })) => {
+                diag.note(
+                    &format!("lifetime parameter `{0}` declared on fn `{1}` \
+                              appears only in the return type, \
+                              but here is required to be higher-ranked, \
+                              which means that `{0}` must appear in both \
+                              argument and return types",
+                             region_name,
+                             self.tcx.item_path_str(fn_def_id)));
+                diag.note(
+                    &format!("this error is the result of a recent bug fix; \
+                              for more information, see issue #33685 \
+                              <https://github.com/rust-lang/rust/issues/33685>"));
             }
-            _ => { }
+            _ => {}
         }
     }
 
@@ -476,32 +744,46 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         diag
     }
 
-    /// Returns a string of the form "expected `{}`, found `{}`".
-    fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<(String, String)> {
+    fn values_str(&self, values: &ValuePairs<'tcx>)
+        -> Option<(DiagnosticStyledString, DiagnosticStyledString)>
+    {
         match *values {
-            infer::Types(ref exp_found) => self.expected_found_str(exp_found),
+            infer::Types(ref exp_found) => self.expected_found_str_ty(exp_found),
             infer::TraitRefs(ref exp_found) => self.expected_found_str(exp_found),
             infer::PolyTraitRefs(ref exp_found) => self.expected_found_str(exp_found),
         }
     }
 
+    fn expected_found_str_ty(&self,
+                             exp_found: &ty::error::ExpectedFound<ty::Ty<'tcx>>)
+                             -> Option<(DiagnosticStyledString, DiagnosticStyledString)> {
+        let exp_found = self.resolve_type_vars_if_possible(exp_found);
+        if exp_found.references_error() {
+            return None;
+        }
+
+        Some(self.cmp(exp_found.expected, exp_found.found))
+    }
+
+    /// Returns a string of the form "expected `{}`, found `{}`".
     fn expected_found_str<T: fmt::Display + TypeFoldable<'tcx>>(
         &self,
         exp_found: &ty::error::ExpectedFound<T>)
-        -> Option<(String, String)>
+        -> Option<(DiagnosticStyledString, DiagnosticStyledString)>
     {
         let exp_found = self.resolve_type_vars_if_possible(exp_found);
         if exp_found.references_error() {
             return None;
         }
 
-        Some((format!("{}", exp_found.expected), format!("{}", exp_found.found)))
+        Some((DiagnosticStyledString::highlighted(format!("{}", exp_found.expected)),
+              DiagnosticStyledString::highlighted(format!("{}", exp_found.found))))
     }
 
     fn report_generic_bound_failure(&self,
                                     origin: SubregionOrigin<'tcx>,
                                     bound_kind: GenericKind<'tcx>,
-                                    sub: &'tcx Region)
+                                    sub: Region<'tcx>)
     {
         // FIXME: it would be better to report the first error message
         // with the span of the parameter itself, rather than the span
@@ -529,6 +811,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         let mut err = match *sub {
+            ty::ReEarlyBound(_) |
             ty::ReFree(ty::FreeRegion {bound_region: ty::BrNamed(..), ..}) => {
                 // Does the required lifetime have a nice name we can print?
                 let mut err = struct_span_err!(self.tcx.sess,
@@ -580,9 +863,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn report_sub_sup_conflict(&self,
                                var_origin: RegionVariableOrigin,
                                sub_origin: SubregionOrigin<'tcx>,
-                               sub_region: &'tcx Region,
+                               sub_region: Region<'tcx>,
                                sup_origin: SubregionOrigin<'tcx>,
-                               sup_region: &'tcx Region) {
+                               sup_region: Region<'tcx>) {
         let mut err = self.report_inference_failure(var_origin);
 
         self.tcx.note_and_explain_region(&mut err,

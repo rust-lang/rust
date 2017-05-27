@@ -16,6 +16,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use cell::UnsafeCell;
 use cmp;
 use hash::Hash;
 use hash::Hasher;
@@ -119,7 +120,7 @@ pub trait Sized {
 /// [coerceunsized]: ../ops/trait.CoerceUnsized.html
 /// [rc]: ../../std/rc/struct.Rc.html
 /// [RFC982]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
-
+/// [nomicon-coerce]: ../../nomicon/coercions.html
 #[unstable(feature = "unsize", issue = "27732")]
 #[lang="unsize"]
 pub trait Unsize<T: ?Sized> {
@@ -245,7 +246,7 @@ pub trait Unsize<T: ?Sized> {
 /// [`String`]'s buffer, leading to a double free.
 ///
 /// Generalizing the latter case, any type implementing [`Drop`] can't be `Copy`, because it's
-/// managing some resource besides its own [`size_of::<T>()`] bytes.
+/// managing some resource besides its own [`size_of::<T>`] bytes.
 ///
 /// If you try to implement `Copy` on a struct or enum containing non-`Copy` data, you will get
 /// the error [E0204].
@@ -262,7 +263,7 @@ pub trait Unsize<T: ?Sized> {
 /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`Drop`]: ../../std/ops/trait.Drop.html
-/// [`size_of::<T>()`]: ../../std/mem/fn.size_of.html
+/// [`size_of::<T>`]: ../../std/mem/fn.size_of.html
 /// [`Clone`]: ../clone/trait.Clone.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`i32`]: ../../std/primitive.i32.html
@@ -553,3 +554,19 @@ mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
     unsafe impl<'a, T: Send + ?Sized> Send for &'a mut T {}
 }
+
+/// Compiler-internal trait used to determine whether a type contains
+/// any `UnsafeCell` internally, but not through an indirection.
+/// This affects, for example, whether a `static` of that type is
+/// placed in read-only static memory or writable static memory.
+#[lang = "freeze"]
+unsafe trait Freeze {}
+
+unsafe impl Freeze for .. {}
+
+impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
+unsafe impl<T: ?Sized> Freeze for PhantomData<T> {}
+unsafe impl<T: ?Sized> Freeze for *const T {}
+unsafe impl<T: ?Sized> Freeze for *mut T {}
+unsafe impl<'a, T: ?Sized> Freeze for &'a T {}
+unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}

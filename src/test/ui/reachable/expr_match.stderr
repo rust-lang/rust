@@ -1,0 +1,30 @@
+error: unreachable expression
+  --> $DIR/expr_match.rs:20:5
+   |
+20 |     match {return} { }
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/expr_match.rs:14:9
+   |
+14 | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: unreachable statement
+  --> $DIR/expr_match.rs:25:5
+   |
+25 |     println!("I am dead");
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate
+
+error: unreachable statement
+  --> $DIR/expr_match.rs:35:5
+   |
+35 |     println!("I am dead");
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate
+
+error: aborting due to previous error(s)
+

@@ -10,11 +10,11 @@
 
 use rustc::dep_graph::{DepGraphQuery, DepNode};
 use rustc::hir::def_id::DefId;
+use rustc::ich::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::{Graph, NodeIndex};
 
 use super::hash::*;
-use ich::Fingerprint;
 
 mod compress;
 
@@ -44,16 +44,18 @@ impl<'q> Predecessors<'q> {
     pub fn new(query: &'q DepGraphQuery<DefId>, hcx: &mut HashContext) -> Self {
         let tcx = hcx.tcx;
 
-        let collect_for_metadata = tcx.sess.opts.debugging_opts.incremental_cc ||
-            tcx.sess.opts.debugging_opts.query_dep_graph;
-
         // Find the set of "start nodes". These are nodes that we will
         // possibly query later.
         let is_output = |node: &DepNode<DefId>| -> bool {
             match *node {
                 DepNode::WorkProduct(_) => true,
-                DepNode::MetaData(ref def_id) => collect_for_metadata && def_id.is_local(),
-
+                DepNode::MetaData(ref def_id) => {
+                    // We do *not* create dep-nodes for the current crate's
+                    // metadata anymore, just for metadata that we import/read
+                    // from other crates.
+                    debug_assert!(!def_id.is_local());
+                    false
+                }
                 // if -Z query-dep-graph is passed, save more extended data
                 // to enable better unit testing
                 DepNode::TypeckTables(_) |
@@ -73,6 +75,22 @@ impl<'q> Predecessors<'q> {
             debug!("computing hash for input node `{:?}`", input);
             hashes.entry(input)
                   .or_insert_with(|| hcx.hash(input).unwrap());
+        }
+
+        if tcx.sess.opts.debugging_opts.query_dep_graph {
+            // Not all inputs might have been reachable from an output node,
+            // but we still want their hash for our unit tests.
+            let hir_nodes = query.graph.all_nodes().iter().filter_map(|node| {
+                match node.data {
+                    DepNode::Hir(_) => Some(&node.data),
+                    _ => None,
+                }
+            });
+
+            for node in hir_nodes {
+                hashes.entry(node)
+                      .or_insert_with(|| hcx.hash(node).unwrap());
+            }
         }
 
         let bootstrap_outputs: Vec<&'q DepNode<DefId>> =

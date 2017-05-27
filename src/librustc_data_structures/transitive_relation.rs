@@ -9,17 +9,22 @@
 // except according to those terms.
 
 use bitvec::BitMatrix;
+use fx::FxHashMap;
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
+use stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use std::cell::RefCell;
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::mem;
 
+
 #[derive(Clone)]
-pub struct TransitiveRelation<T: Debug + PartialEq> {
-    // List of elements. This is used to map from a T to a usize.  We
-    // expect domain to be small so just use a linear list versus a
-    // hashmap or something.
+pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash + Clone> {
+    // List of elements. This is used to map from a T to a usize.
     elements: Vec<T>,
+
+    // Maps each element to an index.
+    map: FxHashMap<T, Index>,
 
     // List of base edges in the graph. Require to compute transitive
     // closure.
@@ -37,19 +42,20 @@ pub struct TransitiveRelation<T: Debug + PartialEq> {
     closure: RefCell<Option<BitMatrix>>,
 }
 
-#[derive(Clone, PartialEq, PartialOrd, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 struct Index(usize);
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 struct Edge {
     source: Index,
     target: Index,
 }
 
-impl<T: Debug + PartialEq> TransitiveRelation<T> {
+impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
     pub fn new() -> TransitiveRelation<T> {
         TransitiveRelation {
             elements: vec![],
+            map: FxHashMap(),
             edges: vec![],
             closure: RefCell::new(None),
         }
@@ -60,21 +66,48 @@ impl<T: Debug + PartialEq> TransitiveRelation<T> {
     }
 
     fn index(&self, a: &T) -> Option<Index> {
-        self.elements.iter().position(|e| *e == *a).map(Index)
+        self.map.get(a).cloned()
     }
 
     fn add_index(&mut self, a: T) -> Index {
-        match self.index(&a) {
-            Some(i) => i,
-            None => {
-                self.elements.push(a);
+        let &mut TransitiveRelation {
+            ref mut elements,
+            ref closure,
+            ref mut map,
+            ..
+        } = self;
 
-                // if we changed the dimensions, clear the cache
-                *self.closure.borrow_mut() = None;
+        map.entry(a.clone())
+           .or_insert_with(|| {
+               elements.push(a);
 
-                Index(self.elements.len() - 1)
+               // if we changed the dimensions, clear the cache
+               *closure.borrow_mut() = None;
+
+               Index(elements.len() - 1)
+           })
+           .clone()
+    }
+
+    /// Applies the (partial) function to each edge and returns a new
+    /// relation.  If `f` returns `None` for any end-point, returns
+    /// `None`.
+    pub fn maybe_map<F, U>(&self, mut f: F) -> Option<TransitiveRelation<U>>
+        where F: FnMut(&T) -> Option<U>,
+              U: Clone + Debug + Eq + Hash + Clone,
+    {
+        let mut result = TransitiveRelation::new();
+        for edge in &self.edges {
+            let r = f(&self.elements[edge.source.0]).and_then(|source| {
+                f(&self.elements[edge.target.0]).and_then(|target| {
+                    Some(result.add(source, target))
+                })
+            });
+            if r.is_none() {
+                return None;
             }
         }
+        Some(result)
     }
 
     /// Indicate that `a < b` (where `<` is this relation)
@@ -98,6 +131,20 @@ impl<T: Debug + PartialEq> TransitiveRelation<T> {
         match (self.index(a), self.index(b)) {
             (Some(a), Some(b)) => self.with_closure(|closure| closure.contains(a.0, b.0)),
             (None, _) | (_, None) => false,
+        }
+    }
+
+    /// Returns a vector of all things less than `a`.
+    ///
+    /// Really this probably ought to be `impl Iterator<Item=&T>`, but
+    /// I'm too lazy to make that work, and -- given the caching
+    /// strategy -- it'd be a touch tricky anyhow.
+    pub fn less_than(&self, a: &T) -> Vec<&T> {
+        match self.index(a) {
+            Some(a) => self.with_closure(|closure| {
+                closure.iter(a.0).map(|i| &self.elements[i]).collect()
+            }),
+            None => vec![],
         }
     }
 
@@ -311,7 +358,7 @@ fn pare_down(candidates: &mut Vec<usize>, closure: &BitMatrix) {
 }
 
 impl<T> Encodable for TransitiveRelation<T>
-    where T: Encodable + Debug + PartialEq
+    where T: Clone + Encodable + Debug + Eq + Hash + Clone
 {
     fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
         s.emit_struct("TransitiveRelation", 2, |s| {
@@ -323,14 +370,63 @@ impl<T> Encodable for TransitiveRelation<T>
 }
 
 impl<T> Decodable for TransitiveRelation<T>
-    where T: Decodable + Debug + PartialEq
+    where T: Clone + Decodable + Debug + Eq + Hash + Clone
 {
     fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
         d.read_struct("TransitiveRelation", 2, |d| {
-            let elements = d.read_struct_field("elements", 0, |d| Decodable::decode(d))?;
+            let elements: Vec<T> = d.read_struct_field("elements", 0, |d| Decodable::decode(d))?;
             let edges = d.read_struct_field("edges", 1, |d| Decodable::decode(d))?;
-            Ok(TransitiveRelation { elements, edges, closure: RefCell::new(None) })
+            let map = elements.iter()
+                              .enumerate()
+                              .map(|(index, elem)| (elem.clone(), Index(index)))
+                              .collect();
+            Ok(TransitiveRelation { elements, edges, map, closure: RefCell::new(None) })
         })
+    }
+}
+
+impl<CTX, T> HashStable<CTX> for TransitiveRelation<T>
+    where T: HashStable<CTX> + Eq + Debug + Clone + Hash
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        // We are assuming here that the relation graph has been built in a
+        // deterministic way and we can just hash it the way it is.
+        let TransitiveRelation {
+            ref elements,
+            ref edges,
+            // "map" is just a copy of elements vec
+            map: _,
+            // "closure" is just a copy of the data above
+            closure: _
+        } = *self;
+
+        elements.hash_stable(hcx, hasher);
+        edges.hash_stable(hcx, hasher);
+    }
+}
+
+impl<CTX> HashStable<CTX> for Edge {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        let Edge {
+            ref source,
+            ref target,
+        } = *self;
+
+        source.hash_stable(hcx, hasher);
+        target.hash_stable(hcx, hasher);
+    }
+}
+
+impl<CTX> HashStable<CTX> for Index {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        let Index(idx) = *self;
+        idx.hash_stable(hcx, hasher);
     }
 }
 

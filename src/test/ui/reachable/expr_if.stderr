@@ -1,0 +1,15 @@
+error: unreachable statement
+  --> $DIR/expr_if.rs:38:5
+   |
+38 |     println!("But I am.");
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/expr_if.rs:14:9
+   |
+14 | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+   = note: this error originates in a macro outside of the current crate
+
+error: aborting due to previous error(s)
+

@@ -41,21 +41,37 @@ pub struct UnsafetySpace(pub hir::Unsafety);
 /// with a space after it.
 #[derive(Copy, Clone)]
 pub struct ConstnessSpace(pub hir::Constness);
-/// Wrapper struct for properly emitting a method declaration.
-pub struct Method<'a>(pub &'a clean::FnDecl, pub usize);
 /// Similar to VisSpace, but used for mutability
 #[derive(Copy, Clone)]
 pub struct MutableSpace(pub clean::Mutability);
 /// Similar to VisSpace, but used for mutability
 #[derive(Copy, Clone)]
 pub struct RawMutableSpace(pub clean::Mutability);
-/// Wrapper struct for emitting a where clause from Generics.
-pub struct WhereClause<'a>(pub &'a clean::Generics, pub usize);
 /// Wrapper struct for emitting type parameter bounds.
 pub struct TyParamBounds<'a>(pub &'a [clean::TyParamBound]);
 /// Wrapper struct for emitting a comma-separated list of items
 pub struct CommaSep<'a, T: 'a>(pub &'a [T]);
 pub struct AbiSpace(pub Abi);
+
+/// Wrapper struct for properly emitting a method declaration.
+pub struct Method<'a> {
+    /// The declaration to emit.
+    pub decl: &'a clean::FnDecl,
+    /// The length of the function's "name", used to determine line-wrapping.
+    pub name_len: usize,
+    /// The number of spaces to indent each successive line with, if line-wrapping is necessary.
+    pub indent: usize,
+}
+
+/// Wrapper struct for emitting a where clause from Generics.
+pub struct WhereClause<'a>{
+    /// The Generics from which to emit a where clause.
+    pub gens: &'a clean::Generics,
+    /// The number of spaces to indent each line with.
+    pub indent: usize,
+    /// Whether the where clause needs to add a comma and newline after the last bound.
+    pub end_newline: bool,
+}
 
 pub struct HRef<'a> {
     pub did: DefId,
@@ -167,24 +183,27 @@ impl fmt::Display for clean::Generics {
 
 impl<'a> fmt::Display for WhereClause<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let &WhereClause(gens, pad) = self;
+        let &WhereClause { gens, indent, end_newline } = self;
         if gens.where_predicates.is_empty() {
             return Ok(());
         }
         let mut clause = String::new();
         if f.alternate() {
-            clause.push_str(" where ");
+            clause.push_str(" where");
         } else {
-            clause.push_str(" <span class=\"where fmt-newline\">where ");
+            if end_newline {
+                clause.push_str(" <span class=\"where fmt-newline\">where");
+            } else {
+                clause.push_str(" <span class=\"where\">where");
+            }
         }
         for (i, pred) in gens.where_predicates.iter().enumerate() {
-            if i > 0 {
-                if f.alternate() {
-                    clause.push_str(", ");
-                } else {
-                    clause.push_str(",<br>");
-                }
+            if f.alternate() {
+                clause.push(' ');
+            } else {
+                clause.push_str("<br>");
             }
+
             match pred {
                 &clean::WherePredicate::BoundPredicate { ref ty, ref bounds } => {
                     let bounds = bounds;
@@ -213,21 +232,29 @@ impl<'a> fmt::Display for WhereClause<'a> {
                     }
                 }
             }
+
+            if i < gens.where_predicates.len() - 1 || end_newline {
+                clause.push(',');
+            }
         }
+
+        if end_newline {
+            //add a space so stripping <br> tags and breaking spaces still renders properly
+            if f.alternate() {
+                clause.push(' ');
+            } else {
+                clause.push_str("&nbsp;");
+            }
+        }
+
         if !f.alternate() {
             clause.push_str("</span>");
-            let plain = format!("{:#}", self);
-            if plain.len() + pad > 80 {
-                // break it onto its own line regardless, but make sure method impls and trait
-                // blocks keep their fixed padding (2 and 9, respectively)
-                let padding = if pad > 10 {
-                    repeat("&nbsp;").take(8).collect::<String>()
-                } else {
-                    repeat("&nbsp;").take(pad + 6).collect::<String>()
-                };
-                clause = clause.replace("<br>", &format!("<br>{}", padding));
-            } else {
-                clause = clause.replace("<br>", " ");
+            let padding = repeat("&nbsp;").take(indent + 4).collect::<String>();
+            clause = clause.replace("<br>", &format!("<br>{}", padding));
+            clause.insert_str(0, &repeat("&nbsp;").take(indent.saturating_sub(1))
+                                                  .collect::<String>());
+            if !end_newline {
+                clause.insert_str(0, "<br>");
             }
         }
         write!(f, "{}", clause)
@@ -443,10 +470,22 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
 /// rendering function with the necessary arguments for linking to a local path.
 fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                  print_all: bool, use_absolute: bool, is_not_debug: bool) -> fmt::Result {
-    let last = path.segments.last().unwrap();
-    let rel_root = match &*path.segments[0].name {
-        "self" => Some("./".to_string()),
-        _ => None,
+    let empty = clean::PathSegment {
+                    name: String::new(),
+                    params: clean::PathParameters::Parenthesized {
+                        inputs: Vec::new(),
+                        output: None,
+                    }
+                };
+    let last = path.segments.last()
+                            .unwrap_or(&empty);
+    let rel_root = if path.segments.is_empty() {
+        None
+    } else {
+        match &*path.segments[0].name {
+            "self" => Some("./".to_string()),
+            _ => None,
+        }
     };
 
     if print_all {
@@ -460,10 +499,9 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                         root.push_str(&seg.name);
                         root.push_str("/");
                         if is_not_debug {
-                            write!(w, "<a class=\"mod\"
-                                           href=\"{}index.html\">{}</a>::",
-                                     root,
-                                     seg.name)?;
+                            write!(w, "<a class=\"mod\" href=\"{}index.html\">{}</a>::",
+                                   root,
+                                   seg.name)?;
                         } else {
                             write!(w, "{}::", seg.name)?;
                         }
@@ -481,7 +519,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
         if is_not_debug {
             write!(w, "{:#}{:#}", HRef::new(did, &last.name), last.params)?;
         } else {
-            write!(w, "{:?}{:?}", HRef::new(did, &last.name), last.params)?;
+            write!(w, "{:?}{}", HRef::new(did, &last.name), last.params)?;
         }
     } else {
         if is_not_debug {
@@ -489,7 +527,8 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                 match href(did) {
                     Some((_, _, fqp)) => format!("{}::{}",
                                                  fqp[..fqp.len()-1].join("::"),
-                                                 HRef::new(did, fqp.last().unwrap())),
+                                                 HRef::new(did, fqp.last()
+                                                                   .unwrap_or(&String::new()))),
                     None => format!("{}", HRef::new(did, &last.name)),
                 }
             } else {
@@ -501,13 +540,14 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                 match href(did) {
                     Some((_, _, fqp)) => format!("{:?}::{:?}",
                                                  fqp[..fqp.len()-1].join("::"),
-                                                 HRef::new(did, fqp.last().unwrap())),
+                                                 HRef::new(did, fqp.last()
+                                                                   .unwrap_or(&String::new()))),
                     None => format!("{:?}", HRef::new(did, &last.name)),
                 }
             } else {
                 format!("{:?}", HRef::new(did, &last.name))
             };
-            write!(w, "{}{:?}", path, last.params)?;
+            write!(w, "{}{}", path, last.params)?;
         }
     }
     Ok(())
@@ -647,9 +687,9 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
             }
         }
         clean::Vector(ref t) if is_not_debug => {
-            primitive_link(f, PrimitiveType::Slice, &format!("["))?;
+            primitive_link(f, PrimitiveType::Slice, "[")?;
             fmt::Display::fmt(t, f)?;
-            primitive_link(f, PrimitiveType::Slice, &format!("]"))
+            primitive_link(f, PrimitiveType::Slice, "]")
         }
         clean::Vector(ref t) => write!(f, "[{:?}]", t),
         clean::FixedVector(ref t, ref s) if is_not_debug => {
@@ -774,45 +814,65 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
             }
             Ok(())
         }
-        // It's pretty unsightly to look at `<A as B>::C` in output, and
-        // we've got hyperlinking on our side, so try to avoid longer
-        // notation as much as possible by making `C` a hyperlink to trait
-        // `B` to disambiguate.
-        //
-        // FIXME: this is still a lossy conversion and there should probably
-        //        be a better way of representing this in general? Most of
-        //        the ugliness comes from inlining across crates where
-        //        everything comes in as a fully resolved QPath (hard to
-        //        look at).
-        clean::QPath {
-            ref name,
-            ref self_type,
-            trait_: box clean::ResolvedPath { did, ref typarams, .. },
-        } => {
-            if f.alternate() {
-                write!(f, "{:#}::", self_type)?;
-            } else {
-                write!(f, "{}::", self_type)?;
-            }
-            let path = clean::Path::singleton(name.clone());
-            resolved_path(f, did, &path, true, use_absolute, is_not_debug)?;
-
-            // FIXME: `typarams` are not rendered, and this seems bad?
-            drop(typarams);
-            Ok(())
-        }
         clean::QPath { ref name, ref self_type, ref trait_ } => {
+            let should_show_cast = match *trait_ {
+                box clean::ResolvedPath { .. } => {
+                    let path = clean::Path::singleton(name.clone());
+                    !path.segments.is_empty() && &format!("{:#}", trait_) != "()" &&
+                    &format!("{:#}", self_type) != "Self"
+                }
+                _ => true,
+            };
             if f.alternate() {
                 if is_not_debug {
-                    write!(f, "<{:#} as {:#}>::{}", self_type, trait_, name)
+                    if should_show_cast {
+                        write!(f, "<{:#} as {:#}>::", self_type, trait_)?
+                    } else {
+                        write!(f, "{:#}::", self_type)?
+                    }
                 } else {
-                    write!(f, "<{:#?} as {:#?}>::{}", self_type, trait_, name)
+                    if should_show_cast {
+                        write!(f, "<{:#?} as {:#?}>::", self_type, trait_)?
+                    } else {
+                        write!(f, "{:#?}::", self_type)?
+                    }
                 }
             } else {
                 if is_not_debug {
-                    write!(f, "&lt;{} as {}&gt;::{}", self_type, trait_, name)
+                    if should_show_cast {
+                        write!(f, "&lt;{} as {}&gt;::", self_type, trait_)?
+                    } else {
+                        write!(f, "{}::", self_type)?
+                    }
                 } else {
-                    write!(f, "<{:?} as {:?}>::{}", self_type, trait_, name)
+                    if should_show_cast {
+                        write!(f, "<{:?} as {:?}>::", self_type, trait_)?
+                    } else {
+                        write!(f, "{:?}::", self_type)?
+                    }
+                }
+            };
+            match *trait_ {
+                // It's pretty unsightly to look at `<A as B>::C` in output, and
+                // we've got hyperlinking on our side, so try to avoid longer
+                // notation as much as possible by making `C` a hyperlink to trait
+                // `B` to disambiguate.
+                //
+                // FIXME: this is still a lossy conversion and there should probably
+                //        be a better way of representing this in general? Most of
+                //        the ugliness comes from inlining across crates where
+                //        everything comes in as a fully resolved QPath (hard to
+                //        look at).
+                box clean::ResolvedPath { did, ref typarams, .. } => {
+                    let path = clean::Path::singleton(name.clone());
+                    resolved_path(f, did, &path, true, use_absolute, is_not_debug)?;
+
+                    // FIXME: `typarams` are not rendered, and this seems bad?
+                    drop(typarams);
+                    Ok(())
+                }
+                _ => {
+                    write!(f, "{}", name)
                 }
             }
         }
@@ -838,43 +898,35 @@ fn fmt_impl(i: &clean::Impl,
             f: &mut fmt::Formatter,
             link_trait: bool,
             use_absolute: bool) -> fmt::Result {
-    let mut plain = String::new();
-
     if f.alternate() {
         write!(f, "impl{:#} ", i.generics)?;
     } else {
         write!(f, "impl{} ", i.generics)?;
     }
-    plain.push_str(&format!("impl{:#} ", i.generics));
 
     if let Some(ref ty) = i.trait_ {
         if i.polarity == Some(clean::ImplPolarity::Negative) {
             write!(f, "!")?;
-            plain.push_str("!");
         }
 
         if link_trait {
             fmt::Display::fmt(ty, f)?;
-            plain.push_str(&format!("{:#}", ty));
         } else {
             match *ty {
                 clean::ResolvedPath { typarams: None, ref path, is_generic: false, .. } => {
                     let last = path.segments.last().unwrap();
                     fmt::Display::fmt(&last.name, f)?;
                     fmt::Display::fmt(&last.params, f)?;
-                    plain.push_str(&format!("{:#}{:#}", last.name, last.params));
                 }
                 _ => unreachable!(),
             }
         }
         write!(f, " for ")?;
-        plain.push_str(" for ");
     }
 
     fmt_type(&i.for_, f, use_absolute, true)?;
-    plain.push_str(&format!("{:#}", i.for_));
 
-    fmt::Display::fmt(&WhereClause(&i.generics, plain.len() + 1), f)?;
+    fmt::Display::fmt(&WhereClause { gens: &i.generics, indent: 0, end_newline: true }, f)?;
     Ok(())
 }
 
@@ -939,12 +991,15 @@ impl fmt::Display for clean::FnDecl {
 
 impl<'a> fmt::Display for Method<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let decl = self.0;
-        let indent = self.1;
+        let &Method { decl, name_len, indent } = self;
         let amp = if f.alternate() { "&" } else { "&amp;" };
         let mut args = String::new();
         let mut args_plain = String::new();
         for (i, input) in decl.inputs.values.iter().enumerate() {
+            if i == 0 {
+                args.push_str("<br>");
+            }
+
             if let Some(selfty) = input.to_self() {
                 match selfty {
                     clean::SelfValue => {
@@ -970,7 +1025,7 @@ impl<'a> fmt::Display for Method<'a> {
                 }
             } else {
                 if i > 0 {
-                    args.push_str("<br> ");
+                    args.push_str(" <br>");
                     args_plain.push_str(" ");
                 }
                 if !input.name.is_empty() {
@@ -986,8 +1041,8 @@ impl<'a> fmt::Display for Method<'a> {
                 args_plain.push_str(&format!("{:#}", input.type_));
             }
             if i + 1 < decl.inputs.values.len() {
-                args.push_str(",");
-                args_plain.push_str(",");
+                args.push(',');
+                args_plain.push(',');
             }
         }
 
@@ -1003,27 +1058,23 @@ impl<'a> fmt::Display for Method<'a> {
             format!("{}", decl.output)
         };
 
-        let mut output: String;
-        let plain: String;
-        let pad = repeat(" ").take(indent).collect::<String>();
-        if arrow.is_empty() {
-            output = format!("({})", args);
-            plain = format!("{}({})", pad, args_plain);
-        } else {
-            output = format!("({args})<br>{arrow}", args = args, arrow = arrow);
-            plain = format!("{pad}({args}){arrow}",
-                            pad = pad,
-                            args = args_plain,
-                            arrow = arrow_plain);
-        }
+        let pad = repeat(" ").take(name_len).collect::<String>();
+        let plain = format!("{pad}({args}){arrow}",
+                        pad = pad,
+                        args = args_plain,
+                        arrow = arrow_plain);
 
-        if plain.len() > 80 {
-            let pad = repeat("&nbsp;").take(indent).collect::<String>();
-            let pad = format!("<br>{}", pad);
-            output = output.replace("<br>", &pad);
+        let output = if plain.len() > 80 {
+            let full_pad = format!("<br>{}", repeat("&nbsp;").take(indent + 4).collect::<String>());
+            let close_pad = format!("<br>{}", repeat("&nbsp;").take(indent).collect::<String>());
+            format!("({args}{close}){arrow}",
+                    args = args.replace("<br>", &full_pad),
+                    close = close_pad,
+                    arrow = arrow)
         } else {
-            output = output.replace("<br>", "");
-        }
+            format!("({args}){arrow}", args = args.replace("<br>", ""), arrow = arrow)
+        };
+
         if f.alternate() {
             write!(f, "{}", output.replace("<br>", "\n"))
         } else {
@@ -1096,9 +1147,9 @@ impl fmt::Display for clean::ImportSource {
 impl fmt::Display for clean::TypeBinding {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if f.alternate() {
-            write!(f, "{}={:#}", self.name, self.ty)
+            write!(f, "{} = {:#}", self.name, self.ty)
         } else {
-            write!(f, "{}={}", self.name, self.ty)
+            write!(f, "{} = {}", self.name, self.ty)
         }
     }
 }
@@ -1126,7 +1177,6 @@ impl fmt::Display for AbiSpace {
         let quot = if f.alternate() { "\"" } else { "&quot;" };
         match self.0 {
             Abi::Rust => Ok(()),
-            Abi::C => write!(f, "extern "),
             abi => write!(f, "extern {0}{1}{0} ", quot, abi.name()),
         }
     }

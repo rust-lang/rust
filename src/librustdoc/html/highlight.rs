@@ -26,7 +26,7 @@ use std::fmt::Display;
 use std::io;
 use std::io::prelude::*;
 
-use syntax::codemap::CodeMap;
+use syntax::codemap::{CodeMap, FilePathMapping};
 use syntax::parse::lexer::{self, TokenAndSpan};
 use syntax::parse::token;
 use syntax::parse;
@@ -36,8 +36,8 @@ use syntax_pos::Span;
 pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>,
                                 extension: Option<&str>) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
-    let sess = parse::ParseSess::new();
-    let fm = sess.codemap().new_filemap("<stdin>".to_string(), None, src.to_string());
+    let sess = parse::ParseSess::new(FilePathMapping::empty());
+    let fm = sess.codemap().new_filemap("<stdin>".to_string(), src.to_string());
 
     let mut out = Vec::new();
     write_header(class, id, &mut out).unwrap();
@@ -58,8 +58,8 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>
 /// be inserted into an element. C.f., `render_with_highlighting` which includes
 /// an enclosing `<pre>` block.
 pub fn render_inner_with_highlighting(src: &str) -> io::Result<String> {
-    let sess = parse::ParseSess::new();
-    let fm = sess.codemap().new_filemap("<stdin>".to_string(), None, src.to_string());
+    let sess = parse::ParseSess::new(FilePathMapping::empty());
+    let fm = sess.codemap().new_filemap("<stdin>".to_string(), src.to_string());
 
     let mut out = Vec::new();
     let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm), sess.codemap());
@@ -114,7 +114,7 @@ pub enum Class {
 pub trait Writer {
     /// Called when we start processing a span of text that should be highlighted.
     /// The `Class` argument specifies how it should be highlighted.
-    fn enter_span(&mut self, Class) -> io::Result<()>;
+    fn enter_span(&mut self, _: Class) -> io::Result<()>;
 
     /// Called at the end of a span of highlighted text.
     fn exit_span(&mut self) -> io::Result<()>;
@@ -131,7 +131,11 @@ pub trait Writer {
     /// ```
     /// The latter can be thought of as a shorthand for the former, which is
     /// more flexible.
-    fn string<T: Display>(&mut self, T, Class, Option<&TokenAndSpan>) -> io::Result<()>;
+    fn string<T: Display>(&mut self,
+                          text: T,
+                          klass: Class,
+                          tok: Option<&TokenAndSpan>)
+                          -> io::Result<()>;
 }
 
 // Implement `Writer` for anthing that can be written to, this just implements

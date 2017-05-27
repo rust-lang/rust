@@ -12,6 +12,7 @@ enum foo { foo_(bar) }
 struct bar { x: bar }
 //~^ ERROR E0072
 //~| NOTE recursive type has infinite size
+//~| NOTE recursive without indirection
 
 fn main() {
 }

@@ -24,7 +24,7 @@ pub fn check_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     // this secondary walk specifically checks for some other cases,
     // like defaulted traits, for which additional overlap rules exist
-    tcx.visit_all_item_likes_in_krate(DepNode::CoherenceOverlapCheckSpecial, &mut overlap);
+    tcx.hir.krate().visit_all_item_likes(&mut overlap);
 }
 
 pub fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
@@ -41,39 +41,10 @@ pub fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
     let _task =
         tcx.dep_graph.in_task(DepNode::CoherenceOverlapCheck(trait_def_id));
 
-    let def = tcx.lookup_trait_def(trait_def_id);
+    // Trigger building the specialization graph for the trait of this impl.
+    // This will detect any overlap errors.
+    tcx.specialization_graph_of(trait_def_id);
 
-    // attempt to insert into the specialization graph
-    let insert_result = def.add_impl_for_specialization(tcx, impl_def_id);
-
-    // insertion failed due to overlap
-    if let Err(overlap) = insert_result {
-        let mut err = struct_span_err!(tcx.sess,
-                                       tcx.span_of_impl(impl_def_id).unwrap(),
-                                       E0119,
-                                       "conflicting implementations of trait `{}`{}:",
-                                       overlap.trait_desc,
-                                       overlap.self_desc.clone().map_or(String::new(),
-                                                                        |ty| {
-            format!(" for type `{}`", ty)
-        }));
-
-        match tcx.span_of_impl(overlap.with_impl) {
-            Ok(span) => {
-                err.span_label(span, &format!("first implementation here"));
-                err.span_label(tcx.span_of_impl(impl_def_id).unwrap(),
-                               &format!("conflicting implementation{}",
-                                        overlap.self_desc
-                                            .map_or(String::new(),
-                                                    |ty| format!(" for `{}`", ty))));
-            }
-            Err(cname) => {
-                err.note(&format!("conflicting implementation in crate `{}`", cname));
-            }
-        }
-
-        err.emit();
-    }
 
     // check for overlap with the automatic `impl Trait for Trait`
     if let ty::TyDynamic(ref data, ..) = trait_ref.self_ty().sty {

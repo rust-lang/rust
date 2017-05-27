@@ -1,0 +1,14 @@
+error: cannot declare a new module at this location
+  --> $DIR/auxiliary/foo/bar.rs:11:9
+   |
+11 | pub mod baz;
+   |         ^^^
+   |
+note: maybe move this module `$DIR/auxiliary/foo/bar.rs` to its own directory via `$DIR/auxiliary/foo/bar/mod.rs`
+  --> $DIR/auxiliary/foo/bar.rs:11:9
+   |
+11 | pub mod baz;
+   |         ^^^
+
+error: aborting due to previous error(s)
+

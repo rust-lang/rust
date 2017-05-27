@@ -45,6 +45,11 @@ pub extern "C" fn __rust_allocate(size: usize, align: usize) -> *mut u8 {
 }
 
 #[no_mangle]
+pub extern "C" fn __rust_allocate_zeroed(size: usize, align: usize) -> *mut u8 {
+    unsafe { imp::allocate_zeroed(size, align) }
+}
+
+#[no_mangle]
 pub extern "C" fn __rust_deallocate(ptr: *mut u8, old_size: usize, align: usize) {
     unsafe { imp::deallocate(ptr, old_size, align) }
 }
@@ -121,6 +126,18 @@ mod imp {
         }
     }
 
+    pub unsafe fn allocate_zeroed(size: usize, align: usize) -> *mut u8 {
+        if align <= MIN_ALIGN {
+            libc::calloc(size as libc::size_t, 1) as *mut u8
+        } else {
+            let ptr = aligned_malloc(size, align);
+            if !ptr.is_null() {
+                ptr::write_bytes(ptr, 0, size);
+            }
+            ptr
+        }
+    }
+
     pub unsafe fn reallocate(ptr: *mut u8, old_size: usize, size: usize, align: usize) -> *mut u8 {
         if align <= MIN_ALIGN {
             libc::realloc(ptr as *mut libc::c_void, size as libc::size_t) as *mut u8
@@ -173,6 +190,8 @@ mod imp {
     #[repr(C)]
     struct Header(*mut u8);
 
+
+    const HEAP_ZERO_MEMORY: DWORD = 0x00000008;
     const HEAP_REALLOC_IN_PLACE_ONLY: DWORD = 0x00000010;
 
     unsafe fn get_header<'a>(ptr: *mut u8) -> &'a mut Header {
@@ -185,16 +204,25 @@ mod imp {
         aligned
     }
 
-    pub unsafe fn allocate(size: usize, align: usize) -> *mut u8 {
+    #[inline]
+    unsafe fn allocate_with_flags(size: usize, align: usize, flags: DWORD) -> *mut u8 {
         if align <= MIN_ALIGN {
-            HeapAlloc(GetProcessHeap(), 0, size as SIZE_T) as *mut u8
+            HeapAlloc(GetProcessHeap(), flags, size as SIZE_T) as *mut u8
         } else {
-            let ptr = HeapAlloc(GetProcessHeap(), 0, (size + align) as SIZE_T) as *mut u8;
+            let ptr = HeapAlloc(GetProcessHeap(), flags, (size + align) as SIZE_T) as *mut u8;
             if ptr.is_null() {
                 return ptr;
             }
             align_ptr(ptr, align)
         }
+    }
+
+    pub unsafe fn allocate(size: usize, align: usize) -> *mut u8 {
+        allocate_with_flags(size, align, 0)
+    }
+
+    pub unsafe fn allocate_zeroed(size: usize, align: usize) -> *mut u8 {
+        allocate_with_flags(size, align, HEAP_ZERO_MEMORY)
     }
 
     pub unsafe fn reallocate(ptr: *mut u8, _old_size: usize, size: usize, align: usize) -> *mut u8 {

@@ -47,13 +47,12 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit;
+use rustc::ich::{Fingerprint, ATTR_DIRTY, ATTR_CLEAN, ATTR_DIRTY_METADATA,
+                 ATTR_CLEAN_METADATA};
 use syntax::ast::{self, Attribute, NestedMetaItem};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use syntax_pos::Span;
 use rustc::ty::TyCtxt;
-use ich::Fingerprint;
-
-use {ATTR_DIRTY, ATTR_CLEAN, ATTR_DIRTY_METADATA, ATTR_CLEAN_METADATA};
 
 const LABEL: &'static str = "label";
 const CFG: &'static str = "cfg";
@@ -104,9 +103,9 @@ pub struct DirtyCleanVisitor<'a, 'tcx:'a> {
 
 impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
     fn dep_node(&self, attr: &Attribute, def_id: DefId) -> DepNode<DefId> {
-        for item in attr.meta_item_list().unwrap_or(&[]) {
+        for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
             if item.check_name(LABEL) {
-                let value = expect_associated_value(self.tcx, item);
+                let value = expect_associated_value(self.tcx, &item);
                 match DepNode::from_label_string(&value.as_str(), def_id) {
                     Ok(def_id) => return def_id,
                     Err(()) => {
@@ -216,9 +215,11 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_dirty_clean_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  prev_metadata_hashes: &FxHashMap<DefId, Fingerprint>,
-                                  current_metadata_hashes: &FxHashMap<DefId, Fingerprint>) {
+pub fn check_dirty_clean_metadata<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    prev_metadata_hashes: &FxHashMap<DefId, Fingerprint>,
+    current_metadata_hashes: &FxHashMap<DefId, Fingerprint>)
+{
     if !tcx.sess.opts.debugging_opts.query_dep_graph {
         return;
     }
@@ -231,7 +232,7 @@ pub fn check_dirty_clean_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             current_metadata_hashes: current_metadata_hashes,
             checked_attrs: FxHashSet(),
         };
-        krate.visit_all_item_likes(&mut dirty_clean_visitor);
+        intravisit::walk_crate(&mut dirty_clean_visitor, krate);
 
         let mut all_attrs = FindAllAttrs {
             tcx: tcx,
@@ -247,30 +248,69 @@ pub fn check_dirty_clean_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
 }
 
-pub struct DirtyCleanMetadataVisitor<'a, 'tcx:'a, 'm> {
+pub struct DirtyCleanMetadataVisitor<'a, 'tcx: 'a, 'm> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     prev_metadata_hashes: &'m FxHashMap<DefId, Fingerprint>,
     current_metadata_hashes: &'m FxHashMap<DefId, Fingerprint>,
     checked_attrs: FxHashSet<ast::AttrId>,
 }
 
-impl<'a, 'tcx, 'm> ItemLikeVisitor<'tcx> for DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {
+impl<'a, 'tcx, 'm> intravisit::Visitor<'tcx> for DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {
+
+    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+        intravisit::NestedVisitorMap::All(&self.tcx.hir)
+    }
+
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         self.check_item(item.id, item.span);
+        intravisit::walk_item(self, item);
+    }
 
-        if let hir::ItemEnum(ref def, _) = item.node {
-            for v in &def.variants {
-                self.check_item(v.node.data.id(), v.span);
-            }
+    fn visit_variant(&mut self,
+                     variant: &'tcx hir::Variant,
+                     generics: &'tcx hir::Generics,
+                     parent_id: ast::NodeId) {
+        if let Some(e) = variant.node.disr_expr {
+            self.check_item(e.node_id, variant.span);
         }
+
+        intravisit::walk_variant(self, variant, generics, parent_id);
     }
 
-    fn visit_trait_item(&mut self, item: &hir::TraitItem) {
-        self.check_item(item.id, item.span);
+    fn visit_variant_data(&mut self,
+                          variant_data: &'tcx hir::VariantData,
+                          _: ast::Name,
+                          _: &'tcx hir::Generics,
+                          _parent_id: ast::NodeId,
+                          span: Span) {
+        if self.tcx.hir.find(variant_data.id()).is_some() {
+            // VariantData that represent structs or tuples don't have a
+            // separate entry in the HIR map and checking them would error,
+            // so only check if this is an enum or union variant.
+            self.check_item(variant_data.id(), span);
+        }
+
+        intravisit::walk_struct_def(self, variant_data);
     }
 
-    fn visit_impl_item(&mut self, item: &hir::ImplItem) {
+    fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
         self.check_item(item.id, item.span);
+        intravisit::walk_trait_item(self, item);
+    }
+
+    fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem) {
+        self.check_item(item.id, item.span);
+        intravisit::walk_impl_item(self, item);
+    }
+
+    fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem) {
+        self.check_item(i.id, i.span);
+        intravisit::walk_foreign_item(self, i);
+    }
+
+    fn visit_struct_field(&mut self, s: &'tcx hir::StructField) {
+        self.check_item(s.id, s.span);
+        intravisit::walk_struct_field(self, s);
     }
 }
 
@@ -282,13 +322,15 @@ impl<'a, 'tcx, 'm> DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {
         for attr in self.tcx.get_attrs(def_id).iter() {
             if attr.check_name(ATTR_DIRTY_METADATA) {
                 if check_config(self.tcx, attr) {
-                    self.checked_attrs.insert(attr.id);
-                    self.assert_state(false, def_id, item_span);
+                    if self.checked_attrs.insert(attr.id) {
+                        self.assert_state(false, def_id, item_span);
+                    }
                 }
             } else if attr.check_name(ATTR_CLEAN_METADATA) {
                 if check_config(self.tcx, attr) {
-                    self.checked_attrs.insert(attr.id);
-                    self.assert_state(true, def_id, item_span);
+                    if self.checked_attrs.insert(attr.id) {
+                        self.assert_state(true, def_id, item_span);
+                    }
                 }
             }
         }
@@ -331,9 +373,9 @@ fn check_config(tcx: TyCtxt, attr: &Attribute) -> bool {
     debug!("check_config(attr={:?})", attr);
     let config = &tcx.sess.parse_sess.config;
     debug!("check_config: config={:?}", config);
-    for item in attr.meta_item_list().unwrap_or(&[]) {
+    for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
         if item.check_name(CFG) {
-            let value = expect_associated_value(tcx, item);
+            let value = expect_associated_value(tcx, &item);
             debug!("check_config: searching for cfg {:?}", value);
             return config.contains(&(value, None));
         }
@@ -341,7 +383,7 @@ fn check_config(tcx: TyCtxt, attr: &Attribute) -> bool {
 
     tcx.sess.span_fatal(
         attr.span,
-        &format!("no cfg attribute"));
+        "no cfg attribute");
 }
 
 fn expect_associated_value(tcx: TyCtxt, item: &NestedMetaItem) -> ast::Name {

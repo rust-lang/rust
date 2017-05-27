@@ -1,0 +1,68 @@
+error: missing `fn`, `type`, or `const` for impl-item declaration
+  --> $DIR/issue-40006.rs:11:9
+   |
+11 |   impl X {
+   |  _________^
+12 | |     Y
+   | |____^ missing `fn`, `type`, or `const`
+
+error: missing `fn`, `type`, or `const` for trait-item declaration
+  --> $DIR/issue-40006.rs:17:10
+   |
+17 |   trait X {
+   |  __________^
+18 | |     X() {}
+   | |____^ missing `fn`, `type`, or `const`
+
+error: expected `[`, found `#`
+  --> $DIR/issue-40006.rs:19:17
+   |
+19 |     fn xxx() { ### }
+   |                 ^
+
+error: missing `fn`, `type`, or `const` for trait-item declaration
+  --> $DIR/issue-40006.rs:19:21
+   |
+19 |       fn xxx() { ### }
+   |  _____________________^
+20 | |     L = M;
+   | |____^ missing `fn`, `type`, or `const`
+
+error: missing `fn`, `type`, or `const` for trait-item declaration
+  --> $DIR/issue-40006.rs:20:11
+   |
+20 |       L = M;
+   |  ___________^
+21 | |     Z = { 2 + 3 };
+   | |____^ missing `fn`, `type`, or `const`
+
+error: expected one of `const`, `extern`, `fn`, `type`, `unsafe`, or `}`, found `;`
+  --> $DIR/issue-40006.rs:21:18
+   |
+21 |     Z = { 2 + 3 };
+   |                  ^ expected one of `const`, `extern`, `fn`, `type`, `unsafe`, or `}` here
+
+error: expected one of `!` or `::`, found `(`
+  --> $DIR/issue-40006.rs:22:9
+   |
+22 |     ::Y ();
+   |        -^ unexpected token
+   |        |
+   |        expected one of `!` or `::` here
+
+error: missing `fn`, `type`, or `const` for impl-item declaration
+  --> $DIR/issue-40006.rs:26:8
+   |
+26 |     pub hello_method(&self) {
+   |        ^ missing `fn`, `type`, or `const`
+
+error[E0038]: the trait `X` cannot be made into an object
+  --> $DIR/issue-40006.rs:11:6
+   |
+11 | impl X {
+   |      ^ the trait `X` cannot be made into an object
+   |
+   = note: method `xxx` has no receiver
+
+error: aborting due to previous error(s)
+

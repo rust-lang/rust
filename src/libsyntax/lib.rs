@@ -15,7 +15,6 @@
 //! This API is completely unstable and subject to change.
 
 #![crate_name = "syntax"]
-#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -24,20 +23,17 @@
        test(attr(deny(warnings))))]
 #![deny(warnings)]
 
-#![feature(associated_consts)]
-#![feature(const_fn)]
-#![feature(optin_builtin_traits)]
-#![feature(rustc_private)]
-#![feature(staged_api)]
-#![feature(str_escape)]
 #![feature(unicode)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(specialization)]
 #![feature(i128_type)]
+
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(rustc_private))]
+#![cfg_attr(stage0, feature(staged_api))]
 
 extern crate serialize;
 #[macro_use] extern crate log;
-#[macro_use] #[no_link] extern crate rustc_bitflags;
+#[macro_use] extern crate bitflags;
 extern crate std_unicode;
 pub extern crate rustc_errors as errors;
 extern crate syntax_pos;
@@ -63,6 +59,16 @@ macro_rules! panictry {
             }
         }
     })
+}
+
+#[macro_export]
+macro_rules! unwrap_or {
+    ($opt:expr, $default:expr) => {
+        match $opt {
+            Some(x) => x,
+            None => $default,
+        }
+    }
 }
 
 #[macro_use]
@@ -115,7 +121,7 @@ pub mod ptr;
 pub mod show_span;
 pub mod std_inject;
 pub mod str;
-pub mod symbol;
+pub use syntax_pos::symbol;
 pub mod test;
 pub mod tokenstream;
 pub mod visit;
@@ -126,12 +132,12 @@ pub mod print {
 }
 
 pub mod ext {
+    pub use syntax_pos::hygiene;
     pub mod base;
     pub mod build;
     pub mod derive;
     pub mod expand;
     pub mod placeholders;
-    pub mod hygiene;
     pub mod quote;
     pub mod source_util;
 

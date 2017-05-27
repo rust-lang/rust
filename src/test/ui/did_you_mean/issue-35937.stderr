@@ -1,0 +1,26 @@
+error: cannot borrow immutable field `f.v` as mutable
+  --> $DIR/issue-35937.rs:17:5
+   |
+16 |     let f = Foo { v: Vec::new() };
+   |         - consider changing this to `mut f`
+17 |     f.v.push("cat".to_string());
+   |     ^^^ cannot mutably borrow immutable field
+
+error: cannot assign to immutable field `s.x`
+  --> $DIR/issue-35937.rs:26:5
+   |
+25 |     let s = S { x: 42 };
+   |         - consider changing this to `mut s`
+26 |     s.x += 1;
+   |     ^^^^^^^^ cannot mutably borrow immutable field
+
+error: cannot assign to immutable field `s.x`
+  --> $DIR/issue-35937.rs:30:5
+   |
+29 | fn bar(s: S) {
+   |        - consider changing this to `mut s`
+30 |     s.x += 1;
+   |     ^^^^^^^^ cannot mutably borrow immutable field
+
+error: aborting due to previous error(s)
+

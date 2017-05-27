@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use hir::def_id::CrateNum;
 use std::fmt::Debug;
 use std::sync::Arc;
 
@@ -50,58 +51,39 @@ pub enum DepNode<D: Clone + Debug> {
     // in an extern crate.
     MetaData(D),
 
+    // Represents some piece of metadata global to its crate.
+    GlobalMetaData(D, GlobalMetaDataKind),
+
     // Represents some artifact that we save to disk. Note that these
     // do not have a def-id as part of their identifier.
     WorkProduct(Arc<WorkProductId>),
 
     // Represents different phases in the compiler.
-    CollectLanguageItems,
-    CheckStaticRecursion,
-    ResolveLifetimes,
-    RegionResolveCrate,
-    CheckLoops,
-    PluginRegistrar,
-    StabilityIndex,
-    CollectItem(D),
-    CollectItemSig(D),
+    RegionMaps(D),
     Coherence,
-    EffectCheck,
-    Liveness,
     Resolve,
-    EntryPoint,
-    CheckEntryFn,
     CoherenceCheckTrait(D),
     CoherenceCheckImpl(D),
     CoherenceOverlapCheck(D),
     CoherenceOverlapCheckSpecial(D),
-    CoherenceOverlapInherentCheck(D),
-    CoherenceOrphanCheck(D),
     Variance,
-    WfCheck(D),
-    TypeckItemType(D),
-    UnusedTraitCheck,
-    CheckConst(D),
-    Privacy,
-    IntrinsicCheck(D),
-    MatchCheck(D),
+    PrivacyAccessLevels(CrateNum),
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
     MirKrate,
     Mir(D),
+    MirShim(Vec<D>),
 
     BorrowCheckKrate,
     BorrowCheck(D),
     RvalueCheck(D),
     Reachability,
-    DeadCheck,
-    StabilityCheck(D),
+    MirKeys,
     LateLintCheck,
-    TransCrate,
     TransCrateItem(D),
-    TransInlinedItem(D),
     TransWriteMetadata,
-    LinkBinary,
+    CrateVariances,
 
     // Nodes representing bits of computed IR in the tcx. Each shared
     // table in the tcx (or elsewhere) maps to one of these
@@ -110,15 +92,26 @@ pub enum DepNode<D: Clone + Debug> {
     // predicates for an item wind up in `ItemSignature`).
     AssociatedItems(D),
     ItemSignature(D),
+    ItemVarianceConstraints(D),
+    ItemVariances(D),
+    IsForeignItem(D),
     TypeParamPredicates((D, D)),
     SizedConstraint(D),
+    DtorckConstraint(D),
     AdtDestructor(D),
     AssociatedItemDefIds(D),
     InherentImpls(D),
     TypeckBodiesKrate,
     TypeckTables(D),
     UsedTraitImports(D),
-    MonomorphicConstEval(D),
+    ConstEval(D),
+    SymbolName(D),
+    SpecializationGraph(D),
+    ObjectSafety(D),
+    IsCopy(D),
+    IsSized(D),
+    IsFreeze(D),
+    NeedsDrop(D),
 
     // The set of impls for a given trait. Ultimately, it would be
     // nice to get more fine-grained here (e.g., to include a
@@ -128,6 +121,8 @@ pub enum DepNode<D: Clone + Debug> {
     // the impl and hence would require us to be more conservative
     // than changes in the impl body.
     TraitImpls(D),
+
+    AllLocalTraitImpls,
 
     // Nodes representing caches. To properly handle a true cache, we
     // don't use a DepTrackingMap, but rather we push a task node.
@@ -167,6 +162,21 @@ pub enum DepNode<D: Clone + Debug> {
     // For proj. cache, we just keep a list of all def-ids, since it is
     // not a hotspot.
     ProjectionCache { def_ids: Vec<D> },
+
+    ParamEnv(D),
+    DescribeDef(D),
+    DefSpan(D),
+    Stability(D),
+    Deprecation(D),
+    ItemBodyNestedBodies(D),
+    ConstIsRvaluePromotableToStatic(D),
+    ImplParent(D),
+    TraitOfItem(D),
+    IsExportedSymbol(D),
+    IsMirAvailable(D),
+    ItemAttrs(D),
+    FnArgNames(D),
+    FileMap(D, Arc<String>),
 }
 
 impl<D: Clone + Debug> DepNode<D> {
@@ -187,14 +197,14 @@ impl<D: Clone + Debug> DepNode<D> {
         }
 
         check! {
-            CollectItem,
             BorrowCheck,
             Hir,
             HirBody,
             TransCrateItem,
-            TypeckItemType,
             AssociatedItems,
             ItemSignature,
+            ItemVariances,
+            IsForeignItem,
             AssociatedItemDefIds,
             InherentImpls,
             TypeckTables,
@@ -214,68 +224,61 @@ impl<D: Clone + Debug> DepNode<D> {
             BorrowCheckKrate => Some(BorrowCheckKrate),
             MirKrate => Some(MirKrate),
             TypeckBodiesKrate => Some(TypeckBodiesKrate),
-            CollectLanguageItems => Some(CollectLanguageItems),
-            CheckStaticRecursion => Some(CheckStaticRecursion),
-            ResolveLifetimes => Some(ResolveLifetimes),
-            RegionResolveCrate => Some(RegionResolveCrate),
-            CheckLoops => Some(CheckLoops),
-            PluginRegistrar => Some(PluginRegistrar),
-            StabilityIndex => Some(StabilityIndex),
             Coherence => Some(Coherence),
-            EffectCheck => Some(EffectCheck),
-            Liveness => Some(Liveness),
+            CrateVariances => Some(CrateVariances),
             Resolve => Some(Resolve),
-            EntryPoint => Some(EntryPoint),
-            CheckEntryFn => Some(CheckEntryFn),
             Variance => Some(Variance),
-            UnusedTraitCheck => Some(UnusedTraitCheck),
-            Privacy => Some(Privacy),
+            PrivacyAccessLevels(k) => Some(PrivacyAccessLevels(k)),
             Reachability => Some(Reachability),
-            DeadCheck => Some(DeadCheck),
+            MirKeys => Some(MirKeys),
             LateLintCheck => Some(LateLintCheck),
-            TransCrate => Some(TransCrate),
             TransWriteMetadata => Some(TransWriteMetadata),
-            LinkBinary => Some(LinkBinary),
 
             // work product names do not need to be mapped, because
             // they are always absolute.
             WorkProduct(ref id) => Some(WorkProduct(id.clone())),
 
+            IsCopy(ref d) => op(d).map(IsCopy),
+            IsSized(ref d) => op(d).map(IsSized),
+            IsFreeze(ref d) => op(d).map(IsFreeze),
+            NeedsDrop(ref d) => op(d).map(NeedsDrop),
             Hir(ref d) => op(d).map(Hir),
             HirBody(ref d) => op(d).map(HirBody),
             MetaData(ref d) => op(d).map(MetaData),
-            CollectItem(ref d) => op(d).map(CollectItem),
-            CollectItemSig(ref d) => op(d).map(CollectItemSig),
             CoherenceCheckTrait(ref d) => op(d).map(CoherenceCheckTrait),
             CoherenceCheckImpl(ref d) => op(d).map(CoherenceCheckImpl),
             CoherenceOverlapCheck(ref d) => op(d).map(CoherenceOverlapCheck),
             CoherenceOverlapCheckSpecial(ref d) => op(d).map(CoherenceOverlapCheckSpecial),
-            CoherenceOverlapInherentCheck(ref d) => op(d).map(CoherenceOverlapInherentCheck),
-            CoherenceOrphanCheck(ref d) => op(d).map(CoherenceOrphanCheck),
-            WfCheck(ref d) => op(d).map(WfCheck),
-            TypeckItemType(ref d) => op(d).map(TypeckItemType),
-            CheckConst(ref d) => op(d).map(CheckConst),
-            IntrinsicCheck(ref d) => op(d).map(IntrinsicCheck),
-            MatchCheck(ref d) => op(d).map(MatchCheck),
             Mir(ref d) => op(d).map(Mir),
+            MirShim(ref def_ids) => {
+                let def_ids: Option<Vec<E>> = def_ids.iter().map(op).collect();
+                def_ids.map(MirShim)
+            }
             BorrowCheck(ref d) => op(d).map(BorrowCheck),
+            RegionMaps(ref d) => op(d).map(RegionMaps),
             RvalueCheck(ref d) => op(d).map(RvalueCheck),
-            StabilityCheck(ref d) => op(d).map(StabilityCheck),
             TransCrateItem(ref d) => op(d).map(TransCrateItem),
-            TransInlinedItem(ref d) => op(d).map(TransInlinedItem),
             AssociatedItems(ref d) => op(d).map(AssociatedItems),
             ItemSignature(ref d) => op(d).map(ItemSignature),
+            ItemVariances(ref d) => op(d).map(ItemVariances),
+            ItemVarianceConstraints(ref d) => op(d).map(ItemVarianceConstraints),
+            IsForeignItem(ref d) => op(d).map(IsForeignItem),
             TypeParamPredicates((ref item, ref param)) => {
                 Some(TypeParamPredicates((try_opt!(op(item)), try_opt!(op(param)))))
             }
             SizedConstraint(ref d) => op(d).map(SizedConstraint),
+            DtorckConstraint(ref d) => op(d).map(DtorckConstraint),
             AdtDestructor(ref d) => op(d).map(AdtDestructor),
             AssociatedItemDefIds(ref d) => op(d).map(AssociatedItemDefIds),
             InherentImpls(ref d) => op(d).map(InherentImpls),
             TypeckTables(ref d) => op(d).map(TypeckTables),
             UsedTraitImports(ref d) => op(d).map(UsedTraitImports),
-            MonomorphicConstEval(ref d) => op(d).map(MonomorphicConstEval),
+            ConstEval(ref d) => op(d).map(ConstEval),
+            SymbolName(ref d) => op(d).map(SymbolName),
+            SpecializationGraph(ref d) => op(d).map(SpecializationGraph),
+            ObjectSafety(ref d) => op(d).map(ObjectSafety),
             TraitImpls(ref d) => op(d).map(TraitImpls),
+            AllLocalTraitImpls => Some(AllLocalTraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),
             ReprHints(ref d) => op(d).map(ReprHints),
             TraitSelect { ref trait_def_id, ref input_def_id } => {
@@ -290,6 +293,21 @@ impl<D: Clone + Debug> DepNode<D> {
                 let def_ids: Option<Vec<E>> = def_ids.iter().map(op).collect();
                 def_ids.map(|d| ProjectionCache { def_ids: d })
             }
+            ParamEnv(ref d) => op(d).map(ParamEnv),
+            DescribeDef(ref d) => op(d).map(DescribeDef),
+            DefSpan(ref d) => op(d).map(DefSpan),
+            Stability(ref d) => op(d).map(Stability),
+            Deprecation(ref d) => op(d).map(Deprecation),
+            ItemAttrs(ref d) => op(d).map(ItemAttrs),
+            FnArgNames(ref d) => op(d).map(FnArgNames),
+            ImplParent(ref d) => op(d).map(ImplParent),
+            TraitOfItem(ref d) => op(d).map(TraitOfItem),
+            IsExportedSymbol(ref d) => op(d).map(IsExportedSymbol),
+            ItemBodyNestedBodies(ref d) => op(d).map(ItemBodyNestedBodies),
+            ConstIsRvaluePromotableToStatic(ref d) => op(d).map(ConstIsRvaluePromotableToStatic),
+            IsMirAvailable(ref d) => op(d).map(IsMirAvailable),
+            GlobalMetaData(ref d, kind) => op(d).map(|d| GlobalMetaData(d, kind)),
+            FileMap(ref d, ref file_name) => op(d).map(|d| FileMap(d, file_name.clone())),
         }
     }
 }
@@ -301,3 +319,16 @@ impl<D: Clone + Debug> DepNode<D> {
 /// them even in the absence of a tcx.)
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct WorkProductId(pub String);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+pub enum GlobalMetaDataKind {
+    Krate,
+    CrateDeps,
+    DylibDependencyFormats,
+    LangItems,
+    LangItemsMissing,
+    NativeLibraries,
+    CodeMap,
+    Impls,
+    ExportedSymbols,
+}

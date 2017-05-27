@@ -35,7 +35,6 @@
 // non-pub fields, marked with SILLY below)
 
 #![feature(staged_api)]
-#![feature(pub_restricted)]
 
 #![stable(feature = "unit_test", since = "0.0.0")]
 
@@ -55,7 +54,7 @@ mod m {
         #[unstable(feature = "unstable_undeclared", issue = "38412")] // SILLY
         pub(crate) b_crate: i32,
         #[unstable(feature = "unstable_declared", issue = "38412")] // SILLY
-        pub(m) c_mod: i32,
+        pub(in m) c_mod: i32,
         #[stable(feature = "unit_test", since = "0.0.0")] // SILLY
         d_priv: i32
     }
@@ -71,7 +70,7 @@ mod m {
         pub i32,
 
         pub(crate) i32,
-        pub(m) i32,
+        pub(in m) i32,
         i32);
 
     impl Record {
@@ -124,7 +123,7 @@ mod m {
         #[unstable(feature = "unstable_undeclared", issue = "38412")] // SILLY
         pub(crate) fn pub_crate(&self) -> i32 { self.d_priv }
         #[unstable(feature = "unstable_declared", issue = "38412")] // SILLY
-        pub(m) fn pub_mod(&self) -> i32 { self.d_priv }
+        pub(in m) fn pub_mod(&self) -> i32 { self.d_priv }
         #[stable(feature = "unit_test", since = "0.0.0")] // SILLY
         fn private(&self) -> i32 { self.d_priv }
     }
@@ -138,7 +137,7 @@ mod m {
         pub fn stable(&self) -> i32 { self.0 }
 
         pub(crate) fn pub_crate(&self) -> i32 { self.0 }
-        pub(m) fn pub_mod(&self) -> i32 { self.0 }
+        pub(in m) fn pub_mod(&self) -> i32 { self.0 }
         fn private(&self) -> i32 { self.0 }
     }
 }

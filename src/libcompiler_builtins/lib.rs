@@ -34,8 +34,8 @@ pub mod reimpls {
     macro_rules! ashl {
         ($a:expr, $b:expr, $ty:ty) => {{
             let (a, b) = ($a, $b);
-            let bits = (::core::mem::size_of::<$ty>() * 8) as $ty;
-            let half_bits = bits >> 1;
+            let bits = ::core::mem::size_of::<$ty>().wrapping_mul(8) as $ty;
+            let half_bits = bits.wrapping_shr(1);
             if b & half_bits != 0 {
                 <$ty>::from_parts(0, a.low().wrapping_shl(
                                         b.wrapping_sub(half_bits) as u32))
@@ -58,8 +58,8 @@ pub mod reimpls {
     macro_rules! ashr {
         ($a: expr, $b: expr, $ty:ty) => {{
             let (a, b) = ($a, $b);
-            let bits = (::core::mem::size_of::<$ty>() * 8) as $ty;
-            let half_bits = bits >> 1;
+            let bits = ::core::mem::size_of::<$ty>().wrapping_mul(8) as $ty;
+            let half_bits = bits.wrapping_shr(1);
             if b & half_bits != 0 {
                 <$ty>::from_parts(a.high().wrapping_shr(b.wrapping_sub(half_bits) as u32)
                                   as <$ty as LargeInt>::LowHalf,
@@ -83,8 +83,8 @@ pub mod reimpls {
     macro_rules! lshr {
         ($a: expr, $b: expr, $ty:ty) => {{
             let (a, b) = ($a, $b);
-            let bits = (::core::mem::size_of::<$ty>() * 8) as $ty;
-            let half_bits = bits >> 1;
+            let bits = ::core::mem::size_of::<$ty>().wrapping_mul(8) as $ty;
+            let half_bits = bits.wrapping_shr(1);
             if b & half_bits != 0 {
                 <$ty>::from_parts(a.high().wrapping_shr(b.wrapping_sub(half_bits) as u32), 0)
             } else if b == 0 {
@@ -180,7 +180,7 @@ pub mod reimpls {
             sr = sr.wrapping_add(1);
 
             // 1 <= sr <= u64::bits() - 1
-            q = n.wrapping_shl(64u32.wrapping_sub(sr));
+            q = n.wrapping_shl(128u32.wrapping_sub(sr));
             r = n.wrapping_shr(sr);
         } else {
             if d.high() == 0 {
@@ -370,7 +370,7 @@ pub mod reimpls {
     macro_rules! mul {
         ($a:expr, $b:expr, $ty: ty, $tyh: ty) => {{
             let (a, b) = ($a, $b);
-            let half_bits = ((::core::mem::size_of::<$tyh>() * 8) / 2) as u32;
+            let half_bits = ::core::mem::size_of::<$tyh>().wrapping_mul(4) as u32;
             let lower_mask = (!0u64).wrapping_shr(half_bits);
             let mut low = (a.low() & lower_mask).wrapping_mul(b.low() & lower_mask);
             let mut t = low.wrapping_shr(half_bits);
@@ -478,7 +478,7 @@ pub mod reimpls {
             let mantissa_fraction = repr & <$fromty as FloatStuff>::MANTISSA_MASK;
             let mantissa = mantissa_fraction | <$fromty as FloatStuff>::MANTISSA_LEAD_BIT;
             if sign == -1.0 || exponent < 0 { return 0 as u128; }
-            if exponent > ::core::mem::size_of::<$outty>() as i32 * 8 {
+            if exponent > ::core::mem::size_of::<$outty>().wrapping_mul(8) as i32 {
                 return !(0 as u128);
             }
             (if exponent < (<$fromty as FloatStuff>::MANTISSA_BITS) as i32 {
@@ -503,7 +503,7 @@ pub mod reimpls {
             let mantissa = mantissa_fraction | <$fromty as FloatStuff>::MANTISSA_LEAD_BIT;
 
             if exponent < 0 { return 0 as i128; }
-            if exponent > ::core::mem::size_of::<$outty>() as i32 * 8 {
+            if exponent > ::core::mem::size_of::<$outty>().wrapping_mul(8) as i32 {
                 let ret = if sign > 0.0 { <$outty>::max_value() } else { <$outty>::min_value() };
                 return ret
             }

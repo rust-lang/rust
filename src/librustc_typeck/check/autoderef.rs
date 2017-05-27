@@ -10,14 +10,15 @@
 
 use astconv::AstConv;
 
-use super::FnCtxt;
+use super::{FnCtxt, LvalueOp};
 
+use check::coercion::AsCoercionSite;
 use rustc::infer::InferOk;
 use rustc::traits;
 use rustc::ty::{self, Ty, TraitRef};
 use rustc::ty::{ToPredicate, TypeFoldable};
 use rustc::ty::{MethodCall, MethodCallee};
-use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
+use rustc::ty::{LvaluePreference, NoPreference};
 use rustc::hir;
 
 use syntax_pos::Span;
@@ -61,7 +62,7 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
                              E0055,
                              "reached the recursion limit while auto-dereferencing {:?}",
                              self.cur_ty)
-                .span_label(self.span, &format!("deref recursion limit reached"))
+                .span_label(self.span, "deref recursion limit reached")
                 .help(&format!(
                         "consider adding a `#[recursion_limit=\"{}\"]` attribute to your crate",
                         suggested_limit))
@@ -148,22 +149,25 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         self.fcx.resolve_type_vars_if_possible(&self.cur_ty)
     }
 
-    pub fn finalize<'b, I>(self, pref: LvaluePreference, exprs: I)
-        where I: IntoIterator<Item = &'b hir::Expr>
-    {
+    pub fn finalize(self, pref: LvaluePreference, expr: &hir::Expr) {
         let fcx = self.fcx;
-        fcx.register_infer_ok_obligations(self.finalize_as_infer_ok(pref, exprs));
+        fcx.register_infer_ok_obligations(self.finalize_as_infer_ok(pref, &[expr]));
     }
 
-    pub fn finalize_as_infer_ok<'b, I>(self, pref: LvaluePreference, exprs: I)
-                                       -> InferOk<'tcx, ()>
-        where I: IntoIterator<Item = &'b hir::Expr>
+    pub fn finalize_as_infer_ok<E>(self, pref: LvaluePreference, exprs: &[E])
+                                   -> InferOk<'tcx, ()>
+        where E: AsCoercionSite
     {
-        let methods: Vec<_> = self.steps
+        let Autoderef { fcx, span, mut obligations, steps, .. } = self;
+        let methods: Vec<_> = steps
             .iter()
             .map(|&(ty, kind)| {
                 if let AutoderefKind::Overloaded = kind {
-                    self.fcx.try_overloaded_deref(self.span, None, ty, pref)
+                    fcx.try_overloaded_deref(span, None, ty, pref)
+                        .map(|InferOk { value, obligations: o }| {
+                            obligations.extend(o);
+                            value
+                        })
                 } else {
                     None
                 }
@@ -173,21 +177,22 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         debug!("finalize({:?}) - {:?},{:?}",
                pref,
                methods,
-               self.obligations);
+               obligations);
 
         for expr in exprs {
+            let expr = expr.as_coercion_site();
             debug!("finalize - finalizing #{} - {:?}", expr.id, expr);
             for (n, method) in methods.iter().enumerate() {
                 if let &Some(method) = method {
                     let method_call = MethodCall::autoderef(expr.id, n as u32);
-                    self.fcx.tables.borrow_mut().method_map.insert(method_call, method);
+                    fcx.tables.borrow_mut().method_map.insert(method_call, method);
                 }
             }
         }
 
         InferOk {
             value: (),
-            obligations: self.obligations
+            obligations
         }
     }
 }
@@ -208,39 +213,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 span: Span,
                                 base_expr: Option<&hir::Expr>,
                                 base_ty: Ty<'tcx>,
-                                lvalue_pref: LvaluePreference)
-                                -> Option<MethodCallee<'tcx>> {
-        debug!("try_overloaded_deref({:?},{:?},{:?},{:?})",
-               span,
-               base_expr,
-               base_ty,
-               lvalue_pref);
-        // Try DerefMut first, if preferred.
-        let method = match (lvalue_pref, self.tcx.lang_items.deref_mut_trait()) {
-            (PreferMutLvalue, Some(trait_did)) => {
-                self.lookup_method_in_trait(span,
-                                            base_expr,
-                                            Symbol::intern("deref_mut"),
-                                            trait_did,
-                                            base_ty,
-                                            None)
-            }
-            _ => None,
-        };
+                                pref: LvaluePreference)
+                                -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
+        let rcvr = base_expr.map(|base_expr| super::AdjustedRcvr {
+            rcvr_expr: base_expr, autoderefs: 0, unsize: false
+        });
 
-        // Otherwise, fall back to Deref.
-        let method = match (method, self.tcx.lang_items.deref_trait()) {
-            (None, Some(trait_did)) => {
-                self.lookup_method_in_trait(span,
-                                            base_expr,
-                                            Symbol::intern("deref"),
-                                            trait_did,
-                                            base_ty,
-                                            None)
-            }
-            (method, _) => method,
-        };
-
-        method
+        self.try_overloaded_lvalue_op(span, rcvr, base_ty, &[], pref, LvalueOp::Deref)
     }
 }

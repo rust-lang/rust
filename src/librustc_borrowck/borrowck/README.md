@@ -347,7 +347,7 @@ ALIASABLE(*LV, MQ)                 // M-Deref-Unique
   ALIASABLE(LV, MQ)
 ```
 
-### Checking mutability of immutable pointer types
+### Checking aliasability of immutable pointer types
 
 Immutable pointer types like `&T` are aliasable, and hence can only be
 borrowed immutably:
@@ -357,7 +357,7 @@ ALIASABLE(*LV, imm)                // M-Deref-Borrowed-Imm
   TYPE(LV) = &Ty
 ```
 
-### Checking mutability of mutable pointer types
+### Checking aliasability of mutable pointer types
 
 `&mut T` can be frozen, so it is acceptable to borrow it as either imm or mut:
 
@@ -633,7 +633,7 @@ Here is a concrete example of a bug this rule prevents:
 
 ```rust
 // Test region-reborrow-from-shorter-mut-ref.rs:
-fn copy_pointer<'a,'b,T>(x: &'a mut &'b mut T) -> &'b mut T {
+fn copy_borrowed_ptr<'a,'b,T>(x: &'a mut &'b mut T) -> &'b mut T {
     &mut **p // ERROR due to clause (1)
 }
 fn main() {

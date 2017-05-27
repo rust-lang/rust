@@ -71,6 +71,11 @@ pub fn dup(fd: usize, buf: &[u8]) -> Result<usize> {
     unsafe { syscall3(SYS_DUP, fd, buf.as_ptr() as usize, buf.len()) }
 }
 
+/// Copy and transform a file descriptor
+pub fn dup2(fd: usize, newfd: usize, buf: &[u8]) -> Result<usize> {
+    unsafe { syscall4(SYS_DUP2, fd, newfd, buf.as_ptr() as usize, buf.len()) }
+}
+
 /// Replace the current process with a new executable
 pub fn execve(path: &str, args: &[[usize; 2]]) -> Result<usize> {
     unsafe { syscall4(SYS_EXECVE, path.as_ptr() as usize, path.len(),

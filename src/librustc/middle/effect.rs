@@ -12,7 +12,6 @@
 //! `unsafe`.
 use self::RootUnsafeContext::*;
 
-use dep_graph::DepNode;
 use ty::{self, Ty, TyCtxt};
 use ty::MethodCall;
 use lint;
@@ -53,6 +52,7 @@ fn type_is_unsafe_function(ty: Ty) -> bool {
 struct EffectCheckVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
+    body_id: hir::BodyId,
 
     /// Whether we're in an unsafe context.
     unsafe_context: UnsafeContext,
@@ -75,7 +75,7 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
                     struct_span_err!(
                         self.tcx.sess, span, E0133,
                         "{} requires unsafe function or block", description)
-                        .span_label(span, &description)
+                        .span_label(span, description)
                         .emit();
                 }
             }
@@ -100,10 +100,13 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let old_tables = self.tables;
+        let old_body_id = self.body_id;
         self.tables = self.tcx.body_tables(body);
+        self.body_id = body;
         let body = self.tcx.hir.body(body);
         self.visit_body(body);
         self.tables = old_tables;
+        self.body_id = old_body_id;
     }
 
     fn visit_fn(&mut self, fn_kind: FnKind<'tcx>, fn_decl: &'tcx hir::FnDecl,
@@ -206,7 +209,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
                     } else if match self.tcx.hir.get_if_local(def_id) {
                         Some(hir::map::NodeForeignItem(..)) => true,
                         Some(..) => false,
-                        None => self.tcx.sess.cstore.is_foreign_item(def_id),
+                        None => self.tcx.is_foreign_item(def_id),
                     } {
                         self.require_unsafe_ext(expr.id, expr.span, "use of extern static", true);
                     }
@@ -216,6 +219,25 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
                 if let ty::TyAdt(adt, ..) = self.tables.expr_ty_adjusted(base_expr).sty {
                     if adt.is_union() {
                         self.require_unsafe(field.span, "access to union field");
+                    }
+                }
+            }
+            hir::ExprAssign(ref lhs, ref rhs) => {
+                if let hir::ExprField(ref base_expr, field) = lhs.node {
+                    if let ty::TyAdt(adt, ..) = self.tables.expr_ty_adjusted(base_expr).sty {
+                        if adt.is_union() {
+                            let field_ty = self.tables.expr_ty_adjusted(lhs);
+                            let owner_def_id = self.tcx.hir.body_owner_def_id(self.body_id);
+                            let param_env = self.tcx.param_env(owner_def_id);
+                            if field_ty.moves_by_default(self.tcx, param_env, field.span) {
+                                self.require_unsafe(field.span,
+                                                    "assignment to non-`Copy` union field");
+                            }
+                            // Do not walk the field expr again.
+                            intravisit::walk_expr(self, base_expr);
+                            intravisit::walk_expr(self, rhs);
+                            return
+                        }
                     }
                 }
             }
@@ -241,11 +263,10 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let _task = tcx.dep_graph.in_task(DepNode::EffectCheck);
-
     let mut visitor = EffectCheckVisitor {
         tcx: tcx,
         tables: &ty::TypeckTables::empty(),
+        body_id: hir::BodyId { node_id: ast::CRATE_NODE_ID },
         unsafe_context: UnsafeContext::new(SafeContext),
     };
 

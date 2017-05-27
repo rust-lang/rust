@@ -9,7 +9,8 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::ty::{self, layout, Ty, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::layout::{self, LayoutTyper};
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
@@ -27,7 +28,6 @@ use std::ptr;
 use std::ops;
 
 use super::{MirContext, LocalRef};
-use super::operand::OperandValue;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Alignment {
@@ -95,19 +95,10 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         LvalueRef::new_sized(llval, LvalueTy::from_ty(ty), alignment)
     }
 
-    pub fn new_unsized_ty(llval: ValueRef, llextra: ValueRef, ty: Ty<'tcx>, alignment: Alignment)
-                          -> LvalueRef<'tcx> {
-        LvalueRef {
-            llval: llval,
-            llextra: llextra,
-            ty: LvalueTy::from_ty(ty),
-            alignment: alignment,
-        }
-    }
-
     pub fn alloca(bcx: &Builder<'a, 'tcx>, ty: Ty<'tcx>, name: &str) -> LvalueRef<'tcx> {
         debug!("alloca({:?}: {:?})", name, ty);
-        let tmp = bcx.alloca(type_of::type_of(bcx.ccx, ty), name);
+        let tmp = bcx.alloca(
+            type_of::type_of(bcx.ccx, ty), name, bcx.ccx.over_align_of(ty));
         assert!(!ty.has_param_types());
         Self::new_sized_ty(tmp, ty, Alignment::AbiAligned)
     }
@@ -141,11 +132,9 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
         let alignment = self.alignment | Alignment::from_packed(st.packed);
 
+        let llfields = adt::struct_llfields(ccx, fields, st);
         let ptr_val = if needs_cast {
-            let fields = st.field_index_by_increasing_offset().map(|i| {
-                type_of::in_memory_type_of(ccx, fields[i])
-            }).collect::<Vec<_>>();
-            let real_ty = Type::struct_(ccx, &fields[..], st.packed);
+            let real_ty = Type::struct_(ccx, &llfields[..], st.packed);
             bcx.pointercast(self.llval, real_ty.ptr_to())
         } else {
             self.llval
@@ -157,14 +146,16 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         //   * Field is sized - pointer is properly aligned already
         if st.offsets[ix] == layout::Size::from_bytes(0) || st.packed ||
             bcx.ccx.shared().type_is_sized(fty) {
-                return (bcx.struct_gep(ptr_val, st.memory_index[ix] as usize), alignment);
+                return (bcx.struct_gep(
+                        ptr_val, adt::struct_llfields_index(st, ix)), alignment);
             }
 
         // If the type of the last field is [T] or str, then we don't need to do
         // any adjusments
         match fty.sty {
             ty::TySlice(..) | ty::TyStr => {
-                return (bcx.struct_gep(ptr_val, st.memory_index[ix] as usize), alignment);
+                return (bcx.struct_gep(
+                        ptr_val, adt::struct_llfields_index(st, ix)), alignment);
             }
             _ => ()
         }
@@ -173,7 +164,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         if !self.has_extra() {
             debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
                 ix, Value(ptr_val));
-            return (bcx.struct_gep(ptr_val, ix), alignment);
+            return (bcx.struct_gep(ptr_val, adt::struct_llfields_index(st, ix)), alignment);
         }
 
         // We need to get the pointer manually now.
@@ -279,6 +270,16 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             _ => bug!("element access in type without elements: {} represented as {:#?}", t, l)
         }
     }
+
+    pub fn project_index(&self, bcx: &Builder<'a, 'tcx>, llindex: ValueRef) -> ValueRef {
+        if let ty::TySlice(_) = self.ty.to_ty(bcx.tcx()).sty {
+            // Slices already point to the array element type.
+            bcx.inbounds_gep(self.llval, &[llindex])
+        } else {
+            let zero = common::C_uint(bcx.ccx, 0u64);
+            bcx.inbounds_gep(self.llval, &[zero, llindex])
+        }
+    }
 }
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
@@ -314,38 +315,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 elem: mir::ProjectionElem::Deref
             }) => {
                 // Load the pointer from its location.
-                let ptr = self.trans_consume(bcx, base);
-                let projected_ty = LvalueTy::from_ty(ptr.ty)
-                    .projection_ty(tcx, &mir::ProjectionElem::Deref);
-                let projected_ty = self.monomorphize(&projected_ty);
-                let (llptr, llextra) = match ptr.val {
-                    OperandValue::Immediate(llptr) => (llptr, ptr::null_mut()),
-                    OperandValue::Pair(llptr, llextra) => (llptr, llextra),
-                    OperandValue::Ref(..) => bug!("Deref of by-Ref type {:?}", ptr.ty)
-                };
-                LvalueRef {
-                    llval: llptr,
-                    llextra: llextra,
-                    ty: projected_ty,
-                    alignment: Alignment::AbiAligned,
-                }
+                self.trans_consume(bcx, base).deref()
             }
             mir::Lvalue::Projection(ref projection) => {
                 let tr_base = self.trans_lvalue(bcx, &projection.base);
                 let projected_ty = tr_base.ty.projection_ty(tcx, &projection.elem);
                 let projected_ty = self.monomorphize(&projected_ty);
                 let align = tr_base.alignment;
-
-                let project_index = |llindex| {
-                    let element = if let ty::TySlice(_) = tr_base.ty.to_ty(tcx).sty {
-                        // Slices already point to the array element type.
-                        bcx.inbounds_gep(tr_base.llval, &[llindex])
-                    } else {
-                        let zero = common::C_uint(bcx.ccx, 0u64);
-                        bcx.inbounds_gep(tr_base.llval, &[zero, llindex])
-                    };
-                    (element, align)
-                };
 
                 let ((llprojected, align), llextra) = match projection.elem {
                     mir::ProjectionElem::Deref => bug!(),
@@ -359,13 +335,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     }
                     mir::ProjectionElem::Index(ref index) => {
                         let index = self.trans_operand(bcx, index);
-                        (project_index(self.prepare_index(bcx, index.immediate())), ptr::null_mut())
+                        let llindex = self.prepare_index(bcx, index.immediate());
+                        ((tr_base.project_index(bcx, llindex), align), ptr::null_mut())
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: false,
                                                          min_length: _ } => {
                         let lloffset = C_uint(bcx.ccx, offset);
-                        (project_index(lloffset), ptr::null_mut())
+                        ((tr_base.project_index(bcx, lloffset), align), ptr::null_mut())
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: true,
@@ -373,11 +350,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let lloffset = C_uint(bcx.ccx, offset);
                         let lllen = tr_base.len(bcx.ccx);
                         let llindex = bcx.sub(lllen, lloffset);
-                        (project_index(llindex), ptr::null_mut())
+                        ((tr_base.project_index(bcx, llindex), align), ptr::null_mut())
                     }
                     mir::ProjectionElem::Subslice { from, to } => {
-                        let llindex = C_uint(bcx.ccx, from);
-                        let (llbase, align) = project_index(llindex);
+                        let llbase = tr_base.project_index(bcx, C_uint(bcx.ccx, from));
 
                         let base_ty = tr_base.ty.to_ty(bcx.tcx());
                         match base_ty.sty {

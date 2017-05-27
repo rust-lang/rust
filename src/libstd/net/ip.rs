@@ -21,44 +21,100 @@ use net::{hton, ntoh};
 use sys::net::netc as c;
 use sys_common::{AsInner, FromInner};
 
-/// An IP address, either an IPv4 or IPv6 address.
+/// An IP address, either IPv4 or IPv6.
+///
+/// This enum can contain either an [`Ipv4Addr`] or an [`Ipv6Addr`], see their
+/// respective documentation for more details.
+///
+/// [`Ipv4Addr`]: ../../std/net/struct.Ipv4Addr.html
+/// [`Ipv6Addr`]: ../../std/net/struct.Ipv6Addr.html
 ///
 /// # Examples
 ///
-/// Constructing an IPv4 address:
-///
 /// ```
-/// use std::net::{IpAddr, Ipv4Addr};
+/// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 ///
-/// IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
-/// ```
+/// let localhost_v4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+/// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
 ///
-/// Constructing an IPv6 address:
+/// assert_eq!("127.0.0.1".parse(), Ok(localhost_v4));
+/// assert_eq!("::1".parse(), Ok(localhost_v6));
 ///
-/// ```
-/// use std::net::{IpAddr, Ipv6Addr};
-///
-/// IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+/// assert_eq!(localhost_v4.is_ipv6(), false);
+/// assert_eq!(localhost_v4.is_ipv4(), true);
 /// ```
 #[stable(feature = "ip_addr", since = "1.7.0")]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash, PartialOrd, Ord)]
 pub enum IpAddr {
-    /// Representation of an IPv4 address.
+    /// An IPv4 address.
     #[stable(feature = "ip_addr", since = "1.7.0")]
     V4(#[stable(feature = "ip_addr", since = "1.7.0")] Ipv4Addr),
-    /// Representation of an IPv6 address.
+    /// An IPv6 address.
     #[stable(feature = "ip_addr", since = "1.7.0")]
     V6(#[stable(feature = "ip_addr", since = "1.7.0")] Ipv6Addr),
 }
 
-/// Representation of an IPv4 address.
+/// An IPv4 address.
+///
+/// IPv4 addresses are defined as 32-bit integers in [IETF RFC 791].
+/// They are usually represented as four octets.
+///
+/// See [`IpAddr`] for a type encompassing both IPv4 and IPv6 addresses.
+///
+/// [IETF RFC 791]: https://tools.ietf.org/html/rfc791
+/// [`IpAddr`]: ../../std/net/enum.IpAddr.html
+///
+/// # Textual representation
+///
+/// `Ipv4Addr` provides a [`FromStr`] implementation. The four octets are in decimal
+/// notation, divided by `.` (this is called "dot-decimal notation").
+///
+/// [`FromStr`]: ../../std/str/trait.FromStr.html
+///
+/// # Examples
+///
+/// ```
+/// use std::net::Ipv4Addr;
+///
+/// let localhost = Ipv4Addr::new(127, 0, 0, 1);
+/// assert_eq!("127.0.0.1".parse(), Ok(localhost));
+/// assert_eq!(localhost.is_loopback(), true);
+/// ```
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv4Addr {
     inner: c::in_addr,
 }
 
-/// Representation of an IPv6 address.
+/// An IPv6 address.
+///
+/// IPv6 addresses are defined as 128-bit integers in [IETF RFC 4291].
+/// They are usually represented as eight 16-bit segments.
+///
+/// See [`IpAddr`] for a type encompassing both IPv4 and IPv6 addresses.
+///
+/// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+/// [`IpAddr`]: ../../std/net/enum.IpAddr.html
+///
+/// # Textual representation
+///
+/// `Ipv6Addr` provides a [`FromStr`] implementation. There are many ways to represent
+/// an IPv6 address in text, but in general, each segments is written in hexadecimal
+/// notation, and segments are separated by `:`. For more information, see
+/// [IETF RFC 5952].
+///
+/// [`FromStr`]: ../../std/str/trait.FromStr.html
+/// [IETF RFC 5952]: https://tools.ietf.org/html/rfc5952
+///
+/// # Examples
+///
+/// ```
+/// use std::net::Ipv6Addr;
+///
+/// let localhost = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
+/// assert_eq!("::1".parse(), Ok(localhost));
+/// assert_eq!(localhost.is_loopback(), true);
+/// ```
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv6Addr {
@@ -78,10 +134,14 @@ pub enum Ipv6MulticastScope {
 }
 
 impl IpAddr {
-    /// Returns true for the special 'unspecified' address ([IPv4], [IPv6]).
+    /// Returns [`true`] for the special 'unspecified' address.
+    ///
+    /// See the documentation for [`Ipv4Addr::is_unspecified`][IPv4] and
+    /// [`Ipv6Addr::is_unspecified`][IPv6] for more details.
     ///
     /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_unspecified
     /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_unspecified
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -99,10 +159,14 @@ impl IpAddr {
         }
     }
 
-    /// Returns true if this is a loopback address ([IPv4], [IPv6]).
+    /// Returns [`true`] if this is a loopback address.
+    ///
+    /// See the documentation for [`Ipv4Addr::is_loopback`][IPv4] and
+    /// [`Ipv6Addr::is_loopback`][IPv6] for more details.
     ///
     /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_loopback
     /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_loopback
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -120,10 +184,14 @@ impl IpAddr {
         }
     }
 
-    /// Returns true if the address appears to be globally routable ([IPv4], [IPv6]).
+    /// Returns [`true`] if the address appears to be globally routable.
+    ///
+    /// See the documentation for [`Ipv4Addr::is_global`][IPv4] and
+    /// [`Ipv6Addr::is_global`][IPv6] for more details.
     ///
     /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_global
     /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_global
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -145,10 +213,14 @@ impl IpAddr {
         }
     }
 
-    /// Returns true if this is a multicast address ([IPv4], [IPv6]).
+    /// Returns [`true`] if this is a multicast address.
+    ///
+    /// See the documentation for [`Ipv4Addr::is_multicast`][IPv4] and
+    /// [`Ipv6Addr::is_multicast`][IPv6] for more details.
     ///
     /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_multicast
     /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_multicast
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -166,10 +238,14 @@ impl IpAddr {
         }
     }
 
-    /// Returns true if this address is in a range designated for documentation ([IPv4], [IPv6]).
+    /// Returns [`true`] if this address is in a range designated for documentation.
+    ///
+    /// See the documentation for [`Ipv4Addr::is_documentation`][IPv4] and
+    /// [`Ipv6Addr::is_documentation`][IPv6] for more details.
     ///
     /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_documentation
     /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_documentation
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -191,7 +267,11 @@ impl IpAddr {
         }
     }
 
-    /// Returns true if this address is a valid IPv4 address, false if it's a valid IPv6 address.
+    /// Returns [`true`] if this address is an [IPv4 address], and [`false`] otherwise.
+    ///
+    /// [`true`]: ../../std/primitive.bool.html
+    /// [`false`]: ../../std/primitive.bool.html
+    /// [IPv4 address]: #variant.V4
     ///
     /// # Examples
     ///
@@ -212,7 +292,11 @@ impl IpAddr {
         }
     }
 
-    /// Returns true if this address is a valid IPv6 address, false if it's a valid IPv4 address.
+    /// Returns [`true`] if this address is an [IPv6 address], and [`false`] otherwise.
+    ///
+    /// [`true`]: ../../std/primitive.bool.html
+    /// [`false`]: ../../std/primitive.bool.html
+    /// [IPv6 address]: #variant.V6
     ///
     /// # Examples
     ///
@@ -274,12 +358,13 @@ impl Ipv4Addr {
         [(bits >> 24) as u8, (bits >> 16) as u8, (bits >> 8) as u8, bits as u8]
     }
 
-    /// Returns true for the special 'unspecified' address (0.0.0.0).
+    /// Returns [`true`] for the special 'unspecified' address (0.0.0.0).
     ///
     /// This property is defined in _UNIX Network Programming, Second Edition_,
     /// W. Richard Stevens, p. 891; see also [ip7].
     ///
     /// [ip7]: http://man7.org/linux/man-pages/man7/ip.7.html
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -294,11 +379,12 @@ impl Ipv4Addr {
         self.inner.s_addr == 0
     }
 
-    /// Returns true if this is a loopback address (127.0.0.0/8).
+    /// Returns [`true`] if this is a loopback address (127.0.0.0/8).
     ///
-    /// This property is defined by [RFC 1122].
+    /// This property is defined by [IETF RFC 1122].
     ///
-    /// [RFC 1122]: https://tools.ietf.org/html/rfc1122
+    /// [IETF RFC 1122]: https://tools.ietf.org/html/rfc1122
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -313,15 +399,16 @@ impl Ipv4Addr {
         self.octets()[0] == 127
     }
 
-    /// Returns true if this is a private address.
+    /// Returns [`true`] if this is a private address.
     ///
-    /// The private address ranges are defined in [RFC 1918] and include:
+    /// The private address ranges are defined in [IETF RFC 1918] and include:
     ///
     ///  - 10.0.0.0/8
     ///  - 172.16.0.0/12
     ///  - 192.168.0.0/16
     ///
-    /// [RFC 1918]: https://tools.ietf.org/html/rfc1918
+    /// [IETF RFC 1918]: https://tools.ietf.org/html/rfc1918
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -346,11 +433,12 @@ impl Ipv4Addr {
         }
     }
 
-    /// Returns true if the address is link-local (169.254.0.0/16).
+    /// Returns [`true`] if the address is link-local (169.254.0.0/16).
     ///
-    /// This property is defined by [RFC 3927].
+    /// This property is defined by [IETF RFC 3927].
     ///
-    /// [RFC 3927]: https://tools.ietf.org/html/rfc3927
+    /// [IETF RFC 3927]: https://tools.ietf.org/html/rfc3927
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -366,7 +454,7 @@ impl Ipv4Addr {
         self.octets()[0] == 169 && self.octets()[1] == 254
     }
 
-    /// Returns true if the address appears to be globally routable.
+    /// Returns [`true`] if the address appears to be globally routable.
     /// See [iana-ipv4-special-registry][ipv4-sr].
     ///
     /// The following return false:
@@ -379,6 +467,7 @@ impl Ipv4Addr {
     /// - the unspecified address (0.0.0.0)
     ///
     /// [ipv4-sr]: http://goo.gl/RaZ7lg
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -400,12 +489,13 @@ impl Ipv4Addr {
         !self.is_broadcast() && !self.is_documentation() && !self.is_unspecified()
     }
 
-    /// Returns true if this is a multicast address (224.0.0.0/4).
+    /// Returns [`true`] if this is a multicast address (224.0.0.0/4).
     ///
     /// Multicast addresses have a most significant octet between 224 and 239,
-    /// and is defined by [RFC 5771].
+    /// and is defined by [IETF RFC 5771].
     ///
-    /// [RFC 5771]: https://tools.ietf.org/html/rfc5771
+    /// [IETF RFC 5771]: https://tools.ietf.org/html/rfc5771
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -421,11 +511,12 @@ impl Ipv4Addr {
         self.octets()[0] >= 224 && self.octets()[0] <= 239
     }
 
-    /// Returns true if this is a broadcast address (255.255.255.255).
+    /// Returns [`true`] if this is a broadcast address (255.255.255.255).
     ///
-    /// A broadcast address has all octets set to 255 as defined in [RFC 919].
+    /// A broadcast address has all octets set to 255 as defined in [IETF RFC 919].
     ///
-    /// [RFC 919]: https://tools.ietf.org/html/rfc919
+    /// [IETF RFC 919]: https://tools.ietf.org/html/rfc919
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -441,15 +532,16 @@ impl Ipv4Addr {
         self.octets()[2] == 255 && self.octets()[3] == 255
     }
 
-    /// Returns true if this address is in a range designated for documentation.
+    /// Returns [`true`] if this address is in a range designated for documentation.
     ///
-    /// This is defined in [RFC 5737]:
+    /// This is defined in [IETF RFC 5737]:
     ///
     /// - 192.0.2.0/24 (TEST-NET-1)
     /// - 198.51.100.0/24 (TEST-NET-2)
     /// - 203.0.113.0/24 (TEST-NET-3)
     ///
-    /// [RFC 5737]: https://tools.ietf.org/html/rfc5737
+    /// [IETF RFC 5737]: https://tools.ietf.org/html/rfc5737
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -471,9 +563,11 @@ impl Ipv4Addr {
         }
     }
 
-    /// Converts this address to an IPv4-compatible IPv6 address.
+    /// Converts this address to an IPv4-compatible [IPv6 address].
     ///
     /// a.b.c.d becomes ::a.b.c.d
+    ///
+    /// [IPv6 address]: ../../std/net/struct.Ipv6Addr.html
     ///
     /// # Examples
     ///
@@ -490,9 +584,11 @@ impl Ipv4Addr {
                       ((self.octets()[2] as u16) << 8) | self.octets()[3] as u16)
     }
 
-    /// Converts this address to an IPv4-mapped IPv6 address.
+    /// Converts this address to an IPv4-mapped [IPv6 address].
     ///
     /// a.b.c.d becomes ::ffff:a.b.c.d
+    ///
+    /// [IPv6 address]: ../../std/net/struct.Ipv6Addr.html
     ///
     /// # Examples
     ///
@@ -561,7 +657,7 @@ impl PartialEq for Ipv4Addr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialEq<Ipv4Addr> for IpAddr {
     fn eq(&self, other: &Ipv4Addr) -> bool {
         match *self {
@@ -571,7 +667,7 @@ impl PartialEq<Ipv4Addr> for IpAddr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialEq<IpAddr> for Ipv4Addr {
     fn eq(&self, other: &IpAddr) -> bool {
         match *other {
@@ -598,7 +694,7 @@ impl PartialOrd for Ipv4Addr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialOrd<Ipv4Addr> for IpAddr {
     fn partial_cmp(&self, other: &Ipv4Addr) -> Option<Ordering> {
         match *self {
@@ -608,7 +704,7 @@ impl PartialOrd<Ipv4Addr> for IpAddr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialOrd<IpAddr> for Ipv4Addr {
     fn partial_cmp(&self, other: &IpAddr) -> Option<Ordering> {
         match *other {
@@ -636,6 +732,7 @@ impl FromInner<c::in_addr> for Ipv4Addr {
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
 impl From<Ipv4Addr> for u32 {
+    /// It performs the conversion in network order (big-endian).
     fn from(ip: Ipv4Addr) -> u32 {
         let ip = ip.octets();
         ((ip[0] as u32) << 24) + ((ip[1] as u32) << 16) + ((ip[2] as u32) << 8) + (ip[3] as u32)
@@ -644,6 +741,7 @@ impl From<Ipv4Addr> for u32 {
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
 impl From<u32> for Ipv4Addr {
+    /// It performs the conversion in network order (big-endian).
     fn from(ip: u32) -> Ipv4Addr {
         Ipv4Addr::new((ip >> 24) as u8, (ip >> 16) as u8, (ip >> 8) as u8, ip as u8)
     }
@@ -715,11 +813,12 @@ impl Ipv6Addr {
         ]
     }
 
-    /// Returns true for the special 'unspecified' address (::).
+    /// Returns [`true`] for the special 'unspecified' address (::).
     ///
-    /// This property is defined in [RFC 4291].
+    /// This property is defined in [IETF RFC 4291].
     ///
-    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -734,11 +833,12 @@ impl Ipv6Addr {
         self.segments() == [0, 0, 0, 0, 0, 0, 0, 0]
     }
 
-    /// Returns true if this is a loopback address (::1).
+    /// Returns [`true`] if this is a loopback address (::1).
     ///
-    /// This property is defined in [RFC 4291].
+    /// This property is defined in [IETF RFC 4291].
     ///
-    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -753,13 +853,16 @@ impl Ipv6Addr {
         self.segments() == [0, 0, 0, 0, 0, 0, 0, 1]
     }
 
-    /// Returns true if the address appears to be globally routable.
+    /// Returns [`true`] if the address appears to be globally routable.
     ///
-    /// The following return false:
+    /// The following return [`false`]:
     ///
     /// - the loopback address
     /// - link-local, site-local, and unique local unicast addresses
     /// - interface-, link-, realm-, admin- and site-local multicast addresses
+    ///
+    /// [`true`]: ../../std/primitive.bool.html
+    /// [`false`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -782,11 +885,12 @@ impl Ipv6Addr {
         }
     }
 
-    /// Returns true if this is a unique local address (fc00::/7).
+    /// Returns [`true`] if this is a unique local address (fc00::/7).
     ///
-    /// This property is defined in [RFC 4193].
+    /// This property is defined in [IETF RFC 4193].
     ///
-    /// [RFC 4193]: https://tools.ietf.org/html/rfc4193
+    /// [IETF RFC 4193]: https://tools.ietf.org/html/rfc4193
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -805,11 +909,12 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
 
-    /// Returns true if the address is unicast and link-local (fe80::/10).
+    /// Returns [`true`] if the address is unicast and link-local (fe80::/10).
     ///
-    /// This property is defined in [RFC 4291].
+    /// This property is defined in [IETF RFC 4291].
     ///
-    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -828,8 +933,10 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xffc0) == 0xfe80
     }
 
-    /// Returns true if this is a deprecated unicast site-local address
+    /// Returns [`true`] if this is a deprecated unicast site-local address
     /// (fec0::/10).
+    ///
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -848,12 +955,13 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xffc0) == 0xfec0
     }
 
-    /// Returns true if this is an address reserved for documentation
+    /// Returns [`true`] if this is an address reserved for documentation
     /// (2001:db8::/32).
     ///
-    /// This property is defined in [RFC 3849].
+    /// This property is defined in [IETF RFC 3849].
     ///
-    /// [RFC 3849]: https://tools.ietf.org/html/rfc3849
+    /// [IETF RFC 3849]: https://tools.ietf.org/html/rfc3849
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -872,7 +980,7 @@ impl Ipv6Addr {
         (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
     }
 
-    /// Returns true if the address is a globally routable unicast address.
+    /// Returns [`true`] if the address is a globally routable unicast address.
     ///
     /// The following return false:
     ///
@@ -882,6 +990,8 @@ impl Ipv6Addr {
     /// - unique local addresses
     /// - the unspecified address
     /// - the address range reserved for documentation
+    ///
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -935,11 +1045,13 @@ impl Ipv6Addr {
         }
     }
 
-    /// Returns true if this is a multicast address (ff00::/8).
+    /// Returns [`true`] if this is a multicast address (ff00::/8).
     ///
-    /// This property is defined by [RFC 4291].
+    /// This property is defined by [IETF RFC 4291].
     ///
-    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [`true`]: ../../std/primitive.bool.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -953,10 +1065,15 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xff00) == 0xff00
     }
 
-    /// Converts this address to an IPv4 address. Returns None if this address is
+    /// Converts this address to an [IPv4 address]. Returns [`None`] if this address is
     /// neither IPv4-compatible or IPv4-mapped.
     ///
     /// ::a.b.c.d and ::ffff:a.b.c.d become a.b.c.d
+    ///
+    /// [IPv4 address]: ../../std/net/struct.Ipv4Addr.html
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::net::{Ipv4Addr, Ipv6Addr};
@@ -1083,7 +1200,7 @@ impl PartialEq for Ipv6Addr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialEq<IpAddr> for Ipv6Addr {
     fn eq(&self, other: &IpAddr) -> bool {
         match *other {
@@ -1093,7 +1210,7 @@ impl PartialEq<IpAddr> for Ipv6Addr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialEq<Ipv6Addr> for IpAddr {
     fn eq(&self, other: &Ipv6Addr) -> bool {
         match *self {
@@ -1120,7 +1237,7 @@ impl PartialOrd for Ipv6Addr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialOrd<Ipv6Addr> for IpAddr {
     fn partial_cmp(&self, other: &Ipv6Addr) -> Option<Ordering> {
         match *self {
@@ -1130,7 +1247,7 @@ impl PartialOrd<Ipv6Addr> for IpAddr {
     }
 }
 
-#[stable(feature = "ip_cmp", since = "1.15.0")]
+#[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialOrd<IpAddr> for Ipv6Addr {
     fn partial_cmp(&self, other: &IpAddr) -> Option<Ordering> {
         match *other {
@@ -1185,7 +1302,7 @@ impl From<[u8; 16]> for Ipv6Addr {
     }
 }
 
-#[stable(feature = "ipv6_from_segments", since = "1.15.0")]
+#[stable(feature = "ipv6_from_segments", since = "1.16.0")]
 impl From<[u16; 8]> for Ipv6Addr {
     fn from(segments: [u16; 8]) -> Ipv6Addr {
         let [a, b, c, d, e, f, g, h] = segments;

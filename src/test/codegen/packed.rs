@@ -27,3 +27,36 @@ pub fn write_pkd(pkd: &mut Packed) -> u32 {
     pkd.data = 42;
     result
 }
+
+pub struct Array([i32; 8]);
+#[repr(packed)]
+pub struct BigPacked {
+    dealign: u8,
+    data: Array
+}
+
+// CHECK-LABEL: @call_pkd
+#[no_mangle]
+pub fn call_pkd(f: fn() -> Array) -> BigPacked {
+// CHECK: [[ALLOCA:%[_a-z0-9]+]] = alloca %Array
+// CHECK: call void %{{.*}}(%Array* noalias nocapture sret dereferenceable(32) [[ALLOCA]])
+// CHECK: call void @llvm.memcpy.{{.*}}(i8* %{{.*}}, i8* %{{.*}}, i{{[0-9]+}} 32, i32 1, i1 false)
+    // check that calls whose destination is a field of a packed struct
+    // go through an alloca rather than calling the function with an
+    // unaligned destination.
+    BigPacked { dealign: 0, data: f() }
+}
+
+#[repr(packed)]
+#[derive(Copy, Clone)]
+pub struct PackedPair(u8, u32);
+
+// CHECK-LABEL: @pkd_pair
+#[no_mangle]
+pub fn pkd_pair(pair1: &mut PackedPair, pair2: &mut PackedPair) {
+    // CHECK: [[V1:%[a-z0-9]+]] = load i8, i8* %{{.*}}, align 1
+    // CHECK: [[V2:%[a-z0-9]+]] = load i32, i32* %{{.*}}, align 1
+    // CHECK: store i8 [[V1]], i8* {{.*}}, align 1
+    // CHECK: store i32 [[V2]], i32* {{.*}}, align 1
+    *pair2 = *pair1;
+}

@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    return.is_failure //~ ERROR the type of this value must be known in this context
+    return.is_failure //~ ERROR no field `is_failure` on type `!`
 }

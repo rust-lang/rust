@@ -1,0 +1,68 @@
+error[E0308]: mismatched types
+  --> $DIR/abridged.rs:26:5
+   |
+26 |     Some(Foo { bar: 1 })
+   |     ^^^^^^^^^^^^^^^^^^^^ expected struct `Foo`, found enum `std::option::Option`
+   |
+   = note: expected type `Foo`
+              found type `std::option::Option<Foo>`
+
+error[E0308]: mismatched types
+  --> $DIR/abridged.rs:30:5
+   |
+30 |     Ok(Foo { bar: 1})
+   |     ^^^^^^^^^^^^^^^^^ expected struct `Foo`, found enum `std::result::Result`
+   |
+   = note: expected type `Foo`
+              found type `std::result::Result<Foo, _>`
+
+error[E0308]: mismatched types
+  --> $DIR/abridged.rs:34:5
+   |
+34 |     Foo { bar: 1 }
+   |     ^^^^^^^^^^^^^^ expected enum `std::option::Option`, found struct `Foo`
+   |
+   = note: expected type `std::option::Option<Foo>`
+              found type `Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/abridged.rs:38:5
+   |
+38 |     Foo { bar: 1 }
+   |     ^^^^^^^^^^^^^^ expected enum `std::result::Result`, found struct `Foo`
+   |
+   = note: expected type `std::result::Result<Foo, Bar>`
+              found type `Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/abridged.rs:42:5
+   |
+42 | /     X {
+43 | |         x: X {
+44 | |             x: "".to_string(),
+45 | |             y: 2,
+46 | |         },
+47 | |         y: 3,
+48 | |     }
+   | |_____^ expected struct `std::string::String`, found integral variable
+   |
+   = note: expected type `X<X<_, std::string::String>, std::string::String>`
+              found type `X<X<_, {integer}>, {integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/abridged.rs:52:5
+   |
+52 | /     X {
+53 | |         x: X {
+54 | |             x: "".to_string(),
+55 | |             y: 2,
+56 | |         },
+57 | |         y: "".to_string(),
+58 | |     }
+   | |_____^ expected struct `std::string::String`, found integral variable
+   |
+   = note: expected type `X<X<_, std::string::String>, _>`
+              found type `X<X<_, {integer}>, _>`
+
+error: aborting due to previous error(s)
+

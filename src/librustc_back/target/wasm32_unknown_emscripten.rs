@@ -8,10 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{Target, TargetOptions};
+use LinkerFlavor;
+use super::{LinkArgs, Target, TargetOptions};
 use super::emscripten_base::{cmd};
 
 pub fn target() -> Result<Target, String> {
+    let mut post_link_args = LinkArgs::new();
+    post_link_args.insert(LinkerFlavor::Em,
+                          vec!["-s".to_string(),
+                               "BINARYEN=1".to_string(),
+                               "-s".to_string(),
+                               "ERROR_ON_UNDEFINED_SYMBOLS=1".to_string()]);
+
     let opts = TargetOptions {
         linker: cmd("emcc"),
         ar: cmd("emar"),
@@ -26,8 +34,7 @@ pub fn target() -> Result<Target, String> {
         obj_is_bitcode: true,
         is_like_emscripten: true,
         max_atomic_width: Some(32),
-        post_link_args: vec!["-s".to_string(), "BINARYEN=1".to_string(),
-                             "-s".to_string(), "ERROR_ON_UNDEFINED_SYMBOLS=1".to_string()],
+        post_link_args: post_link_args,
         target_family: Some("unix".to_string()),
         .. Default::default()
     };
@@ -40,6 +47,7 @@ pub fn target() -> Result<Target, String> {
         target_vendor: "unknown".to_string(),
         data_layout: "e-p:32:32-i64:64-v128:32:128-n32-S128".to_string(),
         arch: "wasm32".to_string(),
+        linker_flavor: LinkerFlavor::Em,
         options: opts,
     })
 }

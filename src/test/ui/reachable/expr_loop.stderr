@@ -1,0 +1,31 @@
+error: unreachable statement
+  --> $DIR/expr_loop.rs:19:5
+   |
+19 |     println!("I am dead.");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/expr_loop.rs:14:9
+   |
+14 | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+   = note: this error originates in a macro outside of the current crate
+
+error: unreachable statement
+  --> $DIR/expr_loop.rs:31:5
+   |
+31 |     println!("I am dead.");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate
+
+error: unreachable statement
+  --> $DIR/expr_loop.rs:41:5
+   |
+41 |     println!("I am dead.");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate
+
+error: aborting due to previous error(s)
+

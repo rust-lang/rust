@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs, pub_restricted)]
+#![feature(rustc_attrs)]
 #![allow(warnings)]
 
 mod foo {
@@ -16,10 +16,10 @@ mod foo {
     mod bar {
         #[derive(Default)]
         pub struct S {
-            pub(foo) x: i32,
+            pub(in foo) x: i32,
         }
         impl S {
-            pub(foo) fn f(&self) -> i32 { 0 }
+            pub(in foo) fn f(&self) -> i32 { 0 }
         }
 
         pub struct S2 {

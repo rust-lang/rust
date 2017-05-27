@@ -14,7 +14,9 @@ fn main() {
     let foo =
         match //~ NOTE did you mean to remove this `match` keyword?
         Some(4).unwrap_or_else(5)
-        ; //~ ERROR expected one of `.`, `?`, `{`, or an operator, found `;`
+        //~^ NOTE expected one of `.`, `?`, `{`, or an operator here
+        ; //~ NOTE unexpected token
+        //~^ ERROR expected one of `.`, `?`, `{`, or an operator, found `;`
 
     println!("{}", foo)
 }

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![crate_name = "rustc_save_analysis"]
-#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -19,15 +18,21 @@
 
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
-#![feature(rustc_private)]
-#![feature(staged_api)]
+
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(rustc_private))]
+#![cfg_attr(stage0, feature(staged_api))]
 
 #[macro_use] extern crate rustc;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
+extern crate rustc_typeck;
 extern crate syntax_pos;
+
+extern crate rls_data;
+extern crate rls_span;
 
 
 mod csv_dumper;
@@ -45,7 +50,9 @@ use rustc::hir::def::Def;
 use rustc::hir::map::Node;
 use rustc::hir::def_id::DefId;
 use rustc::session::config::CrateType::CrateTypeExecutable;
+use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
+use rustc_typeck::hir_ty_to_ty;
 
 use std::env;
 use std::fs::File;
@@ -54,7 +61,7 @@ use std::path::{Path, PathBuf};
 use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::parse::token;
-use syntax::symbol::{Symbol, keywords};
+use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{ty_to_string, arg_to_string};
 use syntax::codemap::MacroAttribute;
@@ -114,6 +121,50 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
 
         result
+    }
+
+    pub fn get_extern_item_data(&self, item: &ast::ForeignItem) -> Option<Data> {
+        let qualname = format!("::{}", self.tcx.node_path_str(item.id));
+        match item.node {
+            ast::ForeignItemKind::Fn(ref decl, ref generics) => {
+                let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
+                filter!(self.span_utils, sub_span, item.span, None);
+                Some(Data::FunctionData(FunctionData {
+                    id: item.id,
+                    name: item.ident.to_string(),
+                    qualname: qualname,
+                    declaration: None,
+                    span: sub_span.unwrap(),
+                    scope: self.enclosing_scope(item.id),
+                    value: make_signature(decl, generics),
+                    visibility: From::from(&item.vis),
+                    parent: None,
+                    docs: docs_for_attrs(&item.attrs),
+                    sig: self.sig_base_extern(item),
+                    attributes: item.attrs.clone(),
+                }))
+            }
+            ast::ForeignItemKind::Static(ref ty, m) => {
+                let keyword = if m { keywords::Mut } else { keywords::Static };
+                let sub_span = self.span_utils.sub_span_after_keyword(item.span, keyword);
+                filter!(self.span_utils, sub_span, item.span, None);
+                Some(Data::VariableData(VariableData {
+                    id: item.id,
+                    kind: VariableKind::Static,
+                    name: item.ident.to_string(),
+                    qualname: qualname,
+                    span: sub_span.unwrap(),
+                    scope: self.enclosing_scope(item.id),
+                    parent: None,
+                    value: String::new(),
+                    type_value: ty_to_string(ty),
+                    visibility: From::from(&item.vis),
+                    docs: docs_for_attrs(&item.attrs),
+                    sig: Some(self.sig_base_extern(item)),
+                    attributes: item.attrs.clone(),
+                }))
+            }
+        }
     }
 
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
@@ -207,7 +258,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     items: m.items.iter().map(|i| i.id).collect(),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
-                    sig: self.sig_base(item),
+                    sig: Some(self.sig_base(item)),
                     attributes: item.attrs.clone(),
                 }))
             }
@@ -293,7 +344,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
             filter!(self.span_utils, sub_span, field.span, None);
             let def_id = self.tcx.hir.local_def_id(field.id);
-            let typ = self.tcx.item_type(def_id).to_string();
+            let typ = self.tcx.type_of(def_id).to_string();
 
             let span = field.span;
             let text = self.span_utils.snippet(field.span);
@@ -558,11 +609,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 Def::Local(def_id)
             }
 
-            Node::NodeTy(&hir::Ty { node: hir::TyPath(ref qpath), .. }) => {
-                match *qpath {
-                    hir::QPath::Resolved(_, ref path) => path.def,
-                    hir::QPath::TypeRelative(..) => {
-                        if let Some(ty) = self.tcx.ast_ty_to_ty_cache.borrow().get(&id) {
+            Node::NodeTy(ty) => {
+                if let hir::Ty { node: hir::TyPath(ref qpath), .. } = *ty {
+                    match *qpath {
+                        hir::QPath::Resolved(_, ref path) => path.def,
+                        hir::QPath::TypeRelative(..) => {
+                            let ty = hir_ty_to_ty(self.tcx, ty);
                             if let ty::TyProjection(proj) = ty.sty {
                                 for item in self.tcx.associated_items(proj.trait_ref.def_id) {
                                     if item.kind == ty::AssociatedKind::Type {
@@ -572,9 +624,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                     }
                                 }
                             }
+                            Def::Err
                         }
-                        Def::Err
                     }
+                } else {
+                    Def::Err
                 }
             }
 
@@ -653,6 +707,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Def::SelfTy(..) |
             Def::Label(..) |
             Def::Macro(..) |
+            Def::GlobalAsm(..) |
             Def::Err => None,
         }
     }
@@ -686,9 +741,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         // Note we take care to use the source callsite/callee, to handle
         // nested expansions and ensure we only generate data for source-visible
         // macro uses.
-        let callsite = self.tcx.sess.codemap().source_callsite(span);
-        let callee = self.tcx.sess.codemap().source_callee(span);
-        let callee = option_try!(callee);
+        let callsite = span.source_callsite();
+        let callee = option_try!(span.source_callee());
         let callee_span = option_try!(callee.span);
 
         // Ignore attribute macros, their spans are usually mangled
@@ -739,7 +793,22 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let ident_start = text.find(&name).expect("Name not in signature?");
         let ident_end = ident_start + name.len();
         Signature {
-            span: mk_sp(item.span.lo, item.span.lo + BytePos(text.len() as u32)),
+            span: Span { hi: item.span.lo + BytePos(text.len() as u32), ..item.span },
+            text: text,
+            ident_start: ident_start,
+            ident_end: ident_end,
+            defs: vec![],
+            refs: vec![],
+        }
+    }
+
+    fn sig_base_extern(&self, item: &ast::ForeignItem) -> Signature {
+        let text = self.span_utils.signature_string_for_span(item.span);
+        let name = item.ident.to_string();
+        let ident_start = text.find(&name).expect("Name not in signature?");
+        let ident_end = ident_start + name.len();
+        Signature {
+            span: Span { hi: item.span.lo + BytePos(text.len() as u32), ..item.span },
             text: text,
             ident_start: ident_start,
             ident_end: ident_end,
@@ -759,7 +828,7 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
     if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {
         sig.push('<');
         sig.push_str(&generics.lifetimes.iter()
-                              .map(|l| l.lifetime.name.to_string())
+                              .map(|l| l.lifetime.ident.name.to_string())
                               .collect::<Vec<_>>()
                               .join(", "));
         if !generics.lifetimes.is_empty() {
@@ -829,11 +898,10 @@ impl<'a> Visitor<'a> for PathCollector {
 }
 
 fn docs_for_attrs(attrs: &[Attribute]) -> String {
-    let doc = Symbol::intern("doc");
     let mut result = String::new();
 
     for attr in attrs {
-        if attr.name() == doc {
+        if attr.check_name("doc") {
             if let Some(val) = attr.value_str() {
                 if attr.is_sugared_doc {
                     result.push_str(&strip_doc_comment_decoration(&val.as_str()));
@@ -864,55 +932,131 @@ impl Format {
     }
 }
 
-pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
-                               krate: &ast::Crate,
-                               analysis: &'l ty::CrateAnalysis,
-                               cratename: &str,
-                               odir: Option<&Path>,
-                               format: Format) {
+/// Defines what to do with the results of saving the analysis.
+pub trait SaveHandler {
+    fn save<'l, 'tcx>(&mut self,
+                      save_ctxt: SaveContext<'l, 'tcx>,
+                      krate: &ast::Crate,
+                      cratename: &str);
+}
+
+/// Dump the save-analysis results to a file.
+pub struct DumpHandler<'a> {
+    format: Format,
+    odir: Option<&'a Path>,
+    cratename: String
+}
+
+impl<'a> DumpHandler<'a> {
+    pub fn new(format: Format, odir: Option<&'a Path>, cratename: &str) -> DumpHandler<'a> {
+        DumpHandler {
+            format: format,
+            odir: odir,
+            cratename: cratename.to_owned()
+        }
+    }
+
+    fn output_file(&self, sess: &Session) -> File {
+        let mut root_path = match env::var_os("RUST_SAVE_ANALYSIS_FOLDER") {
+            Some(val) => PathBuf::from(val),
+            None => match self.odir {
+                Some(val) => val.join("save-analysis"),
+                None => PathBuf::from("save-analysis-temp"),
+            },
+        };
+
+        if let Err(e) = std::fs::create_dir_all(&root_path) {
+            error!("Could not create directory {}: {}", root_path.display(), e);
+        }
+
+        {
+            let disp = root_path.display();
+            info!("Writing output to {}", disp);
+        }
+
+        let executable = sess.crate_types.borrow().iter().any(|ct| *ct == CrateTypeExecutable);
+        let mut out_name = if executable {
+            "".to_owned()
+        } else {
+            "lib".to_owned()
+        };
+        out_name.push_str(&self.cratename);
+        out_name.push_str(&sess.opts.cg.extra_filename);
+        out_name.push_str(self.format.extension());
+        root_path.push(&out_name);
+        let output_file = File::create(&root_path).unwrap_or_else(|e| {
+            let disp = root_path.display();
+            sess.fatal(&format!("Could not open {}: {}", disp, e));
+        });
+        root_path.pop();
+        output_file
+    }
+}
+
+impl<'a> SaveHandler for DumpHandler<'a> {
+    fn save<'l, 'tcx>(&mut self,
+                      save_ctxt: SaveContext<'l, 'tcx>,
+                      krate: &ast::Crate,
+                      cratename: &str) {
+        macro_rules! dump {
+            ($new_dumper: expr) => {{
+                let mut dumper = $new_dumper;
+                let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
+
+                visitor.dump_crate_info(cratename, krate);
+                visit::walk_crate(&mut visitor, krate);
+            }}
+        }
+
+        let output = &mut self.output_file(&save_ctxt.tcx.sess);
+
+        match self.format {
+            Format::Csv => dump!(CsvDumper::new(output)),
+            Format::Json => dump!(JsonDumper::new(output)),
+            Format::JsonApi => dump!(JsonApiDumper::new(output)),
+        }
+    }
+}
+
+/// Call a callback with the results of save-analysis.
+pub struct CallbackHandler<'b> {
+    pub callback: &'b mut FnMut(&rls_data::Analysis),
+}
+
+impl<'b> SaveHandler for CallbackHandler<'b> {
+    fn save<'l, 'tcx>(&mut self,
+                      save_ctxt: SaveContext<'l, 'tcx>,
+                      krate: &ast::Crate,
+                      cratename: &str) {
+        macro_rules! dump {
+            ($new_dumper: expr) => {{
+                let mut dumper = $new_dumper;
+                let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
+
+                visitor.dump_crate_info(cratename, krate);
+                visit::walk_crate(&mut visitor, krate);
+            }}
+        }
+
+        // We're using the JsonDumper here because it has the format of the
+        // save-analysis results that we will pass to the callback. IOW, we are
+        // using the JsonDumper to collect the save-analysis results, but not
+        // actually to dump them to a file. This is all a bit convoluted and
+        // there is certainly a simpler design here trying to get out (FIXME).
+        dump!(JsonDumper::with_callback(self.callback))
+    }
+}
+
+pub fn process_crate<'l, 'tcx, H: SaveHandler>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
+                                               krate: &ast::Crate,
+                                               analysis: &'l ty::CrateAnalysis,
+                                               cratename: &str,
+                                               mut handler: H) {
     let _ignore = tcx.dep_graph.in_ignore();
 
     assert!(analysis.glob_map.is_some());
 
     info!("Dumping crate {}", cratename);
-
-    // find a path to dump our data to
-    let mut root_path = match env::var_os("RUST_SAVE_ANALYSIS_FOLDER") {
-        Some(val) => PathBuf::from(val),
-        None => match odir {
-            Some(val) => val.join("save-analysis"),
-            None => PathBuf::from("save-analysis-temp"),
-        },
-    };
-
-    if let Err(e) = rustc::util::fs::create_dir_racy(&root_path) {
-        tcx.sess.err(&format!("Could not create directory {}: {}",
-                              root_path.display(),
-                              e));
-    }
-
-    {
-        let disp = root_path.display();
-        info!("Writing output to {}", disp);
-    }
-
-    // Create output file.
-    let executable = tcx.sess.crate_types.borrow().iter().any(|ct| *ct == CrateTypeExecutable);
-    let mut out_name = if executable {
-        "".to_owned()
-    } else {
-        "lib".to_owned()
-    };
-    out_name.push_str(&cratename);
-    out_name.push_str(&tcx.sess.opts.cg.extra_filename);
-    out_name.push_str(format.extension());
-    root_path.push(&out_name);
-    let mut output_file = File::create(&root_path).unwrap_or_else(|e| {
-        let disp = root_path.display();
-        tcx.sess.fatal(&format!("Could not open {}: {}", disp, e));
-    });
-    root_path.pop();
-    let output = &mut output_file;
 
     let save_ctxt = SaveContext {
         tcx: tcx,
@@ -921,21 +1065,7 @@ pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
         span_utils: SpanUtils::new(&tcx.sess),
     };
 
-    macro_rules! dump {
-        ($new_dumper: expr) => {{
-            let mut dumper = $new_dumper;
-            let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
-
-            visitor.dump_crate_info(cratename, krate);
-            visit::walk_crate(&mut visitor, krate);
-        }}
-    }
-
-    match format {
-        Format::Csv => dump!(CsvDumper::new(output)),
-        Format::Json => dump!(JsonDumper::new(output)),
-        Format::JsonApi => dump!(JsonApiDumper::new(output)),
-    }
+    handler.save(save_ctxt, krate, cratename)
 }
 
 // Utility functions for the module.
@@ -948,5 +1078,5 @@ fn escape(s: String) -> String {
 // Helper function to determine if a span came from a
 // macro expansion or syntax extension.
 pub fn generated_code(span: Span) -> bool {
-    span.expn_id != NO_EXPANSION || span == DUMMY_SP
+    span.ctxt != NO_EXPANSION || span == DUMMY_SP
 }

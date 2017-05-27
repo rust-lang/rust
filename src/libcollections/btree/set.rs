@@ -74,9 +74,10 @@ pub struct BTreeSet<T> {
     map: BTreeMap<T, ()>,
 }
 
-/// An iterator over a `BTreeSet`'s items.
+/// An iterator over the items of a `BTreeSet`.
 ///
-/// This structure is created by the [`iter`] method on [`BTreeSet`].
+/// This `struct` is created by the [`iter`] method on [`BTreeSet`].
+/// See its documentation for more.
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`iter`]: struct.BTreeSet.html#method.iter
@@ -94,32 +95,36 @@ impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
     }
 }
 
-/// An owning iterator over a `BTreeSet`'s items.
+/// An owning iterator over the items of a `BTreeSet`.
 ///
-/// This structure is created by the `into_iter` method on [`BTreeSet`]
-/// [`BTreeSet`] (provided by the `IntoIterator` trait).
+/// This `struct` is created by the [`into_iter`] method on [`BTreeSet`][`BTreeSet`]
+/// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
+/// [`into_iter`]: struct.BTreeSet.html#method.into_iter
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IntoIter<T> {
     iter: ::btree_map::IntoIter<T, ()>,
 }
 
-/// An iterator over a sub-range of `BTreeSet`'s items.
+/// An iterator over a sub-range of items in a `BTreeSet`.
 ///
-/// This structure is created by the [`range`] method on [`BTreeSet`].
+/// This `struct` is created by the [`range`] method on [`BTreeSet`].
+/// See its documentation for more.
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`range`]: struct.BTreeSet.html#method.range
 #[derive(Debug)]
+#[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, T: 'a> {
     iter: ::btree_map::Range<'a, T, ()>,
 }
 
-/// A lazy iterator producing elements in the set difference (in-order).
+/// A lazy iterator producing elements in the difference of `BTreeSet`s.
 ///
-/// This structure is created by the [`difference`] method on [`BTreeSet`].
+/// This `struct` is created by the [`difference`] method on [`BTreeSet`].
+/// See its documentation for more.
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`difference`]: struct.BTreeSet.html#method.difference
@@ -133,15 +138,16 @@ pub struct Difference<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Difference<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Difference")
-         .field(&self.clone())
+         .field(&self.a)
+         .field(&self.b)
          .finish()
     }
 }
 
-/// A lazy iterator producing elements in the set symmetric difference (in-order).
+/// A lazy iterator producing elements in the symmetric difference of `BTreeSet`s.
 ///
-/// This structure is created by the [`symmetric_difference`] method on
-/// [`BTreeSet`].
+/// This `struct` is created by the [`symmetric_difference`] method on
+/// [`BTreeSet`]. See its documentation for more.
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`symmetric_difference`]: struct.BTreeSet.html#method.symmetric_difference
@@ -155,14 +161,16 @@ pub struct SymmetricDifference<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for SymmetricDifference<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("SymmetricDifference")
-         .field(&self.clone())
+         .field(&self.a)
+         .field(&self.b)
          .finish()
     }
 }
 
-/// A lazy iterator producing elements in the set intersection (in-order).
+/// A lazy iterator producing elements in the intersection of `BTreeSet`s.
 ///
-/// This structure is created by the [`intersection`] method on [`BTreeSet`].
+/// This `struct` is created by the [`intersection`] method on [`BTreeSet`].
+/// See its documentation for more.
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`intersection`]: struct.BTreeSet.html#method.intersection
@@ -176,14 +184,16 @@ pub struct Intersection<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Intersection<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Intersection")
-         .field(&self.clone())
+         .field(&self.a)
+         .field(&self.b)
          .finish()
     }
 }
 
-/// A lazy iterator producing elements in the set union (in-order).
+/// A lazy iterator producing elements in the union of `BTreeSet`s.
 ///
-/// This structure is created by the [`union`] method on [`BTreeSet`].
+/// This `struct` is created by the [`union`] method on [`BTreeSet`].
+/// See its documentation for more.
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`union`]: struct.BTreeSet.html#method.union
@@ -197,7 +207,8 @@ pub struct Union<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Union<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Union")
-         .field(&self.clone())
+         .field(&self.a)
+         .field(&self.b)
          .finish()
     }
 }
@@ -264,8 +275,6 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(btree_range, collections_bound)]
-    ///
     /// use std::collections::BTreeSet;
     /// use std::collections::Bound::Included;
     ///
@@ -278,9 +287,7 @@ impl<T: Ord> BTreeSet<T> {
     /// }
     /// assert_eq!(Some(&5), set.range(4..).next());
     /// ```
-    #[unstable(feature = "btree_range",
-               reason = "matches collection reform specification, waiting for dust to settle",
-               issue = "27787")]
+    #[stable(feature = "btree_range", since = "1.17.0")]
     pub fn range<K: ?Sized, R>(&self, range: R) -> Range<T>
         where K: Ord, T: Borrow<K>, R: RangeArgument<K>
     {
@@ -418,7 +425,7 @@ impl<T: Ord> BTreeSet<T> {
         self.map.len()
     }
 
-    /// Returns true if the set contains no elements.
+    /// Returns `true` if the set contains no elements.
     ///
     /// # Examples
     ///
@@ -731,7 +738,7 @@ impl<T> IntoIterator for BTreeSet<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
-    /// Gets an iterator for moving out the BtreeSet's contents.
+    /// Gets an iterator for moving out the `BTreeSet`'s contents.
     ///
     /// # Examples
     ///
@@ -938,11 +945,14 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for IntoIter<T> {}
 
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, T> Clone for Range<'a, T> {
     fn clone(&self) -> Range<'a, T> {
         Range { iter: self.iter.clone() }
     }
 }
+
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, T> Iterator for Range<'a, T> {
     type Item = &'a T;
 
@@ -950,6 +960,8 @@ impl<'a, T> Iterator for Range<'a, T> {
         self.iter.next().map(|(k, _)| k)
     }
 }
+
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, T> DoubleEndedIterator for Range<'a, T> {
     fn next_back(&mut self) -> Option<&'a T> {
         self.iter.next_back().map(|(k, _)| k)

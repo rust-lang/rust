@@ -13,6 +13,7 @@
 use rustc::dep_graph::{DepNode, WorkProductId};
 use rustc::hir::def_id::DefId;
 use rustc::hir::svh::Svh;
+use rustc::ich::Fingerprint;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
@@ -22,7 +23,6 @@ use std::path::{Path};
 use std::sync::Arc;
 
 use IncrementalHashesMap;
-use ich::Fingerprint;
 use super::data::*;
 use super::directory::*;
 use super::dirty_clean;
@@ -240,35 +240,40 @@ fn initial_dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut hcx = HashContext::new(tcx, incremental_hashes_map);
     let mut dirty_nodes = FxHashMap();
 
+    let print_removed_message = |dep_node: &DepNode<_>| {
+        if tcx.sess.opts.debugging_opts.incremental_dump_hash {
+            println!("node {:?} is dirty as it was removed", dep_node);
+        }
+
+        debug!("initial_dirty_nodes: {:?} is dirty as it was removed", dep_node);
+    };
+
     for hash in serialized_hashes {
         if let Some(dep_node) = retraced.map(&hash.dep_node) {
-            let current_hash = hcx.hash(&dep_node).unwrap();
-            if current_hash == hash.hash {
-                debug!("initial_dirty_nodes: {:?} is clean (hash={:?})",
-                   dep_node.map_def(|&def_id| Some(tcx.def_path(def_id))).unwrap(),
-                   current_hash);
-                continue;
-            }
+            if let Some(current_hash) = hcx.hash(&dep_node) {
+                if current_hash == hash.hash {
+                    debug!("initial_dirty_nodes: {:?} is clean (hash={:?})",
+                       dep_node.map_def(|&def_id| Some(tcx.def_path(def_id))).unwrap(),
+                       current_hash);
+                    continue;
+                }
 
-            if tcx.sess.opts.debugging_opts.incremental_dump_hash {
-                println!("node {:?} is dirty as hash is {:?} was {:?}",
-                         dep_node.map_def(|&def_id| Some(tcx.def_path(def_id))).unwrap(),
-                         current_hash,
-                         hash.hash);
-            }
+                if tcx.sess.opts.debugging_opts.incremental_dump_hash {
+                    println!("node {:?} is dirty as hash is {:?} was {:?}",
+                             dep_node.map_def(|&def_id| Some(tcx.def_path(def_id))).unwrap(),
+                             current_hash,
+                             hash.hash);
+                }
 
-            debug!("initial_dirty_nodes: {:?} is dirty as hash is {:?}, was {:?}",
-                   dep_node.map_def(|&def_id| Some(tcx.def_path(def_id))).unwrap(),
-                   current_hash,
-                   hash.hash);
+                debug!("initial_dirty_nodes: {:?} is dirty as hash is {:?}, was {:?}",
+                       dep_node.map_def(|&def_id| Some(tcx.def_path(def_id))).unwrap(),
+                       current_hash,
+                       hash.hash);
+            } else {
+                print_removed_message(&hash.dep_node);
+            }
         } else {
-            if tcx.sess.opts.debugging_opts.incremental_dump_hash {
-                println!("node {:?} is dirty as it was removed",
-                         hash.dep_node);
-            }
-
-            debug!("initial_dirty_nodes: {:?} is dirty as it was removed",
-                   hash.dep_node);
+            print_removed_message(&hash.dep_node);
         }
 
         dirty_nodes.insert(hash.dep_node.clone(), hash.dep_node.clone());
@@ -382,8 +387,8 @@ fn load_prev_metadata_hashes(tcx: TyCtxt,
 
     debug!("load_prev_metadata_hashes() - Mapping DefIds");
 
-    assert_eq!(serialized_hashes.index_map.len(), serialized_hashes.hashes.len());
-    for serialized_hash in serialized_hashes.hashes {
+    assert_eq!(serialized_hashes.index_map.len(), serialized_hashes.entry_hashes.len());
+    for serialized_hash in serialized_hashes.entry_hashes {
         let def_path_index = serialized_hashes.index_map[&serialized_hash.def_index];
         if let Some(def_id) = retraced.def_id(def_path_index) {
             let old = output.insert(def_id, serialized_hash.hash);

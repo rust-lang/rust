@@ -13,7 +13,7 @@
 
 use cell::{Cell, UnsafeCell};
 use fmt;
-use intrinsics;
+use mem;
 use ptr;
 
 pub struct Key<T> {
@@ -44,7 +44,7 @@ impl<T> Key<T> {
 
     pub fn get(&'static self) -> Option<&'static UnsafeCell<Option<T>>> {
         unsafe {
-            if intrinsics::needs_drop::<T>() && self.dtor_running.get() {
+            if mem::needs_drop::<T>() && self.dtor_running.get() {
                 return None
             }
             self.register_dtor();
@@ -53,7 +53,7 @@ impl<T> Key<T> {
     }
 
     unsafe fn register_dtor(&self) {
-        if !intrinsics::needs_drop::<T>() || self.dtor_registered.get() {
+        if !mem::needs_drop::<T>() || self.dtor_registered.get() {
             return
         }
 
@@ -128,7 +128,7 @@ unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
     register_dtor_fallback(t, dtor);
 }
 
-// OSX's analog of the above linux function is this _tlv_atexit function.
+// macOS's analog of the above linux function is this _tlv_atexit function.
 // The disassembly of thread_local globals in C++ (at least produced by
 // clang) will have this show up in the output.
 #[cfg(target_os = "macos")]
@@ -154,17 +154,17 @@ pub unsafe extern fn destroy_value<T>(ptr: *mut u8) {
     // `None`.
     (*ptr).dtor_running.set(true);
 
-    // The OSX implementation of TLS apparently had an odd aspect to it
+    // The macOS implementation of TLS apparently had an odd aspect to it
     // where the pointer we have may be overwritten while this destructor
     // is running. Specifically if a TLS destructor re-accesses TLS it may
     // trigger a re-initialization of all TLS variables, paving over at
     // least some destroyed ones with initial values.
     //
-    // This means that if we drop a TLS value in place on OSX that we could
+    // This means that if we drop a TLS value in place on macOS that we could
     // revert the value to its original state halfway through the
     // destructor, which would be bad!
     //
-    // Hence, we use `ptr::read` on OSX (to move to a "safe" location)
+    // Hence, we use `ptr::read` on macOS (to move to a "safe" location)
     // instead of drop_in_place.
     if cfg!(target_os = "macos") {
         ptr::read((*ptr).inner.get());

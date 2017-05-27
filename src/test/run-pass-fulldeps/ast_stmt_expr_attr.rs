@@ -17,6 +17,7 @@ extern crate syntax;
 use syntax::ast::*;
 use syntax::attr::*;
 use syntax::ast;
+use syntax::codemap::FilePathMapping;
 use syntax::parse;
 use syntax::parse::{ParseSess, PResult};
 use syntax::parse::new_parser_from_source_str;
@@ -78,7 +79,7 @@ fn str_compare<T, F: Fn(&T) -> String>(e: &str, expected: &[T], actual: &[T], f:
 }
 
 fn check_expr_attrs(es: &str, expected: &[&str]) {
-    let ps = ParseSess::new();
+    let ps = ParseSess::new(FilePathMapping::empty());
     let e = expr(es, &ps).expect("parse error");
     let actual = &e.attrs;
     str_compare(es,
@@ -88,7 +89,7 @@ fn check_expr_attrs(es: &str, expected: &[&str]) {
 }
 
 fn check_stmt_attrs(es: &str, expected: &[&str]) {
-    let ps = ParseSess::new();
+    let ps = ParseSess::new(FilePathMapping::empty());
     let e = stmt(es, &ps).expect("parse error");
     let actual = e.node.attrs();
     str_compare(es,
@@ -98,7 +99,7 @@ fn check_stmt_attrs(es: &str, expected: &[&str]) {
 }
 
 fn reject_expr_parse(es: &str) {
-    let ps = ParseSess::new();
+    let ps = ParseSess::new(FilePathMapping::empty());
     match expr(es, &ps) {
         Ok(_) => panic!("parser did not reject `{}`", es),
         Err(mut e) => e.cancel(),
@@ -106,7 +107,7 @@ fn reject_expr_parse(es: &str) {
 }
 
 fn reject_stmt_parse(es: &str) {
-    let ps = ParseSess::new();
+    let ps = ParseSess::new(FilePathMapping::empty());
     match stmt(es, &ps) {
         Ok(_) => panic!("parser did not reject `{}`", es),
         Err(mut e) => e.cancel(),

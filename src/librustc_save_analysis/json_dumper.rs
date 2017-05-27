@@ -13,39 +13,73 @@ use std::io::Write;
 use rustc::hir::def_id::DefId;
 use rustc_serialize::json::as_json;
 
-use external_data::*;
-use data::{VariableKind, SigElement};
-use dump::Dump;
-use super::Format;
+use rls_data::{self, Id, Analysis, Import, ImportKind, Def, DefKind, Ref, RefKind, MacroRef,
+               Relation, RelationKind, Signature, SigElement, CratePreludeData};
+use rls_span::{Column, Row};
 
-pub struct JsonDumper<'b, W: Write + 'b> {
-    output: &'b mut W,
+use external_data;
+use external_data::*;
+use data::{self, VariableKind};
+use dump::Dump;
+
+pub struct JsonDumper<O: DumpOutput> {
     result: Analysis,
+    output: O,
 }
 
-impl<'b, W: Write> JsonDumper<'b, W> {
-    pub fn new(writer: &'b mut W) -> JsonDumper<'b, W> {
-        JsonDumper { output: writer, result: Analysis::new() }
+pub trait DumpOutput {
+    fn dump(&mut self, result: &Analysis);
+}
+
+pub struct WriteOutput<'b, W: Write + 'b> {
+    output: &'b mut W,
+}
+
+impl<'b, W: Write> DumpOutput for WriteOutput<'b, W> {
+    fn dump(&mut self, result: &Analysis) {
+        if let Err(_) = write!(self.output, "{}", as_json(&result)) {
+            error!("Error writing output");
+        }
     }
 }
 
-impl<'b, W: Write> Drop for JsonDumper<'b, W> {
+pub struct CallbackOutput<'b> {
+    callback: &'b mut FnMut(&Analysis),
+}
+
+impl<'b> DumpOutput for CallbackOutput<'b> {
+    fn dump(&mut self, result: &Analysis) {
+        (self.callback)(result)
+    }
+}
+
+impl<'b, W: Write> JsonDumper<WriteOutput<'b, W>> {
+    pub fn new(writer: &'b mut W) -> JsonDumper<WriteOutput<'b, W>> {
+        JsonDumper { output: WriteOutput { output: writer }, result: Analysis::new() }
+    }
+}
+
+impl<'b> JsonDumper<CallbackOutput<'b>> {
+    pub fn with_callback(callback: &'b mut FnMut(&Analysis)) -> JsonDumper<CallbackOutput<'b>> {
+        JsonDumper { output: CallbackOutput { callback: callback }, result: Analysis::new() }
+    }
+}
+
+impl<O: DumpOutput> Drop for JsonDumper<O> {
     fn drop(&mut self) {
-        if let Err(_) = write!(self.output, "{}", as_json(&self.result)) {
-            error!("Error writing output");
-        }
+        self.output.dump(&self.result);
     }
 }
 
 macro_rules! impl_fn {
     ($fn_name: ident, $data_type: ident, $bucket: ident) => {
         fn $fn_name(&mut self, data: $data_type) {
-            self.result.$bucket.push(From::from(data));
+            self.result.$bucket.push(data.into());
         }
     }
 }
 
-impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
+impl<'b, O: DumpOutput + 'b> Dump for JsonDumper<O> {
     fn crate_prelude(&mut self, data: CratePreludeData) {
         self.result.prelude = Some(data)
     }
@@ -75,21 +109,22 @@ impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
     impl_fn!(macro_use, MacroUseData, macro_refs);
 
     fn mod_data(&mut self, data: ModData) {
-        let id: Id = From::from(data.id);
+        let id: Id = id_from_def_id(data.id);
         let mut def = Def {
             kind: DefKind::Mod,
             id: id,
-            span: data.span,
+            span: data.span.into(),
             name: data.name,
             qualname: data.qualname,
             value: data.filename,
-            children: data.items.into_iter().map(|id| From::from(id)).collect(),
+            parent: None,
+            children: data.items.into_iter().map(|id| id_from_def_id(id)).collect(),
             decl_id: None,
             docs: data.docs,
-            sig: Some(From::from(data.sig)),
-            attributes: data.attributes,
+            sig: data.sig.map(|s| s.into()),
+            attributes: data.attributes.into_iter().map(|a| a.into()).collect(),
         };
-        if def.span.file_name != def.value {
+        if def.span.file_name.to_str().unwrap() != def.value {
             // If the module is an out-of-line defintion, then we'll make the
             // defintion the first character in the module's file and turn the
             // the declaration into a reference to it.
@@ -99,14 +134,14 @@ impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
                 ref_id: id,
             };
             self.result.refs.push(rf);
-            def.span = SpanData {
-                file_name: def.value.clone(),
+            def.span = rls_data::SpanData {
+                file_name: def.value.clone().into(),
                 byte_start: 0,
                 byte_end: 0,
-                line_start: 1,
-                line_end: 1,
-                column_start: 1,
-                column_end: 1,
+                line_start: Row::new_one_indexed(1),
+                line_end: Row::new_one_indexed(1),
+                column_start: Column::new_one_indexed(1),
+                column_end: Column::new_one_indexed(1),
             }
         }
 
@@ -115,11 +150,11 @@ impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
 
     fn impl_data(&mut self, data: ImplData) {
         if data.self_ref.is_some() {
-            self.result.relations.push(From::from(data));
+            self.result.relations.push(data.into());
         }
     }
     fn inheritance(&mut self, data: InheritanceData) {
-        self.result.relations.push(From::from(data));
+        self.result.relations.push(data.into());
     }
 }
 
@@ -129,476 +164,342 @@ impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
 // method, but not the supplied method). In both cases, we are currently
 // ignoring it.
 
-#[derive(Debug, RustcEncodable)]
-struct Analysis {
-    kind: Format,
-    prelude: Option<CratePreludeData>,
-    imports: Vec<Import>,
-    defs: Vec<Def>,
-    refs: Vec<Ref>,
-    macro_refs: Vec<MacroRef>,
-    relations: Vec<Relation>,
-}
-
-impl Analysis {
-    fn new() -> Analysis {
-        Analysis {
-            kind: Format::Json,
-            prelude: None,
-            imports: vec![],
-            defs: vec![],
-            refs: vec![],
-            macro_refs: vec![],
-            relations: vec![],
-        }
-    }
-}
-
 // DefId::index is a newtype and so the JSON serialisation is ugly. Therefore
 // we use our own Id which is the same, but without the newtype.
-#[derive(Clone, Copy, Debug, RustcEncodable)]
-struct Id {
-    krate: u32,
-    index: u32,
-}
-
-impl From<DefId> for Id {
-    fn from(id: DefId) -> Id {
-        Id {
-            krate: id.krate.as_u32(),
-            index: id.index.as_u32(),
-        }
+pub fn id_from_def_id(id: DefId) -> Id {
+    Id {
+        krate: id.krate.as_u32(),
+        index: id.index.as_u32(),
     }
 }
 
-#[derive(Debug, RustcEncodable)]
-struct Import {
-    kind: ImportKind,
-    ref_id: Option<Id>,
-    span: SpanData,
-    name: String,
-    value: String,
-}
-
-#[derive(Debug, RustcEncodable)]
-enum ImportKind {
-    ExternCrate,
-    Use,
-    GlobUse,
-}
-
-impl From<ExternCrateData> for Import {
-    fn from(data: ExternCrateData) -> Import {
+impl Into<Import> for ExternCrateData {
+    fn into(self) -> Import {
         Import {
             kind: ImportKind::ExternCrate,
             ref_id: None,
-            span: data.span,
-            name: data.name,
+            span: self.span,
+            name: self.name,
             value: String::new(),
         }
     }
 }
-impl From<UseData> for Import {
-    fn from(data: UseData) -> Import {
+impl Into<Import> for UseData {
+    fn into(self) -> Import {
         Import {
             kind: ImportKind::Use,
-            ref_id: data.mod_id.map(|id| From::from(id)),
-            span: data.span,
-            name: data.name,
+            ref_id: self.mod_id.map(|id| id_from_def_id(id)),
+            span: self.span,
+            name: self.name,
             value: String::new(),
         }
     }
 }
-impl From<UseGlobData> for Import {
-    fn from(data: UseGlobData) -> Import {
+impl Into<Import> for UseGlobData {
+    fn into(self) -> Import {
         Import {
             kind: ImportKind::GlobUse,
             ref_id: None,
-            span: data.span,
+            span: self.span,
             name: "*".to_owned(),
-            value: data.names.join(", "),
+            value: self.names.join(", "),
         }
     }
 }
 
-#[derive(Debug, RustcEncodable)]
-struct Def {
-    kind: DefKind,
-    id: Id,
-    span: SpanData,
-    name: String,
-    qualname: String,
-    value: String,
-    children: Vec<Id>,
-    decl_id: Option<Id>,
-    docs: String,
-    sig: Option<JsonSignature>,
-    attributes: Vec<Attribute>,
-}
-
-#[derive(Debug, RustcEncodable)]
-enum DefKind {
-    // value = variant names
-    Enum,
-    // value = enum name + variant name + types
-    Tuple,
-    // value = [enum name +] name + fields
-    Struct,
-    // value = signature
-    Trait,
-    // value = type + generics
-    Function,
-    // value = type + generics
-    Method,
-    // No id, no value.
-    Macro,
-    // value = file_name
-    Mod,
-    // value = aliased type
-    Type,
-    // value = type and init expression (for all variable kinds).
-    Local,
-    Static,
-    Const,
-    Field,
-}
-
-impl From<EnumData> for Def {
-    fn from(data: EnumData) -> Def {
+impl Into<Def> for EnumData {
+    fn into(self) -> Def {
         Def {
             kind: DefKind::Enum,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
-            children: data.variants.into_iter().map(|id| From::from(id)).collect(),
+            id: id_from_def_id(self.id),
+            span: self.span,
+            name: self.name,
+            qualname: self.qualname,
+            value: self.value,
+            parent: None,
+            children: self.variants.into_iter().map(|id| id_from_def_id(id)).collect(),
             decl_id: None,
-            docs: data.docs,
-            sig: Some(From::from(data.sig)),
-            attributes: data.attributes,
+            docs: self.docs,
+            sig: Some(self.sig.into()),
+            attributes: self.attributes,
         }
     }
 }
 
-impl From<TupleVariantData> for Def {
-    fn from(data: TupleVariantData) -> Def {
+impl Into<Def> for TupleVariantData {
+    fn into(self) -> Def {
         Def {
             kind: DefKind::Tuple,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
+            id: id_from_def_id(self.id),
+            span: self.span,
+            name: self.name,
+            qualname: self.qualname,
+            value: self.value,
+            parent: None,
             children: vec![],
             decl_id: None,
-            docs: data.docs,
-            sig: Some(From::from(data.sig)),
-            attributes: data.attributes,
+            docs: self.docs,
+            sig: Some(self.sig.into()),
+            attributes: self.attributes,
         }
     }
 }
-impl From<StructVariantData> for Def {
-    fn from(data: StructVariantData) -> Def {
+impl Into<Def> for StructVariantData {
+    fn into(self) -> Def {
         Def {
             kind: DefKind::Struct,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
+            id: id_from_def_id(self.id),
+            span: self.span,
+            name: self.name,
+            qualname: self.qualname,
+            value: self.value,
+            parent: None,
             children: vec![],
             decl_id: None,
-            docs: data.docs,
-            sig: Some(From::from(data.sig)),
-            attributes: data.attributes,
+            docs: self.docs,
+            sig: Some(self.sig.into()),
+            attributes: self.attributes,
         }
     }
 }
-impl From<StructData> for Def {
-    fn from(data: StructData) -> Def {
+impl Into<Def> for StructData {
+    fn into(self) -> Def {
         Def {
             kind: DefKind::Struct,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
-            children: data.fields.into_iter().map(|id| From::from(id)).collect(),
+            id: id_from_def_id(self.id),
+            span: self.span,
+            name: self.name,
+            qualname: self.qualname,
+            value: self.value,
+            parent: None,
+            children: self.fields.into_iter().map(|id| id_from_def_id(id)).collect(),
             decl_id: None,
-            docs: data.docs,
-            sig: Some(From::from(data.sig)),
-            attributes: data.attributes,
+            docs: self.docs,
+            sig: Some(self.sig.into()),
+            attributes: self.attributes,
         }
     }
 }
-impl From<TraitData> for Def {
-    fn from(data: TraitData) -> Def {
+impl Into<Def> for TraitData {
+    fn into(self) -> Def {
         Def {
             kind: DefKind::Trait,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
-            children: data.items.into_iter().map(|id| From::from(id)).collect(),
+            id: id_from_def_id(self.id),
+            span: self.span,
+            name: self.name,
+            qualname: self.qualname,
+            value: self.value,
+            parent: None,
+            children: self.items.into_iter().map(|id| id_from_def_id(id)).collect(),
             decl_id: None,
-            docs: data.docs,
-            sig: Some(From::from(data.sig)),
-            attributes: data.attributes,
+            docs: self.docs,
+            sig: Some(self.sig.into()),
+            attributes: self.attributes,
         }
     }
 }
-impl From<FunctionData> for Def {
-    fn from(data: FunctionData) -> Def {
+impl Into<Def> for FunctionData {
+    fn into(self) -> Def {
         Def {
             kind: DefKind::Function,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
+            id: id_from_def_id(self.id),
+            span: self.span,
+            name: self.name,
+            qualname: self.qualname,
+            value: self.value,
+            parent: None,
             children: vec![],
             decl_id: None,
-            docs: data.docs,
-            sig: Some(From::from(data.sig)),
-            attributes: data.attributes,
+            docs: self.docs,
+            sig: Some(self.sig.into()),
+            attributes: self.attributes,
         }
     }
 }
-impl From<MethodData> for Def {
-    fn from(data: MethodData) -> Def {
+impl Into<Def> for MethodData {
+    fn into(self) -> Def {
         Def {
             kind: DefKind::Method,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
+            id: id_from_def_id(self.id),
+            span: self.span,
+            name: self.name,
+            qualname: self.qualname,
+            value: self.value,
+            parent: None,
             children: vec![],
-            decl_id: data.decl_id.map(|id| From::from(id)),
-            docs: data.docs,
-            sig: Some(From::from(data.sig)),
-            attributes: data.attributes,
+            decl_id: self.decl_id.map(|id| id_from_def_id(id)),
+            docs: self.docs,
+            sig: Some(self.sig.into()),
+            attributes: self.attributes,
         }
     }
 }
-impl From<MacroData> for Def {
-    fn from(data: MacroData) -> Def {
+impl Into<Def> for MacroData {
+    fn into(self) -> Def {
         Def {
             kind: DefKind::Macro,
-            id: From::from(null_def_id()),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
+            id: id_from_def_id(null_def_id()),
+            span: self.span,
+            name: self.name,
+            qualname: self.qualname,
             value: String::new(),
+            parent: None,
             children: vec![],
             decl_id: None,
-            docs: data.docs,
+            docs: self.docs,
             sig: None,
             attributes: vec![],
         }
     }
 }
-impl From<TypeDefData> for Def {
-    fn from(data: TypeDefData) -> Def {
+impl Into<Def> for TypeDefData {
+    fn into(self) -> Def {
         Def {
             kind: DefKind::Type,
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.value,
+            id: id_from_def_id(self.id),
+            span: self.span,
+            name: self.name,
+            qualname: self.qualname,
+            value: self.value,
+            parent: None,
             children: vec![],
             decl_id: None,
             docs: String::new(),
-            sig: data.sig.map(|s| From::from(s)),
-            attributes: data.attributes,
+            sig: self.sig.map(|s| s.into()),
+            attributes: self.attributes,
         }
     }
 }
-impl From<VariableData> for Def {
-    fn from(data: VariableData) -> Def {
+impl Into<Def> for VariableData {
+    fn into(self) -> Def {
         Def {
-            kind: match data.kind {
+            kind: match self.kind {
                 VariableKind::Static => DefKind::Static,
                 VariableKind::Const => DefKind::Const,
                 VariableKind::Local => DefKind::Local,
                 VariableKind::Field => DefKind::Field,
             },
-            id: From::from(data.id),
-            span: data.span,
-            name: data.name,
-            qualname: data.qualname,
-            value: data.type_value,
+            id: id_from_def_id(self.id),
+            span: self.span,
+            name: self.name,
+            qualname: self.qualname,
+            value: self.type_value,
+            parent: None,
             children: vec![],
             decl_id: None,
-            docs: data.docs,
+            docs: self.docs,
             sig: None,
-            attributes: data.attributes,
+            attributes: self.attributes,
         }
     }
 }
 
-#[derive(Debug, RustcEncodable)]
-enum RefKind {
-    Function,
-    Mod,
-    Type,
-    Variable,
-}
-
-#[derive(Debug, RustcEncodable)]
-struct Ref {
-    kind: RefKind,
-    span: SpanData,
-    ref_id: Id,
-}
-
-impl From<FunctionRefData> for Ref {
-    fn from(data: FunctionRefData) -> Ref {
+impl Into<Ref> for FunctionRefData {
+    fn into(self) -> Ref {
         Ref {
             kind: RefKind::Function,
-            span: data.span,
-            ref_id: From::from(data.ref_id),
+            span: self.span,
+            ref_id: id_from_def_id(self.ref_id),
         }
     }
 }
-impl From<FunctionCallData> for Ref {
-    fn from(data: FunctionCallData) -> Ref {
+impl Into<Ref> for FunctionCallData {
+    fn into(self) -> Ref {
         Ref {
             kind: RefKind::Function,
-            span: data.span,
-            ref_id: From::from(data.ref_id),
+            span: self.span,
+            ref_id: id_from_def_id(self.ref_id),
         }
     }
 }
-impl From<MethodCallData> for Ref {
-    fn from(data: MethodCallData) -> Ref {
+impl Into<Ref> for MethodCallData {
+    fn into(self) -> Ref {
         Ref {
             kind: RefKind::Function,
-            span: data.span,
-            ref_id: From::from(data.ref_id.or(data.decl_id).unwrap_or(null_def_id())),
+            span: self.span,
+            ref_id: id_from_def_id(self.ref_id.or(self.decl_id).unwrap_or(null_def_id())),
         }
     }
 }
-impl From<ModRefData> for Ref {
-    fn from(data: ModRefData) -> Ref {
+impl Into<Ref> for ModRefData {
+    fn into(self) -> Ref {
         Ref {
             kind: RefKind::Mod,
-            span: data.span,
-            ref_id: From::from(data.ref_id.unwrap_or(null_def_id())),
+            span: self.span,
+            ref_id: id_from_def_id(self.ref_id.unwrap_or(null_def_id())),
         }
     }
 }
-impl From<TypeRefData> for Ref {
-    fn from(data: TypeRefData) -> Ref {
+impl Into<Ref> for TypeRefData {
+    fn into(self) -> Ref {
         Ref {
             kind: RefKind::Type,
-            span: data.span,
-            ref_id: From::from(data.ref_id.unwrap_or(null_def_id())),
+            span: self.span,
+            ref_id: id_from_def_id(self.ref_id.unwrap_or(null_def_id())),
         }
     }
 }
-impl From<VariableRefData> for Ref {
-    fn from(data: VariableRefData) -> Ref {
+impl Into<Ref> for VariableRefData {
+    fn into(self) -> Ref {
         Ref {
             kind: RefKind::Variable,
-            span: data.span,
-            ref_id: From::from(data.ref_id),
+            span: self.span,
+            ref_id: id_from_def_id(self.ref_id),
         }
     }
 }
 
-#[derive(Debug, RustcEncodable)]
-struct MacroRef {
-    span: SpanData,
-    qualname: String,
-    callee_span: SpanData,
-}
-
-impl From<MacroUseData> for MacroRef {
-    fn from(data: MacroUseData) -> MacroRef {
+impl Into<MacroRef> for MacroUseData {
+    fn into(self) -> MacroRef {
         MacroRef {
-            span: data.span,
-            qualname: data.qualname,
-            callee_span: data.callee_span,
+            span: self.span,
+            qualname: self.qualname,
+            callee_span: self.callee_span.into(),
         }
     }
 }
 
-#[derive(Debug, RustcEncodable)]
-struct Relation {
-    span: SpanData,
-    kind: RelationKind,
-    from: Id,
-    to: Id,
-}
-
-#[derive(Debug, RustcEncodable)]
-enum RelationKind {
-    Impl,
-    SuperTrait,
-}
-
-impl From<ImplData> for Relation {
-    fn from(data: ImplData) -> Relation {
+impl Into<Relation> for ImplData {
+    fn into(self) -> Relation {
         Relation {
-            span: data.span,
+            span: self.span,
             kind: RelationKind::Impl,
-            from: From::from(data.self_ref.unwrap_or(null_def_id())),
-            to: From::from(data.trait_ref.unwrap_or(null_def_id())),
+            from: id_from_def_id(self.self_ref.unwrap_or(null_def_id())),
+            to: id_from_def_id(self.trait_ref.unwrap_or(null_def_id())),
         }
     }
 }
 
-impl From<InheritanceData> for Relation {
-    fn from(data: InheritanceData) -> Relation {
+impl Into<Relation> for InheritanceData {
+    fn into(self) -> Relation {
         Relation {
-            span: data.span,
+            span: self.span,
             kind: RelationKind::SuperTrait,
-            from: From::from(data.base_id),
-            to: From::from(data.deriv_id),
+            from: id_from_def_id(self.base_id),
+            to: id_from_def_id(self.deriv_id),
         }
     }
 }
 
-#[derive(Debug, RustcEncodable)]
-pub struct JsonSignature {
-    span: SpanData,
-    text: String,
-    ident_start: usize,
-    ident_end: usize,
-    defs: Vec<JsonSigElement>,
-    refs: Vec<JsonSigElement>,
-}
-
-impl From<Signature> for JsonSignature {
-    fn from(data: Signature) -> JsonSignature {
-        JsonSignature {
-            span: data.span,
-            text: data.text,
-            ident_start: data.ident_start,
-            ident_end: data.ident_end,
-            defs: data.defs.into_iter().map(|s| From::from(s)).collect(),
-            refs: data.refs.into_iter().map(|s| From::from(s)).collect(),
+impl Into<Signature> for external_data::Signature {
+    fn into(self) -> Signature {
+        Signature {
+            span: self.span,
+            text: self.text,
+            ident_start: self.ident_start,
+            ident_end: self.ident_end,
+            defs: self.defs.into_iter().map(|s| s.into()).collect(),
+            refs: self.refs.into_iter().map(|s| s.into()).collect(),
         }
     }
 }
 
-#[derive(Debug, RustcEncodable)]
-pub struct JsonSigElement {
-    id: Id,
-    start: usize,
-    end: usize,
-}
-
-impl From<SigElement> for JsonSigElement {
-    fn from(data: SigElement) -> JsonSigElement {
-        JsonSigElement {
-            id: From::from(data.id),
-            start: data.start,
-            end: data.end,
+impl Into<SigElement> for data::SigElement {
+    fn into(self) -> SigElement {
+        SigElement {
+            id: id_from_def_id(self.id),
+            start: self.start,
+            end: self.end,
         }
     }
 }

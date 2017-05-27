@@ -10,28 +10,27 @@
 
 use ast;
 use attr;
+use ext::hygiene::{Mark, SyntaxContext};
 use symbol::{Symbol, keywords};
 use syntax_pos::{DUMMY_SP, Span};
 use codemap::{self, ExpnInfo, NameAndSpan, MacroAttribute};
-use parse::ParseSess;
 use ptr::P;
+use tokenstream::TokenStream;
 
 /// Craft a span that will be ignored by the stability lint's
-/// call to codemap's is_internal check.
+/// call to codemap's `is_internal` check.
 /// The expanded code uses the unstable `#[prelude_import]` attribute.
-fn ignored_span(sess: &ParseSess, sp: Span) -> Span {
-    let info = ExpnInfo {
+fn ignored_span(sp: Span) -> Span {
+    let mark = Mark::fresh(Mark::root());
+    mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
             format: MacroAttribute(Symbol::intern("std_inject")),
             span: None,
             allow_internal_unstable: true,
         }
-    };
-    let expn_id = sess.codemap().record_expansion(info);
-    let mut sp = sp;
-    sp.expn_id = expn_id;
-    return sp;
+    });
+    Span { ctxt: SyntaxContext::empty().apply_mark(mark), ..sp }
 }
 
 pub fn injected_crate_name(krate: &ast::Crate) -> Option<&'static str> {
@@ -44,16 +43,13 @@ pub fn injected_crate_name(krate: &ast::Crate) -> Option<&'static str> {
     }
 }
 
-pub fn maybe_inject_crates_ref(sess: &ParseSess,
-                               mut krate: ast::Crate,
-                               alt_std_name: Option<String>)
-                               -> ast::Crate {
+pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<String>) -> ast::Crate {
     let name = match injected_crate_name(&krate) {
         Some(name) => name,
         None => return krate,
     };
 
-    let crate_name = Symbol::intern(&alt_std_name.unwrap_or(name.to_string()));
+    let crate_name = Symbol::intern(&alt_std_name.unwrap_or_else(|| name.to_string()));
 
     krate.module.items.insert(0, P(ast::Item {
         attrs: vec![attr::mk_attr_outer(DUMMY_SP,
@@ -66,15 +62,12 @@ pub fn maybe_inject_crates_ref(sess: &ParseSess,
         span: DUMMY_SP,
     }));
 
-    let span = ignored_span(sess, DUMMY_SP);
+    let span = ignored_span(DUMMY_SP);
     krate.module.items.insert(0, P(ast::Item {
         attrs: vec![ast::Attribute {
             style: ast::AttrStyle::Outer,
-            value: ast::MetaItem {
-                name: Symbol::intern("prelude_import"),
-                node: ast::MetaItemKind::Word,
-                span: span,
-            },
+            path: ast::Path::from_ident(span, ast::Ident::from_str("prelude_import")),
+            tokens: TokenStream::empty(),
             id: attr::mk_attr_id(),
             is_sugared_doc: false,
             span: span,
@@ -82,7 +75,7 @@ pub fn maybe_inject_crates_ref(sess: &ParseSess,
         vis: ast::Visibility::Inherited,
         node: ast::ItemKind::Use(P(codemap::dummy_spanned(ast::ViewPathGlob(ast::Path {
             segments: ["{{root}}", name, "prelude", "v1"].into_iter().map(|name| {
-                ast::Ident::from_str(name).into()
+                ast::PathSegment::from_ident(ast::Ident::from_str(name), DUMMY_SP)
             }).collect(),
             span: span,
         })))),

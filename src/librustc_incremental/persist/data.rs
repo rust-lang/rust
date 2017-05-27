@@ -12,9 +12,10 @@
 
 use rustc::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use rustc::hir::def_id::DefIndex;
+use rustc::ich::Fingerprint;
+use rustc::middle::cstore::EncodedMetadataHash;
 use std::sync::Arc;
 use rustc_data_structures::fx::FxHashMap;
-use ich::Fingerprint;
 
 use super::directory::DefPathIndex;
 
@@ -98,7 +99,11 @@ pub struct SerializedMetadataHashes {
     /// where `X` refers to some item in this crate. That `X` will be
     /// a `DefPathIndex` that gets retracted to the current `DefId`
     /// (matching the one found in this structure).
-    pub hashes: Vec<SerializedMetadataHash>,
+    pub entry_hashes: Vec<EncodedMetadataHash>,
+
+    /// This map contains fingerprints that are not specific to some DefId but
+    /// describe something global to the whole crate.
+    pub global_hashes: Vec<(DepNode<()>, Fingerprint)>,
 
     /// For each DefIndex (as it occurs in SerializedMetadataHash), this
     /// map stores the DefPathIndex (as it occurs in DefIdDirectory), so
@@ -111,15 +116,4 @@ pub struct SerializedMetadataHashes {
     /// empty otherwise. Importing crates are perfectly happy with just having
     /// the DefIndex.
     pub index_map: FxHashMap<DefIndex, DefPathIndex>
-}
-
-/// The hash for some metadata that (when saving) will be exported
-/// from this crate, or which (when importing) was exported by an
-/// upstream crate.
-#[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct SerializedMetadataHash {
-    pub def_index: DefIndex,
-
-    /// the hash itself, computed by `calculate_item_hash`
-    pub hash: Fingerprint,
 }

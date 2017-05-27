@@ -29,13 +29,14 @@ pub use panicking::{begin_panic, begin_panic_fmt, update_panic_count};
 
 #[cfg(not(test))]
 #[lang = "start"]
-fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
-    use mem;
+fn lang_start(main: fn(), argc: isize, argv: *const *const u8) -> isize {
     use panic;
     use sys;
     use sys_common;
-    use sys_common::thread_info::{self, NewThread};
+    use sys_common::thread_info;
     use thread::Thread;
+    #[cfg(not(feature = "backtrace"))]
+    use mem;
 
     sys::init();
 
@@ -47,13 +48,18 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
         // created. Note that this isn't necessary in general for new threads,
         // but we just do this to name the main thread and to give it correct
         // info about the stack bounds.
-        let thread: Thread = NewThread::new(Some("main".to_owned()));
+        let thread = Thread::new(Some("main".to_owned()));
         thread_info::set(main_guard, thread);
 
         // Store our args if necessary in a squirreled away location
         sys::args::init(argc, argv);
 
         // Let's run some code!
+        #[cfg(feature = "backtrace")]
+        let res = panic::catch_unwind(|| {
+            ::sys_common::backtrace::__rust_begin_short_backtrace(main)
+        });
+        #[cfg(not(feature = "backtrace"))]
         let res = panic::catch_unwind(mem::transmute::<_, fn()>(main));
         sys_common::cleanup();
         res.is_err()

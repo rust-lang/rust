@@ -11,6 +11,7 @@
 use dep_graph::DepGraph;
 use infer::{InferCtxt, InferOk};
 use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, TyCtxt, ToPredicate};
+use ty::error::ExpectedFound;
 use rustc_data_structures::obligation_forest::{ObligationForest, Error};
 use rustc_data_structures::obligation_forest::{ForestObligation, ObligationProcessor};
 use std::marker::PhantomData;
@@ -83,7 +84,7 @@ pub struct FulfillmentContext<'tcx> {
 
 #[derive(Clone)]
 pub struct RegionObligation<'tcx> {
-    pub sub_region: &'tcx ty::Region,
+    pub sub_region: ty::Region<'tcx>,
     pub sup_type: Ty<'tcx>,
     pub cause: ObligationCause<'tcx>,
 }
@@ -154,7 +155,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
 
     pub fn register_region_obligation(&mut self,
                                       t_a: Ty<'tcx>,
-                                      r_b: &'tcx ty::Region,
+                                      r_b: ty::Region<'tcx>,
                                       cause: ObligationCause<'tcx>)
     {
         register_region_obligation(t_a, r_b, cause, &mut self.region_obligations);
@@ -170,7 +171,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
 
         debug!("register_predicate_obligation(obligation={:?})", obligation);
 
-        infcx.obligations_in_snapshot.set(true);
+        assert!(!infcx.is_in_snapshot());
 
         if infcx.tcx.fulfilled_predicates.borrow().check_duplicate(&obligation.predicate) {
             debug!("register_predicate_obligation: duplicate");
@@ -182,6 +183,16 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
             stalled_on: vec![]
         });
     }
+
+    pub fn register_predicate_obligations(&mut self,
+                                          infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                          obligations: Vec<PredicateObligation<'tcx>>)
+    {
+        for obligation in obligations {
+            self.register_predicate_obligation(infcx, obligation);
+        }
+    }
+
 
     pub fn region_obligations(&self,
                               body_id: ast::NodeId)
@@ -432,7 +443,7 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                         // Otherwise, we have something of the form
                         // `for<'a> T: 'a where 'a not in T`, which we can treat as `T: 'static`.
                         Some(t_a) => {
-                            let r_static = selcx.tcx().mk_region(ty::ReStatic);
+                            let r_static = selcx.tcx().types.re_static;
                             register_region_obligation(t_a, r_static,
                                                        obligation.cause.clone(),
                                                        region_obligations);
@@ -496,6 +507,26 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                 s => Ok(s)
             }
         }
+
+        ty::Predicate::Subtype(ref subtype) => {
+            match selcx.infcx().subtype_predicate(&obligation.cause, subtype) {
+                None => {
+                    // none means that both are unresolved
+                    pending_obligation.stalled_on = vec![subtype.skip_binder().a,
+                                                         subtype.skip_binder().b];
+                    Ok(None)
+                }
+                Some(Ok(ok)) => {
+                    Ok(Some(ok.obligations))
+                }
+                Some(Err(err)) => {
+                    let expected_found = ExpectedFound::new(subtype.skip_binder().a_is_expected,
+                                                            subtype.skip_binder().a,
+                                                            subtype.skip_binder().b);
+                    Err(FulfillmentErrorCode::CodeSubtypeError(expected_found, err))
+                }
+            }
+        }
     }
 }
 
@@ -535,7 +566,7 @@ fn coinductive_obligation<'a,'gcx,'tcx>(selcx: &SelectionContext<'a,'gcx,'tcx>,
 }
 
 fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
-                                    r_b: &'tcx ty::Region,
+                                    r_b: ty::Region<'tcx>,
                                     cause: ObligationCause<'tcx>,
                                     region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
 {

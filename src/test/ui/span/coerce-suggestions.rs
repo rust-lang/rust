@@ -32,7 +32,6 @@ fn main() {
     //~| NOTE types differ in mutability
     //~| NOTE expected type `&mut std::string::String`
     //~| NOTE found type `&std::string::String`
-    //~| HELP try with `&mut y`
     test2(&y);
     //~^ ERROR E0308
     //~| NOTE types differ in mutability

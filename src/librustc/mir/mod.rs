@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! MIR datatypes and passes. See [the README](README.md) for details.
+
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
@@ -17,7 +19,7 @@ use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccesso
 use rustc_data_structures::control_flow_graph::ControlFlowGraph;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
-use ty::subst::Substs;
+use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, ClosureSubsts, Region, Ty};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use util::ppaux;
@@ -197,10 +199,10 @@ impl<'tcx> Mir<'tcx> {
     pub fn temps_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
         (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
-            if self.local_decls[local].source_info.is_none() {
-                Some(local)
-            } else {
+            if self.local_decls[local].is_user_variable {
                 None
+            } else {
+                Some(local)
             }
         })
     }
@@ -210,10 +212,10 @@ impl<'tcx> Mir<'tcx> {
     pub fn vars_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
         (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
-            if self.local_decls[local].source_info.is_none() {
-                None
-            } else {
+            if self.local_decls[local].is_user_variable {
                 Some(local)
+            } else {
+                None
             }
         })
     }
@@ -242,6 +244,19 @@ impl<'tcx> Mir<'tcx> {
         block.statements[location.statement_index].make_nop()
     }
 }
+
+impl_stable_hash_for!(struct Mir<'tcx> {
+    basic_blocks,
+    visibility_scopes,
+    promoted,
+    return_ty,
+    local_decls,
+    arg_count,
+    upvar_decls,
+    spread_arg,
+    span,
+    cache
+});
 
 impl<'tcx> Index<BasicBlock> for Mir<'tcx> {
     type Output = BasicBlockData<'tcx>;
@@ -357,6 +372,9 @@ pub struct LocalDecl<'tcx> {
     /// Temporaries and the return pointer are always mutable.
     pub mutability: Mutability,
 
+    /// True if this corresponds to a user-declared local variable.
+    pub is_user_variable: bool,
+
     /// Type of this local.
     pub ty: Ty<'tcx>,
 
@@ -366,24 +384,23 @@ pub struct LocalDecl<'tcx> {
     /// to generate better debuginfo.
     pub name: Option<Name>,
 
-    /// For user-declared variables, stores their source information.
-    ///
-    /// For temporaries, this is `None`.
-    ///
-    /// This is the primary way to differentiate between user-declared
-    /// variables and compiler-generated temporaries.
-    pub source_info: Option<SourceInfo>,
+    /// Source info of the local.
+    pub source_info: SourceInfo,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
     /// Create a new `LocalDecl` for a temporary.
     #[inline]
-    pub fn new_temp(ty: Ty<'tcx>) -> Self {
+    pub fn new_temp(ty: Ty<'tcx>, span: Span) -> Self {
         LocalDecl {
             mutability: Mutability::Mut,
             ty: ty,
             name: None,
-            source_info: None,
+            source_info: SourceInfo {
+                span: span,
+                scope: ARGUMENT_VISIBILITY_SCOPE
+            },
+            is_user_variable: false
         }
     }
 
@@ -391,12 +408,16 @@ impl<'tcx> LocalDecl<'tcx> {
     ///
     /// This must be inserted into the `local_decls` list as the first local.
     #[inline]
-    pub fn new_return_pointer(return_ty: Ty) -> LocalDecl {
+    pub fn new_return_pointer(return_ty: Ty, span: Span) -> LocalDecl {
         LocalDecl {
             mutability: Mutability::Mut,
             ty: return_ty,
-            source_info: None,
+            source_info: SourceInfo {
+                span: span,
+                scope: ARGUMENT_VISIBILITY_SCOPE
+            },
             name: None,     // FIXME maybe we do want some name here?
+            is_user_variable: false
         }
     }
 }
@@ -467,7 +488,7 @@ pub enum TerminatorKind<'tcx> {
         values: Cow<'tcx, [ConstInt]>,
 
         /// Possible branch sites. The last element of this vector is used
-        /// for the otherwise branch, so values.len() == targets.len() + 1
+        /// for the otherwise branch, so targets.len() == values.len() + 1
         /// should hold.
         // This invariant is quite non-obvious and also could be improved.
         // One way to make this invariant is to have something like this instead:
@@ -778,7 +799,7 @@ pub enum StatementKind<'tcx> {
     StorageDead(Lvalue<'tcx>),
 
     InlineAsm {
-        asm: InlineAsm,
+        asm: Box<InlineAsm>,
         outputs: Vec<Lvalue<'tcx>>,
         inputs: Vec<Operand<'tcx>>
     },
@@ -829,6 +850,11 @@ pub struct Static<'tcx> {
     pub def_id: DefId,
     pub ty: Ty<'tcx>,
 }
+
+impl_stable_hash_for!(struct Static<'tcx> {
+    def_id,
+    ty
+});
 
 /// The `Projection` data structure defines things of the form `B.x`
 /// or `*B` or `B[index]`. Note that it is parameterized because it is
@@ -969,7 +995,7 @@ pub struct VisibilityScopeData {
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Operand<'tcx> {
     Consume(Lvalue<'tcx>),
-    Constant(Constant<'tcx>),
+    Constant(Box<Constant<'tcx>>),
 }
 
 impl<'tcx> Debug for Operand<'tcx> {
@@ -980,6 +1006,22 @@ impl<'tcx> Debug for Operand<'tcx> {
             Consume(ref lv) => write!(fmt, "{:?}", lv),
         }
     }
+}
+
+impl<'tcx> Operand<'tcx> {
+    pub fn function_handle<'a>(
+        tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>,
+        span: Span,
+    ) -> Self {
+        Operand::Constant(box Constant {
+            span: span,
+            ty: tcx.type_of(def_id).subst(tcx, substs),
+            literal: Literal::Value { value: ConstVal::Function(def_id, substs) },
+        })
+    }
+
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -994,7 +1036,7 @@ pub enum Rvalue<'tcx> {
     Repeat(Operand<'tcx>, ConstUsize),
 
     /// &x or &mut x
-    Ref(&'tcx Region, BorrowKind, Lvalue<'tcx>),
+    Ref(Region<'tcx>, BorrowKind, Lvalue<'tcx>),
 
     /// length of a [X] or [X;n] value
     Len(Lvalue<'tcx>),
@@ -1020,7 +1062,7 @@ pub enum Rvalue<'tcx> {
     /// ..., y: ... }` from `dest.x = ...; dest.y = ...;` in the case
     /// that `Foo` has a destructor. These rvalues can be optimized
     /// away after type-checking and before lowering.
-    Aggregate(AggregateKind<'tcx>, Vec<Operand<'tcx>>),
+    Aggregate(Box<AggregateKind<'tcx>>, Vec<Operand<'tcx>>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
@@ -1143,7 +1185,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     tuple_fmt.finish()
                 }
 
-                match *kind {
+                match **kind {
                     AggregateKind::Array(_) => write!(fmt, "{:?}", lvs),
 
                     AggregateKind::Tuple => {
@@ -1267,10 +1309,11 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
             write!(fmt, "b\"{}\"", escaped)
         }
         Bool(b) => write!(fmt, "{:?}", b),
+        Char(c) => write!(fmt, "{:?}", c),
+        Variant(def_id) |
         Function(def_id, _) => write!(fmt, "{}", item_path_str(def_id)),
         Struct(_) | Tuple(_) | Array(_) | Repeat(..) =>
             bug!("ConstVal `{:?}` should not be in MIR", const_val),
-        Char(c) => write!(fmt, "{:?}", c),
     }
 }
 
@@ -1560,7 +1603,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
             Discriminant(ref lval) => Discriminant(lval.fold_with(folder)),
             Box(ty) => Box(ty.fold_with(folder)),
             Aggregate(ref kind, ref fields) => {
-                let kind = match *kind {
+                let kind = box match **kind {
                     AggregateKind::Array(ty) => AggregateKind::Array(ty.fold_with(folder)),
                     AggregateKind::Tuple => AggregateKind::Tuple,
                     AggregateKind::Adt(def, v, substs, n) =>
@@ -1588,7 +1631,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
             Discriminant(ref lval) => lval.visit_with(visitor),
             Box(ty) => ty.visit_with(visitor),
             Aggregate(ref kind, ref fields) => {
-                (match *kind {
+                (match **kind {
                     AggregateKind::Array(ty) => ty.visit_with(visitor),
                     AggregateKind::Tuple => false,
                     AggregateKind::Adt(_, _, substs, _) => substs.visit_with(visitor),

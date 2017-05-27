@@ -15,7 +15,9 @@
 //! optimal solution to the constraints. The final variance for each
 //! inferred is then written into the `variance_map` in the tcx.
 
+use rustc::hir::def_id::DefId;
 use rustc::ty;
+use rustc_data_structures::fx::FxHashMap;
 use std::rc::Rc;
 
 use super::constraints::*;
@@ -31,8 +33,8 @@ struct SolveContext<'a, 'tcx: 'a> {
     solutions: Vec<ty::Variance>,
 }
 
-pub fn solve_constraints(constraints_cx: ConstraintContext) {
-    let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;
+pub fn solve_constraints(constraints_cx: ConstraintContext) -> ty::CrateVariancesMap {
+    let ConstraintContext { terms_cx, dependencies, constraints, .. } = constraints_cx;
 
     let solutions = terms_cx.inferred_infos
         .iter()
@@ -45,7 +47,10 @@ pub fn solve_constraints(constraints_cx: ConstraintContext) {
         solutions: solutions,
     };
     solutions_cx.solve();
-    solutions_cx.write();
+    let variances = solutions_cx.create_map();
+    let empty_variance = Rc::new(Vec::new());
+
+    ty::CrateVariancesMap { dependencies, variances, empty_variance }
 }
 
 impl<'a, 'tcx> SolveContext<'a, 'tcx> {
@@ -83,7 +88,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         }
     }
 
-    fn write(&self) {
+    fn create_map(&self) -> FxHashMap<DefId, Rc<Vec<ty::Variance>>> {
         // Collect all the variances for a particular item and stick
         // them into the variance map. We rely on the fact that we
         // generate all the inferreds for a particular item
@@ -95,11 +100,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
 
         let tcx = self.terms_cx.tcx;
 
-        // Ignore the writes here because the relevant edges were
-        // already accounted for in `constraints.rs`. See the section
-        // on dependency graph management in README.md for more
-        // information.
-        let _ignore = tcx.dep_graph.in_ignore();
+        let mut map = FxHashMap();
 
         let solutions = &self.solutions;
         let inferred_infos = &self.terms_cx.inferred_infos;
@@ -127,20 +128,10 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
 
             let item_def_id = tcx.hir.local_def_id(item_id);
 
-            // For unit testing: check for a special "rustc_variance"
-            // attribute and report an error with various results if found.
-            if tcx.has_attr(item_def_id, "rustc_variance") {
-                span_err!(tcx.sess,
-                          tcx.hir.span(item_id),
-                          E0208,
-                          "{:?}",
-                          item_variances);
-            }
-
-            tcx.maps.variances
-               .borrow_mut()
-               .insert(item_def_id, Rc::new(item_variances));
+            map.insert(item_def_id, Rc::new(item_variances));
         }
+
+        map
     }
 
     fn evaluate(&self, term: VarianceTermPtr<'a>) -> ty::Variance {

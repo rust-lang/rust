@@ -9,15 +9,28 @@
 // except according to those terms.
 
 //! Operations on ASCII strings and characters.
+//!
+//! Most string operations in Rust act on UTF-8 strings. However, at times it
+//! makes more sense to only consider the ASCII character set for a specific
+//! operation.
+//!
+//! The [`AsciiExt`] trait provides methods that allow for character
+//! operations that only act on the ASCII subset and leave non-ASCII characters
+//! alone.
+//!
+//! The [`escape_default`] function provides an iterator over the bytes of an
+//! escaped version of the character given.
+//!
+//! [`AsciiExt`]: trait.AsciiExt.html
+//! [`escape_default`]: fn.escape_default.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use fmt;
-use mem;
 use ops::Range;
 use iter::FusedIterator;
 
-/// Extension methods for ASCII-subset only operations on string slices.
+/// Extension methods for ASCII-subset only operations.
 ///
 /// Be aware that operations on seemingly non-ASCII characters can sometimes
 /// have unexpected results. Consider this example:
@@ -53,20 +66,22 @@ pub trait AsciiExt {
     /// use std::ascii::AsciiExt;
     ///
     /// let ascii = 'a';
-    /// let utf8 = '❤';
+    /// let non_ascii = '❤';
+    /// let int_ascii = 97;
     ///
     /// assert!(ascii.is_ascii());
-    /// assert!(!utf8.is_ascii());
+    /// assert!(!non_ascii.is_ascii());
+    /// assert!(int_ascii.is_ascii());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn is_ascii(&self) -> bool;
 
-    /// Makes a copy of the string in ASCII upper case.
+    /// Makes a copy of the value in its ASCII upper case equivalent.
     ///
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
     ///
-    /// To uppercase the string in-place, use [`make_ascii_uppercase`].
+    /// To uppercase the value in-place, use [`make_ascii_uppercase`].
     ///
     /// To uppercase ASCII characters in addition to non-ASCII characters, use
     /// [`str::to_uppercase`].
@@ -77,10 +92,12 @@ pub trait AsciiExt {
     /// use std::ascii::AsciiExt;
     ///
     /// let ascii = 'a';
-    /// let utf8 = '❤';
+    /// let non_ascii = '❤';
+    /// let int_ascii = 97;
     ///
     /// assert_eq!('A', ascii.to_ascii_uppercase());
-    /// assert_eq!('❤', utf8.to_ascii_uppercase());
+    /// assert_eq!('❤', non_ascii.to_ascii_uppercase());
+    /// assert_eq!(65, int_ascii.to_ascii_uppercase());
     /// ```
     ///
     /// [`make_ascii_uppercase`]: #tymethod.make_ascii_uppercase
@@ -88,12 +105,12 @@ pub trait AsciiExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_ascii_uppercase(&self) -> Self::Owned;
 
-    /// Makes a copy of the string in ASCII lower case.
+    /// Makes a copy of the value in its ASCII lower case equivalent.
     ///
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
     ///
-    /// To lowercase the string in-place, use [`make_ascii_lowercase`].
+    /// To lowercase the value in-place, use [`make_ascii_lowercase`].
     ///
     /// To lowercase ASCII characters in addition to non-ASCII characters, use
     /// [`str::to_lowercase`].
@@ -104,10 +121,12 @@ pub trait AsciiExt {
     /// use std::ascii::AsciiExt;
     ///
     /// let ascii = 'A';
-    /// let utf8 = '❤';
+    /// let non_ascii = '❤';
+    /// let int_ascii = 65;
     ///
     /// assert_eq!('a', ascii.to_ascii_lowercase());
-    /// assert_eq!('❤', utf8.to_ascii_lowercase());
+    /// assert_eq!('❤', non_ascii.to_ascii_lowercase());
+    /// assert_eq!(97, int_ascii.to_ascii_lowercase());
     /// ```
     ///
     /// [`make_ascii_lowercase`]: #tymethod.make_ascii_lowercase
@@ -115,10 +134,10 @@ pub trait AsciiExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_ascii_lowercase(&self) -> Self::Owned;
 
-    /// Checks that two strings are an ASCII case-insensitive match.
+    /// Checks that two values are an ASCII case-insensitive match.
     ///
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
-    /// but without allocating and copying temporary strings.
+    /// but without allocating and copying temporaries.
     ///
     /// # Examples
     ///
@@ -142,7 +161,7 @@ pub trait AsciiExt {
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
     ///
-    /// To return a new uppercased string without modifying the existing one, use
+    /// To return a new uppercased value without modifying the existing one, use
     /// [`to_ascii_uppercase`].
     ///
     /// # Examples
@@ -166,7 +185,7 @@ pub trait AsciiExt {
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
     ///
-    /// To return a new lowercased string without modifying the existing one, use
+    /// To return a new lowercased value without modifying the existing one, use
     /// [`to_ascii_lowercase`].
     ///
     /// # Examples
@@ -579,12 +598,12 @@ impl AsciiExt for str {
     }
 
     fn make_ascii_uppercase(&mut self) {
-        let me: &mut [u8] = unsafe { mem::transmute(self) };
+        let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_uppercase()
     }
 
     fn make_ascii_lowercase(&mut self) {
-        let me: &mut [u8] = unsafe { mem::transmute(self) };
+        let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_lowercase()
     }
 
@@ -928,8 +947,12 @@ impl AsciiExt for char {
     }
 }
 
-/// An iterator over the escaped version of a byte, constructed via
-/// `std::ascii::escape_default`.
+/// An iterator over the escaped version of a byte.
+///
+/// This `struct` is created by the [`escape_default`] function. See its
+/// documentation for more.
+///
+/// [`escape_default`]: fn.escape_default.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeDefault {
     range: Range<usize>,
@@ -960,6 +983,38 @@ pub struct EscapeDefault {
 ///
 /// assert_eq!(b'\\', escaped.next().unwrap());
 /// assert_eq!(b't', escaped.next().unwrap());
+///
+/// let mut escaped = ascii::escape_default(b'\r');
+///
+/// assert_eq!(b'\\', escaped.next().unwrap());
+/// assert_eq!(b'r', escaped.next().unwrap());
+///
+/// let mut escaped = ascii::escape_default(b'\n');
+///
+/// assert_eq!(b'\\', escaped.next().unwrap());
+/// assert_eq!(b'n', escaped.next().unwrap());
+///
+/// let mut escaped = ascii::escape_default(b'\'');
+///
+/// assert_eq!(b'\\', escaped.next().unwrap());
+/// assert_eq!(b'\'', escaped.next().unwrap());
+///
+/// let mut escaped = ascii::escape_default(b'"');
+///
+/// assert_eq!(b'\\', escaped.next().unwrap());
+/// assert_eq!(b'"', escaped.next().unwrap());
+///
+/// let mut escaped = ascii::escape_default(b'\\');
+///
+/// assert_eq!(b'\\', escaped.next().unwrap());
+/// assert_eq!(b'\\', escaped.next().unwrap());
+///
+/// let mut escaped = ascii::escape_default(b'\x9d');
+///
+/// assert_eq!(b'\\', escaped.next().unwrap());
+/// assert_eq!(b'x', escaped.next().unwrap());
+/// assert_eq!(b'9', escaped.next().unwrap());
+/// assert_eq!(b'd', escaped.next().unwrap());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn escape_default(c: u8) -> EscapeDefault {

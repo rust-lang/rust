@@ -18,7 +18,7 @@ use build::{BlockAnd, Builder};
 use hair::*;
 use rustc::mir::*;
 
-pub trait EvalInto<'tcx> {
+pub(in build) trait EvalInto<'tcx> {
     fn eval_into<'a, 'gcx>(self,
                            builder: &mut Builder<'a, 'gcx, 'tcx>,
                            destination: &Lvalue<'tcx>,

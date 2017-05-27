@@ -100,9 +100,8 @@ fn verify(tomlfile: &Path, libfile: &Path, bad: &mut bool) {
         }
 
         if !librs.contains(&format!("extern crate {}", krate)) {
-            println!("{} doesn't have `extern crate {}`, but Cargo.toml \
-                      depends on it", libfile.display(), krate);
-            *bad = true;
+            tidy_error!(bad, "{} doesn't have `extern crate {}`, but Cargo.toml \
+                              depends on it", libfile.display(), krate);
         }
     }
 }

@@ -10,13 +10,11 @@
 
 use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 
-use encoder::EncodeContext;
+use isolated_encoder::IsolatedEncoder;
 use schema::*;
 
 use rustc::hir;
 use rustc::ty;
-
-use rustc_serialize::Encodable;
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Ast<'tcx> {
@@ -26,7 +24,14 @@ pub struct Ast<'tcx> {
     pub rvalue_promotable_to_static: bool,
 }
 
-impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
+impl_stable_hash_for!(struct Ast<'tcx> {
+    body,
+    tables,
+    nested_bodies,
+    rvalue_promotable_to_static
+});
+
+impl<'a, 'b, 'tcx> IsolatedEncoder<'a, 'b, 'tcx> {
     pub fn encode_body(&mut self, body_id: hir::BodyId) -> Lazy<Ast<'tcx>> {
         let body = self.tcx.hir.body(body_id);
         let lazy_body = self.lazy(body);
@@ -34,15 +39,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tables = self.tcx.body_tables(body_id);
         let lazy_tables = self.lazy(tables);
 
-        let nested_pos = self.position();
-        let nested_count = {
-            let mut visitor = NestedBodyEncodingVisitor {
-                ecx: self,
-                count: 0,
-            };
-            visitor.visit_body(body);
-            visitor.count
+        let mut visitor = NestedBodyCollector {
+            tcx: self.tcx,
+            bodies_found: Vec::new(),
         };
+        visitor.visit_body(body);
+        let lazy_nested_bodies = self.lazy_seq_ref_from_slice(&visitor.bodies_found);
 
         let rvalue_promotable_to_static =
             self.tcx.rvalue_promotable_to_static.borrow()[&body.value.id];
@@ -50,27 +52,25 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy(&Ast {
             body: lazy_body,
             tables: lazy_tables,
-            nested_bodies: LazySeq::with_position_and_length(nested_pos, nested_count),
+            nested_bodies: lazy_nested_bodies,
             rvalue_promotable_to_static: rvalue_promotable_to_static
         })
     }
 }
 
-struct NestedBodyEncodingVisitor<'a, 'b: 'a, 'tcx: 'b> {
-    ecx: &'a mut EncodeContext<'b, 'tcx>,
-    count: usize,
+struct NestedBodyCollector<'a, 'tcx: 'a> {
+    tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+    bodies_found: Vec<&'tcx hir::Body>,
 }
 
-impl<'a, 'b, 'tcx> Visitor<'tcx> for NestedBodyEncodingVisitor<'a, 'b, 'tcx> {
+impl<'a, 'tcx: 'a> Visitor<'tcx> for NestedBodyCollector<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
-        let body = self.ecx.tcx.hir.body(body);
-        body.encode(self.ecx).unwrap();
-        self.count += 1;
-
+        let body = self.tcx.hir.body(body);
+        self.bodies_found.push(body);
         self.visit_body(body);
     }
 }

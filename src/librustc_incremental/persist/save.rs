@@ -11,19 +11,18 @@
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
 use rustc::hir::svh::Svh;
+use rustc::ich::Fingerprint;
+use rustc::middle::cstore::EncodedMetadataHashes;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::graph::{NodeIndex, INCOMING};
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
-use std::hash::Hash;
 use std::io::{self, Cursor, Write};
 use std::fs::{self, File};
 use std::path::PathBuf;
 
 use IncrementalHashesMap;
-use ich::Fingerprint;
 use super::data::*;
 use super::directory::*;
 use super::hash::*;
@@ -32,10 +31,10 @@ use super::fs::*;
 use super::dirty_clean;
 use super::file_format;
 use super::work_product;
-use calculate_svh::IchHasher;
 
 pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 incremental_hashes_map: &IncrementalHashesMap,
+                                metadata_hashes: &EncodedMetadataHashes,
                                 svh: Svh) {
     debug!("save_dep_graph()");
     let _ignore = tcx.dep_graph.in_ignore();
@@ -56,16 +55,16 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let preds = Predecessors::new(&query, &mut hcx);
     let mut current_metadata_hashes = FxHashMap();
 
+    // IMPORTANT: We are saving the metadata hashes *before* the dep-graph,
+    //            since metadata-encoding might add new entries to the
+    //            DefIdDirectory (which is saved in the dep-graph file).
     if sess.opts.debugging_opts.incremental_cc ||
        sess.opts.debugging_opts.query_dep_graph {
-        // IMPORTANT: We are saving the metadata hashes *before* the dep-graph,
-        //            since metadata-encoding might add new entries to the
-        //            DefIdDirectory (which is saved in the dep-graph file).
         save_in(sess,
                 metadata_hash_export_path(sess),
                 |e| encode_metadata_hashes(tcx,
                                            svh,
-                                           &preds,
+                                           metadata_hashes,
                                            &mut builder,
                                            &mut current_metadata_hashes,
                                            e));
@@ -241,93 +240,19 @@ pub fn encode_dep_graph(preds: &Predecessors,
 
 pub fn encode_metadata_hashes(tcx: TyCtxt,
                               svh: Svh,
-                              preds: &Predecessors,
+                              metadata_hashes: &EncodedMetadataHashes,
                               builder: &mut DefIdDirectoryBuilder,
                               current_metadata_hashes: &mut FxHashMap<DefId, Fingerprint>,
                               encoder: &mut Encoder)
                               -> io::Result<()> {
-    // For each `MetaData(X)` node where `X` is local, accumulate a
-    // hash.  These are the metadata items we export. Downstream
-    // crates will want to see a hash that tells them whether we might
-    // have changed the metadata for a given item since they last
-    // compiled.
-    //
-    // (I initially wrote this with an iterator, but it seemed harder to read.)
     let mut serialized_hashes = SerializedMetadataHashes {
-        hashes: vec![],
+        entry_hashes: metadata_hashes.entry_hashes.to_vec(),
+        global_hashes: metadata_hashes.global_hashes.to_vec(),
         index_map: FxHashMap()
     };
 
-    let mut def_id_hashes = FxHashMap();
-
-    for (index, target) in preds.reduced_graph.all_nodes().iter().enumerate() {
-        let index = NodeIndex(index);
-        let def_id = match *target.data {
-            DepNode::MetaData(def_id) if def_id.is_local() => def_id,
-            _ => continue,
-        };
-
-        let mut def_id_hash = |def_id: DefId| -> u64 {
-            *def_id_hashes.entry(def_id)
-                .or_insert_with(|| {
-                    let index = builder.add(def_id);
-                    let path = builder.lookup_def_path(index);
-                    path.deterministic_hash(tcx)
-                })
-        };
-
-        // To create the hash for each item `X`, we don't hash the raw
-        // bytes of the metadata (though in principle we
-        // could). Instead, we walk the predecessors of `MetaData(X)`
-        // from the dep-graph. This corresponds to all the inputs that
-        // were read to construct the metadata. To create the hash for
-        // the metadata, we hash (the hash of) all of those inputs.
-        debug!("save: computing metadata hash for {:?}", def_id);
-
-        // Create a vector containing a pair of (source-id, hash).
-        // The source-id is stored as a `DepNode<u64>`, where the u64
-        // is the det. hash of the def-path. This is convenient
-        // because we can sort this to get a stable ordering across
-        // compilations, even if the def-ids themselves have changed.
-        let mut hashes: Vec<(DepNode<u64>, Fingerprint)> =
-            preds.reduced_graph
-                 .depth_traverse(index, INCOMING)
-                 .map(|index| preds.reduced_graph.node_data(index))
-                 .filter(|dep_node| HashContext::is_hashable(dep_node))
-                 .map(|dep_node| {
-                     let hash_dep_node = dep_node.map_def(|&def_id| Some(def_id_hash(def_id)))
-                                                 .unwrap();
-                     let hash = preds.hashes[dep_node];
-                     (hash_dep_node, hash)
-                 })
-                 .collect();
-
-        hashes.sort();
-        let mut state = IchHasher::new();
-        hashes.hash(&mut state);
-        let hash = state.finish();
-
-        debug!("save: metadata hash for {:?} is {}", def_id, hash);
-
-        if tcx.sess.opts.debugging_opts.incremental_dump_hash {
-            println!("metadata hash for {:?} is {}", def_id, hash);
-            for pred_index in preds.reduced_graph.depth_traverse(index, INCOMING) {
-                let dep_node = preds.reduced_graph.node_data(pred_index);
-                if HashContext::is_hashable(&dep_node) {
-                    println!("metadata hash for {:?} depends on {:?} with hash {}",
-                             def_id, dep_node, preds.hashes[dep_node]);
-                }
-            }
-        }
-
-        serialized_hashes.hashes.push(SerializedMetadataHash {
-            def_index: def_id.index,
-            hash: hash,
-        });
-    }
-
     if tcx.sess.opts.debugging_opts.query_dep_graph {
-        for serialized_hash in &serialized_hashes.hashes {
+        for serialized_hash in &serialized_hashes.entry_hashes {
             let def_id = DefId::local(serialized_hash.def_index);
 
             // Store entry in the index_map

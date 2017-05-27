@@ -11,7 +11,8 @@ crate-type = ["dylib"]
 [dependencies]
 arena = { path = "../libarena" }
 graphviz = { path = "../libgraphviz" }
-log = { path = "../liblog" }
+log = { version = "0.3", features = ["release_max_level_info"] }
+env_logger = { version = "0.4", default-features = false }
 proc_macro_plugin = { path = "../libproc_macro_plugin" }
 rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }
@@ -21,7 +22,6 @@ rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_incremental = { path = "../librustc_incremental" }
 rustc_lint = { path = "../librustc_lint" }
-rustc_llvm = { path = "../librustc_llvm" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_mir = { path = "../librustc_mir" }
 rustc_passes = { path = "../librustc_passes" }

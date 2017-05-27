@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(relaxed_adts)]
-
 struct S(u8, u16);
 
 fn main() {
@@ -19,6 +17,6 @@ fn main() {
     match s {
         S{0: a, 0x1: b, ..} => {}
         //~^ ERROR does not have a field named `0x1`
-        //~| NOTE struct `S::{{constructor}}` does not have field `0x1`
+        //~| NOTE struct `S` does not have field `0x1`
     }
 }

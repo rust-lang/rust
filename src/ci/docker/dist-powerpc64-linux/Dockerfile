@@ -25,11 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   wget \
   xz-utils \
   libssl-dev \
-  pkg-config
-
-RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-unknown-linux-musl && \
-      chmod +x /usr/local/bin/sccache
+ pkg-config
 
 RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
     dpkg -i dumb-init_*.deb && \
@@ -60,28 +56,24 @@ RUN mkdir /x-tools && chown rustbuild:rustbuild /x-tools
 USER rustbuild
 WORKDIR /tmp
 
-COPY patches/ /tmp/patches/
-COPY powerpc64-linux-gnu.config build-powerpc64-toolchain.sh /tmp/
+COPY dist-powerpc64-linux/patches/ /tmp/patches/
+COPY dist-powerpc64-linux/shared.sh dist-powerpc64-linux/powerpc64-linux-gnu.config dist-powerpc64-linux/build-powerpc64-toolchain.sh /tmp/
 RUN ./build-powerpc64-toolchain.sh
 
 USER root
 
-RUN apt-get install -y --no-install-recommends rpm2cpio cpio
-COPY build-powerpc64le-toolchain.sh /tmp/
-RUN ./build-powerpc64le-toolchain.sh
+RUN curl -o /usr/local/bin/sccache \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
+      chmod +x /usr/local/bin/sccache
 
 ENV PATH=$PATH:/x-tools/powerpc64-unknown-linux-gnu/bin
 
 ENV \
     AR_powerpc64_unknown_linux_gnu=powerpc64-unknown-linux-gnu-ar \
     CC_powerpc64_unknown_linux_gnu=powerpc64-unknown-linux-gnu-gcc \
-    CXX_powerpc64_unknown_linux_gnu=powerpc64-unknown-linux-gnu-g++ \
-    AR_powerpc64le_unknown_linux_gnu=powerpc64le-linux-gnu-ar \
-    CC_powerpc64le_unknown_linux_gnu=powerpc64le-linux-gnu-gcc \
-    CXX_powerpc64le_unknown_linux_gnu=powerpc64le-linux-gnu-g++
+    CXX_powerpc64_unknown_linux_gnu=powerpc64-unknown-linux-gnu-g++
 
 ENV HOSTS=powerpc64-unknown-linux-gnu
-ENV HOSTS=$HOSTS,powerpc64le-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

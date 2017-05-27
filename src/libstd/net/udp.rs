@@ -15,11 +15,29 @@ use sys_common::net as net_imp;
 use sys_common::{AsInner, FromInner, IntoInner};
 use time::Duration;
 
-/// A User Datagram Protocol socket.
+/// A UDP socket.
 ///
-/// This is an implementation of a bound UDP socket. This supports both IPv4 and
-/// IPv6 addresses, and there is no corresponding notion of a server because UDP
-/// is a datagram protocol.
+/// After creating a `UdpSocket` by [`bind`]ing it to a socket address, data can be
+/// [sent to] and [received from] any other socket address.
+///
+/// Although UDP is a connectionless protocol, this implementation provides an interface
+/// to set an address where data should be sent and received from. After setting a remote
+/// address with [`connect`], data can be sent to and received from that address with
+/// [`send`] and [`recv`].
+///
+/// As stated in the User Datagram Protocol's specification in [IETF RFC 768], UDP is
+/// an unordered, unreliable protocol; refer to [`TcpListener`] and [`TcpStream`] for TCP
+/// primitives.
+///
+/// [`bind`]: #method.bind
+/// [`connect`]: #method.connect
+/// [IETF RFC 768]: https://tools.ietf.org/html/rfc768
+/// [`recv`]: #method.recv
+/// [received from]: #method.recv_from
+/// [`send`]: #method.send
+/// [sent to]: #method.send_to
+/// [`TcpListener`]: ../../std/net/struct.TcpListener.html
+/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 ///
 /// # Examples
 ///
@@ -94,7 +112,6 @@ impl UdpSocket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(peek)]
     /// use std::net::UdpSocket;
     ///
     /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
@@ -102,7 +119,7 @@ impl UdpSocket {
     /// let (number_of_bytes, src_addr) = socket.peek_from(&mut buf)
     ///                                         .expect("Didn't receive data");
     /// ```
-    #[unstable(feature = "peek", issue = "38980")]
+    #[stable(feature = "peek", since = "1.18.0")]
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.0.peek_from(buf)
     }
@@ -175,7 +192,7 @@ impl UdpSocket {
 
     /// Sets the read timeout to the timeout specified.
     ///
-    /// If the value specified is [`None`], then [`read()`] calls will block
+    /// If the value specified is [`None`], then [`read`] calls will block
     /// indefinitely. It is an error to pass the zero [`Duration`] to this
     /// method.
     ///
@@ -186,7 +203,7 @@ impl UdpSocket {
     /// error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`read()`]: ../../std/io/trait.Read.html#tymethod.read
+    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
     /// [`Duration`]: ../../std/time/struct.Duration.html
     /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
     /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
@@ -206,7 +223,7 @@ impl UdpSocket {
 
     /// Sets the write timeout to the timeout specified.
     ///
-    /// If the value specified is [`None`], then [`write()`] calls will block
+    /// If the value specified is [`None`], then [`write`] calls will block
     /// indefinitely. It is an error to pass the zero [`Duration`] to this
     /// method.
     ///
@@ -217,7 +234,7 @@ impl UdpSocket {
     /// an error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`write()`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
     /// [`Duration`]: ../../std/time/struct.Duration.html
     /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
     /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
@@ -237,10 +254,10 @@ impl UdpSocket {
 
     /// Returns the read timeout of this socket.
     ///
-    /// If the timeout is [`None`], then [`read()`] calls will block indefinitely.
+    /// If the timeout is [`None`], then [`read`] calls will block indefinitely.
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`read()`]: ../../std/io/trait.Read.html#tymethod.read
+    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
     ///
     /// # Examples
     ///
@@ -258,10 +275,10 @@ impl UdpSocket {
 
     /// Returns the write timeout of this socket.
     ///
-    /// If the timeout is [`None`], then [`write()`] calls will block indefinitely.
+    /// If the timeout is [`None`], then [`write`] calls will block indefinitely.
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`write()`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
     ///
     /// # Examples
     ///
@@ -560,10 +577,10 @@ impl UdpSocket {
 
     /// Sends data on the socket to the remote address to which it is connected.
     ///
-    /// The [`connect()`] method will connect this socket to a remote address. This
+    /// The [`connect`] method will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
     ///
-    /// [`connect()`]: #method.connect
+    /// [`connect`]: #method.connect
     ///
     /// # Examples
     ///
@@ -582,8 +599,10 @@ impl UdpSocket {
     /// Receives data on the socket from the remote address to which it is
     /// connected.
     ///
-    /// The `connect` method will connect this socket to a remote address. This
+    /// The [`connect`] method will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
+    ///
+    /// [`connect`]: #method.connect
     ///
     /// # Examples
     ///
@@ -618,7 +637,6 @@ impl UdpSocket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(peek)]
     /// use std::net::UdpSocket;
     ///
     /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
@@ -629,7 +647,7 @@ impl UdpSocket {
     ///     Err(e) => println!("peek function failed: {:?}", e),
     /// }
     /// ```
-    #[unstable(feature = "peek", issue = "38980")]
+    #[stable(feature = "peek", since = "1.18.0")]
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.peek(buf)
     }

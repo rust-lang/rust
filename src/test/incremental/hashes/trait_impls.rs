@@ -120,7 +120,7 @@ impl ChangeMethodBodyTraitInlined for Foo {
     #[rustc_metadata_clean(cfg="cfail3")]
     #[inline]
     fn method_name() {
-        ()
+        panic!()
     }
 }
 
@@ -144,7 +144,7 @@ pub trait ChangeMethodSelfnessTrait {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl ChangeMethodSelfnessTrait for Foo {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -176,16 +176,14 @@ pub trait RemoveMethodSelfnessTrait {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl RemoveMethodSelfnessTrait for Foo {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
     #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
-    fn method_name() {
-        ()
-    }
+    fn method_name() {}
 }
 
 // Change Method Selfmutness -----------------------------------------------------------
@@ -208,16 +206,14 @@ pub trait ChangeMethodSelfmutnessTrait {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl ChangeMethodSelfmutnessTrait for Foo {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
     #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
-    fn method_name(&mut self) {
-        ()
-    }
+    fn method_name(&mut self) {}
 }
 
 // Change item kind -----------------------------------------------------------
@@ -317,16 +313,20 @@ impl ChangeHasValueTrait for Foo {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 pub trait ChangeHasValueTrait {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     fn method_name() { }
 }
 
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl ChangeHasValueTrait for Foo {
     fn method_name() { }
@@ -346,30 +346,14 @@ impl AddDefaultTrait for Foo {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl AddDefaultTrait for Foo {
+    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="Hir", cfg="cfail3")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     default fn method_name() { }
-}
-
-// Remove default
-
-pub trait RemoveDefaultTrait {
-    fn method_name();
-}
-
-#[cfg(cfail1)]
-impl RemoveDefaultTrait for Foo {
-    default fn method_name() { }
-}
-
-#[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-impl RemoveDefaultTrait for Foo {
-    fn method_name() { }
 }
 
 // Add arguments
@@ -392,7 +376,7 @@ pub trait AddArgumentTrait {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl AddArgumentTrait for Foo {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -422,7 +406,7 @@ pub trait ChangeArgumentTypeTrait {
 #[cfg(not(cfail1))]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl ChangeArgumentTypeTrait for Foo {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -504,7 +488,7 @@ impl<T> AddLifetimeBoundToImplParameter for T {
 impl<T: 'static> AddLifetimeBoundToImplParameter for T {
     #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     fn id(self) -> Self { self }
 }
@@ -529,7 +513,7 @@ impl<T> AddTraitBoundToImplParameter for T {
 impl<T: Clone> AddTraitBoundToImplParameter for T {
     #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     fn id(self) -> Self { self }
 }

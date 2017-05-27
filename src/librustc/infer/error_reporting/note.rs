@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use infer::{self, InferCtxt, SubregionOrigin};
-use ty::Region;
+use ty::{self, Region};
 use ty::error::TypeError;
 use errors::DiagnosticBuilder;
 
@@ -20,6 +20,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         match *origin {
             infer::Subtype(ref trace) => {
                 if let Some((expected, found)) = self.values_str(&trace.values) {
+                    let expected = expected.content();
+                    let found = found.content();
                     // FIXME: do we want a "the" here?
                     err.span_note(trace.cause.span,
                                   &format!("...so that {} (expected {}, found {})",
@@ -144,8 +146,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub(super) fn report_concrete_failure(&self,
                                           origin: SubregionOrigin<'tcx>,
-                                          sub: &'tcx Region,
-                                          sup: &'tcx Region)
+                                          sub: Region<'tcx>,
+                                          sup: Region<'tcx>)
                                           -> DiagnosticBuilder<'tcx> {
         match origin {
             infer::Subtype(trace) => {
@@ -260,7 +262,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                "the type `{}` does not fulfill the required \
                                                 lifetime",
                                                self.ty_to_string(ty));
-                self.tcx.note_and_explain_region(&mut err, "type must outlive ", sub, "");
+                match *sub {
+                    ty::ReStatic => {
+                        self.tcx.note_and_explain_region(&mut err, "type must satisfy ", sub, "")
+                    }
+                    _ => {
+                        self.tcx.note_and_explain_region(&mut err, "type must outlive ", sub, "")
+                    }
+                }
                 err
             }
             infer::RelateRegionParamBound(span) => {

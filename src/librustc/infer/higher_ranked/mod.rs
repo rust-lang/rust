@@ -15,6 +15,7 @@ use super::{CombinedSnapshot,
             InferCtxt,
             LateBoundRegion,
             HigherRankedType,
+            RegionVariableOrigin,
             SubregionOrigin,
             SkolemizationMap};
 use super::combine::CombineFields;
@@ -268,12 +269,12 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                                              snapshot: &CombinedSnapshot,
                                              debruijn: ty::DebruijnIndex,
                                              new_vars: &[ty::RegionVid],
-                                             a_map: &FxHashMap<ty::BoundRegion, &'tcx ty::Region>,
-                                             r0: &'tcx ty::Region)
-                                             -> &'tcx ty::Region {
+                                             a_map: &FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
+                                             r0: ty::Region<'tcx>)
+                                             -> ty::Region<'tcx> {
             // Regions that pre-dated the LUB computation stay as they are.
             if !is_var_in_set(new_vars, r0) {
-                assert!(!r0.is_bound());
+                assert!(!r0.is_late_bound());
                 debug!("generalize_region(r0={:?}): not new variable", r0);
                 return r0;
             }
@@ -283,11 +284,11 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // Variables created during LUB computation which are
             // *related* to regions that pre-date the LUB computation
             // stay as they are.
-            if !tainted.iter().all(|r| is_var_in_set(new_vars, *r)) {
+            if !tainted.iter().all(|&r| is_var_in_set(new_vars, r)) {
                 debug!("generalize_region(r0={:?}): \
                         non-new-variables found in {:?}",
                        r0, tainted);
-                assert!(!r0.is_bound());
+                assert!(!r0.is_late_bound());
                 return r0;
             }
 
@@ -364,13 +365,13 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                                              snapshot: &CombinedSnapshot,
                                              debruijn: ty::DebruijnIndex,
                                              new_vars: &[ty::RegionVid],
-                                             a_map: &FxHashMap<ty::BoundRegion, &'tcx ty::Region>,
+                                             a_map: &FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
                                              a_vars: &[ty::RegionVid],
                                              b_vars: &[ty::RegionVid],
-                                             r0: &'tcx ty::Region)
-                                             -> &'tcx ty::Region {
+                                             r0: ty::Region<'tcx>)
+                                             -> ty::Region<'tcx> {
             if !is_var_in_set(new_vars, r0) {
-                assert!(!r0.is_bound());
+                assert!(!r0.is_late_bound());
                 return r0;
             }
 
@@ -423,7 +424,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                 return rev_lookup(infcx, span, a_map, a_r.unwrap());
             } else if a_r.is_none() && b_r.is_none() {
                 // Not related to bound variables from either fn:
-                assert!(!r0.is_bound());
+                assert!(!r0.is_late_bound());
                 return r0;
             } else {
                 // Other:
@@ -433,8 +434,8 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
         fn rev_lookup<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                       span: Span,
-                                      a_map: &FxHashMap<ty::BoundRegion, &'tcx ty::Region>,
-                                      r: &'tcx ty::Region) -> &'tcx ty::Region
+                                      a_map: &FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
+                                      r: ty::Region<'tcx>) -> ty::Region<'tcx>
         {
             for (a_br, a_r) in a_map {
                 if *a_r == r {
@@ -449,14 +450,14 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
         fn fresh_bound_variable<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                                 debruijn: ty::DebruijnIndex)
-                                                -> &'tcx ty::Region {
+                                                -> ty::Region<'tcx> {
             infcx.region_vars.new_bound(debruijn)
         }
     }
 }
 
 fn var_ids<'a, 'gcx, 'tcx>(fields: &CombineFields<'a, 'gcx, 'tcx>,
-                           map: &FxHashMap<ty::BoundRegion, &'tcx ty::Region>)
+                           map: &FxHashMap<ty::BoundRegion, ty::Region<'tcx>>)
                            -> Vec<ty::RegionVid> {
     map.iter()
        .map(|(_, &r)| match *r {
@@ -471,7 +472,7 @@ fn var_ids<'a, 'gcx, 'tcx>(fields: &CombineFields<'a, 'gcx, 'tcx>,
        .collect()
 }
 
-fn is_var_in_set(new_vars: &[ty::RegionVid], r: &ty::Region) -> bool {
+fn is_var_in_set(new_vars: &[ty::RegionVid], r: ty::Region) -> bool {
     match *r {
         ty::ReVar(ref v) => new_vars.iter().any(|x| x == v),
         _ => false
@@ -483,7 +484,7 @@ fn fold_regions_in<'a, 'gcx, 'tcx, T, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                          mut fldr: F)
                                          -> T
     where T: TypeFoldable<'tcx>,
-          F: FnMut(&'tcx ty::Region, ty::DebruijnIndex) -> &'tcx ty::Region,
+          F: FnMut(ty::Region<'tcx>, ty::DebruijnIndex) -> ty::Region<'tcx>,
 {
     tcx.fold_regions(unbound_value, &mut false, |region, current_depth| {
         // we should only be encountering "escaping" late-bound regions here,
@@ -501,9 +502,9 @@ fn fold_regions_in<'a, 'gcx, 'tcx, T, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn tainted_regions(&self,
                        snapshot: &CombinedSnapshot,
-                       r: &'tcx ty::Region,
+                       r: ty::Region<'tcx>,
                        directions: TaintDirections)
-                       -> FxHashSet<&'tcx ty::Region> {
+                       -> FxHashSet<ty::Region<'tcx>> {
         self.region_vars.tainted(&snapshot.region_vars_snapshot, r, directions)
     }
 
@@ -656,14 +657,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                        skol_br,
                        tainted_region);
 
+                let issue_32330 = if let &ty::ReVar(vid) = tainted_region {
+                    match self.region_vars.var_origin(vid) {
+                        RegionVariableOrigin::EarlyBoundRegion(_, _, issue_32330) => {
+                            issue_32330.map(Box::new)
+                        }
+                        _ => None
+                    }
+                } else {
+                    None
+                };
+
                 if overly_polymorphic {
                     debug!("Overly polymorphic!");
                     return Err(TypeError::RegionsOverlyPolymorphic(skol_br,
-                                                                   tainted_region));
+                                                                   tainted_region,
+                                                                   issue_32330));
                 } else {
                     debug!("Not as polymorphic!");
                     return Err(TypeError::RegionsInsufficientlyPolymorphic(skol_br,
-                                                                           tainted_region));
+                                                                           tainted_region,
+                                                                           issue_32330));
                 }
             }
         }
@@ -717,7 +731,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // region back to the `ty::BoundRegion` that it originally
         // represented. Because `leak_check` passed, we know that
         // these taint sets are mutually disjoint.
-        let inv_skol_map: FxHashMap<&'tcx ty::Region, ty::BoundRegion> =
+        let inv_skol_map: FxHashMap<ty::Region<'tcx>, ty::BoundRegion> =
             skol_map
             .iter()
             .flat_map(|(&skol_br, &skol)| {

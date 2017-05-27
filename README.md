@@ -16,7 +16,7 @@ Read ["Installing Rust"] from [The Book].
 
 1. Make sure you have installed the dependencies:
 
-   * `g++` 4.7 or later or `clang++` 3.x
+   * `g++` 4.7 or later or `clang++` 3.x or later
    * `python` 2.7 (but not 3.x)
    * GNU `make` 3.81 or later
    * `cmake` 3.4.3 or later
@@ -161,8 +161,9 @@ If you’d like to build the documentation, it’s almost the same:
 $ ./x.py doc
 ```
 
-The generated documentation will appear in a top-level `doc` directory,
-created by the `make` rule.
+The generated documentation will appear under `doc` in the `build` directory for
+the ABI used. I.e., if the ABI was `x86_64-pc-windows-msvc`, the directory will be
+`build\x86_64-pc-windows-msvc\doc`.
 
 ## Notes
 
@@ -197,8 +198,8 @@ The Rust community congregates in a few places:
 * [users.rust-lang.org] - General discussion and broader questions.
 * [/r/rust] - News and general discussion.
 
-[Stack Overflow]: http://stackoverflow.com/questions/tagged/rust
-[/r/rust]: http://reddit.com/r/rust
+[Stack Overflow]: https://stackoverflow.com/questions/tagged/rust
+[/r/rust]: https://reddit.com/r/rust
 [users.rust-lang.org]: https://users.rust-lang.org/
 
 ## Contributing

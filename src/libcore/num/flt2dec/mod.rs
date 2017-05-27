@@ -118,7 +118,7 @@ provide a large enough buffer and `Part` array, and to assemble the final
 string from resulting `Part`s itself.
 
 All algorithms and formatting functions are accompanied by extensive tests
-in `coretest::num::flt2dec` module. It also shows how to use individual
+in `coretests::num::flt2dec` module. It also shows how to use individual
 functions.
 
 */
@@ -410,8 +410,8 @@ fn determine_sign(sign: Sign, decoded: &FullDecoded, negative: bool) -> &'static
 /// it will only print given digits and nothing else.
 ///
 /// The byte buffer should be at least `MAX_SIG_DIGITS` bytes long.
-/// There should be at least 5 parts available, due to the worst case like
-/// `[+][0.][0000][45][0000]` with `frac_digits = 10`.
+/// There should be at least 4 parts available, due to the worst case like
+/// `[+][0.][0000][2][0000]` with `frac_digits = 10`.
 pub fn to_shortest_str<'a, T, F>(mut format_shortest: F, v: T,
                                  sign: Sign, frac_digits: usize, _upper: bool,
                                  buf: &'a mut [u8], parts: &'a mut [Part<'a>]) -> Formatted<'a>
@@ -465,8 +465,8 @@ pub fn to_shortest_str<'a, T, F>(mut format_shortest: F, v: T,
 /// cannot be in this range, avoiding any confusion.
 ///
 /// The byte buffer should be at least `MAX_SIG_DIGITS` bytes long.
-/// There should be at least 7 parts available, due to the worst case like
-/// `[+][1][.][2345][e][-][67]`.
+/// There should be at least 6 parts available, due to the worst case like
+/// `[+][1][.][2345][e][-][6]`.
 pub fn to_shortest_exp_str<'a, T, F>(mut format_shortest: F, v: T,
                                      sign: Sign, dec_bounds: (i16, i16), upper: bool,
                                      buf: &'a mut [u8], parts: &'a mut [Part<'a>]) -> Formatted<'a>
@@ -544,8 +544,8 @@ fn estimate_max_buf_len(exp: i16) -> usize {
 /// The byte buffer should be at least `ndigits` bytes long unless `ndigits` is
 /// so large that only the fixed number of digits will be ever written.
 /// (The tipping point for `f64` is about 800, so 1000 bytes should be enough.)
-/// There should be at least 7 parts available, due to the worst case like
-/// `[+][1][.][2345][e][-][67]`.
+/// There should be at least 6 parts available, due to the worst case like
+/// `[+][1][.][2345][e][-][6]`.
 pub fn to_exact_exp_str<'a, T, F>(mut format_exact: F, v: T,
                                   sign: Sign, ndigits: usize, upper: bool,
                                   buf: &'a mut [u8], parts: &'a mut [Part<'a>]) -> Formatted<'a>
@@ -600,8 +600,8 @@ pub fn to_exact_exp_str<'a, T, F>(mut format_exact: F, v: T,
 /// The byte buffer should be enough for the output unless `frac_digits` is
 /// so large that only the fixed number of digits will be ever written.
 /// (The tipping point for `f64` is about 800, and 1000 bytes should be enough.)
-/// There should be at least 5 parts available, due to the worst case like
-/// `[+][0.][0000][45][0000]` with `frac_digits = 10`.
+/// There should be at least 4 parts available, due to the worst case like
+/// `[+][0.][0000][2][0000]` with `frac_digits = 10`.
 pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
                                     sign: Sign, frac_digits: usize, _upper: bool,
                                     buf: &'a mut [u8], parts: &'a mut [Part<'a>]) -> Formatted<'a>

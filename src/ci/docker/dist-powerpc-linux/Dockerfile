@@ -27,10 +27,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   pkg-config
 
-RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-unknown-linux-musl && \
-      chmod +x /usr/local/bin/sccache
-
 RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
     dpkg -i dumb-init_*.deb && \
     rm dumb-init_*.deb
@@ -60,11 +56,15 @@ RUN mkdir /x-tools && chown rustbuild:rustbuild /x-tools
 USER rustbuild
 WORKDIR /tmp
 
-COPY patches/ /tmp/patches/
-COPY powerpc-linux-gnu.config build-powerpc-toolchain.sh /tmp/
+COPY dist-powerpc-linux/patches/ /tmp/patches/
+COPY dist-powerpc-linux/powerpc-linux-gnu.config dist-powerpc-linux/build-powerpc-toolchain.sh /tmp/
 RUN ./build-powerpc-toolchain.sh
 
 USER root
+
+RUN curl -o /usr/local/bin/sccache \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
+      chmod +x /usr/local/bin/sccache
 
 ENV PATH=$PATH:/x-tools/powerpc-unknown-linux-gnu/bin
 

@@ -11,7 +11,7 @@
 // Characters and their corresponding confusables were collected from
 // http://www.unicode.org/Public/security/revision-06/confusables.txt
 
-use syntax_pos::mk_sp as make_span;
+use syntax_pos::{Span, NO_EXPANSION};
 use errors::DiagnosticBuilder;
 use super::StringReader;
 
@@ -234,11 +234,11 @@ pub fn check_for_substitution<'a>(reader: &StringReader<'a>,
     .iter()
     .find(|&&(c, _, _)| c == ch)
     .map(|&(_, u_name, ascii_char)| {
-        let span = make_span(reader.pos, reader.next_pos);
+        let span = Span { lo: reader.pos, hi: reader.next_pos, ctxt: NO_EXPANSION };
         match ASCII_ARRAY.iter().find(|&&(c, _)| c == ascii_char) {
             Some(&(ascii_char, ascii_name)) => {
                 let msg =
-                    format!("unicode character '{}' ({}) looks much like '{}' ({}), but it's not",
+                    format!("unicode character '{}' ({}) looks like '{}' ({}), but it's not",
                             ch, u_name, ascii_char, ascii_name);
                 err.span_help(span, &msg);
             },

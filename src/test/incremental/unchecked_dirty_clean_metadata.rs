@@ -33,13 +33,3 @@ fn main() {
     }
 }
 
-struct _Struct {
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    //[cfail2]~^ ERROR found unchecked #[rustc_dirty]/#[rustc_clean] attribute
-    _field1: i32,
-
-    #[rustc_metadata_clean(cfg="cfail2")]
-    //[cfail2]~^ ERROR found unchecked #[rustc_dirty]/#[rustc_clean] attribute
-    _field2: i32,
-}
-

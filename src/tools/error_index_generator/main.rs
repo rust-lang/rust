@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_private, rustdoc)]
+#![feature(rustc_private)]
 
 extern crate syntax;
 extern crate rustdoc;
@@ -24,7 +24,7 @@ use std::path::PathBuf;
 
 use syntax::diagnostics::metadata::{get_metadata_dir, ErrorMetadataMap, ErrorMetadata};
 
-use rustdoc::html::markdown::{Markdown, PLAYGROUND};
+use rustdoc::html::markdown::{Markdown, PLAYGROUND, RenderType};
 use rustc_serialize::json;
 
 enum OutputFormat {
@@ -100,7 +100,7 @@ impl Formatter for HTMLFormatter {
 
         // Description rendered as markdown.
         match info.description {
-            Some(ref desc) => write!(output, "{}", Markdown(desc))?,
+            Some(ref desc) => write!(output, "{}", Markdown(desc, RenderType::Hoedown))?,
             None => write!(output, "<p>No description.</p>\n")?,
         }
 

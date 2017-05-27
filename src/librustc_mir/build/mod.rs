@@ -8,24 +8,226 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
+use build;
 use hair::cx::Cx;
 use hair::Pattern;
-
-use rustc::middle::region::{CodeExtent, CodeExtentData, ROOT_CODE_EXTENT};
-use rustc::ty::{self, Ty};
-use rustc::mir::*;
-use rustc::util::nodemap::NodeMap;
 use rustc::hir;
+use rustc::hir::def_id::DefId;
+use rustc::middle::region::CodeExtent;
+use rustc::mir::*;
+use rustc::mir::transform::MirSource;
+use rustc::mir::visit::MutVisitor;
+use rustc::traits::Reveal;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::Substs;
+use rustc::util::nodemap::NodeMap;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use shim;
+use std::mem;
+use std::u32;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
+use util as mir_util;
 
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+/// Construct the MIR for a given def-id.
+pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'tcx> {
+    let id = tcx.hir.as_local_node_id(def_id).unwrap();
+    let unsupported = || {
+        span_bug!(tcx.hir.span(id), "can't build MIR for {:?}", def_id);
+    };
 
-use std::u32;
+    // Figure out what primary body this item has.
+    let body_id = match tcx.hir.get(id) {
+        hir::map::NodeItem(item) => {
+            match item.node {
+                hir::ItemConst(_, body) |
+                hir::ItemStatic(_, _, body) |
+                hir::ItemFn(.., body) => body,
+                _ => unsupported()
+            }
+        }
+        hir::map::NodeTraitItem(item) => {
+            match item.node {
+                hir::TraitItemKind::Const(_, Some(body)) |
+                hir::TraitItemKind::Method(_,
+                    hir::TraitMethod::Provided(body)) => body,
+                _ => unsupported()
+            }
+        }
+        hir::map::NodeImplItem(item) => {
+            match item.node {
+                hir::ImplItemKind::Const(_, body) |
+                hir::ImplItemKind::Method(_, body) => body,
+                _ => unsupported()
+            }
+        }
+        hir::map::NodeExpr(expr) => {
+            // FIXME(eddyb) Closures should have separate
+            // function definition IDs and expression IDs.
+            // Type-checking should not let closures get
+            // this far in a constant position.
+            // Assume that everything other than closures
+            // is a constant "initializer" expression.
+            match expr.node {
+                hir::ExprClosure(_, _, body, _) => body,
+                _ => hir::BodyId { node_id: expr.id }
+            }
+        }
+        hir::map::NodeVariant(variant) =>
+            return create_constructor_shim(tcx, id, &variant.node.data),
+        hir::map::NodeStructCtor(ctor) =>
+            return create_constructor_shim(tcx, id, ctor),
+        _ => unsupported()
+    };
 
-pub struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    let src = MirSource::from_node(tcx, id);
+    tcx.infer_ctxt(body_id, Reveal::UserFacing).enter(|infcx| {
+        let cx = Cx::new(&infcx, src);
+        let mut mir = if cx.tables().tainted_by_errors {
+            build::construct_error(cx, body_id)
+        } else if let MirSource::Fn(id) = src {
+            // fetch the fully liberated fn signature (that is, all bound
+            // types/lifetimes replaced)
+            let fn_sig = cx.tables().liberated_fn_sigs[&id].clone();
+
+            let ty = tcx.type_of(tcx.hir.local_def_id(id));
+            let mut abi = fn_sig.abi;
+            let implicit_argument = if let ty::TyClosure(..) = ty.sty {
+                // HACK(eddyb) Avoid having RustCall on closures,
+                // as it adds unnecessary (and wrong) auto-tupling.
+                abi = Abi::Rust;
+                Some((closure_self_ty(tcx, id, body_id), None))
+            } else {
+                None
+            };
+
+            let body = tcx.hir.body(body_id);
+            let explicit_arguments =
+                body.arguments
+                    .iter()
+                    .enumerate()
+                    .map(|(index, arg)| {
+                        (fn_sig.inputs()[index], Some(&*arg.pat))
+                    });
+
+            let arguments = implicit_argument.into_iter().chain(explicit_arguments);
+            build::construct_fn(cx, id, arguments, abi, fn_sig.output(), body)
+        } else {
+            build::construct_const(cx, body_id)
+        };
+
+        // Convert the Mir to global types.
+        let mut globalizer = GlobalizeMir {
+            tcx: tcx,
+            span: mir.span
+        };
+        globalizer.visit_mir(&mut mir);
+        let mir = unsafe {
+            mem::transmute::<Mir, Mir<'tcx>>(mir)
+        };
+
+        mir_util::dump_mir(tcx, None, "mir_map", &0, src, &mir);
+
+        mir
+    })
+}
+
+/// A pass to lift all the types and substitutions in a Mir
+/// to the global tcx. Sadly, we don't have a "folder" that
+/// can change 'tcx so we have to transmute afterwards.
+struct GlobalizeMir<'a, 'gcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'gcx>,
+    span: Span
+}
+
+impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
+    fn visit_ty(&mut self, ty: &mut Ty<'tcx>) {
+        if let Some(lifted) = self.tcx.lift(ty) {
+            *ty = lifted;
+        } else {
+            span_bug!(self.span,
+                      "found type `{:?}` with inference types/regions in MIR",
+                      ty);
+        }
+    }
+
+    fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>) {
+        if let Some(lifted) = self.tcx.lift(substs) {
+            *substs = lifted;
+        } else {
+            span_bug!(self.span,
+                      "found substs `{:?}` with inference types/regions in MIR",
+                      substs);
+        }
+    }
+}
+
+fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     ctor_id: ast::NodeId,
+                                     v: &'tcx hir::VariantData)
+                                     -> Mir<'tcx>
+{
+    let span = tcx.hir.span(ctor_id);
+    if let hir::VariantData::Tuple(ref fields, ctor_id) = *v {
+        let pe = tcx.param_env(tcx.hir.local_def_id(ctor_id));
+        tcx.infer_ctxt(pe, Reveal::UserFacing).enter(|infcx| {
+            let (mut mir, src) =
+                shim::build_adt_ctor(&infcx, ctor_id, fields, span);
+
+            // Convert the Mir to global types.
+            let tcx = infcx.tcx.global_tcx();
+            let mut globalizer = GlobalizeMir {
+                tcx: tcx,
+                span: mir.span
+            };
+            globalizer.visit_mir(&mut mir);
+            let mir = unsafe {
+                mem::transmute::<Mir, Mir<'tcx>>(mir)
+            };
+
+            mir_util::dump_mir(tcx, None, "mir_map", &0, src, &mir);
+
+            mir
+        })
+    } else {
+        span_bug!(span, "attempting to create MIR for non-tuple variant {:?}", v);
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// BuildMir -- walks a crate, looking for fn items and methods to build MIR from
+
+fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             closure_expr_id: ast::NodeId,
+                             body_id: hir::BodyId)
+                             -> Ty<'tcx> {
+    let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_id);
+
+    let closure_def_id = tcx.hir.local_def_id(closure_expr_id);
+    let region = ty::ReFree(ty::FreeRegion {
+        scope: closure_def_id,
+        bound_region: ty::BoundRegion::BrEnv,
+    });
+    let region = tcx.mk_region(region);
+
+    match tcx.closure_kind(closure_def_id) {
+        ty::ClosureKind::Fn =>
+            tcx.mk_ref(region,
+                       ty::TypeAndMut { ty: closure_ty,
+                                        mutbl: hir::MutImmutable }),
+        ty::ClosureKind::FnMut =>
+            tcx.mk_ref(region,
+                       ty::TypeAndMut { ty: closure_ty,
+                                        mutbl: hir::MutMutable }),
+        ty::ClosureKind::FnOnce =>
+            closure_ty
+    }
+}
+
+struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     hir: Cx<'a, 'gcx, 'tcx>,
     cfg: CFG<'tcx>,
 
@@ -36,9 +238,9 @@ pub struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// see the `scope` module for more details
     scopes: Vec<scope::Scope<'tcx>>,
 
-    /// the current set of loops; see the `scope` module for more
+    /// the current set of breakables; see the `scope` module for more
     /// details
-    loop_scopes: Vec<scope::LoopScope<'tcx>>,
+    breakable_scopes: Vec<scope::BreakableScope<'tcx>>,
 
     /// the vector of all scopes that we have created thus far;
     /// we track this for debuginfo later
@@ -82,7 +284,7 @@ impl Idx for ScopeId {
 /// convenient.
 
 #[must_use] // if you don't use one of these results, you're leaving a dangling edge
-pub struct BlockAnd<T>(BasicBlock, T);
+struct BlockAnd<T>(BasicBlock, T);
 
 trait BlockAndExtension {
     fn and<T>(self, v: T) -> BlockAnd<T>;
@@ -121,27 +323,23 @@ macro_rules! unpack {
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
-pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
-                                       fn_id: ast::NodeId,
-                                       arguments: A,
-                                       abi: Abi,
-                                       return_ty: Ty<'gcx>,
-                                       body: &'gcx hir::Body)
-                                       -> Mir<'tcx>
+fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
+                                   fn_id: ast::NodeId,
+                                   arguments: A,
+                                   abi: Abi,
+                                   return_ty: Ty<'gcx>,
+                                   body: &'gcx hir::Body)
+                                   -> Mir<'tcx>
     where A: Iterator<Item=(Ty<'gcx>, Option<&'gcx hir::Pat>)>
 {
     let arguments: Vec<_> = arguments.collect();
 
     let tcx = hir.tcx();
     let span = tcx.hir.span(fn_id);
-    let mut builder = Builder::new(hir, span, arguments.len(), return_ty);
+    let mut builder = Builder::new(hir.clone(), span, arguments.len(), return_ty);
 
-    let call_site_extent =
-        tcx.region_maps.lookup_code_extent(
-            CodeExtentData::CallSiteScope { fn_id: fn_id, body_id: body.value.id });
-    let arg_extent =
-        tcx.region_maps.lookup_code_extent(
-            CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body.value.id });
+    let call_site_extent = CodeExtent::CallSiteScope(body.id());
+    let arg_extent = CodeExtent::ParameterScope(body.id());
     let mut block = START_BLOCK;
     unpack!(block = builder.in_scope(call_site_extent, block, |builder| {
         unpack!(block = builder.in_scope(arg_extent, block, |builder| {
@@ -194,36 +392,30 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     mir
 }
 
-pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
-                                       body_id: hir::BodyId)
-                                       -> Mir<'tcx> {
+fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
+                                   body_id: hir::BodyId)
+                                   -> Mir<'tcx> {
     let tcx = hir.tcx();
     let ast_expr = &tcx.hir.body(body_id).value;
     let ty = hir.tables().expr_ty_adjusted(ast_expr);
-    let span = tcx.hir.span(tcx.hir.body_owner(body_id));
-    let mut builder = Builder::new(hir, span, 0, ty);
+    let owner_id = tcx.hir.body_owner(body_id);
+    let span = tcx.hir.span(owner_id);
+    let mut builder = Builder::new(hir.clone(), span, 0, ty);
 
-    let extent = tcx.region_maps.temporary_scope(ast_expr.id)
-                    .unwrap_or(ROOT_CODE_EXTENT);
     let mut block = START_BLOCK;
-    let _ = builder.in_scope(extent, block, |builder| {
-        let expr = builder.hir.mirror(ast_expr);
-        unpack!(block = builder.into(&Lvalue::Local(RETURN_POINTER), block, expr));
+    let expr = builder.hir.mirror(ast_expr);
+    unpack!(block = builder.into_expr(&Lvalue::Local(RETURN_POINTER), block, expr));
 
-        let source_info = builder.source_info(span);
-        let return_block = builder.return_block();
-        builder.cfg.terminate(block, source_info,
-                              TerminatorKind::Goto { target: return_block });
-        builder.cfg.terminate(return_block, source_info,
-                              TerminatorKind::Return);
+    let source_info = builder.source_info(span);
+    builder.cfg.terminate(block, source_info, TerminatorKind::Return);
 
-        return_block.unit()
-    });
+    // Constants can't `return` so a return block should not be created.
+    assert_eq!(builder.cached_return_block, None);
 
     builder.finish(vec![], ty)
 }
 
-pub fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
+fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
                                        body_id: hir::BodyId)
                                        -> Mir<'tcx> {
     let span = hir.tcx().hir.span(hir.tcx().hir.body_owner(body_id));
@@ -248,8 +440,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             scopes: vec![],
             visibility_scopes: IndexVec::new(),
             visibility_scope: ARGUMENT_VISIBILITY_SCOPE,
-            loop_scopes: vec![],
-            local_decls: IndexVec::from_elem_n(LocalDecl::new_return_pointer(return_ty), 1),
+            breakable_scopes: vec![],
+            local_decls: IndexVec::from_elem_n(LocalDecl::new_return_pointer(return_ty,
+                                                                             span), 1),
             var_indices: NodeMap(),
             unit_temp: None,
             cached_resume_block: None,
@@ -304,8 +497,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.local_decls.push(LocalDecl {
                 mutability: Mutability::Not,
                 ty: ty,
-                source_info: None,
+                source_info: SourceInfo {
+                    scope: ARGUMENT_VISIBILITY_SCOPE,
+                    span: pattern.map_or(self.fn_span, |pat| pat.span)
+                },
                 name: name,
+                is_user_variable: false,
             });
         }
 
@@ -341,7 +538,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             Some(ref tmp) => tmp.clone(),
             None => {
                 let ty = self.hir.unit_ty();
-                let tmp = self.temp(ty);
+                let fn_span = self.fn_span;
+                let tmp = self.temp(ty, fn_span);
                 self.unit_temp = Some(tmp.clone());
                 tmp
             }

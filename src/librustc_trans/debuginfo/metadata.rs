@@ -26,7 +26,7 @@ use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor,
                       DICompositeType, DILexicalBlock, DIFlags};
 
 use rustc::hir::def::CtorKind;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::ty::fold::TypeVisitor;
 use rustc::ty::subst::Substs;
 use rustc::ty::util::TypeIdHasher;
@@ -35,17 +35,16 @@ use rustc_data_structures::ToHex;
 use {type_of, machine, monomorphize};
 use common::{self, CrateContext};
 use type_::Type;
-use rustc::ty::{self, AdtKind, Ty, layout};
+use rustc::ty::{self, AdtKind, Ty};
+use rustc::ty::layout::{self, LayoutTyper};
 use session::config;
 use util::nodemap::FxHashMap;
-use util::common::path2cstr;
 
 use libc::{c_uint, c_longlong};
 use std::ffi::CString;
-use std::path::Path;
 use std::ptr;
 use syntax::ast;
-use syntax::symbol::{Interner, InternedString};
+use syntax::symbol::{Interner, InternedString, Symbol};
 use syntax_pos::{self, Span};
 
 
@@ -348,8 +347,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     assert!(member_descriptions.len() == member_llvm_types.len());
 
-    let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, &loc.file.name, &loc.file.abs_path);
+    let file_metadata = unknown_file_metadata(cx);
 
     let metadata = composite_type_metadata(cx,
                                            slice_llvm_type,
@@ -658,44 +656,51 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     metadata
 }
 
-pub fn file_metadata(cx: &CrateContext, path: &str, full_path: &Option<String>) -> DIFile {
-    // FIXME (#9639): This needs to handle non-utf8 paths
-    let work_dir = cx.sess().working_dir.to_str().unwrap();
-    let file_name =
-        full_path.as_ref().map(|p| p.as_str()).unwrap_or_else(|| {
-            if path.starts_with(work_dir) {
-                &path[work_dir.len() + 1..path.len()]
-            } else {
-                path
-            }
-        });
+pub fn file_metadata(cx: &CrateContext,
+                     file_name: &str,
+                     defining_crate: CrateNum) -> DIFile {
+    debug!("file_metadata: file_name: {}, defining_crate: {}",
+           file_name,
+           defining_crate);
 
-    file_metadata_(cx, path, file_name, &work_dir)
+    let directory = if defining_crate == LOCAL_CRATE {
+        &cx.sess().working_dir.0[..]
+    } else {
+        // If the path comes from an upstream crate we assume it has been made
+        // independent of the compiler's working directory one way or another.
+        ""
+    };
+
+    file_metadata_raw(cx, file_name, directory)
 }
 
 pub fn unknown_file_metadata(cx: &CrateContext) -> DIFile {
-    // Regular filenames should not be empty, so we abuse an empty name as the
-    // key for the special unknown file metadata
-    file_metadata_(cx, "", "<unknown>", "")
-
+    file_metadata_raw(cx, "<unknown>", "")
 }
 
-fn file_metadata_(cx: &CrateContext, key: &str, file_name: &str, work_dir: &str) -> DIFile {
-    if let Some(file_metadata) = debug_context(cx).created_files.borrow().get(key) {
+fn file_metadata_raw(cx: &CrateContext,
+                     file_name: &str,
+                     directory: &str)
+                     -> DIFile {
+    let key = (Symbol::intern(file_name), Symbol::intern(directory));
+
+    if let Some(file_metadata) = debug_context(cx).created_files.borrow().get(&key) {
         return *file_metadata;
     }
 
-    debug!("file_metadata: file_name: {}, work_dir: {}", file_name, work_dir);
+    debug!("file_metadata: file_name: {}, directory: {}", file_name, directory);
 
     let file_name = CString::new(file_name).unwrap();
-    let work_dir = CString::new(work_dir).unwrap();
+    let directory = CString::new(directory).unwrap();
+
     let file_metadata = unsafe {
-        llvm::LLVMRustDIBuilderCreateFile(DIB(cx), file_name.as_ptr(),
-                                          work_dir.as_ptr())
+        llvm::LLVMRustDIBuilderCreateFile(DIB(cx),
+                                          file_name.as_ptr(),
+                                          directory.as_ptr())
     };
 
     let mut created_files = debug_context(cx).created_files.borrow_mut();
-    created_files.insert(key.to_string(), file_metadata);
+    created_files.insert(key, file_metadata);
     file_metadata
 }
 
@@ -757,44 +762,38 @@ fn pointer_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 }
 
 pub fn compile_unit_metadata(scc: &SharedCrateContext,
+                             codegen_unit_name: &str,
                              debug_context: &CrateDebugContext,
                              sess: &Session)
                              -> DIDescriptor {
-    let work_dir = &sess.working_dir;
-    let compile_unit_name = match sess.local_crate_source_file {
-        None => fallback_path(scc),
-        Some(ref abs_path) => {
-            if abs_path.is_relative() {
-                sess.warn("debuginfo: Invalid path to crate's local root source file!");
-                fallback_path(scc)
-            } else {
-                match abs_path.strip_prefix(work_dir) {
-                    Ok(ref p) if p.is_relative() => {
-                        if p.starts_with(Path::new("./")) {
-                            path2cstr(p)
-                        } else {
-                            path2cstr(&Path::new(".").join(p))
-                        }
-                    }
-                    _ => fallback_path(scc)
-                }
-            }
-        }
+    let mut name_in_debuginfo = match sess.local_crate_source_file {
+        Some(ref path) => path.clone(),
+        None => scc.tcx().crate_name(LOCAL_CRATE).to_string(),
     };
 
-    debug!("compile_unit_metadata: {:?}", compile_unit_name);
-    let producer = format!("rustc version {}",
+    // The OSX linker has an idiosyncrasy where it will ignore some debuginfo
+    // if multiple object files with the same DW_AT_name are linked together.
+    // As a workaround we generate unique names for each object file. Those do
+    // not correspond to an actual source file but that should be harmless.
+    if scc.sess().target.target.options.is_like_osx {
+        name_in_debuginfo.push_str("@");
+        name_in_debuginfo.push_str(codegen_unit_name);
+    }
+
+    debug!("compile_unit_metadata: {:?}", name_in_debuginfo);
+    // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
+    let producer = format!("clang LLVM (rustc version {})",
                            (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
 
-    let compile_unit_name = compile_unit_name.as_ptr();
-    let work_dir = path2cstr(&work_dir);
+    let name_in_debuginfo = CString::new(name_in_debuginfo).unwrap();
+    let work_dir = CString::new(&sess.working_dir.0[..]).unwrap();
     let producer = CString::new(producer).unwrap();
     let flags = "\0";
     let split_name = "\0";
 
     unsafe {
         let file_metadata = llvm::LLVMRustDIBuilderCreateFile(
-            debug_context.builder, compile_unit_name, work_dir.as_ptr());
+            debug_context.builder, name_in_debuginfo.as_ptr(), work_dir.as_ptr());
 
         return llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder,
@@ -806,10 +805,6 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
             0,
             split_name.as_ptr() as *const _)
     };
-
-    fn fallback_path(scc: &SharedCrateContext) -> CString {
-        CString::new(scc.link_meta().crate_name.to_string()).unwrap()
-    }
 }
 
 struct MetadataCreationResult {
@@ -900,7 +895,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
         let offsets = match *layout {
             layout::Univariant { ref variant, .. } => &variant.offsets,
             layout::Vector { element, count } => {
-                let element_size = element.size(&cx.tcx().data_layout).bytes();
+                let element_size = element.size(cx).bytes();
                 tmp = (0..count).
                   map(|i| layout::Size::from_bytes(i*element_size))
                   .collect::<Vec<layout::Size>>();
@@ -1564,7 +1559,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         enum_llvm_type,
         EnumMDF(EnumMemberDescriptionFactory {
             enum_type: enum_type,
-            type_rep: type_rep,
+            type_rep: type_rep.layout,
             discriminant_type_metadata: discriminant_type_metadata,
             containing_scope: containing_scope,
             file_metadata: file_metadata,
@@ -1758,7 +1753,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 
     let (file_metadata, line_number) = if span != syntax_pos::DUMMY_SP {
         let loc = span_start(cx, span);
-        (file_metadata(cx, &loc.file.name, &loc.file.abs_path), loc.line as c_uint)
+        (file_metadata(cx, &loc.file.name, LOCAL_CRATE), loc.line as c_uint)
     } else {
         (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
     };
@@ -1772,7 +1767,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let var_name = CString::new(var_name).unwrap();
     let linkage_name = CString::new(linkage_name).unwrap();
 
-    let global_align = type_of::align_of(cx, variable_type);
+    let global_align = cx.align_of(variable_type);
 
     unsafe {
         llvm::LLVMRustDIBuilderCreateStaticVariable(DIB(cx),
@@ -1793,9 +1788,10 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 // Creates an "extension" of an existing DIScope into another file.
 pub fn extend_scope_to_file(ccx: &CrateContext,
                             scope_metadata: DIScope,
-                            file: &syntax_pos::FileMap)
+                            file: &syntax_pos::FileMap,
+                            defining_crate: CrateNum)
                             -> DILexicalBlock {
-    let file_metadata = file_metadata(ccx, &file.name, &file.abs_path);
+    let file_metadata = file_metadata(ccx, &file.name, defining_crate);
     unsafe {
         llvm::LLVMRustDIBuilderCreateLexicalBlockFile(
             DIB(ccx),

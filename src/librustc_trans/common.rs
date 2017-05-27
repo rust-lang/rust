@@ -17,7 +17,6 @@ use llvm::{ValueRef, ContextRef, TypeKind};
 use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
-use rustc::util::common::MemoizationMap;
 use middle::lang_items::LangItem;
 use base;
 use builder::Builder;
@@ -28,15 +27,14 @@ use monomorphize;
 use type_::Type;
 use value::Value;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::Layout;
+use rustc::ty::layout::{Layout, LayoutTyper};
 use rustc::ty::subst::{Subst, Substs};
-use rustc::traits::{self, SelectionContext, Reveal};
 use rustc::hir;
 
 use libc::{c_uint, c_char};
 use std::iter;
 
-use syntax::ast;
+use syntax::attr;
 use syntax::symbol::InternedString;
 use syntax_pos::Span;
 
@@ -65,7 +63,7 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
         Layout::UntaggedUnion { .. } |
         Layout::RawNullablePointer { .. } |
         Layout::StructWrappedNullablePointer { .. } => {
-            !layout.is_unsized() && layout.size(&ccx.tcx().data_layout).bytes() == 0
+            !layout.is_unsized() && layout.size(ccx).bytes() == 0
         }
     }
 }
@@ -127,10 +125,8 @@ pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
 
 /// Identify types which have size zero at runtime.
 pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    use machine::llsize_of_alloc;
-    use type_of::sizing_type_of;
-    let llty = sizing_type_of(ccx, ty);
-    llsize_of_alloc(ccx, llty) == 0
+    let layout = ccx.layout_of(ty);
+    !layout.is_unsized() && layout.size(ccx).bytes() == 0
 }
 
 /*
@@ -426,73 +422,6 @@ pub fn is_null(val: ValueRef) -> bool {
     }
 }
 
-/// Attempts to resolve an obligation. The result is a shallow vtable resolution -- meaning that we
-/// do not (necessarily) resolve all nested obligations on the impl. Note that type check should
-/// guarantee to us that all nested obligations *could be* resolved if we wanted to.
-pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
-                                    span: Span,
-                                    trait_ref: ty::PolyTraitRef<'tcx>)
-                                    -> traits::Vtable<'tcx, ()>
-{
-    let tcx = scx.tcx();
-
-    // Remove any references to regions; this helps improve caching.
-    let trait_ref = tcx.erase_regions(&trait_ref);
-
-    scx.trait_cache().memoize(trait_ref, || {
-        debug!("trans::fulfill_obligation(trait_ref={:?}, def_id={:?})",
-               trait_ref, trait_ref.def_id());
-
-        // Do the initial selection for the obligation. This yields the
-        // shallow result we are looking for -- that is, what specific impl.
-        tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
-            let mut selcx = SelectionContext::new(&infcx);
-
-            let obligation_cause = traits::ObligationCause::misc(span,
-                                                             ast::DUMMY_NODE_ID);
-            let obligation = traits::Obligation::new(obligation_cause,
-                                                     trait_ref.to_poly_trait_predicate());
-
-            let selection = match selcx.select(&obligation) {
-                Ok(Some(selection)) => selection,
-                Ok(None) => {
-                    // Ambiguity can happen when monomorphizing during trans
-                    // expands to some humongo type that never occurred
-                    // statically -- this humongo type can then overflow,
-                    // leading to an ambiguous result. So report this as an
-                    // overflow bug, since I believe this is the only case
-                    // where ambiguity can result.
-                    debug!("Encountered ambiguity selecting `{:?}` during trans, \
-                            presuming due to overflow",
-                           trait_ref);
-                    tcx.sess.span_fatal(span,
-                        "reached the recursion limit during monomorphization \
-                         (selection ambiguity)");
-                }
-                Err(e) => {
-                    span_bug!(span, "Encountered error `{:?}` selecting `{:?}` during trans",
-                              e, trait_ref)
-                }
-            };
-
-            debug!("fulfill_obligation: selection={:?}", selection);
-
-            // Currently, we use a fulfillment context to completely resolve
-            // all nested obligations. This is because they can inform the
-            // inference of the impl's type parameters.
-            let mut fulfill_cx = traits::FulfillmentContext::new();
-            let vtable = selection.map(|predicate| {
-                debug!("fulfill_obligation: register_predicate_obligation {:?}", predicate);
-                fulfill_cx.register_predicate_obligation(&infcx, predicate);
-            });
-            let vtable = infcx.drain_fulfillment_cx_or_panic(span, &mut fulfill_cx, &vtable);
-
-            info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
-            vtable
-        })
-    })
-}
-
 pub fn langcall(tcx: TyCtxt,
                 span: Option<Span>,
                 msg: &str,
@@ -601,8 +530,37 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn is_closure(tcx: TyCtxt, def_id: DefId) -> bool {
-    tcx.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
+pub fn requests_inline<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    instance: &ty::Instance<'tcx>
+) -> bool {
+    if is_inline_instance(tcx, instance) {
+        return true
+    }
+    if let ty::InstanceDef::DropGlue(..) = instance.def {
+        // Drop glue wants to be instantiated at every translation
+        // unit, but without an #[inline] hint. We should make this
+        // available to normal end-users.
+        return true
+    }
+    attr::requests_inline(&instance.def.attrs(tcx)[..])
+}
+
+pub fn is_inline_instance<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    instance: &ty::Instance<'tcx>
+) -> bool {
+    let def_id = match instance.def {
+        ty::InstanceDef::Item(def_id) => def_id,
+        ty::InstanceDef::DropGlue(_, Some(_)) => return false,
+        _ => return true
+    };
+    match tcx.def_key(def_id).disambiguated_data.data {
+        DefPathData::StructCtor |
+        DefPathData::EnumVariant(..) |
+        DefPathData::ClosureExpr => true,
+        _ => false
+    }
 }
 
 /// Given a DefId and some Substs, produces the monomorphic item type.
@@ -611,6 +569,15 @@ pub fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
                         substs: &'tcx Substs<'tcx>)
                         -> Ty<'tcx>
 {
-    let ty = shared.tcx().item_type(def_id);
-    monomorphize::apply_param_substs(shared, substs, &ty)
+    let ty = shared.tcx().type_of(def_id);
+    shared.tcx().trans_apply_param_substs(substs, &ty)
+}
+
+/// Return the substituted type of an instance.
+pub fn instance_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
+                             instance: &ty::Instance<'tcx>)
+                             -> Ty<'tcx>
+{
+    let ty = instance.def.def_ty(shared.tcx());
+    shared.tcx().trans_apply_param_substs(instance.substs, &ty)
 }

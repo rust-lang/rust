@@ -68,6 +68,7 @@ use core::ops::{CoerceUnsized, Deref, DerefMut};
 use core::ops::{BoxPlace, Boxed, InPlace, Place, Placer};
 use core::ptr::{self, Unique};
 use core::convert::From;
+use str::from_boxed_utf8_unchecked;
 
 /// A value that represents the heap. This is the default place that the `box`
 /// keyword allocates into when no place is supplied.
@@ -155,7 +156,7 @@ fn make_place<T>() -> IntermediateBox<T> {
     let align = mem::align_of::<T>();
 
     let p = if size == 0 {
-        heap::EMPTY as *mut u8
+        mem::align_of::<T>() as *mut u8
     } else {
         let p = unsafe { heap::allocate(size, align) };
         if p.is_null() {
@@ -320,8 +321,7 @@ impl<T> Default for Box<[T]> {
 #[stable(feature = "default_box_extra", since = "1.17.0")]
 impl Default for Box<str> {
     fn default() -> Box<str> {
-        let default: Box<[u8]> = Default::default();
-        unsafe { mem::transmute(default) }
+        unsafe { from_boxed_utf8_unchecked(Default::default()) }
     }
 }
 
@@ -366,7 +366,7 @@ impl Clone for Box<str> {
         let buf = RawVec::with_capacity(len);
         unsafe {
             ptr::copy_nonoverlapping(self.as_ptr(), buf.ptr(), len);
-            mem::transmute(buf.into_box()) // bytes to str ~magic
+            from_boxed_utf8_unchecked(buf.into_box())
         }
     }
 }
@@ -441,8 +441,16 @@ impl<'a, T: Copy> From<&'a [T]> for Box<[T]> {
 #[stable(feature = "box_from_slice", since = "1.17.0")]
 impl<'a> From<&'a str> for Box<str> {
     fn from(s: &'a str) -> Box<str> {
-        let boxed: Box<[u8]> = Box::from(s.as_bytes());
-        unsafe { mem::transmute(boxed) }
+        unsafe { from_boxed_utf8_unchecked(Box::from(s.as_bytes())) }
+    }
+}
+
+#[stable(feature = "boxed_str_conv", since = "1.19.0")]
+impl From<Box<str>> for Box<[u8]> {
+    fn from(s: Box<str>) -> Self {
+        unsafe {
+            mem::transmute(s)
+        }
     }
 }
 

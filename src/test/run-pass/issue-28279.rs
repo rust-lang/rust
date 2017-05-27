@@ -18,7 +18,7 @@ fn test1() -> Rc<for<'a> Fn(&'a usize) + 'static> {
     }
 }
 
-fn test2() -> *mut for<'a> Fn(&'a usize) + 'static {
+fn test2() -> *mut (for<'a> Fn(&'a usize) + 'static) {
     if let Some(_) = Some(1) {
         loop{}
     } else {
@@ -27,4 +27,3 @@ fn test2() -> *mut for<'a> Fn(&'a usize) + 'static {
 }
 
 fn main() {}
-

@@ -1,16 +1,15 @@
 error[E0046]: not all trait items implemented, missing: `Target`
   --> $DIR/issue-24356.rs:30:9
    |
-30 |           impl Deref for Thing {
-   |  _________^ starting here...
+30 | /         impl Deref for Thing {
 31 | |             //~^ ERROR E0046
 32 | |             //~| NOTE missing `Target` in implementation
 33 | |             //~| NOTE `Target` from trait: `type Target;`
 34 | |             fn deref(&self) -> i8 { self.0 }
 35 | |         }
-   | |_________^ ...ending here: missing `Target` in implementation
+   | |_________^ missing `Target` in implementation
    |
    = note: `Target` from trait: `type Target;`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

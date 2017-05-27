@@ -38,7 +38,7 @@
 //! expression, `e as U2` is not necessarily so (in fact it will only be valid if
 //! `U1` coerces to `U2`).
 
-use super::FnCtxt;
+use super::{Diverges, FnCtxt};
 
 use lint;
 use hir::def_id::DefId;
@@ -56,6 +56,7 @@ use util::common::ErrorReported;
 pub struct CastCheck<'tcx> {
     expr: &'tcx hir::Expr,
     expr_ty: Ty<'tcx>,
+    expr_diverges: Diverges,
     cast_ty: Ty<'tcx>,
     cast_span: Span,
     span: Span,
@@ -115,6 +116,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
     pub fn new(fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                expr: &'tcx hir::Expr,
                expr_ty: Ty<'tcx>,
+               expr_diverges: Diverges,
                cast_ty: Ty<'tcx>,
                cast_span: Span,
                span: Span)
@@ -122,6 +124,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         let check = CastCheck {
             expr: expr,
             expr_ty: expr_ty,
+            expr_diverges: expr_diverges,
             cast_ty: cast_ty,
             cast_span: cast_span,
             span: span,
@@ -152,7 +155,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                        },
                                        self.expr_ty);
                 err.span_label(error_span,
-                               &format!("cannot cast `{}` as `{}`",
+                               format!("cannot cast `{}` as `{}`",
                                         fcx.ty_to_string(self.expr_ty),
                                         cast_ty));
                 if let Ok(snippet) = fcx.sess().codemap().span_to_snippet(self.expr.span) {
@@ -197,7 +200,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             }
             CastError::CastToBool => {
                 struct_span_err!(fcx.tcx.sess, self.span, E0054, "cannot cast as `bool`")
-                    .span_label(self.span, &format!("unsupported cast"))
+                    .span_label(self.span, "unsupported cast")
                     .help("compare with zero instead")
                     .emit();
             }
@@ -376,7 +379,10 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             (None, Some(t_cast)) => {
                 if let ty::TyFnDef(.., f) = self.expr_ty.sty {
                     // Attempt a coercion to a fn pointer type.
-                    let res = fcx.try_coerce(self.expr, self.expr_ty, fcx.tcx.mk_fn_ptr(f));
+                    let res = fcx.try_coerce(self.expr,
+                                             self.expr_ty,
+                                             self.expr_diverges,
+                                             fcx.tcx.mk_fn_ptr(f));
                     if !res.is_ok() {
                         return Err(CastError::NonScalar);
                     }
@@ -542,7 +548,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
     }
 
     fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> bool {
-        fcx.try_coerce(self.expr, self.expr_ty, self.cast_ty).is_ok()
+        fcx.try_coerce(self.expr, self.expr_ty, self.expr_diverges, self.cast_ty).is_ok()
     }
 }
 

@@ -11,6 +11,7 @@
 #![ crate_name = "test" ]
 #![feature(box_syntax)]
 #![feature(rustc_private)]
+#![feature(associated_type_defaults)]
 
 extern crate graphviz;
 // A simple rust project
@@ -440,4 +441,20 @@ fn test_format_args() {
     print!("Hello {0}", name);
     print!("{0} + {} = {}", x, y);
     print!("x is {}, y is {1}, name is {n}", x, y, n = name);
+}
+
+struct FrameBuffer;
+
+struct SilenceGenerator;
+
+impl Iterator for SilenceGenerator {
+    type Item = FrameBuffer;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        panic!();
+    }
+}
+
+trait Foo {
+    type Bar = FrameBuffer;
 }

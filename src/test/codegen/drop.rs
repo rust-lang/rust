@@ -36,7 +36,7 @@ pub fn droppy() {
 // CHECK-NOT: call{{.*}}drop{{.*}}SomeUniqueName
 // CHECK: invoke{{.*}}drop{{.*}}SomeUniqueName
 // CHECK: invoke{{.*}}drop{{.*}}SomeUniqueName
-// CHECK: invoke{{.*}}drop{{.*}}SomeUniqueName
+// CHECK: call{{.*}}drop{{.*}}SomeUniqueName
 // CHECK-NOT: {{(call|invoke).*}}drop{{.*}}SomeUniqueName
 // The next line checks for the } that ends the function definition
 // CHECK-LABEL: {{^[}]}}

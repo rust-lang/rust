@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{self, ValueRef, Integer, Pointer, Float, Double, Struct, Array, Vector, AttributePlace};
+use llvm::{self, ValueRef, AttributePlace};
 use base;
 use builder::Builder;
 use common::{type_is_fat_ptr, C_uint};
@@ -29,19 +29,21 @@ use cabi_sparc;
 use cabi_sparc64;
 use cabi_nvptx;
 use cabi_nvptx64;
-use machine::{llalign_of_min, llsize_of, llsize_of_alloc};
+use cabi_hexagon;
+use machine::llalign_of_min;
 use type_::Type;
 use type_of;
 
 use rustc::hir;
 use rustc::ty::{self, Ty};
+use rustc::ty::layout::{self, Layout, LayoutTyper, TyLayout, Size};
 
 use libc::c_uint;
 use std::cmp;
+use std::iter;
 
 pub use syntax::abi::Abi;
 pub use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
-use rustc::ty::layout::Layout;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum ArgKind {
@@ -59,6 +61,7 @@ enum ArgKind {
 pub use self::attr_impl::ArgAttribute;
 
 #[allow(non_upper_case_globals)]
+#[allow(unused)]
 mod attr_impl {
     // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
     bitflags! {
@@ -131,33 +134,293 @@ impl ArgAttributes {
         }
     }
 }
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum RegKind {
+    Integer,
+    Float,
+    Vector
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct Reg {
+    pub kind: RegKind,
+    pub size: Size,
+}
+
+macro_rules! reg_ctor {
+    ($name:ident, $kind:ident, $bits:expr) => {
+        pub fn $name() -> Reg {
+            Reg {
+                kind: RegKind::$kind,
+                size: Size::from_bits($bits)
+            }
+        }
+    }
+}
+
+impl Reg {
+    reg_ctor!(i8, Integer, 8);
+    reg_ctor!(i16, Integer, 16);
+    reg_ctor!(i32, Integer, 32);
+    reg_ctor!(i64, Integer, 64);
+
+    reg_ctor!(f32, Float, 32);
+    reg_ctor!(f64, Float, 64);
+}
+
+impl Reg {
+    fn llvm_type(&self, ccx: &CrateContext) -> Type {
+        match self.kind {
+            RegKind::Integer => Type::ix(ccx, self.size.bits()),
+            RegKind::Float => {
+                match self.size.bits() {
+                    32 => Type::f32(ccx),
+                    64 => Type::f64(ccx),
+                    _ => bug!("unsupported float: {:?}", self)
+                }
+            }
+            RegKind::Vector => {
+                Type::vector(&Type::i8(ccx), self.size.bytes())
+            }
+        }
+    }
+}
+
+/// An argument passed entirely registers with the
+/// same kind (e.g. HFA / HVA on PPC64 and AArch64).
+#[derive(Copy, Clone)]
+pub struct Uniform {
+    pub unit: Reg,
+
+    /// The total size of the argument, which can be:
+    /// * equal to `unit.size` (one scalar/vector)
+    /// * a multiple of `unit.size` (an array of scalar/vectors)
+    /// * if `unit.kind` is `Integer`, the last element
+    ///   can be shorter, i.e. `{ i64, i64, i32 }` for
+    ///   64-bit integers with a total size of 20 bytes
+    pub total: Size,
+}
+
+impl From<Reg> for Uniform {
+    fn from(unit: Reg) -> Uniform {
+        Uniform {
+            unit,
+            total: unit.size
+        }
+    }
+}
+
+impl Uniform {
+    fn llvm_type(&self, ccx: &CrateContext) -> Type {
+        let llunit = self.unit.llvm_type(ccx);
+
+        if self.total <= self.unit.size {
+            return llunit;
+        }
+
+        let count = self.total.bytes() / self.unit.size.bytes();
+        let rem_bytes = self.total.bytes() % self.unit.size.bytes();
+
+        if rem_bytes == 0 {
+            return Type::array(&llunit, count);
+        }
+
+        // Only integers can be really split further.
+        assert_eq!(self.unit.kind, RegKind::Integer);
+
+        let args: Vec<_> = (0..count).map(|_| llunit)
+            .chain(iter::once(Type::ix(ccx, rem_bytes * 8)))
+            .collect();
+
+        Type::struct_(ccx, &args, false)
+    }
+}
+
+pub trait LayoutExt<'tcx> {
+    fn is_aggregate(&self) -> bool;
+    fn homogenous_aggregate<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Option<Reg>;
+}
+
+impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
+    fn is_aggregate(&self) -> bool {
+        match *self.layout {
+            Layout::Scalar { .. } |
+            Layout::RawNullablePointer { .. } |
+            Layout::CEnum { .. } |
+            Layout::Vector { .. } => false,
+
+            Layout::Array { .. } |
+            Layout::FatPointer { .. } |
+            Layout::Univariant { .. } |
+            Layout::UntaggedUnion { .. } |
+            Layout::General { .. } |
+            Layout::StructWrappedNullablePointer { .. } => true
+        }
+    }
+
+    fn homogenous_aggregate<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Option<Reg> {
+        match *self.layout {
+            // The primitives for this algorithm.
+            Layout::Scalar { value, .. } |
+            Layout::RawNullablePointer { value, .. } => {
+                let kind = match value {
+                    layout::Int(_) |
+                    layout::Pointer => RegKind::Integer,
+                    layout::F32 |
+                    layout::F64 => RegKind::Float
+                };
+                Some(Reg {
+                    kind,
+                    size: self.size(ccx)
+                })
+            }
+
+            Layout::CEnum { .. } => {
+                Some(Reg {
+                    kind: RegKind::Integer,
+                    size: self.size(ccx)
+                })
+            }
+
+            Layout::Vector { .. } => {
+                Some(Reg {
+                    kind: RegKind::Vector,
+                    size: self.size(ccx)
+                })
+            }
+
+            Layout::Array { count, .. } => {
+                if count > 0 {
+                    self.field(ccx, 0).homogenous_aggregate(ccx)
+                } else {
+                    None
+                }
+            }
+
+            Layout::Univariant { ref variant, .. } => {
+                let mut unaligned_offset = Size::from_bytes(0);
+                let mut result = None;
+
+                for i in 0..self.field_count() {
+                    if unaligned_offset != variant.offsets[i] {
+                        return None;
+                    }
+
+                    let field = self.field(ccx, i);
+                    match (result, field.homogenous_aggregate(ccx)) {
+                        // The field itself must be a homogenous aggregate.
+                        (_, None) => return None,
+                        // If this is the first field, record the unit.
+                        (None, Some(unit)) => {
+                            result = Some(unit);
+                        }
+                        // For all following fields, the unit must be the same.
+                        (Some(prev_unit), Some(unit)) => {
+                            if prev_unit != unit {
+                                return None;
+                            }
+                        }
+                    }
+
+                    // Keep track of the offset (without padding).
+                    let size = field.size(ccx);
+                    match unaligned_offset.checked_add(size, ccx) {
+                        Some(offset) => unaligned_offset = offset,
+                        None => return None
+                    }
+                }
+
+                // There needs to be no padding.
+                if unaligned_offset != self.size(ccx) {
+                    None
+                } else {
+                    result
+                }
+            }
+
+            Layout::UntaggedUnion { .. } => {
+                let mut max = Size::from_bytes(0);
+                let mut result = None;
+
+                for i in 0..self.field_count() {
+                    let field = self.field(ccx, i);
+                    match (result, field.homogenous_aggregate(ccx)) {
+                        // The field itself must be a homogenous aggregate.
+                        (_, None) => return None,
+                        // If this is the first field, record the unit.
+                        (None, Some(unit)) => {
+                            result = Some(unit);
+                        }
+                        // For all following fields, the unit must be the same.
+                        (Some(prev_unit), Some(unit)) => {
+                            if prev_unit != unit {
+                                return None;
+                            }
+                        }
+                    }
+
+                    // Keep track of the offset (without padding).
+                    let size = field.size(ccx);
+                    if size > max {
+                        max = size;
+                    }
+                }
+
+                // There needs to be no padding.
+                if max != self.size(ccx) {
+                    None
+                } else {
+                    result
+                }
+            }
+
+            // Rust-specific types, which we can ignore for C ABIs.
+            Layout::FatPointer { .. } |
+            Layout::General { .. } |
+            Layout::StructWrappedNullablePointer { .. } => None
+        }
+    }
+}
+
+pub enum CastTarget {
+    Uniform(Uniform),
+    Pair(Reg, Reg)
+}
+
+impl From<Reg> for CastTarget {
+    fn from(unit: Reg) -> CastTarget {
+        CastTarget::Uniform(Uniform::from(unit))
+    }
+}
+
+impl From<Uniform> for CastTarget {
+    fn from(uniform: Uniform) -> CastTarget {
+        CastTarget::Uniform(uniform)
+    }
+}
+
+impl CastTarget {
+    fn llvm_type(&self, ccx: &CrateContext) -> Type {
+        match *self {
+            CastTarget::Uniform(u) => u.llvm_type(ccx),
+            CastTarget::Pair(a, b) => {
+                Type::struct_(ccx, &[
+                    a.llvm_type(ccx),
+                    b.llvm_type(ccx)
+                ], false)
+            }
+        }
+    }
+}
 
 /// Information about how a specific C type
 /// should be passed to or returned from a function
 ///
 /// This is borrowed from clang's ABIInfo.h
 #[derive(Clone, Copy, Debug)]
-pub struct ArgType {
+pub struct ArgType<'tcx> {
     kind: ArgKind,
-    /// Original LLVM type
-    pub original_ty: Type,
-    /// Sizing LLVM type (pointers are opaque).
-    /// Unlike original_ty, this is guaranteed to be complete.
-    ///
-    /// For example, while we're computing the function pointer type in
-    /// `struct Foo(fn(Foo));`, `original_ty` is still LLVM's `%Foo = {}`.
-    /// The field type will likely end up being `void(%Foo)*`, but we cannot
-    /// use `%Foo` to compute properties (e.g. size and alignment) of `Foo`,
-    /// until `%Foo` is completed by having all of its field types inserted,
-    /// so `ty` holds the "sizing type" of `Foo`, which replaces all pointers
-    /// with opaque ones, resulting in `{i8*}` for `Foo`.
-    /// ABI-specific logic can then look at the size, alignment and fields of
-    /// `{i8*}` in order to determine how the argument will be passed.
-    /// Only later will `original_ty` aka `%Foo` be used in the LLVM function
-    /// pointer type, without ever having introspected it.
-    pub ty: Type,
-    /// Signedness for integer types, None for other types
-    pub signedness: Option<bool>,
+    pub layout: TyLayout<'tcx>,
     /// Coerced LLVM Type
     pub cast: Option<Type>,
     /// Dummy argument, which is emitted before the real argument
@@ -166,26 +429,24 @@ pub struct ArgType {
     pub attrs: ArgAttributes
 }
 
-impl ArgType {
-    fn new(original_ty: Type, ty: Type) -> ArgType {
+impl<'a, 'tcx> ArgType<'tcx> {
+    fn new(layout: TyLayout<'tcx>) -> ArgType<'tcx> {
         ArgType {
             kind: ArgKind::Direct,
-            original_ty: original_ty,
-            ty: ty,
-            signedness: None,
+            layout: layout,
             cast: None,
             pad: None,
             attrs: ArgAttributes::default()
         }
     }
 
-    pub fn make_indirect(&mut self, ccx: &CrateContext) {
+    pub fn make_indirect(&mut self, ccx: &CrateContext<'a, 'tcx>) {
         assert_eq!(self.kind, ArgKind::Direct);
 
         // Wipe old attributes, likely not valid through indirection.
         self.attrs = ArgAttributes::default();
 
-        let llarg_sz = llsize_of_alloc(ccx, self.ty);
+        let llarg_sz = self.layout.size(ccx).bytes();
 
         // For non-immediate arguments the callee gets its own copy of
         // the value on the stack, so there are no aliases. It's also
@@ -204,15 +465,42 @@ impl ArgType {
 
     pub fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
-        if let Some(signed) = self.signedness {
-            if self.ty.int_width() < bits {
-                self.attrs.set(if signed {
-                    ArgAttribute::SExt
-                } else {
-                    ArgAttribute::ZExt
-                });
+        let (i, signed) = match *self.layout {
+            Layout::Scalar { value, .. } => {
+                match value {
+                    layout::Int(i) => {
+                        if self.layout.ty.is_integral() {
+                            (i, self.layout.ty.is_signed())
+                        } else {
+                            return;
+                        }
+                    }
+                    _ => return
+                }
             }
+
+            // Rust enum types that map onto C enums also need to follow
+            // the target ABI zero-/sign-extension rules.
+            Layout::CEnum { discr, signed, .. } => (discr, signed),
+
+            _ => return
+        };
+
+        if i.size().bits() < bits {
+            self.attrs.set(if signed {
+                ArgAttribute::SExt
+            } else {
+                ArgAttribute::ZExt
+            });
         }
+    }
+
+    pub fn cast_to<T: Into<CastTarget>>(&mut self, ccx: &CrateContext, target: T) {
+        self.cast = Some(target.into().llvm_type(ccx));
+    }
+
+    pub fn pad_with(&mut self, ccx: &CrateContext, reg: Reg) {
+        self.pad = Some(reg.llvm_type(ccx));
     }
 
     pub fn is_indirect(&self) -> bool {
@@ -225,26 +513,22 @@ impl ArgType {
 
     /// Get the LLVM type for an lvalue of the original Rust type of
     /// this argument/return, i.e. the result of `type_of::type_of`.
-    pub fn memory_ty(&self, ccx: &CrateContext) -> Type {
-        if self.original_ty == Type::i1(ccx) {
-            Type::i8(ccx)
-        } else {
-            self.original_ty
-        }
+    pub fn memory_ty(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
+        type_of::type_of(ccx, self.layout.ty)
     }
 
     /// Store a direct/indirect value described by this ArgType into a
     /// lvalue for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
     /// or results of call/invoke instructions into their destinations.
-    pub fn store(&self, bcx: &Builder, mut val: ValueRef, dst: ValueRef) {
+    pub fn store(&self, bcx: &Builder<'a, 'tcx>, mut val: ValueRef, dst: ValueRef) {
         if self.is_ignore() {
             return;
         }
         let ccx = bcx.ccx;
         if self.is_indirect() {
-            let llsz = llsize_of(ccx, self.ty);
-            let llalign = llalign_of_min(ccx, self.ty);
+            let llsz = C_uint(ccx, self.layout.size(ccx).bytes());
+            let llalign = self.layout.align(ccx).abi();
             base::call_memcpy(bcx, dst, val, llsz, llalign as u32);
         } else if let Some(ty) = self.cast {
             // FIXME(eddyb): Figure out when the simpler Store is safe, clang
@@ -252,8 +536,8 @@ impl ArgType {
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
                 let cast_dst = bcx.pointercast(dst, ty.ptr_to());
-                let llalign = llalign_of_min(ccx, self.ty);
-                bcx.store(val, cast_dst, Some(llalign));
+                let llalign = self.layout.align(ccx).abi();
+                bcx.store(val, cast_dst, Some(llalign as u32));
             } else {
                 // The actual return type is a struct, but the ABI
                 // adaptation code has cast it into some scalar type.  The
@@ -270,7 +554,7 @@ impl ArgType {
                 //   bitcasting to the struct type yields invalid cast errors.
 
                 // We instead thus allocate some scratch space...
-                let llscratch = bcx.alloca(ty, "abi_cast");
+                let llscratch = bcx.alloca(ty, "abi_cast", None);
                 base::Lifetime::Start.call(bcx, llscratch);
 
                 // ...where we first store the value...
@@ -280,21 +564,21 @@ impl ArgType {
                 base::call_memcpy(bcx,
                                   bcx.pointercast(dst, Type::i8p(ccx)),
                                   bcx.pointercast(llscratch, Type::i8p(ccx)),
-                                  C_uint(ccx, llsize_of_alloc(ccx, self.ty)),
-                                  cmp::min(llalign_of_min(ccx, self.ty),
-                                           llalign_of_min(ccx, ty)) as u32);
+                                  C_uint(ccx, self.layout.size(ccx).bytes()),
+                                  cmp::min(self.layout.align(ccx).abi() as u32,
+                                           llalign_of_min(ccx, ty)));
 
                 base::Lifetime::End.call(bcx, llscratch);
             }
         } else {
-            if self.original_ty == Type::i1(ccx) {
+            if self.layout.ty == ccx.tcx().types.bool {
                 val = bcx.zext(val, Type::i8(ccx));
             }
             bcx.store(val, dst, None);
         }
     }
 
-    pub fn store_fn_arg(&self, bcx: &Builder, idx: &mut usize, dst: ValueRef) {
+    pub fn store_fn_arg(&self, bcx: &Builder<'a, 'tcx>, idx: &mut usize, dst: ValueRef) {
         if self.pad.is_some() {
             *idx += 1;
         }
@@ -313,30 +597,40 @@ impl ArgType {
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
 #[derive(Clone, Debug)]
-pub struct FnType {
+pub struct FnType<'tcx> {
     /// The LLVM types of each argument.
-    pub args: Vec<ArgType>,
+    pub args: Vec<ArgType<'tcx>>,
 
     /// LLVM return type.
-    pub ret: ArgType,
+    pub ret: ArgType<'tcx>,
 
     pub variadic: bool,
 
     pub cconv: llvm::CallConv
 }
 
-impl FnType {
-    pub fn new<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                         sig: ty::FnSig<'tcx>,
-                         extra_args: &[Ty<'tcx>]) -> FnType {
+impl<'a, 'tcx> FnType<'tcx> {
+    pub fn new(ccx: &CrateContext<'a, 'tcx>,
+               sig: ty::FnSig<'tcx>,
+               extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
         let mut fn_ty = FnType::unadjusted(ccx, sig, extra_args);
         fn_ty.adjust_for_abi(ccx, sig);
         fn_ty
     }
 
-    pub fn unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                sig: ty::FnSig<'tcx>,
-                                extra_args: &[Ty<'tcx>]) -> FnType {
+    pub fn new_vtable(ccx: &CrateContext<'a, 'tcx>,
+                      sig: ty::FnSig<'tcx>,
+                      extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
+        let mut fn_ty = FnType::unadjusted(ccx, sig, extra_args);
+        // Don't pass the vtable, it's not an argument of the virtual fn.
+        fn_ty.args[1].ignore();
+        fn_ty.adjust_for_abi(ccx, sig);
+        fn_ty
+    }
+
+    pub fn unadjusted(ccx: &CrateContext<'a, 'tcx>,
+                      sig: ty::FnSig<'tcx>,
+                      extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
         use self::Abi::*;
         let cconv = match ccx.sess().target.target.adjust_abi(sig.abi) {
             RustIntrinsic | PlatformIntrinsic |
@@ -348,6 +642,7 @@ impl FnType {
             Stdcall => llvm::X86StdcallCallConv,
             Fastcall => llvm::X86FastcallCallConv,
             Vectorcall => llvm::X86_VectorCall,
+            Thiscall => llvm::X86_ThisCall,
             C => llvm::CCallConv,
             Unadjusted => llvm::CCallConv,
             Win64 => llvm::X86_64_Win64,
@@ -368,7 +663,7 @@ impl FnType {
             match sig.inputs().last().unwrap().sty {
                 ty::TyTuple(ref tupled_arguments, _) => {
                     inputs = &sig.inputs()[0..sig.inputs().len() - 1];
-                    &tupled_arguments[..]
+                    tupled_arguments
                 }
                 _ => {
                     bug!("argument to function with \"rust-call\" ABI \
@@ -393,23 +688,11 @@ impl FnType {
         };
 
         let arg_of = |ty: Ty<'tcx>, is_return: bool| {
+            let mut arg = ArgType::new(ccx.layout_of(ty));
             if ty.is_bool() {
-                let llty = Type::i1(ccx);
-                let mut arg = ArgType::new(llty, llty);
                 arg.attrs.set(ArgAttribute::ZExt);
-                arg
             } else {
-                let mut arg = ArgType::new(type_of::type_of(ccx, ty),
-                                           type_of::sizing_type_of(ccx, ty));
-                if ty.is_integral() {
-                    arg.signedness = Some(ty.is_signed());
-                }
-                // Rust enum types that map onto C enums also need to follow
-                // the target ABI zero-/sign-extension rules.
-                if let Layout::CEnum { signed, .. } = *ccx.layout_of(ty) {
-                    arg.signedness = Some(signed);
-                }
-                if llsize_of_alloc(ccx, arg.ty) == 0 {
+                if arg.layout.size(ccx).bytes() == 0 {
                     // For some forsaken reason, x86_64-pc-windows-gnu
                     // doesn't ignore zero-sized struct arguments.
                     // The same is true for s390x-unknown-linux-gnu.
@@ -418,8 +701,8 @@ impl FnType {
                         arg.ignore();
                     }
                 }
-                arg
             }
+            arg
         };
 
         let ret_ty = sig.output();
@@ -438,14 +721,10 @@ impl FnType {
             match ret_ty.sty {
                 // These are not really pointers but pairs, (pointer, len)
                 ty::TyRef(_, ty::TypeAndMut { ty, .. }) => {
-                    let llty = type_of::sizing_type_of(ccx, ty);
-                    let llsz = llsize_of_alloc(ccx, llty);
-                    ret.attrs.set_dereferenceable(llsz);
+                    ret.attrs.set_dereferenceable(ccx.size_of(ty));
                 }
                 ty::TyAdt(def, _) if def.is_box() => {
-                    let llty = type_of::sizing_type_of(ccx, ret_ty.boxed_ty());
-                    let llsz = llsize_of_alloc(ccx, llty);
-                    ret.attrs.set_dereferenceable(llsz);
+                    ret.attrs.set_dereferenceable(ccx.size_of(ret_ty.boxed_ty()));
                 }
                 _ => {}
             }
@@ -469,13 +748,13 @@ impl FnType {
                 // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as
                 // both `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely
                 // on memory dependencies rather than pointer equality
-                let interior_unsafe = mt.ty.type_contents(ccx.tcx()).interior_unsafe();
+                let is_freeze = ccx.shared().type_is_freeze(mt.ty);
 
-                if mt.mutbl != hir::MutMutable && !interior_unsafe {
+                if mt.mutbl != hir::MutMutable && is_freeze {
                     arg.attrs.set(ArgAttribute::NoAlias);
                 }
 
-                if mt.mutbl == hir::MutImmutable && !interior_unsafe {
+                if mt.mutbl == hir::MutImmutable && is_freeze {
                     arg.attrs.set(ArgAttribute::ReadOnly);
                 }
 
@@ -494,13 +773,9 @@ impl FnType {
         for ty in inputs.iter().chain(extra_args.iter()) {
             let mut arg = arg_of(ty, false);
 
-            if type_is_fat_ptr(ccx, ty) {
-                let original_tys = arg.original_ty.field_types();
-                let sizing_tys = arg.ty.field_types();
-                assert_eq!((original_tys.len(), sizing_tys.len()), (2, 2));
-
-                let mut data = ArgType::new(original_tys[0], sizing_tys[0]);
-                let mut info = ArgType::new(original_tys[1], sizing_tys[1]);
+            if let ty::layout::FatPointer { .. } = *arg.layout {
+                let mut data = ArgType::new(arg.layout.field(ccx, 0));
+                let mut info = ArgType::new(arg.layout.field(ccx, 1));
 
                 if let Some(inner) = rust_ptr_attrs(ty, &mut data) {
                     data.attrs.set(ArgAttribute::NonNull);
@@ -516,9 +791,7 @@ impl FnType {
                 args.push(info);
             } else {
                 if let Some(inner) = rust_ptr_attrs(ty, &mut arg) {
-                    let llty = type_of::sizing_type_of(ccx, inner);
-                    let llsz = llsize_of_alloc(ccx, llty);
-                    arg.attrs.set_dereferenceable(llsz);
+                    arg.attrs.set_dereferenceable(ccx.size_of(inner));
                 }
                 args.push(arg);
             }
@@ -532,43 +805,51 @@ impl FnType {
         }
     }
 
-    pub fn adjust_for_abi<'a, 'tcx>(&mut self,
-                                    ccx: &CrateContext<'a, 'tcx>,
-                                    sig: ty::FnSig<'tcx>) {
+    fn adjust_for_abi(&mut self,
+                      ccx: &CrateContext<'a, 'tcx>,
+                      sig: ty::FnSig<'tcx>) {
         let abi = sig.abi;
         if abi == Abi::Unadjusted { return }
 
         if abi == Abi::Rust || abi == Abi::RustCall ||
            abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
-            let fixup = |arg: &mut ArgType| {
-                let mut llty = arg.ty;
-
-                // Replace newtypes with their inner-most type.
-                while llty.kind() == llvm::TypeKind::Struct {
-                    let inner = llty.field_types();
-                    if inner.len() != 1 {
-                        break;
-                    }
-                    llty = inner[0];
-                }
-
-                if !llty.is_aggregate() {
-                    // Scalars and vectors, always immediate.
-                    if llty != arg.ty {
-                        // Needs a cast as we've unpacked a newtype.
-                        arg.cast = Some(llty);
-                    }
+            let fixup = |arg: &mut ArgType<'tcx>| {
+                if !arg.layout.is_aggregate() {
                     return;
                 }
 
-                let size = llsize_of_alloc(ccx, llty);
-                if size > llsize_of_alloc(ccx, ccx.int_type()) {
+                let size = arg.layout.size(ccx);
+
+                if let Some(unit) = arg.layout.homogenous_aggregate(ccx) {
+                    // Replace newtypes with their inner-most type.
+                    if unit.size == size {
+                        // Needs a cast as we've unpacked a newtype.
+                        arg.cast_to(ccx, unit);
+                        return;
+                    }
+
+                    // Pairs of floats.
+                    if unit.kind == RegKind::Float {
+                        if unit.size.checked_mul(2, ccx) == Some(size) {
+                            // FIXME(eddyb) This should be using Uniform instead of a pair,
+                            // but the resulting [2 x float/double] breaks emscripten.
+                            // See https://github.com/kripken/emscripten-fastcomp/issues/178.
+                            arg.cast_to(ccx, CastTarget::Pair(unit, unit));
+                            return;
+                        }
+                    }
+                }
+
+                if size > layout::Pointer.size(ccx) {
                     arg.make_indirect(ccx);
-                } else if size > 0 {
+                } else {
                     // We want to pass small aggregates as immediates, but using
                     // a LLVM aggregate type for this leads to bad optimizations,
                     // so we pick an appropriately sized integer type instead.
-                    arg.cast = Some(Type::ix(ccx, size * 8));
+                    arg.cast_to(ccx, Reg {
+                        kind: RegKind::Integer,
+                        size
+                    });
                 }
             };
             // Fat pointers are returned by-value.
@@ -604,14 +885,7 @@ impl FnType {
                 cabi_x86_64::compute_abi_info(ccx, self);
             },
             "aarch64" => cabi_aarch64::compute_abi_info(ccx, self),
-            "arm" => {
-                let flavor = if ccx.sess().target.target.target_os == "ios" {
-                    cabi_arm::Flavor::Ios
-                } else {
-                    cabi_arm::Flavor::General
-                };
-                cabi_arm::compute_abi_info(ccx, self, flavor);
-            },
+            "arm" => cabi_arm::compute_abi_info(ccx, self),
             "mips" => cabi_mips::compute_abi_info(ccx, self),
             "mips64" => cabi_mips64::compute_abi_info(ccx, self),
             "powerpc" => cabi_powerpc::compute_abi_info(ccx, self),
@@ -624,6 +898,7 @@ impl FnType {
             "sparc64" => cabi_sparc64::compute_abi_info(ccx, self),
             "nvptx" => cabi_nvptx::compute_abi_info(ccx, self),
             "nvptx64" => cabi_nvptx64::compute_abi_info(ccx, self),
+            "hexagon" => cabi_hexagon::compute_abi_info(ccx, self),
             a => ccx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a))
         }
 
@@ -632,16 +907,18 @@ impl FnType {
         }
     }
 
-    pub fn llvm_type(&self, ccx: &CrateContext) -> Type {
+    pub fn llvm_type(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
         let mut llargument_tys = Vec::new();
 
         let llreturn_ty = if self.ret.is_ignore() {
             Type::void(ccx)
         } else if self.ret.is_indirect() {
-            llargument_tys.push(self.ret.original_ty.ptr_to());
+            llargument_tys.push(self.ret.memory_ty(ccx).ptr_to());
             Type::void(ccx)
         } else {
-            self.ret.cast.unwrap_or(self.ret.original_ty)
+            self.ret.cast.unwrap_or_else(|| {
+                type_of::immediate_type_of(ccx, self.ret.layout.ty)
+            })
         };
 
         for arg in &self.args {
@@ -654,9 +931,11 @@ impl FnType {
             }
 
             let llarg_ty = if arg.is_indirect() {
-                arg.original_ty.ptr_to()
+                arg.memory_ty(ccx).ptr_to()
             } else {
-                arg.cast.unwrap_or(arg.original_ty)
+                arg.cast.unwrap_or_else(|| {
+                    type_of::immediate_type_of(ccx, arg.layout.ty)
+                })
             };
 
             llargument_tys.push(llarg_ty);
@@ -704,72 +983,6 @@ impl FnType {
     }
 }
 
-pub fn align_up_to(off: usize, a: usize) -> usize {
-    return (off + a - 1) / a * a;
-}
-
-fn align(off: usize, ty: Type, pointer: usize) -> usize {
-    let a = ty_align(ty, pointer);
-    return align_up_to(off, a);
-}
-
-pub fn ty_align(ty: Type, pointer: usize) -> usize {
-    match ty.kind() {
-        Integer => ((ty.int_width() as usize) + 7) / 8,
-        Pointer => pointer,
-        Float => 4,
-        Double => 8,
-        Struct => {
-            if ty.is_packed() {
-                1
-            } else {
-                let str_tys = ty.field_types();
-                str_tys.iter().fold(1, |a, t| cmp::max(a, ty_align(*t, pointer)))
-            }
-        }
-        Array => {
-            let elt = ty.element_type();
-            ty_align(elt, pointer)
-        }
-        Vector => {
-            let len = ty.vector_length();
-            let elt = ty.element_type();
-            ty_align(elt, pointer) * len
-        }
-        _ => bug!("ty_align: unhandled type")
-    }
-}
-
-pub fn ty_size(ty: Type, pointer: usize) -> usize {
-    match ty.kind() {
-        Integer => ((ty.int_width() as usize) + 7) / 8,
-        Pointer => pointer,
-        Float => 4,
-        Double => 8,
-        Struct => {
-            if ty.is_packed() {
-                let str_tys = ty.field_types();
-                str_tys.iter().fold(0, |s, t| s + ty_size(*t, pointer))
-            } else {
-                let str_tys = ty.field_types();
-                let size = str_tys.iter().fold(0, |s, t| {
-                    align(s, *t, pointer) + ty_size(*t, pointer)
-                });
-                align(size, ty, pointer)
-            }
-        }
-        Array => {
-            let len = ty.array_length();
-            let elt = ty.element_type();
-            let eltsz = ty_size(elt, pointer);
-            len * eltsz
-        }
-        Vector => {
-            let len = ty.vector_length();
-            let elt = ty.element_type();
-            let eltsz = ty_size(elt, pointer);
-            len * eltsz
-        },
-        _ => bug!("ty_size: unhandled type")
-    }
+pub fn align_up_to(off: u64, a: u64) -> u64 {
+    (off + a - 1) / a * a
 }

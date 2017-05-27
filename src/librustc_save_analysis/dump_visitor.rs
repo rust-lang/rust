@@ -29,7 +29,7 @@
 
 use rustc::hir;
 use rustc::hir::def::Def;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map::{Node, NodeItem};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt, AssociatedItemContainer};
@@ -37,6 +37,7 @@ use rustc::ty::{self, TyCtxt, AssociatedItemContainer};
 use std::collections::HashSet;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::*;
+use std::path::Path;
 
 use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
 use syntax::parse::token;
@@ -53,6 +54,8 @@ use super::dump::Dump;
 use super::external_data::{Lower, make_def_id};
 use super::span_utils::SpanUtils;
 use super::recorder;
+
+use rls_data::ExternalCrateData;
 
 macro_rules! down_cast_data {
     ($id:ident, $kind:ident, $sp:expr) => {
@@ -112,20 +115,21 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         where F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, D>)
     {
         let item_def_id = self.tcx.hir.local_def_id(item_id);
-        match self.tcx.maps.typeck_tables.borrow().get(&item_def_id) {
-            Some(tables) => {
-                let old_tables = self.save_ctxt.tables;
-                self.save_ctxt.tables = tables;
-                f(self);
-                self.save_ctxt.tables = old_tables;
-            }
-            None => f(self),
+        if self.tcx.has_typeck_tables(item_def_id) {
+            let tables = self.tcx.typeck_tables_of(item_def_id);
+            let old_tables = self.save_ctxt.tables;
+            self.save_ctxt.tables = tables;
+            f(self);
+            self.save_ctxt.tables = old_tables;
+        } else {
+            f(self);
         }
     }
 
     pub fn dump_crate_info(&mut self, name: &str, krate: &ast::Crate) {
         let source_file = self.tcx.sess.local_crate_source_file.as_ref();
         let crate_root = source_file.map(|source_file| {
+            let source_file = Path::new(source_file);
             match source_file.file_name() {
                 Some(_) => source_file.parent().unwrap().display().to_string(),
                 None => source_file.display().to_string(),
@@ -137,7 +141,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             let lo_loc = self.span.sess.codemap().lookup_char_pos(c.span.lo);
             ExternalCrateData {
                 name: c.name,
-                num: CrateNum::from_u32(c.number),
+                num: c.number,
                 file_name: SpanUtils::make_path_string(&lo_loc.file.name),
             }
         }).collect();
@@ -339,6 +343,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             Def::AssociatedTy(..) |
             Def::AssociatedConst(..) |
             Def::PrimTy(_) |
+            Def::GlobalAsm(_) |
             Def::Err => {
                span_bug!(span,
                          "process_def_kind for unexpected item: {:?}",
@@ -427,7 +432,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             }
                             None => {
                                 if let Some(NodeItem(item)) = self.tcx.hir.get_if_local(id) {
-                                    if let hir::ItemImpl(_, _, _, _, ref ty, _) = item.node {
+                                    if let hir::ItemImpl(_, _, _, _, _, ref ty, _) = item.node {
                                         trait_id = self.lookup_def_id(ty.id);
                                     }
                                 }
@@ -1147,8 +1152,32 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                                     &trait_item.attrs,
                                     trait_item.span);
             }
-            ast::TraitItemKind::Const(_, None) |
-            ast::TraitItemKind::Type(..) |
+            ast::TraitItemKind::Type(ref _bounds, ref default_ty) => {
+                // FIXME do something with _bounds (for type refs)
+                let name = trait_item.ident.name.to_string();
+                let qualname = format!("::{}", self.tcx.node_path_str(trait_item.id));
+                let sub_span = self.span.sub_span_after_keyword(trait_item.span, keywords::Type);
+
+                if !self.span.filter_generated(sub_span, trait_item.span) {
+                    self.dumper.typedef(TypeDefData {
+                        span: sub_span.expect("No span found for assoc type"),
+                        name: name,
+                        id: trait_item.id,
+                        qualname: qualname,
+                        value: self.span.snippet(trait_item.span),
+                        visibility: Visibility::Public,
+                        parent: Some(trait_id),
+                        docs: docs_for_attrs(&trait_item.attrs),
+                        sig: None,
+                        attributes: trait_item.attrs.clone(),
+                    }.lower(self.tcx));
+                }
+
+                if let &Some(ref default_ty) = default_ty {
+                    self.visit_ty(default_ty)
+                }
+            }
+            ast::TraitItemKind::Const(ref ty, None) => self.visit_ty(ty),
             ast::TraitItemKind::Macro(_) => {}
         }
     }
@@ -1175,13 +1204,38 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                                     &impl_item.attrs,
                                     impl_item.span);
             }
-            ast::ImplItemKind::Type(_) |
+            ast::ImplItemKind::Type(ref ty) => self.visit_ty(ty),
             ast::ImplItemKind::Macro(_) => {}
         }
     }
 }
 
 impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll, D> {
+    fn visit_mod(&mut self, m: &'l ast::Mod, span: Span, attrs: &[ast::Attribute], id: NodeId) {
+        // Since we handle explicit modules ourselves in visit_item, this should
+        // only get called for the root module of a crate.
+        assert_eq!(id, ast::CRATE_NODE_ID);
+
+        let qualname = format!("::{}", self.tcx.node_path_str(id));
+
+        let cm = self.tcx.sess.codemap();
+        let filename = cm.span_to_filename(span);
+        self.dumper.mod_data(ModData {
+            id: id,
+            name: String::new(),
+            qualname: qualname,
+            span: span,
+            scope: id,
+            filename: filename,
+            items: m.items.iter().map(|i| i.id).collect(),
+            visibility: Visibility::Public,
+            docs: docs_for_attrs(attrs),
+            sig: None,
+            attributes: attrs.to_owned(),
+        }.lower(self.tcx));
+        self.nest_scope(id, |v| visit::walk_mod(v, m));
+    }
+
     fn visit_item(&mut self, item: &'l ast::Item) {
         use syntax::ast::ItemKind::*;
         self.process_macro_use(item.span, item.id);
@@ -1375,15 +1429,6 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
         debug!("visit_expr {:?}", ex.node);
         self.process_macro_use(ex.span, ex.id);
         match ex.node {
-            ast::ExprKind::Call(ref _f, ref _args) => {
-                // Don't need to do anything for function calls,
-                // because just walking the callee path does what we want.
-                visit::walk_expr(self, ex);
-            }
-            ast::ExprKind::Path(_, ref path) => {
-                self.process_path(ex.id, path, None);
-                visit::walk_expr(self, ex);
-            }
             ast::ExprKind::Struct(ref path, ref fields, ref base) => {
                 let hir_expr = self.save_ctxt.tcx.hir.expect_expr(ex.id);
                 let adt = match self.save_ctxt.tables.expr_ty_opt(&hir_expr) {
@@ -1481,6 +1526,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                 self.visit_expr(element);
                 self.nest_tables(count.id, |v| v.visit_expr(count));
             }
+            // In particular, we take this branch for call and path expressions,
+            // where we'll index the idents involved just by continuing to walk.
             _ => {
                 visit::walk_expr(self, ex)
             }
@@ -1579,5 +1626,40 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
         // Just walk the initialiser and type (don't want to walk the pattern again).
         walk_list!(self, visit_ty, &l.ty);
         walk_list!(self, visit_expr, &l.init);
+    }
+
+    fn visit_foreign_item(&mut self, item: &'l ast::ForeignItem) {
+        match item.node {
+            ast::ForeignItemKind::Fn(ref decl, ref generics) => {
+                if let Some(fn_data) = self.save_ctxt.get_extern_item_data(item) {
+                    down_cast_data!(fn_data, FunctionData, item.span);
+                    if !self.span.filter_generated(Some(fn_data.span), item.span) {
+                        self.dumper.function(fn_data.clone().lower(self.tcx));
+                    }
+
+                    self.nest_tables(item.id, |v| v.process_formals(&decl.inputs,
+                                                                    &fn_data.qualname));
+                    self.process_generic_params(generics, item.span, &fn_data.qualname, item.id);
+                }
+
+                for arg in &decl.inputs {
+                    self.visit_ty(&arg.ty);
+                }
+
+                if let ast::FunctionRetTy::Ty(ref ret_ty) = decl.output {
+                    self.visit_ty(&ret_ty);
+                }
+            }
+            ast::ForeignItemKind::Static(ref ty, _) => {
+                if let Some(var_data) = self.save_ctxt.get_extern_item_data(item) {
+                    down_cast_data!(var_data, VariableData, item.span);
+                    if !self.span.filter_generated(Some(var_data.span), item.span) {
+                        self.dumper.variable(var_data.lower(self.tcx));
+                    }
+                }
+
+                self.visit_ty(ty);
+            }
+        }
     }
 }

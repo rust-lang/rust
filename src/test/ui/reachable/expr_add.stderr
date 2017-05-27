@@ -1,0 +1,14 @@
+error: unreachable expression
+  --> $DIR/expr_add.rs:27:13
+   |
+27 |     let x = Foo + return;
+   |             ^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/expr_add.rs:13:9
+   |
+13 | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error(s)
+

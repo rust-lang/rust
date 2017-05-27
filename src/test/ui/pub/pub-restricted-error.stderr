@@ -1,0 +1,8 @@
+error: expected identifier, found `(`
+  --> $DIR/pub-restricted-error.rs:16:16
+   |
+16 |     pub(crate) () foo: usize,
+   |                ^
+
+error: aborting due to previous error(s)
+

@@ -40,7 +40,7 @@ pub use intrinsics::transmute;
 /// `forget` is not marked as `unsafe`, because Rust's safety guarantees
 /// do not include a guarantee that destructors will always run. For example,
 /// a program can create a reference cycle using [`Rc`][rc], or call
-/// [`process:exit`][exit] to exit without running destructors. Thus, allowing
+/// [`process::exit`][exit] to exit without running destructors. Thus, allowing
 /// `mem::forget` from safe code does not fundamentally change Rust's safety
 /// guarantees.
 ///
@@ -164,14 +164,14 @@ pub use intrinsics::transmute;
 /// [uninit]: fn.uninitialized.html
 /// [clone]: ../clone/trait.Clone.html
 /// [swap]: fn.swap.html
-/// [FFI]: ../../book/ffi.html
+/// [FFI]: ../../book/first-edition/ffi.html
 /// [box]: ../../std/boxed/struct.Box.html
 /// [into_raw]: ../../std/boxed/struct.Box.html#method.into_raw
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn forget<T>(t: T) {
-    unsafe { intrinsics::forget(t) }
+    ManuallyDrop::new(t);
 }
 
 /// Returns the size of a type in bytes.
@@ -199,7 +199,7 @@ pub fn size_of<T>() -> usize {
 /// then `size_of_val` can be used to get the dynamically-known size.
 ///
 /// [slice]: ../../std/primitive.slice.html
-/// [trait object]: ../../book/trait-objects.html
+/// [trait object]: ../../book/first-edition/trait-objects.html
 ///
 /// # Examples
 ///
@@ -302,6 +302,58 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
     unsafe { intrinsics::min_align_of_val(val) }
 }
 
+/// Returns whether dropping values of type `T` matters.
+///
+/// This is purely an optimization hint, and may be implemented conservatively.
+/// For instance, always returning `true` would be a valid implementation of
+/// this function.
+///
+/// Low level implementations of things like collections, which need to manually
+/// drop their data, should use this function to avoid unnecessarily
+/// trying to drop all their contents when they are destroyed. This might not
+/// make a difference in release builds (where a loop that has no side-effects
+/// is easily detected and eliminated), but is often a big win for debug builds.
+///
+/// Note that `ptr::drop_in_place` already performs this check, so if your workload
+/// can be reduced to some small number of drop_in_place calls, using this is
+/// unnecessary. In particular note that you can drop_in_place a slice, and that
+/// will do a single needs_drop check for all the values.
+///
+/// Types like Vec therefore just `drop_in_place(&mut self[..])` without using
+/// needs_drop explicitly. Types like HashMap, on the other hand, have to drop
+/// values one at a time and should use this API.
+///
+///
+/// # Examples
+///
+/// Here's an example of how a collection might make use of needs_drop:
+///
+/// ```ignore
+/// #![feature(needs_drop)]
+/// use std::{mem, ptr};
+///
+/// pub struct MyCollection<T> { /* ... */ }
+///
+/// impl<T> Drop for MyCollection<T> {
+///     fn drop(&mut self) {
+///         unsafe {
+///             // drop the data
+///             if mem::needs_drop::<T>() {
+///                 for x in self.iter_mut() {
+///                     ptr::drop_in_place(x);
+///                 }
+///             }
+///             self.free_buffer();
+///         }
+///     }
+/// }
+/// ```
+#[inline]
+#[unstable(feature = "needs_drop", issue = "41890")]
+pub fn needs_drop<T>() -> bool {
+    unsafe { intrinsics::needs_drop::<T>() }
+}
+
 /// Creates a value whose bytes are all zero.
 ///
 /// This has the same effect as allocating space with
@@ -317,7 +369,7 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// many of the same caveats.
 ///
 /// [uninit]: fn.uninitialized.html
-/// [FFI]: ../../book/ffi.html
+/// [FFI]: ../../book/first-edition/ffi.html
 /// [ub]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Examples
@@ -343,7 +395,7 @@ pub unsafe fn zeroed<T>() -> T {
 /// This is useful for [FFI] functions and initializing arrays sometimes,
 /// but should generally be avoided.
 ///
-/// [FFI]: ../../book/ffi.html
+/// [FFI]: ../../book/first-edition/ffi.html
 ///
 /// # Undefined behavior
 ///
@@ -576,7 +628,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// it will not release any borrows, as borrows are based on lexical scope.
 ///
 /// This effectively does nothing for
-/// [types which implement `Copy`](../../book/ownership.html#copy-types),
+/// [types which implement `Copy`](../../book/first-edition/ownership.html#copy-types),
 /// e.g. integers. Such values are copied and _then_ moved into the function,
 /// so the value persists after this function call.
 ///
@@ -668,7 +720,7 @@ pub fn drop<T>(_x: T) { }
 /// the contained value.
 ///
 /// This function will unsafely assume the pointer `src` is valid for
-/// [`size_of::<U>()`][size_of] bytes by transmuting `&T` to `&U` and then reading
+/// [`size_of::<U>`][size_of] bytes by transmuting `&T` to `&U` and then reading
 /// the `&U`. It will also unsafely create a copy of the contained value instead of
 /// moving out of `src`.
 ///
@@ -787,3 +839,121 @@ pub fn discriminant<T>(v: &T) -> Discriminant<T> {
     }
 }
 
+
+/// A wrapper to inhibit compiler from automatically calling `T`’s destructor.
+///
+/// This wrapper is 0-cost.
+///
+/// # Examples
+///
+/// This wrapper helps with explicitly documenting the drop order dependencies between fields of
+/// the type:
+///
+/// ```rust
+/// # #![feature(manually_drop)]
+/// use std::mem::ManuallyDrop;
+/// struct Peach;
+/// struct Banana;
+/// struct Melon;
+/// struct FruitBox {
+///     // Immediately clear there’s something non-trivial going on with these fields.
+///     peach: ManuallyDrop<Peach>,
+///     melon: Melon, // Field that’s independent of the other two.
+///     banana: ManuallyDrop<Banana>,
+/// }
+///
+/// impl Drop for FruitBox {
+///     fn drop(&mut self) {
+///         unsafe {
+///             // Explicit ordering in which field destructors are run specified in the intuitive
+///             // location – the destructor of the structure containing the fields.
+///             // Moreover, one can now reorder fields within the struct however much they want.
+///             ManuallyDrop::drop(&mut self.peach);
+///             ManuallyDrop::drop(&mut self.banana);
+///         }
+///         // After destructor for `FruitBox` runs (this function), the destructor for Melon gets
+///         // invoked in the usual manner, as it is not wrapped in `ManuallyDrop`.
+///     }
+/// }
+/// ```
+#[unstable(feature = "manually_drop", issue = "40673")]
+#[allow(unions_with_drop_fields)]
+pub union ManuallyDrop<T>{ value: T }
+
+impl<T> ManuallyDrop<T> {
+    /// Wrap a value to be manually dropped.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # #![feature(manually_drop)]
+    /// use std::mem::ManuallyDrop;
+    /// ManuallyDrop::new(Box::new(()));
+    /// ```
+    #[unstable(feature = "manually_drop", issue = "40673")]
+    #[inline]
+    pub fn new(value: T) -> ManuallyDrop<T> {
+        ManuallyDrop { value: value }
+    }
+
+    /// Extract the value from the ManuallyDrop container.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # #![feature(manually_drop)]
+    /// use std::mem::ManuallyDrop;
+    /// let x = ManuallyDrop::new(Box::new(()));
+    /// let _: Box<()> = ManuallyDrop::into_inner(x);
+    /// ```
+    #[unstable(feature = "manually_drop", issue = "40673")]
+    #[inline]
+    pub fn into_inner(slot: ManuallyDrop<T>) -> T {
+        unsafe {
+            slot.value
+        }
+    }
+
+    /// Manually drops the contained value.
+    ///
+    /// # Unsafety
+    ///
+    /// This function runs the destructor of the contained value and thus the wrapped value
+    /// now represents uninitialized data. It is up to the user of this method to ensure the
+    /// uninitialized data is not actually used.
+    #[unstable(feature = "manually_drop", issue = "40673")]
+    #[inline]
+    pub unsafe fn drop(slot: &mut ManuallyDrop<T>) {
+        ptr::drop_in_place(&mut slot.value)
+    }
+}
+
+#[unstable(feature = "manually_drop", issue = "40673")]
+impl<T> ::ops::Deref for ManuallyDrop<T> {
+    type Target = T;
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe {
+            &self.value
+        }
+    }
+}
+
+#[unstable(feature = "manually_drop", issue = "40673")]
+impl<T> ::ops::DerefMut for ManuallyDrop<T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe {
+            &mut self.value
+        }
+    }
+}
+
+#[unstable(feature = "manually_drop", issue = "40673")]
+impl<T: ::fmt::Debug> ::fmt::Debug for ManuallyDrop<T> {
+    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+        unsafe {
+            fmt.debug_tuple("ManuallyDrop").field(&self.value).finish()
+        }
+    }
+}

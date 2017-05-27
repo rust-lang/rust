@@ -18,16 +18,14 @@ mod raii;
 mod safe;
 mod shadow;
 mod thread;
-mod visit;
 
 pub use self::dep_tracking_map::{DepTrackingMap, DepTrackingMapConfig};
 pub use self::dep_node::DepNode;
 pub use self::dep_node::WorkProductId;
+pub use self::dep_node::GlobalMetaDataKind;
 pub use self::graph::DepGraph;
 pub use self::graph::WorkProduct;
 pub use self::query::DepGraphQuery;
 pub use self::safe::AssertDepGraphSafe;
 pub use self::safe::DepGraphSafe;
-pub use self::visit::visit_all_bodies_in_krate;
-pub use self::visit::visit_all_item_likes_in_krate;
 pub use self::raii::DepTask;

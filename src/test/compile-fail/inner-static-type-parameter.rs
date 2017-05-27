@@ -14,7 +14,7 @@ enum Bar<T> { What } //~ ERROR parameter `T` is never used
 
 fn foo<T>() {
     static a: Bar<T> = Bar::What;
-    //~^ ERROR cannot use an outer type parameter in this context
+//~^ ERROR can't use type parameters from outer function; try using a local type parameter instead
 }
 
 fn main() {

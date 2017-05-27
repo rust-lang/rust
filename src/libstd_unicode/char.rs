@@ -49,10 +49,10 @@ pub use tables::UNICODE_VERSION;
 
 /// Returns an iterator that yields the lowercase equivalent of a `char`.
 ///
-/// This `struct` is created by the [`to_lowercase()`] method on [`char`]. See
+/// This `struct` is created by the [`to_lowercase`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`to_lowercase()`]: ../../std/primitive.char.html#method.to_lowercase
+/// [`to_lowercase`]: ../../std/primitive.char.html#method.to_lowercase
 /// [`char`]: ../../std/primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ToLowercase(CaseMappingIter);
@@ -70,10 +70,10 @@ impl FusedIterator for ToLowercase {}
 
 /// Returns an iterator that yields the uppercase equivalent of a `char`.
 ///
-/// This `struct` is created by the [`to_uppercase()`] method on [`char`]. See
+/// This `struct` is created by the [`to_uppercase`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`to_uppercase()`]: ../../std/primitive.char.html#method.to_uppercase
+/// [`to_uppercase`]: ../../std/primitive.char.html#method.to_uppercase
 /// [`char`]: ../../std/primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ToUppercase(CaseMappingIter);
@@ -183,7 +183,7 @@ impl char {
     /// * `a-z`
     /// * `A-Z`
     ///
-    /// For a more comprehensive understanding of 'digit', see [`is_numeric()`][is_numeric].
+    /// For a more comprehensive understanding of 'digit', see [`is_numeric`][is_numeric].
     ///
     /// [is_numeric]: #method.is_numeric
     ///
@@ -465,10 +465,10 @@ impl char {
     /// Returns the number of 16-bit code units this `char` would need if
     /// encoded in UTF-16.
     ///
-    /// See the documentation for [`len_utf8()`] for more explanation of this
+    /// See the documentation for [`len_utf8`] for more explanation of this
     /// concept. This function is a mirror, but for UTF-16 instead of UTF-8.
     ///
-    /// [`len_utf8()`]: #method.len_utf8
+    /// [`len_utf8`]: #method.len_utf8
     ///
     /// # Examples
     ///
@@ -829,7 +829,8 @@ impl char {
     /// // Sometimes the result is more than one character:
     /// assert_eq!('İ'.to_lowercase().to_string(), "i\u{307}");
     ///
-    /// // Japanese scripts do not have case, and so:
+    /// // Characters that do not have both uppercase and lowercase
+    /// // convert into themselves.
     /// assert_eq!('山'.to_lowercase().to_string(), "山");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -841,11 +842,11 @@ impl char {
     /// Returns an iterator that yields the uppercase equivalent of a `char`
     /// as one or more `char`s.
     ///
-    /// If a character does not have a uppercase equivalent, the same character
+    /// If a character does not have an uppercase equivalent, the same character
     /// will be returned back by the iterator.
     ///
     /// This performs complex unconditional mappings with no tailoring: it maps
-    /// one Unicode character to its lowercase equivalent according to the
+    /// one Unicode character to its uppercase equivalent according to the
     /// [Unicode database] and the additional complex mappings
     /// [`SpecialCasing.txt`]. Conditional mappings (based on context or
     /// language) are not considered here.
@@ -889,7 +890,8 @@ impl char {
     /// // Sometimes the result is more than one character:
     /// assert_eq!('ß'.to_uppercase().to_string(), "SS");
     ///
-    /// // Japanese does not have case, and so:
+    /// // Characters that do not have both uppercase and lowercase
+    /// // convert into themselves.
     /// assert_eq!('山'.to_uppercase().to_string(), "山");
     /// ```
     ///

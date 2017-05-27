@@ -306,7 +306,8 @@
 //! `%`. The actual grammar for the formatting syntax is:
 //!
 //! ```text
-//! format_string := <text> [ format <text> ] *
+//! format_string := <text> [ maybe-format <text> ] *
+//! maybe-format := '{' '{' | '}' '}' | <format>
 //! format := '{' [ argument ] [ ':' format_spec ] '}'
 //! argument := integer | identifier
 //!
@@ -366,6 +367,10 @@
 //!         like `{:08}` would yield `00000001` for the integer `1`, while the
 //!         same format would yield `-0000001` for the integer `-1`. Notice that
 //!         the negative version has one fewer zero than the positive version.
+//!         Note that padding zeroes are always placed after the sign (if any)
+//!         and before the digits. When used together with the `#` flag, a similar
+//!         rule applies: padding zeroes are inserted after the prefix but before
+//!         the digits.
 //!
 //! ## Width
 //!

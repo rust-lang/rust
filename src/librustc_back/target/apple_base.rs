@@ -10,15 +10,15 @@
 
 use std::env;
 
-use target::TargetOptions;
+use target::{LinkArgs, TargetOptions};
 
 pub fn opts() -> TargetOptions {
-    // ELF TLS is only available in OSX 10.7+. If you try to compile for 10.6
+    // ELF TLS is only available in macOS 10.7+. If you try to compile for 10.6
     // either the linker will complain if it is used or the binary will end up
-    // segfaulting at runtime when run on 10.6. Rust by default supports OSX
+    // segfaulting at runtime when run on 10.6. Rust by default supports macOS
     // 10.7+, but there is a standard environment variable,
     // MACOSX_DEPLOYMENT_TARGET, which is used to signal targeting older
-    // versions of OSX. For example compiling on 10.10 with
+    // versions of macOS. For example compiling on 10.10 with
     // MACOSX_DEPLOYMENT_TARGET set to 10.6 will cause the linker to generate
     // warnings about the usage of ELF TLS.
     //
@@ -33,7 +33,7 @@ pub fn opts() -> TargetOptions {
     }).unwrap_or((10, 7));
 
     TargetOptions {
-        // OSX has -dead_strip, which doesn't rely on function_sections
+        // macOS has -dead_strip, which doesn't rely on function_sections
         function_sections: false,
         dynamic_linking: true,
         executables: true,
@@ -43,7 +43,7 @@ pub fn opts() -> TargetOptions {
         dll_prefix: "lib".to_string(),
         dll_suffix: ".dylib".to_string(),
         archive_format: "bsd".to_string(),
-        pre_link_args: Vec::new(),
+        pre_link_args: LinkArgs::new(),
         exe_allocation_crate: super::maybe_jemalloc(),
         has_elf_tls: version >= (10, 7),
         .. Default::default()

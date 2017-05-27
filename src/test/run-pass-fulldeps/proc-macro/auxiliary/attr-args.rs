@@ -30,3 +30,8 @@ pub fn attr_with_args(args: TokenStream, input: TokenStream) -> TokenStream {
         fn foo() -> &'static str { "Hello, world!" }
     "#.parse().unwrap()
 }
+
+#[proc_macro_attribute]
+pub fn identity(attr_args: TokenStream, _: TokenStream) -> TokenStream {
+    attr_args
+}

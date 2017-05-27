@@ -515,6 +515,7 @@ macro_rules! make_mir_visitor {
 
                     Rvalue::Aggregate(ref $($mutability)* kind,
                                       ref $($mutability)* operands) => {
+                        let kind = &$($mutability)* **kind;
                         match *kind {
                             AggregateKind::Array(ref $($mutability)* ty) => {
                                 self.visit_ty(ty);
@@ -630,12 +631,11 @@ macro_rules! make_mir_visitor {
                     ref $($mutability)* ty,
                     name: _,
                     ref $($mutability)* source_info,
+                    is_user_variable: _,
                 } = *local_decl;
 
                 self.visit_ty(ty);
-                if let Some(ref $($mutability)* info) = *source_info {
-                    self.visit_source_info(info);
-                }
+                self.visit_source_info(source_info);
             }
 
             fn super_visibility_scope(&mut self,
@@ -748,7 +748,7 @@ pub enum LvalueContext<'tcx> {
     Inspect,
 
     // Being borrowed
-    Borrow { region: &'tcx Region, kind: BorrowKind },
+    Borrow { region: Region<'tcx>, kind: BorrowKind },
 
     // Used as base for another lvalue, e.g. `x` in `x.y`.
     //

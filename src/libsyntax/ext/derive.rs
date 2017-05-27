@@ -9,73 +9,71 @@
 // except according to those terms.
 
 use attr::HasAttrs;
-use {ast, codemap};
+use ast;
+use codemap::{ExpnInfo, NameAndSpan, ExpnFormat};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
+use parse::parser::PathStyle;
 use symbol::Symbol;
 use syntax_pos::Span;
 
-pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec<(Symbol, Span)> {
+use std::collections::HashSet;
+
+pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec<ast::Path> {
     let mut result = Vec::new();
     attrs.retain(|attr| {
-        if attr.name() != "derive" {
+        if attr.path != "derive" {
             return true;
         }
 
-        if attr.value_str().is_some() {
-            cx.span_err(attr.span, "unexpected value in `derive`");
-            return false;
-        }
-
-        let traits = attr.meta_item_list().unwrap_or(&[]).to_owned();
-        if traits.is_empty() {
-            cx.span_warn(attr.span, "empty trait list in `derive`");
-            return false;
-        }
-
-        for titem in traits {
-            if titem.word().is_none() {
-                cx.span_err(titem.span, "malformed `derive` entry");
-                return false;
+        match attr.parse_list(cx.parse_sess,
+                              |parser| parser.parse_path_allowing_meta(PathStyle::Mod)) {
+            Ok(ref traits) if traits.is_empty() => {
+                cx.span_warn(attr.span, "empty trait list in `derive`");
+                false
             }
-            result.push((titem.name().unwrap(), titem.span));
+            Ok(traits) => {
+                result.extend(traits);
+                true
+            }
+            Err(mut e) => {
+                e.emit();
+                false
+            }
         }
-
-        true
     });
     result
 }
 
-fn allow_unstable(cx: &mut ExtCtxt, span: Span, attr_name: &str) -> Span {
-    Span {
-        expn_id: cx.codemap().record_expansion(codemap::ExpnInfo {
-            call_site: span,
-            callee: codemap::NameAndSpan {
-                format: codemap::MacroAttribute(Symbol::intern(attr_name)),
-                span: Some(span),
-                allow_internal_unstable: true,
-            },
-        }),
-        ..span
+pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path], item: T) -> T
+    where T: HasAttrs,
+{
+    let (mut names, mut pretty_name) = (HashSet::new(), "derive(".to_owned());
+    for (i, path) in traits.iter().enumerate() {
+        if i > 0 {
+            pretty_name.push_str(", ");
+        }
+        pretty_name.push_str(&path.to_string());
+        names.insert(unwrap_or!(path.segments.get(0), continue).identifier.name);
     }
-}
+    pretty_name.push(')');
 
-pub fn add_derived_markers<T: HasAttrs>(cx: &mut ExtCtxt, traits: &[(Symbol, Span)], item: T) -> T {
-    let span = match traits.get(0) {
-        Some(&(_, span)) => span,
-        None => return item,
-    };
+    cx.current_expansion.mark.set_expn_info(ExpnInfo {
+        call_site: span,
+        callee: NameAndSpan {
+            format: ExpnFormat::MacroAttribute(Symbol::intern(&pretty_name)),
+            span: None,
+            allow_internal_unstable: true,
+        },
+    });
 
+    let span = Span { ctxt: cx.backtrace(), ..span };
     item.map_attrs(|mut attrs| {
-        if traits.iter().any(|&(name, _)| name == "PartialEq") &&
-           traits.iter().any(|&(name, _)| name == "Eq") {
-            let span = allow_unstable(cx, span, "derive(PartialEq, Eq)");
+        if names.contains(&Symbol::intern("Eq")) && names.contains(&Symbol::intern("PartialEq")) {
             let meta = cx.meta_word(span, Symbol::intern("structural_match"));
             attrs.push(cx.attribute(span, meta));
         }
-        if traits.iter().any(|&(name, _)| name == "Copy") &&
-           traits.iter().any(|&(name, _)| name == "Clone") {
-            let span = allow_unstable(cx, span, "derive(Copy, Clone)");
+        if names.contains(&Symbol::intern("Copy")) && names.contains(&Symbol::intern("Clone")) {
             let meta = cx.meta_word(span, Symbol::intern("rustc_copy_clone_marker"));
             attrs.push(cx.attribute(span, meta));
         }

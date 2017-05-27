@@ -11,8 +11,11 @@ members = [
   "tools/rustbook",
   "tools/tidy",
   "tools/build-manifest",
-  "tools/qemu-test-client",
-  "tools/qemu-test-server",
+  "tools/remote-test-client",
+  "tools/remote-test-server",
+  "tools/rust-installer",
+  "tools/cargo",
+  "tools/rls",
 ]
 
 # Curiously, compiletest will segfault if compiled with opt-level=3 on 64-bit
@@ -31,3 +34,6 @@ debug-assertions = false
 [profile.test]
 debug = false
 debug-assertions = false
+
+[replace]
+"https://github.com/rust-lang/cargo#0.20.0" = { path = "tools/cargo" }

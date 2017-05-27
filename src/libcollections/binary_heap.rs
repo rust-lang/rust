@@ -20,11 +20,12 @@
 //!
 //! This is a larger example that implements [Dijkstra's algorithm][dijkstra]
 //! to solve the [shortest path problem][sssp] on a [directed graph][dir_graph].
-//! It shows how to use `BinaryHeap` with custom types.
+//! It shows how to use [`BinaryHeap`] with custom types.
 //!
 //! [dijkstra]: http://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
 //! [sssp]: http://en.wikipedia.org/wiki/Shortest_path_problem
 //! [dir_graph]: http://en.wikipedia.org/wiki/Directed_graph
+//! [`BinaryHeap`]: struct.BinaryHeap.html
 //!
 //! ```
 //! use std::cmp::Ordering;
@@ -218,10 +219,14 @@ pub struct BinaryHeap<T> {
     data: Vec<T>,
 }
 
-/// A container object that represents the result of the [`peek_mut()`] method
-/// on `BinaryHeap`. See its documentation for details.
+/// Structure wrapping a mutable reference to the greatest item on a
+/// `BinaryHeap`.
 ///
-/// [`peek_mut()`]: struct.BinaryHeap.html#method.peek_mut
+/// This `struct` is created by the [`peek_mut`] method on [`BinaryHeap`]. See
+/// its documentation for more.
+///
+/// [`peek_mut`]: struct.BinaryHeap.html#method.peek_mut
+/// [`BinaryHeap`]: struct.BinaryHeap.html
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 pub struct PeekMut<'a, T: 'a + Ord> {
     heap: &'a mut BinaryHeap<T>,
@@ -263,7 +268,7 @@ impl<'a, T: Ord> DerefMut for PeekMut<'a, T> {
 
 impl<'a, T: Ord> PeekMut<'a, T> {
     /// Removes the peeked value from the heap and returns it.
-    #[unstable(feature = "binary_heap_peek_mut_pop", issue = "38863")]
+    #[stable(feature = "binary_heap_peek_mut_pop", since = "1.18.0")]
     pub fn pop(mut this: PeekMut<'a, T>) -> T {
         let value = this.heap.pop().unwrap();
         this.sift = false;
@@ -434,7 +439,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// given `BinaryHeap`. Does nothing if the capacity is already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it requests. Therefore
-    /// capacity can not be relied upon to be precisely minimal. Prefer `reserve` if future
+    /// capacity can not be relied upon to be precisely minimal. Prefer [`reserve`] if future
     /// insertions are expected.
     ///
     /// # Panics
@@ -452,6 +457,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert!(heap.capacity() >= 100);
     /// heap.push(4);
     /// ```
+    ///
+    /// [`reserve`]: #method.reserve
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.data.reserve_exact(additional);
@@ -546,82 +553,6 @@ impl<T: Ord> BinaryHeap<T> {
         let old_len = self.len();
         self.data.push(item);
         self.sift_up(0, old_len);
-    }
-
-    /// Pushes an item onto the binary heap, then pops the greatest item off the queue in
-    /// an optimized fashion.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(binary_heap_extras)]
-    /// #![allow(deprecated)]
-    ///
-    /// use std::collections::BinaryHeap;
-    /// let mut heap = BinaryHeap::new();
-    /// heap.push(1);
-    /// heap.push(5);
-    ///
-    /// assert_eq!(heap.push_pop(3), 5);
-    /// assert_eq!(heap.push_pop(9), 9);
-    /// assert_eq!(heap.len(), 2);
-    /// assert_eq!(heap.peek(), Some(&3));
-    /// ```
-    #[unstable(feature = "binary_heap_extras",
-               reason = "needs to be audited",
-               issue = "28147")]
-    #[rustc_deprecated(since = "1.13.0", reason = "use `peek_mut` instead")]
-    pub fn push_pop(&mut self, mut item: T) -> T {
-        match self.data.get_mut(0) {
-            None => return item,
-            Some(top) => {
-                if *top > item {
-                    swap(&mut item, top);
-                } else {
-                    return item;
-                }
-            }
-        }
-
-        self.sift_down(0);
-        item
-    }
-
-    /// Pops the greatest item off the binary heap, then pushes an item onto the queue in
-    /// an optimized fashion. The push is done regardless of whether the binary heap
-    /// was empty.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(binary_heap_extras)]
-    /// #![allow(deprecated)]
-    ///
-    /// use std::collections::BinaryHeap;
-    /// let mut heap = BinaryHeap::new();
-    ///
-    /// assert_eq!(heap.replace(1), None);
-    /// assert_eq!(heap.replace(3), Some(1));
-    /// assert_eq!(heap.len(), 1);
-    /// assert_eq!(heap.peek(), Some(&3));
-    /// ```
-    #[unstable(feature = "binary_heap_extras",
-               reason = "needs to be audited",
-               issue = "28147")]
-    #[rustc_deprecated(since = "1.13.0", reason = "use `peek_mut` instead")]
-    pub fn replace(&mut self, mut item: T) -> Option<T> {
-        if !self.is_empty() {
-            swap(&mut item, &mut self.data[0]);
-            self.sift_down(0);
-            Some(item)
-        } else {
-            self.push(item);
-            None
-        }
     }
 
     /// Consumes the `BinaryHeap` and returns the underlying vector
@@ -930,13 +861,13 @@ impl<'a, T> Hole<'a, T> {
         self.pos
     }
 
-    /// Return a reference to the element removed
+    /// Returns a reference to the element removed.
     #[inline]
     fn element(&self) -> &T {
         self.elt.as_ref().unwrap()
     }
 
-    /// Return a reference to the element at `index`.
+    /// Returns a reference to the element at `index`.
     ///
     /// Unsafe because index must be within the data slice and not equal to pos.
     #[inline]
@@ -971,7 +902,13 @@ impl<'a, T> Drop for Hole<'a, T> {
     }
 }
 
-/// `BinaryHeap` iterator.
+/// An iterator over the elements of a `BinaryHeap`.
+///
+/// This `struct` is created by the [`iter`] method on [`BinaryHeap`]. See its
+/// documentation for more.
+///
+/// [`iter`]: struct.BinaryHeap.html#method.iter
+/// [`BinaryHeap`]: struct.BinaryHeap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     iter: slice::Iter<'a, T>,
@@ -1027,7 +964,13 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Iter<'a, T> {}
 
-/// An iterator that moves out of a `BinaryHeap`.
+/// An owning iterator over the elements of a `BinaryHeap`.
+///
+/// This `struct` is created by the [`into_iter`] method on [`BinaryHeap`][`BinaryHeap`]
+/// (provided by the `IntoIterator` trait). See its documentation for more.
+///
+/// [`into_iter`]: struct.BinaryHeap.html#method.into_iter
+/// [`BinaryHeap`]: struct.BinaryHeap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct IntoIter<T> {
@@ -1076,7 +1019,13 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for IntoIter<T> {}
 
-/// An iterator that drains a `BinaryHeap`.
+/// A draining iterator over the elements of a `BinaryHeap`.
+///
+/// This `struct` is created by the [`drain`] method on [`BinaryHeap`]. See its
+/// documentation for more.
+///
+/// [`drain`]: struct.BinaryHeap.html#method.drain
+/// [`BinaryHeap`]: struct.BinaryHeap.html
 #[stable(feature = "drain", since = "1.6.0")]
 #[derive(Debug)]
 pub struct Drain<'a, T: 'a> {

@@ -36,7 +36,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let def_id = tcx.hir.local_def_id(it.id);
 
     let substs = Substs::for_item(tcx, def_id,
-                                  |_, _| tcx.mk_region(ty::ReErased),
+                                  |_, _| tcx.types.re_erased,
                                   |def, _| tcx.mk_param_from_def(def));
 
     let fty = tcx.mk_fn_def(def_id, substs, ty::Binder(tcx.mk_fn_sig(
@@ -46,7 +46,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         hir::Unsafety::Unsafe,
         abi
     )));
-    let i_n_tps = tcx.item_generics(def_id).types.len();
+    let i_n_tps = tcx.generics_of(def_id).types.len();
     if i_n_tps != n_tps {
         let span = match it.node {
             hir::ForeignItemFn(_, _, ref generics) => generics.span,
@@ -57,14 +57,14 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         "intrinsic has wrong number of type \
                         parameters: found {}, expected {}",
                         i_n_tps, n_tps)
-            .span_label(span, &format!("expected {} type parameter", n_tps))
+            .span_label(span, format!("expected {} type parameter", n_tps))
             .emit();
     } else {
         require_same_types(tcx,
                            &ObligationCause::new(it.span,
                                                  it.id,
                                                  ObligationCauseCode::IntrinsicType),
-                           tcx.item_type(def_id),
+                           tcx.type_of(def_id),
                            fty);
     }
 }
@@ -101,7 +101,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             op => {
                 struct_span_err!(tcx.sess, it.span, E0092,
                       "unrecognized atomic operation function: `{}`", op)
-                  .span_label(it.span, &format!("unrecognized atomic operation"))
+                  .span_label(it.span, "unrecognized atomic operation")
                   .emit();
                 return;
             }
@@ -124,7 +124,6 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "rustc_peek" => (1, vec![param(0)], param(0)),
             "init" => (1, Vec::new(), param(0)),
             "uninit" => (1, Vec::new(), param(0)),
-            "forget" => (1, vec![ param(0) ], tcx.mk_nil()),
             "transmute" => (2, vec![ param(0) ], param(1)),
             "move_val_init" => {
                 (1,
@@ -273,6 +272,8 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             "unchecked_div" | "unchecked_rem" =>
                 (1, vec![param(0), param(0)], param(0)),
+            "unchecked_shl" | "unchecked_shr" =>
+                (1, vec![param(0), param(0)], param(0)),
 
             "overflowing_add" | "overflowing_sub" | "overflowing_mul" =>
                 (1, vec![param(0), param(0)], param(0)),
@@ -304,7 +305,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 struct_span_err!(tcx.sess, it.span, E0093,
                                 "unrecognized intrinsic function: `{}`",
                                 *other)
-                                .span_label(it.span, &format!("unrecognized intrinsic"))
+                                .span_label(it.span, "unrecognized intrinsic")
                                 .emit();
                 return;
             }
@@ -323,7 +324,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     let def_id = tcx.hir.local_def_id(it.id);
-    let i_n_tps = tcx.item_generics(def_id).types.len();
+    let i_n_tps = tcx.generics_of(def_id).types.len();
     let name = it.name.as_str();
 
     let (n_tps, inputs, output) = match &*name {
@@ -366,7 +367,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                     let mut structural_to_nomimal = FxHashMap();
 
-                    let sig = tcx.item_type(def_id).fn_sig();
+                    let sig = tcx.type_of(def_id).fn_sig();
                     let sig = tcx.no_late_bound_regions(&sig).unwrap();
                     if intr.inputs.len() != sig.inputs().len() {
                         span_err!(tcx.sess, it.span, E0444,
@@ -504,7 +505,7 @@ fn match_intrinsic_type_to_type<'a, 'tcx>(
                     }
                 }
                 _ => simple_error(&format!("`{}`", t),
-                                  &format!("tuple")),
+                                  "tuple"),
             }
         }
     }

@@ -23,7 +23,7 @@ use std::process;
 use num_cpus;
 use rustc_serialize::Decodable;
 use toml::{Parser, Decoder, Value};
-use util::push_exe_path;
+use util::{exe, push_exe_path};
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
@@ -60,6 +60,7 @@ pub struct Config {
     pub llvm_link_shared: bool,
     pub llvm_targets: Option<String>,
     pub llvm_link_jobs: Option<u32>,
+    pub llvm_clean_rebuild: bool,
 
     // rust codegen options
     pub rust_optimize: bool,
@@ -93,12 +94,15 @@ pub struct Config {
     pub backtrace: bool, // support for RUST_BACKTRACE
 
     // misc
+    pub low_priority: bool,
     pub channel: String,
     pub quiet_tests: bool,
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
     pub prefix: Option<PathBuf>,
+    pub sysconfdir: Option<PathBuf>,
     pub docdir: Option<PathBuf>,
+    pub bindir: Option<PathBuf>,
     pub libdir: Option<PathBuf>,
     pub libdir_relative: Option<PathBuf>,
     pub mandir: Option<PathBuf>,
@@ -145,6 +149,7 @@ struct Build {
     target: Vec<String>,
     cargo: Option<String>,
     rustc: Option<String>,
+    low_priority: Option<bool>,
     compiler_docs: Option<bool>,
     docs: Option<bool>,
     submodules: Option<bool>,
@@ -164,9 +169,11 @@ struct Build {
 #[derive(RustcDecodable, Default, Clone)]
 struct Install {
     prefix: Option<String>,
-    mandir: Option<String>,
+    sysconfdir: Option<String>,
     docdir: Option<String>,
+    bindir: Option<String>,
     libdir: Option<String>,
+    mandir: Option<String>,
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -181,6 +188,7 @@ struct Llvm {
     static_libstdcpp: Option<bool>,
     targets: Option<String>,
     link_jobs: Option<u32>,
+    clean_rebuild: Option<bool>,
 }
 
 #[derive(RustcDecodable, Default, Clone)]
@@ -262,7 +270,7 @@ impl Config {
             let table = match p.parse() {
                 Some(table) => table,
                 None => {
-                    println!("failed to parse TOML configuration:");
+                    println!("failed to parse TOML configuration '{}':", file.to_str().unwrap());
                     for err in p.errors.iter() {
                         let (loline, locol) = p.to_linecol(err.lo);
                         let (hiline, hicol) = p.to_linecol(err.hi);
@@ -300,6 +308,7 @@ impl Config {
         config.nodejs = build.nodejs.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
         config.python = build.python.map(PathBuf::from);
+        set(&mut config.low_priority, build.low_priority);
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
@@ -313,9 +322,11 @@ impl Config {
 
         if let Some(ref install) = toml.install {
             config.prefix = install.prefix.clone().map(PathBuf::from);
-            config.mandir = install.mandir.clone().map(PathBuf::from);
+            config.sysconfdir = install.sysconfdir.clone().map(PathBuf::from);
             config.docdir = install.docdir.clone().map(PathBuf::from);
+            config.bindir = install.bindir.clone().map(PathBuf::from);
             config.libdir = install.libdir.clone().map(PathBuf::from);
+            config.mandir = install.mandir.clone().map(PathBuf::from);
         }
 
         if let Some(ref llvm) = toml.llvm {
@@ -334,6 +345,7 @@ impl Config {
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
+            set(&mut config.llvm_clean_rebuild, llvm.clean_rebuild);
             config.llvm_targets = llvm.targets.clone();
             config.llvm_link_jobs = llvm.link_jobs;
         }
@@ -439,6 +451,7 @@ impl Config {
                 ("LLVM_VERSION_CHECK", self.llvm_version_check),
                 ("LLVM_STATIC_STDCPP", self.llvm_static_stdcpp),
                 ("LLVM_LINK_SHARED", self.llvm_link_shared),
+                ("LLVM_CLEAN_REBUILD", self.llvm_clean_rebuild),
                 ("OPTIMIZE", self.rust_optimize),
                 ("DEBUG_ASSERTIONS", self.rust_debug_assertions),
                 ("DEBUGINFO", self.rust_debuginfo),
@@ -519,8 +532,14 @@ impl Config {
                 "CFG_PREFIX" => {
                     self.prefix = Some(PathBuf::from(value));
                 }
+                "CFG_SYSCONFDIR" => {
+                    self.sysconfdir = Some(PathBuf::from(value));
+                }
                 "CFG_DOCDIR" => {
                     self.docdir = Some(PathBuf::from(value));
+                }
+                "CFG_BINDIR" => {
+                    self.bindir = Some(PathBuf::from(value));
                 }
                 "CFG_LIBDIR" => {
                     self.libdir = Some(PathBuf::from(value));
@@ -566,6 +585,12 @@ impl Config {
                                      .or_insert(Target::default());
                     target.ndk = Some(parse_configure_path(value));
                 }
+                "CFG_X86_64_LINUX_ANDROID_NDK" if value.len() > 0 => {
+                    let target = "x86_64-linux-android".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.ndk = Some(parse_configure_path(value));
+                }
                 "CFG_LOCAL_RUST_ROOT" if value.len() > 0 => {
                     let path = parse_configure_path(value);
                     self.rustc = Some(push_exe_path(path.clone(), &["bin", "rustc"]));
@@ -576,10 +601,10 @@ impl Config {
                     self.python = Some(path);
                 }
                 "CFG_ENABLE_CCACHE" if value == "1" => {
-                    self.ccache = Some("ccache".to_string());
+                    self.ccache = Some(exe("ccache", &self.build));
                 }
                 "CFG_ENABLE_SCCACHE" if value == "1" => {
-                    self.ccache = Some("sccache".to_string());
+                    self.ccache = Some(exe("sccache", &self.build));
                 }
                 "CFG_CONFIGURE_ARGS" if value.len() > 0 => {
                     self.configure_args = value.split_whitespace()

@@ -20,7 +20,7 @@ use super::{FusedIterator, TrustedLen};
 /// two `Step` objects.
 #[unstable(feature = "step_trait",
            reason = "likely to be replaced by finer-grained traits",
-           issue = "27741")]
+           issue = "42168")]
 pub trait Step: PartialOrd + Sized {
     /// Steps `self` if possible.
     fn step(&self, by: &Self) -> Option<Self>;
@@ -55,7 +55,7 @@ macro_rules! step_impl_unsigned {
     ($($t:ty)*) => ($(
         #[unstable(feature = "step_trait",
                    reason = "likely to be replaced by finer-grained traits",
-                   issue = "27741")]
+                   issue = "42168")]
         impl Step for $t {
             #[inline]
             fn step(&self, by: &$t) -> Option<$t> {
@@ -86,12 +86,12 @@ macro_rules! step_impl_unsigned {
 
             #[inline]
             fn replace_one(&mut self) -> Self {
-                mem::replace(self, 0)
+                mem::replace(self, 1)
             }
 
             #[inline]
             fn replace_zero(&mut self) -> Self {
-                mem::replace(self, 1)
+                mem::replace(self, 0)
             }
 
             #[inline]
@@ -115,7 +115,7 @@ macro_rules! step_impl_signed {
     ($($t:ty)*) => ($(
         #[unstable(feature = "step_trait",
                    reason = "likely to be replaced by finer-grained traits",
-                   issue = "27741")]
+                   issue = "42168")]
         impl Step for $t {
             #[inline]
             fn step(&self, by: &$t) -> Option<$t> {
@@ -157,12 +157,12 @@ macro_rules! step_impl_signed {
 
             #[inline]
             fn replace_one(&mut self) -> Self {
-                mem::replace(self, 0)
+                mem::replace(self, 1)
             }
 
             #[inline]
             fn replace_zero(&mut self) -> Self {
-                mem::replace(self, 1)
+                mem::replace(self, 0)
             }
 
             #[inline]
@@ -187,7 +187,7 @@ macro_rules! step_impl_no_between {
     ($($t:ty)*) => ($(
         #[unstable(feature = "step_trait",
                    reason = "likely to be replaced by finer-grained traits",
-                   issue = "27741")]
+                   issue = "42168")]
         impl Step for $t {
             #[inline]
             fn step(&self, by: &$t) -> Option<$t> {
@@ -206,12 +206,12 @@ macro_rules! step_impl_no_between {
 
             #[inline]
             fn replace_one(&mut self) -> Self {
-                mem::replace(self, 0)
+                mem::replace(self, 1)
             }
 
             #[inline]
             fn replace_zero(&mut self) -> Self {
-                mem::replace(self, 1)
+                mem::replace(self, 0)
             }
 
             #[inline]
@@ -403,61 +403,35 @@ impl<A: Step + Clone> Iterator for StepBy<A, ops::RangeInclusive<A>> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        use ops::RangeInclusive::*;
+        let rev = self.step_by.is_negative();
 
-        // this function has a sort of odd structure due to borrowck issues
-        // we may need to replace self.range, so borrows of start and end need to end early
-
-        let (finishing, n) = match self.range {
-            Empty { .. } => return None, // empty iterators yield no values
-
-            NonEmpty { ref mut start, ref mut end } => {
-                let rev = self.step_by.is_negative();
-
-                // march start towards (maybe past!) end and yield the old value
-                if (rev && start >= end) ||
-                   (!rev && start <= end)
-                {
-                    match start.step(&self.step_by) {
-                        Some(mut n) => {
-                            mem::swap(start, &mut n);
-                            (None, Some(n)) // yield old value, remain non-empty
-                        },
-                        None => {
-                            let mut n = end.clone();
-                            mem::swap(start, &mut n);
-                            (None, Some(n)) // yield old value, remain non-empty
-                        }
-                    }
-                } else {
-                    // found range in inconsistent state (start at or past end), so become empty
-                    (Some(end.replace_zero()), None)
-                }
+        if (rev && self.range.start >= self.range.end) ||
+           (!rev && self.range.start <= self.range.end)
+        {
+            match self.range.start.step(&self.step_by) {
+                Some(n) => {
+                    Some(mem::replace(&mut self.range.start, n))
+                },
+                None => {
+                    let last = self.range.start.replace_one();
+                    self.range.end.replace_zero();
+                    self.step_by.replace_one();
+                    Some(last)
+                },
             }
-        };
-
-        // turn into an empty iterator if we've reached the end
-        if let Some(end) = finishing {
-            self.range = Empty { at: end };
         }
-
-        n
+        else {
+            None
+        }
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        use ops::RangeInclusive::*;
-
-        match self.range {
-            Empty { .. } => (0, Some(0)),
-
-            NonEmpty { ref start, ref end } =>
-                match Step::steps_between(start,
-                                          end,
-                                          &self.step_by) {
-                    Some(hint) => (hint.saturating_add(1), hint.checked_add(1)),
-                    None       => (0, None)
-                }
+        match Step::steps_between(&self.range.start,
+                                  &self.range.end,
+                                  &self.step_by) {
+            Some(hint) => (hint.saturating_add(1), hint.checked_add(1)),
+            None       => (0, None)
         }
     }
 }
@@ -583,56 +557,31 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> where
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        use ops::RangeInclusive::*;
+        use cmp::Ordering::*;
 
-        // this function has a sort of odd structure due to borrowck issues
-        // we may need to replace self, so borrows of self.start and self.end need to end early
-
-        let (finishing, n) = match *self {
-            Empty { .. } => (None, None), // empty iterators yield no values
-
-            NonEmpty { ref mut start, ref mut end } => {
-                if start == end {
-                    (Some(end.replace_one()), Some(start.replace_one()))
-                } else if start < end {
-                    let mut n = start.add_one();
-                    mem::swap(&mut n, start);
-
-                    // if the iterator is done iterating, it will change from
-                    // NonEmpty to Empty to avoid unnecessary drops or clones,
-                    // we'll reuse either start or end (they are equal now, so
-                    // it doesn't matter which) to pull out end, we need to swap
-                    // something back in
-
-                    (if n == *end { Some(end.replace_one()) } else { None },
-                    // ^ are we done yet?
-                    Some(n)) // < the value to output
-                } else {
-                    (Some(start.replace_one()), None)
-                }
-            }
-        };
-
-        // turn into an empty iterator if this is the last value
-        if let Some(end) = finishing {
-            *self = Empty { at: end };
+        match self.start.partial_cmp(&self.end) {
+            Some(Less) => {
+                let n = self.start.add_one();
+                Some(mem::replace(&mut self.start, n))
+            },
+            Some(Equal) => {
+                let last = self.start.replace_one();
+                self.end.replace_zero();
+                Some(last)
+            },
+            _ => None,
         }
-
-        n
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        use ops::RangeInclusive::*;
+        if !(self.start <= self.end) {
+            return (0, Some(0));
+        }
 
-        match *self {
-            Empty { .. } => (0, Some(0)),
-
-            NonEmpty { ref start, ref end } =>
-                match Step::steps_between_by_one(start, end) {
-                    Some(hint) => (hint.saturating_add(1), hint.checked_add(1)),
-                    None => (0, None),
-                }
+        match Step::steps_between_by_one(&self.start, &self.end) {
+            Some(hint) => (hint.saturating_add(1), hint.checked_add(1)),
+            None => (0, None),
         }
     }
 }
@@ -644,33 +593,20 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> where
 {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
-        use ops::RangeInclusive::*;
+        use cmp::Ordering::*;
 
-        // see Iterator::next for comments
-
-        let (finishing, n) = match *self {
-            Empty { .. } => return None,
-
-            NonEmpty { ref mut start, ref mut end } => {
-                if start == end {
-                    (Some(start.replace_one()), Some(end.replace_one()))
-                } else if start < end {
-                    let mut n = end.sub_one();
-                    mem::swap(&mut n, end);
-
-                    (if n == *start { Some(start.replace_one()) } else { None },
-                     Some(n))
-                } else {
-                    (Some(end.replace_one()), None)
-                }
-            }
-        };
-
-        if let Some(start) = finishing {
-            *self = Empty { at: start };
+        match self.start.partial_cmp(&self.end) {
+            Some(Less) => {
+                let n = self.end.sub_one();
+                Some(mem::replace(&mut self.end, n))
+            },
+            Some(Equal) => {
+                let last = self.end.replace_zero();
+                self.start.replace_one();
+                Some(last)
+            },
+            _ => None,
         }
-
-        n
     }
 }
 

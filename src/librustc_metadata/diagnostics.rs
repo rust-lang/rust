@@ -27,7 +27,7 @@ name. Example:
 "##,
 
 E0455: r##"
-Linking with `kind=framework` is only supported when targeting OS X,
+Linking with `kind=framework` is only supported when targeting macOS,
 as frameworks are specific to that operating system.
 
 Erroneous code example:

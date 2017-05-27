@@ -45,13 +45,13 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         bccx: bccx,
         infcx: &infcx,
         all_loans: Vec::new(),
-        item_ub: bccx.tcx.region_maps.node_extent(body.node_id),
+        item_ub: region::CodeExtent::Misc(body.node_id),
         move_data: MoveData::new(),
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
 
     let body = glcx.bccx.tcx.hir.body(body);
-    euv::ExprUseVisitor::new(&mut glcx, &infcx).consume_body(body);
+    euv::ExprUseVisitor::new(&mut glcx, &bccx.region_maps, &infcx).consume_body(body);
 
     glcx.report_potential_errors();
     let GatherLoanCtxt { all_loans, move_data, .. } = glcx;
@@ -127,7 +127,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
               borrow_id: ast::NodeId,
               borrow_span: Span,
               cmt: mc::cmt<'tcx>,
-              loan_region: &'tcx ty::Region,
+              loan_region: ty::Region<'tcx>,
               bk: ty::BorrowKind,
               loan_cause: euv::LoanCause)
     {
@@ -187,14 +187,6 @@ fn check_aliasability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             // Even touching a static mut is considered unsafe. We assume the
             // user knows what they're doing in these cases.
             Ok(())
-        }
-        (mc::Aliasability::ImmutableUnique(_), ty::MutBorrow) => {
-            bccx.report_aliasability_violation(
-                        borrow_span,
-                        loan_cause,
-                        mc::AliasableReason::UnaliasableImmutable,
-                        cmt);
-            Err(())
         }
         (mc::Aliasability::FreelyAliasable(alias_cause), ty::UniqueImmBorrow) |
         (mc::Aliasability::FreelyAliasable(alias_cause), ty::MutBorrow) => {
@@ -307,7 +299,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                        borrow_span: Span,
                        cmt: mc::cmt<'tcx>,
                        req_kind: ty::BorrowKind,
-                       loan_region: &'tcx ty::Region,
+                       loan_region: ty::Region<'tcx>,
                        cause: euv::LoanCause) {
         debug!("guarantee_valid(borrow_id={}, cmt={:?}, \
                 req_mutbl={:?}, loan_region={:?})",
@@ -361,13 +353,18 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                 let loan_scope = match *loan_region {
                     ty::ReScope(scope) => scope,
 
-                    ty::ReFree(ref fr) => fr.scope,
+                    ty::ReEarlyBound(ref br) => {
+                        self.bccx.region_maps.early_free_extent(self.tcx(), br)
+                    }
+
+                    ty::ReFree(ref fr) => {
+                        self.bccx.region_maps.free_extent(self.tcx(), fr)
+                    }
 
                     ty::ReStatic => self.item_ub,
 
                     ty::ReEmpty |
                     ty::ReLateBound(..) |
-                    ty::ReEarlyBound(..) |
                     ty::ReVar(..) |
                     ty::ReSkolemized(..) |
                     ty::ReErased => {
@@ -379,7 +376,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                 };
                 debug!("loan_scope = {:?}", loan_scope);
 
-                let borrow_scope = self.tcx().region_maps.node_extent(borrow_id);
+                let borrow_scope = region::CodeExtent::Misc(borrow_id);
                 let gen_scope = self.compute_gen_scope(borrow_scope, loan_scope);
                 debug!("gen_scope = {:?}", gen_scope);
 
@@ -466,7 +463,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         //! notably method arguments, the loan may be introduced only
         //! later, once it comes into scope.
 
-        if self.bccx.tcx.region_maps.is_subscope_of(borrow_scope, loan_scope) {
+        if self.bccx.region_maps.is_subscope_of(borrow_scope, loan_scope) {
             borrow_scope
         } else {
             loan_scope
@@ -496,12 +493,11 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         //! with immutable `&` pointers, because borrows of such pointers
         //! do not require restrictions and hence do not cause a loan.
 
-        let lexical_scope = lp.kill_scope(self.bccx.tcx);
-        let rm = &self.bccx.tcx.region_maps;
-        if rm.is_subscope_of(lexical_scope, loan_scope) {
+        let lexical_scope = lp.kill_scope(self.bccx);
+        if self.bccx.region_maps.is_subscope_of(lexical_scope, loan_scope) {
             lexical_scope
         } else {
-            assert!(self.bccx.tcx.region_maps.is_subscope_of(loan_scope, lexical_scope));
+            assert!(self.bccx.region_maps.is_subscope_of(loan_scope, lexical_scope));
             loan_scope
         }
     }
@@ -510,4 +506,3 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         self.move_error_collector.report_potential_errors(self.bccx);
     }
 }
-

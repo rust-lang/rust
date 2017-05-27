@@ -12,6 +12,7 @@ use hir::def_id::DefId;
 use util::nodemap::NodeMap;
 use syntax::ast;
 use syntax::ext::base::MacroKind;
+use syntax_pos::Span;
 use hir;
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -55,6 +56,8 @@ pub enum Def {
 
     // Macro namespace
     Macro(DefId, MacroKind),
+
+    GlobalAsm(DefId),
 
     // Both namespaces
     Err,
@@ -114,8 +117,9 @@ pub type ExportMap = NodeMap<Vec<Export>>;
 
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Export {
-    pub name: ast::Name, // The name of the target.
+    pub ident: ast::Ident, // The name of the target.
     pub def: Def, // The definition of the target.
+    pub span: Span, // The span of the target definition.
 }
 
 impl CtorKind {
@@ -142,7 +146,8 @@ impl Def {
             Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) | Def::TyAlias(id) |
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
-            Def::AssociatedConst(id) | Def::Local(id) | Def::Upvar(id, ..) | Def::Macro(id, ..) => {
+            Def::AssociatedConst(id) | Def::Local(id) | Def::Upvar(id, ..) | Def::Macro(id, ..) |
+            Def::GlobalAsm(id) => {
                 id
             }
 
@@ -183,6 +188,7 @@ impl Def {
             Def::Label(..) => "label",
             Def::SelfTy(..) => "self type",
             Def::Macro(..) => "macro",
+            Def::GlobalAsm(..) => "global asm",
             Def::Err => "unresolved item",
         }
     }

@@ -39,7 +39,7 @@ use syntax::codemap::Spanned;
 use syntax_pos::Span;
 use hir::*;
 use hir::def::Def;
-use hir::map::Map;
+use hir::map::{self, Map};
 use super::itemlikevisit::DeepVisitor;
 
 use std::cmp;
@@ -88,7 +88,7 @@ pub enum NestedVisitorMap<'this, 'tcx: 'this> {
     /// that are inside of an item-like.
     ///
     /// **This is the most common choice.** A very commmon pattern is
-    /// to use `tcx.visit_all_item_likes_in_krate()` as an outer loop,
+    /// to use `visit_all_item_likes()` as an outer loop,
     /// and to have the visitor that visits the contents of each item
     /// using this setting.
     OnlyBodies(&'this Map<'tcx>),
@@ -474,6 +474,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_id(item.id);
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }
+        ItemGlobalAsm(_) => {
+            visitor.visit_id(item.id);
+        }
         ItemTy(ref typ, ref type_parameters) => {
             visitor.visit_id(item.id);
             visitor.visit_ty(typ);
@@ -578,7 +581,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         TyTypeof(expression) => {
             visitor.visit_nested_body(expression)
         }
-        TyInfer => {}
+        TyInfer | TyErr => {}
     }
 }
 
@@ -960,7 +963,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         }
         ExprIf(ref head_expression, ref if_block, ref optional_else) => {
             visitor.visit_expr(head_expression);
-            visitor.visit_block(if_block);
+            visitor.visit_expr(if_block);
             walk_list!(visitor, visit_expr, optional_else);
         }
         ExprWhile(ref subexpression, ref block, ref opt_sp_name) => {
@@ -1008,18 +1011,24 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         }
         ExprBreak(label, ref opt_expr) => {
             label.ident.map(|ident| {
-                if let Ok(loop_id) = label.loop_id.into() {
-                    visitor.visit_def_mention(Def::Label(loop_id));
-                }
+                match label.target_id {
+                    ScopeTarget::Block(node_id) |
+                    ScopeTarget::Loop(LoopIdResult::Ok(node_id)) =>
+                        visitor.visit_def_mention(Def::Label(node_id)),
+                    ScopeTarget::Loop(LoopIdResult::Err(_)) => {},
+                };
                 visitor.visit_name(ident.span, ident.node.name);
             });
             walk_list!(visitor, visit_expr, opt_expr);
         }
         ExprAgain(label) => {
             label.ident.map(|ident| {
-                if let Ok(loop_id) = label.loop_id.into() {
-                    visitor.visit_def_mention(Def::Label(loop_id));
-                }
+                match label.target_id {
+                    ScopeTarget::Block(_) => bug!("can't `continue` to a non-loop block"),
+                    ScopeTarget::Loop(LoopIdResult::Ok(node_id)) =>
+                        visitor.visit_def_mention(Def::Label(node_id)),
+                    ScopeTarget::Loop(LoopIdResult::Err(_)) => {},
+                };
                 visitor.visit_name(ident.span, ident.node.name);
             });
         }

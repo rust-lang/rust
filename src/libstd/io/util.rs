@@ -63,7 +63,7 @@ pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<
 
 /// A reader which is always at EOF.
 ///
-/// This struct is generally created by calling [`empty()`][empty]. Please see
+/// This struct is generally created by calling [`empty`][empty]. Please see
 /// the documentation of `empty()` for more details.
 ///
 /// [empty]: fn.empty.html
@@ -107,7 +107,7 @@ impl fmt::Debug for Empty {
 
 /// A reader which yields one byte over and over and over and over and over and...
 ///
-/// This struct is generally created by calling [`repeat()`][repeat]. Please
+/// This struct is generally created by calling [`repeat`][repeat]. Please
 /// see the documentation of `repeat()` for more details.
 ///
 /// [repeat]: fn.repeat.html
@@ -150,7 +150,7 @@ impl fmt::Debug for Repeat {
 
 /// A writer which will move data into the void.
 ///
-/// This struct is generally created by calling [`sink()`][sink]. Please
+/// This struct is generally created by calling [`sink`][sink]. Please
 /// see the documentation of `sink()` for more details.
 ///
 /// [sink]: fn.sink.html

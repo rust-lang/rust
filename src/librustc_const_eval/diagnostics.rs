@@ -16,7 +16,7 @@
 register_long_diagnostics! {
 
 E0001: r##"
-## Note: this error code is no longer emitted by the compiler.
+#### Note: this error code is no longer emitted by the compiler.
 
 This error suggests that the expression arm corresponding to the noted pattern
 will never be reached as for all possible values of the expression being
@@ -43,7 +43,7 @@ arms.
 "##,
 
 E0002: r##"
-## Note: this error code is no longer emitted by the compiler.
+#### Note: this error code is no longer emitted by the compiler.
 
 This error indicates that an empty match expression is invalid because the type
 it is matching on is non-empty (there exist values of this type). In safe code
@@ -75,7 +75,7 @@ fn foo(x: Option<String>) {
 "##,
 
 E0003: r##"
-## Note: this error code is no longer emitted by the compiler.
+#### Note: this error code is no longer emitted by the compiler.
 
 Not-a-Number (NaN) values cannot be compared for equality and hence can never
 match the input to a match expression. So, the following will not compile:
@@ -555,25 +555,6 @@ match Some("hi".to_string()) {
 The `op_string_ref` binding has type `&Option<&String>` in both cases.
 
 See also https://github.com/rust-lang/rust/issues/14587
-"##,
-
-E0080: r##"
-This error indicates that the compiler was unable to sensibly evaluate an
-constant expression that had to be evaluated. Attempting to divide by 0
-or causing integer overflow are two ways to induce this error. For example:
-
-```compile_fail,E0080
-enum Enum {
-    X = (1 << 500),
-    Y = (1 / 0)
-}
-```
-
-Ensure that the expressions given can be evaluated as the desired integer type.
-See the FFI section of the Reference for more information about using a custom
-integer type:
-
-https://doc.rust-lang.org/reference.html#ffi-attributes
 "##,
 
 }

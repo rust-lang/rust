@@ -11,7 +11,6 @@ use self::Context::*;
 
 use rustc::session::Session;
 
-use rustc::dep_graph::DepNode;
 use rustc::hir::map::Map;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
@@ -50,7 +49,6 @@ struct CheckLoopVisitor<'a, 'hir: 'a> {
 }
 
 pub fn check_crate(sess: &Session, map: &Map) {
-    let _task = map.dep_graph.in_task(DepNode::CheckLoops);
     let krate = map.krate();
     krate.visit_all_item_likes(&mut CheckLoopVisitor {
         sess: sess,
@@ -87,14 +85,19 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 self.with_context(Closure, |v| v.visit_nested_body(b));
             }
             hir::ExprBreak(label, ref opt_expr) => {
-                let loop_id = match label.loop_id.into() {
-                    Ok(loop_id) => loop_id,
-                    Err(hir::LoopIdError::OutsideLoopScope) => ast::DUMMY_NODE_ID,
-                    Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
-                        self.emit_unlabled_cf_in_while_condition(e.span, "break");
-                        ast::DUMMY_NODE_ID
-                    },
-                    Err(hir::LoopIdError::UnresolvedLabel) => ast::DUMMY_NODE_ID,
+                let loop_id = match label.target_id {
+                    hir::ScopeTarget::Block(_) => return,
+                    hir::ScopeTarget::Loop(loop_res) => {
+                        match loop_res.into() {
+                            Ok(loop_id) => loop_id,
+                            Err(hir::LoopIdError::OutsideLoopScope) => ast::DUMMY_NODE_ID,
+                            Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
+                                self.emit_unlabled_cf_in_while_condition(e.span, "break");
+                                ast::DUMMY_NODE_ID
+                            },
+                            Err(hir::LoopIdError::UnresolvedLabel) => ast::DUMMY_NODE_ID,
+                        }
+                    }
                 };
 
                 if opt_expr.is_some() {
@@ -115,7 +118,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                              "`break` with value from a `{}` loop",
                                              kind.name())
                                 .span_label(e.span,
-                                            &format!("can only break with a value inside `loop`"))
+                                            "can only break with a value inside `loop`")
                                 .emit();
                         }
                     }
@@ -124,7 +127,9 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 self.require_loop("break", e.span);
             }
             hir::ExprAgain(label) => {
-                if let Err(hir::LoopIdError::UnlabeledCfInWhileCondition) = label.loop_id.into() {
+                if let hir::ScopeTarget::Loop(
+                    hir::LoopIdResult::Err(
+                        hir::LoopIdError::UnlabeledCfInWhileCondition)) = label.target_id {
                     self.emit_unlabled_cf_in_while_condition(e.span, "continue");
                 }
                 self.require_loop("continue", e.span)
@@ -149,12 +154,12 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
             Loop(_) => {}
             Closure => {
                 struct_span_err!(self.sess, span, E0267, "`{}` inside of a closure", name)
-                .span_label(span, &format!("cannot break inside of a closure"))
+                .span_label(span, "cannot break inside of a closure")
                 .emit();
             }
             Normal => {
                 struct_span_err!(self.sess, span, E0268, "`{}` outside of loop", name)
-                .span_label(span, &format!("cannot break outside of a loop"))
+                .span_label(span, "cannot break outside of a loop")
                 .emit();
             }
         }
@@ -164,7 +169,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
         struct_span_err!(self.sess, span, E0590,
                          "`break` or `continue` with no label in the condition of a `while` loop")
             .span_label(span,
-                        &format!("unlabeled `{}` in the condition of a `while` loop", cf_type))
+                        format!("unlabeled `{}` in the condition of a `while` loop", cf_type))
             .emit();
     }
 }

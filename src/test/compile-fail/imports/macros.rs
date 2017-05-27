@@ -28,7 +28,6 @@ mod m2 {
     m! { //~ ERROR ambiguous
          //~| NOTE macro-expanded macro imports do not shadow
         use foo::m; //~ NOTE could refer to the name imported here
-                    //~^^^ NOTE in this expansion
     }
 }
 
@@ -43,7 +42,6 @@ mod m3 {
         m! { //~ ERROR ambiguous
              //~| NOTE macro-expanded macro imports do not shadow
             use two_macros::n as m; //~ NOTE could refer to the name imported here
-                                    //~^^^ NOTE in this expansion
         }
     }
 }

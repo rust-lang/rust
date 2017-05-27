@@ -27,8 +27,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ///
     /// NB: **No cleanup is scheduled for this temporary.** You should
     /// call `schedule_drop` once the temporary is initialized.
-    pub fn temp(&mut self, ty: Ty<'tcx>) -> Lvalue<'tcx> {
-        let temp = self.local_decls.push(LocalDecl::new_temp(ty));
+    pub fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Lvalue<'tcx> {
+        let temp = self.local_decls.push(LocalDecl::new_temp(ty, span));
         let lvalue = Lvalue::Local(temp);
         debug!("temp: created temp {:?} with type {:?}",
                lvalue, self.local_decls[temp].ty);
@@ -40,7 +40,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                            ty: Ty<'tcx>,
                            literal: Literal<'tcx>)
                            -> Operand<'tcx> {
-        let constant = Constant {
+        let constant = box Constant {
             span: span,
             ty: ty,
             literal: literal,
@@ -49,7 +49,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub fn unit_rvalue(&mut self) -> Rvalue<'tcx> {
-        Rvalue::Aggregate(AggregateKind::Tuple, vec![])
+        Rvalue::Aggregate(box AggregateKind::Tuple, vec![])
     }
 
     // Returns a zero literal operand for the appropriate type, works for
@@ -106,7 +106,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                       value: u64)
                       -> Lvalue<'tcx> {
         let usize_ty = self.hir.usize_ty();
-        let temp = self.temp(usize_ty);
+        let temp = self.temp(usize_ty, source_info.span);
         self.cfg.push_assign_constant(
             block, source_info, &temp,
             Constant {

@@ -30,18 +30,21 @@ pub use self::Visibility::{Public, Inherited};
 pub use self::PathParameters::*;
 
 use hir::def::Def;
-use hir::def_id::DefId;
+use hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use util::nodemap::{NodeMap, FxHashSet};
 
-use syntax_pos::{Span, ExpnId, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 use syntax::codemap::{self, Spanned};
 use syntax::abi::Abi;
 use syntax::ast::{Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
+use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::TokenStream;
 use syntax::util::ThinVec;
+
+use rustc_data_structures::indexed_vec;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -73,6 +76,63 @@ pub mod pat_util;
 pub mod print;
 pub mod svh;
 
+/// A HirId uniquely identifies a node in the HIR of then current crate. It is
+/// composed of the `owner`, which is the DefIndex of the directly enclosing
+/// hir::Item, hir::TraitItem, or hir::ImplItem (i.e. the closest "item-like"),
+/// and the `local_id` which is unique within the given owner.
+///
+/// This two-level structure makes for more stable values: One can move an item
+/// around within the source code, or add or remove stuff before it, without
+/// the local_id part of the HirId changing, which is a very useful property
+/// incremental compilation where we have to persist things through changes to
+/// the code base.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug,
+         RustcEncodable, RustcDecodable)]
+pub struct HirId {
+    pub owner: DefIndex,
+    pub local_id: ItemLocalId,
+}
+
+/// An `ItemLocalId` uniquely identifies something within a given "item-like",
+/// that is within a hir::Item, hir::TraitItem, or hir::ImplItem. There is no
+/// guarantee that the numerical value of a given `ItemLocalId` corresponds to
+/// the node's position within the owning item in any way, but there is a
+/// guarantee that the `LocalItemId`s within an owner occupy a dense range of
+/// integers starting at zero, so a mapping that maps all or most nodes within
+/// an "item-like" to something else can be implement by a `Vec` instead of a
+/// tree or hash map.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug,
+         RustcEncodable, RustcDecodable)]
+pub struct ItemLocalId(pub u32);
+
+impl ItemLocalId {
+    pub fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+}
+
+impl indexed_vec::Idx for ItemLocalId {
+    fn new(idx: usize) -> Self {
+        debug_assert!((idx as u32) as usize == idx);
+        ItemLocalId(idx as u32)
+    }
+
+    fn index(self) -> usize {
+        self.0 as usize
+    }
+}
+
+/// The `HirId` corresponding to CRATE_NODE_ID and CRATE_DEF_INDEX
+pub const CRATE_HIR_ID: HirId = HirId {
+    owner: CRATE_DEF_INDEX,
+    local_id: ItemLocalId(0)
+};
+
+pub const DUMMY_HIR_ID: HirId = HirId {
+    owner: CRATE_DEF_INDEX,
+    local_id: ItemLocalId(!0)
+};
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
     pub id: NodeId,
@@ -99,6 +159,10 @@ impl fmt::Debug for Lifetime {
 impl Lifetime {
     pub fn is_elided(&self) -> bool {
         self.name == keywords::Invalid.name()
+    }
+
+    pub fn is_static(&self) -> bool {
+        self.name == "'static"
     }
 }
 
@@ -468,10 +532,12 @@ impl Crate {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct MacroDef {
     pub name: Name,
+    pub vis: Visibility,
     pub attrs: HirVec<Attribute>,
     pub id: NodeId,
     pub span: Span,
     pub body: TokenStream,
+    pub legacy: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -485,6 +551,11 @@ pub struct Block {
     /// Distinguishes between `unsafe { ... }` and `{ ... }`
     pub rules: BlockCheckMode,
     pub span: Span,
+    /// If true, then there may exist `break 'a` values that aim to
+    /// break out of this block early. As of this writing, this is not
+    /// currently permitted in Rust itself, but it is generated as
+    /// part of `catch` statements.
+    pub targeted_by_break: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
@@ -926,8 +997,8 @@ pub enum Expr_ {
     ExprType(P<Expr>, P<Ty>),
     /// An `if` block, with an optional else block
     ///
-    /// `if expr { block } else { expr }`
-    ExprIf(P<Expr>, P<Block>, Option<P<Expr>>),
+    /// `if expr { expr } else { expr }`
+    ExprIf(P<Expr>, P<Expr>, Option<P<Expr>>),
     /// A while loop, with an optional label
     ///
     /// `'label: while expr { block }`
@@ -1081,13 +1152,29 @@ impl From<Result<NodeId, LoopIdError>> for LoopIdResult {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub enum ScopeTarget {
+    Block(NodeId),
+    Loop(LoopIdResult),
+}
+
+impl ScopeTarget {
+    pub fn opt_id(self) -> Option<NodeId> {
+        match self {
+            ScopeTarget::Block(node_id) |
+            ScopeTarget::Loop(LoopIdResult::Ok(node_id)) => Some(node_id),
+            ScopeTarget::Loop(LoopIdResult::Err(_)) => None,
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub struct Destination {
     // This is `Some(_)` iff there is an explicit user-specified `label
     pub ident: Option<Spanned<Ident>>,
 
     // These errors are caught and then reported during the diagnostics pass in
     // librustc_passes/loops.rs
-    pub loop_id: LoopIdResult,
+    pub target_id: ScopeTarget,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1266,6 +1353,8 @@ pub enum Ty_ {
     /// TyInfer means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     TyInfer,
+    /// Placeholder for a type that has failed to be defined.
+    TyErr,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1285,7 +1374,7 @@ pub struct InlineAsm {
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
-    pub expn_id: ExpnId,
+    pub ctxt: SyntaxContext,
 }
 
 /// represents an argument in a function header
@@ -1301,6 +1390,9 @@ pub struct FnDecl {
     pub inputs: HirVec<P<Ty>>,
     pub output: FunctionRetTy,
     pub variadic: bool,
+    /// True if this function has an `self`, `&self` or `&mut self` receiver
+    /// (but not a `self: Xxx` one).
+    pub has_implicit_self: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1406,6 +1498,12 @@ pub struct ForeignMod {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct GlobalAsm {
+    pub asm: Symbol,
+    pub ctxt: SyntaxContext,
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct EnumDef {
     pub variants: HirVec<Variant>,
 }
@@ -1466,6 +1564,18 @@ pub enum Visibility {
     Crate,
     Restricted { path: P<Path>, id: NodeId },
     Inherited,
+}
+
+impl Visibility {
+    pub fn is_pub_restricted(&self) -> bool {
+        use self::Visibility::*;
+        match self {
+            &Public |
+            &Inherited => false,
+            &Crate |
+            &Restricted { .. } => true,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1584,6 +1694,8 @@ pub enum Item_ {
     ItemMod(Mod),
     /// An external module
     ItemForeignMod(ForeignMod),
+    /// Module-level inline assembly (from global_asm!)
+    ItemGlobalAsm(P<GlobalAsm>),
     /// A type alias, e.g. `type Foo = Bar<u8>`
     ItemTy(P<Ty>, Generics),
     /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
@@ -1602,6 +1714,7 @@ pub enum Item_ {
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,
              ImplPolarity,
+             Defaultness,
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
@@ -1618,6 +1731,7 @@ impl Item_ {
             ItemFn(..) => "function",
             ItemMod(..) => "module",
             ItemForeignMod(..) => "foreign module",
+            ItemGlobalAsm(..) => "global asm",
             ItemTy(..) => "type alias",
             ItemEnum(..) => "enum",
             ItemStruct(..) => "struct",

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #include "rustllvm.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Instructions.h"
@@ -311,6 +312,10 @@ extern "C" LLVMValueRef LLVMRustInlineAsm(LLVMTypeRef Ty, char *AsmString,
                              HasSideEffects, IsAlignStack, fromRust(Dialect)));
 }
 
+extern "C" void LLVMRustAppendModuleInlineAsm(LLVMModuleRef M, const char *Asm) {
+  unwrap(M)->appendModuleInlineAsm(StringRef(Asm));
+}
+
 typedef DIBuilder *LLVMRustDIBuilderRef;
 
 typedef struct LLVMOpaqueMetadata *LLVMRustMetadataRef;
@@ -594,7 +599,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
     const char *LinkageName, LLVMRustMetadataRef File, unsigned LineNo,
     LLVMRustMetadataRef Ty, bool IsLocalToUnit, LLVMValueRef V,
     LLVMRustMetadataRef Decl = nullptr, uint32_t AlignInBits = 0) {
-  Constant *InitVal = cast<Constant>(unwrap(V));
+  llvm::GlobalVariable *InitVal = cast<llvm::GlobalVariable>(unwrap(V));
 
 #if LLVM_VERSION_GE(4, 0)
   llvm::DIExpression *InitExpr = nullptr;
@@ -606,26 +611,21 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
     InitExpr = Builder->createConstantValueExpression(
         FPVal->getValueAPF().bitcastToAPInt().getZExtValue());
   }
-#endif
 
-#if LLVM_VERSION_GE(4, 0)
-  return wrap(Builder->createGlobalVariableExpression(
-#else
-  return wrap(Builder->createGlobalVariable(
-#endif
+  llvm::DIGlobalVariableExpression *VarExpr = Builder->createGlobalVariableExpression(
       unwrapDI<DIDescriptor>(Context), Name, LinkageName,
       unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
-#if LLVM_VERSION_GE(4, 0)
-      InitExpr,
+      InitExpr, unwrapDIPtr<MDNode>(Decl), AlignInBits);
+
+  InitVal->setMetadata("dbg", VarExpr);
+
+  return wrap(VarExpr);
 #else
-      InitVal,
+  return wrap(Builder->createGlobalVariable(
+      unwrapDI<DIDescriptor>(Context), Name, LinkageName,
+      unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
+      InitVal, unwrapDIPtr<MDNode>(Decl)));
 #endif
-      unwrapDIPtr<MDNode>(Decl)
-#if LLVM_VERSION_GE(4, 0)
-      ,
-      AlignInBits
-#endif
-      ));
 }
 
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateVariable(

@@ -2,10 +2,10 @@ error: cannot borrow immutable local variable `x` as mutable
    --> $DIR/huge_multispan_highlight.rs:100:18
     |
 12  |     let x = "foo";
-    |         - use `mut x` here to make mutable
+    |         - consider changing this to `mut x`
 ...
 100 |     let y = &mut x;
     |                  ^ cannot borrow mutably
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

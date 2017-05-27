@@ -101,19 +101,24 @@ pub fn check(path: &Path, bad: &mut bool) {
            filename.starts_with(".#") {
             return
         }
-        if filename == "miniz.c" || filename.contains("jquery") {
+        if filename == "miniz.c" {
             return
         }
 
         contents.truncate(0);
         t!(t!(File::open(file), file).read_to_string(&mut contents));
+
+        if contents.is_empty() {
+            tidy_error!(bad, "{}: empty file", file.display());
+        }
+
         let skip_cr = contents.contains("ignore-tidy-cr");
         let skip_tab = contents.contains("ignore-tidy-tab");
         let skip_length = contents.contains("ignore-tidy-linelength");
+        let skip_end_whitespace = contents.contains("ignore-tidy-end-whitespace");
         for (i, line) in contents.split("\n").enumerate() {
             let mut err = |msg: &str| {
-                println!("{}:{}: {}", file.display(), i + 1, msg);
-                *bad = true;
+                tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
             if !skip_length && line.chars().count() > COLS
                 && !long_line_is_ok(line) {
@@ -122,7 +127,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             if line.contains("\t") && !skip_tab {
                 err("tab character");
             }
-            if line.ends_with(" ") || line.ends_with("\t") {
+            if !skip_end_whitespace && (line.ends_with(" ") || line.ends_with("\t")) {
                 err("trailing whitespace");
             }
             if line.contains("\r") && !skip_cr {
@@ -138,8 +143,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             }
         }
         if !licenseck(file, &contents) {
-            println!("{}: incorrect license", file.display());
-            *bad = true;
+            tidy_error!(bad, "{}: incorrect license", file.display());
         }
     })
 }

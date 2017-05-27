@@ -83,15 +83,15 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    fn fold_region(&mut self, r: &'tcx ty::Region) -> &'tcx ty::Region {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReEarlyBound(..) |
             ty::ReLateBound(..) => {
                 // leave bound regions alone
                 r
             }
 
             ty::ReStatic |
+            ty::ReEarlyBound(..) |
             ty::ReFree(_) |
             ty::ReScope(_) |
             ty::ReVar(_) |
@@ -99,7 +99,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::ReEmpty |
             ty::ReErased => {
                 // replace all free regions with 'erased
-                self.tcx().mk_region(ty::ReErased)
+                self.tcx().types.re_erased
             }
         }
     }

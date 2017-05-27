@@ -418,16 +418,16 @@ before, and hence the cache lookup would succeed, yielding
 One subtle interaction is that the results of trait lookup will vary
 depending on what where clauses are in scope. Therefore, we actually
 have *two* caches, a local and a global cache. The local cache is
-attached to the `ParameterEnvironment` and the global cache attached
-to the `tcx`. We use the local cache whenever the result might depend
-on the where clauses that are in scope. The determination of which
-cache to use is done by the method `pick_candidate_cache` in
-`select.rs`. At the moment, we use a very simple, conservative rule:
-if there are any where-clauses in scope, then we use the local cache.
-We used to try and draw finer-grained distinctions, but that led to a
-serious of annoying and weird bugs like #22019 and #18290. This simple
-rule seems to be pretty clearly safe and also still retains a very
-high hit rate (~95% when compiling rustc).
+attached to the `ParamEnv` and the global cache attached to the
+`tcx`. We use the local cache whenever the result might depend on the
+where clauses that are in scope. The determination of which cache to
+use is done by the method `pick_candidate_cache` in `select.rs`. At
+the moment, we use a very simple, conservative rule: if there are any
+where-clauses in scope, then we use the local cache.  We used to try
+and draw finer-grained distinctions, but that led to a serious of
+annoying and weird bugs like #22019 and #18290. This simple rule seems
+to be pretty clearly safe and also still retains a very high hit rate
+(~95% when compiling rustc).
 
 # Specialization
 

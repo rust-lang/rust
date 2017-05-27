@@ -65,26 +65,25 @@ pub fn check(build: &mut Build) {
 
     // If we've got a git directory we're gona need git to update
     // submodules and learn about various other aspects.
-    if fs::metadata(build.src.join(".git")).is_ok() {
+    if build.src_is_git {
         need_cmd("git".as_ref());
     }
 
-    // We need cmake, but only if we're actually building LLVM
-    for host in build.config.host.iter() {
-        if let Some(config) = build.config.target_config.get(host) {
-            if config.llvm_config.is_some() {
-                continue
-            }
-        }
+    // We need cmake, but only if we're actually building LLVM or sanitizers.
+    let building_llvm = build.config.host.iter()
+        .filter_map(|host| build.config.target_config.get(host))
+        .any(|config| config.llvm_config.is_none());
+    if building_llvm || build.config.sanitizers {
         need_cmd("cmake".as_ref());
-        if build.config.ninja {
-            // Some Linux distros rename `ninja` to `ninja-build`.
-            // CMake can work with either binary name.
-            if have_cmd("ninja-build".as_ref()).is_none() {
-                need_cmd("ninja".as_ref());
-            }
+    }
+
+    // Ninja is currently only used for LLVM itself.
+    if building_llvm && build.config.ninja {
+        // Some Linux distros rename `ninja` to `ninja-build`.
+        // CMake can work with either binary name.
+        if have_cmd("ninja-build".as_ref()).is_none() {
+            need_cmd("ninja".as_ref());
         }
-        break
     }
 
     if build.config.python.is_none() {
@@ -151,10 +150,10 @@ pub fn check(build: &mut Build) {
     }
 
     for target in build.config.target.iter() {
-        // Can't compile for iOS unless we're on OSX
+        // Can't compile for iOS unless we're on macOS
         if target.contains("apple-ios") &&
            !build.config.build.contains("apple-darwin") {
-            panic!("the iOS target is only supported on OSX");
+            panic!("the iOS target is only supported on macOS");
         }
 
         // Make sure musl-root is valid if specified

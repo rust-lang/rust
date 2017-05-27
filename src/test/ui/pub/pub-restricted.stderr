@@ -1,0 +1,52 @@
+error: incorrect visibility restriction
+  --> $DIR/pub-restricted.rs:15:6
+   |
+15 | pub (a) fn afn() {}
+   |      ^ help: make this visible only to module `a` with `in`: `in a`
+   |
+   = help: some possible visibility restrictions are:
+           `pub(crate)`: visible only on the current crate
+           `pub(super)`: visible only in the current module's parent
+           `pub(in path::to::module)`: visible only on the specified path
+
+error: incorrect visibility restriction
+  --> $DIR/pub-restricted.rs:16:6
+   |
+16 | pub (b) fn bfn() {}
+   |      ^ help: make this visible only to module `b` with `in`: `in b`
+   |
+   = help: some possible visibility restrictions are:
+           `pub(crate)`: visible only on the current crate
+           `pub(super)`: visible only in the current module's parent
+           `pub(in path::to::module)`: visible only on the specified path
+
+error: incorrect visibility restriction
+  --> $DIR/pub-restricted.rs:32:14
+   |
+32 |         pub (a) invalid: usize,
+   |              ^ help: make this visible only to module `a` with `in`: `in a`
+   |
+   = help: some possible visibility restrictions are:
+           `pub(crate)`: visible only on the current crate
+           `pub(super)`: visible only in the current module's parent
+           `pub(in path::to::module)`: visible only on the specified path
+
+error: incorrect visibility restriction
+  --> $DIR/pub-restricted.rs:41:6
+   |
+41 | pub (xyz) fn xyz() {}
+   |      ^^^ help: make this visible only to module `xyz` with `in`: `in xyz`
+   |
+   = help: some possible visibility restrictions are:
+           `pub(crate)`: visible only on the current crate
+           `pub(super)`: visible only in the current module's parent
+           `pub(in path::to::module)`: visible only on the specified path
+
+error: visibilities can only be restricted to ancestor modules
+  --> $DIR/pub-restricted.rs:33:17
+   |
+33 |         pub (in x) non_parent_invalid: usize,
+   |                 ^
+
+error: aborting due to previous error(s)
+

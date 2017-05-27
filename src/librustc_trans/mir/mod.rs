@@ -11,22 +11,22 @@
 use libc::c_uint;
 use llvm::{self, ValueRef, BasicBlockRef};
 use llvm::debuginfo::DIScope;
-use rustc::ty::{self, layout};
+use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::layout::{self, LayoutTyper};
 use rustc::mir::{self, Mir};
 use rustc::mir::tcx::LvalueTy;
 use rustc::ty::subst::Substs;
 use rustc::infer::TransNormalize;
-use rustc::ty::TypeFoldable;
 use session::config::FullDebugInfo;
 use base;
 use builder::Builder;
-use common::{self, CrateContext, C_null, Funclet};
+use common::{self, CrateContext, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
-use monomorphize::{self, Instance};
+use monomorphize::Instance;
 use abi::FnType;
 use type_of;
 
-use syntax_pos::{DUMMY_SP, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos, Span};
+use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;
 
 use std::iter;
@@ -52,7 +52,7 @@ pub struct MirContext<'a, 'tcx:'a> {
 
     ccx: &'a CrateContext<'a, 'tcx>,
 
-    fn_ty: FnType,
+    fn_ty: FnType<'tcx>,
 
     /// When unwinding is initiated, we have to store this personality
     /// value somewhere so that we can load it and re-use it in the
@@ -102,8 +102,9 @@ pub struct MirContext<'a, 'tcx:'a> {
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T: TransNormalize<'tcx> {
-        monomorphize::apply_param_substs(self.ccx.shared(), self.param_substs, value)
+        where T: TransNormalize<'tcx>
+    {
+        self.ccx.tcx().trans_apply_param_substs(self.param_substs, value)
     }
 
     pub fn set_debug_loc(&mut self, bcx: &Builder, source_info: mir::SourceInfo) {
@@ -124,24 +125,18 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         // In order to have a good line stepping behavior in debugger, we overwrite debug
         // locations of macro expansions with that of the outermost expansion site
         // (unless the crate is being compiled with `-Z debug-macros`).
-        if source_info.span.expn_id == NO_EXPANSION ||
-            source_info.span.expn_id == COMMAND_LINE_EXPN ||
-            self.ccx.sess().opts.debugging_opts.debug_macros {
-
+        if source_info.span.ctxt == NO_EXPANSION ||
+           self.ccx.sess().opts.debugging_opts.debug_macros {
             let scope = self.scope_metadata_for_loc(source_info.scope, source_info.span.lo);
             (scope, source_info.span)
         } else {
-            let cm = self.ccx.sess().codemap();
             // Walk up the macro expansion chain until we reach a non-expanded span.
             // We also stop at the function body level because no line stepping can occurr
             // at the level above that.
             let mut span = source_info.span;
-            while span.expn_id != NO_EXPANSION &&
-                  span.expn_id != COMMAND_LINE_EXPN &&
-                  span.expn_id != self.mir.span.expn_id {
-                if let Some(callsite_span) = cm.with_expn_info(span.expn_id,
-                                                    |ei| ei.map(|ei| ei.call_site.clone())) {
-                    span = callsite_span;
+            while span.ctxt != NO_EXPANSION && span.ctxt != self.mir.span.ctxt {
+                if let Some(info) = span.ctxt.outer().expn_info() {
+                    span = info.call_site;
                 } else {
                     break;
                 }
@@ -162,7 +157,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         if pos < self.scopes[scope_id].file_start_pos ||
            pos >= self.scopes[scope_id].file_end_pos {
             let cm = self.ccx.sess().codemap();
-            debuginfo::extend_scope_to_file(self.ccx, scope_metadata, &cm.lookup_char_pos(pos).file)
+            let defining_crate = self.debug_context.get_ref(DUMMY_SP).defining_crate;
+            debuginfo::extend_scope_to_file(self.ccx,
+                                            scope_metadata,
+                                            &cm.lookup_char_pos(pos).file,
+                                            defining_crate)
         } else {
             scope_metadata
         }
@@ -176,23 +175,12 @@ enum LocalRef<'tcx> {
 
 impl<'tcx> LocalRef<'tcx> {
     fn new_operand<'a>(ccx: &CrateContext<'a, 'tcx>,
-                         ty: ty::Ty<'tcx>) -> LocalRef<'tcx> {
+                       ty: Ty<'tcx>) -> LocalRef<'tcx> {
         if common::type_is_zero_size(ccx, ty) {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
             // we need something in the operand.
-            let llty = type_of::type_of(ccx, ty);
-            let val = if common::type_is_imm_pair(ccx, ty) {
-                let fields = llty.field_types();
-                OperandValue::Pair(C_null(fields[0]), C_null(fields[1]))
-            } else {
-                OperandValue::Immediate(C_null(llty))
-            };
-            let op = OperandRef {
-                val: val,
-                ty: ty
-            };
-            LocalRef::Operand(Some(op))
+            LocalRef::Operand(Some(OperandRef::new_zst(ccx, ty)))
         } else {
             LocalRef::Operand(None)
         }
@@ -212,15 +200,17 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     debug!("fn_ty: {:?}", fn_ty);
     let debug_context =
         debuginfo::create_function_debug_context(ccx, instance, sig, llfn, mir);
-    let bcx = Builder::new_block(ccx, llfn, "entry-block");
+    let bcx = Builder::new_block(ccx, llfn, "start");
 
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
 
-    // Allocate a `Block` for every basic block
+    // Allocate a `Block` for every basic block, except
+    // the start block, if nothing loops back to it.
+    let reentrant_start_block = !mir.predecessors_for(mir::START_BLOCK).is_empty();
     let block_bcxs: IndexVec<mir::BasicBlock, BasicBlockRef> =
         mir.basic_blocks().indices().map(|bb| {
-            if bb == mir::START_BLOCK {
-                bcx.build_sibling_block("start").llbb()
+            if bb == mir::START_BLOCK && !reentrant_start_block {
+                bcx.llbb()
             } else {
                 bcx.build_sibling_block(&format!("{:?}", bb)).llbb()
             }
@@ -260,8 +250,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 
             if let Some(name) = decl.name {
                 // User variable
-                let source_info = decl.source_info.unwrap();
-                let debug_scope = mircx.scopes[source_info.scope];
+                let debug_scope = mircx.scopes[decl.source_info.scope];
                 let dbg = debug_scope.is_valid() && bcx.sess().opts.debuginfo == FullDebugInfo;
 
                 if !lvalue_locals.contains(local.index()) && !dbg {
@@ -273,7 +262,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
                 assert!(!ty.has_erasable_regions());
                 let lvalue = LvalueRef::alloca(&bcx, ty, &name.as_str());
                 if dbg {
-                    let (scope, span) = mircx.debug_loc(source_info);
+                    let (scope, span) = mircx.debug_loc(decl.source_info);
                     declare_local(&bcx, &mircx.debug_context, name, ty, scope,
                         VariableAccess::DirectVariable { alloca: lvalue.llval },
                         VariableKind::LocalVariable, span);
@@ -307,9 +296,10 @@ pub fn trans_mir<'a, 'tcx: 'a>(
             .collect()
     };
 
-    // Branch to the START block
-    let start_bcx = mircx.blocks[mir::START_BLOCK];
-    bcx.br(start_bcx);
+    // Branch to the START block, if it's not the entry block.
+    if reentrant_start_block {
+        bcx.br(mircx.blocks[mir::START_BLOCK]);
+    }
 
     // Up until here, IR instructions for this function have explicitly not been annotated with
     // source code location, so we don't step into call setup code. From here on, source location
@@ -391,7 +381,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
             let lvalue = LvalueRef::alloca(bcx, arg_ty, &format!("arg{}", arg_index));
             for (i, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
-                let dst = bcx.struct_gep(lvalue.llval, i);
+                let (dst, _) = lvalue.trans_field_ptr(bcx, i);
                 let arg = &mircx.fn_ty.args[idx];
                 idx += 1;
                 if common::type_is_fat_ptr(bcx.ccx, tupled_arg_ty) {
@@ -460,6 +450,23 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 assert_eq!((meta.cast, meta.pad), (None, None));
                 let llmeta = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
                 llarg_idx += 1;
+
+                // FIXME(eddyb) As we can't perfectly represent the data and/or
+                // vtable pointer in a fat pointers in Rust's typesystem, and
+                // because we split fat pointers into two ArgType's, they're
+                // not the right type so we have to cast them for now.
+                let pointee = match arg_ty.sty {
+                    ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
+                    ty::TyRawPtr(ty::TypeAndMut{ty, ..}) => ty,
+                    ty::TyAdt(def, _) if def.is_box() => arg_ty.boxed_ty(),
+                    _ => bug!()
+                };
+                let data_llty = type_of::in_memory_type_of(bcx.ccx, pointee);
+                let meta_llty = type_of::unsized_info_ty(bcx.ccx, pointee);
+
+                let llarg = bcx.pointercast(llarg, data_llty.ptr_to());
+                let llmeta = bcx.pointercast(llmeta, meta_llty);
+
                 OperandValue::Pair(llarg, llmeta)
             } else {
                 OperandValue::Immediate(llarg)
@@ -522,7 +529,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             // doesn't actually strip the offset when splitting the closure
             // environment into its components so it ends up out of bounds.
             let env_ptr = if !env_ref {
-                let alloc = bcx.alloca(common::val_ty(llval), "__debuginfo_env_ptr");
+                let alloc = bcx.alloca(common::val_ty(llval), "__debuginfo_env_ptr", None);
                 bcx.store(llval, alloc, None);
                 alloc
             } else {

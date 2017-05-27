@@ -38,6 +38,11 @@ struct Huge {
     int32_t e;
 };
 
+struct FloatPoint {
+    double x;
+    double y;
+};
+
 // System V x86_64 ABI:
 // a, b, c, d, e should be in registers
 // s should be byval pointer
@@ -130,6 +135,21 @@ void byval_rect_with_float(int32_t a, int32_t b, float c, int32_t d,
     assert(s.b == 554);
     assert(s.c == 555);
     assert(s.d == 556);
+}
+
+// System V x86_64 ABI:
+// a, b, d, e, f should be byval pointer (on the stack)
+// g passed via register (fixes #41375)
+//
+// Win64 ABI:
+// a, b, d, e, f, g should be byval pointer
+void byval_rect_with_many_huge(struct Huge a, struct Huge b, struct Huge c,
+                               struct Huge d, struct Huge e, struct Huge f,
+                               struct Rect g) {
+    assert(g.a == 123);
+    assert(g.b == 456);
+    assert(g.c == 789);
+    assert(g.d == 420);
 }
 
 // System V x86_64 & Win64 ABI:
@@ -257,4 +277,18 @@ struct Huge huge_struct(struct Huge s) {
     assert(s.e == 5651);
 
     return s;
+}
+
+// System V x86_64 ABI:
+// p should be in registers
+// return should be in registers
+//
+// Win64 ABI:
+// p should be a byval pointer
+// return should be in a hidden sret pointer
+struct FloatPoint float_point(struct FloatPoint p) {
+    assert(p.x == 5.);
+    assert(p.y == -3.);
+
+    return p;
 }

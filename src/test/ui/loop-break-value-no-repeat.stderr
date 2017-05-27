@@ -1,0 +1,8 @@
+error[E0571]: `break` with value from a `for` loop
+  --> $DIR/loop-break-value-no-repeat.rs:22:9
+   |
+22 |         break 22
+   |         ^^^^^^^^ can only break with a value inside `loop`
+
+error: aborting due to previous error(s)
+

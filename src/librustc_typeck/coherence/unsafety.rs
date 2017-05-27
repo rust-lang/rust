@@ -34,7 +34,7 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
             None => {}
 
             Some(trait_ref) => {
-                let trait_def = self.tcx.lookup_trait_def(trait_ref.def_id);
+                let trait_def = self.tcx.trait_def(trait_ref.def_id);
                 let unsafe_attr = impl_generics.and_then(|g| g.carries_unsafe_attr());
                 match (trait_def.unsafety, unsafe_attr, unsafety, polarity) {
                     (_, _, Unsafety::Unsafe, hir::ImplPolarity::Negative) => {
@@ -87,7 +87,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for UnsafetyChecker<'cx, 'tcx> {
             hir::ItemDefaultImpl(unsafety, _) => {
                 self.check_unsafety_coherence(item, None, unsafety, hir::ImplPolarity::Positive);
             }
-            hir::ItemImpl(unsafety, polarity, ref generics, Some(_), _, _) => {
+            hir::ItemImpl(unsafety, polarity, _, ref generics, ..) => {
                 self.check_unsafety_coherence(item, Some(generics), unsafety, polarity);
             }
             _ => {}

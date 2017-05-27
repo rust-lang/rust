@@ -32,7 +32,7 @@ error: expected one of `)`, `,`, `.`, `<`, `?`, `break`, `continue`, `false`, `f
   --> $DIR/token-error-correct.rs:14:13
    |
 14 |     foo(bar(;
-   |             ^
+   |             ^ expected one of 18 possible tokens here
 
 error: expected expression, found `)`
   --> $DIR/token-error-correct.rs:23:1
@@ -52,5 +52,5 @@ error[E0425]: cannot find function `bar` in this scope
 14 |     foo(bar(;
    |         ^^^ not found in this scope
 
-error: aborting due to 7 previous errors
+error: aborting due to previous error(s)
 

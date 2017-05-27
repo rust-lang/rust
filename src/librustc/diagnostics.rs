@@ -327,6 +327,25 @@ struct ListNode {
 This works because `Box` is a pointer, so its size is well-known.
 "##,
 
+E0080: r##"
+This error indicates that the compiler was unable to sensibly evaluate an
+constant expression that had to be evaluated. Attempting to divide by 0
+or causing integer overflow are two ways to induce this error. For example:
+
+```compile_fail,E0080
+enum Enum {
+    X = (1 << 500),
+    Y = (1 / 0)
+}
+```
+
+Ensure that the expressions given can be evaluated as the desired integer type.
+See the FFI section of the Reference for more information about using a custom
+integer type:
+
+https://doc.rust-lang.org/reference.html#ffi-attributes
+"##,
+
 E0106: r##"
 This error indicates that a lifetime is missing from a type. If it is an error
 inside a function signature, the problem may be with failing to adhere to the
@@ -388,6 +407,67 @@ RFC. It is, however, [currently unimplemented][iss15872].
 
 [book-le]: https://doc.rust-lang.org/nightly/book/lifetimes.html#lifetime-elision
 [iss15872]: https://github.com/rust-lang/rust/issues/15872
+"##,
+
+E0119: r##"
+There are conflicting trait implementations for the same type.
+Example of erroneous code:
+
+```compile_fail,E0119
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+impl<T> MyTrait for T {
+    fn get(&self) -> usize { 0 }
+}
+
+struct Foo {
+    value: usize
+}
+
+impl MyTrait for Foo { // error: conflicting implementations of trait
+                       //        `MyTrait` for type `Foo`
+    fn get(&self) -> usize { self.value }
+}
+```
+
+When looking for the implementation for the trait, the compiler finds
+both the `impl<T> MyTrait for T` where T is all types and the `impl
+MyTrait for Foo`. Since a trait cannot be implemented multiple times,
+this is an error. So, when you write:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+impl<T> MyTrait for T {
+    fn get(&self) -> usize { 0 }
+}
+```
+
+This makes the trait implemented on all types in the scope. So if you
+try to implement it on another one after that, the implementations will
+conflict. Example:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+impl<T> MyTrait for T {
+    fn get(&self) -> usize { 0 }
+}
+
+struct Foo;
+
+fn main() {
+    let f = Foo;
+
+    f.get(); // the trait is implemented so we can use it
+}
+```
 "##,
 
 E0133: r##"
@@ -1030,18 +1110,19 @@ which expected that trait. This error typically occurs when working with
 `Fn`-based types. Erroneous code example:
 
 ```compile_fail,E0281
-fn foo<F: Fn()>(x: F) { }
+fn foo<F: Fn(usize)>(x: F) { }
 
 fn main() {
-    // type mismatch: the type ... implements the trait `core::ops::Fn<(_,)>`,
-    // but the trait `core::ops::Fn<()>` is required (expected (), found tuple
+    // type mismatch: ... implements the trait `core::ops::Fn<(String,)>`,
+    // but the trait `core::ops::Fn<(usize,)>` is required
     // [E0281]
-    foo(|y| { });
+    foo(|y: String| { });
 }
 ```
 
-The issue in this case is that `foo` is defined as accepting a `Fn` with no
-arguments, but the closure we attempted to pass to it requires one argument.
+The issue in this case is that `foo` is defined as accepting a `Fn` with one
+argument of type `String`, but the closure we attempted to pass to it requires
+one arguments of type `usize`.
 "##,
 
 E0282: r##"
@@ -1336,7 +1417,7 @@ trait SecondTrait : FirstTrait {
 
 E0398: r##"
 In Rust 1.3, the default object lifetime bounds are expected to change, as
-described in RFC #1156 [1]. You are getting a warning because the compiler
+described in [RFC 1156]. You are getting a warning because the compiler
 thinks it is possible that this change will cause a compilation error in your
 code. It is possible, though unlikely, that this is a false alarm.
 
@@ -1365,7 +1446,7 @@ fn foo<'a>(arg: &Box<SomeTrait+'a>) { ... }
 This explicitly states that you expect the trait object `SomeTrait` to contain
 references (with a maximum lifetime of `'a`).
 
-[1]: https://github.com/rust-lang/rfcs/pull/1156
+[RFC 1156]: https://github.com/rust-lang/rfcs/blob/master/text/1156-adjust-default-object-bounds.md
 "##,
 
 E0452: r##"
@@ -1771,6 +1852,7 @@ This pattern is incorrect because, because the type of `foo` is a function
 **item** (`typeof(foo)`), which is zero-sized, and the target type (`fn()`)
 is a function pointer, which is not zero-sized.
 This pattern should be rewritten. There are a few possible ways to do this:
+
 - change the original fn declaration to match the expected signature,
   and do the cast in the fn body (the prefered option)
 - cast the fn item fo a fn pointer before calling transmute, as shown here:
@@ -1787,11 +1869,27 @@ makes a difference in practice.)
 [rfc401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
 "##,
 
+E0593: r##"
+You tried to supply an `Fn`-based type with an incorrect number of arguments
+than what was expected. Erroneous code example:
+
+```compile_fail,E0593
+fn foo<F: Fn()>(x: F) { }
+
+fn main() {
+    // [E0593] closure takes 1 argument but 0 arguments are required
+    foo(|y| { });
+}
+```
+"##,
+
 }
 
 
 register_diagnostics! {
 //  E0006 // merged with E0005
+//  E0101, // replaced with E0282
+//  E0102, // replaced with E0282
 //  E0134,
 //  E0135,
     E0278, // requirement is not satisfied
@@ -1807,6 +1905,7 @@ register_diagnostics! {
     E0314, // closure outlives stack frame
     E0315, // cannot invoke closure outside of its lifetime
     E0316, // nested quantification of lifetimes
+    E0320, // recursive overflow during dropck
     E0473, // dereference of reference outside its lifetime
     E0474, // captured variable `..` does not outlive the enclosing closure
     E0475, // index of slice outside its lifetime
@@ -1825,5 +1924,6 @@ register_diagnostics! {
     E0489, // type/lifetime parameter not in scope here
     E0490, // a value of type `..` is borrowed for too long
     E0495, // cannot infer an appropriate lifetime due to conflicting requirements
-    E0566  // conflicting representation hints
+    E0566, // conflicting representation hints
+    E0587, // conflicting packed and align representation hints
 }

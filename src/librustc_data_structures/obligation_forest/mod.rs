@@ -43,7 +43,16 @@ pub trait ObligationProcessor {
                           obligation: &mut Self::Obligation)
                           -> Result<Option<Vec<Self::Obligation>>, Self::Error>;
 
-    fn process_backedge<'c, I>(&mut self, cycle: I,
+    /// As we do the cycle check, we invoke this callback when we
+    /// encounter an actual cycle. `cycle` is an iterator that starts
+    /// at the start of the cycle in the stack and walks **toward the
+    /// top**.
+    ///
+    /// In other words, if we had O1 which required O2 which required
+    /// O3 which required O1, we would give an iterator yielding O1,
+    /// O2, O3 (O1 is not yielded twice).
+    fn process_backedge<'c, I>(&mut self,
+                               cycle: I,
                                _marker: PhantomData<&'c Self::Obligation>)
         where I: Clone + Iterator<Item=&'c Self::Obligation>;
 }
@@ -239,8 +248,8 @@ impl<O: ForestObligation> ObligationForest<O> {
                 }
             }
             Entry::Vacant(v) => {
-                debug!("register_obligation_at({:?}, {:?}) - ok",
-                       obligation, parent);
+                debug!("register_obligation_at({:?}, {:?}) - ok, new index is {}",
+                       obligation, parent, self.nodes.len());
                 v.insert(NodeIndex::new(self.nodes.len()));
                 self.cache_list.push(obligation.as_predicate().clone());
                 self.nodes.push(Node::new(parent, obligation));
@@ -376,6 +385,9 @@ impl<O: ForestObligation> ObligationForest<O> {
         where P: ObligationProcessor<Obligation=O>
     {
         let mut stack = self.scratch.take().unwrap();
+        debug_assert!(stack.is_empty());
+
+        debug!("process_cycles()");
 
         for index in 0..self.nodes.len() {
             // For rustc-benchmarks/inflate-0.1.0 this state test is extremely
@@ -389,6 +401,9 @@ impl<O: ForestObligation> ObligationForest<O> {
             }
         }
 
+        debug!("process_cycles: complete");
+
+        debug_assert!(stack.is_empty());
         self.scratch = Some(stack);
     }
 
@@ -402,21 +417,6 @@ impl<O: ForestObligation> ObligationForest<O> {
             NodeState::OnDfsStack => {
                 let index =
                     stack.iter().rposition(|n| *n == index).unwrap();
-                // I need a Clone closure
-                #[derive(Clone)]
-                struct GetObligation<'a, O: 'a>(&'a [Node<O>]);
-                impl<'a, 'b, O> FnOnce<(&'b usize,)> for GetObligation<'a, O> {
-                    type Output = &'a O;
-                    extern "rust-call" fn call_once(self, args: (&'b usize,)) -> &'a O {
-                        &self.0[*args.0].obligation
-                    }
-                }
-                impl<'a, 'b, O> FnMut<(&'b usize,)> for GetObligation<'a, O> {
-                    extern "rust-call" fn call_mut(&mut self, args: (&'b usize,)) -> &'a O {
-                        &self.0[*args.0].obligation
-                    }
-                }
-
                 processor.process_backedge(stack[index..].iter().map(GetObligation(&self.nodes)),
                                            PhantomData);
             }
@@ -643,5 +643,22 @@ impl<O> Node<O> {
             state: Cell::new(NodeState::Pending),
             dependents: vec![],
         }
+    }
+}
+
+// I need a Clone closure
+#[derive(Clone)]
+struct GetObligation<'a, O: 'a>(&'a [Node<O>]);
+
+impl<'a, 'b, O> FnOnce<(&'b usize,)> for GetObligation<'a, O> {
+    type Output = &'a O;
+    extern "rust-call" fn call_once(self, args: (&'b usize,)) -> &'a O {
+        &self.0[*args.0].obligation
+    }
+}
+
+impl<'a, 'b, O> FnMut<(&'b usize,)> for GetObligation<'a, O> {
+    extern "rust-call" fn call_mut(&mut self, args: (&'b usize,)) -> &'a O {
+        &self.0[*args.0].obligation
     }
 }

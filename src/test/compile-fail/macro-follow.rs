@@ -10,6 +10,8 @@
 //
 // Check the macro follow sets (see corresponding rpass test).
 
+#![allow(unused_macros)]
+
 // FOLLOW(pat) = {FatArrow, Comma, Eq, Or, Ident(if), Ident(in)}
 macro_rules! follow_pat {
     ($p:pat ()) => {};       //~ERROR  `$p:pat` is followed by `(`

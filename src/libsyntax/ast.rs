@@ -14,78 +14,30 @@ pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
 pub use self::PathParameters::*;
-pub use symbol::Symbol as Name;
+pub use symbol::{Ident, Symbol as Name};
 pub use util::ThinVec;
 
-use syntax_pos::{mk_sp, Span, DUMMY_SP, ExpnId};
+use syntax_pos::{Span, DUMMY_SP};
 use codemap::{respan, Spanned};
 use abi::Abi;
-use ext::hygiene::SyntaxContext;
+use ext::hygiene::{Mark, SyntaxContext};
 use print::pprust;
 use ptr::P;
+use rustc_data_structures::indexed_vec;
 use symbol::{Symbol, keywords};
 use tokenstream::{ThinTokenStream, TokenStream};
 
+use serialize::{self, Encoder, Decoder};
 use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
 use std::u32;
 
-use serialize::{self, Encodable, Decodable, Encoder, Decoder};
-
-/// An identifier contains a Name (index into the interner
-/// table) and a SyntaxContext to track renaming and
-/// macro expansion per Flatt et al., "Macros That Work Together"
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Ident {
-    pub name: Symbol,
-    pub ctxt: SyntaxContext
-}
-
-impl Ident {
-    pub const fn with_empty_ctxt(name: Name) -> Ident {
-        Ident { name: name, ctxt: SyntaxContext::empty() }
-    }
-
-    /// Maps a string to an identifier with an empty syntax context.
-    pub fn from_str(s: &str) -> Ident {
-        Ident::with_empty_ctxt(Symbol::intern(s))
-    }
-
-    pub fn unhygienize(&self) -> Ident {
-        Ident { name: self.name, ctxt: SyntaxContext::empty() }
-    }
-}
-
-impl fmt::Debug for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{:?}", self.name, self.ctxt)
-    }
-}
-
-impl fmt::Display for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.name, f)
-    }
-}
-
-impl Encodable for Ident {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        self.name.encode(s)
-    }
-}
-
-impl Decodable for Ident {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
-        Ok(Ident::with_empty_ctxt(Name::decode(d)?))
-    }
-}
-
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
     pub id: NodeId,
     pub span: Span,
-    pub name: Name
+    pub ident: Ident,
 }
 
 impl fmt::Debug for Lifetime {
@@ -116,6 +68,12 @@ pub struct Path {
     pub segments: Vec<PathSegment>,
 }
 
+impl<'a> PartialEq<&'a str> for Path {
+    fn eq(&self, string: &&'a str) -> bool {
+        self.segments.len() == 1 && self.segments[0].identifier.name == *string
+    }
+}
+
 impl fmt::Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "path({})", pprust::path_to_string(self))
@@ -134,7 +92,7 @@ impl Path {
     pub fn from_ident(s: Span, identifier: Ident) -> Path {
         Path {
             span: s,
-            segments: vec![identifier.into()],
+            segments: vec![PathSegment::from_ident(identifier, s)],
         }
     }
 
@@ -159,6 +117,8 @@ impl Path {
 pub struct PathSegment {
     /// The identifier portion of this path segment.
     pub identifier: Ident,
+    /// Span of the segment identifier.
+    pub span: Span,
 
     /// Type/lifetime parameters attached to this path. They come in
     /// two flavors: `Path<A,B,C>` and `Path(A,B) -> C`. Note that
@@ -170,16 +130,14 @@ pub struct PathSegment {
     pub parameters: Option<P<PathParameters>>,
 }
 
-impl From<Ident> for PathSegment {
-    fn from(id: Ident) -> Self {
-        PathSegment { identifier: id, parameters: None }
-    }
-}
-
 impl PathSegment {
+    pub fn from_ident(ident: Ident, span: Span) -> Self {
+        PathSegment { identifier: ident, span: span, parameters: None }
+    }
     pub fn crate_root() -> Self {
         PathSegment {
             identifier: keywords::CrateRoot.ident(),
+            span: DUMMY_SP,
             parameters: None,
         }
     }
@@ -249,6 +207,14 @@ impl NodeId {
     pub fn as_u32(&self) -> u32 {
         self.0
     }
+
+    pub fn placeholder_from_mark(mark: Mark) -> Self {
+        NodeId(mark.as_u32())
+    }
+
+    pub fn placeholder_to_mark(self) -> Mark {
+        Mark::from_u32(self.0)
+    }
 }
 
 impl fmt::Display for NodeId {
@@ -266,6 +232,16 @@ impl serialize::UseSpecializedEncodable for NodeId {
 impl serialize::UseSpecializedDecodable for NodeId {
     fn default_decode<D: Decoder>(d: &mut D) -> Result<NodeId, D::Error> {
         d.read_u32().map(NodeId)
+    }
+}
+
+impl indexed_vec::Idx for NodeId {
+    fn new(idx: usize) -> Self {
+        NodeId::new(idx)
+    }
+
+    fn index(self) -> usize {
+        self.as_usize()
     }
 }
 
@@ -739,7 +715,7 @@ impl Stmt {
             StmtKind::Mac(mac) => StmtKind::Mac(mac.map(|(mac, _style, attrs)| {
                 (mac, MacStmtStyle::Semicolon, attrs)
             })),
-            node @ _ => node,
+            node => node,
         };
         self
     }
@@ -935,6 +911,8 @@ pub enum ExprKind {
     Closure(CaptureBy, P<FnDecl>, P<Expr>, Span),
     /// A block (`{ ... }`)
     Block(P<Block>),
+    /// A catch block (`catch { ... }`)
+    Catch(P<Block>),
 
     /// An assignment (`a = foo()`)
     Assign(P<Expr>, P<Expr>),
@@ -1041,6 +1019,18 @@ impl Mac_ {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct MacroDef {
+    pub tokens: ThinTokenStream,
+    pub legacy: bool,
+}
+
+impl MacroDef {
+    pub fn stream(&self) -> TokenStream {
+        self.tokens.clone().into()
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum StrStyle {
     /// A regular string, like `"foo"`
@@ -1098,16 +1088,16 @@ impl LitKind {
     pub fn is_unsuffixed(&self) -> bool {
         match *self {
             // unsuffixed variants
-            LitKind::Str(..) => true,
-            LitKind::ByteStr(..) => true,
-            LitKind::Byte(..) => true,
-            LitKind::Char(..) => true,
-            LitKind::Int(_, LitIntType::Unsuffixed) => true,
-            LitKind::FloatUnsuffixed(..) => true,
+            LitKind::Str(..) |
+            LitKind::ByteStr(..) |
+            LitKind::Byte(..) |
+            LitKind::Char(..) |
+            LitKind::Int(_, LitIntType::Unsuffixed) |
+            LitKind::FloatUnsuffixed(..) |
             LitKind::Bool(..) => true,
             // suffixed variants
-            LitKind::Int(_, LitIntType::Signed(..)) => false,
-            LitKind::Int(_, LitIntType::Unsigned(..)) => false,
+            LitKind::Int(_, LitIntType::Signed(..)) |
+            LitKind::Int(_, LitIntType::Unsigned(..)) |
             LitKind::Float(..) => false,
         }
     }
@@ -1383,6 +1373,8 @@ pub enum TyKind {
     ImplicitSelf,
     // A macro in the type position.
     Mac(Mac),
+    /// Placeholder for a kind that has failed to be defined.
+    Err,
 }
 
 /// Inline assembly dialect.
@@ -1418,7 +1410,7 @@ pub struct InlineAsm {
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
-    pub expn_id: ExpnId,
+    pub ctxt: SyntaxContext,
 }
 
 /// An argument in a function header.
@@ -1455,7 +1447,7 @@ impl Arg {
                     TyKind::Rptr(lt, MutTy{ref ty, mutbl}) if ty.node == TyKind::ImplicitSelf => {
                         Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
                     }
-                    _ => Some(respan(mk_sp(self.pat.span.lo, self.ty.span.hi),
+                    _ => Some(respan(self.pat.span.to(self.ty.span),
                                      SelfKind::Explicit(self.ty.clone(), mutbl))),
                 }
             }
@@ -1472,7 +1464,7 @@ impl Arg {
     }
 
     pub fn from_self(eself: ExplicitSelf, eself_ident: SpannedIdent) -> Arg {
-        let span = mk_sp(eself.span.lo, eself_ident.span.hi);
+        let span = eself.span.to(eself_ident.span);
         let infer_ty = P(Ty {
             id: DUMMY_NODE_ID,
             node: TyKind::ImplicitSelf,
@@ -1605,6 +1597,15 @@ pub struct ForeignMod {
     pub items: Vec<ForeignItem>,
 }
 
+/// Global inline assembly
+///
+/// aka module-level assembly or file-scoped assembly
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub struct GlobalAsm {
+    pub asm: Symbol,
+    pub ctxt: SyntaxContext,
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct EnumDef {
     pub variants: Vec<Variant>,
@@ -1679,7 +1680,8 @@ pub struct AttrId(pub usize);
 pub struct Attribute {
     pub id: AttrId,
     pub style: AttrStyle,
-    pub value: MetaItem,
+    pub path: Path,
+    pub tokens: TokenStream,
     pub is_sugared_doc: bool,
     pub span: Span,
 }
@@ -1705,6 +1707,16 @@ pub struct PolyTraitRef {
     pub trait_ref: TraitRef,
 
     pub span: Span,
+}
+
+impl PolyTraitRef {
+    pub fn new(lifetimes: Vec<LifetimeDef>, path: Path, span: Span) -> Self {
+        PolyTraitRef {
+            bound_lifetimes: lifetimes,
+            trait_ref: TraitRef { path: path, ref_id: DUMMY_NODE_ID },
+            span: span,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1821,6 +1833,8 @@ pub enum ItemKind {
     ///
     /// E.g. `extern {}` or `extern "C" {}`
     ForeignMod(ForeignMod),
+    /// Module-level inline assembly (from `global_asm!()`)
+    GlobalAsm(P<GlobalAsm>),
     /// A type alias (`type` or `pub type`).
     ///
     /// E.g. `type Foo = Bar<u8>;`
@@ -1850,6 +1864,7 @@ pub enum ItemKind {
     /// E.g. `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`
     Impl(Unsafety,
              ImplPolarity,
+             Defaultness,
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
@@ -1860,7 +1875,7 @@ pub enum ItemKind {
     Mac(Mac),
 
     /// A macro definition.
-    MacroDef(ThinTokenStream),
+    MacroDef(MacroDef),
 }
 
 impl ItemKind {
@@ -1873,6 +1888,7 @@ impl ItemKind {
             ItemKind::Fn(..) => "function",
             ItemKind::Mod(..) => "module",
             ItemKind::ForeignMod(..) => "foreign module",
+            ItemKind::GlobalAsm(..) => "global asm",
             ItemKind::Ty(..) => "type alias",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",

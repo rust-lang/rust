@@ -29,16 +29,23 @@ pub struct Blake2bCtx {
     t: [u64; 2],
     c: usize,
     outlen: u16,
-    finalized: bool
+    finalized: bool,
+
+    #[cfg(debug_assertions)]
+    fnv_hash: u64,
 }
 
+#[cfg(debug_assertions)]
 impl ::std::fmt::Debug for Blake2bCtx {
-    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
-        try!(write!(fmt, "hash: "));
-        for v in &self.h[..] {
-            try!(write!(fmt, "{:x}", v));
-        }
-        Ok(())
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(fmt, "{:x}", self.fnv_hash)
+    }
+}
+
+#[cfg(not(debug_assertions))]
+impl ::std::fmt::Debug for Blake2bCtx {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(fmt, "Enable debug_assertions() for more info.")
     }
 }
 
@@ -157,6 +164,9 @@ fn blake2b_new(outlen: usize, key: &[u8]) -> Blake2bCtx {
         c: 0,
         outlen: outlen as u16,
         finalized: false,
+
+        #[cfg(debug_assertions)]
+        fnv_hash: 0xcbf29ce484222325,
     };
 
     ctx.h[0] ^= 0x01010000 ^ ((key.len() << 8) as u64) ^ (outlen as u64);
@@ -193,6 +203,16 @@ fn blake2b_update(ctx: &mut Blake2bCtx, mut data: &[u8]) {
     if bytes_to_copy > 0 {
         checked_mem_copy(data, &mut ctx.b[ctx.c .. ], bytes_to_copy);
         ctx.c += bytes_to_copy;
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        // compute additional FNV hash for simpler to read debug output
+        const MAGIC_PRIME: u64 = 0x00000100000001b3;
+
+        for &byte in data {
+            ctx.fnv_hash = (ctx.fnv_hash ^ byte as u64).wrapping_mul(MAGIC_PRIME);
+        }
     }
 }
 

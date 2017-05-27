@@ -20,15 +20,14 @@
 // aux-build:cgu_extern_drop_glue.rs
 extern crate cgu_extern_drop_glue;
 
-//~ TRANS_ITEM drop-glue cgu_extern_drop_glue::Struct[0] @@ extern_drop_glue[Internal] extern_drop_glue-mod1[Internal]
-//~ TRANS_ITEM drop-glue-contents cgu_extern_drop_glue::Struct[0] @@ extern_drop_glue[Internal] extern_drop_glue-mod1[Internal]
+//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<cgu_extern_drop_glue::Struct[0]> @@ extern_drop_glue[Internal] extern_drop_glue-mod1[Internal]
 
 struct LocalStruct(cgu_extern_drop_glue::Struct);
 
 //~ TRANS_ITEM fn extern_drop_glue::user[0] @@ extern_drop_glue[External]
 fn user()
 {
-    //~ TRANS_ITEM drop-glue extern_drop_glue::LocalStruct[0] @@ extern_drop_glue[Internal]
+    //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<extern_drop_glue::LocalStruct[0]> @@ extern_drop_glue[Internal]
     let _ = LocalStruct(cgu_extern_drop_glue::Struct(0));
 }
 
@@ -40,7 +39,7 @@ mod mod1 {
     //~ TRANS_ITEM fn extern_drop_glue::mod1[0]::user[0] @@ extern_drop_glue-mod1[External]
     fn user()
     {
-        //~ TRANS_ITEM drop-glue extern_drop_glue::mod1[0]::LocalStruct[0] @@ extern_drop_glue-mod1[Internal]
+        //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<extern_drop_glue::mod1[0]::LocalStruct[0]> @@ extern_drop_glue-mod1[Internal]
         let _ = LocalStruct(cgu_extern_drop_glue::Struct(0));
     }
 }

@@ -4,24 +4,22 @@ error[E0308]: mismatched types
 16 |     x.push(y);
    |            ^ lifetime mismatch
    |
-   = note: expected type `Ref<'_, i32>`
-              found type `Ref<'_, i32>`
-note: the anonymous lifetime #3 defined on the body at 15:43...
-  --> $DIR/ex2b-push-no-existing-names.rs:15:44
+   = note: expected type `Ref<'_, _>`
+              found type `Ref<'_, _>`
+note: the anonymous lifetime #3 defined on the function body at 15:1...
+  --> $DIR/ex2b-push-no-existing-names.rs:15:1
    |
-15 |   fn foo(x: &mut Vec<Ref<i32>>, y: Ref<i32>) {
-   |  ____________________________________________^ starting here...
+15 | / fn foo(x: &mut Vec<Ref<i32>>, y: Ref<i32>) {
 16 | |     x.push(y);
 17 | | }
-   | |_^ ...ending here
-note: ...does not necessarily outlive the anonymous lifetime #2 defined on the body at 15:43
-  --> $DIR/ex2b-push-no-existing-names.rs:15:44
+   | |_^
+note: ...does not necessarily outlive the anonymous lifetime #2 defined on the function body at 15:1
+  --> $DIR/ex2b-push-no-existing-names.rs:15:1
    |
-15 |   fn foo(x: &mut Vec<Ref<i32>>, y: Ref<i32>) {
-   |  ____________________________________________^ starting here...
+15 | / fn foo(x: &mut Vec<Ref<i32>>, y: Ref<i32>) {
 16 | |     x.push(y);
 17 | | }
-   | |_^ ...ending here
+   | |_^
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

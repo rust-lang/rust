@@ -11,7 +11,6 @@
 // This compiler pass detects constants that refer to themselves
 // recursively.
 
-use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
 use rustc::session::{CompileResult, Session};
 use rustc::hir::def::{Def, CtorKind};
@@ -88,8 +87,6 @@ impl<'a, 'hir: 'a> Visitor<'hir> for CheckCrateVisitor<'a, 'hir> {
 }
 
 pub fn check_crate<'hir>(sess: &Session, hir_map: &hir_map::Map<'hir>) -> CompileResult {
-    let _task = hir_map.dep_graph.in_task(DepNode::CheckStaticRecursion);
-
     let mut visitor = CheckCrateVisitor {
         sess: sess,
         hir_map: hir_map,
@@ -141,7 +138,7 @@ impl<'a, 'b: 'a, 'hir: 'b> CheckItemRecursionVisitor<'a, 'b, 'hir> {
             });
             if !any_static {
                 struct_span_err!(self.sess, span, E0265, "recursive constant")
-                    .span_label(span, &format!("recursion not allowed in constant"))
+                    .span_label(span, "recursion not allowed in constant")
                     .emit();
             }
             return;

@@ -477,24 +477,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn alloca(&self, ty: Type, name: &str) -> ValueRef {
+    pub fn alloca(&self, ty: Type, name: &str, align: Option<u32>) -> ValueRef {
         let builder = Builder::with_ccx(self.ccx);
         builder.position_at_start(unsafe {
             llvm::LLVMGetFirstBasicBlock(self.llfn())
         });
-        builder.dynamic_alloca(ty, name)
+        builder.dynamic_alloca(ty, name, align)
     }
 
-    pub fn dynamic_alloca(&self, ty: Type, name: &str) -> ValueRef {
+    pub fn dynamic_alloca(&self, ty: Type, name: &str, align: Option<u32>) -> ValueRef {
         self.count_insn("alloca");
         unsafe {
-            if name.is_empty() {
+            let alloca = if name.is_empty() {
                 llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(), noname())
             } else {
                 let name = CString::new(name).unwrap();
                 llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(),
                                       name.as_ptr())
+            };
+            if let Some(align) = align {
+                llvm::LLVMSetAlignment(alloca, align as c_uint);
             }
+            alloca
         }
     }
 
@@ -627,7 +631,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         } else {
             let v = ixs.iter().map(|i| C_i32(self.ccx, *i as i32)).collect::<Vec<ValueRef>>();
             self.count_insn("gepi");
-            self.inbounds_gep(base, &v[..])
+            self.inbounds_gep(base, &v)
         }
     }
 
@@ -835,8 +839,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let s = format!("{} ({})",
                             text,
                             self.ccx.sess().codemap().span_to_string(sp));
-            debug!("{}", &s[..]);
-            self.add_comment(&s[..]);
+            debug!("{}", s);
+            self.add_comment(&s);
         }
     }
 

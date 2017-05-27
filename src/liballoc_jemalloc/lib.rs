@@ -30,31 +30,37 @@ pub use imp::*;
 mod imp {
     use libc::{c_int, c_void, size_t};
 
-    // Note that the symbols here are prefixed by default on OSX and Windows (we
+    // Note that the symbols here are prefixed by default on macOS and Windows (we
     // don't explicitly request it), and on Android and DragonFly we explicitly
     // request it as unprefixing cause segfaults (mismatches in allocators).
     extern "C" {
         #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
-                       target_os = "dragonfly", target_os = "windows"),
+                       target_os = "dragonfly", target_os = "windows", target_env = "musl"),
                    link_name = "je_mallocx")]
         fn mallocx(size: size_t, flags: c_int) -> *mut c_void;
         #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
-                       target_os = "dragonfly", target_os = "windows"),
+                       target_os = "dragonfly", target_os = "windows", target_env = "musl"),
+                   link_name = "je_calloc")]
+        fn calloc(size: size_t, flags: c_int) -> *mut c_void;
+        #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
+                       target_os = "dragonfly", target_os = "windows", target_env = "musl"),
                    link_name = "je_rallocx")]
         fn rallocx(ptr: *mut c_void, size: size_t, flags: c_int) -> *mut c_void;
         #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
-                       target_os = "dragonfly", target_os = "windows"),
+                       target_os = "dragonfly", target_os = "windows", target_env = "musl"),
                    link_name = "je_xallocx")]
         fn xallocx(ptr: *mut c_void, size: size_t, extra: size_t, flags: c_int) -> size_t;
         #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
-                       target_os = "dragonfly", target_os = "windows"),
+                       target_os = "dragonfly", target_os = "windows", target_env = "musl"),
                    link_name = "je_sdallocx")]
         fn sdallocx(ptr: *mut c_void, size: size_t, flags: c_int);
         #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
-                       target_os = "dragonfly", target_os = "windows"),
+                       target_os = "dragonfly", target_os = "windows", target_env = "musl"),
                    link_name = "je_nallocx")]
         fn nallocx(size: size_t, flags: c_int) -> size_t;
     }
+
+    const MALLOCX_ZERO: c_int = 0x40;
 
     // The minimum alignment guaranteed by the architecture. This value is used to
     // add fast paths for low alignment values. In practice, the alignment is a
@@ -89,6 +95,16 @@ mod imp {
     pub extern "C" fn __rust_allocate(size: usize, align: usize) -> *mut u8 {
         let flags = align_to_flags(align);
         unsafe { mallocx(size as size_t, flags) as *mut u8 }
+    }
+
+    #[no_mangle]
+    pub extern "C" fn __rust_allocate_zeroed(size: usize, align: usize) -> *mut u8 {
+        if align <= MIN_ALIGN {
+            unsafe { calloc(size as size_t, 1) as *mut u8 }
+        } else {
+            let flags = align_to_flags(align) | MALLOCX_ZERO;
+            unsafe { mallocx(size as size_t, flags) as *mut u8 }
+        }
     }
 
     #[no_mangle]
@@ -132,6 +148,11 @@ mod imp {
 
     #[no_mangle]
     pub extern "C" fn __rust_allocate(_size: usize, _align: usize) -> *mut u8 {
+        bogus()
+    }
+
+    #[no_mangle]
+    pub extern "C" fn __rust_allocate_zeroed(_size: usize, _align: usize) -> *mut u8 {
         bogus()
     }
 

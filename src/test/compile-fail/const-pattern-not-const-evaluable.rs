@@ -10,21 +10,22 @@
 
 #![feature(const_fn)]
 
+#[derive(PartialEq, Eq)]
 enum Cake {
     BlackForest,
     Marmor,
 }
 use Cake::*;
 
-const BOO: (Cake, Cake) = (Marmor, BlackForest);
+struct Pair<A, B>(A, B);
+
+const BOO: Pair<Cake, Cake> = Pair(Marmor, BlackForest);
 //~^ ERROR: constant evaluation error [E0080]
-//~| unimplemented constant expression: enum variants
+//~| unimplemented constant expression: tuple struct constructors
 const FOO: Cake = BOO.1;
 
 const fn foo() -> Cake {
     Marmor
-        //~^ ERROR: constant evaluation error [E0080]
-        //~| unimplemented constant expression: enum variants
 }
 
 const WORKS: Cake = Marmor;
@@ -34,7 +35,7 @@ const GOO: Cake = foo();
 fn main() {
     match BlackForest {
         FOO => println!("hi"), //~ NOTE: for pattern here
-        GOO => println!("meh"), //~ NOTE: for pattern here
+        GOO => println!("meh"),
         WORKS => println!("möp"),
         _ => println!("bye"),
     }

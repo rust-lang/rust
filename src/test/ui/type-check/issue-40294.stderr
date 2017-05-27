@@ -1,15 +1,14 @@
 error[E0282]: type annotations needed
   --> $DIR/issue-40294.rs:15:1
    |
-15 |   fn foo<'a,'b,T>(x: &'a T, y: &'b T)
-   |  _^ starting here...
+15 | / fn foo<'a,'b,T>(x: &'a T, y: &'b T)
 16 | |     where &'a T : Foo,
 17 | |           &'b T : Foo
 18 | | {
 19 | |     x.foo();
 20 | |     y.foo();
 21 | | }
-   | |_^ ...ending here: cannot infer type for `&'a T`
+   | |_^ cannot infer type for `&'a T`
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

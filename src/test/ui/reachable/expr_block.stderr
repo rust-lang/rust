@@ -1,0 +1,22 @@
+error: unreachable expression
+  --> $DIR/expr_block.rs:21:9
+   |
+21 |         22
+   |         ^^
+   |
+note: lint level defined here
+  --> $DIR/expr_block.rs:14:9
+   |
+14 | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: unreachable statement
+  --> $DIR/expr_block.rs:36:9
+   |
+36 |         println!("foo");
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate
+
+error: aborting due to previous error(s)
+

@@ -128,6 +128,8 @@ mod boxed_test;
 pub mod arc;
 pub mod rc;
 pub mod raw_vec;
+#[unstable(feature = "str_box_extras", issue = "41119")]
+pub mod str;
 pub mod oom;
 
 pub use oom::oom;

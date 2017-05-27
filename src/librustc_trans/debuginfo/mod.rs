@@ -23,7 +23,7 @@ use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray, DIFlags};
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, CrateNum};
 use rustc::ty::subst::Substs;
 
 use abi::Abi;
@@ -42,6 +42,7 @@ use std::ptr;
 
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;
+use syntax::symbol::Symbol;
 use rustc::ty::layout;
 
 pub mod gdb;
@@ -67,7 +68,7 @@ const DW_TAG_arg_variable: c_uint = 0x101;
 pub struct CrateDebugContext<'tcx> {
     llcontext: ContextRef,
     builder: DIBuilderRef,
-    created_files: RefCell<FxHashMap<String, DIFile>>,
+    created_files: RefCell<FxHashMap<(Symbol, Symbol), DIFile>>,
     created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Integer), DIType>>,
 
     type_map: RefCell<TypeMap<'tcx>>,
@@ -103,7 +104,7 @@ pub enum FunctionDebugContext {
 }
 
 impl FunctionDebugContext {
-    fn get_ref<'a>(&'a self, span: Span) -> &'a FunctionDebugContextData {
+    pub fn get_ref<'a>(&'a self, span: Span) -> &'a FunctionDebugContextData {
         match *self {
             FunctionDebugContext::RegularContext(ref data) => data,
             FunctionDebugContext::DebugInfoDisabled => {
@@ -128,6 +129,7 @@ impl FunctionDebugContext {
 pub struct FunctionDebugContextData {
     fn_metadata: DISubprogram,
     source_locations_enabled: Cell<bool>,
+    pub defining_crate: CrateNum,
 }
 
 pub enum VariableAccess<'a> {
@@ -164,9 +166,9 @@ pub fn finalize(cx: &CrateContext) {
         llvm::LLVMRustDIBuilderFinalize(DIB(cx));
         llvm::LLVMRustDIBuilderDispose(DIB(cx));
         // Debuginfo generation in LLVM by default uses a higher
-        // version of dwarf than OS X currently understands. We can
+        // version of dwarf than macOS currently understands. We can
         // instruct LLVM to emit an older version of dwarf, however,
-        // for OS X to understand. For more info see #11352
+        // for macOS to understand. For more info see #11352
         // This can be overridden using --llvm-opts -dwarf-version,N.
         // Android has the same issue (#22398)
         if cx.sess().target.target.options.is_like_osx ||
@@ -205,7 +207,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         return FunctionDebugContext::DebugInfoDisabled;
     }
 
-    for attr in cx.tcx().get_attrs(instance.def).iter() {
+    for attr in instance.def.attrs(cx.tcx()).iter() {
         if attr.check_name("no_debug") {
             return FunctionDebugContext::FunctionWithoutDebugInfo;
         }
@@ -220,8 +222,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         return FunctionDebugContext::FunctionWithoutDebugInfo;
     }
 
+    let def_id = instance.def_id();
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, &loc.file.name, &loc.file.abs_path);
+    let file_metadata = file_metadata(cx, &loc.file.name, def_id.krate);
 
     let function_type_metadata = unsafe {
         let fn_signature = get_function_signature(cx, sig);
@@ -229,15 +232,15 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
 
     // Find the enclosing function, in case this is a closure.
-    let def_key = cx.tcx().def_key(instance.def);
+    let def_key = cx.tcx().def_key(def_id);
     let mut name = def_key.disambiguated_data.data.to_string();
     let name_len = name.len();
 
-    let fn_def_id = cx.tcx().closure_base_def_id(instance.def);
+    let enclosing_fn_def_id = cx.tcx().closure_base_def_id(def_id);
 
     // Get_template_parameters() will append a `<...>` clause to the function
     // name if necessary.
-    let generics = cx.tcx().item_generics(fn_def_id);
+    let generics = cx.tcx().generics_of(enclosing_fn_def_id);
     let substs = instance.substs.truncate_to(cx.tcx(), generics);
     let template_parameters = get_template_parameters(cx,
                                                       &generics,
@@ -246,11 +249,11 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                       &mut name);
 
     // Build the linkage_name out of the item path and "template" parameters.
-    let linkage_name = mangled_name_of_item(cx, instance.def, &name[name_len..]);
+    let linkage_name = mangled_name_of_item(cx, instance.def_id(), &name[name_len..]);
 
     let scope_line = span_start(cx, span).line;
 
-    let local_id = cx.tcx().hir.as_local_node_id(instance.def);
+    let local_id = cx.tcx().hir.as_local_node_id(instance.def_id());
     let is_local_to_unit = local_id.map_or(false, |id| is_node_local_to_unit(cx, id));
 
     let function_name = CString::new(name).unwrap();
@@ -289,6 +292,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let fn_debug_context = FunctionDebugContextData {
         fn_metadata: fn_metadata,
         source_locations_enabled: Cell::new(false),
+        defining_crate: def_id.krate,
     };
 
     return FunctionDebugContext::RegularContext(fn_debug_context);
@@ -382,7 +386,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     fn get_type_parameter_names(cx: &CrateContext, generics: &ty::Generics) -> Vec<ast::Name> {
         let mut names = generics.parent.map_or(vec![], |def_id| {
-            get_type_parameter_names(cx, cx.tcx().item_generics(def_id))
+            get_type_parameter_names(cx, cx.tcx().generics_of(def_id))
         });
         names.extend(generics.types.iter().map(|param| param.name));
         names
@@ -394,7 +398,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         // First, let's see if this is a method within an inherent impl. Because
         // if yes, we want to make the result subroutine DIE a child of the
         // subroutine's self-type.
-        let self_type = cx.tcx().impl_of_method(instance.def).and_then(|impl_def_id| {
+        let self_type = cx.tcx().impl_of_method(instance.def_id()).and_then(|impl_def_id| {
             // If the method does *not* belong to a trait, proceed
             if cx.tcx().trait_id_of_impl(impl_def_id).is_none() {
                 let impl_self_ty =
@@ -417,9 +421,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
         self_type.unwrap_or_else(|| {
             namespace::item_namespace(cx, DefId {
-                krate: instance.def.krate,
+                krate: instance.def_id().krate,
                 index: cx.tcx()
-                         .def_key(instance.def)
+                         .def_key(instance.def_id())
                          .parent
                          .expect("get_containing_scope: missing parent?")
             })
@@ -438,8 +442,9 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     let cx = bcx.ccx;
 
     let file = span_start(cx, span).file;
-    let filename = file.name.clone();
-    let file_metadata = file_metadata(cx, &filename[..], &file.abs_path);
+    let file_metadata = file_metadata(cx,
+                                      &file.name[..],
+                                      dbg_context.get_ref(span).defining_crate);
 
     let loc = span_start(cx, span);
     let type_metadata = type_metadata(cx, variable_type, span);
@@ -449,7 +454,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         LocalVariable    |
         CapturedVariable => (0, DW_TAG_auto_variable)
     };
-    let align = ::type_of::align_of(cx, variable_type);
+    let align = cx.align_of(variable_type);
 
     let name = CString::new(variable_name.as_str().as_bytes()).unwrap();
     match (variable_access, &[][..]) {

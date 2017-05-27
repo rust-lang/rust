@@ -26,7 +26,7 @@
 //! along with the actual implementation elsewhere. You can find more comments
 //! about how to define rules themselves below.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashSet, HashMap};
 use std::mem;
 
 use check::{self, TestKind};
@@ -137,7 +137,9 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
         while let Some(krate) = list.pop() {
             let default = krate == name;
             let krate = &build.crates[krate];
-            let path = krate.path.strip_prefix(&build.src).unwrap();
+            let path = krate.path.strip_prefix(&build.src)
+                // This handles out of tree paths
+                .unwrap_or(&krate.path);
             ret.push((krate, path.to_str().unwrap(), default));
             for dep in krate.deps.iter() {
                 if visited.insert(dep) && dep != "build_helper" {
@@ -305,7 +307,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                  .dep(|s| s.name("libtest"))
                  .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
                  .dep(|s| s.name("test-helpers"))
-                 .dep(|s| s.name("emulator-copy-libs"))
+                 .dep(|s| s.name("remote-copy-libs"))
                  .default(mode != "pretty") // pretty tests don't run everywhere
                  .run(move |s| {
                      check::compiletest(build, &s.compiler(), s.target, mode, dir)
@@ -344,7 +346,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
              .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
              .dep(|s| s.name("test-helpers"))
              .dep(|s| s.name("debugger-scripts"))
-             .dep(|s| s.name("emulator-copy-libs"))
+             .dep(|s| s.name("remote-copy-libs"))
              .run(move |s| check::compiletest(build, &s.compiler(), s.target,
                                          "debuginfo-gdb", "debuginfo"));
         let mut rule = rules.test("check-debuginfo", "src/test/debuginfo");
@@ -398,14 +400,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, _default) in krates("std") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("emulator-copy-libs"))
+             .dep(|s| s.name("remote-copy-libs"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Libstd, TestKind::Test,
                                         Some(&krate.name)));
     }
     rules.test("check-std-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
-         .dep(|s| s.name("emulator-copy-libs"))
+         .dep(|s| s.name("remote-copy-libs"))
          .default(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
                                     Mode::Libstd, TestKind::Test, None));
@@ -414,14 +416,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, _default) in krates("std") {
         rules.bench(&krate.bench_step, path)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("emulator-copy-libs"))
+             .dep(|s| s.name("remote-copy-libs"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Libstd, TestKind::Bench,
                                         Some(&krate.name)));
     }
     rules.bench("bench-std-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
-         .dep(|s| s.name("emulator-copy-libs"))
+         .dep(|s| s.name("remote-copy-libs"))
          .default(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
                                     Mode::Libstd, TestKind::Bench, None));
@@ -429,21 +431,21 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, _default) in krates("test") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("emulator-copy-libs"))
+             .dep(|s| s.name("remote-copy-libs"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Libtest, TestKind::Test,
                                         Some(&krate.name)));
     }
     rules.test("check-test-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
-         .dep(|s| s.name("emulator-copy-libs"))
+         .dep(|s| s.name("remote-copy-libs"))
          .default(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
                                     Mode::Libtest, TestKind::Test, None));
     for (krate, path, _default) in krates("rustc-main") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("librustc"))
-             .dep(|s| s.name("emulator-copy-libs"))
+             .dep(|s| s.name("remote-copy-libs"))
              .host(true)
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Librustc, TestKind::Test,
@@ -451,7 +453,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     }
     rules.test("check-rustc-all", "path/to/nowhere")
          .dep(|s| s.name("librustc"))
-         .dep(|s| s.name("emulator-copy-libs"))
+         .dep(|s| s.name("remote-copy-libs"))
          .default(true)
          .host(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
@@ -468,6 +470,10 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|s| s.name("librustc"))
          .host(true)
          .run(move |s| check::cargotest(build, s.stage, s.target));
+    rules.test("check-cargo", "cargo")
+         .dep(|s| s.name("tool-cargo"))
+         .host(true)
+         .run(move |s| check::cargo(build, s.stage, s.target));
     rules.test("check-tidy", "src/tools/tidy")
          .dep(|s| s.name("tool-tidy").stage(0))
          .default(true)
@@ -494,33 +500,33 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.build("openssl", "path/to/nowhere")
          .run(move |s| native::openssl(build, s.target));
 
-    // Some test suites are run inside emulators, and most of our test binaries
-    // are linked dynamically which means we need to ship the standard library
-    // and such to the emulator ahead of time. This step represents this and is
-    // a dependency of all test suites.
+    // Some test suites are run inside emulators or on remote devices, and most
+    // of our test binaries are linked dynamically which means we need to ship
+    // the standard library and such to the emulator ahead of time. This step
+    // represents this and is a dependency of all test suites.
     //
     // Most of the time this step is a noop (the `check::emulator_copy_libs`
     // only does work if necessary). For some steps such as shipping data to
     // QEMU we have to build our own tools so we've got conditional dependencies
-    // on those programs as well. Note that the QEMU client is built for the
-    // build target (us) and the server is built for the target.
-    rules.test("emulator-copy-libs", "path/to/nowhere")
+    // on those programs as well. Note that the remote test client is built for
+    // the build target (us) and the server is built for the target.
+    rules.test("remote-copy-libs", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
          .dep(move |s| {
-             if build.qemu_rootfs(s.target).is_some() {
-                s.name("tool-qemu-test-client").target(s.host).stage(0)
+             if build.remote_tested(s.target) {
+                s.name("tool-remote-test-client").target(s.host).stage(0)
              } else {
                  Step::noop()
              }
          })
          .dep(move |s| {
-             if build.qemu_rootfs(s.target).is_some() {
-                s.name("tool-qemu-test-server")
+             if build.remote_tested(s.target) {
+                s.name("tool-remote-test-server")
              } else {
                  Step::noop()
              }
          })
-         .run(move |s| check::emulator_copy_libs(build, &s.compiler(), s.target));
+         .run(move |s| check::remote_copy_libs(build, &s.compiler(), s.target));
 
     rules.test("check-bootstrap", "src/bootstrap")
          .default(true)
@@ -533,34 +539,50 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     //
     // Tools used during the build system but not shipped
     rules.build("tool-rustbook", "src/tools/rustbook")
-         .dep(|s| s.name("librustc"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("librustc-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "rustbook"));
     rules.build("tool-error-index", "src/tools/error_index_generator")
-         .dep(|s| s.name("librustc"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("librustc-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "error_index_generator"));
     rules.build("tool-tidy", "src/tools/tidy")
-         .dep(|s| s.name("libstd"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "tidy"));
     rules.build("tool-linkchecker", "src/tools/linkchecker")
-         .dep(|s| s.name("libstd"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "linkchecker"));
     rules.build("tool-cargotest", "src/tools/cargotest")
-         .dep(|s| s.name("libstd"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "cargotest"));
     rules.build("tool-compiletest", "src/tools/compiletest")
-         .dep(|s| s.name("libtest"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libtest-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "compiletest"));
     rules.build("tool-build-manifest", "src/tools/build-manifest")
-         .dep(|s| s.name("libstd"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "build-manifest"));
-    rules.build("tool-qemu-test-server", "src/tools/qemu-test-server")
-         .dep(|s| s.name("libstd"))
-         .run(move |s| compile::tool(build, s.stage, s.target, "qemu-test-server"));
-    rules.build("tool-qemu-test-client", "src/tools/qemu-test-client")
-         .dep(|s| s.name("libstd"))
-         .run(move |s| compile::tool(build, s.stage, s.target, "qemu-test-client"));
-    rules.build("tool-cargo", "cargo")
-         .dep(|s| s.name("libstd"))
+    rules.build("tool-remote-test-server", "src/tools/remote-test-server")
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
+         .run(move |s| compile::tool(build, s.stage, s.target, "remote-test-server"));
+    rules.build("tool-remote-test-client", "src/tools/remote-test-client")
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
+         .run(move |s| compile::tool(build, s.stage, s.target, "remote-test-client"));
+    rules.build("tool-rust-installer", "src/tools/rust-installer")
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
+         .run(move |s| compile::tool(build, s.stage, s.target, "rust-installer"));
+    rules.build("tool-cargo", "src/tools/cargo")
+         .host(true)
+         .default(build.config.extended)
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
          .dep(|s| s.stage(0).host(s.target).name("openssl"))
          .dep(move |s| {
              // Cargo depends on procedural macros, which requires a full host
@@ -570,6 +592,37 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
               .host(&build.config.build)
          })
          .run(move |s| compile::tool(build, s.stage, s.target, "cargo"));
+    rules.build("tool-rls", "src/tools/rls")
+         .host(true)
+         .default(build.config.extended)
+         .dep(|s| s.name("librustc-tool"))
+         .dep(|s| s.stage(0).host(s.target).name("openssl"))
+         .dep(move |s| {
+             // rls, like cargo, uses procedural macros
+             s.name("librustc-link")
+              .target(&build.config.build)
+              .host(&build.config.build)
+         })
+         .run(move |s| compile::tool(build, s.stage, s.target, "rls"));
+
+    // "pseudo rule" which represents completely cleaning out the tools dir in
+    // one stage. This needs to happen whenever a dependency changes (e.g.
+    // libstd, libtest, librustc) and all of the tool compilations above will
+    // be sequenced after this rule.
+    rules.build("maybe-clean-tools", "path/to/nowhere")
+         .after("librustc-tool")
+         .after("libtest-tool")
+         .after("libstd-tool");
+
+    rules.build("librustc-tool", "path/to/nowhere")
+         .dep(|s| s.name("librustc"))
+         .run(move |s| compile::maybe_clean_tools(build, s.stage, s.target, Mode::Librustc));
+    rules.build("libtest-tool", "path/to/nowhere")
+         .dep(|s| s.name("libtest"))
+         .run(move |s| compile::maybe_clean_tools(build, s.stage, s.target, Mode::Libtest));
+    rules.build("libstd-tool", "path/to/nowhere")
+         .dep(|s| s.name("libstd"))
+         .run(move |s| compile::maybe_clean_tools(build, s.stage, s.target, Mode::Libstd));
 
     // ========================================================================
     // Documentation targets
@@ -581,7 +634,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
               .stage(0)
          })
          .default(build.config.docs)
-         .run(move |s| doc::rustbook(build, s.target, "book"));
+         .run(move |s| doc::book(build, s.target, "book"));
     rules.doc("doc-nomicon", "src/doc/nomicon")
          .dep(move |s| {
              s.name("tool-rustbook")
@@ -633,12 +686,16 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, default) in krates("test") {
         rules.doc(&krate.doc_step, path)
              .dep(|s| s.name("libtest-link"))
+             // Needed so rustdoc generates relative links to std.
+             .dep(|s| s.name("doc-crate-std"))
              .default(default && build.config.compiler_docs)
              .run(move |s| doc::test(build, s.stage, s.target));
     }
     for (krate, path, default) in krates("rustc-main") {
         rules.doc(&krate.doc_step, path)
              .dep(|s| s.name("librustc-link"))
+             // Needed so rustdoc generates relative links to std.
+             .dep(|s| s.name("doc-crate-std"))
              .host(true)
              .default(default && build.config.docs)
              .run(move |s| doc::rustc(build, s.stage, s.target));
@@ -651,6 +708,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .host(true)
          .only_host_build(true)
          .default(true)
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| dist::rustc(build, s.stage, s.target));
     rules.dist("dist-std", "src/libstd")
          .dep(move |s| {
@@ -665,10 +723,12 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          })
          .default(true)
          .only_host_build(true)
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| dist::std(build, &s.compiler(), s.target));
     rules.dist("dist-mingw", "path/to/nowhere")
          .default(true)
          .only_host_build(true)
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| {
              if s.target.contains("pc-windows-gnu") {
                  dist::mingw(build, s.target)
@@ -679,24 +739,34 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .host(true)
          .only_build(true)
          .only_host_build(true)
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |_| dist::rust_src(build));
     rules.dist("dist-docs", "src/doc")
          .default(true)
          .only_host_build(true)
          .dep(|s| s.name("default:doc"))
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| dist::docs(build, s.stage, s.target));
     rules.dist("dist-analysis", "analysis")
+         .default(build.config.extended)
          .dep(|s| s.name("dist-std"))
-         .default(true)
          .only_host_build(true)
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| dist::analysis(build, &s.compiler(), s.target));
+    rules.dist("dist-rls", "rls")
+         .host(true)
+         .only_host_build(true)
+         .dep(|s| s.name("tool-rls"))
+         .dep(move |s| tool_rust_installer(build, s))
+         .run(move |s| dist::rls(build, s.stage, s.target));
     rules.dist("install", "path/to/nowhere")
          .dep(|s| s.name("default:dist"))
-         .run(move |s| install::install(build, s.stage, s.target));
+         .run(move |s| install::Installer::new(build).install(s.stage, s.target));
     rules.dist("dist-cargo", "cargo")
          .host(true)
          .only_host_build(true)
          .dep(|s| s.name("tool-cargo"))
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| dist::cargo(build, s.stage, s.target));
     rules.dist("dist-extended", "extended")
          .default(build.config.extended)
@@ -707,6 +777,9 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|d| d.name("dist-mingw"))
          .dep(|d| d.name("dist-docs"))
          .dep(|d| d.name("dist-cargo"))
+         .dep(|d| d.name("dist-rls"))
+         .dep(|d| d.name("dist-analysis"))
+         .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| dist::extended(build, s.stage, s.target));
 
     rules.dist("dist-sign", "hash-and-sign")
@@ -718,6 +791,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
 
     rules.verify();
     return rules;
+
+    /// Helper to depend on a stage0 build-only rust-installer tool.
+    fn tool_rust_installer<'a>(build: &'a Build, step: &Step<'a>) -> Step<'a> {
+        step.name("tool-rust-installer")
+            .host(&build.config.build)
+            .target(&build.config.build)
+            .stage(0)
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
@@ -807,6 +888,11 @@ struct Rule<'a> {
     /// Whether this rule is only for the build triple, not anything in hosts or
     /// targets.
     only_build: bool,
+
+    /// A list of "order only" dependencies. This rules does not actually
+    /// depend on these rules, but if they show up in the dependency graph then
+    /// this rule must be executed after all these rules.
+    after: Vec<&'a str>,
 }
 
 #[derive(PartialEq)]
@@ -830,6 +916,7 @@ impl<'a> Rule<'a> {
             host: false,
             only_host_build: false,
             only_build: false,
+            after: Vec::new(),
         }
     }
 }
@@ -846,6 +933,11 @@ impl<'a, 'b> RuleBuilder<'a, 'b> {
         where F: Fn(&Step<'a>) -> Step<'a> + 'a,
     {
         self.rule.deps.push(Box::new(f));
+        self
+    }
+
+    fn after(&mut self, step: &'a str) -> &mut Self {
+        self.rule.after.push(step);
         self
     }
 
@@ -974,26 +1066,25 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
         }
     }
 
-    pub fn print_help(&self, command: &str) {
+    pub fn get_help(&self, command: &str) -> Option<String> {
         let kind = match command {
             "build" => Kind::Build,
             "doc" => Kind::Doc,
             "test" => Kind::Test,
             "bench" => Kind::Bench,
             "dist" => Kind::Dist,
-            _ => return,
+            _ => return None,
         };
         let rules = self.rules.values().filter(|r| r.kind == kind);
         let rules = rules.filter(|r| !r.path.contains("nowhere"));
         let mut rules = rules.collect::<Vec<_>>();
         rules.sort_by_key(|r| r.path);
 
-        println!("Available paths:\n");
+        let mut help_string = String::from("Available paths:\n");
         for rule in rules {
-            print!("    ./x.py {} {}", command, rule.path);
-
-            println!("");
+            help_string.push_str(format!("    ./x.py {} {}\n", command, rule.path).as_str());
         }
+        Some(help_string)
     }
 
     /// Construct the top-level build steps that we're going to be executing,
@@ -1133,31 +1224,52 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
     /// From the top level targets `steps` generate a topological ordering of
     /// all steps needed to run those steps.
     fn expand(&self, steps: &[Step<'a>]) -> Vec<Step<'a>> {
+        // First up build a graph of steps and their dependencies. The `nodes`
+        // map is a map from step to a unique number. The `edges` map is a
+        // map from these unique numbers to a list of other numbers,
+        // representing dependencies.
+        let mut nodes = HashMap::new();
+        nodes.insert(Step::noop(), 0);
+        let mut edges = HashMap::new();
+        edges.insert(0, HashSet::new());
+        for step in steps {
+            self.build_graph(step.clone(), &mut nodes, &mut edges);
+        }
+
+        // Now that we've built up the actual dependency graph, draw more
+        // dependency edges to satisfy the `after` dependencies field for each
+        // rule.
+        self.satisfy_after_deps(&nodes, &mut edges);
+
+        // And finally, perform a topological sort to return a list of steps to
+        // execute.
         let mut order = Vec::new();
-        let mut added = HashSet::new();
-        added.insert(Step::noop());
-        for step in steps.iter().cloned() {
-            self.fill(step, &mut order, &mut added);
+        let mut visited = HashSet::new();
+        visited.insert(0);
+        let idx_to_node = nodes.iter().map(|p| (*p.1, p.0)).collect::<HashMap<_, _>>();
+        for idx in 0..nodes.len() {
+            self.topo_sort(idx, &idx_to_node, &edges, &mut visited, &mut order);
         }
         return order
     }
 
-    /// Performs topological sort of dependencies rooted at the `step`
-    /// specified, pushing all results onto the `order` vector provided.
+    /// Builds the dependency graph rooted at `step`.
     ///
-    /// In other words, when this method returns, the `order` vector will
-    /// contain a list of steps which if executed in order will eventually
-    /// complete the `step` specified as well.
-    ///
-    /// The `added` set specified here is the set of steps that are already
-    /// present in `order` (and hence don't need to be added again).
-    fn fill(&self,
-            step: Step<'a>,
-            order: &mut Vec<Step<'a>>,
-            added: &mut HashSet<Step<'a>>) {
-        if !added.insert(step.clone()) {
-            return
+    /// The `nodes` and `edges` maps are filled out according to the rule
+    /// described by `step.name`.
+    fn build_graph(&self,
+                   step: Step<'a>,
+                   nodes: &mut HashMap<Step<'a>, usize>,
+                   edges: &mut HashMap<usize, HashSet<usize>>) -> usize {
+        use std::collections::hash_map::Entry;
+
+        let idx = nodes.len();
+        match nodes.entry(step.clone()) {
+            Entry::Vacant(e) => { e.insert(idx); }
+            Entry::Occupied(e) => return *e.get(),
         }
+
+        let mut deps = Vec::new();
         for dep in self.rules[step.name].deps.iter() {
             let dep = dep(&step);
             if dep.name.starts_with("default:") {
@@ -1169,13 +1281,61 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
                 let host = self.build.config.host.iter().any(|h| h == dep.target);
                 let rules = self.rules.values().filter(|r| r.default);
                 for rule in rules.filter(|r| r.kind == kind && (!r.host || host)) {
-                    self.fill(dep.name(rule.name), order, added);
+                    deps.push(self.build_graph(dep.name(rule.name), nodes, edges));
                 }
             } else {
-                self.fill(dep, order, added);
+                deps.push(self.build_graph(dep, nodes, edges));
             }
         }
-        order.push(step);
+
+        edges.entry(idx).or_insert(HashSet::new()).extend(deps);
+        return idx
+    }
+
+    /// Given a dependency graph with a finished list of `nodes`, fill out more
+    /// dependency `edges`.
+    ///
+    /// This is the step which satisfies all `after` listed dependencies in
+    /// `Rule` above.
+    fn satisfy_after_deps(&self,
+                          nodes: &HashMap<Step<'a>, usize>,
+                          edges: &mut HashMap<usize, HashSet<usize>>) {
+        // Reverse map from the name of a step to the node indices that it
+        // appears at.
+        let mut name_to_idx = HashMap::new();
+        for (step, &idx) in nodes {
+            name_to_idx.entry(step.name).or_insert(Vec::new()).push(idx);
+        }
+
+        for (step, idx) in nodes {
+            if *step == Step::noop() {
+                continue
+            }
+            for after in self.rules[step.name].after.iter() {
+                // This is the critical piece of an `after` dependency. If the
+                // dependency isn't actually in our graph then no edge is drawn,
+                // only if it's already present do we draw the edges.
+                if let Some(idxs) = name_to_idx.get(after) {
+                    edges.get_mut(idx).unwrap()
+                         .extend(idxs.iter().cloned());
+                }
+            }
+        }
+    }
+
+    fn topo_sort(&self,
+                 cur: usize,
+                 nodes: &HashMap<usize, &Step<'a>>,
+                 edges: &HashMap<usize, HashSet<usize>>,
+                 visited: &mut HashSet<usize>,
+                 order: &mut Vec<Step<'a>>) {
+        if !visited.insert(cur) {
+            return
+        }
+        for dep in edges[&cur].iter() {
+            self.topo_sort(*dep, nodes, edges, visited, order);
+        }
+        order.push(nodes[&cur].clone());
     }
 }
 
@@ -1213,20 +1373,20 @@ mod tests {
             name: "std".to_string(),
             deps: Vec::new(),
             path: cwd.join("src/std"),
-            doc_step: "doc-std".to_string(),
+            doc_step: "doc-crate-std".to_string(),
             build_step: "build-crate-std".to_string(),
-            test_step: "test-std".to_string(),
-            bench_step: "bench-std".to_string(),
+            test_step: "test-crate-std".to_string(),
+            bench_step: "bench-crate-std".to_string(),
             version: String::new(),
         });
         build.crates.insert("test".to_string(), ::Crate {
             name: "test".to_string(),
             deps: Vec::new(),
             path: cwd.join("src/test"),
-            doc_step: "doc-test".to_string(),
+            doc_step: "doc-crate-test".to_string(),
             build_step: "build-crate-test".to_string(),
-            test_step: "test-test".to_string(),
-            bench_step: "bench-test".to_string(),
+            test_step: "test-crate-test".to_string(),
+            bench_step: "bench-crate-test".to_string(),
             version: String::new(),
         });
         build.crates.insert("rustc-main".to_string(), ::Crate {
@@ -1234,10 +1394,10 @@ mod tests {
             deps: Vec::new(),
             version: String::new(),
             path: cwd.join("src/rustc-main"),
-            doc_step: "doc-rustc-main".to_string(),
+            doc_step: "doc-crate-rustc-main".to_string(),
             build_step: "build-crate-rustc-main".to_string(),
-            test_step: "test-rustc-main".to_string(),
-            bench_step: "bench-rustc-main".to_string(),
+            test_step: "test-crate-rustc-main".to_string(),
+            bench_step: "bench-crate-rustc-main".to_string(),
         });
         return build
     }

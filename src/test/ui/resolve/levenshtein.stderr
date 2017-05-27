@@ -14,7 +14,7 @@ error[E0412]: cannot find type `Opiton` in this scope
   --> $DIR/levenshtein.rs:20:10
    |
 20 | type B = Opiton<u8>; // Misspelled type name from the prelude.
-   |          ^^^^^^^^^^ did you mean `Option`?
+   |          ^^^^^^ did you mean `Option`?
 
 error[E0412]: cannot find type `Baz` in this scope
   --> $DIR/levenshtein.rs:23:14
@@ -35,16 +35,16 @@ error[E0425]: cannot find function `foobar` in this scope
    |     ^^^^^^ did you mean `foo_bar`?
 
 error[E0412]: cannot find type `first` in module `m`
-  --> $DIR/levenshtein.rs:32:12
+  --> $DIR/levenshtein.rs:32:15
    |
 32 |     let b: m::first = m::second; // Misspelled item in module.
-   |            ^^^^^^^^ did you mean `m::First`?
+   |               ^^^^^ did you mean `First`?
 
 error[E0425]: cannot find value `second` in module `m`
-  --> $DIR/levenshtein.rs:32:23
+  --> $DIR/levenshtein.rs:32:26
    |
 32 |     let b: m::first = m::second; // Misspelled item in module.
-   |                       ^^^^^^^^^ did you mean `m::Second`?
+   |                          ^^^^^^ did you mean `Second`?
 
-error: aborting due to 8 previous errors
+error: aborting due to previous error(s)
 

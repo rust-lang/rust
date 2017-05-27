@@ -55,7 +55,7 @@ impl<'a> AstValidator<'a> {
                                            E0449,
                                            "unnecessary visibility qualifier");
             if vis == &Visibility::Public {
-                err.span_label(span, &format!("`pub` not needed here"));
+                err.span_label(span, "`pub` not needed here");
             }
             if let Some(note) = note {
                 err.note(note);
@@ -80,7 +80,7 @@ impl<'a> AstValidator<'a> {
             Constness::Const => {
                 struct_span_err!(self.session, constness.span, E0379,
                                  "trait fns cannot be declared const")
-                    .span_label(constness.span, &format!("trait fns cannot be const"))
+                    .span_label(constness.span, "trait fns cannot be const")
                     .emit();
             }
             _ => {}
@@ -103,11 +103,11 @@ impl<'a> AstValidator<'a> {
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_lifetime(&mut self, lt: &'a Lifetime) {
-        if lt.name == "'_" {
+        if lt.ident.name == "'_" {
             self.session.add_lint(lint::builtin::LIFETIME_UNDERSCORE,
                                   lt.id,
                                   lt.span,
-                                  format!("invalid lifetime name `{}`", lt.name));
+                                  format!("invalid lifetime name `{}`", lt.ident));
         }
 
         visit::walk_lifetime(self, lt)
@@ -241,12 +241,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Mod(_) => {
                 // Ensure that `path` attributes on modules are recorded as used (c.f. #35584).
                 attr::first_attr_value_str_by_name(&item.attrs, "path");
-                if let Some(attr) =
-                        item.attrs.iter().find(|attr| attr.name() == "warn_directory_ownership") {
+                if item.attrs.iter().any(|attr| attr.check_name("warn_directory_ownership")) {
                     let lint = lint::builtin::LEGACY_DIRECTORY_OWNERSHIP;
                     let msg = "cannot declare a new module at this location";
                     self.session.add_lint(lint, item.id, item.span, msg.to_string());
-                    attr::mark_used(attr);
                 }
             }
             ItemKind::Union(ref vdata, _) => {
@@ -274,7 +272,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                                    E0130,
                                                    "patterns aren't allowed in foreign function \
                                                     declarations");
-                    err.span_label(span, &format!("pattern not allowed in foreign function"));
+                    err.span_label(span, "pattern not allowed in foreign function");
                     if is_recent {
                         err.span_note(span,
                                       "this is a recent error, see issue #35203 for more details");

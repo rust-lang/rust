@@ -17,6 +17,7 @@
 #![feature(cfg_target_vendor)]
 #![feature(staged_api)]
 #![feature(unwind_attributes)]
+#![feature(static_nobundle)]
 
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
 

@@ -77,4 +77,49 @@ fn main() {
     assert_eq!(o.checked_sub(b(18)), None);
     assert_eq!(b(1u128).checked_shl(b(127)), Some(1 << 127));
     assert_eq!(o.checked_shl(b(128)), None);
+
+    // Test cases for all udivmodti4 branches.
+    // case "0X/0X"
+    assert_eq!(b(0x69545bd57727c050_u128) /
+               b(0x3283527a3350d88c_u128),
+               2u128);
+    // case "0X/KX"
+    assert_eq!(b(0x0_8003c9c50b473ae6_u128) /
+               b(0x1_283e8838c30fa8f4_u128),
+               0u128);
+    // case "K0/K0"
+    assert_eq!(b(0xc43f42a207978720_u128 << 64) /
+               b(0x098e62b74c23cf1a_u128 << 64),
+               20u128);
+    // case "KK/K0" for power-of-two D.
+    assert_eq!(b(0xa9008fb6c9d81e42_0e25730562a601c8_u128) /
+               b(1u128 << 120),
+               169u128);
+    // case "KK/K0" with N >= D (https://github.com/rust-lang/rust/issues/41228).
+    assert_eq!(b(0xe4d26e59f0640328_06da5b06efe83a41_u128) /
+               b(0x330fcb030ea4447c_u128 << 64),
+               4u128);
+    assert_eq!(b(3u128 << 64 | 1) /
+               b(3u128 << 64),
+               1u128);
+    // case "KK/K0" with N < D.
+    assert_eq!(b(0x6655c9fb66ca2884_e2d1dfd470158c62_u128) /
+               b(0xb35b667cab7e355b_u128 << 64),
+               0u128);
+    // case "KX/0K" for power-of-two D.
+    assert_eq!(b(0x3e49dd84feb2df59_7b2f97d93a253969_u128) /
+               b(1u128 << 4),
+               0x03e49dd84feb2df5_97b2f97d93a25396_u128);
+    // case "KX/0K" in general.
+    assert_eq!(b(0x299692b3a1dae5bd_6162e6f489d2620e_u128) /
+               b(0x900b6f027571d6f7_u128),
+               0x49e95f54b0442578_u128);
+    // case "KX/KK" with N >= D.
+    assert_eq!(b(0xc7b889180b67b07d_bc1a3c88783d35b5_u128) /
+               b(0x1d7e69f53160b9e2_60074771e852f244_u128),
+               6u128);
+    // case "KX/KK" with N < D.
+    assert_eq!(b(0x679289ac23bb334f_36144401cf882172_u128) /
+               b(0x7b0b271b64865f05_f54a7b72746c062f_u128),
+               0u128);
 }

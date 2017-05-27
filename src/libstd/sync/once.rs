@@ -72,8 +72,10 @@ use thread::{self, Thread};
 
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Useful for one-time initialization for FFI or related
-/// functionality. This type can only be constructed with the `ONCE_INIT`
+/// functionality. This type can only be constructed with the [`ONCE_INIT`]
 /// value.
+///
+/// [`ONCE_INIT`]: constant.ONCE_INIT.html
 ///
 /// # Examples
 ///
@@ -101,15 +103,28 @@ unsafe impl Sync for Once {}
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl Send for Once {}
 
-/// State yielded to the `call_once_force` method which can be used to query
-/// whether the `Once` was previously poisoned or not.
+/// State yielded to the [`call_once_force`] method which can be used to query
+/// whether the [`Once`] was previously poisoned or not.
+///
+/// [`call_once_force`]: struct.Once.html#method.call_once_force
+/// [`Once`]: struct.Once.html
 #[unstable(feature = "once_poison", issue = "33577")]
 #[derive(Debug)]
 pub struct OnceState {
     poisoned: bool,
 }
 
-/// Initialization value for static `Once` values.
+/// Initialization value for static [`Once`] values.
+///
+/// [`Once`]: struct.Once.html
+///
+/// # Examples
+///
+/// ```
+/// use std::sync::{Once, ONCE_INIT};
+///
+/// static START: Once = ONCE_INIT;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const ONCE_INIT: Once = Once::new();
 
@@ -212,15 +227,19 @@ impl Once {
         self.call_inner(false, &mut |_| f.take().unwrap()());
     }
 
-    /// Performs the same function as `call_once` except ignores poisoning.
+    /// Performs the same function as [`call_once`] except ignores poisoning.
+    ///
+    /// [`call_once`]: struct.Once.html#method.call_once
     ///
     /// If this `Once` has been poisoned (some initialization panicked) then
     /// this function will continue to attempt to call initialization functions
     /// until one of them doesn't panic.
     ///
-    /// The closure `f` is yielded a structure which can be used to query the
+    /// The closure `f` is yielded a [`OnceState`] structure which can be used to query the
     /// state of this `Once` (whether initialization has previously panicked or
     /// not).
+    ///
+    /// [`OnceState`]: struct.OnceState.html
     #[unstable(feature = "once_poison", issue = "33577")]
     pub fn call_once_force<F>(&'static self, f: F) where F: FnOnce(&OnceState) {
         // same as above, just with a different parameter to `call_inner`.
@@ -366,10 +385,12 @@ impl Drop for Finish {
 }
 
 impl OnceState {
-    /// Returns whether the associated `Once` has been poisoned.
+    /// Returns whether the associated [`Once`] has been poisoned.
     ///
-    /// Once an initalization routine for a `Once` has panicked it will forever
+    /// Once an initalization routine for a [`Once`] has panicked it will forever
     /// indicate to future forced initialization routines that it is poisoned.
+    ///
+    /// [`Once`]: struct.Once.html
     #[unstable(feature = "once_poison", issue = "33577")]
     pub fn poisoned(&self) -> bool {
         self.poisoned

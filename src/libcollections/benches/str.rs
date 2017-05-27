@@ -195,30 +195,34 @@ fn bench_contains_equal(b: &mut Bencher) {
     })
 }
 
+
 macro_rules! make_test_inner {
-    ($s:ident, $code:expr, $name:ident, $str:expr) => {
+    ($s:ident, $code:expr, $name:ident, $str:expr, $iters:expr) => {
         #[bench]
         fn $name(bencher: &mut Bencher) {
             let mut $s = $str;
             black_box(&mut $s);
-            bencher.iter(|| $code);
+            bencher.iter(|| for _ in 0..$iters { black_box($code); });
         }
     }
 }
 
 macro_rules! make_test {
     ($name:ident, $s:ident, $code:expr) => {
+        make_test!($name, $s, $code, 1);
+    };
+    ($name:ident, $s:ident, $code:expr, $iters:expr) => {
         mod $name {
             use test::Bencher;
             use test::black_box;
 
             // Short strings: 65 bytes each
             make_test_inner!($s, $code, short_ascii,
-                "Mary had a little lamb, Little lamb Mary had a littl lamb, lamb!");
+                "Mary had a little lamb, Little lamb Mary had a littl lamb, lamb!", $iters);
             make_test_inner!($s, $code, short_mixed,
-                "ศไทย中华Việt Nam; Mary had a little lamb, Little lam!");
+                "ศไทย中华Việt Nam; Mary had a little lamb, Little lam!", $iters);
             make_test_inner!($s, $code, short_pile_of_poo,
-                "💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩!");
+                "💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩!", $iters);
             make_test_inner!($s, $code, long_lorem_ipsum,"\
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse quis lorem sit amet dolor \
 ultricies condimentum. Praesent iaculis purus elit, ac malesuada quam malesuada in. Duis sed orci \
@@ -253,7 +257,7 @@ Nam lectus enim, dapibus non nisi tempor, consectetur convallis massa. Maecenas 
 feugiat. Etiam quis mauris vel risus luctus mattis a a nunc. Nullam orci quam, imperdiet id \
 vehicula in, porttitor ut nibh. Duis sagittis adipiscing nisl vitae congue. Donec mollis risus eu \
 leo suscipit, varius porttitor nulla porta. Pellentesque ut sem nec nisi euismod vehicula. Nulla \
-malesuada sollicitudin quam eu fermentum!");
+malesuada sollicitudin quam eu fermentum!", $iters);
         }
     }
 }
@@ -287,6 +291,13 @@ make_test!(find_underscore_str, s, s.find("_"));
 make_test!(find_zzz_char, s, s.find('\u{1F4A4}'));
 make_test!(rfind_zzz_char, s, s.rfind('\u{1F4A4}'));
 make_test!(find_zzz_str, s, s.find("\u{1F4A4}"));
+
+make_test!(starts_with_ascii_char, s, s.starts_with('/'), 1024);
+make_test!(ends_with_ascii_char, s, s.ends_with('/'), 1024);
+make_test!(starts_with_unichar, s, s.starts_with('\u{1F4A4}'), 1024);
+make_test!(ends_with_unichar, s, s.ends_with('\u{1F4A4}'), 1024);
+make_test!(starts_with_str, s, s.starts_with("💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩"), 1024);
+make_test!(ends_with_str, s, s.ends_with("💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩"), 1024);
 
 make_test!(split_space_char, s, s.split(' ').count());
 make_test!(split_terminator_space_char, s, s.split_terminator(' ').count());

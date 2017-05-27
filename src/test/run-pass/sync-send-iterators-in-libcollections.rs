@@ -10,13 +10,12 @@
 
 #![allow(warnings)]
 #![feature(collections)]
-#![feature(drain, enumset, collections_bound, btree_range, vecmap)]
+#![feature(drain, collections_bound, btree_range, vecmap)]
 
 extern crate collections;
 
 use collections::BinaryHeap;
 use collections::{BTreeMap, BTreeSet};
-use collections::EnumSet;
 use collections::LinkedList;
 use collections::String;
 use collections::Vec;
@@ -25,7 +24,6 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 use collections::Bound::Included;
-use collections::enum_set::CLike;
 use std::mem;
 
 fn is_sync<T>(_: T) where T: Sync {}
@@ -75,21 +73,6 @@ fn main() {
     is_sync_send!(HashSet::<usize>::new(), union(&HashSet::<usize>::new()));
 
     all_sync_send!(LinkedList::<usize>::new(), iter, iter_mut, into_iter);
-
-    #[derive(Copy, Clone)]
-    #[repr(usize)]
-    #[allow(dead_code)]
-    enum Foo { A, B, C }
-    impl CLike for Foo {
-        fn to_usize(&self) -> usize {
-            *self as usize
-        }
-
-        fn from_usize(v: usize) -> Foo {
-            unsafe { mem::transmute(v) }
-        }
-    }
-    all_sync_send!(EnumSet::<Foo>::new(), iter);
 
     all_sync_send!(VecDeque::<usize>::new(), iter, iter_mut, into_iter);
     is_sync_send!(VecDeque::<usize>::new(), drain(..));

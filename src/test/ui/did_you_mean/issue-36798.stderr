@@ -4,5 +4,5 @@ error: no field `baz` on type `Foo`
 17 |     f.baz;
    |       ^^^ did you mean `bar`?
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

@@ -13,13 +13,12 @@
 
 pub use self::StabilityLevel::*;
 
-use dep_graph::DepNode;
-use hir::map as hir_map;
 use lint;
 use hir::def::Def;
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, DefIndex, LOCAL_CRATE};
 use ty::{self, TyCtxt};
 use middle::privacy::AccessLevels;
+use session::Session;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::ast;
@@ -124,7 +123,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                    item_sp: Span, kind: AnnotationKind, visit_children: F)
         where F: FnOnce(&mut Self)
     {
-        if self.index.staged_api[&LOCAL_CRATE] && self.tcx.sess.features.borrow().staged_api {
+        if self.index.staged_api[&LOCAL_CRATE] {
             debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
             if let Some(..) = attr::find_deprecation(self.tcx.sess.diagnostic(), attrs, item_sp) {
                 self.tcx.sess.span_err(item_sp, "`#[deprecated]` cannot be used in staged api, \
@@ -197,7 +196,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
         } else {
             // Emit errors for non-staged-api crates.
             for attr in attrs {
-                let tag = attr.name();
+                let tag = unwrap_or!(attr.name(), continue);
                 if tag == "unstable" || tag == "stable" || tag == "rustc_deprecated" {
                     attr::mark_used(attr);
                     self.tcx.sess.span_err(attr.span(), "stability attributes may not be used \
@@ -383,7 +382,6 @@ impl<'a, 'tcx> Index<'tcx> {
         // Put the active features into a map for quick lookup
         self.active_features = active_lib_features.iter().map(|&(ref s, _)| s.clone()).collect();
 
-        let _task = tcx.dep_graph.in_task(DepNode::StabilityIndex);
         let krate = tcx.hir.krate();
         let mut annotator = Annotator {
             tcx: tcx,
@@ -392,21 +390,36 @@ impl<'a, 'tcx> Index<'tcx> {
             parent_depr: None,
             in_trait_impl: false,
         };
+
+        // If the `-Z force-unstable-if-unmarked` flag is passed then we provide
+        // a parent stability annotation which indicates that this is private
+        // with the `rustc_private` feature. This is intended for use when
+        // compiling librustc crates themselves so we can leverage crates.io
+        // while maintaining the invariant that all sysroot crates are unstable
+        // by default and are unable to be used.
+        if tcx.sess.opts.debugging_opts.force_unstable_if_unmarked {
+            let reason = "this crate is being loaded from the sysroot, and \
+                          unstable location; did you mean to load this crate \
+                          from crates.io via `Cargo.toml` instead?";
+            let stability = tcx.intern_stability(Stability {
+                level: attr::StabilityLevel::Unstable {
+                    reason: Some(Symbol::intern(reason)),
+                    issue: 27812,
+                },
+                feature: Symbol::intern("rustc_private"),
+                rustc_depr: None,
+            });
+            annotator.parent_stab = Some(stability);
+        }
+
         annotator.annotate(ast::CRATE_NODE_ID, &krate.attrs, krate.span, AnnotationKind::Required,
                            |v| intravisit::walk_crate(v, krate));
     }
 
-    pub fn new(hir_map: &hir_map::Map) -> Index<'tcx> {
-        let _task = hir_map.dep_graph.in_task(DepNode::StabilityIndex);
-        let krate = hir_map.krate();
-
-        let mut is_staged_api = false;
-        for attr in &krate.attrs {
-            if attr.name() == "stable" || attr.name() == "unstable" {
-                is_staged_api = true;
-                break
-            }
-        }
+    pub fn new(sess: &Session) -> Index<'tcx> {
+        let is_staged_api =
+            sess.opts.debugging_opts.force_unstable_if_unmarked ||
+            sess.features.borrow().staged_api;
 
         let mut staged_api = FxHashMap();
         staged_api.insert(LOCAL_CRATE, is_staged_api);
@@ -424,7 +437,7 @@ impl<'a, 'tcx> Index<'tcx> {
 /// features and possibly prints errors.
 pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut checker = Checker { tcx: tcx };
-    tcx.visit_all_item_likes_in_krate(DepNode::StabilityCheck, &mut checker.as_deep_visitor());
+    tcx.hir.krate().visit_all_item_likes(&mut checker.as_deep_visitor());
 }
 
 struct Checker<'a, 'tcx: 'a> {
@@ -435,7 +448,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // (See issue #38412)
     fn skip_stability_check_due_to_privacy(self, mut def_id: DefId) -> bool {
         // Check if `def_id` is a trait method.
-        match self.sess.cstore.describe_def(def_id) {
+        match self.describe_def(def_id) {
             Some(Def::Method(_)) |
             Some(Def::AssociatedTy(_)) |
             Some(Def::AssociatedConst(_)) => {
@@ -467,7 +480,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_stability(self, def_id: DefId, id: NodeId, span: Span) {
-        if self.sess.codemap().span_allows_unstable(span) {
+        if span.allows_unstable() {
             debug!("stability: \
                     skipping span={:?} since it is internal", span);
             return;
@@ -499,8 +512,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        let is_staged_api = *self.stability.borrow_mut().staged_api.entry(def_id.krate)
-            .or_insert_with(|| self.sess.cstore.is_staged_api(def_id.krate));
+        let is_staged_api = self.lookup_stability(DefId {
+            index: CRATE_DEF_INDEX,
+            ..def_id
+        }).is_some();
         if !is_staged_api {
             return;
         }
@@ -533,15 +548,32 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         match stability {
             Some(&Stability { level: attr::Unstable {ref reason, issue}, ref feature, .. }) => {
-                if !self.stability.borrow().active_features.contains(feature) {
-                    let msg = match *reason {
-                        Some(ref r) => format!("use of unstable library feature '{}': {}",
-                                               &feature.as_str(), &r),
-                        None => format!("use of unstable library feature '{}'", &feature)
-                    };
-                    emit_feature_err(&self.sess.parse_sess, &feature.as_str(), span,
-                                     GateIssue::Library(Some(issue)), &msg);
+                if self.stability.borrow().active_features.contains(feature) {
+                    return
                 }
+
+                // When we're compiling the compiler itself we may pull in
+                // crates from crates.io, but those crates may depend on other
+                // crates also pulled in from crates.io. We want to ideally be
+                // able to compile everything without requiring upstream
+                // modifications, so in the case that this looks like a
+                // rustc_private crate (e.g. a compiler crate) and we also have
+                // the `-Z force-unstable-if-unmarked` flag present (we're
+                // compiling a compiler crate), then let this missing feature
+                // annotation slide.
+                if *feature == "rustc_private" && issue == 27812 {
+                    if self.sess.opts.debugging_opts.force_unstable_if_unmarked {
+                        return
+                    }
+                }
+
+                let msg = match *reason {
+                    Some(ref r) => format!("use of unstable library feature '{}': {}",
+                                           feature.as_str(), &r),
+                    None => format!("use of unstable library feature '{}'", &feature)
+                };
+                emit_feature_err(&self.sess.parse_sess, &feature.as_str(), span,
+                                 GateIssue::Library(Some(issue)), &msg);
             }
             Some(_) => {
                 // Stable APIs are always ok to call and deprecated APIs are
@@ -593,6 +625,27 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 }
             }
 
+            // There's no good place to insert stability check for non-Copy unions,
+            // so semi-randomly perform it here in stability.rs
+            hir::ItemUnion(..) if !self.tcx.sess.features.borrow().untagged_unions => {
+                let def_id = self.tcx.hir.local_def_id(item.id);
+                let adt_def = self.tcx.adt_def(def_id);
+                let ty = self.tcx.type_of(def_id);
+
+                if adt_def.has_dtor(self.tcx) {
+                    emit_feature_err(&self.tcx.sess.parse_sess,
+                                     "untagged_unions", item.span, GateIssue::Language,
+                                     "unions with `Drop` implementations are unstable");
+                } else {
+                    let param_env = self.tcx.param_env(def_id);
+                    if !param_env.can_type_implement_copy(self.tcx, ty, item.span).is_ok() {
+                        emit_feature_err(&self.tcx.sess.parse_sess,
+                                        "untagged_unions", item.span, GateIssue::Language,
+                                        "unions with non-`Copy` fields are unstable");
+                    }
+                }
+            }
+
             _ => (/* pass */)
         }
         intravisit::walk_item(self, item);
@@ -639,7 +692,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if id.is_local() {
             None // The stability cache is filled partially lazily
         } else {
-            self.sess.cstore.stability(id).map(|st| self.intern_stability(st))
+            self.stability(id).map(|st| self.intern_stability(st))
         }
     }
 
@@ -648,7 +701,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if id.is_local() {
             None // The stability cache is filled partially lazily
         } else {
-            self.sess.cstore.deprecation(id).map(DeprecationEntry::external)
+            self.deprecation(id).map(DeprecationEntry::external)
         }
     }
 }
@@ -656,12 +709,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 /// Given the list of enabled features that were not language features (i.e. that
 /// were expected to be library features), and the list of features used from
 /// libraries, identify activated features that don't exist and error about them.
-pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                 access_levels: &AccessLevels) {
+pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let sess = &tcx.sess;
 
-    if tcx.stability.borrow().staged_api[&LOCAL_CRATE] && tcx.sess.features.borrow().staged_api {
-        let _task = tcx.dep_graph.in_task(DepNode::StabilityIndex);
+    let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
+
+    if tcx.stability.borrow().staged_api[&LOCAL_CRATE] {
         let krate = tcx.hir.krate();
         let mut missing = MissingStabilityAnnotations {
             tcx: tcx,

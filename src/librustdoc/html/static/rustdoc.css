@@ -141,7 +141,7 @@ pre {
 	padding: 14px;
 }
 
-.source pre {
+.source .content pre {
 	padding: 20px;
 }
 
@@ -149,7 +149,7 @@ img {
 	max-width: 100%;
 }
 
-.content.source {
+.source .content {
 	margin-top: 50px;
 	max-width: none;
 	overflow: visible;
@@ -167,7 +167,7 @@ nav.sub {
 	position: absolute;
 	left: 0;
 	top: 0;
-	min-height: 100vh;
+	min-height: 100%;
 }
 
 .sidebar .current {
@@ -193,6 +193,7 @@ nav.sub {
 	font-size: 17px;
 	margin: 30px 0 20px 0;
 	text-align: center;
+	word-wrap: break-word;
 }
 
 .location:empty {
@@ -231,10 +232,13 @@ nav.sub {
 	padding: 15px 0;
 }
 
-.content.source pre.rust {
+.source .content pre.rust {
 	white-space: pre;
 	overflow: auto;
 	padding-left: 0;
+}
+#search {
+	margin-left: 230px;
 }
 .content pre.line-numbers {
 	float: left;
@@ -378,12 +382,8 @@ h4 > code, h3 > code, .invisible > code {
 .content .fn .where,
 .content .where.fmt-newline {
 	display: block;
-}
-/* Bit of whitespace to indent it */
-.content .method .where::before,
-.content .fn .where::before,
-.content .where.fmt-newline::before {
-	content: '  ';
+	color: #4E4C4C;
+	font-size: 0.8em;
 }
 
 .content .methods > div { margin-left: 40px; }
@@ -397,11 +397,6 @@ h4 > code, h3 > code, .invisible > code {
 
 .content .stability code {
 	font-size: 90%;
-}
-
-/* Shift where in trait listing down a line */
-pre.trait .where::before {
-	content: '\a         ';
 }
 
 nav {
@@ -622,6 +617,11 @@ a.test-arrow:hover{
 	left: -23px;
 	color: #999;
 	top: 0;
+}
+
+h3 > .collapse-toggle, h4 > .collapse-toggle {
+	font-size: 0.8em;
+	top: 5px;
 }
 
 .toggle-wrapper > .collapse-toggle {

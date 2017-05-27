@@ -10,29 +10,31 @@
 
 use super::external_data::*;
 
+use rls_data::CratePreludeData;
+
 pub trait Dump {
-    fn crate_prelude(&mut self, CratePreludeData) {}
-    fn enum_data(&mut self, EnumData) {}
-    fn extern_crate(&mut self, ExternCrateData) {}
-    fn impl_data(&mut self, ImplData) {}
-    fn inheritance(&mut self, InheritanceData) {}
-    fn function(&mut self, FunctionData) {}
-    fn function_ref(&mut self, FunctionRefData) {}
-    fn function_call(&mut self, FunctionCallData) {}
-    fn method(&mut self, MethodData) {}
-    fn method_call(&mut self, MethodCallData) {}
-    fn macro_data(&mut self, MacroData) {}
-    fn macro_use(&mut self, MacroUseData) {}
-    fn mod_data(&mut self, ModData) {}
-    fn mod_ref(&mut self, ModRefData) {}
-    fn struct_data(&mut self, StructData) {}
-    fn struct_variant(&mut self, StructVariantData) {}
-    fn trait_data(&mut self, TraitData) {}
-    fn tuple_variant(&mut self, TupleVariantData) {}
-    fn type_ref(&mut self, TypeRefData) {}
-    fn typedef(&mut self, TypeDefData) {}
-    fn use_data(&mut self, UseData) {}
-    fn use_glob(&mut self, UseGlobData) {}
-    fn variable(&mut self, VariableData) {}
-    fn variable_ref(&mut self, VariableRefData) {}
+    fn crate_prelude(&mut self, _: CratePreludeData) {}
+    fn enum_data(&mut self, _: EnumData) {}
+    fn extern_crate(&mut self, _: ExternCrateData) {}
+    fn impl_data(&mut self, _: ImplData) {}
+    fn inheritance(&mut self, _: InheritanceData) {}
+    fn function(&mut self, _: FunctionData) {}
+    fn function_ref(&mut self, _: FunctionRefData) {}
+    fn function_call(&mut self, _: FunctionCallData) {}
+    fn method(&mut self, _: MethodData) {}
+    fn method_call(&mut self, _: MethodCallData) {}
+    fn macro_data(&mut self, _: MacroData) {}
+    fn macro_use(&mut self, _: MacroUseData) {}
+    fn mod_data(&mut self, _: ModData) {}
+    fn mod_ref(&mut self, _: ModRefData) {}
+    fn struct_data(&mut self, _: StructData) {}
+    fn struct_variant(&mut self, _: StructVariantData) {}
+    fn trait_data(&mut self, _: TraitData) {}
+    fn tuple_variant(&mut self, _: TupleVariantData) {}
+    fn type_ref(&mut self, _: TypeRefData) {}
+    fn typedef(&mut self, _: TypeDefData) {}
+    fn use_data(&mut self, _: UseData) {}
+    fn use_glob(&mut self, _: UseGlobData) {}
+    fn variable(&mut self, _: VariableData) {}
+    fn variable_ref(&mut self, _: VariableRefData) {}
 }

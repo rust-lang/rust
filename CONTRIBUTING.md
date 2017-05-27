@@ -177,7 +177,7 @@ python x.py test src/test/rustdoc
 python x.py build src/libcore --stage 0
 ```
 
-You can explore the build system throught the various `--help` pages for each
+You can explore the build system through the various `--help` pages for each
 subcommand. For example to learn more about a command you can run:
 
 ```
@@ -311,9 +311,13 @@ To save @bors some work, and to get small changes through more quickly, when
 the other rollup-eligible patches too, and they'll get tested and merged at
 the same time.
 
-To find documentation-related issues, sort by the [A-docs label][adocs].
+To find documentation-related issues, sort by the [T-doc label][tdoc].
 
-[adocs]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AA-docs
+[tdoc]: https://github.com/rust-lang/rust/issues?q=is%3Aopen%20is%3Aissue%20label%3AT-doc
+
+You can find documentation style guidelines in [RFC 1574][rfc1574].
+
+[rfc1574]: https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text
 
 In many cases, you don't need a full `./x.py doc`. You can use `rustdoc` directly
 to check small fixes. For example, `rustdoc src/doc/reference.md` will render

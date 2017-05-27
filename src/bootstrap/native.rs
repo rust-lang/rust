@@ -18,6 +18,8 @@
 //! LLVM and compiler-rt are essentially just wired up to everything else to
 //! ensure that they're always in place if needed.
 
+use std::env;
+use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::Path;
@@ -41,9 +43,9 @@ pub fn llvm(build: &Build, target: &str) {
         }
     }
 
-    let clean_trigger = build.src.join("src/rustllvm/llvm-auto-clean-trigger");
-    let mut clean_trigger_contents = String::new();
-    t!(t!(File::open(&clean_trigger)).read_to_string(&mut clean_trigger_contents));
+    let rebuild_trigger = build.src.join("src/rustllvm/llvm-rebuild-trigger");
+    let mut rebuild_trigger_contents = String::new();
+    t!(t!(File::open(&rebuild_trigger)).read_to_string(&mut rebuild_trigger_contents));
 
     let out_dir = build.llvm_out(target);
     let done_stamp = out_dir.join("llvm-finished-building");
@@ -51,17 +53,14 @@ pub fn llvm(build: &Build, target: &str) {
         let mut done_contents = String::new();
         t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
 
-        // LLVM was already built previously.
-        // We don't track changes in LLVM sources, so we need to choose between reusing
-        // what was built previously, or cleaning the directory and doing a fresh build.
-        // The choice depends on contents of the clean-trigger file.
-        // If the contents are the same as during the previous build, then no action is required.
-        // If the contents differ from the previous build, then cleaning is triggered.
-        if done_contents == clean_trigger_contents {
+        // If LLVM was already built previously and contents of the rebuild-trigger file
+        // didn't change from the previous build, then no action is required.
+        if done_contents == rebuild_trigger_contents {
             return
-        } else {
-            t!(fs::remove_dir_all(&out_dir));
         }
+    }
+    if build.config.llvm_clean_rebuild {
+        drop(fs::remove_dir_all(&out_dir));
     }
 
     println!("Building LLVM for {}", target);
@@ -83,7 +82,7 @@ pub fn llvm(build: &Build, target: &str) {
     // NOTE: remember to also update `config.toml.example` when changing the defaults!
     let llvm_targets = match build.config.llvm_targets {
         Some(ref s) => s,
-        None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX",
+        None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX;Hexagon",
     };
 
     let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
@@ -109,6 +108,7 @@ pub fn llvm(build: &Build, target: &str) {
         cfg.define("LLVM_USE_CRT_DEBUG", "MT");
         cfg.define("LLVM_USE_CRT_RELEASE", "MT");
         cfg.define("LLVM_USE_CRT_RELWITHDEBINFO", "MT");
+        cfg.static_crt(true);
     }
 
     if target.starts_with("i686") {
@@ -131,21 +131,59 @@ pub fn llvm(build: &Build, target: &str) {
            .define("LLVM_TABLEGEN", &host);
     }
 
-    // MSVC handles compiler business itself
-    if !target.contains("msvc") {
-        if let Some(ref ccache) = build.config.ccache {
-           cfg.define("CMAKE_C_COMPILER", ccache)
-              .define("CMAKE_C_COMPILER_ARG1", build.cc(target))
-              .define("CMAKE_CXX_COMPILER", ccache)
-              .define("CMAKE_CXX_COMPILER_ARG1", build.cxx(target));
+    let sanitize_cc = |cc: &Path| {
+        if target.contains("msvc") {
+            OsString::from(cc.to_str().unwrap().replace("\\", "/"))
         } else {
-           cfg.define("CMAKE_C_COMPILER", build.cc(target))
-              .define("CMAKE_CXX_COMPILER", build.cxx(target));
+            cc.as_os_str().to_owned()
         }
-        cfg.build_arg("-j").build_arg(build.jobs().to_string());
+    };
 
+    let configure_compilers = |cfg: &mut cmake::Config| {
+        // MSVC with CMake uses msbuild by default which doesn't respect these
+        // vars that we'd otherwise configure. In that case we just skip this
+        // entirely.
+        if target.contains("msvc") && !build.config.ninja {
+            return
+        }
+
+        let cc = build.cc(target);
+        let cxx = build.cxx(target);
+
+        // Handle msvc + ninja + ccache specially (this is what the bots use)
+        if target.contains("msvc") &&
+           build.config.ninja &&
+           build.config.ccache.is_some() {
+            let mut cc = env::current_exe().expect("failed to get cwd");
+            cc.set_file_name("sccache-plus-cl.exe");
+
+           cfg.define("CMAKE_C_COMPILER", sanitize_cc(&cc))
+              .define("CMAKE_CXX_COMPILER", sanitize_cc(&cc));
+           cfg.env("SCCACHE_PATH",
+                   build.config.ccache.as_ref().unwrap())
+              .env("SCCACHE_TARGET", target);
+
+        // If ccache is configured we inform the build a little differently hwo
+        // to invoke ccache while also invoking our compilers.
+        } else if let Some(ref ccache) = build.config.ccache {
+           cfg.define("CMAKE_C_COMPILER", ccache)
+              .define("CMAKE_C_COMPILER_ARG1", sanitize_cc(cc))
+              .define("CMAKE_CXX_COMPILER", ccache)
+              .define("CMAKE_CXX_COMPILER_ARG1", sanitize_cc(cxx));
+        } else {
+           cfg.define("CMAKE_C_COMPILER", sanitize_cc(cc))
+              .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx));
+        }
+
+        cfg.build_arg("-j").build_arg(build.jobs().to_string());
         cfg.define("CMAKE_C_FLAGS", build.cflags(target).join(" "));
         cfg.define("CMAKE_CXX_FLAGS", build.cflags(target).join(" "));
+    };
+
+    configure_compilers(&mut cfg);
+
+    if env::var_os("SCCACHE_ERROR_LOG").is_some() {
+        cfg.env("RUST_LOG", "sccache=info");
     }
 
     // FIXME: we don't actually need to build all LLVM tools and all LLVM
@@ -154,7 +192,7 @@ pub fn llvm(build: &Build, target: &str) {
     //        tools and libs on all platforms.
     cfg.build();
 
-    t!(t!(File::create(&done_stamp)).write_all(clean_trigger_contents.as_bytes()));
+    t!(t!(File::create(&done_stamp)).write_all(rebuild_trigger_contents.as_bytes()));
 }
 
 fn check_llvm_version(build: &Build, llvm_config: &Path) {
@@ -225,9 +263,24 @@ pub fn openssl(build: &Build, target: &str) {
     let tarball = out.join(&name);
     if !tarball.exists() {
         let tmp = tarball.with_extension("tmp");
-        build.run(Command::new("curl")
-                        .arg("-o").arg(&tmp)
-                        .arg(format!("https://www.openssl.org/source/{}", name)));
+        // originally from https://www.openssl.org/source/...
+        let url = format!("https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/{}",
+                          name);
+        let mut ok = false;
+        for _ in 0..3 {
+            let status = Command::new("curl")
+                            .arg("-o").arg(&tmp)
+                            .arg(&url)
+                            .status()
+                            .expect("failed to spawn curl");
+            if status.success() {
+                ok = true;
+                break
+            }
+        }
+        if !ok {
+            panic!("failed to download openssl source")
+        }
         let mut shasum = if target.contains("apple") {
             let mut cmd = Command::new("shasum");
             cmd.arg("-a").arg("256");
@@ -257,11 +310,15 @@ pub fn openssl(build: &Build, target: &str) {
     configure.arg("no-ssl3");
 
     let os = match target {
+        "aarch64-linux-android" => "linux-aarch64",
         "aarch64-unknown-linux-gnu" => "linux-aarch64",
+        "arm-linux-androideabi" => "android",
         "arm-unknown-linux-gnueabi" => "linux-armv4",
         "arm-unknown-linux-gnueabihf" => "linux-armv4",
+        "armv7-linux-androideabi" => "android-armv7",
         "armv7-unknown-linux-gnueabihf" => "linux-armv4",
         "i686-apple-darwin" => "darwin-i386-cc",
+        "i686-linux-android" => "android-x86",
         "i686-unknown-freebsd" => "BSD-x86-elf",
         "i686-unknown-linux-gnu" => "linux-elf",
         "i686-unknown-linux-musl" => "linux-elf",
@@ -274,6 +331,7 @@ pub fn openssl(build: &Build, target: &str) {
         "powerpc64le-unknown-linux-gnu" => "linux-ppc64le",
         "s390x-unknown-linux-gnu" => "linux64-s390x",
         "x86_64-apple-darwin" => "darwin64-x86_64-cc",
+        "x86_64-linux-android" => "linux-x86_64",
         "x86_64-unknown-freebsd" => "BSD-x86_64",
         "x86_64-unknown-linux-gnu" => "linux-x86_64",
         "x86_64-unknown-linux-musl" => "linux-x86_64",
@@ -285,11 +343,23 @@ pub fn openssl(build: &Build, target: &str) {
     for flag in build.cflags(target) {
         configure.arg(flag);
     }
+    // There is no specific os target for android aarch64 or x86_64,
+    // so we need to pass some extra cflags
+    if target == "aarch64-linux-android" || target == "x86_64-linux-android" {
+        configure.arg("-mandroid");
+        configure.arg("-fomit-frame-pointer");
+    }
+    // Make PIE binaries
+    // Non-PIE linker support was removed in Lollipop
+    // https://source.android.com/security/enhancements/enhancements50
+    if target == "i686-linux-android" {
+        configure.arg("no-asm");
+    }
     configure.current_dir(&obj);
     println!("Configuring openssl for {}", target);
     build.run_quiet(&mut configure);
     println!("Building openssl for {}", target);
-    build.run_quiet(Command::new("make").current_dir(&obj));
+    build.run_quiet(Command::new("make").arg("-j1").current_dir(&obj));
     println!("Installing openssl for {}", target);
     build.run_quiet(Command::new("make").arg("install").current_dir(&obj));
 

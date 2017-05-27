@@ -11,11 +11,11 @@ test = false
 
 [dependencies]
 flate = { path = "../libflate" }
-log = { path = "../liblog" }
+log = "0.3"
+owning_ref = "0.3.3"
 rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }
 rustc_bitflags = { path = "../librustc_bitflags" }
-rustc_const_eval = { path = "../librustc_const_eval" }
 rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }

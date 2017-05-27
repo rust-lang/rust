@@ -13,9 +13,10 @@ use feature_gate::{feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features
 use {fold, attr};
 use ast;
 use codemap::Spanned;
-use parse::ParseSess;
-use ptr::P;
+use parse::{token, ParseSess};
+use syntax_pos::Span;
 
+use ptr::P;
 use util::small_vector::SmallVector;
 
 /// A folder that strips out items that do not belong in the current configuration.
@@ -84,43 +85,33 @@ impl<'a> StripUnconfigured<'a> {
             return Some(attr);
         }
 
-        let attr_list = match attr.meta_item_list() {
-            Some(attr_list) => attr_list,
-            None => {
-                let msg = "expected `#[cfg_attr(<cfg pattern>, <attr>)]`";
-                self.sess.span_diagnostic.span_err(attr.span, msg);
+        let (cfg, path, tokens, span) = match attr.parse(self.sess, |parser| {
+            parser.expect(&token::OpenDelim(token::Paren))?;
+            let cfg = parser.parse_meta_item()?;
+            parser.expect(&token::Comma)?;
+            let lo = parser.span.lo;
+            let (path, tokens) = parser.parse_path_and_tokens()?;
+            parser.expect(&token::CloseDelim(token::Paren))?;
+            Ok((cfg, path, tokens, Span { lo: lo, ..parser.prev_span }))
+        }) {
+            Ok(result) => result,
+            Err(mut e) => {
+                e.emit();
                 return None;
             }
         };
 
-        let (cfg, mi) = match (attr_list.len(), attr_list.get(0), attr_list.get(1)) {
-            (2, Some(cfg), Some(mi)) => (cfg, mi),
-            _ => {
-                let msg = "expected `#[cfg_attr(<cfg pattern>, <attr>)]`";
-                self.sess.span_diagnostic.span_err(attr.span, msg);
-                return None;
-            }
-        };
-
-        use attr::cfg_matches;
-        match (cfg.meta_item(), mi.meta_item()) {
-            (Some(cfg), Some(mi)) =>
-                if cfg_matches(&cfg, self.sess, self.features) {
-                    self.process_cfg_attr(ast::Attribute {
-                        id: attr::mk_attr_id(),
-                        style: attr.style,
-                        value: mi.clone(),
-                        is_sugared_doc: false,
-                        span: mi.span,
-                    })
-                } else {
-                    None
-                },
-            _ => {
-                let msg = "unexpected literal(s) in `#[cfg_attr(<cfg pattern>, <attr>)]`";
-                self.sess.span_diagnostic.span_err(attr.span, msg);
-                None
-            }
+        if attr::cfg_matches(&cfg, self.sess, self.features) {
+            self.process_cfg_attr(ast::Attribute {
+                id: attr::mk_attr_id(),
+                style: attr.style,
+                path: path,
+                tokens: tokens,
+                is_sugared_doc: false,
+                span: span,
+            })
+        } else {
+            None
         }
     }
 
@@ -132,9 +123,12 @@ impl<'a> StripUnconfigured<'a> {
                 return false;
             }
 
-            let mis = match attr.value.node {
-                ast::MetaItemKind::List(ref mis) if is_cfg(&attr) => mis,
-                _ => return true
+            let mis = if !is_cfg(attr) {
+                return true;
+            } else if let Some(mis) = attr.meta_item_list() {
+                mis
+            } else {
+                return true;
             };
 
             if mis.len() != 1 {
@@ -156,7 +150,7 @@ impl<'a> StripUnconfigured<'a> {
         // flag the offending attributes
         for attr in attrs.iter() {
             if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
-                let mut err = feature_err(&self.sess,
+                let mut err = feature_err(self.sess,
                                           "stmt_expr_attributes",
                                           attr.span,
                                           GateIssue::Language,
@@ -264,7 +258,7 @@ impl<'a> StripUnconfigured<'a> {
     pub fn configure_struct_expr_field(&mut self, field: ast::Field) -> Option<ast::Field> {
         if !self.features.map(|features| features.struct_field_attributes).unwrap_or(true) {
             if !field.attrs.is_empty() {
-                let mut err = feature_err(&self.sess,
+                let mut err = feature_err(self.sess,
                                           "struct_field_attributes",
                                           field.span,
                                           GateIssue::Language,
@@ -296,7 +290,7 @@ impl<'a> StripUnconfigured<'a> {
         for attr in attrs.iter() {
             if !self.features.map(|features| features.struct_field_attributes).unwrap_or(true) {
                 let mut err = feature_err(
-                    &self.sess,
+                    self.sess,
                     "struct_field_attributes",
                     attr.span,
                     GateIssue::Language,

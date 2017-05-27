@@ -36,7 +36,10 @@ pub const LOCAL_CRATE: CrateNum = CrateNum(0);
 
 /// Virtual crate for builtin macros
 // FIXME(jseyfried): this is also used for custom derives until proc-macro crates get `CrateNum`s.
-pub const BUILTIN_MACROS_CRATE: CrateNum = CrateNum(!0);
+pub const BUILTIN_MACROS_CRATE: CrateNum = CrateNum(u32::MAX);
+
+/// A CrateNum value that indicates that something is wrong.
+pub const INVALID_CRATE: CrateNum = CrateNum(u32::MAX - 1);
 
 impl CrateNum {
     pub fn new(x: usize) -> CrateNum {
@@ -78,32 +81,85 @@ impl serialize::UseSpecializedDecodable for CrateNum {
 /// A DefIndex is an index into the hir-map for a crate, identifying a
 /// particular definition. It should really be considered an interned
 /// shorthand for a particular DefPath.
+///
+/// At the moment we are allocating the numerical values of DefIndexes into two
+/// ranges: the "low" range (starting at zero) and the "high" range (starting at
+/// DEF_INDEX_HI_START). This allows us to allocate the DefIndexes of all
+/// item-likes (Items, TraitItems, and ImplItems) into one of these ranges and
+/// consequently use a simple array for lookup tables keyed by DefIndex and
+/// known to be densely populated. This is especially important for the HIR map.
+///
+/// Since the DefIndex is mostly treated as an opaque ID, you probably
+/// don't have to care about these ranges.
 #[derive(Clone, Debug, Eq, Ord, PartialOrd, PartialEq, RustcEncodable,
            RustcDecodable, Hash, Copy)]
 pub struct DefIndex(u32);
 
 impl DefIndex {
+    #[inline]
     pub fn new(x: usize) -> DefIndex {
         assert!(x < (u32::MAX as usize));
         DefIndex(x as u32)
     }
 
+    #[inline]
     pub fn from_u32(x: u32) -> DefIndex {
         DefIndex(x)
     }
 
+    #[inline]
     pub fn as_usize(&self) -> usize {
         self.0 as usize
     }
 
+    #[inline]
     pub fn as_u32(&self) -> u32 {
         self.0
     }
+
+    #[inline]
+    pub fn address_space(&self) -> DefIndexAddressSpace {
+        if self.0 < DEF_INDEX_HI_START.0 {
+            DefIndexAddressSpace::Low
+        } else {
+            DefIndexAddressSpace::High
+        }
+    }
+
+    /// Converts this DefIndex into a zero-based array index.
+    /// This index is the offset within the given "range" of the DefIndex,
+    /// that is, if the DefIndex is part of the "high" range, the resulting
+    /// index will be (DefIndex - DEF_INDEX_HI_START).
+    #[inline]
+    pub fn as_array_index(&self) -> usize {
+        (self.0 & !DEF_INDEX_HI_START.0) as usize
+    }
 }
+
+/// The start of the "high" range of DefIndexes.
+const DEF_INDEX_HI_START: DefIndex = DefIndex(1 << 31);
 
 /// The crate root is always assigned index 0 by the AST Map code,
 /// thanks to `NodeCollector::new`.
 pub const CRATE_DEF_INDEX: DefIndex = DefIndex(0);
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub enum DefIndexAddressSpace {
+    Low = 0,
+    High = 1,
+}
+
+impl DefIndexAddressSpace {
+    #[inline]
+    pub fn index(&self) -> usize {
+        *self as usize
+    }
+
+    #[inline]
+    pub fn start(&self) -> usize {
+        self.index() * DEF_INDEX_HI_START.as_usize()
+    }
+}
 
 /// A DefId identifies a particular *definition*, by combining a crate
 /// index and a def index.

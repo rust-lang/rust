@@ -150,7 +150,7 @@ impl Condvar {
     ///
     /// This function will atomically unlock the mutex specified (represented by
     /// `guard`) and block the current thread. This means that any calls
-    /// to [`notify_one()`] or [`notify_all()`] which happen logically after the
+    /// to [`notify_one`] or [`notify_all`] which happen logically after the
     /// mutex is unlocked are candidates to wake this thread up. When this
     /// function call returns, the lock specified will have been re-acquired.
     ///
@@ -167,16 +167,16 @@ impl Condvar {
     ///
     /// # Panics
     ///
-    /// This function will [`panic!()`] if it is used with more than one mutex
+    /// This function will [`panic!`] if it is used with more than one mutex
     /// over time. Each condition variable is dynamically bound to exactly one
     /// mutex to ensure defined behavior across platforms. If this functionality
     /// is not desired, then unsafe primitives in `sys` are provided.
     ///
-    /// [`notify_one()`]: #method.notify_one
-    /// [`notify_all()`]: #method.notify_all
+    /// [`notify_one`]: #method.notify_one
+    /// [`notify_all`]: #method.notify_all
     /// [poisoning]: ../sync/struct.Mutex.html#poisoning
     /// [`Mutex`]: ../sync/struct.Mutex.html
-    /// [`panic!()`]: ../../std/macro.panic.html
+    /// [`panic!`]: ../../std/macro.panic.html
     ///
     /// # Examples
     ///
@@ -359,11 +359,11 @@ impl Condvar {
     /// be woken up from its call to [`wait`] or [`wait_timeout`]. Calls to
     /// `notify_one` are not buffered in any way.
     ///
-    /// To wake up all threads, see [`notify_all()`].
+    /// To wake up all threads, see [`notify_all`].
     ///
     /// [`wait`]: #method.wait
     /// [`wait_timeout`]: #method.wait_timeout
-    /// [`notify_all()`]: #method.notify_all
+    /// [`notify_all`]: #method.notify_all
     ///
     /// # Examples
     ///
@@ -401,9 +401,9 @@ impl Condvar {
     /// variable are awoken. Calls to `notify_all()` are not buffered in any
     /// way.
     ///
-    /// To wake up only one thread, see [`notify_one()`].
+    /// To wake up only one thread, see [`notify_one`].
     ///
-    /// [`notify_one()`]: #method.notify_one
+    /// [`notify_one`]: #method.notify_one
     ///
     /// # Examples
     ///
@@ -461,7 +461,7 @@ impl fmt::Debug for Condvar {
     }
 }
 
-#[stable(feature = "condvar_default", since = "1.9.0")]
+#[stable(feature = "condvar_default", since = "1.10.0")]
 impl Default for Condvar {
     /// Creates a `Condvar` which is ready to be waited on and notified.
     fn default() -> Condvar {

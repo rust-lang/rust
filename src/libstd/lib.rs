@@ -21,7 +21,7 @@
 //! contained an `extern crate std;` import at the [crate root]. Therefore the
 //! standard library can be accessed in [`use`] statements through the path
 //! `std`, as in [`use std::env`], or in expressions through the absolute path
-//! `::std`, as in [`::std::env::args()`].
+//! `::std`, as in [`::std::env::args`].
 //!
 //! # How to read this documentation
 //!
@@ -94,6 +94,17 @@
 //! compiler - but they are documented here the same). Like the prelude, the
 //! standard macros are imported by default into all crates.
 //!
+//! # Contributing changes to the documentation
+//!
+//! Check out the rust contribution guidelines [here](
+//! https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md).
+//! The source for this documentation can be found on [Github](https://github.com/rust-lang).
+//! To contribute changes, make sure you read the guidelines first, then submit
+//! pull-requests for your suggested changes.
+//!
+//! Contributions are appreciated! If you see a part of the docs that can be
+//! improved, submit a PR, or chat with us first on irc.mozilla.org #rust-docs.
+//!
 //! # A Tour of The Rust Standard Library
 //!
 //! The rest of this crate documentation is dedicated to pointing out notable
@@ -156,7 +167,7 @@
 //! [TCP]: net/struct.TcpStream.html
 //! [The Rust Prelude]: prelude/index.html
 //! [UDP]: net/struct.UdpSocket.html
-//! [`::std::env::args()`]: env/fn.args.html
+//! [`::std::env::args`]: env/fn.args.html
 //! [`Arc`]: sync/struct.Arc.html
 //! [owned slice]: boxed/index.html
 //! [`Cell`]: cell/struct.Cell.html
@@ -174,7 +185,7 @@
 //! [slice]: primitive.slice.html
 //! [`atomic`]: sync/atomic/index.html
 //! [`collections`]: collections/index.html
-//! [`for`]: ../book/loops.html#for
+//! [`for`]: ../book/first-edition/loops.html#for
 //! [`format!`]: macro.format.html
 //! [`fs`]: fs/index.html
 //! [`io`]: io/index.html
@@ -189,14 +200,14 @@
 //! [`sync`]: sync/index.html
 //! [`thread`]: thread/index.html
 //! [`use std::env`]: env/index.html
-//! [`use`]: ../book/crates-and-modules.html#importing-modules-with-use
-//! [crate root]: ../book/crates-and-modules.html#basic-terminology-crates-and-modules
+//! [`use`]: ../book/first-edition/crates-and-modules.html#importing-modules-with-use
+//! [crate root]: ../book/first-edition/crates-and-modules.html#basic-terminology-crates-and-modules
 //! [crates.io]: https://crates.io
-//! [deref coercions]: ../book/deref-coercions.html
+//! [deref coercions]: ../book/first-edition/deref-coercions.html
 //! [files]: fs/struct.File.html
 //! [multithreading]: thread/index.html
 //! [other]: #what-is-in-the-standard-library-documentation
-//! [primitive types]: ../book/primitive-types.html
+//! [primitive types]: ../book/first-edition/primitive-types.html
 
 #![crate_name = "std"]
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -237,7 +248,6 @@
 #![feature(allow_internal_unstable)]
 #![feature(asm)]
 #![feature(associated_consts)]
-#![feature(borrow_state)]
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
@@ -245,7 +255,6 @@
 #![feature(char_escape_debug)]
 #![feature(char_internals)]
 #![feature(collections)]
-#![feature(collections_bound)]
 #![feature(collections_range)]
 #![feature(compiler_builtins_lib)]
 #![feature(const_fn)]
@@ -253,7 +262,6 @@
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
-#![feature(float_extras)]
 #![feature(float_from_str_radix)]
 #![feature(fn_traits)]
 #![feature(fnbox)]
@@ -273,6 +281,8 @@
 #![feature(linkage)]
 #![feature(macro_reexport)]
 #![feature(needs_panic_runtime)]
+#![feature(needs_drop)]
+#![feature(never_type)]
 #![feature(num_bits_bytes)]
 #![feature(old_wrapping)]
 #![feature(on_unimplemented)]
@@ -281,8 +291,8 @@
 #![feature(panic_unwind)]
 #![feature(peek)]
 #![feature(placement_in_syntax)]
+#![feature(placement_new_protocol)]
 #![feature(prelude_import)]
-#![feature(pub_restricted)]
 #![feature(rand)]
 #![feature(raw)]
 #![feature(repr_simd)]
@@ -296,9 +306,11 @@
 #![feature(stmt_expr_attributes)]
 #![feature(str_char)]
 #![feature(str_internals)]
+#![feature(str_mut_extras)]
 #![feature(str_utf16)]
 #![feature(test, rustc_private)]
 #![feature(thread_local)]
+#![feature(toowned_clone_into)]
 #![feature(try_from)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
@@ -306,8 +318,8 @@
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
-#![feature(zero_one)]
 #![cfg_attr(test, feature(update_panic_count))]
+#![cfg_attr(test, feature(float_bits_conv))]
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use codemap::CodeMap;
+use codemap::{CodeMap, FilePathMapping};
 use errors::Handler;
 use errors::emitter::EmitterWriter;
 use std::io;
@@ -47,8 +47,8 @@ impl<T: Write> Write for Shared<T> {
 fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &str) {
     let output = Arc::new(Mutex::new(Vec::new()));
 
-    let code_map = Rc::new(CodeMap::new());
-    code_map.new_filemap_and_lines("test.rs", None, &file_text);
+    let code_map = Rc::new(CodeMap::new(FilePathMapping::empty()));
+    code_map.new_filemap_and_lines("test.rs", &file_text);
 
     let primary_span = make_span(&file_text, &span_labels[0].start, &span_labels[0].end);
     let mut msp = MultiSpan::from_span(primary_span);
@@ -83,7 +83,7 @@ fn make_span(file_text: &str, start: &Position, end: &Position) -> Span {
     Span {
         lo: BytePos(start as u32),
         hi: BytePos(end as u32),
-        expn_id: NO_EXPANSION,
+        ctxt: NO_EXPANSION,
     }
 }
 
@@ -128,9 +128,9 @@ error: foo
  --> test.rs:2:10
   |
 2 |   fn foo() {
-  |  __________^ starting here...
+  |  __________^
 3 | | }
-  | |_^ ...ending here: test
+  | |_^ test
 
 "#);
 }
@@ -161,11 +161,11 @@ error: foo
  --> test.rs:2:10
   |
 2 |   fn foo() {
-  |  __________^ starting here...
+  |  __________^
 3 | |
 4 | |
 5 | |   }
-  | |___^ ...ending here: test
+  | |___^ test
 
 "#);
 }
@@ -207,14 +207,14 @@ error: foo
  --> test.rs:3:3
   |
 3 |      X0 Y0
-  |  ____^__- starting here...
+  |  ____^__-
   | | ___|
-  | ||   starting here...
+  | ||
 4 | ||   X1 Y1
 5 | ||   X2 Y2
-  | ||____^__- ...ending here: `Y` is a good letter too
+  | ||____^__- `Y` is a good letter too
   |  |____|
-  |       ...ending here: `X` is a good letter
+  |       `X` is a good letter
 
 "#);
 }
@@ -256,13 +256,13 @@ error: foo
  --> test.rs:3:3
   |
 3 |      X0 Y0
-  |  ____^__- starting here...
+  |  ____^__-
   | | ___|
-  | ||   starting here...
+  | ||
 4 | ||   Y1 X1
-  | ||____-__^ ...ending here: `X` is a good letter
+  | ||____-__^ `X` is a good letter
   | |_____|
-  |       ...ending here: `Y` is a good letter too
+  |       `Y` is a good letter too
 
 "#);
 }
@@ -306,13 +306,13 @@ error: foo
  --> test.rs:3:6
   |
 3 |      X0 Y0 Z0
-  |   ______^ starting here...
+  |   ______^
 4 |  |   X1 Y1 Z1
-  |  |_________- starting here...
+  |  |_________-
 5 | ||   X2 Y2 Z2
-  | ||____^ ...ending here: `X` is a good letter
+  | ||____^ `X` is a good letter
 6 | |    X3 Y3 Z3
-  | |_____- ...ending here: `Y` is a good letter too
+  | |_____- `Y` is a good letter too
 
 "#);
 }
@@ -366,16 +366,16 @@ error: foo
  --> test.rs:3:3
   |
 3 |       X0 Y0 Z0
-  |  _____^__-__- starting here...
+  |  _____^__-__-
   | | ____|__|
-  | || ___|  starting here...
-  | |||   starting here...
+  | || ___|
+  | |||
 4 | |||   X1 Y1 Z1
 5 | |||   X2 Y2 Z2
-  | |||____^__-__- ...ending here: `Z` label
+  | |||____^__-__- `Z` label
   |  ||____|__|
-  |   |____|  ...ending here: `Y` is a good letter too
-  |        ...ending here: `X` is a good letter
+  |   |____|  `Y` is a good letter too
+  |        `X` is a good letter
 
 "#);
 }
@@ -430,17 +430,17 @@ error: foo
  --> test.rs:3:6
   |
 3 |      X0 Y0 Z0
-  |   ______^ starting here...
+  |   ______^
 4 |  |   X1 Y1 Z1
-  |  |____^_- starting here...
+  |  |____^_-
   | ||____|
-  | |     ...ending here: `X` is a good letter
+  | |     `X` is a good letter
 5 | |    X2 Y2 Z2
-  | |____-______- ...ending here: `Y` is a good letter too
+  | |____-______- `Y` is a good letter too
   |  ____|
-  | |    starting here...
+  | |
 6 | |    X3 Y3 Z3
-  | |________- ...ending here: `Z`
+  | |________- `Z`
 
 "#);
 }
@@ -458,7 +458,7 @@ fn foo() {
     vec![
         SpanLabel {
             start: Position {
-                string: "Y0",
+                string: "X0",
                 count: 1,
             },
             end: Position {
@@ -481,16 +481,15 @@ fn foo() {
     ],
     r#"
 error: foo
- --> test.rs:3:6
+ --> test.rs:3:3
   |
-3 |     X0 Y0 Z0
-  |  ______^ starting here...
+3 | /   X0 Y0 Z0
 4 | |   X1 Y1 Z1
-  | |____^ ...ending here: `X` is a good letter
+  | |____^ `X` is a good letter
 5 |     X2 Y2 Z2
-  |  ______- starting here...
+  |  ______-
 6 | |   X3 Y3 Z3
-  | |__________- ...ending here: `Y` is a good letter too
+  | |__________- `Y` is a good letter too
 
 "#);
 }
@@ -534,14 +533,14 @@ error: foo
  --> test.rs:3:6
   |
 3 |      X0 Y0 Z0
-  |   ______^ starting here...
+  |   ______^
 4 |  |   X1 Y1 Z1
-  |  |____^____- starting here...
+  |  |____^____-
   | ||____|
-  | |     ...ending here: `X` is a good letter
+  | |     `X` is a good letter
 5 | |    X2 Y2 Z2
 6 | |    X3 Y3 Z3
-  | |___________- ...ending here: `Y` is a good letter too
+  | |___________- `Y` is a good letter too
 
 "#);
 }
@@ -932,3 +931,137 @@ error: foo
 
 "#);
 }
+
+#[test]
+fn long_snippet() {
+    test_harness(r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "Y0",
+                count: 1,
+            },
+            end: Position {
+                string: "X1",
+                count: 1,
+            },
+            label: "`X` is a good letter",
+        },
+        SpanLabel {
+            start: Position {
+                string: "Z1",
+                count: 1,
+            },
+            end: Position {
+                string: "Z3",
+                count: 1,
+            },
+            label: "`Y` is a good letter too",
+        },
+    ],
+    r#"
+error: foo
+  --> test.rs:3:6
+   |
+3  |      X0 Y0 Z0
+   |   ______^
+4  |  |   X1 Y1 Z1
+   |  |____^____-
+   | ||____|
+   | |     `X` is a good letter
+5  | |  1
+6  | |  2
+7  | |  3
+...  |
+15 | |    X2 Y2 Z2
+16 | |    X3 Y3 Z3
+   | |___________- `Y` is a good letter too
+
+"#);
+}
+
+#[test]
+fn long_snippet_multiple_spans() {
+    test_harness(r#"
+fn foo() {
+  X0 Y0 Z0
+1
+2
+3
+  X1 Y1 Z1
+4
+5
+6
+  X2 Y2 Z2
+7
+8
+9
+10
+  X3 Y3 Z3
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "Y0",
+                count: 1,
+            },
+            end: Position {
+                string: "Y3",
+                count: 1,
+            },
+            label: "`Y` is a good letter",
+        },
+        SpanLabel {
+            start: Position {
+                string: "Z1",
+                count: 1,
+            },
+            end: Position {
+                string: "Z2",
+                count: 1,
+            },
+            label: "`Z` is a good letter too",
+        },
+    ],
+    r#"
+error: foo
+  --> test.rs:3:6
+   |
+3  |      X0 Y0 Z0
+   |   ______^
+4  |  | 1
+5  |  | 2
+6  |  | 3
+7  |  |   X1 Y1 Z1
+   |  |_________-
+8  | || 4
+9  | || 5
+10 | || 6
+11 | ||   X2 Y2 Z2
+   | ||__________- `Z` is a good letter too
+...   |
+15 |  | 10
+16 |  |   X3 Y3 Z3
+   |  |_______^ `Y` is a good letter
+
+"#);
+}
+

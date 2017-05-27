@@ -73,6 +73,15 @@ use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 /// spawning process and can itself be constructed using a builder-style
 /// interface.
 ///
+/// There is no implementation of [`Drop`] for child processes,
+/// so if you do not ensure the `Child` has exited then it will continue to
+/// run, even after the `Child` handle to the child process has gone out of
+/// scope.
+///
+/// Calling [`wait`](#method.wait) (or other functions that wrap around it) will make
+/// the parent process wait until the child has actually exited before
+/// continuing.
+///
 /// # Examples
 ///
 /// ```should_panic
@@ -88,17 +97,6 @@ use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 ///
 /// assert!(ecode.success());
 /// ```
-///
-/// # Note
-///
-/// Take note that there is no implementation of [`Drop`] for child processes,
-/// so if you do not ensure the `Child` has exited then it will continue to
-/// run, even after the `Child` handle to the child process has gone out of
-/// scope.
-///
-/// Calling [`wait`][`wait`] (or other functions that wrap around it) will make
-/// the parent process wait until the child has actually exited before
-/// continuing.
 ///
 /// [`Command`]: struct.Command.html
 /// [`Drop`]: ../../core/ops/trait.Drop.html
@@ -150,8 +148,9 @@ impl fmt::Debug for Child {
     }
 }
 
-/// A handle to a child process's stdin. This struct is used in the [`stdin`]
-/// field on [`Child`].
+/// A handle to a child process's stdin.
+///
+/// This struct is used in the [`stdin`] field on [`Child`].
 ///
 /// [`Child`]: struct.Child.html
 /// [`stdin`]: struct.Child.html#structfield.stdin
@@ -192,8 +191,9 @@ impl fmt::Debug for ChildStdin {
     }
 }
 
-/// A handle to a child process's stdout. This struct is used in the [`stdout`]
-/// field on [`Child`].
+/// A handle to a child process's stdout.
+///
+/// This struct is used in the [`stdout`] field on [`Child`].
 ///
 /// [`Child`]: struct.Child.html
 /// [`stdout`]: struct.Child.html#structfield.stdout
@@ -233,8 +233,9 @@ impl fmt::Debug for ChildStdout {
     }
 }
 
-/// A handle to a child process's stderr. This struct is used in the [`stderr`]
-/// field on [`Child`].
+/// A handle to a child process's stderr.
+///
+/// This struct is used in the [`stderr`] field on [`Child`].
 ///
 /// [`Child`]: struct.Child.html
 /// [`stderr`]: struct.Child.html#structfield.stderr
@@ -343,6 +344,23 @@ impl Command {
 
     /// Add an argument to pass to the program.
     ///
+    /// Only one argument can be passed per use. So instead of:
+    ///
+    /// ```ignore
+    /// .arg("-C /path/to/repo")
+    /// ```
+    ///
+    /// usage would be:
+    ///
+    /// ```ignore
+    /// .arg("-C")
+    /// .arg("/path/to/repo")
+    /// ```
+    ///
+    /// To pass multiple arguments see [`args`].
+    ///
+    /// [`args`]: #method.args
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -363,6 +381,10 @@ impl Command {
     }
 
     /// Add multiple arguments to pass to the program.
+    ///
+    /// To pass a single argument see [`arg`].
+    ///
+    /// [`arg`]: #method.arg
     ///
     /// # Examples
     ///
@@ -416,7 +438,10 @@ impl Command {
     /// # Examples
     ///
     /// Basic usage:
+    ///
     /// ```no_run
+    /// #![feature(command_envs)]
+    ///
     /// use std::process::{Command, Stdio};
     /// use std::env;
     /// use std::collections::HashMap;
@@ -729,6 +754,13 @@ impl fmt::Debug for Stdio {
 }
 
 /// Describes the result of a process after it has terminated.
+///
+/// This `struct` is used to represent the exit status of a child process.
+/// Child processes are created via the [`Command`] struct and their exit
+/// status is exposed through the [`status`] method.
+///
+/// [`Command`]: struct.Command.html
+/// [`status`]: struct.Command.html#method.status
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ExitStatus(imp::ExitStatus);
@@ -763,6 +795,22 @@ impl ExitStatus {
     /// On Unix, this will return `None` if the process was terminated
     /// by a signal; `std::os::unix` provides an extension trait for
     /// extracting the signal and other details from the `ExitStatus`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    ///
+    /// let status = Command::new("mkdir")
+    ///                      .arg("projects")
+    ///                      .status()
+    ///                      .expect("failed to execute mkdir");
+    ///
+    /// match status.code() {
+    ///     Some(code) => println!("Exited with status code: {}", code),
+    ///     None       => println!("Process terminated by signal")
+    /// }
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn code(&self) -> Option<i32> {
         self.0.code()
@@ -880,8 +928,6 @@ impl Child {
     /// Basic usage:
     ///
     /// ```no_run
-    /// #![feature(process_try_wait)]
-    ///
     /// use std::process::Command;
     ///
     /// let mut child = Command::new("ls").spawn().unwrap();
@@ -896,7 +942,7 @@ impl Child {
     ///     Err(e) => println!("error attempting to wait: {}", e),
     /// }
     /// ```
-    #[unstable(feature = "process_try_wait", issue = "38903")]
+    #[stable(feature = "process_try_wait", since = "1.18.0")]
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
         Ok(self.handle.try_wait()?.map(ExitStatus))
     }
@@ -1012,7 +1058,7 @@ impl Child {
 /// ```no_run
 /// use std::process;
 ///
-/// process::exit(0x0f00);
+/// process::exit(0x0100);
 /// ```
 ///
 /// [platform-specific behavior]: #platform-specific-behavior
@@ -1032,7 +1078,42 @@ pub fn exit(code: i32) -> ! {
 /// will be run. If a clean shutdown is needed it is recommended to only call
 /// this function at a known point where there are no more destructors left
 /// to run.
-#[unstable(feature = "process_abort", issue = "37838")]
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::process;
+///
+/// fn main() {
+///     println!("aborting");
+///
+///     process::abort();
+///
+///     // execution never gets here
+/// }
+/// ```
+///
+/// The [`abort`] function terminates the process, so the destructor will not
+/// get run on the example below:
+///
+/// ```no_run
+/// use std::process;
+///
+/// struct HasDrop;
+///
+/// impl Drop for HasDrop {
+///     fn drop(&mut self) {
+///         println!("This will never be printed!");
+///     }
+/// }
+///
+/// fn main() {
+///     let _x = HasDrop;
+///     process::abort();
+///     // the destructor implemented for HasDrop will never get run
+/// }
+/// ```
+#[stable(feature = "process_abort", since = "1.17.0")]
 pub fn abort() -> ! {
     unsafe { ::sys::abort_internal() };
 }

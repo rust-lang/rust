@@ -13,6 +13,8 @@ use std::io::Write;
 use super::external_data::*;
 use super::dump::Dump;
 
+use rls_data::{SpanData, CratePreludeData};
+
 pub struct CsvDumper<'b, W: 'b> {
     output: &'b mut W
 }
@@ -421,7 +423,7 @@ fn make_values_str(pairs: &[(&'static str, &str)]) -> String {
 
     let strs = pairs.map(|(f, v)| format!(",{},\"{}\"", f, escape(String::from(v))));
     strs.fold(String::new(), |mut s, ss| {
-        s.push_str(&ss[..]);
+        s.push_str(&ss);
         s
     })
 }
@@ -429,6 +431,6 @@ fn make_values_str(pairs: &[(&'static str, &str)]) -> String {
 fn span_extent_str(span: SpanData) -> String {
     format!("file_name,\"{}\",file_line,{},file_col,{},byte_start,{},\
              file_line_end,{},file_col_end,{},byte_end,{}",
-             span.file_name, span.line_start, span.column_start, span.byte_start,
-             span.line_end, span.column_end, span.byte_end)
+             span.file_name.to_str().unwrap(), span.line_start.0, span.column_start.0,
+             span.byte_start, span.line_end.0, span.column_end.0, span.byte_end)
 }

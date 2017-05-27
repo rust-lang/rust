@@ -1,0 +1,8 @@
+error: cannot apply unary operator `!` to type `!`
+  --> $DIR/expr_unary.rs:18:16
+   |
+18 |     let x: ! = ! { return; 22 };
+   |                ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error(s)
+

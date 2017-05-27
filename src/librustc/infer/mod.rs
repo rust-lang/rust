@@ -20,7 +20,8 @@ pub use self::region_inference::{GenericKind, VerifyBound};
 
 use hir::def_id::DefId;
 use hir;
-use middle::free_region::FreeRegionMap;
+use middle::free_region::{FreeRegionMap, RegionRelations};
+use middle::region::RegionMaps;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::lang_items;
@@ -48,7 +49,6 @@ use self::region_inference::{RegionVarBindings, RegionSnapshot};
 use self::type_variable::TypeVariableOrigin;
 use self::unify_key::ToType;
 
-mod bivariate;
 mod combine;
 mod equate;
 pub mod error_reporting;
@@ -161,7 +161,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // For region variables.
     region_vars: RegionVarBindings<'a, 'gcx, 'tcx>,
 
-    pub parameter_environment: ty::ParameterEnvironment<'gcx>,
+    pub param_env: ty::ParamEnv<'gcx>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that have to do with the parameters in scope.
@@ -200,15 +200,13 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // `tained_by_errors`) to avoid reporting certain kinds of errors.
     err_count_on_creation: usize,
 
-    // This flag is used for debugging, and is set to true if there are
-    // any obligations set during the current snapshot. In that case, the
-    // snapshot can't be rolled back.
-    pub obligations_in_snapshot: Cell<bool>,
+    // This flag is true while there is an active snapshot.
+    in_snapshot: Cell<bool>,
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
 /// region that each late-bound region was replaced with.
-pub type SkolemizationMap<'tcx> = FxHashMap<ty::BoundRegion, &'tcx ty::Region>;
+pub type SkolemizationMap<'tcx> = FxHashMap<ty::BoundRegion, ty::Region<'tcx>>;
 
 /// See `error_reporting` module for more details
 #[derive(Clone, Debug)]
@@ -408,41 +406,41 @@ pub trait InferEnv<'a, 'tcx> {
     fn to_parts(self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParameterEnvironment<'tcx>>);
+                    Option<ty::ParamEnv<'tcx>>);
 }
 
 impl<'a, 'tcx> InferEnv<'a, 'tcx> for () {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParameterEnvironment<'tcx>>) {
+                    Option<ty::ParamEnv<'tcx>>) {
         (None, None, None)
     }
 }
 
-impl<'a, 'tcx> InferEnv<'a, 'tcx> for ty::ParameterEnvironment<'tcx> {
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for ty::ParamEnv<'tcx> {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParameterEnvironment<'tcx>>) {
+                    Option<ty::ParamEnv<'tcx>>) {
         (None, None, Some(self))
     }
 }
 
-impl<'a, 'tcx> InferEnv<'a, 'tcx> for (&'a ty::TypeckTables<'tcx>, ty::ParameterEnvironment<'tcx>) {
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for (&'a ty::TypeckTables<'tcx>, ty::ParamEnv<'tcx>) {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParameterEnvironment<'tcx>>) {
+                    Option<ty::ParamEnv<'tcx>>) {
         (Some(self.0), None, Some(self.1))
     }
 }
 
-impl<'a, 'tcx> InferEnv<'a, 'tcx> for (ty::TypeckTables<'tcx>, ty::ParameterEnvironment<'tcx>) {
+impl<'a, 'tcx> InferEnv<'a, 'tcx> for (ty::TypeckTables<'tcx>, ty::ParamEnv<'tcx>) {
     fn to_parts(self, _: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParameterEnvironment<'tcx>>) {
+                    Option<ty::ParamEnv<'tcx>>) {
         (None, Some(self.0), Some(self.1))
     }
 }
@@ -451,11 +449,11 @@ impl<'a, 'tcx> InferEnv<'a, 'tcx> for hir::BodyId {
     fn to_parts(self, tcx: TyCtxt<'a, 'tcx, 'tcx>)
                 -> (Option<&'a ty::TypeckTables<'tcx>>,
                     Option<ty::TypeckTables<'tcx>>,
-                    Option<ty::ParameterEnvironment<'tcx>>) {
-        let item_id = tcx.hir.body_owner(self);
-        (Some(tcx.item_tables(tcx.hir.local_def_id(item_id))),
+                    Option<ty::ParamEnv<'tcx>>) {
+        let def_id = tcx.hir.body_owner_def_id(self);
+        (Some(tcx.typeck_tables_of(def_id)),
          None,
-         Some(ty::ParameterEnvironment::for_item(tcx, item_id)))
+         Some(tcx.param_env(def_id)))
     }
 }
 
@@ -467,7 +465,7 @@ pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     arena: DroplessArena,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
     tables: Option<&'a ty::TypeckTables<'gcx>>,
-    param_env: Option<ty::ParameterEnvironment<'gcx>>,
+    param_env: Option<ty::ParamEnv<'gcx>>,
     projection_mode: Reveal,
 }
 
@@ -500,7 +498,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
             region_vars: RegionVarBindings::new(self),
-            parameter_environment: param_env.unwrap(),
+            param_env: param_env.unwrap(),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
@@ -508,7 +506,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             projection_mode: Reveal::UserFacing,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: self.sess.err_count(),
-            obligations_in_snapshot: Cell::new(false),
+            in_snapshot: Cell::new(false),
         }
     }
 }
@@ -528,9 +526,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         let tables = tables.map(InferTables::Interned).unwrap_or_else(|| {
             fresh_tables.as_ref().map_or(InferTables::Missing, InferTables::InProgress)
         });
-        let param_env = param_env.take().unwrap_or_else(|| {
-            global_tcx.empty_parameter_environment()
-        });
+        let param_env = param_env.take().unwrap_or_else(|| ty::ParamEnv::empty());
         global_tcx.enter_local(arena, |tcx| f(InferCtxt {
             tcx: tcx,
             tables: tables,
@@ -539,20 +535,20 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             int_unification_table: RefCell::new(UnificationTable::new()),
             float_unification_table: RefCell::new(UnificationTable::new()),
             region_vars: RegionVarBindings::new(tcx),
-            parameter_environment: param_env,
+            param_env: param_env,
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             reported_trait_errors: RefCell::new(FxHashSet()),
             projection_mode: projection_mode,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: tcx.sess.err_count(),
-            obligations_in_snapshot: Cell::new(false),
+            in_snapshot: Cell::new(false),
         }))
     }
 }
 
 impl<T> ExpectedFound<T> {
-    fn new(a_is_expected: bool, a: T, b: T) -> Self {
+    pub fn new(a_is_expected: bool, a: T, b: T) -> Self {
         if a_is_expected {
             ExpectedFound {expected: a, found: b}
         } else {
@@ -574,7 +570,7 @@ pub struct CombinedSnapshot {
     int_snapshot: unify::Snapshot<ty::IntVid>,
     float_snapshot: unify::Snapshot<ty::FloatVid>,
     region_vars_snapshot: RegionSnapshot,
-    obligations_in_snapshot: bool,
+    was_in_snapshot: bool,
 }
 
 /// Helper trait for shortening the lifetimes inside a
@@ -652,7 +648,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     }
 
     pub fn normalize_associated_type_in_env<T>(
-        self, value: &T, env: &'a ty::ParameterEnvironment<'tcx>
+        self, value: &T, env: ty::ParamEnv<'tcx>
     ) -> T
         where T: TransNormalize<'tcx>
     {
@@ -664,7 +660,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return value;
         }
 
-        self.infer_ctxt(env.clone(), Reveal::All).enter(|infcx| {
+        self.infer_ctxt(env, Reveal::All).enter(|infcx| {
             value.trans_normalize(&infcx)
        })
     }
@@ -733,6 +729,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn projection_mode(&self) -> Reveal {
         self.projection_mode
+    }
+
+    pub fn is_in_snapshot(&self) -> bool {
+        self.in_snapshot.get()
     }
 
     pub fn freshen<T:TypeFoldable<'tcx>>(&self, t: T) -> T {
@@ -862,38 +862,37 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         result.map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 
-    // Clear the "obligations in snapshot" flag, invoke the closure,
+    // Clear the "currently in a snapshot" flag, invoke the closure,
     // then restore the flag to its original value. This flag is a
     // debugging measure designed to detect cases where we start a
-    // snapshot, create type variables, register obligations involving
-    // those type variables in the fulfillment cx, and then have to
-    // unroll the snapshot, leaving "dangling type variables" behind.
-    // In such cases, the flag will be set by the fulfillment cx, and
-    // an assertion will fail when rolling the snapshot back.  Very
-    // useful, much better than grovelling through megabytes of
-    // RUST_LOG output.
+    // snapshot, create type variables, and register obligations
+    // which may involve those type variables in the fulfillment cx,
+    // potentially leaving "dangling type variables" behind.
+    // In such cases, an assertion will fail when attempting to
+    // register obligations, within a snapshot. Very useful, much
+    // better than grovelling through megabytes of RUST_LOG output.
     //
-    // HOWEVER, in some cases the flag is wrong. In particular, we
+    // HOWEVER, in some cases the flag is unhelpful. In particular, we
     // sometimes create a "mini-fulfilment-cx" in which we enroll
     // obligations. As long as this fulfillment cx is fully drained
     // before we return, this is not a problem, as there won't be any
     // escaping obligations in the main cx. In those cases, you can
     // use this function.
-    pub fn save_and_restore_obligations_in_snapshot_flag<F, R>(&self, func: F) -> R
+    pub fn save_and_restore_in_snapshot_flag<F, R>(&self, func: F) -> R
         where F: FnOnce(&Self) -> R
     {
-        let flag = self.obligations_in_snapshot.get();
-        self.obligations_in_snapshot.set(false);
+        let flag = self.in_snapshot.get();
+        self.in_snapshot.set(false);
         let result = func(self);
-        self.obligations_in_snapshot.set(flag);
+        self.in_snapshot.set(flag);
         result
     }
 
     fn start_snapshot(&self) -> CombinedSnapshot {
         debug!("start_snapshot()");
 
-        let obligations_in_snapshot = self.obligations_in_snapshot.get();
-        self.obligations_in_snapshot.set(false);
+        let in_snapshot = self.in_snapshot.get();
+        self.in_snapshot.set(true);
 
         CombinedSnapshot {
             projection_cache_snapshot: self.projection_cache.borrow_mut().snapshot(),
@@ -901,7 +900,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             int_snapshot: self.int_unification_table.borrow_mut().snapshot(),
             float_snapshot: self.float_unification_table.borrow_mut().snapshot(),
             region_vars_snapshot: self.region_vars.start_snapshot(),
-            obligations_in_snapshot: obligations_in_snapshot,
+            was_in_snapshot: in_snapshot,
         }
     }
 
@@ -912,10 +911,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                int_snapshot,
                                float_snapshot,
                                region_vars_snapshot,
-                               obligations_in_snapshot } = snapshot;
+                               was_in_snapshot } = snapshot;
 
-        assert!(!self.obligations_in_snapshot.get());
-        self.obligations_in_snapshot.set(obligations_in_snapshot);
+        self.in_snapshot.set(was_in_snapshot);
 
         self.projection_cache
             .borrow_mut()
@@ -940,9 +938,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                int_snapshot,
                                float_snapshot,
                                region_vars_snapshot,
-                               obligations_in_snapshot } = snapshot;
+                               was_in_snapshot } = snapshot;
 
-        self.obligations_in_snapshot.set(obligations_in_snapshot);
+        self.in_snapshot.set(was_in_snapshot);
 
         self.projection_cache
             .borrow_mut()
@@ -1009,7 +1007,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn add_given(&self,
-                     sub: ty::FreeRegion,
+                     sub: ty::Region<'tcx>,
                      sup: ty::RegionVid)
     {
         self.region_vars.add_given(sub, sup);
@@ -1037,9 +1035,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.probe(|_| {
             let origin = &ObligationCause::dummy();
             let trace = TypeTrace::types(origin, true, a, b);
-            self.sub(true, trace, &a, &b).map(|InferOk { obligations, .. }| {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty());
+            self.sub(true, trace, &a, &b).map(|InferOk { obligations: _, .. }| {
+                // Ignore obligations, since we are unrolling
+                // everything anyway.
             })
         })
     }
@@ -1108,8 +1106,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn sub_regions(&self,
                        origin: SubregionOrigin<'tcx>,
-                       a: &'tcx ty::Region,
-                       b: &'tcx ty::Region) {
+                       a: ty::Region<'tcx>,
+                       b: ty::Region<'tcx>) {
         debug!("sub_regions({:?} <: {:?})", a, b);
         self.region_vars.make_subregion(origin, a, b);
     }
@@ -1128,6 +1126,43 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             self.pop_skolemized(skol_map, snapshot);
             Ok(eqty_ok.unit())
         })
+    }
+
+    pub fn subtype_predicate(&self,
+                             cause: &ObligationCause<'tcx>,
+                             predicate: &ty::PolySubtypePredicate<'tcx>)
+        -> Option<InferResult<'tcx, ()>>
+    {
+        // Subtle: it's ok to skip the binder here and resolve because
+        // `shallow_resolve` just ignores anything that is not a type
+        // variable, and because type variable's can't (at present, at
+        // least) capture any of the things bound by this binder.
+        //
+        // Really, there is no *particular* reason to do this
+        // `shallow_resolve` here except as a
+        // micro-optimization. Naturally I could not
+        // resist. -nmatsakis
+        let two_unbound_type_vars = {
+            let a = self.shallow_resolve(predicate.skip_binder().a);
+            let b = self.shallow_resolve(predicate.skip_binder().b);
+            a.is_ty_var() && b.is_ty_var()
+        };
+
+        if two_unbound_type_vars {
+            // Two unbound type variables? Can't make progress.
+            return None;
+        }
+
+        Some(self.commit_if_ok(|snapshot| {
+            let (ty::SubtypePredicate { a_is_expected, a, b}, skol_map) =
+                self.skolemize_late_bound_regions(predicate, snapshot);
+
+            let cause_span = cause.span;
+            let ok = self.sub_types(a_is_expected, cause, a, b)?;
+            self.leak_check(false, cause_span, &skol_map, snapshot)?;
+            self.pop_skolemized(skol_map, snapshot);
+            Ok(ok.unit())
+        }))
     }
 
     pub fn region_outlives_predicate(&self,
@@ -1174,7 +1209,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn next_region_var(&self, origin: RegionVariableOrigin)
-                           -> &'tcx ty::Region {
+                           -> ty::Region<'tcx> {
         self.tcx.mk_region(ty::ReVar(self.region_vars.new_region_var(origin)))
     }
 
@@ -1183,7 +1218,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn region_var_for_def(&self,
                               span: Span,
                               def: &ty::RegionParameterDef)
-                              -> &'tcx ty::Region {
+                              -> ty::Region<'tcx> {
         self.next_region_var(EarlyBoundRegion(span, def.name, def.issue_32330))
     }
 
@@ -1201,7 +1236,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             substs: &[Kind<'tcx>])
                             -> Ty<'tcx> {
         let default = if def.has_default {
-            let default = self.tcx.item_type(def.def_id);
+            let default = self.tcx.type_of(def.def_id);
             Some(type_variable::Default {
                 ty: default.subst_spanned(self.tcx, substs, Some(span)),
                 origin_span: span,
@@ -1234,7 +1269,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> &'tcx ty::Region {
+    pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> ty::Region<'tcx> {
         self.region_vars.new_bound(debruijn)
     }
 
@@ -1286,9 +1321,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn resolve_regions_and_report_errors(&self,
-                                             free_regions: &FreeRegionMap,
-                                             subject_node_id: ast::NodeId) {
-        let errors = self.region_vars.resolve_regions(free_regions, subject_node_id);
+                                             region_context: DefId,
+                                             region_map: &RegionMaps,
+                                             free_regions: &FreeRegionMap<'tcx>) {
+        let region_rels = RegionRelations::new(self.tcx,
+                                               region_context,
+                                               region_map,
+                                               free_regions);
+        let errors = self.region_vars.resolve_regions(&region_rels);
         if !self.is_tainted_by_errors() {
             // As a heuristic, just skip reporting region errors
             // altogether if other errors have been reported while
@@ -1495,7 +1535,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         span: Span,
         lbrct: LateBoundRegionConversionTime,
         value: &ty::Binder<T>)
-        -> (T, FxHashMap<ty::BoundRegion, &'tcx ty::Region>)
+        -> (T, FxHashMap<ty::BoundRegion, ty::Region<'tcx>>)
         where T : TypeFoldable<'tcx>
     {
         self.tcx.replace_late_bound_regions(
@@ -1541,7 +1581,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn verify_generic_bound(&self,
                                 origin: SubregionOrigin<'tcx>,
                                 kind: GenericKind<'tcx>,
-                                a: &'tcx ty::Region,
+                                a: ty::Region<'tcx>,
                                 bound: VerifyBound<'tcx>) {
         debug!("verify_generic_bound({:?}, {:?} <: {:?})",
                kind,
@@ -1561,9 +1601,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // generic so we don't have to do anything quite this
             // terrible.
             let trace = TypeTrace::dummy(self.tcx);
-            self.equate(true, trace, a, b).map(|InferOk { obligations, .. }| {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty());
+            self.equate(true, trace, a, b).map(|InferOk { obligations: _, .. }| {
+                // We can intentionally ignore obligations here, since
+                // this is part of a simple test for general
+                // "equatability". However, it's not entirely clear
+                // that we *ought* to be, perhaps a better thing would
+                // be to use a mini-fulfillment context or something
+                // like that.
             })
         })
     }
@@ -1628,8 +1672,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tables.borrow().upvar_capture_map.get(&upvar_id).cloned()
     }
 
-    pub fn param_env(&self) -> &ty::ParameterEnvironment<'gcx> {
-        &self.parameter_environment
+    pub fn param_env(&self) -> ty::ParamEnv<'gcx> {
+        self.param_env
     }
 
     pub fn closure_kind(&self,

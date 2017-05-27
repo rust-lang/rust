@@ -167,7 +167,7 @@ impl FlagComputation {
     }
 
     fn add_ty(&mut self, ty: Ty) {
-        self.add_flags(ty.flags.get());
+        self.add_flags(ty.flags);
         self.add_depth(ty.region_depth);
     }
 
@@ -186,7 +186,7 @@ impl FlagComputation {
         self.add_bound_computation(&computation);
     }
 
-    fn add_region(&mut self, r: &ty::Region) {
+    fn add_region(&mut self, r: ty::Region) {
         self.add_flags(r.type_flags());
         if let ty::ReLateBound(debruijn, _) = *r {
             self.add_depth(debruijn.depth);

@@ -34,7 +34,6 @@
 #![allow(unused)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
-#![feature(untagged_unions)]
 
 union U {
     a: (u8, u8),

@@ -257,8 +257,13 @@ impl Stdio {
             // INVALID_HANDLE_VALUE.
             Stdio::Inherit => {
                 match stdio::get(stdio_id) {
-                    Ok(io) => io.handle().duplicate(0, true,
-                                                    c::DUPLICATE_SAME_ACCESS),
+                    Ok(io) => {
+                        let io = Handle::new(io.handle());
+                        let ret = io.duplicate(0, true,
+                                               c::DUPLICATE_SAME_ACCESS);
+                        io.into_raw();
+                        return ret
+                    }
                     Err(..) => Ok(Handle::new(c::INVALID_HANDLE_VALUE)),
                 }
             }

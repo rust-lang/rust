@@ -43,7 +43,7 @@ impl<'a> CheckAttrVisitor<'a> {
     fn check_inline(&self, attr: &ast::Attribute, target: Target) {
         if target != Target::Fn {
             struct_span_err!(self.sess, attr.span, E0518, "attribute should be applied to function")
-                .span_label(attr.span, &format!("requires a function"))
+                .span_label(attr.span, "requires a function")
                 .emit();
         }
     }
@@ -57,6 +57,9 @@ impl<'a> CheckAttrVisitor<'a> {
         };
 
         let mut conflicting_reprs = 0;
+        let mut found_packed = false;
+        let mut found_align = false;
+
         for word in words {
 
             let name = match word.name() {
@@ -84,11 +87,21 @@ impl<'a> CheckAttrVisitor<'a> {
                                 ("attribute should be applied to struct or union",
                                  "a struct or union")
                     } else {
+                        found_packed = true;
                         continue
                     }
                 }
                 "simd" => {
                     conflicting_reprs += 1;
+                    if target != Target::Struct {
+                        ("attribute should be applied to struct",
+                         "a struct")
+                    } else {
+                        continue
+                    }
+                }
+                "align" => {
+                    found_align = true;
                     if target != Target::Struct {
                         ("attribute should be applied to struct",
                          "a struct")
@@ -110,21 +123,26 @@ impl<'a> CheckAttrVisitor<'a> {
                 _ => continue,
             };
             struct_span_err!(self.sess, attr.span, E0517, "{}", message)
-                .span_label(attr.span, &format!("requires {}", label))
+                .span_label(attr.span, format!("requires {}", label))
                 .emit();
         }
         if conflicting_reprs > 1 {
             span_warn!(self.sess, attr.span, E0566,
                        "conflicting representation hints");
         }
+        if found_align && found_packed {
+            struct_span_err!(self.sess, attr.span, E0587,
+                             "conflicting packed and align representation hints").emit();
+        }
     }
 
     fn check_attribute(&self, attr: &ast::Attribute, target: Target) {
-        let name: &str = &attr.name().as_str();
-        match name {
-            "inline" => self.check_inline(attr, target),
-            "repr" => self.check_repr(attr, target),
-            _ => (),
+        if let Some(name) = attr.name() {
+            match &*name.as_str() {
+                "inline" => self.check_inline(attr, target),
+                "repr" => self.check_repr(attr, target),
+                _ => (),
+            }
         }
     }
 }

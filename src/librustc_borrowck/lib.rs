@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![crate_name = "rustc_borrowck"]
-#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -21,10 +20,13 @@
 
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(rustc_private)]
-#![feature(staged_api)]
 #![feature(associated_consts)]
 #![feature(nonzero)]
+
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(rustc_private))]
+#![cfg_attr(stage0, feature(staged_api))]
+
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
@@ -50,5 +52,7 @@ pub mod diagnostics;
 mod borrowck;
 
 pub mod graphviz;
+
+pub use borrowck::provide;
 
 __build_diagnostic_array! { librustc_borrowck, DIAGNOSTICS }

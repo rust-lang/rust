@@ -49,68 +49,62 @@ note: because it's nested under this `unsafe` fn
 error: unnecessary `unsafe` block
   --> $DIR/lint-unused-unsafe.rs:33:9
    |
-33 |           unsafe {                         //~ ERROR: unnecessary `unsafe` block
-   |  _________^ starting here...
+33 | /         unsafe {                         //~ ERROR: unnecessary `unsafe` block
 34 | |             unsf()
 35 | |         }
-   | |_________^ ...ending here: unnecessary `unsafe` block
+   | |_________^ unnecessary `unsafe` block
    |
 note: because it's nested under this `unsafe` block
   --> $DIR/lint-unused-unsafe.rs:32:5
    |
-32 |       unsafe {                             // don't put the warning here
-   |  _____^ starting here...
+32 | /     unsafe {                             // don't put the warning here
 33 | |         unsafe {                         //~ ERROR: unnecessary `unsafe` block
 34 | |             unsf()
 35 | |         }
 36 | |     }
-   | |_____^ ...ending here
+   | |_____^
 
 error: unnecessary `unsafe` block
   --> $DIR/lint-unused-unsafe.rs:39:5
    |
-39 |       unsafe {                             //~ ERROR: unnecessary `unsafe` block
-   |  _____^ starting here...
+39 | /     unsafe {                             //~ ERROR: unnecessary `unsafe` block
 40 | |         unsafe {                         //~ ERROR: unnecessary `unsafe` block
 41 | |             unsf()
 42 | |         }
 43 | |     }
-   | |_____^ ...ending here: unnecessary `unsafe` block
+   | |_____^ unnecessary `unsafe` block
    |
 note: because it's nested under this `unsafe` fn
   --> $DIR/lint-unused-unsafe.rs:38:1
    |
-38 |   unsafe fn bad7() {
-   |  _^ starting here...
+38 | / unsafe fn bad7() {
 39 | |     unsafe {                             //~ ERROR: unnecessary `unsafe` block
 40 | |         unsafe {                         //~ ERROR: unnecessary `unsafe` block
 41 | |             unsf()
 42 | |         }
 43 | |     }
 44 | | }
-   | |_^ ...ending here
+   | |_^
 
 error: unnecessary `unsafe` block
   --> $DIR/lint-unused-unsafe.rs:40:9
    |
-40 |           unsafe {                         //~ ERROR: unnecessary `unsafe` block
-   |  _________^ starting here...
+40 | /         unsafe {                         //~ ERROR: unnecessary `unsafe` block
 41 | |             unsf()
 42 | |         }
-   | |_________^ ...ending here: unnecessary `unsafe` block
+   | |_________^ unnecessary `unsafe` block
    |
 note: because it's nested under this `unsafe` fn
   --> $DIR/lint-unused-unsafe.rs:38:1
    |
-38 |   unsafe fn bad7() {
-   |  _^ starting here...
+38 | / unsafe fn bad7() {
 39 | |     unsafe {                             //~ ERROR: unnecessary `unsafe` block
 40 | |         unsafe {                         //~ ERROR: unnecessary `unsafe` block
 41 | |             unsf()
 42 | |         }
 43 | |     }
 44 | | }
-   | |_^ ...ending here
+   | |_^
 
-error: aborting due to 8 previous errors
+error: aborting due to previous error(s)
 

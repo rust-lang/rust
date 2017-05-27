@@ -13,18 +13,35 @@ use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
 use syntax::symbol::Symbol;
+use syntax_pos::DUMMY_SP;
 
 use std::cell::Cell;
 
 thread_local! {
-    static FORCE_ABSOLUTE: Cell<bool> = Cell::new(false)
+    static FORCE_ABSOLUTE: Cell<bool> = Cell::new(false);
+    static FORCE_IMPL_FILENAME_LINE: Cell<bool> = Cell::new(false);
 }
 
-/// Enforces that item_path_str always returns an absolute path.
-/// This is useful when building symbols that contain types,
-/// where we want the crate name to be part of the symbol.
+/// Enforces that item_path_str always returns an absolute path and
+/// also enables "type-based" impl paths. This is used when building
+/// symbols that contain types, where we want the crate name to be
+/// part of the symbol.
 pub fn with_forced_absolute_paths<F: FnOnce() -> R, R>(f: F) -> R {
     FORCE_ABSOLUTE.with(|force| {
+        let old = force.get();
+        force.set(true);
+        let result = f();
+        force.set(old);
+        result
+    })
+}
+
+/// Force us to name impls with just the filename/line number. We
+/// normally try to use types. But at some points, notably while printing
+/// cycle errors, this can result in extra or suboptimal error output,
+/// so this variable disables that check.
+pub fn with_forced_impl_filename_line<F: FnOnce() -> R, R>(f: F) -> R {
+    FORCE_IMPL_FILENAME_LINE.with(|force| {
         let old = force.get();
         force.set(true);
         let result = f();
@@ -175,7 +192,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data @ DefPathData::LifetimeDef(..) |
             data @ DefPathData::EnumVariant(..) |
             data @ DefPathData::Field(..) |
-            data @ DefPathData::StructCtor |
             data @ DefPathData::Initializer |
             data @ DefPathData::MacroDef(..) |
             data @ DefPathData::ClosureExpr |
@@ -185,6 +201,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let parent_def_id = self.parent_def_id(def_id).unwrap();
                 self.push_item_path(buffer, parent_def_id);
                 buffer.push(&data.as_interned_str());
+            }
+            DefPathData::StructCtor => { // present `X` instead of `X::{{constructor}}`
+                let parent_def_id = self.parent_def_id(def_id).unwrap();
+                self.push_item_path(buffer, parent_def_id);
             }
         }
     }
@@ -196,13 +216,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         let parent_def_id = self.parent_def_id(impl_def_id).unwrap();
 
-        let use_types = if !impl_def_id.is_local() {
-            // always have full types available for extern crates
-            true
-        } else {
-            // for local crates, check whether type info is
-            // available; typeck might not have completed yet
-            self.maps.impl_trait_ref.borrow().contains_key(&impl_def_id)
+        // Always use types for non-local impls, where types are always
+        // available, and filename/line-number is mostly uninteresting.
+        let use_types = !impl_def_id.is_local() || {
+            // Otherwise, use filename/line-number if forced.
+            let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
+            !force_no_types && {
+                // Otherwise, use types if we can query them without inducing a cycle.
+                ty::queries::impl_trait_ref::try_get(self, DUMMY_SP, impl_def_id).is_ok() &&
+                    ty::queries::type_of::try_get(self, DUMMY_SP, impl_def_id).is_ok()
+            }
         };
 
         if !use_types {
@@ -214,7 +237,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // users may find it useful. Currently, we omit the parent if
         // the impl is either in the same module as the self-type or
         // as the trait.
-        let self_ty = self.item_type(impl_def_id);
+        let self_ty = self.type_of(impl_def_id);
         let in_self_mod = match characteristic_def_id_of_type(self_ty) {
             None => false,
             Some(ty_def_id) => self.parent_def_id(ty_def_id) == Some(parent_def_id),
@@ -374,14 +397,13 @@ impl LocalPathBuffer {
     fn new(root_mode: RootMode) -> LocalPathBuffer {
         LocalPathBuffer {
             root_mode: root_mode,
-            str: String::new()
+            str: String::new(),
         }
     }
 
     fn into_string(self) -> String {
         self.str
     }
-
 }
 
 impl ItemPathBuffer for LocalPathBuffer {

@@ -10,7 +10,7 @@ crate-type = ["dylib"]
 test = false
 
 [dependencies]
-log = { path = "../liblog" }
+log = "0.3"
 rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }
 rustc_const_eval = { path = "../librustc_const_eval" }

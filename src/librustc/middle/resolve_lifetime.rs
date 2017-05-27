@@ -15,12 +15,10 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore we break lifetime name resolution into a separate pass.
 
-use dep_graph::DepNode;
 use hir::map::Map;
 use session::Session;
 use hir::def::Def;
 use hir::def_id::DefId;
-use middle::region;
 use ty;
 
 use std::cell::Cell;
@@ -28,7 +26,6 @@ use std::mem::replace;
 use syntax::ast;
 use syntax::attr;
 use syntax::ptr::P;
-use syntax::symbol::keywords;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 use util::nodemap::{NodeMap, NodeSet, FxHashSet, FxHashMap, DefIdMap};
@@ -43,7 +40,7 @@ pub enum Region {
     EarlyBound(/* index */ u32, /* lifetime decl */ ast::NodeId),
     LateBound(ty::DebruijnIndex, /* lifetime decl */ ast::NodeId),
     LateBoundAnon(ty::DebruijnIndex, /* anon index */ u32),
-    Free(region::CallSiteScopeData, /* lifetime decl */ ast::NodeId),
+    Free(DefId, /* lifetime decl */ ast::NodeId),
 }
 
 impl Region {
@@ -259,7 +256,6 @@ const ROOT_SCOPE: ScopeRef<'static> = &Scope::Root;
 pub fn krate(sess: &Session,
              hir_map: &Map)
              -> Result<NamedRegionMap, usize> {
-    let _task = hir_map.dep_graph.in_task(DepNode::ResolveLifetimes);
     let krate = hir_map.krate();
     let mut map = NamedRegionMap {
         defs: NodeMap(),
@@ -314,7 +310,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::ItemUse(..) |
             hir::ItemMod(..) |
             hir::ItemDefaultImpl(..) |
-            hir::ItemForeignMod(..) => {
+            hir::ItemForeignMod(..) |
+            hir::ItemGlobalAsm(..) => {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
             }
@@ -332,7 +329,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::ItemStruct(_, ref generics) |
             hir::ItemUnion(_, ref generics) |
             hir::ItemTrait(_, ref generics, ..) |
-            hir::ItemImpl(_, _, ref generics, ..) => {
+            hir::ItemImpl(_, _, _, ref generics, ..) => {
                 // These kinds of items have only early bound lifetime parameters.
                 let mut index = if let hir::ItemTrait(..) = item.node {
                     1 // Self comes before lifetimes
@@ -434,7 +431,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             self.resolve_elided_lifetimes(slice::ref_slice(lifetime_ref));
             return;
         }
-        if lifetime_ref.name == keywords::StaticLifetime.name() {
+        if lifetime_ref.is_static() {
             self.insert_lifetime(lifetime_ref, Region::Static);
             return;
         }
@@ -575,9 +572,9 @@ fn signal_shadowing_problem(sess: &Session, name: ast::Name, orig: Original, sha
                                         {} name that is already in scope",
                                        shadower.kind.desc(), name, orig.kind.desc()))
     };
-    err.span_label(orig.span, &"first declared here");
+    err.span_label(orig.span, "first declared here");
     err.span_label(shadower.span,
-                   &format!("lifetime {} already in scope", name));
+                   format!("lifetime {} already in scope", name));
     err.emit();
 }
 
@@ -748,7 +745,7 @@ fn object_lifetime_defaults_for_item(hir_map: &Map, generics: &hir::Generics)
         match set {
             Set1::Empty => Set1::Empty,
             Set1::One(name) => {
-                if name == keywords::StaticLifetime.name() {
+                if name == "'static" {
                     Set1::One(Region::Static)
                 } else {
                     generics.lifetimes.iter().enumerate().find(|&(_, def)| {
@@ -835,7 +832,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
             match parent.node {
                 hir::ItemTrait(_, ref generics, ..) |
-                hir::ItemImpl(_, _, ref generics, ..) => {
+                hir::ItemImpl(_, _, _, ref generics, ..) => {
                     index += (generics.lifetimes.len() + generics.ty_params.len()) as u32;
                 }
                 _ => {}
@@ -896,11 +893,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         };
 
         if let Some(mut def) = result {
-            if let Some(body_id) = outermost_body {
+            if let Region::EarlyBound(..) = def {
+                // Do not free early-bound regions, only late-bound ones.
+            } else if let Some(body_id) = outermost_body {
                 let fn_id = self.hir_map.body_owner(body_id);
-                let scope_data = region::CallSiteScopeData {
-                    fn_id: fn_id, body_id: body_id.node_id
-                };
                 match self.hir_map.get(fn_id) {
                     hir::map::NodeItem(&hir::Item {
                         node: hir::ItemFn(..), ..
@@ -911,7 +907,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     hir::map::NodeImplItem(&hir::ImplItem {
                         node: hir::ImplItemKind::Method(..), ..
                     }) => {
-                        def = Region::Free(scope_data, def.id().unwrap());
+                        let scope = self.hir_map.local_def_id(fn_id);
+                        def = Region::Free(scope, def.id().unwrap());
                     }
                     _ => {}
                 }
@@ -920,7 +917,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         } else {
             struct_span_err!(self.sess, lifetime_ref.span, E0261,
                 "use of undeclared lifetime name `{}`", lifetime_ref.name)
-                .span_label(lifetime_ref.span, &format!("undeclared lifetime"))
+                .span_label(lifetime_ref.span, "undeclared lifetime")
                 .emit();
         }
     }
@@ -1329,7 +1326,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         } else {
             format!("expected lifetime parameter")
         };
-        err.span_label(span, &msg);
+        err.span_label(span, msg);
 
         if let Some(params) = error {
             if lifetime_refs.len() == 1 {
@@ -1434,12 +1431,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             let lifetime_i = &lifetimes[i];
 
             for lifetime in lifetimes {
-                if lifetime.lifetime.name == keywords::StaticLifetime.name() {
+                if lifetime.lifetime.is_static() {
                     let lifetime = lifetime.lifetime;
                     let mut err = struct_span_err!(self.sess, lifetime.span, E0262,
                                   "invalid lifetime parameter name: `{}`", lifetime.name);
                     err.span_label(lifetime.span,
-                                   &format!("{} is a reserved lifetime name", lifetime.name));
+                                   format!("{} is a reserved lifetime name", lifetime.name));
                     err.emit();
                 }
             }
@@ -1453,9 +1450,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                      "lifetime name `{}` declared twice in the same scope",
                                      lifetime_j.lifetime.name)
                         .span_label(lifetime_j.lifetime.span,
-                                    &format!("declared twice"))
+                                    "declared twice")
                         .span_label(lifetime_i.lifetime.span,
-                                   &format!("previous declaration here"))
+                                   "previous declaration here")
                         .emit();
                 }
             }
@@ -1464,7 +1461,16 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             self.check_lifetime_def_for_shadowing(old_scope, &lifetime_i.lifetime);
 
             for bound in &lifetime_i.bounds {
-                self.resolve_lifetime_ref(bound);
+                if !bound.is_static() {
+                    self.resolve_lifetime_ref(bound);
+                } else {
+                    self.insert_lifetime(bound, Region::Static);
+                    self.sess.struct_span_warn(lifetime_i.lifetime.span.to(bound.span),
+                        &format!("unnecessary lifetime parameter `{}`", lifetime_i.lifetime.name))
+                        .help(&format!("you can use the `'static` lifetime directly, in place \
+                                        of `{}`", lifetime_i.lifetime.name))
+                        .emit();
+                }
             }
         }
     }

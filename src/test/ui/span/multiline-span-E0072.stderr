@@ -1,0 +1,16 @@
+error[E0072]: recursive type `ListNode` has infinite size
+  --> $DIR/multiline-span-E0072.rs:12:1
+   |
+12 | / struct
+13 | | ListNode
+14 | | {
+15 | |     head: u8,
+16 | |     tail: Option<ListNode>,
+   | |     ---------------------- recursive without indirection
+17 | | }
+   | |_^ recursive type has infinite size
+   |
+   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `ListNode` representable
+
+error: aborting due to previous error(s)
+

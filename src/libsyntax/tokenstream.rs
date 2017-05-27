@@ -10,16 +10,16 @@
 
 //! # Token Streams
 //!
-//! TokenStreams represent syntactic objects before they are converted into ASTs.
+//! `TokenStream`s represent syntactic objects before they are converted into ASTs.
 //! A `TokenStream` is, roughly speaking, a sequence (eg stream) of `TokenTree`s,
 //! which are themselves a single `Token` or a `Delimited` subsequence of tokens.
 //!
 //! ## Ownership
-//! TokenStreams are persistent data structures constructed as ropes with reference
-//! counted-children. In general, this means that calling an operation on a TokenStream
-//! (such as `slice`) produces an entirely new TokenStream from the borrowed reference to
-//! the original. This essentially coerces TokenStreams into 'views' of their subparts,
-//! and a borrowed TokenStream is sufficient to build an owned TokenStream without taking
+//! `TokenStreams` are persistent data structures constructed as ropes with reference
+//! counted-children. In general, this means that calling an operation on a `TokenStream`
+//! (such as `slice`) produces an entirely new `TokenStream` from the borrowed reference to
+//! the original. This essentially coerces `TokenStream`s into 'views' of their subparts,
+//! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
 use syntax_pos::{BytePos, Span, DUMMY_SP};
@@ -56,18 +56,20 @@ impl Delimited {
 
     /// Returns the opening delimiter as a token tree.
     pub fn open_tt(&self, span: Span) -> TokenTree {
-        let open_span = match span {
-            DUMMY_SP => DUMMY_SP,
-            _ => Span { hi: span.lo + BytePos(self.delim.len() as u32), ..span },
+        let open_span = if span == DUMMY_SP {
+            DUMMY_SP
+        } else {
+            Span { hi: span.lo + BytePos(self.delim.len() as u32), ..span }
         };
         TokenTree::Token(open_span, self.open_token())
     }
 
     /// Returns the closing delimiter as a token tree.
     pub fn close_tt(&self, span: Span) -> TokenTree {
-        let close_span = match span {
-            DUMMY_SP => DUMMY_SP,
-            _ => Span { lo: span.hi - BytePos(self.delim.len() as u32), ..span },
+        let close_span = if span == DUMMY_SP {
+            DUMMY_SP
+        } else {
+            Span { lo: span.hi - BytePos(self.delim.len() as u32), ..span }
         };
         TokenTree::Token(close_span, self.close_token())
     }
@@ -86,7 +88,7 @@ impl Delimited {
 /// If the syntax extension is an MBE macro, it will attempt to match its
 /// LHS token tree against the provided token tree, and if it finds a
 /// match, will transcribe the RHS token tree, splicing in any captured
-/// macro_parser::matched_nonterminals into the `SubstNt`s it finds.
+/// `macro_parser::matched_nonterminals` into the `SubstNt`s it finds.
 ///
 /// The RHS of an MBE macro is the only place `SubstNt`s are substituted.
 /// Nothing special happens to misnamed or misplaced `SubstNt`s.
@@ -107,7 +109,7 @@ impl TokenTree {
             path: cx.current_expansion.module.directory.clone(),
             ownership: cx.current_expansion.directory_ownership,
         };
-        macro_parser::parse(cx.parse_sess(), tts, mtch, Some(directory))
+        macro_parser::parse(cx.parse_sess(), tts, mtch, Some(directory), true)
     }
 
     /// Check if this TokenTree is equal to the other, regardless of span information.
@@ -159,6 +161,12 @@ enum TokenStreamKind {
 impl From<TokenTree> for TokenStream {
     fn from(tt: TokenTree) -> TokenStream {
         TokenStream { kind: TokenStreamKind::Tree(tt) }
+    }
+}
+
+impl From<Token> for TokenStream {
+    fn from(token: Token) -> TokenStream {
+        TokenTree::Token(DUMMY_SP, token).into()
     }
 }
 
@@ -360,7 +368,7 @@ impl PartialEq<ThinTokenStream> for ThinTokenStream {
 
 impl fmt::Display for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(&pprust::tts_to_string(&self.trees().collect::<Vec<_>>()))
+        f.write_str(&pprust::tokens_to_string(self.clone()))
     }
 }
 
@@ -419,7 +427,7 @@ mod tests {
         Span {
             lo: BytePos(a),
             hi: BytePos(b),
-            expn_id: NO_EXPANSION,
+            ctxt: NO_EXPANSION,
         }
     }
 

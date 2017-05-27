@@ -35,44 +35,38 @@ mod signatures {
     use WillChange;
 
     #[rustc_then_this_would_need(ItemSignature)] //~ ERROR no path
-    #[rustc_then_this_would_need(CollectItem)] //~ ERROR no path
     trait Bar {
         #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
-        #[rustc_then_this_would_need(CollectItem)] //~ ERROR OK
         fn do_something(x: WillChange);
     }
 
     #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
-    #[rustc_then_this_would_need(CollectItem)] //~ ERROR OK
     fn some_fn(x: WillChange) { }
 
     #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
-    #[rustc_then_this_would_need(CollectItem)] //~ ERROR OK
     fn new_foo(x: u32, y: u32) -> WillChange {
         WillChange { x: x, y: y }
     }
 
     #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
-    #[rustc_then_this_would_need(CollectItem)] //~ ERROR OK
     impl WillChange {
         fn new(x: u32, y: u32) -> WillChange { loop { } }
     }
 
     #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
-    #[rustc_then_this_would_need(CollectItem)] //~ ERROR OK
     impl WillChange {
         fn method(&self, x: u32) { }
     }
 
-    #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
-    #[rustc_then_this_would_need(CollectItem)] //~ ERROR OK
     struct WillChanges {
+        #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
         x: WillChange,
+        #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
         y: WillChange
     }
 
-    #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
-    #[rustc_then_this_would_need(CollectItem)] //~ ERROR OK
+    // The fields change, not the type itself.
+    #[rustc_then_this_would_need(ItemSignature)] //~ ERROR no path
     fn indirect(x: WillChanges) { }
 }
 
@@ -80,17 +74,14 @@ mod invalid_signatures {
     use WontChange;
 
     #[rustc_then_this_would_need(ItemSignature)] //~ ERROR no path
-    #[rustc_then_this_would_need(CollectItem)] //~ ERROR no path
     trait A {
         fn do_something_else_twice(x: WontChange);
     }
 
     #[rustc_then_this_would_need(ItemSignature)] //~ ERROR no path
-    #[rustc_then_this_would_need(CollectItem)] //~ ERROR no path
     fn b(x: WontChange) { }
 
     #[rustc_then_this_would_need(ItemSignature)] //~ ERROR no path from `WillChange`
-    #[rustc_then_this_would_need(CollectItem)] //~ ERROR no path from `WillChange`
     fn c(x: u32) { }
 }
 

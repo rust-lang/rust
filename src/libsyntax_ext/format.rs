@@ -508,7 +508,7 @@ impl<'a, 'b> Context<'a, 'b> {
         let sp = piece_ty.span;
         let ty = ecx.ty_rptr(sp,
                              ecx.ty(sp, ast::TyKind::Slice(piece_ty)),
-                             Some(ecx.lifetime(sp, keywords::StaticLifetime.name())),
+                             Some(ecx.lifetime(sp, keywords::StaticLifetime.ident())),
                              ast::Mutability::Immutable);
         let slice = ecx.expr_vec_slice(sp, pieces);
         // static instead of const to speed up codegen by not requiring this to be inlined
@@ -536,7 +536,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
         // First, build up the static array which will become our precompiled
         // format "string"
-        let static_lifetime = self.ecx.lifetime(self.fmtsp, keywords::StaticLifetime.name());
+        let static_lifetime = self.ecx.lifetime(self.fmtsp, keywords::StaticLifetime.ident());
         let piece_ty = self.ecx.ty_rptr(self.fmtsp,
                                         self.ecx.ty_ident(self.fmtsp, self.ecx.ident_of("str")),
                                         Some(static_lifetime),
@@ -559,11 +559,7 @@ impl<'a, 'b> Context<'a, 'b> {
             let name = self.ecx.ident_of(&format!("__arg{}", i));
             pats.push(self.ecx.pat_ident(DUMMY_SP, name));
             for ref arg_ty in self.arg_unique_types[i].iter() {
-                locals.push(Context::format_arg(self.ecx,
-                                                self.macsp,
-                                                e.span,
-                                                arg_ty,
-                                                self.ecx.expr_ident(e.span, name)));
+                locals.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, name));
             }
             heads.push(self.ecx.expr_addr_of(e.span, e));
         }
@@ -576,11 +572,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 Exact(i) => spans_pos[i],
                 _ => panic!("should never happen"),
             };
-            counts.push(Context::format_arg(self.ecx,
-                                            self.macsp,
-                                            span,
-                                            &Count,
-                                            self.ecx.expr_ident(span, name)));
+            counts.push(Context::format_arg(self.ecx, self.macsp, span, &Count, name));
         }
 
         // Now create a vector containing all the arguments
@@ -641,10 +633,12 @@ impl<'a, 'b> Context<'a, 'b> {
 
     fn format_arg(ecx: &ExtCtxt,
                   macsp: Span,
-                  sp: Span,
+                  mut sp: Span,
                   ty: &ArgumentType,
-                  arg: P<ast::Expr>)
+                  arg: ast::Ident)
                   -> P<ast::Expr> {
+        sp.ctxt = sp.ctxt.apply_mark(ecx.current_expansion.mark);
+        let arg = ecx.expr_ident(sp, arg);
         let trait_ = match *ty {
             Placeholder(ref tyname) => {
                 match &tyname[..] {

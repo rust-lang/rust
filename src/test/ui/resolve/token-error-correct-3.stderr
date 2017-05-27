@@ -14,13 +14,16 @@ error: expected one of `,`, `.`, `?`, or an operator, found `;`
   --> $DIR/token-error-correct-3.rs:23:35
    |
 23 |             callback(path.as_ref();  //~ NOTE: unclosed delimiter
-   |                                   ^
+   |                                   ^ expected one of `,`, `.`, `?`, or an operator here
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
   --> $DIR/token-error-correct-3.rs:29:9
    |
+25 |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
+   |                                                             - expected one of `.`, `;`, `?`, `}`, or an operator here
+...
 29 |         } else { //~ ERROR: incorrect close delimiter: `}`
-   |         ^
+   |         ^ unexpected token
 
 error[E0425]: cannot find function `is_directory` in this scope
   --> $DIR/token-error-correct-3.rs:21:13
@@ -36,10 +39,6 @@ error[E0308]: mismatched types
    |
    = note: expected type `()`
               found type `std::result::Result<bool, std::io::Error>`
-   = help: here are some functions which might fulfill your needs:
-           - .unwrap()
-           - .unwrap_err()
-           - .unwrap_or_default()
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

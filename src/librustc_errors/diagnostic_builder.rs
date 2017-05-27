@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use Diagnostic;
+use DiagnosticStyledString;
+
 use Level;
 use Handler;
 use std::fmt::{self, Debug};
@@ -97,7 +99,10 @@ impl<'a> DiagnosticBuilder<'a> {
 
         self.handler.emitter.borrow_mut().emit(&self);
         self.cancel();
-        self.handler.panic_if_treat_err_as_bug();
+
+        if self.level == Level::Error {
+            self.handler.panic_if_treat_err_as_bug();
+        }
 
         // if self.is_fatal() {
         //     panic!(FatalError);
@@ -110,19 +115,21 @@ impl<'a> DiagnosticBuilder<'a> {
     /// all, and you just supplied a `Span` to create the diagnostic,
     /// then the snippet will just include that `Span`, which is
     /// called the primary span.
-    forward!(pub fn span_label(&mut self, span: Span, label: &fmt::Display)
-                               -> &mut Self);
+    pub fn span_label<T: Into<String>>(&mut self, span: Span, label: T) -> &mut Self {
+        self.diagnostic.span_label(span, label);
+        self
+    }
 
     forward!(pub fn note_expected_found(&mut self,
                                         label: &fmt::Display,
-                                        expected: &fmt::Display,
-                                        found: &fmt::Display)
+                                        expected: DiagnosticStyledString,
+                                        found: DiagnosticStyledString)
                                         -> &mut Self);
 
     forward!(pub fn note_expected_found_extra(&mut self,
                                               label: &fmt::Display,
-                                              expected: &fmt::Display,
-                                              found: &fmt::Display,
+                                              expected: DiagnosticStyledString,
+                                              found: DiagnosticStyledString,
                                               expected_extra: &fmt::Display,
                                               found_extra: &fmt::Display)
                                               -> &mut Self);
@@ -139,11 +146,16 @@ impl<'a> DiagnosticBuilder<'a> {
                                                   sp: S,
                                                   msg: &str)
                                                   -> &mut Self);
-    forward!(pub fn span_suggestion<S: Into<MultiSpan>>(&mut self,
-                                                        sp: S,
-                                                        msg: &str,
-                                                        suggestion: String)
-                                                        -> &mut Self);
+    forward!(pub fn span_suggestion(&mut self,
+                                    sp: Span,
+                                    msg: &str,
+                                    suggestion: String)
+                                    -> &mut Self);
+    forward!(pub fn span_suggestions(&mut self,
+                                     sp: Span,
+                                     msg: &str,
+                                     suggestions: Vec<String>)
+                                     -> &mut Self);
     forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self);
     forward!(pub fn code(&mut self, s: String) -> &mut Self);
 
@@ -180,8 +192,8 @@ impl<'a> Debug for DiagnosticBuilder<'a> {
     }
 }
 
-/// Destructor bomb - a DiagnosticBuilder must be either emitted or cancelled or
-/// we emit a bug.
+/// Destructor bomb - a `DiagnosticBuilder` must be either emitted or cancelled
+/// or we emit a bug.
 impl<'a> Drop for DiagnosticBuilder<'a> {
     fn drop(&mut self) {
         if !panicking() && !self.cancelled() {

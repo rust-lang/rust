@@ -15,7 +15,6 @@
 //! This API is completely unstable and subject to change.
 
 #![crate_name = "rustc_trans"]
-#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -33,16 +32,20 @@
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(rustc_private)]
 #![feature(slice_patterns)]
-#![feature(staged_api)]
 #![feature(unicode)]
 #![feature(conservative_impl_trait)]
 
+#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
+#![cfg_attr(stage0, feature(rustc_private))]
+#![cfg_attr(stage0, feature(staged_api))]
+
 use rustc::dep_graph::WorkProduct;
+use syntax_pos::symbol::Symbol;
 
 extern crate flate;
 extern crate libc;
+extern crate owning_ref;
 #[macro_use] extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_data_structures;
@@ -50,7 +53,6 @@ extern crate rustc_incremental;
 pub extern crate rustc_llvm as llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_const_math;
-extern crate rustc_const_eval;
 #[macro_use]
 #[no_link]
 extern crate rustc_bitflags;
@@ -67,7 +69,10 @@ pub use rustc::lint;
 pub use rustc::util;
 
 pub use base::trans_crate;
-pub use disr::Disr;
+pub use back::symbol_names::provide;
+
+pub use metadata::LlvmMetadataLoader;
+pub use llvm_util::{init, target_features, print_version, print_passes, print, enable_llvm_debug};
 
 pub mod back {
     pub use rustc::hir::svh;
@@ -85,9 +90,6 @@ pub mod back {
 
 pub mod diagnostics;
 
-#[macro_use]
-mod macros;
-
 mod abi;
 mod adt;
 mod asm;
@@ -98,6 +100,7 @@ mod builder;
 mod cabi_aarch64;
 mod cabi_arm;
 mod cabi_asmjs;
+mod cabi_hexagon;
 mod cabi_mips;
 mod cabi_mips64;
 mod cabi_msp430;
@@ -112,22 +115,21 @@ mod cabi_x86;
 mod cabi_x86_64;
 mod cabi_x86_win64;
 mod callee;
-mod cleanup;
 mod collector;
 mod common;
 mod consts;
 mod context;
 mod debuginfo;
 mod declare;
-mod disr;
 mod glue;
 mod intrinsic;
+mod llvm_util;
 mod machine;
+mod metadata;
 mod meth;
 mod mir;
 mod monomorphize;
 mod partitioning;
-mod symbol_map;
 mod symbol_names_test;
 mod trans_item;
 mod tvec;
@@ -166,10 +168,11 @@ unsafe impl Send for ModuleTranslation { }
 unsafe impl Sync for ModuleTranslation { }
 
 pub struct CrateTranslation {
+    pub crate_name: Symbol,
     pub modules: Vec<ModuleTranslation>,
     pub metadata_module: ModuleTranslation,
     pub link: middle::cstore::LinkMeta,
-    pub metadata: Vec<u8>,
+    pub metadata: middle::cstore::EncodedMetadata,
     pub exported_symbols: back::symbol_export::ExportedSymbols,
     pub no_builtins: bool,
     pub windows_subsystem: Option<String>,

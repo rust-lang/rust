@@ -761,8 +761,6 @@ closure_type := [ 'unsafe' ] [ '<' lifetime-list '>' ] '|' arg-list '|'
                 [ ':' bound-list ] [ '->' type ]
 lifetime-list := lifetime | lifetime ',' lifetime-list
 arg-list := ident ':' type | ident ':' type ',' arg-list
-bound-list := bound | bound '+' bound-list
-bound := path | lifetime
 ```
 
 ### Never type
@@ -779,6 +777,16 @@ never_type : "!" ;
 ### Type parameters
 
 **FIXME:** grammar?
+
+### Type parameter bounds
+
+```antlr
+bound-list := bound | bound '+' bound-list '+' ?
+bound := ty_bound | lt_bound
+lt_bound := lifetime
+ty_bound := ty_bound_noparen | (ty_bound_noparen)
+ty_bound_noparen := [?] [ for<lt_param_defs> ] simple_path
+```
 
 ### Self types
 

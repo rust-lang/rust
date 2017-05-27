@@ -27,8 +27,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                              -> BlockAnd<Operand<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
-        let topmost_scope = self.topmost_scope(); // FIXME(#6393)
-        self.as_operand(block, Some(topmost_scope), expr)
+        let local_scope = self.local_scope();
+        self.as_operand(block, local_scope, expr)
     }
 
     /// Compile `expr` into a value that can be used as an operand.
@@ -66,7 +66,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         match category {
             Category::Constant => {
                 let constant = this.as_constant(expr);
-                block.and(Operand::Constant(constant))
+                block.and(Operand::Constant(box constant))
             }
             Category::Lvalue |
             Category::Rvalue(..) => {

@@ -25,7 +25,7 @@
 /// Book][moreinfo] contains more details about the precise nature of
 /// these internals.
 ///
-/// [moreinfo]: ../../book/trait-objects.html#representation
+/// [moreinfo]: ../../book/first-edition/trait-objects.html#representation
 ///
 /// `TraitObject` is guaranteed to match layouts, but it is not the
 /// type of trait objects (e.g. the fields are not directly accessible

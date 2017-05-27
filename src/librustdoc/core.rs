@@ -13,12 +13,13 @@ use rustc_driver::{driver, target_features, abort_on_err};
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config};
 use rustc::hir::def_id::DefId;
-use rustc::hir::def::{Def, ExportMap};
+use rustc::hir::def::Def;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt, GlobalArenas};
 use rustc::hir::map as hir_map;
 use rustc::lint;
 use rustc::util::nodemap::FxHashMap;
+use rustc_trans;
 use rustc_trans::back::link;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
@@ -64,7 +65,6 @@ pub struct DocContext<'a, 'tcx: 'a> {
     pub ty_substs: RefCell<FxHashMap<Def, clean::Type>>,
     /// Table node id of lifetime parameter definition -> substituted lifetime
     pub lt_substs: RefCell<FxHashMap<ast::NodeId, clean::Lifetime>>,
-    pub export_map: ExportMap,
 }
 
 impl<'a, 'tcx> DocContext<'a, 'tcx> {
@@ -90,7 +90,7 @@ impl<'a, 'tcx> DocContext<'a, 'tcx> {
 }
 
 pub trait DocAccessLevels {
-    fn is_doc_reachable(&self, DefId) -> bool;
+    fn is_doc_reachable(&self, did: DefId) -> bool;
 }
 
 impl DocAccessLevels for AccessLevels<DefId> {
@@ -105,7 +105,8 @@ pub fn run_core(search_paths: SearchPaths,
                 externs: config::Externs,
                 input: Input,
                 triple: Option<String>,
-                maybe_sysroot: Option<PathBuf>) -> (clean::Crate, RenderInfo)
+                maybe_sysroot: Option<PathBuf>,
+                allow_warnings: bool) -> (clean::Crate, RenderInfo)
 {
     // Parse, resolve, and typecheck the given crate.
 
@@ -120,7 +121,7 @@ pub fn run_core(search_paths: SearchPaths,
         maybe_sysroot: maybe_sysroot,
         search_paths: search_paths,
         crate_types: vec![config::CrateTypeRlib],
-        lint_opts: vec![(warning_lint, lint::Allow)],
+        lint_opts: if !allow_warnings { vec![(warning_lint, lint::Allow)] } else { vec![] },
         lint_cap: Some(lint::Allow),
         externs: externs,
         target_triple: triple.unwrap_or(config::host_triple().to_string()),
@@ -130,7 +131,7 @@ pub fn run_core(search_paths: SearchPaths,
         ..config::basic_options().clone()
     };
 
-    let codemap = Rc::new(codemap::CodeMap::new());
+    let codemap = Rc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
     let diagnostic_handler = errors::Handler::with_tty_emitter(ColorConfig::Auto,
                                                                true,
                                                                false,
@@ -138,10 +139,11 @@ pub fn run_core(search_paths: SearchPaths,
 
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
-    let cstore = Rc::new(CStore::new(&dep_graph));
+    let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
         sessopts, &dep_graph, cpath, diagnostic_handler, codemap, cstore.clone()
     );
+    rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs));
@@ -180,13 +182,13 @@ pub fn run_core(search_paths: SearchPaths,
             sess.fatal("Compilation failed, aborting rustdoc");
         }
 
-        let ty::CrateAnalysis { access_levels, export_map, .. } = analysis;
+        let ty::CrateAnalysis { access_levels, .. } = analysis;
 
         // Convert from a NodeId set to a DefId set since we don't always have easy access
         // to the map from defid -> nodeid
         let access_levels = AccessLevels {
-            map: access_levels.map.into_iter()
-                                  .map(|(k, v)| (tcx.hir.local_def_id(k), v))
+            map: access_levels.map.iter()
+                                  .map(|(&k, &v)| (tcx.hir.local_def_id(k), v))
                                   .collect()
         };
 
@@ -198,7 +200,6 @@ pub fn run_core(search_paths: SearchPaths,
             renderinfo: Default::default(),
             ty_substs: Default::default(),
             lt_substs: Default::default(),
-            export_map: export_map,
         };
         debug!("crate: {:?}", tcx.hir.krate());
 

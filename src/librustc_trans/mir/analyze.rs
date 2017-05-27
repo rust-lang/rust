@@ -13,12 +13,12 @@
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc::mir::{self, Location, TerminatorKind};
+use rustc::middle::const_val::ConstVal;
+use rustc::mir::{self, Location, TerminatorKind, Literal};
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir::traversal;
 use common;
 use super::MirContext;
-use super::rvalue;
 
 pub fn lvalue_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
     let mir = mircx.mir;
@@ -92,7 +92,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 
         if let mir::Lvalue::Local(index) = *lvalue {
             self.mark_assigned(index);
-            if !rvalue::rvalue_creates_operand(rvalue) {
+            if !self.cx.rvalue_creates_operand(rvalue) {
                 self.mark_as_lvalue(index);
             }
         } else {
@@ -108,8 +108,10 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                              location: Location) {
         match *kind {
             mir::TerminatorKind::Call {
-                func: mir::Operand::Constant(mir::Constant {
-                    literal: mir::Literal::Item { def_id, .. }, ..
+                func: mir::Operand::Constant(box mir::Constant {
+                    literal: Literal::Value {
+                        value: ConstVal::Function(def_id, _), ..
+                    }, ..
                 }),
                 ref args, ..
             } if Some(def_id) == self.cx.ccx.tcx().lang_items.box_free_fn() => {

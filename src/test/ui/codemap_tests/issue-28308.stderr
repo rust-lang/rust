@@ -6,5 +6,5 @@ error: cannot apply unary operator `!` to type `&'static str`
    |
    = note: this error originates in a macro outside of the current crate
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 

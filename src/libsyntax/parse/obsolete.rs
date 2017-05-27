@@ -36,6 +36,7 @@ pub trait ParserObsoleteMethods {
 impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
     /// Reports an obsolete syntax non-fatal error.
     #[allow(unused_variables)]
+    #[allow(unreachable_code)]
     fn obsolete(&mut self, sp: Span, kind: ObsoleteSyntax) {
         let (kind_str, desc, error) = match kind {
             // Nothing here at the moment
@@ -58,7 +59,7 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
 
         if !self.obsolete_set.contains(&kind) &&
             (error || self.sess.span_diagnostic.can_emit_warnings) {
-            err.note(&format!("{}", desc));
+            err.note(desc);
             self.obsolete_set.insert(kind);
         }
         err.emit();

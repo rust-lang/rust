@@ -19,9 +19,16 @@ use core::str::Split;
 
 /// An iterator over the non-whitespace substrings of a string,
 /// separated by any amount of whitespace.
+///
+/// This struct is created by the [`split_whitespace`] method on [`str`].
+/// See its documentation for more.
+///
+/// [`split_whitespace`]: ../../std/primitive.str.html#method.split_whitespace
+/// [`str`]: ../../std/primitive.str.html
 #[stable(feature = "split_whitespace", since = "1.1.0")]
+#[derive(Clone)]
 pub struct SplitWhitespace<'a> {
-    inner: Filter<Split<'a, fn(char) -> bool>, fn(&&str) -> bool>,
+    inner: Filter<Split<'a, IsWhitespace>, IsNotEmpty>,
 }
 
 /// Methods for Unicode string slices
@@ -38,17 +45,7 @@ pub trait UnicodeStr {
 impl UnicodeStr for str {
     #[inline]
     fn split_whitespace(&self) -> SplitWhitespace {
-        fn is_not_empty(s: &&str) -> bool {
-            !s.is_empty()
-        }
-        let is_not_empty: fn(&&str) -> bool = is_not_empty; // coerce to fn pointer
-
-        fn is_whitespace(c: char) -> bool {
-            c.is_whitespace()
-        }
-        let is_whitespace: fn(char) -> bool = is_whitespace; // coerce to fn pointer
-
-        SplitWhitespace { inner: self.split(is_whitespace).filter(is_not_empty) }
+        SplitWhitespace { inner: self.split(IsWhitespace).filter(IsNotEmpty) }
     }
 
     #[inline]
@@ -132,6 +129,45 @@ impl<I> Iterator for Utf16Encoder<I>
 #[unstable(feature = "fused", issue = "35602")]
 impl<I> FusedIterator for Utf16Encoder<I>
     where I: FusedIterator<Item = char> {}
+
+#[derive(Clone)]
+struct IsWhitespace;
+
+impl FnOnce<(char, )> for IsWhitespace {
+    type Output = bool;
+
+    #[inline]
+    extern "rust-call" fn call_once(mut self, arg: (char, )) -> bool {
+        self.call_mut(arg)
+    }
+}
+
+impl FnMut<(char, )> for IsWhitespace {
+    #[inline]
+    extern "rust-call" fn call_mut(&mut self, arg: (char, )) -> bool {
+        arg.0.is_whitespace()
+    }
+}
+
+#[derive(Clone)]
+struct IsNotEmpty;
+
+impl<'a, 'b> FnOnce<(&'a &'b str, )> for IsNotEmpty {
+    type Output = bool;
+
+    #[inline]
+    extern "rust-call" fn call_once(mut self, arg: (&&str, )) -> bool {
+        self.call_mut(arg)
+    }
+}
+
+impl<'a, 'b> FnMut<(&'a &'b str, )> for IsNotEmpty {
+    #[inline]
+    extern "rust-call" fn call_mut(&mut self, arg: (&&str, )) -> bool {
+        !arg.0.is_empty()
+    }
+}
+
 
 #[stable(feature = "split_whitespace", since = "1.1.0")]
 impl<'a> Iterator for SplitWhitespace<'a> {

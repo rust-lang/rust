@@ -27,10 +27,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   pkg-config
 
-RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-unknown-linux-musl && \
-      chmod +x /usr/local/bin/sccache
-
 RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
     dpkg -i dumb-init_*.deb && \
     rm dumb-init_*.deb
@@ -60,23 +56,22 @@ RUN mkdir /x-tools && chown rustbuild:rustbuild /x-tools
 USER rustbuild
 WORKDIR /tmp
 
-COPY arm-linux-gnueabihf.config arm-linux-gnueabi.config build-toolchains.sh /tmp/
+COPY dist-arm-linux/arm-linux-gnueabi.config dist-arm-linux/build-toolchains.sh /tmp/
 RUN ./build-toolchains.sh
 
 USER root
 
+RUN curl -o /usr/local/bin/sccache \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
+      chmod +x /usr/local/bin/sccache
+
 ENV PATH=$PATH:/x-tools/arm-unknown-linux-gnueabi/bin
-ENV PATH=$PATH:/x-tools/arm-unknown-linux-gnueabihf/bin
 
 ENV CC_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-gcc \
     AR_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-ar \
-    CXX_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-g++ \
-    CC_arm_unknown_linux_gnueabihf=arm-unknown-linux-gnueabihf-gcc \
-    AR_arm_unknown_linux_gnueabihf=arm-unknown-linux-gnueabihf-ar \
-    CXX_arm_unknown_linux_gnueabihf=arm-unknown-linux-gnueabihf-g++
+    CXX_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-g++
 
 ENV HOSTS=arm-unknown-linux-gnueabi
-ENV HOSTS=$HOSTS,arm-unknown-linux-gnueabihf
 
 ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

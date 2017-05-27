@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
@@ -33,6 +34,7 @@ use rustc_driver::{self, driver, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
+use rustc_trans;
 use rustc_trans::back::link;
 use syntax::ast;
 use syntax::codemap::CodeMap;
@@ -42,7 +44,7 @@ use errors;
 use errors::emitter::ColorConfig;
 
 use clean::Attributes;
-use html::markdown;
+use html::markdown::{self, RenderType};
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -56,7 +58,9 @@ pub fn run(input: &str,
            externs: Externs,
            mut test_args: Vec<String>,
            crate_name: Option<String>,
-           maybe_sysroot: Option<PathBuf>)
+           maybe_sysroot: Option<PathBuf>,
+           render_type: RenderType,
+           display_warnings: bool)
            -> isize {
     let input_path = PathBuf::from(input);
     let input = config::Input::File(input_path.clone());
@@ -72,16 +76,17 @@ pub fn run(input: &str,
         ..config::basic_options().clone()
     };
 
-    let codemap = Rc::new(CodeMap::new());
+    let codemap = Rc::new(CodeMap::new(sessopts.file_path_mapping()));
     let handler =
         errors::Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()));
 
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
-    let cstore = Rc::new(CStore::new(&dep_graph));
+    let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
         sessopts, &dep_graph, Some(input_path.clone()), handler, codemap.clone(), cstore.clone(),
     );
+    rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     sess.parse_sess.config =
         config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
@@ -105,7 +110,8 @@ pub fn run(input: &str,
                                        opts,
                                        maybe_sysroot,
                                        Some(codemap),
-                                       None);
+                                       None,
+                                       render_type);
 
     {
         let dep_graph = DepGraph::new(false);
@@ -124,7 +130,8 @@ pub fn run(input: &str,
     test_args.insert(0, "rustdoctest".to_string());
 
     testing::test_main(&test_args,
-                       collector.tests.into_iter().collect());
+                       collector.tests.into_iter().collect(),
+                       testing::Options::new().display_output(display_warnings));
     0
 }
 
@@ -137,13 +144,13 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
         attrs: Vec::new(),
     };
 
-    let attrs = krate.attrs.iter()
-                     .filter(|a| a.check_name("doc"))
-                     .filter_map(|a| a.meta_item_list())
-                     .flat_map(|l| l)
-                     .filter(|a| a.check_name("test"))
-                     .filter_map(|a| a.meta_item_list())
-                     .flat_map(|l| l);
+    let test_attrs: Vec<_> = krate.attrs.iter()
+        .filter(|a| a.check_name("doc"))
+        .flat_map(|a| a.meta_item_list().unwrap_or_else(Vec::new))
+        .filter(|a| a.check_name("test"))
+        .collect();
+    let attrs = test_attrs.iter().flat_map(|a| a.meta_item_list().unwrap_or(&[]));
+
     for attr in attrs {
         if attr.check_name("no_crate_inject") {
             opts.no_crate_inject = true;
@@ -214,7 +221,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
         }
     }
     let data = Arc::new(Mutex::new(Vec::new()));
-    let codemap = Rc::new(CodeMap::new());
+    let codemap = Rc::new(CodeMap::new(sessopts.file_path_mapping()));
     let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
                                                       Some(codemap.clone()));
     let old = io::set_panic(Some(box Sink(data.clone())));
@@ -224,10 +231,11 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
 
     let dep_graph = DepGraph::new(false);
-    let cstore = Rc::new(CStore::new(&dep_graph));
+    let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
         sessopts, &dep_graph, None, diagnostic_handler, codemap, cstore.clone(),
     );
+    rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let outdir = Mutex::new(TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir"));
@@ -380,6 +388,8 @@ fn partition_source(s: &str) -> (String, String) {
 
 pub struct Collector {
     pub tests: Vec<testing::TestDescAndFn>,
+    // to be removed when hoedown will be definitely gone
+    pub old_tests: HashMap<String, Vec<String>>,
     names: Vec<String>,
     cfgs: Vec<String>,
     libs: SearchPaths,
@@ -393,14 +403,18 @@ pub struct Collector {
     position: Span,
     codemap: Option<Rc<CodeMap>>,
     filename: Option<String>,
+    // to be removed when hoedown will be removed as well
+    pub render_type: RenderType,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>,
-               codemap: Option<Rc<CodeMap>>, filename: Option<String>) -> Collector {
+               codemap: Option<Rc<CodeMap>>, filename: Option<String>,
+               render_type: RenderType) -> Collector {
         Collector {
             tests: Vec::new(),
+            old_tests: HashMap::new(),
             names: Vec::new(),
             cfgs: cfgs,
             libs: libs,
@@ -414,14 +428,12 @@ impl Collector {
             position: DUMMY_SP,
             codemap: codemap,
             filename: filename,
+            render_type: render_type,
         }
     }
 
-    pub fn add_test(&mut self, test: String,
-                    should_panic: bool, no_run: bool, should_ignore: bool,
-                    as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
-                    line: usize, filename: String) {
-        let name = if self.use_headers {
+    fn generate_name(&self, line: usize, filename: &str) -> String {
+        if self.use_headers {
             if let Some(ref header) = self.current_header {
                 format!("{} - {} (line {})", filename, header, line)
             } else {
@@ -429,7 +441,51 @@ impl Collector {
             }
         } else {
             format!("{} - {} (line {})", filename, self.names.join("::"), line)
-        };
+        }
+    }
+
+    // to be removed once hoedown is gone
+    fn generate_name_beginning(&self, filename: &str) -> String {
+        if self.use_headers {
+            if let Some(ref header) = self.current_header {
+                format!("{} - {} (line", filename, header)
+            } else {
+                format!("{} - (line", filename)
+            }
+        } else {
+            format!("{} - {} (line", filename, self.names.join("::"))
+        }
+    }
+
+    pub fn add_old_test(&mut self, test: String, filename: String) {
+        let name_beg = self.generate_name_beginning(&filename);
+        let entry = self.old_tests.entry(name_beg)
+                                  .or_insert(Vec::new());
+        entry.push(test.trim().to_owned());
+    }
+
+    pub fn add_test(&mut self, test: String,
+                    should_panic: bool, no_run: bool, should_ignore: bool,
+                    as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
+                    line: usize, filename: String) {
+        let name = self.generate_name(line, &filename);
+        // to be removed when hoedown is removed
+        if self.render_type == RenderType::Pulldown {
+            let name_beg = self.generate_name_beginning(&filename);
+            let mut found = false;
+            let test = test.trim().to_owned();
+            if let Some(entry) = self.old_tests.get_mut(&name_beg) {
+                found = entry.remove_item(&test).is_some();
+            }
+            if !found {
+                let _ = writeln!(&mut io::stderr(),
+                                 "WARNING: {} Code block is not currently run as a test, but will \
+                                  in future versions of rustdoc. Please ensure this code block is \
+                                  a runnable test, or use the `ignore` directive.",
+                                 name);
+                return
+            }
+        }
         let cfgs = self.cfgs.clone();
         let libs = self.libs.clone();
         let externs = self.externs.clone();
@@ -544,8 +600,15 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         attrs.unindent_doc_comments();
         if let Some(doc) = attrs.doc_value() {
             self.collector.cnt = 0;
-            markdown::find_testable_code(doc, self.collector,
-                                         attrs.span.unwrap_or(DUMMY_SP));
+            if self.collector.render_type == RenderType::Pulldown {
+                markdown::old_find_testable_code(doc, self.collector,
+                                                 attrs.span.unwrap_or(DUMMY_SP));
+                markdown::find_testable_code(doc, self.collector,
+                                             attrs.span.unwrap_or(DUMMY_SP));
+            } else {
+                markdown::old_find_testable_code(doc, self.collector,
+                                                 attrs.span.unwrap_or(DUMMY_SP));
+            }
         }
 
         nested(self);

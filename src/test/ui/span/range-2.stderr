@@ -20,5 +20,5 @@ error: `b` does not live long enough
 21 | }
    | - borrowed value needs to live until here
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error(s)
 

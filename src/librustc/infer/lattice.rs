@@ -44,6 +44,10 @@ pub trait LatticeDir<'f, 'gcx: 'f+'tcx, 'tcx: 'f> : TypeRelation<'f, 'gcx, 'tcx>
 
     // Relates the type `v` to `a` and `b` such that `v` represents
     // the LUB/GLB of `a` and `b` as appropriate.
+    //
+    // Subtle hack: ordering *may* be significant here. This method
+    // relates `v` to `a` first, which may help us to avoid unecessary
+    // type variable obligations. See caller for details.
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()>;
 }
 
@@ -74,7 +78,29 @@ pub fn super_lattice_tys<'a, 'gcx, 'tcx, L>(this: &mut L,
             Ok(v)
         }
 
-        (&ty::TyInfer(TyVar(..)), _) |
+        // If one side is known to be a variable and one is not,
+        // create a variable (`v`) to represent the LUB. Make sure to
+        // relate `v` to the non-type-variable first (by passing it
+        // first to `relate_bound`). Otherwise, we would produce a
+        // subtype obligation that must then be processed.
+        //
+        // Example: if the LHS is a type variable, and RHS is
+        // `Box<i32>`, then we current compare `v` to the RHS first,
+        // which will instantiate `v` with `Box<i32>`.  Then when `v`
+        // is compared to the LHS, we instantiate LHS with `Box<i32>`.
+        // But if we did in reverse order, we would create a `v <:
+        // LHS` (or vice versa) constraint and then instantiate
+        // `v`. This would require further processing to achieve same
+        // end-result; in partiular, this screws up some of the logic
+        // in coercion, which expects LUB to figure out that the LHS
+        // is (e.g.) `Box<i32>`. A more obvious solution might be to
+        // iterate on the subtype obligations that are returned, but I
+        // think this suffices. -nmatsakis
+        (&ty::TyInfer(TyVar(..)), _) => {
+            let v = infcx.next_ty_var(TypeVariableOrigin::LatticeVariable(this.cause().span));
+            this.relate_bound(v, b, a)?;
+            Ok(v)
+        }
         (_, &ty::TyInfer(TyVar(..))) => {
             let v = infcx.next_ty_var(TypeVariableOrigin::LatticeVariable(this.cause().span));
             this.relate_bound(v, a, b)?;

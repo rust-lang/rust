@@ -110,13 +110,11 @@ use rustc::dep_graph::{DepNode, WorkProductId};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::session::config::NUMBERED_CODEGEN_UNIT_MARKER;
-use rustc::ty::TyCtxt;
+use rustc::ty::{self, TyCtxt};
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use rustc_incremental::IchHasher;
-use std::cmp::Ordering;
 use std::hash::Hash;
 use std::sync::Arc;
-use symbol_map::SymbolMap;
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
 use trans_item::{TransItem, InstantiationMode};
@@ -174,79 +172,58 @@ impl<'tcx> CodegenUnit<'tcx> {
         DepNode::WorkProduct(self.work_product_id())
     }
 
-    pub fn compute_symbol_name_hash(&self,
-                                    scx: &SharedCrateContext,
-                                    symbol_map: &SymbolMap) -> u64 {
+    pub fn compute_symbol_name_hash<'a>(&self,
+                                        scx: &SharedCrateContext<'a, 'tcx>)
+                                        -> u64 {
         let mut state = IchHasher::new();
         let exported_symbols = scx.exported_symbols();
-        let all_items = self.items_in_deterministic_order(scx.tcx(), symbol_map);
+        let all_items = self.items_in_deterministic_order(scx.tcx());
         for (item, _) in all_items {
-            let symbol_name = symbol_map.get(item).unwrap();
+            let symbol_name = item.symbol_name(scx.tcx());
             symbol_name.len().hash(&mut state);
             symbol_name.hash(&mut state);
             let exported = match item {
-               TransItem::Fn(ref instance) => {
-                    let node_id = scx.tcx().hir.as_local_node_id(instance.def);
+                TransItem::Fn(ref instance) => {
+                    let node_id =
+                        scx.tcx().hir.as_local_node_id(instance.def_id());
                     node_id.map(|node_id| exported_symbols.contains(&node_id))
-                           .unwrap_or(false)
-               }
-               TransItem::Static(node_id) => {
+                        .unwrap_or(false)
+                }
+                TransItem::Static(node_id) => {
                     exported_symbols.contains(&node_id)
-               }
-               TransItem::DropGlue(..) => false,
+                }
+                TransItem::GlobalAsm(..) => true,
             };
             exported.hash(&mut state);
         }
         state.finish().to_smaller_hash()
     }
 
-    pub fn items_in_deterministic_order(&self,
-                                        tcx: TyCtxt,
-                                        symbol_map: &SymbolMap)
-                                        -> Vec<(TransItem<'tcx>, llvm::Linkage)> {
-        let mut items: Vec<(TransItem<'tcx>, llvm::Linkage)> =
-            self.items.iter().map(|(item, linkage)| (*item, *linkage)).collect();
-
+    pub fn items_in_deterministic_order<'a>(&self,
+                                            tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                            -> Vec<(TransItem<'tcx>, llvm::Linkage)> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
-        items.sort_by(|&(trans_item1, _), &(trans_item2, _)| {
-            let node_id1 = local_node_id(tcx, trans_item1);
-            let node_id2 = local_node_id(tcx, trans_item2);
+        #[derive(PartialEq, Eq, PartialOrd, Ord)]
+        pub struct ItemSortKey(Option<NodeId>, ty::SymbolName);
 
-            match (node_id1, node_id2) {
-                (None, None) => {
-                    let symbol_name1 = symbol_map.get(trans_item1).unwrap();
-                    let symbol_name2 = symbol_map.get(trans_item2).unwrap();
-                    symbol_name1.cmp(symbol_name2)
-                }
-                // In the following two cases we can avoid looking up the symbol
-                (None, Some(_)) => Ordering::Less,
-                (Some(_), None) => Ordering::Greater,
-                (Some(node_id1), Some(node_id2)) => {
-                    let ordering = node_id1.cmp(&node_id2);
-
-                    if ordering != Ordering::Equal {
-                        return ordering;
-                    }
-
-                    let symbol_name1 = symbol_map.get(trans_item1).unwrap();
-                    let symbol_name2 = symbol_map.get(trans_item2).unwrap();
-                    symbol_name1.cmp(symbol_name2)
-                }
-            }
-        });
-
-        return items;
-
-        fn local_node_id(tcx: TyCtxt, trans_item: TransItem) -> Option<NodeId> {
-            match trans_item {
+        fn item_sort_key<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   item: TransItem<'tcx>) -> ItemSortKey {
+            ItemSortKey(match item {
                 TransItem::Fn(instance) => {
-                    tcx.hir.as_local_node_id(instance.def)
+                    tcx.hir.as_local_node_id(instance.def_id())
                 }
-                TransItem::Static(node_id) => Some(node_id),
-                TransItem::DropGlue(_) => None,
-            }
+                TransItem::Static(node_id) | TransItem::GlobalAsm(node_id) => {
+                    Some(node_id)
+                }
+            }, item.symbol_name(tcx))
         }
+
+        let items: Vec<_> = self.items.iter().map(|(&i, &l)| (i, l)).collect();
+        let mut items : Vec<_> = items.iter()
+            .map(|il| (il, item_sort_key(tcx, il.0))).collect();
+        items.sort_by(|&(_, ref key1), &(_, ref key2)| key1.cmp(key2));
+        items.into_iter().map(|(&item_linkage, _)| item_linkage).collect()
     }
 }
 
@@ -269,14 +246,14 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     let mut initial_partitioning = place_root_translation_items(scx,
                                                                 trans_items);
 
-    debug_dump(scx, "INITIAL PARTITONING:", initial_partitioning.codegen_units.iter());
+    debug_dump(tcx, "INITIAL PARTITONING:", initial_partitioning.codegen_units.iter());
 
     // If the partitioning should produce a fixed count of codegen units, merge
     // until that count is reached.
     if let PartitioningStrategy::FixedUnitCount(count) = strategy {
         merge_codegen_units(&mut initial_partitioning, count, &tcx.crate_name.as_str());
 
-        debug_dump(scx, "POST MERGING:", initial_partitioning.codegen_units.iter());
+        debug_dump(tcx, "POST MERGING:", initial_partitioning.codegen_units.iter());
     }
 
     // In the next step, we use the inlining map to determine which addtional
@@ -286,7 +263,7 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     let post_inlining = place_inlined_translation_items(initial_partitioning,
                                                         inlining_map);
 
-    debug_dump(scx, "POST INLINING:", post_inlining.0.iter());
+    debug_dump(tcx, "POST INLINING:", post_inlining.0.iter());
 
     // Finally, sort by codegen unit name, so that we get deterministic results
     let mut result = post_inlining.0;
@@ -339,8 +316,8 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                 None => {
                     match trans_item {
                         TransItem::Fn(..) |
-                        TransItem::Static(..) => llvm::ExternalLinkage,
-                        TransItem::DropGlue(..) => unreachable!(),
+                        TransItem::Static(..) |
+                        TransItem::GlobalAsm(..) => llvm::ExternalLinkage,
                     }
                 }
             };
@@ -455,17 +432,26 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
     let tcx = scx.tcx();
     match trans_item {
         TransItem::Fn(instance) => {
+            let def_id = match instance.def {
+                ty::InstanceDef::Item(def_id) => def_id,
+                ty::InstanceDef::FnPtrShim(..) |
+                ty::InstanceDef::ClosureOnceShim { .. } |
+                ty::InstanceDef::Intrinsic(..) |
+                ty::InstanceDef::DropGlue(..) |
+                ty::InstanceDef::Virtual(..) => return None
+            };
+
             // If this is a method, we want to put it into the same module as
             // its self-type. If the self-type does not provide a characteristic
             // DefId, we use the location of the impl after all.
 
-            if tcx.trait_of_item(instance.def).is_some() {
+            if tcx.trait_of_item(def_id).is_some() {
                 let self_ty = instance.substs.type_at(0);
                 // This is an implementation of a trait method.
-                return characteristic_def_id_of_type(self_ty).or(Some(instance.def));
+                return characteristic_def_id_of_type(self_ty).or(Some(def_id));
             }
 
-            if let Some(impl_def_id) = tcx.impl_of_method(instance.def) {
+            if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
                 // This is a method within an inherent impl, find out what the
                 // self-type is:
                 let impl_self_ty = common::def_ty(scx, impl_def_id, instance.substs);
@@ -474,10 +460,10 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
                 }
             }
 
-            Some(instance.def)
+            Some(def_id)
         }
-        TransItem::DropGlue(dg) => characteristic_def_id_of_type(dg.ty()),
-        TransItem::Static(node_id) => Some(tcx.hir.local_def_id(node_id)),
+        TransItem::Static(node_id) |
+        TransItem::GlobalAsm(node_id) => Some(tcx.hir.local_def_id(node_id)),
     }
 }
 
@@ -517,7 +503,7 @@ fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString 
     Symbol::intern(&format!("{}{}{}", crate_name, NUMBERED_CODEGEN_UNIT_MARKER, index)).as_str()
 }
 
-fn debug_dump<'a, 'b, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
+fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                label: &str,
                                cgus: I)
     where I: Iterator<Item=&'b CodegenUnit<'tcx>>,
@@ -526,19 +512,16 @@ fn debug_dump<'a, 'b, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     if cfg!(debug_assertions) {
         debug!("{}", label);
         for cgu in cgus {
-            let symbol_map = SymbolMap::build(scx, cgu.items
-                                                      .iter()
-                                                      .map(|(&trans_item, _)| trans_item));
             debug!("CodegenUnit {}:", cgu.name);
 
             for (trans_item, linkage) in &cgu.items {
-                let symbol_name = symbol_map.get_or_compute(scx, *trans_item);
+                let symbol_name = trans_item.symbol_name(tcx);
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map(|i| &symbol_name[i ..])
                                                    .unwrap_or("<no hash>");
 
                 debug!(" - {} [{:?}] [{}]",
-                       trans_item.to_string(scx.tcx()),
+                       trans_item.to_string(tcx),
                        linkage,
                        symbol_hash);
             }

@@ -44,5 +44,5 @@ pub enum Foxtrot<F> { Foxtrot1(F) }
 impl<F> MyTrait for Foxtrot<F> where F: MyTrait {}
 
 // @has foo/type.Golf.html '//pre[@class="rust typedef"]' \
-//          "type Golf<T> where T: Clone = (T, T)"
+//          "type Golf<T> where T: Clone, = (T, T)"
 pub type Golf<T> where T: Clone = (T, T);

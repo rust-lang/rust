@@ -113,6 +113,7 @@ mod imp {
             pub l_sysid: libc::c_int,
         }
 
+        pub const F_RDLCK: libc::c_short = 0x0040;
         pub const F_UNLCK: libc::c_short = 0x0200;
         pub const F_WRLCK: libc::c_short = 0x0400;
         pub const F_SETLK: libc::c_int = 0x0080;
@@ -246,11 +247,11 @@ mod imp {
     use std::os::windows::raw::HANDLE;
     use std::path::Path;
     use std::fs::{File, OpenOptions};
-    use std::os::raw::{c_ulong, c_ulonglong, c_int};
+    use std::os::raw::{c_ulong, c_int};
 
     type DWORD = c_ulong;
     type BOOL = c_int;
-    type ULONG_PTR = c_ulonglong;
+    type ULONG_PTR = usize;
 
     type LPOVERLAPPED = *mut OVERLAPPED;
     const LOCKFILE_EXCLUSIVE_LOCK: DWORD = 0x00000002;

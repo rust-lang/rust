@@ -29,7 +29,7 @@
 /// ```
 ///
 /// [`assert!`]: macro.assert.html
-/// [`if`]: ../book/if.html
+/// [`if`]: ../book/first-edition/if.html
 /// [`BitAnd`]: ops/trait.BitAnd.html
 /// [`BitOr`]: ops/trait.BitOr.html
 /// [`Not`]: ops/trait.Not.html
@@ -183,9 +183,9 @@ mod prim_unit { }
 /// Working with raw pointers in Rust is uncommon,
 /// typically limited to a few patterns.
 ///
-/// Use the `null` function to create null pointers, and the `is_null` method
+/// Use the [`null`] function to create null pointers, and the [`is_null`] method
 /// of the `*const T` type  to check for null. The `*const T` type also defines
-/// the `offset` method, for pointer math.
+/// the [`offset`] method, for pointer math.
 ///
 /// # Common ways to create raw pointers
 ///
@@ -213,7 +213,7 @@ mod prim_unit { }
 ///
 /// ## 2. Consume a box (`Box<T>`).
 ///
-/// The `into_raw` function consumes a box and returns
+/// The [`into_raw`] function consumes a box and returns
 /// the raw pointer. It doesn't destroy `T` or deallocate any memory.
 ///
 /// ```
@@ -227,7 +227,7 @@ mod prim_unit { }
 /// }
 /// ```
 ///
-/// Note that here the call to `drop` is for clarity - it indicates
+/// Note that here the call to [`drop`] is for clarity - it indicates
 /// that we are done with the given value and it should be destroyed.
 ///
 /// ## 3. Get it from C.
@@ -255,6 +255,11 @@ mod prim_unit { }
 ///
 /// *[See also the `std::ptr` module](ptr/index.html).*
 ///
+/// [`null`]: ../std/ptr/fn.null.html
+/// [`is_null`]: ../std/primitive.pointer.html#method.is_null
+/// [`offset`]: ../std/primitive.pointer.html#method.offset
+/// [`into_raw`]: ../std/boxed/struct.Box.html#method.into_raw
+/// [`drop`]: ../std/mem/fn.drop.html
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer { }
 
@@ -272,7 +277,7 @@ mod prim_pointer { }
 /// Arrays of sizes from 0 to 32 (inclusive) implement the following traits if
 /// the element type allows it:
 ///
-/// - [`Clone`][clone] (only if `T: [Copy][copy]`)
+/// - [`Clone`][clone] (only if `T: `[`Copy`][copy])
 /// - [`Debug`][debug]
 /// - [`IntoIterator`][intoiterator] (implemented for `&[T; N]` and `&mut [T; N]`)
 /// - [`PartialEq`][partialeq], [`PartialOrd`][partialord], [`Eq`][eq], [`Ord`][ord]
@@ -401,7 +406,7 @@ mod prim_slice { }
 ///
 /// This documentation describes a number of methods and trait implementations
 /// on the `str` type. For technical reasons, there is additional, separate
-/// documentation in [the `std::str` module](str/index.html) as well.
+/// documentation in the [`std::str`](str/index.html) module as well.
 ///
 /// # Examples
 ///
@@ -420,7 +425,7 @@ mod prim_slice { }
 /// # Representation
 ///
 /// A `&str` is made up of two components: a pointer to some bytes, and a
-/// length. You can look at these with the [`.as_ptr()`] and [`len()`] methods:
+/// length. You can look at these with the [`as_ptr`] and [`len`] methods:
 ///
 /// ```
 /// use std::slice;
@@ -447,11 +452,11 @@ mod prim_slice { }
 /// assert_eq!(s, Ok(story));
 /// ```
 ///
-/// [`.as_ptr()`]: #method.as_ptr
-/// [`len()`]: #method.len
+/// [`as_ptr`]: #method.as_ptr
+/// [`len`]: #method.len
 ///
 /// Note: This example shows the internals of `&str`. `unsafe` should not be
-/// used to get a string slice under normal circumstances. Use `.as_slice()`
+/// used to get a string slice under normal circumstances. Use `as_slice`
 /// instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_str { }
@@ -490,7 +495,7 @@ mod prim_str { }
 /// assert_eq!(tuple.2, 'c');
 /// ```
 ///
-/// For more about tuples, see [the book](../book/primitive-types.html#tuples).
+/// For more about tuples, see [the book](../book/first-edition/primitive-types.html#tuples).
 ///
 /// # Trait implementations
 ///

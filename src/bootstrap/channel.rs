@@ -23,7 +23,7 @@ use build_helper::output;
 use Build;
 
 // The version number
-pub const CFG_RELEASE_NUM: &'static str = "1.17.0";
+pub const CFG_RELEASE_NUM: &'static str = "1.19.0";
 
 // An optional number to put after the label, e.g. '.2' -> '-beta.2'
 // Be sure to make this starts with a dot to conform to semver pre-release
@@ -42,9 +42,22 @@ struct Info {
 
 impl GitInfo {
     pub fn new(dir: &Path) -> GitInfo {
-        if !dir.join(".git").is_dir() {
+        // See if this even begins to look like a git dir
+        if !dir.join(".git").exists() {
             return GitInfo { inner: None }
         }
+
+        // Make sure git commands work
+        let out = Command::new("git")
+                          .arg("rev-parse")
+                          .current_dir(dir)
+                          .output()
+                          .expect("failed to spawn git");
+        if !out.status.success() {
+            return GitInfo { inner: None }
+        }
+
+        // Ok, let's scrape some info
         let ver_date = output(Command::new("git").current_dir(dir)
                                       .arg("log").arg("-1")
                                       .arg("--date=short")

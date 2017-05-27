@@ -160,10 +160,10 @@ pub fn take_hook() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
 
 /// A struct providing information about a panic.
 ///
-/// `PanicInfo` structure is passed to a panic hook set by the [`set_hook()`]
+/// `PanicInfo` structure is passed to a panic hook set by the [`set_hook`]
 /// function.
 ///
-/// [`set_hook()`]: ../../std/panic/fn.set_hook.html
+/// [`set_hook`]: ../../std/panic/fn.set_hook.html
 ///
 /// # Examples
 ///
@@ -237,9 +237,9 @@ impl<'a> PanicInfo<'a> {
 
 /// A struct containing information about the location of a panic.
 ///
-/// This structure is created by the [`location()`] method of [`PanicInfo`].
+/// This structure is created by the [`location`] method of [`PanicInfo`].
 ///
-/// [`location()`]: ../../std/panic/struct.PanicInfo.html#method.location
+/// [`location`]: ../../std/panic/struct.PanicInfo.html#method.location
 /// [`PanicInfo`]: ../../std/panic/struct.PanicInfo.html
 ///
 /// # Examples

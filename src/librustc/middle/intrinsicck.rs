@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dep_graph::DepNode;
 use hir::def::Def;
 use hir::def_id::DefId;
 use infer::InferCtxt;
@@ -25,7 +24,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut visitor = ItemVisitor {
         tcx: tcx
     };
-    tcx.visit_all_item_likes_in_krate(DepNode::IntrinsicCheck, &mut visitor.as_deep_visitor());
+    tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
 }
 
 struct ItemVisitor<'a, 'tcx: 'a> {
@@ -46,7 +45,7 @@ fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         _ => return ty
     };
 
-    if def.variants.len() == 2 && !def.repr.c && def.repr.int.is_none() {
+    if def.variants.len() == 2 && !def.repr.c() && def.repr.int.is_none() {
         let data_idx;
 
         if def.variants[0].fields.is_empty() {
@@ -67,7 +66,7 @@ fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
-        let intrinsic = match self.infcx.tcx.item_type(def_id).sty {
+        let intrinsic = match self.infcx.tcx.type_of(def_id).sty {
             ty::TyFnDef(.., bfty) => bfty.abi() == RustIntrinsic,
             _ => return false
         };
@@ -89,11 +88,11 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
             let from = unpack_option_like(self.infcx.tcx.global_tcx(), from);
             match (&from.sty, sk_to) {
                 (&ty::TyFnDef(..), SizeSkeleton::Known(size_to))
-                        if size_to == Pointer.size(&self.infcx.tcx.data_layout) => {
+                        if size_to == Pointer.size(self.infcx) => {
                     struct_span_err!(self.infcx.tcx.sess, span, E0591,
                                      "`{}` is zero-sized and can't be transmuted to `{}`",
                                      from, to)
-                        .span_note(span, &format!("cast with `as` to a pointer instead"))
+                        .span_note(span, "cast with `as` to a pointer instead")
                         .emit();
                     return;
                 }
@@ -127,7 +126,7 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
                   from, skeleton_string(from, sk_from),
                   to, skeleton_string(to, sk_to))
             .span_label(span,
-                &format!("transmuting between {} and {}",
+                format!("transmuting between {} and {}",
                     skeleton_string(from, sk_from),
                     skeleton_string(to, sk_to)))
             .emit();

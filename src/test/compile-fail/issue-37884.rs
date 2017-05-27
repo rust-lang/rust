@@ -11,14 +11,15 @@
 struct RepeatMut<'a, T>(T, &'a ());
 
 impl<'a, T: 'a> Iterator for RepeatMut<'a, T> {
+    //~^ NOTE ...does not necessarily outlive the lifetime 'a as defined on the impl
+
     type Item = &'a mut T;
     fn next(&'a mut self) -> Option<Self::Item>
     //~^ ERROR method not compatible with trait
     //~| lifetime mismatch
     //~| NOTE expected type `fn(&mut RepeatMut<'a, T>) -> std::option::Option<&mut T>`
+    //~| NOTE the anonymous lifetime #1 defined on the method body
     {
-    //~^ NOTE the anonymous lifetime #1 defined on the body
-    //~| NOTE ...does not necessarily outlive the lifetime 'a as defined on the body
         Some(&mut self.0)
     }
 }

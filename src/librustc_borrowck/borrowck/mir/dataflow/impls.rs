@@ -14,10 +14,10 @@ use rustc_data_structures::bitslice::BitSlice; // adds set_bit/get_bit to &[usiz
 use rustc_data_structures::bitslice::{BitwiseOperator};
 use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_mir::util::elaborate_drops::DropFlagState;
 
 use super::super::gather_moves::{HasMoveData, MoveData, MoveOutIndex, MovePathIndex};
 use super::super::MoveDataParamEnv;
-use super::super::DropFlagState;
 use super::super::drop_flag_effects_for_function_entry;
 use super::super::drop_flag_effects_for_location;
 use super::super::on_lookup_result_bits;
