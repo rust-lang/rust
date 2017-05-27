@@ -32,6 +32,16 @@ fn main() {
             )?;
         }
     }
+
+    // nesting macro and function call
+    try!(foo(
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+    ));
+    try!(foo(try!(
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    )));
 }
 
 // #1521
