@@ -708,7 +708,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     fn bckerr_to_diag(&self, err: &BckError<'tcx>) -> DiagnosticBuilder<'a> {
         let span = err.span.clone();
 
-        let msg = match err.code {
+        match err.code {
             err_mutbl => {
                 let descr = match err.cmt.note {
                     mc::NoteClosureEnv(_) | mc::NoteUpvarRef(_) => {
@@ -732,10 +732,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
                 match err.cause {
                     MutabilityViolation => {
-                        format!("cannot assign to {}", descr)
+                        struct_span_err!(self.tcx.sess, span, E0594, "cannot assign to {}", descr)
                     }
                     BorrowViolation(euv::ClosureCapture(_)) => {
-                        format!("closure cannot assign to {}", descr)
+                        struct_span_err!(self.tcx.sess, span, E0595,
+                                         "closure cannot assign to {}", descr)
                     }
                     BorrowViolation(euv::OverloadedOperator) |
                     BorrowViolation(euv::AddrOf) |
@@ -744,7 +745,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     BorrowViolation(euv::AutoUnsafe) |
                     BorrowViolation(euv::ForLoop) |
                     BorrowViolation(euv::MatchDiscriminant) => {
-                        format!("cannot borrow {} as mutable", descr)
+                        struct_span_err!(self.tcx.sess, span, E0596,
+                                         "cannot borrow {} as mutable", descr)
                     }
                     BorrowViolation(euv::ClosureInvocation) => {
                         span_bug!(err.span,
@@ -759,17 +761,16 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         format!("`{}`", self.loan_path_to_string(&lp))
                     }
                 };
-                format!("{} does not live long enough", msg)
+                struct_span_err!(self.tcx.sess, span, E0597, "{} does not live long enough", msg)
             }
             err_borrowed_pointer_too_short(..) => {
                 let descr = self.cmt_to_path_or_string(&err.cmt);
-                format!("lifetime of {} is too short to guarantee \
-                         its contents can be safely reborrowed",
-                        descr)
+                struct_span_err!(self.tcx.sess, span, E0598,
+                                 "lifetime of {} is too short to guarantee \
+                                  its contents can be safely reborrowed",
+                                 descr)
             }
-        };
-
-        self.struct_span_err(span, &msg)
+        }
     }
 
     pub fn report_aliasability_violation(&self,
@@ -1176,7 +1177,7 @@ before rustc 1.16, this temporary lived longer - see issue #39283 \
                 if kind == ty::ClosureKind::Fn {
                     db.span_help(self.tcx.hir.span(upvar_id.closure_expr_id),
                                  "consider changing this closure to take \
-                                 self by mutable reference");
+                                  self by mutable reference");
                 }
             }
             _ => {
