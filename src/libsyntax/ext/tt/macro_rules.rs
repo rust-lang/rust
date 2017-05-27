@@ -84,6 +84,12 @@ impl TTMacroExpander for MacroRulesMacroExpander {
     }
 }
 
+fn trace_macros_note(cx: &mut ExtCtxt, sp: Span, message: String) {
+    let sp = sp.macro_backtrace().last().map(|trace| trace.call_site).unwrap_or(sp);
+    let mut values: &mut Vec<String> = cx.expansions.entry(sp).or_insert_with(Vec::new);
+    values.push(message);
+}
+
 /// Given `lhses` and `rhses`, this is the new macro we create
 fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                           sp: Span,
@@ -93,9 +99,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                           rhses: &[quoted::TokenTree])
                           -> Box<MacResult+'cx> {
     if cx.trace_macros() {
-        let sp = sp.macro_backtrace().last().map(|trace| trace.call_site).unwrap_or(sp);
-        let mut values: &mut Vec<String> = cx.expansions.entry(sp).or_insert_with(Vec::new);
-        values.push(format!("expands to `{}! {{ {} }}`", name, arg));
+        trace_macros_note(cx, sp, format!("expanding `{}! {{ {} }}`", name, arg));
     }
 
     // Which arm's failure should we report? (the one furthest along)
@@ -117,6 +121,11 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                 };
                 // rhs has holes ( `$id` and `$(...)` that need filled)
                 let tts = transcribe(&cx.parse_sess.span_diagnostic, Some(named_matches), rhs);
+
+                if cx.trace_macros() {
+                    trace_macros_note(cx, sp, format!("to `{}`", tts));
+                }
+
                 let directory = Directory {
                     path: cx.current_expansion.module.directory.clone(),
                     ownership: cx.current_expansion.directory_ownership,

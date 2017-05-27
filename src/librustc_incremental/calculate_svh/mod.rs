@@ -29,10 +29,9 @@
 
 use std::cell::RefCell;
 use std::hash::Hash;
-use std::sync::Arc;
 use rustc::dep_graph::DepNode;
 use rustc::hir;
-use rustc::hir::def_id::{LOCAL_CRATE, CRATE_DEF_INDEX, DefId};
+use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ich::{Fingerprint, StableHashingContext};
 use rustc::ty::TyCtxt;
@@ -154,11 +153,6 @@ impl<'a, 'tcx: 'a> ComputeItemHashesVisitor<'a, 'tcx> {
                                     DepNode::HirBody(_) => {
                                         // We want to incoporate these into the
                                         // SVH.
-                                    }
-                                    DepNode::FileMap(..) => {
-                                        // These don't make a semantic
-                                        // difference, filter them out.
-                                        return None
                                     }
                                     DepNode::AllLocalTraitImpls => {
                                         // These are already covered by hashing
@@ -304,24 +298,6 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
             let def_id = tcx.hir.local_def_id(macro_def.id);
             visitor.compute_and_store_ich_for_item_like(DepNode::Hir(def_id), false, macro_def);
             visitor.compute_and_store_ich_for_item_like(DepNode::HirBody(def_id), true, macro_def);
-        }
-
-        for filemap in tcx.sess
-                          .codemap()
-                          .files_untracked()
-                          .iter()
-                          .filter(|fm| !fm.is_imported()) {
-            assert_eq!(LOCAL_CRATE.as_u32(), filemap.crate_of_origin);
-            let def_id = DefId {
-                krate: LOCAL_CRATE,
-                index: CRATE_DEF_INDEX,
-            };
-            let name = Arc::new(filemap.name.clone());
-            let dep_node = DepNode::FileMap(def_id, name);
-            let mut hasher = IchHasher::new();
-            filemap.hash_stable(&mut visitor.hcx, &mut hasher);
-            let fingerprint = hasher.finish();
-            visitor.hashes.insert(dep_node, fingerprint);
         }
 
         visitor.compute_and_store_ich_for_trait_impls(krate);
