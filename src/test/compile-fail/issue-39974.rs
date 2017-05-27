@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
-// compile-flags: -Z query-dep-graph
+const LENGTH: f64 = 2;
 
-#![crate_type="rlib"]
+struct Thing {
+    f: [[f64; 2]; LENGTH],
+    //~^ ERROR mismatched types
+    //~| expected usize, found f64
+}
 
-#[cfg(rpass1)]
-pub type X = u32;
-
-#[cfg(rpass2)]
-pub type X = i32;
-
-// this version doesn't actually change anything:
-#[cfg(rpass3)]
-pub type X = i32;
-
-pub type Y = char;
+fn main() {
+    let _t = Thing { f: [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]] };
+}

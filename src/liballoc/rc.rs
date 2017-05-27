@@ -55,6 +55,24 @@
 //! [`Weak<T>`][`Weak`] does not auto-dereference to `T`, because the value may have
 //! already been destroyed.
 //!
+//! # Cloning references
+//!
+//! Creating a new reference from an existing reference counted pointer is done using the
+//! `Clone` trait implemented for [`Rc<T>`][`Rc`] and [`Weak<T>`][`Weak`].
+//!
+//! ```
+//! use std::rc::Rc;
+//! let foo = Rc::new(vec![1.0, 2.0, 3.0]);
+//! // The two syntaxes below are equivalent.
+//! let a = foo.clone();
+//! let b = Rc::clone(&foo);
+//! // a and b both point to the same memory location as foo.
+//! ```
+//!
+//! The `Rc::clone(&from)` syntax is the most idiomatic because it conveys more explicitly
+//! the meaning of the code. In the example above, this syntax makes it easier to see that
+//! this code is creating a new reference rather than copying the whole content of foo.
+//!
 //! # Examples
 //!
 //! Consider a scenario where a set of `Gadget`s are owned by a given `Owner`.
@@ -90,11 +108,11 @@
 //!     // the reference count in the process.
 //!     let gadget1 = Gadget {
 //!         id: 1,
-//!         owner: gadget_owner.clone(),
+//!         owner: Rc::clone(&gadget_owner),
 //!     };
 //!     let gadget2 = Gadget {
 //!         id: 2,
-//!         owner: gadget_owner.clone(),
+//!         owner: Rc::clone(&gadget_owner),
 //!     };
 //!
 //!     // Dispose of our local variable `gadget_owner`.
@@ -163,13 +181,13 @@
 //!     let gadget1 = Rc::new(
 //!         Gadget {
 //!             id: 1,
-//!             owner: gadget_owner.clone(),
+//!             owner: Rc::clone(&gadget_owner),
 //!         }
 //!     );
 //!     let gadget2 = Rc::new(
 //!         Gadget {
 //!             id: 2,
-//!             owner: gadget_owner.clone(),
+//!             owner: Rc::clone(&gadget_owner),
 //!         }
 //!     );
 //!
@@ -316,7 +334,7 @@ impl<T> Rc<T> {
     /// assert_eq!(Rc::try_unwrap(x), Ok(3));
     ///
     /// let x = Rc::new(4);
-    /// let _y = x.clone();
+    /// let _y = Rc::clone(&x);
     /// assert_eq!(*Rc::try_unwrap(x).unwrap_err(), 4);
     /// ```
     #[inline]
@@ -508,7 +526,7 @@ impl<T: ?Sized> Rc<T> {
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
-    /// let _also_five = five.clone();
+    /// let _also_five = Rc::clone(&five);
     ///
     /// assert_eq!(2, Rc::strong_count(&five));
     /// ```
@@ -550,7 +568,7 @@ impl<T: ?Sized> Rc<T> {
     /// *Rc::get_mut(&mut x).unwrap() = 4;
     /// assert_eq!(*x, 4);
     ///
-    /// let _y = x.clone();
+    /// let _y = Rc::clone(&x);
     /// assert!(Rc::get_mut(&mut x).is_none());
     /// ```
     #[inline]
@@ -576,7 +594,7 @@ impl<T: ?Sized> Rc<T> {
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
-    /// let same_five = five.clone();
+    /// let same_five = Rc::clone(&five);
     /// let other_five = Rc::new(5);
     ///
     /// assert!(Rc::ptr_eq(&five, &same_five));
@@ -608,7 +626,7 @@ impl<T: Clone> Rc<T> {
     /// let mut data = Rc::new(5);
     ///
     /// *Rc::make_mut(&mut data) += 1;        // Won't clone anything
-    /// let mut other_data = data.clone();    // Won't clone inner data
+    /// let mut other_data = Rc::clone(&data);    // Won't clone inner data
     /// *Rc::make_mut(&mut data) += 1;        // Clones inner data
     /// *Rc::make_mut(&mut data) += 1;        // Won't clone anything
     /// *Rc::make_mut(&mut other_data) *= 2;  // Won't clone anything
@@ -680,7 +698,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// }
     ///
     /// let foo  = Rc::new(Foo);
-    /// let foo2 = foo.clone();
+    /// let foo2 = Rc::clone(&foo);
     ///
     /// drop(foo);    // Doesn't print anything
     /// drop(foo2);   // Prints "dropped!"
@@ -720,7 +738,7 @@ impl<T: ?Sized> Clone for Rc<T> {
     ///
     /// let five = Rc::new(5);
     ///
-    /// five.clone();
+    /// Rc::clone(&five);
     /// ```
     #[inline]
     fn clone(&self) -> Rc<T> {
@@ -1050,7 +1068,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::rc::Rc;
+    /// use std::rc::{Rc, Weak};
     ///
     /// struct Foo;
     ///
@@ -1062,7 +1080,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     ///
     /// let foo = Rc::new(Foo);
     /// let weak_foo = Rc::downgrade(&foo);
-    /// let other_weak_foo = weak_foo.clone();
+    /// let other_weak_foo = Weak::clone(&weak_foo);
     ///
     /// drop(weak_foo);   // Doesn't print anything
     /// drop(foo);        // Prints "dropped!"
@@ -1090,11 +1108,11 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::rc::Rc;
+    /// use std::rc::{Rc, Weak};
     ///
     /// let weak_five = Rc::downgrade(&Rc::new(5));
     ///
-    /// weak_five.clone();
+    /// Weak::clone(&weak_five);
     /// ```
     #[inline]
     fn clone(&self) -> Weak<T> {

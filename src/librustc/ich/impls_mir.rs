@@ -22,11 +22,55 @@ impl_stable_hash_for!(struct mir::SourceInfo { span, scope });
 impl_stable_hash_for!(enum mir::Mutability { Mut, Not });
 impl_stable_hash_for!(enum mir::BorrowKind { Shared, Unique, Mut });
 impl_stable_hash_for!(enum mir::LocalKind { Var, Temp, Arg, ReturnPointer });
-impl_stable_hash_for!(struct mir::LocalDecl<'tcx> { mutability, ty, name, source_info,
-is_user_variable});
+impl_stable_hash_for!(struct mir::LocalDecl<'tcx> {
+    mutability,
+    ty,
+    name,
+    source_info,
+    is_user_variable
+});
 impl_stable_hash_for!(struct mir::UpvarDecl { debug_name, by_ref });
 impl_stable_hash_for!(struct mir::BasicBlockData<'tcx> { statements, terminator, is_cleanup });
-impl_stable_hash_for!(struct mir::Terminator<'tcx> { source_info, kind });
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for mir::Terminator<'tcx> {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let mir::Terminator {
+            ref kind,
+            ref source_info,
+        } = *self;
+
+        let hash_spans_unconditionally = match *kind {
+            mir::TerminatorKind::Assert { .. } => {
+                // Assert terminators generate a panic message that contains the
+                // source location, so we always have to feed its span into the
+                // ICH.
+                true
+            }
+            mir::TerminatorKind::Goto { .. } |
+            mir::TerminatorKind::SwitchInt { .. } |
+            mir::TerminatorKind::Resume |
+            mir::TerminatorKind::Return |
+            mir::TerminatorKind::Unreachable |
+            mir::TerminatorKind::Drop { .. } |
+            mir::TerminatorKind::DropAndReplace { .. } |
+            mir::TerminatorKind::Call { .. } => false,
+        };
+
+        if hash_spans_unconditionally {
+            hcx.while_hashing_spans(true, |hcx| {
+                source_info.hash_stable(hcx, hasher);
+            })
+        } else {
+            source_info.hash_stable(hcx, hasher);
+        }
+
+        kind.hash_stable(hcx, hasher);
+    }
+}
+
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for mir::Local {
     #[inline]

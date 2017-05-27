@@ -8,19 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
-// compile-flags: -Z query-dep-graph
+// Regression test for #42210.
 
-#![crate_type="rlib"]
+// compile-flags: -g
 
-#[cfg(rpass1)]
-pub type X = u32;
+trait Foo {
+    fn foo() { }
+}
 
-#[cfg(rpass2)]
-pub type X = i32;
+struct Bar;
 
-// this version doesn't actually change anything:
-#[cfg(rpass3)]
-pub type X = i32;
+trait Baz {
+}
 
-pub type Y = char;
+impl Foo for (Bar, Baz) { }
+
+
+fn main() {
+    <(Bar, Baz) as Foo>::foo()
+}
