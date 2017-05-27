@@ -18,7 +18,7 @@ use utils::{format_mutability, format_visibility, contains_skip, end_typaram, wr
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, list_helper,
             DefinitiveListTactic, ListTactic, definitive_tactic, format_item_list};
 use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, type_annotation_separator};
-use comment::{FindUncommented, contains_comment};
+use comment::{FindUncommented, contains_comment, rewrite_comment};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
 use config::{Config, IndentStyle, Density, ReturnIndent, BraceStyle, Style, TypeDensity};
@@ -1205,15 +1205,42 @@ impl Rewrite for ast::StructField {
         let mut attr_str = try_opt!(self.attrs.rewrite(context,
                                                        Shape::indented(shape.indent,
                                                                        context.config)));
-        if !attr_str.is_empty() {
-            attr_str.push('\n');
-            attr_str.push_str(&shape.indent.to_string(context.config));
-        }
+        // Try format missing comments after attributes
+        let missing_comment = if !self.attrs.is_empty() {
+            let possibly_comment_snippet =
+                context.snippet(mk_sp(self.attrs[self.attrs.len() - 1].span.hi, self.span.lo));
+            let newline_index = possibly_comment_snippet.find('\n');
+            let comment_index = possibly_comment_snippet.find('/');
+            match (newline_index, comment_index) {
+                (Some(i), Some(j)) if i > j => attr_str.push(' '),
+                _ => {
+                    attr_str.push('\n');
+                    attr_str.push_str(&shape.indent.to_string(context.config));
+                }
+            }
+            let trimmed = possibly_comment_snippet.trim();
+            if trimmed.is_empty() {
+                String::new()
+            } else {
+                rewrite_comment(trimmed, false, shape, context.config).map_or(String::new(), |s| {
+                    format!("{}\n{}", s, shape.indent.to_string(context.config))
+                })
+            }
+        } else {
+            String::new()
+        };
 
         let type_annotation_spacing = type_annotation_spacing(context.config);
         let mut result = match name {
-            Some(name) => format!("{}{}{}{}:", attr_str, vis, name, type_annotation_spacing.0),
-            None => format!("{}{}", attr_str, vis),
+            Some(name) => {
+                format!("{}{}{}{}{}:",
+                        attr_str,
+                        missing_comment,
+                        vis,
+                        name,
+                        type_annotation_spacing.0)
+            }
+            None => format!("{}{}{}", attr_str, missing_comment, vis),
         };
 
         let type_offset = shape.indent.block_indent(context.config);

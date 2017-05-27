@@ -16,6 +16,28 @@ pub struct Foo {
     pub i: TypeForPublicField
 }
 
+// #1029
+pub struct Foo {
+    #[doc(hidden)]
+    // This will NOT get deleted!
+    bar: String, // hi
+}
+
+// #1029
+struct X {
+    // `x` is an important number.
+    #[allow(unused)] // TODO: use
+    x: u32,
+}
+
+// #410
+#[allow(missing_docs)]
+pub struct Writebatch<K: Key> {
+    #[allow(dead_code)] //only used for holding the internal pointer
+    writebatch: RawWritebatch,
+    marker: PhantomData<K>,
+}
+
 struct Bar;
 
 struct NewType(Type,       OtherType);
