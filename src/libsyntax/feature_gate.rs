@@ -321,9 +321,6 @@ declare_features! (
     // `extern "msp430-interrupt" fn()`
     (active, abi_msp430_interrupt, "1.16.0", Some(38487)),
 
-    // Coerces non capturing closures to function pointers
-    (active, closure_to_fn_coercion, "1.17.0", Some(39817)),
-
     // Used to identify crates that contain sanitizer runtimes
     // rustc internal
     (active, sanitizer_runtime, "1.17.0", None),
@@ -427,6 +424,8 @@ declare_features! (
     (accepted, loop_break_value, "1.19.0", Some(37339)),
     // Permits numeric fields in struct expressions and patterns.
     (accepted, relaxed_adts, "1.19.0", Some(35626)),
+    // Coerces non capturing closures to function pointers
+    (accepted, closure_to_fn_coercion, "1.19.0", Some(39817)),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1025,9 +1024,6 @@ pub const EXPLAIN_VIS_MATCHER: &'static str =
 
 pub const EXPLAIN_PLACEMENT_IN: &'static str =
     "placement-in expression syntax is experimental and subject to change.";
-
-pub const CLOSURE_TO_FN_COERCION: &'static str =
-    "non-capturing closure to fn coercion is experimental";
 
 struct PostExpansionVisitor<'a> {
     context: &'a Context<'a>,

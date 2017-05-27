@@ -9,7 +9,6 @@
 // except according to those terms.
 // Ensure that we deduce expected argument types when a `fn()` type is expected (#41755)
 
-#![feature(closure_to_fn_coercion)]
 fn foo(f: fn(Vec<u32>) -> usize) { }
 
 fn main() {
