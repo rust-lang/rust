@@ -13,7 +13,8 @@ extern crate crates_io;
 
 use crates_io::{Crate, Registry, Result};
 
-use cargo::core::{Source, SourceId, Package, PackageId};
+use cargo::core::{Source, SourceId, Package, PackageId, Workspace};
+use cargo::ops::{compile, CompileMode, CompileOptions};
 use cargo::sources::registry::RegistrySource;
 use cargo::util::CargoResult;
 use cargo::util::config::Config;
@@ -25,12 +26,12 @@ use cargo::util::important_paths::{find_root_manifest_for_wd}; // TODO: use this
 // use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
 
 // use std::io::{self, Write};
-// use std::path::{Path, PathBuf};
+use std::path::{Path, PathBuf};
 // use std::process::Command;
 
 // use syntax::ast;
 
-pub fn exact_search(query: &str) -> Result<Crate> {
+fn exact_search(query: &str) -> Result<Crate> {
     // TODO: maybe we can get this with less constants :)
     let mut registry = Registry::new("https://crates.io".to_owned(), None);
 
@@ -40,6 +41,12 @@ pub fn exact_search(query: &str) -> Result<Crate> {
     }
 }
 
+fn generate_rlib<'a>(config: &'a Config, workspace: Workspace<'a>) -> CargoResult<PathBuf> {
+    let opts = CompileOptions::default(config, CompileMode::Build);
+    compile(&workspace, &opts).map(|c| c.root_output)
+
+    //compilation.binaries
+}
 
 fn main() {
     let config = Config::default().expect("could not obtain default config");
@@ -60,6 +67,14 @@ fn main() {
         .unwrap();
 
     let stable_package = registry_source.download(&package_id).unwrap();
+    let stable_workspace =
+        if let Ok(ret) = Workspace::ephemeral(stable_package, &config, None, false) {
+            ret
+        } else {
+            panic!("fail2");
+        };
+
+    println!("{:?}", generate_rlib(&config, stable_workspace));
 }
 
 /*
