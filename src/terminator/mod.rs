@@ -456,9 +456,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // An external C function
             let ty = sig.output();
             let (ret, target) = destination.unwrap();
-            self.call_c_abi(instance.def_id(), arg_operands, ret, ty)?;
-            self.dump_local(ret);
-            self.goto_block(target);
+            self.call_c_abi(instance.def_id(), arg_operands, ret, ty, target)?;
             return Ok(());
         }
     
@@ -493,6 +491,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         arg_operands: &[mir::Operand<'tcx>],
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
+        dest_block: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
         let name = self.tcx.item_name(def_id);
         let attrs = self.tcx.get_attrs(def_id);
@@ -537,6 +536,34 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let align = self.value_to_primval(args[3], usize)?.to_u64()?;
                 let new_ptr = self.memory.reallocate(ptr, size, align)?;
                 self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
+            }
+
+            "__rust_maybe_catch_panic" => {
+                // We abort on panic, so not much is going on here, but we still have to call the closure
+                let u8_ptr_ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
+                let f = args[0].read_ptr(&self.memory)?;
+                let data = args[1].read_ptr(&self.memory)?; // FIXME: Why does value_to_primval(args[2], u8_ptr_ty)?.to_ptr()? here end up doing the Wrong Thing (TM)?
+                let f_instance = self.memory.get_fn(f.alloc_id)?;
+                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+
+                // Now we make a functon call.  TODO: Consider making this re-usable?  EvalContext::step does sth. similar for the TLS dtors,
+                // and of coruse eval_main.
+                let mir = self.load_mir(f_instance.def)?;
+                self.push_stack_frame(
+                    f_instance,
+                    mir.span,
+                    mir,
+                    Lvalue::from_ptr(Pointer::zst_ptr()),
+                    StackPopCleanup::Goto(dest_block),
+                )?;
+
+                let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("Argument to __rust_maybe_catch_panic does not take enough arguments.".to_owned()))?;
+                let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                self.write_value(Value::ByVal(PrimVal::Ptr(data)), dest, u8_ptr_ty)?;
+
+                // Don't fall through
+                // FIXME: Do we have to do self.dump_local(ret) anywhere?
+                return Ok(());
             }
 
             "memcmp" => {
@@ -591,7 +618,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
                 self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
             }
-            
+
             "write" => {
                 let fd = self.value_to_primval(args[0], usize)?.to_u64()?;
                 let buf = args[1].read_ptr(&self.memory)?;
@@ -684,6 +711,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // Since we pushed no stack frame, the main loop will act
         // as if the call just completed and it's returning to the
         // current frame.
+        self.dump_local(dest);
+        self.goto_block(dest_block);
         Ok(())
-    }   
+    }
 }
