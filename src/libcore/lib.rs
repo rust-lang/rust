@@ -171,6 +171,9 @@ pub mod str;
 pub mod hash;
 pub mod fmt;
 
+#[unstable(feature = "core_collections", issue = "0")]
+pub mod collections;
+
 // note: does not need to be public
 mod char_private;
 mod iter_private;
