@@ -288,7 +288,7 @@ pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<def::Def> {
             };
 
             for item in &mem::replace(&mut items, vec![]) {
-                if item.name == *segment {
+                if item.ident.name == *segment {
                     if path_it.peek().is_none() {
                         return Some(item.def);
                     }
