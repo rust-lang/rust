@@ -153,6 +153,7 @@
     - [io](library-features/io.md)
     - [ip](library-features/ip.md)
     - [iter_rfind](library-features/iter-rfind.md)
+    - [iterator_step_by](library-features/iterator-step-by.md)
     - [libstd_io_internals](library-features/libstd-io-internals.md)
     - [libstd_sys_internals](library-features/libstd-sys-internals.md)
     - [libstd_thread_internals](library-features/libstd-thread-internals.md)
