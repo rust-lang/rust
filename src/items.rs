@@ -500,7 +500,11 @@ impl<'a> FmtVisitor<'a> {
     }
 }
 
-pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -> Option<String> {
+pub fn format_impl(context: &RewriteContext,
+                   item: &ast::Item,
+                   offset: Indent,
+                   where_span_end: Option<BytePos>)
+                   -> Option<String> {
     if let ast::ItemKind::Impl(_, _, ref generics, ref trait_ref, _, ref items) = item.node {
         let mut result = String::new();
         // First try to format the ref and type without a split at the 'for'.
@@ -527,7 +531,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
                                                              "{",
                                                              false,
                                                              last_line_width(&ref_and_type) == 1,
-                                                             None));
+                                                             where_span_end));
 
         if try_opt!(is_impl_single_line(context, &items, &result, &where_clause_str, &item)) {
             result.push_str(&where_clause_str);
