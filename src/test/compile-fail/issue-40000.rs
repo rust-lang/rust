@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(closure_to_fn_coercion)]
-
 fn main() {
     let bar: fn(&mut u32) = |_| {};
 

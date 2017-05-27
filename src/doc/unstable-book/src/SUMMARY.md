@@ -25,7 +25,6 @@
     - [cfg_target_has_atomic](language-features/cfg-target-has-atomic.md)
     - [cfg_target_thread_local](language-features/cfg-target-thread-local.md)
     - [cfg_target_vendor](language-features/cfg-target-vendor.md)
-    - [closure_to_fn_coercion](language-features/closure-to-fn-coercion.md)
     - [compiler_builtins](language-features/compiler-builtins.md)
     - [concat_idents](language-features/concat-idents.md)
     - [conservative_impl_trait](language-features/conservative-impl-trait.md)
