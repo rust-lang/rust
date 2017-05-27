@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    &1 as Send;
-    //~^ ERROR cast to unsized type
-    //~| HELP try casting to a reference instead:
-    //~| SUGGESTION &1 as &Send;
-    Box::new(1) as Send;
-    //~^ ERROR cast to unsized type
-    //~| HELP try casting to a `Box` instead:
-    //~| SUGGESTION Box::new(1) as Box<Send>;
+// force-host
+// no-prefer-dynamic
+
+#![crate_type = "proc-macro"]
+
+extern crate proc_macro;
+
+use proc_macro::TokenStream;
+
+#[proc_macro_derive(Clona)]
+pub fn derive_clonea(input: TokenStream) -> TokenStream {
+    "".parse().unwrap()
 }
