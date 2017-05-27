@@ -1,5 +1,5 @@
 #![feature(custom_attribute, attr_literals)]
-#![miri(stack_limit=2)]
+#![miri(stack_limit=16)]
 
 fn bar() {
     foo();
@@ -10,10 +10,16 @@ fn foo() {
 }
 
 fn cake() {
-    flubber();
+    flubber(3);
 }
 
-fn flubber() {}
+fn flubber(i: u32) {
+    if i > 0 {
+        flubber(i-1);
+    } else {
+        bar();
+    }
+}
 
 fn main() {
     bar();

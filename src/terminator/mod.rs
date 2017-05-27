@@ -622,6 +622,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 return Ok(());
             }
 
+            "__rust_start_panic" => {
+                return Err(EvalError::Panic);
+            }
+
             "memcmp" => {
                 let left = args[0].read_ptr(&self.memory)?;
                 let right = args[1].read_ptr(&self.memory)?;

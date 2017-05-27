@@ -34,7 +34,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         if self.stack.is_empty() {
             if let Some((instance, ptr)) = self.memory.fetch_tls_dtor() {
                 trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
-                // TODO: Potientiually, this has to support all the other possible instances? See eval_fn_call in terminator/mod.rs
+                // TODO: Potientially, this has to support all the other possible instances? See eval_fn_call in terminator/mod.rs
                 let mir = self.load_mir(instance.def)?;
                 self.push_stack_frame(
                     instance,
