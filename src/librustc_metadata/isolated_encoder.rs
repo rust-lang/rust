@@ -35,7 +35,17 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             tcx: tcx,
             ecx: ecx,
             hcx: if compute_ich {
-                Some((StableHashingContext::new(tcx), StableHasher::new()))
+                // We are always hashing spans for things in metadata because
+                // don't know if a downstream crate will use them or not.
+                // Except when -Zquery-dep-graph is specified because we don't
+                // want to mess up our tests.
+                let hcx = if tcx.sess.opts.debugging_opts.query_dep_graph {
+                    StableHashingContext::new(tcx)
+                } else {
+                    StableHashingContext::new(tcx).force_span_hashing()
+                };
+
+                Some((hcx, StableHasher::new()))
             } else {
                 None
             }
