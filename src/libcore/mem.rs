@@ -479,6 +479,27 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
             ptr::copy_nonoverlapping(t, y.offset(i), block_size);
             i += block_size as isize;
         }
+
+        // Swap remaining bytes 8 at a time if x & y are properly aligned
+        if align_of::<T>() % 8 == 0 {
+            while i + 8 <= len as isize {
+                let t = *(x.offset(i) as *mut u64);
+                *(x.offset(i) as *mut u64) = *(y.offset(i) as *mut u64);
+                *(y.offset(i) as *mut u64) = t;
+                i += 8;
+            }
+        }
+
+        // Swap remaining bytes 4 at a time if x & y are properly aligned
+        if align_of::<T>() % 4 == 0 {
+            while i + 4 <= len as isize {
+                let t = *(x.offset(i) as *mut u32);
+                *(x.offset(i) as *mut u32) = *(y.offset(i) as *mut u32);
+                *(y.offset(i) as *mut u32) = t;
+                i += 4;
+            }
+        }
+
         if i < len {
             // Swap any remaining bytes
             let mut t: UnalignedBlock = uninitialized();
