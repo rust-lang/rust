@@ -3,11 +3,18 @@ name = "semverver"
 version = "0.1.0"
 authors = ["Inokentiy Babushkin <twk@twki.de>"]
 
-[lib]
-plugin = true
-
 [[bin]]
 name = "cargo-semver"
+path = "src/bin/cargo_semver.rs"
+
+[[bin]]
+name = "rust-semverver"
+path = "src/bin/rust_semverver.rs"
 
 [dependencies]
+cargo = "^0.18.0"
 cargo_metadata = "^0.2.1"
+crates-io = "^0.7.0"
+
+[replace]
+"libgit2-sys:0.6.11" = { git = "https://github.com/ibabushkin/git2-rs.git", branch = "tmp-fix-libressl"}

@@ -1,24 +1,68 @@
 #![feature(box_syntax)]
-#![feature(rustc_private)]
+// #![feature(rustc_private)]
 
-extern crate cargo_metadata;
-extern crate getopts;
-extern crate rustc;
-extern crate rustc_driver;
-extern crate rustc_errors;
-extern crate syntax;
+// extern crate cargo_metadata;
+// extern crate getopts;
+// extern crate rustc;
+// extern crate rustc_driver;
+// extern crate rustc_errors;
+// extern crate syntax;
 
-use rustc::session::{config, Session};
-use rustc::session::config::{Input, ErrorOutputType};
+extern crate cargo;
+extern crate crates_io;
 
-use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
+use crates_io::{Crate, Registry, Result};
 
-use std::io::{self, Write};
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use cargo::core::{Source, SourceId, Package, PackageId};
+use cargo::sources::registry::RegistrySource;
+use cargo::util::CargoResult;
+use cargo::util::config::Config;
+use cargo::util::important_paths::{find_root_manifest_for_wd}; // TODO: use this
 
-use syntax::ast;
+// use rustc::session::{config, Session};
+// use rustc::session::config::{Input, ErrorOutputType};
 
+// use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
+
+// use std::io::{self, Write};
+// use std::path::{Path, PathBuf};
+// use std::process::Command;
+
+// use syntax::ast;
+
+pub fn exact_search(query: &str) -> Result<Crate> {
+    // TODO: maybe we can get this with less constants :)
+    let mut registry = Registry::new("https://crates.io".to_owned(), None);
+
+    match registry.search(query, 1) {
+        Ok((mut crates, _)) => Ok(crates.drain(..).find(|krate| krate.name == query).unwrap()),
+        Err(e) => Err(e)
+    }
+}
+
+
+fn main() {
+    let config = Config::default().expect("could not obtain default config");
+
+    let manifest_path = find_root_manifest_for_wd(None, config.cwd()).unwrap();
+    let local_package = Package::for_path(&manifest_path, &config).unwrap();
+    let name = local_package.name();
+
+    let source_id = SourceId::crates_io(&config).unwrap();
+    let mut registry_source = RegistrySource::remote(&source_id, &config);
+
+    let remote_crate = if let Ok(res) = exact_search(name) { res } else { panic!("fail") };
+    println!("we found a crate {}, version {}", remote_crate.name, remote_crate.max_version);
+
+    let package_id = PackageId::new(&remote_crate.name,
+                                    &remote_crate.max_version,
+                                    &source_id)
+        .unwrap();
+
+    let stable_package = registry_source.download(&package_id).unwrap();
+}
+
+/*
 struct SemVerVerCompilerCalls {
     default: RustcDefaultCalls,
     enabled: bool
@@ -271,3 +315,4 @@ fn process<I>(old_args: I) -> Result<(), i32>
         Err(exit_status.code().unwrap_or(-1))
     }
 }
+*/
