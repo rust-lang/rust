@@ -149,7 +149,9 @@
 
 mod markers;
 
-pub use markers::Drop;
+pub use markers::{Drop, Index, IndexMut, Deref, DerefMut};
+pub use markers::{Fn, FnMut, FnOnce, CoerceUnsized};
+pub use markers::{Place, InPlace, Boxed, BoxPlace, Carrier};
 
 pub use num::{Add, Sub, Mul, Div, Rem, Neg};
 pub use num::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
@@ -159,5 +161,3 @@ pub use bit::{BitAndAssign, BitOrAssign, BitXorAssign, ShlAssign, ShrAssign};
 
 pub use range::{RangeFull, Range, RangeFrom, RangeTo};
 pub use range::{RangeInclusive, RangeToInclusive};
-
-#[stable(feature = "rust1", since = "1.0.0")]
