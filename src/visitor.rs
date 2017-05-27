@@ -389,9 +389,9 @@ impl<'a> FmtVisitor<'a> {
                               ti.id,
                               ast::Defaultness::Final);
             }
-            ast::TraitItemKind::Type(ref type_param_bounds, _) => {
+            ast::TraitItemKind::Type(ref type_param_bounds, ref type_default) => {
                 let rewrite = rewrite_associated_type(ti.ident,
-                                                      None,
+                                                      type_default.as_ref(),
                                                       Some(type_param_bounds),
                                                       &self.get_context(),
                                                       self.block_indent);
