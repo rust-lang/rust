@@ -1,4 +1,4 @@
-error: no method named `closure` found for type `Obj<[closure@$DIR/issue-18343.rs:16:28: 16:33]>` in the current scope
+error[E0599]: no method named `closure` found for type `Obj<[closure@$DIR/issue-18343.rs:16:28: 16:33]>` in the current scope
   --> $DIR/issue-18343.rs:17:7
    |
 17 |     o.closure();

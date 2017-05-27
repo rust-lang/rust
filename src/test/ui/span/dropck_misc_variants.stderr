@@ -1,4 +1,4 @@
-error: `bomb` does not live long enough
+error[E0597]: `bomb` does not live long enough
   --> $DIR/dropck_misc_variants.rs:34:1
    |
 33 |     _w = Wrap::<&[&str]>(NoisyDrop(&bomb));
@@ -8,7 +8,7 @@ error: `bomb` does not live long enough
    |
    = note: values in a scope are dropped in the opposite order they are created
 
-error: `v` does not live long enough
+error[E0597]: `v` does not live long enough
   --> $DIR/dropck_misc_variants.rs:44:1
    |
 41 |         let u = NoisyDrop(&v);

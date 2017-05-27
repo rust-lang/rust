@@ -4005,7 +4005,7 @@ details.
 [issue #33685]: https://github.com/rust-lang/rust/issues/33685
 "##,
 
-    E0582: r##"
+E0582: r##"
 A lifetime appears only in an associated-type binding,
 and not in the input types to the trait.
 
@@ -4040,6 +4040,16 @@ compiler, but this was since corrected. See [issue #33685] for more
 details.
 
 [issue #33685]: https://github.com/rust-lang/rust/issues/33685
+"##,
+
+E0599: r##"
+```compile_fail,E0599
+struct Mouth;
+
+let x = Mouth;
+x.chocolate(); // error: no method named `chocolate` found for type `Mouth`
+               //        in the current scope
+```
 "##,
 
 }

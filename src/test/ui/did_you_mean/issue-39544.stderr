@@ -1,4 +1,4 @@
-error: cannot borrow immutable field `z.x` as mutable
+error[E0596]: cannot borrow immutable field `z.x` as mutable
   --> $DIR/issue-39544.rs:21:18
    |
 20 |     let z = Z { x: X::Y };
@@ -6,7 +6,7 @@ error: cannot borrow immutable field `z.x` as mutable
 21 |     let _ = &mut z.x;
    |                  ^^^ cannot mutably borrow immutable field
 
-error: cannot borrow immutable field `self.x` as mutable
+error[E0596]: cannot borrow immutable field `self.x` as mutable
   --> $DIR/issue-39544.rs:26:22
    |
 25 |     fn foo<'z>(&'z self) {
@@ -14,7 +14,7 @@ error: cannot borrow immutable field `self.x` as mutable
 26 |         let _ = &mut self.x;
    |                      ^^^^^^ cannot mutably borrow immutable field
 
-error: cannot borrow immutable field `self.x` as mutable
+error[E0596]: cannot borrow immutable field `self.x` as mutable
   --> $DIR/issue-39544.rs:30:22
    |
 29 |     fn foo1(&self, other: &Z) {
@@ -22,7 +22,7 @@ error: cannot borrow immutable field `self.x` as mutable
 30 |         let _ = &mut self.x;
    |                      ^^^^^^ cannot mutably borrow immutable field
 
-error: cannot borrow immutable field `other.x` as mutable
+error[E0596]: cannot borrow immutable field `other.x` as mutable
   --> $DIR/issue-39544.rs:31:22
    |
 29 |     fn foo1(&self, other: &Z) {
@@ -31,7 +31,7 @@ error: cannot borrow immutable field `other.x` as mutable
 31 |         let _ = &mut other.x;
    |                      ^^^^^^^ cannot mutably borrow immutable field
 
-error: cannot borrow immutable field `self.x` as mutable
+error[E0596]: cannot borrow immutable field `self.x` as mutable
   --> $DIR/issue-39544.rs:35:22
    |
 34 |     fn foo2<'a>(&'a self, other: &Z) {
@@ -39,7 +39,7 @@ error: cannot borrow immutable field `self.x` as mutable
 35 |         let _ = &mut self.x;
    |                      ^^^^^^ cannot mutably borrow immutable field
 
-error: cannot borrow immutable field `other.x` as mutable
+error[E0596]: cannot borrow immutable field `other.x` as mutable
   --> $DIR/issue-39544.rs:36:22
    |
 34 |     fn foo2<'a>(&'a self, other: &Z) {
@@ -48,7 +48,7 @@ error: cannot borrow immutable field `other.x` as mutable
 36 |         let _ = &mut other.x;
    |                      ^^^^^^^ cannot mutably borrow immutable field
 
-error: cannot borrow immutable field `self.x` as mutable
+error[E0596]: cannot borrow immutable field `self.x` as mutable
   --> $DIR/issue-39544.rs:40:22
    |
 39 |     fn foo3<'a>(self: &'a Self, other: &Z) {
@@ -56,7 +56,7 @@ error: cannot borrow immutable field `self.x` as mutable
 40 |         let _ = &mut self.x;
    |                      ^^^^^^ cannot mutably borrow immutable field
 
-error: cannot borrow immutable field `other.x` as mutable
+error[E0596]: cannot borrow immutable field `other.x` as mutable
   --> $DIR/issue-39544.rs:41:22
    |
 39 |     fn foo3<'a>(self: &'a Self, other: &Z) {
@@ -65,7 +65,7 @@ error: cannot borrow immutable field `other.x` as mutable
 41 |         let _ = &mut other.x;
    |                      ^^^^^^^ cannot mutably borrow immutable field
 
-error: cannot borrow immutable field `other.x` as mutable
+error[E0596]: cannot borrow immutable field `other.x` as mutable
   --> $DIR/issue-39544.rs:45:22
    |
 44 |     fn foo4(other: &Z) {
@@ -73,7 +73,7 @@ error: cannot borrow immutable field `other.x` as mutable
 45 |         let _ = &mut other.x;
    |                      ^^^^^^^ cannot mutably borrow immutable field
 
-error: cannot borrow immutable field `z.x` as mutable
+error[E0596]: cannot borrow immutable field `z.x` as mutable
   --> $DIR/issue-39544.rs:51:18
    |
 50 | pub fn with_arg(z: Z, w: &Z) {
@@ -81,7 +81,7 @@ error: cannot borrow immutable field `z.x` as mutable
 51 |     let _ = &mut z.x;
    |                  ^^^ cannot mutably borrow immutable field
 
-error: cannot borrow immutable field `w.x` as mutable
+error[E0596]: cannot borrow immutable field `w.x` as mutable
   --> $DIR/issue-39544.rs:52:18
    |
 50 | pub fn with_arg(z: Z, w: &Z) {
@@ -90,7 +90,7 @@ error: cannot borrow immutable field `w.x` as mutable
 52 |     let _ = &mut w.x;
    |                  ^^^ cannot mutably borrow immutable field
 
-error: cannot assign to immutable borrowed content `*x.0`
+error[E0594]: cannot assign to immutable borrowed content `*x.0`
   --> $DIR/issue-39544.rs:58:5
    |
 58 |     *x.0 = 1;

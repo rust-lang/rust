@@ -1,4 +1,4 @@
-error: `d1` does not live long enough
+error[E0597]: `d1` does not live long enough
   --> $DIR/issue-24805-dropck-trait-has-items.rs:48:1
    |
 47 |     _d = D_HasSelfMethod(&d1);
@@ -8,7 +8,7 @@ error: `d1` does not live long enough
    |
    = note: values in a scope are dropped in the opposite order they are created
 
-error: `d1` does not live long enough
+error[E0597]: `d1` does not live long enough
   --> $DIR/issue-24805-dropck-trait-has-items.rs:54:1
    |
 53 |     _d = D_HasMethodWithSelfArg(&d1);
@@ -18,7 +18,7 @@ error: `d1` does not live long enough
    |
    = note: values in a scope are dropped in the opposite order they are created
 
-error: `d1` does not live long enough
+error[E0597]: `d1` does not live long enough
   --> $DIR/issue-24805-dropck-trait-has-items.rs:60:1
    |
 59 |     _d = D_HasType(&d1);

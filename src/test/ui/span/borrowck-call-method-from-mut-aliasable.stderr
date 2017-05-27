@@ -1,4 +1,4 @@
-error: cannot borrow immutable borrowed content `*x` as mutable
+error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
   --> $DIR/borrowck-call-method-from-mut-aliasable.rs:27:5
    |
 25 | fn b(x: &Foo) {

@@ -1,4 +1,4 @@
-error: borrowed value does not live long enough
+error[E0597]: borrowed value does not live long enough
   --> $DIR/slice-borrow.rs:18:5
    |
 16 |         let x: &[isize] = &[1, 2, 3, 4, 5];

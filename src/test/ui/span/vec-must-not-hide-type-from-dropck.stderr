@@ -1,4 +1,4 @@
-error: `c2` does not live long enough
+error[E0597]: `c2` does not live long enough
    --> $DIR/vec-must-not-hide-type-from-dropck.rs:129:1
     |
 127 |     c1.v[0].v.set(Some(&c2));
@@ -9,7 +9,7 @@ error: `c2` does not live long enough
     |
     = note: values in a scope are dropped in the opposite order they are created
 
-error: `c1` does not live long enough
+error[E0597]: `c1` does not live long enough
    --> $DIR/vec-must-not-hide-type-from-dropck.rs:129:1
     |
 128 |     c2.v[0].v.set(Some(&c1));

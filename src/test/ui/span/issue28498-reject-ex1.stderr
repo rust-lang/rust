@@ -1,4 +1,4 @@
-error: `foo.data` does not live long enough
+error[E0597]: `foo.data` does not live long enough
   --> $DIR/issue28498-reject-ex1.rs:46:1
    |
 44 |     foo.data[0].1.set(Some(&foo.data[1]));
@@ -9,7 +9,7 @@ error: `foo.data` does not live long enough
    |
    = note: values in a scope are dropped in the opposite order they are created
 
-error: `foo.data` does not live long enough
+error[E0597]: `foo.data` does not live long enough
   --> $DIR/issue28498-reject-ex1.rs:46:1
    |
 45 |     foo.data[1].1.set(Some(&foo.data[0]));

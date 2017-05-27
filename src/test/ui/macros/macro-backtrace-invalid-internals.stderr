@@ -1,4 +1,4 @@
-error: no method named `fake` found for type `{integer}` in the current scope
+error[E0599]: no method named `fake` found for type `{integer}` in the current scope
   --> $DIR/macro-backtrace-invalid-internals.rs:15:13
    |
 15 |           1.fake()
@@ -25,7 +25,7 @@ error: attempted tuple index `0` on type `{integer}`, but the type was not a tup
 52 |     fake_anon_field_stmt!();
    |     ------------------------ in this macro invocation
 
-error: no method named `fake` found for type `{integer}` in the current scope
+error[E0599]: no method named `fake` found for type `{integer}` in the current scope
   --> $DIR/macro-backtrace-invalid-internals.rs:33:13
    |
 33 |           1.fake()

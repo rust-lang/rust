@@ -1,4 +1,4 @@
-error: borrowed value does not live long enough
+error[E0597]: borrowed value does not live long enough
   --> $DIR/regions-close-over-borrowed-ref-in-obj.rs:22:5
    |
 20 |         let ss: &isize = &1;

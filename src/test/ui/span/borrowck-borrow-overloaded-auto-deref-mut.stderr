@@ -1,4 +1,4 @@
-error: cannot borrow immutable argument `x` as mutable
+error[E0596]: cannot borrow immutable argument `x` as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:63:24
    |
 62 | fn deref_mut_field1(x: Own<Point>) {
@@ -6,7 +6,7 @@ error: cannot borrow immutable argument `x` as mutable
 63 |     let __isize = &mut x.y; //~ ERROR cannot borrow
    |                        ^ cannot borrow mutably
 
-error: cannot borrow immutable borrowed content `*x` as mutable
+error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:75:10
    |
 74 | fn deref_extend_mut_field1(x: &Own<Point>) -> &mut isize {
@@ -24,7 +24,7 @@ error[E0499]: cannot borrow `*x` as mutable more than once at a time
 89 | }
    | - first borrow ends here
 
-error: cannot borrow immutable argument `x` as mutable
+error[E0596]: cannot borrow immutable argument `x` as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:98:5
    |
 97 | fn assign_field1<'a>(x: Own<Point>) {
@@ -32,7 +32,7 @@ error: cannot borrow immutable argument `x` as mutable
 98 |     x.y = 3; //~ ERROR cannot borrow
    |     ^ cannot borrow mutably
 
-error: cannot borrow immutable borrowed content `*x` as mutable
+error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
    --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:102:5
     |
 101 | fn assign_field2<'a>(x: &'a Own<Point>) {
@@ -50,7 +50,7 @@ error[E0499]: cannot borrow `*x` as mutable more than once at a time
 112 | }
     | - first borrow ends here
 
-error: cannot borrow immutable argument `x` as mutable
+error[E0596]: cannot borrow immutable argument `x` as mutable
    --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:119:5
     |
 118 | fn deref_mut_method1(x: Own<Point>) {
@@ -58,7 +58,7 @@ error: cannot borrow immutable argument `x` as mutable
 119 |     x.set(0, 0); //~ ERROR cannot borrow
     |     ^ cannot borrow mutably
 
-error: cannot borrow immutable borrowed content `*x` as mutable
+error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
    --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:131:5
     |
 130 | fn deref_extend_mut_method1(x: &Own<Point>) -> &mut isize {
@@ -66,7 +66,7 @@ error: cannot borrow immutable borrowed content `*x` as mutable
 131 |     x.y_mut() //~ ERROR cannot borrow
     |     ^ cannot borrow as mutable
 
-error: cannot borrow immutable argument `x` as mutable
+error[E0596]: cannot borrow immutable argument `x` as mutable
    --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:139:6
     |
 138 | fn assign_method1<'a>(x: Own<Point>) {
@@ -74,7 +74,7 @@ error: cannot borrow immutable argument `x` as mutable
 139 |     *x.y_mut() = 3; //~ ERROR cannot borrow
     |      ^ cannot borrow mutably
 
-error: cannot borrow immutable borrowed content `*x` as mutable
+error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
    --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:143:6
     |
 142 | fn assign_method2<'a>(x: &'a Own<Point>) {

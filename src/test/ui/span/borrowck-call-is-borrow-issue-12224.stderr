@@ -11,7 +11,7 @@ error[E0499]: cannot borrow `f` as mutable more than once at a time
 27 |     }));
    |       - first borrow ends here
 
-error: cannot borrow immutable borrowed content `*f` as mutable
+error[E0596]: cannot borrow immutable borrowed content `*f` as mutable
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:39:5
    |
 37 | fn test2<F>(f: &F) where F: FnMut() {
@@ -20,7 +20,7 @@ error: cannot borrow immutable borrowed content `*f` as mutable
 39 |     (*f)();
    |     ^^^^ cannot borrow as mutable
 
-error: cannot borrow immutable `Box` content `*f.f` as mutable
+error[E0596]: cannot borrow immutable `Box` content `*f.f` as mutable
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:50:5
    |
 48 | fn test4(f: &Test) {

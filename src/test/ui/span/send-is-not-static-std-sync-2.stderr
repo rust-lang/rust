@@ -1,4 +1,4 @@
-error: `x` does not live long enough
+error[E0597]: `x` does not live long enough
   --> $DIR/send-is-not-static-std-sync-2.rs:22:5
    |
 21 |         Mutex::new(&x) //~ ERROR does not live long enough
@@ -9,7 +9,7 @@ error: `x` does not live long enough
 25 | }
    | - borrowed value needs to live until here
 
-error: `x` does not live long enough
+error[E0597]: `x` does not live long enough
   --> $DIR/send-is-not-static-std-sync-2.rs:31:5
    |
 30 |         RwLock::new(&x) //~ ERROR does not live long enough
@@ -20,7 +20,7 @@ error: `x` does not live long enough
 33 | }
    | - borrowed value needs to live until here
 
-error: `x` does not live long enough
+error[E0597]: `x` does not live long enough
   --> $DIR/send-is-not-static-std-sync-2.rs:41:5
    |
 39 |         let _ = tx.send(&x); //~ ERROR does not live long enough

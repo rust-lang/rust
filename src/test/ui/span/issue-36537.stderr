@@ -1,4 +1,4 @@
-error: `a` does not live long enough
+error[E0597]: `a` does not live long enough
   --> $DIR/issue-36537.rs:15:1
    |
 14 |     p = &a; //~ NOTE borrow occurs here

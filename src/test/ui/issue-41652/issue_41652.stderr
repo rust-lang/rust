@@ -1,4 +1,4 @@
-error: no method named `f` found for type `{integer}` in the current scope
+error[E0599]: no method named `f` found for type `{integer}` in the current scope
   --> $DIR/issue_41652.rs:19:11
    |
 19 |         3.f()

@@ -1,4 +1,4 @@
-error: cannot borrow immutable local variable `key` as mutable
+error[E0596]: cannot borrow immutable local variable `key` as mutable
   --> $DIR/issue-34337.rs:16:14
    |
 16 |     get(&mut key);
