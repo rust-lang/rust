@@ -369,6 +369,12 @@ impl<T> From<T> for T {
     fn from(t: T) -> T { t }
 }
 
+// From accepts clonable references as well
+#[stable(feature = "convert_from_ref", since = "1.17.0")]
+impl<'a, T: Clone + 'a> From<&'a T> for T {
+    fn from(t: &'a T) -> T { t.clone() }
+}
+
 
 // TryFrom implies TryInto
 #[unstable(feature = "try_from", issue = "33417")]
