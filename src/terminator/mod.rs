@@ -637,9 +637,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(dest, PrimVal::Bytes(result as u128), dest_ty)?;
             }
 
-            // unix panic code inside libstd will read the return value of this function
-            "pthread_rwlock_rdlock" => {
+            // Some things needed for sys::thread initialization to go through
+            "signal" | "sigaction" | "sigaltstack" => {
                 self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+            }
+
+            "sysconf" => {
+                let name = self.value_to_primval(args[0], usize)?.to_u64()?;
+                trace!("sysconf() called with name {}", name);
+                let result = match name {
+                    30 => 4096, // _SC_PAGESIZE
+                    _ => return Err(EvalError::Unimplemented(format!("Unimplemented sysconf name: {}", name)))
+                };
+                self.write_primval(dest, PrimVal::Bytes(result), dest_ty)?;
+            }
+
+            "mmap" => {
+                // This is a horrible hack, but well... the guard page mechanism calls mmap and expects a particular return value, so we give it that value
+                let addr = args[0].read_ptr(&self.memory)?;
+                self.write_primval(dest, PrimVal::Ptr(addr), dest_ty)?;
             }
 
             // Hook pthread calls that go to the thread-local storage memory subsystem
@@ -647,13 +663,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let key_ptr = args[0].read_ptr(&self.memory)?;
                 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
-                let dtor_fn_ty = match self.operand_ty(&arg_operands[1]).sty {
-                    TypeVariants::TyAdt(_, ref substs) => {
-                        substs.type_at(0)
-                    }
-                    _ => return Err(EvalError::AbiViolation("Wrong signature used for pthread_key_create: Second argument must be option of a function pointer.".to_owned()))
-                };
-                let dtor_ptr = self.value_to_primval(args[1], dtor_fn_ty)?.to_ptr()?;
+                let dtor_ptr = args[1].read_ptr(&self.memory)?;
                 // TODO: The null-pointer case here is entirely untested
                 let dtor = if dtor_ptr.is_null_ptr() { None } else { Some(self.memory.get_fn(dtor_ptr.alloc_id)?) };
                 
@@ -699,8 +709,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
             }
 
+            // Stub out all the other pthread calls to just return 0
             link_name if link_name.starts_with("pthread_") => {
                 warn!("ignoring C ABI call: {}", link_name);
+                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
             },
 
             _ => {

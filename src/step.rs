@@ -43,14 +43,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Lvalue::from_ptr(Pointer::zst_ptr()),
                     StackPopCleanup::None,
                 )?;
-                if let Some(arg_local) = self.frame().mir.args_iter().next() {
-                    let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                    let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
-                    self.write_value(Value::ByVal(PrimVal::Ptr(ptr)), dest, ty)?;
-                } else {
-                    return Err(EvalError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()));
-                }
-
+                let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()))?;
+                let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
+                self.write_value(Value::ByVal(PrimVal::Ptr(ptr)), dest, ty)?;
                 return Ok(true);
             }
             return Ok(false);
