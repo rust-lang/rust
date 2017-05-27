@@ -10,8 +10,6 @@
 
 // Most traits cannot be derived for unions.
 
-#![feature(untagged_unions)]
-
 #[derive(
     PartialEq, //~ ERROR this trait cannot be derived for unions
     PartialOrd, //~ ERROR this trait cannot be derived for unions

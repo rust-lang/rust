@@ -65,7 +65,6 @@
 #![feature(trusted_len)]
 #![feature(unicode)]
 #![feature(unique)]
-#![feature(untagged_unions)]
 #![cfg_attr(not(test), feature(str_checked_slicing))]
 #![cfg_attr(test, feature(rand, test))]
 #![feature(offset_to)]
