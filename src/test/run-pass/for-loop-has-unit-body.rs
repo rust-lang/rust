@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,9 +9,13 @@
 // except according to those terms.
 
 fn main() {
-    let xs : Vec<Option<i32>> = vec![Some(1), None];
+    // Check that the tail statement in the body unifies with something
+    for _ in 0..3 {
+        unsafe { std::mem::uninitialized() }
+    }
 
-    for Some(x) in xs {}
-    //~^ ERROR E0005
-    //~| NOTE pattern `None` not covered
+    // Check that the tail statement in the body can be unit
+    for _ in 0..3 {
+        ()
+    }
 }

@@ -452,12 +452,14 @@ enum Method { GET, POST }
 
 
 E0297: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 Patterns used to bind names must be irrefutable. That is, they must guarantee
 that a name will be extracted in all cases. Instead of pattern matching the
 loop variable, consider using a `match` or `if let` inside the loop body. For
 instance:
 
-```compile_fail,E0297
+```compile_fail,E0005
 let xs : Vec<Option<i32>> = vec![Some(1), None];
 
 // This fails because `None` is not covered.

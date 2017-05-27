@@ -490,7 +490,8 @@ impl_stable_hash_for!(struct hir::Local {
     init,
     id,
     span,
-    attrs
+    attrs,
+    source
 });
 
 impl_stable_hash_for_spanned!(hir::Decl_);
@@ -638,6 +639,11 @@ impl_stable_hash_for!(enum hir::Expr_ {
     ExprInlineAsm(asm, inputs, outputs),
     ExprStruct(path, fields, base),
     ExprRepeat(val, times)
+});
+
+impl_stable_hash_for!(enum hir::LocalSource {
+    Normal,
+    ForLoopDesugar
 });
 
 impl_stable_hash_for!(enum hir::LoopSource {
