@@ -91,6 +91,24 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// strong `Arc` pointers from parent nodes to children, and [`Weak`][weak]
 /// pointers from children back to their parents.
 ///
+/// # Cloning references
+///
+/// Creating a new reference from an existing reference counted pointer is done using the
+/// `Clone` trait implemented for [`Arc<T>`][`arc`] and [`Weak<T>`][`weak`].
+///
+/// ```
+/// use std::sync::Arc;
+/// let foo = Arc::new(vec![1.0, 2.0, 3.0]);
+/// // The two syntaxes below are equivalent.
+/// let a = foo.clone();
+/// let b = Arc::clone(&foo);
+/// // a and b both point to the same memory location as foo.
+/// ```
+///
+/// The `Arc::clone(&from)` syntax is the most idiomatic because it conveys more explicitly
+/// the meaning of the code. In the example above, this syntax makes it easier to see that
+/// this code is creating a new reference rather than copying the whole content of foo.
+///
 /// ## `Deref` behavior
 ///
 /// `Arc<T>` automatically dereferences to `T` (via the [`Deref`][deref] trait),
@@ -138,7 +156,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// let five = Arc::new(5);
 ///
 /// for _ in 0..10 {
-///     let five = five.clone();
+///     let five = Arc::clone(&five);
 ///
 ///     thread::spawn(move || {
 ///         println!("{:?}", five);
@@ -158,7 +176,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// let val = Arc::new(AtomicUsize::new(5));
 ///
 /// for _ in 0..10 {
-///     let val = val.clone();
+///     let val = Arc::clone(&val);
 ///
 ///     thread::spawn(move || {
 ///         let v = val.fetch_add(1, Ordering::SeqCst);
@@ -282,7 +300,7 @@ impl<T> Arc<T> {
     /// assert_eq!(Arc::try_unwrap(x), Ok(3));
     ///
     /// let x = Arc::new(4);
-    /// let _y = x.clone();
+    /// let _y = Arc::clone(&x);
     /// assert_eq!(*Arc::try_unwrap(x).unwrap_err(), 4);
     /// ```
     #[inline]
@@ -451,7 +469,7 @@ impl<T: ?Sized> Arc<T> {
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
-    /// let _also_five = five.clone();
+    /// let _also_five = Arc::clone(&five);
     ///
     /// // This assertion is deterministic because we haven't shared
     /// // the `Arc` between threads.
@@ -499,7 +517,7 @@ impl<T: ?Sized> Arc<T> {
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
-    /// let same_five = five.clone();
+    /// let same_five = Arc::clone(&five);
     /// let other_five = Arc::new(5);
     ///
     /// assert!(Arc::ptr_eq(&five, &same_five));
@@ -524,7 +542,7 @@ impl<T: ?Sized> Clone for Arc<T> {
     ///
     /// let five = Arc::new(5);
     ///
-    /// five.clone();
+    /// Arc::clone(&five);
     /// ```
     #[inline]
     fn clone(&self) -> Arc<T> {
@@ -591,7 +609,7 @@ impl<T: Clone> Arc<T> {
     /// let mut data = Arc::new(5);
     ///
     /// *Arc::make_mut(&mut data) += 1;         // Won't clone anything
-    /// let mut other_data = data.clone();      // Won't clone inner data
+    /// let mut other_data = Arc::clone(&data); // Won't clone inner data
     /// *Arc::make_mut(&mut data) += 1;         // Clones inner data
     /// *Arc::make_mut(&mut data) += 1;         // Won't clone anything
     /// *Arc::make_mut(&mut other_data) *= 2;   // Won't clone anything
@@ -679,7 +697,7 @@ impl<T: ?Sized> Arc<T> {
     /// *Arc::get_mut(&mut x).unwrap() = 4;
     /// assert_eq!(*x, 4);
     ///
-    /// let _y = x.clone();
+    /// let _y = Arc::clone(&x);
     /// assert!(Arc::get_mut(&mut x).is_none());
     /// ```
     #[inline]
@@ -751,7 +769,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     /// }
     ///
     /// let foo  = Arc::new(Foo);
-    /// let foo2 = foo.clone();
+    /// let foo2 = Arc::clone(&foo);
     ///
     /// drop(foo);    // Doesn't print anything
     /// drop(foo2);   // Prints "dropped!"
@@ -903,11 +921,11 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::Arc;
+    /// use std::sync::{Arc, Weak};
     ///
     /// let weak_five = Arc::downgrade(&Arc::new(5));
     ///
-    /// weak_five.clone();
+    /// Weak::clone(&weak_five);
     /// ```
     #[inline]
     fn clone(&self) -> Weak<T> {
@@ -956,7 +974,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::Arc;
+    /// use std::sync::{Arc, Weak};
     ///
     /// struct Foo;
     ///
@@ -968,7 +986,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     ///
     /// let foo = Arc::new(Foo);
     /// let weak_foo = Arc::downgrade(&foo);
-    /// let other_weak_foo = weak_foo.clone();
+    /// let other_weak_foo = Weak::clone(&weak_foo);
     ///
     /// drop(weak_foo);   // Doesn't print anything
     /// drop(foo);        // Prints "dropped!"
