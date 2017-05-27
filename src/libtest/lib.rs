@@ -646,6 +646,9 @@ impl<T: Write> ConsoleTestState<T> {
 
     pub fn write_run_start(&mut self, len: usize) -> io::Result<()> {
         self.total = len;
+        if len == 0 {
+            return Ok(());
+        }
         let noun = if len != 1 {
             "tests"
         } else {
@@ -761,6 +764,9 @@ impl<T: Write> ConsoleTestState<T> {
 
     pub fn write_run_finish(&mut self) -> io::Result<bool> {
         assert!(self.passed + self.failed + self.ignored + self.measured == self.total);
+        if self.total == 0 {
+            return Ok(true);
+        }
 
         if self.options.display_output {
             self.write_outputs()?;
