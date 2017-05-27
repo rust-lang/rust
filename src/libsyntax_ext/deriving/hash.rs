@@ -12,11 +12,12 @@ use deriving;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{Expr, MetaItem, Mutability};
+use syntax::ast::{Expr, MetaItem, ItemKind, Mutability};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
 use syntax_pos::Span;
+use syntax::parse::token;
 
 pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                             span: Span,
@@ -51,7 +52,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                           is_unsafe: false,
                           unify_fieldless_variants: true,
                           combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                              hash_substructure(a, b, c)
+                              hash_substructure(a, b, c, enum_variants(item))
                           })),
                       }],
         associated_types: Vec::new(),
@@ -60,7 +61,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
     hash_trait_def.expand(cx, mitem, item, push);
 }
 
-fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
+fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure, enum_variants: Option<usize>) -> P<Expr> {
     let state_expr = match (substr.nonself_args.len(), substr.nonself_args.get(0)) {
         (1, Some(o_f)) => o_f,
         _ => {
@@ -88,7 +89,11 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                                                          "discriminant_value",
                                                          vec![cx.expr_self(trait_span)]);
 
-            stmts.push(call_hash(trait_span, variant_value));
+            stmts.push(call_hash(trait_span, if enum_variants.map(|x| x <= 256).unwrap_or(false) {
+                cx.expr_cast(trait_span, variant_value, cx.ty_ident(trait_span, token::str_to_ident("u8")))
+            } else {
+                variant_value
+            }));
 
             fs
         }
@@ -100,4 +105,18 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
     }
 
     cx.expr_block(cx.block(trait_span, stmts))
+}
+
+// Returns the number of variants if all don't have an explicit discriminant.
+fn enum_variants(item: &Annotatable) -> Option<usize> {
+    if let Annotatable::Item(ref item) = *item {
+        if let ItemKind::Enum(ref enum_def, _) = item.node {
+            if enum_def.variants.iter().any(|variant| variant.node.disr_expr.is_some()) {
+                return None;
+            }
+            return Some(enum_def.variants.len());
+        }
+    }
+
+    None
 }
