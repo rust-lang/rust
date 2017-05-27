@@ -15,7 +15,7 @@ use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, LvaluePreference, NoPreference, PreferMutLvalue, Ty};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, OverloadedDeref};
 use rustc::ty::fold::TypeFoldable;
 use rustc::infer::{self, InferOk};
 use syntax_pos::Span;
@@ -118,40 +118,49 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                       unadjusted_self_ty: Ty<'tcx>,
                       pick: &probe::Pick<'tcx>)
                       -> Ty<'tcx> {
-        let autoref = if let Some(mutbl) = pick.autoref {
+        // Commit the autoderefs by calling `autoderef` again, but this
+        // time writing the results into the various tables.
+        let mut autoderef = self.autoderef(self.span, unadjusted_self_ty);
+        let (_, n) = autoderef.nth(pick.autoderefs).unwrap();
+        assert_eq!(n, pick.autoderefs);
+
+        let mut adjustments = autoderef.adjust_steps(LvaluePreference::NoPreference);
+
+        let mut target = autoderef.unambiguous_final_ty();
+
+        if let Some(mutbl) = pick.autoref {
             let region = self.next_region_var(infer::Autoref(self.span));
-            Some(AutoBorrow::Ref(region, mutbl))
+            target = self.tcx.mk_ref(region, ty::TypeAndMut {
+                mutbl,
+                ty: target
+            });
+            adjustments.push(Adjustment {
+                kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                target
+            });
+
+            if let Some(unsize_target) = pick.unsize {
+                target = self.tcx.mk_ref(region, ty::TypeAndMut {
+                    mutbl,
+                    ty: unsize_target
+                });
+                adjustments.push(Adjustment {
+                    kind: Adjust::Unsize,
+                    target
+                });
+            }
         } else {
             // No unsizing should be performed without autoref (at
             // least during method dispach). This is because we
             // currently only unsize `[T;N]` to `[T]`, and naturally
             // that must occur being a reference.
             assert!(pick.unsize.is_none());
-            None
-        };
+        }
 
-
-        // Commit the autoderefs by calling `autoderef` again, but this
-        // time writing the results into the various tables.
-        let mut autoderef = self.autoderef(self.span, unadjusted_self_ty);
-        let (autoderefd_ty, n) = autoderef.nth(pick.autoderefs).unwrap();
-        assert_eq!(n, pick.autoderefs);
-
-        let autoderefs = autoderef.adjust_steps(LvaluePreference::NoPreference);
-
-        autoderef.unambiguous_final_ty();
         autoderef.finalize();
 
-        let target = pick.unsize.unwrap_or(autoderefd_ty);
-        let target = target.adjust_for_autoref(self.tcx, autoref);
-
-        // Write out the final adjustment.
-        self.apply_adjustment(self.self_expr.id, Adjustment {
-            kind: Adjust::Deref(autoderefs),
-            autoref,
-            unsize: pick.unsize.is_some(),
-            target,
-        });
+        // Write out the final adjustments.
+        self.apply_adjustments(self.self_expr, adjustments);
 
         target
     }
@@ -436,17 +445,22 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             // Fix up the autoderefs. Autorefs can only occur immediately preceding
             // overloaded lvalue ops, and will be fixed by them in order to get
             // the correct region.
-            let expr_ty = self.node_ty(expr.id);
-            if let Some(adj) = self.tables.borrow_mut().adjustments.get_mut(&expr.id) {
-                if let Adjust::Deref(ref mut autoderefs) = adj.kind {
-                    let mut autoderef = self.autoderef(expr.span, expr_ty);
-                    autoderef.nth(autoderefs.len()).unwrap_or_else(|| {
-                        span_bug!(expr.span,
-                                "expr was deref-able as {:?} but now isn't?",
-                                autoderefs);
-                    });
-                    *autoderefs = autoderef.adjust_steps(LvaluePreference::PreferMutLvalue);
-                    autoderef.finalize();
+            let mut source = self.node_ty(expr.id);
+            if let Some(adjustments) = self.tables.borrow_mut().adjustments.get_mut(&expr.id) {
+                let pref = LvaluePreference::PreferMutLvalue;
+                for adjustment in adjustments {
+                    if let Adjust::Deref(Some(ref mut deref)) = adjustment.kind {
+                        if let Some(ok) = self.try_overloaded_deref(expr.span, source, pref) {
+                            let method = self.register_infer_ok_obligations(ok);
+                            if let ty::TyRef(region, mt) = method.sig.output().sty {
+                                *deref = OverloadedDeref {
+                                    region,
+                                    mutbl: mt.mutbl
+                                };
+                            }
+                        }
+                    }
+                    source = adjustment.target;
                 }
             }
 
@@ -478,7 +492,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             return
         }
 
-        let base_ty = self.tables.borrow().adjustments.get(&base_expr.id)
+        let base_ty = self.tables.borrow().expr_adjustments(base_expr).last()
             .map_or_else(|| self.node_ty(expr.id), |adj| adj.target);
         let base_ty = self.resolve_type_vars_if_possible(&base_ty);
 
@@ -489,28 +503,43 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         let method = self.try_overloaded_lvalue_op(
             expr.span, base_ty, arg_tys, PreferMutLvalue, op);
-        let ok = match method {
-            Some(method) => method,
+        let method = match method {
+            Some(ok) => self.register_infer_ok_obligations(ok),
             None => return self.tcx.sess.delay_span_bug(expr.span, "re-trying op failed")
         };
-        let (_, method) = self.register_infer_ok_obligations(ok);
         debug!("convert_lvalue_op_to_mutable: method={:?}", method);
         self.write_method_call(expr.id, method);
 
+        let (region, mutbl) = if let ty::TyRef(r, mt) = method.sig.inputs()[0].sty {
+            (r, mt.mutbl)
+        } else {
+            span_bug!(expr.span, "input to lvalue op is not a ref?");
+        };
+
         // Convert the autoref in the base expr to mutable with the correct
         // region and mutability.
-        if let Some(&mut Adjustment {
-            ref mut target,
-            autoref: Some(AutoBorrow::Ref(ref mut r, ref mut mutbl)), ..
-        }) = self.tables.borrow_mut().adjustments.get_mut(&base_expr.id) {
-            debug!("convert_lvalue_op_to_mutable: converting autoref of {:?}", target);
+        let base_expr_ty = self.node_ty(base_expr.id);
+        if let Some(adjustments) = self.tables.borrow_mut().adjustments.get_mut(&base_expr.id) {
+            let mut source = base_expr_ty;
+            for adjustment in &mut adjustments[..] {
+                if let Adjust::Borrow(AutoBorrow::Ref(..)) = adjustment.kind {
+                    debug!("convert_lvalue_op_to_mutable: converting autoref {:?}", adjustment);
+                    adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(region, mutbl));
+                    adjustment.target = self.tcx.mk_ref(region, ty::TypeAndMut {
+                        ty: source,
+                        mutbl
+                    });
+                }
+                source = adjustment.target;
+            }
 
-            *target = method.sig.inputs()[0];
-            if let ty::TyRef(r_, mt) = target.sty {
-                *r = r_;
-                *mutbl = mt.mutbl;
-            } else {
-                span_bug!(expr.span, "input to lvalue op is not a ref?");
+            // If we have an autoref followed by unsizing at the end, fix the unsize target.
+            match adjustments[..] {
+                [.., Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. },
+                 Adjustment { kind: Adjust::Unsize, ref mut target }] => {
+                    *target = method.sig.inputs()[0];
+                }
+                _ => {}
             }
         }
     }

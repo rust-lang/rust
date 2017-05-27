@@ -704,89 +704,55 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     // consumed or borrowed as part of the automatic adjustment
     // process.
     fn walk_adjustment(&mut self, expr: &hir::Expr) {
-        let infcx = self.mc.infcx;
         //NOTE(@jroesch): mixed RefCell borrow causes crash
-        let adj = infcx.tables.borrow().adjustments.get(&expr.id).cloned();
+        let adjustments = self.mc.infcx.tables.borrow().expr_adjustments(expr).to_vec();
         let mut cmt = return_if_err!(self.mc.cat_expr_unadjusted(expr));
-        if let Some(adjustment) = adj {
+        for adjustment in adjustments {
             debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
             match adjustment.kind {
                 adjustment::Adjust::NeverToAny |
                 adjustment::Adjust::ReifyFnPointer |
                 adjustment::Adjust::UnsafeFnPointer |
                 adjustment::Adjust::ClosureFnPointer |
-                adjustment::Adjust::MutToConstPointer => {
+                adjustment::Adjust::MutToConstPointer |
+                adjustment::Adjust::Unsize => {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.
-                    self.delegate_consume(expr.id, expr.span, cmt);
-                    assert!(adjustment.autoref.is_none() && !adjustment.unsize);
-                    return;
+                    self.delegate_consume(expr.id, expr.span, cmt.clone());
                 }
-                adjustment::Adjust::Deref(ref autoderefs) => {
-                    cmt = return_if_err!(self.walk_autoderefs(expr, cmt, autoderefs));
+
+                adjustment::Adjust::Deref(None) => {}
+
+                // Autoderefs for overloaded Deref calls in fact reference
+                // their receiver. That is, if we have `(*x)` where `x`
+                // is of type `Rc<T>`, then this in fact is equivalent to
+                // `x.deref()`. Since `deref()` is declared with `&self`,
+                // this is an autoref of `x`.
+                adjustment::Adjust::Deref(Some(ref deref)) => {
+                    let bk = ty::BorrowKind::from_mutbl(deref.mutbl);
+                    self.delegate.borrow(expr.id, expr.span, cmt.clone(),
+                                         deref.region, bk, AutoRef);
+                }
+
+                adjustment::Adjust::Borrow(ref autoref) => {
+                    self.walk_autoref(expr, cmt.clone(), autoref);
                 }
             }
-
-            cmt = self.walk_autoref(expr, cmt, adjustment.autoref);
-
-            if adjustment.unsize {
-                // Unsizing consumes the thin pointer and produces a fat one.
-                self.delegate_consume(expr.id, expr.span, cmt);
-            }
+            cmt = return_if_err!(self.mc.cat_expr_adjusted(expr, cmt, &adjustment));
         }
     }
 
-    /// Autoderefs for overloaded Deref calls in fact reference their receiver. That is, if we have
-    /// `(*x)` where `x` is of type `Rc<T>`, then this in fact is equivalent to `x.deref()`. Since
-    /// `deref()` is declared with `&self`, this is an autoref of `x`.
-    fn walk_autoderefs(&mut self,
-                       expr: &hir::Expr,
-                       mut cmt: mc::cmt<'tcx>,
-                       autoderefs: &[Option<adjustment::OverloadedDeref<'tcx>>])
-                       -> mc::McResult<mc::cmt<'tcx>> {
-        debug!("walk_autoderefs expr={:?} autoderefs={:?}", expr, autoderefs);
-
-        for &overloaded in autoderefs {
-            if let Some(deref) = overloaded {
-                let bk = ty::BorrowKind::from_mutbl(deref.mutbl);
-                self.delegate.borrow(expr.id, expr.span, cmt.clone(),
-                                     deref.region, bk, AutoRef);
-                cmt = self.mc.cat_overloaded_autoderef(expr, deref)?;
-            } else {
-                cmt = self.mc.cat_deref(expr, cmt, false)?;
-            }
-        }
-        Ok(cmt)
-    }
-
-    /// Walks the autoref `opt_autoref` applied to the autoderef'd
-    /// `expr`. `cmt_derefd` is the mem-categorized form of `expr`
-    /// after all relevant autoderefs have occurred. Because AutoRefs
-    /// can be recursive, this function is recursive: it first walks
-    /// deeply all the way down the autoref chain, and then processes
-    /// the autorefs on the way out. At each point, it returns the
-    /// `cmt` for the rvalue that will be produced by introduced an
-    /// autoref.
+    /// Walks the autoref `autoref` applied to the autoderef'd
+    /// `expr`. `cmt_base` is the mem-categorized form of `expr`
+    /// after all relevant autoderefs have occurred.
     fn walk_autoref(&mut self,
                     expr: &hir::Expr,
                     cmt_base: mc::cmt<'tcx>,
-                    opt_autoref: Option<adjustment::AutoBorrow<'tcx>>)
-                    -> mc::cmt<'tcx>
-    {
-        debug!("walk_autoref(expr.id={} cmt_derefd={:?} opt_autoref={:?})",
+                    autoref: &adjustment::AutoBorrow<'tcx>) {
+        debug!("walk_autoref(expr.id={} cmt_base={:?} autoref={:?})",
                expr.id,
                cmt_base,
-               opt_autoref);
-
-        let cmt_base_ty = cmt_base.ty;
-
-        let autoref = match opt_autoref {
-            Some(ref autoref) => autoref,
-            None => {
-                // No AutoRef.
-                return cmt_base;
-            }
-        };
+               autoref);
 
         match *autoref {
             adjustment::AutoBorrow::Ref(r, m) => {
@@ -816,14 +782,6 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                                      AutoUnsafe);
             }
         }
-
-        // Construct the categorization for the result of the autoref.
-        // This is always an rvalue, since we are producing a new
-        // (temporary) indirection.
-
-        let adj_ty = cmt_base_ty.adjust_for_autoref(self.tcx(), opt_autoref);
-
-        self.mc.cat_rvalue_node(expr.id, expr.span, adj_ty)
     }
 
 

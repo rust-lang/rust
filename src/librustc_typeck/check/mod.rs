@@ -96,7 +96,7 @@ use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::{ParamTy, LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, Ty, TyCtxt, Visibility};
-use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, OverloadedDeref};
+use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::{Representability, IntTypeExt};
@@ -1774,48 +1774,36 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn apply_autoderef_adjustment(&self,
-                                      node_id: ast::NodeId,
-                                      autoderefs: Vec<Option<OverloadedDeref<'tcx>>>,
-                                      adjusted_ty: Ty<'tcx>) {
-        self.apply_adjustment(node_id, Adjustment {
-            kind: Adjust::Deref(autoderefs),
-            autoref: None,
-            unsize: false,
-            target: adjusted_ty
-        });
-    }
+    pub fn apply_adjustments(&self, expr: &hir::Expr, adj: Vec<Adjustment<'tcx>>) {
+        debug!("apply_adjustments(expr={:?}, adj={:?})", expr, adj);
 
-    pub fn apply_adjustment(&self, node_id: ast::NodeId, adj: Adjustment<'tcx>) {
-        debug!("apply_adjustment(node_id={}, adj={:?})", node_id, adj);
-
-        if adj.is_identity() {
+        if adj.is_empty() {
             return;
         }
 
-        match self.tables.borrow_mut().adjustments.entry(node_id) {
+        match self.tables.borrow_mut().adjustments.entry(expr.id) {
             Entry::Vacant(entry) => { entry.insert(adj); },
             Entry::Occupied(mut entry) => {
                 debug!(" - composing on top of {:?}", entry.get());
-                match (entry.get(), &adj) {
+                match (&entry.get()[..], &adj[..]) {
                     // Applying any adjustment on top of a NeverToAny
                     // is a valid NeverToAny adjustment, because it can't
                     // be reached.
-                    (&Adjustment { kind: Adjust::NeverToAny, .. }, _) => return,
-                    (&Adjustment {
-                        kind: Adjust::Deref(ref old),
-                        autoref: Some(AutoBorrow::Ref(..)),
-                        unsize: false, ..
-                    }, &Adjustment {
-                        kind: Adjust::Deref(ref new), ..
-                    }) if old.len() == 1 && new.len() >= 1 => {
+                    (&[Adjustment { kind: Adjust::NeverToAny, .. }], _) => return,
+                    (&[
+                        Adjustment { kind: Adjust::Deref(_), .. },
+                        Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. },
+                    ], &[
+                        Adjustment { kind: Adjust::Deref(_), .. },
+                        .. // Any following adjustments are allowed.
+                    ]) => {
                         // A reborrow has no effect before a dereference.
                     }
                     // FIXME: currently we never try to compose autoderefs
                     // and ReifyFnPointer/UnsafeFnPointer, but we could.
                     _ =>
-                        bug!("while adjusting {}, can't compose {:?} and {:?}",
-                             node_id, entry.get(), adj)
+                        bug!("while adjusting {:?}, can't compose {:?} and {:?}",
+                             expr, entry.get(), adj)
                 };
                 *entry.get_mut() = adj;
             }
@@ -2189,7 +2177,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       index_ty: Ty<'tcx>)
                       -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
     {
-        let mut adjusted_ty = autoderef.unambiguous_final_ty();
+        let adjusted_ty = autoderef.unambiguous_final_ty();
         debug!("try_index_step(expr={:?}, base_expr={:?}, adjusted_ty={:?}, \
                                index_ty={:?})",
                expr,
@@ -2202,19 +2190,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match (adjusted_ty.builtin_index(), &index_ty.sty) {
             (Some(ty), &ty::TyUint(ast::UintTy::Us)) | (Some(ty), &ty::TyInfer(ty::IntVar(_))) => {
                 debug!("try_index_step: success, using built-in indexing");
-                let autoderefs = autoderef.adjust_steps(lvalue_pref);
-                self.apply_autoderef_adjustment(
-                    base_expr.id, autoderefs, adjusted_ty);
+                let adjustments = autoderef.adjust_steps(lvalue_pref);
+                self.apply_adjustments(base_expr, adjustments);
                 return Some((self.tcx.types.usize, ty));
             }
             _ => {}
         }
 
         for &unsize in &[false, true] {
+            let mut self_ty = adjusted_ty;
             if unsize {
                 // We only unsize arrays here.
                 if let ty::TyArray(element_ty, _) = adjusted_ty.sty {
-                    adjusted_ty = self.tcx.mk_slice(element_ty);
+                    self_ty = self.tcx.mk_slice(element_ty);
                 } else {
                     continue;
                 }
@@ -2225,19 +2213,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // If some lookup succeeded, install method in table
             let input_ty = self.next_ty_var(TypeVariableOrigin::AutoDeref(base_expr.span));
             let method = self.try_overloaded_lvalue_op(
-                expr.span, adjusted_ty, &[input_ty], lvalue_pref, LvalueOp::Index);
+                expr.span, self_ty, &[input_ty], lvalue_pref, LvalueOp::Index);
 
             let result = method.map(|ok| {
                 debug!("try_index_step: success, using overloaded indexing");
-                let (autoref, method) = self.register_infer_ok_obligations(ok);
+                let method = self.register_infer_ok_obligations(ok);
 
-                let autoderefs = autoderef.adjust_steps(lvalue_pref);
-                self.apply_adjustment(base_expr.id, Adjustment {
-                    kind: Adjust::Deref(autoderefs),
-                    autoref,
-                    unsize,
-                    target: method.sig.inputs()[0]
-                });
+                let mut adjustments = autoderef.adjust_steps(lvalue_pref);
+                if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
+                    adjustments.push(Adjustment {
+                        kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
+                        target: self.tcx.mk_ref(region, ty::TypeAndMut {
+                            mutbl: mt.mutbl,
+                            ty: adjusted_ty
+                        })
+                    });
+                }
+                if unsize {
+                    adjustments.push(Adjustment {
+                        kind: Adjust::Unsize,
+                        target: method.sig.inputs()[0]
+                    });
+                }
+                self.apply_adjustments(base_expr, adjustments);
 
                 self.write_method_call(expr.id, method);
                 (input_ty, self.make_overloaded_lvalue_return_type(method).ty)
@@ -2270,9 +2268,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 arg_tys: &[Ty<'tcx>],
                                 lvalue_pref: LvaluePreference,
                                 op: LvalueOp)
-                                -> Option<InferOk<'tcx,
-                                    (Option<AutoBorrow<'tcx>>,
-                                     MethodCallee<'tcx>)>>
+                                -> Option<InferOk<'tcx, MethodCallee<'tcx>>>
     {
         debug!("try_overloaded_lvalue_op({:?},{:?},{:?},{:?})",
                span,
@@ -2284,11 +2280,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let (mut_tr, mut_op) = self.resolve_lvalue_op(op, true);
         let method = match (lvalue_pref, mut_tr) {
             (PreferMutLvalue, Some(trait_did)) => {
-                self.lookup_method_in_trait_adjusted(span,
-                                                     mut_op,
-                                                     trait_did,
-                                                     base_ty,
-                                                     Some(arg_tys))
+                self.lookup_method_in_trait(span, mut_op, trait_did, base_ty, Some(arg_tys))
             }
             _ => None,
         };
@@ -2297,11 +2289,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let (imm_tr, imm_op) = self.resolve_lvalue_op(op, false);
         let method = match (method, imm_tr) {
             (None, Some(trait_did)) => {
-                self.lookup_method_in_trait_adjusted(span,
-                                                     imm_op,
-                                                     trait_did,
-                                                     base_ty,
-                                                     Some(arg_tys))
+                self.lookup_method_in_trait(span, imm_op, trait_did, base_ty, Some(arg_tys))
             }
             (method, _) => method,
         };
@@ -2645,12 +2633,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     "expression with never type wound up being adjusted");
             let adj_ty = self.next_diverging_ty_var(
                 TypeVariableOrigin::AdjustmentType(expr.span));
-            self.apply_adjustment(expr.id, Adjustment {
+            self.apply_adjustments(expr, vec![Adjustment {
                 kind: Adjust::NeverToAny,
-                autoref: None,
-                unsize: false,
                 target: adj_ty
-            });
+            }]);
             ty = adj_ty;
         }
 
@@ -2895,8 +2881,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let Some(field) = fields.iter().find(|f| f.name.to_ident() == ident) {
                         let field_ty = self.field_ty(expr.span, field, substs);
                         if field.vis.is_accessible_from(def_scope, self.tcx) {
-                            let autoderefs = autoderef.adjust_steps(lvalue_pref);
-                            self.apply_autoderef_adjustment(base.id, autoderefs, base_t);
+                            let adjustments = autoderef.adjust_steps(lvalue_pref);
+                            self.apply_adjustments(base, adjustments);
                             autoderef.finalize();
 
                             self.tcx.check_stability(field.did, expr.id, expr.span);
@@ -3029,8 +3015,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             if let Some(field_ty) = field {
-                let autoderefs = autoderef.adjust_steps(lvalue_pref);
-                self.apply_autoderef_adjustment(base.id, autoderefs, base_t);
+                let adjustments = autoderef.adjust_steps(lvalue_pref);
+                self.apply_adjustments(base, adjustments);
                 autoderef.finalize();
                 return field_ty;
             }
@@ -3446,13 +3432,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             oprnd_t = mt.ty;
                         } else if let Some(ok) = self.try_overloaded_deref(
                                 expr.span, oprnd_t, lvalue_pref) {
-                            let (autoref, method) = self.register_infer_ok_obligations(ok);
-                            self.apply_adjustment(oprnd.id, Adjustment {
-                                kind: Adjust::Deref(vec![]),
-                                autoref,
-                                unsize: false,
-                                target: method.sig.inputs()[0]
-                            });
+                            let method = self.register_infer_ok_obligations(ok);
+                            if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
+                                self.apply_adjustments(oprnd, vec![Adjustment {
+                                    kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
+                                    target: method.sig.inputs()[0]
+                                }]);
+                            }
                             oprnd_t = self.make_overloaded_lvalue_return_type(method).ty;
                             self.write_method_call(expr.id, method);
                         } else {
@@ -3466,9 +3452,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     hir::UnNot => {
                         oprnd_t = self.structurally_resolved_type(oprnd.span,
                                                                   oprnd_t);
-                        let result = self.check_user_unop("!", "not",
-                                                          tcx.lang_items.not_trait(),
-                                                          expr, &oprnd, oprnd_t, unop);
+                        let result = self.check_user_unop(expr, &oprnd, oprnd_t, unop);
                         // If it's builtin, we can reuse the type, this helps inference.
                         if !(oprnd_t.is_integral() || oprnd_t.sty == ty::TyBool) {
                             oprnd_t = result;
@@ -3477,9 +3461,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     hir::UnNeg => {
                         oprnd_t = self.structurally_resolved_type(oprnd.span,
                                                                   oprnd_t);
-                        let result = self.check_user_unop("-", "neg",
-                                                          tcx.lang_items.neg_trait(),
-                                                          expr, &oprnd, oprnd_t, unop);
+                        let result = self.check_user_unop(expr, &oprnd, oprnd_t, unop);
                         // If it's builtin, we can reuse the type, this helps inference.
                         if !(oprnd_t.is_integral() || oprnd_t.is_fp()) {
                             oprnd_t = result;

@@ -10,29 +10,18 @@
 
 use hir;
 use hir::def_id::DefId;
-use ty::{self, Ty, TyCtxt, TypeAndMut};
+use ty::{self, Ty, TyCtxt};
 use ty::subst::Substs;
 
 
 /// Represents coercing a value to a different type of value.
 ///
-/// We transform values by following the following steps in order:
-/// 1. Apply a step of `Adjust` (see its variants for details).
-/// 2. If `autoref` is `Some(_)`, then take the address and produce either a
-///    `&` or `*` pointer.
-/// 3. If `unsize` is `true`, then apply the unsize transformation,
-///    which will do things like convert thin pointers to fat
-///    pointers, or convert structs containing thin pointers to
-///    structs containing fat pointers, or convert between fat
-///    pointers.  We don't store the details of how the transform is
-///    done (in fact, we don't know that, because it might depend on
-///    the precise type parameters). We just store the target
-///    type. Trans figures out what has to be done at monomorphization
-///    time based on the precise source/target type at hand.
+/// We transform values by following a number of `Adjust` steps in order.
+/// See the documentation on variants of `Adjust` for more details.
 ///
-/// To make that more concrete, here are some common scenarios:
+/// Here are some common scenarios:
 ///
-/// 1. The simplest cases are where the pointer is not adjusted fat vs thin.
+/// 1. The simplest cases are where a pointer is not adjusted fat vs thin.
 /// Here the pointer will be dereferenced N times (where a dereference can
 /// happen to raw or borrowed pointers or any smart pointer which implements
 /// Deref, including Box<_>). The types of dereferences is given by
@@ -48,12 +37,9 @@ use ty::subst::Substs;
 /// represented by:
 ///
 /// ```
-/// Adjustment {
-///     kind: Adjust::Deref(vec![None]),// &[i32; 4] -> [i32; 4]
-///     autoref: Some(AutoBorrow::Ref), // [i32; 4] -> &[i32; 4]
-///     unsize: true,                   // &[i32; 4] -> &[i32]
-///     target: `[i32]`,
-/// }
+/// Deref(None) -> [i32; 4],
+/// Borrow(AutoBorrow::Ref) -> &[i32; 4],
+/// Unsize -> &[i32],
 /// ```
 ///
 /// Note that for a struct, the 'deep' unsizing of the struct is not recorded.
@@ -67,28 +53,10 @@ use ty::subst::Substs;
 /// autoderefs, and no autoref. Instead we just do the `Unsize` transformation.
 /// At some point, of course, `Box` should move out of the compiler, in which
 /// case this is analogous to transformating a struct. E.g., Box<[i32; 4]> ->
-/// Box<[i32]> is represented by:
-///
-/// ```
-/// Adjustment {
-///     kind: Adjust::Deref(vec![]),
-///     autoref: None,
-///     unsize: true,
-///     target: `Box<[i32]>`,
-/// }
-/// ```
+/// Box<[i32]> is an `Adjust::Unsize` with the target `Box<[i32]>`.
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Adjustment<'tcx> {
-    /// Step 1.
     pub kind: Adjust<'tcx>,
-
-    /// Step 2. Optionally produce a pointer/reference from the value.
-    pub autoref: Option<AutoBorrow<'tcx>>,
-
-    /// Step 3. Unsize a pointer/reference value, e.g. `&[T; n]` to
-    /// `&[T]`. Note that the source could be a thin or fat pointer.
-    pub unsize: bool,
-
     pub target: Ty<'tcx>,
 }
 
@@ -109,27 +77,23 @@ pub enum Adjust<'tcx> {
     /// Go from a mut raw pointer to a const raw pointer.
     MutToConstPointer,
 
-    /// Apply a number of dereferences, producing an lvalue,
-    /// if there are more than 0 dereferences.
-    Deref(Vec<Option<OverloadedDeref<'tcx>>>),
-}
+    /// Dereference once, producing an lvalue.
+    Deref(Option<OverloadedDeref<'tcx>>),
 
-impl<'tcx> Adjustment<'tcx> {
-    pub fn is_identity(&self) -> bool {
-        if self.autoref.is_some() || self.unsize {
-            return false;
-        }
-        match self.kind {
-            Adjust::NeverToAny => self.target.is_never(),
+    /// Take the address and produce either a `&` or `*` pointer.
+    Borrow(AutoBorrow<'tcx>),
 
-            Adjust::Deref(ref autoderefs) => autoderefs.is_empty(),
-
-            Adjust::ReifyFnPointer |
-            Adjust::UnsafeFnPointer |
-            Adjust::ClosureFnPointer |
-            Adjust::MutToConstPointer => false,
-        }
-    }
+    /// Unsize a pointer/reference value, e.g. `&[T; n]` to
+    /// `&[T]`. Note that the source could be a thin or fat pointer.
+    /// This will do things like convert thin pointers to fat
+    /// pointers, or convert structs containing thin pointers to
+    /// structs containing fat pointers, or convert between fat
+    /// pointers.  We don't store the details of how the transform is
+    /// done (in fact, we don't know that, because it might depend on
+    /// the precise type parameters). We just store the target
+    /// type. Trans figures out what has to be done at monomorphization
+    /// time based on the precise source/target type at hand.
+    Unsize,
 }
 
 /// An overloaded autoderef step, representing a `Deref(Mut)::deref(_mut)`
@@ -140,7 +104,6 @@ impl<'tcx> Adjustment<'tcx> {
 pub struct OverloadedDeref<'tcx> {
     pub region: ty::Region<'tcx>,
     pub mutbl: hir::Mutability,
-    pub target: Ty<'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> OverloadedDeref<'tcx> {
@@ -184,20 +147,4 @@ pub struct CoerceUnsizedInfo {
 pub enum CustomCoerceUnsized {
     /// Records the index of the field being coerced.
     Struct(usize)
-}
-
-impl<'a, 'gcx, 'tcx> ty::TyS<'tcx> {
-    pub fn adjust_for_autoref(&'tcx self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                              autoref: Option<AutoBorrow<'tcx>>)
-                              -> Ty<'tcx> {
-        match autoref {
-            None => self,
-            Some(AutoBorrow::Ref(r, m)) => {
-                tcx.mk_ref(r, TypeAndMut { ty: self, mutbl: m })
-            }
-            Some(AutoBorrow::RawPtr(m)) => {
-                tcx.mk_ptr(TypeAndMut { ty: self, mutbl: m })
-            }
-        }
-    }
 }

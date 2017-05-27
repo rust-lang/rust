@@ -221,7 +221,7 @@ pub struct TypeckTables<'tcx> {
     /// other items.
     pub node_substs: NodeMap<&'tcx Substs<'tcx>>,
 
-    pub adjustments: NodeMap<ty::adjustment::Adjustment<'tcx>>,
+    pub adjustments: NodeMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
 
     /// Borrows
     pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
@@ -343,16 +343,24 @@ impl<'tcx> TypeckTables<'tcx> {
         self.node_id_to_type_opt(expr.id)
     }
 
+    pub fn expr_adjustments(&self, expr: &hir::Expr)
+                            -> &[ty::adjustment::Adjustment<'tcx>] {
+        self.adjustments.get(&expr.id).map_or(&[], |a| &a[..])
+    }
+
     /// Returns the type of `expr`, considering any `Adjustment`
     /// entry recorded for that expression.
     pub fn expr_ty_adjusted(&self, expr: &hir::Expr) -> Ty<'tcx> {
-        self.adjustments.get(&expr.id)
+        self.expr_adjustments(expr)
+            .last()
             .map_or_else(|| self.expr_ty(expr), |adj| adj.target)
     }
 
     pub fn expr_ty_adjusted_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
-        self.adjustments.get(&expr.id)
-            .map(|adj| adj.target).or_else(|| self.expr_ty_opt(expr))
+        self.expr_adjustments(expr)
+            .last()
+            .map(|adj| adj.target)
+            .or_else(|| self.expr_ty_opt(expr))
     }
 
     pub fn is_method_call(&self, expr: &hir::Expr) -> bool {

@@ -18,10 +18,12 @@ use rustc::traits;
 use rustc::ty::{self, Ty, TraitRef};
 use rustc::ty::{ToPredicate, TypeFoldable};
 use rustc::ty::{LvaluePreference, NoPreference};
-use rustc::ty::adjustment::{AutoBorrow, OverloadedDeref};
+use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
 
 use syntax_pos::Span;
 use syntax::symbol::Symbol;
+
+use std::iter;
 
 #[derive(Copy, Clone, Debug)]
 enum AutoderefKind {
@@ -152,25 +154,26 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         self.steps.len()
     }
 
-    /// Returns the steps required in adjustments (overloaded deref calls).
+    /// Returns the adjustment steps.
     pub fn adjust_steps(&self, pref: LvaluePreference)
-                        -> Vec<Option<OverloadedDeref<'tcx>>> {
+                        -> Vec<Adjustment<'tcx>> {
         self.fcx.register_infer_ok_obligations(self.adjust_steps_as_infer_ok(pref))
     }
 
     pub fn adjust_steps_as_infer_ok(&self, pref: LvaluePreference)
-                                    -> InferOk<'tcx, Vec<Option<OverloadedDeref<'tcx>>>> {
+                                    -> InferOk<'tcx, Vec<Adjustment<'tcx>>> {
         let mut obligations = vec![];
+        let targets = self.steps.iter().skip(1).map(|&(ty, _)| ty)
+            .chain(iter::once(self.cur_ty));
         let steps: Vec<_> = self.steps.iter().map(|&(source, kind)| {
             if let AutoderefKind::Overloaded = kind {
                 self.fcx.try_overloaded_deref(self.span, source, pref)
-                    .and_then(|InferOk { value: (_, method), obligations: o }| {
+                    .and_then(|InferOk { value: method, obligations: o }| {
                         obligations.extend(o);
                         if let ty::TyRef(region, mt) = method.sig.output().sty {
                             Some(OverloadedDeref {
                                 region,
                                 mutbl: mt.mutbl,
-                                target: mt.ty
                             })
                         } else {
                             None
@@ -178,6 +181,11 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
                     })
             } else {
                 None
+            }
+        }).zip(targets).map(|(autoderef, target)| {
+            Adjustment {
+                kind: Adjust::Deref(autoderef),
+                target
             }
         }).collect();
 
@@ -213,9 +221,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 span: Span,
                                 base_ty: Ty<'tcx>,
                                 pref: LvaluePreference)
-                                -> Option<InferOk<'tcx,
-                                    (Option<AutoBorrow<'tcx>>,
-                                     MethodCallee<'tcx>)>> {
+                                -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         self.try_overloaded_lvalue_op(span, base_ty, &[], pref, LvalueOp::Deref)
     }
 }

@@ -542,61 +542,10 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         }
 
         // Check any autoderefs or autorefs that appear.
-        let adjustment = self.tables.borrow().adjustments.get(&expr.id).map(|a| a.clone());
-        if let Some(adjustment) = adjustment {
-            debug!("adjustment={:?}", adjustment);
-            match adjustment.kind {
-                adjustment::Adjust::Deref(ref autoderefs) => {
-                    let cmt = ignore_err!(self.constrain_autoderefs(expr, autoderefs));
-                    if let Some(ref autoref) = adjustment.autoref {
-                        self.link_autoref(expr, cmt, autoref);
-
-                        // Require that the resulting region encompasses
-                        // the current node.
-                        //
-                        // FIXME(#6268) remove to support nested method calls
-                        self.type_of_node_must_outlive(infer::AutoBorrow(expr.span),
-                                                       expr.id, expr_region);
-                    }
-                }
-                /*
-                adjustment::AutoObject(_, ref bounds, ..) => {
-                    // Determine if we are casting `expr` to a trait
-                    // instance. If so, we have to be sure that the type
-                    // of the source obeys the new region bound.
-                    let source_ty = self.resolve_node_type(expr.id);
-                    self.type_must_outlive(infer::RelateObjectBound(expr.span),
-                                           source_ty, bounds.region_bound);
-                }
-                */
-                _ => {
-                    assert!(adjustment.autoref.is_none());
-                }
-            }
-
-            // If necessary, constrain destructors in the unadjusted form of this
-            // expression.
-            let cmt_result = {
-                let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
-                mc.cat_expr_unadjusted(expr)
-            };
-            match cmt_result {
-                Ok(head_cmt) => {
-                    self.check_safety_of_rvalue_destructor_if_necessary(head_cmt,
-                                                                        expr.span);
-                }
-                Err(..) => {
-                    self.tcx.sess.delay_span_bug(expr.span, "cat_expr_unadjusted Errd");
-                }
-            }
-        }
+        let cmt_result = self.constrain_adjustments(expr);
 
         // If necessary, constrain destructors in this expression. This will be
         // the adjusted form if there is an adjustment.
-        let cmt_result = {
-            let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
-            mc.cat_expr(expr)
-        };
         match cmt_result {
             Ok(head_cmt) => {
                 self.check_safety_of_rvalue_destructor_if_necessary(head_cmt, expr.span);
@@ -904,26 +853,35 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Invoked on any auto-dereference that occurs. Checks that if this is a region pointer being
+    /// Invoked on any adjustments that occur. Checks that if this is a region pointer being
     /// dereferenced, the lifetime of the pointer includes the deref expr.
-    fn constrain_autoderefs(&mut self,
-                            deref_expr: &hir::Expr,
-                            autoderefs: &[Option<adjustment::OverloadedDeref<'tcx>>])
-                            -> mc::McResult<mc::cmt<'tcx>>
-    {
-        debug!("constrain_autoderefs(deref_expr={:?}, autoderefs={:?})",
-               deref_expr,
-               autoderefs);
+    fn constrain_adjustments(&mut self, expr: &hir::Expr) -> mc::McResult<mc::cmt<'tcx>> {
+        debug!("constrain_adjustments(expr={:?})", expr);
 
         let mut cmt = {
             let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
-            mc.cat_expr_unadjusted(deref_expr)?
+            mc.cat_expr_unadjusted(expr)?
         };
 
-        let r_deref_expr = self.tcx.node_scope_region(deref_expr.id);
-        for &overloaded in autoderefs {
-            if let Some(deref) = overloaded {
-                debug!("constrain_autoderefs: overloaded, {:?}", deref);
+        //NOTE(@jroesch): mixed RefCell borrow causes crash
+        let adjustments = self.tables.borrow().expr_adjustments(&expr).to_vec();
+        if adjustments.is_empty() {
+            return Ok(cmt);
+        }
+
+        debug!("constrain_adjustments: adjustments={:?}", adjustments);
+
+        // If necessary, constrain destructors in the unadjusted form of this
+        // expression.
+        self.check_safety_of_rvalue_destructor_if_necessary(cmt.clone(), expr.span);
+
+        let expr_region = self.tcx.node_scope_region(expr.id);
+        for adjustment in adjustments {
+            debug!("constrain_adjustments: adjustment={:?}, cmt={:?}",
+                   adjustment, cmt);
+
+            if let adjustment::Adjust::Deref(Some(deref)) = adjustment.kind {
+                debug!("constrain_adjustments: overloaded deref: {:?}", deref);
 
                 // Treat overloaded autoderefs as if an AutoBorrow adjustment
                 // was applied on the base type, as that is always the case.
@@ -932,33 +890,39 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     mutbl: deref.mutbl,
                 });
                 let output = self.tcx.mk_ref(deref.region, ty::TypeAndMut {
-                    ty: deref.target,
+                    ty: adjustment.target,
                     mutbl: deref.mutbl,
                 });
 
-                debug!("constrain_autoderefs: self_cmt={:?}", cmt);
-                self.link_region(deref_expr.span, deref.region,
+                self.link_region(expr.span, deref.region,
                                  ty::BorrowKind::from_mutbl(deref.mutbl), cmt.clone());
 
                 // Specialized version of constrain_call.
-                self.type_must_outlive(infer::CallRcvr(deref_expr.span),
-                                       input, r_deref_expr);
-                self.type_must_outlive(infer::CallReturn(deref_expr.span),
-                                       output, r_deref_expr);
+                self.type_must_outlive(infer::CallRcvr(expr.span),
+                                       input, expr_region);
+                self.type_must_outlive(infer::CallReturn(expr.span),
+                                       output, expr_region);
+            }
+
+            if let adjustment::Adjust::Borrow(ref autoref) = adjustment.kind {
+                self.link_autoref(expr, cmt.clone(), autoref);
+
+                // Require that the resulting region encompasses
+                // the current node.
+                //
+                // FIXME(#6268) remove to support nested method calls
+                self.type_of_node_must_outlive(infer::AutoBorrow(expr.span),
+                                               expr.id, expr_region);
             }
 
             {
                 let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
-                if let Some(deref) = overloaded {
-                    cmt = mc.cat_overloaded_autoderef(deref_expr, deref)?;
-                } else {
-                    cmt = mc.cat_deref(deref_expr, cmt, false)?;
-                }
+                cmt = mc.cat_expr_adjusted(expr, cmt, &adjustment)?;
             }
 
             if let Categorization::Deref(_, mc::BorrowedPtr(_, r_ptr)) = cmt.cat {
-                self.mk_subregion_due_to_dereference(deref_expr.span,
-                                                     r_deref_expr, r_ptr);
+                self.mk_subregion_due_to_dereference(expr.span,
+                                                     expr_region, r_ptr);
             }
         }
 
@@ -1029,7 +993,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // is going to fail anyway, so just stop here and let typeck
         // report errors later on in the writeback phase.
         let ty0 = self.resolve_node_type(id);
-        let ty = self.tables.borrow().adjustments.get(&id).map_or(ty0, |adj| adj.target);
+        let ty = self.tables.borrow().adjustments.get(&id)
+            .and_then(|adj| adj.last())
+            .map_or(ty0, |adj| adj.target);
         let ty = self.resolve_type(ty);
         debug!("constrain_regions_in_type_of_node(\
                 ty={}, ty0={}, id={}, minimum_lifetime={:?})",

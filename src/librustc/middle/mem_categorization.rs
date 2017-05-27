@@ -466,42 +466,62 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     }
 
     pub fn cat_expr(&self, expr: &hir::Expr) -> McResult<cmt<'tcx>> {
-        match self.infcx.tables.borrow().adjustments.get(&expr.id) {
-            None => {
-                // No adjustments.
-                self.cat_expr_unadjusted(expr)
+        // This recursion helper avoids going through *too many*
+        // adjustments, since *only* non-overloaded deref recurses.
+        fn helper<'a, 'gcx, 'tcx>(mc: &MemCategorizationContext<'a, 'gcx, 'tcx>,
+                                  expr: &hir::Expr,
+                                  adjustments: &[adjustment::Adjustment<'tcx>])
+                                   -> McResult<cmt<'tcx>> {
+            match adjustments.split_last() {
+                None => mc.cat_expr_unadjusted(expr),
+                Some((adjustment, previous)) => {
+                    mc.cat_expr_adjusted_with(expr, || helper(mc, expr, previous), adjustment)
+                }
+            }
+        }
+
+        helper(self, expr, self.infcx.tables.borrow().expr_adjustments(expr))
+    }
+
+    pub fn cat_expr_adjusted(&self, expr: &hir::Expr,
+                             previous: cmt<'tcx>,
+                             adjustment: &adjustment::Adjustment<'tcx>)
+                             -> McResult<cmt<'tcx>> {
+        self.cat_expr_adjusted_with(expr, || Ok(previous), adjustment)
+    }
+
+    fn cat_expr_adjusted_with<F>(&self, expr: &hir::Expr,
+                                 previous: F,
+                                 adjustment: &adjustment::Adjustment<'tcx>)
+                                 -> McResult<cmt<'tcx>>
+        where F: FnOnce() -> McResult<cmt<'tcx>>
+    {
+        debug!("cat_expr_adjusted_with({:?}): {:?}", adjustment, expr);
+        let target = self.infcx.resolve_type_vars_if_possible(&adjustment.target);
+        match adjustment.kind {
+            adjustment::Adjust::Deref(overloaded) => {
+                // Equivalent to *expr or something similar.
+                let base = if let Some(deref) = overloaded {
+                    let ref_ty = self.tcx().mk_ref(deref.region, ty::TypeAndMut {
+                        ty: target,
+                        mutbl: deref.mutbl,
+                    });
+                    self.cat_rvalue_node(expr.id, expr.span, ref_ty)
+                } else {
+                    previous()?
+                };
+                self.cat_deref(expr, base, false)
             }
 
-            Some(adjustment) => {
-                debug!("cat_expr({:?}): {:?}", adjustment, expr);
-                match adjustment.kind {
-                    adjustment::Adjust::Deref(ref autoderefs)
-                    if adjustment.autoref.is_none() && !adjustment.unsize => {
-                        // Equivalent to *expr or something similar.
-                        let mut cmt = self.cat_expr_unadjusted(expr)?;
-                        debug!("cat_expr: autoderefs={:?}, cmt={:?}",
-                               autoderefs, cmt);
-                        for &overloaded in autoderefs {
-                            if let Some(deref) = overloaded {
-                                cmt = self.cat_overloaded_autoderef(expr, deref)?;
-                            } else {
-                                cmt = self.cat_deref(expr, cmt, false)?;
-                            }
-                        }
-                        return Ok(cmt);
-                    }
-
-                    adjustment::Adjust::NeverToAny |
-                    adjustment::Adjust::ReifyFnPointer |
-                    adjustment::Adjust::UnsafeFnPointer |
-                    adjustment::Adjust::ClosureFnPointer |
-                    adjustment::Adjust::MutToConstPointer |
-                    adjustment::Adjust::Deref(_) => {
-                        // Result is an rvalue.
-                        let expr_ty = self.expr_ty_adjusted(expr)?;
-                        Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
-                    }
-                }
+            adjustment::Adjust::NeverToAny |
+            adjustment::Adjust::ReifyFnPointer |
+            adjustment::Adjust::UnsafeFnPointer |
+            adjustment::Adjust::ClosureFnPointer |
+            adjustment::Adjust::MutToConstPointer |
+            adjustment::Adjust::Borrow(_) |
+            adjustment::Adjust::Unsize => {
+                // Result is an rvalue.
+                Ok(self.cat_rvalue_node(expr.id, expr.span, target))
             }
         }
     }
@@ -929,21 +949,6 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         let base_cmt = self.cat_rvalue_node(expr.id, expr.span, ref_ty);
         self.cat_deref(expr, base_cmt, implicit)
-    }
-
-    pub fn cat_overloaded_autoderef(&self,
-                                    expr: &hir::Expr,
-                                    deref: adjustment::OverloadedDeref<'tcx>)
-                                    -> McResult<cmt<'tcx>> {
-        debug!("cat_overloaded_autoderef: deref={:?}", deref);
-
-        let target = self.infcx.resolve_type_vars_if_possible(&deref.target);
-        let ref_ty = self.tcx().mk_ref(deref.region, ty::TypeAndMut {
-            ty: target,
-            mutbl: deref.mutbl,
-        });
-        let base_cmt = self.cat_rvalue_node(expr.id, expr.span, ref_ty);
-        self.cat_deref(expr, base_cmt, false)
     }
 
     pub fn cat_deref<N:ast_node>(&self,

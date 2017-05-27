@@ -16,7 +16,6 @@ use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
-use rustc::ty::adjustment::AutoBorrow;
 use rustc::ty::subst::Subst;
 use rustc::infer::{self, InferOk};
 
@@ -165,26 +164,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                supplied_method_types))
     }
 
-    /// `lookup_in_trait_adjusted` is used for overloaded operators.
+    /// `lookup_method_in_trait` is used for overloaded operators.
     /// It does a very narrow slice of what the normal probe/confirm path does.
     /// In particular, it doesn't really do any probing: it simply constructs
     /// an obligation for aparticular trait with the given self-type and checks
     /// whether that trait is implemented.
     ///
     /// FIXME(#18741) -- It seems likely that we can consolidate some of this
-    /// code with the other method-lookup code. In particular, autoderef on
-    /// index is basically identical to autoderef with normal probes, except
-    /// that the test also looks for built-in indexing. Also, the second half of
-    /// this method is basically the same as confirmation.
-    pub fn lookup_method_in_trait_adjusted(&self,
-                                           span: Span,
-                                           m_name: ast::Name,
-                                           trait_def_id: DefId,
-                                           self_ty: ty::Ty<'tcx>,
-                                           opt_input_types: Option<&[ty::Ty<'tcx>]>)
-                                           -> Option<InferOk<'tcx,
-                                                (Option<AutoBorrow<'tcx>>,
-                                                 MethodCallee<'tcx>)>> {
+    /// code with the other method-lookup code. In particular, the second half
+    /// of this method is basically the same as confirmation.
+    pub fn lookup_method_in_trait(&self,
+                                  span: Span,
+                                  m_name: ast::Name,
+                                  trait_def_id: DefId,
+                                  self_ty: ty::Ty<'tcx>,
+                                  opt_input_types: Option<&[ty::Ty<'tcx>]>)
+                                  -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!("lookup_in_trait_adjusted(self_ty={:?}, \
                 m_name={}, trait_def_id={:?})",
                self_ty,
@@ -237,8 +232,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // NB: Instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let original_method_ty = tcx.type_of(def_id);
-        let fn_sig = original_method_ty.fn_sig();
+        let fn_sig = tcx.type_of(def_id).fn_sig();
         let fn_sig = self.replace_late_bound_regions_with_fresh_var(span,
                                                                     infer::FnCall,
                                                                     &fn_sig).0;
@@ -249,11 +243,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 value
             }
         };
-        let method_ty = tcx.mk_fn_def(def_id, substs, ty::Binder(fn_sig));
-
-        debug!("lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
-               method_ty,
-               obligation);
 
         // Register obligations for the parameters.  This will include the
         // `Self` parameter, which in turn has a bound of the main trait,
@@ -276,20 +265,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         obligations.extend(traits::predicates_for_generics(cause.clone(), &bounds));
 
         // Also add an obligation for the method type being well-formed.
+        let method_ty = tcx.mk_fn_ptr(ty::Binder(fn_sig));
+        debug!("lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
+               method_ty,
+               obligation);
         obligations.push(traits::Obligation::new(cause, ty::Predicate::WellFormed(method_ty)));
-
-        let autoref = match (&original_method_ty.fn_sig().input(0).skip_binder().sty,
-                             &fn_sig.inputs()[0].sty) {
-            (&ty::TyRef(..), &ty::TyRef(region, ty::TypeAndMut { mutbl, ty: _ })) => {
-                // Trait method is fn(&self) or fn(&mut self), need an
-                // autoref. Pull the region etc out of the type of first argument.
-                Some(AutoBorrow::Ref(region, mutbl))
-            }
-            _ => {
-                // Trait method is fn(self), no transformation needed.
-                None
-            }
-        };
 
         let callee = MethodCallee {
             def_id: def_id,
@@ -301,7 +281,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         Some(InferOk {
             obligations,
-            value: (autoref, callee)
+            value: callee
         })
     }
 

@@ -17,6 +17,7 @@ use hair::cx::to_ref::ToRef;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::ty::subst::Subst;
 use rustc::hir;
@@ -32,177 +33,13 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
         debug!("Expr::make_mirror(): id={}, span={:?}", self.id, self.span);
 
         let mut expr = make_mirror_unadjusted(cx, self);
-        let adj = cx.tables().adjustments.get(&self.id);
-
-        debug!("make_mirror: unadjusted-expr={:?} applying adjustments={:?}",
-               expr,
-               adj);
 
         // Now apply adjustments, if any.
-        match adj.map(|adj| (&adj.kind, adj.target)) {
-            None => {}
-            Some((&ty::adjustment::Adjust::ReifyFnPointer, adjusted_ty)) => {
-                expr = Expr {
-                    temp_lifetime: temp_lifetime,
-                    temp_lifetime_was_shrunk: was_shrunk,
-                    ty: adjusted_ty,
-                    span: self.span,
-                    kind: ExprKind::ReifyFnPointer { source: expr.to_ref() },
-                };
-            }
-            Some((&ty::adjustment::Adjust::UnsafeFnPointer, adjusted_ty)) => {
-                expr = Expr {
-                    temp_lifetime: temp_lifetime,
-                    temp_lifetime_was_shrunk: was_shrunk,
-                    ty: adjusted_ty,
-                    span: self.span,
-                    kind: ExprKind::UnsafeFnPointer { source: expr.to_ref() },
-                };
-            }
-            Some((&ty::adjustment::Adjust::ClosureFnPointer, adjusted_ty)) => {
-                expr = Expr {
-                    temp_lifetime: temp_lifetime,
-                    temp_lifetime_was_shrunk: was_shrunk,
-                    ty: adjusted_ty,
-                    span: self.span,
-                    kind: ExprKind::ClosureFnPointer { source: expr.to_ref() },
-                };
-            }
-            Some((&ty::adjustment::Adjust::NeverToAny, adjusted_ty)) => {
-                expr = Expr {
-                    temp_lifetime: temp_lifetime,
-                    temp_lifetime_was_shrunk: was_shrunk,
-                    ty: adjusted_ty,
-                    span: self.span,
-                    kind: ExprKind::NeverToAny { source: expr.to_ref() },
-                };
-            }
-            Some((&ty::adjustment::Adjust::MutToConstPointer, adjusted_ty)) => {
-                expr = Expr {
-                    temp_lifetime: temp_lifetime,
-                    temp_lifetime_was_shrunk: was_shrunk,
-                    ty: adjusted_ty,
-                    span: self.span,
-                    kind: ExprKind::Cast { source: expr.to_ref() },
-                };
-            }
-            Some((&ty::adjustment::Adjust::Deref(ref autoderefs), _)) => {
-                for &overloaded in autoderefs {
-                    let source = expr.ty;
-                    let target;
-                    let kind = if let Some(deref) = overloaded {
-                        debug!("make_mirror: overloaded autoderef ({:?})", deref);
-
-                        expr = Expr {
-                            temp_lifetime: temp_lifetime,
-                            temp_lifetime_was_shrunk: was_shrunk,
-                            ty: cx.tcx.mk_ref(deref.region,
-                                              ty::TypeAndMut {
-                                                  ty: source,
-                                                  mutbl: deref.mutbl,
-                                              }),
-                            span: expr.span,
-                            kind: ExprKind::Borrow {
-                                region: deref.region,
-                                borrow_kind: to_borrow_kind(deref.mutbl),
-                                arg: expr.to_ref(),
-                            },
-                        };
-
-                        target = deref.target;
-
-                        let call = deref.method_call(cx.tcx, source);
-                        overloaded_lvalue(cx,
-                                          self,
-                                          deref.target,
-                                          Some(call),
-                                          PassArgs::ByRef,
-                                          expr.to_ref(),
-                                          vec![])
-                    } else {
-                        match source.builtin_deref(true,
-                                                   ty::LvaluePreference::NoPreference) {
-                            Some(mt) => {
-                                target = mt.ty;
-                            }
-                            None => {
-                                span_bug!(self.span, "autoderef for {} failed: {}",
-                                          self.id, source);
-                            }
-                        };
-                        debug!("make_mirror: built-in autoderef");
-                        ExprKind::Deref { arg: expr.to_ref() }
-                    };
-                    debug!("make_mirror: autoderef target={:?}", target);
-                    expr = Expr {
-                        temp_lifetime: temp_lifetime,
-                        temp_lifetime_was_shrunk: was_shrunk,
-                        ty: target,
-                        span: self.span,
-                        kind: kind,
-                    };
-                }
-            }
-        }
-
-        if let Some(adj) = adj {
-            if let Some(autoref) = adj.autoref {
-                let adjusted_ty = expr.ty.adjust_for_autoref(cx.tcx, Some(autoref));
-                match autoref {
-                    ty::adjustment::AutoBorrow::Ref(r, m) => {
-                        expr = Expr {
-                            temp_lifetime: temp_lifetime,
-                            temp_lifetime_was_shrunk: was_shrunk,
-                            ty: adjusted_ty,
-                            span: self.span,
-                            kind: ExprKind::Borrow {
-                                region: r,
-                                borrow_kind: to_borrow_kind(m),
-                                arg: expr.to_ref(),
-                            },
-                        };
-                    }
-                    ty::adjustment::AutoBorrow::RawPtr(m) => {
-                        // Convert this to a suitable `&foo` and
-                        // then an unsafe coercion. Limit the region to be just this
-                        // expression.
-                        let region = ty::ReScope(expr_extent);
-                        let region = cx.tcx.mk_region(region);
-                        expr = Expr {
-                            temp_lifetime: temp_lifetime,
-                            temp_lifetime_was_shrunk: was_shrunk,
-                            ty: cx.tcx.mk_ref(region,
-                                              ty::TypeAndMut {
-                                                    ty: expr.ty,
-                                                    mutbl: m,
-                                              }),
-                            span: self.span,
-                            kind: ExprKind::Borrow {
-                                region: region,
-                                borrow_kind: to_borrow_kind(m),
-                                arg: expr.to_ref(),
-                            },
-                        };
-                        expr = Expr {
-                            temp_lifetime: temp_lifetime,
-                            temp_lifetime_was_shrunk: was_shrunk,
-                            ty: adjusted_ty,
-                            span: self.span,
-                            kind: ExprKind::Cast { source: expr.to_ref() },
-                        };
-                    }
-                }
-            }
-
-            if adj.unsize {
-                expr = Expr {
-                    temp_lifetime: temp_lifetime,
-                    temp_lifetime_was_shrunk: was_shrunk,
-                    ty: adj.target,
-                    span: self.span,
-                    kind: ExprKind::Unsize { source: expr.to_ref() },
-                };
-            }
+        for adjustment in cx.tables().expr_adjustments(self) {
+            debug!("make_mirror: expr={:?} applying adjustment={:?}",
+                   expr,
+                   adjustment);
+            expr = apply_adjustment(cx, self, expr, adjustment);
         }
 
         // Next, wrap this up in the expr's scope.
@@ -233,6 +70,102 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 
         // OK, all done!
         expr
+    }
+}
+
+fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
+                                    hir_expr: &'tcx hir::Expr,
+                                    mut expr: Expr<'tcx>,
+                                    adjustment: &Adjustment<'tcx>)
+                                    -> Expr<'tcx> {
+    let Expr { temp_lifetime, temp_lifetime_was_shrunk, span, .. } = expr;
+    let kind = match adjustment.kind {
+        Adjust::ReifyFnPointer => {
+            ExprKind::ReifyFnPointer { source: expr.to_ref() }
+        }
+        Adjust::UnsafeFnPointer => {
+            ExprKind::UnsafeFnPointer { source: expr.to_ref() }
+        }
+        Adjust::ClosureFnPointer => {
+            ExprKind::ClosureFnPointer { source: expr.to_ref() }
+        }
+        Adjust::NeverToAny => {
+            ExprKind::NeverToAny { source: expr.to_ref() }
+        }
+        Adjust::MutToConstPointer => {
+            ExprKind::Cast { source: expr.to_ref() }
+        }
+        Adjust::Deref(None) => {
+            ExprKind::Deref { arg: expr.to_ref() }
+        }
+        Adjust::Deref(Some(deref)) => {
+            let call = deref.method_call(cx.tcx, expr.ty);
+
+            expr = Expr {
+                temp_lifetime,
+                temp_lifetime_was_shrunk,
+                ty: cx.tcx.mk_ref(deref.region,
+                                  ty::TypeAndMut {
+                                    ty: expr.ty,
+                                    mutbl: deref.mutbl,
+                                  }),
+                span,
+                kind: ExprKind::Borrow {
+                    region: deref.region,
+                    borrow_kind: to_borrow_kind(deref.mutbl),
+                    arg: expr.to_ref(),
+                },
+            };
+
+            overloaded_lvalue(cx,
+                              hir_expr,
+                              adjustment.target,
+                              Some(call),
+                              PassArgs::ByValue,
+                              expr.to_ref(),
+                              vec![])
+        }
+        Adjust::Borrow(AutoBorrow::Ref(r, m)) => {
+            ExprKind::Borrow {
+                region: r,
+                borrow_kind: to_borrow_kind(m),
+                arg: expr.to_ref(),
+            }
+        }
+        Adjust::Borrow(AutoBorrow::RawPtr(m)) => {
+            // Convert this to a suitable `&foo` and
+            // then an unsafe coercion. Limit the region to be just this
+            // expression.
+            let region = ty::ReScope(CodeExtent::Misc(hir_expr.id));
+            let region = cx.tcx.mk_region(region);
+            expr = Expr {
+                temp_lifetime,
+                temp_lifetime_was_shrunk,
+                ty: cx.tcx.mk_ref(region,
+                                  ty::TypeAndMut {
+                                    ty: expr.ty,
+                                    mutbl: m,
+                                  }),
+                span,
+                kind: ExprKind::Borrow {
+                    region: region,
+                    borrow_kind: to_borrow_kind(m),
+                    arg: expr.to_ref(),
+                },
+            };
+            ExprKind::Cast { source: expr.to_ref() }
+        }
+        Adjust::Unsize => {
+            ExprKind::Unsize { source: expr.to_ref() }
+        }
+    };
+
+    Expr {
+        temp_lifetime,
+        temp_lifetime_was_shrunk,
+        ty: adjustment.target,
+        span,
+        kind,
     }
 }
 
