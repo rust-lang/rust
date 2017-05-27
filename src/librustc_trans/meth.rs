@@ -18,6 +18,7 @@ use monomorphize;
 use type_::Type;
 use value::Value;
 use rustc::ty::{self, Ty};
+use debuginfo;
 
 #[derive(Copy, Clone, Debug)]
 pub struct VirtualIndex(usize);
@@ -98,6 +99,8 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let vtable_const = C_struct(ccx, &components, false);
     let align = machine::llalign_of_pref(ccx, val_ty(vtable_const));
     let vtable = consts::addr_of(ccx, vtable_const, align, "vtable");
+
+    debuginfo::create_vtable_metadata(ccx, ty, vtable);
 
     ccx.vtables().borrow_mut().insert((ty, trait_ref), vtable);
     vtable
