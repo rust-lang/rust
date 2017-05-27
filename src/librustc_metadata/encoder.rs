@@ -18,7 +18,7 @@ use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary,
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LOCAL_CRATE};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::dep_graph::{DepNode, GlobalMetaDataKind};
-use rustc::ich::{StableHashingContext, Fingerprint};
+use rustc::ich::Fingerprint;
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::lang_items;
 use rustc::mir;
@@ -29,7 +29,6 @@ use rustc::session::config::{self, CrateTypeProcMacro};
 use rustc::util::nodemap::{FxHashMap, NodeSet};
 
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
-use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 
 use std::hash::Hash;
 use std::intrinsics;
@@ -37,7 +36,6 @@ use std::io::prelude::*;
 use std::io::Cursor;
 use std::path::Path;
 use std::rc::Rc;
-use std::sync::Arc;
 use std::u32;
 use syntax::ast::{self, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
@@ -284,7 +282,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let codemap = self.tcx.sess.codemap();
         let all_filemaps = codemap.files();
 
-        let hcx = &mut StableHashingContext::new(self.tcx);
         let (working_dir, working_dir_was_remapped) = self.tcx.sess.working_dir.clone();
 
         let adapted = all_filemaps.iter()
@@ -316,21 +313,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     adapted.name = abs_path;
                     Rc::new(adapted)
                 }
-            });
+            })
+            .collect::<Vec<_>>();
 
-        let filemaps: Vec<_> = if self.compute_ich {
-            adapted.inspect(|filemap| {
-                let mut hasher = StableHasher::new();
-                filemap.hash_stable(hcx, &mut hasher);
-                let fingerprint = hasher.finish();
-                let dep_node = DepNode::FileMap((), Arc::new(filemap.name.clone()));
-                self.metadata_hashes.global_hashes.push((dep_node, fingerprint));
-            }).collect()
-        } else {
-            adapted.collect()
-        };
-
-        self.lazy_seq_ref(filemaps.iter().map(|fm| &**fm))
+        self.lazy_seq_ref(adapted.iter().map(|rc| &**rc))
     }
 
     fn encode_crate_root(&mut self) -> Lazy<CrateRoot> {
