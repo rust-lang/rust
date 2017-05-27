@@ -626,6 +626,10 @@ def bootstrap():
             print('      does not work you should run a normal build first')
             print('      before running a command like `sudo make install`')
 
+    if '\nvendor = false' in rb.config_toml or \
+       'CFG_DISABLE_VENDOR' in rb.config_mk:
+        rb.use_vendored_sources = False
+
     if rb.use_vendored_sources:
         if not os.path.exists('.cargo'):
             os.makedirs('.cargo')
