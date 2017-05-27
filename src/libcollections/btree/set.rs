@@ -16,12 +16,11 @@ use core::cmp::{min, max};
 use core::fmt::Debug;
 use core::fmt;
 use core::iter::{Peekable, FromIterator, FusedIterator};
-use core::ops::{BitOr, BitAnd, BitXor, Sub};
+use core::ops::{BitOr, BitAnd, BitXor, Sub, RangeArgument};
 
 use borrow::Borrow;
 use btree_map::{BTreeMap, Keys};
 use super::Recover;
-use range::RangeArgument;
 
 // FIXME(conventions): implement bounded iterators
 

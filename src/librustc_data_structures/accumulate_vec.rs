@@ -15,11 +15,10 @@
 //!
 //! The N above is determined by Array's implementor, by way of an associatated constant.
 
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, RangeArgument};
 use std::iter::{self, IntoIterator, FromIterator};
 use std::slice;
 use std::vec;
-use std::collections::range::RangeArgument;
 
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 

@@ -106,7 +106,6 @@ mod btree;
 pub mod borrow;
 pub mod fmt;
 pub mod linked_list;
-pub mod range;
 pub mod slice;
 pub mod str;
 pub mod string;

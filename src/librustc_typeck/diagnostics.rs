@@ -2265,8 +2265,8 @@ If `ForeignTrait` is a trait defined in some external crate `foo`, then the
 following trait `impl` is an error:
 
 ```compile_fail,E0210
-extern crate collections;
-use collections::range::RangeArgument;
+extern crate core;
+use core::ops::RangeArgument;
 
 impl<T> RangeArgument<T> for T { } // error
 

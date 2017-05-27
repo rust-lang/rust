@@ -1,3 +1,5 @@
+use collections::Bound::{self, Excluded, Included, Unbounded};
+
 /// An unbounded range. Use `..` (two dots) for its shorthand.
 ///
 /// Its primary use case is slicing index. It cannot serve as an iterator
@@ -352,3 +354,156 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
 
 // RangeToInclusive<Idx> cannot impl From<RangeTo<Idx>>
 // because underflow would be possible with (..0).into()
+
+/// `RangeArgument` is implemented by Rust's built-in range types, produced
+/// by range syntax like `..`, `a..`, `..b` or `c..d`.
+#![unstable(feature = "collections_range",
+            reason = "waiting for dust to settle on inclusive ranges",
+            issue = "30877")]
+pub trait RangeArgument<T: ?Sized> {
+    /// Start index bound.
+    ///
+    /// Returns the start value as a `Bound`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(collections)]
+    /// #![feature(collections_range)]
+    ///
+    /// extern crate collections;
+    ///
+    /// # fn main() {
+    /// use collections::range::RangeArgument;
+    /// use collections::Bound::*;
+    ///
+    /// assert_eq!((..10).start(), Unbounded);
+    /// assert_eq!((3..10).start(), Included(&3));
+    /// # }
+    /// ```
+    fn start(&self) -> Bound<&T>;
+
+    /// End index bound.
+    ///
+    /// Returns the end value as a `Bound`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(collections)]
+    /// #![feature(collections_range)]
+    ///
+    /// extern crate collections;
+    ///
+    /// # fn main() {
+    /// use collections::range::RangeArgument;
+    /// use collections::Bound::*;
+    ///
+    /// assert_eq!((3..).end(), Unbounded);
+    /// assert_eq!((3..10).end(), Excluded(&10));
+    /// # }
+    /// ```
+    fn end(&self) -> Bound<&T>;
+}
+
+#![unstable(feature = "collections_range",
+            reason = "waiting for dust to settle on inclusive ranges",
+            issue = "30877")]
+impl<T: ?Sized> RangeArgument<T> for RangeFull {
+    fn start(&self) -> Bound<&T> {
+        Unbounded
+    }
+    fn end(&self) -> Bound<&T> {
+        Unbounded
+    }
+}
+
+#![unstable(feature = "collections_range",
+            reason = "waiting for dust to settle on inclusive ranges",
+            issue = "30877")]
+impl<T> RangeArgument<T> for RangeFrom<T> {
+    fn start(&self) -> Bound<&T> {
+        Included(&self.start)
+    }
+    fn end(&self) -> Bound<&T> {
+        Unbounded
+    }
+}
+
+#![unstable(feature = "collections_range",
+            reason = "waiting for dust to settle on inclusive ranges",
+            issue = "30877")]
+impl<T> RangeArgument<T> for RangeTo<T> {
+    fn start(&self) -> Bound<&T> {
+        Unbounded
+    }
+    fn end(&self) -> Bound<&T> {
+        Excluded(&self.end)
+    }
+}
+
+#![unstable(feature = "collections_range",
+            reason = "waiting for dust to settle on inclusive ranges",
+            issue = "30877")]
+impl<T> RangeArgument<T> for Range<T> {
+    fn start(&self) -> Bound<&T> {
+        Included(&self.start)
+    }
+    fn end(&self) -> Bound<&T> {
+        Excluded(&self.end)
+    }
+}
+
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> RangeArgument<T> for RangeInclusive<T> {
+    fn start(&self) -> Bound<&T> {
+        Included(&self.start)
+    }
+    fn end(&self) -> Bound<&T> {
+        Included(&self.end)
+    }
+}
+
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> RangeArgument<T> for RangeToInclusive<T> {
+    fn start(&self) -> Bound<&T> {
+        Unbounded
+    }
+    fn end(&self) -> Bound<&T> {
+        Included(&self.end)
+    }
+}
+
+#![unstable(feature = "collections_range",
+            reason = "waiting for dust to settle on inclusive ranges",
+            issue = "30877")]
+impl<T> RangeArgument<T> for (Bound<T>, Bound<T>) {
+    fn start(&self) -> Bound<&T> {
+        match *self {
+            (Included(ref start), _) => Included(start),
+            (Excluded(ref start), _) => Excluded(start),
+            (Unbounded, _)           => Unbounded,
+        }
+    }
+
+    fn end(&self) -> Bound<&T> {
+        match *self {
+            (_, Included(ref end)) => Included(end),
+            (_, Excluded(ref end)) => Excluded(end),
+            (_, Unbounded)         => Unbounded,
+        }
+    }
+}
+
+#![unstable(feature = "collections_range",
+            reason = "waiting for dust to settle on inclusive ranges",
+            issue = "30877")]
+impl<'a, T: ?Sized + 'a> RangeArgument<T> for (Bound<&'a T>, Bound<&'a T>) {
+    fn start(&self) -> Bound<&T> {
+        self.0
+    }
+
+    fn end(&self) -> Bound<&T> {
+        self.1
+    }
+}
