@@ -63,10 +63,6 @@ extern crate syntax_pos;
 extern crate rustc_errors as errors;
 extern crate serialize;
 
-use rustc::session;
-use rustc::middle;
-use rustc::util;
-
 pub use base::trans_crate;
 pub use back::symbol_names::provide;
 
@@ -168,8 +164,8 @@ pub struct CrateTranslation {
     pub crate_name: Symbol,
     pub modules: Vec<ModuleTranslation>,
     pub metadata_module: ModuleTranslation,
-    pub link: middle::cstore::LinkMeta,
-    pub metadata: middle::cstore::EncodedMetadata,
+    pub link: rustc::middle::cstore::LinkMeta,
+    pub metadata: rustc::middle::cstore::EncodedMetadata,
     pub exported_symbols: back::symbol_export::ExportedSymbols,
     pub no_builtins: bool,
     pub windows_subsystem: Option<String>,

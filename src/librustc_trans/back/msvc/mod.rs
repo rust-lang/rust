@@ -52,7 +52,7 @@ mod platform {
     use std::fs;
     use std::path::{Path, PathBuf};
     use std::process::Command;
-    use session::Session;
+    use rustc::session::Session;
     use super::arch::{host_arch, Arch};
     use super::registry::LOCAL_MACHINE;
 
@@ -296,7 +296,7 @@ mod platform {
 mod platform {
     use std::path::PathBuf;
     use std::process::Command;
-    use session::Session;
+    use rustc::session::Session;
     pub fn link_exe_cmd(_sess: &Session) -> (Command, Option<PathBuf>) {
         (Command::new("link.exe"), None)
     }

@@ -32,8 +32,8 @@ use builder::Builder;
 use monomorphize::Instance;
 use rustc::ty::{self, Ty};
 use rustc::mir;
-use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
-use util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
+use rustc::session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
+use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
 
 use libc::c_uint;
 use std::cell::{Cell, RefCell};
