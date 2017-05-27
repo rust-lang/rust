@@ -532,35 +532,47 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
             i += block_size as isize;
         }
 
-        // Swap remaining bytes 8 at a time if x & y are properly aligned
-        if align_of::<T>() % 8 == 0 {
-            while i + 8 <= len as isize {
-                let t = *(x.offset(i) as *mut u64);
-                *(x.offset(i) as *mut u64) = *(y.offset(i) as *mut u64);
-                *(y.offset(i) as *mut u64) = t;
-                i += 8;
-            }
-        }
-
-        // Swap remaining bytes 4 at a time if x & y are properly aligned
-        if align_of::<T>() % 4 == 0 {
-            while i + 4 <= len as isize {
-                let t = *(x.offset(i) as *mut u32);
-                *(x.offset(i) as *mut u32) = *(y.offset(i) as *mut u32);
-                *(y.offset(i) as *mut u32) = t;
-                i += 4;
-            }
-        }
 
         if i < len {
-            // Swap any remaining bytes
+            // Swap any remaining bytes, using aligned types to copy
+            // where appropriate (this information is lost by conversion
+            // to *mut u8, so restore it manually here)
             let mut t: UnalignedBlock = uninitialized();
-            let t = &mut t as *mut _ as *mut u8;
-
             let rem = (len - i) as usize;
-            ptr::copy_nonoverlapping(x.offset(i), t, rem);
-            ptr::copy_nonoverlapping(y.offset(i), x.offset(i), rem);
-            ptr::copy_nonoverlapping(t, y.offset(i), rem);
+
+            if align_of::<T>() % 8 == 0 && len % 8 == 0 {
+                let t = &mut t as *mut _ as *mut u64;
+                let x = x.offset(i) as *mut u64;
+                let y = y.offset(i) as *mut u64;
+
+                ptr::copy_nonoverlapping(x, t, rem / 8);
+                ptr::copy_nonoverlapping(y, x, rem / 8);
+                ptr::copy_nonoverlapping(t, y, rem / 8);
+            } else if align_of::<T>() % 4 == 0 && len % 4 == 0 {
+                let t = &mut t as *mut _ as *mut u32;
+                let x = x.offset(i) as *mut u32;
+                let y = y.offset(i) as *mut u32;
+
+                ptr::copy_nonoverlapping(x, t, rem / 4);
+                ptr::copy_nonoverlapping(y, x, rem / 4);
+                ptr::copy_nonoverlapping(t, y, rem / 4);
+            } else if align_of::<T>() % 2 == 0 && len % 2 == 0 {
+                let t = &mut t as *mut _ as *mut u16;
+                let x = x.offset(i) as *mut u16;
+                let y = y.offset(i) as *mut u16;
+
+                ptr::copy_nonoverlapping(x, t, rem / 2);
+                ptr::copy_nonoverlapping(y, x, rem / 2);
+                ptr::copy_nonoverlapping(t, y, rem / 2);
+            } else {
+                let t = &mut t as *mut _ as *mut u8;
+                let x = x.offset(i);
+                let y = y.offset(i);
+
+                ptr::copy_nonoverlapping(x, t, rem);
+                ptr::copy_nonoverlapping(y, x, rem);
+                ptr::copy_nonoverlapping(t, y, rem);
+            }
         }
     }
 }
