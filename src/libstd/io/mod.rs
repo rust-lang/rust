@@ -1277,6 +1277,37 @@ pub trait BufRead: Read {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fill_buf(&mut self) -> Result<&[u8]>;
 
+    /// Check if `Read` reached the EOF.
+    ///
+    /// This function may fill the buffer to check is EOF is reached,
+    /// so this functions returns `Result<bool>`, not `bool`.
+    ///
+    /// Default implementation calls `fill_buf` and checks that
+    /// returned slice is empty (which means that EOF is reached).
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// #![feature(buf_read_is_eof)]
+    /// use std::io;
+    /// use std::io::prelude::*;
+    ///
+    /// let stdin = io::stdin();
+    /// let mut stdin = stdin.lock();
+    ///
+    /// while !stdin.is_eof().unwrap() {
+    ///     let mut line = String::new();
+    ///     stdin.read_line(&mut line).unwrap();
+    ///     // work with line
+    ///     println!("{:?}", line);
+    /// }
+    /// ```
+    #[unstable(feature = "buf_read_is_eof", reason = "recently added",
+               issue = "40745")]
+    fn is_eof(&mut self) -> Result<bool> {
+        self.fill_buf().map(|b| b.is_empty())
+    }
+
     /// Tells this buffer that `amt` bytes have been consumed from the buffer,
     /// so they should no longer be returned in calls to `read`.
     ///
@@ -2044,6 +2075,16 @@ mod tests {
         v.truncate(0);
         assert_eq!(buf.read_line(&mut v).unwrap(), 0);
         assert_eq!(v, "");
+    }
+
+    #[test]
+    fn buf_read_is_eof() {
+        let mut buf = Cursor::new(&b"abcd"[..]);
+        assert!(!buf.is_eof().unwrap());
+        buf.read_exact(&mut [0; 2]).unwrap();
+        assert!(!buf.is_eof().unwrap());
+        buf.read_exact(&mut [0; 2]).unwrap();
+        assert!(buf.is_eof().unwrap());
     }
 
     #[test]
