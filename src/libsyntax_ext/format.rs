@@ -745,8 +745,10 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     let mut arg_index_consumed = vec![0usize; cx.arg_index_map.len()];
     for piece in pieces {
         if let Some(piece) = cx.trans_piece(&piece, &mut arg_index_consumed) {
-            let s = cx.trans_literal_string();
-            cx.str_pieces.push(s);
+            if !cx.literal.is_empty() {
+                let s = cx.trans_literal_string();
+                cx.str_pieces.push(s);
+            }
             cx.pieces.push(piece);
         }
     }
