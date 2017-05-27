@@ -49,6 +49,15 @@ fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
     }
 }
 
+fn ensure_valid_env_key<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
+    if str.as_ref().is_empty() || str.as_ref().encode_wide().skip(1).any(|b| b == b'=' as u16) {
+        Err(io::Error::new(io::ErrorKind::InvalidInput,
+                           "malformed env key in provided data"))
+    } else {
+        ensure_no_nuls(str)
+    }
+}
+
 pub struct Command {
     program: OsString,
     args: Vec<OsString>,
@@ -484,7 +493,7 @@ fn make_envp(env: Option<&collections::HashMap<OsString, OsString>>)
             let mut blk = Vec::new();
 
             for pair in env {
-                blk.extend(ensure_no_nuls(pair.0)?.encode_wide());
+                blk.extend(ensure_valid_env_key(pair.0)?.encode_wide());
                 blk.push('=' as u16);
                 blk.extend(ensure_no_nuls(pair.1)?.encode_wide());
                 blk.push(0);

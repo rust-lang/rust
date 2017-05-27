@@ -53,6 +53,7 @@ pub struct Command {
     uid: Option<uid_t>,
     gid: Option<gid_t>,
     saw_nul: bool,
+    saw_malformed_env_key: bool,
     closures: Vec<Box<FnMut() -> io::Result<()> + Send + Sync>>,
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
@@ -102,6 +103,7 @@ impl Command {
             uid: None,
             gid: None,
             saw_nul: saw_nul,
+            saw_malformed_env_key: false,
             closures: Vec::new(),
             stdin: None,
             stdout: None,
@@ -127,7 +129,11 @@ impl Command {
             let mut map = HashMap::new();
             let mut envp = Vec::new();
             for (k, v) in env::vars_os() {
-                let s = pair_to_key(&k, &v, &mut self.saw_nul);
+                let mut saw_nul = false;
+                let mut saw_malformed_env_key = false;
+                let s = pair_to_key(&k, &v, &mut saw_nul, &mut saw_malformed_env_key);
+                assert!(!saw_nul);
+                assert!(!saw_malformed_env_key);
                 envp.push(s.as_ptr());
                 map.insert(k, (envp.len() - 1, s));
             }
@@ -139,7 +145,11 @@ impl Command {
     }
 
     pub fn env(&mut self, key: &OsStr, val: &OsStr) {
-        let new_key = pair_to_key(key, val, &mut self.saw_nul);
+        let new_key = pair_to_key(key, val, &mut self.saw_nul, &mut self.saw_malformed_env_key);
+        if self.saw_malformed_env_key {
+            println!("{:?} {:?}", key, val);
+        }
+
         let (map, envp) = self.init_env_map();
 
         // If `key` is already present then we just update `envp` in place
@@ -162,6 +172,11 @@ impl Command {
     }
 
     pub fn env_remove(&mut self, key: &OsStr) {
+        pair_to_key(key, OsStr::new(""), &mut self.saw_nul, &mut self.saw_malformed_env_key);
+        if self.saw_malformed_env_key {
+            println!("{:?}", key);
+        }
+
         let (map, envp) = self.init_env_map();
 
         // If we actually ended up removing a key, then we need to update the
@@ -193,9 +208,6 @@ impl Command {
         self.gid = Some(id);
     }
 
-    pub fn saw_nul(&self) -> bool {
-        self.saw_nul
-    }
     pub fn get_envp(&self) -> &Option<Vec<*const c_char>> {
         &self.envp
     }
@@ -237,6 +249,18 @@ impl Command {
         self.stderr = Some(stderr);
     }
 
+    pub fn check_malformed(&self) -> io::Result<()> {
+        if self.saw_nul {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                      "nul byte found in provided data"));
+        }
+        if self.saw_malformed_env_key {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                      "malformed env key in provided data"));
+        }
+        Ok(())
+    }
+
     pub fn setup_io(&self, default: Stdio, needs_stdin: bool)
                 -> io::Result<(StdioPipes, ChildPipes)> {
         let null = Stdio::Null;
@@ -258,6 +282,13 @@ impl Command {
             stderr: their_stderr,
         };
         Ok((ours, theirs))
+    }
+}
+
+fn check_env_key(s: &OsStr, saw_malformed: &mut bool) {
+    let bytes = s.as_bytes();
+    if bytes.is_empty() || bytes[1..].contains(&b'=') {
+        *saw_malformed = true;
     }
 }
 
@@ -325,7 +356,11 @@ impl ChildStdio {
     }
 }
 
-fn pair_to_key(key: &OsStr, value: &OsStr, saw_nul: &mut bool) -> CString {
+fn pair_to_key(key: &OsStr, value: &OsStr, saw_nul: &mut bool, saw_malformed: &mut bool)
+    -> CString
+{
+    check_env_key(key, saw_malformed);
+
     let (key, value) = (key.as_bytes(), value.as_bytes());
     let mut v = Vec::with_capacity(key.len() + value.len() + 1);
     v.extend(key);
@@ -333,7 +368,7 @@ fn pair_to_key(key: &OsStr, value: &OsStr, saw_nul: &mut bool) -> CString {
     v.extend(value);
     CString::new(v).unwrap_or_else(|_e| {
         *saw_nul = true;
-        CString::new("foo=bar").unwrap()
+        CString::new("<ENV_WITH_NUL>").unwrap()
     })
 }
 

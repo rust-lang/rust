@@ -1480,6 +1480,27 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_empty_env_key_is_error() {
+        match env_cmd().env("", "value").spawn() {
+            Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
+            Ok(_) => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_interior_eq_in_env_key_is_error() {
+        match env_cmd().env("has-some-==s-inside", "value").spawn() {
+            Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
+            Ok(_) => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_leading_eq_key_is_no_error() {
+        env_cmd().env("=NAME", "value").output().unwrap();
+    }
+
     /// Test that process creation flags work by debugging a process.
     /// Other creation flags make it hard or impossible to detect
     /// behavioral changes in the process.

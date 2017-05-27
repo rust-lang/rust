@@ -23,10 +23,7 @@ use sys::process::process_common::*;
 impl Command {
     pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
                  -> io::Result<(Process, StdioPipes)> {
-        if self.saw_nul() {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                      "nul byte found in provided data"));
-        }
+        self.check_malformed()?;
 
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
 
@@ -36,9 +33,9 @@ impl Command {
     }
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
-        if self.saw_nul() {
-            return io::Error::new(io::ErrorKind::InvalidInput,
-                                  "nul byte found in provided data")
+        match self.check_malformed() {
+            Ok(()) => {},
+            Err(e) => return e,
         }
 
         match self.setup_io(default, true) {
