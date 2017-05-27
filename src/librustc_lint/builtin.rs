@@ -259,12 +259,6 @@ declare_lint! {
 }
 
 pub struct MissingDoc {
-    /// Stack of IDs of struct definitions.
-    struct_def_stack: Vec<ast::NodeId>,
-
-    /// True if inside variant definition
-    in_variant: bool,
-
     /// Stack of whether #[doc(hidden)] is set
     /// at each level which has lint attributes.
     doc_hidden_stack: Vec<bool>,
@@ -276,8 +270,6 @@ pub struct MissingDoc {
 impl MissingDoc {
     pub fn new() -> MissingDoc {
         MissingDoc {
-            struct_def_stack: vec![],
-            in_variant: false,
             doc_hidden_stack: vec![false],
             private_traits: HashSet::new(),
         }
@@ -343,25 +335,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
     fn exit_lint_attrs(&mut self, _: &LateContext, _attrs: &[ast::Attribute]) {
         self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
-    }
-
-    fn check_struct_def(&mut self,
-                        _: &LateContext,
-                        _: &hir::VariantData,
-                        _: ast::Name,
-                        _: &hir::Generics,
-                        item_id: ast::NodeId) {
-        self.struct_def_stack.push(item_id);
-    }
-
-    fn check_struct_def_post(&mut self,
-                             _: &LateContext,
-                             _: &hir::VariantData,
-                             _: ast::Name,
-                             _: &hir::Generics,
-                             item_id: ast::NodeId) {
-        let popped = self.struct_def_stack.pop().expect("empty struct_def_stack");
-        assert!(popped == item_id);
     }
 
     fn check_crate(&mut self, cx: &LateContext, krate: &hir::Crate) {
@@ -451,16 +424,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
     fn check_struct_field(&mut self, cx: &LateContext, sf: &hir::StructField) {
         if !sf.is_positional() {
-            if sf.vis == hir::Public || self.in_variant {
-                let cur_struct_def = *self.struct_def_stack
-                    .last()
-                    .expect("empty struct_def_stack");
-                self.check_missing_docs_attrs(cx,
-                                              Some(cur_struct_def),
-                                              &sf.attrs,
-                                              sf.span,
-                                              "a struct field")
-            }
+            self.check_missing_docs_attrs(cx,
+                                          Some(sf.id),
+                                          &sf.attrs,
+                                          sf.span,
+                                          "a struct field")
         }
     }
 
@@ -470,13 +438,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                                       &v.node.attrs,
                                       v.span,
                                       "a variant");
-        assert!(!self.in_variant);
-        self.in_variant = true;
-    }
-
-    fn check_variant_post(&mut self, _: &LateContext, _: &hir::Variant, _: &hir::Generics) {
-        assert!(self.in_variant);
-        self.in_variant = false;
     }
 }
 
