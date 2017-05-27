@@ -1,3 +1,4 @@
+use fmt;
 use collections::Bound::{self, Excluded, Included, Unbounded};
 
 /// An unbounded range. Use `..` (two dots) for its shorthand.
