@@ -499,24 +499,6 @@ pub unsafe fn uninitialized<T>() -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
-        let len = size_of::<T>();
-
-        if len < 128 {
-            // Give ourselves some scratch space to work with
-            let mut t: T = uninitialized();
-   
-            // Perform the swap, `&mut` pointers never alias
-            ptr::copy_nonoverlapping(&*x, &mut t, 1);
-            ptr::copy_nonoverlapping(&*y, x, 1);
-            ptr::copy_nonoverlapping(&t, y, 1);
-   
-            // y and t now point to the same thing, but we need to completely
-            // forget `t` because we do not want to run the destructor for `T`
-            // on its value, which is still owned somewhere outside this function.
-            forget(t);
-            return;
-        }
-
         // The approach here is to utilize simd to swap x & y efficiently. Testing reveals
         // that swapping either 32 bytes or 64 bytes at a time is most efficient for intel
         // Haswell E processors. LLVM is more able to optimize if we give a struct a
@@ -534,6 +516,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
         // Loop through x & y, copying them `Block` at a time
         // The optimizer should unroll the loop fully for most types
         // N.B. We can't use a for loop as the `range` impl calls `mem::swap` recursively
+        let len = size_of::<T>();
         let mut i = 0;
         while i + block_size <= len {
             // Create some uninitialized memory as scratch space
