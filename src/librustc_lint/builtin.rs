@@ -1114,10 +1114,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                                           it.name);
                         cx.span_lint(PRIVATE_NO_MANGLE_FNS, it.span, &msg);
                     }
-                    if generics.is_parameterized() {
+                    if generics.is_type_parameterized() {
                         cx.span_lint(NO_MANGLE_GENERIC_ITEMS,
                                      it.span,
-                                     "generic functions must be mangled");
+                                     "functions generic over types must be mangled");
                     }
                 }
             }
