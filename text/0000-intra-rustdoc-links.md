@@ -345,6 +345,29 @@ Please note:
 # Possible Extensions
 [possible-extensions]: #possible-extensions
 
+## Linking to fields and variants
+
+To link to the fields of a `struct`
+we propose to write the path to the struct,
+followed by a dot, followed by the field name.
+
+For example:
+
+```markdown
+This is stored in the [`size`](storage::Filesystem.size) field.
+```
+
+To link to the variants of an `enum`,
+we propose to write the path to the enum,
+followed by two colons, followed by the field name,
+just like `use Foo::Bar` can be used to import the `Bar` variant of an `enum Foo`.
+
+For example:
+
+```markdown
+For custom settings, supply the [`Custom`](storage::Engine::Other) field.
+```
+
 ## Linking to associated items
 
 To link to associated items,
