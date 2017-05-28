@@ -237,37 +237,40 @@ mod amet {
 ## Path ambiguities
 [path-ambiguities]: #path-ambiguities
 
-Rust allows items to have the same name. A short evaluation revealed that
+Rust has three different namespaces that items can be in,
+types, values, and macros.
+That means that in a given source file,
+three items with the same name can be used,
+as long as they are in different namespaces.
 
-- unit and tuple struct names
-  can conflict with
-  function names,
-- unit and tuple struct names
-  can conflict with
-  enum names,
-- and regular struct, enum, and trait names
-  can conflict with
-  each other
-  (but not function names).
+To illustrate, in the following example
+we introduce an item called `FOO` in each namespace:
 
-It appears the ambiguity can resolved
-by being able to restrict the path to function names.
-We propose that in case of ambiguity,
-you can add `()` as a suffix to path
-to only search for functions.
-(Additionally, to link to macros, you must add `!` to the path.)
+```rust
+pub trait FOO {}
 
-This was originally proposed by
-[@kennytm](https://github.com/kennytm)
-[here](https://github.com/rust-lang/rfcs/pull/1946#issuecomment-284719684),
-going into more details:
+pub const FOO: i32 = 42;
 
-> `<syntax::ptr::P>` — First search for type-like items. If not found, search for value-like items
->
-> `<syntax::ptr::P()>` — Only search for functions.
->
-> `<std::stringify!>` — Only search for macros.
+macro_rules! FOO { () => () }
+```
 
+To be able to link to each item,
+we'll need a way to disabiguate the namespaces.
+Our proposal is this:
+
+- Links to types are written as described earlier,
+  with no pre- or suffix,
+  e.g., `Look at the [FOO] trait`.
+- In links to macros,
+  the link label must end with a `!`,
+  e.g., `Look at the [FOO!] macro`.
+- For values, we differentiate three cases:
+  - Links to functions are written with a `()` suffix,
+    e.g., `Also see the [FOO()] function`.
+  - Links to constants are prefixed with `const `,
+    e.g., `As defined in [const FOO].`
+  - Links to statics are prefixed with `static `,
+    e.g., `See [static FOO]`.
 
 ## Errors
 
