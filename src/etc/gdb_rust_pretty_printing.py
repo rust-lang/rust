@@ -186,10 +186,10 @@ class RustStructPrinter(object):
         cs = []
         wrapped_value = self.__val.get_wrapped_value()
 
-        for field in self.__val.type.get_fields():
+        for number, field in enumerate(self.__val.type.get_fields()):
             field_value = wrapped_value[field.name]
             if self.__is_tuple_like:
-                cs.append(("", field_value))
+                cs.append((str(number), field_value))
             else:
                 cs.append((field.name, field_value))
 
