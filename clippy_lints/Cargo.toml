@@ -17,15 +17,17 @@ keywords = ["clippy", "lint", "plugin"]
 workspace = "../clippy_tests"
 
 [dependencies]
+itertools = "0.6.0"
+lazy_static = "0.2.8"
 matches = "0.1.2"
+pulldown-cmark = "0.0.14"
+quine-mc_cluskey = "0.2.2"
 regex-syntax = "0.4.0"
 semver = "0.6.0"
-toml = "0.4"
-unicode-normalization = "0.1"
-quine-mc_cluskey = "0.2.2"
 serde = "1.0"
 serde_derive = "1.0"
-lazy_static = "0.2.8"
+toml = "0.4"
+unicode-normalization = "0.1"
 
 [features]
 debugging = []
