@@ -467,6 +467,11 @@
                 b = (bbb.item.crate !== window.currentCrate);
                 if (a !== b) { return a - b; }
 
+                // sort by total module path length (longer goes later)
+                a = (aaa.item.path + (aaa.item.parent || {name: ''}).name + aaa.item.name).length;
+                b = (bbb.item.path + (bbb.item.parent || {name: ''}).name + bbb.item.name).length;
+                if (a !== b) return a - b;
+
                 // sort by exact match (mismatch goes later)
                 a = (aaa.word !== valLower);
                 b = (bbb.word !== valLower);
