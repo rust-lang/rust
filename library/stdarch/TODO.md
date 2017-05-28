@@ -5,6 +5,7 @@ Intel intrinsics. Replace `SSE4.2` with the intended type.
 rg '^<intrinsic' intel-intrinsics-3.3.15.xml | rg "'SSE4.2'" | rg '^.*name=\x27([^\x27]+)\x27.*$' -r '* [ ] `$1`' >> TODO.md
 ```
 
+rg calls the ripgrep tool, which can be installed with `cargo install ripgrep`
 
 sse
 ---
@@ -535,3 +536,391 @@ sse4.2
 * [ ] `_mm_crc32_u16`
 * [ ] `_mm_crc32_u32`
 * [ ] `_mm_crc32_u64`
+
+
+avx
+---
+* [ ] `_mm256_add_pd`
+* [ ] `_mm256_add_ps`
+* [ ] `_mm256_addsub_pd`
+* [ ] `_mm256_addsub_ps`
+* [ ] `_mm256_and_pd`
+* [ ] `_mm256_and_ps`
+* [ ] `_mm256_andnot_pd`
+* [ ] `_mm256_andnot_ps`
+* [ ] `_mm256_blend_pd`
+* [ ] `_mm256_blend_ps`
+* [ ] `_mm256_blendv_pd`
+* [ ] `_mm256_blendv_ps`
+* [ ] `_mm256_div_pd`
+* [ ] `_mm256_div_ps`
+* [ ] `_mm256_dp_ps`
+* [ ] `_mm256_hadd_pd`
+* [ ] `_mm256_hadd_ps`
+* [ ] `_mm256_hsub_pd`
+* [ ] `_mm256_hsub_ps`
+* [ ] `_mm256_max_pd`
+* [ ] `_mm256_max_ps`
+* [ ] `_mm256_min_pd`
+* [ ] `_mm256_min_ps`
+* [ ] `_mm256_mul_pd`
+* [ ] `_mm256_mul_ps`
+* [ ] `_mm256_or_pd`
+* [ ] `_mm256_or_ps`
+* [ ] `_mm256_shuffle_pd`
+* [ ] `_mm256_shuffle_ps`
+* [ ] `_mm256_sub_pd`
+* [ ] `_mm256_sub_ps`
+* [ ] `_mm256_xor_pd`
+* [ ] `_mm256_xor_ps`
+* [ ] `_mm_cmp_pd`
+* [ ] `_mm256_cmp_pd`
+* [ ] `_mm_cmp_ps`
+* [ ] `_mm256_cmp_ps`
+* [ ] `_mm_cmp_sd`
+* [ ] `_mm_cmp_ss`
+* [ ] `_mm256_cvtepi32_pd`
+* [ ] `_mm256_cvtepi32_ps`
+* [ ] `_mm256_cvtpd_ps`
+* [ ] `_mm256_cvtps_epi32`
+* [ ] `_mm256_cvtps_pd`
+* [ ] `_mm256_cvttpd_epi32`
+* [ ] `_mm256_cvtpd_epi32`
+* [ ] `_mm256_cvttps_epi32`
+* [ ] `_mm256_extractf128_ps`
+* [ ] `_mm256_extractf128_pd`
+* [ ] `_mm256_extractf128_si256`
+* [ ] `_mm256_extract_epi8`
+* [ ] `_mm256_extract_epi16`
+* [ ] `_mm256_extract_epi32`
+* [ ] `_mm256_extract_epi64`
+* [ ] `_mm256_zeroall`
+* [ ] `_mm256_zeroupper`
+* [ ] `_mm256_permutevar_ps`
+* [ ] `_mm_permutevar_ps`
+* [ ] `_mm256_permute_ps`
+* [ ] `_mm_permute_ps`
+* [ ] `_mm256_permutevar_pd`
+* [ ] `_mm_permutevar_pd`
+* [ ] `_mm256_permute_pd`
+* [ ] `_mm_permute_pd`
+* [ ] `_mm256_permute2f128_ps`
+* [ ] `_mm256_permute2f128_pd`
+* [ ] `_mm256_permute2f128_si256`
+* [ ] `_mm256_broadcast_ss`
+* [ ] `_mm_broadcast_ss`
+* [ ] `_mm256_broadcast_sd`
+* [ ] `_mm256_broadcast_ps`
+* [ ] `_mm256_broadcast_pd`
+* [ ] `_mm256_insertf128_ps`
+* [ ] `_mm256_insertf128_pd`
+* [ ] `_mm256_insertf128_si256`
+* [ ] `_mm256_insert_epi8`
+* [ ] `_mm256_insert_epi16`
+* [ ] `_mm256_insert_epi32`
+* [ ] `_mm256_insert_epi64`
+* [ ] `_mm256_load_pd`
+* [ ] `_mm256_store_pd`
+* [ ] `_mm256_load_ps`
+* [ ] `_mm256_store_ps`
+* [ ] `_mm256_loadu_pd`
+* [ ] `_mm256_storeu_pd`
+* [ ] `_mm256_loadu_ps`
+* [ ] `_mm256_storeu_ps`
+* [ ] `_mm256_load_si256`
+* [ ] `_mm256_store_si256`
+* [ ] `_mm256_loadu_si256`
+* [ ] `_mm256_storeu_si256`
+* [ ] `_mm256_maskload_pd`
+* [ ] `_mm256_maskstore_pd`
+* [ ] `_mm_maskload_pd`
+* [ ] `_mm_maskstore_pd`
+* [ ] `_mm256_maskload_ps`
+* [ ] `_mm256_maskstore_ps`
+* [ ] `_mm_maskload_ps`
+* [ ] `_mm_maskstore_ps`
+* [ ] `_mm256_movehdup_ps`
+* [ ] `_mm256_moveldup_ps`
+* [ ] `_mm256_movedup_pd`
+* [ ] `_mm256_lddqu_si256`
+* [ ] `_mm256_stream_si256`
+* [ ] `_mm256_stream_pd`
+* [ ] `_mm256_stream_ps`
+* [ ] `_mm256_rcp_ps`
+* [ ] `_mm256_rsqrt_ps`
+* [ ] `_mm256_sqrt_pd`
+* [ ] `_mm256_sqrt_ps`
+* [ ] `_mm256_round_pd`
+* [ ] `_mm256_round_ps`
+* [ ] `_mm256_unpackhi_pd`
+* [ ] `_mm256_unpackhi_ps`
+* [ ] `_mm256_unpacklo_pd`
+* [ ] `_mm256_unpacklo_ps`
+* [ ] `_mm256_testz_si256`
+* [ ] `_mm256_testc_si256`
+* [ ] `_mm256_testnzc_si256`
+* [ ] `_mm256_testz_pd`
+* [ ] `_mm256_testc_pd`
+* [ ] `_mm256_testnzc_pd`
+* [ ] `_mm_testz_pd`
+* [ ] `_mm_testc_pd`
+* [ ] `_mm_testnzc_pd`
+* [ ] `_mm256_testz_ps`
+* [ ] `_mm256_testc_ps`
+* [ ] `_mm256_testnzc_ps`
+* [ ] `_mm_testz_ps`
+* [ ] `_mm_testc_ps`
+* [ ] `_mm_testnzc_ps`
+* [ ] `_mm256_movemask_pd`
+* [ ] `_mm256_movemask_ps`
+* [ ] `_mm256_setzero_pd`
+* [ ] `_mm256_setzero_ps`
+* [ ] `_mm256_setzero_si256`
+* [ ] `_mm256_set_pd`
+* [ ] `_mm256_set_ps`
+* [ ] `_mm256_set_epi8`
+* [ ] `_mm256_set_epi16`
+* [ ] `_mm256_set_epi32`
+* [ ] `_mm256_set_epi64x`
+* [ ] `_mm256_setr_pd`
+* [ ] `_mm256_setr_ps`
+* [ ] `_mm256_setr_epi8`
+* [ ] `_mm256_setr_epi16`
+* [ ] `_mm256_setr_epi32`
+* [ ] `_mm256_setr_epi64x`
+* [ ] `_mm256_set1_pd`
+* [ ] `_mm256_set1_ps`
+* [ ] `_mm256_set1_epi8`
+* [ ] `_mm256_set1_epi16`
+* [ ] `_mm256_set1_epi32`
+* [ ] `_mm256_set1_epi64x`
+* [ ] `_mm256_castpd_ps`
+* [ ] `_mm256_castps_pd`
+* [ ] `_mm256_castps_si256`
+* [ ] `_mm256_castpd_si256`
+* [ ] `_mm256_castsi256_ps`
+* [ ] `_mm256_castsi256_pd`
+* [ ] `_mm256_castps256_ps128`
+* [ ] `_mm256_castpd256_pd128`
+* [ ] `_mm256_castsi256_si128`
+* [ ] `_mm256_castps128_ps256`
+* [ ] `_mm256_castpd128_pd256`
+* [ ] `_mm256_castsi128_si256`
+* [ ] `_mm256_zextps128_ps256`
+* [ ] `_mm256_zextpd128_pd256`
+* [ ] `_mm256_zextsi128_si256`
+* [ ] `_mm256_floor_ps`
+* [ ] `_mm256_ceil_ps`
+* [ ] `_mm256_floor_pd`
+* [ ] `_mm256_ceil_pd`
+* [ ] `_mm256_undefined_ps`
+* [ ] `_mm256_undefined_pd`
+* [ ] `_mm256_undefined_si256`
+* [ ] `_mm256_set_m128`
+* [ ] `_mm256_set_m128d`
+* [ ] `_mm256_set_m128i`
+* [ ] `_mm256_setr_m128`
+* [ ] `_mm256_setr_m128d`
+* [ ] `_mm256_setr_m128i`
+* [ ] `_mm256_loadu2_m128`
+* [ ] `_mm256_loadu2_m128d`
+* [ ] `_mm256_loadu2_m128i`
+* [ ] `_mm256_storeu2_m128`
+* [ ] `_mm256_storeu2_m128d`
+* [ ] `_mm256_storeu2_m128i`
+
+
+
+avx2
+----
+* [x] `_mm256_abs_epi8`
+* [x] `_mm256_abs_epi16`
+* [x] `_mm256_abs_epi32`
+* [x] `_mm256_add_epi8`
+* [x] `_mm256_add_epi16`
+* [x] `_mm256_add_epi32`
+* [x] `_mm256_add_epi64`
+* [x] `_mm256_adds_epi8`
+* [x] `_mm256_adds_epi16`
+* [x] `_mm256_adds_epu8`
+* [x] `_mm256_adds_epu16`
+* [ ] `_mm256_alignr_epi8`
+* [x] `_mm256_and_si256`
+* [x] `_mm256_andnot_si256`
+* [x] `_mm256_avg_epu8`
+* [x] `_mm256_avg_epu16`
+* [ ] `_mm256_blend_epi16`
+* [ ] `_mm_blend_epi32`
+* [ ] `_mm256_blend_epi32`
+* [x] `_mm256_blendv_epi8`
+* [ ] `_mm_broadcastb_epi8`
+* [ ] `_mm256_broadcastb_epi8`
+* [ ] `_mm_broadcastd_epi32`
+* [ ] `_mm256_broadcastd_epi32`
+* [ ] `_mm_broadcastq_epi64`
+* [ ] `_mm256_broadcastq_epi64`
+* [ ] `_mm_broadcastsd_pd`
+* [ ] `_mm256_broadcastsd_pd`
+* [ ] `_mm_broadcastsi128_si256`
+* [ ] `_mm256_broadcastsi128_si256`
+* [ ] `_mm_broadcastss_ps`
+* [ ] `_mm256_broadcastss_ps`
+* [ ] `_mm_broadcastw_epi16`
+* [ ] `_mm256_broadcastw_epi16`
+* [x] `_mm256_cmpeq_epi8`
+* [x] `_mm256_cmpeq_epi16`
+* [x] `_mm256_cmpeq_epi32`
+* [x] `_mm256_cmpeq_epi64`
+* [x] `_mm256_cmpgt_epi8`
+* [x] `_mm256_cmpgt_epi16`
+* [x] `_mm256_cmpgt_epi32`
+* [x] `_mm256_cmpgt_epi64`
+* [ ] `_mm256_cvtepi16_epi32`
+* [ ] `_mm256_cvtepi16_epi64`
+* [ ] `_mm256_cvtepi32_epi64`
+* [ ] `_mm256_cvtepi8_epi16`
+* [ ] `_mm256_cvtepi8_epi32`
+* [ ] `_mm256_cvtepi8_epi64`
+* [ ] `_mm256_cvtepu16_epi32`
+* [ ] `_mm256_cvtepu16_epi64`
+* [ ] `_mm256_cvtepu32_epi64`
+* [ ] `_mm256_cvtepu8_epi16`
+* [ ] `_mm256_cvtepu8_epi32`
+* [ ] `_mm256_cvtepu8_epi64`
+* [ ] `_mm256_extracti128_si256`
+* [x] `_mm256_hadd_epi16`
+* [x] `_mm256_hadd_epi32`
+* [x] `_mm256_hadds_epi16`
+* [x] `_mm256_hsub_epi16`
+* [x] `_mm256_hsub_epi32`
+* [x] `_mm256_hsubs_epi16`
+* [ ] `_mm_i32gather_pd`
+* [ ] `_mm256_i32gather_pd`
+* [ ] `_mm_i32gather_ps`
+* [ ] `_mm256_i32gather_ps`
+* [ ] `_mm_i32gather_epi32`
+* [ ] `_mm256_i32gather_epi32`
+* [ ] `_mm_i32gather_epi64`
+* [ ] `_mm256_i32gather_epi64`
+* [ ] `_mm_i64gather_pd`
+* [ ] `_mm256_i64gather_pd`
+* [ ] `_mm_i64gather_ps`
+* [ ] `_mm256_i64gather_ps`
+* [ ] `_mm_i64gather_epi32`
+* [ ] `_mm256_i64gather_epi32`
+* [ ] `_mm_i64gather_epi64`
+* [ ] `_mm256_i64gather_epi64`
+* [ ] `_mm256_inserti128_si256`
+* [ ] `_mm256_madd_epi16`
+* [ ] `_mm256_maddubs_epi16`
+* [ ] `_mm_mask_i32gather_pd`
+* [ ] `_mm256_mask_i32gather_pd`
+* [ ] `_mm_mask_i32gather_ps`
+* [ ] `_mm256_mask_i32gather_ps`
+* [ ] `_mm_mask_i32gather_epi32`
+* [ ] `_mm256_mask_i32gather_epi32`
+* [ ] `_mm_mask_i32gather_epi64`
+* [ ] `_mm256_mask_i32gather_epi64`
+* [ ] `_mm_mask_i64gather_pd`
+* [ ] `_mm256_mask_i64gather_pd`
+* [ ] `_mm_mask_i64gather_ps`
+* [ ] `_mm256_mask_i64gather_ps`
+* [ ] `_mm_mask_i64gather_epi32`
+* [ ] `_mm256_mask_i64gather_epi32`
+* [ ] `_mm_mask_i64gather_epi64`
+* [ ] `_mm256_mask_i64gather_epi64`
+* [ ] `_mm_maskload_epi32`
+* [ ] `_mm256_maskload_epi32`
+* [ ] `_mm_maskload_epi64`
+* [ ] `_mm256_maskload_epi64`
+* [ ] `_mm_maskstore_epi32`
+* [ ] `_mm256_maskstore_epi32`
+* [ ] `_mm_maskstore_epi64`
+* [ ] `_mm256_maskstore_epi64`
+* [ ] `_mm256_max_epi8`
+* [ ] `_mm256_max_epi16`
+* [ ] `_mm256_max_epi32`
+* [ ] `_mm256_max_epu8`
+* [ ] `_mm256_max_epu16`
+* [ ] `_mm256_max_epu32`
+* [ ] `_mm256_min_epi8`
+* [ ] `_mm256_min_epi16`
+* [ ] `_mm256_min_epi32`
+* [ ] `_mm256_min_epu8`
+* [ ] `_mm256_min_epu16`
+* [ ] `_mm256_min_epu32`
+* [ ] `_mm256_movemask_epi8`
+* [ ] `_mm256_mpsadbw_epu8`
+* [ ] `_mm256_mul_epi32`
+* [ ] `_mm256_mul_epu32`
+* [ ] `_mm256_mulhi_epi16`
+* [ ] `_mm256_mulhi_epu16`
+* [ ] `_mm256_mulhrs_epi16`
+* [ ] `_mm256_mullo_epi16`
+* [ ] `_mm256_mullo_epi32`
+* [ ] `_mm256_or_si256`
+* [ ] `_mm256_packs_epi16`
+* [ ] `_mm256_packs_epi32`
+* [ ] `_mm256_packus_epi16`
+* [ ] `_mm256_packus_epi32`
+* [ ] `_mm256_permute2x128_si256`
+* [ ] `_mm256_permute4x64_epi64`
+* [ ] `_mm256_permute4x64_pd`
+* [ ] `_mm256_permutevar8x32_epi32`
+* [ ] `_mm256_permutevar8x32_ps`
+* [ ] `_mm256_sad_epu8`
+* [ ] `_mm256_shuffle_epi32`
+* [ ] `_mm256_shuffle_epi8`
+* [ ] `_mm256_shufflehi_epi16`
+* [ ] `_mm256_shufflelo_epi16`
+* [ ] `_mm256_sign_epi8`
+* [ ] `_mm256_sign_epi16`
+* [ ] `_mm256_sign_epi32`
+* [ ] `_mm256_slli_si256`
+* [ ] `_mm256_bslli_epi128`
+* [ ] `_mm256_sll_epi16`
+* [ ] `_mm256_slli_epi16`
+* [ ] `_mm256_sll_epi32`
+* [ ] `_mm256_slli_epi32`
+* [ ] `_mm256_sll_epi64`
+* [ ] `_mm256_slli_epi64`
+* [ ] `_mm_sllv_epi32`
+* [ ] `_mm256_sllv_epi32`
+* [ ] `_mm_sllv_epi64`
+* [ ] `_mm256_sllv_epi64`
+* [ ] `_mm256_sra_epi16`
+* [ ] `_mm256_srai_epi16`
+* [ ] `_mm256_sra_epi32`
+* [ ] `_mm256_srai_epi32`
+* [ ] `_mm_srav_epi32`
+* [ ] `_mm256_srav_epi32`
+* [ ] `_mm256_srli_si256`
+* [ ] `_mm256_bsrli_epi128`
+* [ ] `_mm256_srl_epi16`
+* [ ] `_mm256_srli_epi16`
+* [ ] `_mm256_srl_epi32`
+* [ ] `_mm256_srli_epi32`
+* [ ] `_mm256_srl_epi64`
+* [ ] `_mm256_srli_epi64`
+* [ ] `_mm_srlv_epi32`
+* [ ] `_mm256_srlv_epi32`
+* [ ] `_mm_srlv_epi64`
+* [ ] `_mm256_srlv_epi64`
+* [ ] `_mm256_stream_load_si256`
+* [ ] `_mm256_sub_epi8`
+* [ ] `_mm256_sub_epi16`
+* [ ] `_mm256_sub_epi32`
+* [ ] `_mm256_sub_epi64`
+* [ ] `_mm256_subs_epi8`
+* [ ] `_mm256_subs_epi16`
+* [ ] `_mm256_subs_epu8`
+* [ ] `_mm256_subs_epu16`
+* [ ] `_mm256_xor_si256`
+* [ ] `_mm256_unpackhi_epi8`
+* [ ] `_mm256_unpackhi_epi16`
+* [ ] `_mm256_unpackhi_epi32`
+* [ ] `_mm256_unpackhi_epi64`
+* [ ] `_mm256_unpacklo_epi8`
+* [ ] `_mm256_unpacklo_epi16`
+* [ ] `_mm256_unpacklo_epi32`
+* [ ] `_mm256_unpacklo_epi64`
