@@ -39,8 +39,6 @@ use rustc::middle::free_region::RegionRelations;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 
-use syntax_pos::DUMMY_SP;
-
 use std::fmt;
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
@@ -594,12 +592,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     verb, msg, nl);
                 let need_note = match lp.ty.sty {
                     ty::TypeVariants::TyClosure(id, _) => {
-                        if let Ok(ty::ClosureKind::FnOnce) =
-                           ty::queries::closure_kind::try_get(self.tcx, DUMMY_SP, id) {
-                            err.help("closure was moved because it only implements `FnOnce`");
-                            if let Some(&(_kind, Some(span))) = self.tables.closure_kinds.get( ) {
-                                err.span_label(span, "move occured here");
-                            }
+                        let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
+                        if let Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) =
+                            self.tables.closure_kinds.get(&node_id)
+                        {
+                            err.help(&format!("closure cannot be invoked more than once because \
+                                              it moves the variable `{}` out of its environment",
+                                              name));
+                            err.span_label(span, format!("{} moved here", name));
                             false
                         } else {
                             true

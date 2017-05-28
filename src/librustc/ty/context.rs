@@ -230,9 +230,9 @@ pub struct TypeckTables<'tcx> {
     /// Records the type of each closure.
     pub closure_tys: NodeMap<ty::PolyFnSig<'tcx>>,
 
-    /// Records the kind of each closure and the span of the variable that
-    /// cause the closure to be this kind.
-    pub closure_kinds: NodeMap<(ty::ClosureKind, Option<Span>)>,
+    /// Records the kind of each closure and the span and name of the variable
+    /// that caused the closure to be this kind.
+    pub closure_kinds: NodeMap<(ty::ClosureKind, Option<(Span, ast::Name)>)>,
 
     /// For each fn, records the "liberated" types of its arguments
     /// and return type. Liberated means that all bound regions
