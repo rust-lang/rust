@@ -1,7 +1,10 @@
 [package]
 name = "semverver"
+description = "Automatic verification of SemVer adhrence in rust library crates"
+repository = "https://github.com/ibabushkin/rust-semverver"
 version = "0.1.0"
 authors = ["Inokentiy Babushkin <twk@twki.de>"]
+license = "BSD3"
 
 [[bin]]
 name = "cargo-semver"
