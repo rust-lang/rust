@@ -3424,10 +3424,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                                lvalue_pref);
 
             if !oprnd_t.references_error() {
+                oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
                 match unop {
                     hir::UnDeref => {
-                        oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
-
                         if let Some(mt) = oprnd_t.builtin_deref(true, NoPreference) {
                             oprnd_t = mt.ty;
                         } else if let Some(ok) = self.try_overloaded_deref(
@@ -3450,18 +3449,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                     hir::UnNot => {
-                        oprnd_t = self.structurally_resolved_type(oprnd.span,
-                                                                  oprnd_t);
-                        let result = self.check_user_unop(expr, &oprnd, oprnd_t, unop);
+                        let result = self.check_user_unop(expr, oprnd_t, unop);
                         // If it's builtin, we can reuse the type, this helps inference.
                         if !(oprnd_t.is_integral() || oprnd_t.sty == ty::TyBool) {
                             oprnd_t = result;
                         }
                     }
                     hir::UnNeg => {
-                        oprnd_t = self.structurally_resolved_type(oprnd.span,
-                                                                  oprnd_t);
-                        let result = self.check_user_unop(expr, &oprnd, oprnd_t, unop);
+                        let result = self.check_user_unop(expr, oprnd_t, unop);
                         // If it's builtin, we can reuse the type, this helps inference.
                         if !(oprnd_t.is_integral() || oprnd_t.is_fp()) {
                             oprnd_t = result;

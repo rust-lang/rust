@@ -263,12 +263,6 @@ macro_rules! return_if_err {
     )
 }
 
-/// Whether the elements of an overloaded operation are passed by value or by reference
-enum PassArgs {
-    ByValue,
-    ByRef,
-}
-
 impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     pub fn new(delegate: &'a mut (Delegate<'tcx>+'a),
                region_maps: &'a RegionMaps,
@@ -382,9 +376,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
 
             hir::ExprUnary(hir::UnDeref, ref base) => {      // *base
-                if !self.walk_overloaded_operator(expr, &base, Vec::new(), PassArgs::ByRef) {
-                    self.select_from_expr(&base);
-                }
+                self.select_from_expr(&base);
             }
 
             hir::ExprField(ref base, _) => {         // base.f
@@ -396,13 +388,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
 
             hir::ExprIndex(ref lhs, ref rhs) => {       // lhs[rhs]
-                if !self.walk_overloaded_operator(expr,
-                                                  &lhs,
-                                                  vec![&rhs],
-                                                  PassArgs::ByValue) {
-                    self.select_from_expr(&lhs);
-                    self.consume_expr(&rhs);
-                }
+                self.select_from_expr(&lhs);
+                self.consume_expr(&rhs);
             }
 
             hir::ExprCall(ref callee, ref args) => {    // callee(args)
@@ -485,29 +472,13 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.walk_block(&blk);
             }
 
-            hir::ExprUnary(op, ref lhs) => {
-                let pass_args = if op.is_by_value() {
-                    PassArgs::ByValue
-                } else {
-                    PassArgs::ByRef
-                };
-
-                if !self.walk_overloaded_operator(expr, &lhs, Vec::new(), pass_args) {
-                    self.consume_expr(&lhs);
-                }
+            hir::ExprUnary(_, ref lhs) => {
+                self.consume_expr(&lhs);
             }
 
-            hir::ExprBinary(op, ref lhs, ref rhs) => {
-                let pass_args = if op.node.is_by_value() {
-                    PassArgs::ByValue
-                } else {
-                    PassArgs::ByRef
-                };
-
-                if !self.walk_overloaded_operator(expr, &lhs, vec![&rhs], pass_args) {
-                    self.consume_expr(&lhs);
-                    self.consume_expr(&rhs);
-                }
+            hir::ExprBinary(_, ref lhs, ref rhs) => {
+                self.consume_expr(&lhs);
+                self.consume_expr(&rhs);
             }
 
             hir::ExprBlock(ref blk) => {
@@ -529,14 +500,13 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.consume_expr(&base);
             }
 
-            hir::ExprAssignOp(op, ref lhs, ref rhs) => {
-                // NB All our assignment operations take the RHS by value
-                assert!(op.node.is_by_value());
-
-                if !self.walk_overloaded_operator(expr, lhs, vec![rhs], PassArgs::ByValue) {
+            hir::ExprAssignOp(_, ref lhs, ref rhs) => {
+                if self.mc.infcx.tables.borrow().is_method_call(expr) {
+                    self.consume_expr(lhs);
+                } else {
                     self.mutate_expr(expr, &lhs, MutateMode::WriteAndRead);
-                    self.consume_expr(&rhs);
                 }
+                self.consume_expr(&rhs);
             }
 
             hir::ExprRepeat(ref base, _) => {
@@ -782,50 +752,6 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                                      AutoUnsafe);
             }
         }
-    }
-
-
-    // When this returns true, it means that the expression *is* a
-    // method-call (i.e. via the operator-overload).  This true result
-    // also implies that walk_overloaded_operator already took care of
-    // recursively processing the input arguments, and thus the caller
-    // should not do so.
-    fn walk_overloaded_operator(&mut self,
-                                expr: &hir::Expr,
-                                receiver: &hir::Expr,
-                                rhs: Vec<&hir::Expr>,
-                                pass_args: PassArgs)
-                                -> bool
-    {
-        if !self.mc.infcx.tables.borrow().is_method_call(expr) {
-            return false;
-        }
-
-        match pass_args {
-            PassArgs::ByValue => {
-                self.consume_expr(receiver);
-                for &arg in &rhs {
-                    self.consume_expr(arg);
-                }
-
-                return true;
-            },
-            PassArgs::ByRef => {},
-        }
-
-        self.walk_expr(receiver);
-
-        // Arguments (but not receivers) to overloaded operator
-        // methods are implicitly autoref'd which sadly does not use
-        // adjustments, so we must hardcode the borrow here.
-
-        let r = self.tcx().node_scope_region(expr.id);
-        let bk = ty::ImmBorrow;
-
-        for &arg in &rhs {
-            self.borrow_expr(arg, r, bk, OverloadedOperator);
-        }
-        return true;
     }
 
     fn arm_move_mode(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &hir::Arm) -> TrackMatchMode {

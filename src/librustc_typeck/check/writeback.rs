@@ -123,18 +123,15 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     tables.type_dependent_defs.remove(&e.id);
                     tables.node_substs.remove(&e.id);
 
-                    // weird but true: the by-ref binops put an
-                    // adjustment on the lhs but not the rhs; the
-                    // adjustment for rhs is kind of baked into the
-                    // system.
                     match e.node {
                         hir::ExprBinary(..) => {
                             if !op.node.is_by_value() {
-                                tables.adjustments.remove(&lhs.id);
+                                tables.adjustments.get_mut(&lhs.id).map(|a| a.pop());
+                                tables.adjustments.get_mut(&rhs.id).map(|a| a.pop());
                             }
                         },
                         hir::ExprAssignOp(..) => {
-                            tables.adjustments.remove(&lhs.id);
+                            tables.adjustments.get_mut(&lhs.id).map(|a| a.pop());
                         },
                         _ => {},
                     }

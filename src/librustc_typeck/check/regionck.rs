@@ -566,49 +566,38 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
 
             hir::ExprCall(ref callee, ref args) => {
                 if is_method_call {
-                    self.constrain_call(expr, Some(&callee),
-                                        args.iter().map(|e| &*e), false);
+                    self.constrain_call(expr, Some(&callee), args.iter().map(|e| &*e));
                 } else {
                     self.constrain_callee(callee.id, expr, &callee);
-                    self.constrain_call(expr, None,
-                                        args.iter().map(|e| &*e), false);
+                    self.constrain_call(expr, None, args.iter().map(|e| &*e));
                 }
 
                 intravisit::walk_expr(self, expr);
             }
 
             hir::ExprMethodCall(.., ref args) => {
-                self.constrain_call(expr, Some(&args[0]),
-                                    args[1..].iter().map(|e| &*e), false);
+                self.constrain_call(expr, Some(&args[0]), args[1..].iter().map(|e| &*e));
 
                 intravisit::walk_expr(self, expr);
             }
 
             hir::ExprAssignOp(_, ref lhs, ref rhs) => {
                 if is_method_call {
-                    self.constrain_call(expr, Some(&lhs),
-                                        Some(&**rhs).into_iter(), false);
+                    self.constrain_call(expr, Some(&lhs), Some(&**rhs).into_iter());
                 }
 
                 intravisit::walk_expr(self, expr);
             }
 
             hir::ExprIndex(ref lhs, ref rhs) if is_method_call => {
-                self.constrain_call(expr, Some(&lhs),
-                                    Some(&**rhs).into_iter(), true);
+                self.constrain_call(expr, Some(&lhs), Some(&**rhs).into_iter());
 
                 intravisit::walk_expr(self, expr);
             },
 
-            hir::ExprBinary(op, ref lhs, ref rhs) if is_method_call => {
-                let implicitly_ref_args = !op.node.is_by_value();
-
-                // As `expr_method_call`, but the call is via an
-                // overloaded op.  Note that we (sadly) currently use an
-                // implicit "by ref" sort of passing style here.  This
-                // should be converted to an adjustment!
-                self.constrain_call(expr, Some(&lhs),
-                                    Some(&**rhs).into_iter(), implicitly_ref_args);
+            hir::ExprBinary(_, ref lhs, ref rhs) if is_method_call => {
+                // As `ExprMethodCall`, but the call is via an overloaded op.
+                self.constrain_call(expr, Some(&lhs), Some(&**rhs).into_iter());
 
                 intravisit::walk_expr(self, expr);
             }
@@ -625,21 +614,10 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprUnary(op, ref lhs) if is_method_call => {
-                let implicitly_ref_args = !op.is_by_value();
-
-                // As above.
-                self.constrain_call(expr, Some(&lhs),
-                                    None::<hir::Expr>.iter(), implicitly_ref_args);
-
-                intravisit::walk_expr(self, expr);
-            }
-
             hir::ExprUnary(hir::UnDeref, ref base) => {
                 // For *a, the lifetime of a must enclose the deref
-                if self.tables.borrow().is_method_call(expr) {
-                    self.constrain_call(expr, Some(base),
-                                        None::<hir::Expr>.iter(), true);
+                if is_method_call {
+                    self.constrain_call(expr, Some(base), None::<hir::Expr>.iter());
                 }
                 // For overloaded derefs, base_ty is the input to `Deref::deref`,
                 // but it's a reference type uing the same region as the output.
@@ -647,6 +625,13 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 if let ty::TyRef(r_ptr, _) = base_ty.sty {
                     self.mk_subregion_due_to_dereference(expr.span, expr_region, r_ptr);
                 }
+
+                intravisit::walk_expr(self, expr);
+            }
+
+            hir::ExprUnary(_, ref lhs) if is_method_call => {
+                // As above.
+                self.constrain_call(expr, Some(&lhs), None::<hir::Expr>.iter());
 
                 intravisit::walk_expr(self, expr);
             }
@@ -802,19 +787,15 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn constrain_call<'b, I: Iterator<Item=&'b hir::Expr>>(&mut self,
                                                            call_expr: &hir::Expr,
                                                            receiver: Option<&hir::Expr>,
-                                                           arg_exprs: I,
-                                                           implicitly_ref_args: bool) {
+                                                           arg_exprs: I) {
         //! Invoked on every call site (i.e., normal calls, method calls,
         //! and overloaded operators). Constrains the regions which appear
         //! in the type of the function. Also constrains the regions that
         //! appear in the arguments appropriately.
 
-        debug!("constrain_call(call_expr={:?}, \
-                receiver={:?}, \
-                implicitly_ref_args={})",
+        debug!("constrain_call(call_expr={:?}, receiver={:?})",
                 call_expr,
-                receiver,
-                implicitly_ref_args);
+                receiver);
 
         // `callee_region` is the scope representing the time in which the
         // call occurs.
@@ -832,14 +813,6 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             // valid for at least the lifetime of the function:
             self.type_of_node_must_outlive(infer::CallArg(arg_expr.span),
                                            arg_expr.id, callee_region);
-
-            // unfortunately, there are two means of taking implicit
-            // references, and we need to propagate constraints as a
-            // result. modes are going away and the "DerefArgs" code
-            // should be ported to use adjustments
-            if implicitly_ref_args {
-                self.link_by_ref(arg_expr, callee_scope);
-            }
         }
 
         // as loop above, but for receiver
@@ -847,9 +820,6 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             debug!("receiver: {:?}", r);
             self.type_of_node_must_outlive(infer::CallRcvr(r.span),
                                            r.id, callee_region);
-            if implicitly_ref_args {
-                self.link_by_ref(&r, callee_scope);
-            }
         }
     }
 
@@ -1109,19 +1079,6 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 self.link_region(expr.span, r, ty::BorrowKind::from_mutbl(m), expr_cmt);
             }
         }
-    }
-
-    /// Computes the guarantor for cases where the `expr` is being passed by implicit reference and
-    /// must outlive `callee_scope`.
-    fn link_by_ref(&self,
-                   expr: &hir::Expr,
-                   callee_scope: CodeExtent) {
-        debug!("link_by_ref(expr={:?}, callee_scope={:?})",
-               expr, callee_scope);
-        let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
-        let expr_cmt = ignore_err!(mc.cat_expr(expr));
-        let borrow_region = self.tcx.mk_region(ty::ReScope(callee_scope));
-        self.link_region(expr.span, borrow_region, ty::ImmBorrow, expr_cmt);
     }
 
     /// Like `link_region()`, except that the region is extracted from the type of `id`,

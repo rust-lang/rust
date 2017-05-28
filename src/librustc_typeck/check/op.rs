@@ -11,11 +11,13 @@
 //! Code related to processing overloaded binary and unary operators.
 
 use super::FnCtxt;
+use super::method::MethodCallee;
 use rustc::ty::{self, Ty, TypeFoldable, PreferMutLvalue, TypeVariants};
 use rustc::ty::TypeVariants::{TyStr, TyRef};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use errors;
+use syntax_pos::Span;
 use syntax::symbol::Symbol;
 use rustc::hir;
 
@@ -181,14 +183,41 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // particularly for things like `String + &String`.
         let rhs_ty_var = self.next_ty_var(TypeVariableOrigin::MiscVariable(rhs_expr.span));
 
-        let return_ty = self.lookup_op_method(expr, lhs_ty, &[rhs_ty_var],
-                                              Op::Binary(op, is_assign), lhs_expr);
+        let result = self.lookup_op_method(lhs_ty, &[rhs_ty_var], Op::Binary(op, is_assign));
 
         // see `NB` above
         let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var);
 
-        let return_ty = match return_ty {
-            Ok(return_ty) => return_ty,
+        let return_ty = match result {
+            Ok(method) => {
+                let by_ref_binop = !op.node.is_by_value();
+                if is_assign == IsAssign::Yes || by_ref_binop {
+                    if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
+                        let autoref = Adjustment {
+                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
+                            target: method.sig.inputs()[0]
+                        };
+                        self.apply_adjustments(lhs_expr, vec![autoref]);
+                    }
+                }
+                if by_ref_binop {
+                    if let ty::TyRef(region, mt) = method.sig.inputs()[1].sty {
+                        let autoref = Adjustment {
+                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
+                            target: method.sig.inputs()[1]
+                        };
+                        // HACK(eddyb) Bypass checks due to reborrows being in
+                        // some cases applied on the RHS, on top of which we need
+                        // to autoref, which is not allowed by apply_adjustments.
+                        // self.apply_adjustments(rhs_expr, vec![autoref]);
+                        self.tables.borrow_mut().adjustments.entry(rhs_expr.id)
+                            .or_insert(vec![]).push(autoref);
+                    }
+                }
+                self.write_method_call(expr.id, method);
+
+                method.sig.output()
+            }
             Err(()) => {
                 // error types are considered "builtin"
                 if !lhs_ty.references_error() {
@@ -210,8 +239,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                         if let TypeVariants::TyRef(_, ref ty_mut) = lhs_ty.sty {
                             if !self.infcx.type_moves_by_default(ty_mut.ty, lhs_expr.span) &&
-                                self.lookup_op_method(expr, ty_mut.ty, &[rhs_ty],
-                                                      Op::Binary(op, is_assign), lhs_expr).is_ok() {
+                                self.lookup_op_method(ty_mut.ty, &[rhs_ty],
+                                                      Op::Binary(op, is_assign)).is_ok() {
                                 err.note(
                                     &format!(
                                         "this is a reference to a type that `{}` can be applied \
@@ -298,14 +327,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn check_user_unop(&self,
                            ex: &'gcx hir::Expr,
-                           operand_expr: &'gcx hir::Expr,
                            operand_ty: Ty<'tcx>,
                            op: hir::UnOp)
                            -> Ty<'tcx>
     {
         assert!(op.is_by_value());
-        match self.lookup_op_method(ex, operand_ty, &[], Op::Unary(op), operand_expr) {
-            Ok(t) => t,
+        match self.lookup_op_method(operand_ty, &[], Op::Unary(op, ex.span)) {
+            Ok(method) => {
+                self.write_method_call(ex.id, method);
+                method.sig.output()
+            }
             Err(()) => {
                 let actual = self.resolve_type_vars_if_possible(&operand_ty);
                 if !actual.references_error() {
@@ -318,16 +349,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn lookup_op_method(&self,
-                        expr: &'gcx hir::Expr,
-                        lhs_ty: Ty<'tcx>,
-                        other_tys: &[Ty<'tcx>],
-                        op: Op,
-                        lhs_expr: &'a hir::Expr)
-                        -> Result<Ty<'tcx>,()>
+    fn lookup_op_method(&self, lhs_ty: Ty<'tcx>, other_tys: &[Ty<'tcx>], op: Op)
+                        -> Result<MethodCallee<'tcx>, ()>
     {
         let lang = &self.tcx.lang_items;
 
+        let span = match op {
+            Op::Binary(op, _) => op.span,
+            Op::Unary(_, span) => span
+        };
         let (opname, trait_did) = if let Op::Binary(op, IsAssign::Yes) = op {
             match op.node {
                 hir::BiAdd => ("add_assign", lang.add_assign_trait()),
@@ -344,7 +374,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 hir::BiGe | hir::BiGt |
                 hir::BiEq | hir::BiNe |
                 hir::BiAnd | hir::BiOr => {
-                    span_bug!(op.span,
+                    span_bug!(span,
                               "impossible assignment operation: {}=",
                               op.node.as_str())
                 }
@@ -368,28 +398,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 hir::BiEq => ("eq", lang.eq_trait()),
                 hir::BiNe => ("ne", lang.eq_trait()),
                 hir::BiAnd | hir::BiOr => {
-                    span_bug!(op.span, "&& and || are not overloadable")
+                    span_bug!(span, "&& and || are not overloadable")
                 }
             }
-        } else if let Op::Unary(hir::UnNot) = op {
+        } else if let Op::Unary(hir::UnNot, _) = op {
             ("not", lang.not_trait())
-        } else if let Op::Unary(hir::UnNeg) = op {
+        } else if let Op::Unary(hir::UnNeg, _) = op {
             ("neg", lang.neg_trait())
         } else {
             bug!("lookup_op_method: op not supported: {:?}", op)
         };
 
-        debug!("lookup_op_method(expr={:?}, lhs_ty={:?}, opname={:?}, \
-                                 trait_did={:?}, lhs_expr={:?})",
-               expr,
+        debug!("lookup_op_method(lhs_ty={:?}, op={:?}, opname={:?}, trait_did={:?})",
                lhs_ty,
+               op,
                opname,
-               trait_did,
-               lhs_expr);
+               trait_did);
 
         let method = trait_did.and_then(|trait_did| {
             let opname = Symbol::intern(opname);
-            self.lookup_method_in_trait(expr.span, opname, trait_did, lhs_ty, Some(other_tys))
+            self.lookup_method_in_trait(span, opname, trait_did, lhs_ty, Some(other_tys))
         });
 
         match method {
@@ -397,23 +425,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let method = self.register_infer_ok_obligations(ok);
                 self.select_obligations_where_possible();
 
-                let (lhs_by_ref, _rhs_by_ref) = match op {
-                    Op::Binary(_, IsAssign::Yes) => (true, false),
-                    Op::Binary(op, _) if !op.node.is_by_value() => (true, true),
-                    Op::Binary(..) | Op::Unary(_) => (false, false),
-                };
-                if lhs_by_ref {
-                    if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
-                        let autoref = Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
-                            target: method.sig.inputs()[0]
-                        };
-                        self.apply_adjustments(lhs_expr, vec![autoref]);
-                    }
-                }
-                self.write_method_call(expr.id, method);
-
-                Ok(method.sig.output())
+                Ok(method)
             }
             None => {
                 Err(())
@@ -479,7 +491,7 @@ impl BinOpCategory {
 }
 
 /// Whether the binary operation is an assignment (`a += b`), or not (`a + b`)
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum IsAssign {
     No,
     Yes,
@@ -488,7 +500,7 @@ enum IsAssign {
 #[derive(Clone, Copy, Debug)]
 enum Op {
     Binary(hir::BinOp, IsAssign),
-    Unary(hir::UnOp),
+    Unary(hir::UnOp, Span),
 }
 
 /// Returns true if this is a built-in arithmetic operation (e.g. u32
