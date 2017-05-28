@@ -332,7 +332,16 @@ pub struct Generics {
 
 This will still allow the crate to create values of `Generics`, but it will
 prevent the user from doing so, because more fields might be added in the
-future.
+future. Similarly, this will prevent functional record updates like the below:
+
+```rust
+let val = Generics {
+    lifetimes: Vec::new(),
+    ..Default::default()
+};
+```
+
+Because this would require full knowledge of all of the fields of the struct.
 
 Although it should not be explicitly forbidden by the language to mark a struct
 with some private fields as non-exhaustive, it should emit a warning to tell the
