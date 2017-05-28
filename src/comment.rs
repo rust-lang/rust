@@ -32,6 +32,122 @@ fn is_custom_comment(comment: &str) -> bool {
     }
 }
 
+#[derive(PartialEq, Eq)]
+pub enum CommentStyle {
+    DoubleSlash,
+    TripleSlash,
+    Doc,
+    SingleBullet,
+    DoubleBullet,
+    Exclamation,
+    Custom,
+}
+
+impl CommentStyle {
+    pub fn opener<'a>(&self, orig: &'a str) -> &'a str {
+        match *self {
+            CommentStyle::DoubleSlash => "// ",
+            CommentStyle::TripleSlash => "/// ",
+            CommentStyle::Doc => "//! ",
+            CommentStyle::SingleBullet => "/* ",
+            CommentStyle::DoubleBullet => "/** ",
+            CommentStyle::Exclamation => "/*! ",
+            CommentStyle::Custom => {
+                if orig.chars().nth(3) == Some(' ') {
+                    &orig[0..4]
+                } else {
+                    &orig[0..3]
+                }
+            }
+        }
+    }
+
+    pub fn closer<'a>(&self) -> &'a str {
+        match *self {
+            CommentStyle::DoubleSlash |
+            CommentStyle::TripleSlash |
+            CommentStyle::Custom |
+            CommentStyle::Doc => "",
+            CommentStyle::DoubleBullet => " **/",
+            CommentStyle::SingleBullet |
+            CommentStyle::Exclamation => " */",
+        }
+    }
+
+    pub fn line_start<'a>(&self, orig: &'a str) -> &'a str {
+        match *self {
+            CommentStyle::DoubleSlash => "// ",
+            CommentStyle::TripleSlash => "/// ",
+            CommentStyle::Doc => "//! ",
+            CommentStyle::SingleBullet |
+            CommentStyle::Exclamation => " * ",
+            CommentStyle::DoubleBullet => " ** ",
+            CommentStyle::Custom => {
+                if orig.chars().nth(3) == Some(' ') {
+                    &orig[0..4]
+                } else {
+                    &orig[0..3]
+                }
+            }
+        }
+    }
+
+    pub fn to_str_tuplet<'a>(&self, orig: &'a str) -> (&'a str, &'a str, &'a str) {
+        (self.opener(orig), self.closer(), self.line_start(orig))
+    }
+
+    pub fn line_with_same_comment_style<'a>(&self,
+                                            line: &str,
+                                            orig: &'a str,
+                                            normalize_comments: bool)
+                                            -> bool {
+        match *self {
+            CommentStyle::DoubleSlash |
+            CommentStyle::TripleSlash |
+            CommentStyle::Custom |
+            CommentStyle::Doc => {
+                line.trim_left()
+                    .starts_with(self.line_start(orig).trim_left()) ||
+                comment_style(line, normalize_comments) == *self
+            }
+            CommentStyle::DoubleBullet |
+            CommentStyle::SingleBullet |
+            CommentStyle::Exclamation => {
+                line.trim_left().starts_with(self.closer().trim_left()) ||
+                line.trim_left()
+                    .starts_with(self.line_start(orig).trim_left()) ||
+                comment_style(line, normalize_comments) == *self
+            }
+        }
+    }
+}
+
+fn comment_style(orig: &str, normalize_comments: bool) -> CommentStyle {
+    if !normalize_comments {
+        if orig.starts_with("/**") && !orig.starts_with("/**/") {
+            CommentStyle::DoubleBullet
+        } else if orig.starts_with("/*!") {
+            CommentStyle::Exclamation
+        } else if orig.starts_with("/*") {
+            CommentStyle::SingleBullet
+        } else if orig.starts_with("///") {
+            CommentStyle::TripleSlash
+        } else if orig.starts_with("//!") {
+            CommentStyle::Doc
+        } else {
+            CommentStyle::DoubleSlash
+        }
+    } else if orig.starts_with("///") || (orig.starts_with("/**") && !orig.starts_with("/**/")) {
+        CommentStyle::TripleSlash
+    } else if orig.starts_with("//!") || orig.starts_with("/*!") {
+        CommentStyle::Doc
+    } else if is_custom_comment(orig) {
+        CommentStyle::Custom
+    } else {
+        CommentStyle::DoubleSlash
+    }
+}
+
 pub fn rewrite_comment(orig: &str,
                        block_style: bool,
                        shape: Shape,
@@ -47,39 +163,52 @@ pub fn rewrite_comment(orig: &str,
     if num_bare_lines > 0 && !config.normalize_comments() {
         return Some(orig.to_owned());
     }
-
     if !config.normalize_comments() && !config.wrap_comments() {
         return light_rewrite_comment(orig, shape.indent, config);
     }
 
-    let (opener, closer, line_start) = if block_style {
-        ("/* ", " */", " * ")
-    } else if !config.normalize_comments() {
-        if orig.starts_with("/**") && !orig.starts_with("/**/") {
-            ("/** ", " **/", " ** ")
-        } else if orig.starts_with("/*!") {
-            ("/*! ", " */", " * ")
-        } else if orig.starts_with("/*") {
-            ("/* ", " */", " * ")
-        } else if orig.starts_with("///") {
-            ("/// ", "", "/// ")
-        } else if orig.starts_with("//!") {
-            ("//! ", "", "//! ")
-        } else {
-            ("// ", "", "// ")
-        }
-    } else if orig.starts_with("///") || (orig.starts_with("/**") && !orig.starts_with("/**/")) {
-        ("/// ", "", "/// ")
-    } else if orig.starts_with("//!") || orig.starts_with("/*!") {
-        ("//! ", "", "//! ")
-    } else if is_custom_comment(orig) {
-        if orig.chars().nth(3) == Some(' ') {
-            (&orig[0..4], "", &orig[0..4])
-        } else {
-            (&orig[0..3], "", &orig[0..3])
-        }
+    identify_comment(orig, block_style, shape, config)
+}
+
+fn identify_comment(orig: &str,
+                    block_style: bool,
+                    shape: Shape,
+                    config: &Config)
+                    -> Option<String> {
+    let style = comment_style(orig, false);
+    let first_group = orig.lines()
+        .take_while(|l| style.line_with_same_comment_style(l, orig, false))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let rest = orig.lines()
+        .skip(first_group.lines().count())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let first_group_str = try_opt!(rewrite_comment_inner(&first_group, block_style, shape, config));
+    if rest.is_empty() {
+        Some(first_group_str)
     } else {
-        ("// ", "", "// ")
+        identify_comment(&rest, block_style, shape, config).map(|rest_str| {
+                                                                    format!("{}\n{}{}",
+                                                                            first_group_str,
+                                                                            shape
+                                                                                .indent
+                                                                                .to_string(config),
+                                                                            rest_str)
+                                                                })
+    }
+}
+
+fn rewrite_comment_inner(orig: &str,
+                         block_style: bool,
+                         shape: Shape,
+                         config: &Config)
+                         -> Option<String> {
+    let (opener, closer, line_start) = if block_style {
+        CommentStyle::SingleBullet.to_str_tuplet("")
+    } else {
+        comment_style(orig, config.normalize_comments()).to_str_tuplet(orig)
     };
 
     let max_chars = shape
