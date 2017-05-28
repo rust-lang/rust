@@ -16,7 +16,7 @@ use common::{C_bytes, CrateContext, C_i32};
 use builder::Builder;
 use declare;
 use type_::Type;
-use session::config::NoDebugInfo;
+use rustc::session::config::NoDebugInfo;
 
 use std::ptr;
 use syntax::attr;

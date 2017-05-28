@@ -20,11 +20,11 @@ use context::SharedCrateContext;
 
 use back::archive;
 use back::symbol_export::{self, ExportedSymbols};
-use middle::dependency_format::Linkage;
+use rustc::middle::dependency_format::Linkage;
 use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use rustc_back::LinkerFlavor;
-use session::Session;
-use session::config::{self, CrateType, OptLevel, DebugInfoLevel};
+use rustc::session::Session;
+use rustc::session::config::{self, CrateType, OptLevel, DebugInfoLevel};
 use serialize::{json, Encoder};
 
 /// For all the linkers we support, and information they might

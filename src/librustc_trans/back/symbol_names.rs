@@ -348,16 +348,6 @@ impl ItemPathBuffer for SymbolPathBuffer {
     }
 }
 
-pub fn exported_name_from_type_and_prefix<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                    t: Ty<'tcx>,
-                                                    prefix: &str)
-                                                    -> String {
-    let hash = get_symbol_hash(tcx, None, t, None);
-    let mut buffer = SymbolPathBuffer::new();
-    buffer.push(prefix);
-    buffer.finish(hash)
-}
-
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
 // gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $

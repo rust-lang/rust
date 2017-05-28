@@ -17,7 +17,7 @@ use rustc::mir::{self, Mir};
 use rustc::mir::tcx::LvalueTy;
 use rustc::ty::subst::Substs;
 use rustc::infer::TransNormalize;
-use session::config::FullDebugInfo;
+use rustc::session::config::FullDebugInfo;
 use base;
 use builder::Builder;
 use common::{self, CrateContext, Funclet};

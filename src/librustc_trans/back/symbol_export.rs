@@ -10,7 +10,7 @@
 
 use context::SharedCrateContext;
 use monomorphize::Instance;
-use util::nodemap::FxHashMap;
+use rustc::util::nodemap::FxHashMap;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::session::config;
 use rustc::ty::TyCtxt;
