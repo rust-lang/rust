@@ -268,16 +268,6 @@ going into more details:
 >
 > `<std::stringify!>` — Only search for macros.
 
-## Linking to external crates
-
-Rustdoc is already able to link to external crates,
-and renders documentation for all dependencies by default.
-Referencing the standard library (or `core`)
-should generate links with a well-known base path,
-e.g. `https://doc.rust-lang.org/nightly/`.
-Referencing other external crates
-links to the pages Rustdoc has already rendered (or will render) for them.
-Special flags (e.g. `cargo doc --no-deps`) will not change this behavior.
 
 ## Errors
 
@@ -357,6 +347,62 @@ like `<Foo as Bar>::bar`.
 We have yet to analyse in which cases this is necessary,
 and this syntax is currently not described in [the reference's section on paths][ref-paths].
 
+## Linking to external documentation
+
+Currently, Rustdoc is able to link to external crates,
+and renders documentation for all dependencies by default.
+Referencing the standard library (or `core`)
+generates links with a well-known base path,
+e.g. `https://doc.rust-lang.org/nightly/`.
+Referencing other external crates
+links to the pages Rustdoc has already rendered (or will render) for them.
+Special flags (e.g. `cargo doc --no-deps`) will not change this behavior.
+
+We propose to generalize this approach
+by adding parameters to rustdoc
+that allow overwriting the base URLs
+it used for external crate links.
+(These paramters will at first
+be supplied as CLI flags
+but could also be given via a config file,
+environment variables,
+or other means in the future.)
+
+We suggest the following syntax:
+
+```sh
+rustdoc --extern-base-url="regex=https://docs.rs/regex/0.2.2/regex/" [...]
+```
+
+By default, the core/std libraries should have a default base URL
+set to the latest known Rust release when the version of rustdoc was built.
+
+In addition to that,
+`cargo doc` _may_ be extended with CLI flags
+to allow shortcuts to some common usages.
+E.g., a `--external-docs` flag may add base URLs using [docs.rs]
+for all crates that are from the crates.io repository
+(docs.rs automatically renders documentation for crates published to crates.io).
+
+[docs.rs]: https://docs.rs/
+
+### Known issues
+
+Automatically linking to external docs has the following known tradeoffs:
+
+- The generated URLs may not/no longer exist
+  - Not all crate documentation can be rendered without a known local setup,
+    e.g., for crates that use procedural macros/build scripts
+    to generate code based on the local environment.
+  - Not all crate documentation can be rendered without having  3rd-party tools installed.
+- The generated URLs may not/no have the expected content, because
+  - The exact Cargo features used to build a crate locally
+    were not used when building the docs available at the given URL.
+  - The crate has platform-specific items,
+    and the local platform and the platform
+    used to render the docs available at the given URL
+    differ
+    (note that docs.rs renders docs for multiple platforms, though).
 
 # Alternatives
 [alternatives]: #alternatives
