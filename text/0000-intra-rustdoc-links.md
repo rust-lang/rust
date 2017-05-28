@@ -343,10 +343,12 @@ Please note:
 # Possible Extensions
 [possible-extensions]: #possible-extensions
 
-## Linking to methods
+## Linking to associated items
 
-To link to methods, it may be necessary to use fully-qualified paths,
-like `<Foo as Bar>::bar`.
+To link to associated items,
+i.e., the associated functions, types, and constants of a trait,
+it may be necessary to use fully-qualified paths,
+like `See the [<Foo as Bar>::bar()] method`.
 We have yet to analyse in which cases this is necessary,
 and this syntax is currently not described in [the reference's section on paths][ref-paths].
 
