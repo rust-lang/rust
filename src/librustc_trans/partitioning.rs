@@ -118,7 +118,7 @@ use std::sync::Arc;
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
 use trans_item::{TransItem, InstantiationMode};
-use util::nodemap::{FxHashMap, FxHashSet};
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
 pub enum PartitioningStrategy {
     /// Generate one codegen unit per source-level module.

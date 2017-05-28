@@ -19,7 +19,6 @@ use super::namespace::mangled_name_of_item;
 use super::type_names::compute_debuginfo_type_name;
 use super::{CrateDebugContext};
 use context::SharedCrateContext;
-use session::Session;
 
 use llvm::{self, ValueRef};
 use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor,
@@ -37,8 +36,8 @@ use common::{self, CrateContext};
 use type_::Type;
 use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::layout::{self, LayoutTyper};
-use session::config;
-use util::nodemap::FxHashMap;
+use rustc::session::{Session, config};
+use rustc::util::nodemap::FxHashMap;
 
 use libc::{c_uint, c_longlong};
 use std::ffi::CString;

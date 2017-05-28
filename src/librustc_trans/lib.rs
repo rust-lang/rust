@@ -63,11 +63,6 @@ extern crate syntax_pos;
 extern crate rustc_errors as errors;
 extern crate serialize;
 
-pub use rustc::session;
-pub use rustc::middle;
-pub use rustc::lint;
-pub use rustc::util;
-
 pub use base::trans_crate;
 pub use back::symbol_names::provide;
 
@@ -75,20 +70,18 @@ pub use metadata::LlvmMetadataLoader;
 pub use llvm_util::{init, target_features, print_version, print_passes, print, enable_llvm_debug};
 
 pub mod back {
-    pub use rustc::hir::svh;
-
-    pub mod archive;
-    pub mod linker;
+    mod archive;
+    pub(crate) mod linker;
     pub mod link;
-    pub mod lto;
-    pub mod symbol_export;
-    pub mod symbol_names;
+    mod lto;
+    pub(crate) mod symbol_export;
+    pub(crate) mod symbol_names;
     pub mod write;
-    pub mod msvc;
-    pub mod rpath;
+    mod msvc;
+    mod rpath;
 }
 
-pub mod diagnostics;
+mod diagnostics;
 
 mod abi;
 mod adt;
@@ -171,8 +164,8 @@ pub struct CrateTranslation {
     pub crate_name: Symbol,
     pub modules: Vec<ModuleTranslation>,
     pub metadata_module: ModuleTranslation,
-    pub link: middle::cstore::LinkMeta,
-    pub metadata: middle::cstore::EncodedMetadata,
+    pub link: rustc::middle::cstore::LinkMeta,
+    pub metadata: rustc::middle::cstore::EncodedMetadata,
     pub exported_symbols: back::symbol_export::ExportedSymbols,
     pub no_builtins: bool,
     pub windows_subsystem: Option<String>,

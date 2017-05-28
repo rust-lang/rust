@@ -26,10 +26,9 @@ use rustc_data_structures::base_n;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{LayoutTyper, TyLayout};
-use session::config::NoDebugInfo;
-use session::Session;
-use session::config;
-use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
+use rustc::session::config::{self, NoDebugInfo};
+use rustc::session::Session;
+use rustc::util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};

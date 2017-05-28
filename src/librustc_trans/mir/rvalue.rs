@@ -14,7 +14,7 @@ use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::{Layout, LayoutTyper};
 use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
-use middle::lang_items::ExchangeMallocFnLangItem;
+use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 
 use base;
 use builder::Builder;
