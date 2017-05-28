@@ -1512,12 +1512,16 @@ fn span_for_return(ret: &ast::FunctionRetTy) -> Span {
 
 fn span_for_ty_param(ty: &ast::TyParam) -> Span {
     // Note that ty.span is the span for ty.ident, not the whole item.
-    let lo = ty.span.lo;
+    let lo = if ty.attrs.is_empty() {
+        ty.span.lo
+    } else {
+        ty.attrs[0].span.lo
+    };
     if let Some(ref def) = ty.default {
         return mk_sp(lo, def.span.hi);
     }
     if ty.bounds.is_empty() {
-        return ty.span;
+        return mk_sp(lo, ty.span.hi);
     }
     let hi = match ty.bounds[ty.bounds.len() - 1] {
         ast::TyParamBound::TraitTyParamBound(ref ptr, _) => ptr.span.hi,

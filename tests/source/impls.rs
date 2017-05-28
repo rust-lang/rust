@@ -117,3 +117,8 @@ impl<ConcreteThreadSafeLayoutNode: ThreadSafeLayoutNodeFoo> Issue1249<ConcreteTh
     // Creates a new flow constructor.
    fn foo() {}
 }
+
+// #1600
+impl<#[may_dangle] K, #[may_dangle] V> Drop for RawTable<K, V> {
+    fn drop() {}
+}
