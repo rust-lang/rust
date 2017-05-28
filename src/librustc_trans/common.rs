@@ -17,7 +17,7 @@ use llvm::{ValueRef, ContextRef, TypeKind};
 use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
-use middle::lang_items::LangItem;
+use rustc::middle::lang_items::LangItem;
 use base;
 use builder::Builder;
 use consts;

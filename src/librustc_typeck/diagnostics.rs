@@ -4078,7 +4078,7 @@ register_diagnostics! {
 //  E0217, // ambiguous associated type, defined in multiple supertraits
 //  E0218, // no associated type defined
 //  E0219, // associated type defined in higher-ranked supertrait
-//  E0222, // Error code E0045 (variadic function must have C calling
+//  E0222, // Error code E0045 (variadic function must have C or cdecl calling
            // convention) duplicate
     E0224, // at least one non-builtin train is required for an object type
     E0227, // ambiguous lifetime bound, explicit lifetime bound required

@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn baz(f: extern "cdecl" fn(usize, ...)) {
-    //~^ ERROR: variadic function must have C calling convention
+// ignore-arm stdcall isn't suppported
+
+fn baz(f: extern "stdcall" fn(usize, ...)) {
+    //~^ ERROR: variadic function must have C or cdecl calling convention
     f(22, 44);
 }
 

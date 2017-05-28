@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern "cdecl" {
-    fn printf(_: *const u8, ...); //~ ERROR: variadic function must have C calling convention
+// ignore-arm stdcall isn't suppported
+
+extern "stdcall" {
+    fn printf(_: *const u8, ...); //~ ERROR: variadic function must have C or cdecl calling
 }
 
 extern {

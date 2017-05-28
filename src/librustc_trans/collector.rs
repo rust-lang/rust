@@ -204,7 +204,7 @@ use rustc::mir::visit::Visitor as MirVisitor;
 use context::SharedCrateContext;
 use common::{def_ty, instance_ty};
 use monomorphize::{self, Instance};
-use util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
+use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 
 use trans_item::{TransItem, DefPathBasedNames, InstantiationMode};
 
