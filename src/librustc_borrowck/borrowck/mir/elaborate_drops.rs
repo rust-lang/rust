@@ -22,7 +22,7 @@ use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_mir::util::patch::MirPatch;
-use rustc_mir::util::elaborate_drops::{DropFlagState, elaborate_drop};
+use rustc_mir::util::elaborate_drops::{DropFlagState, Unwind, elaborate_drop};
 use rustc_mir::util::elaborate_drops::{DropElaborator, DropStyle, DropFlagMode};
 use syntax::ast;
 use syntax_pos::Span;
@@ -399,14 +399,13 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                                     ctxt: self
                                 },
                                 terminator.source_info,
-                                data.is_cleanup,
                                 location,
                                 path,
                                 target,
                                 if data.is_cleanup {
-                                    None
+                                    Unwind::InCleanup
                                 } else {
-                                    Some(Option::unwrap_or(unwind, resume_block))
+                                    Unwind::To(Option::unwrap_or(unwind, resume_block))
                                 },
                                 bb)
                         }
@@ -455,6 +454,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let bb = loc.block;
         let data = &self.mir[bb];
         let terminator = data.terminator();
+        assert!(!data.is_cleanup, "DropAndReplace in unwind path not supported");
 
         let assign = Statement {
             kind: StatementKind::Assign(location.clone(), Rvalue::Use(value.clone())),
@@ -477,7 +477,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 kind: TerminatorKind::Goto { target: target },
                 ..*terminator
             }),
-            is_cleanup: data.is_cleanup,
+            is_cleanup: false,
         });
 
         match self.move_data().rev_lookup.find(location) {
@@ -491,11 +491,10 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                         ctxt: self
                     },
                     terminator.source_info,
-                    data.is_cleanup,
                     location,
                     path,
                     target,
-                    Some(unwind),
+                    Unwind::To(unwind),
                     bb);
                 on_all_children_bits(self.tcx, self.mir, self.move_data(), path, |child| {
                     self.set_drop_flag(Location { block: target, statement_index: 0 },

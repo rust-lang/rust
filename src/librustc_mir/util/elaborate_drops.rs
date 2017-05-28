@@ -11,7 +11,7 @@
 use std::fmt;
 use rustc::hir;
 use rustc::mir::*;
-use rustc::middle::const_val::ConstInt;
+use rustc::middle::const_val::{ConstInt, ConstVal};
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::{Kind, Substs};
@@ -50,6 +50,35 @@ pub enum DropFlagMode {
     Deep
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum Unwind {
+    To(BasicBlock),
+    InCleanup
+}
+
+impl Unwind {
+    fn is_cleanup(self) -> bool {
+        match self {
+            Unwind::To(..) => false,
+            Unwind::InCleanup => true
+        }
+    }
+
+    fn into_option(self) -> Option<BasicBlock> {
+        match self {
+            Unwind::To(bb) => Some(bb),
+            Unwind::InCleanup => None,
+        }
+    }
+
+    fn map<F>(self, f: F) -> Self where F: FnOnce(BasicBlock) -> BasicBlock {
+        match self {
+            Unwind::To(bb) => Unwind::To(f(bb)),
+            Unwind::InCleanup => Unwind::InCleanup
+        }
+    }
+}
+
 pub trait DropElaborator<'a, 'tcx: 'a> : fmt::Debug {
     type Path : Copy + fmt::Debug;
 
@@ -75,28 +104,25 @@ struct DropCtxt<'l, 'b: 'l, 'tcx: 'b, D>
     elaborator: &'l mut D,
 
     source_info: SourceInfo,
-    is_cleanup: bool,
 
     lvalue: &'l Lvalue<'tcx>,
     path: D::Path,
     succ: BasicBlock,
-    unwind: Option<BasicBlock>,
+    unwind: Unwind,
 }
 
 pub fn elaborate_drop<'b, 'tcx, D>(
     elaborator: &mut D,
     source_info: SourceInfo,
-    is_cleanup: bool,
     lvalue: &Lvalue<'tcx>,
     path: D::Path,
     succ: BasicBlock,
-    unwind: Option<BasicBlock>,
+    unwind: Unwind,
     bb: BasicBlock)
     where D: DropElaborator<'b, 'tcx>
 {
-    assert_eq!(unwind.is_none(), is_cleanup);
     DropCtxt {
-        elaborator, source_info, is_cleanup, lvalue, path, succ, unwind
+        elaborator, source_info, lvalue, path, succ, unwind
     }.elaborate_drop(bb)
 }
 
@@ -145,14 +171,13 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 self.elaborator.patch().patch_terminator(bb, TerminatorKind::Drop {
                     location: self.lvalue.clone(),
                     target: self.succ,
-                    unwind: self.unwind
+                    unwind: self.unwind.into_option(),
                 });
             }
             DropStyle::Conditional => {
-                let is_cleanup = self.is_cleanup; // FIXME(#6393)
+                let unwind = self.unwind; // FIXME(#6393)
                 let succ = self.succ;
-                let drop_bb = self.complete_drop(
-                    is_cleanup, Some(DropFlagMode::Deep), succ);
+                let drop_bb = self.complete_drop(Some(DropFlagMode::Deep), succ, unwind);
                 self.elaborator.patch().patch_terminator(bb, TerminatorKind::Goto {
                     target: drop_bb
                 });
@@ -189,11 +214,10 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     }
 
     fn drop_subpath(&mut self,
-                    is_cleanup: bool,
                     lvalue: &Lvalue<'tcx>,
                     path: Option<D::Path>,
                     succ: BasicBlock,
-                    unwind: Option<BasicBlock>)
+                    unwind: Unwind)
                     -> BasicBlock
     {
         if let Some(path) = path {
@@ -202,7 +226,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             DropCtxt {
                 elaborator: self.elaborator,
                 source_info: self.source_info,
-                path, lvalue, succ, unwind, is_cleanup
+                path, lvalue, succ, unwind,
             }.elaborated_drop_block()
         } else {
             debug!("drop_subpath: for rest field {:?}", lvalue);
@@ -210,49 +234,46 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             DropCtxt {
                 elaborator: self.elaborator,
                 source_info: self.source_info,
-                lvalue, succ, unwind, is_cleanup,
+                lvalue, succ, unwind,
                 // Using `self.path` here to condition the drop on
                 // our own drop flag.
                 path: self.path
-            }.complete_drop(is_cleanup, None, succ)
+            }.complete_drop(None, succ, unwind)
         }
     }
 
     /// Create one-half of the drop ladder for a list of fields, and return
-    /// the list of steps in it in reverse order.
+    /// the list of steps in it in reverse order, with the first step
+    /// dropping 0 fields and so on.
     ///
     /// `unwind_ladder` is such a list of steps in reverse order,
-    /// which is called instead of the next step if the drop unwinds
-    /// (the first field is never reached). If it is `None`, all
-    /// unwind targets are left blank.
-    fn drop_halfladder<'a>(&mut self,
-                           unwind_ladder: Option<&[BasicBlock]>,
-                           succ: BasicBlock,
-                           fields: &[(Lvalue<'tcx>, Option<D::Path>)],
-                           is_cleanup: bool)
-                           -> Vec<BasicBlock>
+    /// which is called if the matching step of the drop glue panics.
+    fn drop_halfladder(&mut self,
+                       unwind_ladder: &[Unwind],
+                       mut succ: BasicBlock,
+                       fields: &[(Lvalue<'tcx>, Option<D::Path>)])
+                       -> Vec<BasicBlock>
     {
-        let mut unwind_succ = if is_cleanup {
-            None
-        } else {
-            self.unwind
-        };
+        Some(succ).into_iter().chain(
+            fields.iter().rev().zip(unwind_ladder)
+                .map(|(&(ref lv, path), &unwind_succ)| {
+                    succ = self.drop_subpath(lv, path, succ, unwind_succ);
+                    succ
+                })
+        ).collect()
+    }
 
-        let goto = TerminatorKind::Goto { target: succ };
-        let mut succ = self.new_block(is_cleanup, goto);
-
-        // Always clear the "master" drop flag at the bottom of the
-        // ladder. This is needed because the "master" drop flag
-        // protects the ADT's discriminant, which is invalidated
-        // after the ADT is dropped.
-        let succ_loc = Location { block: succ, statement_index: 0 };
-        self.elaborator.clear_drop_flag(succ_loc, self.path, DropFlagMode::Shallow);
-
-        fields.iter().rev().enumerate().map(|(i, &(ref lv, path))| {
-            succ = self.drop_subpath(is_cleanup, lv, path, succ, unwind_succ);
-            unwind_succ = unwind_ladder.as_ref().map(|p| p[i]);
-            succ
-        }).collect()
+    fn drop_ladder_bottom(&mut self) -> (BasicBlock, Unwind) {
+        // Clear the "master" drop flag at the end. This is needed
+        // because the "master" drop protects the ADT's discriminant,
+        // which is invalidated after the ADT is dropped.
+        let (succ, unwind) = (self.succ, self.unwind); // FIXME(#6393)
+        (
+            self.drop_flag_reset_block(DropFlagMode::Shallow, succ, unwind),
+            unwind.map(|unwind| {
+                self.drop_flag_reset_block(DropFlagMode::Shallow, unwind, Unwind::InCleanup)
+            })
+        )
     }
 
     /// Create a full drop ladder, consisting of 2 connected half-drop-ladders
@@ -269,9 +290,14 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     ///     ELAB(drop location.1 [target=.c2])
     /// .c2:
     ///     ELAB(drop location.2 [target=`self.unwind`])
+    ///
+    /// NOTE: this does not clear the master drop flag, so you need
+    /// to point succ/unwind on a `drop_ladder_bottom`.
     fn drop_ladder<'a>(&mut self,
-                       fields: Vec<(Lvalue<'tcx>, Option<D::Path>)>)
-                       -> (BasicBlock, Option<BasicBlock>)
+                       fields: Vec<(Lvalue<'tcx>, Option<D::Path>)>,
+                       succ: BasicBlock,
+                       unwind: Unwind)
+                       -> (BasicBlock, Unwind)
     {
         debug!("drop_ladder({:?}, {:?})", self, fields);
 
@@ -282,21 +308,18 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
         debug!("drop_ladder - fields needing drop: {:?}", fields);
 
-        let unwind_ladder = if self.is_cleanup {
-            None
+        let unwind_ladder = vec![Unwind::InCleanup; fields.len() + 1];
+        let unwind_ladder: Vec<_> = if let Unwind::To(target) = unwind {
+            let halfladder = self.drop_halfladder(&unwind_ladder, target, &fields);
+            halfladder.into_iter().map(Unwind::To).collect()
         } else {
-            let unwind = self.unwind.unwrap(); // FIXME(#6393)
-            Some(self.drop_halfladder(None, unwind, &fields, true))
+            unwind_ladder
         };
 
-        let succ = self.succ; // FIXME(#6393)
-        let is_cleanup = self.is_cleanup;
         let normal_ladder =
-            self.drop_halfladder(unwind_ladder.as_ref().map(|x| &**x),
-                                 succ, &fields, is_cleanup);
+            self.drop_halfladder(&unwind_ladder, succ, &fields);
 
-        (normal_ladder.last().cloned().unwrap_or(succ),
-         unwind_ladder.and_then(|l| l.last().cloned()).or(self.unwind))
+        (*normal_ladder.last().unwrap(), *unwind_ladder.last().unwrap())
     }
 
     fn open_drop_for_tuple<'a>(&mut self, tys: &[Ty<'tcx>])
@@ -309,7 +332,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
              self.elaborator.field_subpath(self.path, Field::new(i)))
         }).collect();
 
-        self.drop_ladder(fields).0
+        let (succ, unwind) = self.drop_ladder_bottom();
+        self.drop_ladder(fields, succ, unwind).0
     }
 
     fn open_drop_for_box<'a>(&mut self, ty: Ty<'tcx>) -> BasicBlock
@@ -320,13 +344,13 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let interior_path = self.elaborator.deref_subpath(self.path);
 
         let succ = self.succ; // FIXME(#6393)
-        let is_cleanup = self.is_cleanup;
-        let succ = self.box_free_block(ty, succ, is_cleanup);
-        let unwind_succ = self.unwind.map(|u| {
-            self.box_free_block(ty, u, true)
+        let unwind = self.unwind;
+        let succ = self.box_free_block(ty, succ, unwind);
+        let unwind_succ = self.unwind.map(|unwind| {
+            self.box_free_block(ty, unwind, Unwind::InCleanup)
         });
 
-        self.drop_subpath(is_cleanup, &interior, interior_path, succ, unwind_succ)
+        self.drop_subpath(&interior, interior_path, succ, unwind_succ)
     }
 
     fn open_drop_for_adt<'a>(&mut self, adt: &'tcx ty::AdtDef, substs: &'tcx Substs<'tcx>)
@@ -339,7 +363,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                     source_info: self.source_info,
                     kind: TerminatorKind::Unreachable
                 }),
-                is_cleanup: self.is_cleanup
+                is_cleanup: self.unwind.is_cleanup()
             });
         }
 
@@ -356,114 +380,108 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         }
     }
 
-    fn open_drop_for_adt_contents<'a>(&mut self, adt: &'tcx ty::AdtDef,
-                                      substs: &'tcx Substs<'tcx>)
-                                      -> (BasicBlock, Option<BasicBlock>) {
-        match adt.variants.len() {
-            1 => {
-                let fields = self.move_paths_for_fields(
-                    self.lvalue,
-                    self.path,
-                    &adt.variants[0],
-                    substs
-                );
-                self.drop_ladder(fields)
-            }
-            _ => {
-                let is_cleanup = self.is_cleanup;
-                let succ = self.succ;
-                let unwind = self.unwind; // FIXME(#6393)
-
-                let mut values = Vec::with_capacity(adt.variants.len());
-                let mut normal_blocks = Vec::with_capacity(adt.variants.len());
-                let mut unwind_blocks = if is_cleanup {
-                    None
-                } else {
-                    Some(Vec::with_capacity(adt.variants.len()))
-                };
-                let mut otherwise = None;
-                let mut unwind_otherwise = None;
-                for (variant_index, discr) in adt.discriminants(self.tcx()).enumerate() {
-                    let subpath = self.elaborator.downcast_subpath(
-                        self.path, variant_index);
-                    if let Some(variant_path) = subpath {
-                        let base_lv = self.lvalue.clone().elem(
-                            ProjectionElem::Downcast(adt, variant_index)
-                        );
-                        let fields = self.move_paths_for_fields(
-                            &base_lv,
-                            variant_path,
-                            &adt.variants[variant_index],
-                            substs);
-                        values.push(discr);
-                        if let Some(ref mut unwind_blocks) = unwind_blocks {
-                            // We can't use the half-ladder from the original
-                            // drop ladder, because this breaks the
-                            // "funclet can't have 2 successor funclets"
-                            // requirement from MSVC:
-                            //
-                            //           switch       unwind-switch
-                            //          /      \         /        \
-                            //         v1.0    v2.0  v2.0-unwind  v1.0-unwind
-                            //         |        |      /             |
-                            //    v1.1-unwind  v2.1-unwind           |
-                            //      ^                                |
-                            //       \-------------------------------/
-                            //
-                            // Create a duplicate half-ladder to avoid that. We
-                            // could technically only do this on MSVC, but I
-                            // I want to minimize the divergence between MSVC
-                            // and non-MSVC.
-
-                            let unwind = unwind.unwrap();
-                            let halfladder = self.drop_halfladder(
-                                None, unwind, &fields, true);
-                            unwind_blocks.push(
-                                halfladder.last().cloned().unwrap_or(unwind)
-                            );
-                        }
-                        let (normal, _) = self.drop_ladder(fields);
-                        normal_blocks.push(normal);
-                    } else {
-                        // variant not found - drop the entire enum
-                        if let None = otherwise {
-                            otherwise = Some(self.complete_drop(
-                                is_cleanup,
-                                Some(DropFlagMode::Shallow),
-                                succ));
-                            unwind_otherwise = unwind.map(|unwind| self.complete_drop(
-                                true,
-                                Some(DropFlagMode::Shallow),
-                                unwind
-                            ));
-                        }
-                    }
-                }
-                if let Some(block) = otherwise {
-                    normal_blocks.push(block);
-                    if let Some(ref mut unwind_blocks) = unwind_blocks {
-                        unwind_blocks.push(unwind_otherwise.unwrap());
-                    }
-                } else {
-                    values.pop();
-                }
-
-                (self.adt_switch_block(is_cleanup, adt, normal_blocks, &values, succ),
-                 unwind_blocks.map(|unwind_blocks| {
-                     self.adt_switch_block(
-                         is_cleanup, adt, unwind_blocks, &values, unwind.unwrap()
-                     )
-                 }))
-            }
+    fn open_drop_for_adt_contents(&mut self, adt: &'tcx ty::AdtDef,
+                                  substs: &'tcx Substs<'tcx>)
+                                  -> (BasicBlock, Unwind) {
+        let (succ, unwind) = self.drop_ladder_bottom();
+        if adt.variants.len() == 1 {
+            let fields = self.move_paths_for_fields(
+                self.lvalue,
+                self.path,
+                &adt.variants[0],
+                substs
+            );
+            self.drop_ladder(fields, succ, unwind)
+        } else {
+            self.open_drop_for_multivariant(adt, substs, succ, unwind)
         }
     }
 
+    fn open_drop_for_multivariant(&mut self, adt: &'tcx ty::AdtDef,
+                                  substs: &'tcx Substs<'tcx>,
+                                  succ: BasicBlock,
+                                  unwind: Unwind)
+                                  -> (BasicBlock, Unwind) {
+        let mut values = Vec::with_capacity(adt.variants.len());
+        let mut normal_blocks = Vec::with_capacity(adt.variants.len());
+        let mut unwind_blocks = if unwind.is_cleanup() {
+            None
+        } else {
+            Some(Vec::with_capacity(adt.variants.len()))
+        };
+
+        let mut have_otherwise = false;
+
+        for (variant_index, discr) in adt.discriminants(self.tcx()).enumerate() {
+            let subpath = self.elaborator.downcast_subpath(
+                self.path, variant_index);
+            if let Some(variant_path) = subpath {
+                let base_lv = self.lvalue.clone().elem(
+                    ProjectionElem::Downcast(adt, variant_index)
+                        );
+                let fields = self.move_paths_for_fields(
+                    &base_lv,
+                    variant_path,
+                    &adt.variants[variant_index],
+                    substs);
+                values.push(discr);
+                if let Unwind::To(unwind) = unwind {
+                    // We can't use the half-ladder from the original
+                    // drop ladder, because this breaks the
+                    // "funclet can't have 2 successor funclets"
+                    // requirement from MSVC:
+                    //
+                    //           switch       unwind-switch
+                    //          /      \         /        \
+                    //         v1.0    v2.0  v2.0-unwind  v1.0-unwind
+                    //         |        |      /             |
+                    //    v1.1-unwind  v2.1-unwind           |
+                    //      ^                                |
+                    //       \-------------------------------/
+                    //
+                    // Create a duplicate half-ladder to avoid that. We
+                    // could technically only do this on MSVC, but I
+                    // I want to minimize the divergence between MSVC
+                    // and non-MSVC.
+
+                    let unwind_blocks = unwind_blocks.as_mut().unwrap();
+                    let unwind_ladder = vec![Unwind::InCleanup; fields.len() + 1];
+                    let halfladder =
+                        self.drop_halfladder(&unwind_ladder, unwind, &fields);
+                    unwind_blocks.push(halfladder.last().cloned().unwrap());
+                }
+                let (normal, _) = self.drop_ladder(fields, succ, unwind);
+                normal_blocks.push(normal);
+            } else {
+                have_otherwise = true;
+            }
+        }
+
+        if have_otherwise {
+            normal_blocks.push(self.drop_block(succ, unwind));
+            if let Unwind::To(unwind) = unwind {
+                unwind_blocks.as_mut().unwrap().push(
+                    self.drop_block(unwind, Unwind::InCleanup)
+                        );
+            }
+        } else {
+            values.pop();
+        }
+
+        (self.adt_switch_block(adt, normal_blocks, &values, succ, unwind),
+         unwind.map(|unwind| {
+             self.adt_switch_block(
+                 adt, unwind_blocks.unwrap(), &values, unwind, Unwind::InCleanup
+             )
+         }))
+    }
+
     fn adt_switch_block(&mut self,
-                        is_cleanup: bool,
                         adt: &'tcx ty::AdtDef,
                         blocks: Vec<BasicBlock>,
                         values: &[ConstInt],
-                        succ: BasicBlock)
+                        succ: BasicBlock,
+                        unwind: Unwind)
                         -> BasicBlock {
         // If there are multiple variants, then if something
         // is present within the enum the discriminant, tracked
@@ -475,13 +493,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let discr_ty = adt.repr.discr_type().to_ty(self.tcx());
         let discr = Lvalue::Local(self.new_temp(discr_ty));
         let discr_rv = Rvalue::Discriminant(self.lvalue.clone());
-        let switch_block = self.elaborator.patch().new_block(BasicBlockData {
-            statements: vec![
-                Statement {
-                    source_info: self.source_info,
-                    kind: StatementKind::Assign(discr.clone(), discr_rv),
-                }
-                ],
+        let switch_block = BasicBlockData {
+            statements: vec![self.assign(&discr, discr_rv)],
             terminator: Some(Terminator {
                 source_info: self.source_info,
                 kind: TerminatorKind::SwitchInt {
@@ -491,12 +504,13 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                     targets: blocks,
                 }
             }),
-            is_cleanup: is_cleanup,
-        });
-        self.drop_flag_test_block(is_cleanup, switch_block, succ)
+            is_cleanup: unwind.is_cleanup(),
+        };
+        let switch_block = self.elaborator.patch().new_block(switch_block);
+        self.drop_flag_test_block(switch_block, succ, unwind)
     }
 
-    fn destructor_call_block<'a>(&mut self, (succ, unwind): (BasicBlock, Option<BasicBlock>))
+    fn destructor_call_block<'a>(&mut self, (succ, unwind): (BasicBlock, Unwind))
                                  -> BasicBlock
     {
         debug!("destructor_call_block({:?}, {:?})", self, succ);
@@ -513,26 +527,213 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let ref_lvalue = self.new_temp(ref_ty);
         let unit_temp = Lvalue::Local(self.new_temp(tcx.mk_nil()));
 
-        self.elaborator.patch().new_block(BasicBlockData {
-            statements: vec![Statement {
-                source_info: self.source_info,
-                kind: StatementKind::Assign(
-                    Lvalue::Local(ref_lvalue),
-                    Rvalue::Ref(tcx.types.re_erased, BorrowKind::Mut, self.lvalue.clone())
-                )
-            }],
+        let result = BasicBlockData {
+            statements: vec![self.assign(
+                &Lvalue::Local(ref_lvalue),
+                Rvalue::Ref(tcx.types.re_erased, BorrowKind::Mut, self.lvalue.clone())
+            )],
             terminator: Some(Terminator {
                 kind: TerminatorKind::Call {
                     func: Operand::function_handle(tcx, drop_fn.def_id, substs,
                                                    self.source_info.span),
                     args: vec![Operand::Consume(Lvalue::Local(ref_lvalue))],
                     destination: Some((unit_temp, succ)),
-                    cleanup: unwind,
+                    cleanup: unwind.into_option(),
                 },
                 source_info: self.source_info
             }),
-            is_cleanup: self.is_cleanup,
-        })
+            is_cleanup: unwind.is_cleanup(),
+        };
+        self.elaborator.patch().new_block(result)
+    }
+
+    /// create a loop that drops an array:
+    ///
+
+    ///
+    /// loop-block:
+    ///    can_go = cur == length_or_end
+    ///    if can_go then succ else drop-block
+    /// drop-block:
+    ///    if ptr_based {
+    ///        ptr = cur
+    ///        cur = cur.offset(1)
+    ///    } else {
+    ///        ptr = &mut LV[cur]
+    ///        cur = cur + 1
+    ///    }
+    ///    drop(ptr)
+    fn drop_loop(&mut self,
+                 succ: BasicBlock,
+                 cur: &Lvalue<'tcx>,
+                 length_or_end: &Lvalue<'tcx>,
+                 ety: Ty<'tcx>,
+                 unwind: Unwind,
+                 ptr_based: bool)
+                 -> BasicBlock
+    {
+        let use_ = |lv: &Lvalue<'tcx>| Operand::Consume(lv.clone());
+        let tcx = self.tcx();
+
+        let ref_ty = tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
+            ty: ety,
+            mutbl: hir::Mutability::MutMutable
+        });
+        let ptr = &Lvalue::Local(self.new_temp(ref_ty));
+        let can_go = &Lvalue::Local(self.new_temp(tcx.types.bool));
+
+        let one = self.constant_usize(1);
+        let (ptr_next, cur_next) = if ptr_based {
+            (Rvalue::Use(use_(cur)),
+             Rvalue::BinaryOp(BinOp::Offset, use_(cur), one))
+        } else {
+            (Rvalue::Ref(
+                 tcx.types.re_erased,
+                 BorrowKind::Mut,
+                 self.lvalue.clone().index(use_(cur))),
+             Rvalue::BinaryOp(BinOp::Add, use_(cur), one))
+        };
+
+        let drop_block = BasicBlockData {
+            statements: vec![
+                self.assign(ptr, ptr_next),
+                self.assign(cur, cur_next)
+            ],
+            is_cleanup: unwind.is_cleanup(),
+            terminator: Some(Terminator {
+                source_info: self.source_info,
+                // this gets overwritten by drop elaboration.
+                kind: TerminatorKind::Unreachable,
+            })
+        };
+        let drop_block = self.elaborator.patch().new_block(drop_block);
+
+        let loop_block = BasicBlockData {
+            statements: vec![
+                self.assign(can_go, Rvalue::BinaryOp(BinOp::Eq,
+                                                     use_(cur),
+                                                     use_(length_or_end)))
+            ],
+            is_cleanup: unwind.is_cleanup(),
+            terminator: Some(Terminator {
+                source_info: self.source_info,
+                kind: TerminatorKind::if_(tcx, use_(can_go), succ, drop_block)
+            })
+        };
+        let loop_block = self.elaborator.patch().new_block(loop_block);
+
+        self.elaborator.patch().patch_terminator(drop_block, TerminatorKind::Drop {
+            location: ptr.clone().deref(),
+            target: loop_block,
+            unwind: unwind.into_option()
+        });
+
+        loop_block
+    }
+
+    fn open_drop_for_array(&mut self, ety: Ty<'tcx>) -> BasicBlock {
+        debug!("open_drop_for_array({:?})", ety);
+
+        // if size_of::<ety>() == 0 {
+        //     index_based_loop
+        // } else {
+        //     ptr_based_loop
+        // }
+
+        let tcx = self.tcx();
+
+        let use_ = |lv: &Lvalue<'tcx>| Operand::Consume(lv.clone());
+        let size = &Lvalue::Local(self.new_temp(tcx.types.usize));
+        let size_is_zero = &Lvalue::Local(self.new_temp(tcx.types.bool));
+        let base_block = BasicBlockData {
+            statements: vec![
+                self.assign(size, Rvalue::NullaryOp(NullOp::SizeOf, ety)),
+                self.assign(size_is_zero, Rvalue::BinaryOp(BinOp::Eq,
+                                                           use_(size),
+                                                           self.constant_usize(0)))
+            ],
+            is_cleanup: self.unwind.is_cleanup(),
+            terminator: Some(Terminator {
+                source_info: self.source_info,
+                kind: TerminatorKind::if_(
+                    tcx,
+                    use_(size_is_zero),
+                    self.drop_loop_pair(ety, false),
+                    self.drop_loop_pair(ety, true)
+                )
+            })
+        };
+        self.elaborator.patch().new_block(base_block)
+    }
+
+    // create a pair of drop-loops of `lvalue`, which drops its contents
+    // even in the case of 1 panic. If `ptr_based`, create a pointer loop,
+    // otherwise create an index loop.
+    fn drop_loop_pair(&mut self, ety: Ty<'tcx>, ptr_based: bool) -> BasicBlock {
+        debug!("drop_loop_pair({:?}, {:?})", ety, ptr_based);
+        let tcx = self.tcx();
+        let iter_ty = if ptr_based {
+            tcx.mk_ptr(ty::TypeAndMut { ty: ety, mutbl: hir::Mutability::MutMutable })
+        } else {
+            tcx.types.usize
+        };
+
+        let cur = Lvalue::Local(self.new_temp(iter_ty));
+        let length = Lvalue::Local(self.new_temp(tcx.types.usize));
+        let length_or_end = if ptr_based {
+            Lvalue::Local(self.new_temp(iter_ty))
+        } else {
+            length.clone()
+        };
+
+        let unwind = self.unwind.map(|unwind| {
+            self.drop_loop(unwind,
+                           &cur,
+                           &length_or_end,
+                           ety,
+                           Unwind::InCleanup,
+                           ptr_based)
+        });
+
+        let succ = self.succ; // FIXME(#6393)
+        let loop_block = self.drop_loop(
+            succ,
+            &cur,
+            &length_or_end,
+            ety,
+            unwind,
+            ptr_based);
+
+        let zero = self.constant_usize(0);
+        let mut drop_block_stmts = vec![];
+        drop_block_stmts.push(self.assign(&length, Rvalue::Len(self.lvalue.clone())));
+        if ptr_based {
+            // cur = &LV[0];
+            // end = &LV[len];
+            drop_block_stmts.push(self.assign(&cur, Rvalue::Ref(
+                tcx.types.re_erased, BorrowKind::Mut,
+                self.lvalue.clone().index(zero.clone())
+            )));
+            drop_block_stmts.push(self.assign(&length_or_end, Rvalue::Ref(
+                tcx.types.re_erased, BorrowKind::Mut,
+                self.lvalue.clone().index(Operand::Consume(length.clone()))
+            )));
+        } else {
+            // index = 0 (length already pushed)
+            drop_block_stmts.push(self.assign(&cur, Rvalue::Use(zero)));
+        }
+        let drop_block = self.elaborator.patch().new_block(BasicBlockData {
+            statements: drop_block_stmts,
+            is_cleanup: unwind.is_cleanup(),
+            terminator: Some(Terminator {
+                source_info: self.source_info,
+                kind: TerminatorKind::Goto { target: loop_block }
+            })
+        });
+
+        // FIXME(#34708): handle partially-dropped array/slice elements.
+        let reset_block = self.drop_flag_reset_block(DropFlagMode::Deep, drop_block, unwind);
+        self.drop_flag_test_block(reset_block, succ, unwind)
     }
 
     /// The slow-path - create an "open", elaborated drop for a type
@@ -545,8 +746,6 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     /// ADT, both in the success case or if one of the destructors fail.
     fn open_drop<'a>(&mut self) -> BasicBlock {
         let ty = self.lvalue_ty(self.lvalue);
-        let is_cleanup = self.is_cleanup; // FIXME(#6393)
-        let succ = self.succ;
         match ty.sty {
             ty::TyClosure(def_id, substs) => {
                 let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
@@ -562,12 +761,12 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 self.open_drop_for_adt(def, substs)
             }
             ty::TyDynamic(..) => {
-                self.complete_drop(is_cleanup, Some(DropFlagMode::Deep), succ)
+                let unwind = self.unwind; // FIXME(#6393)
+                let succ = self.succ;
+                self.complete_drop(Some(DropFlagMode::Deep), succ, unwind)
             }
-            ty::TyArray(..) | ty::TySlice(..) => {
-                // FIXME(#34708): handle partially-dropped
-                // array/slice elements.
-                self.complete_drop(is_cleanup, Some(DropFlagMode::Deep), succ)
+            ty::TyArray(ety, _) | ty::TySlice(ety) => {
+                self.open_drop_for_array(ety)
             }
             _ => bug!("open drop from non-ADT `{:?}`", ty)
         }
@@ -581,26 +780,40 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     ///     if let Some(mode) = mode: FLAG(self.path)[mode] = false
     ///     drop(self.lv)
     fn complete_drop<'a>(&mut self,
-                         is_cleanup: bool,
                          drop_mode: Option<DropFlagMode>,
-                         succ: BasicBlock) -> BasicBlock
+                         succ: BasicBlock,
+                         unwind: Unwind) -> BasicBlock
     {
         debug!("complete_drop({:?},{:?})", self, drop_mode);
 
-        let drop_block = self.drop_block(is_cleanup, succ);
-        if let Some(mode) = drop_mode {
-            let block_start = Location { block: drop_block, statement_index: 0 };
-            self.elaborator.clear_drop_flag(block_start, self.path, mode);
-        }
+        let drop_block = self.drop_block(succ, unwind);
+        let drop_block = if let Some(mode) = drop_mode {
+            self.drop_flag_reset_block(mode, drop_block, unwind)
+        } else {
+            drop_block
+        };
 
-        self.drop_flag_test_block(is_cleanup, drop_block, succ)
+        self.drop_flag_test_block(drop_block, succ, unwind)
+    }
+
+    fn drop_flag_reset_block(&mut self,
+                             mode: DropFlagMode,
+                             succ: BasicBlock,
+                             unwind: Unwind) -> BasicBlock
+    {
+        debug!("drop_flag_reset_block({:?},{:?})", self, mode);
+
+        let block = self.new_block(unwind, TerminatorKind::Goto { target: succ });
+        let block_start = Location { block: block, statement_index: 0 };
+        self.elaborator.clear_drop_flag(block_start, self.path, mode);
+        block
     }
 
     fn elaborated_drop_block<'a>(&mut self) -> BasicBlock {
         debug!("elaborated_drop_block({:?})", self);
-        let is_cleanup = self.is_cleanup; // FIXME(#6393)
+        let unwind = self.unwind; // FIXME(#6393)
         let succ = self.succ;
-        let blk = self.drop_block(is_cleanup, succ);
+        let blk = self.drop_block(succ, unwind);
         self.elaborate_drop(blk);
         blk
     }
@@ -609,17 +822,17 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         &mut self,
         ty: Ty<'tcx>,
         target: BasicBlock,
-        is_cleanup: bool
+        unwind: Unwind,
     ) -> BasicBlock {
-        let block = self.unelaborated_free_block(ty, target, is_cleanup);
-        self.drop_flag_test_block(is_cleanup, block, target)
+        let block = self.unelaborated_free_block(ty, target, unwind);
+        self.drop_flag_test_block(block, target, unwind)
     }
 
     fn unelaborated_free_block<'a>(
         &mut self,
         ty: Ty<'tcx>,
         target: BasicBlock,
-        is_cleanup: bool
+        unwind: Unwind
     ) -> BasicBlock {
         let tcx = self.tcx();
         let unit_temp = Lvalue::Local(self.new_temp(tcx.mk_nil()));
@@ -632,31 +845,31 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             destination: Some((unit_temp, target)),
             cleanup: None
         }; // FIXME(#6393)
-        let free_block = self.new_block(is_cleanup, call);
+        let free_block = self.new_block(unwind, call);
 
         let block_start = Location { block: free_block, statement_index: 0 };
         self.elaborator.clear_drop_flag(block_start, self.path, DropFlagMode::Shallow);
         free_block
     }
 
-    fn drop_block<'a>(&mut self, is_cleanup: bool, succ: BasicBlock) -> BasicBlock {
+    fn drop_block<'a>(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {
         let block = TerminatorKind::Drop {
             location: self.lvalue.clone(),
-            target: succ,
-            unwind: if is_cleanup { None } else { self.unwind }
+            target: target,
+            unwind: unwind.into_option()
         };
-        self.new_block(is_cleanup, block)
+        self.new_block(unwind, block)
     }
 
     fn drop_flag_test_block(&mut self,
-                            is_cleanup: bool,
                             on_set: BasicBlock,
-                            on_unset: BasicBlock)
+                            on_unset: BasicBlock,
+                            unwind: Unwind)
                             -> BasicBlock
     {
         let style = self.elaborator.drop_style(self.path, DropFlagMode::Shallow);
-        debug!("drop_flag_test_block({:?},{:?},{:?}) - {:?}",
-               self, is_cleanup, on_set, style);
+        debug!("drop_flag_test_block({:?},{:?},{:?},{:?}) - {:?}",
+               self, on_set, on_unset, unwind, style);
 
         match style {
             DropStyle::Dead => on_unset,
@@ -664,13 +877,13 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             DropStyle::Conditional | DropStyle::Open => {
                 let flag = self.elaborator.get_drop_flag(self.path).unwrap();
                 let term = TerminatorKind::if_(self.tcx(), flag, on_set, on_unset);
-                self.new_block(is_cleanup, term)
+                self.new_block(unwind, term)
             }
         }
     }
 
     fn new_block<'a>(&mut self,
-                     is_cleanup: bool,
+                     unwind: Unwind,
                      k: TerminatorKind<'tcx>)
                      -> BasicBlock
     {
@@ -679,7 +892,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             terminator: Some(Terminator {
                 source_info: self.source_info, kind: k
             }),
-            is_cleanup: is_cleanup
+            is_cleanup: unwind.is_cleanup()
         })
     }
 
@@ -690,5 +903,20 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn terminator_loc(&mut self, bb: BasicBlock) -> Location {
         let mir = self.elaborator.mir();
         self.elaborator.patch().terminator_loc(mir, bb)
+    }
+
+    fn constant_usize(&self, val: u16) -> Operand<'tcx> {
+        Operand::Constant(box Constant {
+            span: self.source_info.span,
+            ty: self.tcx().types.usize,
+            literal: Literal::Value { value: ConstVal::Integral(self.tcx().const_usize(val)) }
+        })
+    }
+
+    fn assign(&self, lhs: &Lvalue<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {
+        Statement {
+            source_info: self.source_info,
+            kind: StatementKind::Assign(lhs.clone(), rhs)
+        }
     }
 }

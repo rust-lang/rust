@@ -781,11 +781,15 @@ extern "C" void LLVMRustWriteTypeToString(LLVMTypeRef Ty, RustStringRef Str) {
 extern "C" void LLVMRustWriteValueToString(LLVMValueRef V,
                                            RustStringRef Str) {
   RawRustStringOstream OS(Str);
-  OS << "(";
-  unwrap<llvm::Value>(V)->getType()->print(OS);
-  OS << ":";
-  unwrap<llvm::Value>(V)->print(OS);
-  OS << ")";
+  if (!V) {
+    OS << "(null)";
+  } else {
+    OS << "(";
+    unwrap<llvm::Value>(V)->getType()->print(OS);
+    OS << ":";
+    unwrap<llvm::Value>(V)->print(OS);
+    OS << ")";
+  }
 }
 
 extern "C" bool LLVMRustLinkInExternalBitcode(LLVMModuleRef DstRef, char *BC,

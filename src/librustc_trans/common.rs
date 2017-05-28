@@ -191,15 +191,6 @@ impl Funclet {
     }
 }
 
-impl Clone for Funclet {
-    fn clone(&self) -> Funclet {
-        Funclet {
-            cleanuppad: self.cleanuppad,
-            operand: OperandBundleDef::new("funclet", &[self.cleanuppad]),
-        }
-    }
-}
-
 pub fn val_ty(v: ValueRef) -> Type {
     unsafe {
         Type::from_ref(llvm::LLVMTypeOf(v))

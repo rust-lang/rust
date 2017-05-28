@@ -438,7 +438,8 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             Rvalue::Ref(..) |
             Rvalue::Discriminant(..) |
             Rvalue::Len(..) |
-            Rvalue::Box(..) => {
+            Rvalue::NullaryOp(NullOp::SizeOf, _) |
+            Rvalue::NullaryOp(NullOp::Box, _) => {
                 // This returns an rvalue with uninitialized contents. We can't
                 // move out of it here because it is an rvalue - assignments always
                 // completely initialize their lvalue.

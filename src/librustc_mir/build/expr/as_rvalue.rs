@@ -97,7 +97,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let value = this.hir.mirror(value);
                 let result = this.temp(expr.ty, expr_span);
                 // to start, malloc some memory of suitable type (thus far, uninitialized):
-                this.cfg.push_assign(block, source_info, &result, Rvalue::Box(value.ty));
+                let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
+                this.cfg.push_assign(block, source_info, &result, box_);
                 this.in_scope(value_extents, block, |this| {
                     // schedule a shallow free of that memory, lest we unwind:
                     this.schedule_box_free(expr_span, value_extents, &result, value.ty);

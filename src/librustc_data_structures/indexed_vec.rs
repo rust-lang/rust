@@ -212,6 +212,13 @@ impl<I: Idx, T> IndexMut<I> for IndexVec<I, T> {
     }
 }
 
+impl<I: Idx, T> Default for IndexVec<I, T> {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<I: Idx, T> Extend<T> for IndexVec<I, T> {
     #[inline]
     fn extend<J: IntoIterator<Item = T>>(&mut self, iter: J) {

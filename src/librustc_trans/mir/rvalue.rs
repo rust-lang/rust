@@ -432,7 +432,17 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 })
             }
 
-            mir::Rvalue::Box(content_ty) => {
+            mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
+                assert!(bcx.ccx.shared().type_is_sized(ty));
+                let val = C_uint(bcx.ccx, bcx.ccx.size_of(ty));
+                let tcx = bcx.tcx();
+                (bcx, OperandRef {
+                    val: OperandValue::Immediate(val),
+                    ty: tcx.types.usize,
+                })
+            }
+
+            mir::Rvalue::NullaryOp(mir::NullOp::Box, content_ty) => {
                 let content_ty: Ty<'tcx> = self.monomorphize(&content_ty);
                 let llty = type_of::type_of(bcx.ccx, content_ty);
                 let llsize = machine::llsize_of(bcx.ccx, llty);
@@ -515,6 +525,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::BinOp::BitOr => bcx.or(lhs, rhs),
             mir::BinOp::BitAnd => bcx.and(lhs, rhs),
             mir::BinOp::BitXor => bcx.xor(lhs, rhs),
+            mir::BinOp::Offset => bcx.inbounds_gep(lhs, &[rhs]),
             mir::BinOp::Shl => common::build_unchecked_lshift(bcx, lhs, rhs),
             mir::BinOp::Shr => common::build_unchecked_rshift(bcx, input_ty, lhs, rhs),
             mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt |
@@ -660,7 +671,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Rvalue::CheckedBinaryOp(..) |
             mir::Rvalue::UnaryOp(..) |
             mir::Rvalue::Discriminant(..) |
-            mir::Rvalue::Box(..) |
+            mir::Rvalue::NullaryOp(..) |
             mir::Rvalue::Use(..) => // (*)
                 true,
             mir::Rvalue::Repeat(..) |

@@ -19,100 +19,147 @@ use adt;
 use base::{self, Lifetime};
 use callee;
 use builder::Builder;
-use common::{self, Funclet};
-use common::{C_bool, C_str_slice, C_struct, C_u32, C_uint, C_undef};
+use common::{self, C_bool, C_str_slice, C_struct, C_u32, C_undef};
 use consts;
 use machine::llalign_of_min;
 use meth;
 use monomorphize;
 use type_of;
-use tvec;
 use type_::Type;
 
-use rustc_data_structures::indexed_vec::IndexVec;
 use syntax::symbol::Symbol;
 
 use std::cmp;
 
 use super::{MirContext, LocalRef};
-use super::analyze::CleanupKind;
 use super::constant::Const;
 use super::lvalue::{Alignment, LvalueRef};
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
-    pub fn trans_block(&mut self, bb: mir::BasicBlock,
-        funclets: &IndexVec<mir::BasicBlock, Option<Funclet>>) {
+    pub fn trans_block(&mut self, bb: mir::BasicBlock) {
         let mut bcx = self.get_builder(bb);
         let data = &self.mir[bb];
 
         debug!("trans_block({:?}={:?})", bb, data);
 
-        let funclet = match self.cleanup_kinds[bb] {
-            CleanupKind::Internal { funclet } => funclets[funclet].as_ref(),
-            _ => funclets[bb].as_ref(),
-        };
+        for statement in &data.statements {
+            bcx = self.trans_statement(bcx, statement);
+        }
+
+        self.trans_terminator(bcx, bb, data.terminator());
+    }
+
+    fn trans_terminator(&mut self,
+                        mut bcx: Builder<'a, 'tcx>,
+                        bb: mir::BasicBlock,
+                        terminator: &mir::Terminator<'tcx>)
+    {
+        debug!("trans_terminator: {:?}", terminator);
 
         // Create the cleanup bundle, if needed.
+        let tcx = bcx.tcx();
+        let span = terminator.source_info.span;
+        let funclet_bb = self.cleanup_kinds[bb].funclet_bb(bb);
+        let funclet = funclet_bb.and_then(|funclet_bb| self.funclets[funclet_bb].as_ref());
+
         let cleanup_pad = funclet.map(|lp| lp.cleanuppad());
         let cleanup_bundle = funclet.map(|l| l.bundle());
 
-        let funclet_br = |this: &Self, bcx: Builder, bb: mir::BasicBlock| {
-            let lltarget = this.blocks[bb];
-            if let Some(cp) = cleanup_pad {
-                match this.cleanup_kinds[bb] {
-                    CleanupKind::Funclet => {
-                        // micro-optimization: generate a `ret` rather than a jump
-                        // to a return block
-                        bcx.cleanup_ret(cp, Some(lltarget));
-                    }
-                    CleanupKind::Internal { .. } => bcx.br(lltarget),
-                    CleanupKind::NotCleanup => bug!("jump from cleanup bb to bb {:?}", bb)
+        let lltarget = |this: &mut Self, target: mir::BasicBlock| {
+            let lltarget = this.blocks[target];
+            let target_funclet = this.cleanup_kinds[target].funclet_bb(target);
+            match (funclet_bb, target_funclet) {
+                (None, None) => (lltarget, false),
+                (Some(f), Some(t_f))
+                    if f == t_f || !base::wants_msvc_seh(tcx.sess)
+                    => (lltarget, false),
+                (None, Some(_)) => {
+                    // jump *into* cleanup - need a landing pad if GNU
+                    (this.landing_pad_to(target), false)
                 }
+                (Some(_), None) => span_bug!(span, "{:?} - jump out of cleanup?", terminator),
+                (Some(_), Some(_)) => {
+                    (this.landing_pad_to(target), true)
+                }
+            }
+        };
+
+        let llblock = |this: &mut Self, target: mir::BasicBlock| {
+            let (lltarget, is_cleanupret) = lltarget(this, target);
+            if is_cleanupret {
+                // MSVC cross-funclet jump - need a trampoline
+
+                debug!("llblock: creating cleanup trampoline for {:?}", target);
+                let name = &format!("{:?}_cleanup_trampoline_{:?}", bb, target);
+                let trampoline = this.new_block(name);
+                trampoline.cleanup_ret(cleanup_pad.unwrap(), Some(lltarget));
+                trampoline.llbb()
+            } else {
+                lltarget
+            }
+        };
+
+        let funclet_br = |this: &mut Self, bcx: Builder, target: mir::BasicBlock| {
+            let (lltarget, is_cleanupret) = lltarget(this, target);
+            if is_cleanupret {
+                // micro-optimization: generate a `ret` rather than a jump
+                // to a trampoline.
+                bcx.cleanup_ret(cleanup_pad.unwrap(), Some(lltarget));
             } else {
                 bcx.br(lltarget);
             }
         };
 
-        let llblock = |this: &mut Self, target: mir::BasicBlock| {
-            let lltarget = this.blocks[target];
+        let do_call = |
+            this: &mut Self,
+            bcx: Builder<'a, 'tcx>,
+            fn_ty: FnType<'tcx>,
+            fn_ptr: ValueRef,
+            llargs: &[ValueRef],
+            destination: Option<(ReturnDest, ty::Ty<'tcx>, mir::BasicBlock)>,
+            cleanup: Option<mir::BasicBlock>
+        | {
+            if let Some(cleanup) = cleanup {
+                let ret_bcx = if let Some((_, _, target)) = destination {
+                    this.blocks[target]
+                } else {
+                    this.unreachable_block()
+                };
+                let invokeret = bcx.invoke(fn_ptr,
+                                           &llargs,
+                                           ret_bcx,
+                                           llblock(this, cleanup),
+                                           cleanup_bundle);
+                fn_ty.apply_attrs_callsite(invokeret);
 
-            if let Some(cp) = cleanup_pad {
-                match this.cleanup_kinds[target] {
-                    CleanupKind::Funclet => {
-                        // MSVC cross-funclet jump - need a trampoline
-
-                        debug!("llblock: creating cleanup trampoline for {:?}", target);
-                        let name = &format!("{:?}_cleanup_trampoline_{:?}", bb, target);
-                        let trampoline = this.new_block(name);
-                        trampoline.cleanup_ret(cp, Some(lltarget));
-                        trampoline.llbb()
-                    }
-                    CleanupKind::Internal { .. } => lltarget,
-                    CleanupKind::NotCleanup =>
-                        bug!("jump from cleanup bb {:?} to bb {:?}", bb, target)
+                if let Some((ret_dest, ret_ty, target)) = destination {
+                    let ret_bcx = this.get_builder(target);
+                    this.set_debug_loc(&ret_bcx, terminator.source_info);
+                    let op = OperandRef {
+                        val: Immediate(invokeret),
+                        ty: ret_ty,
+                    };
+                    this.store_return(&ret_bcx, ret_dest, &fn_ty.ret, op);
                 }
             } else {
-                if let (CleanupKind::NotCleanup, CleanupKind::Funclet) =
-                    (this.cleanup_kinds[bb], this.cleanup_kinds[target])
-                {
-                    // jump *into* cleanup - need a landing pad if GNU
-                    this.landing_pad_to(target)
+                let llret = bcx.call(fn_ptr, &llargs, cleanup_bundle);
+                fn_ty.apply_attrs_callsite(llret);
+
+                if let Some((ret_dest, ret_ty, target)) = destination {
+                    let op = OperandRef {
+                        val: Immediate(llret),
+                        ty: ret_ty,
+                    };
+                    this.store_return(&bcx, ret_dest, &fn_ty.ret, op);
+                    funclet_br(this, bcx, target);
                 } else {
-                    lltarget
+                    bcx.unreachable();
                 }
             }
         };
 
-        for statement in &data.statements {
-            bcx = self.trans_statement(bcx, statement);
-        }
-
-        let terminator = data.terminator();
-        debug!("trans_block: terminator: {:?}", terminator);
-
-        let span = terminator.source_info.span;
         self.set_debug_loc(&bcx, terminator.source_info);
         match terminator.kind {
             mir::TerminatorKind::Resume => {
@@ -219,52 +266,16 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 }
 
                 let lvalue = self.trans_lvalue(&bcx, location);
+                let fn_ty = FnType::of_instance(bcx.ccx, &drop_fn);
                 let (drop_fn, need_extra) = match ty.sty {
                     ty::TyDynamic(..) => (meth::DESTRUCTOR.get_fn(&bcx, lvalue.llextra),
                                           false),
-                    ty::TyArray(ety, _) | ty::TySlice(ety) => {
-                        // FIXME: handle panics
-                        let drop_fn = monomorphize::resolve_drop_in_place(
-                            bcx.ccx.shared(), ety);
-                        let drop_fn = callee::get_fn(bcx.ccx, drop_fn);
-                        let bcx = tvec::slice_for_each(
-                            &bcx,
-                            lvalue.project_index(&bcx, C_uint(bcx.ccx, 0u64)),
-                            ety,
-                            lvalue.len(bcx.ccx),
-                            |bcx, llval, loop_bb| {
-                                self.set_debug_loc(&bcx, terminator.source_info);
-                                if let Some(unwind) = unwind {
-                                    bcx.invoke(
-                                        drop_fn,
-                                        &[llval],
-                                        loop_bb,
-                                        llblock(self, unwind),
-                                        cleanup_bundle
-                                    );
-                                } else {
-                                    bcx.call(drop_fn, &[llval], cleanup_bundle);
-                                    bcx.br(loop_bb);
-                                }
-                            });
-                        funclet_br(self, bcx, target);
-                        return
-                    }
                     _ => (callee::get_fn(bcx.ccx, drop_fn), lvalue.has_extra())
                 };
                 let args = &[lvalue.llval, lvalue.llextra][..1 + need_extra as usize];
-                if let Some(unwind) = unwind {
-                    bcx.invoke(
-                        drop_fn,
-                        args,
-                        self.blocks[target],
-                        llblock(self, unwind),
-                        cleanup_bundle
-                    );
-                } else {
-                    bcx.call(drop_fn, args, cleanup_bundle);
-                    funclet_br(self, bcx, target);
-                }
+                do_call(self, bcx, fn_ty, drop_fn, args,
+                        Some((ReturnDest::Nothing, tcx.mk_nil(), target)),
+                        unwind);
             }
 
             mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
@@ -371,26 +382,18 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // Obtain the panic entry point.
                 let def_id = common::langcall(bcx.tcx(), Some(span), "", lang_item);
                 let instance = ty::Instance::mono(bcx.tcx(), def_id);
+                let fn_ty = FnType::of_instance(bcx.ccx, &instance);
                 let llfn = callee::get_fn(bcx.ccx, instance);
 
                 // Translate the actual panic invoke/call.
-                if let Some(unwind) = cleanup {
-                    bcx.invoke(llfn,
-                               &args,
-                               self.unreachable_block(),
-                               llblock(self, unwind),
-                               cleanup_bundle);
-                } else {
-                    bcx.call(llfn, &args, cleanup_bundle);
-                    bcx.unreachable();
-                }
+                do_call(self, bcx, fn_ty, llfn, &args, None, cleanup);
             }
 
             mir::TerminatorKind::DropAndReplace { .. } => {
-                bug!("undesugared DropAndReplace in trans: {:?}", data);
+                bug!("undesugared DropAndReplace in trans: {:?}", terminator);
             }
 
-            mir::TerminatorKind::Call { ref func, ref args, ref destination, ref cleanup } => {
+            mir::TerminatorKind::Call { ref func, ref args, ref destination, cleanup } => {
                 // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
                 let callee = self.trans_operand(&bcx, func);
 
@@ -543,43 +546,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     _ => span_bug!(span, "no llfn for call"),
                 };
 
-                // Many different ways to call a function handled here
-                if let &Some(cleanup) = cleanup {
-                    let ret_bcx = if let Some((_, target)) = *destination {
-                        self.blocks[target]
-                    } else {
-                        self.unreachable_block()
-                    };
-                    let invokeret = bcx.invoke(fn_ptr,
-                                               &llargs,
-                                               ret_bcx,
-                                               llblock(self, cleanup),
-                                               cleanup_bundle);
-                    fn_ty.apply_attrs_callsite(invokeret);
-
-                    if let Some((_, target)) = *destination {
-                        let ret_bcx = self.get_builder(target);
-                        self.set_debug_loc(&ret_bcx, terminator.source_info);
-                        let op = OperandRef {
-                            val: Immediate(invokeret),
-                            ty: sig.output(),
-                        };
-                        self.store_return(&ret_bcx, ret_dest, &fn_ty.ret, op);
-                    }
-                } else {
-                    let llret = bcx.call(fn_ptr, &llargs, cleanup_bundle);
-                    fn_ty.apply_attrs_callsite(llret);
-                    if let Some((_, target)) = *destination {
-                        let op = OperandRef {
-                            val: Immediate(llret),
-                            ty: sig.output(),
-                        };
-                        self.store_return(&bcx, ret_dest, &fn_ty.ret, op);
-                        funclet_br(self, bcx, target);
-                    } else {
-                        bcx.unreachable();
-                    }
-                }
+                do_call(self, bcx, fn_ty, fn_ptr, &llargs,
+                        destination.as_ref().map(|&(_, target)| (ret_dest, sig.output(), target)),
+                        cleanup);
             }
         }
     }
@@ -774,7 +743,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
     fn landing_pad_uncached(&mut self, target_bb: BasicBlockRef) -> BasicBlockRef {
         if base::wants_msvc_seh(self.ccx.sess()) {
-            return target_bb;
+            span_bug!(self.mir.span, "landing pad was not inserted?")
         }
 
         let bcx = self.new_block("cleanup");

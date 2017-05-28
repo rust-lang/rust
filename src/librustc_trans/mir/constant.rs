@@ -796,6 +796,12 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 Const::new(llval, operand.ty)
             }
 
+            mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
+                assert!(self.ccx.shared().type_is_sized(ty));
+                let llval = C_uint(self.ccx, self.ccx.size_of(ty));
+                Const::new(llval, tcx.types.usize)
+            }
+
             _ => span_bug!(span, "{:?} in constant", rvalue)
         };
 
@@ -870,6 +876,7 @@ pub fn const_scalar_binop(op: mir::BinOp,
                     llvm::LLVMConstICmp(cmp, lhs, rhs)
                 }
             }
+            mir::BinOp::Offset => unreachable!("BinOp::Offset in const-eval!")
         }
     }
 }
