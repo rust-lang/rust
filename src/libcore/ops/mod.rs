@@ -148,7 +148,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 mod bit;
-mod fn;
+mod func;
 mod markers;
 mod num;
 mod place;
@@ -156,7 +156,7 @@ mod range;
 
 pub use bit::{BitAndAssign, BitOrAssign, BitXorAssign, ShlAssign, ShrAssign};
 pub use bit::{Neg, BitAnd, BitOr, BitXor, Shl, Shr};
-pub use fn::{Fn, FnMut, FnOnce};
+pub use func::{Fn, FnMut, FnOnce};
 pub use markers::{Drop, Index, IndexMut, Deref, DerefMut, CoerceUnsized, Carrier};
 pub use num::{Add, Sub, Mul, Div, Rem, Neg};
 pub use num::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
