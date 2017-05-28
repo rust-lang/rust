@@ -108,3 +108,11 @@ fn issue_1555() {
                          "65454654654654654654654655464",
                          "4");
 }
+
+fn issue1178() {
+    macro_rules! foo {
+        (#[$attr:meta] $name:ident) => {}
+    }
+
+    foo!(#[doc = "bar"] baz);
+}
