@@ -16,3 +16,16 @@ impl LateLintPass for UsedUnderscoreBinding {
     fn check_expr() { // comment
     }
 }
+
+fn issue1346() {
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    Box::new(self.inner.call(req).then(move |result| {
+        match result {
+            Ok(resp) => Box::new(future::done(Ok(resp))),
+            Err(e) => {
+                try_error!(clo_stderr, "{}", e);
+                Box::new(future::err(e))
+            }
+        }
+    }))
+}

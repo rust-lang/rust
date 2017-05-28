@@ -23,7 +23,7 @@ use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTacti
 use string::{StringFormat, rewrite_string};
 use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
             semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr,
-            colon_spaces};
+            colon_spaces, contains_skip};
 use visitor::FmtVisitor;
 use config::{Config, IndentStyle, MultilineStyle, ControlBraceStyle, Style};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
@@ -53,7 +53,11 @@ fn format_expr(expr: &ast::Expr,
                context: &RewriteContext,
                shape: Shape)
                -> Option<String> {
-    let result = match expr.node {
+    if contains_skip(&*expr.attrs) {
+        return Some(context.snippet(expr.span));
+    }
+    let attr_rw = (&*expr.attrs).rewrite(context, shape);
+    let expr_rw = match expr.node {
         ast::ExprKind::Array(ref expr_vec) => {
             rewrite_array(expr_vec.iter().map(|e| &**e),
                           mk_sp(context.codemap.span_after(expr.span, "["), expr.span.hi),
@@ -251,7 +255,16 @@ fn format_expr(expr: &ast::Expr,
                      shape)
         }
     };
-    result.and_then(|res| recover_comment_removed(res, expr.span, context, shape))
+    match (attr_rw, expr_rw) {
+        (Some(attr_str), Some(expr_str)) => {
+            let space = if attr_str.is_empty() { "" } else { " " };
+            recover_comment_removed(format!("{}{}{}", attr_str, space, expr_str),
+                                    expr.span,
+                                    context,
+                                    shape)
+        }
+        _ => None,
+    }
 }
 
 pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
