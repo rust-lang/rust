@@ -664,12 +664,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                            "rustc_attrs",
                                            "internal rustc attributes will never be stable",
                                            cfg_fn!(rustc_attrs))),
-    ("rustc_move_fragments", Normal, Gated(Stability::Unstable,
-                                           "rustc_attrs",
-                                           "the `#[rustc_move_fragments]` attribute \
-                                            is just used for rustc unit tests \
-                                            and will never be stable",
-                                           cfg_fn!(rustc_attrs))),
     ("rustc_mir", Whitelisted, Gated(Stability::Unstable,
                                      "rustc_attrs",
                                      "the `#[rustc_mir]` attribute \
