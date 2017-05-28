@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern "Rust" { fn foo(x: u8, ...); }   //~ ERROR E0045
-                                        //~| NOTE variadics require C or cdecl calling convention
+// Regression test for #42210.
+
+// compile-flags: -g
+
+trait Foo {
+    fn foo() { }
+}
+
+struct Bar;
+
+trait Baz {
+}
+
+impl Foo for (Bar, Baz) { }
+
 
 fn main() {
+    <(Bar, Baz) as Foo>::foo()
 }

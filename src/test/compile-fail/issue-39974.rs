@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern "Rust" { fn foo(x: u8, ...); }   //~ ERROR E0045
-                                        //~| NOTE variadics require C or cdecl calling convention
+const LENGTH: f64 = 2;
+
+struct Thing {
+    f: [[f64; 2]; LENGTH],
+    //~^ ERROR mismatched types
+    //~| expected usize, found f64
+}
 
 fn main() {
+    let _t = Thing { f: [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]] };
 }

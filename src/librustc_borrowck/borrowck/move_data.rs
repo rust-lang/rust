@@ -33,9 +33,6 @@ use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::intravisit::IdRange;
 
-#[path="fragments.rs"]
-pub mod fragments;
-
 pub struct MoveData<'tcx> {
     /// Move paths. See section "Move paths" in `README.md`.
     pub paths: RefCell<Vec<MovePath<'tcx>>>,
@@ -62,9 +59,6 @@ pub struct MoveData<'tcx> {
 
     /// Assignments to a variable or path, like `x = foo`, but not `x += foo`.
     pub assignee_ids: RefCell<NodeSet>,
-
-    /// Path-fragments from moves in to or out of parts of structured data.
-    pub fragments: RefCell<fragments::FragmentSets>,
 }
 
 pub struct FlowedMoveData<'a, 'tcx: 'a> {
@@ -223,7 +217,6 @@ impl<'a, 'tcx> MoveData<'tcx> {
             var_assignments: RefCell::new(Vec::new()),
             variant_matches: RefCell::new(Vec::new()),
             assignee_ids: RefCell::new(NodeSet()),
-            fragments: RefCell::new(fragments::FragmentSets::new()),
         }
     }
 
@@ -401,8 +394,6 @@ impl<'a, 'tcx> MoveData<'tcx> {
         let path_index = self.move_path(tcx, lp.clone());
         let move_index = MoveIndex(self.moves.borrow().len());
 
-        self.fragments.borrow_mut().add_move(path_index);
-
         let next_move = self.path_first_move(path_index);
         self.set_path_first_move(path_index, move_index);
 
@@ -458,8 +449,6 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
         let path_index = self.move_path(tcx, lp.clone());
 
-        self.fragments.borrow_mut().add_assignment(path_index);
-
         match mode {
             MutateMode::Init | MutateMode::JustWrite => {
                 self.assignee_ids.borrow_mut().insert(assignee_id);
@@ -502,8 +491,6 @@ impl<'a, 'tcx> MoveData<'tcx> {
         let path_index = self.move_path(tcx, lp.clone());
         let base_path_index = self.move_path(tcx, base_lp.clone());
 
-        self.fragments.borrow_mut().add_assignment(path_index);
-
         let variant_match = VariantMatch {
             path: path_index,
             base_path: base_path_index,
@@ -512,10 +499,6 @@ impl<'a, 'tcx> MoveData<'tcx> {
         };
 
         self.variant_matches.borrow_mut().push(variant_match);
-    }
-
-    fn fixup_fragment_sets(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-        fragments::fixup_fragment_sets(self, tcx)
     }
 
     /// Adds the gen/kills for the various moves and
@@ -676,8 +659,6 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
                                  AssignDataFlowOperator,
                                  id_range,
                                  move_data.var_assignments.borrow().len());
-
-        move_data.fixup_fragment_sets(tcx);
 
         move_data.add_gen_kills(bccx,
                                 &mut dfcx_moves,
