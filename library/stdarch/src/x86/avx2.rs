@@ -568,7 +568,7 @@ mod tests {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
             16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
         let b = i8x32::new(
-            31, 30, 2, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 
+            31, 30, 2, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16,
             15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
         let r = avx2::_mm256_cmpeq_epi8(a, b);
         assert_eq!(r, i8x32::splat(0).replace(2,0xFFu8 as i8));
@@ -641,7 +641,7 @@ mod tests {
         let b = i16x16::splat(4);
         let r = avx2::_mm256_hadd_epi16(a, b);
         let e = i16x16::new(4, 4, 4, 4, 8, 8, 8, 8, 4, 4, 4, 4, 8, 8, 8, 8);
-        assert_eq!(r,e);
+        assert_eq!(r, e);
     }
 
     #[test]
@@ -651,7 +651,7 @@ mod tests {
         let b = i32x8::splat(4);
         let r = avx2::_mm256_hadd_epi32(a, b);
         let e = i32x8::new(4, 4, 8, 8, 4, 4, 8, 8);
-        assert_eq!(r,e);
+        assert_eq!(r, e);
     }
 
     #[test]
@@ -662,7 +662,7 @@ mod tests {
         let r = avx2::_mm256_hadds_epi16(a, b);
         let e = i16x16::new(
             0x7FFF, 4, 4, 4, 8, 8, 8, 8, 4, 4, 4, 4, 8, 8, 8, 8);
-        assert_eq!(r,e);
+        assert_eq!(r, e);
     }
 
     #[test]
@@ -672,7 +672,7 @@ mod tests {
         let b = i16x16::splat(4);
         let r = avx2::_mm256_hsub_epi16(a, b);
         let e = i16x16::splat(0);
-        assert_eq!(r,e);
+        assert_eq!(r, e);
     }
 
     #[test]
@@ -682,7 +682,7 @@ mod tests {
         let b = i32x8::splat(4);
         let r = avx2::_mm256_hsub_epi32(a, b);
         let e = i32x8::splat(0);
-        assert_eq!(r,e);
+        assert_eq!(r, e);
     }
 
     #[test]
@@ -692,8 +692,7 @@ mod tests {
         let b = i16x16::splat(4);
         let r = avx2::_mm256_hsubs_epi16(a, b);
         let e = i16x16::splat(0).replace(0,0x7FFF);
-        assert_eq!(r,e);
+        assert_eq!(r, e);
     }
-
 
 }

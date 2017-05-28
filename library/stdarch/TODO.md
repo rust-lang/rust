@@ -540,9 +540,9 @@ sse4.2
 
 avx
 ---
-* [ ] `_mm256_add_pd`
-* [ ] `_mm256_add_ps`
-* [ ] `_mm256_addsub_pd`
+* [x] `_mm256_add_pd`
+* [x] `_mm256_add_ps`
+* [x] `_mm256_addsub_pd`
 * [ ] `_mm256_addsub_ps`
 * [ ] `_mm256_and_pd`
 * [ ] `_mm256_and_ps`

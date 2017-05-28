@@ -2,6 +2,7 @@ pub use self::sse::*;
 pub use self::sse2::*;
 pub use self::ssse3::*;
 pub use self::sse42::*;
+pub use self::avx::*;
 pub use self::avx2::*;
 
 #[allow(non_camel_case_types)]
@@ -13,4 +14,5 @@ mod sse;
 mod sse2;
 mod ssse3;
 mod sse42;
+mod avx;
 mod avx2;
