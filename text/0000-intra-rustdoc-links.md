@@ -16,7 +16,7 @@ and extend Rustdoc to automatically turn this into working links.
 
 It is good practice in the Rust community to
 add documentation to all public items of a crate,
-as the API documentation as rendered by Rustdoc is the main documentation of most libaries.
+as the API documentation as rendered by Rustdoc is the main documentation of most libraries.
 Documentation comments at the module (or crate) level are used to
 give an overview of the module (or crate)
 and describe how the items of a crate can be used together.
@@ -83,8 +83,8 @@ to be able to generate relative links that work in all contexts.
 [al]: http://spec.commonmark.org/0.27/#autolinks
 [lrd]: http://spec.commonmark.org/0.27/#link-reference-definitions
 
-We prospose that
-in each occurance of `URL`
+We propose that
+in each occurrence of `URL`
 of inline links and link reference definitions,
 it should also be possible to write a Rust path
 (as defined [in the reference][ref-paths]).
@@ -144,10 +144,10 @@ as well as by [Guillaume Gomez].)
 [CommonMark forum]: https://talk.commonmark.org/t/what-should-the-rust-community-do-for-linkage/2141
 [Guillaume Gomez]: https://github.com/GuillaumeGomez
 
-## Standard-conform Markdown
+## Standard-conforming Markdown
 
 These additions are valid Markdown,
-as defined by the orginal [Markdown syntax definition][md]
+as defined by the original [Markdown syntax definition][md]
 as well as the [CommonMark] project.
 Especially, Rust paths are valid CommonMark [link destinations],
 even with the suffixes described [below][path-ambiguities].
@@ -191,7 +191,7 @@ to avoid confusion, the RFC does not propose adding any support for autolinks.
 
 [absolute URI]: http://spec.commonmark.org/0.27/#absolute-uri
 
-This means that this will not render a valid link:
+This means that this **will not** render a valid link:
 
 ```
 Does not work: <bars::Bar> :(
@@ -255,7 +255,7 @@ macro_rules! FOO { () => () }
 ```
 
 To be able to link to each item,
-we'll need a way to disabiguate the namespaces.
+we'll need a way to disambiguate the namespaces.
 Our proposal is this:
 
 - Links to types are written as described earlier,
@@ -273,12 +273,14 @@ Our proposal is this:
     e.g., `See [static FOO]`.
 
 ## Errors
+[errors]: #errors
 
 Ideally, Rustdoc would be able to recognize Rust path syntax,
 and if the path cannot be resolved,
 print a warning (or an error).
 
 ## Complex example
+[complex-example]: #complex-example
 
 (Excerpt from Diesel's [`expression`][diesel-expression] module.)
 
@@ -349,7 +351,7 @@ To link to associated items,
 i.e., the associated functions, types, and constants of a trait,
 it may be necessary to use fully-qualified paths,
 like `See the [<Foo as Bar>::bar()] method`.
-We have yet to analyse in which cases this is necessary,
+We have yet to analyze in which cases this is necessary,
 and this syntax is currently not described in [the reference's section on paths][ref-paths].
 
 ## Linking to external documentation
@@ -367,7 +369,7 @@ We propose to generalize this approach
 by adding parameters to rustdoc
 that allow overwriting the base URLs
 it used for external crate links.
-(These paramters will at first
+(These parameters will at first
 be supplied as CLI flags
 but could also be given via a config file,
 environment variables,
