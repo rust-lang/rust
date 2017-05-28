@@ -499,6 +499,24 @@ pub unsafe fn uninitialized<T>() -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
+        let len = size_of::<T>();
+
+        if len < 128 {
+            // Give ourselves some scratch space to work with
+            let mut t: T = uninitialized();
+   
+            // Perform the swap, `&mut` pointers never alias
+            ptr::copy_nonoverlapping(&*x, &mut t, 1);
+            ptr::copy_nonoverlapping(&*y, x, 1);
+            ptr::copy_nonoverlapping(&t, y, 1);
+   
+            // y and t now point to the same thing, but we need to completely
+            // forget `t` because we do not want to run the destructor for `T`
+            // on its value, which is still owned somewhere outside this function.
+            forget(t);
+            return;
+        }
+
         // The approach here is to utilize simd to swap x & y efficiently. Testing reveals
         // that swapping either 32 bytes or 64 bytes at a time is most efficient for intel
         // Haswell E processors. LLVM is more able to optimize if we give a struct a
@@ -516,20 +534,21 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
         // Loop through x & y, copying them `Block` at a time
         // The optimizer should unroll the loop fully for most types
         // N.B. We can't use a for loop as the `range` impl calls `mem::swap` recursively
-        let len = size_of::<T>() as isize;
         let mut i = 0;
-        while i + block_size as isize <= len {
+        while i + block_size <= len {
             // Create some uninitialized memory as scratch space
             // Declaring `t` here avoids aligning the stack when this loop is unused
             let mut t: Block = uninitialized();
             let t = &mut t as *mut _ as *mut u8;
+            let x = x.offset(i as isize);
+            let y = y.offset(i as isize);
 
             // Swap a block of bytes of x & y, using t as a temporary buffer
             // This should be optimized into efficient SIMD operations where available
-            ptr::copy_nonoverlapping(x.offset(i), t, block_size);
-            ptr::copy_nonoverlapping(y.offset(i), x.offset(i), block_size);
-            ptr::copy_nonoverlapping(t, y.offset(i), block_size);
-            i += block_size as isize;
+            ptr::copy_nonoverlapping(x, t, block_size);
+            ptr::copy_nonoverlapping(y, x, block_size);
+            ptr::copy_nonoverlapping(t, y, block_size);
+            i += block_size;
         }
 
 
@@ -538,41 +557,15 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
             // where appropriate (this information is lost by conversion
             // to *mut u8, so restore it manually here)
             let mut t: UnalignedBlock = uninitialized();
-            let rem = (len - i) as usize;
+            let rem = len - i;
 
-            if align_of::<T>() % 8 == 0 && len % 8 == 0 {
-                let t = &mut t as *mut _ as *mut u64;
-                let x = x.offset(i) as *mut u64;
-                let y = y.offset(i) as *mut u64;
+            let t = &mut t as *mut _ as *mut u8;
+            let x = x.offset(i as isize);
+            let y = y.offset(i as isize);
 
-                ptr::copy_nonoverlapping(x, t, rem / 8);
-                ptr::copy_nonoverlapping(y, x, rem / 8);
-                ptr::copy_nonoverlapping(t, y, rem / 8);
-            } else if align_of::<T>() % 4 == 0 && len % 4 == 0 {
-                let t = &mut t as *mut _ as *mut u32;
-                let x = x.offset(i) as *mut u32;
-                let y = y.offset(i) as *mut u32;
-
-                ptr::copy_nonoverlapping(x, t, rem / 4);
-                ptr::copy_nonoverlapping(y, x, rem / 4);
-                ptr::copy_nonoverlapping(t, y, rem / 4);
-            } else if align_of::<T>() % 2 == 0 && len % 2 == 0 {
-                let t = &mut t as *mut _ as *mut u16;
-                let x = x.offset(i) as *mut u16;
-                let y = y.offset(i) as *mut u16;
-
-                ptr::copy_nonoverlapping(x, t, rem / 2);
-                ptr::copy_nonoverlapping(y, x, rem / 2);
-                ptr::copy_nonoverlapping(t, y, rem / 2);
-            } else {
-                let t = &mut t as *mut _ as *mut u8;
-                let x = x.offset(i);
-                let y = y.offset(i);
-
-                ptr::copy_nonoverlapping(x, t, rem);
-                ptr::copy_nonoverlapping(y, x, rem);
-                ptr::copy_nonoverlapping(t, y, rem);
-            }
+            ptr::copy_nonoverlapping(x, t, rem);
+            ptr::copy_nonoverlapping(y, x, rem);
+            ptr::copy_nonoverlapping(t, y, rem);
         }
     }
 }
