@@ -272,7 +272,8 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "volatile_store" =>
                 (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_nil()),
 
-            "ctpop" | "ctlz" | "cttz" | "bswap" => (1, vec![param(0)], param(0)),
+            "ctpop" | "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" | "bswap" =>
+                (1, vec![param(0)], param(0)),
 
             "add_with_overflow" | "sub_with_overflow"  | "mul_with_overflow" =>
                 (1, vec![param(0), param(0)],
