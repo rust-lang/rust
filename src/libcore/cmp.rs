@@ -67,6 +67,10 @@ use self::Ordering::*;
 /// the rule that `eq` is a strict inverse of `ne`; that is, `!(a == b)` if and
 /// only if `a != b`.
 ///
+/// Implementations of `PartialEq`, `PartialOrd`, and `Ord` *must* agree with
+/// each other. It's easy to accidentally make them disagree by deriving some
+/// of the traits and manually implementing others.
+///
 /// An example implementation for a domain in which two books are considered
 /// the same book if their ISBN matches, even if the formats differ:
 ///
@@ -386,6 +390,10 @@ impl<T: Ord> Ord for Reverse<T> {
 /// Then you must define an implementation for `cmp()`. You may find it useful to use
 /// `cmp()` on your type's fields.
 ///
+/// Implementations of `PartialEq`, `PartialOrd`, and `Ord` *must* agree with each other. It's
+/// easy to accidentally make them disagree by deriving some of the traits and manually
+/// implementing others.
+///
 /// Here's an example where you want to sort people by height only, disregarding `id`
 /// and `name`:
 ///
@@ -474,14 +482,18 @@ impl PartialOrd for Ordering {
 ///
 /// ## How can I implement `PartialOrd`?
 ///
-/// PartialOrd only requires implementation of the `partial_cmp` method, with the others generated
-/// from default implementations.
+/// `PartialOrd` only requires implementation of the `partial_cmp` method, with the others
+/// generated from default implementations.
 ///
 /// However it remains possible to implement the others separately for types which do not have a
 /// total order. For example, for floating point numbers, `NaN < 0 == false` and `NaN >= 0 ==
 /// false` (cf. IEEE 754-2008 section 5.11).
 ///
 /// `PartialOrd` requires your type to be `PartialEq`.
+///
+/// Implementations of `PartialEq`, `PartialOrd`, and `Ord` *must* agree with each other. It's
+/// easy to accidentally make them disagree by deriving some of the traits and manually
+/// implementing others.
 ///
 /// If your type is `Ord`, you can implement `partial_cmp()` by using `cmp()`:
 ///
