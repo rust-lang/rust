@@ -14,7 +14,7 @@ extern crate crates_io;
 use crates_io::{Crate, Registry, Result};
 
 use cargo::core::{Source, SourceId, Package, PackageId, Workspace};
-use cargo::ops::{compile, CompileMode, CompileOptions};
+use cargo::ops::{compile, Compilation, CompileMode, CompileOptions};
 use cargo::sources::registry::RegistrySource;
 use cargo::util::CargoResult;
 use cargo::util::config::Config;
@@ -26,7 +26,7 @@ use cargo::util::important_paths::{find_root_manifest_for_wd}; // TODO: use this
 // use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
 
 // use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+// use std::path::{Path, PathBuf};
 // use std::process::Command;
 
 // use syntax::ast;
@@ -41,11 +41,11 @@ fn exact_search(query: &str) -> Result<Crate> {
     }
 }
 
-fn generate_rlib<'a>(config: &'a Config, workspace: Workspace<'a>) -> CargoResult<PathBuf> {
+fn generate_rlib<'a>(config: &'a Config, workspace: Workspace<'a>)
+    -> CargoResult<Compilation<'a>>
+{
     let opts = CompileOptions::default(config, CompileMode::Build);
-    compile(&workspace, &opts).map(|c| c.root_output)
-
-    //compilation.binaries
+    compile(&workspace, &opts).map(|c| c)
 }
 
 fn main() {
@@ -74,7 +74,12 @@ fn main() {
             panic!("fail2");
         };
 
-    println!("{:?}", generate_rlib(&config, stable_workspace));
+    let compilation = generate_rlib(&config, stable_workspace).unwrap();
+    for i in &compilation.libraries[&package_id] {
+        if i.0.name() == package_id.name() {
+            println!("{:?}", i.1);
+        }
+    }
 }
 
 /*
