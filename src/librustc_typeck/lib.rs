@@ -141,11 +141,10 @@ fn require_c_abi_if_variadic(tcx: TyCtxt,
                              decl: &hir::FnDecl,
                              abi: Abi,
                              span: Span) {
-    if decl.variadic && abi != Abi::C {
+    if decl.variadic && !(abi == Abi::C || abi == Abi::Cdecl) {
         let mut err = struct_span_err!(tcx.sess, span, E0045,
-                  "variadic function must have C calling convention");
-        err.span_label(span, "variadics require C calling conventions")
-            .emit();
+                  "variadic function must have C or cdecl calling convention");
+        err.span_label(span, "variadics require C or cdecl calling convention").emit();
     }
 }
 
