@@ -26,9 +26,9 @@ use cargo::util::important_paths::find_root_manifest_for_wd;
 
 // use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
 
-// use std::io::{self, Write};
+use std::io::Write;
 // use std::path::{Path, PathBuf};
-// use std::process::Command;
+use std::process::{Stdio, Command};
 
 // use syntax::ast;
 
@@ -68,7 +68,6 @@ fn generate_rlib<'a>(config: &'a Config,
 ///
 /// TODO:
 /// * split this up
-/// * no, seriously, split this up
 /// * give some structure to the build artefact gathering
 /// * possibly reduce the complexity by investigating where some of the info can be sourced from
 /// in a more direct fashion
@@ -83,11 +82,15 @@ fn do_main() -> CargoResult<()> {
 
     let name = local_package.name();
 
-    for i in &local_compilation.libraries[local_package.package_id()] {
-        if i.0.name() == name {
-            println!("{:?}", i.1);
-        }
-    }
+    let local_rlib =
+        local_compilation
+            .libraries[local_package.package_id()]
+            .iter()
+            .find(|t| t.0.name() == name)
+            .ok_or(human("lost a build artifact"))?;
+
+    println!("{:?}", local_rlib.1);
+    println!("{:?}", local_compilation.deps_output);
 
     let source_id = SourceId::crates_io(&config)?;
     let mut registry_source = RegistrySource::remote(&source_id, &config);
@@ -100,11 +103,35 @@ fn do_main() -> CargoResult<()> {
     let stable_workspace = Workspace::ephemeral(stable_package, &config, None, false)?;
     let stable_compilation = generate_rlib(&config, stable_workspace)?;
 
-    for i in &stable_compilation.libraries[&package_id] {
-        if i.0.name() == name {
-            println!("{:?}", i.1);
-        }
+    let stable_rlib =
+        stable_compilation
+            .libraries[&package_id]
+            .iter()
+            .find(|t| t.0.name() == name)
+            .ok_or(human("lost a build artifact"))?;
+
+    println!("{:?}", stable_rlib.1);
+    println!("{:?}", stable_compilation.deps_output);
+
+    let mut child = Command::new("rustc")
+        .arg("--crate-type=lib")
+        .args(&["--extern", &*format!("old={}", stable_rlib.1.display())])
+        .args(&[format!("-L{}", stable_compilation.deps_output.display())])
+        .args(&["--extern", &*format!("new={}", local_rlib.1.display())])
+        .args(&[format!("-L{}", local_compilation.deps_output.display())])
+        .arg("-")
+        .stdin(Stdio::piped())
+        .spawn()
+        .expect("could not run rustc?");
+
+    if let Some(ref mut stdin) = child.stdin {
+        // TODO: proper error handling
+        let _ = stdin.write_fmt(format_args!("extern crate new; extern crate old;"));
     }
+
+    child
+        .wait()
+        .expect("failed to wait for rustc?");
 
     Ok(())
 }
