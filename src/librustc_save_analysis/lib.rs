@@ -44,6 +44,7 @@ mod dump_visitor;
 pub mod external_data;
 #[macro_use]
 pub mod span_utils;
+mod sig;
 
 use rustc::hir;
 use rustc::hir::def::Def;
