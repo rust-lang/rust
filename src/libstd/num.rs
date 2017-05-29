@@ -92,6 +92,14 @@ mod tests {
     }
 
     #[test]
+    fn test_saturating_mul_int() {
+        use isize::{MIN, MAX};
+        assert_eq!(2i32.saturating_mul(-2), -4);
+        assert_eq!(MIN.saturating_mul(MIN), MAX);
+        assert_eq!(MAX.saturating_mul(MIN), MIN);
+    }
+
+    #[test]
     fn test_checked_add() {
         let five_less = usize::MAX - 5;
         assert_eq!(five_less.checked_add(0), Some(usize::MAX - 5));
