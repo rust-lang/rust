@@ -32,6 +32,9 @@ use cargo::util::important_paths::find_root_manifest_for_wd;
 
 // use syntax::ast;
 
+/// Given a crate name, try to locate the corresponding crate on `crates.io`.
+///
+/// If no crate with the exact name is present, error out.
 fn exact_search(query: &str) -> CargoResult<Crate> {
     // TODO: maybe we can get this with less constants :)
     let mut registry = Registry::new("https://crates.io".to_owned(), None);
@@ -48,12 +51,27 @@ fn exact_search(query: &str) -> CargoResult<Crate> {
                   })
 }
 
+/// Compile a crate given it's workspace.
+///
+/// The results returned are then used to locate the build artefacts, which in turn are linked
+/// together for the actual analysis.
 fn generate_rlib<'a>(config: &'a Config,
                      workspace: Workspace<'a>) -> CargoResult<Compilation<'a>> {
     let opts = CompileOptions::default(config, CompileMode::Build);
     compile(&workspace, &opts).map(|c| c)
 }
 
+/// Perform the heavy lifting.
+///
+/// Obtain the local crate and compile it, then fetch the latest version from the registry, and
+/// build it as well.
+///
+/// TODO:
+/// * split this up
+/// * no, seriously, split this up
+/// * give some structure to the build artefact gathering
+/// * possibly reduce the complexity by investigating where some of the info can be sourced from
+/// in a more direct fashion
 fn do_main() -> CargoResult<()> {
     let config = Config::default()?;
 
