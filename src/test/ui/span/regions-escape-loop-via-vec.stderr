@@ -1,4 +1,4 @@
-error: `z` does not live long enough
+error[E0597]: `z` does not live long enough
   --> $DIR/regions-escape-loop-via-vec.rs:26:5
    |
 22 |         _y.push(&mut z); //~ ERROR `z` does not live long enough

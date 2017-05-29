@@ -1,4 +1,4 @@
-error: `z` does not live long enough
+error[E0597]: `z` does not live long enough
   --> $DIR/send-is-not-static-std-sync.rs:27:5
    |
 26 |         *lock.lock().unwrap() = &z; //~ ERROR does not live long enough
@@ -16,7 +16,7 @@ error[E0505]: cannot move out of `y` because it is borrowed
 23 |     drop(y); //~ ERROR cannot move out
    |          ^ move out of `y` occurs here
 
-error: `z` does not live long enough
+error[E0597]: `z` does not live long enough
   --> $DIR/send-is-not-static-std-sync.rs:39:5
    |
 38 |         *lock.write().unwrap() = &z; //~ ERROR does not live long enough
@@ -34,7 +34,7 @@ error[E0505]: cannot move out of `y` because it is borrowed
 35 |     drop(y); //~ ERROR cannot move out
    |          ^ move out of `y` occurs here
 
-error: `z` does not live long enough
+error[E0597]: `z` does not live long enough
   --> $DIR/send-is-not-static-std-sync.rs:53:5
    |
 52 |         tx.send(&z).unwrap(); //~ ERROR does not live long enough

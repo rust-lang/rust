@@ -165,18 +165,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                .. }) => {
                 let tcx = self.tcx;
 
-                let mut err = self.type_error_struct(span,
-                                                     |actual| {
-                    format!("no {} named `{}` found for type `{}` in the current scope",
-                            if mode == Mode::MethodCall {
-                                "method"
-                            } else {
-                                "associated item"
-                            },
-                            item_name,
-                            actual)
-                },
-                                                     rcvr_ty);
+                let actual = self.resolve_type_vars_if_possible(&rcvr_ty);
+                let mut err = if !actual.references_error() {
+                    struct_span_err!(tcx.sess, span, E0599,
+                                     "no {} named `{}` found for type `{}` in the \
+                                      current scope",
+                                     if mode == Mode::MethodCall {
+                                         "method"
+                                     } else {
+                                         "associated item"
+                                     },
+                                     item_name,
+                                     self.ty_to_string(actual))
+                } else {
+                    self.tcx.sess.diagnostic().struct_dummy()
+                };
 
                 // If the method name is the name of a field with a function or closure type,
                 // give a helping note that it has to be called as (x.f)(...).

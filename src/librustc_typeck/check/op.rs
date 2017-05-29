@@ -316,10 +316,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match self.lookup_op_method(ex, operand_ty, vec![], mname, trait_did, operand_expr) {
             Ok(t) => t,
             Err(()) => {
-                self.type_error_message(ex.span, |actual| {
-                    format!("cannot apply unary operator `{}` to type `{}`",
-                            op_str, actual)
-                }, operand_ty);
+                let actual = self.resolve_type_vars_if_possible(&operand_ty);
+                if !actual.references_error() {
+                    struct_span_err!(self.tcx.sess, ex.span, E0600,
+                                     "cannot apply unary operator `{}` to type `{}`",
+                                     op_str, actual).emit();
+                }
                 self.tcx.types.err
             }
         }

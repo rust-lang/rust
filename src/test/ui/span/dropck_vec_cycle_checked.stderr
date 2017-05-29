@@ -1,4 +1,4 @@
-error: `c2` does not live long enough
+error[E0597]: `c2` does not live long enough
    --> $DIR/dropck_vec_cycle_checked.rs:116:1
     |
 110 |     c1.v[0].v.set(Some(&c2));
@@ -9,7 +9,7 @@ error: `c2` does not live long enough
     |
     = note: values in a scope are dropped in the opposite order they are created
 
-error: `c3` does not live long enough
+error[E0597]: `c3` does not live long enough
    --> $DIR/dropck_vec_cycle_checked.rs:116:1
     |
 111 |     c1.v[1].v.set(Some(&c3));
@@ -20,7 +20,7 @@ error: `c3` does not live long enough
     |
     = note: values in a scope are dropped in the opposite order they are created
 
-error: `c2` does not live long enough
+error[E0597]: `c2` does not live long enough
    --> $DIR/dropck_vec_cycle_checked.rs:116:1
     |
 112 |     c2.v[0].v.set(Some(&c2));
@@ -31,7 +31,7 @@ error: `c2` does not live long enough
     |
     = note: values in a scope are dropped in the opposite order they are created
 
-error: `c3` does not live long enough
+error[E0597]: `c3` does not live long enough
    --> $DIR/dropck_vec_cycle_checked.rs:116:1
     |
 113 |     c2.v[1].v.set(Some(&c3));
@@ -42,7 +42,7 @@ error: `c3` does not live long enough
     |
     = note: values in a scope are dropped in the opposite order they are created
 
-error: `c1` does not live long enough
+error[E0597]: `c1` does not live long enough
    --> $DIR/dropck_vec_cycle_checked.rs:116:1
     |
 114 |     c3.v[0].v.set(Some(&c1));
@@ -53,7 +53,7 @@ error: `c1` does not live long enough
     |
     = note: values in a scope are dropped in the opposite order they are created
 
-error: `c2` does not live long enough
+error[E0597]: `c2` does not live long enough
    --> $DIR/dropck_vec_cycle_checked.rs:116:1
     |
 115 |     c3.v[1].v.set(Some(&c2));

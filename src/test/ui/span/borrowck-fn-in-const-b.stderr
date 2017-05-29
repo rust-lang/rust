@@ -1,4 +1,4 @@
-error: cannot borrow immutable borrowed content `*x` as mutable
+error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
   --> $DIR/borrowck-fn-in-const-b.rs:17:9
    |
 16 |     fn broken(x: &Vec<String>) {

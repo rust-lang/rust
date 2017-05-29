@@ -1,4 +1,4 @@
-error: `x` does not live long enough
+error[E0597]: `x` does not live long enough
   --> $DIR/regions-escape-loop-via-variable.rs:22:5
    |
 21 |         p = &x; //~ ERROR `x` does not live long enough

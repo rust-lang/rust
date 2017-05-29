@@ -1,4 +1,4 @@
-error: `*m` does not live long enough
+error[E0597]: `*m` does not live long enough
   --> $DIR/dropck-object-cycle.rs:57:1
    |
 37 |     assert_eq!(object_invoke1(&*m), (4,5));

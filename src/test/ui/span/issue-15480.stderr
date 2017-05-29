@@ -1,4 +1,4 @@
-error: borrowed value does not live long enough
+error[E0597]: borrowed value does not live long enough
   --> $DIR/issue-15480.rs:14:6
    |
 13 |         &3

@@ -1,4 +1,4 @@
-error: `young[..]` does not live long enough
+error[E0597]: `young[..]` does not live long enough
   --> $DIR/borrowck-let-suggestion-suffixes.rs:52:1
    |
 19 |     v2.push(&young[0]);      // statement 4
@@ -9,7 +9,7 @@ error: `young[..]` does not live long enough
    |
    = note: values in a scope are dropped in the opposite order they are created
 
-error: borrowed value does not live long enough
+error[E0597]: borrowed value does not live long enough
   --> $DIR/borrowck-let-suggestion-suffixes.rs:24:18
    |
 24 |     v3.push(&'x');           // statement 6
@@ -22,7 +22,7 @@ error: borrowed value does not live long enough
    |
    = note: consider using a `let` binding to increase its lifetime
 
-error: borrowed value does not live long enough
+error[E0597]: borrowed value does not live long enough
   --> $DIR/borrowck-let-suggestion-suffixes.rs:34:22
    |
 34 |         v4.push(&'y');
@@ -35,7 +35,7 @@ error: borrowed value does not live long enough
    |
    = note: consider using a `let` binding to increase its lifetime
 
-error: borrowed value does not live long enough
+error[E0597]: borrowed value does not live long enough
   --> $DIR/borrowck-let-suggestion-suffixes.rs:45:18
    |
 45 |     v5.push(&'z');

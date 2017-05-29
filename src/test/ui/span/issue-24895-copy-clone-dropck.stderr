@@ -1,4 +1,4 @@
-error: `d1` does not live long enough
+error[E0597]: `d1` does not live long enough
   --> $DIR/issue-24895-copy-clone-dropck.rs:38:1
    |
 37 |     d2 = D(S(&d1, "inner"), "d2");

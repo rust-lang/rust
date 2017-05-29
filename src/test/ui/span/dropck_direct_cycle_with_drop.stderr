@@ -1,4 +1,4 @@
-error: `d2` does not live long enough
+error[E0597]: `d2` does not live long enough
   --> $DIR/dropck_direct_cycle_with_drop.rs:48:1
    |
 46 |     d1.p.set(Some(&d2));
@@ -9,7 +9,7 @@ error: `d2` does not live long enough
    |
    = note: values in a scope are dropped in the opposite order they are created
 
-error: `d1` does not live long enough
+error[E0597]: `d1` does not live long enough
   --> $DIR/dropck_direct_cycle_with_drop.rs:48:1
    |
 47 |     d2.p.set(Some(&d1));

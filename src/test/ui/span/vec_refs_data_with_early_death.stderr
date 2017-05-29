@@ -1,4 +1,4 @@
-error: `x` does not live long enough
+error[E0597]: `x` does not live long enough
   --> $DIR/vec_refs_data_with_early_death.rs:31:1
    |
 27 |     v.push(&x);
@@ -9,7 +9,7 @@ error: `x` does not live long enough
    |
    = note: values in a scope are dropped in the opposite order they are created
 
-error: `y` does not live long enough
+error[E0597]: `y` does not live long enough
   --> $DIR/vec_refs_data_with_early_death.rs:31:1
    |
 28 |     v.push(&y);

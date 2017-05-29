@@ -1,4 +1,4 @@
-error: `c` does not live long enough
+error[E0597]: `c` does not live long enough
   --> $DIR/regionck-unboxed-closure-lifetimes.rs:19:5
    |
 17 |         let c_ref = &c; //~ ERROR `c` does not live long enough

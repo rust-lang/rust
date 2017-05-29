@@ -1,4 +1,4 @@
-error: no method named `f9` found for type `usize` in the current scope
+error[E0599]: no method named `f9` found for type `usize` in the current scope
   --> $DIR/issue-7575.rs:74:18
    |
 74 |     u.f8(42) + u.f9(342) + m.fff(42)
@@ -28,7 +28,7 @@ note: candidate #3 is defined in the trait `UnusedTrait`
    = help: candidate #2: `OtherTrait`
    = help: candidate #3: `UnusedTrait`
 
-error: no method named `fff` found for type `Myisize` in the current scope
+error[E0599]: no method named `fff` found for type `Myisize` in the current scope
   --> $DIR/issue-7575.rs:74:30
    |
 74 |     u.f8(42) + u.f9(342) + m.fff(42)
@@ -43,7 +43,7 @@ note: candidate #1 is defined in an impl for the type `Myisize`
 53 | |     }
    | |_____^
 
-error: no method named `is_str` found for type `T` in the current scope
+error[E0599]: no method named `is_str` found for type `T` in the current scope
   --> $DIR/issue-7575.rs:85:7
    |
 85 |     t.is_str()

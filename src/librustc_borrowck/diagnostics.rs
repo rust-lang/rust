@@ -1114,9 +1114,63 @@ fn main() {
 ```
 "##,
 
+E0596: r##"
+This error occurs because you tried to mutably borrow a non-mutable variable.
+
+Example of erroneous code:
+
+```compile_fail,E0596
+let x = 1;
+let y = &mut x; // error: cannot borrow mutably
+```
+
+In here, `x` isn't mutable, so when we try to mutably borrow it in `y`, it
+fails. To fix this error, you need to make `x` mutable:
+
+```
+let mut x = 1;
+let y = &mut x; // ok!
+```
+"##,
+
+E0597: r##"
+This error occurs because a borrow was made inside a variable which has a
+greater lifetime than the borrowed one.
+
+Example of erroneous code:
+
+```compile_fail,E0597
+struct Foo<'a> {
+    x: Option<&'a u32>,
+}
+
+let mut x = Foo { x: None };
+let y = 0;
+x.x = Some(&y); // error: `y` does not live long enough
+```
+
+In here, `x` is created before `y` and therefore has a greater lifetime. Always
+keep in mind that values in a scope are dropped in the opposite order they are
+created. So to fix the previous example, just make the `y` lifetime greater than
+the `x`'s one:
+
+```
+struct Foo<'a> {
+    x: Option<&'a u32>,
+}
+
+let y = 0;
+let mut x = Foo { x: None };
+x.x = Some(&y);
+```
+"##,
+
 }
 
 register_diagnostics! {
 //    E0385, // {} in an aliasable location
     E0524, // two closures require unique access to `..` at the same time
+    E0594, // cannot assign to {}
+    E0595, // closure cannot assign to {}
+    E0598, // lifetime of {} is too short to guarantee its contents can be...
 }

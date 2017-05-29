@@ -1,4 +1,4 @@
-error: `ticking` does not live long enough
+error[E0597]: `ticking` does not live long enough
   --> $DIR/issue-26656.rs:51:1
    |
 50 |     zook.button = B::BigRedButton(&ticking);
