@@ -543,6 +543,30 @@ impl<T> RefCell<T> {
         debug_assert!(self.borrow.get() == UNUSED);
         unsafe { self.value.into_inner() }
     }
+
+    /// Updates the underlying data by applying the supplied function, which must return a new
+    /// value without mutating the old value.
+    ///
+    /// This lets you treat an update atomically, which helps prevent accidentally borrowing the
+    /// data twice, avoiding possible panics.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_update)]
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    /// c.update(|n| n + 1);
+    ///
+    /// assert_eq!(c, RefCell::new(6));
+    /// ```
+    #[unstable(feature = "refcell_update", issue = "38741")]
+    #[inline]
+    pub fn update<F> (&self, f: F) where F: Fn(&T) -> T {
+        let mut x = self.borrow_mut();
+        *x = f(&x);
+    }
 }
 
 impl<T: ?Sized> RefCell<T> {
@@ -748,6 +772,30 @@ impl<T: ?Sized> RefCell<T> {
         unsafe {
             &mut *self.value.get()
         }
+    }
+
+    /// Updates the underlying data by applying the supplied function, which is expected to mutate
+    /// the data.
+    ///
+    /// This lets you treat an update atomically, which helps prevent accidentally borrowing the
+    /// data twice, avoiding possible panics.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_update)]
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    /// c.update_in_place(|n| *n += 1);
+    ///
+    /// assert_eq!(c, RefCell::new(6));
+    /// ```
+    #[unstable(feature = "refcell_update", issue = "38741")]
+    #[inline]
+    pub fn update_in_place<F> (&self, f: F) where F: Fn(&mut T) {
+        let mut x = self.borrow_mut();
+        f(&mut x);
     }
 }
 
