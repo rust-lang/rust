@@ -117,12 +117,6 @@ impl DepGraph {
         }
     }
 
-    pub fn write(&self, v: DepNode<DefId>) {
-        if self.data.thread.is_enqueue_enabled() {
-            self.data.thread.enqueue(DepMessage::Write(v));
-        }
-    }
-
     /// Indicates that a previous work product exists for `v`. This is
     /// invoked during initial start-up based on what nodes are clean
     /// (and what files exist in the incr. directory).
