@@ -83,6 +83,9 @@ fn main() {
     let json = json!({
         "foo": "bar",
     });
+
+    // #1092
+    chain!(input, a:take!(max_size), || []);
 }
 
 impl X {
