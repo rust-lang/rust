@@ -22,6 +22,7 @@ use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
+use rustc::lint::builtin::PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES;
 use rustc_back::slice;
 use require_c_abi_if_variadic;
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
@@ -156,10 +157,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         match item_segment.parameters {
             hir::AngleBracketedParameters(_) => {}
             hir::ParenthesizedParameters(..) => {
-                struct_span_err!(tcx.sess, span, E0214,
-                          "parenthesized parameters may only be used with a trait")
-                    .span_label(span, "only traits may use parentheses")
-                    .emit();
+                self.prohibit_parenthesized_params(item_segment, true);
 
                 return Substs::for_item(tcx, def_id, |_, _| {
                     tcx.types.re_static
@@ -370,6 +368,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         self_ty: Ty<'tcx>)
         -> ty::TraitRef<'tcx>
     {
+        self.prohibit_type_params(trait_ref.path.segments.split_last().unwrap().1);
+
         let trait_def_id = self.trait_def_id(trait_ref);
         self.ast_path_to_mono_trait_ref(trait_ref.path.span,
                                         trait_def_id,
@@ -401,6 +401,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let trait_def_id = self.trait_def_id(trait_ref);
 
         debug!("ast_path_to_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
+
+        self.prohibit_type_params(trait_ref.path.segments.split_last().unwrap().1);
 
         let (substs, assoc_bindings) =
             self.create_substs_for_ast_trait_ref(trait_ref.path.span,
@@ -622,6 +624,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let principal = self.instantiate_poly_trait_ref(&trait_bounds[0],
                                                         dummy_self,
                                                         &mut projection_bounds);
+
+        for trait_bound in trait_bounds[1..].iter() {
+            // Sanity check for non-principal trait bounds
+            self.instantiate_poly_trait_ref(trait_bound,
+                                            dummy_self,
+                                            &mut vec![]);
+        }
 
         let (auto_traits, trait_bounds) = split_auto_traits(tcx, &trait_bounds[1..]);
 
@@ -938,6 +947,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     pub fn prohibit_type_params(&self, segments: &[hir::PathSegment]) {
         for segment in segments {
+            if let hir::ParenthesizedParameters(_) = segment.parameters {
+                self.prohibit_parenthesized_params(segment, false);
+                break;
+            }
             for typ in segment.parameters.types() {
                 struct_span_err!(self.tcx().sess, typ.span, E0109,
                                  "type parameters are not allowed on this type")
@@ -956,6 +969,21 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             for binding in segment.parameters.bindings() {
                 self.prohibit_projection(binding.span);
                 break;
+            }
+        }
+    }
+
+    pub fn prohibit_parenthesized_params(&self, segment: &hir::PathSegment, emit_error: bool) {
+        if let hir::ParenthesizedParameters(ref data) = segment.parameters {
+            if emit_error {
+                struct_span_err!(self.tcx().sess, data.span, E0214,
+                          "parenthesized parameters may only be used with a trait")
+                    .span_label(data.span, "only traits may use parentheses")
+                    .emit();
+            } else {
+                let msg = "parenthesized parameters may only be used with a trait".to_string();
+                self.tcx().sess.add_lint(PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
+                                         ast::CRATE_NODE_ID, data.span, msg);
             }
         }
     }

@@ -19,7 +19,10 @@ type Test = Add +
             //~| ERROR E0191
             //~| NOTE missing associated type `Output` value
             Sub;
-            //~^ ERROR E0225
+            //~^ ERROR E0393
+            //~| NOTE missing reference to `RHS`
+            //~| NOTE because of the default `Self` reference, type parameters must be specified on object types
+            //~| ERROR E0225
             //~| NOTE non-Send/Sync additional trait
 
 fn main() { }

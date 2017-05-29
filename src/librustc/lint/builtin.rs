@@ -243,6 +243,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
+    Warn,
+    "detects parenthesized generic parameters in type and module names"
+}
+
+declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items"
@@ -293,6 +299,7 @@ impl LintPass for HardwiredLints {
             LEGACY_IMPORTS,
             LEGACY_CONSTRUCTOR_VISIBILITY,
             MISSING_FRAGMENT_SPECIFIER,
+            PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
             DEPRECATED
         )
     }
