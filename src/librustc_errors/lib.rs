@@ -345,8 +345,14 @@ impl Handler {
         result.code(code.to_owned());
         result
     }
+    // FIXME: This method should be removed (every error should have an associated error code).
     pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
         DiagnosticBuilder::new(self, Level::Error, msg)
+    }
+    pub fn struct_err_with_code<'a>(&'a self, msg: &str, code: &str) -> DiagnosticBuilder<'a> {
+        let mut result = DiagnosticBuilder::new(self, Level::Error, msg);
+        result.code(code.to_owned());
+        result
     }
     pub fn struct_span_fatal<'a, S: Into<MultiSpan>>(&'a self,
                                                      sp: S,

@@ -158,14 +158,14 @@ impl Session {
     pub fn struct_span_warn<'a, S: Into<MultiSpan>>(&'a self,
                                                     sp: S,
                                                     msg: &str)
-                                                    -> DiagnosticBuilder<'a>  {
+                                                    -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_span_warn(sp, msg)
     }
     pub fn struct_span_warn_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                               sp: S,
                                                               msg: &str,
                                                               code: &str)
-                                                              -> DiagnosticBuilder<'a>  {
+                                                              -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_span_warn_with_code(sp, msg, code)
     }
     pub fn struct_warn<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a>  {
@@ -174,30 +174,34 @@ impl Session {
     pub fn struct_span_err<'a, S: Into<MultiSpan>>(&'a self,
                                                    sp: S,
                                                    msg: &str)
-                                                   -> DiagnosticBuilder<'a>  {
+                                                   -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_span_err(sp, msg)
     }
     pub fn struct_span_err_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                              sp: S,
                                                              msg: &str,
                                                              code: &str)
-                                                             -> DiagnosticBuilder<'a>  {
+                                                             -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_span_err_with_code(sp, msg, code)
     }
-    pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a>  {
+    // FIXME: This method should be removed (every error should have an associated error code).
+    pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_err(msg)
+    }
+    pub fn struct_err_with_code<'a>(&'a self, msg: &str, code: &str) -> DiagnosticBuilder<'a> {
+        self.diagnostic().struct_err_with_code(msg, code)
     }
     pub fn struct_span_fatal<'a, S: Into<MultiSpan>>(&'a self,
                                                      sp: S,
                                                      msg: &str)
-                                                     -> DiagnosticBuilder<'a>  {
+                                                     -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_span_fatal(sp, msg)
     }
     pub fn struct_span_fatal_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                                sp: S,
                                                                msg: &str,
                                                                code: &str)
-                                                               -> DiagnosticBuilder<'a>  {
+                                                               -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_span_fatal_with_code(sp, msg, code)
     }
     pub fn struct_fatal<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a>  {
