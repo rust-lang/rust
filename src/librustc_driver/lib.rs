@@ -84,10 +84,11 @@ use std::cmp::max;
 use std::cmp::Ordering::Equal;
 use std::default::Default;
 use std::env;
+use std::ffi::OsString;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
 use std::path::PathBuf;
-use std::process;
+use std::process::{self, Command, Stdio};
 use std::rc::Rc;
 use std::str;
 use std::sync::{Arc, Mutex};
@@ -354,6 +355,8 @@ fn handle_explain(code: &str,
     match descriptions.find_description(&normalised) {
         Some(ref description) => {
             let mut is_in_code_block = false;
+            let mut text = String::new();
+
             // Slice off the leading newline and print.
             for line in description[1..].lines() {
                 let indent_level = line.find(|c: char| !c.is_whitespace())
@@ -361,17 +364,54 @@ fn handle_explain(code: &str,
                 let dedented_line = &line[indent_level..];
                 if dedented_line.starts_with("```") {
                     is_in_code_block = !is_in_code_block;
-                    println!("{}", &line[..(indent_level+3)]);
+                    text.push_str(&line[..(indent_level+3)]);
+                    text.push('\n');
                 } else if is_in_code_block && dedented_line.starts_with("# ") {
                     continue;
                 } else {
-                    println!("{}", line);
+                    text.push_str(line);
+                    text.push('\n');
                 }
             }
+
+            show_content_with_pager(&text);
         }
         None => {
             early_error(output, &format!("no extended information for {}", code));
         }
+    }
+}
+
+fn show_content_with_pager(content: &String) {
+    let pager_name = env::var_os("PAGER").unwrap_or(if cfg!(windows) {
+        OsString::from("more.com")
+    } else {
+        OsString::from("less")
+    });
+
+    let mut fallback_to_println = false;
+
+    match Command::new(pager_name).stdin(Stdio::piped()).spawn() {
+        Ok(mut pager) => {
+            if let Some(mut pipe) = pager.stdin.as_mut() {
+                if pipe.write_all(content.as_bytes()).is_err() {
+                    fallback_to_println = true;
+                }
+            }
+
+            if pager.wait().is_err() {
+                fallback_to_println = true;
+            }
+        }
+        Err(_) => {
+            fallback_to_println = true;
+        }
+    }
+
+    // If pager fails for whatever reason, we should still print the content
+    // to standard output
+    if fallback_to_println {
+        println!("{}", content);
     }
 }
 
