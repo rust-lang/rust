@@ -1,0 +1,56 @@
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-type-parameters.rs:16:20
+   |
+16 |     let _: isize = transmute(x);
+   |                    ^^^^^^^^^
+   |
+   = note: source type: T (this type's size can vary)
+   = note: target type: isize (64 bits)
+
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-type-parameters.rs:21:20
+   |
+21 |     let _: isize = transmute(x);
+   |                    ^^^^^^^^^
+   |
+   = note: source type: (T, isize) (size can vary because of T)
+   = note: target type: isize (64 bits)
+
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-type-parameters.rs:26:20
+   |
+26 |     let _: isize = transmute(x);
+   |                    ^^^^^^^^^
+   |
+   = note: source type: [T; 10] (size can vary because of T)
+   = note: target type: isize (64 bits)
+
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-type-parameters.rs:35:20
+   |
+35 |     let _: isize = transmute(x);
+   |                    ^^^^^^^^^
+   |
+   = note: source type: Bad<T> (size can vary because of T)
+   = note: target type: isize (64 bits)
+
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-type-parameters.rs:45:20
+   |
+45 |     let _: isize = transmute(x);
+   |                    ^^^^^^^^^
+   |
+   = note: source type: Worse<T> (size can vary because of T)
+   = note: target type: isize (64 bits)
+
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-type-parameters.rs:50:20
+   |
+50 |     let _: isize = transmute(x);
+   |                    ^^^^^^^^^
+   |
+   = note: source type: std::option::Option<T> (size can vary because of T)
+   = note: target type: isize (64 bits)
+
+error: aborting due to previous error(s)
+

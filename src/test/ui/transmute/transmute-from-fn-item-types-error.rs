@@ -29,8 +29,8 @@ unsafe fn foo() -> (isize, *const (), Option<fn()>) {
 unsafe fn bar() {
     // Error as usual if the resulting type is not pointer-sized.
     mem::transmute::<_, u8>(main);
-    //~^ ERROR transmute called with differently sized types
-    //~^^ NOTE transmuting between 0 bits and 8 bits
+    //~^ ERROR transmute called with types of different sizes
+    //~^^ NOTE transmuting between fn() {main} and u8
 
     mem::transmute::<_, *mut ()>(foo);
     //~^ ERROR is zero-sized and can't be transmuted
