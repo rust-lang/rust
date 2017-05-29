@@ -1,12 +1,6 @@
 #![feature(box_syntax)]
-// #![feature(rustc_private)]
 
 // extern crate cargo_metadata;
-// extern crate getopts;
-// extern crate rustc;
-// extern crate rustc_driver;
-// extern crate rustc_errors;
-// extern crate syntax;
 
 extern crate cargo;
 extern crate crates_io;
@@ -21,16 +15,8 @@ use cargo::util::{human, CargoResult, CliError};
 use cargo::util::config::Config;
 use cargo::util::important_paths::find_root_manifest_for_wd;
 
-// use rustc::session::{config, Session};
-// use rustc::session::config::{Input, ErrorOutputType};
-
-// use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
-
 use std::io::Write;
-// use std::path::{Path, PathBuf};
 use std::process::{Stdio, Command};
-
-// use syntax::ast;
 
 /// Given a crate name, try to locate the corresponding crate on `crates.io`.
 ///
@@ -44,11 +30,11 @@ fn exact_search(query: &str) -> CargoResult<Crate> {
         .map_err(|e|
                  human(format!("failed to retrieve search results from the registry: {}", e)))
         .and_then(|(mut crates, _)| {
-                      crates
-                          .drain(..)
-                          .find(|krate| krate.name == query)
-                          .ok_or(human(format!("failed to find a matching crate `{}`", query)))
-                  })
+            crates
+                .drain(..)
+                .find(|krate| krate.name == query)
+                .ok_or_else(|| human(format!("failed to find a matching crate `{}`", query)))
+        })
 }
 
 /// Compile a crate given it's workspace.
@@ -56,9 +42,10 @@ fn exact_search(query: &str) -> CargoResult<Crate> {
 /// The results returned are then used to locate the build artefacts, which in turn are linked
 /// together for the actual analysis.
 fn generate_rlib<'a>(config: &'a Config,
-                     workspace: Workspace<'a>) -> CargoResult<Compilation<'a>> {
+                     workspace: &Workspace<'a>)
+                     -> CargoResult<Compilation<'a>> {
     let opts = CompileOptions::default(config, CompileMode::Build);
-    compile(&workspace, &opts).map(|c| c)
+    compile(workspace, &opts).map(|c| c)
 }
 
 /// Perform the heavy lifting.
@@ -78,16 +65,14 @@ fn do_main() -> CargoResult<()> {
 
     let local_package = Package::for_path(&manifest_path, &config)?;
     let local_workspace = Workspace::new(&manifest_path, &config)?;
-    let local_compilation = generate_rlib(&config, local_workspace)?;
+    let local_compilation = generate_rlib(&config, &local_workspace)?;
 
     let name = local_package.name();
 
-    let local_rlib =
-        local_compilation
-            .libraries[local_package.package_id()]
-            .iter()
-            .find(|t| t.0.name() == name)
-            .ok_or(human("lost a build artifact"))?;
+    let local_rlib = local_compilation.libraries[local_package.package_id()]
+        .iter()
+        .find(|t| t.0.name() == name)
+        .ok_or_else(|| human("lost a build artifact"))?;
 
     println!("{:?}", local_rlib.1);
     println!("{:?}", local_compilation.deps_output);
@@ -101,19 +86,17 @@ fn do_main() -> CargoResult<()> {
 
     let stable_package = registry_source.download(&package_id)?;
     let stable_workspace = Workspace::ephemeral(stable_package, &config, None, false)?;
-    let stable_compilation = generate_rlib(&config, stable_workspace)?;
+    let stable_compilation = generate_rlib(&config, &stable_workspace)?;
 
-    let stable_rlib =
-        stable_compilation
-            .libraries[&package_id]
-            .iter()
-            .find(|t| t.0.name() == name)
-            .ok_or(human("lost a build artifact"))?;
+    let stable_rlib = stable_compilation.libraries[&package_id]
+        .iter()
+        .find(|t| t.0.name() == name)
+        .ok_or_else(|| human("lost a build artifact"))?;
 
     println!("{:?}", stable_rlib.1);
     println!("{:?}", stable_compilation.deps_output);
 
-    let mut child = Command::new("rustc")
+    let mut child = Command::new("rust-semverver")
         .arg("--crate-type=lib")
         .args(&["--extern", &*format!("old={}", stable_rlib.1.display())])
         .args(&[format!("-L{}", stable_compilation.deps_output.display())])
@@ -122,16 +105,18 @@ fn do_main() -> CargoResult<()> {
         .arg("-")
         .stdin(Stdio::piped())
         .spawn()
-        .expect("could not run rustc?");
+        .map_err(|e| human(format!("could not spawn rustc: {}", e)))?;
 
     if let Some(ref mut stdin) = child.stdin {
-        // TODO: proper error handling
-        let _ = stdin.write_fmt(format_args!("extern crate new; extern crate old;"));
+        stdin
+            .write_fmt(format_args!("extern crate new; extern crate old;"))?;
+    } else {
+        return Err(human("could not pipe to rustc (wtf?)"));
     }
 
     child
         .wait()
-        .expect("failed to wait for rustc?");
+        .map_err(|e| human(format!("failed to wait for rustc: {}", e)))?;
 
     Ok(())
 }
@@ -147,71 +132,6 @@ fn main() {
 }
 
 /*
-struct SemVerVerCompilerCalls {
-    default: RustcDefaultCalls,
-    enabled: bool
-}
-
-impl SemVerVerCompilerCalls {
-    pub fn new(enabled: bool) -> SemVerVerCompilerCalls {
-        SemVerVerCompilerCalls {
-            default: RustcDefaultCalls,
-            enabled: enabled,
-        }
-    }
-}
-
-impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
-    fn early_callback(&mut self,
-                      matches: &getopts::Matches,
-                      sopts: &config::Options,
-                      cfg: &ast::CrateConfig,
-                      descriptions: &rustc_errors::registry::Registry,
-                      output: ErrorOutputType)
-                      -> Compilation {
-        self.default
-            .early_callback(matches, sopts, cfg, descriptions, output)
-    }
-
-    fn no_input(&mut self,
-                matches: &getopts::Matches,
-                sopts: &config::Options,
-                cfg: &ast::CrateConfig,
-                odir: &Option<PathBuf>,
-                ofile: &Option<PathBuf>,
-                descriptions: &rustc_errors::registry::Registry)
-                -> Option<(Input, Option<PathBuf>)> {
-        self.default
-            .no_input(matches, sopts, cfg, odir, ofile, descriptions)
-    }
-
-    fn late_callback(&mut self,
-                     matches: &getopts::Matches,
-                     sess: &Session,
-                     input: &Input,
-                     odir: &Option<PathBuf>,
-                     ofile: &Option<PathBuf>)
-                     -> Compilation {
-        self.default
-            .late_callback(matches, sess, input, odir, ofile)
-    }
-
-    fn build_controller(&mut self,
-                        sess: &Session,
-                        matches: &getopts::Matches)
-                        -> driver::CompileController<'a> {
-        let mut controller = self.default.build_controller(sess, matches);
-
-        if self.enabled {
-            let old_callback = std::mem::replace(&mut controller.after_hir_lowering.callback,
-                                                 box |_| {});
-            controller.after_hir_lowering.callback = box move |state| { old_callback(state); };
-        }
-
-        controller
-    }
-}
-
 const CARGO_SEMVER_HELP: &str = r#"Checks a package's SemVer compatibility with already published versions.
 
 Usage:
@@ -314,89 +234,6 @@ pub fn main() {
                 panic!("badly formatted cargo metadata: target::kind is an empty array");
             }
         }
-    } else {
-        // second run: we're being run by `cargo rustc` as we set it up to happen
-
-        let home = option_env!("RUSTUP_HOME");
-        let toolchain = option_env!("RUSTUP_TOOLCHAIN");
-        let sys_root = if let (Some(home), Some(toolchain)) = (home, toolchain) {
-            format!("{}/toolchains/{}", home, toolchain)
-        } else {
-            option_env!("SYSROOT")
-                .map(|s| s.to_owned())
-                .or_else(|| {
-                    Command::new("rustc")
-                        .args(&["--print", "sysroot"])
-                        .output()
-                        .ok()
-                        .and_then(|out| String::from_utf8(out.stdout).ok())
-                        .map(|s| s.trim().to_owned())
-                })
-                .expect("need to specify SYSROOT env var during compilation, or use rustup")
-        };
-
-        rustc_driver::in_rustc_thread(|| {
-            // make it possible to call `cargo-semver` directly without having to pass
-            // --sysroot or anything
-            let args: Vec<String> = if std::env::args().any(|s| s == "--sysroot") {
-                std::env::args().collect()
-            } else {
-                std::env::args()
-                    .chain(Some("--sysroot".to_owned()))
-                    .chain(Some(sys_root))
-                    .collect()
-            };
-
-            // this check ensures that dependencies are built but not checked and the final
-            // crate is checked but not built
-            let checks_enabled = std::env::args().any(|s| s == "-Zno-trans");
-
-            let mut cc = SemVerVerCompilerCalls::new(checks_enabled);
-            // TODO: the second result is a `Session` - maybe we'll need it
-            let (result, _) = rustc_driver::run_compiler(&args, &mut cc, None, None);
-
-            if let Err(count) = result {
-                if count > 0 {
-                    std::process::exit(1);
-                }
-            }
-        })
-        .expect("rustc thread failed");
-    }
-}
-
-// run `cargo rustc` with `RUSTC` set to our path
-fn process<I>(old_args: I) -> Result<(), i32>
-    where I: Iterator<Item = String>
-{
-    let mut args = vec!["rustc".to_owned()];
-
-    let found_dashes = old_args.fold(false, |mut found, arg| {
-        found |= arg == "--";
-        args.push(arg);
-        found
-    });
-
-    if !found_dashes {
-        args.push("--".to_owned());
-    }
-
-    args.push("-Zno-trans".to_owned());
-
-    let path = std::env::current_exe().expect("current executable path invalid");
-
-    let exit_status = std::process::Command::new("cargo")
-        .args(&args)
-        .env("RUSTC", path)
-        .spawn()
-        .expect("could not run cargo")
-        .wait()
-        .expect("failed to wait for cargo?");
-
-    if exit_status.success() {
-        Ok(())
-    } else {
-        Err(exit_status.code().unwrap_or(-1))
     }
 }
 */

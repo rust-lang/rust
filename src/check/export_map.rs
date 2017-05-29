@@ -1,4 +1,4 @@
-use rustc::hir;
+// use rustc::hir;
 
 pub struct ModuleHier {
     // TODO
