@@ -16,7 +16,6 @@ path = "src/bin/rust_semverver.rs"
 
 [dependencies]
 cargo = "^0.18.0"
-cargo_metadata = "^0.2.1"
 crates-io = "^0.7.0"
 
 [replace]

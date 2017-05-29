@@ -1,7 +1,5 @@
 #![feature(box_syntax)]
 
-// extern crate cargo_metadata;
-
 extern crate cargo;
 extern crate crates_io;
 
@@ -74,8 +72,8 @@ fn do_main() -> CargoResult<()> {
         .find(|t| t.0.name() == name)
         .ok_or_else(|| human("lost a build artifact"))?;
 
-    println!("{:?}", local_rlib.1);
-    println!("{:?}", local_compilation.deps_output);
+    println!("{}", local_rlib.1.display());
+    println!("{}", local_compilation.deps_output.display());
 
     let source_id = SourceId::crates_io(&config)?;
     let mut registry_source = RegistrySource::remote(&source_id, &config);
@@ -93,8 +91,8 @@ fn do_main() -> CargoResult<()> {
         .find(|t| t.0.name() == name)
         .ok_or_else(|| human("lost a build artifact"))?;
 
-    println!("{:?}", stable_rlib.1);
-    println!("{:?}", stable_compilation.deps_output);
+    println!("{}", stable_rlib.1.display());
+    println!("{}", stable_compilation.deps_output.display());
 
     let mut child = Command::new("rust-semverver")
         .arg("--crate-type=lib")
@@ -121,28 +119,16 @@ fn do_main() -> CargoResult<()> {
     Ok(())
 }
 
-fn main() {
-    if let Err(e) = do_main() {
-        if let Ok(config) = Config::default() {
-            exit_with_error(CliError::new(e, 1), &mut config.shell());
-        } else {
-            panic!("ffs, we can't get a config and errors happened :/");
-        }
-    }
-}
-
-/*
 const CARGO_SEMVER_HELP: &str = r#"Checks a package's SemVer compatibility with already published versions.
 
 Usage:
-    cargo semver [options] [--] [<opts>...]
+    cargo semver [options]
 
 Common options:
     -h, --help               Print this message
-    --features               Features to compile for the package
     -V, --version            Print version info and exit
 
-Other options are the same as `cargo rustc`.
+Currently, no other options are supported (this will change in the future)
 "#;
 
 fn help() {
@@ -153,9 +139,7 @@ fn version() {
     println!("{}", env!("CARGO_PKG_VERSION"));
 }
 
-pub fn main() {
-    // TODO: maybe don't use cargo_metadata, as it pulls in tons of deps
-
+fn main() {
     if std::env::args().any(|arg| arg == "-h" || arg == "--help") {
         help();
         return;
@@ -166,74 +150,11 @@ pub fn main() {
         return;
     }
 
-    if std::env::args()
-           .nth(1)
-           .map(|arg| arg == "semver")
-           .unwrap_or(false) {
-        // first run (we blatantly copy clippy's code structure here)
-        // we are being run as `cargo semver`
-        //
-        // TODO: maybe it would make sense to reuse cargo internals here to avoid the quite ugly
-        // dance this turns out to be :)
-
-        let manifest_path_arg = std::env::args()
-            .skip(2)
-            .find(|val| val.starts_with("--manifest-path="));
-
-        let mut metadata = if let Ok(data) =
-            cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)) {
-            data
+    if let Err(e) = do_main() {
+        if let Ok(config) = Config::default() {
+            exit_with_error(CliError::new(e, 1), &mut config.shell());
         } else {
-            let _ = io::stderr()
-                .write_fmt(format_args!("error: could not obtain cargo metadata.\n"));
-            std::process::exit(1);
-        };
-
-        let manifest_path = manifest_path_arg.map(|arg| PathBuf::from(
-                Path::new(&arg["--manifest-path=".len()..])));
-
-        let current_dir = std::env::current_dir();
-
-        let package_index = metadata
-            .packages
-            .iter()
-            .position(|package| {
-                let package_manifest_path = Path::new(&package.manifest_path);
-                if let Some(ref path) = manifest_path {
-                    package_manifest_path == path
-                } else {
-                    let current_dir = current_dir
-                        .as_ref()
-                        .expect("could not read current directory");
-                    let package_manifest_directory = package_manifest_path
-                        .parent()
-                        .expect("could not find parent directory of package manifest");
-                    package_manifest_directory == current_dir
-                }
-            })
-            .expect("could not find matching package");
-
-        let package = metadata.packages.remove(package_index);
-
-        for target in package.targets {
-            let args = std::env::args().skip(2);
-
-            if let Some(first) = target.kind.get(0) {
-                if target.kind.len() > 1 || first.ends_with("lib") {
-                    if let Err(code) = process(std::iter::once("--lib".to_owned()).chain(args)) {
-                        std::process::exit(code);
-                    }
-                } else if ["bin", "example", "test", "bench"].contains(&&**first) {
-                    if let Err(code) = process(vec![format!("--{}", first), target.name]
-                                                   .into_iter()
-                                                   .chain(args)) {
-                        std::process::exit(code);
-                    }
-                }
-            } else {
-                panic!("badly formatted cargo metadata: target::kind is an empty array");
-            }
+            panic!("ffs, we can't get a config and errors happened :/");
         }
     }
 }
-*/
