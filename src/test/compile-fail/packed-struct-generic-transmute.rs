@@ -13,7 +13,7 @@
 // the error points to the start of the file, not the line with the
 // transmute
 
-// error-pattern: transmute called with differently sized types
+// error-pattern: transmute called with types of different sizes
 
 use std::mem;
 
