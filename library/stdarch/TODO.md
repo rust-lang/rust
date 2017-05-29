@@ -811,8 +811,8 @@ avx2
 * [ ] `_mm_i64gather_epi64`
 * [ ] `_mm256_i64gather_epi64`
 * [ ] `_mm256_inserti128_si256`
-* [ ] `_mm256_madd_epi16`
-* [ ] `_mm256_maddubs_epi16`
+* [x] `_mm256_madd_epi16`
+* [x] `_mm256_maddubs_epi16`
 * [ ] `_mm_mask_i32gather_pd`
 * [ ] `_mm256_mask_i32gather_pd`
 * [ ] `_mm_mask_i32gather_ps`
@@ -837,45 +837,45 @@ avx2
 * [ ] `_mm256_maskstore_epi32`
 * [ ] `_mm_maskstore_epi64`
 * [ ] `_mm256_maskstore_epi64`
-* [ ] `_mm256_max_epi8`
-* [ ] `_mm256_max_epi16`
-* [ ] `_mm256_max_epi32`
-* [ ] `_mm256_max_epu8`
-* [ ] `_mm256_max_epu16`
-* [ ] `_mm256_max_epu32`
-* [ ] `_mm256_min_epi8`
-* [ ] `_mm256_min_epi16`
-* [ ] `_mm256_min_epi32`
-* [ ] `_mm256_min_epu8`
-* [ ] `_mm256_min_epu16`
-* [ ] `_mm256_min_epu32`
+* [x] `_mm256_max_epi8`
+* [x] `_mm256_max_epi16`
+* [x] `_mm256_max_epi32`
+* [x] `_mm256_max_epu8`
+* [x] `_mm256_max_epu16`
+* [x] `_mm256_max_epu32`
+* [x] `_mm256_min_epi8`
+* [x] `_mm256_min_epi16`
+* [x] `_mm256_min_epi32`
+* [x] `_mm256_min_epu8`
+* [x] `_mm256_min_epu16`
+* [x] `_mm256_min_epu32`
 * [ ] `_mm256_movemask_epi8`
 * [ ] `_mm256_mpsadbw_epu8`
-* [ ] `_mm256_mul_epi32`
-* [ ] `_mm256_mul_epu32`
-* [ ] `_mm256_mulhi_epi16`
-* [ ] `_mm256_mulhi_epu16`
-* [ ] `_mm256_mulhrs_epi16`
-* [ ] `_mm256_mullo_epi16`
-* [ ] `_mm256_mullo_epi32`
-* [ ] `_mm256_or_si256`
-* [ ] `_mm256_packs_epi16`
-* [ ] `_mm256_packs_epi32`
-* [ ] `_mm256_packus_epi16`
-* [ ] `_mm256_packus_epi32`
+* [x] `_mm256_mul_epi32`
+* [x] `_mm256_mul_epu32`
+* [x] `_mm256_mulhi_epi16`
+* [x] `_mm256_mulhi_epu16`
+* [x] `_mm256_mulhrs_epi16`
+* [x] `_mm256_mullo_epi16`
+* [x] `_mm256_mullo_epi32`
+* [x] `_mm256_or_si256`
+* [x] `_mm256_packs_epi16`
+* [x] `_mm256_packs_epi32`
+* [x] `_mm256_packus_epi16`
+* [x] `_mm256_packus_epi32`
 * [ ] `_mm256_permute2x128_si256`
 * [ ] `_mm256_permute4x64_epi64`
 * [ ] `_mm256_permute4x64_pd`
 * [ ] `_mm256_permutevar8x32_epi32`
 * [ ] `_mm256_permutevar8x32_ps`
-* [ ] `_mm256_sad_epu8`
+* [x] `_mm256_sad_epu8`
 * [ ] `_mm256_shuffle_epi32`
 * [ ] `_mm256_shuffle_epi8`
 * [ ] `_mm256_shufflehi_epi16`
 * [ ] `_mm256_shufflelo_epi16`
-* [ ] `_mm256_sign_epi8`
-* [ ] `_mm256_sign_epi16`
-* [ ] `_mm256_sign_epi32`
+* [x] `_mm256_sign_epi8`
+* [x] `_mm256_sign_epi16`
+* [x] `_mm256_sign_epi32`
 * [ ] `_mm256_slli_si256`
 * [ ] `_mm256_bslli_epi128`
 * [ ] `_mm256_sll_epi16`
