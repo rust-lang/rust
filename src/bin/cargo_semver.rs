@@ -48,9 +48,8 @@ fn exact_search(query: &str) -> CargoResult<Crate> {
                   })
 }
 
-fn generate_rlib<'a>(config: &'a Config, workspace: Workspace<'a>)
-    -> CargoResult<Compilation<'a>>
-{
+fn generate_rlib<'a>(config: &'a Config,
+                     workspace: Workspace<'a>) -> CargoResult<Compilation<'a>> {
     let opts = CompileOptions::default(config, CompileMode::Build);
     compile(&workspace, &opts).map(|c| c)
 }
@@ -59,8 +58,18 @@ fn do_main() -> CargoResult<()> {
     let config = Config::default()?;
 
     let manifest_path = find_root_manifest_for_wd(None, config.cwd())?;
+
     let local_package = Package::for_path(&manifest_path, &config)?;
+    let local_workspace = Workspace::new(&manifest_path, &config)?;
+    let local_compilation = generate_rlib(&config, local_workspace)?;
+
     let name = local_package.name();
+
+    for i in &local_compilation.libraries[local_package.package_id()] {
+        if i.0.name() == name {
+            println!("{:?}", i.1);
+        }
+    }
 
     let source_id = SourceId::crates_io(&config)?;
     let mut registry_source = RegistrySource::remote(&source_id, &config);
@@ -71,11 +80,10 @@ fn do_main() -> CargoResult<()> {
 
     let stable_package = registry_source.download(&package_id)?;
     let stable_workspace = Workspace::ephemeral(stable_package, &config, None, false)?;
+    let stable_compilation = generate_rlib(&config, stable_workspace)?;
 
-    let compilation = generate_rlib(&config, stable_workspace)?;
-
-    for i in &compilation.libraries[&package_id] {
-        if i.0.name() == package_id.name() {
+    for i in &stable_compilation.libraries[&package_id] {
+        if i.0.name() == name {
             println!("{:?}", i.1);
         }
     }
