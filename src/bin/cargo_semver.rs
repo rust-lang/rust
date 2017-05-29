@@ -11,14 +11,15 @@
 extern crate cargo;
 extern crate crates_io;
 
-use crates_io::{Crate, Registry, Result};
+use crates_io::{Crate, Registry};
 
-use cargo::core::{Source, SourceId, Package, PackageId, Workspace};
+use cargo::exit_with_error;
+use cargo::core::{Package, PackageId, Source, SourceId, Workspace};
 use cargo::ops::{compile, Compilation, CompileMode, CompileOptions};
 use cargo::sources::registry::RegistrySource;
-use cargo::util::CargoResult;
+use cargo::util::{human, CargoResult, CliError};
 use cargo::util::config::Config;
-use cargo::util::important_paths::{find_root_manifest_for_wd}; // TODO: use this
+use cargo::util::important_paths::find_root_manifest_for_wd;
 
 // use rustc::session::{config, Session};
 // use rustc::session::config::{Input, ErrorOutputType};
@@ -31,14 +32,20 @@ use cargo::util::important_paths::{find_root_manifest_for_wd}; // TODO: use this
 
 // use syntax::ast;
 
-fn exact_search(query: &str) -> Result<Crate> {
+fn exact_search(query: &str) -> CargoResult<Crate> {
     // TODO: maybe we can get this with less constants :)
     let mut registry = Registry::new("https://crates.io".to_owned(), None);
 
-    match registry.search(query, 1) {
-        Ok((mut crates, _)) => Ok(crates.drain(..).find(|krate| krate.name == query).unwrap()),
-        Err(e) => Err(e)
-    }
+    registry
+        .search(query, 1)
+        .map_err(|e|
+                 human(format!("failed to retrieve search results from the registry: {}", e)))
+        .and_then(|(mut crates, _)| {
+                      crates
+                          .drain(..)
+                          .find(|krate| krate.name == query)
+                          .ok_or(human(format!("failed to find a matching crate `{}`", query)))
+                  })
 }
 
 fn generate_rlib<'a>(config: &'a Config, workspace: Workspace<'a>)
@@ -48,36 +55,40 @@ fn generate_rlib<'a>(config: &'a Config, workspace: Workspace<'a>)
     compile(&workspace, &opts).map(|c| c)
 }
 
-fn main() {
-    let config = Config::default().expect("could not obtain default config");
+fn do_main() -> CargoResult<()> {
+    let config = Config::default()?;
 
-    let manifest_path = find_root_manifest_for_wd(None, config.cwd()).unwrap();
-    let local_package = Package::for_path(&manifest_path, &config).unwrap();
+    let manifest_path = find_root_manifest_for_wd(None, config.cwd())?;
+    let local_package = Package::for_path(&manifest_path, &config)?;
     let name = local_package.name();
 
-    let source_id = SourceId::crates_io(&config).unwrap();
+    let source_id = SourceId::crates_io(&config)?;
     let mut registry_source = RegistrySource::remote(&source_id, &config);
 
-    let remote_crate = if let Ok(res) = exact_search(name) { res } else { panic!("fail") };
-    println!("we found a crate {}, version {}", remote_crate.name, remote_crate.max_version);
+    let remote_crate = exact_search(name)?;
 
-    let package_id = PackageId::new(&remote_crate.name,
-                                    &remote_crate.max_version,
-                                    &source_id)
-        .unwrap();
+    let package_id = PackageId::new(name, &remote_crate.max_version, &source_id)?;
 
-    let stable_package = registry_source.download(&package_id).unwrap();
-    let stable_workspace =
-        if let Ok(ret) = Workspace::ephemeral(stable_package, &config, None, false) {
-            ret
-        } else {
-            panic!("fail2");
-        };
+    let stable_package = registry_source.download(&package_id)?;
+    let stable_workspace = Workspace::ephemeral(stable_package, &config, None, false)?;
 
-    let compilation = generate_rlib(&config, stable_workspace).unwrap();
+    let compilation = generate_rlib(&config, stable_workspace)?;
+
     for i in &compilation.libraries[&package_id] {
         if i.0.name() == package_id.name() {
             println!("{:?}", i.1);
+        }
+    }
+
+    Ok(())
+}
+
+fn main() {
+    if let Err(e) = do_main() {
+        if let Ok(config) = Config::default() {
+            exit_with_error(CliError::new(e, 1), &mut config.shell());
+        } else {
+            panic!("ffs, we can't get a config and errors happened :/");
         }
     }
 }
