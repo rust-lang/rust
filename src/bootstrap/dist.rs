@@ -489,8 +489,8 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
     t!(fs::remove_dir_all(&image));
 }
 
-fn copy_src_dirs(build: &Build, src_dirs: &[&str], dst_dir: &Path) {
-    let filter_fn = move |path: &Path| {
+fn copy_src_dirs(build: &Build, src_dirs: &[&str], exclude_dirs: &[&str], dst_dir: &Path) {
+    fn filter_fn(exclude_dirs: &[&str], dir: &str, path: &Path) -> bool {
         let spath = match path.to_str() {
             Some(path) => path,
             None => return false,
@@ -506,6 +506,11 @@ fn copy_src_dirs(build: &Build, src_dirs: &[&str], dst_dir: &Path) {
             }
         }
 
+        let full_path = Path::new(dir).join(path);
+        if exclude_dirs.iter().any(|excl| full_path == Path::new(excl)) {
+            return false;
+        }
+
         let excludes = [
             "CVS", "RCS", "SCCS", ".git", ".gitignore", ".gitmodules",
             ".gitattributes", ".cvsignore", ".svn", ".arch-ids", "{arch}",
@@ -515,13 +520,13 @@ fn copy_src_dirs(build: &Build, src_dirs: &[&str], dst_dir: &Path) {
         !path.iter()
              .map(|s| s.to_str().unwrap())
              .any(|s| excludes.contains(&s))
-    };
+    }
 
     // Copy the directories using our filter
     for item in src_dirs {
         let dst = &dst_dir.join(item);
         t!(fs::create_dir_all(dst));
-        cp_filtered(&build.src.join(item), dst, &filter_fn);
+        cp_filtered(&build.src.join(item), dst, &|path| filter_fn(exclude_dirs, item, path));
     }
 }
 
@@ -544,6 +549,7 @@ pub fn rust_src(build: &Build) {
         "src/liballoc",
         "src/liballoc_jemalloc",
         "src/liballoc_system",
+        "src/libbacktrace",
         "src/libcollections",
         "src/libcompiler_builtins",
         "src/libcore",
@@ -559,9 +565,18 @@ pub fn rust_src(build: &Build) {
         "src/libstd_unicode",
         "src/libunwind",
         "src/rustc/libc_shim",
+        "src/libtest",
+        "src/libterm",
+        "src/libgetopts",
+        "src/compiler-rt",
+        "src/jemalloc",
+    ];
+    let std_src_dirs_exclude = [
+        "src/compiler-rt/test",
+        "src/jemalloc/test/unit",
     ];
 
-    copy_src_dirs(build, &std_src_dirs[..], &dst_src);
+    copy_src_dirs(build, &std_src_dirs[..], &std_src_dirs_exclude[..], &dst_src);
 
     // Create source tarball in rust-installer format
     let mut cmd = rust_installer(build);
@@ -608,7 +623,7 @@ pub fn plain_source_tarball(build: &Build) {
         "src",
     ];
 
-    copy_src_dirs(build, &src_dirs[..], &plain_dst_src);
+    copy_src_dirs(build, &src_dirs[..], &[], &plain_dst_src);
 
     // Copy the files normally
     for item in &src_files {
