@@ -3,7 +3,8 @@ use pulldown_cmark;
 use rustc::lint::*;
 use syntax::ast;
 use syntax::codemap::{Span, BytePos};
-use utils::span_lint;
+use syntax_pos::Pos;
+use utils::{span_lint, snippet_opt};
 
 /// **What it does:** Checks for the presence of `_`, `::` or camel-case words
 /// outside ticks in documentation.
@@ -134,7 +135,6 @@ pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [a
         current += offset_copy;
     }
 
-    println!("{:?}", spans);
     if !doc.is_empty() {
         let parser = Parser::new(pulldown_cmark::Parser::new(&doc));
         let parser = parser.coalesce(|x, y| {
@@ -163,6 +163,7 @@ fn check_doc<'a, Events: Iterator<Item=(usize, pulldown_cmark::Event<'a>)>>(
 
     let mut in_code = false;
 
+    println!("{:?}", spans);
     for (offset, event) in docs {
         println!("{:?}, {:?}", offset, event);
         match event {
@@ -180,7 +181,17 @@ fn check_doc<'a, Events: Iterator<Item=(usize, pulldown_cmark::Event<'a>)>>(
                         Err(e) => e-1,
                     };
 
-                    let (_, span) = spans[index];
+                    let (begin, span) = spans[index];
+
+                    println!("raw: {:?}, {}, {}, {:?}", snippet_opt(cx, span), offset, begin, span);
+
+                    // Adjust for the begining of the current `Event`
+                    let span = Span {
+                        lo: span.lo + BytePos::from_usize(offset - begin),
+                        ..span
+                    };
+
+                    println!("adjusted: {:?}", snippet_opt(cx, span));
                     check_text(cx, valid_idents, &text, span);
                 }
             },
@@ -198,6 +209,14 @@ fn check_text(cx: &EarlyContext, valid_idents: &[String], text: &str, span: Span
         if valid_idents.iter().any(|i| i == word) {
             continue;
         }
+
+        // Adjust for the current word
+        let offset = word.as_ptr() as usize - text.as_ptr() as usize;
+        let span = Span {
+            lo: span.lo + BytePos::from_usize(offset),
+            hi: span.lo + BytePos::from_usize(offset + word.len()),
+            ..span
+        };
 
         check_word(cx, word, span);
     }
