@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.141
+* Rewrite of the `doc_markdown` lint.
+
 ## 0.0.140 - 2017-06-16
 * Update to *rustc 1.19.0-nightly (258ae6dd9 2017-06-15)*
 
