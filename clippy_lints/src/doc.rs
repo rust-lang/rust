@@ -126,6 +126,11 @@ pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [a
                 spans.extend_from_slice(&current_spans);
                 doc.push_str(&current);
             }
+        } else if let Some(name) = attr.name() {
+            // ignore mix of sugared and non-sugared doc
+            if name == "doc" {
+                return;
+            }
         }
     }
 

@@ -144,3 +144,12 @@ fn four_quotes() {
 /// [NIST SP 800-56A, revision 2]:
 ///     https://github.com/Manishearth/rust-clippy/issues/902#issuecomment-261919419
 fn issue_902_comment() {}
+
+#[cfg_attr(feature = "a", doc = " ```")]
+#[cfg_attr(not(feature = "a"), doc = " ```ignore")]
+/// fn main() {
+///     let s = "localhost:10000".to_string();
+///     println!("{}", s);
+/// }
+/// ```
+fn issue_1469() {}
