@@ -878,44 +878,44 @@ avx2
 * [x] `_mm256_sign_epi32`
 * [ ] `_mm256_slli_si256`
 * [ ] `_mm256_bslli_epi128`
-* [ ] `_mm256_sll_epi16`
-* [ ] `_mm256_slli_epi16`
-* [ ] `_mm256_sll_epi32`
-* [ ] `_mm256_slli_epi32`
-* [ ] `_mm256_sll_epi64`
-* [ ] `_mm256_slli_epi64`
-* [ ] `_mm_sllv_epi32`
-* [ ] `_mm256_sllv_epi32`
-* [ ] `_mm_sllv_epi64`
-* [ ] `_mm256_sllv_epi64`
-* [ ] `_mm256_sra_epi16`
-* [ ] `_mm256_srai_epi16`
-* [ ] `_mm256_sra_epi32`
-* [ ] `_mm256_srai_epi32`
-* [ ] `_mm_srav_epi32`
-* [ ] `_mm256_srav_epi32`
-* [ ] `_mm256_srli_si256`
+* [x] `_mm256_sll_epi16`
+* [x] `_mm256_slli_epi16`
+* [x] `_mm256_sll_epi32`
+* [x] `_mm256_slli_epi32`
+* [x] `_mm256_sll_epi64`
+* [x] `_mm256_slli_epi64`
+* [x] `_mm_sllv_epi32`
+* [x] `_mm256_sllv_epi32`
+* [x] `_mm_sllv_epi64`
+* [x] `_mm256_sllv_epi64`
+* [x] `_mm256_sra_epi16`
+* [x] `_mm256_srai_epi16`
+* [x] `_mm256_sra_epi32`
+* [x] `_mm256_srai_epi32`
+* [x] `_mm_srav_epi32`
+* [x] `_mm256_srav_epi32`
+* [x] `_mm256_srli_si256`
 * [ ] `_mm256_bsrli_epi128`
-* [ ] `_mm256_srl_epi16`
-* [ ] `_mm256_srli_epi16`
-* [ ] `_mm256_srl_epi32`
-* [ ] `_mm256_srli_epi32`
-* [ ] `_mm256_srl_epi64`
-* [ ] `_mm256_srli_epi64`
-* [ ] `_mm_srlv_epi32`
-* [ ] `_mm256_srlv_epi32`
-* [ ] `_mm_srlv_epi64`
-* [ ] `_mm256_srlv_epi64`
+* [x] `_mm256_srl_epi16`
+* [x] `_mm256_srli_epi16`
+* [x] `_mm256_srl_epi32`
+* [x] `_mm256_srli_epi32`
+* [x] `_mm256_srl_epi64`
+* [x] `_mm256_srli_epi64`
+* [x] `_mm_srlv_epi32`
+* [x] `_mm256_srlv_epi32`
+* [x] `_mm_srlv_epi64`
+* [x] `_mm256_srlv_epi64`
 * [ ] `_mm256_stream_load_si256`
-* [ ] `_mm256_sub_epi8`
-* [ ] `_mm256_sub_epi16`
-* [ ] `_mm256_sub_epi32`
-* [ ] `_mm256_sub_epi64`
-* [ ] `_mm256_subs_epi8`
-* [ ] `_mm256_subs_epi16`
-* [ ] `_mm256_subs_epu8`
-* [ ] `_mm256_subs_epu16`
-* [ ] `_mm256_xor_si256`
+* [x] `_mm256_sub_epi8`
+* [x] `_mm256_sub_epi16`
+* [x] `_mm256_sub_epi32`
+* [x] `_mm256_sub_epi64`
+* [x] `_mm256_subs_epi8`
+* [x] `_mm256_subs_epi16`
+* [x] `_mm256_subs_epu8`
+* [x] `_mm256_subs_epu16`
+* [x] `_mm256_xor_si256`
 * [ ] `_mm256_unpackhi_epi8`
 * [ ] `_mm256_unpackhi_epi16`
 * [ ] `_mm256_unpackhi_epi32`
