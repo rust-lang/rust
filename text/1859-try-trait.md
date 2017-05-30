@@ -1,7 +1,7 @@
 - Feature Name: `try_trait`
 - Start Date: 2017-01-19
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1859](https://github.com/rust-lang/rfcs/pull/1859)
+- Rust Issue: [rust-lang/rust#31436](https://github.com/rust-lang/rust/issues/31436)
 
 # Summary
 [summary]: #summary
