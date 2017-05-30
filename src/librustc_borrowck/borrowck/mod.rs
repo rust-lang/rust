@@ -596,10 +596,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         if let Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) =
                             self.tables.closure_kinds.get(&node_id)
                         {
-                            err.help(&format!("closure cannot be invoked more than once because \
-                                              it moves the variable `{}` out of its environment",
-                                              name));
-                            err.span_label(span, format!("{} moved here", name));
+                            err.span_note(span, &format!(
+                                "closure cannot be invoked more than once because \
+                                it moves the variable `{}` out of its environment",
+                                name
+                            ));
                             false
                         } else {
                             true
