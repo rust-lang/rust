@@ -1558,6 +1558,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub(super) fn dump_local(&self, lvalue: Lvalue<'tcx>) {
+        // Debug output
         if let Lvalue::Local { frame, local, field } = lvalue {
             let mut allocs = Vec::new();
             let mut msg = format!("{:?}", local);
@@ -1744,17 +1745,14 @@ pub fn eval_main<'a, 'tcx: 'a>(
             let ty = ecx.tcx.types.isize;
             let layout = ecx.type_layout(ty)?;
             let size = layout.size(&ecx.tcx.data_layout).bytes();
-            let align = layout.align(&ecx.tcx.data_layout).pref(); // FIXME is this right?
+            let align = layout.align(&ecx.tcx.data_layout).abi();
             ecx.memory.allocate(size, align)?
         };
         ecx.frame_mut().return_lvalue = Lvalue::from_ptr(ret_ptr);
 
-        loop {
-            if !ecx.step()? {
-                ecx.memory.deallocate(ret_ptr)?;
-                return Ok(());
-            }
-        }
+        while ecx.step()? {}
+        ecx.memory.deallocate(ret_ptr)?;
+        return Ok(());
     }
 
     let mut ecx = EvalContext::new(tcx, limits);

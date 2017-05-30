@@ -131,7 +131,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    /// Decides whether it is okay to call the method with signature `real_sig` using signature `sig`
+    /// Decides whether it is okay to call the method with signature `real_sig` using signature `sig`.
+    /// FIXME: This should take into account the platform-dependent ABI description.
     fn check_sig_compat(
         &mut self,
         sig: ty::FnSig<'tcx>,
@@ -284,12 +285,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 trace!("arg_locals: {:?}", self.frame().mir.args_iter().collect::<Vec<_>>());
                 trace!("arg_operands: {:?}", arg_operands);
                 match sig.abi {
-                    Abi::Rust | Abi::C => {
-                        for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
-                            let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                            self.write_value(arg_val, dest, arg_ty)?;
-                        }
-                    }
                     Abi::RustCall => {
                         assert_eq!(args.len(), 2);
 
@@ -332,8 +327,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         } else {
                             bug!("rust-call ABI tuple argument was {:?}, {:?}", arg_ty, layout);
                         }
+                    },
+                    _ => {
+                        for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
+                            let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                            self.write_value(arg_val, dest, arg_ty)?;
+                        }
                     }
-                    _ => unimplemented!(),
                 }
                 Ok(())
             },
@@ -520,7 +520,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // Still, we can make many things mostly work by "emulating" or ignoring some functions.
         match &path[..] {
             "std::io::_print" => {
-                trace!("Ignoring output.");
+                trace!("Ignoring output.  To run programs that print, make sure you have a libstd with full MIR.");
                 self.goto_block(destination.unwrap().1);
                 Ok(())
             },
@@ -595,15 +595,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "__rust_maybe_catch_panic" => {
+                // fn __rust_maybe_catch_panic(f: fn(*mut u8), data: *mut u8, data_ptr: *mut usize, vtable_ptr: *mut usize) -> u32
                 // We abort on panic, so not much is going on here, but we still have to call the closure
                 let u8_ptr_ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
                 let f = args[0].read_ptr(&self.memory)?;
-                let data = args[1].read_ptr(&self.memory)?; // FIXME: Why does value_to_primval(args[2], u8_ptr_ty)?.to_ptr()? here end up doing the Wrong Thing (TM)?
+                let data = args[1].read_ptr(&self.memory)?;
                 let f_instance = self.memory.get_fn(f.alloc_id)?;
                 self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
 
-                // Now we make a functon call.  TODO: Consider making this re-usable?  EvalContext::step does sth. similar for the TLS dtors,
-                // and of coruse eval_main.
+                // Now we make a function call.  TODO: Consider making this re-usable?  EvalContext::step does sth. similar for the TLS dtors,
+                // and of course eval_main.
                 let mir = self.load_mir(f_instance.def)?;
                 self.push_stack_frame(
                     f_instance,
@@ -614,11 +615,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 )?;
 
                 let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("Argument to __rust_maybe_catch_panic does not take enough arguments.".to_owned()))?;
-                let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                self.write_value(Value::ByVal(PrimVal::Ptr(data)), dest, u8_ptr_ty)?;
+                let arg_dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                self.write_value(Value::ByVal(PrimVal::Ptr(data)), arg_dest, u8_ptr_ty)?;
+
+                // We ourselbes return 0
+                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
 
                 // Don't fall through
-                // FIXME: Do we have to do self.dump_local(ret) anywhere?
                 return Ok(());
             }
 
