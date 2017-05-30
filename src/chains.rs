@@ -454,7 +454,13 @@ fn rewrite_chain_subexpr(expr: &ast::Expr,
             rewrite_method_call(method_name.node, types, expressions, span, context, shape)
         }
         ast::ExprKind::Field(_, ref field) => rewrite_element(format!(".{}", field.node)),
-        ast::ExprKind::TupField(_, ref field) => rewrite_element(format!(".{}", field.node)),
+        ast::ExprKind::TupField(ref expr, ref field) => {
+            let space = match expr.node {
+                ast::ExprKind::TupField(..) => " ",
+                _ => "",
+            };
+            rewrite_element(format!("{}.{}", space, field.node))
+        }
         ast::ExprKind::Try(_) => rewrite_element(String::from("?")),
         _ => unreachable!(),
     }
