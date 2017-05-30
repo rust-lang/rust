@@ -8,11 +8,15 @@ things.
 Trait resolution is the process of pairing up an impl with each
 reference to a trait. So, for example, if there is a generic function like:
 
-    fn clone_slice<T:Clone>(x: &[T]) -> Vec<T> { ... }
+```rust
+fn clone_slice<T:Clone>(x: &[T]) -> Vec<T> { /*...*/ }
+```
 
 and then a call to that function:
 
-    let v: Vec<isize> = clone_slice([1, 2, 3])
+```rust
+let v: Vec<isize> = clone_slice(&[1, 2, 3])
+```
 
 it is the job of trait resolution to figure out (in which case)
 whether there exists an impl of `isize : Clone`
@@ -21,12 +25,14 @@ Note that in some cases, like generic functions, we may not be able to
 find a specific impl, but we can figure out that the caller must
 provide an impl. To see what I mean, consider the body of `clone_slice`:
 
-    fn clone_slice<T:Clone>(x: &[T]) -> Vec<T> {
-        let mut v = Vec::new();
-        for e in &x {
-            v.push((*e).clone()); // (*)
-        }
+```rust
+fn clone_slice<T:Clone>(x: &[T]) -> Vec<T> {
+    let mut v = Vec::new();
+    for e in &x {
+        v.push((*e).clone()); // (*)
     }
+}
+```
 
 The line marked `(*)` is only legal if `T` (the type of `*e`)
 implements the `Clone` trait. Naturally, since we don't know what `T`
@@ -107,7 +113,7 @@ otherwise the result is considered ambiguous.
 This process is easier if we work through some examples. Consider
 the following trait:
 
-```
+```rust
 trait Convert<Target> {
     fn convert(&self) -> Target;
 }
@@ -119,8 +125,8 @@ wanted to permit conversion between `isize` and `usize`, we might
 implement `Convert` like so:
 
 ```rust
-impl Convert<usize> for isize { ... } // isize -> usize
-impl Convert<isize> for usize { ... } // usize -> isize
+impl Convert<usize> for isize { /*...*/ } // isize -> usize
+impl Convert<isize> for usize { /*...*/ } // usize -> isize
 ```
 
 Now imagine there is some code like the following:
@@ -205,12 +211,14 @@ using the definition of *matching* given above.
 
 Consider this simple example:
 
-     trait A1 { ... }
-     trait A2 : A1 { ... }
+```rust
+trait A1 { /*...*/ }
+trait A2 : A1 { /*...*/ }
 
-     trait B { ... }
+trait B { /*...*/ }
 
-     fn foo<X:A2+B> { ... }
+fn foo<X:A2+B> { /*...*/ }
+```
 
 Clearly we can use methods offered by `A1`, `A2`, or `B` within the
 body of `foo`. In each case, that will incur an obligation like `X :
@@ -247,10 +255,12 @@ to us, so we must run trait selection to figure everything out.
 
 Here is an example:
 
-    trait Foo { ... }
-    impl<U,T:Bar<U>> Foo for Vec<T> { ... }
+```rust
+trait Foo { /*...*/ }
+impl<U,T:Bar<U>> Foo for Vec<T> { /*...*/ }
 
-    impl Bar<usize> for isize { ... }
+impl Bar<usize> for isize { /*...*/ }
+```
 
 After one shallow round of selection for an obligation like `Vec<isize>
 : Foo`, we would know which impl we want, and we would know that
@@ -343,7 +353,7 @@ Once the basic matching is done, we get to another interesting topic:
 how to deal with impl obligations. I'll work through a simple example
 here. Imagine we have the traits `Foo` and `Bar` and an associated impl:
 
-```
+```rust
 trait Foo<X> {
     fn foo(&self, x: X) { }
 }
@@ -401,7 +411,9 @@ Therefore, we search through impls and where clauses and so forth, and
 we come to the conclusion that the only possible impl is this one,
 with def-id 22:
 
-    impl Foo<isize> for usize { ... } // Impl #22
+```rust
+impl Foo<isize> for usize { ... } // Impl #22
+```
 
 We would then record in the cache `usize : Foo<%0> ==>
 ImplCandidate(22)`. Next we would confirm `ImplCandidate(22)`, which
