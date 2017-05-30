@@ -12,8 +12,8 @@ use core::iter::*;
 use core::{i8, i16, isize};
 use core::usize;
 
-// This is here to simplify calling Iterator::step_by. Remove once
-// Range::step_by is completely gone (not just deprecated).
+// FIXME #27741: This is here to simplify calling Iterator::step_by. Remove
+// once Range::step_by is completely gone (not just deprecated).
 trait IterEx: Sized {
     fn iter_step_by(self, n: usize) -> StepBy<Self>;
 }
