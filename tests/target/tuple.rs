@@ -12,6 +12,9 @@ fn foo() {
     let b = (// This is a comment
              b, // Comment
              b /* Trailing comment */);
+
+    // #1063
+    foo(x.0 .0);
 }
 
 fn a() {
