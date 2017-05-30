@@ -1689,6 +1689,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
     ) -> EvalResult<'tcx> {
         let main_instance = ty::Instance::mono(ecx.tcx, main_id);
         let main_mir = ecx.load_mir(main_instance.def)?;
+        let mut cleanup_ptr = None; // Pointer to be deallocated when we are done
 
         if !main_mir.return_ty.is_nil() || main_mir.arg_count != 0 {
             return Err(EvalError::Unimplemented("miri does not support main functions without `fn()` type signatures".to_owned()));
@@ -1702,12 +1703,22 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 return Err(EvalError::AbiViolation(format!("'start' lang item should have three arguments, but has {}", start_mir.arg_count)));
             }
 
+            // Return value
+            let ret_ptr = {
+                let ty = ecx.tcx.types.isize;
+                let layout = ecx.type_layout_with_substs(ty, Substs::empty())?;
+                let size = layout.size(&ecx.tcx.data_layout).bytes();
+                let align = layout.align(&ecx.tcx.data_layout).abi();
+                ecx.memory.allocate(size, align)?
+            };
+            cleanup_ptr = Some(ret_ptr);
+
             // Push our stack frame
             ecx.push_stack_frame(
                 start_instance,
                 start_mir.span,
                 start_mir,
-                Lvalue::from_ptr(Pointer::zst_ptr()), // we'll fix the return lvalue later
+                Lvalue::from_ptr(ret_ptr),
                 StackPopCleanup::None,
             )?;
 
@@ -1739,19 +1750,10 @@ pub fn eval_main<'a, 'tcx: 'a>(
             )?;
         }
 
-        // Allocate memory for the return value.  We have to do this when a stack frame was already pushed as the type code below
-        // calls EvalContext::substs, which needs a frame to be allocated (?!?)
-        let ret_ptr = {
-            let ty = ecx.tcx.types.isize;
-            let layout = ecx.type_layout(ty)?;
-            let size = layout.size(&ecx.tcx.data_layout).bytes();
-            let align = layout.align(&ecx.tcx.data_layout).abi();
-            ecx.memory.allocate(size, align)?
-        };
-        ecx.frame_mut().return_lvalue = Lvalue::from_ptr(ret_ptr);
-
         while ecx.step()? {}
-        ecx.memory.deallocate(ret_ptr)?;
+        if let Some(cleanup_ptr) = cleanup_ptr {
+            ecx.memory.deallocate(cleanup_ptr)?;
+        }
         return Ok(());
     }
 
