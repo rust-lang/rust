@@ -220,7 +220,7 @@ pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
 
 /// Returns the [ABI]-required minimum alignment of a type.
 ///
-/// Every reference to a value of type `T` must be a multiple of this number.
+/// Every reference to a value of the type `T` must be a multiple of this number.
 ///
 /// This is the alignment used for struct fields. It may be smaller than the preferred alignment.
 ///
@@ -243,7 +243,7 @@ pub fn min_align_of<T>() -> usize {
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
 ///
-/// Every reference to a value of type `T` must be a multiple of this number.
+/// Every reference to a value of the type `T` must be a multiple of this number.
 ///
 /// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
 ///
@@ -264,7 +264,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 
 /// Returns the [ABI]-required minimum alignment of a type.
 ///
-/// Every reference to a value of type `T` must be a multiple of this number.
+/// Every reference to a value of the type `T` must be a multiple of this number.
 ///
 /// This is the alignment used for struct fields. It may be smaller than the preferred alignment.
 ///
@@ -285,7 +285,7 @@ pub fn align_of<T>() -> usize {
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
 ///
-/// Every reference to a value of type `T` must be a multiple of this number.
+/// Every reference to a value of the type `T` must be a multiple of this number.
 ///
 /// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
 ///
