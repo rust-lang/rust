@@ -484,10 +484,7 @@ impl Into<Relation> for InheritanceData {
 impl Into<Signature> for external_data::Signature {
     fn into(self) -> Signature {
         Signature {
-            span: self.span,
             text: self.text,
-            ident_start: self.ident_start,
-            ident_end: self.ident_end,
             defs: self.defs.into_iter().map(|s| s.into()).collect(),
             refs: self.refs.into_iter().map(|s| s.into()).collect(),
         }
