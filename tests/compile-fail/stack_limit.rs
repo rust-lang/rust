@@ -1,24 +1,18 @@
 #![feature(custom_attribute, attr_literals)]
 #![miri(stack_limit=16)]
 
+//error-pattern: reached the configured maximum number of stack frames
+
 fn bar() {
     foo();
 }
 
 fn foo() {
-    cake(); //~ ERROR reached the configured maximum number of stack frames
+    cake();
 }
 
 fn cake() {
-    flubber(3);
-}
-
-fn flubber(i: u32) {
-    if i > 0 {
-        flubber(i-1);
-    } else {
-        bar();
-    }
+    bar();
 }
 
 fn main() {

@@ -71,7 +71,7 @@ RUSTFLAGS='-Zalways-encode-mir' xargo build
 Now you can run miri against the libstd compiled by xargo:
 
 ```sh
-cargo run --bin miri -- --sysroot ~/.xargo/HOST tests/run-pass/vecs.rs
+MIRI_SYSROOT=~/.xargo/HOST cargo run --bin miri tests/run-pass/vecs.rs
 ```
 
 Notice that you will have to re-run the last step of the preparations above when
