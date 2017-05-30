@@ -899,6 +899,8 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         t!(fs::create_dir_all(pkg.join("cargo")));
         t!(fs::create_dir_all(pkg.join("rust-docs")));
         t!(fs::create_dir_all(pkg.join("rust-std")));
+        t!(fs::create_dir_all(pkg.join("rls")));
+        t!(fs::create_dir_all(pkg.join("rust-analysis")));
 
         cp_r(&work.join(&format!("{}-{}", pkgname(build, "rustc"), target)),
              &pkg.join("rustc"));
@@ -908,11 +910,17 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
              &pkg.join("rust-docs"));
         cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-std"), target)),
              &pkg.join("rust-std"));
+        cp_r(&work.join(&format!("{}-{}", pkgname(build, "rls"), target)),
+             &pkg.join("rls"));
+        cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-analysis"), target)),
+             &pkg.join("rust-analysis"));
 
         install(&etc.join("pkg/postinstall"), &pkg.join("rustc"), 0o755);
         install(&etc.join("pkg/postinstall"), &pkg.join("cargo"), 0o755);
         install(&etc.join("pkg/postinstall"), &pkg.join("rust-docs"), 0o755);
         install(&etc.join("pkg/postinstall"), &pkg.join("rust-std"), 0o755);
+        install(&etc.join("pkg/postinstall"), &pkg.join("rls"), 0o755);
+        install(&etc.join("pkg/postinstall"), &pkg.join("rust-analysis"), 0o755);
 
         let pkgbuild = |component: &str| {
             let mut cmd = Command::new("pkgbuild");
@@ -926,6 +934,8 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         pkgbuild("cargo");
         pkgbuild("rust-docs");
         pkgbuild("rust-std");
+        pkgbuild("rls");
+        pkgbuild("rust-analysis");
 
         // create an 'uninstall' package
         install(&etc.join("pkg/postinstall"), &pkg.join("uninstall"), 0o755);
