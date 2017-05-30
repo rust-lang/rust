@@ -173,7 +173,7 @@ impl<'a> FmtVisitor<'a> {
                         if !subslice
                                .split('\n')
                                .map(|s| s.trim_left())
-                               .any(|s| s.len() > 2 && &s[0..2] == "/*") {
+                               .any(|s| s.len() >= 2 && &s[0..2] == "/*") {
                             // Add a newline after line comments
                             self.buffer.push_str("\n");
                         }
