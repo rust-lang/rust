@@ -138,3 +138,9 @@ fn issue1073_alt() {
 /// be_sure_we_got_to_the_end_of_it
 fn four_quotes() {
 }
+
+/// See [NIST SP 800-56A, revision 2].
+///
+/// [NIST SP 800-56A, revision 2]:
+///     https://github.com/Manishearth/rust-clippy/issues/902#issuecomment-261919419
+fn issue_902_comment() {}
