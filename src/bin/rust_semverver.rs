@@ -6,7 +6,10 @@ extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_metadata;
+extern crate semverver;
 extern crate syntax;
+
+use semverver::check::export_map::ExportMap;
 
 use rustc::hir::def_id::*;
 use rustc::session::{config, Session};
@@ -14,6 +17,7 @@ use rustc::session::config::{Input, ErrorOutputType};
 
 use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
 
+use std::borrow::Borrow;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -37,7 +41,11 @@ fn callback(state: &driver::CompileState) {
     let new_did = DefId { krate: cnums.0.unwrap(), index: CRATE_DEF_INDEX };
     let old_did = DefId { krate: cnums.1.unwrap(), index: CRATE_DEF_INDEX };
 
-    println!("new: {:?}, old: {:?}", new_did, old_did);
+    let new_map = ExportMap::new(new_did, cstore.borrow());
+    let old_map = ExportMap::new(old_did, cstore.borrow());
+
+    println!("new: {:?}", new_map);
+    println!("old: {:?}", old_map);
 }
 
 struct SemVerVerCompilerCalls {
