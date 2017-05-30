@@ -39,3 +39,15 @@ override_dh_auto_test:
 	debian/rustc/usr/bin/rustc --crate-type lib debian/test.rs -o debian/test --target=x86_64-unknown-linux-gnu
 	debian/rustc/usr/bin/rustc --crate-type lib debian/test.rs -o debian/test --target=x86_64-pc-windows-gnu
 	debian/rustc/usr/bin/rustc --crate-type lib debian/test.rs -o debian/test --target=x86_64-apple-darwin
+
+build-linux:
+	python x.py --config debian/config-linux.toml build
+	python x.py --config debian/config-linux.toml dist
+
+build-osx:
+	python x.py --config debian/config-osx.toml build
+	python x.py --config debian/config-osx.toml dist
+
+build-windows:
+	python x.py --config debian/config-windows.toml build
+	python x.py --config debian/config-windows.toml dist
