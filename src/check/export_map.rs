@@ -1,11 +1,9 @@
 use rustc::hir::def::Def;
 use rustc::hir::def_id::*;
-use rustc::hir::map::definitions::DefPath;
 use rustc::middle::cstore::CrateStore;
 use rustc::ty::Visibility::Public;
 
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::hash::{Hash, Hasher};
 
 pub type VisitedModSet = HashSet<DefId>;
 
@@ -13,34 +11,33 @@ pub type ItemSet = HashSet<DefId>;
 
 pub type ModMap = HashMap<DefId, Vec<DefId>>;
 
-#[derive(Debug)]
+#[derive(Debug, Default, PartialEq, Eq, Hash)]
 pub struct Path {
-    inner: DefPath,
+    inner: Vec<String>,
 }
 
 impl Path {
-    pub fn new(inner: DefPath) -> Path {
+    pub fn new(segments: Vec<String>) -> Path {
         Path {
-            inner: inner,
+            inner: segments,
         }
     }
 
-    pub fn inner(&self) -> &DefPath {
-        &self.inner
+    pub fn extend(&self, component: String) -> Path {
+        let mut inner = self.inner.clone();
+        inner.push(component);
+
+        Path::new(inner)
     }
-}
 
-impl PartialEq for Path {
-    fn eq(&self, other: &Path) -> bool {
-        self.inner.data == other.inner().data
-    }
-}
+    pub fn inner(&self) -> String {
+        let mut new = String::new();
+        for component in &self.inner {
+            new.push_str("::");
+            new.push_str(component);
+        }
 
-impl Eq for Path {}
-
-impl Hash for Path {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.inner.data.hash(state);
+        new
     }
 }
 
@@ -61,11 +58,10 @@ impl ExportMap {
         let mut items = HashSet::new();
         let mut exports = HashMap::new();
         let mut paths = HashMap::new();
-
         let mut mod_queue = VecDeque::new();
-        mod_queue.push_back(root);
+        mod_queue.push_back((root, Path::default()));
 
-        while let Some(mod_id) = mod_queue.pop_front() {
+        while let Some((mod_id, mod_path)) = mod_queue.pop_front() {
             let mut children = cstore.item_children(mod_id);
             let mut current_children = Vec::new();
 
@@ -73,19 +69,20 @@ impl ExportMap {
                 children
                     .drain(..)
                     .filter(|c| cstore.visibility(c.def.def_id()) == Public) {
+                let child_name = String::from(&*child.ident.name.as_str());
                 match child.def {
                     Def::Mod(submod_id) =>
                         if !visited.contains(&submod_id) {
                             visited.insert(submod_id);
                             current_children.push(submod_id);
-                            mod_queue.push_back(submod_id);
+                            mod_queue.push_back((submod_id, mod_path.extend(child_name)));
                         } else {
                             current_children.push(submod_id);
                         },
                     def => {
                         let def_id = def.def_id();
                         items.insert(def_id);
-                        paths.insert(Path::new(cstore.def_path(def_id)), def_id);
+                        paths.insert(mod_path.extend(child_name), def_id);
                         current_children.push(def_id);
                     },
                 }
@@ -110,9 +107,9 @@ impl ExportMap {
     pub fn compare(&self, other: &ExportMap) {
         for path in self.paths.keys() {
             if other.lookup_path(path).is_none() {
-                println!("path differs: {}", path.inner().to_string_no_crate());
+                println!("path differs: {}", path.inner());
             } else {
-                println!("path same: {}", path.inner().to_string_no_crate());
+                println!("path same: {}", path.inner());
             }
         }
     }
