@@ -61,6 +61,8 @@ miri hits a call to such a function, execution terminates.  To fix this, it is
 possible to compile libstd with full MIR:
 
 ```sh
+rustup component add rust-src
+chmod +x -R ~/.rustup/toolchains/*/lib/rustlib/src/rust/src/jemalloc/include/jemalloc/
 cargo install xargo
 cd xargo/
 RUSTFLAGS='-Zalways-encode-mir' xargo build --target `rustc -vV | egrep '^host: ' | sed 's/^host: //'`
@@ -73,8 +75,7 @@ cargo run --bin miri -- --sysroot ~/.xargo/HOST tests/run-pass/vecs.rs
 ```
 
 Notice that you will have to re-run the last step of the preparations above when
-your toolchain changes (e.g., when you update the nightly).  Also, xargo doesn't
-currently work with nightlies newer than 2017-04-23.
+your toolchain changes (e.g., when you update the nightly).
 
 ## Contributing and getting help
 
