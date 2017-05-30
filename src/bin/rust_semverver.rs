@@ -5,8 +5,10 @@ extern crate getopts;
 extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_errors;
+extern crate rustc_metadata;
 extern crate syntax;
 
+use rustc::hir::def_id::*;
 use rustc::session::{config, Session};
 use rustc::session::config::{Input, ErrorOutputType};
 
@@ -16,6 +18,27 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use syntax::ast;
+
+fn callback(state: &driver::CompileState) {
+    let tcx = state.tcx.unwrap();
+    let cstore = &tcx.sess.cstore;
+
+    let cnums = cstore.crates().iter().fold((None, None), |(n, o), crate_num| {
+        let name = cstore.crate_name(*crate_num);
+        if name == "new" {
+            (Some(*crate_num), o)
+        } else if name == "old" {
+            (n, Some(*crate_num))
+        } else {
+            (n, o)
+        }
+    });
+
+    let new_did = DefId { krate: cnums.0.unwrap(), index: CRATE_DEF_INDEX };
+    let old_did = DefId { krate: cnums.1.unwrap(), index: CRATE_DEF_INDEX };
+
+    println!("new: {:?}, old: {:?}", new_did, old_did);
+}
 
 struct SemVerVerCompilerCalls {
     default: RustcDefaultCalls,
@@ -68,9 +91,12 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
                         -> driver::CompileController<'a> {
         let mut controller = self.default.build_controller(sess, matches);
 
-        let old_callback = std::mem::replace(&mut controller.after_hir_lowering.callback,
+        let old_callback = std::mem::replace(&mut controller.after_analysis.callback,
                                              box |_| {});
-        controller.after_hir_lowering.callback = box move |state| { old_callback(state); };
+        controller.after_analysis.callback = box move |state| {
+            callback(state);
+            old_callback(state);
+        };
 
         controller
     }
