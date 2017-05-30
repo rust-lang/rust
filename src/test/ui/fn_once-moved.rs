@@ -20,5 +20,6 @@ fn main() {
     debug_dump_dict();
     debug_dump_dict();
     //~^ ERROR use of moved value: `debug_dump_dict`
-    //~| NOTE closure was moved because it only implements `FnOnce`
+    //~| NOTE closure cannot be invoked more than once because it moves the
+    //~| variable `dict` out of its environment
 }
