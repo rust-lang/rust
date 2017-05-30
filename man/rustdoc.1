@@ -1,4 +1,4 @@
-.TH RUSTDOC "1" "September 2016" "rustdoc 1.13.0" "User Commands"
+.TH RUSTDOC "1" "May 2017" "rustdoc 1.19.0" "User Commands"
 .SH NAME
 rustdoc \- generate documentation from Rust source code
 .SH SYNOPSIS
@@ -15,14 +15,13 @@ provides several output formats for the generated documentation.
 
 .TP
 \fB\-r\fR, \fB\-\-input\-format\fR \fIFORMAT\fR
-html or json (default: inferred)
+rust
 .TP
 \fB\-w\fR, \fB\-\-output\-format\fR \fIFORMAT\fR
-html or json (default: html)
+html
 .TP
-\fB\-o\fR, \fB\-\-output\fR \fIOUTPUT\fR
-where to place the output (default: \fIdoc/\fR for html,
-\fIdoc.json\fR for json)
+\fB\-o\fR, \fB\-\-output\fR \fIOUTPUT\fR,
+where to place the output (default: \fIdoc/\fR for html)
 .TP
 \fB\-\-passes\fR \fILIST\fR
 space\[hy]separated list of passes to run (default: '')
@@ -60,14 +59,25 @@ pass arguments to the test runner
 \fB\-\-html\-in\-header\fR \fIFILE\fR
 file to add to <head>
 .TP
-\fB\-\-html\-before\-content\fR \fIFILE\fR
-file to add in <body>, before content
+\fB\-\-html\-before\-content\fR \fIFILES\fR
+files to include inline between <body> and the content of a rendered Markdown
+file or generated documentation
 .TP
-\fB\-\-html\-after\-content\fR \fIFILE\fR
-file to add in <body>, after content
+\fB\-\-markdown\-before\-content\fR \fIFILES\fR
+files to include inline between <body> and the content of a rendered
+Markdown file or generated documentation
 .TP
-\fB\-\-markdown\-css\fR \fIFILE\fR
-CSS files to include via <link> in a rendered Markdown file
+\fB\-\-html\-after\-content\fR \fIFILES\fR
+files to include inline between the content and </body> of a rendered
+Markdown file or generated documentation
+.TP
+\fB\-\-markdown\-after\-content\fR \fIFILES\fR
+files to include inline between the content and </body> of a rendered
+Markdown file or generated documentation
+.TP
+\fB\-\-markdown\-css\fR \fIFILES\fR
+CSS files to include via <link> in a rendered Markdown file Markdown file or
+generated documentation
 .TP
 \fB\-\-markdown\-playground\-url\fR \fIURL\fR
 URL to send code snippets to
@@ -75,39 +85,20 @@ URL to send code snippets to
 \fB\-\-markdown\-no\-toc\fR
 don't include table of contents
 .TP
-\fB\-h\fR, \fB\-\-help\fR
-Print help
+\fB\-h\fR, \fB\-\-extend\-css\fR
+to redefine some css rules with a given file to generate doc with your own theme
 .TP
 \fB\-V\fR, \fB\-\-version\fR
 Print rustdoc's version
 
 .SH "OUTPUT FORMATS"
 
-The rustdoc tool can generate output in either an HTML or JSON format.
+The rustdoc tool can generate output in an HTML format.
 
 If using an HTML format, then the specified output destination will be the root
 directory of an HTML structure for all the documentation.
 Pages will be placed into this directory, and source files will also
 possibly be rendered into it as well.
-
-If using a JSON format, then the specified output destination will have the
-rustdoc output serialized as JSON into it.
-This output format exists to pre\[hy]compile documentation for crates,
-and for usage in non\[hy]rustdoc tools.
-The JSON output is the following hash:
-
-    {
-        "schema": VERSION,
-        "crate": ...,
-        "plugins": ...,
-    }
-
-The schema version indicates what the structure of crate/plugins will
-look like.
-Within a schema version the structure will remain the same.
-The \fIcrate\fR field will contain all relevant documentation for the
-source being documented, and the \fIplugins\fR field will contain the
-output of the plugins run over the crate.
 
 .SH "EXAMPLES"
 
@@ -116,11 +107,6 @@ To generate documentation for the source in the current directory:
 
 List all available passes that rustdoc has, along with default passes:
     $ rustdoc \-\-passes list
-
-To precompile the documentation for a crate, and then use it to render html at
-a later date:
-    $ rustdoc \-w json hello.rs
-    $ rustdoc doc.json
 
 The generated HTML can be viewed with any standard web browser.
 
