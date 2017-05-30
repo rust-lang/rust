@@ -34,8 +34,10 @@ pub fn errno() -> i32 {
 /// Gets a detailed string description for the given error number.
 pub fn error_string(mut errnum: i32) -> String {
     // This value is calculated from the macro
-    // MAKELANGID(LANG_SYSTEM_DEFAULT, SUBLANG_SYS_DEFAULT)
-    let langId = 0x0800 as c::DWORD;
+    // MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US)
+    // Don't use system default language id here, since localization strings
+    // may be escaped, and result in unreadable output. CC #34318.
+    let langId = 0x0409 as c::DWORD;
 
     let mut buf = [0 as c::WCHAR; 2048];
 
