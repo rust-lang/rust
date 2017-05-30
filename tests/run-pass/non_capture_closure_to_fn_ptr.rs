@@ -1,5 +1,3 @@
-#![feature(closure_to_fn_coercion)]
-
 // allow(const_err) to work around a bug in warnings
 #[allow(const_err)]
 static FOO: fn() = || { assert_ne!(42, 43) };
