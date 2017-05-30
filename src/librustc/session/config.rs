@@ -1266,6 +1266,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
     opts.extend_from_slice(&[
         opt::multi_s("", "extern", "Specify where an external rust library is located",
                      "NAME=PATH"),
+        opt::multi_s("", "extern-version", "", "NAME=CRATE_NAME,VERSION"),
         opt::opt_s("", "sysroot", "Override the system root", "PATH"),
         opt::multi("Z", "", "Set internal debugging options", "FLAG"),
         opt::opt_s("", "error-format",

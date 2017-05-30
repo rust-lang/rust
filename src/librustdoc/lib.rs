@@ -139,6 +139,8 @@ pub fn opts() -> Vec<RustcOptGroup> {
                         "DIR")),
         stable(optmulti("", "cfg", "pass a --cfg to rustc", "")),
         stable(optmulti("", "extern", "pass an --extern to rustc", "NAME=PATH")),
+        stable(optmulti("", "extern-version", "pass an --extern-version to rustc",
+                        "NAME=CRATE_NAME,VERSION")),
         stable(optmulti("", "plugin-path", "directory to load plugins from", "DIR")),
         stable(optmulti("", "passes",
                         "list of passes to also run, you might want \
@@ -259,6 +261,14 @@ pub fn main_args(args: &[String]) -> isize {
         }
     };
 
+    let extern_versions = match parse_extern_versions(&matches) {
+        Ok(ex) => ex,
+        Err(err) => {
+            print_error(err);
+            return 1;
+        }
+    };
+
     let test_args = matches.opt_strs("test-args");
     let test_args: Vec<String> = test_args.iter()
                                           .flat_map(|s| s.split_whitespace())
@@ -326,7 +336,7 @@ pub fn main_args(args: &[String]) -> isize {
         info!("going to format");
         match output_format.as_ref().map(|s| &**s) {
             Some("html") | None => {
-                html::render::run(krate, &external_html, playground_url,
+                html::render::run(krate, extern_versions, &external_html, playground_url,
                                   output.unwrap_or(PathBuf::from("doc")),
                                   passes.into_iter().collect(),
                                   css_file_extension,
@@ -381,6 +391,23 @@ fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
         let name = parts.next().ok_or("--extern value must not be empty".to_string())?;
         let location = parts.next()
                                  .ok_or("--extern value must be of the format `foo=bar`"
+                                    .to_string())?;
+        let name = name.to_string();
+        externs.entry(name).or_insert_with(BTreeSet::new).insert(location.to_string());
+    }
+    Ok(Externs::new(externs))
+}
+
+/// Extracts `--extern CRATE=CRATE_NAME,VERSION` arguments from `matches` and
+/// returns a map mapping crate names to their paths or else an
+/// error message.
+fn parse_extern_versions(matches: &getopts::Matches) -> Result<Externs, String> {
+    let mut externs = BTreeMap::new();
+    for arg in &matches.opt_strs("extern-version") {
+        let mut parts = arg.splitn(2, '=');
+        let name = parts.next().ok_or("--extern-version value must not be empty".to_string())?;
+        let location = parts.next()
+                                 .ok_or("--extern-version value must be of the format `foo=bar`"
                                     .to_string())?;
         let name = name.to_string();
         externs.entry(name).or_insert_with(BTreeSet::new).insert(location.to_string());
