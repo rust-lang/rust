@@ -206,8 +206,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
                 let mut err = if let Some(path) = unit_variant {
-                    let mut err = self.type_error_struct(call_expr.span, |_| {
-                        format!("`{}` is being called, but it is not a function", path)
+                    let mut err = self.type_error_struct(call_expr.span, |actual| {
+                        format!("expected a function, but `{}` is `{}`", path, actual)
                     }, callee_ty);
                     err.help(&format!("did you mean to write `{}`?", path));
                     err
