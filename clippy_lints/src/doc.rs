@@ -4,7 +4,7 @@ use rustc::lint::*;
 use syntax::ast;
 use syntax::codemap::{Span, BytePos};
 use syntax_pos::Pos;
-use utils::{span_lint, snippet_opt};
+use utils::span_lint;
 
 /// **What it does:** Checks for the presence of `_`, `::` or camel-case words
 /// outside ticks in documentation.
@@ -81,7 +81,7 @@ impl<'a> Iterator for Parser<'a> {
 /// `syntax::parse::lexer::comments::strip_doc_comment_decoration` because we need to keep track of
 /// the spans but this function is inspired from the later.
 #[allow(cast_possible_truncation)]
-pub fn strip_doc_comment_decoration(comment: String, span: Span) -> (String, Vec<(usize, Span)>) {
+pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(usize, Span)>) {
     // one-line comments lose their prefix
     const ONELINERS: &'static [&'static str] = &["///!", "///", "//!", "//"];
     for prefix in ONELINERS {
@@ -104,7 +104,8 @@ pub fn strip_doc_comment_decoration(comment: String, span: Span) -> (String, Vec
             let offset = line.as_ptr() as usize - comment.as_ptr() as usize;
             debug_assert_eq!(offset as u32 as usize, offset);
 
-            sizes.push((line.len(), Span { lo: span.lo + BytePos(offset as u32), ..span }));
+            // +1 for the newline
+            sizes.push((line.len()+1, Span { lo: span.lo + BytePos(offset as u32), ..span }));
         }
 
         return (doc.to_string(), sizes);
@@ -121,7 +122,7 @@ pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [a
         if attr.is_sugared_doc {
             if let Some(ref current) = attr.value_str() {
                 let current = current.to_string();
-                let (current, current_spans) = strip_doc_comment_decoration(current, attr.span);
+                let (current, current_spans) = strip_doc_comment_decoration(&current, attr.span);
                 spans.extend_from_slice(&current_spans);
                 doc.push_str(&current);
             }
@@ -144,7 +145,11 @@ pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [a
             let y_offset = y.0;
 
             match (x.1, y.1) {
-                (Text(x), Text(y)) => Ok((x_offset, Text((x.into_owned() + &y).into()))),
+                (Text(x), Text(y)) => {
+                    let mut x = x.into_owned();
+                    x.push_str(&y);
+                    Ok((x_offset, Text(x.into())))
+                }
                 (x, y) => Err(((x_offset, x), (y_offset, y))),
             }
         });
@@ -163,18 +168,15 @@ fn check_doc<'a, Events: Iterator<Item=(usize, pulldown_cmark::Event<'a>)>>(
 
     let mut in_code = false;
 
-    println!("{:?}", spans);
     for (offset, event) in docs {
-        println!("{:?}, {:?}", offset, event);
         match event {
             Start(CodeBlock(_)) | Start(Code) => in_code = true,
             End(CodeBlock(_)) | End(Code) => in_code = false,
             Start(_tag) | End(_tag) => (), // We don't care about other tags
             Html(_html) | InlineHtml(_html) => (), // HTML is weird, just ignore it
-            FootnoteReference(footnote) => (), // TODO
             SoftBreak => (),
             HardBreak => (),
-            Text(text) => {
+            FootnoteReference(text) | Text(text) => {
                 if !in_code {
                     let index = match spans.binary_search_by(|c| c.0.cmp(&offset)) {
                         Ok(o) => o,
@@ -183,15 +185,12 @@ fn check_doc<'a, Events: Iterator<Item=(usize, pulldown_cmark::Event<'a>)>>(
 
                     let (begin, span) = spans[index];
 
-                    println!("raw: {:?}, {}, {}, {:?}", snippet_opt(cx, span), offset, begin, span);
-
                     // Adjust for the begining of the current `Event`
                     let span = Span {
                         lo: span.lo + BytePos::from_usize(offset - begin),
                         ..span
                     };
 
-                    println!("adjusted: {:?}", snippet_opt(cx, span));
                     check_text(cx, valid_idents, &text, span);
                 }
             },
