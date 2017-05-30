@@ -93,7 +93,7 @@ returns a `Poll`:
 
 ```rust
 fn foo() -> Poll<T, E> {
-    let x = bar()?; // propogate error case
+    let x = bar()?; // propagate error case
 }
 ```
 
@@ -101,7 +101,7 @@ and we might wish to do the same, but in a function returning a `Result`:
 
 ```rust
 fn foo() -> Result<T, E> {
-    let x = bar()?; // propogate error case
+    let x = bar()?; // propagate error case
 }
 ```
 
