@@ -727,7 +727,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
                 let dtor_ptr = args[1].read_ptr(&self.memory)?;
-                // TODO: The null-pointer case here is entirely untested
                 let dtor = if dtor_ptr.is_null_ptr() { None } else { Some(self.memory.get_fn(dtor_ptr.alloc_id)?) };
                 
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
