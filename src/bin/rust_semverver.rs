@@ -44,8 +44,9 @@ fn callback(state: &driver::CompileState) {
     let new_map = ExportMap::new(new_did, cstore.borrow());
     let old_map = ExportMap::new(old_did, cstore.borrow());
 
-    println!("new: {:?}", new_map);
-    println!("old: {:?}", old_map);
+    old_map.compare(&new_map);
+    println!("===========================");
+    new_map.compare(&old_map);
 }
 
 struct SemVerVerCompilerCalls {

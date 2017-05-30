@@ -25,14 +25,14 @@ impl Path {
         }
     }
 
-    pub fn get_inner(&self) -> &DefPath {
+    pub fn inner(&self) -> &DefPath {
         &self.inner
     }
 }
 
 impl PartialEq for Path {
     fn eq(&self, other: &Path) -> bool {
-        self.inner.data == other.get_inner().data
+        self.inner.data == other.inner().data
     }
 }
 
@@ -86,7 +86,6 @@ impl ExportMap {
                         let def_id = def.def_id();
                         items.insert(def_id);
                         paths.insert(Path::new(cstore.def_path(def_id)), def_id);
-                        println!("{}", cstore.def_path(def_id).data.len());
                         current_children.push(def_id);
                     },
                 }
@@ -101,6 +100,20 @@ impl ExportMap {
             exports: exports,
             paths: paths,
             root: root,
+        }
+    }
+
+    pub fn lookup_path(&self, path: &Path) -> Option<&DefId> {
+        self.paths.get(path)
+    }
+
+    pub fn compare(&self, other: &ExportMap) {
+        for path in self.paths.keys() {
+            if other.lookup_path(path).is_none() {
+                println!("path differs: {}", path.inner().to_string_no_crate());
+            } else {
+                println!("path same: {}", path.inner().to_string_no_crate());
+            }
         }
     }
 }
