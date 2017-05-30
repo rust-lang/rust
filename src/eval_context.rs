@@ -788,9 +788,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_value(val, dest, dest_ty)?;
             }
 
-            Box(ty) => {
+            NullaryOp(mir::NullOp::Box, ty) => {
                 let ptr = self.alloc_ptr(ty)?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
+            }
+
+            NullaryOp(mir::NullOp::SizeOf, _ty) => {
+                unimplemented!()
             }
 
             Cast(kind, ref operand, cast_ty) => {
