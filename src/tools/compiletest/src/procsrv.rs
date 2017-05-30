@@ -69,6 +69,7 @@ pub fn run(lib_path: &str,
     }
     if let Some(cwd) = current_dir {
         cmd.current_dir(cwd);
+        panic!("Backtrace");
     }
 
     let mut process = cmd.spawn()?;

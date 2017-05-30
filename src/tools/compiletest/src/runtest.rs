@@ -1546,11 +1546,8 @@ actual:\n\
             logv(self.config, format!("executing {}", cmdline));
             cmdline
         };
-        let working_dir = if self.config.target.contains("emscripten") {
-            Some(self.output_base_name().parent().unwrap().to_str().unwrap().to_owned())
-        } else {
-            None
-        };
+        let working_dir =
+            Some(self.output_base_name().parent().unwrap().to_str().unwrap().to_owned());
 
         let procsrv::Result {
             out,
