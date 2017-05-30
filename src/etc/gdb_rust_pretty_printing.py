@@ -78,7 +78,7 @@ class GdbValue(rustpp.Value):
 
     def as_integer(self):
         if self.gdb_val.type.code == gdb.TYPE_CODE_PTR:
-            as_str = str(self.gdb_val).split()[0]
+            as_str = unicode(self.gdb_val).split()[0]
             return int(as_str, 0)
         return int(self.gdb_val)
 
