@@ -135,10 +135,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionTy<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
                              -> Option<ty::ProjectionTy<'tcx>> {
         tcx.lift(&self.trait_ref).map(|trait_ref| {
-            ty::ProjectionTy {
-                trait_ref: trait_ref,
-                item_name: self.item_name
-            }
+            ty::ProjectionTy::from_ref_and_name(tcx, trait_ref, self.item_name(tcx))
         })
     }
 }
@@ -771,7 +768,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ProjectionTy<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::ProjectionTy {
             trait_ref: self.trait_ref.fold_with(folder),
-            item_name: self.item_name,
+            item_def_id: self.item_def_id,
         }
     }
 

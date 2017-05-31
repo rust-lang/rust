@@ -355,7 +355,7 @@ pub fn normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
 
             let tcx = selcx.infcx().tcx;
             let def_id = tcx.associated_items(projection_ty.trait_ref.def_id).find(|i|
-                i.name == projection_ty.item_name && i.kind == ty::AssociatedKind::Type
+                i.name == projection_ty.item_name(tcx) && i.kind == ty::AssociatedKind::Type
             ).map(|i| i.def_id).unwrap();
             let ty_var = selcx.infcx().next_ty_var(
                 TypeVariableOrigin::NormalizeProjectionType(tcx.def_span(def_id)));
@@ -436,7 +436,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             //
             // ```
             // let ty = selcx.tcx().mk_projection(projection_ty.trait_ref,
-            //                                    projection_ty.item_name);
+            //                                    projection_ty.item_name(tcx);
             // return Some(NormalizedTy { value: v, obligations: vec![] });
             // ```
 
@@ -574,7 +574,7 @@ fn normalize_to_error<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tc
                                         predicate: trait_ref.to_predicate() };
     let tcx = selcx.infcx().tcx;
     let def_id = tcx.associated_items(projection_ty.trait_ref.def_id).find(|i|
-        i.name == projection_ty.item_name && i.kind == ty::AssociatedKind::Type
+        i.name == projection_ty.item_name(tcx) && i.kind == ty::AssociatedKind::Type
     ).map(|i| i.def_id).unwrap();
     let new_value = selcx.infcx().next_ty_var(
         TypeVariableOrigin::NormalizeProjectionType(tcx.def_span(def_id)));
@@ -729,7 +729,7 @@ fn project_type<'cx, 'gcx, 'tcx>(
             Ok(ProjectedTy::NoProgress(
                 selcx.tcx().mk_projection(
                     obligation.predicate.trait_ref.clone(),
-                    obligation.predicate.item_name)))
+                    obligation.predicate.item_name(selcx.tcx()))))
         }
     }
 }
@@ -815,7 +815,8 @@ fn assemble_candidates_from_predicates<'cx, 'gcx, 'tcx, I>(
                predicate);
         match predicate {
             ty::Predicate::Projection(ref data) => {
-                let same_name = data.item_name() == obligation.predicate.item_name;
+                let tcx = selcx.tcx();
+                let same_name = data.item_name(tcx) == obligation.predicate.item_name(tcx);
 
                 let is_match = same_name && infcx.probe(|_| {
                     let data_poly_trait_ref =
@@ -902,7 +903,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                 // type.
                 let node_item = assoc_ty_def(selcx,
                                              impl_data.impl_def_id,
-                                             obligation.predicate.item_name);
+                                             obligation.predicate.item_name(selcx.tcx()));
 
                 let is_default = if node_item.node.is_from_trait() {
                     // If true, the impl inherited a `type Foo = Bar`
@@ -1075,9 +1076,10 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
 
         // select only those projections that are actually projecting an
         // item with the correct name
+        let tcx = selcx.tcx();
         let env_predicates = env_predicates.filter_map(|p| match p {
             ty::Predicate::Projection(data) =>
-                if data.item_name() == obligation.predicate.item_name {
+                if data.item_name(tcx) == obligation.predicate.item_name(tcx) {
                     Some(data)
                 } else {
                     None
@@ -1180,10 +1182,11 @@ fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
                                               flag);
 
     let predicate = ty::Binder(ty::ProjectionPredicate { // (1) recreate binder here
-        projection_ty: ty::ProjectionTy {
-            trait_ref: trait_ref,
-            item_name: Symbol::intern(FN_OUTPUT_NAME),
-        },
+        projection_ty: ty::ProjectionTy::from_ref_and_name(
+            tcx,
+            trait_ref,
+            Symbol::intern(FN_OUTPUT_NAME),
+        ),
         ty: ret_type
     });
 
@@ -1228,7 +1231,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
     let VtableImplData { substs, nested, impl_def_id } = impl_vtable;
 
     let tcx = selcx.tcx();
-    let assoc_ty = assoc_ty_def(selcx, impl_def_id, obligation.predicate.item_name);
+    let assoc_ty = assoc_ty_def(selcx, impl_def_id, obligation.predicate.item_name(tcx));
 
     let ty = if !assoc_ty.item.defaultness.has_value() {
         // This means that the impl is missing a definition for the
