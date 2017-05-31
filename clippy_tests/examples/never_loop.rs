@@ -2,33 +2,56 @@
 #![plugin(clippy)]
 
 #![warn(never_loop)]
-#![allow(dead_code, unused)]
+#![allow(single_match, while_true)]
 
-fn main() {
+fn break_stmt() {
     loop {
-        println!("This is only ever printed once");
         break;
     }
+}
 
+fn conditional_break() {
+    let mut x = 5;
+    loop {
+        x -= 1;
+        if x == 1 {
+            break
+        }
+    }
+}
+
+fn nested_loop() {
+    loop {
+        while true {
+            break
+        }
+        break
+    }
+}
+
+fn if_false() {
     let x = 1;
     loop {
-        println!("This, too"); // but that's OK
         if x == 1 {
-            break;
+            return
         }
     }
+}
 
+fn match_false() {
+    let x = 1;
     loop {
-        loop {
-            // another one
-            break;
+        match x {
+            1 => return,
+            _ => (),
         }
-        break;
     }
+}
 
-    loop {
-        loop {
-            if x == 1 { return; }
-        }
-    }
+fn main() {
+    break_stmt();
+    conditional_break();
+    nested_loop();
+    if_false();
+    match_false();
 }

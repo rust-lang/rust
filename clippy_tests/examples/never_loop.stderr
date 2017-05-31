@@ -2,35 +2,22 @@ error: this loop never actually loops
   --> never_loop.rs:8:5
    |
 8  | /     loop {
-9  | |         println!("This is only ever printed once");
-10 | |         break;
-11 | |     }
+9  | |         break;
+10 | |     }
    | |_____^
    |
    = note: `-D never-loop` implied by `-D warnings`
 
 error: this loop never actually loops
-  --> never_loop.rs:21:5
+  --> never_loop.rs:24:5
    |
-21 | /     loop {
-22 | |         loop {
-23 | |             // another one
-24 | |             break;
-25 | |         }
-26 | |         break;
-27 | |     }
+24 | /     loop {
+25 | |         while true {
+26 | |             break
+27 | |         }
+28 | |         break
+29 | |     }
    | |_____^
-   |
-   = note: `-D never-loop` implied by `-D warnings`
-
-error: this loop never actually loops
-  --> never_loop.rs:22:9
-   |
-22 | /         loop {
-23 | |             // another one
-24 | |             break;
-25 | |         }
-   | |_________^
    |
    = note: `-D never-loop` implied by `-D warnings`
 

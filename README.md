@@ -295,7 +295,7 @@ name                                                                            
 [needless_return](https://github.com/Manishearth/rust-clippy/wiki#needless_return)                                     | warn    | using a return statement like `return expr;` where an expression would suffice
 [needless_update](https://github.com/Manishearth/rust-clippy/wiki#needless_update)                                     | warn    | using `Foo { ..base }` when there are no missing fields
 [neg_multiply](https://github.com/Manishearth/rust-clippy/wiki#neg_multiply)                                           | warn    | multiplying integers with -1
-[never_loop](https://github.com/Manishearth/rust-clippy/wiki#never_loop)                                               | allow   | any loop with an unconditional `break` or `return` statement
+[never_loop](https://github.com/Manishearth/rust-clippy/wiki#never_loop)                                               | warn    | any loop that will always `break` or `return`
 [new_ret_no_self](https://github.com/Manishearth/rust-clippy/wiki#new_ret_no_self)                                     | warn    | not returning `Self` in a `new` method
 [new_without_default](https://github.com/Manishearth/rust-clippy/wiki#new_without_default)                             | warn    | `fn new() -> Self` method without `Default` implementation
 [new_without_default_derive](https://github.com/Manishearth/rust-clippy/wiki#new_without_default_derive)               | warn    | `fn new() -> Self` without `#[derive]`able `Default` implementation
