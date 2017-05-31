@@ -1662,9 +1662,9 @@ fn md_render_assoc_item(item: &clean::Item) -> String {
     match item.inner {
         clean::AssociatedConstItem(ref ty, ref default) => {
             if let Some(default) = default.as_ref() {
-                format!("```\n{}: {:?} = {}\n```\n\n", item.name.as_ref().unwrap(), ty, default)
+                format!("```\n{}: {:#} = {}\n```\n\n", item.name.as_ref().unwrap(), ty, default)
             } else {
-                format!("```\n{}: {:?}\n```\n\n", item.name.as_ref().unwrap(), ty)
+                format!("```\n{}: {:#}\n```\n\n", item.name.as_ref().unwrap(), ty)
             }
         }
         _ => String::new(),
