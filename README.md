@@ -65,7 +65,7 @@ rustup component add rust-src
 chmod +x -R ~/.rustup/toolchains/*/lib/rustlib/src/rust/src/jemalloc/include/jemalloc/
 cargo install xargo
 cd xargo/
-RUSTFLAGS='-Zalways-encode-mir' xargo build --target `rustc -vV | egrep '^host: ' | sed 's/^host: //'`
+RUSTFLAGS='-Zalways-encode-mir' xargo build
 ```
 
 Now you can run miri against the libstd compiled by xargo:
