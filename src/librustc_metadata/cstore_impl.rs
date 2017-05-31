@@ -25,6 +25,7 @@ use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE
 
 use rustc::dep_graph::{DepNode, GlobalMetaDataKind};
 use rustc::hir::map::{DefKey, DefPath, DisambiguatedDefPathData, DefPathHash};
+use rustc::hir::map::definitions::DefPathTable;
 use rustc::util::nodemap::{NodeSet, DefIdMap};
 use rustc_back::PanicStrategy;
 
@@ -335,6 +336,10 @@ impl CrateStore for cstore::CStore {
 
     fn def_path_hash(&self, def: DefId) -> DefPathHash {
         self.get_crate_data(def.krate).def_path_hash(def.index)
+    }
+
+    fn def_path_table(&self, cnum: CrateNum) -> Rc<DefPathTable> {
+        self.get_crate_data(cnum).def_path_table.clone()
     }
 
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>

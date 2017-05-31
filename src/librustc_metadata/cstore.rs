@@ -76,7 +76,7 @@ pub struct CrateMetadata {
     /// hashmap, which gives the reverse mapping.  This allows us to
     /// quickly retrace a `DefPath`, which is needed for incremental
     /// compilation support.
-    pub def_path_table: DefPathTable,
+    pub def_path_table: Rc<DefPathTable>,
 
     pub exported_symbols: Tracked<FxHashSet<DefIndex>>,
 

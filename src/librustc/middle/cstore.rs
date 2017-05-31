@@ -26,7 +26,8 @@ use hir::def;
 use dep_graph::DepNode;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::map as hir_map;
-use hir::map::definitions::{Definitions, DefKey, DisambiguatedDefPathData};
+use hir::map::definitions::{Definitions, DefKey, DisambiguatedDefPathData,
+                            DefPathTable};
 use hir::svh::Svh;
 use ich;
 use middle::lang_items;
@@ -282,6 +283,7 @@ pub trait CrateStore {
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
     fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash;
+    fn def_path_table(&self, cnum: CrateNum) -> Rc<DefPathTable>;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children(&self, did: DefId) -> Vec<def::Export>;
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro;
@@ -414,6 +416,9 @@ impl CrateStore for DummyCrateStore {
     }
     fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash {
         bug!("def_path_hash")
+    }
+    fn def_path_table(&self, cnum: CrateNum) -> Rc<DefPathTable> {
+        bug!("def_path_table")
     }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
     fn item_children(&self, did: DefId) -> Vec<def::Export> { bug!("item_children") }

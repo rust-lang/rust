@@ -126,6 +126,30 @@ impl DefPathTable {
 
         Some(index)
     }
+
+    pub fn add_def_path_hashes_to(&self,
+                                  cnum: CrateNum,
+                                  out: &mut FxHashMap<DefPathHash, DefId>) {
+        for address_space in &[DefIndexAddressSpace::Low, DefIndexAddressSpace::High] {
+            let start_index = address_space.start();
+            out.extend(
+                (&self.def_path_hashes[address_space.index()])
+                    .iter()
+                    .enumerate()
+                    .map(|(index, &hash)| {
+                        let def_id = DefId {
+                            krate: cnum,
+                            index: DefIndex::new(index + start_index),
+                        };
+                        (hash, def_id)
+                    })
+            );
+        }
+    }
+
+    pub fn size(&self) -> usize {
+        self.key_to_index.len()
+    }
 }
 
 
