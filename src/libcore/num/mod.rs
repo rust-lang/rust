@@ -15,7 +15,6 @@
 use convert::TryFrom;
 use fmt;
 use intrinsics;
-use mem::size_of;
 use str::FromStr;
 
 /// Provides intentionally-wrapped arithmetic on `T`.
@@ -2327,26 +2326,25 @@ macro_rules! uint_impl {
             (self.wrapping_sub(1)) & self == 0 && !(self == 0)
         }
 
-        // Returns one less than next greater power of two.
-        // (For 8u8 next greater power of two is 16u8 and for 6u8 it is 8u8)
-        //
-        // 8u8.round_up_to_one_less_than_a_power_of_two() == 15
-        // 6u8.round_up_to_one_less_than_a_power_of_two() == 7
-        fn round_up_to_one_less_than_a_power_of_two(self) -> Self {
-            let bits = size_of::<Self>() as u32 * 8;
-            let z = self.leading_zeros();
-            (if z == bits { 0 as Self } else { !0 }).wrapping_shr(z)
-        }
-
         // Returns one less than next power of two.
         // (For 8u8 next power of two is 8u8 and for 6u8 it is 8u8)
         //
         // 8u8.one_less_than_next_power_of_two() == 7
         // 6u8.one_less_than_next_power_of_two() == 7
+        //
+        // This method cannot overflow, as in the `next_power_of_two`
+        // overflow cases it instead ends up returning the maximum value
+        // of the type, and can return 0 for 0.
         fn one_less_than_next_power_of_two(self) -> Self {
-            self.wrapping_sub(1)
-                .round_up_to_one_less_than_a_power_of_two()
-                .wrapping_add(if self == 0 { 1 } else { 0 })
+            if self <= 1 { return 0; }
+
+            // Because `p > 0`, it cannot consist entirely of leading zeros.
+            // That means the shift is always in-bounds, and some processors
+            // (such as intel pre-haswell) have more efficient ctlz
+            // intrinsics when the argument is non-zero.
+            let p = self - 1;
+            let z = p.leading_zeros();
+            <$SelfT>::max_value() >> z
         }
 
         /// Returns the smallest power of two greater than or equal to `self`.

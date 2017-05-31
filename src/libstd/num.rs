@@ -176,7 +176,10 @@ mod tests {
             fn $test_name() {
                 #![test]
                 assert_eq!((0 as $T).checked_next_power_of_two(), Some(1));
-                assert!(($T::MAX / 2).checked_next_power_of_two().is_some());
+                let smax = $T::MAX >> 1;
+                assert_eq!(smax.checked_next_power_of_two(), Some(smax+1));
+                assert_eq!((smax + 1).checked_next_power_of_two(), Some(smax + 1));
+                assert_eq!((smax + 2).checked_next_power_of_two(), None);
                 assert_eq!(($T::MAX - 1).checked_next_power_of_two(), None);
                 assert_eq!($T::MAX.checked_next_power_of_two(), None);
                 let mut next_power = 1;
