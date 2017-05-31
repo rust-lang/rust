@@ -724,11 +724,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // Hook pthread calls that go to the thread-local storage memory subsystem
             "pthread_key_create" => {
                 let key_ptr = args[0].read_ptr(&self.memory)?;
-                
+
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
                 let dtor_ptr = args[1].read_ptr(&self.memory)?;
                 let dtor = if dtor_ptr.is_null_ptr() { None } else { Some(self.memory.get_fn(dtor_ptr.alloc_id)?) };
-                
+
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
                 let key_size = match self.operand_ty(&arg_operands[0]).sty {
                     TypeVariants::TyRawPtr(TypeAndMut { ty, .. }) => {
@@ -737,14 +737,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                     _ => return Err(EvalError::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))
                 };
-                
+
                 // Create key and write it into the memory where key_ptr wants it
-                let key = self.memory.create_tls_key(dtor);
-                if key >= (1 << key_size.bits()) {
+                let key = self.memory.create_tls_key(dtor) as u128;
+                if key_size.bits() < 128 && key >= (1u128 << key_size.bits() as u128) {
                     return Err(EvalError::OutOfTls);
                 }
-                self.memory.write_int(key_ptr, key as i128, key_size.bytes())?;
-                
+                self.memory.write_uint(key_ptr, key, key_size.bytes())?;
+
                 // Return success (0)
                 self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
             }
