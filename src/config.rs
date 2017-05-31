@@ -355,7 +355,7 @@ macro_rules! create_config {
             /// Construct a `Config` from the toml file specified at `file_path`.
             ///
             /// This method only looks at the provided path, for a method that
-            /// searches parents for an `rls.toml` see `resolve_config`.
+            /// searches parents for a `rustfmt.toml` see `from_resolved_toml_path`.
             ///
             /// Return a `Config` if the config could be read and parsed from
             /// the file, Error otherwise.
