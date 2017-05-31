@@ -1,5 +1,5 @@
-rustc (1.19.0-dev-2017-05-30-1) UNRELEASED; urgency=low
+rustc (1.19.0-dev-20170531-1) unstable; urgency=low
 
   * Initial Release.
 
- -- Onur Aslan <onur@onur.im>  Tue, 30 May 2017 18:17:11 +0300
+ -- Onur Aslan <onur@onur.im>  Tue, 31 May 2017 16:45:11 +0300
