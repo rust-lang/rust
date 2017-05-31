@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 
 use syntax_pos::Span;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ChangeCategory {
     Patch,
     NonBreaking,
@@ -17,6 +17,7 @@ pub enum ChangeCategory {
 
 pub use self::ChangeCategory::*;
 
+#[derive(Debug)]
 pub enum ChangeType {
     Removal,
     Addition,
@@ -54,6 +55,10 @@ impl Change {
 
     pub fn type_(&self) -> &ChangeType {
         &self.change_type
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
     }
 }
 
@@ -98,5 +103,13 @@ impl ChangeSet {
         }
 
         self.changes.insert(change);
+    }
+
+    pub fn output(&self) {
+        println!("max: {:?}", self.max);
+
+        for change in &self.changes {
+            println!("  {:?}: {}", change.type_(), change.path().inner());
+        }
     }
 }

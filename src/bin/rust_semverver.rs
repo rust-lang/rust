@@ -49,6 +49,8 @@ fn callback(state: &driver::CompileState) {
 
     old_map.compare(&new_map, Checking::FromOld, &mut changes);
     new_map.compare(&old_map, Checking::FromNew, &mut changes);
+
+    changes.output();
 }
 
 struct SemVerVerCompilerCalls {
