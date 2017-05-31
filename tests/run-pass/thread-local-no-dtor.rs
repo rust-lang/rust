@@ -1,4 +1,4 @@
-//ignore-windows-gnu
+//ignore-windows
 
 #![feature(libc)]
 extern crate libc;
