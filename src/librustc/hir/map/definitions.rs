@@ -320,7 +320,9 @@ impl DefPath {
 
         s.push_str(&tcx.original_crate_name(self.krate).as_str());
         s.push_str("/");
-        s.push_str(&tcx.crate_disambiguator(self.krate).as_str());
+        // Don't print the whole crate disambiguator. That's just annoying in
+        // debug output.
+        s.push_str(&tcx.crate_disambiguator(self.krate).as_str()[..7]);
 
         for component in &self.data {
             write!(s,
