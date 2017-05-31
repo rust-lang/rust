@@ -1,5 +1,5 @@
 #![feature(box_syntax, custom_attribute, attr_literals)]
-#![miri(memory_size=1000)]
+#![miri(memory_size=2048)]
 
 fn main() {
     loop {

@@ -1,6 +1,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, TypeVariants, Ty, TypeAndMut};
 use rustc::ty::layout::Layout;
 use syntax::codemap::Span;
 use syntax::attr;
@@ -9,7 +9,7 @@ use syntax::abi::Abi;
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext, IntegerExt, StackPopCleanup, is_inhabited};
 use lvalue::Lvalue;
-use memory::Pointer;
+use memory::{Pointer, TlsKey};
 use value::PrimVal;
 use value::Value;
 use rustc_data_structures::indexed_vec::Idx;
@@ -72,15 +72,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             ty::TyFnDef(_, _, real_sig) => {
                                 let sig = self.erase_lifetimes(&sig);
                                 let real_sig = self.erase_lifetimes(&real_sig);
-                                match instance.def {
-                                    // FIXME: this needs checks for weird transmutes
-                                    // we need to bail here, because noncapturing closures as fn ptrs fail the checks
-                                    ty::InstanceDef::ClosureOnceShim{..} => {}
-                                    _ => if sig.abi != real_sig.abi ||
-                                        sig.variadic != real_sig.variadic ||
-                                        sig.inputs_and_output != real_sig.inputs_and_output {
-                                        return Err(EvalError::FunctionPointerTyMismatch(real_sig, sig));
-                                    },
+                                if !self.check_sig_compat(sig, real_sig)? {
+                                    return Err(EvalError::FunctionPointerTyMismatch(real_sig, sig));
                                 }
                             },
                             ref other => bug!("instance def ty: {:?}", other),
@@ -138,6 +131,70 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
+    /// Decides whether it is okay to call the method with signature `real_sig` using signature `sig`.
+    /// FIXME: This should take into account the platform-dependent ABI description.
+    fn check_sig_compat(
+        &mut self,
+        sig: ty::FnSig<'tcx>,
+        real_sig: ty::FnSig<'tcx>,
+    ) -> EvalResult<'tcx, bool> {
+        fn check_ty_compat<'tcx>(
+            ty: ty::Ty<'tcx>,
+            real_ty: ty::Ty<'tcx>,
+        ) -> bool {
+            if ty == real_ty { return true; } // This is actually a fast pointer comparison
+            return match (&ty.sty, &real_ty.sty) {
+                // Permit changing the pointer type of raw pointers and references as well as
+                // mutability of raw pointers.
+                // TODO: Should not be allowed when fat pointers are involved.
+                (&TypeVariants::TyRawPtr(_), &TypeVariants::TyRawPtr(_)) => true,
+                (&TypeVariants::TyRef(_, _), &TypeVariants::TyRef(_, _)) =>
+                    ty.is_mutable_pointer() == real_ty.is_mutable_pointer(),
+                // rule out everything else
+                _ => false
+            }
+        }
+
+        if sig.abi == real_sig.abi &&
+            sig.variadic == real_sig.variadic &&
+            sig.inputs_and_output.len() == real_sig.inputs_and_output.len() &&
+            sig.inputs_and_output.iter().zip(real_sig.inputs_and_output).all(|(ty, real_ty)| check_ty_compat(ty, real_ty)) {
+            // Definitely good.
+            return Ok(true);
+        }
+
+        if sig.variadic || real_sig.variadic {
+            // We're not touching this
+            return Ok(false);
+        }
+
+        // We need to allow what comes up when a non-capturing closure is cast to a fn().
+        match (sig.abi, real_sig.abi) {
+            (Abi::Rust, Abi::RustCall) // check the ABIs.  This makes the test here non-symmetric.
+                if check_ty_compat(sig.output(), real_sig.output()) && real_sig.inputs_and_output.len() == 3 => {
+                // First argument of real_sig must be a ZST
+                let fst_ty = real_sig.inputs_and_output[0];
+                let layout = self.type_layout(fst_ty)?;
+                let size = layout.size(&self.tcx.data_layout).bytes();
+                if size == 0 {
+                    // Second argument must be a tuple matching the argument list of sig
+                    let snd_ty = real_sig.inputs_and_output[1];
+                    match snd_ty.sty {
+                        TypeVariants::TyTuple(tys, _) if sig.inputs().len() == tys.len() =>
+                            if sig.inputs().iter().zip(tys).all(|(ty, real_ty)| check_ty_compat(ty, real_ty)) {
+                                return Ok(true)
+                            },
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        };
+
+        // Nope, this doesn't work.
+        return Ok(false);
+    }
+
     fn eval_fn_call(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -172,7 +229,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if self.eval_fn_call_inner(
                     instance,
                     destination,
+                    arg_operands,
                     span,
+                    sig,
                 )? {
                     return Ok(());
                 }
@@ -202,18 +261,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(())
             }
             ty::InstanceDef::Item(_) => {
-                match sig.abi {
-                    Abi::C => {
-                        let ty = sig.output();
-                        let (ret, target) = destination.unwrap();
-                        self.call_c_abi(instance.def_id(), arg_operands, ret, ty)?;
-                        self.dump_local(ret);
-                        self.goto_block(target);
-                        return Ok(());
-                    },
-                    Abi::Rust | Abi::RustCall => {},
-                    _ => unimplemented!(),
-                }
                 let mut args = Vec::new();
                 for arg in arg_operands {
                     let arg_val = self.eval_operand(arg)?;
@@ -221,25 +268,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     args.push((arg_val, arg_ty));
                 }
 
+                // Push the stack frame, and potentially be entirely done if the call got hooked
                 if self.eval_fn_call_inner(
                     instance,
                     destination,
+                    arg_operands,
                     span,
+                    sig,
                 )? {
                     return Ok(());
                 }
 
+                // Pass the arguments
                 let mut arg_locals = self.frame().mir.args_iter();
                 trace!("ABI: {:?}", sig.abi);
                 trace!("arg_locals: {:?}", self.frame().mir.args_iter().collect::<Vec<_>>());
                 trace!("arg_operands: {:?}", arg_operands);
                 match sig.abi {
-                    Abi::Rust => {
-                        for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
-                            let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                            self.write_value(arg_val, dest, arg_ty)?;
-                        }
-                    }
                     Abi::RustCall => {
                         assert_eq!(args.len(), 2);
 
@@ -282,8 +327,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         } else {
                             bug!("rust-call ABI tuple argument was {:?}, {:?}", arg_ty, layout);
                         }
+                    },
+                    _ => {
+                        for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
+                            let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                            self.write_value(arg_val, dest, arg_ty)?;
+                        }
                     }
-                    _ => unimplemented!(),
                 }
                 Ok(())
             },
@@ -314,7 +364,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if self.eval_fn_call_inner(
                     instance,
                     destination,
+                    arg_operands,
                     span,
+                    sig,
                 )? {
                     return Ok(());
                 }
@@ -361,7 +413,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+        arg_operands: &[mir::Operand<'tcx>],
         span: Span,
+        sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool> {
         trace!("eval_fn_call_inner: {:#?}, {:#?}", instance, destination);
 
@@ -370,28 +424,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let mir = match self.load_mir(instance.def) {
             Ok(mir) => mir,
             Err(EvalError::NoMirFor(path)) => {
-                match &path[..] {
-                    // let's just ignore all output for now
-                    "std::io::_print" => {
-                        self.goto_block(destination.unwrap().1);
-                        return Ok(true);
-                    },
-                    "std::thread::Builder::new" => return Err(EvalError::Unimplemented("miri does not support threading".to_owned())),
-                    "std::env::args" => return Err(EvalError::Unimplemented("miri does not support program arguments".to_owned())),
-                    "std::panicking::rust_panic_with_hook" |
-                    "std::rt::begin_panic_fmt" => return Err(EvalError::Panic),
-                    "std::panicking::panicking" |
-                    "std::rt::panicking" => {
-                        let (lval, block) = destination.expect("std::rt::panicking does not diverge");
-                        // we abort on panic -> `std::rt::panicking` always returns false
-                        let bool = self.tcx.types.bool;
-                        self.write_primval(lval, PrimVal::from_bool(false), bool)?;
-                        self.goto_block(block);
-                        return Ok(true);
-                    }
-                    _ => {},
-                }
-                return Err(EvalError::NoMirFor(path));
+                self.call_missing_fn(instance, destination, arg_operands, sig, path)?;
+                return Ok(true);
             },
             Err(other) => return Err(other),
         };
@@ -464,13 +498,56 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         assert!(nndiscr == 0 || nndiscr == 1);
         Ok(if not_null { nndiscr } else { 1 - nndiscr })
     }
+    
+    /// Returns Ok() when the function was handled, fail otherwise
+    fn call_missing_fn(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+        arg_operands: &[mir::Operand<'tcx>],
+        sig: ty::FnSig<'tcx>,
+        path: String,
+    ) -> EvalResult<'tcx> {
+        if sig.abi == Abi::C {
+            // An external C function
+            let ty = sig.output();
+            let (ret, target) = destination.unwrap();
+            self.call_c_abi(instance.def_id(), arg_operands, ret, ty, target)?;
+            return Ok(());
+        }
+    
+        // A Rust function is missing, which means we are running with MIR missing for libstd (or other dependencies).
+        // Still, we can make many things mostly work by "emulating" or ignoring some functions.
+        match &path[..] {
+            "std::io::_print" => {
+                trace!("Ignoring output.  To run programs that print, make sure you have a libstd with full MIR.");
+                self.goto_block(destination.unwrap().1);
+                Ok(())
+            },
+            "std::thread::Builder::new" => Err(EvalError::Unimplemented("miri does not support threading".to_owned())),
+            "std::env::args" => Err(EvalError::Unimplemented("miri does not support program arguments".to_owned())),
+            "std::panicking::rust_panic_with_hook" |
+            "std::rt::begin_panic_fmt" => Err(EvalError::Panic),
+            "std::panicking::panicking" |
+            "std::rt::panicking" => {
+                let (lval, block) = destination.expect("std::rt::panicking does not diverge");
+                // we abort on panic -> `std::rt::panicking` always returns false
+                let bool = self.tcx.types.bool;
+                self.write_primval(lval, PrimVal::from_bool(false), bool)?;
+                self.goto_block(block);
+                Ok(())
+            }
+            _ => Err(EvalError::NoMirFor(path)),
+        }
+    }
 
     fn call_c_abi(
         &mut self,
         def_id: DefId,
-        args: &[mir::Operand<'tcx>],
+        arg_operands: &[mir::Operand<'tcx>],
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
+        dest_block: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
         let name = self.tcx.item_name(def_id);
         let attrs = self.tcx.get_attrs(def_id);
@@ -478,7 +555,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             .unwrap_or(name)
             .as_str();
 
-        let args_res: EvalResult<Vec<Value>> = args.iter()
+        let args_res: EvalResult<Vec<Value>> = arg_operands.iter()
             .map(|arg| self.eval_operand(arg))
             .collect();
         let args = args_res?;
@@ -517,6 +594,41 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
             }
 
+            "__rust_maybe_catch_panic" => {
+                // fn __rust_maybe_catch_panic(f: fn(*mut u8), data: *mut u8, data_ptr: *mut usize, vtable_ptr: *mut usize) -> u32
+                // We abort on panic, so not much is going on here, but we still have to call the closure
+                let u8_ptr_ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
+                let f = args[0].read_ptr(&self.memory)?;
+                let data = args[1].read_ptr(&self.memory)?;
+                let f_instance = self.memory.get_fn(f.alloc_id)?;
+                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+
+                // Now we make a function call.  TODO: Consider making this re-usable?  EvalContext::step does sth. similar for the TLS dtors,
+                // and of course eval_main.
+                let mir = self.load_mir(f_instance.def)?;
+                self.push_stack_frame(
+                    f_instance,
+                    mir.span,
+                    mir,
+                    Lvalue::from_ptr(Pointer::zst_ptr()),
+                    StackPopCleanup::Goto(dest_block),
+                )?;
+
+                let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("Argument to __rust_maybe_catch_panic does not take enough arguments.".to_owned()))?;
+                let arg_dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                self.write_value(Value::ByVal(PrimVal::Ptr(data)), arg_dest, u8_ptr_ty)?;
+
+                // We ourselbes return 0
+                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+
+                // Don't fall through
+                return Ok(());
+            }
+
+            "__rust_start_panic" => {
+                return Err(EvalError::Panic);
+            }
+
             "memcmp" => {
                 let left = args[0].read_ptr(&self.memory)?;
                 let right = args[1].read_ptr(&self.memory)?;
@@ -543,9 +655,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().rev().position(|&c| c == val) {
                     let new_ptr = ptr.offset(num - idx as u64 - 1);
-                    self.write_value(Value::ByVal(PrimVal::Ptr(new_ptr)), dest, dest_ty)?;
+                    self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
                 } else {
-                    self.write_value(Value::ByVal(PrimVal::Bytes(0)), dest, dest_ty)?;
+                    self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
                 }
             }
 
@@ -555,9 +667,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().position(|&c| c == val) {
                     let new_ptr = ptr.offset(idx as u64);
-                    self.write_value(Value::ByVal(PrimVal::Ptr(new_ptr)), dest, dest_ty)?;
+                    self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
                 } else {
-                    self.write_value(Value::ByVal(PrimVal::Bytes(0)), dest, dest_ty)?;
+                    self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
                 }
             }
 
@@ -567,17 +679,102 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let name = self.memory.read_c_str(name_ptr)?;
                     info!("ignored env var request for `{:?}`", ::std::str::from_utf8(name));
                 }
-                self.write_value(Value::ByVal(PrimVal::Bytes(0)), dest, dest_ty)?;
-            }
-
-            // unix panic code inside libstd will read the return value of this function
-            "pthread_rwlock_rdlock" => {
                 self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
             }
 
+            "write" => {
+                let fd = self.value_to_primval(args[0], usize)?.to_u64()?;
+                let buf = args[1].read_ptr(&self.memory)?;
+                let n = self.value_to_primval(args[2], usize)?.to_u64()?;
+                trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
+                let result = if fd == 1 || fd == 2 { // stdout/stderr
+                    use std::io::{self, Write};
+                
+                    let buf_cont = self.memory.read_bytes(buf, n)?;
+                    let res = if fd == 1 { io::stdout().write(buf_cont) } else { io::stderr().write(buf_cont) };
+                    match res { Ok(n) => n as isize, Err(_) => -1 }
+                } else {
+                    info!("Ignored output to FD {}", fd);
+                    n as isize // pretend it all went well
+                }; // now result is the value we return back to the program
+                self.write_primval(dest, PrimVal::Bytes(result as u128), dest_ty)?;
+            }
+
+            // Some things needed for sys::thread initialization to go through
+            "signal" | "sigaction" | "sigaltstack" => {
+                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+            }
+
+            "sysconf" => {
+                let name = self.value_to_primval(args[0], usize)?.to_u64()?;
+                trace!("sysconf() called with name {}", name);
+                let result = match name {
+                    30 => 4096, // _SC_PAGESIZE
+                    _ => return Err(EvalError::Unimplemented(format!("Unimplemented sysconf name: {}", name)))
+                };
+                self.write_primval(dest, PrimVal::Bytes(result), dest_ty)?;
+            }
+
+            "mmap" => {
+                // This is a horrible hack, but well... the guard page mechanism calls mmap and expects a particular return value, so we give it that value
+                let addr = args[0].read_ptr(&self.memory)?;
+                self.write_primval(dest, PrimVal::Ptr(addr), dest_ty)?;
+            }
+
+            // Hook pthread calls that go to the thread-local storage memory subsystem
+            "pthread_key_create" => {
+                let key_ptr = args[0].read_ptr(&self.memory)?;
+                
+                // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
+                let dtor_ptr = args[1].read_ptr(&self.memory)?;
+                let dtor = if dtor_ptr.is_null_ptr() { None } else { Some(self.memory.get_fn(dtor_ptr.alloc_id)?) };
+                
+                // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
+                let key_size = match self.operand_ty(&arg_operands[0]).sty {
+                    TypeVariants::TyRawPtr(TypeAndMut { ty, .. }) => {
+                        let layout = self.type_layout(ty)?;
+                        layout.size(&self.tcx.data_layout)
+                    }
+                    _ => return Err(EvalError::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))
+                };
+                
+                // Create key and write it into the memory where key_ptr wants it
+                let key = self.memory.create_tls_key(dtor);
+                if key >= (1 << key_size.bits()) {
+                    return Err(EvalError::OutOfTls);
+                }
+                self.memory.write_int(key_ptr, key as i128, key_size.bytes())?;
+                
+                // Return success (0)
+                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+            }
+            "pthread_key_delete" => {
+                // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
+                let key = self.value_to_primval(args[0], usize)?.to_u64()? as TlsKey;
+                self.memory.delete_tls_key(key)?;
+                // Return success (0)
+                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+            }
+            "pthread_getspecific" => {
+                // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
+                let key = self.value_to_primval(args[0], usize)?.to_u64()? as TlsKey;
+                let ptr = self.memory.load_tls(key)?;
+                self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
+            }
+            "pthread_setspecific" => {
+                // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
+                let key = self.value_to_primval(args[0], usize)?.to_u64()? as TlsKey;
+                let new_ptr = args[1].read_ptr(&self.memory)?;
+                self.memory.store_tls(key, new_ptr)?;
+                
+                // Return success (0)
+                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+            }
+
+            // Stub out all the other pthread calls to just return 0
             link_name if link_name.starts_with("pthread_") => {
                 warn!("ignoring C ABI call: {}", link_name);
-                return Ok(());
+                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
             },
 
             _ => {
@@ -588,6 +785,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // Since we pushed no stack frame, the main loop will act
         // as if the call just completed and it's returning to the
         // current frame.
+        self.dump_local(dest);
+        self.goto_block(dest_block);
         Ok(())
-    }   
+    }
 }

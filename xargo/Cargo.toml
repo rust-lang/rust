@@ -1,0 +1,6 @@
+[package]
+name = "miri-xargo"
+description = "A dummy project for building libstd with xargo."
+version = "0.0.0"
+
+[dependencies]

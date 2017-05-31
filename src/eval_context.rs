@@ -126,6 +126,7 @@ impl Default for ResourceLimits {
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, limits: ResourceLimits) -> Self {
+        // Register array drop glue code
         let source_info = mir::SourceInfo {
             span: DUMMY_SP,
             scope: mir::ARGUMENT_VISIBILITY_SCOPE
@@ -852,7 +853,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             let fn_ptr = self.memory.create_fn_alloc(instance);
                             self.write_value(Value::ByVal(PrimVal::Ptr(fn_ptr)), dest, dest_ty)?;
                         },
-                        ref other => bug!("reify fn pointer on {:?}", other),
+                        ref other => bug!("closure fn pointer on {:?}", other),
                     },
                 }
             }
@@ -1557,6 +1558,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub(super) fn dump_local(&self, lvalue: Lvalue<'tcx>) {
+        // Debug output
         if let Lvalue::Local { frame, local, field } = lvalue {
             let mut allocs = Vec::new();
             let mut msg = format!("{:?}", local);
@@ -1676,62 +1678,113 @@ impl<'tcx> Frame<'tcx> {
 
 pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    def_id: DefId,
+    main_id: DefId,
+    start_wrapper: Option<DefId>,
     limits: ResourceLimits,
 ) {
-    let mut ecx = EvalContext::new(tcx, limits);
-    let instance = ty::Instance::mono(tcx, def_id);
-    let mir = ecx.load_mir(instance.def).expect("main function's MIR not found");
+    fn run_main<'a, 'tcx: 'a>(
+        ecx: &mut EvalContext<'a, 'tcx>,
+        main_id: DefId,
+        start_wrapper: Option<DefId>,
+    ) -> EvalResult<'tcx> {
+        let main_instance = ty::Instance::mono(ecx.tcx, main_id);
+        let main_mir = ecx.load_mir(main_instance.def)?;
+        let mut cleanup_ptr = None; // Pointer to be deallocated when we are done
 
-    if !mir.return_ty.is_nil() || mir.arg_count != 0 {
-        let msg = "miri does not support main functions without `fn()` type signatures";
-        tcx.sess.err(&EvalError::Unimplemented(String::from(msg)).to_string());
-        return;
+        if !main_mir.return_ty.is_nil() || main_mir.arg_count != 0 {
+            return Err(EvalError::Unimplemented("miri does not support main functions without `fn()` type signatures".to_owned()));
+        }
+
+        if let Some(start_id) = start_wrapper {
+            let start_instance = ty::Instance::mono(ecx.tcx, start_id);
+            let start_mir = ecx.load_mir(start_instance.def)?;
+
+            if start_mir.arg_count != 3 {
+                return Err(EvalError::AbiViolation(format!("'start' lang item should have three arguments, but has {}", start_mir.arg_count)));
+            }
+
+            // Return value
+            let ret_ptr = ecx.memory.allocate(ecx.tcx.data_layout.pointer_size.bytes(), ecx.tcx.data_layout.pointer_align.abi())?;
+            cleanup_ptr = Some(ret_ptr);
+
+            // Push our stack frame
+            ecx.push_stack_frame(
+                start_instance,
+                start_mir.span,
+                start_mir,
+                Lvalue::from_ptr(ret_ptr),
+                StackPopCleanup::None,
+            )?;
+
+            let mut args = ecx.frame().mir.args_iter();
+
+            // First argument: pointer to main()
+            let main_ptr = ecx.memory.create_fn_alloc(main_instance);
+            let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
+            let main_ty = main_instance.def.def_ty(ecx.tcx);
+            let main_ptr_ty = ecx.tcx.mk_fn_ptr(main_ty.fn_sig());
+            ecx.write_value(Value::ByVal(PrimVal::Ptr(main_ptr)), dest, main_ptr_ty)?;
+
+            // Second argument (argc): 0
+            let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
+            let ty = ecx.tcx.types.isize;
+            ecx.write_value(Value::ByVal(PrimVal::Bytes(0)), dest, ty)?;
+
+            // Third argument (argv): 0
+            let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
+            let ty = ecx.tcx.mk_imm_ptr(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8));
+            ecx.write_value(Value::ByVal(PrimVal::Bytes(0)), dest, ty)?;
+        } else {
+            ecx.push_stack_frame(
+                main_instance,
+                main_mir.span,
+                main_mir,
+                Lvalue::from_ptr(Pointer::zst_ptr()),
+                StackPopCleanup::None,
+            )?;
+        }
+
+        while ecx.step()? {}
+        if let Some(cleanup_ptr) = cleanup_ptr {
+            ecx.memory.deallocate(cleanup_ptr)?;
+        }
+        return Ok(());
     }
 
-    ecx.push_stack_frame(
-        instance,
-        DUMMY_SP,
-        mir,
-        Lvalue::from_ptr(Pointer::zst_ptr()),
-        StackPopCleanup::None,
-    ).expect("could not allocate first stack frame");
-
-    loop {
-        match ecx.step() {
-            Ok(true) => {}
-            Ok(false) => {
-                let leaks = ecx.memory.leak_report();
-                if leaks != 0 {
-                    tcx.sess.err("the evaluated program leaked memory");
-                }
-                return;
+    let mut ecx = EvalContext::new(tcx, limits);
+    match run_main(&mut ecx, main_id, start_wrapper) {
+        Ok(()) => {
+            let leaks = ecx.memory.leak_report();
+            if leaks != 0 {
+                tcx.sess.err("the evaluated program leaked memory");
             }
-            Err(e) => {
-                report(tcx, &ecx, e);
-                return;
-            }
+        }
+        Err(e) => {
+            report(tcx, &ecx, e);
         }
     }
 }
 
 fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
-    let frame = ecx.stack().last().expect("stackframe was empty");
-    let block = &frame.mir.basic_blocks()[frame.block];
-    let span = if frame.stmt < block.statements.len() {
-        block.statements[frame.stmt].source_info.span
-    } else {
-        block.terminator().source_info.span
-    };
-    let mut err = tcx.sess.struct_span_err(span, &e.to_string());
-    for &Frame { instance, span, .. } in ecx.stack().iter().rev() {
-        if tcx.def_key(instance.def_id()).disambiguated_data.data == DefPathData::ClosureExpr {
-            err.span_note(span, "inside call to closure");
-            continue;
+    if let Some(frame) = ecx.stack().last() {
+        let block = &frame.mir.basic_blocks()[frame.block];
+        let span = if frame.stmt < block.statements.len() {
+            block.statements[frame.stmt].source_info.span
+        } else {
+            block.terminator().source_info.span
+        };
+        let mut err = tcx.sess.struct_span_err(span, &e.to_string());
+        for &Frame { instance, span, .. } in ecx.stack().iter().rev() {
+            if tcx.def_key(instance.def_id()).disambiguated_data.data == DefPathData::ClosureExpr {
+                err.span_note(span, "inside call to closure");
+                continue;
+            }
+            err.span_note(span, &format!("inside call to {}", instance));
         }
-        err.span_note(span, &format!("inside call to {}", instance));
+        err.emit();
+    } else {
+        tcx.sess.err(&e.to_string());
     }
-    err.emit();
 }
 
 // TODO(solson): Upstream these methods into rustc::ty::layout.

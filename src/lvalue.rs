@@ -104,6 +104,15 @@ impl<'tcx> Global<'tcx> {
             initialized: false,
         }
     }
+
+    pub(super) fn initialized(ty: Ty<'tcx>, value: Value, mutable: bool) -> Self {
+        Global {
+            value,
+            mutable,
+            ty,
+            initialized: true,
+        }
+    }
 }
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {

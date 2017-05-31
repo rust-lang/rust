@@ -13,6 +13,7 @@ use error::{EvalResult, EvalError};
 use eval_context::{EvalContext, StackPopCleanup};
 use lvalue::{Global, GlobalId, Lvalue};
 use value::{Value, PrimVal};
+use memory::Pointer;
 use syntax::codemap::Span;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
@@ -31,6 +32,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.memory.clear_packed();
         self.inc_step_counter_and_check_limit(1)?;
         if self.stack.is_empty() {
+            if let Some((instance, ptr)) = self.memory.fetch_tls_dtor() {
+                trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
+                // TODO: Potientially, this has to support all the other possible instances? See eval_fn_call in terminator/mod.rs
+                let mir = self.load_mir(instance.def)?;
+                self.push_stack_frame(
+                    instance,
+                    mir.span,
+                    mir,
+                    Lvalue::from_ptr(Pointer::zst_ptr()),
+                    StackPopCleanup::None,
+                )?;
+                let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()))?;
+                let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
+                self.write_value(Value::ByVal(PrimVal::Ptr(ptr)), dest, ty)?;
+                return Ok(true);
+            }
             return Ok(false);
         }
 
@@ -48,11 +66,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 mir,
                 new_constants: &mut new,
             }.visit_statement(block, stmt, mir::Location { block, statement_index: stmt_id });
+            // if ConstantExtractor added new frames, we don't execute anything here
+            // but await the next call to step
             if new? == 0 {
                 self.statement(stmt)?;
             }
-            // if ConstantExtractor added new frames, we don't execute anything here
-            // but await the next call to step
             return Ok(true);
         }
 
@@ -65,11 +83,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             mir,
             new_constants: &mut new,
         }.visit_terminator(block, terminator, mir::Location { block, statement_index: stmt_id });
+        // if ConstantExtractor added new frames, we don't execute anything here
+        // but await the next call to step
         if new? == 0 {
             self.terminator(terminator)?;
         }
-        // if ConstantExtractor added new frames, we don't execute anything here
-        // but await the next call to step
         Ok(true)
     }
 
@@ -158,6 +176,11 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         if self.ecx.globals.contains_key(&cid) {
             return;
         }
+        if self.ecx.tcx.has_attr(def_id, "linkage") {
+            trace!("Initializing an extern global with NULL");
+            self.ecx.globals.insert(cid, Global::initialized(self.ecx.tcx.type_of(def_id), Value::ByVal(PrimVal::Ptr(Pointer::from_int(0))), !shared));
+            return;
+        }
         self.try(|this| {
             let mir = this.ecx.load_mir(instance.def)?;
             this.ecx.globals.insert(cid, Global::uninitialized(mir.return_ty));
@@ -178,6 +201,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
             )
         });
     }
+
     fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx>>(&mut self, f: F) {
         if let Ok(ref mut n) = *self.new_constants {
             *n += 1;

@@ -1,9 +1,3 @@
-// the following flag prevents this test from running on the host machine
-// this should only be run on miri, because rust doesn't (yet?) optimize ZSTs of different types
-// into the same memory location
-// ignore-test
-
-
 #[derive(PartialEq, Debug)]
 struct A;
 

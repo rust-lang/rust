@@ -54,6 +54,29 @@ Then, inside your own project, use `cargo +nightly miri` to run your project, if
 a bin project, or run `cargo +nightly miri test` to run all tests in your project
 through miri.
 
+## Running miri with full libstd
+
+Per default libstd does not contain the MIR of non-polymorphic functions.  When
+miri hits a call to such a function, execution terminates.  To fix this, it is
+possible to compile libstd with full MIR:
+
+```sh
+rustup component add rust-src
+chmod +x -R ~/.rustup/toolchains/*/lib/rustlib/src/rust/src/jemalloc/include/jemalloc/
+cargo install xargo
+cd xargo/
+RUSTFLAGS='-Zalways-encode-mir' xargo build
+```
+
+Now you can run miri against the libstd compiled by xargo:
+
+```sh
+cargo run --bin miri -- --sysroot ~/.xargo/HOST tests/run-pass/vecs.rs
+```
+
+Notice that you will have to re-run the last step of the preparations above when
+your toolchain changes (e.g., when you update the nightly).
+
 ## Contributing and getting help
 
 Check out the issues on this GitHub repository for some ideas. There's lots that
