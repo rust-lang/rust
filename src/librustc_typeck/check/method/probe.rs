@@ -814,7 +814,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
             let closure_kinds = &self.tables.borrow().closure_kinds;
             let closure_kind = match closure_kinds.get(&closure_id) {
-                Some(&k) => k,
+                Some(&(k, _)) => k,
                 None => {
                     return Err(MethodError::ClosureAmbiguity(trait_def_id));
                 }
