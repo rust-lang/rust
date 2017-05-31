@@ -40,6 +40,14 @@ pub struct Change {
 }
 
 impl Change {
+    pub fn new(change_type: ChangeType, path: Path, export: Export) -> Change {
+        Change {
+            change_type: change_type,
+            path: path,
+            export: export,
+        }
+    }
+
     pub fn span(&self) -> &Span {
         &self.export.span
     }

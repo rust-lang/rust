@@ -1,8 +1,8 @@
-use rustc::hir::def_id::DefId;
+use rustc::hir::def::Export;
 
 use std::collections::HashMap;
 
-#[derive(Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Path {
     inner: Vec<String>,
 }
@@ -32,4 +32,4 @@ impl Path {
     }
 }
 
-pub type PathMap = HashMap<Path, DefId>;
+pub type PathMap = HashMap<Path, Export>;
