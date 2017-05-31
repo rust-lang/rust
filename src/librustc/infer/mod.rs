@@ -1682,7 +1682,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         if let InferTables::InProgress(tables) = self.tables {
             if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
-                return tables.borrow().closure_kinds.get(&id).cloned();
+                return tables.borrow()
+                             .closure_kinds
+                             .get(&id)
+                             .cloned()
+                             .map(|(kind, _)| kind);
             }
         }
 

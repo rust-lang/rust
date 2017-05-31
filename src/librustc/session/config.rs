@@ -1354,7 +1354,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     };
 
     let unparsed_crate_types = matches.opt_strs("crate-type");
-    let (crate_types, emit_metadata) = parse_crate_types_from_list(unparsed_crate_types)
+    let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(error_format, &e[..]));
 
     let mut lint_opts = vec![];
@@ -1402,9 +1402,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             }
         }
     };
-    if emit_metadata {
-        output_types.insert(OutputType::Metadata, None);
-    } else if output_types.is_empty() {
+    if output_types.is_empty() {
         output_types.insert(OutputType::Exe, None);
     }
 
@@ -1629,9 +1627,8 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
 }
 
 pub fn parse_crate_types_from_list(list_list: Vec<String>)
-                                   -> Result<(Vec<CrateType>, bool), String> {
+                                   -> Result<Vec<CrateType>, String> {
     let mut crate_types: Vec<CrateType> = Vec::new();
-    let mut emit_metadata = false;
     for unparsed_crate_type in &list_list {
         for part in unparsed_crate_type.split(',') {
             let new_part = match part {
@@ -1642,13 +1639,6 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>)
                 "cdylib"    => CrateTypeCdylib,
                 "bin"       => CrateTypeExecutable,
                 "proc-macro" => CrateTypeProcMacro,
-                // FIXME(#38640) remove this when Cargo is fixed.
-                "metadata"  => {
-                    early_warn(ErrorOutputType::default(), "--crate-type=metadata is deprecated, \
-                                                            prefer --emit=metadata");
-                    emit_metadata = true;
-                    CrateTypeRlib
-                }
                 _ => {
                     return Err(format!("unknown crate type: `{}`",
                                        part));
@@ -1660,7 +1650,7 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>)
         }
     }
 
-    return Ok((crate_types, emit_metadata));
+    Ok(crate_types)
 }
 
 pub mod nightly_options {

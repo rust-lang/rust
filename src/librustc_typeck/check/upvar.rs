@@ -74,7 +74,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
 struct SeedBorrowKind<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
-    temp_closure_kinds: NodeMap<ty::ClosureKind>,
+    temp_closure_kinds: NodeMap<(ty::ClosureKind, Option<(Span, ast::Name)>)>,
 }
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for SeedBorrowKind<'a, 'gcx, 'tcx> {
@@ -107,7 +107,7 @@ impl<'a, 'gcx, 'tcx> SeedBorrowKind<'a, 'gcx, 'tcx> {
                      capture_clause: hir::CaptureClause)
     {
         if !self.fcx.tables.borrow().closure_kinds.contains_key(&expr.id) {
-            self.temp_closure_kinds.insert(expr.id, ty::ClosureKind::Fn);
+            self.temp_closure_kinds.insert(expr.id, (ty::ClosureKind::Fn, None));
             debug!("check_closure: adding closure {:?} as Fn", expr.id);
         }
 
@@ -143,12 +143,12 @@ impl<'a, 'gcx, 'tcx> SeedBorrowKind<'a, 'gcx, 'tcx> {
 
 struct AdjustBorrowKind<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
-    temp_closure_kinds: NodeMap<ty::ClosureKind>,
+    temp_closure_kinds: NodeMap<(ty::ClosureKind, Option<(Span, ast::Name)>)>,
 }
 
 impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
     fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
-           temp_closure_kinds: NodeMap<ty::ClosureKind>)
+           temp_closure_kinds: NodeMap<(ty::ClosureKind, Option<(Span, ast::Name)>)>)
            -> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         AdjustBorrowKind { fcx: fcx, temp_closure_kinds: temp_closure_kinds }
     }
@@ -211,8 +211,8 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
 
         // If we are also inferred the closure kind here, update the
         // main table and process any deferred resolutions.
-        if let Some(&kind) = self.temp_closure_kinds.get(&id) {
-            self.fcx.tables.borrow_mut().closure_kinds.insert(id, kind);
+        if let Some(&(kind, context)) = self.temp_closure_kinds.get(&id) {
+            self.fcx.tables.borrow_mut().closure_kinds.insert(id, (kind, context));
             let closure_def_id = self.fcx.tcx.hir.local_def_id(id);
             debug!("closure_kind({:?}) = {:?}", closure_def_id, kind);
 
@@ -272,6 +272,8 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
             euv::Move(_) => { }
         }
 
+        let tcx = self.fcx.tcx;
+
         // watch out for a move of the deref of a borrowed pointer;
         // for that to be legal, the upvar would have to be borrowed
         // by value instead
@@ -289,7 +291,9 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
 
                         // to move out of an upvar, this must be a FnOnce closure
                         self.adjust_closure_kind(upvar_id.closure_expr_id,
-                                                 ty::ClosureKind::FnOnce);
+                                                 ty::ClosureKind::FnOnce,
+                                                 guarantor.span,
+                                                 tcx.hir.name(upvar_id.var_id));
 
                         let upvar_capture_map =
                             &mut self.fcx.tables.borrow_mut().upvar_capture_map;
@@ -303,7 +307,9 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                         // to be a FnOnce closure to permit moves out
                         // of the environment.
                         self.adjust_closure_kind(upvar_id.closure_expr_id,
-                                                 ty::ClosureKind::FnOnce);
+                                                 ty::ClosureKind::FnOnce,
+                                                 guarantor.span,
+                                                 tcx.hir.name(upvar_id.var_id));
                     }
                     mc::NoteNone => {
                     }
@@ -331,7 +337,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
 
             Categorization::Deref(base, _, mc::BorrowedPtr(..)) |
             Categorization::Deref(base, _, mc::Implicit(..)) => {
-                if !self.try_adjust_upvar_deref(&cmt.note, ty::MutBorrow) {
+                if !self.try_adjust_upvar_deref(cmt, ty::MutBorrow) {
                     // assignment to deref of an `&mut`
                     // borrowed pointer implies that the
                     // pointer itself must be unique, but not
@@ -365,7 +371,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
 
             Categorization::Deref(base, _, mc::BorrowedPtr(..)) |
             Categorization::Deref(base, _, mc::Implicit(..)) => {
-                if !self.try_adjust_upvar_deref(&cmt.note, ty::UniqueImmBorrow) {
+                if !self.try_adjust_upvar_deref(cmt, ty::UniqueImmBorrow) {
                     // for a borrowed pointer to be unique, its
                     // base must be unique
                     self.adjust_upvar_borrow_kind_for_unique(base);
@@ -382,7 +388,7 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
     }
 
     fn try_adjust_upvar_deref(&mut self,
-                              note: &mc::Note,
+                              cmt: mc::cmt<'tcx>,
                               borrow_kind: ty::BorrowKind)
                               -> bool
     {
@@ -394,7 +400,9 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
             ty::ImmBorrow => false,
         });
 
-        match *note {
+        let tcx = self.fcx.tcx;
+
+        match cmt.note {
             mc::NoteUpvarRef(upvar_id) => {
                 // if this is an implicit deref of an
                 // upvar, then we need to modify the
@@ -407,7 +415,10 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                 }
 
                 // also need to be in an FnMut closure since this is not an ImmBorrow
-                self.adjust_closure_kind(upvar_id.closure_expr_id, ty::ClosureKind::FnMut);
+                self.adjust_closure_kind(upvar_id.closure_expr_id,
+                                         ty::ClosureKind::FnMut,
+                                         cmt.span,
+                                         tcx.hir.name(upvar_id.var_id));
 
                 true
             }
@@ -415,7 +426,10 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                 // this kind of deref occurs in a `move` closure, or
                 // for a by-value upvar; in either case, to mutate an
                 // upvar, we need to be an FnMut closure
-                self.adjust_closure_kind(upvar_id.closure_expr_id, ty::ClosureKind::FnMut);
+                self.adjust_closure_kind(upvar_id.closure_expr_id,
+                                         ty::ClosureKind::FnMut,
+                                         cmt.span,
+                                         tcx.hir.name(upvar_id.var_id));
 
                 true
             }
@@ -462,11 +476,13 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
 
     fn adjust_closure_kind(&mut self,
                            closure_id: ast::NodeId,
-                           new_kind: ty::ClosureKind) {
-        debug!("adjust_closure_kind(closure_id={}, new_kind={:?})",
-               closure_id, new_kind);
+                           new_kind: ty::ClosureKind,
+                           upvar_span: Span,
+                           var_name: ast::Name) {
+        debug!("adjust_closure_kind(closure_id={}, new_kind={:?}, upvar_span={:?}, var_name={})",
+               closure_id, new_kind, upvar_span, var_name);
 
-        if let Some(&existing_kind) = self.temp_closure_kinds.get(&closure_id) {
+        if let Some(&(existing_kind, _)) = self.temp_closure_kinds.get(&closure_id) {
             debug!("adjust_closure_kind: closure_id={}, existing_kind={:?}, new_kind={:?}",
                    closure_id, existing_kind, new_kind);
 
@@ -482,7 +498,10 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
                 (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
                 (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
                     // new kind is stronger than the old kind
-                    self.temp_closure_kinds.insert(closure_id, new_kind);
+                    self.temp_closure_kinds.insert(
+                        closure_id,
+                        (new_kind, Some((upvar_span, var_name)))
+                    );
                 }
             }
         }

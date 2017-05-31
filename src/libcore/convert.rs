@@ -169,6 +169,40 @@ pub trait AsMut<T: ?Sized> {
 /// - [`From<T>`][From]` for U` implies `Into<U> for T`
 /// - [`into`] is reflexive, which means that `Into<T> for T` is implemented
 ///
+/// # Implementing `Into`
+///
+/// There is one exception to implementing `Into`, and it's kind of esoteric.
+/// If the destination type is not part of the current crate, and it uses a
+/// generic variable, then you can't implement `From` directly.  For example,
+/// take this crate:
+///
+/// ```compile_fail
+/// struct Wrapper<T>(Vec<T>);
+/// impl<T> From<Wrapper<T>> for Vec<T> {
+///     fn from(w: Wrapper<T>) -> Vec<T> {
+///         w.0
+///     }
+/// }
+/// ```
+///
+/// To fix this, you can implement `Into` directly:
+///
+/// ```
+/// struct Wrapper<T>(Vec<T>);
+/// impl<T> Into<Vec<T>> for Wrapper<T> {
+///     fn into(self) -> Vec<T> {
+///         self.0
+///     }
+/// }
+/// ```
+///
+/// This won't always allow the conversion: for example, `try!` and `?`
+/// always use `From`. However, in most cases, people use `Into` to do the
+/// conversions, and this will allow that.
+///
+/// In almost all cases, you should try to implement `From`, then fall back
+/// to `Into` if `From` can't be implemented.
+///
 /// # Examples
 ///
 /// [`String`] implements `Into<Vec<u8>>`:
@@ -285,9 +319,11 @@ pub trait From<T>: Sized {
 /// Library authors should not directly implement this trait, but should prefer
 /// implementing the [`TryFrom`] trait, which offers greater flexibility and
 /// provides an equivalent `TryInto` implementation for free, thanks to a
-/// blanket implementation in the standard library.
+/// blanket implementation in the standard library. For more information on this,
+/// see the documentation for [`Into`].
 ///
 /// [`TryFrom`]: trait.TryFrom.html
+/// [`Into`]: trait.Into.html
 #[unstable(feature = "try_from", issue = "33417")]
 pub trait TryInto<T>: Sized {
     /// The type returned in the event of a conversion error.

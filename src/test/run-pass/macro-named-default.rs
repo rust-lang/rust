@@ -8,18 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashMap;
+macro_rules! default {
+    ($($x:tt)*) => { $($x)* }
+}
+
+default! {
+    struct A;
+}
+
+impl A {
+    default! {
+        fn foo(&self) {}
+    }
+}
 
 fn main() {
-    let dict: HashMap<i32, i32> = HashMap::new();
-    let debug_dump_dict = || {
-        for (key, value) in dict {
-            println!("{:?} - {:?}", key, value);
-        }
-    };
-    debug_dump_dict();
-    debug_dump_dict();
-    //~^ ERROR use of moved value: `debug_dump_dict`
-    //~| NOTE closure cannot be invoked more than once because it moves the
-    //~| variable `dict` out of its environment
+    A.foo();
 }

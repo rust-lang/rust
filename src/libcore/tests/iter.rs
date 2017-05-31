@@ -764,6 +764,7 @@ fn test_iterator_size_hint() {
     let v2 = &[10, 11, 12];
     let vi = v.iter();
 
+    assert_eq!((0..).size_hint(), (usize::MAX, None));
     assert_eq!(c.size_hint(), (usize::MAX, None));
     assert_eq!(vi.clone().size_hint(), (10, Some(10)));
 

@@ -543,6 +543,11 @@ impl<A: Step> Iterator for ops::RangeFrom<A> where
         mem::swap(&mut n, &mut self.start);
         Some(n)
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::MAX, None)
+    }
 }
 
 #[unstable(feature = "fused", issue = "35602")]

@@ -109,7 +109,7 @@ pub trait FromIterator<A>: Sized {
     ///
     /// See the [module-level documentation] for more.
     ///
-    /// [module-level documentation]: trait.FromIterator.html
+    /// [module-level documentation]: index.html
     ///
     /// # Examples
     ///
@@ -219,7 +219,7 @@ pub trait IntoIterator {
     ///
     /// See the [module-level documentation] for more.
     ///
-    /// [module-level documentation]: trait.IntoIterator.html
+    /// [module-level documentation]: index.html
     ///
     /// # Examples
     ///
