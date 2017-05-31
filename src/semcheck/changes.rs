@@ -171,19 +171,7 @@ mod tests {
         }
     }
 
-    /*
-    impl Arbitrary for Change {
-        fn arbitrary<G: Gen>(g: &mut G) -> Change {
-            let mut interner = Interner::new();
-            let export = Export {
-                name: interner.intern("test"),
-                def: Def::Err,
-                span: DUMMY_SP,
-            };
-            Change::new(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g), export)
-        }
-    }*/
-
+    /// We build these by hand, because symbols can't be sent between threads.
     fn build_change(t: ChangeType) -> Change {
         let mut interner = Interner::new();
         let ident = Ident {
@@ -201,7 +189,8 @@ mod tests {
     }
 
     quickcheck! {
-        fn prop(changes: Vec<ChangeType>) -> bool {
+        /// The maximal change category for a change set gets computed correctly.
+        fn prop_max_change(changes: Vec<ChangeType>) -> bool {
             let mut set = ChangeSet::default();
 
             let max = changes.iter().map(|c| c.to_category()).max().unwrap_or(Patch);
