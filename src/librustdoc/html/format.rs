@@ -469,7 +469,8 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
 /// Used when rendering a `ResolvedPath` structure. This invokes the `path`
 /// rendering function with the necessary arguments for linking to a local path.
 fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
-                 print_all: bool, use_absolute: bool, is_not_debug: bool) -> fmt::Result {
+                 print_all: bool, use_absolute: bool, is_not_debug: bool,
+                 need_paren: bool) -> fmt::Result {
     let empty = clean::PathSegment {
                     name: String::new(),
                     params: clean::PathParameters::Parenthesized {
@@ -534,7 +535,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
             } else {
                 format!("{}", HRef::new(did, &last.name))
             };
-            write!(w, "{}{}", path, last.params)?;
+            write!(w, "{}{}{}", if need_paren { "(" } else { "" }, path, last.params)?;
         } else {
             let path = if use_absolute {
                 match href(did) {
@@ -547,7 +548,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
             } else {
                 format!("{:?}", HRef::new(did, &last.name))
             };
-            write!(w, "{}{}", path, last.params)?;
+            write!(w, "{}{}{}", if need_paren { "(" } else { "" }, path, last.params)?;
         }
     }
     Ok(())
@@ -599,12 +600,16 @@ fn primitive_link(f: &mut fmt::Formatter,
 
 /// Helper to render type parameters
 fn tybounds(w: &mut fmt::Formatter,
-            typarams: &Option<Vec<clean::TyParamBound> >) -> fmt::Result {
+            typarams: &Option<Vec<clean::TyParamBound>>,
+            need_paren: bool) -> fmt::Result {
     match *typarams {
         Some(ref params) => {
             for param in params {
                 write!(w, " + ")?;
                 fmt::Display::fmt(param, w)?;
+            }
+            if need_paren {
+                write!(w, ")")?;
             }
             Ok(())
         }
@@ -639,15 +644,19 @@ impl<'a> fmt::Debug for HRef<'a> {
 }
 
 fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
-            is_not_debug: bool) -> fmt::Result {
+            is_not_debug: bool, is_ref: bool) -> fmt::Result {
     match *t {
         clean::Generic(ref name) => {
             f.write_str(name)
         }
         clean::ResolvedPath{ did, ref typarams, ref path, is_generic } => {
             // Paths like T::Output and Self::Output should be rendered with all segments
-            resolved_path(f, did, path, is_generic, use_absolute, is_not_debug)?;
-            tybounds(f, typarams)
+            let need_paren = match *typarams {
+                Some(ref v) => !v.is_empty(),
+                _ => false,
+            } && is_ref;
+            resolved_path(f, did, path, is_generic, use_absolute, is_not_debug, need_paren)?;
+            tybounds(f, typarams, need_paren)
         }
         clean::Infer => write!(f, "_"),
         clean::Primitive(prim) if is_not_debug => primitive_link(f, prim, prim.as_str()),
@@ -788,14 +797,14 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
                 _ => {
                     if f.alternate() {
                         write!(f, "&{}{}", lt, m)?;
-                        fmt_type(&ty, f, use_absolute, is_not_debug)
+                        fmt_type(&ty, f, use_absolute, is_not_debug, true)
                     } else {
                         if is_not_debug {
                             write!(f, "&amp;{}{}", lt, m)?;
                         } else {
                             write!(f, "&{}{}", lt, m)?;
                         }
-                        fmt_type(&ty, f, use_absolute, is_not_debug)
+                        fmt_type(&ty, f, use_absolute, is_not_debug, true)
                     }
                 }
             }
@@ -865,7 +874,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
                 //        look at).
                 box clean::ResolvedPath { did, ref typarams, .. } => {
                     let path = clean::Path::singleton(name.clone());
-                    resolved_path(f, did, &path, true, use_absolute, is_not_debug)?;
+                    resolved_path(f, did, &path, true, use_absolute, is_not_debug, false)?;
 
                     // FIXME: `typarams` are not rendered, and this seems bad?
                     drop(typarams);
@@ -884,13 +893,13 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
 
 impl fmt::Display for clean::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt_type(self, f, false, true)
+        fmt_type(self, f, false, true, false)
     }
 }
 
 impl fmt::Debug for clean::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt_type(self, f, false, false)
+        fmt_type(self, f, false, false, false)
     }
 }
 
@@ -924,7 +933,7 @@ fn fmt_impl(i: &clean::Impl,
         write!(f, " for ")?;
     }
 
-    fmt_type(&i.for_, f, use_absolute, true)?;
+    fmt_type(&i.for_, f, use_absolute, true, false)?;
 
     fmt::Display::fmt(&WhereClause { gens: &i.generics, indent: 0, end_newline: true }, f)?;
     Ok(())
@@ -1130,7 +1139,7 @@ impl fmt::Display for clean::Import {
 impl fmt::Display for clean::ImportSource {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.did {
-            Some(did) => resolved_path(f, did, &self.path, true, false, true),
+            Some(did) => resolved_path(f, did, &self.path, true, false, true, false),
             _ => {
                 for (i, seg) in self.path.segments.iter().enumerate() {
                     if i > 0 {
