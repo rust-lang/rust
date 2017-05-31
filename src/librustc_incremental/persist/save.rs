@@ -24,7 +24,6 @@ use std::path::PathBuf;
 
 use IncrementalHashesMap;
 use super::data::*;
-use super::directory::*;
 use super::hash::*;
 use super::preds::*;
 use super::fs::*;
@@ -43,7 +42,6 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return;
     }
 
-    let mut builder = DefIdDirectoryBuilder::new(tcx);
     let query = tcx.dep_graph.query();
 
     if tcx.sess.opts.debugging_opts.incremental_info {
@@ -65,14 +63,13 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 |e| encode_metadata_hashes(tcx,
                                            svh,
                                            metadata_hashes,
-                                           &mut builder,
                                            &mut current_metadata_hashes,
                                            e));
     }
 
     save_in(sess,
             dep_graph_path(sess),
-            |e| encode_dep_graph(&preds, &mut builder, e));
+            |e| encode_dep_graph(tcx, &preds, e));
 
     let prev_metadata_hashes = incremental_hashes_map.prev_metadata_hashes.borrow();
     dirty_clean::check_dirty_clean_metadata(tcx,
@@ -167,13 +164,16 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
     }
 }
 
-pub fn encode_dep_graph(preds: &Predecessors,
-                        builder: &mut DefIdDirectoryBuilder,
+pub fn encode_dep_graph(tcx: TyCtxt,
+                        preds: &Predecessors,
                         encoder: &mut Encoder)
                         -> io::Result<()> {
     // First encode the commandline arguments hash
-    let tcx = builder.tcx();
     tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
+
+    let to_hash_based_node = |dep_node: &DepNode<DefId>| {
+        dep_node.map_def(|&def_id| Some(tcx.def_path_hash(def_id))).unwrap()
+    };
 
     // Create a flat list of (Input, WorkProduct) edges for
     // serialization.
@@ -191,8 +191,8 @@ pub fn encode_dep_graph(preds: &Predecessors,
             _ => (),
         }
         debug!("serialize edge: {:?} -> {:?}", source, target);
-        let source = builder.map(source);
-        let target = builder.map(target);
+        let source = to_hash_based_node(source);
+        let target = to_hash_based_node(target);
         edges.entry(source).or_insert(vec![]).push(target);
     }
 
@@ -203,9 +203,10 @@ pub fn encode_dep_graph(preds: &Predecessors,
     }
 
     // Create the serialized dep-graph.
-    let bootstrap_outputs = preds.bootstrap_outputs.iter()
-                                                   .map(|n| builder.map(n))
-                                                   .collect();
+    let bootstrap_outputs = preds.bootstrap_outputs
+                                 .iter()
+                                 .map(|n| to_hash_based_node(n))
+                                 .collect();
     let edges = edges.into_iter()
                      .map(|(k, v)| SerializedEdgeSet { source: k, targets: v })
                      .collect();
@@ -216,7 +217,7 @@ pub fn encode_dep_graph(preds: &Predecessors,
             .iter()
             .map(|(&dep_node, &hash)| {
                 SerializedHash {
-                    dep_node: builder.map(dep_node),
+                    dep_node: to_hash_based_node(dep_node),
                     hash: hash,
                 }
             })
@@ -231,8 +232,7 @@ pub fn encode_dep_graph(preds: &Predecessors,
 
     debug!("graph = {:#?}", graph);
 
-    // Encode the directory and then the graph data.
-    builder.directory().encode(encoder)?;
+    // Encode the graph data.
     graph.encode(encoder)?;
 
     Ok(())
@@ -241,7 +241,6 @@ pub fn encode_dep_graph(preds: &Predecessors,
 pub fn encode_metadata_hashes(tcx: TyCtxt,
                               svh: Svh,
                               metadata_hashes: &EncodedMetadataHashes,
-                              builder: &mut DefIdDirectoryBuilder,
                               current_metadata_hashes: &mut FxHashMap<DefId, Fingerprint>,
                               encoder: &mut Encoder)
                               -> io::Result<()> {
@@ -256,8 +255,8 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
             let def_id = DefId::local(serialized_hash.def_index);
 
             // Store entry in the index_map
-            let def_path_index = builder.add(def_id);
-            serialized_hashes.index_map.insert(def_id.index, def_path_index);
+            let def_path_hash = tcx.def_path_hash(def_id);
+            serialized_hashes.index_map.insert(def_id.index, def_path_hash);
 
             // Record hash in current_metadata_hashes
             current_metadata_hashes.insert(def_id, serialized_hash.hash);

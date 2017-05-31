@@ -12,12 +12,11 @@
 
 use rustc::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use rustc::hir::def_id::DefIndex;
+use rustc::hir::map::DefPathHash;
 use rustc::ich::Fingerprint;
 use rustc::middle::cstore::EncodedMetadataHash;
 use std::sync::Arc;
 use rustc_data_structures::fx::FxHashMap;
-
-use super::directory::DefPathIndex;
 
 /// Data for use when recompiling the **current crate**.
 #[derive(Debug, RustcEncodable, RustcDecodable)]
@@ -27,7 +26,7 @@ pub struct SerializedDepGraph {
     /// These are output nodes that have no incoming edges. We track
     /// these separately so that when we reload all edges, we don't
     /// lose track of these nodes.
-    pub bootstrap_outputs: Vec<DepNode<DefPathIndex>>,
+    pub bootstrap_outputs: Vec<DepNode<DefPathHash>>,
 
     /// These are hashes of two things:
     /// - the HIR nodes in this crate
@@ -55,14 +54,14 @@ pub struct SerializedDepGraph {
 /// outgoing edges from a single source together.
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedEdgeSet {
-    pub source: DepNode<DefPathIndex>,
-    pub targets: Vec<DepNode<DefPathIndex>>
+    pub source: DepNode<DefPathHash>,
+    pub targets: Vec<DepNode<DefPathHash>>
 }
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedHash {
     /// def-id of thing being hashed
-    pub dep_node: DepNode<DefPathIndex>,
+    pub dep_node: DepNode<DefPathHash>,
 
     /// the hash as of previous compilation, computed by code in
     /// `hash` module
@@ -115,5 +114,5 @@ pub struct SerializedMetadataHashes {
     /// is only populated if -Z query-dep-graph is specified. It will be
     /// empty otherwise. Importing crates are perfectly happy with just having
     /// the DefIndex.
-    pub index_map: FxHashMap<DefIndex, DefPathIndex>
+    pub index_map: FxHashMap<DefIndex, DefPathHash>
 }
