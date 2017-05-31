@@ -2988,13 +2988,13 @@ impl Try for _DummyErrorType {
 /// in terms of a success/failure dichotomy.  This trait allows both
 /// extracting those success or failure values from an existing instance and
 /// creating a new instance from a success or failure value.
-#[unstable(feature = "try_trait", issue = "31436")]
+#[unstable(feature = "try_trait", issue = "42327")]
 pub trait Try {
     /// The type of this value when viewed as successful.
-    #[unstable(feature = "try_trait", issue = "31436")]
+    #[unstable(feature = "try_trait", issue = "42327")]
     type Ok;
     /// The type of this value when viewed as failed.
-    #[unstable(feature = "try_trait", issue = "31436")]
+    #[unstable(feature = "try_trait", issue = "42327")]
     type Error;
 
     /// Applies the "?" operator. A return of `Ok(t)` means that the
@@ -3006,16 +3006,16 @@ pub trait Try {
     /// in the return type of the enclosing scope (which must itself implement
     /// `Try`). Specifically, the value `X::from_error(From::from(e))`
     /// is returned, where `X` is the return type of the enclosing function.
-    #[unstable(feature = "try_trait", issue = "31436")]
+    #[unstable(feature = "try_trait", issue = "42327")]
     fn into_result(self) -> Result<Self::Ok, Self::Error>;
 
     /// Wrap an error value to construct the composite result. For example,
     /// `Result::Err(x)` and `Result::from_error(x)` are equivalent.
-    #[unstable(feature = "try_trait", issue = "31436")]
+    #[unstable(feature = "try_trait", issue = "42327")]
     fn from_error(v: Self::Error) -> Self;
 
     /// Wrap an OK value to construct the composite result. For example,
     /// `Result::Ok(x)` and `Result::from_ok(x)` are equivalent.
-    #[unstable(feature = "try_trait", issue = "31436")]
+    #[unstable(feature = "try_trait", issue = "42327")]
     fn from_ok(v: Self::Ok) -> Self;
 }
