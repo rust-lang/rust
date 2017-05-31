@@ -698,24 +698,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn check_contextual_keyword(&mut self, ident: Ident) -> bool {
-        self.expected_tokens.push(TokenType::Token(token::Ident(ident)));
-        if let token::Ident(ref cur_ident) = self.token {
-            cur_ident.name == ident.name
-        } else {
-            false
-        }
-    }
-
-    pub fn eat_contextual_keyword(&mut self, ident: Ident) -> bool {
-        if self.check_contextual_keyword(ident) {
-            self.bump();
-            true
-        } else {
-            false
-        }
-    }
-
     /// If the given word is not a keyword, signal an error.
     /// If the next token is not the given word, signal an error.
     /// Otherwise, eat it.
@@ -3755,6 +3737,18 @@ impl<'a> Parser<'a> {
         self.look_ahead(1, |t| t.is_ident() && !t.is_any_keyword())
     }
 
+    fn is_defaultness(&self) -> bool {
+        // `pub` is included for better error messages
+        self.token.is_keyword(keywords::Default) &&
+        self.look_ahead(1, |t| t.is_keyword(keywords::Impl) ||
+                        t.is_keyword(keywords::Const) ||
+                        t.is_keyword(keywords::Fn) ||
+                        t.is_keyword(keywords::Unsafe) ||
+                        t.is_keyword(keywords::Extern) ||
+                        t.is_keyword(keywords::Type) ||
+                        t.is_keyword(keywords::Pub))
+    }
+
     fn eat_macro_def(&mut self, attrs: &[Attribute], vis: &Visibility)
                      -> PResult<'a, Option<P<Item>>> {
         let lo = self.span;
@@ -5229,7 +5223,8 @@ impl<'a> Parser<'a> {
 
     /// Parse defaultness: DEFAULT or nothing
     fn parse_defaultness(&mut self) -> PResult<'a, Defaultness> {
-        if self.eat_contextual_keyword(keywords::Default.ident()) {
+        if self.is_defaultness() {
+            self.bump();
             Ok(Defaultness::Default)
         } else {
             Ok(Defaultness::Final)
