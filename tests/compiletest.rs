@@ -65,14 +65,16 @@ fn for_all_targets<F: FnMut(String)>(sysroot: &Path, mut f: F) {
 
 #[test]
 fn compile_test() {
-    let sysroot = std::process::Command::new("rustc")
-        .arg("--print")
-        .arg("sysroot")
-        .output()
-        .expect("rustc not found")
-        .stdout;
-    let sysroot = std::str::from_utf8(&sysroot).expect("sysroot is not utf8").trim();
-    let sysroot = &Path::new(&sysroot);
+    let sysroot = std::env::var("MIRI_SYSROOT").unwrap_or_else(|_| {
+        let sysroot = std::process::Command::new("rustc")
+            .arg("--print")
+            .arg("sysroot")
+            .output()
+            .expect("rustc not found")
+            .stdout;
+        String::from_utf8(sysroot).expect("sysroot is not utf8")
+    });
+    let sysroot = &Path::new(sysroot.trim());
     let host = std::process::Command::new("rustc")
         .arg("-vV")
         .output()

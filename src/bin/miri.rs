@@ -175,6 +175,10 @@ fn init_logger() {
 }
 
 fn find_sysroot() -> String {
+    if let Ok(sysroot) = std::env::var("MIRI_SYSROOT") {
+        return sysroot;
+    }
+
     // Taken from https://github.com/Manishearth/rust-clippy/pull/911.
     let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
     let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));

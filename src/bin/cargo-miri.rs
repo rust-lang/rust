@@ -103,7 +103,7 @@ fn main() {
         let sys_root = if let (Some(home), Some(toolchain)) = (home, toolchain) {
             format!("{}/toolchains/{}", home, toolchain)
         } else {
-            option_env!("SYSROOT")
+            option_env!("RUST_SYSROOT")
                 .map(|s| s.to_owned())
                 .or_else(|| {
                     Command::new("rustc")
@@ -114,7 +114,7 @@ fn main() {
                         .and_then(|out| String::from_utf8(out.stdout).ok())
                         .map(|s| s.trim().to_owned())
                 })
-                .expect("need to specify SYSROOT env var during miri compilation, or use rustup or multirust")
+                .expect("need to specify RUST_SYSROOT env var during miri compilation, or use rustup or multirust")
         };
 
         // this conditional check for the --sysroot flag is there so users can call `cargo-clippy` directly
