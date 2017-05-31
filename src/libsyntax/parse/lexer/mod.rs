@@ -479,7 +479,20 @@ impl<'a> StringReader<'a> {
         }
 
         self.with_str_from(start, |string| {
-            Some(Symbol::intern(string))
+            if string == "_" {
+                self.sess.span_diagnostic
+                    .struct_span_warn(mk_sp(start, self.pos),
+                                      "underscore literal suffix is not allowed")
+                    .warn("this was previously accepted by the compiler but is \
+                          being phased out; it will become a hard error in \
+                          a future release!")
+                    .note("for more information, see issue #42326 \
+                          <https://github.com/rust-lang/rust/issues/42326>")
+                    .emit();
+                None
+            } else {
+                Some(Symbol::intern(string))
+            }
         })
     }
 

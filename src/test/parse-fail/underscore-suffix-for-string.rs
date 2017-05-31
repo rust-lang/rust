@@ -9,5 +9,12 @@
 // except according to those terms.
 
 fn main() {
-    let a = "Foo"_; //~ ERROR string literal with a suffix is invalid
+    let _ = "Foo"_;
+    //~^ WARNING underscore literal suffix is not allowed
+    //~| WARNING this was previously accepted
+    //~| NOTE issue #42326
 }
+
+FAIL
+//~^ ERROR
+//~| NOTE
