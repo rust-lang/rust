@@ -48,12 +48,13 @@ use syntax::ptr::P;
 use syntax::codemap::Spanned;
 use syntax_pos::*;
 
-use super::{escape, generated_code, SaveContext, PathCollector, docs_for_attrs};
-use super::data::*;
-use super::dump::Dump;
-use super::external_data::{Lower, make_def_id};
-use super::span_utils::SpanUtils;
-use super::recorder;
+use {escape, generated_code, SaveContext, PathCollector, docs_for_attrs};
+use data::*;
+use dump::Dump;
+use external_data::{Lower, make_def_id};
+use recorder;
+use span_utils::SpanUtils;
+use sig;
 
 use rls_data::ExternalCrateData;
 
@@ -646,7 +647,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 fields: fields,
                 visibility: From::from(&item.vis),
                 docs: docs_for_attrs(&item.attrs),
-                sig: self.save_ctxt.sig_base(item),
+                sig: sig::item_signature(item, &self.save_ctxt),
                 attributes: item.attrs.clone(),
             }.lower(self.tcx));
         }
@@ -679,18 +680,6 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             qualname.push_str("::");
             qualname.push_str(&name);
 
-            let text = self.span.signature_string_for_span(variant.span);
-            let ident_start = text.find(&name).unwrap();
-            let ident_end = ident_start + name.len();
-            let sig = Signature {
-                span: variant.span,
-                text: text,
-                ident_start: ident_start,
-                ident_end: ident_end,
-                defs: vec![],
-                refs: vec![],
-            };
-
             match variant.node.data {
                 ast::VariantData::Struct(ref fields, _) => {
                     let sub_span = self.span.span_for_first_ident(variant.span);
@@ -712,7 +701,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             scope: enum_data.scope,
                             parent: Some(make_def_id(item.id, &self.tcx.hir)),
                             docs: docs_for_attrs(&variant.node.attrs),
-                            sig: sig,
+                            // TODO
+                            sig: None,
                             attributes: variant.node.attrs.clone(),
                         }.lower(self.tcx));
                     }
@@ -739,7 +729,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             scope: enum_data.scope,
                             parent: Some(make_def_id(item.id, &self.tcx.hir)),
                             docs: docs_for_attrs(&variant.node.attrs),
-                            sig: sig,
+                            // TODO
+                            sig: None,
                             attributes: variant.node.attrs.clone(),
                         }.lower(self.tcx));
                     }
@@ -811,7 +802,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 items: methods.iter().map(|i| i.id).collect(),
                 visibility: From::from(&item.vis),
                 docs: docs_for_attrs(&item.attrs),
-                sig: self.save_ctxt.sig_base(item),
+                sig: sig::item_signature(item, &self.save_ctxt),
                 attributes: item.attrs.clone(),
             }.lower(self.tcx));
         }
@@ -1369,7 +1360,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                         visibility: From::from(&item.vis),
                         parent: None,
                         docs: docs_for_attrs(&item.attrs),
-                        sig: Some(self.save_ctxt.sig_base(item)),
+                        sig: sig::item_signature(item, &self.save_ctxt),
                         attributes: item.attrs.clone(),
                     }.lower(self.tcx));
                 }

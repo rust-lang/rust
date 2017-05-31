@@ -22,6 +22,10 @@ use syntax::ast::{self, NodeId};
 use syntax::print::pprust;
 
 
+pub fn item_signature(item: &ast::Item, scx: &SaveContext) -> Option<Signature> {
+    item.make(0, None, scx).ok()
+}
+
 // TODO dup from json_dumper
 fn id_from_def_id(id: DefId) -> Id {
     Id {
@@ -246,8 +250,8 @@ impl Sig for ast::Item {
             let name = self.ident.to_string();
             let def = SigElement {
                 id: id_from_node_id(self.id, scx),
-                start: offset + 5,
-                end: offset + 5 + name.len(),
+                start: offset + text.len(),
+                end: offset + text.len() + name.len(),
             };
             text.push_str(&name);
             let generics: Signature = generics.make(offset + text.len(), id, scx)?;
@@ -336,7 +340,6 @@ impl Sig for ast::Item {
                     sig.text.push_str(" -> ");
                     let nested = t.make(offset + sig.text.len(), None, scx)?;
                     sig.text.push_str(&nested.text);
-                    sig.text.push(',');
                     sig.defs.extend(nested.defs.into_iter());
                     sig.refs.extend(nested.refs.into_iter());
                 }
@@ -473,10 +476,23 @@ impl Sig for ast::Item {
 
 impl Sig for ast::Path {
     fn make(&self, offset: usize, id: Option<NodeId>, scx: &SaveContext) -> Result {
+        // if generated_code(span) {
+        //     return Err("Generated code");
+        // }
+
         let def = scx.get_path_def(id.ok_or("Missing id for Path")?);
-        let id = id_from_def_id(def.def_id());
 
         let (name, start, end) = match def {
+            Def::Label(..)  |
+            Def::PrimTy(..) |
+            Def::SelfTy(..) |
+            Def::Err => {
+                return Ok(Signature {
+                    text: pprust::path_to_string(self),
+                    defs: vec![],
+                    refs: vec![],
+                })
+            }
             Def::AssociatedConst(..) |
             Def::Variant(..) |
             Def::VariantCtor(..) => {
@@ -499,6 +515,7 @@ impl Sig for ast::Path {
             }
         };
 
+        let id = id_from_def_id(def.def_id());
         Ok(Signature {
             text: name,
             defs: vec![],
@@ -557,4 +574,4 @@ impl Sig for ast::Generics {
     }
 }
 
-// TODO impl items, trait items
+// TODO impl items, trait items, fields, extern items, enum variant

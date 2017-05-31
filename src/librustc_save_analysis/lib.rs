@@ -141,7 +141,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     visibility: From::from(&item.vis),
                     parent: None,
                     docs: docs_for_attrs(&item.attrs),
-                    sig: self.sig_base_extern(item),
+                    // TODO
+                    sig: None,
                     attributes: item.attrs.clone(),
                 }))
             }
@@ -161,7 +162,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     type_value: ty_to_string(ty),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
-                    sig: Some(self.sig_base_extern(item)),
+                    // TODO
+                    sig: None,
                     attributes: item.attrs.clone(),
                 }))
             }
@@ -187,7 +189,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     visibility: From::from(&item.vis),
                     parent: None,
                     docs: docs_for_attrs(&item.attrs),
-                    sig: self.sig_base(item),
+                    sig: sig::item_signature(item, self),
                     attributes: item.attrs.clone(),
                 }))
             }
@@ -216,7 +218,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     type_value: ty_to_string(&typ),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
-                    sig: Some(self.sig_base(item)),
+                    sig: sig::item_signature(item, self),
                     attributes: item.attrs.clone(),
                 }))
             }
@@ -236,7 +238,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     type_value: ty_to_string(&typ),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
-                    sig: Some(self.sig_base(item)),
+                    sig: sig::item_signature(item, self),
                     attributes: item.attrs.clone(),
                 }))
             }
@@ -259,7 +261,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     items: m.items.iter().map(|i| i.id).collect(),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
-                    sig: Some(self.sig_base(item)),
+                    sig: sig::item_signature(item, self),
                     attributes: item.attrs.clone(),
                 }))
             }
@@ -283,7 +285,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     variants: def.variants.iter().map(|v| v.node.data.id()).collect(),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
-                    sig: self.sig_base(item),
+                    sig: sig::item_signature(item, self),
                     attributes: item.attrs.clone(),
                 }))
             }
@@ -347,18 +349,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             let def_id = self.tcx.hir.local_def_id(field.id);
             let typ = self.tcx.type_of(def_id).to_string();
 
-            let span = field.span;
-            let text = self.span_utils.snippet(field.span);
-            let ident_start = text.find(&name).unwrap();
-            let ident_end = ident_start + name.len();
-            let sig = Signature {
-                span: span,
-                text: text,
-                ident_start: ident_start,
-                ident_end: ident_end,
-                defs: vec![],
-                refs: vec![],
-            };
             Some(VariableData {
                 id: field.id,
                 kind: VariableKind::Field,
@@ -371,7 +361,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 type_value: typ,
                 visibility: From::from(&field.vis),
                 docs: docs_for_attrs(&field.attrs),
-                sig: Some(sig),
+                // TODO
+                sig: None,
                 attributes: field.attrs.clone(),
             })
         } else {
@@ -460,22 +451,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let sub_span = self.span_utils.sub_span_after_keyword(span, keywords::Fn);
         filter!(self.span_utils, sub_span, span, None);
 
-        let name = name.to_string();
-        let text = self.span_utils.signature_string_for_span(span);
-        let ident_start = text.find(&name).unwrap();
-        let ident_end = ident_start + name.len();
-        let sig = Signature {
-            span: span,
-            text: text,
-            ident_start: ident_start,
-            ident_end: ident_end,
-            defs: vec![],
-            refs: vec![],
-        };
-
         Some(FunctionData {
             id: id,
-            name: name,
+            name: name.to_string(),
             qualname: qualname,
             declaration: decl_id,
             span: sub_span.unwrap(),
@@ -485,7 +463,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             visibility: vis,
             parent: parent_scope,
             docs: docs,
-            sig: sig,
+            // TODO
+            sig: None,
             attributes: attributes,
         })
     }
@@ -784,36 +763,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         match self.get_path_def(ref_id) {
             Def::PrimTy(_) | Def::SelfTy(..) | Def::Err => None,
             def => Some(def.def_id()),
-        }
-    }
-
-    fn sig_base(&self, item: &ast::Item) -> Signature {
-        let text = self.span_utils.signature_string_for_span(item.span);
-        let name = item.ident.to_string();
-        let ident_start = text.find(&name).expect("Name not in signature?");
-        let ident_end = ident_start + name.len();
-        Signature {
-            span: Span { hi: item.span.lo + BytePos(text.len() as u32), ..item.span },
-            text: text,
-            ident_start: ident_start,
-            ident_end: ident_end,
-            defs: vec![],
-            refs: vec![],
-        }
-    }
-
-    fn sig_base_extern(&self, item: &ast::ForeignItem) -> Signature {
-        let text = self.span_utils.signature_string_for_span(item.span);
-        let name = item.ident.to_string();
-        let ident_start = text.find(&name).expect("Name not in signature?");
-        let ident_end = ident_start + name.len();
-        Signature {
-            span: Span { hi: item.span.lo + BytePos(text.len() as u32), ..item.span },
-            text: text,
-            ident_start: ident_start,
-            ident_end: ident_end,
-            defs: vec![],
-            refs: vec![],
         }
     }
 
