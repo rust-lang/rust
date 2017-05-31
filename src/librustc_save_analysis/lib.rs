@@ -1026,6 +1026,20 @@ fn escape(s: String) -> String {
 
 // Helper function to determine if a span came from a
 // macro expansion or syntax extension.
-pub fn generated_code(span: Span) -> bool {
+fn generated_code(span: Span) -> bool {
     span.ctxt != NO_EXPANSION || span == DUMMY_SP
+}
+
+// DefId::index is a newtype and so the JSON serialisation is ugly. Therefore
+// we use our own Id which is the same, but without the newtype.
+fn id_from_def_id(id: DefId) -> rls_data::Id {
+    rls_data::Id {
+        krate: id.krate.as_u32(),
+        index: id.index.as_u32(),
+    }
+}
+
+fn id_from_node_id(id: NodeId, scx: &SaveContext) -> rls_data::Id {
+    let def_id = scx.tcx.hir.local_def_id(id);
+    id_from_def_id(def_id)
 }

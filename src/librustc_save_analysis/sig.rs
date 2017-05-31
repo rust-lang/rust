@@ -8,35 +8,44 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME? None of these include visibility info.
-// Large outstanding things - where clauses, defs/refs for generics
-// paresable - each sig ends with `;` of ` {}`
+// A signature is a string representation of an item's type signature, excluding
+// any body. It also includes ids for any defs or refs in the signature. For
+// example:
+//
+// ```
+// fn foo(x: String) {
+//     println!("{}", x);   
+// }
+// ```
+// The signature string is something like "fn foo(x: String) {}" and the signature
+// will have defs for `foo` and `x` and a ref for `String`.
+//
+// All signature text should parse in the correct context (i.e., in a module or
+// impl, etc.). Clients may want to trim trailing `{}` or `;`. The text of a
+// signature is not guaranteed to be stable (it may improve or change as the
+// syntax changes, or whitespace or punctuation may change). It is also likely
+// not to be pretty - no attempt is made to prettify the text. It is recommended
+// that clients run the text through Rustfmt.
+//
+// This module generates Signatures for items by walking the AST and looking up
+// references.
+//
+// Signatures do not include visibility info. I'm not sure if this is a feature
+// or an ommission (FIXME).
+//
+// FIXME where clauses need implementing, defs/refs in generics are mostly missing.
 
-use SaveContext;
+use {SaveContext, id_from_def_id, id_from_node_id};
 
-use rls_data::{Signature, SigElement, Id};
+use rls_data::{Signature, SigElement};
 
 use rustc::hir::def::Def;
-use rustc::hir::def_id::DefId;
 use syntax::ast::{self, NodeId};
 use syntax::print::pprust;
 
 
 pub fn item_signature(item: &ast::Item, scx: &SaveContext) -> Option<Signature> {
     item.make(0, None, scx).ok()
-}
-
-// TODO dup from json_dumper
-fn id_from_def_id(id: DefId) -> Id {
-    Id {
-        krate: id.krate.as_u32(),
-        index: id.index.as_u32(),
-    }
-}
-
-fn id_from_node_id(id: NodeId, scx: &SaveContext) -> Id {
-    let def_id = scx.tcx.hir.local_def_id(id);
-    id_from_def_id(def_id)
 }
 
 type Result = ::std::result::Result<Signature, &'static str>;

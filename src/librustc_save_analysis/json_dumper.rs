@@ -10,7 +10,6 @@
 
 use std::io::Write;
 
-use rustc::hir::def_id::DefId;
 use rustc_serialize::json::as_json;
 
 use rls_data::{self, Id, Analysis, Import, ImportKind, Def, DefKind, Ref, RefKind, MacroRef,
@@ -20,6 +19,7 @@ use rls_span::{Column, Row};
 use external_data::*;
 use data::VariableKind;
 use dump::Dump;
+use id_from_def_id;
 
 pub struct JsonDumper<O: DumpOutput> {
     result: Analysis,
@@ -162,15 +162,6 @@ impl<'b, O: DumpOutput + 'b> Dump for JsonDumper<O> {
 // refs have decl information (e.g., a trait method where we know the required
 // method, but not the supplied method). In both cases, we are currently
 // ignoring it.
-
-// DefId::index is a newtype and so the JSON serialisation is ugly. Therefore
-// we use our own Id which is the same, but without the newtype.
-pub fn id_from_def_id(id: DefId) -> Id {
-    Id {
-        krate: id.krate.as_u32(),
-        index: id.index.as_u32(),
-    }
-}
 
 impl Into<Import> for ExternCrateData {
     fn into(self) -> Import {

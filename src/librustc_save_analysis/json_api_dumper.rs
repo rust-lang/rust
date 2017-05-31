@@ -15,7 +15,7 @@ use rustc_serialize::json::as_json;
 use external_data::*;
 use data::{VariableKind, Visibility};
 use dump::Dump;
-use json_dumper::id_from_def_id;
+use id_from_def_id;
 
 use rls_data::{Analysis, Import, ImportKind, Def, DefKind, CratePreludeData};
 
