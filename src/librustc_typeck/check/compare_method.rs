@@ -787,6 +787,14 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             diag.emit();
         }
 
-        // FIXME(#41323) Check the obligations in the fulfillment context.
+        // Check that all obligations are satisfied by the implementation's
+        // version.
+        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
+            infcx.report_fulfillment_errors(errors);
+            return;
+        }
+
+        let fcx = FnCtxt::new(&inh, impl_c_node_id);
+        fcx.regionck_item(impl_c_node_id, impl_c_span, &[]);
     });
 }
