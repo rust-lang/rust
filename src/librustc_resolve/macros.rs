@@ -316,6 +316,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         for did in self.unused_macros.iter() {
             let id_span = match *self.macro_map[did] {
                 SyntaxExtension::NormalTT(_, isp, _) => isp,
+                SyntaxExtension::DeclMacro(.., osp) => osp,
                 _ => None,
             };
             if let Some((id, span)) = id_span {
@@ -735,6 +736,9 @@ impl<'a> Resolver<'a> {
             let module = self.current_module;
             let def = Def::Macro(def_id, MacroKind::Bang);
             let vis = self.resolve_visibility(&item.vis);
+            if vis != ty::Visibility::Public {
+                self.unused_macros.insert(def_id);
+            }
             self.define(module, ident, MacroNS, (def, vis, item.span, expansion));
         }
     }

@@ -472,8 +472,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         let marked_tts = noop_fold_tts(mac.node.stream(), &mut Marker(mark));
         let opt_expanded = match *ext {
-            SyntaxExtension::DeclMacro(ref expand, def_site_span) => {
-                if let Err(msg) = validate_and_set_expn_info(def_site_span, false) {
+            SyntaxExtension::DeclMacro(ref expand, def_span) => {
+                if let Err(msg) = validate_and_set_expn_info(def_span.map(|(_, s)| s),
+                                                             false) {
                     self.cx.span_err(path.span, &msg);
                     return kind.dummy(span);
                 }
