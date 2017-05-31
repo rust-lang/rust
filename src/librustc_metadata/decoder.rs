@@ -14,9 +14,8 @@ use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
 use schema::*;
 
 use rustc::dep_graph::{DepGraph, DepNode, GlobalMetaDataKind};
-use rustc::hir::map::{DefKey, DefPath, DefPathData};
+use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::hir;
-use rustc::ich;
 
 use rustc::middle::cstore::LinkagePreference;
 use rustc::hir::def::{self, Def, CtorKind};
@@ -1109,7 +1108,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     #[inline]
-    pub fn def_path_hash(&self, index: DefIndex) -> ich::Fingerprint {
+    pub fn def_path_hash(&self, index: DefIndex) -> DefPathHash {
         self.def_path_table.def_path_hash(index)
     }
 

@@ -10,6 +10,7 @@
 
 use hir;
 use hir::def_id::DefId;
+use hir::map::DefPathHash;
 use ich::{self, CachingCodemapView};
 use session::config::DebugInfoLevel::NoDebugInfo;
 use ty;
@@ -115,7 +116,7 @@ impl<'a, 'tcx: 'a> StableHashingContext<'a, 'tcx> {
     }
 
     #[inline]
-    pub fn def_path_hash(&mut self, def_id: DefId) -> ich::Fingerprint {
+    pub fn def_path_hash(&mut self, def_id: DefId) -> DefPathHash {
         self.tcx.def_path_hash(def_id)
     }
 
