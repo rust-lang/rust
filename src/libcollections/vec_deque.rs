@@ -21,7 +21,7 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::iter::{repeat, FromIterator, FusedIterator};
 use core::mem;
-use core::ops::{Index, IndexMut, Place, Placer, InPlace};
+use core::ops::{Index, IndexMut, Place, Placer, InPlace, RangeArgument};
 use core::ptr;
 use core::ptr::Shared;
 use core::slice;
@@ -31,7 +31,6 @@ use core::cmp;
 
 use alloc::raw_vec::RawVec;
 
-use super::range::RangeArgument;
 use Bound::{Excluded, Included, Unbounded};
 use super::vec::Vec;
 

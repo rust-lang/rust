@@ -61,14 +61,13 @@ use alloc::str as alloc_str;
 use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
-use core::ops::{self, Add, AddAssign, Index, IndexMut};
+use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeArgument};
 use core::ptr;
 use core::str as core_str;
 use core::str::pattern::Pattern;
 use std_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 
 use borrow::{Cow, ToOwned};
-use range::RangeArgument;
 use Bound::{Excluded, Included, Unbounded};
 use str::{self, FromStr, Utf8Error, Chars};
 use vec::Vec;
