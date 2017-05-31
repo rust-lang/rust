@@ -48,6 +48,10 @@ build-osx:
 	python x.py --config debian/config-osx.toml build
 	python x.py --config debian/config-osx.toml dist
 
-build-windows:
-	python x.py --config debian/config-windows.toml build
-	python x.py --config debian/config-windows.toml dist
+build-win32:
+	python x.py --config debian/config-win32.toml build
+	python x.py --config debian/config-win32.toml dist
+
+build-win64:
+	python x.py --config debian/config-win64.toml build
+	python x.py --config debian/config-win64.toml dist
