@@ -1704,13 +1704,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             }
 
             // Return value
-            let ret_ptr = {
-                let ty = ecx.tcx.types.isize;
-                let layout = ecx.type_layout_with_substs(ty, Substs::empty())?;
-                let size = layout.size(&ecx.tcx.data_layout).bytes();
-                let align = layout.align(&ecx.tcx.data_layout).abi();
-                ecx.memory.allocate(size, align)?
-            };
+            let ret_ptr = ecx.memory.allocate(ecx.tcx.data_layout.pointer_size.bytes(), ecx.tcx.data_layout.pointer_align.abi())?;
             cleanup_ptr = Some(ret_ptr);
 
             // Push our stack frame
