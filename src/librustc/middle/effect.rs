@@ -227,9 +227,9 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
                     if let ty::TyAdt(adt, ..) = self.tables.expr_ty_adjusted(base_expr).sty {
                         if adt.is_union() {
                             let field_ty = self.tables.expr_ty_adjusted(lhs);
-                            let owner_def_id = self.tcx.hir.body_owner_def_id(self.body_id);
-                            let param_env = self.tcx.param_env(owner_def_id);
-                            if field_ty.moves_by_default(self.tcx, param_env, field.span) {
+                            let owner_id = self.tcx.hir.body_owner(self.body_id);
+                            let param_env = ty::ParameterEnvironment::for_item(self.tcx, owner_id);
+                            if field_ty.moves_by_default(self.tcx, &param_env, field.span) {
                                 self.require_unsafe(field.span,
                                                     "assignment to non-`Copy` union field");
                             }
