@@ -1,5 +1,7 @@
+use check::path::{Path, PathMap};
+
 use rustc::hir::def::Def;
-use rustc::hir::def_id::*;
+use rustc::hir::def_id::DefId;
 use rustc::middle::cstore::CrateStore;
 use rustc::ty::Visibility::Public;
 
@@ -11,37 +13,10 @@ pub type ItemSet = HashSet<DefId>;
 
 pub type ModMap = HashMap<DefId, Vec<DefId>>;
 
-#[derive(Debug, Default, PartialEq, Eq, Hash)]
-pub struct Path {
-    inner: Vec<String>,
+pub enum Checking {
+    FromOld,
+    FromNew,
 }
-
-impl Path {
-    pub fn new(segments: Vec<String>) -> Path {
-        Path {
-            inner: segments,
-        }
-    }
-
-    pub fn extend(&self, component: String) -> Path {
-        let mut inner = self.inner.clone();
-        inner.push(component);
-
-        Path::new(inner)
-    }
-
-    pub fn inner(&self) -> String {
-        let mut new = String::new();
-        for component in &self.inner {
-            new.push_str("::");
-            new.push_str(component);
-        }
-
-        new
-    }
-}
-
-pub type PathMap = HashMap<Path, DefId>;
 
 #[derive(Debug)]
 pub struct ExportMap {
@@ -104,7 +79,7 @@ impl ExportMap {
         self.paths.get(path)
     }
 
-    pub fn compare(&self, other: &ExportMap) {
+    pub fn compare(&self, other: &ExportMap, from: Checking) {
         for path in self.paths.keys() {
             if other.lookup_path(path).is_none() {
                 println!("path differs: {}", path.inner());

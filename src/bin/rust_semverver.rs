@@ -9,7 +9,7 @@ extern crate rustc_metadata;
 extern crate semverver;
 extern crate syntax;
 
-use semverver::check::export_map::ExportMap;
+use semverver::check::export_map::{Checking, ExportMap};
 
 use rustc::hir::def_id::*;
 use rustc::session::{config, Session};
@@ -44,9 +44,9 @@ fn callback(state: &driver::CompileState) {
     let new_map = ExportMap::new(new_did, cstore.borrow());
     let old_map = ExportMap::new(old_did, cstore.borrow());
 
-    old_map.compare(&new_map);
+    old_map.compare(&new_map, Checking::FromOld);
     println!("===========================");
-    new_map.compare(&old_map);
+    new_map.compare(&old_map, Checking::FromNew);
 }
 
 struct SemVerVerCompilerCalls {
