@@ -3749,6 +3749,16 @@ impl<'a> Parser<'a> {
                         t.is_keyword(keywords::Pub))
     }
 
+    fn eat_defaultness(&mut self) -> bool {
+        let is_defaultness = self.is_defaultness();
+        if is_defaultness {
+            self.bump()
+        } else {
+            self.expected_tokens.push(TokenType::Keyword(keywords::Default));
+        }
+        is_defaultness
+    }
+
     fn eat_macro_def(&mut self, attrs: &[Attribute], vis: &Visibility)
                      -> PResult<'a, Option<P<Item>>> {
         let lo = self.span;
@@ -5223,8 +5233,7 @@ impl<'a> Parser<'a> {
 
     /// Parse defaultness: DEFAULT or nothing
     fn parse_defaultness(&mut self) -> PResult<'a, Defaultness> {
-        if self.is_defaultness() {
-            self.bump();
+        if self.eat_defaultness() {
             Ok(Defaultness::Default)
         } else {
             Ok(Defaultness::Final)
