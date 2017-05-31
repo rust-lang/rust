@@ -19,11 +19,11 @@ extern crate getopts;
 
 use rustfmt::{run, Input, Summary};
 use rustfmt::file_lines::FileLines;
-use rustfmt::config::{Config, WriteMode};
+use rustfmt::config::{Config, WriteMode, get_toml_path};
 
 use std::{env, error};
-use std::fs::{self, File};
-use std::io::{self, ErrorKind, Read, Write};
+use std::fs::File;
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -95,78 +95,16 @@ impl CliOptions {
     }
 }
 
-const CONFIG_FILE_NAMES: [&'static str; 2] = [".rustfmt.toml", "rustfmt.toml"];
-
-/// Try to find a project file in the given directory and its parents. Returns the path of a the
-/// nearest project file if one exists, or `None` if no project file was found.
-fn lookup_project_file(dir: &Path) -> FmtResult<Option<PathBuf>> {
-    let mut current = if dir.is_relative() {
-        env::current_dir()?.join(dir)
-    } else {
-        dir.to_path_buf()
-    };
-
-    current = fs::canonicalize(current)?;
-
-    loop {
-        for config_file_name in &CONFIG_FILE_NAMES {
-            let config_file = current.join(config_file_name);
-            match fs::metadata(&config_file) {
-                // Only return if it's a file to handle the unlikely situation of a directory named
-                // `rustfmt.toml`.
-                Ok(ref md) if md.is_file() => return Ok(Some(config_file)),
-                // Return the error if it's something other than `NotFound`; otherwise we didn't
-                // find the project file yet, and continue searching.
-                Err(e) => {
-                    if e.kind() != ErrorKind::NotFound {
-                        return Err(FmtError::from(e));
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        // If the current directory has no parent, we're done searching.
-        if !current.pop() {
-            return Ok(None);
-        }
-    }
-}
-
-fn open_config_file(file_path: &Path) -> FmtResult<(Config, Option<PathBuf>)> {
-    let mut file = File::open(&file_path)?;
-    let mut toml = String::new();
-    file.read_to_string(&mut toml)?;
-    match Config::from_toml(&toml) {
-        Ok(cfg) => Ok((cfg, Some(file_path.to_path_buf()))),
-        Err(err) => Err(FmtError::from(err)),
-    }
-}
-
-/// Resolve the config for input in `dir`.
-///
-/// Returns the `Config` to use, and the path of the project file if there was
-/// one.
-fn resolve_config(dir: &Path) -> FmtResult<(Config, Option<PathBuf>)> {
-    let path = lookup_project_file(dir)?;
-    if path.is_none() {
-        return Ok((Config::default(), None));
-    }
-    open_config_file(&path.unwrap())
-}
-
 /// read the given config file path recursively if present else read the project file path
 fn match_cli_path_or_file(config_path: Option<PathBuf>,
                           input_file: &Path)
                           -> FmtResult<(Config, Option<PathBuf>)> {
 
     if let Some(config_file) = config_path {
-        let (toml, path) = open_config_file(config_file.as_ref())?;
-        if path.is_some() {
-            return Ok((toml, path));
-        }
+        let toml = Config::from_toml_path(config_file.as_ref())?;
+        return Ok((toml, Some(config_file)));
     }
-    resolve_config(input_file)
+    Config::from_resolved_toml_path(input_file).map_err(|e| FmtError::from(e))
 }
 
 fn make_opts() -> Options {
@@ -261,16 +199,13 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             }
 
             let mut config = Config::default();
-            let mut path = None;
             // Load the config path file if provided
-            if let Some(config_file) = config_path {
-                let (cfg_tmp, path_tmp) = open_config_file(config_file.as_ref())?;
-                config = cfg_tmp;
-                path = path_tmp;
+            if let Some(config_file) = config_path.as_ref() {
+                config = Config::from_toml_path(config_file.as_ref())?;
             };
 
             if options.verbose {
-                if let Some(path) = path.as_ref() {
+                if let Some(path) = config_path.as_ref() {
                     println!("Using rustfmt config file {}", path.display());
                 }
             }
@@ -285,8 +220,9 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                     error_summary.add_operational_error();
                 } else {
                     // Check the file directory if the config-path could not be read or not provided
-                    if path.is_none() {
-                        let (config_tmp, path_tmp) = resolve_config(file.parent().unwrap())?;
+                    if config_path.is_none() {
+                        let (config_tmp, path_tmp) =
+                            Config::from_resolved_toml_path(file.parent().unwrap())?;
                         if options.verbose {
                             if let Some(path) = path_tmp.as_ref() {
                                 println!("Using rustfmt config file {} for {}",
@@ -391,13 +327,7 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
     let config_path: Option<PathBuf> = match matches.opt_str("config-path").map(PathBuf::from) {
         Some(ref path) if !path.exists() => return config_path_not_found(path.to_str().unwrap()),
         Some(ref path) if path.is_dir() => {
-            let mut config_file_path = None;
-            for config_file_name in &CONFIG_FILE_NAMES {
-                let temp_path = path.join(config_file_name);
-                if temp_path.is_file() {
-                    config_file_path = Some(temp_path);
-                }
-            }
+            let config_file_path = get_toml_path(path)?;
             if config_file_path.is_some() {
                 config_file_path
             } else {
