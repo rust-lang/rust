@@ -37,7 +37,7 @@ impl Default for ChangeCategory {
 /// The types of changes we identify.
 ///
 /// TODO: This will be further extended in the future.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum ChangeType {
     /// The removal of a path an item is exported through.
     Removal,
@@ -74,6 +74,8 @@ pub struct Change {
     /// The associated item's export.
     export: Export,
 }
+
+// TODO: test the properties imposed by ord on all our custom impls
 
 impl Change {
     pub fn new(change_type: ChangeType, path: ExportPath, export: Export) -> Change {
@@ -126,8 +128,9 @@ pub struct ChangeSet {
     max: ChangeCategory,
 }
 
-impl ChangeSet {
+// TODO: test that the stored max is indeed the maximum of all categories
 
+impl ChangeSet {
     /// Add a change to the set and record it's category for later use.
     pub fn add_change(&mut self, change: Change) {
         let cat = change.type_().to_category();
@@ -147,6 +150,67 @@ impl ChangeSet {
 
         for change in &self.changes {
             println!("  {:?}: {}", change.type_(), change.path().inner());
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use quickcheck::*;
+    use super::*;
+
+    use rustc::hir::def::Def;
+
+    use syntax_pos::DUMMY_SP;
+    use syntax_pos::hygiene::SyntaxContext;
+    use syntax_pos::symbol::{Ident, Interner};
+
+    impl Arbitrary for ChangeType {
+        fn arbitrary<G: Gen>(g: &mut G) -> ChangeType {
+            g.choose(&[Removal, Addition]).unwrap().clone()
+        }
+    }
+
+    /*
+    impl Arbitrary for Change {
+        fn arbitrary<G: Gen>(g: &mut G) -> Change {
+            let mut interner = Interner::new();
+            let export = Export {
+                name: interner.intern("test"),
+                def: Def::Err,
+                span: DUMMY_SP,
+            };
+            Change::new(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g), export)
+        }
+    }*/
+
+    fn build_change(t: ChangeType) -> Change {
+        let mut interner = Interner::new();
+        let ident = Ident {
+            name: interner.intern("test"),
+            ctxt: SyntaxContext::empty(),
+        };
+
+        let export = Export {
+            ident: ident,
+            def: Def::Err,
+            span: DUMMY_SP,
+        };
+
+        Change::new(t, ExportPath::new(vec!["this is elegant enough".to_owned()]), export)
+    }
+
+    quickcheck! {
+        fn prop(changes: Vec<ChangeType>) -> bool {
+            let mut set = ChangeSet::default();
+
+            let max = changes.iter().map(|c| c.to_category()).max().unwrap_or(Patch);
+
+            for change in changes.iter() {
+                set.add_change(build_change(change.clone()));
+            }
+
+            set.max == max
         }
     }
 }

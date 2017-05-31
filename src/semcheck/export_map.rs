@@ -21,10 +21,12 @@ pub enum Checking {
 /// Mapping paths to item exports.
 #[derive(Debug)]
 pub struct ExportMap {
-    visited: HashSet<DefId>,
     /// The map of paths and item exports.
     paths: PathMap,
 }
+
+// TODO: test that we fetch all modules from a crate store (by iterating over all DefIds) it
+// defines and comparing them to the set of known DefIds here;
 
 impl ExportMap {
     /// Construct a new export map from a root module's `DefId` and given a `CrateStore`.
@@ -57,7 +59,6 @@ impl ExportMap {
         }
 
         ExportMap {
-            visited: visited,
             paths: paths,
         }
     }
@@ -82,4 +83,6 @@ impl ExportMap {
             changes.add_change(Change::new(change_type, path.clone(), *export));
         }
     }
+
+    // TODO: test that the compairson with oneself doesn't modify the change set
 }

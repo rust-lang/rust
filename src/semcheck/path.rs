@@ -34,3 +34,15 @@ impl ExportPath {
 
 /// A map of export paths to item exports.
 pub type PathMap = HashMap<ExportPath, Export>;
+
+#[cfg(test)]
+pub mod tests {
+    use quickcheck::*;
+    use super::*;
+
+    impl Arbitrary for ExportPath {
+        fn arbitrary<G: Gen>(g: &mut G) -> ExportPath {
+            ExportPath::new(Arbitrary::arbitrary(g))
+        }
+    }
+}
