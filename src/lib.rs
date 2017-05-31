@@ -3,4 +3,4 @@
 extern crate rustc;
 extern crate syntax_pos;
 
-pub mod check;
+pub mod semcheck;

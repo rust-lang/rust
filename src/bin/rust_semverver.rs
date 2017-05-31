@@ -9,8 +9,8 @@ extern crate rustc_metadata;
 extern crate semverver;
 extern crate syntax;
 
-use semverver::check::change::ChangeSet;
-use semverver::check::export_map::{Checking, ExportMap};
+use semverver::semcheck::changes::ChangeSet;
+use semverver::semcheck::export_map::{Checking, ExportMap};
 
 use rustc::hir::def_id::*;
 use rustc::session::{config, Session};
@@ -24,28 +24,41 @@ use std::process::Command;
 
 use syntax::ast;
 
+/// After the typechecker has finished it's work, we perform our checks.
+///
+/// To compare the two well-typed crates, we first find the aptly named crates `new` and `old`,
+/// find their root modules and then proceed to walk their module trees.
 fn callback(state: &driver::CompileState) {
     let tcx = state.tcx.unwrap();
     let cstore = &tcx.sess.cstore;
 
-    let cnums = cstore.crates().iter().fold((None, None), |(n, o), crate_num| {
-        let name = cstore.crate_name(*crate_num);
-        if name == "new" {
-            (Some(*crate_num), o)
-        } else if name == "old" {
-            (n, Some(*crate_num))
-        } else {
-            (n, o)
-        }
-    });
+    let cnums = cstore
+        .crates()
+        .iter()
+        .fold((None, None), |(n, o), crate_num| {
+            let name = cstore.crate_name(*crate_num);
+            if name == "new" {
+                (Some(*crate_num), o)
+            } else if name == "old" {
+                (n, Some(*crate_num))
+            } else {
+                (n, o)
+            }
+        });
 
-    let new_did = DefId { krate: cnums.0.unwrap(), index: CRATE_DEF_INDEX };
-    let old_did = DefId { krate: cnums.1.unwrap(), index: CRATE_DEF_INDEX };
+    let new_did = DefId {
+        krate: cnums.0.unwrap(),
+        index: CRATE_DEF_INDEX,
+    };
+    let old_did = DefId {
+        krate: cnums.1.unwrap(),
+        index: CRATE_DEF_INDEX,
+    };
 
     let new_map = ExportMap::new(new_did, cstore.borrow());
     let old_map = ExportMap::new(old_did, cstore.borrow());
 
-    let mut changes = ChangeSet::new();
+    let mut changes = ChangeSet::default();
 
     old_map.compare(&new_map, Checking::FromOld, &mut changes);
     new_map.compare(&old_map, Checking::FromNew, &mut changes);
@@ -53,13 +66,14 @@ fn callback(state: &driver::CompileState) {
     changes.output();
 }
 
+/// Our wrapper to control compilation.
 struct SemVerVerCompilerCalls {
     default: RustcDefaultCalls,
 }
 
 impl SemVerVerCompilerCalls {
     pub fn new() -> SemVerVerCompilerCalls {
-        SemVerVerCompilerCalls { default: RustcDefaultCalls }
+        SemVerVerCompilerCalls { default: RustcDefaultCalls } // TODO: replace with constant
     }
 }
 
@@ -104,17 +118,20 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
                         -> driver::CompileController<'a> {
         let mut controller = self.default.build_controller(sess, matches);
 
-        let old_callback = std::mem::replace(&mut controller.after_analysis.callback,
-                                             box |_| {});
+        let old_callback = std::mem::replace(&mut controller.after_analysis.callback, box |_| {});
         controller.after_analysis.callback = box move |state| {
-            callback(state);
-            old_callback(state);
-        };
+                                                     callback(state);
+                                                     old_callback(state);
+                                                 };
 
         controller
     }
 }
 
+/// Main routine.
+///
+/// Find the sysroot before passing our args to the compiler driver, after registering our custom
+/// compiler driver.
 fn main() {
     let home = option_env!("RUSTUP_HOME");
     let toolchain = option_env!("RUSTUP_TOOLCHAIN");
@@ -151,6 +168,5 @@ fn main() {
                 std::process::exit(1);
             }
         }
-    })
-    .expect("rustc thread failed");
+    }).expect("rustc thread failed");
 }
