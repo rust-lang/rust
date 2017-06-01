@@ -138,6 +138,14 @@ impl ChangeSet {
         self.changes.insert(change);
     }
 
+    /// Check for emptyness.
+    ///
+    /// Currently only used in tests.
+    #[cfg(test)]
+    pub fn is_empty(&self) -> bool {
+        self.changes.is_empty()
+    }
+
     /// Format the contents of a change set for user output.
     ///
     /// TODO: replace this with something more sophisticated.
@@ -151,9 +159,9 @@ impl ChangeSet {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use quickcheck::*;
-    use super::*;
+    pub use super::*;
 
     use rustc::hir::def::Def;
 
@@ -164,7 +172,7 @@ mod tests {
     use syntax_pos::symbol::{Ident, Interner};
 
     #[derive(Clone, Debug)]
-    struct Span_(Span);
+    pub struct Span_(Span);
 
     impl Span_ {
         pub fn inner(self) -> Span {
@@ -190,7 +198,7 @@ mod tests {
         }
     }
 
-    type Change_ = (ChangeType, Span_);
+    pub type Change_ = (ChangeType, Span_);
 
     /// We build these by hand, because symbols can't be sent between threads.
     fn build_change(t: ChangeType, s: Span) -> Change {

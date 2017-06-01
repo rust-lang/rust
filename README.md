@@ -1,5 +1,6 @@
 # rust-semverver
 [![Build Status](https://travis-ci.org/ibabushkin/rust-semverver.svg?branch=master)](https://travis-ci.org/ibabushkin/rust-semverver)
+
 This repository is hosting a proof-of-concept implementation of an automatic tool checking
 rust library crates for semantic versioning adherence. The goal is to provide an automated
 command akin to `cargo clippy` that analyzes the current crate's souce code for changes

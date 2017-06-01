@@ -63,6 +63,16 @@ impl ExportMap {
         }
     }
 
+    /// Construct an empty export map without filling it.
+    ///
+    /// This is used for testing and similar tasks.
+    #[cfg(test)]
+    fn construct(paths: PathMap) -> ExportMap {
+        ExportMap {
+            paths: paths,
+        }
+    }
+
     /// Get a path's corresponding item export, if present.
     pub fn lookup_path(&self, path: &ExportPath) -> Option<&Export> {
         self.paths.get(path)
@@ -83,6 +93,56 @@ impl ExportMap {
             changes.add_change(Change::new(change_type, path.clone(), *export));
         }
     }
+}
 
-    // TODO: test that the compairson with oneself doesn't modify the change set
+#[cfg(test)]
+pub mod tests {
+    pub use super::*;
+
+    use semcheck::changes::tests as changes;
+    use semcheck::path::tests as path;
+
+    use syntax_pos::hygiene::SyntaxContext;
+    use syntax_pos::symbol::{Ident, Interner};
+
+    pub type ChangeType = Vec<(changes::Span_, path::ExportPath)>;
+
+    pub fn build_export_map(change_data: ChangeType) -> ExportMap {
+        let mut paths = HashMap::new();
+
+        let mut interner = Interner::new();
+
+        for &(ref span, ref path) in change_data.iter() {
+            let ident = Ident {
+                name: interner.intern("test"),
+                ctxt: SyntaxContext::empty(),
+            };
+
+            let export = Export {
+                ident: ident,
+                def: Def::Err,
+                span: span.clone().inner(),
+            };
+
+            paths.insert(path.clone(), export);
+        }
+
+        ExportMap::construct(paths)
+    }
+
+    quickcheck! {
+        /// If we compare an export map to itself, it shouldn't detect any changes.
+        ///
+        /// FIXME: this is *very slow*
+        fn self_compare_unchanged(change_data: ChangeType) -> bool {
+            let mut change_set = ChangeSet::default();
+
+            let export_map = build_export_map(change_data);
+
+            export_map.compare(&export_map, Checking::FromOld, &mut change_set);
+            export_map.compare(&export_map, Checking::FromNew, &mut change_set);
+
+            change_set.is_empty()
+        }
+    }
 }

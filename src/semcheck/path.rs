@@ -38,7 +38,7 @@ pub type PathMap = HashMap<ExportPath, Export>;
 #[cfg(test)]
 pub mod tests {
     use quickcheck::*;
-    use super::*;
+    pub use super::*;
 
     impl Arbitrary for ExportPath {
         fn arbitrary<G: Gen>(g: &mut G) -> ExportPath {
