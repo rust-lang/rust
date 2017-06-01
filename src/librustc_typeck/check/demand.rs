@@ -18,7 +18,7 @@ use syntax_pos::{self, Span};
 use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::ty::{self, Ty, AssociatedItem};
-use errors::DiagnosticBuilder;
+use errors::{DiagnosticBuilder, CodeMapper};
 
 use super::method::probe;
 
@@ -187,7 +187,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                        checked_ty),
                 };
                 if self.can_coerce(ref_ty, expected) {
-                    if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
+                    // Use the callsite's span if this is a macro call. #41858
+                    let sp = self.sess().codemap().call_span_if_macro(expr.span);
+                    if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(sp) {
                         return Some(format!("try with `{}{}`",
                                             match mutability.mutbl {
                                                 hir::Mutability::MutMutable => "&mut ",
