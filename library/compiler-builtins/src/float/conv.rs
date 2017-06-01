@@ -1,17 +1,6 @@
 use float::Float;
 use int::Int;
 
-macro_rules! fp_overflow {
-    (infinity, $fty:ty, $sign: expr) => {
-        return {
-            <$fty as Float>::from_parts(
-                $sign,
-                <$fty as Float>::exponent_max() as <$fty as Float>::Int,
-                0 as <$fty as Float>::Int)
-        }
-    }
-}
-
 macro_rules! int_to_float {
     ($intrinsic:ident: $ity:ty, $fty:ty) => {
         int_to_float!($intrinsic: $ity, $fty, "C");
