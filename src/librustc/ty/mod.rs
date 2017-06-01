@@ -221,6 +221,22 @@ impl AssociatedItem {
             AssociatedKind::Method => !self.method_has_self_argument,
         }
     }
+
+    pub fn signature<'a, 'tcx>(&self, tcx: &TyCtxt<'a, 'tcx, 'tcx>) -> String {
+        match self.kind {
+            ty::AssociatedKind::Method => {
+                // We skip the binder here because the binder would deanonymize all
+                // late-bound regions, and we don't want method signatures to show up
+                // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
+                // regions just fine, showing `fn(&MyType)`.
+                format!("{}", tcx.type_of(self.def_id).fn_sig().skip_binder())
+            }
+            ty::AssociatedKind::Type => format!("type {};", self.name.to_string()),
+            ty::AssociatedKind::Const => {
+                format!("const {}: {:?};", self.name.to_string(), tcx.type_of(self.def_id))
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Copy, RustcEncodable, RustcDecodable)]

@@ -1334,18 +1334,6 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let signature = |item: &ty::AssociatedItem| {
-        match item.kind {
-            ty::AssociatedKind::Method => {
-                format!("{}", tcx.type_of(item.def_id).fn_sig().0)
-            }
-            ty::AssociatedKind::Type => format!("type {};", item.name.to_string()),
-            ty::AssociatedKind::Const => {
-                format!("const {}: {:?};", item.name.to_string(), tcx.type_of(item.def_id))
-            }
-        }
-    };
-
     if !missing_items.is_empty() {
         let mut err = struct_span_err!(tcx.sess, impl_span, E0046,
             "not all trait items implemented, missing: `{}`",
@@ -1360,9 +1348,8 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if let Some(span) = tcx.hir.span_if_local(trait_item.def_id) {
                 err.span_label(span, format!("`{}` from trait", trait_item.name));
             } else {
-                err.note(&format!("`{}` from trait: `{}`",
-                                  trait_item.name,
-                                  signature(&trait_item)));
+                err.note_trait_signature(trait_item.name.to_string(),
+                                         trait_item.signature(&tcx));
             }
         }
         err.emit();
