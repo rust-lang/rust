@@ -453,7 +453,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
 
-        /// Return the set of locals that have a stroage annotation anywhere
+        /// Return the set of locals that have a storage annotation anywhere
         fn collect_storage_annotations<'tcx>(mir: &'tcx mir::Mir<'tcx>) -> HashSet<mir::Local> {
             use rustc::mir::StatementKind::*;
 
@@ -475,10 +475,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // `Value` for that.
         let annotated_locals = collect_storage_annotations(mir);
         let num_locals = mir.local_decls.len() - 1;
-        let mut locals = Vec::with_capacity(num_locals);
+        let mut locals = vec![None; num_locals];
         for i in 0..num_locals {
             let local = mir::Local::new(i+1);
-            locals.push(if annotated_locals.contains(&local) { None } else { Some(Value::ByVal(PrimVal::Undef)) });
+            if !annotated_locals.contains(&local) {
+                locals[i] = Some(Value::ByVal(PrimVal::Undef));
+            }
         }
 
         self.stack.push(Frame {

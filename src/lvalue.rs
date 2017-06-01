@@ -130,7 +130,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(Value::ByRef(ptr))
             }
             Lvalue::Local { frame, local, field } => {
-                Ok(self.stack[frame].get_local(local, field.map(|(i, _)| i))?)
+                self.stack[frame].get_local(local, field.map(|(i, _)| i))
             }
             Lvalue::Global(cid) => {
                 Ok(self.globals.get(&cid).expect("global not cached").value)
