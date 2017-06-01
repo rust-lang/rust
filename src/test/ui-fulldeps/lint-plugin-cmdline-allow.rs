@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod foo {
-    #![macro_escape] //~ WARNING macro_escape is a deprecated synonym for macro_use
-    //~^ HELP consider an outer attribute
-}
+// run-pass
+// aux-build:lint_plugin_test.rs
+// ignore-stage1
+// compile-flags: -A test-lint
 
-fn main() {
+#![feature(plugin)]
+#![plugin(lint_plugin_test)]
+
+fn lintme() { }
+
+pub fn main() {
 }
