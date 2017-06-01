@@ -242,6 +242,7 @@
 
 use fmt;
 use iter::{FromIterator, FusedIterator, TrustedLen};
+use ops;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
@@ -1106,5 +1107,23 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
             Some(err) => Err(err),
             None => Ok(v),
         }
+    }
+}
+
+#[unstable(feature = "try_trait", issue = "42327")]
+impl<T,E> ops::Try for Result<T, E> {
+    type Ok = T;
+    type Error = E;
+
+    fn into_result(self) -> Self {
+        self
+    }
+
+    fn from_ok(v: T) -> Self {
+        Ok(v)
+    }
+
+    fn from_error(v: E) -> Self {
+        Err(v)
     }
 }

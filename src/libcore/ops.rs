@@ -2918,15 +2918,9 @@ pub trait BoxPlace<Data: ?Sized> : Place<Data> {
     fn make_place() -> Self;
 }
 
-/// A trait for types which have success and error states and are meant to work
-/// with the question mark operator.
-/// When the `?` operator is used with a value, whether the value is in the
-/// success or error state is determined by calling `translate`.
-///
-/// This trait is **very** experimental, it will probably be iterated on heavily
-/// before it is stabilised. Implementors should expect change. Users of `?`
-/// should not rely on any implementations of `Carrier` other than `Result`,
-/// i.e., you should not expect `?` to continue to work with `Option`, etc.
+/// This trait has been superseded by the `Try` trait, but must remain
+/// here as `?` is still lowered to it in stage0 .
+#[cfg(stage0)]
 #[unstable(feature = "question_mark_carrier", issue = "31436")]
 pub trait Carrier {
     /// The type of the value when computation succeeds.
@@ -2945,6 +2939,7 @@ pub trait Carrier {
     fn translate<T>(self) -> T where T: Carrier<Success=Self::Success, Error=Self::Error>;
 }
 
+#[cfg(stage0)]
 #[unstable(feature = "question_mark_carrier", issue = "31436")]
 impl<U, V> Carrier for Result<U, V> {
     type Success = U;
@@ -2970,21 +2965,57 @@ impl<U, V> Carrier for Result<U, V> {
 
 struct _DummyErrorType;
 
-impl Carrier for _DummyErrorType {
-    type Success = ();
+impl Try for _DummyErrorType {
+    type Ok = ();
     type Error = ();
 
-    fn from_success(_: ()) -> _DummyErrorType {
+    fn into_result(self) -> Result<Self::Ok, Self::Error> {
+        Ok(())
+    }
+
+    fn from_ok(_: ()) -> _DummyErrorType {
         _DummyErrorType
     }
 
     fn from_error(_: ()) -> _DummyErrorType {
         _DummyErrorType
     }
+}
 
-    fn translate<T>(self) -> T
-        where T: Carrier<Success=(), Error=()>
-    {
-        T::from_success(())
-    }
+/// A trait for customizing the behaviour of the `?` operator.
+///
+/// A type implementing `Try` is one that has a canonical way to view it
+/// in terms of a success/failure dichotomy.  This trait allows both
+/// extracting those success or failure values from an existing instance and
+/// creating a new instance from a success or failure value.
+#[unstable(feature = "try_trait", issue = "42327")]
+pub trait Try {
+    /// The type of this value when viewed as successful.
+    #[unstable(feature = "try_trait", issue = "42327")]
+    type Ok;
+    /// The type of this value when viewed as failed.
+    #[unstable(feature = "try_trait", issue = "42327")]
+    type Error;
+
+    /// Applies the "?" operator. A return of `Ok(t)` means that the
+    /// execution should continue normally, and the result of `?` is the
+    /// value `t`. A return of `Err(e)` means that execution should branch
+    /// to the innermost enclosing `catch`, or return from the function.
+    ///
+    /// If an `Err(e)` result is returned, the value `e` will be "wrapped"
+    /// in the return type of the enclosing scope (which must itself implement
+    /// `Try`). Specifically, the value `X::from_error(From::from(e))`
+    /// is returned, where `X` is the return type of the enclosing function.
+    #[unstable(feature = "try_trait", issue = "42327")]
+    fn into_result(self) -> Result<Self::Ok, Self::Error>;
+
+    /// Wrap an error value to construct the composite result. For example,
+    /// `Result::Err(x)` and `Result::from_error(x)` are equivalent.
+    #[unstable(feature = "try_trait", issue = "42327")]
+    fn from_error(v: Self::Error) -> Self;
+
+    /// Wrap an OK value to construct the composite result. For example,
+    /// `Result::Ok(x)` and `Result::from_ok(x)` are equivalent.
+    #[unstable(feature = "try_trait", issue = "42327")]
+    fn from_ok(v: Self::Ok) -> Self;
 }
