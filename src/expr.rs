@@ -968,13 +968,15 @@ impl<'a> Rewrite for ControlFlow<'a> {
         };
 
         // for event in event
-        let between_kwd_cond = mk_sp(context.codemap.span_after(self.span, self.keyword.trim()),
-                                     self.pat
-                                         .map_or(cond_span.lo, |p| if self.matcher.is_empty() {
-            p.span.lo
-        } else {
-            context.codemap.span_before(self.span, self.matcher.trim())
-        }));
+        let between_kwd_cond = mk_sp(
+            context.codemap.span_after(self.span, self.keyword.trim()),
+            self.pat
+                .map_or(cond_span.lo, |p| if self.matcher.is_empty() {
+                    p.span.lo
+                } else {
+                    context.codemap.span_before(self.span, self.matcher.trim())
+                }),
+        );
 
         let between_kwd_cond_comment = extract_comment(between_kwd_cond, context, shape);
 
