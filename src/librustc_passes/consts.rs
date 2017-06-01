@@ -280,11 +280,10 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
         _ => {}
     }
 
-    let method_call = ty::MethodCall::expr(e.id);
     match e.node {
         hir::ExprUnary(..) |
         hir::ExprBinary(..) |
-        hir::ExprIndex(..) if v.tables.method_map.contains_key(&method_call) => {
+        hir::ExprIndex(..) if v.tables.is_method_call(e) => {
             v.promotable = false;
         }
         hir::ExprBox(_) => {
@@ -381,9 +380,9 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
         hir::ExprMethodCall(..) => {
-            let method = v.tables.method_map[&method_call];
-            match v.tcx.associated_item(method.def_id).container {
-                ty::ImplContainer(_) => v.handle_const_fn_call(method.def_id, node_ty),
+            let def_id = v.tables.type_dependent_defs[&e.id].def_id();
+            match v.tcx.associated_item(def_id).container {
+                ty::ImplContainer(_) => v.handle_const_fn_call(def_id, node_ty),
                 ty::TraitContainer(_) => v.promotable = false
             }
         }
@@ -442,18 +441,21 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
 fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr) {
     use rustc::ty::adjustment::*;
 
-    match v.tables.adjustments.get(&e.id).map(|adj| adj.kind) {
-        None |
-        Some(Adjust::NeverToAny) |
-        Some(Adjust::ReifyFnPointer) |
-        Some(Adjust::UnsafeFnPointer) |
-        Some(Adjust::ClosureFnPointer) |
-        Some(Adjust::MutToConstPointer) => {}
+    for adjustment in v.tables.expr_adjustments(e) {
+        match adjustment.kind {
+            Adjust::NeverToAny |
+            Adjust::ReifyFnPointer |
+            Adjust::UnsafeFnPointer |
+            Adjust::ClosureFnPointer |
+            Adjust::MutToConstPointer |
+            Adjust::Borrow(_) |
+            Adjust::Unsize => {}
 
-        Some(Adjust::DerefRef { autoderefs, .. }) => {
-            if (0..autoderefs as u32)
-                .any(|autoderef| v.tables.is_overloaded_autoderef(e.id, autoderef)) {
-                v.promotable = false;
+            Adjust::Deref(ref overloaded) => {
+                if overloaded.is_some() {
+                    v.promotable = false;
+                    break;
+                }
             }
         }
     }
@@ -512,7 +514,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
                 Categorization::StaticItem => {
                     break;
                 }
-                Categorization::Deref(ref cmt, ..) |
+                Categorization::Deref(ref cmt, _) |
                 Categorization::Downcast(ref cmt, _) |
                 Categorization::Interior(ref cmt, _) => {
                     cur = cmt;

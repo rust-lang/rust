@@ -19,8 +19,6 @@ use std::mem;
 use syntax_pos::symbol::InternedString;
 use ty;
 
-impl_stable_hash_for!(struct ty::ItemSubsts<'tcx> { substs });
-
 impl<'a, 'tcx, T> HashStable<StableHashingContext<'a, 'tcx>> for &'tcx ty::Slice<T>
     where T: HashStable<StableHashingContext<'a, 'tcx>> {
     fn hash_stable<W: StableHasherResult>(&self,
@@ -101,19 +99,20 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::adjustment::Ad
             ty::adjustment::Adjust::ReifyFnPointer |
             ty::adjustment::Adjust::UnsafeFnPointer |
             ty::adjustment::Adjust::ClosureFnPointer |
-            ty::adjustment::Adjust::MutToConstPointer => {}
-            ty::adjustment::Adjust::DerefRef { autoderefs, ref autoref, unsize } => {
-                autoderefs.hash_stable(hcx, hasher);
+            ty::adjustment::Adjust::MutToConstPointer |
+            ty::adjustment::Adjust::Unsize => {}
+            ty::adjustment::Adjust::Deref(ref overloaded) => {
+                overloaded.hash_stable(hcx, hasher);
+            }
+            ty::adjustment::Adjust::Borrow(ref autoref) => {
                 autoref.hash_stable(hcx, hasher);
-                unsize.hash_stable(hcx, hasher);
             }
         }
     }
 }
 
 impl_stable_hash_for!(struct ty::adjustment::Adjustment<'tcx> { kind, target });
-impl_stable_hash_for!(struct ty::MethodCall { expr_id, autoderef });
-impl_stable_hash_for!(struct ty::MethodCallee<'tcx> { def_id, ty, substs });
+impl_stable_hash_for!(struct ty::adjustment::OverloadedDeref<'tcx> { region, mutbl });
 impl_stable_hash_for!(struct ty::UpvarId { var_id, closure_expr_id });
 impl_stable_hash_for!(struct ty::UpvarBorrow<'tcx> { kind, region });
 
@@ -601,11 +600,10 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::TypeckTables<'
                                           hcx: &mut StableHashingContext<'a, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         let ty::TypeckTables {
-            ref type_relative_path_defs,
+            ref type_dependent_defs,
             ref node_types,
-            ref item_substs,
+            ref node_substs,
             ref adjustments,
-            ref method_map,
             ref upvar_capture_map,
             ref closure_tys,
             ref closure_kinds,
@@ -622,21 +620,10 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::TypeckTables<'
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            ich::hash_stable_nodemap(hcx, hasher, type_relative_path_defs);
+            ich::hash_stable_nodemap(hcx, hasher, type_dependent_defs);
             ich::hash_stable_nodemap(hcx, hasher, node_types);
-            ich::hash_stable_nodemap(hcx, hasher, item_substs);
+            ich::hash_stable_nodemap(hcx, hasher, node_substs);
             ich::hash_stable_nodemap(hcx, hasher, adjustments);
-
-            ich::hash_stable_hashmap(hcx, hasher, method_map, |hcx, method_call| {
-                let ty::MethodCall {
-                    expr_id,
-                    autoderef
-                } = *method_call;
-
-                let def_id = hcx.tcx().hir.local_def_id(expr_id);
-                (hcx.def_path_hash(def_id), autoderef)
-            });
-
             ich::hash_stable_hashmap(hcx, hasher, upvar_capture_map, |hcx, up_var_id| {
                 let ty::UpvarId {
                     var_id,

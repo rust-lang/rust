@@ -1045,7 +1045,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprAssignOp(_, ref l, ref r) => {
             // an overloaded assign op is like a method call
-            if self.tables.is_method_call(expr.id) {
+            if self.tables.is_method_call(expr) {
                 let succ = self.propagate_through_expr(&l, succ);
                 self.propagate_through_expr(&r, succ)
             } else {
@@ -1072,9 +1072,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprCall(ref f, ref args) => {
             // FIXME(canndrew): This is_never should really be an is_uninhabited
-            let diverges = !self.tables.is_method_call(expr.id) &&
-                self.tables.expr_ty_adjusted(&f).fn_ret().0.is_never();
-            let succ = if diverges {
+            let succ = if self.tables.expr_ty(expr).is_never() {
                 self.s.exit_ln
             } else {
                 succ
@@ -1084,10 +1082,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           hir::ExprMethodCall(.., ref args) => {
-            let method_call = ty::MethodCall::expr(expr.id);
-            let method_ty = self.tables.method_map[&method_call].ty;
             // FIXME(canndrew): This is_never should really be an is_uninhabited
-            let succ = if method_ty.fn_ret().0.is_never() {
+            let succ = if self.tables.expr_ty(expr).is_never() {
                 self.s.exit_ln
             } else {
                 succ
@@ -1370,7 +1366,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
       }
 
       hir::ExprAssignOp(_, ref l, _) => {
-        if !this.tables.is_method_call(expr.id) {
+        if !this.tables.is_method_call(expr) {
             this.check_lvalue(&l);
         }
 

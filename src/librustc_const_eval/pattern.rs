@@ -584,8 +584,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
         let kind = match def {
             Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                 let tcx = self.tcx.global_tcx();
-                let substs = self.tables.node_id_item_substs(id)
-                    .unwrap_or_else(|| tcx.intern_substs(&[]));
+                let substs = self.tables.node_substs(id);
                 match eval::lookup_const_by_id(tcx, def_id, substs) {
                     Some((def_id, _substs)) => {
                         // Enter the inlined constant's tables temporarily.

@@ -10,13 +10,12 @@
 
 //! Method lookup: the secret sauce of Rust. See `README.md`.
 
-use check::{FnCtxt, AdjustedRcvr};
+use check::FnCtxt;
 use hir::def::Def;
 use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::ty::subst::Subst;
 use rustc::infer::{self, InferOk};
 
@@ -35,6 +34,18 @@ pub mod probe;
 mod suggest;
 
 use self::probe::IsSuggestion;
+
+#[derive(Clone, Copy, Debug)]
+pub struct MethodCallee<'tcx> {
+    /// Impl method ID, for inherent methods, or trait method ID, otherwise.
+    pub def_id: DefId,
+    pub substs: &'tcx Substs<'tcx>,
+
+    /// Instantiated method signature, i.e. it has been
+    /// substituted, normalized, and has had late-bound
+    /// lifetimes replaced with inference variables.
+    pub sig: ty::FnSig<'tcx>,
+}
 
 pub enum MethodError<'tcx> {
     // Did not find an applicable method, but we did find various near-misses that may work.
@@ -125,7 +136,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          supplied_method_types: Vec<ty::Ty<'tcx>>,
                          call_expr: &'gcx hir::Expr,
                          self_expr: &'gcx hir::Expr)
-                         -> Result<ty::MethodCallee<'tcx>, MethodError<'tcx>> {
+                         -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
                method_name,
                self_ty,
@@ -153,29 +164,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                supplied_method_types))
     }
 
-    /// `lookup_in_trait_adjusted` is used for overloaded operators.
+    /// `lookup_method_in_trait` is used for overloaded operators.
     /// It does a very narrow slice of what the normal probe/confirm path does.
     /// In particular, it doesn't really do any probing: it simply constructs
     /// an obligation for aparticular trait with the given self-type and checks
     /// whether that trait is implemented.
     ///
     /// FIXME(#18741) -- It seems likely that we can consolidate some of this
-    /// code with the other method-lookup code. In particular, autoderef on
-    /// index is basically identical to autoderef with normal probes, except
-    /// that the test also looks for built-in indexing. Also, the second half of
-    /// this method is basically the same as confirmation.
-    pub fn lookup_method_in_trait_adjusted(&self,
-                                           span: Span,
-                                           self_info: Option<AdjustedRcvr>,
-                                           m_name: ast::Name,
-                                           trait_def_id: DefId,
-                                           self_ty: ty::Ty<'tcx>,
-                                           opt_input_types: Option<Vec<ty::Ty<'tcx>>>)
-                                           -> Option<InferOk<'tcx, ty::MethodCallee<'tcx>>> {
-        debug!("lookup_in_trait_adjusted(self_ty={:?}, self_info={:?}, \
+    /// code with the other method-lookup code. In particular, the second half
+    /// of this method is basically the same as confirmation.
+    pub fn lookup_method_in_trait(&self,
+                                  span: Span,
+                                  m_name: ast::Name,
+                                  trait_def_id: DefId,
+                                  self_ty: ty::Ty<'tcx>,
+                                  opt_input_types: Option<&[ty::Ty<'tcx>]>)
+                                  -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
+        debug!("lookup_in_trait_adjusted(self_ty={:?}, \
                 m_name={}, trait_def_id={:?})",
                self_ty,
-               self_info,
                m_name,
                trait_def_id);
 
@@ -225,8 +232,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // NB: Instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let original_method_ty = tcx.type_of(def_id);
-        let fn_sig = original_method_ty.fn_sig();
+        let fn_sig = tcx.type_of(def_id).fn_sig();
         let fn_sig = self.replace_late_bound_regions_with_fresh_var(span,
                                                                     infer::FnCall,
                                                                     &fn_sig).0;
@@ -237,12 +243,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 value
             }
         };
-        let transformed_self_ty = fn_sig.inputs()[0];
-        let method_ty = tcx.mk_fn_def(def_id, substs, ty::Binder(fn_sig));
-
-        debug!("lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
-               method_ty,
-               obligation);
 
         // Register obligations for the parameters.  This will include the
         // `Self` parameter, which in turn has a bound of the main trait,
@@ -265,43 +265,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         obligations.extend(traits::predicates_for_generics(cause.clone(), &bounds));
 
         // Also add an obligation for the method type being well-formed.
+        let method_ty = tcx.mk_fn_ptr(ty::Binder(fn_sig));
+        debug!("lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
+               method_ty,
+               obligation);
         obligations.push(traits::Obligation::new(cause, ty::Predicate::WellFormed(method_ty)));
 
-        // Insert any adjustments needed (always an autoref of some mutability).
-        if let Some(AdjustedRcvr { rcvr_expr, autoderefs, unsize }) = self_info {
-            debug!("lookup_in_trait_adjusted: inserting adjustment if needed \
-                    (self-id={}, autoderefs={}, unsize={}, fty={:?})",
-                    rcvr_expr.id, autoderefs, unsize, original_method_ty);
-
-            let original_sig = original_method_ty.fn_sig();
-            let autoref = match (&original_sig.input(0).skip_binder().sty,
-                                 &transformed_self_ty.sty) {
-                (&ty::TyRef(..), &ty::TyRef(region, ty::TypeAndMut { mutbl, ty: _ })) => {
-                    // Trait method is fn(&self) or fn(&mut self), need an
-                    // autoref. Pull the region etc out of the type of first argument.
-                    Some(AutoBorrow::Ref(region, mutbl))
-                }
-                _ => {
-                    // Trait method is fn(self), no transformation needed.
-                    assert!(!unsize);
-                    None
-                }
-            };
-
-            self.apply_adjustment(rcvr_expr.id, Adjustment {
-                kind: Adjust::DerefRef {
-                    autoderefs: autoderefs,
-                    autoref: autoref,
-                    unsize: unsize
-                },
-                target: transformed_self_ty
-            });
-        }
-
-        let callee = ty::MethodCallee {
+        let callee = MethodCallee {
             def_id: def_id,
-            ty: method_ty,
             substs: trait_ref.substs,
+            sig: fn_sig,
         };
 
         debug!("callee = {:?}", callee);

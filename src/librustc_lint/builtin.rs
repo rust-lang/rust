@@ -881,30 +881,37 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                                       -> bool {
             use rustc::ty::adjustment::*;
 
+            // Ignore non-expressions.
+            let expr = if let hir_map::NodeExpr(e) = cx.tcx.hir.get(id) {
+                e
+            } else {
+                return false;
+            };
+
+            // Check for overloaded autoderef method calls.
+            let mut source = cx.tables.expr_ty(expr);
+            for adjustment in cx.tables.expr_adjustments(expr) {
+                if let Adjust::Deref(Some(deref)) = adjustment.kind {
+                    let (def_id, substs) = deref.method_call(cx.tcx, source);
+                    if method_call_refers_to_method(cx.tcx, method, def_id, substs, id) {
+                        return true;
+                    }
+                }
+                source = adjustment.target;
+            }
+
             // Check for method calls and overloaded operators.
-            let opt_m = cx.tables.method_map.get(&ty::MethodCall::expr(id)).cloned();
-            if let Some(m) = opt_m {
-                if method_call_refers_to_method(cx.tcx, method, m.def_id, m.substs, id) {
+            if cx.tables.is_method_call(expr) {
+                let def_id = cx.tables.type_dependent_defs[&id].def_id();
+                let substs = cx.tables.node_substs(id);
+                if method_call_refers_to_method(cx.tcx, method, def_id, substs, id) {
                     return true;
                 }
             }
 
-            // Check for overloaded autoderef method calls.
-            let opt_adj = cx.tables.adjustments.get(&id).cloned();
-            if let Some(Adjustment { kind: Adjust::DerefRef { autoderefs, .. }, .. }) = opt_adj {
-                for i in 0..autoderefs {
-                    let method_call = ty::MethodCall::autoderef(id, i as u32);
-                    if let Some(m) = cx.tables.method_map.get(&method_call).cloned() {
-                        if method_call_refers_to_method(cx.tcx, method, m.def_id, m.substs, id) {
-                            return true;
-                        }
-                    }
-                }
-            }
-
             // Check for calls to methods via explicit paths (e.g. `T::method()`).
-            match cx.tcx.hir.get(id) {
-                hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
+            match expr.node {
+                hir::ExprCall(ref callee, _) => {
                     let def = if let hir::ExprPath(ref qpath) = callee.node {
                         cx.tables.qpath_def(qpath, callee.id)
                     } else {
@@ -912,8 +919,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                     };
                     match def {
                         Def::Method(def_id) => {
-                            let substs = cx.tables.node_id_item_substs(callee.id)
-                                .unwrap_or_else(|| cx.tcx.intern_substs(&[]));
+                            let substs = cx.tables.node_substs(callee.id);
                             method_call_refers_to_method(
                                 cx.tcx, method, def_id, substs, id)
                         }

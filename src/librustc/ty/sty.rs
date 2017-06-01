@@ -141,8 +141,6 @@ pub enum TypeVariants<'tcx> {
     TyFnDef(DefId, &'tcx Substs<'tcx>, PolyFnSig<'tcx>),
 
     /// A pointer to a function.  Written as `fn() -> i32`.
-    /// FIXME: This is currently also used to represent the callee of a method;
-    /// see ty::MethodCallee etc.
     TyFnPtr(PolyFnSig<'tcx>),
 
     /// A trait, defined with `trait`.
@@ -1336,15 +1334,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyFnDef(.., f) | TyFnPtr(f) => f,
             _ => bug!("Ty::fn_sig() called on non-fn type: {:?}", self)
         }
-    }
-
-    /// Type accessors for substructures of types
-    pub fn fn_args(&self) -> ty::Binder<&'tcx [Ty<'tcx>]> {
-        self.fn_sig().inputs()
-    }
-
-    pub fn fn_ret(&self) -> Binder<Ty<'tcx>> {
-        self.fn_sig().output()
     }
 
     pub fn is_fn(&self) -> bool {

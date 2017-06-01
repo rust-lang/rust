@@ -564,13 +564,14 @@ impl<'tcx, T> InferOk<'tcx, T> {
 }
 
 #[must_use = "once you start a snapshot, you should always consume it"]
-pub struct CombinedSnapshot {
+pub struct CombinedSnapshot<'a, 'tcx:'a> {
     projection_cache_snapshot: traits::ProjectionCacheSnapshot,
     type_snapshot: type_variable::Snapshot,
     int_snapshot: unify::Snapshot<ty::IntVid>,
     float_snapshot: unify::Snapshot<ty::FloatVid>,
     region_vars_snapshot: RegionSnapshot,
     was_in_snapshot: bool,
+    _in_progress_tables: Option<Ref<'a, ty::TypeckTables<'tcx>>>,
 }
 
 /// Helper trait for shortening the lifetimes inside a
@@ -888,7 +889,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         result
     }
 
-    fn start_snapshot(&self) -> CombinedSnapshot {
+    fn start_snapshot<'b>(&'b self) -> CombinedSnapshot<'b, 'tcx> {
         debug!("start_snapshot()");
 
         let in_snapshot = self.in_snapshot.get();
@@ -901,6 +902,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             float_snapshot: self.float_unification_table.borrow_mut().snapshot(),
             region_vars_snapshot: self.region_vars.start_snapshot(),
             was_in_snapshot: in_snapshot,
+            // Borrow tables "in progress" (i.e. during typeck)
+            // to ban writes from within a snapshot to them.
+            _in_progress_tables: match self.tables {
+                InferTables::InProgress(ref tables) => tables.try_borrow().ok(),
+                _ => None
+            }
         }
     }
 
@@ -911,7 +918,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                int_snapshot,
                                float_snapshot,
                                region_vars_snapshot,
-                               was_in_snapshot } = snapshot;
+                               was_in_snapshot,
+                               _in_progress_tables } = snapshot;
 
         self.in_snapshot.set(was_in_snapshot);
 
@@ -938,7 +946,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                int_snapshot,
                                float_snapshot,
                                region_vars_snapshot,
-                               was_in_snapshot } = snapshot;
+                               was_in_snapshot,
+                               _in_progress_tables } = snapshot;
 
         self.in_snapshot.set(was_in_snapshot);
 
@@ -1643,29 +1652,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // moves_by_default has a cache, which we want to use in other
         // cases.
         !traits::type_known_to_meet_bound(self, ty, copy_def_id, span)
-    }
-
-    pub fn node_method_ty(&self, method_call: ty::MethodCall)
-                          -> Option<Ty<'tcx>> {
-        self.tables
-            .borrow()
-            .method_map
-            .get(&method_call)
-            .map(|method| method.ty)
-            .map(|ty| self.resolve_type_vars_if_possible(&ty))
-    }
-
-    pub fn node_method_id(&self, method_call: ty::MethodCall)
-                          -> Option<DefId> {
-        self.tables
-            .borrow()
-            .method_map
-            .get(&method_call)
-            .map(|method| method.def_id)
-    }
-
-    pub fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.tables.borrow().method_map.contains_key(&ty::MethodCall::expr(id))
     }
 
     pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture<'tcx>> {

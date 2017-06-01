@@ -619,7 +619,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Type check the path.
         let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
         // Replace constructor type with constructed type for tuple struct patterns.
-        let pat_ty = tcx.no_late_bound_regions(&pat_ty.fn_ret()).expect("expected fn type");
+        let pat_ty = pat_ty.fn_sig().output();
+        let pat_ty = tcx.no_late_bound_regions(&pat_ty).expect("expected fn type");
         self.demand_eqtype(pat.span, expected, pat_ty);
 
         // Type check subpatterns.

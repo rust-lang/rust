@@ -191,7 +191,7 @@ fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
         LpVar(_) | LpUpvar(_) => {
             true
         }
-        LpExtend(.., LpInterior(_, InteriorKind::InteriorElement(..))) => {
+        LpExtend(.., LpInterior(_, InteriorKind::InteriorElement)) => {
             // Paths involving element accesses a[i] do not refer to a unique
             // location, as there is no accurate tracking of the indices.
             //

@@ -8,13 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{DeferredCallResolution, Expectation, FnCtxt, TupleArgumentsFlag};
+use super::{Expectation, FnCtxt, TupleArgumentsFlag};
+use super::autoderef::Autoderef;
+use super::method::MethodCallee;
 
 use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::{infer, traits};
 use rustc::ty::{self, TyCtxt, LvaluePreference, Ty};
 use rustc::ty::subst::Subst;
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use syntax::abi;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
@@ -33,9 +36,9 @@ pub fn check_legal_trait_for_method_call(tcx: TyCtxt, span: Span, trait_id: DefI
 }
 
 enum CallStep<'tcx> {
-    Builtin,
+    Builtin(Ty<'tcx>),
     DeferredClosure(ty::FnSig<'tcx>),
-    Overloaded(ty::MethodCallee<'tcx>),
+    Overloaded(MethodCallee<'tcx>),
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
@@ -49,13 +52,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let expr_ty = self.structurally_resolved_type(call_expr.span, original_callee_ty);
 
         let mut autoderef = self.autoderef(callee_expr.span, expr_ty);
-        let result = autoderef.by_ref()
-            .flat_map(|(adj_ty, idx)| {
-                self.try_overloaded_call_step(call_expr, callee_expr, adj_ty, idx)
-            })
-            .next();
-        let callee_ty = autoderef.unambiguous_final_ty();
-        autoderef.finalize(LvaluePreference::NoPreference, callee_expr);
+        let mut result = None;
+        while result.is_none() && autoderef.next().is_some() {
+            result = self.try_overloaded_call_step(call_expr, callee_expr, &autoderef);
+        }
+        autoderef.finalize();
 
         let output = match result {
             None => {
@@ -63,7 +64,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.confirm_builtin_call(call_expr, original_callee_ty, arg_exprs, expected)
             }
 
-            Some(CallStep::Builtin) => {
+            Some(CallStep::Builtin(callee_ty)) => {
                 self.confirm_builtin_call(call_expr, callee_ty, arg_exprs, expected)
             }
 
@@ -72,11 +73,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
 
             Some(CallStep::Overloaded(method_callee)) => {
-                self.confirm_overloaded_call(call_expr,
-                                             callee_expr,
-                                             arg_exprs,
-                                             expected,
-                                             method_callee)
+                self.confirm_overloaded_call(call_expr, arg_exprs, expected, method_callee)
             }
         };
 
@@ -89,19 +86,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn try_overloaded_call_step(&self,
                                 call_expr: &'gcx hir::Expr,
                                 callee_expr: &'gcx hir::Expr,
-                                adjusted_ty: Ty<'tcx>,
-                                autoderefs: usize)
+                                autoderef: &Autoderef<'a, 'gcx, 'tcx>)
                                 -> Option<CallStep<'tcx>> {
-        debug!("try_overloaded_call_step(call_expr={:?}, adjusted_ty={:?}, autoderefs={})",
+        let adjusted_ty = autoderef.unambiguous_final_ty();
+        debug!("try_overloaded_call_step(call_expr={:?}, adjusted_ty={:?})",
                call_expr,
-               adjusted_ty,
-               autoderefs);
+               adjusted_ty);
 
         // If the callee is a bare function or a closure, then we're all set.
-        match self.structurally_resolved_type(callee_expr.span, adjusted_ty).sty {
+        match adjusted_ty.sty {
             ty::TyFnDef(..) | ty::TyFnPtr(_) => {
-                self.apply_autoderef_adjustment(callee_expr.id, autoderefs, adjusted_ty);
-                return Some(CallStep::Builtin);
+                let adjustments = autoderef.adjust_steps(LvaluePreference::NoPreference);
+                self.apply_adjustments(callee_expr, adjustments);
+                return Some(CallStep::Builtin(adjusted_ty));
             }
 
             ty::TyClosure(def_id, substs) => {
@@ -116,15 +113,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                    infer::FnCall,
                                                                    &closure_ty)
                         .0;
-                    self.record_deferred_call_resolution(def_id,
-                                                         Box::new(CallResolution {
-                                                             call_expr: call_expr,
-                                                             callee_expr: callee_expr,
-                                                             adjusted_ty: adjusted_ty,
-                                                             autoderefs: autoderefs,
-                                                             fn_sig: fn_sig.clone(),
-                                                             closure_def_id: def_id,
-                                                         }));
+                    let adjustments = autoderef.adjust_steps(LvaluePreference::NoPreference);
+                    self.record_deferred_call_resolution(def_id, DeferredCallResolution {
+                        call_expr,
+                        callee_expr,
+                        adjusted_ty,
+                        adjustments,
+                        fn_sig,
+                        closure_def_id: def_id,
+                    });
                     return Some(CallStep::DeferredClosure(fn_sig));
                 }
             }
@@ -137,47 +134,54 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // over the top. The simplest fix by far is to just ignore
             // this case and deref again, so we wind up with
             // `FnMut::call_mut(&mut *x, ())`.
-            ty::TyRef(..) if autoderefs == 0 => {
+            ty::TyRef(..) if autoderef.step_count() == 0 => {
                 return None;
             }
 
             _ => {}
         }
 
-        self.try_overloaded_call_traits(call_expr, callee_expr, adjusted_ty, autoderefs)
-            .map(|method_callee| CallStep::Overloaded(method_callee))
+        self.try_overloaded_call_traits(call_expr, adjusted_ty).map(|(autoref, method)| {
+            let mut adjustments = autoderef.adjust_steps(LvaluePreference::NoPreference);
+            adjustments.extend(autoref);
+            self.apply_adjustments(callee_expr, adjustments);
+            CallStep::Overloaded(method)
+        })
     }
 
     fn try_overloaded_call_traits(&self,
                                   call_expr: &hir::Expr,
-                                  callee_expr: &hir::Expr,
-                                  adjusted_ty: Ty<'tcx>,
-                                  autoderefs: usize)
-                                  -> Option<ty::MethodCallee<'tcx>> {
+                                  adjusted_ty: Ty<'tcx>)
+                                  -> Option<(Option<Adjustment<'tcx>>,
+                                             MethodCallee<'tcx>)> {
         // Try the options that are least restrictive on the caller first.
-        for &(opt_trait_def_id, method_name) in
-            &[(self.tcx.lang_items.fn_trait(), Symbol::intern("call")),
-              (self.tcx.lang_items.fn_mut_trait(), Symbol::intern("call_mut")),
-              (self.tcx.lang_items.fn_once_trait(), Symbol::intern("call_once"))] {
+        for &(opt_trait_def_id, method_name, borrow) in
+            &[(self.tcx.lang_items.fn_trait(), Symbol::intern("call"), true),
+              (self.tcx.lang_items.fn_mut_trait(), Symbol::intern("call_mut"), true),
+              (self.tcx.lang_items.fn_once_trait(), Symbol::intern("call_once"), false)] {
             let trait_def_id = match opt_trait_def_id {
                 Some(def_id) => def_id,
                 None => continue,
             };
 
-            match self.lookup_method_in_trait_adjusted(call_expr.span,
-                                                       Some(super::AdjustedRcvr {
-                                                           rcvr_expr: callee_expr,
-                                                           autoderefs,
-                                                           unsize: false
-                                                       }),
-                                                       method_name,
-                                                       trait_def_id,
-                                                       adjusted_ty,
-                                                       None) {
+            match self.lookup_method_in_trait(call_expr.span,
+                                              method_name,
+                                              trait_def_id,
+                                              adjusted_ty,
+                                              None) {
                 None => continue,
                 Some(ok) => {
-                    let method_callee = self.register_infer_ok_obligations(ok);
-                    return Some(method_callee);
+                    let method = self.register_infer_ok_obligations(ok);
+                    let mut autoref = None;
+                    if borrow {
+                        if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
+                            autoref = Some(Adjustment {
+                                kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
+                                target: method.sig.inputs()[0]
+                            });
+                        }
+                    }
+                    return Some((autoref, method));
                 }
             }
         }
@@ -301,42 +305,33 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn confirm_overloaded_call(&self,
                                call_expr: &hir::Expr,
-                               callee_expr: &'gcx hir::Expr,
                                arg_exprs: &'gcx [hir::Expr],
                                expected: Expectation<'tcx>,
-                               method_callee: ty::MethodCallee<'tcx>)
+                               method_callee: MethodCallee<'tcx>)
                                -> Ty<'tcx> {
         let output_type = self.check_method_argument_types(call_expr.span,
-                                                           method_callee.ty,
-                                                           callee_expr,
+                                                           Ok(method_callee),
                                                            arg_exprs,
                                                            TupleArgumentsFlag::TupleArguments,
                                                            expected);
 
-        self.write_overloaded_call_method_map(call_expr, method_callee);
+        self.write_method_call(call_expr.id, method_callee);
         output_type
-    }
-
-    fn write_overloaded_call_method_map(&self,
-                                        call_expr: &hir::Expr,
-                                        method_callee: ty::MethodCallee<'tcx>) {
-        let method_call = ty::MethodCall::expr(call_expr.id);
-        self.tables.borrow_mut().method_map.insert(method_call, method_callee);
     }
 }
 
 #[derive(Debug)]
-struct CallResolution<'gcx: 'tcx, 'tcx> {
+pub struct DeferredCallResolution<'gcx: 'tcx, 'tcx> {
     call_expr: &'gcx hir::Expr,
     callee_expr: &'gcx hir::Expr,
     adjusted_ty: Ty<'tcx>,
-    autoderefs: usize,
+    adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,
     closure_def_id: DefId,
 }
 
-impl<'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> for CallResolution<'gcx, 'tcx> {
-    fn resolve<'a>(&mut self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
+impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
+    pub fn resolve(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
         debug!("DeferredCallResolution::resolve() {:?}", self);
 
         // we should not be invoked until the closure kind has been
@@ -345,10 +340,8 @@ impl<'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> for CallResolution<'gcx, 'tc
 
         // We may now know enough to figure out fn vs fnmut etc.
         match fcx.try_overloaded_call_traits(self.call_expr,
-                                             self.callee_expr,
-                                             self.adjusted_ty,
-                                             self.autoderefs) {
-            Some(method_callee) => {
+                                             self.adjusted_ty) {
+            Some((autoref, method_callee)) => {
                 // One problem is that when we get here, we are going
                 // to have a newly instantiated function signature
                 // from the call trait. This has to be reconciled with
@@ -357,9 +350,7 @@ impl<'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> for CallResolution<'gcx, 'tc
                 // can't because of the annoying need for a TypeTrace.
                 // (This always bites me, should find a way to
                 // refactor it.)
-                let method_sig = fcx.tcx
-                    .no_late_bound_regions(&method_callee.ty.fn_sig())
-                    .unwrap();
+                let method_sig = method_callee.sig;
 
                 debug!("attempt_resolution: method_callee={:?}", method_callee);
 
@@ -370,7 +361,11 @@ impl<'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> for CallResolution<'gcx, 'tc
 
                 fcx.demand_eqtype(self.call_expr.span, method_sig.output(), self.fn_sig.output());
 
-                fcx.write_overloaded_call_method_map(self.call_expr, method_callee);
+                let mut adjustments = self.adjustments;
+                adjustments.extend(autoref);
+                fcx.apply_adjustments(self.callee_expr, adjustments);
+
+                fcx.write_method_call(self.call_expr.id, method_callee);
             }
             None => {
                 span_bug!(self.call_expr.span,

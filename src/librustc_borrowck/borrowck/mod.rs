@@ -284,7 +284,7 @@ const DOWNCAST_PRINTED_OPERATOR: &'static str = " as ";
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InteriorKind {
     InteriorField(mc::FieldName),
-    InteriorElement(mc::ElementKind),
+    InteriorElement,
 }
 
 trait ToInteriorKind { fn cleaned(self) -> InteriorKind; }
@@ -292,7 +292,7 @@ impl ToInteriorKind for mc::InteriorKind {
     fn cleaned(self) -> InteriorKind {
         match self {
             mc::InteriorField(name) => InteriorField(name),
-            mc::InteriorElement(_, elem_kind) => InteriorElement(elem_kind),
+            mc::InteriorElement(_) => InteriorElement,
         }
     }
 }
@@ -426,7 +426,7 @@ pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
             Some(new_lp(LpUpvar(id)))
         }
 
-        Categorization::Deref(ref cmt_base, _, pk) => {
+        Categorization::Deref(ref cmt_base, pk) => {
             opt_loan_path(cmt_base).map(|lp| {
                 new_lp(LpExtend(lp, cmt.mutbl, LpDeref(pk)))
             })
@@ -1232,7 +1232,7 @@ before rustc 1.16, this temporary lived longer - see issue #39283 \
                 }
             }
 
-            LpExtend(ref lp_base, _, LpInterior(_, InteriorElement(..))) => {
+            LpExtend(ref lp_base, _, LpInterior(_, InteriorElement)) => {
                 self.append_autoderefd_loan_path_to_string(&lp_base, out);
                 out.push_str("[..]");
             }
@@ -1318,7 +1318,7 @@ impl<'tcx> fmt::Debug for InteriorKind {
         match *self {
             InteriorField(mc::NamedField(fld)) => write!(f, "{}", fld),
             InteriorField(mc::PositionalField(i)) => write!(f, "#{}", i),
-            InteriorElement(..) => write!(f, "[]"),
+            InteriorElement => write!(f, "[]"),
         }
     }
 }

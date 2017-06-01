@@ -11,18 +11,19 @@
 use astconv::AstConv;
 
 use super::{FnCtxt, LvalueOp};
+use super::method::MethodCallee;
 
-use check::coercion::AsCoercionSite;
 use rustc::infer::InferOk;
 use rustc::traits;
 use rustc::ty::{self, Ty, TraitRef};
 use rustc::ty::{ToPredicate, TypeFoldable};
-use rustc::ty::{MethodCall, MethodCallee};
 use rustc::ty::{LvaluePreference, NoPreference};
-use rustc::hir;
+use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
 
 use syntax_pos::Span;
 use syntax::symbol::Symbol;
+
+use std::iter;
 
 #[derive(Copy, Clone, Debug)]
 enum AutoderefKind {
@@ -150,51 +151,58 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         self.fcx.resolve_type_vars_if_possible(&self.cur_ty)
     }
 
-    pub fn finalize(self, pref: LvaluePreference, expr: &hir::Expr) {
-        let fcx = self.fcx;
-        fcx.register_infer_ok_obligations(self.finalize_as_infer_ok(pref, &[expr]));
+    pub fn step_count(&self) -> usize {
+        self.steps.len()
     }
 
-    pub fn finalize_as_infer_ok<E>(self, pref: LvaluePreference, exprs: &[E])
-                                   -> InferOk<'tcx, ()>
-        where E: AsCoercionSite
-    {
-        let Autoderef { fcx, span, mut obligations, steps, .. } = self;
-        let methods: Vec<_> = steps
-            .iter()
-            .map(|&(ty, kind)| {
-                if let AutoderefKind::Overloaded = kind {
-                    fcx.try_overloaded_deref(span, None, ty, pref)
-                        .map(|InferOk { value, obligations: o }| {
-                            obligations.extend(o);
-                            value
-                        })
-                } else {
-                    None
-                }
-            })
-            .collect();
+    /// Returns the adjustment steps.
+    pub fn adjust_steps(&self, pref: LvaluePreference)
+                        -> Vec<Adjustment<'tcx>> {
+        self.fcx.register_infer_ok_obligations(self.adjust_steps_as_infer_ok(pref))
+    }
 
-        debug!("finalize({:?}) - {:?},{:?}",
-               pref,
-               methods,
-               obligations);
-
-        for expr in exprs {
-            let expr = expr.as_coercion_site();
-            debug!("finalize - finalizing #{} - {:?}", expr.id, expr);
-            for (n, method) in methods.iter().enumerate() {
-                if let &Some(method) = method {
-                    let method_call = MethodCall::autoderef(expr.id, n as u32);
-                    fcx.tables.borrow_mut().method_map.insert(method_call, method);
-                }
+    pub fn adjust_steps_as_infer_ok(&self, pref: LvaluePreference)
+                                    -> InferOk<'tcx, Vec<Adjustment<'tcx>>> {
+        let mut obligations = vec![];
+        let targets = self.steps.iter().skip(1).map(|&(ty, _)| ty)
+            .chain(iter::once(self.cur_ty));
+        let steps: Vec<_> = self.steps.iter().map(|&(source, kind)| {
+            if let AutoderefKind::Overloaded = kind {
+                self.fcx.try_overloaded_deref(self.span, source, pref)
+                    .and_then(|InferOk { value: method, obligations: o }| {
+                        obligations.extend(o);
+                        if let ty::TyRef(region, mt) = method.sig.output().sty {
+                            Some(OverloadedDeref {
+                                region,
+                                mutbl: mt.mutbl,
+                            })
+                        } else {
+                            None
+                        }
+                    })
+            } else {
+                None
             }
-        }
+        }).zip(targets).map(|(autoderef, target)| {
+            Adjustment {
+                kind: Adjust::Deref(autoderef),
+                target
+            }
+        }).collect();
 
         InferOk {
-            value: (),
-            obligations
+            obligations,
+            value: steps
         }
+    }
+
+    pub fn finalize(self) {
+        let fcx = self.fcx;
+        fcx.register_predicates(self.into_obligations());
+    }
+
+    pub fn into_obligations(self) -> Vec<traits::PredicateObligation<'tcx>> {
+        self.obligations
     }
 }
 
@@ -212,14 +220,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn try_overloaded_deref(&self,
                                 span: Span,
-                                base_expr: Option<&hir::Expr>,
                                 base_ty: Ty<'tcx>,
                                 pref: LvaluePreference)
                                 -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        let rcvr = base_expr.map(|base_expr| super::AdjustedRcvr {
-            rcvr_expr: base_expr, autoderefs: 0, unsize: false
-        });
-
-        self.try_overloaded_lvalue_op(span, rcvr, base_ty, &[], pref, LvalueOp::Deref)
+        self.try_overloaded_lvalue_op(span, base_ty, &[], pref, LvalueOp::Deref)
     }
 }

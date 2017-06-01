@@ -13,7 +13,6 @@
 use self::RootUnsafeContext::*;
 
 use ty::{self, Ty, TyCtxt};
-use ty::MethodCall;
 use lint;
 
 use syntax::ast;
@@ -174,8 +173,8 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprMethodCall(..) => {
-                let method_call = MethodCall::expr(expr.id);
-                let base_type = self.tables.method_map[&method_call].ty;
+                let def_id = self.tables.type_dependent_defs[&expr.id].def_id();
+                let base_type = self.tcx.type_of(def_id);
                 debug!("effect: method call case, base type is {:?}",
                         base_type);
                 if type_is_unsafe_function(base_type) {

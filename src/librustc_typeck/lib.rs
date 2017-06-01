@@ -73,12 +73,14 @@ This API is completely unstable and subject to change.
 
 #![allow(non_camel_case_types)]
 
+#![feature(advanced_slice_patterns)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(conservative_impl_trait)]
 #![feature(never_type)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(slice_patterns)]
 
 #![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
 #![cfg_attr(stage0, feature(rustc_private))]
