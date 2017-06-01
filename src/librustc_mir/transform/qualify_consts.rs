@@ -663,7 +663,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         self.add(Qualif::NOT_CONST);
                         if self.mode != Mode::Fn {
                             span_err!(self.tcx.sess, self.span, E0492,
-                                      "cannot borrow a constant which contains \
+                                      "cannot borrow a constant which may contain \
                                        interior mutability, create a static instead");
                         }
                     }

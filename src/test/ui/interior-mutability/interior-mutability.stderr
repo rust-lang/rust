@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `std::cell::UnsafeCell<i32>: std::panic::RefUnwindSafe` is not satisfied in `std::cell::Cell<i32>`
+  --> $DIR/interior-mutability.rs:15:5
+   |
+15 |     catch_unwind(|| { x.set(23); });
+   |     ^^^^^^^^^^^^ the type std::cell::UnsafeCell<i32> may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
+   |
+   = help: within `std::cell::Cell<i32>`, the trait `std::panic::RefUnwindSafe` is not implemented for `std::cell::UnsafeCell<i32>`
+   = note: required because it appears within the type `std::cell::Cell<i32>`
+   = note: required because of the requirements on the impl of `std::panic::UnwindSafe` for `&std::cell::Cell<i32>`
+   = note: required because it appears within the type `[closure@$DIR/interior-mutability.rs:15:18: 15:35 x:&std::cell::Cell<i32>]`
+   = note: required by `std::panic::catch_unwind`
+
+error: aborting due to previous error(s)
+

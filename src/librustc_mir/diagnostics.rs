@@ -309,8 +309,8 @@ use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
 
 const A: AtomicUsize = ATOMIC_USIZE_INIT;
 static B: &'static AtomicUsize = &A;
-// error: cannot borrow a constant which contains interior mutability, create a
-//        static instead
+// error: cannot borrow a constant which may contain interior mutability,  
+//        create a static instead
 ```
 
 A `const` represents a constant value that should never change. If one takes
@@ -338,8 +338,8 @@ use std::cell::Cell;
 
 const A: Cell<usize> = Cell::new(1);
 const B: &'static Cell<usize> = &A;
-// error: cannot borrow a constant which contains interior mutability, create
-//        a static instead
+// error: cannot borrow a constant which may contain interior mutability, 
+//        create a static instead
 
 // or:
 struct C { a: Cell<usize> }
