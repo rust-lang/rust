@@ -26,3 +26,21 @@ impl Bar {
     // @has - '//*[@class="docblock"]' 'BAR: usize = 3'
     pub const BAR: usize = 3;
 }
+
+pub struct Baz<'a, U: 'a, T>(T, &'a [U]);
+
+impl Bar {
+    // @has assoc_consts/struct.Bar.html '//*[@id="associatedconstant.BAZ"]' \
+    //      "const BAZ: Baz<'static, u8, u32>"
+    // @has - '//*[@class="docblock"]' "BAZ: Baz<'static, u8, u32> = Baz(321, &[1, 2, 3])"
+    pub const BAZ: Baz<'static, u8, u32> = Baz(321, &[1, 2, 3]);
+}
+
+pub fn f(_: &(ToString + 'static)) {}
+
+impl Bar {
+    // @has assoc_consts/struct.Bar.html '//*[@id="associatedconstant.F"]' \
+    //      "const F: fn(_: &(ToString + 'static))"
+    // @has - '//*[@class="docblock"]' "F: fn(_: &(ToString + 'static)) = f"
+    pub const F: fn(_: &(ToString + 'static)) = f;
+}
