@@ -31,7 +31,7 @@ override_dh_auto_build:
 	tar -xvf ${BUILD_DIR}/rust-std-${RUST_VER}-x86_64-pc-windows-gnu.tar.xz
 	tar -xvf ${BUILD_DIR}/rust-std-${RUST_VER}-x86_64-apple-darwin.tar.xz
 
-override_dh_auto_test:
+test:
 	debian/rustc/usr/bin/rustc --crate-type lib debian/test.rs -o debian/test
 	debian/rustc/usr/bin/rustc --crate-type lib debian/test.rs -o debian/test --target=i686-unknown-linux-gnu
 	debian/rustc/usr/bin/rustc --crate-type lib debian/test.rs -o debian/test --target=i686-pc-windows-gnu
