@@ -142,7 +142,7 @@ error[E0425]: cannot find value `bah` in this scope
 133 |         bah;
     |         ^^^ did you mean `Self::bah`?
 
-error: main function not found
+error[E0601]: main function not found
 
 error: aborting due to previous error(s)
 

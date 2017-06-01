@@ -12,7 +12,7 @@ error[E0412]: cannot find type `S` in this scope
 11 | impl S {
    |      ^ not found in this scope
 
-error: main function not found
+error[E0601]: main function not found
 
 error: aborting due to previous error(s)
 

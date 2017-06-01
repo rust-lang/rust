@@ -1,4 +1,4 @@
-error: main function not found
+error[E0601]: main function not found
 
 error[E0046]: not all trait items implemented, missing: `CONSTANT`, `Type`, `method`
   --> $DIR/m2.rs:20:1

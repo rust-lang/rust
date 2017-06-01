@@ -72,7 +72,7 @@ error[E0423]: expected function, found module `a::b`
    |        |
    |        did you mean `I`?
 
-error: main function not found
+error[E0601]: main function not found
 
 error: aborting due to previous error(s)
 
