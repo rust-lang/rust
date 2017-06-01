@@ -61,7 +61,7 @@ pub struct MirContext<'a, 'tcx:'a> {
     /// don't really care about it very much. Anyway, this value
     /// contains an alloca into which the personality is stored and
     /// then later loaded when generating the DIVERGE_BLOCK.
-    llpersonalityslot: Option<ValueRef>,
+    personality_slot: Option<LvalueRef<'tcx>>,
 
     /// A `Block` for each MIR `BasicBlock`
     blocks: IndexVec<mir::BasicBlock, BasicBlockRef>,
@@ -177,9 +177,8 @@ enum LocalRef<'tcx> {
     Operand(Option<OperandRef<'tcx>>),
 }
 
-impl<'tcx> LocalRef<'tcx> {
-    fn new_operand<'a>(ccx: &CrateContext<'a, 'tcx>,
-                       ty: Ty<'tcx>) -> LocalRef<'tcx> {
+impl<'a, 'tcx> LocalRef<'tcx> {
+    fn new_operand(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> LocalRef<'tcx> {
         if common::type_is_zero_size(ccx, ty) {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
@@ -232,7 +231,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
         llfn,
         fn_ty,
         ccx,
-        llpersonalityslot: None,
+        personality_slot: None,
         blocks: block_bcxs,
         unreachable_block: None,
         cleanup_kinds,
@@ -470,7 +469,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             let val = if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
                 let meta = &mircx.fn_ty.args[idx];
                 idx += 1;
-                assert_eq!((meta.cast, meta.pad), (None, None));
+                assert!(meta.cast.is_none() && meta.pad.is_none());
                 let llmeta = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
                 llarg_idx += 1;
 

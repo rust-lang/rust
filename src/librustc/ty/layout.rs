@@ -24,7 +24,7 @@ use std::fmt;
 use std::i64;
 use std::iter;
 use std::mem;
-use std::ops::Deref;
+use std::ops::{Deref, Add, Sub, Mul, AddAssign};
 
 use ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
@@ -203,6 +203,18 @@ impl TargetDataLayout {
             bits => bug!("ptr_sized_integer: unknown pointer bit size {}", bits)
         }
     }
+
+    pub fn vector_align(&self, vec_size: Size) -> Align {
+        for &(size, align) in &self.vector_align {
+            if size == vec_size {
+                return align;
+            }
+        }
+        // Default to natural alignment, which is what LLVM does.
+        // That is, use the size, rounded up to a power of 2.
+        let align = vec_size.bytes().next_power_of_two();
+        Align::from_bytes(align, align).unwrap()
+    }
 }
 
 pub trait HasDataLayout: Copy {
@@ -236,7 +248,8 @@ pub struct Size {
 
 impl Size {
     pub fn from_bits(bits: u64) -> Size {
-        Size::from_bytes((bits + 7) / 8)
+        // Avoid potential overflow from `bits + 7`.
+        Size::from_bytes(bits / 8 + ((bits % 8) + 7) / 8)
     }
 
     pub fn from_bytes(bytes: u64) -> Size {
@@ -261,6 +274,11 @@ impl Size {
         Size::from_bytes((self.bytes() + mask) & !mask)
     }
 
+    pub fn is_abi_aligned(self, align: Align) -> bool {
+        let mask = align.abi() - 1;
+        self.bytes() & mask == 0
+    }
+
     pub fn checked_add<C: HasDataLayout>(self, offset: Size, cx: C) -> Option<Size> {
         let dl = cx.data_layout();
 
@@ -278,14 +296,52 @@ impl Size {
     pub fn checked_mul<C: HasDataLayout>(self, count: u64, cx: C) -> Option<Size> {
         let dl = cx.data_layout();
 
-        // Each Size is less than dl.obj_size_bound(), so the sum is
-        // also less than 1 << 62 (and therefore can't overflow).
         match self.bytes().checked_mul(count) {
             Some(bytes) if bytes < dl.obj_size_bound() => {
                 Some(Size::from_bytes(bytes))
             }
             _ => None
         }
+    }
+}
+
+// Panicking addition, subtraction and multiplication for convenience.
+// Avoid during layout computation, return `LayoutError` instead.
+
+impl Add for Size {
+    type Output = Size;
+    fn add(self, other: Size) -> Size {
+        // Each Size is less than 1 << 61, so the sum is
+        // less than 1 << 62 (and therefore can't overflow).
+        Size::from_bytes(self.bytes() + other.bytes())
+    }
+}
+
+impl Sub for Size {
+    type Output = Size;
+    fn sub(self, other: Size) -> Size {
+        // Each Size is less than 1 << 61, so an underflow
+        // would result in a value larger than 1 << 61,
+        // which Size::from_bytes will catch for us.
+        Size::from_bytes(self.bytes() - other.bytes())
+    }
+}
+
+impl Mul<u64> for Size {
+    type Output = Size;
+    fn mul(self, count: u64) -> Size {
+        match self.bytes().checked_mul(count) {
+            Some(bytes) => Size::from_bytes(bytes),
+            None => {
+                bug!("Size::mul: {} * {} doesn't fit in u64", self.bytes(), count)
+            }
+        }
+    }
+}
+
+impl AddAssign for Size {
+    fn add_assign(&mut self, other: Size) {
+        *self = *self + other;
     }
 }
 
@@ -301,7 +357,8 @@ pub struct Align {
 
 impl Align {
     pub fn from_bits(abi: u64, pref: u64) -> Result<Align, String> {
-        Align::from_bytes((abi + 7) / 8, (pref + 7) / 8)
+        Align::from_bytes(Size::from_bits(abi).bytes(),
+                          Size::from_bits(pref).bytes())
     }
 
     pub fn from_bytes(abi: u64, pref: u64) -> Result<Align, String> {
@@ -340,6 +397,14 @@ impl Align {
         1 << self.pref
     }
 
+    pub fn abi_bits(self) -> u64 {
+        self.abi() * 8
+    }
+
+    pub fn pref_bits(self) -> u64 {
+        self.pref() * 8
+    }
+
     pub fn min(self, other: Align) -> Align {
         Align {
             abi: cmp::min(self.abi, other.abi),
@@ -366,7 +431,7 @@ pub enum Integer {
     I128,
 }
 
-impl Integer {
+impl<'a, 'tcx> Integer {
     pub fn size(&self) -> Size {
         match *self {
             I1 => Size::from_bits(1),
@@ -391,8 +456,7 @@ impl Integer {
         }
     }
 
-    pub fn to_ty<'a, 'tcx>(&self, tcx: &TyCtxt<'a, 'tcx, 'tcx>,
-                           signed: bool) -> Ty<'tcx> {
+    pub fn to_ty(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, signed: bool) -> Ty<'tcx> {
         match (*self, signed) {
             (I1, false) => tcx.types.u8,
             (I8, false) => tcx.types.u8,
@@ -467,12 +531,12 @@ impl Integer {
     /// signed discriminant range and #[repr] attribute.
     /// N.B.: u64 values above i64::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
-    fn repr_discr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            ty: Ty<'tcx>,
-                            repr: &ReprOptions,
-                            min: i64,
-                            max: i64)
-                            -> (Integer, bool) {
+    fn repr_discr(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                  ty: Ty<'tcx>,
+                  repr: &ReprOptions,
+                  min: i64,
+                  max: i64)
+                  -> (Integer, bool) {
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
         // are any negative values, the only valid unsigned representation is u64
@@ -898,16 +962,6 @@ impl<'a, 'tcx> Struct {
         }
         Ok(None)
     }
-
-    pub fn over_align(&self) -> Option<u32> {
-        let align = self.align.abi();
-        let primitive_align = self.primitive_align.abi();
-        if align > primitive_align {
-            Some(align as u32)
-        } else {
-            None
-        }
-    }
 }
 
 /// An untagged union.
@@ -980,16 +1034,6 @@ impl<'a, 'tcx> Union {
     /// Get the size with trailing alignment padding.
     pub fn stride(&self) -> Size {
         self.min_size.abi_align(self.align)
-    }
-
-    pub fn over_align(&self) -> Option<u32> {
-        let align = self.align.abi();
-        let primitive_align = self.primitive_align.abi();
-        if align > primitive_align {
-            Some(align as u32)
-        } else {
-            None
-        }
     }
 }
 
@@ -1607,9 +1651,8 @@ impl<'a, 'tcx> Layout {
 
             FatPointer { metadata, .. } => {
                 // Effectively a (ptr, meta) tuple.
-                Pointer.size(dl).abi_align(metadata.align(dl))
-                       .checked_add(metadata.size(dl), dl).unwrap()
-                       .abi_align(self.align(dl))
+                (Pointer.size(dl).abi_align(metadata.align(dl)) +
+                 metadata.size(dl)).abi_align(self.align(dl))
             }
 
             CEnum { discr, .. } => Int(discr).size(dl),
@@ -1638,15 +1681,7 @@ impl<'a, 'tcx> Layout {
                     None => bug!("Layout::align({:?}): {} * {} overflowed",
                                  self, elem_size.bytes(), count)
                 };
-                for &(size, align) in &dl.vector_align {
-                    if size == vec_size {
-                        return align;
-                    }
-                }
-                // Default to natural alignment, which is what LLVM does.
-                // That is, use the size, rounded up to a power of 2.
-                let align = vec_size.bytes().next_power_of_two();
-                Align::from_bytes(align, align).unwrap()
+                dl.vector_align(vec_size)
             }
 
             FatPointer { metadata, .. } => {
@@ -1666,7 +1701,7 @@ impl<'a, 'tcx> Layout {
     }
 
     /// Returns alignment before repr alignment is applied
-    pub fn primitive_align(&self, dl: &TargetDataLayout) -> Align {
+    pub fn primitive_align<C: HasDataLayout>(&self, cx: C) -> Align {
         match *self {
             Array { primitive_align, .. } | General { primitive_align, .. } => primitive_align,
             Univariant { ref variant, .. } |
@@ -1674,18 +1709,7 @@ impl<'a, 'tcx> Layout {
                 variant.primitive_align
             },
 
-            _ => self.align(dl)
-        }
-    }
-
-    /// Returns repr alignment if it is greater than the primitive alignment.
-    pub fn over_align(&self, dl: &TargetDataLayout) -> Option<u32> {
-        let align = self.align(dl);
-        let primitive_align = self.primitive_align(dl);
-        if align.abi() > primitive_align.abi() {
-            Some(align.abi() as u32)
-        } else {
-            None
+            _ => self.align(cx.data_layout())
         }
     }
 

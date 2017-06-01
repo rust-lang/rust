@@ -136,7 +136,6 @@ mod declare;
 mod glue;
 mod intrinsic;
 mod llvm_util;
-mod machine;
 mod metadata;
 mod meth;
 mod mir;

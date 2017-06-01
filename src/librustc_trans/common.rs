@@ -22,13 +22,12 @@ use base;
 use builder::Builder;
 use consts;
 use declare;
-use machine;
 use monomorphize;
 use type_::Type;
 use value::Value;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{Layout, LayoutTyper};
+use rustc::ty::layout::{HasDataLayout, Layout, LayoutTyper};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::hir;
 
@@ -252,10 +251,6 @@ pub fn C_big_integral(t: Type, u: u128) -> ValueRef {
     }
 }
 
-pub fn C_nil(ccx: &CrateContext) -> ValueRef {
-    C_struct(ccx, &[], false)
-}
-
 pub fn C_bool(ccx: &CrateContext, val: bool) -> ValueRef {
     C_uint(Type::i1(ccx), val as u64)
 }
@@ -273,8 +268,7 @@ pub fn C_u64(ccx: &CrateContext, i: u64) -> ValueRef {
 }
 
 pub fn C_usize(ccx: &CrateContext, i: u64) -> ValueRef {
-    let bit_size = machine::llbitsize_of_real(ccx, ccx.isize_ty());
-
+    let bit_size = ccx.data_layout().pointer_size.bits();
     if bit_size < 64 {
         // make sure it doesn't overflow
         assert!(i < (1<<bit_size));

@@ -56,16 +56,16 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 // float aggregates directly in a floating-point register.
                 if !t.options.is_like_msvc && is_single_fp_element(ccx, fty.ret.layout) {
                     match size.bytes() {
-                        4 => fty.ret.cast_to(ccx, Reg::f32()),
-                        8 => fty.ret.cast_to(ccx, Reg::f64()),
+                        4 => fty.ret.cast_to(Reg::f32()),
+                        8 => fty.ret.cast_to(Reg::f64()),
                         _ => fty.ret.make_indirect(ccx)
                     }
                 } else {
                     match size.bytes() {
-                        1 => fty.ret.cast_to(ccx, Reg::i8()),
-                        2 => fty.ret.cast_to(ccx, Reg::i16()),
-                        4 => fty.ret.cast_to(ccx, Reg::i32()),
-                        8 => fty.ret.cast_to(ccx, Reg::i64()),
+                        1 => fty.ret.cast_to(Reg::i8()),
+                        2 => fty.ret.cast_to(Reg::i16()),
+                        4 => fty.ret.cast_to(Reg::i32()),
+                        8 => fty.ret.cast_to(Reg::i64()),
                         _ => fty.ret.make_indirect(ccx)
                     }
                 }

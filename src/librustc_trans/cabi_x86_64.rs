@@ -34,9 +34,9 @@ const MAX_EIGHTBYTES: usize = LARGEST_VECTOR_SIZE / 64;
 fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
                           -> Result<[Class; MAX_EIGHTBYTES], Memory> {
     fn unify(cls: &mut [Class],
-             off: u64,
+             off: Size,
              c: Class) {
-        let i = (off / 8) as usize;
+        let i = (off.bytes() / 8) as usize;
         let to_write = match (cls[i], c) {
             (Class::None, _) => c,
             (_, Class::None) => return,
@@ -55,9 +55,9 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
     fn classify<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                           layout: TyLayout<'tcx>,
                           cls: &mut [Class],
-                          off: u64)
+                          off: Size)
                           -> Result<(), Memory> {
-        if off % layout.align(ccx).abi() != 0 {
+        if !off.is_abi_aligned(layout.align(ccx)) {
             if layout.size(ccx).bytes() > 0 {
                 return Err(Memory);
             }
@@ -85,25 +85,25 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
 
                 // everything after the first one is the upper
                 // half of a register.
-                let eltsz = element.size(ccx).bytes();
+                let eltsz = element.size(ccx);
                 for i in 1..count {
-                    unify(cls, off + i * eltsz, Class::SseUp);
+                    unify(cls, off + eltsz * i, Class::SseUp);
                 }
             }
 
             Layout::Array { count, .. } => {
                 if count > 0 {
                     let elt = layout.field(ccx, 0);
-                    let eltsz = elt.size(ccx).bytes();
+                    let eltsz = elt.size(ccx);
                     for i in 0..count {
-                        classify(ccx, elt, cls, off + i * eltsz)?;
+                        classify(ccx, elt, cls, off + eltsz * i)?;
                     }
                 }
             }
 
             Layout::Univariant { ref variant, .. } => {
                 for i in 0..layout.field_count() {
-                    let field_off = off + variant.offsets[i].bytes();
+                    let field_off = off + variant.offsets[i];
                     classify(ccx, layout.field(ccx, i), cls, field_off)?;
                 }
             }
@@ -128,7 +128,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
     }
 
     let mut cls = [Class::None; MAX_EIGHTBYTES];
-    classify(ccx, arg.layout, &mut cls, 0)?;
+    classify(ccx, arg.layout, &mut cls, Size::from_bytes(0))?;
     if n > 2 {
         if cls[0] != Class::Sse {
             return Err(Memory);
@@ -153,7 +153,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
     Ok(cls)
 }
 
-fn reg_component(cls: &[Class], i: &mut usize, size: u64) -> Option<Reg> {
+fn reg_component(cls: &[Class], i: &mut usize, size: Size) -> Option<Reg> {
     if *i >= cls.len() {
         return None;
     }
@@ -162,7 +162,7 @@ fn reg_component(cls: &[Class], i: &mut usize, size: u64) -> Option<Reg> {
         Class::None => None,
         Class::Int => {
             *i += 1;
-            Some(match size {
+            Some(match size.bytes() {
                 1 => Reg::i8(),
                 2 => Reg::i16(),
                 3 |
@@ -174,14 +174,14 @@ fn reg_component(cls: &[Class], i: &mut usize, size: u64) -> Option<Reg> {
             let vec_len = 1 + cls[*i+1..].iter().take_while(|&&c| c == Class::SseUp).count();
             *i += vec_len;
             Some(if vec_len == 1 {
-                match size {
+                match size.bytes() {
                     4 => Reg::f32(),
                     _ => Reg::f64()
                 }
             } else {
                 Reg {
                     kind: RegKind::Vector,
-                    size: Size::from_bytes(vec_len as u64 * 8)
+                    size: Size::from_bytes(8) * (vec_len as u64)
                 }
             })
         }
@@ -189,17 +189,17 @@ fn reg_component(cls: &[Class], i: &mut usize, size: u64) -> Option<Reg> {
     }
 }
 
-fn cast_target(cls: &[Class], size: u64) -> CastTarget {
+fn cast_target(cls: &[Class], size: Size) -> CastTarget {
     let mut i = 0;
     let lo = reg_component(cls, &mut i, size).unwrap();
-    let offset = i as u64 * 8;
+    let offset = Size::from_bytes(8) * (i as u64);
     let target = if size <= offset {
         CastTarget::from(lo)
     } else {
         let hi = reg_component(cls, &mut i, size - offset).unwrap();
         CastTarget::Pair(lo, hi)
     };
-    assert_eq!(reg_component(cls, &mut i, 0), None);
+    assert_eq!(reg_component(cls, &mut i, Size::from_bytes(0)), None);
     target
 }
 
@@ -242,8 +242,8 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType
             sse_regs -= needed_sse;
 
             if arg.layout.is_aggregate() {
-                let size = arg.layout.size(ccx).bytes();
-                arg.cast_to(ccx, cast_target(cls.as_ref().unwrap(), size))
+                let size = arg.layout.size(ccx);
+                arg.cast_to(cast_target(cls.as_ref().unwrap(), size))
             } else {
                 arg.extend_integer_width_to(32);
             }

@@ -10,7 +10,7 @@
 
 use llvm::ValueRef;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{Layout, LayoutTyper};
+use rustc::ty::layout::{Align, Layout, LayoutTyper};
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
@@ -310,7 +310,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn store_operand(&mut self,
                          bcx: &Builder<'a, 'tcx>,
                          lldest: ValueRef,
-                         align: Option<u32>,
+                         align: Option<Align>,
                          operand: OperandRef<'tcx>) {
         debug!("store_operand: operand={:?}, align={:?}", operand, align);
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
@@ -319,10 +319,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             return;
         }
         match operand.val {
-            OperandValue::Ref(r, Alignment::Packed) =>
-                base::memcpy_ty(bcx, lldest, r, operand.ty, Some(1)),
-            OperandValue::Ref(r, Alignment::AbiAligned) =>
-                base::memcpy_ty(bcx, lldest, r, operand.ty, align),
+            OperandValue::Ref(r, source_align) =>
+                base::memcpy_ty(bcx, lldest, r, operand.ty,
+                                source_align.min_with(align)),
             OperandValue::Immediate(s) => {
                 bcx.store(base::from_immediate(bcx, s), lldest, align);
             }
@@ -331,7 +330,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     Layout::Univariant { ref variant, .. } => {
                         (adt::struct_llfields_index(variant, 0),
                         adt::struct_llfields_index(variant, 1),
-                        if variant.packed { Some(1) } else { None })
+                        if variant.packed { Some(variant.align) } else { None })
                     }
                     _ => (0, 1, align)
                 };

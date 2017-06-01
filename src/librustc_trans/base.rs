@@ -40,6 +40,7 @@ use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::trans::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::layout::Align;
 use rustc::ty::maps::Providers;
 use rustc::dep_graph::{DepNode, DepKind, DepConstructor};
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
@@ -55,7 +56,7 @@ use builder::Builder;
 use callee;
 use common::{C_bool, C_bytes_in_context, C_i32, C_usize};
 use collector::{self, TransItemCollectionMode};
-use common::{C_struct_in_context, C_u64, C_undef, C_array};
+use common::{C_struct_in_context, C_undef, C_array};
 use common::CrateContext;
 use common::{type_is_zero_size, val_ty};
 use common;
@@ -63,7 +64,6 @@ use consts;
 use context::{self, LocalCrateContext, SharedCrateContext};
 use debuginfo;
 use declare;
-use machine;
 use meth;
 use mir;
 use monomorphize::{self, Instance};
@@ -489,42 +489,11 @@ pub fn to_immediate(bcx: &Builder, val: ValueRef, ty: Ty) -> ValueRef {
     }
 }
 
-pub enum Lifetime { Start, End }
-
-impl Lifetime {
-    // If LLVM lifetime intrinsic support is enabled (i.e. optimizations
-    // on), and `ptr` is nonzero-sized, then extracts the size of `ptr`
-    // and the intrinsic for `lt` and passes them to `emit`, which is in
-    // charge of generating code to call the passed intrinsic on whatever
-    // block of generated code is targeted for the intrinsic.
-    //
-    // If LLVM lifetime intrinsic support is disabled (i.e.  optimizations
-    // off) or `ptr` is zero-sized, then no-op (does not call `emit`).
-    pub fn call(self, b: &Builder, ptr: ValueRef) {
-        if b.ccx.sess().opts.optimize == config::OptLevel::No {
-            return;
-        }
-
-        let size = machine::llsize_of_alloc(b.ccx, val_ty(ptr).element_type());
-        if size == 0 {
-            return;
-        }
-
-        let lifetime_intrinsic = b.ccx.get_intrinsic(match self {
-            Lifetime::Start => "llvm.lifetime.start",
-            Lifetime::End => "llvm.lifetime.end"
-        });
-
-        let ptr = b.pointercast(ptr, Type::i8p(b.ccx));
-        b.call(lifetime_intrinsic, &[C_u64(b.ccx, size), ptr], None);
-    }
-}
-
-pub fn call_memcpy<'a, 'tcx>(b: &Builder<'a, 'tcx>,
-                               dst: ValueRef,
-                               src: ValueRef,
-                               n_bytes: ValueRef,
-                               align: u32) {
+pub fn call_memcpy(b: &Builder,
+                   dst: ValueRef,
+                   src: ValueRef,
+                   n_bytes: ValueRef,
+                   align: Align) {
     let ccx = b.ccx;
     let ptr_width = &ccx.sess().target.target.target_pointer_width;
     let key = format!("llvm.memcpy.p0i8.p0i8.i{}", ptr_width);
@@ -532,7 +501,7 @@ pub fn call_memcpy<'a, 'tcx>(b: &Builder<'a, 'tcx>,
     let src_ptr = b.pointercast(src, Type::i8p(ccx));
     let dst_ptr = b.pointercast(dst, Type::i8p(ccx));
     let size = b.intcast(n_bytes, ccx.isize_ty(), false);
-    let align = C_i32(ccx, align as i32);
+    let align = C_i32(ccx, align.abi() as i32);
     let volatile = C_bool(ccx, false);
     b.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
@@ -542,11 +511,11 @@ pub fn memcpy_ty<'a, 'tcx>(
     dst: ValueRef,
     src: ValueRef,
     t: Ty<'tcx>,
-    align: Option<u32>,
+    align: Option<Align>,
 ) {
     let ccx = bcx.ccx;
 
-    let size = ccx.size_of(t);
+    let size = ccx.size_of(t).bytes();
     if size == 0 {
         return;
     }

@@ -21,9 +21,9 @@ use common::*;
 use declare;
 use glue;
 use type_of;
-use machine;
 use type_::Type;
 use rustc::ty::{self, Ty};
+use rustc::ty::layout::HasDataLayout;
 use rustc::hir;
 use syntax::ast;
 use syntax::symbol::Symbol;
@@ -125,7 +125,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         }
         "try" => {
             try_intrinsic(bcx, ccx, llargs[0], llargs[1], llargs[2], llresult);
-            C_nil(ccx)
+            return;
         }
         "breakpoint" => {
             let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));
@@ -133,42 +133,39 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         }
         "size_of" => {
             let tp_ty = substs.type_at(0);
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            C_usize(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
+            C_usize(ccx, ccx.size_of(tp_ty).bytes())
         }
         "size_of_val" => {
             let tp_ty = substs.type_at(0);
             if bcx.ccx.shared().type_is_sized(tp_ty) {
-                let lltp_ty = type_of::type_of(ccx, tp_ty);
-                C_usize(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
+                C_usize(ccx, ccx.size_of(tp_ty).bytes())
             } else if bcx.ccx.shared().type_has_metadata(tp_ty) {
                 let (llsize, _) =
                     glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
                 llsize
             } else {
-                C_usize(ccx, 0u64)
+                C_usize(ccx, 0)
             }
         }
         "min_align_of" => {
             let tp_ty = substs.type_at(0);
-            C_usize(ccx, ccx.align_of(tp_ty) as u64)
+            C_usize(ccx, ccx.align_of(tp_ty).abi())
         }
         "min_align_of_val" => {
             let tp_ty = substs.type_at(0);
             if bcx.ccx.shared().type_is_sized(tp_ty) {
-                C_usize(ccx, ccx.align_of(tp_ty) as u64)
+                C_usize(ccx, ccx.align_of(tp_ty).abi())
             } else if bcx.ccx.shared().type_has_metadata(tp_ty) {
                 let (_, llalign) =
                     glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
                 llalign
             } else {
-                C_usize(ccx, 1u64)
+                C_usize(ccx, 1)
             }
         }
         "pref_align_of" => {
             let tp_ty = substs.type_at(0);
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            C_usize(ccx, machine::llalign_of_pref(ccx, lltp_ty) as u64)
+            C_usize(ccx, ccx.align_of(tp_ty).pref())
         }
         "type_name" => {
             let tp_ty = substs.type_at(0);
@@ -187,11 +184,11 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 // large quantities of `mov [byte ptr foo],0` in the generated code.)
                 memset_intrinsic(bcx, false, ty, llresult, C_u8(ccx, 0), C_usize(ccx, 1));
             }
-            C_nil(ccx)
+            return;
         }
         // Effectively no-ops
         "uninit" => {
-            C_nil(ccx)
+            return;
         }
         "needs_drop" => {
             let tp_ty = substs.type_at(0);
@@ -232,11 +229,11 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             let tp_ty = substs.type_at(0);
             let mut ptr = llargs[0];
             if let Some(ty) = fn_ty.ret.cast {
-                ptr = bcx.pointercast(ptr, ty.ptr_to());
+                ptr = bcx.pointercast(ptr, ty.llvm_type(ccx).ptr_to());
             }
             let load = bcx.volatile_load(ptr);
             unsafe {
-                llvm::LLVMSetAlignment(load, ccx.align_of(tp_ty));
+                llvm::LLVMSetAlignment(load, ccx.align_of(tp_ty).abi() as u32);
             }
             to_immediate(bcx, load, tp_ty)
         },
@@ -249,19 +246,18 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 let val = if fn_ty.args[1].is_indirect() {
                     bcx.load(llargs[1], None)
                 } else {
-                    if !type_is_zero_size(ccx, tp_ty) {
-                        from_immediate(bcx, llargs[1])
-                    } else {
-                        C_nil(ccx)
+                    if type_is_zero_size(ccx, tp_ty) {
+                        return;
                     }
+                    from_immediate(bcx, llargs[1])
                 };
                 let ptr = bcx.pointercast(llargs[0], val_ty(val).ptr_to());
                 let store = bcx.volatile_store(val, ptr);
                 unsafe {
-                    llvm::LLVMSetAlignment(store, ccx.align_of(tp_ty));
+                    llvm::LLVMSetAlignment(store, ccx.align_of(tp_ty).abi() as u32);
                 }
             }
-            C_nil(ccx)
+            return;
         },
         "prefetch_read_data" | "prefetch_write_data" |
         "prefetch_read_instruction" | "prefetch_write_instruction" => {
@@ -279,8 +275,8 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" |
         "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
         "unchecked_div" | "unchecked_rem" | "unchecked_shl" | "unchecked_shr" => {
-            let sty = &arg_tys[0].sty;
-            match int_type_width_signed(sty, ccx) {
+            let ty = arg_tys[0];
+            match int_type_width_signed(ty, ccx) {
                 Some((width, signed)) =>
                     match name {
                         "ctlz" | "cttz" => {
@@ -317,7 +313,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                             bcx.store(result, bcx.struct_gep(llresult, 0), None);
                             bcx.store(overflow, bcx.struct_gep(llresult, 1), None);
 
-                            C_nil(bcx.ccx)
+                            return;
                         },
                         "overflowing_add" => bcx.add(llargs[0], llargs[1]),
                         "overflowing_sub" => bcx.sub(llargs[0], llargs[1]),
@@ -347,8 +343,8 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     span_invalid_monomorphization_error(
                         tcx.sess, span,
                         &format!("invalid monomorphization of `{}` intrinsic: \
-                                  expected basic integer type, found `{}`", name, sty));
-                        C_nil(ccx)
+                                  expected basic integer type, found `{}`", name, ty));
+                    return;
                 }
             }
 
@@ -370,7 +366,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         tcx.sess, span,
                         &format!("invalid monomorphization of `{}` intrinsic: \
                                   expected basic float type, found `{}`", name, sty));
-                        C_nil(ccx)
+                    return;
                 }
             }
 
@@ -399,11 +395,14 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             bcx.select(is_zero, zero, bcx.sub(offset, llargs[1]))
         }
         name if name.starts_with("simd_") => {
-            generic_simd_intrinsic(bcx, name,
-                                   callee_ty,
-                                   &llargs,
-                                   ret_ty, llret_ty,
-                                   span)
+            match generic_simd_intrinsic(bcx, name,
+                                         callee_ty,
+                                         &llargs,
+                                         ret_ty, llret_ty,
+                                         span) {
+                Ok(llval) => llval,
+                Err(()) => return
+            }
         }
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
@@ -437,16 +436,16 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 _ => ccx.sess().fatal("Atomic intrinsic not in correct format"),
             };
 
-            let invalid_monomorphization = |sty| {
+            let invalid_monomorphization = |ty| {
                 span_invalid_monomorphization_error(tcx.sess, span,
                     &format!("invalid monomorphization of `{}` intrinsic: \
-                              expected basic integer type, found `{}`", name, sty));
+                              expected basic integer type, found `{}`", name, ty));
             };
 
             match split[1] {
                 "cxchg" | "cxchgweak" => {
-                    let sty = &substs.type_at(0).sty;
-                    if int_type_width_signed(sty, ccx).is_some() {
+                    let ty = substs.type_at(0);
+                    if int_type_width_signed(ty, ccx).is_some() {
                         let weak = if split[1] == "cxchgweak" { llvm::True } else { llvm::False };
                         let val = bcx.atomic_cmpxchg(llargs[0], llargs[1], llargs[2], order,
                             failorder, weak);
@@ -454,40 +453,41 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         let success = bcx.zext(bcx.extract_value(val, 1), Type::bool(bcx.ccx));
                         bcx.store(result, bcx.struct_gep(llresult, 0), None);
                         bcx.store(success, bcx.struct_gep(llresult, 1), None);
+                        return;
                     } else {
-                        invalid_monomorphization(sty);
+                        return invalid_monomorphization(ty);
                     }
-                    C_nil(ccx)
                 }
 
                 "load" => {
-                    let sty = &substs.type_at(0).sty;
-                    if int_type_width_signed(sty, ccx).is_some() {
-                        bcx.atomic_load(llargs[0], order)
+                    let ty = substs.type_at(0);
+                    if int_type_width_signed(ty, ccx).is_some() {
+                        let align = ccx.align_of(ty);
+                        bcx.atomic_load(llargs[0], order, align)
                     } else {
-                        invalid_monomorphization(sty);
-                        C_nil(ccx)
+                        return invalid_monomorphization(ty);
                     }
                 }
 
                 "store" => {
-                    let sty = &substs.type_at(0).sty;
-                    if int_type_width_signed(sty, ccx).is_some() {
-                        bcx.atomic_store(llargs[1], llargs[0], order);
+                    let ty = substs.type_at(0);
+                    if int_type_width_signed(ty, ccx).is_some() {
+                        let align = ccx.align_of(ty);
+                        bcx.atomic_store(llargs[1], llargs[0], order, align);
+                        return;
                     } else {
-                        invalid_monomorphization(sty);
+                        return invalid_monomorphization(ty);
                     }
-                    C_nil(ccx)
                 }
 
                 "fence" => {
                     bcx.atomic_fence(order, llvm::SynchronizationScope::CrossThread);
-                    C_nil(ccx)
+                    return;
                 }
 
                 "singlethreadfence" => {
                     bcx.atomic_fence(order, llvm::SynchronizationScope::SingleThread);
-                    C_nil(ccx)
+                    return;
                 }
 
                 // These are all AtomicRMW ops
@@ -507,12 +507,11 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         _ => ccx.sess().fatal("unknown atomic operation")
                     };
 
-                    let sty = &substs.type_at(0).sty;
-                    if int_type_width_signed(sty, ccx).is_some() {
+                    let ty = substs.type_at(0);
+                    if int_type_width_signed(ty, ccx).is_some() {
                         bcx.atomic_rmw(atom_op, llargs[0], llargs[1], order)
                     } else {
-                        invalid_monomorphization(sty);
-                        C_nil(ccx)
+                        return invalid_monomorphization(ty);
                     }
                 }
             }
@@ -662,16 +661,16 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         let (dest, align) = lval.trans_field_ptr(bcx, i);
                         bcx.store(val, dest, align.to_align());
                     }
-                    C_nil(ccx)
+                    return;
                 }
                 _ => val,
             }
         }
     };
 
-    if val_ty(llval) != Type::void(ccx) && machine::llsize_of_alloc(ccx, val_ty(llval)) != 0 {
+    if !fn_ty.ret.is_ignore() {
         if let Some(ty) = fn_ty.ret.cast {
-            let ptr = bcx.pointercast(llresult, ty.ptr_to());
+            let ptr = bcx.pointercast(llresult, ty.llvm_type(ccx).ptr_to());
             bcx.store(llval, ptr, Some(ccx.align_of(ret_ty)));
         } else {
             store_ty(bcx, llval, llresult, Alignment::AbiAligned, ret_ty);
@@ -682,16 +681,15 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 fn copy_intrinsic<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                             allow_overlap: bool,
                             volatile: bool,
-                            tp_ty: Ty<'tcx>,
+                            ty: Ty<'tcx>,
                             dst: ValueRef,
                             src: ValueRef,
                             count: ValueRef)
                             -> ValueRef {
     let ccx = bcx.ccx;
-    let lltp_ty = type_of::type_of(ccx, tp_ty);
-    let align = C_i32(ccx, ccx.align_of(tp_ty) as i32);
-    let size = machine::llsize_of(ccx, lltp_ty);
-    let int_size = machine::llbitsize_of_real(ccx, ccx.isize_ty());
+    let (size, align) = ccx.size_and_align_of(ty);
+    let size = C_usize(ccx, size.bytes());
+    let align = C_i32(ccx, align.abi() as i32);
 
     let operation = if allow_overlap {
         "memmove"
@@ -699,7 +697,8 @@ fn copy_intrinsic<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         "memcpy"
     };
 
-    let name = format!("llvm.{}.p0i8.p0i8.i{}", operation, int_size);
+    let name = format!("llvm.{}.p0i8.p0i8.i{}", operation,
+                       ccx.data_layout().pointer_size.bits());
 
     let dst_ptr = bcx.pointercast(dst, Type::i8p(ccx));
     let src_ptr = bcx.pointercast(src, Type::i8p(ccx));
@@ -723,9 +722,9 @@ fn memset_intrinsic<'a, 'tcx>(
     count: ValueRef
 ) -> ValueRef {
     let ccx = bcx.ccx;
-    let align = C_i32(ccx, ccx.align_of(ty) as i32);
-    let lltp_ty = type_of::type_of(ccx, ty);
-    let size = machine::llsize_of(ccx, lltp_ty);
+    let (size, align) = ccx.size_and_align_of(ty);
+    let size = C_usize(ccx, size.bytes());
+    let align = C_i32(ccx, align.abi() as i32);
     let dst = bcx.pointercast(dst, Type::i8p(ccx));
     call_memset(bcx, dst, val, bcx.mul(size, count), align, volatile)
 }
@@ -975,7 +974,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
     ret_ty: Ty<'tcx>,
     llret_ty: Type,
     span: Span
-) -> ValueRef {
+) -> Result<ValueRef, ()> {
     // macros for error handling:
     macro_rules! emit_error {
         ($msg: tt) => {
@@ -993,7 +992,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         ($cond: expr, $($fmt: tt)*) => {
             if !$cond {
                 emit_error!($($fmt)*);
-                return C_nil(bcx.ccx)
+                return Err(());
             }
         }
     }
@@ -1039,12 +1038,12 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                  ret_ty,
                  ret_ty.simd_type(tcx));
 
-        return compare_simd_types(bcx,
-                                  llargs[0],
-                                  llargs[1],
-                                  in_elem,
-                                  llret_ty,
-                                  cmp_op)
+        return Ok(compare_simd_types(bcx,
+                                     llargs[0],
+                                     llargs[1],
+                                     in_elem,
+                                     llret_ty,
+                                     cmp_op))
     }
 
     if name.starts_with("simd_shuffle") {
@@ -1090,23 +1089,23 @@ fn generic_simd_intrinsic<'a, 'tcx>(
             .collect();
         let indices = match indices {
             Some(i) => i,
-            None => return C_null(llret_ty)
+            None => return Ok(C_null(llret_ty))
         };
 
-        return bcx.shuffle_vector(llargs[0], llargs[1], C_vector(&indices))
+        return Ok(bcx.shuffle_vector(llargs[0], llargs[1], C_vector(&indices)))
     }
 
     if name == "simd_insert" {
         require!(in_elem == arg_tys[2],
                  "expected inserted type `{}` (element of input `{}`), found `{}`",
                  in_elem, in_ty, arg_tys[2]);
-        return bcx.insert_element(llargs[0], llargs[2], llargs[1])
+        return Ok(bcx.insert_element(llargs[0], llargs[2], llargs[1]))
     }
     if name == "simd_extract" {
         require!(ret_ty == in_elem,
                  "expected return type `{}` (element of input `{}`), found `{}`",
                  in_elem, in_ty, ret_ty);
-        return bcx.extract_element(llargs[0], llargs[1])
+        return Ok(bcx.extract_element(llargs[0], llargs[1]))
     }
 
     if name == "simd_cast" {
@@ -1120,7 +1119,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         // casting cares about nominal type, not just structural type
         let out_elem = ret_ty.simd_type(tcx);
 
-        if in_elem == out_elem { return llargs[0]; }
+        if in_elem == out_elem { return Ok(llargs[0]); }
 
         enum Style { Float, Int(/* is signed? */ bool), Unsupported }
 
@@ -1141,7 +1140,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
 
         match (in_style, out_style) {
             (Style::Int(in_is_signed), Style::Int(_)) => {
-                return match in_width.cmp(&out_width) {
+                return Ok(match in_width.cmp(&out_width) {
                     Ordering::Greater => bcx.trunc(llargs[0], llret_ty),
                     Ordering::Equal => llargs[0],
                     Ordering::Less => if in_is_signed {
@@ -1149,28 +1148,28 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                     } else {
                         bcx.zext(llargs[0], llret_ty)
                     }
-                }
+                })
             }
             (Style::Int(in_is_signed), Style::Float) => {
-                return if in_is_signed {
+                return Ok(if in_is_signed {
                     bcx.sitofp(llargs[0], llret_ty)
                 } else {
                     bcx.uitofp(llargs[0], llret_ty)
-                }
+                })
             }
             (Style::Float, Style::Int(out_is_signed)) => {
-                return if out_is_signed {
+                return Ok(if out_is_signed {
                     bcx.fptosi(llargs[0], llret_ty)
                 } else {
                     bcx.fptoui(llargs[0], llret_ty)
-                }
+                })
             }
             (Style::Float, Style::Float) => {
-                return match in_width.cmp(&out_width) {
+                return Ok(match in_width.cmp(&out_width) {
                     Ordering::Greater => bcx.fptrunc(llargs[0], llret_ty),
                     Ordering::Equal => llargs[0],
                     Ordering::Less => bcx.fpext(llargs[0], llret_ty)
-                }
+                })
             }
             _ => {/* Unsupported. Fallthrough. */}
         }
@@ -1186,7 +1185,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                     match in_elem.sty {
                         $(
                             $(ty::$p(_))|* => {
-                                return bcx.$call(llargs[0], llargs[1])
+                                return Ok(bcx.$call(llargs[0], llargs[1]))
                             }
                             )*
                         _ => {},
@@ -1213,15 +1212,13 @@ fn generic_simd_intrinsic<'a, 'tcx>(
     span_bug!(span, "unknown SIMD intrinsic");
 }
 
-// Returns the width of an int TypeVariant, and if it's signed or not
+// Returns the width of an int Ty, and if it's signed or not
 // Returns None if the type is not an integer
 // FIXME: there’s multiple of this functions, investigate using some of the already existing
 // stuffs.
-fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
-        -> Option<(u64, bool)> {
-    use rustc::ty::{TyInt, TyUint};
-    match *sty {
-        TyInt(t) => Some((match t {
+fn int_type_width_signed(ty: Ty, ccx: &CrateContext) -> Option<(u64, bool)> {
+    match ty.sty {
+        ty::TyInt(t) => Some((match t {
             ast::IntTy::Is => {
                 match &ccx.tcx().sess.target.target.target_pointer_width[..] {
                     "16" => 16,
@@ -1236,7 +1233,7 @@ fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
             ast::IntTy::I64 => 64,
             ast::IntTy::I128 => 128,
         }, true)),
-        TyUint(t) => Some((match t {
+        ty::TyUint(t) => Some((match t {
             ast::UintTy::Us => {
                 match &ccx.tcx().sess.target.target.target_pointer_width[..] {
                     "16" => 16,

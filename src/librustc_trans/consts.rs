@@ -14,7 +14,7 @@ use llvm::{ValueRef, True};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
 use rustc::middle::const_val::ConstEvalErr;
-use {debuginfo, machine};
+use debuginfo;
 use base;
 use trans_item::{TransItem, TransItemExt};
 use common::{self, CrateContext, val_ty};
@@ -23,10 +23,10 @@ use monomorphize::Instance;
 use type_::Type;
 use type_of;
 use rustc::ty;
+use rustc::ty::layout::Align;
 
 use rustc::hir;
 
-use std::cmp;
 use std::ffi::{CStr, CString};
 use syntax::ast;
 use syntax::attr;
@@ -45,26 +45,26 @@ pub fn bitcast(val: ValueRef, ty: Type) -> ValueRef {
 
 fn set_global_alignment(ccx: &CrateContext,
                         gv: ValueRef,
-                        mut align: machine::llalign) {
+                        mut align: Align) {
     // The target may require greater alignment for globals than the type does.
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
     // which can force it to be smaller.  Rust doesn't support this yet.
     if let Some(min) = ccx.sess().target.target.options.min_global_align {
         match ty::layout::Align::from_bits(min, min) {
-            Ok(min) => align = cmp::max(align, min.abi() as machine::llalign),
+            Ok(min) => align = align.max(min),
             Err(err) => {
                 ccx.sess().err(&format!("invalid minimum global alignment: {}", err));
             }
         }
     }
     unsafe {
-        llvm::LLVMSetAlignment(gv, align);
+        llvm::LLVMSetAlignment(gv, align.abi() as u32);
     }
 }
 
 pub fn addr_of_mut(ccx: &CrateContext,
                    cv: ValueRef,
-                   align: machine::llalign,
+                   align: Align,
                    kind: &str)
                     -> ValueRef {
     unsafe {
@@ -82,15 +82,16 @@ pub fn addr_of_mut(ccx: &CrateContext,
 
 pub fn addr_of(ccx: &CrateContext,
                cv: ValueRef,
-               align: machine::llalign,
+               align: Align,
                kind: &str)
                -> ValueRef {
     if let Some(&gv) = ccx.const_globals().borrow().get(&cv) {
         unsafe {
             // Upgrade the alignment in cases where the same constant is used with different
             // alignment requirements
-            if align > llvm::LLVMGetAlignment(gv) {
-                llvm::LLVMSetAlignment(gv, align);
+            let llalign = align.abi() as u32;
+            if llalign > llvm::LLVMGetAlignment(gv) {
+                llvm::LLVMSetAlignment(gv, llalign);
             }
         }
         return gv;

@@ -10,7 +10,7 @@
 
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, LayoutTyper};
+use rustc::ty::layout::{self, Align, LayoutTyper};
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
@@ -19,7 +19,6 @@ use base;
 use builder::Builder;
 use common::{self, CrateContext, C_usize, C_u8, C_i32, C_int, C_null, val_ty};
 use consts;
-use machine;
 use type_of;
 use type_::Type;
 use value::Value;
@@ -56,18 +55,15 @@ impl Alignment {
         }
     }
 
-    pub fn to_align(self) -> Option<u32> {
+    pub fn to_align(self) -> Option<Align> {
         match self {
-            Alignment::Packed => Some(1),
+            Alignment::Packed => Some(Align::from_bytes(1, 1).unwrap()),
             Alignment::AbiAligned => None,
         }
     }
 
-    pub fn min_with(self, align: u32) -> Option<u32> {
-        match self {
-            Alignment::Packed => Some(1),
-            Alignment::AbiAligned => Some(align),
-        }
+    pub fn min_with(self, align: Option<Align>) -> Option<Align> {
+        self.to_align().or(align)
     }
 }
 
@@ -153,7 +149,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 // The unit-like case might have a nonzero number of unit-like fields.
                 // (e.d., Result of Either with (), as one side.)
                 let ty = type_of::type_of(ccx, fty);
-                assert_eq!(machine::llsize_of_alloc(ccx, ty), 0);
+                assert_eq!(ccx.size_of(fty).bytes(), 0);
                 return (bcx.pointercast(self.llval, ty.ptr_to()), Alignment::Packed);
             }
             layout::RawNullablePointer { .. } => {
@@ -174,7 +170,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let ptr_val = if let layout::General { discr, .. } = *l {
             let variant_ty = Type::struct_(ccx,
                 &adt::struct_llfields(ccx, l.ty, l.variant_index.unwrap(), st,
-                                      Some(discr.to_ty(&bcx.tcx(), false))), st.packed);
+                                      Some(discr.to_ty(bcx.tcx(), false))), st.packed);
             bcx.pointercast(self.llval, variant_ty.ptr_to())
         } else {
             self.llval
@@ -374,6 +370,14 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             bcx.inbounds_gep(self.llval, &[zero, llindex])
         }
     }
+
+    pub fn storage_live(&self, bcx: &Builder<'a, 'tcx>) {
+        bcx.lifetime_start(self.llval, bcx.ccx.size_of(self.ty.to_ty(bcx.tcx())));
+    }
+
+    pub fn storage_dead(&self, bcx: &Builder<'a, 'tcx>) {
+        bcx.lifetime_end(self.llval, bcx.ccx.size_of(self.ty.to_ty(bcx.tcx())));
+    }
 }
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
@@ -432,7 +436,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     mir::ProjectionElem::Index(index) => {
                         let index = &mir::Operand::Consume(mir::Lvalue::Local(index));
                         let index = self.trans_operand(bcx, index);
-                        let llindex = self.prepare_index(bcx, index.immediate());
+                        let llindex = index.immediate();
                         ((tr_base.project_index(bcx, llindex), align), ptr::null_mut())
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
@@ -485,22 +489,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         };
         debug!("trans_lvalue(lvalue={:?}) => {:?}", lvalue, result);
         result
-    }
-
-    /// Adjust the bitwidth of an index since LLVM is less forgiving
-    /// than we are.
-    ///
-    /// nmatsakis: is this still necessary? Not sure.
-    fn prepare_index(&mut self, bcx: &Builder<'a, 'tcx>, llindex: ValueRef) -> ValueRef {
-        let index_size = machine::llbitsize_of_real(bcx.ccx, common::val_ty(llindex));
-        let int_size = machine::llbitsize_of_real(bcx.ccx, bcx.ccx.isize_ty());
-        if index_size < int_size {
-            bcx.zext(llindex, bcx.ccx.isize_ty())
-        } else if index_size > int_size {
-            bcx.trunc(llindex, bcx.ccx.isize_ty())
-        } else {
-            llindex
-        }
     }
 
     pub fn monomorphized_lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {

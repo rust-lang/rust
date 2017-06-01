@@ -257,21 +257,18 @@ extern "C" void LLVMRustSetHasUnsafeAlgebra(LLVMValueRef V) {
 
 extern "C" LLVMValueRef
 LLVMRustBuildAtomicLoad(LLVMBuilderRef B, LLVMValueRef Source, const char *Name,
-                        LLVMAtomicOrdering Order, unsigned Alignment) {
+                        LLVMAtomicOrdering Order) {
   LoadInst *LI = new LoadInst(unwrap(Source), 0);
   LI->setAtomic(fromRust(Order));
-  LI->setAlignment(Alignment);
   return wrap(unwrap(B)->Insert(LI, Name));
 }
 
 extern "C" LLVMValueRef LLVMRustBuildAtomicStore(LLVMBuilderRef B,
                                                  LLVMValueRef V,
                                                  LLVMValueRef Target,
-                                                 LLVMAtomicOrdering Order,
-                                                 unsigned Alignment) {
+                                                 LLVMAtomicOrdering Order) {
   StoreInst *SI = new StoreInst(unwrap(V), unwrap(Target));
   SI->setAtomic(fromRust(Order));
-  SI->setAlignment(Alignment);
   return wrap(unwrap(B)->Insert(SI));
 }
 
