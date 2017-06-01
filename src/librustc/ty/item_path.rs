@@ -221,7 +221,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let use_types = !self.is_default_impl(impl_def_id) && (!impl_def_id.is_local() || {
             // Otherwise, use filename/line-number if forced.
             let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
-            !force_no_types && {
+
+            // Check whether type info is available, because typeck might not have
+            // completed yet.
+            let types_available = self.maps.impl_trait_ref.borrow().contains_key(&impl_def_id) &&
+                self.maps.type_of.borrow().contains_key(&impl_def_id);
+
+            !force_no_types && types_available && {
                 // Otherwise, use types if we can query them without inducing a cycle.
                 ty::queries::impl_trait_ref::try_get(self, DUMMY_SP, impl_def_id).is_ok() &&
                     ty::queries::type_of::try_get(self, DUMMY_SP, impl_def_id).is_ok()
