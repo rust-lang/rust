@@ -29,12 +29,11 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
     debug!("calculate size of DST: {}; with lost info: {:?}",
            t, Value(info));
     if bcx.ccx.shared().type_is_sized(t) {
-        let size = bcx.ccx.size_of(t);
-        let align = bcx.ccx.align_of(t);
-        debug!("size_and_align_of_dst t={} info={:?} size: {} align: {}",
+        let (size, align) = bcx.ccx.size_and_align_of(t);
+        debug!("size_and_align_of_dst t={} info={:?} size: {:?} align: {:?}",
                t, Value(info), size, align);
-        let size = C_usize(bcx.ccx, size);
-        let align = C_usize(bcx.ccx, align as u64);
+        let size = C_usize(bcx.ccx, size.bytes());
+        let align = C_usize(bcx.ccx, align.abi());
         return (size, align);
     }
     assert!(!info.is_null());
@@ -122,8 +121,9 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
             let unit = t.sequence_element_type(bcx.tcx());
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
-            (bcx.mul(info, C_usize(bcx.ccx, bcx.ccx.size_of(unit))),
-             C_usize(bcx.ccx, bcx.ccx.align_of(unit) as u64))
+            let (size, align) = bcx.ccx.size_and_align_of(unit);
+            (bcx.mul(info, C_usize(bcx.ccx, size.bytes())),
+             C_usize(bcx.ccx, align.abi()))
         }
         _ => bug!("Unexpected unsized type, found {}", t)
     }

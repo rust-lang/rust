@@ -42,10 +42,9 @@
 //!   taken to it, implementing them for Rust seems difficult.
 
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, LayoutTyper};
+use rustc::ty::layout::{self, Align, HasDataLayout, LayoutTyper, Size};
 
 use context::CrateContext;
-use machine;
 use monomorphize;
 use type_::Type;
 use type_of;
@@ -134,9 +133,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         layout::UntaggedUnion { ref variants, .. }=> {
             // Use alignment-sized ints to fill all the union storage.
-            let size = variants.stride().bytes();
-            let align = variants.align.abi();
-            let fill = union_fill(cx, size, align);
+            let fill = union_fill(cx, variants.stride(), variants.align);
             match name {
                 None => {
                     Type::struct_(cx, &[fill], variants.packed)
@@ -159,22 +156,18 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // So we start with the discriminant, pad it up to the alignment with
             // more of its own type, then use alignment-sized ints to get the rest
             // of the size.
-            let size = size.bytes();
-            let align = align.abi();
-            let primitive_align = primitive_align.abi();
-            assert!(align <= ::std::u32::MAX as u64);
             let discr_ty = Type::from_integer(cx, discr);
             let discr_size = discr.size().bytes();
-            let padded_discr_size = roundup(discr_size, align as u32);
-            let variant_part_size = size-padded_discr_size;
-            let variant_fill = union_fill(cx, variant_part_size, primitive_align);
+            let padded_discr_size = discr.size().abi_align(align);
+            let variant_part_size = size - padded_discr_size;
 
-            assert_eq!(machine::llalign_of_min(cx, variant_fill), primitive_align as u32);
-            assert_eq!(padded_discr_size % discr_size, 0); // Ensure discr_ty can fill pad evenly
-            let fields: Vec<Type> =
-                [discr_ty,
-                 Type::array(&discr_ty, (padded_discr_size - discr_size)/discr_size),
-                 variant_fill].iter().cloned().collect();
+            // Ensure discr_ty can fill pad evenly
+            assert_eq!(padded_discr_size.bytes() % discr_size, 0);
+            let fields = [
+                discr_ty,
+                Type::array(&discr_ty, padded_discr_size.bytes() / discr_size - 1),
+                union_fill(cx, variant_part_size, primitive_align)
+            ];
             match name {
                 None => {
                     Type::struct_(cx, &fields, false)
@@ -190,17 +183,19 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
-fn union_fill(cx: &CrateContext, size: u64, align: u64) -> Type {
-    assert_eq!(size%align, 0);
-    assert_eq!(align.count_ones(), 1, "Alignment must be a power fof 2. Got {}", align);
-    let align_units = size/align;
-    let layout_align = layout::Align::from_bytes(align, align).unwrap();
-    if let Some(ity) = layout::Integer::for_abi_align(cx, layout_align) {
-        Type::array(&Type::from_integer(cx, ity), align_units)
+fn union_fill(cx: &CrateContext, size: Size, align: Align) -> Type {
+    let abi_align = align.abi();
+    let elem_ty = if let Some(ity) = layout::Integer::for_abi_align(cx, align) {
+        Type::from_integer(cx, ity)
     } else {
-        Type::array(&Type::vector(&Type::i32(cx), align/4),
-                    align_units)
-    }
+        let vec_align = cx.data_layout().vector_align(Size::from_bytes(abi_align));
+        assert_eq!(vec_align.abi(), abi_align);
+        Type::vector(&Type::i32(cx), abi_align / 4)
+    };
+
+    let size = size.bytes();
+    assert_eq!(size % abi_align, 0);
+    Type::array(&elem_ty, size / abi_align)
 }
 
 // Lookup `Struct::memory_index` and double it to account for padding
@@ -231,7 +226,7 @@ pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
     debug!("struct_llfields: variant: {:?}", variant);
     let mut first_field = true;
-    let mut min_offset = 0;
+    let mut offset = Size::from_bytes(0);
     let mut result: Vec<Type> = Vec::with_capacity(field_count * 2);
     let field_iter = variant.field_index_by_increasing_offset().map(|i| {
         (i, match t.sty {
@@ -249,48 +244,47 @@ pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 cx.tcx().normalize_associated_type(&ty)
             },
             _ => bug!()
-        }, variant.offsets[i as usize].bytes())
+        }, variant.offsets[i as usize])
     });
     for (index, ty, target_offset) in field_iter {
-        assert!(target_offset >= min_offset);
-        let padding_bytes = target_offset - min_offset;
+        debug!("struct_llfields: {} ty: {} offset: {:?} target_offset: {:?}",
+            index, ty, offset, target_offset);
+        assert!(target_offset >= offset);
+        let padding = target_offset - offset;
         if first_field {
-            debug!("struct_llfields: {} ty: {} min_offset: {} target_offset: {}",
-                index, ty, min_offset, target_offset);
-            assert_eq!(padding_bytes, 0);
+            assert_eq!(padding.bytes(), 0);
             first_field = false;
         } else {
-            result.push(Type::array(&Type::i8(cx), padding_bytes));
-            debug!("struct_llfields: {} ty: {} pad_bytes: {} min_offset: {} target_offset: {}",
-                index, ty, padding_bytes, min_offset, target_offset);
+            result.push(Type::array(&Type::i8(cx), padding.bytes()));
+            debug!("    padding before: {:?}", padding);
         }
         let llty = type_of::in_memory_type_of(cx, ty);
         result.push(llty);
         let layout = cx.layout_of(ty);
         if variant.packed {
-            assert_eq!(padding_bytes, 0);
+            assert_eq!(padding.bytes(), 0);
         } else {
             let field_align = layout.align(cx);
             assert!(field_align.abi() <= variant.align.abi(),
                     "non-packed type has field with larger align ({}): {:#?}",
                     field_align.abi(), variant);
         }
-        let target_size = layout.size(&cx.tcx().data_layout).bytes();
-        min_offset = target_offset + target_size;
+        let target_size = layout.size(&cx.tcx().data_layout);
+        offset = target_offset + target_size;
     }
     if variant.sized && field_count > 0 {
-        if variant.stride().bytes() < min_offset {
-            bug!("variant: {:?} stride: {} min_offset: {}", variant, variant.stride().bytes(),
-            min_offset);
+        if offset > variant.stride() {
+            bug!("variant: {:?} stride: {:?} offset: {:?}",
+                variant, variant.stride(), offset);
         }
-        let padding_bytes = variant.stride().bytes() - min_offset;
-        debug!("struct_llfields: pad_bytes: {} min_offset: {} min_size: {} stride: {}\n",
-               padding_bytes, min_offset, variant.min_size.bytes(), variant.stride().bytes());
-        result.push(Type::array(&Type::i8(cx), padding_bytes));
+        let padding = variant.stride() - offset;
+        debug!("struct_llfields: pad_bytes: {:?} offset: {:?} min_size: {:?} stride: {:?}",
+            padding, offset, variant.min_size, variant.stride());
+        result.push(Type::array(&Type::i8(cx), padding.bytes()));
         assert!(result.len() == (field_count * 2));
     } else {
-        debug!("struct_llfields: min_offset: {} min_size: {} stride: {}\n",
-               min_offset, variant.min_size.bytes(), variant.stride().bytes());
+        debug!("struct_llfields: offset: {:?} min_size: {:?} stride: {:?}",
+               offset, variant.min_size, variant.stride());
     }
 
     result
@@ -310,7 +304,3 @@ pub fn assert_discr_in_range<D: PartialOrd>(min: D, max: D, discr: D) {
         assert!(min <= discr || discr <= max)
     }
 }
-
-// FIXME this utility routine should be somewhere more general
-#[inline]
-fn roundup(x: u64, a: u32) -> u64 { let a = a as u64; ((x + (a - 1)) / a) * a }

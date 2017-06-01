@@ -18,11 +18,11 @@ use rustc::traits;
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::layout::{self, LayoutTyper};
+use rustc::ty::layout::{self, LayoutTyper, Size};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::{Kind, Substs, Subst};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use {adt, base, machine};
+use {adt, base};
 use abi::{self, Abi};
 use callee;
 use builder::Builder;
@@ -99,9 +99,11 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Bool(v) => C_bool(ccx, v),
             ConstVal::Integral(ref i) => return Const::from_constint(ccx, i),
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
-            ConstVal::ByteStr(v) => consts::addr_of(ccx, C_bytes(ccx, v.data), 1, "byte_str"),
+            ConstVal::ByteStr(v) => {
+                consts::addr_of(ccx, C_bytes(ccx, v.data), ccx.align_of(ty), "byte_str")
+            }
             ConstVal::Char(c) => C_uint(Type::char(ccx), c as u64),
-            ConstVal::Function(..) => C_null(type_of::type_of(ccx, ty)),
+            ConstVal::Function(..) => C_null(llty),
             ConstVal::Variant(_) |
             ConstVal::Aggregate(..) |
             ConstVal::Unevaluated(..) => {
@@ -367,12 +369,12 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             match &tcx.item_name(def_id)[..] {
                                 "size_of" => {
                                     let llval = C_usize(self.ccx,
-                                        self.ccx.size_of(substs.type_at(0)));
+                                        self.ccx.size_of(substs.type_at(0)).bytes());
                                     Ok(Const::new(llval, tcx.types.usize))
                                 }
                                 "min_align_of" => {
                                     let llval = C_usize(self.ccx,
-                                        self.ccx.align_of(substs.type_at(0)) as u64);
+                                        self.ccx.align_of(substs.type_at(0)).abi());
                                     Ok(Const::new(llval, tcx.types.usize))
                                 }
                                 _ => span_bug!(span, "{:?} in constant", terminator.kind)
@@ -589,7 +591,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 self.const_array(dest_ty, &fields)
             }
 
-            mir::Rvalue::Aggregate(ref kind, ref operands) => {
+            mir::Rvalue::Aggregate(box mir::AggregateKind::Array(_), ref operands) => {
                 // Make sure to evaluate all operands to
                 // report as many errors as we possibly can.
                 let mut fields = Vec::with_capacity(operands.len());
@@ -602,17 +604,23 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 }
                 failure?;
 
-                match **kind {
-                    mir::AggregateKind::Array(_) => {
-                        self.const_array(dest_ty, &fields)
-                    }
-                    mir::AggregateKind::Adt(..) |
-                    mir::AggregateKind::Closure(..) |
-                    mir::AggregateKind::Generator(..) |
-                    mir::AggregateKind::Tuple => {
-                        Const::new(trans_const(self.ccx, dest_ty, kind, &fields), dest_ty)
+                self.const_array(dest_ty, &fields)
+            }
+
+            mir::Rvalue::Aggregate(ref kind, ref operands) => {
+                // Make sure to evaluate all operands to
+                // report as many errors as we possibly can.
+                let mut fields = Vec::with_capacity(operands.len());
+                let mut failure = Ok(());
+                for operand in operands {
+                    match self.const_operand(operand, span) {
+                        Ok(val) => fields.push(val),
+                        Err(err) => if failure.is_ok() { failure = Err(err); }
                     }
                 }
+                failure?;
+
+                trans_const_adt(self.ccx, dest_ty, kind, &fields)
             }
 
             mir::Rvalue::Cast(ref kind, ref source, cast_ty) => {
@@ -781,7 +789,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         let align = if self.ccx.shared().type_is_sized(ty) {
                             self.ccx.align_of(ty)
                         } else {
-                            self.ccx.tcx().data_layout.pointer_align.abi() as machine::llalign
+                            self.ccx.tcx().data_layout.pointer_align
                         };
                         if bk == mir::BorrowKind::Mut {
                             consts::addr_of_mut(self.ccx, llval, align, "ref_mut")
@@ -861,7 +869,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
             mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
                 assert!(self.ccx.shared().type_is_sized(ty));
-                let llval = C_usize(self.ccx, self.ccx.size_of(ty));
+                let llval = C_usize(self.ccx, self.ccx.size_of(ty).bytes());
                 Const::new(llval, tcx.types.usize)
             }
 
@@ -1042,12 +1050,12 @@ pub fn trans_static_initializer<'a, 'tcx>(
 /// Currently the returned value has the same size as the type, but
 /// this could be changed in the future to avoid allocating unnecessary
 /// space after values of shorter-than-maximum cases.
-fn trans_const<'a, 'tcx>(
+fn trans_const_adt<'a, 'tcx>(
     ccx: &CrateContext<'a, 'tcx>,
     t: Ty<'tcx>,
     kind: &mir::AggregateKind,
-    vals: &[ValueRef]
-) -> ValueRef {
+    vals: &[Const<'tcx>]
+) -> Const<'tcx> {
     let l = ccx.layout_of(t);
     let variant_index = match *kind {
         mir::AggregateKind::Adt(_, index, _, _) => index,
@@ -1064,112 +1072,97 @@ fn trans_const<'a, 'tcx>(
             };
             assert_eq!(vals.len(), 0);
             adt::assert_discr_in_range(min, max, discr);
-            C_int(Type::from_integer(ccx, d), discr as i64)
+            Const::new(C_int(Type::from_integer(ccx, d), discr as i64), t)
         }
         layout::General { discr: d, ref variants, .. } => {
             let variant = &variants[variant_index];
             let lldiscr = C_int(Type::from_integer(ccx, d), variant_index as i64);
-            let mut vals_with_discr = vec![lldiscr];
+            let mut vals_with_discr = vec![
+                Const::new(lldiscr, d.to_ty(ccx.tcx(), false))
+            ];
             vals_with_discr.extend_from_slice(vals);
-            let mut contents = build_const_struct(ccx, &variant, &vals_with_discr[..]);
-            let needed_padding = l.size(ccx).bytes() - variant.stride().bytes();
-            if needed_padding > 0 {
-                contents.push(padding(ccx, needed_padding));
-            }
-            C_struct(ccx, &contents[..], false)
+            build_const_struct(ccx, l, &variant, &vals_with_discr)
         }
         layout::UntaggedUnion { ref variants, .. }=> {
             assert_eq!(variant_index, 0);
-            let contents = build_const_union(ccx, variants, vals[0]);
-            C_struct(ccx, &contents, variants.packed)
+            let mut contents = vec![vals[0].llval];
+
+            let offset = ccx.size_of(vals[0].ty);
+            let size = variants.stride();
+            if offset != size {
+                contents.push(padding(ccx, size - offset));
+            }
+
+            Const::new(C_struct(ccx, &contents, variants.packed), t)
         }
         layout::Univariant { ref variant, .. } => {
             assert_eq!(variant_index, 0);
-            let contents = build_const_struct(ccx, &variant, vals);
-            C_struct(ccx, &contents[..], variant.packed)
+            build_const_struct(ccx, l, &variant, vals)
         }
         layout::Vector { .. } => {
-            C_vector(vals)
+            Const::new(C_vector(&vals.iter().map(|x| x.llval).collect::<Vec<_>>()), t)
         }
         layout::RawNullablePointer { nndiscr, .. } => {
             if variant_index as u64 == nndiscr {
                 assert_eq!(vals.len(), 1);
-                vals[0]
+                Const::new(vals[0].llval, t)
             } else {
-                C_null(type_of::type_of(ccx, t))
+                Const::new(C_null(type_of::type_of(ccx, t)), t)
             }
         }
         layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
             if variant_index as u64 == nndiscr {
-                C_struct(ccx, &build_const_struct(ccx, &nonnull, vals), false)
+                build_const_struct(ccx, l, &nonnull, vals)
             } else {
                 // Always use null even if it's not the `discrfield`th
                 // field; see #8506.
-                C_null(type_of::type_of(ccx, t))
+                Const::new(C_null(type_of::type_of(ccx, t)), t)
             }
         }
-        _ => bug!("trans_const: cannot handle type {} repreented as {:#?}", t, l)
+        _ => bug!("trans_const_adt: cannot handle type {} repreented as {:#?}", t, l)
     }
 }
 
 /// Building structs is a little complicated, because we might need to
 /// insert padding if a field's value is less aligned than its type.
 ///
-/// Continuing the example from `trans_const`, a value of type `(u32,
+/// Continuing the example from `trans_const_adt`, a value of type `(u32,
 /// E)` should have the `E` at offset 8, but if that field's
 /// initializer is 4-byte aligned then simply translating the tuple as
 /// a two-element struct will locate it at offset 4, and accesses to it
 /// will read the wrong memory.
 fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                layout: layout::TyLayout<'tcx>,
                                 st: &layout::Struct,
-                                vals: &[ValueRef])
-                                -> Vec<ValueRef> {
+                                vals: &[Const<'tcx>])
+                                -> Const<'tcx> {
     assert_eq!(vals.len(), st.offsets.len());
 
-    if vals.len() == 0 {
-        return Vec::new();
-    }
-
     // offset of current value
-    let mut offset = 0;
+    let mut offset = Size::from_bytes(0);
     let mut cfields = Vec::new();
     cfields.reserve(st.offsets.len()*2);
 
     let parts = st.field_index_by_increasing_offset().map(|i| {
-        (&vals[i], st.offsets[i].bytes())
+        (vals[i], st.offsets[i])
     });
-    for (&val, target_offset) in parts {
+    for (val, target_offset) in parts {
         if offset < target_offset {
             cfields.push(padding(ccx, target_offset - offset));
-            offset = target_offset;
         }
-        assert!(!is_undef(val));
-        cfields.push(val);
-        offset += machine::llsize_of_alloc(ccx, val_ty(val));
+        assert!(!is_undef(val.llval));
+        cfields.push(val.llval);
+        offset = target_offset + ccx.size_of(val.ty);
     }
 
-    if offset < st.stride().bytes() {
-        cfields.push(padding(ccx, st.stride().bytes() - offset));
-    }
-
-    cfields
-}
-
-fn build_const_union<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                               un: &layout::Union,
-                               field_val: ValueRef)
-                               -> Vec<ValueRef> {
-    let mut cfields = vec![field_val];
-
-    let offset = machine::llsize_of_alloc(ccx, val_ty(field_val));
-    let size = un.stride().bytes();
-    if offset != size {
+    let size = layout.size(ccx);
+    if offset < size {
         cfields.push(padding(ccx, size - offset));
     }
 
-    cfields
+    Const::new(C_struct(ccx, &cfields, st.packed), layout.ty)
 }
 
-fn padding(ccx: &CrateContext, size: u64) -> ValueRef {
-    C_undef(Type::array(&Type::i8(ccx), size))
+fn padding(ccx: &CrateContext, size: Size) -> ValueRef {
+    C_undef(Type::array(&Type::i8(ccx), size.bytes()))
 }

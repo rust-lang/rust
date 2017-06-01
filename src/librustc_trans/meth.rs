@@ -13,11 +13,11 @@ use callee;
 use common::*;
 use builder::Builder;
 use consts;
-use machine;
 use monomorphize;
 use type_::Type;
 use value::Value;
 use rustc::ty::{self, Ty};
+use rustc::ty::layout::HasDataLayout;
 
 #[derive(Copy, Clone, Debug)]
 pub struct VirtualIndex(usize);
@@ -78,10 +78,11 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Not in the cache. Build it.
     let nullptr = C_null(Type::nil(ccx).ptr_to());
 
+    let (size, align) = ccx.size_and_align_of(ty);
     let mut components: Vec<_> = [
         callee::get_fn(ccx, monomorphize::resolve_drop_in_place(ccx.tcx(), ty)),
-        C_usize(ccx, ccx.size_of(ty)),
-        C_usize(ccx, ccx.align_of(ty) as u64)
+        C_usize(ccx, size.bytes()),
+        C_usize(ccx, align.abi())
     ].iter().cloned().collect();
 
     if let Some(trait_ref) = trait_ref {
@@ -96,7 +97,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     let vtable_const = C_struct(ccx, &components, false);
-    let align = machine::llalign_of_pref(ccx, val_ty(vtable_const));
+    let align = ccx.data_layout().pointer_align;
     let vtable = consts::addr_of(ccx, vtable_const, align, "vtable");
 
     ccx.vtables().borrow_mut().insert((ty, trait_ref), vtable);

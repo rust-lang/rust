@@ -11,9 +11,8 @@
 use abi::FnType;
 use adt;
 use common::*;
-use machine;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::LayoutTyper;
+use rustc::ty::layout::{Align, LayoutTyper, Size};
 use trans_item::DefPathBasedNames;
 use type_::Type;
 
@@ -212,19 +211,26 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 }
 
 impl<'a, 'tcx> CrateContext<'a, 'tcx> {
-    pub fn align_of(&self, ty: Ty<'tcx>) -> machine::llalign {
-        self.layout_of(ty).align(self).abi() as machine::llalign
+    pub fn align_of(&self, ty: Ty<'tcx>) -> Align {
+        self.layout_of(ty).align(self)
     }
 
-    pub fn size_of(&self, ty: Ty<'tcx>) -> machine::llsize {
-        self.layout_of(ty).size(self).bytes() as machine::llsize
+    pub fn size_of(&self, ty: Ty<'tcx>) -> Size {
+        self.layout_of(ty).size(self)
     }
 
-    pub fn over_align_of(&self, t: Ty<'tcx>)
-                              -> Option<machine::llalign> {
+    pub fn size_and_align_of(&self, ty: Ty<'tcx>) -> (Size, Align) {
+        let layout = self.layout_of(ty);
+        (layout.size(self), layout.align(self))
+    }
+
+    /// Returns alignment if it is different than the primitive alignment.
+    pub fn over_align_of(&self, t: Ty<'tcx>) -> Option<Align> {
         let layout = self.layout_of(t);
-        if let Some(align) = layout.over_align(&self.tcx().data_layout) {
-            Some(align as machine::llalign)
+        let align = layout.align(self);
+        let primitive_align = layout.primitive_align(self);
+        if align != primitive_align {
+            Some(align)
         } else {
             None
         }

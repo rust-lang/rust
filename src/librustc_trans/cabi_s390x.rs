@@ -49,16 +49,16 @@ fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tc
 
     if is_single_fp_element(ccx, arg.layout) {
         match size.bytes() {
-            4 => arg.cast_to(ccx, Reg::f32()),
-            8 => arg.cast_to(ccx, Reg::f64()),
+            4 => arg.cast_to(Reg::f32()),
+            8 => arg.cast_to(Reg::f64()),
             _ => arg.make_indirect(ccx)
         }
     } else {
         match size.bytes() {
-            1 => arg.cast_to(ccx, Reg::i8()),
-            2 => arg.cast_to(ccx, Reg::i16()),
-            4 => arg.cast_to(ccx, Reg::i32()),
-            8 => arg.cast_to(ccx, Reg::i64()),
+            1 => arg.cast_to(Reg::i8()),
+            2 => arg.cast_to(Reg::i16()),
+            4 => arg.cast_to(Reg::i32()),
+            8 => arg.cast_to(Reg::i64()),
             _ => arg.make_indirect(ccx)
         }
     }

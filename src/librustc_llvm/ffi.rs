@@ -1193,15 +1193,13 @@ extern "C" {
     pub fn LLVMRustBuildAtomicLoad(B: BuilderRef,
                                    PointerVal: ValueRef,
                                    Name: *const c_char,
-                                   Order: AtomicOrdering,
-                                   Alignment: c_uint)
+                                   Order: AtomicOrdering)
                                    -> ValueRef;
 
     pub fn LLVMRustBuildAtomicStore(B: BuilderRef,
                                     Val: ValueRef,
                                     Ptr: ValueRef,
-                                    Order: AtomicOrdering,
-                                    Alignment: c_uint)
+                                    Order: AtomicOrdering)
                                     -> ValueRef;
 
     pub fn LLVMRustBuildAtomicCmpXchg(B: BuilderRef,
@@ -1235,23 +1233,6 @@ extern "C" {
 
     /// Creates target data from a target layout string.
     pub fn LLVMCreateTargetData(StringRep: *const c_char) -> TargetDataRef;
-    /// Number of bytes clobbered when doing a Store to *T.
-    pub fn LLVMSizeOfTypeInBits(TD: TargetDataRef, Ty: TypeRef) -> c_ulonglong;
-
-    /// Distance between successive elements in an array of T. Includes ABI padding.
-    pub fn LLVMABISizeOfType(TD: TargetDataRef, Ty: TypeRef) -> c_ulonglong;
-
-    /// Returns the preferred alignment of a type.
-    pub fn LLVMPreferredAlignmentOfType(TD: TargetDataRef, Ty: TypeRef) -> c_uint;
-    /// Returns the minimum alignment of a type.
-    pub fn LLVMABIAlignmentOfType(TD: TargetDataRef, Ty: TypeRef) -> c_uint;
-
-    /// Computes the byte offset of the indexed struct element for a
-    /// target.
-    pub fn LLVMOffsetOfElement(TD: TargetDataRef,
-                               StructTy: TypeRef,
-                               Element: c_uint)
-                               -> c_ulonglong;
 
     /// Disposes target data.
     pub fn LLVMDisposeTargetData(TD: TargetDataRef);

@@ -19,9 +19,8 @@ use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 use base;
 use builder::Builder;
 use callee;
-use common::{self, val_ty, C_bool, C_i32, C_null, C_usize, C_uint};
+use common::{self, val_ty, C_bool, C_i32, C_null, C_u8, C_usize, C_uint};
 use adt;
-use machine;
 use monomorphize;
 use type_::Type;
 use type_of;
@@ -100,33 +99,31 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 }
 
                 let tr_elem = self.trans_operand(&bcx, elem);
-                let size = count.as_u64();
-                let size = C_usize(bcx.ccx, size);
+                let count = count.as_u64();
+                let count = C_usize(bcx.ccx, count);
                 let base = base::get_dataptr(&bcx, dest.llval);
                 let align = dest.alignment.to_align();
 
                 if let OperandValue::Immediate(v) = tr_elem.val {
+                    let align = align.unwrap_or_else(|| bcx.ccx.align_of(tr_elem.ty));
+                    let align = C_i32(bcx.ccx, align.abi() as i32);
+                    let size = C_usize(bcx.ccx, bcx.ccx.size_of(dest_ty).bytes());
+
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
                     if common::is_const_integral(v) && common::const_to_uint(v) == 0 {
-                        let align = align.unwrap_or_else(|| bcx.ccx.align_of(tr_elem.ty));
-                        let align = C_i32(bcx.ccx, align as i32);
-                        let ty = type_of::type_of(bcx.ccx, dest_ty);
-                        let size = machine::llsize_of(bcx.ccx, ty);
-                        let fill = C_uint(Type::i8(bcx.ccx), 0);
+                        let fill = C_u8(bcx.ccx, 0);
                         base::call_memset(&bcx, base, fill, size, align, false);
                         return bcx;
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     if common::val_ty(v) == Type::i8(bcx.ccx) {
-                        let align = align.unwrap_or_else(|| bcx.ccx.align_of(tr_elem.ty));
-                        let align = C_i32(bcx.ccx, align as i32);
                         base::call_memset(&bcx, base, v, size, align, false);
                         return bcx;
                     }
                 }
 
-                tvec::slice_for_each(&bcx, base, tr_elem.ty, size, |bcx, llslot, loop_bb| {
+                tvec::slice_for_each(&bcx, base, tr_elem.ty, count, |bcx, llslot, loop_bb| {
                     self.store_operand(bcx, llslot, align, tr_elem);
                     bcx.br(loop_bb);
                 })
@@ -457,7 +454,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
                 assert!(bcx.ccx.shared().type_is_sized(ty));
-                let val = C_usize(bcx.ccx, bcx.ccx.size_of(ty));
+                let val = C_usize(bcx.ccx, bcx.ccx.size_of(ty).bytes());
                 let tcx = bcx.tcx();
                 (bcx, OperandRef {
                     val: OperandValue::Immediate(val),
@@ -467,12 +464,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             mir::Rvalue::NullaryOp(mir::NullOp::Box, content_ty) => {
                 let content_ty: Ty<'tcx> = self.monomorphize(&content_ty);
-                let llty = type_of::type_of(bcx.ccx, content_ty);
-                let llsize = machine::llsize_of(bcx.ccx, llty);
-                let align = bcx.ccx.align_of(content_ty);
-                let llalign = C_usize(bcx.ccx, align as u64);
-                let llty_ptr = llty.ptr_to();
+                let (size, align) = bcx.ccx.size_and_align_of(content_ty);
+                let llsize = C_usize(bcx.ccx, size.bytes());
+                let llalign = C_usize(bcx.ccx, align.abi());
                 let box_ty = bcx.tcx().mk_box(content_ty);
+                let llty_ptr = type_of::type_of(bcx.ccx, box_ty);
 
                 // Allocate space:
                 let def_id = match bcx.tcx().lang_items().require(ExchangeMallocFnLangItem) {

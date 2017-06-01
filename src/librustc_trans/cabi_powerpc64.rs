@@ -67,7 +67,7 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
     }
 
     if let Some(uniform) = is_homogeneous_aggregate(ccx, ret, abi) {
-        ret.cast_to(ccx, uniform);
+        ret.cast_to(uniform);
         return;
     }
 
@@ -84,7 +84,7 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
             Reg::i64()
         };
 
-        ret.cast_to(ccx, Uniform {
+        ret.cast_to(Uniform {
             unit,
             total: size
         });
@@ -101,7 +101,7 @@ fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tc
     }
 
     if let Some(uniform) = is_homogeneous_aggregate(ccx, arg, abi) {
-        arg.cast_to(ccx, uniform);
+        arg.cast_to(uniform);
         return;
     }
 
@@ -124,7 +124,7 @@ fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tc
         },
     };
 
-    arg.cast_to(ccx, Uniform {
+    arg.cast_to(Uniform {
         unit,
         total
     });

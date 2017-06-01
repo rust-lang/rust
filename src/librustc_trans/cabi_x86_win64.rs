@@ -20,10 +20,10 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType
         let size = a.layout.size(ccx);
         if a.layout.is_aggregate() {
             match size.bits() {
-                8 => a.cast_to(ccx, Reg::i8()),
-                16 => a.cast_to(ccx, Reg::i16()),
-                32 => a.cast_to(ccx, Reg::i32()),
-                64 => a.cast_to(ccx, Reg::i64()),
+                8 => a.cast_to(Reg::i8()),
+                16 => a.cast_to(Reg::i16()),
+                32 => a.cast_to(Reg::i32()),
+                64 => a.cast_to(Reg::i64()),
                 _ => a.make_indirect(ccx)
             };
         } else {

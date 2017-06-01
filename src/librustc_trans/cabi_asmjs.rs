@@ -21,7 +21,7 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
         if let Some(unit) = ret.layout.homogeneous_aggregate(ccx) {
             let size = ret.layout.size(ccx);
             if unit.size == size {
-                ret.cast_to(ccx, Uniform {
+                ret.cast_to(Uniform {
                     unit,
                     total: size
                 });
