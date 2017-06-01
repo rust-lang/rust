@@ -33,7 +33,7 @@ macro_rules! configuration_option_enum{
 
 configuration_option_enum! { Style:
     Rfc, // Follow the style RFCs style.
-    Default, // Follow the traditional Rustfmt style.
+    Legacy, // Follow the traditional Rustfmt style.
 }
 
 configuration_option_enum! { NewlineStyle:
@@ -498,7 +498,7 @@ create_config! {
     newline_style: NewlineStyle, NewlineStyle::Unix, "Unix or Windows line endings";
     fn_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for functions";
     item_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for structs and enums";
-    control_style: Style, Style::Default, "Indent style for control flow statements";
+    control_style: Style, Style::Legacy, "Indent style for control flow statements";
     control_brace_style: ControlBraceStyle, ControlBraceStyle::AlwaysSameLine,
         "Brace style for control flow constructs";
     impl_empty_single_line: bool, true, "Put empty-body implementations on a single line";
@@ -517,7 +517,7 @@ create_config! {
         "Maximum width of an array literal before falling back to vertical formatting";
     type_punctuation_density: TypeDensity, TypeDensity::Wide,
         "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";
-    where_style: Style, Style::Default, "Overall strategy for where clauses";
+    where_style: Style, Style::Legacy, "Overall strategy for where clauses";
     // TODO:
     // 1. Should we at least try to put the where clause on the same line as the rest of the
     // function decl?

@@ -327,7 +327,7 @@ pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
     // Re-evaluate the rhs because we have more space now:
     let infix = infix.trim_right();
     let rhs_shape = match context.config.control_style() {
-        Style::Default => {
+        Style::Legacy => {
             try_opt!(shape.sub_width(suffix.len() + prefix.len())).visual_indent(prefix.len())
         }
         Style::Rfc => {
@@ -339,7 +339,7 @@ pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
 
     let rhs_result = try_opt!(rhs.rewrite(context, rhs_shape));
     let lhs_shape = match context.config.control_style() {
-        Style::Default => {
+        Style::Legacy => {
             let lhs_overhead = shape.used_width() + prefix.len() + infix.len();
             Shape {
                 width: try_opt!(context.config.max_width().checked_sub(lhs_overhead)),
@@ -914,7 +914,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
         let pat_expr_string = match self.cond {
             Some(cond) => {
                 let mut cond_shape = match context.config.control_style() {
-                    Style::Default => try_opt!(constr_shape.shrink_left(add_offset)),
+                    Style::Legacy => try_opt!(constr_shape.shrink_left(add_offset)),
                     Style::Rfc => try_opt!(constr_shape.sub_width(add_offset)),
                 };
                 if context.config.control_brace_style() != ControlBraceStyle::AlwaysNextLine {
