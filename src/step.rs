@@ -126,9 +126,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
-            // Miri can safely ignore these. Only translation needs it.
-            StorageLive(_) |
-            StorageDead(_) => {}
+            // Mark locals as dead or alive.
+            StorageLive(ref lvalue) | StorageDead(ref lvalue)=> {
+                let (frame, local) = match self.eval_lvalue(lvalue)? {
+                    Lvalue::Local{ frame, local, field: None } if self.stack.len() == frame+1 => (frame, local),
+                    _ => return Err(EvalError::Unimplemented("Stroage annotations must refer to locals of the topmost stack frame.".to_owned())) // FIXME maybe this should get its own error type
+                };
+                match stmt.kind {
+                    StorageLive(_) => self.stack[frame].storage_live(local)?,
+                    _ =>  {
+                        let old_val = self.stack[frame].storage_dead(local)?;
+                        self.deallocate_local(old_val)?;
+                    }
+                };
+            }
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.
@@ -240,7 +251,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                                               constant.span,
                                               mir,
                                               Lvalue::Global(cid),
-                                              StackPopCleanup::MarkStatic(false))
+                                              StackPopCleanup::MarkStatic(false),
+                    )
                 });
             }
         }

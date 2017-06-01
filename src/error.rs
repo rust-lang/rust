@@ -24,6 +24,7 @@ pub enum EvalError<'tcx> {
     ReadPointerAsBytes,
     InvalidPointerMath,
     ReadUndefBytes,
+    DeadLocal,
     InvalidBoolOp(mir::BinOp),
     Unimplemented(String),
     DerefFunctionPointer,
@@ -83,6 +84,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "attempted to do math or a comparison on pointers into different allocations",
             EvalError::ReadUndefBytes =>
                 "attempted to read undefined bytes",
+            EvalError::DeadLocal =>
+                "tried to access a dead local variable",
             EvalError::InvalidBoolOp(_) =>
                 "invalid boolean operation",
             EvalError::Unimplemented(ref msg) => msg,
