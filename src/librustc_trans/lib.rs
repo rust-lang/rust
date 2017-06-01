@@ -35,6 +35,7 @@
 #![feature(slice_patterns)]
 #![feature(unicode)]
 #![feature(conservative_impl_trait)]
+#![feature(command_envs)]
 
 #![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
 #![cfg_attr(stage0, feature(rustc_private))]
@@ -62,6 +63,8 @@ extern crate rustc_bitflags;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
 extern crate serialize;
+#[cfg(windows)]
+extern crate gcc; // Used to locate MSVC, not gcc :)
 
 pub use base::trans_crate;
 pub use back::symbol_names::provide;
@@ -77,8 +80,7 @@ pub mod back {
     pub(crate) mod symbol_export;
     pub(crate) mod symbol_names;
     pub mod write;
-    mod msvc;
-    mod rpath;
+    pub mod rpath;
 }
 
 mod diagnostics;

@@ -165,6 +165,7 @@ script:
               stamp src/ci/docker/run.sh $IMAGE;
           fi
       fi
+  - sleep 300000
 
 after_success:
   - >
