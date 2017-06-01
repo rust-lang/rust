@@ -781,3 +781,18 @@ fn from_into_inner() {
     assert_eq!(vec, [2, 3]);
     assert!(ptr != vec.as_ptr());
 }
+
+#[test]
+fn overaligned_allocations() {
+    #[repr(align(256))]
+    struct Foo(usize);
+    let mut v = vec![Foo(273)];
+    for i in 0..0x1000 {
+        v.reserve_exact(i);
+        assert!(v[0].0 == 273);
+        assert!(v.as_ptr() as usize & 0xff == 0);
+        v.shrink_to_fit();
+        assert!(v[0].0 == 273);
+        assert!(v.as_ptr() as usize & 0xff == 0);
+    }
+}
