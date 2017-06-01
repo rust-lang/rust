@@ -1,5 +1,21 @@
 language: rust
+
 rust:
-  - stable
-  - beta
   - nightly
+
+os:
+  - linux
+
+addons:
+  apt:
+    sources:
+      - kalakris-cmake
+    packages:
+      - cmake
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+
+script:
+  - cargo build --verbose
+  - cargo test --verbose
