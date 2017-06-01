@@ -56,6 +56,13 @@ fn main() {
         }
     }
 
+    // Drop `--error-format json` because despite our desire for json messages
+    // from Cargo we don't want any from rustc itself.
+    if let Some(n) = args.iter().position(|n| n == "--error-format") {
+        args.remove(n);
+        args.remove(n);
+    }
+
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
     let target = args.windows(2)

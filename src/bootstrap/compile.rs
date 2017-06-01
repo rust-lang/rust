@@ -16,14 +16,17 @@
 //! compiler. This module is also responsible for assembling the sysroot as it
 //! goes along from the output of the previous stage.
 
-use std::collections::HashMap;
-use std::fs::{self, File};
-use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::env;
+use std::fs::{self, File};
+use std::io::BufReader;
+use std::io::prelude::*;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::str;
 
 use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
+use rustc_serialize::json;
 
 use channel::GitInfo;
 use util::{exe, libdir, is_dylib, copy};
@@ -84,8 +87,9 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
         }
     }
 
-    build.run(&mut cargo);
-    update_mtime(build, &libstd_stamp(build, &compiler, target));
+    run_cargo(build,
+              &mut cargo,
+              &libstd_stamp(build, &compiler, target));
 }
 
 /// Link all libstd rlibs/dylibs into the sysroot location.
@@ -106,11 +110,8 @@ pub fn std_link(build: &Build,
              compiler.host,
              target_compiler.host,
              target);
-    let libdir = build.sysroot_libdir(&target_compiler, target);
-    let out_dir = build.cargo_out(&compiler, Mode::Libstd, target);
-
-    t!(fs::create_dir_all(&libdir));
-    add_to_sysroot(&out_dir, &libdir);
+    let libdir = build.sysroot_libdir(target_compiler, target);
+    add_to_sysroot(&libdir, &libstd_stamp(build, compiler, target));
 
     if target.contains("musl") && !target.contains("mips") {
         copy_musl_third_party_objects(build, target, &libdir);
@@ -201,8 +202,9 @@ pub fn test(build: &Build, target: &str, compiler: &Compiler) {
     }
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/libtest/Cargo.toml"));
-    build.run(&mut cargo);
-    update_mtime(build, &libtest_stamp(build, compiler, target));
+    run_cargo(build,
+              &mut cargo,
+              &libtest_stamp(build, compiler, target));
 }
 
 /// Same as `std_link`, only for libtest
@@ -216,9 +218,8 @@ pub fn test_link(build: &Build,
              compiler.host,
              target_compiler.host,
              target);
-    let libdir = build.sysroot_libdir(&target_compiler, target);
-    let out_dir = build.cargo_out(&compiler, Mode::Libtest, target);
-    add_to_sysroot(&out_dir, &libdir);
+    add_to_sysroot(&build.sysroot_libdir(target_compiler, target),
+                   &libtest_stamp(build, compiler, target));
 }
 
 /// Build the compiler.
@@ -294,8 +295,9 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
     if let Some(ref s) = build.config.rustc_default_ar {
         cargo.env("CFG_DEFAULT_AR", s);
     }
-    build.run(&mut cargo);
-    update_mtime(build, &librustc_stamp(build, compiler, target));
+    run_cargo(build,
+              &mut cargo,
+              &librustc_stamp(build, compiler, target));
 }
 
 /// Same as `std_link`, only for librustc
@@ -309,9 +311,8 @@ pub fn rustc_link(build: &Build,
              compiler.host,
              target_compiler.host,
              target);
-    let libdir = build.sysroot_libdir(&target_compiler, target);
-    let out_dir = build.cargo_out(&compiler, Mode::Librustc, target);
-    add_to_sysroot(&out_dir, &libdir);
+    add_to_sysroot(&build.sysroot_libdir(target_compiler, target),
+                   &librustc_stamp(build, compiler, target));
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
@@ -397,39 +398,17 @@ pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
 
 /// Link some files into a rustc sysroot.
 ///
-/// For a particular stage this will link all of the contents of `out_dir`
-/// into the sysroot of the `host` compiler, assuming the artifacts are
-/// compiled for the specified `target`.
-fn add_to_sysroot(out_dir: &Path, sysroot_dst: &Path) {
-    // Collect the set of all files in the dependencies directory, keyed
-    // off the name of the library. We assume everything is of the form
-    // `foo-<hash>.{rlib,so,...}`, and there could be multiple different
-    // `<hash>` values for the same name (of old builds).
-    let mut map = HashMap::new();
-    for file in t!(fs::read_dir(out_dir.join("deps"))).map(|f| t!(f)) {
-        let filename = file.file_name().into_string().unwrap();
-
-        // We're only interested in linking rlibs + dylibs, other things like
-        // unit tests don't get linked in
-        if !filename.ends_with(".rlib") &&
-           !filename.ends_with(".lib") &&
-           !is_dylib(&filename) {
+/// For a particular stage this will link the file listed in `stamp` into the
+/// `sysroot_dst` provided.
+fn add_to_sysroot(sysroot_dst: &Path, stamp: &Path) {
+    t!(fs::create_dir_all(&sysroot_dst));
+    let mut contents = Vec::new();
+    t!(t!(File::open(stamp)).read_to_end(&mut contents));
+    for part in contents.split(|b| *b == 0) {
+        if part.is_empty() {
             continue
         }
-        let file = file.path();
-        let dash = filename.find("-").unwrap();
-        let key = (filename[..dash].to_string(),
-                   file.extension().unwrap().to_owned());
-        map.entry(key).or_insert(Vec::new())
-           .push(file.clone());
-    }
-
-    // For all hash values found, pick the most recent one to move into the
-    // sysroot, that should be the one we just built.
-    for (_, paths) in map {
-        let (_, path) = paths.iter().map(|path| {
-            (mtime(&path).seconds(), path)
-        }).max().unwrap();
+        let path = Path::new(t!(str::from_utf8(part)));
         copy(&path, &sysroot_dst.join(path.file_name().unwrap()));
     }
 }
@@ -490,40 +469,148 @@ pub fn tool(build: &Build, stage: u32, target: &str, tool: &str) {
     build.run(&mut cargo);
 }
 
-/// Updates the mtime of a stamp file if necessary, only changing it if it's
-/// older than some other library file in the same directory.
-///
-/// We don't know what file Cargo is going to output (because there's a hash in
-/// the file name) but we know where it's going to put it. We use this helper to
-/// detect changes to that output file by looking at the modification time for
-/// all files in a directory and updating the stamp if any are newer.
-///
-/// Note that we only consider Rust libraries as that's what we're interested in
-/// propagating changes from. Files like executables are tracked elsewhere.
-fn update_mtime(build: &Build, path: &Path) {
-    let entries = match path.parent().unwrap().join("deps").read_dir() {
-        Ok(entries) => entries,
-        Err(_) => return,
-    };
-    let files = entries.map(|e| t!(e)).filter(|e| t!(e.file_type()).is_file());
-    let files = files.filter(|e| {
-        let filename = e.file_name();
-        let filename = filename.to_str().unwrap();
-        filename.ends_with(".rlib") ||
-            filename.ends_with(".lib") ||
-            is_dylib(&filename)
-    });
-    let max = files.max_by_key(|entry| {
-        let meta = t!(entry.metadata());
-        FileTime::from_last_modification_time(&meta)
-    });
-    let max = match max {
-        Some(max) => max,
-        None => return,
+fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
+    // Instruct Cargo to give us json messages on stdout, critically leaving
+    // stderr as piped so we can get those pretty colors.
+    cargo.arg("--message-format").arg("json")
+         .stdout(Stdio::piped());
+    build.verbose(&format!("running: {:?}", cargo));
+    let mut child = match cargo.spawn() {
+        Ok(child) => child,
+        Err(e) => panic!("failed to execute command: {:?}\nerror: {}", cargo, e),
     };
 
-    if mtime(&max.path()) > mtime(path) {
-        build.verbose(&format!("updating {:?} as {:?} changed", path, max.path()));
-        t!(File::create(path));
+    // `target_root_dir` looks like $dir/$target/release
+    let target_root_dir = stamp.parent().unwrap();
+    // `target_deps_dir` looks like $dir/$target/release/deps
+    let target_deps_dir = target_root_dir.join("deps");
+    // `host_root_dir` looks like $dir/release
+    let host_root_dir = target_root_dir.parent().unwrap() // chop off `release`
+                                       .parent().unwrap() // chop off `$target`
+                                       .join(target_root_dir.file_name().unwrap());
+
+    // Spawn Cargo slurping up its JSON output. We'll start building up the
+    // `deps` array of all files it generated along with a `toplevel` array of
+    // files we need to probe for later.
+    let mut deps = Vec::new();
+    let mut toplevel = Vec::new();
+    let stdout = BufReader::new(child.stdout.take().unwrap());
+    for line in stdout.lines() {
+        let line = t!(line);
+        let json = if line.starts_with("{") {
+            t!(line.parse::<json::Json>())
+        } else {
+            // If this was informational, just print it out and continue
+            println!("{}", line);
+            continue
+        };
+        if json.find("reason").and_then(|j| j.as_string()) != Some("compiler-artifact") {
+            continue
+        }
+        for filename in json["filenames"].as_array().unwrap() {
+            let filename = filename.as_string().unwrap();
+            // Skip files like executables
+            if !filename.ends_with(".rlib") &&
+               !filename.ends_with(".lib") &&
+               !is_dylib(&filename) {
+                continue
+            }
+
+            let filename = Path::new(filename);
+
+            // If this was an output file in the "host dir" we don't actually
+            // worry about it, it's not relevant for us.
+            if filename.starts_with(&host_root_dir) {
+                continue
+
+            // If this was output in the `deps` dir then this is a precise file
+            // name (hash included) so we start tracking it.
+            } else if filename.starts_with(&target_deps_dir) {
+                deps.push(filename.to_path_buf());
+
+            // Otherwise this was a "top level artifact" which right now doesn't
+            // have a hash in the name, but there's a version of this file in
+            // the `deps` folder which *does* have a hash in the name. That's
+            // the one we'll want to we'll probe for it later.
+            } else {
+                toplevel.push((filename.file_stem().unwrap()
+                                       .to_str().unwrap().to_string(),
+                               filename.extension().unwrap().to_owned()
+                                       .to_str().unwrap().to_string()));
+            }
+        }
     }
+
+    // Make sure Cargo actually succeeded after we read all of its stdout.
+    let status = t!(child.wait());
+    if !status.success() {
+        panic!("command did not execute successfully: {:?}\n\
+                expected success, got: {}",
+               cargo,
+               status);
+    }
+
+    // Ok now we need to actually find all the files listed in `toplevel`. We've
+    // got a list of prefix/extensions and we basically just need to find the
+    // most recent file in the `deps` folder corresponding to each one.
+    let contents = t!(target_deps_dir.read_dir())
+        .map(|e| t!(e))
+        .map(|e| (e.path(), e.file_name().into_string().unwrap(), t!(e.metadata())))
+        .collect::<Vec<_>>();
+    for (prefix, extension) in toplevel {
+        let candidates = contents.iter().filter(|&&(_, ref filename, _)| {
+            filename.starts_with(&prefix[..]) &&
+                filename[prefix.len()..].starts_with("-") &&
+                filename.ends_with(&extension[..])
+        });
+        let max = candidates.max_by_key(|&&(_, _, ref metadata)| {
+            FileTime::from_last_modification_time(metadata)
+        });
+        let path_to_add = match max {
+            Some(triple) => triple.0.to_str().unwrap(),
+            None => panic!("no output generated for {:?} {:?}", prefix, extension),
+        };
+        if is_dylib(path_to_add) {
+            let candidate = format!("{}.lib", path_to_add);
+            let candidate = PathBuf::from(candidate);
+            if candidate.exists() {
+                deps.push(candidate);
+            }
+        }
+        deps.push(path_to_add.into());
+    }
+
+    // Now we want to update the contents of the stamp file, if necessary. First
+    // we read off the previous contents along with its mtime. If our new
+    // contents (the list of files to copy) is different or if any dep's mtime
+    // is newer then we rewrite the stamp file.
+    deps.sort();
+    let mut stamp_contents = Vec::new();
+    if let Ok(mut f) = File::open(stamp) {
+        t!(f.read_to_end(&mut stamp_contents));
+    }
+    let stamp_mtime = mtime(&stamp);
+    let mut new_contents = Vec::new();
+    let mut max = None;
+    let mut max_path = None;
+    for dep in deps {
+        let mtime = mtime(&dep);
+        if Some(mtime) > max {
+            max = Some(mtime);
+            max_path = Some(dep.clone());
+        }
+        new_contents.extend(dep.to_str().unwrap().as_bytes());
+        new_contents.extend(b"\0");
+    }
+    let max = max.unwrap();
+    let max_path = max_path.unwrap();
+    if stamp_contents == new_contents && max <= stamp_mtime {
+        return
+    }
+    if max > stamp_mtime {
+        build.verbose(&format!("updating {:?} as {:?} changed", stamp, max_path));
+    } else {
+        build.verbose(&format!("updating {:?} as deps changed", stamp));
+    }
+    t!(t!(File::create(stamp)).write_all(&new_contents));
 }
