@@ -326,23 +326,29 @@ pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
 
     // Re-evaluate the rhs because we have more space now:
     let infix = infix.trim_right();
-    let lhs_budget = try_opt!(context
-                                  .config
-                                  .max_width()
-                                  .checked_sub(shape.used_width() + prefix.len() + infix.len()));
     let rhs_shape = match context.config.control_style() {
         Style::Default => {
             try_opt!(shape.sub_width(suffix.len() + prefix.len())).visual_indent(prefix.len())
         }
-        Style::Rfc => try_opt!(shape.block_left(context.config.tab_spaces())),
+        Style::Rfc => {
+            shape
+                .block_indent(context.config.tab_spaces())
+                .with_max_width(context.config)
+        }
     };
 
     let rhs_result = try_opt!(rhs.rewrite(context, rhs_shape));
-    let lhs_result = try_opt!(lhs.rewrite(context,
-                                          Shape {
-                                              width: lhs_budget,
-                                              ..shape
-                                          }));
+    let lhs_shape = match context.config.control_style() {
+        Style::Default => {
+            let lhs_overhead = shape.used_width() + prefix.len() + infix.len();
+            Shape {
+                width: try_opt!(context.config.max_width().checked_sub(lhs_overhead)),
+                ..shape
+            }
+        }
+        Style::Rfc => try_opt!(shape.sub_width(prefix.len() + infix.len())),
+    };
+    let lhs_result = try_opt!(lhs.rewrite(context, lhs_shape));
     Some(format!("{}{}{}\n{}{}{}",
                  prefix,
                  lhs_result,
@@ -906,7 +912,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
             Some(cond) => {
                 let mut cond_shape = match context.config.control_style() {
                     Style::Default => try_opt!(constr_shape.shrink_left(add_offset)),
-                    Style::Rfc => constr_shape,
+                    Style::Rfc => try_opt!(constr_shape.sub_width(add_offset)),
                 };
                 if context.config.control_brace_style() != ControlBraceStyle::AlwaysNextLine {
                     // 2 = " {".len()
