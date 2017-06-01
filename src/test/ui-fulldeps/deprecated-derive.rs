@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_escape] //~ WARNING macro_escape is a deprecated synonym for macro_use
-mod foo {
-}
+// run-pass
 
-fn main() {
-}
+#![feature(rustc_private)]
+#![allow(dead_code)]
+
+extern crate serialize;
+
+#[derive(Encodable)]
+//~^ WARNING derive(Encodable) is deprecated in favor of derive(RustcEncodable)
+struct Test1;
+
+fn main() { }

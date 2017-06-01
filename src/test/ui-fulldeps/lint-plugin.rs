@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
 // aux-build:lint_plugin_test.rs
 // ignore-stage1
-// compile-flags: -Z extra-plugins=lint_plugin_test
-
+#![feature(plugin)]
+#![plugin(lint_plugin_test)]
 #![allow(dead_code)]
 
 fn lintme() { } //~ WARNING item is named 'lintme'
