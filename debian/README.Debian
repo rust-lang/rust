@@ -1,0 +1,32 @@
+rustc for Debian
+----------------
+
+* Host machine OS should match docs.rs' container.
+* Build rustc with `./debian/rules build-${OS}
+* Put main tarball (i.e: rustc-1.19.0-dev-x86_64-unknown-linux-gnu.tar.xz) to
+  build/dist directory.
+* Put rust-std tarballs from target architectures to build/dist.
+* Build package with `dpkg-buildpackage -rfakeroot -us -uc -b`.
+
+
+Build instruction for all targets:
+----------------------------------
+
+x86_64-pc-windows-gnu, i686-pc-windows-gnu
+
+* Make sure MSYS2 32-bit and 64-bit installed with all required dependencies
+  listed in: https://www.rust-lang.org/en-US/
+* Clone repository, if you are already using a cloned repository make sure
+  you are compiling the right commit. WARNING:
+  If you compile rust-std package with a different commit,
+  it won't work with the main rustc package and break everything.
+
+x86_64-unknown-linux-gnu, i686-unknown-linux-gnu
+
+* gcc-multilib is required.
+
+x86_64-apple-darwin, i686-apple-darwin
+
+* xcode, cmake and openssl 1.0 is required. homebrew can be used to get openssl.
+
+ -- Onur Aslan <onur@onur.im>  Mon, 22 May 2017 20:18:15 +0300

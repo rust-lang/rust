@@ -1,0 +1,11 @@
+rustc (1.19.0-dev-20170531-2) UNRELEASED; urgency=medium
+
+  * Rename dh_override_auto_test rule to test.
+
+ -- Onur Aslan <onur@onur.im>  Thu, 01 Jun 2017 11:12:20 +0300
+
+rustc (1.19.0-dev-20170531-1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Onur Aslan <onur@onur.im>  Tue, 31 May 2017 16:45:11 +0300
