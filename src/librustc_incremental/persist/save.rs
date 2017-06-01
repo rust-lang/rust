@@ -11,11 +11,14 @@
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
 use rustc::hir::svh::Svh;
+use rustc::hir::map::DefPathHash;
 use rustc::ich::Fingerprint;
 use rustc::middle::cstore::EncodedMetadataHashes;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::graph;
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
 use std::io::{self, Cursor, Write};
@@ -175,65 +178,73 @@ pub fn encode_dep_graph(tcx: TyCtxt,
         dep_node.map_def(|&def_id| Some(tcx.def_path_hash(def_id))).unwrap()
     };
 
-    // Create a flat list of (Input, WorkProduct) edges for
-    // serialization.
-    let mut edges = FxHashMap();
-    for edge in preds.reduced_graph.all_edges() {
-        let source = *preds.reduced_graph.node_data(edge.source());
-        let target = *preds.reduced_graph.node_data(edge.target());
-        match *target {
-            DepNode::MetaData(ref def_id) => {
-                // Metadata *targets* are always local metadata nodes. We have
-                // already handled those in `encode_metadata_hashes`.
-                assert!(def_id.is_local());
-                continue;
-            }
-            _ => (),
+    // NB: We rely on this Vec being indexable by reduced_graph's NodeIndex.
+    let nodes: IndexVec<DepNodeIndex, DepNode<DefPathHash>> = preds
+        .reduced_graph
+        .all_nodes()
+        .iter()
+        .map(|node| to_hash_based_node(node.data))
+        .collect();
+
+    let mut edge_list_indices = Vec::with_capacity(nodes.len());
+    let mut edge_list_data = Vec::with_capacity(preds.reduced_graph.len_edges());
+
+    for node_index in 0 .. nodes.len() {
+        let start = edge_list_data.len() as u32;
+
+        for target in preds.reduced_graph.successor_nodes(graph::NodeIndex(node_index)) {
+            edge_list_data.push(DepNodeIndex::new(target.node_id()));
         }
-        debug!("serialize edge: {:?} -> {:?}", source, target);
-        let source = to_hash_based_node(source);
-        let target = to_hash_based_node(target);
-        edges.entry(source).or_insert(vec![]).push(target);
+
+        let end = edge_list_data.len() as u32;
+        debug_assert_eq!(node_index, edge_list_indices.len());
+        edge_list_indices.push((start, end));
+    }
+
+    // Let's make we had no overflow there.
+    assert!(edge_list_data.len() <= ::std::u32::MAX as usize);
+    // Check that we have a consistent number of edges.
+    assert_eq!(edge_list_data.len(), preds.reduced_graph.len_edges());
+
+    let bootstrap_outputs = preds
+        .bootstrap_outputs
+        .iter()
+        .map(|n| to_hash_based_node(n))
+        .collect();
+
+    let hashes = preds
+        .hashes
+        .iter()
+        .map(|(&dep_node, &hash)| {
+            SerializedHash {
+                dep_node: to_hash_based_node(dep_node),
+                hash: hash,
+            }
+        })
+        .collect();
+
+    let graph = SerializedDepGraph {
+        nodes,
+        edge_list_indices,
+        edge_list_data,
+        bootstrap_outputs,
+        hashes,
+    };
+
+    // Encode the graph data.
+    graph.encode(encoder)?;
+
+    if tcx.sess.opts.debugging_opts.incremental_info {
+        println!("incremental: {} nodes in reduced dep-graph", graph.nodes.len());
+        println!("incremental: {} edges in serialized dep-graph", graph.edge_list_data.len());
+        println!("incremental: {} hashes in serialized dep-graph", graph.hashes.len());
     }
 
     if tcx.sess.opts.debugging_opts.incremental_dump_hash {
         for (dep_node, hash) in &preds.hashes {
-            println!("HIR hash for {:?} is {}", dep_node, hash);
+            println!("ICH for {:?} is {}", dep_node, hash);
         }
     }
-
-    // Create the serialized dep-graph.
-    let bootstrap_outputs = preds.bootstrap_outputs
-                                 .iter()
-                                 .map(|n| to_hash_based_node(n))
-                                 .collect();
-    let edges = edges.into_iter()
-                     .map(|(k, v)| SerializedEdgeSet { source: k, targets: v })
-                     .collect();
-    let graph = SerializedDepGraph {
-        bootstrap_outputs,
-        edges,
-        hashes: preds.hashes
-            .iter()
-            .map(|(&dep_node, &hash)| {
-                SerializedHash {
-                    dep_node: to_hash_based_node(dep_node),
-                    hash: hash,
-                }
-            })
-            .collect(),
-    };
-
-    if tcx.sess.opts.debugging_opts.incremental_info {
-        println!("incremental: {} nodes in reduced dep-graph", preds.reduced_graph.len_nodes());
-        println!("incremental: {} edges in serialized dep-graph", graph.edges.len());
-        println!("incremental: {} hashes in serialized dep-graph", graph.hashes.len());
-    }
-
-    debug!("graph = {:#?}", graph);
-
-    // Encode the graph data.
-    graph.encode(encoder)?;
 
     Ok(())
 }

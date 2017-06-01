@@ -17,11 +17,20 @@ use rustc::ich::Fingerprint;
 use rustc::middle::cstore::EncodedMetadataHash;
 use std::sync::Arc;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 /// Data for use when recompiling the **current crate**.
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedDepGraph {
-    pub edges: Vec<SerializedEdgeSet>,
+    /// The set of all DepNodes in the graph
+    pub nodes: IndexVec<DepNodeIndex, DepNode<DefPathHash>>,
+    /// For each DepNode, stores the list of edges originating from that
+    /// DepNode. Encoded as a [start, end) pair indexing into edge_list_data,
+    /// which holds the actual DepNodeIndices of the target nodes.
+    pub edge_list_indices: Vec<(u32, u32)>,
+    /// A flattened list of all edge targets in the graph. Edge sources are
+    /// implicit in edge_list_indices.
+    pub edge_list_data: Vec<DepNodeIndex>,
 
     /// These are output nodes that have no incoming edges. We track
     /// these separately so that when we reload all edges, we don't
@@ -50,12 +59,30 @@ pub struct SerializedDepGraph {
     pub hashes: Vec<SerializedHash>,
 }
 
-/// Represents a set of "reduced" dependency edge. We group the
-/// outgoing edges from a single source together.
-#[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct SerializedEdgeSet {
-    pub source: DepNode<DefPathHash>,
-    pub targets: Vec<DepNode<DefPathHash>>
+/// The index of a DepNode in the SerializedDepGraph::nodes array.
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Debug,
+         RustcEncodable, RustcDecodable)]
+pub struct DepNodeIndex(pub u32);
+
+impl DepNodeIndex {
+    #[inline]
+    pub fn new(idx: usize) -> DepNodeIndex {
+        assert!(idx <= ::std::u32::MAX as usize);
+        DepNodeIndex(idx as u32)
+    }
+}
+
+impl Idx for DepNodeIndex {
+    #[inline]
+    fn new(idx: usize) -> Self {
+        assert!(idx <= ::std::u32::MAX as usize);
+        DepNodeIndex(idx as u32)
+    }
+
+    #[inline]
+    fn index(self) -> usize {
+        self.0 as usize
+    }
 }
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]

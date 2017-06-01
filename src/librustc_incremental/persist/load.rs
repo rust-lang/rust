@@ -20,6 +20,7 @@ use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_serialize::opaque::Decoder;
+use std::default::Default;
 use std::path::{Path};
 use std::sync::Arc;
 
@@ -161,10 +162,23 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let serialized_dep_graph = SerializedDepGraph::decode(&mut dep_graph_decoder)?;
 
-    let edge_map: FxHashMap<_, _> = serialized_dep_graph.edges
-                                                        .into_iter()
-                                                        .map(|s| (s.source, s.targets))
-                                                        .collect();
+    let edge_map: FxHashMap<DepNode<DefPathHash>, Vec<DepNode<DefPathHash>>> = {
+        let capacity = serialized_dep_graph.edge_list_data.len();
+        let mut edge_map = FxHashMap::with_capacity_and_hasher(capacity, Default::default());
+
+        for (node_index, source) in serialized_dep_graph.nodes.iter().enumerate() {
+            let (start, end) = serialized_dep_graph.edge_list_indices[node_index];
+            let targets =
+                (&serialized_dep_graph.edge_list_data[start as usize .. end as usize])
+                .into_iter()
+                .map(|&node_index| serialized_dep_graph.nodes[node_index].clone())
+                .collect();
+
+            edge_map.insert(source.clone(), targets);
+        }
+
+        edge_map
+    };
 
     // Compute the set of nodes from the old graph where some input
     // has changed or been removed. These are "raw" source nodes,
