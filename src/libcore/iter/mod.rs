@@ -434,6 +434,23 @@ impl<'a, I, T: 'a> Iterator for Cloned<I>
     }
 }
 
+#[stable(feature = "iter_cloned_copy", since = "1.13.0")]
+impl<'a, I, T: 'a> Iterator for Cloned<I>
+    where I: Iterator<Item=&'a T>, T: Copy
+{
+    fn nth(&mut self, n: usize) -> Option<T> {
+        self.it.nth(n).cloned()
+    }
+
+    fn last(self) -> Option<T> {
+        self.it.last().cloned()
+    }
+
+    fn count(self) -> usize {
+        self.it.count()
+    }
+}
+
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 impl<'a, I, T: 'a> DoubleEndedIterator for Cloned<I>
     where I: DoubleEndedIterator<Item=&'a T>, T: Clone
