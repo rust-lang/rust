@@ -124,10 +124,11 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         }
 
         let normalized = traits::normalize_projection_type(&mut selcx,
-                                                           ty::ProjectionTy {
-                                                               trait_ref: trait_ref,
-                                                               item_name: Symbol::intern("Target"),
-                                                           },
+                                                           ty::ProjectionTy::from_ref_and_name(
+                                                               tcx,
+                                                               trait_ref,
+                                                               Symbol::intern("Target"),
+                                                           ),
                                                            cause,
                                                            0);
 

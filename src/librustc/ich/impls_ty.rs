@@ -181,7 +181,7 @@ impl<'a, 'tcx, A, B> HashStable<StableHashingContext<'a, 'tcx>> for ty::Outlives
 }
 
 impl_stable_hash_for!(struct ty::ProjectionPredicate<'tcx> { projection_ty, ty });
-impl_stable_hash_for!(struct ty::ProjectionTy<'tcx> { trait_ref, item_name });
+impl_stable_hash_for!(struct ty::ProjectionTy<'tcx> { trait_ref, item_def_id });
 
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::Predicate<'tcx> {

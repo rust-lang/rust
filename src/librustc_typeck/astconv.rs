@@ -553,10 +553,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         if self.trait_defines_associated_type_named(trait_ref.def_id(), binding.item_name) {
             return Ok(trait_ref.map_bound(|trait_ref| {
                 ty::ProjectionPredicate {
-                    projection_ty: ty::ProjectionTy {
-                        trait_ref: trait_ref,
-                        item_name: binding.item_name,
-                    },
+                    projection_ty: ty::ProjectionTy::from_ref_and_name(
+                        tcx,
+                        trait_ref,
+                        binding.item_name,
+                    ),
                     ty: binding.ty,
                 }
             }));
@@ -575,10 +576,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         Ok(candidate.map_bound(|trait_ref| {
             ty::ProjectionPredicate {
-                projection_ty: ty::ProjectionTy {
-                    trait_ref: trait_ref,
-                    item_name: binding.item_name,
-                },
+                projection_ty: ty::ProjectionTy::from_ref_and_name(
+                    tcx,
+                    trait_ref,
+                    binding.item_name,
+                ),
                 ty: binding.ty,
             }
         }))
@@ -652,7 +654,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let p = b.projection_ty;
                 ty::ExistentialProjection {
                     trait_ref: self.trait_ref_to_existential(p.trait_ref),
-                    item_name: p.item_name,
+                    item_name: p.item_name(tcx),
                     ty: b.ty
                 }
             })
@@ -679,7 +681,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         for projection_bound in &projection_bounds {
             let pair = (projection_bound.0.projection_ty.trait_ref.def_id,
-                        projection_bound.0.projection_ty.item_name);
+                        projection_bound.0.projection_ty.item_name(tcx));
             associated_types.remove(&pair);
         }
 
