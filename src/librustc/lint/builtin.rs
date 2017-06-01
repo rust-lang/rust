@@ -131,65 +131,15 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub INACCESSIBLE_EXTERN_CRATE,
-    Deny,
-    "use of inaccessible extern crate erroneously allowed"
-}
-
-declare_lint! {
     pub INVALID_TYPE_PARAM_DEFAULT,
     Deny,
     "type parameter default erroneously allowed in invalid location"
 }
 
 declare_lint! {
-    pub ILLEGAL_FLOATING_POINT_CONSTANT_PATTERN,
-    Deny,
-    "floating-point constants cannot be used in patterns"
-}
-
-declare_lint! {
-    pub ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN,
-    Deny,
-    "constants of struct or enum type can only be used in a pattern if \
-     the struct or enum has `#[derive(PartialEq, Eq)]`"
-}
-
-declare_lint! {
-    pub RAW_POINTER_DERIVE,
-    Warn,
-    "uses of #[derive] with raw pointers are rarely correct"
-}
-
-declare_lint! {
-    pub HR_LIFETIME_IN_ASSOC_TYPE,
-    Deny,
-    "binding for associated type references higher-ranked lifetime \
-     that does not appear in the trait input types"
-}
-
-declare_lint! {
-    pub OVERLAPPING_INHERENT_IMPLS,
-    Deny,
-    "two overlapping inherent impls define an item with the same name were erroneously allowed"
-}
-
-declare_lint! {
     pub RENAMED_AND_REMOVED_LINTS,
     Warn,
     "lints that have been renamed or removed"
-}
-
-declare_lint! {
-    pub SUPER_OR_SELF_IN_GLOBAL_PATH,
-    Deny,
-    "detects super or self keywords at the beginning of global path"
-}
-
-declare_lint! {
-    pub LIFETIME_UNDERSCORE,
-    Deny,
-    "lifetimes or labels named `'_` were erroneously allowed"
 }
 
 declare_lint! {
@@ -280,17 +230,9 @@ impl LintPass for HardwiredLints {
             TRIVIAL_CASTS,
             TRIVIAL_NUMERIC_CASTS,
             PRIVATE_IN_PUBLIC,
-            INACCESSIBLE_EXTERN_CRATE,
             INVALID_TYPE_PARAM_DEFAULT,
-            ILLEGAL_FLOATING_POINT_CONSTANT_PATTERN,
-            ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN,
             CONST_ERR,
-            RAW_POINTER_DERIVE,
-            OVERLAPPING_INHERENT_IMPLS,
             RENAMED_AND_REMOVED_LINTS,
-            SUPER_OR_SELF_IN_GLOBAL_PATH,
-            HR_LIFETIME_IN_ASSOC_TYPE,
-            LIFETIME_UNDERSCORE,
             RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
             SAFE_EXTERN_STATICS,
             PATTERNS_IN_FNS_WITHOUT_BODY,

@@ -9,17 +9,13 @@
 // except according to those terms.
 
 fn _f<'_>() //~ ERROR invalid lifetime name `'_`
-//~^ WARN this was previously accepted
     -> &'_ u8 //~ ERROR invalid lifetime name `'_`
-    //~^ WARN this was previously accepted
 {
     panic!();
 }
 
 fn main() {
     '_: loop { //~ ERROR invalid label name `'_`
-    //~^ WARN this was previously accepted
         break '_ //~ ERROR invalid label name `'_`
-        //~^ WARN this was previously accepted
     }
 }

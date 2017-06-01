@@ -19,13 +19,11 @@ fn main() {
     let x = NAN;
     match x {
         NAN => {}, //~ ERROR floating point constants cannot be used
-                   //~| WARNING hard error
         _ => {},
     };
 
     match [x, 1.0] {
         [NAN, _] => {}, //~ ERROR floating point constants cannot be used
-                        //~| WARNING hard error
         _ => {},
     };
 }

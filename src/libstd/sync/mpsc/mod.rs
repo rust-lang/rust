@@ -1252,14 +1252,43 @@ impl<T> Receiver<T> {
     ///
     /// # Examples
     ///
+    /// Successfully receiving value before encountering timeout:
+    ///
     /// ```no_run
-    /// use std::sync::mpsc::{self, RecvTimeoutError};
+    /// use std::thread;
     /// use std::time::Duration;
+    /// use std::sync::mpsc;
     ///
-    /// let (send, recv) = mpsc::channel::<()>();
+    /// let (send, recv) = mpsc::channel();
     ///
-    /// let timeout = Duration::from_millis(100);
-    /// assert_eq!(Err(RecvTimeoutError::Timeout), recv.recv_timeout(timeout));
+    /// thread::spawn(move || {
+    ///     send.send('a').unwrap();
+    /// });
+    ///
+    /// assert_eq!(
+    ///     recv.recv_timeout(Duration::from_millis(400)),
+    ///     Ok('a')
+    /// );
+    /// ```
+    ///
+    /// Receiving an error upon reaching timeout:
+    ///
+    /// ```no_run
+    /// use std::thread;
+    /// use std::time::Duration;
+    /// use std::sync::mpsc;
+    ///
+    /// let (send, recv) = mpsc::channel();
+    ///
+    /// thread::spawn(move || {
+    ///     thread::sleep(Duration::from_millis(800));
+    ///     send.send('a').unwrap();
+    /// });
+    ///
+    /// assert_eq!(
+    ///     recv.recv_timeout(Duration::from_millis(400)),
+    ///     Err(mpsc::RecvTimeoutError::Timeout)
+    /// );
     /// ```
     #[stable(feature = "mpsc_recv_timeout", since = "1.12.0")]
     pub fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError> {

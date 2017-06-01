@@ -1651,8 +1651,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                declared_bounds, projection_ty);
 
         // see the extensive comment in projection_must_outlive
-
-        let ty = self.tcx.mk_projection(projection_ty.trait_ref, projection_ty.item_name);
+        let item_name = projection_ty.item_name(self.tcx);
+        let ty = self.tcx.mk_projection(projection_ty.trait_ref, item_name);
         let recursive_bound = self.recursive_type_bound(span, ty);
 
         VerifyBound::AnyRegion(declared_bounds).or(recursive_bound)
@@ -1718,9 +1718,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     {
         debug!("projection_bounds(projection_ty={:?})",
                projection_ty);
-
+        let item_name = projection_ty.item_name(self.tcx);
         let ty = self.tcx.mk_projection(projection_ty.trait_ref.clone(),
-                                        projection_ty.item_name);
+                                        item_name);
 
         // Say we have a projection `<T as SomeTrait<'a>>::SomeType`. We are interested
         // in looking for a trait definition like:
@@ -1758,7 +1758,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     let (outlives, _) =
                         self.replace_late_bound_regions_with_fresh_var(
                             span,
-                            infer::AssocTypeProjection(projection_ty.item_name),
+                            infer::AssocTypeProjection(projection_ty.item_name(self.tcx)),
                             &outlives);
 
                     debug!("projection_bounds: outlives={:?} (3)",

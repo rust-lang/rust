@@ -225,12 +225,13 @@ impl<'tcx> Relate<'tcx> for ty::ProjectionTy<'tcx> {
                            -> RelateResult<'tcx, ty::ProjectionTy<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
-        if a.item_name != b.item_name {
+        let tcx = relation.tcx();
+        if a.item_name(tcx) != b.item_name(tcx) {
             Err(TypeError::ProjectionNameMismatched(
-                expected_found(relation, &a.item_name, &b.item_name)))
+                expected_found(relation, &a.item_name(tcx), &b.item_name(tcx))))
         } else {
             let trait_ref = relation.relate(&a.trait_ref, &b.trait_ref)?;
-            Ok(ty::ProjectionTy { trait_ref: trait_ref, item_name: a.item_name })
+            Ok(ty::ProjectionTy::from_ref_and_name(tcx, trait_ref, a.item_name(tcx)))
         }
     }
 }
@@ -457,7 +458,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         (&ty::TyProjection(ref a_data), &ty::TyProjection(ref b_data)) =>
         {
             let projection_ty = relation.relate(a_data, b_data)?;
-            Ok(tcx.mk_projection(projection_ty.trait_ref, projection_ty.item_name))
+            Ok(tcx.mk_projection(projection_ty.trait_ref, projection_ty.item_name(tcx)))
         }
 
         (&ty::TyAnon(a_def_id, a_substs), &ty::TyAnon(b_def_id, b_substs))

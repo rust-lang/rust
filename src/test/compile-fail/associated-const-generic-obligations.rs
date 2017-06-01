@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(private_in_public)]
+#![feature(associated_consts)]
 
-mod foo {
-    pub mod bar {
-        extern crate core;
-    }
+trait Foo {
+    type Out: Sized;
 }
 
-mod baz {
-    pub use foo::bar::core;
+impl Foo for String {
+    type Out = String;
 }
 
-fn main() {
-    baz::core::cell::Cell::new(0u32);
+trait Bar: Foo {
+    const FROM: Self::Out;
 }
+
+impl<T: Foo> Bar for T {
+    const FROM: &'static str = "foo";
+    //~^ ERROR the trait bound `T: Foo` is not satisfied [E0277]
+}
+
+fn main() {}

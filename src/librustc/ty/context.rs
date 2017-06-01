@@ -1323,7 +1323,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                          item_name: Name)
         -> Ty<'tcx> {
             // take a copy of substs so that we own the vectors inside
-            let inner = ProjectionTy { trait_ref: trait_ref, item_name: item_name };
+            let inner = ProjectionTy::from_ref_and_name(self, trait_ref, item_name);
             self.mk_ty(TyProjection(inner))
         }
 
