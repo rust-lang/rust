@@ -15,11 +15,9 @@ struct Z;
 
 mod foo {
     use ::super::{S, Z}; //~ ERROR global paths cannot start with `super`
-    //~^ WARN this was previously accepted by the compiler but is being phased out
 
     pub fn g() {
         use ::super::main; //~ ERROR global paths cannot start with `super`
-        //~^ WARN this was previously accepted by the compiler but is being phased out
         main();
     }
 }

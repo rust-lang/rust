@@ -723,7 +723,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             let (ns, binding) = reexport_error.unwrap();
             if ns == TypeNS && binding.is_extern_crate() {
                 let msg = format!("extern crate `{}` is private, and cannot be reexported \
-                                   (error E0364), consider declaring with `pub`",
+                                   (error E0365), consider declaring with `pub`",
                                    ident);
                 self.session.add_lint(PRIVATE_IN_PUBLIC, directive.id, directive.span, msg);
             } else if ns == TypeNS {
@@ -792,8 +792,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         self.record_def(directive.id, PathResolution::new(module.def().unwrap()));
     }
 
-    // Miscellaneous post-processing, including recording reexports, reporting conflicts,
-    // reporting the PRIVATE_IN_PUBLIC lint, and reporting unresolved imports.
+    // Miscellaneous post-processing, including recording reexports,
+    // reporting conflicts, and reporting unresolved imports.
     fn finalize_resolutions_in(&mut self, module: Module<'b>) {
         // Since import resolution is finished, globs will not define any more names.
         *module.globs.borrow_mut() = Vec::new();
@@ -838,13 +838,12 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
 
             match binding.kind {
-                NameBindingKind::Import { binding: orig_binding, directive, .. } => {
+                NameBindingKind::Import { binding: orig_binding, .. } => {
                     if ns == TypeNS && orig_binding.is_variant() &&
                        !orig_binding.vis.is_at_least(binding.vis, &*self) {
-                        let msg = format!("variant `{}` is private, and cannot be reexported \
-                                           (error E0364), consider declaring its enum as `pub`",
-                                          ident);
-                        self.session.add_lint(PRIVATE_IN_PUBLIC, directive.id, binding.span, msg);
+                        let msg = format!("variant `{}` is private, and cannot be reexported, \
+                                           consider declaring its enum as `pub`", ident);
+                        self.session.span_err(binding.span, &msg);
                     }
                 }
                 NameBindingKind::Ambiguity { b1, b2, .. }

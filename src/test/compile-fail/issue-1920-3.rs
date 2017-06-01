@@ -11,7 +11,7 @@
 //! Test that when a crate is linked multiple times that the shortest absolute path name is used
 
 mod foo {
-    extern crate core;
+    pub extern crate core;
 }
 
 extern crate core;

@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(dead_code)]
-#![deny(future_incompatible)]
-
 #[derive(Eq)]
 struct Foo {
     x: u32
@@ -29,7 +26,6 @@ fn main() {
     match y {
         FOO => { }
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
-        //~| WARNING will become a hard error
         _ => { }
     }
 }

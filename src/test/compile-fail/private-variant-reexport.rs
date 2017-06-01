@@ -8,31 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(private_in_public)]
-#![allow(dead_code)]
-
-extern crate core;
-pub use core as reexported_core; //~ ERROR extern crate `core` is private, and cannot be reexported
-//~^ WARNING hard error
-
 mod m1 {
     pub use ::E::V; //~ ERROR variant `V` is private, and cannot be reexported
-    //~^ WARNING hard error
 }
 
 mod m2 {
     pub use ::E::{V}; //~ ERROR variant `V` is private, and cannot be reexported
-    //~^ WARNING hard error
 }
 
 mod m3 {
     pub use ::E::V::{self}; //~ ERROR variant `V` is private, and cannot be reexported
-    //~^ WARNING hard error
 }
 
 mod m4 {
     pub use ::E::*; //~ ERROR variant `V` is private, and cannot be reexported
-    //~^ WARNING hard error
 }
 
 enum E { V }

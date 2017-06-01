@@ -36,15 +36,9 @@ impl<'a> AstValidator<'a> {
         &self.session.parse_sess.span_diagnostic
     }
 
-    fn check_label(&self, label: Ident, span: Span, id: NodeId) {
-        if label.name == keywords::StaticLifetime.name() {
+    fn check_label(&self, label: Ident, span: Span) {
+        if label.name == keywords::StaticLifetime.name() || label.name == "'_" {
             self.err_handler().span_err(span, &format!("invalid label name `{}`", label.name));
-        }
-        if label.name == "'_" {
-            self.session.add_lint(lint::builtin::LIFETIME_UNDERSCORE,
-                                  id,
-                                  span,
-                                  format!("invalid label name `{}`", label.name));
         }
     }
 
@@ -104,10 +98,7 @@ impl<'a> AstValidator<'a> {
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_lifetime(&mut self, lt: &'a Lifetime) {
         if lt.ident.name == "'_" {
-            self.session.add_lint(lint::builtin::LIFETIME_UNDERSCORE,
-                                  lt.id,
-                                  lt.span,
-                                  format!("invalid lifetime name `{}`", lt.ident));
+            self.err_handler().span_err(lt.span, &format!("invalid lifetime name `{}`", lt.ident));
         }
 
         visit::walk_lifetime(self, lt)
@@ -121,7 +112,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ExprKind::ForLoop(.., Some(ident)) |
             ExprKind::Break(Some(ident), _) |
             ExprKind::Continue(Some(ident)) => {
-                self.check_label(ident.node, ident.span, expr.id);
+                self.check_label(ident.node, ident.span);
             }
             _ => {}
         }
@@ -169,14 +160,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_ty(self, ty)
     }
 
-    fn visit_path(&mut self, path: &'a Path, id: NodeId) {
+    fn visit_path(&mut self, path: &'a Path, _: NodeId) {
         if path.segments.len() >= 2 && path.is_global() {
             let ident = path.segments[1].identifier;
             if token::Ident(ident).is_path_segment_keyword() {
-                self.session.add_lint(lint::builtin::SUPER_OR_SELF_IN_GLOBAL_PATH,
-                                      id,
-                                      path.span,
-                                      format!("global paths cannot start with `{}`", ident));
+                self.err_handler()
+                    .span_err(path.span, &format!("global paths cannot start with `{}`", ident));
             }
         }
 
