@@ -1672,6 +1672,9 @@ impl<'a, 'gcx, 'tcx> Layout {
 /// enough to statically check common usecases of transmute.
 #[derive(Copy, Clone, Debug)]
 pub enum SizeSkeleton<'tcx> {
+    /// The type is uninhabited.
+    Uninhabited,
+
     /// Any statically computable Layout.
     Known(Size),
 
@@ -1692,7 +1695,12 @@ impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
         let tcx = infcx.tcx.global_tcx();
         assert!(!ty.has_infer_types());
 
-        // First try computing a static layout.
+        // First check if the type is inhabited.
+        if ty.is_uninhabited(tcx) {
+            return Ok(SizeSkeleton::Uninhabited);
+        }
+
+        // Try computing a static layout.
         let err = match ty.layout(infcx) {
             Ok(layout) => {
                 return Ok(SizeSkeleton::Known(layout.size(tcx)));
@@ -1743,6 +1751,7 @@ impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
                     for field in fields {
                         let field = field?;
                         match field {
+                            SizeSkeleton::Uninhabited => {}
                             SizeSkeleton::Known(size) => {
                                 if size.bytes() > 0 {
                                     return Err(err);
@@ -1800,8 +1809,11 @@ impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
         }
     }
 
-    pub fn same_size(self, other: SizeSkeleton) -> bool {
+    /// Check whether it's possible to transmute from self to other.
+    pub fn transmutable(self, other: SizeSkeleton) -> bool {
         match (self, other) {
+            (SizeSkeleton::Uninhabited, _) => true,
+            (_, SizeSkeleton::Uninhabited) => false,
             (SizeSkeleton::Known(a), SizeSkeleton::Known(b)) => a == b,
             (SizeSkeleton::Pointer { tail: a, .. },
              SizeSkeleton::Pointer { tail: b, .. }) => a == b,

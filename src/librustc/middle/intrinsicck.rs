@@ -77,9 +77,9 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
         let sk_from = SizeSkeleton::compute(from, self.infcx);
         let sk_to = SizeSkeleton::compute(to, self.infcx);
 
-        // Check for same size using the skeletons.
+        // Check for transmutable sizes using the skeletons.
         if let (Ok(sk_from), Ok(sk_to)) = (sk_from, sk_to) {
-            if sk_from.same_size(sk_to) {
+            if sk_from.transmutable(sk_to) {
                 return;
             }
 
@@ -103,6 +103,9 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
         // Try to display a sensible error with as much information as possible.
         let skeleton_string = |ty: Ty<'gcx>, sk| {
             match sk {
+                Ok(SizeSkeleton::Uninhabited) => {
+                    format!("uninhabited")
+                },
                 Ok(SizeSkeleton::Known(size)) => {
                     format!("{} bits", size.bits())
                 }
