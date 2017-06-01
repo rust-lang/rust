@@ -1,25 +1,98 @@
 error: this loop never actually loops
-  --> never_loop.rs:8:5
+  --> never_loop.rs:7:5
    |
-8  | /     loop {
-9  | |         break;
-10 | |     }
+7  | /     loop { // never_loop
+8  | |         x += 1;
+9  | |         if x == 1 {
+10 | |             return
+11 | |         }
+12 | |         break;
+13 | |     }
    | |_____^
    |
    = note: `-D never-loop` implied by `-D warnings`
 
 error: this loop never actually loops
-  --> never_loop.rs:24:5
+  --> never_loop.rs:28:5
    |
-24 | /     loop {
-25 | |         while true {
-26 | |             break
-27 | |         }
-28 | |         break
-29 | |     }
+28 | /     loop { // never loops
+29 | |         x += 1;
+30 | |         break
+31 | |     }
    | |_____^
    |
    = note: `-D never-loop` implied by `-D warnings`
+
+error: this loop never actually loops
+  --> never_loop.rs:47:2
+   |
+47 | / 	loop { // never loops
+48 | | 	       while i == 0 { // never loops
+49 | | 	           break
+50 | | 	       }
+51 | | 	       return
+52 | | 	}
+   | |__^
+   |
+   = note: `-D never-loop` implied by `-D warnings`
+
+error: this loop never actually loops
+  --> never_loop.rs:48:9
+   |
+48 | /         while i == 0 { // never loops
+49 | |             break
+50 | |         }
+   | |_________^
+   |
+   = note: `-D never-loop` implied by `-D warnings`
+
+error: this loop never actually loops
+  --> never_loop.rs:57:5
+   |
+57 | /     'outer: loop { // never loops
+58 | |         x += 1;
+59 | | 		loop { // never loops
+60 | |             if x == 5 { break }
+...  |
+63 | | 		return
+64 | | 	}
+   | |__^
+   |
+   = note: `-D never-loop` implied by `-D warnings`
+
+error: this loop never actually loops
+  --> never_loop.rs:59:3
+   |
+59 | / 		loop { // never loops
+60 | | 		          if x == 5 { break }
+61 | | 			continue 'outer
+62 | | 		}
+   | |___^
+   |
+   = note: `-D never-loop` implied by `-D warnings`
+
+error: this loop never actually loops
+  --> never_loop.rs:92:5
+   |
+92 | /     while let Some(y) = x { // never loops
+93 | |         return
+94 | |     }
+   | |_____^
+   |
+   = note: `-D never-loop` implied by `-D warnings`
+
+error: this loop never actually loops
+   --> never_loop.rs:98:5
+    |
+98  | /     for x in 0..10 { // never loops
+99  | |         match x {
+100 | |             1 => break,
+101 | |             _ => return,
+102 | |         }
+103 | |     }
+    | |_____^
+    |
+    = note: `-D never-loop` implied by `-D warnings`
 
 error: aborting due to previous error(s)
 

@@ -330,6 +330,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if let Some((pat, arg, body)) = higher::for_loop(expr) {
             check_for_loop(cx, pat, arg, body, expr);
         }
+
+        // check for never_loop
+        match expr.node {
+            ExprWhile(_, ref block, _) |
+            ExprLoop(ref block, _, _) => {
+                if never_loop(block, &expr.id) {
+                    span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops");
+                }
+            },
+            _ => (),
+        }
+
         // check for `loop { if let {} else break }` that could be `while let`
         // (also matches an explicit "match" instead of "if let")
         // (even if the "match" or "if let" is used for declaration)
@@ -341,9 +353,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                           expr.span,
                           "empty `loop {}` detected. You may want to either use `panic!()` or add \
                            `std::thread::sleep(..);` to the loop body.");
-            }
-            if never_loop(block, &expr.id) {
-                span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops");
             }
 
             // extract the expression from the first statement (if any) in a block
@@ -456,14 +465,17 @@ fn contains_continue_expr(expr: &Expr, dest: &NodeId) -> bool {
         ExprTupField(ref e, _) |
         ExprAddrOf(_, ref e) |
         ExprRepeat(ref e, _) => contains_continue_expr(e, dest),
+        ExprArray(ref es) |
+        ExprMethodCall(_, _, ref es) |
+        ExprTup(ref es) => es.iter().any(|e| contains_continue_expr(e, dest)),
+        ExprCall(ref e, ref es) => contains_continue_expr(e, dest) || es.iter().any(|e| contains_continue_expr(e, dest)),
         ExprBinary(_, ref e1, ref e2) |
         ExprAssign(ref e1, ref e2) |
         ExprAssignOp(_, ref e1, ref e2) |
         ExprIndex(ref e1, ref e2) => [e1, e2].iter().any(|e| contains_continue_expr(e, dest)),
-        ExprArray(ref es) |
-        ExprTup(ref es) |
-        ExprMethodCall(_, _, ref es) => es.iter().any(|e| contains_continue_expr(e, dest)),
-        ExprCall(ref e, ref es) => contains_continue_expr(e, dest) || es.iter().any(|e| contains_continue_expr(e, dest)),
+        ExprIf(ref e, ref e2, ref e3) => [e, e2].iter().chain(e3.as_ref().iter()).any(|e| contains_continue_expr(e, dest)),
+        ExprWhile(ref e, ref b, _) => contains_continue_expr(e, dest) || contains_continue_block(b, dest),
+        ExprMatch(ref e, ref arms, _) => contains_continue_expr(e, dest) || arms.iter().any(|a| contains_continue_expr(&a.body, dest)),
         ExprBlock(ref block) => contains_continue_block(block, dest),
         ExprStruct(_, _, ref base) => base.as_ref().map_or(false, |e| contains_continue_expr(e, dest)),
         ExprAgain(d) => d.target_id.opt_id().map_or(false, |id| id == *dest),
@@ -501,8 +513,8 @@ fn loop_exit_expr(expr: &Expr) -> bool {
         ExprTupField(ref e, _) |
         ExprAddrOf(_, ref e) |
         ExprRepeat(ref e, _) => loop_exit_expr(e),
-        ExprMethodCall(_, _, ref es) => es.iter().any(|e| loop_exit_expr(e)),
         ExprArray(ref es) |
+        ExprMethodCall(_, _, ref es) |
         ExprTup(ref es) => es.iter().any(|e| loop_exit_expr(e)),
         ExprCall(ref e, ref es) => loop_exit_expr(e) || es.iter().any(|e| loop_exit_expr(e)),
         ExprBinary(_, ref e1, ref e2) |
