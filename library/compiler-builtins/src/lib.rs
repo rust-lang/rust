@@ -78,21 +78,6 @@ macro_rules! urem {
     }
 }
 
-macro_rules! srem {
-    ($sty:ty, $a:expr, $b:expr) => {
-        unsafe {
-            let a = $a;
-            let b = $b;
-
-            if b == 0 || (b == -1 && a == $sty::min_value()) {
-                ::core::intrinsics::abort()
-            } else {
-                ::core::intrinsics::unchecked_rem(a, b)
-            }
-        }
-    }
-}
-
 // Hack for LLVM expectations for ABI on windows
 #[cfg(all(windows, target_pointer_width="64"))]
 #[repr(simd)]
