@@ -38,6 +38,9 @@
 // gdbg-check:$6 = None
 // gdbr-check:$6 = core::option::Option::None
 
+// gdb-command: print some_string
+// gdbr-check:$7 = Some = {"IAMA optional string!"}
+
 
 // === LLDB TESTS ==================================================================================
 
@@ -81,6 +84,8 @@ fn main() {
     // Option
     let some = Some(8i16);
     let none: Option<i64> = None;
+
+    let some_string = Some("IAMA optional string!".to_owned());
 
     zzz(); // #break
 }
