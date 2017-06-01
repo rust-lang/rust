@@ -556,9 +556,34 @@ pub struct ProjectionTy<'tcx> {
     /// The trait reference `T as Trait<..>`.
     pub trait_ref: ty::TraitRef<'tcx>,
 
-    /// The name `N` of the associated type.
-    pub item_name: Name,
+    /// The DefId of the TraitItem for the associated type N.
+    ///
+    /// Note that this is not the DefId of the TraitRef containing this
+    /// associated type, which is in tcx.associated_item(item_def_id).container.
+    pub item_def_id: DefId,
 }
+
+impl<'a, 'tcx> ProjectionTy<'tcx> {
+    /// Construct a ProjectionTy by searching the trait from trait_ref for the
+    /// associated item named item_name.
+    pub fn from_ref_and_name(
+        tcx: TyCtxt, trait_ref: ty::TraitRef<'tcx>, item_name: Name
+    ) -> ProjectionTy<'tcx> {
+        let item_def_id = tcx.associated_items(trait_ref.def_id).find(
+            |item| item.name == item_name).unwrap().def_id;
+
+        ProjectionTy {
+            trait_ref: trait_ref,
+            item_def_id: item_def_id,
+        }
+    }
+
+    pub fn item_name(self, tcx: TyCtxt) -> Name {
+        tcx.associated_item(self.item_def_id).name
+    }
+}
+
+
 /// Signature of a function type, which I have arbitrarily
 /// decided to use to refer to the input/output types.
 ///
@@ -871,10 +896,10 @@ impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
         assert!(!self_ty.has_escaping_regions());
 
         ty::ProjectionPredicate {
-            projection_ty: ty::ProjectionTy {
-                trait_ref: self.trait_ref.with_self_ty(tcx, self_ty),
-                item_name: self.item_name,
-            },
+            projection_ty: ty::ProjectionTy::from_ref_and_name(
+                tcx,
+                self.trait_ref.with_self_ty(tcx, self_ty),
+                self.item_name),
             ty: self.ty,
         }
     }

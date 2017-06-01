@@ -955,7 +955,7 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
             }
         };
         Type::QPath {
-            name: self.item_name.clean(cx),
+            name: self.item_name(cx.tcx).clean(cx),
             self_type: box self.trait_ref.self_ty().clean(cx),
             trait_: box trait_
         }
