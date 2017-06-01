@@ -205,10 +205,10 @@ pub fn rewrite_macro(mac: &ast::Mac,
                         context
                             .codemap
                             .span_after(mac.span, original_style.opener()),
-                        mac.span.hi - BytePos(1)
+                        mac.span.hi - BytePos(1),
                     ),
                     context,
-                    mac_shape
+                    mac_shape,
                 ));
 
                 Some(format!("{}{}", macro_name, rewrite))

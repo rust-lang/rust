@@ -610,22 +610,24 @@ pub fn format_input<T: Write>(input: Input,
 
     let mut report = FormatReport::new();
 
-    match format_ast(&krate,
-                     &parse_session,
-                     &main_file,
-                     config,
-                     |file_name, file| {
-        // For some reason, the codemap does not include terminating
-        // newlines so we must add one on for each file. This is sad.
-        filemap::append_newline(file);
+    match format_ast(
+        &krate,
+        &parse_session,
+        &main_file,
+        config,
+        |file_name, file| {
+            // For some reason, the codemap does not include terminating
+            // newlines so we must add one on for each file. This is sad.
+            filemap::append_newline(file);
 
-        format_lines(file, file_name, config, &mut report);
+            format_lines(file, file_name, config, &mut report);
 
-        if let Some(ref mut out) = out {
-            return filemap::write_file(file, file_name, out, config);
+            if let Some(ref mut out) = out {
+                return filemap::write_file(file, file_name, out, config);
+            }
+            Ok(false)
         }
-        Ok(false)
-    }) {
+    ) {
         Ok((file_map, has_diff)) => {
             if report.has_warnings() {
                 summary.add_formatting_error();

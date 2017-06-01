@@ -599,11 +599,14 @@ fn rewrite_closure(capture: ast::CaptureBy,
                              -> Option<String> {
         // Start with visual indent, then fall back to block indent if the
         // closure is large.
-        if let Some(block_str) = block.rewrite(&context, shape) {
-            let block_threshold = context.config.closure_block_indent_threshold();
-            if block_threshold < 0 || block_str.matches('\n').count() <= block_threshold as usize {
-                if let Some(block_str) = block_str.rewrite(context, shape) {
-                    return Some(format!("{} {}", prefix, block_str));
+        let block_threshold = context.config.closure_block_indent_threshold();
+        if block_threshold >= 0 {
+            if let Some(block_str) = block.rewrite(&context, shape) {
+                if block_str.matches('\n').count() <= block_threshold as usize &&
+                   !need_block_indent(&block_str, shape) {
+                    if let Some(block_str) = block_str.rewrite(context, shape) {
+                        return Some(format!("{} {}", prefix, block_str));
+                    }
                 }
             }
         }
@@ -965,13 +968,15 @@ impl<'a> Rewrite for ControlFlow<'a> {
         };
 
         // for event in event
-        let between_kwd_cond = mk_sp(context.codemap.span_after(self.span, self.keyword.trim()),
-                                     self.pat
-                                         .map_or(cond_span.lo, |p| if self.matcher.is_empty() {
-            p.span.lo
-        } else {
-            context.codemap.span_before(self.span, self.matcher.trim())
-        }));
+        let between_kwd_cond = mk_sp(
+            context.codemap.span_after(self.span, self.keyword.trim()),
+            self.pat
+                .map_or(cond_span.lo, |p| if self.matcher.is_empty() {
+                    p.span.lo
+                } else {
+                    context.codemap.span_before(self.span, self.matcher.trim())
+                }),
+        );
 
         let between_kwd_cond_comment = extract_comment(between_kwd_cond, context, shape);
 
@@ -1676,18 +1681,38 @@ fn rewrite_call_inner(context: &RewriteContext,
         .ok_or(Ordering::Greater)?;
 
     let span_lo = context.codemap.span_after(span, "(");
-    let span = mk_sp(span_lo, span.hi);
+    let new_span = mk_sp(span_lo, span.hi);
 
     let (extendable, list_str) = rewrite_call_args(context,
                                                    args,
-                                                   span,
+                                                   new_span,
                                                    nested_shape,
                                                    one_line_width,
                                                    force_trailing_comma)
         .ok_or(Ordering::Less)?;
+
+    if !use_block_indent(context) && need_block_indent(&list_str, nested_shape) && !extendable {
+        println!("here");
+        let mut new_context = context.clone();
+        new_context.use_block = true;
+        return rewrite_call_inner(&new_context,
+                                  callee_str,
+                                  args,
+                                  span,
+                                  shape,
+                                  force_trailing_comma);
+    }
+
     Ok(format!("{}{}",
                callee_str,
                wrap_args_with_parens(context, &list_str, extendable, shape, nested_shape)))
+}
+
+fn need_block_indent(s: &str, shape: Shape) -> bool {
+    s.lines().skip(1).any(|s| {
+                              s.find(|c| !char::is_whitespace(c))
+                                  .map_or(false, |w| w + 1 < shape.indent.width())
+                          })
 }
 
 fn rewrite_call_args(context: &RewriteContext,
@@ -1720,8 +1745,7 @@ fn rewrite_call_args(context: &RewriteContext,
     // Replace the last item with its first line to see if it fits with
     // first arguments.
     if overflow_last {
-        let arg_shape = if context.config.fn_call_style() == IndentStyle::Block &&
-                           is_extendable(args) {
+        let arg_shape = if use_block_indent(context) && is_extendable(args) {
             Shape {
                 width: context.config.fn_call_width(),
                 indent: shape.block().indent.block_unindent(context.config),
@@ -1799,8 +1823,7 @@ fn rewrite_call_args(context: &RewriteContext,
         // If arguments do not fit in a single line and do not contain newline,
         // try to put it on the next line. Try this only when we are in block mode
         // and not rewriting macro.
-        Some(ref s) if context.config.fn_call_style() == IndentStyle::Block &&
-                       !context.inside_macro &&
+        Some(ref s) if use_block_indent(context) && !context.inside_macro &&
                        ((!can_be_overflowed(context, args) && last_char_is_not_comma &&
                          s.contains('\n')) ||
                         first_line_width(s) > one_line_budget) => {
@@ -1814,23 +1837,25 @@ fn rewrite_call_args(context: &RewriteContext,
     }
 }
 
+fn use_block_indent(context: &RewriteContext) -> bool {
+    context.config.fn_call_style() == IndentStyle::Block || context.use_block
+}
+
 fn can_be_overflowed(context: &RewriteContext, args: &[ptr::P<ast::Expr>]) -> bool {
     match args.last().map(|x| &x.node) {
         Some(&ast::ExprKind::Match(..)) => {
-            (context.config.fn_call_style() == IndentStyle::Block && args.len() == 1) ||
+            (use_block_indent(context) && args.len() == 1) ||
             (context.config.fn_call_style() == IndentStyle::Visual && args.len() > 1)
         }
         Some(&ast::ExprKind::Block(..)) |
         Some(&ast::ExprKind::Closure(..)) => {
-            context.config.fn_call_style() == IndentStyle::Block ||
+            use_block_indent(context) ||
             context.config.fn_call_style() == IndentStyle::Visual && args.len() > 1
         }
         Some(&ast::ExprKind::Call(..)) |
         Some(&ast::ExprKind::Mac(..)) |
-        Some(&ast::ExprKind::Struct(..)) => {
-            context.config.fn_call_style() == IndentStyle::Block && args.len() == 1
-        }
-        Some(&ast::ExprKind::Tup(..)) => context.config.fn_call_style() == IndentStyle::Block,
+        Some(&ast::ExprKind::Struct(..)) => use_block_indent(context) && args.len() == 1,
+        Some(&ast::ExprKind::Tup(..)) => use_block_indent(context),
         _ => false,
     }
 }
@@ -1865,8 +1890,8 @@ fn wrap_args_with_parens(context: &RewriteContext,
                          shape: Shape,
                          nested_shape: Shape)
                          -> String {
-    if context.config.fn_call_style() == IndentStyle::Visual ||
-       (context.inside_macro && !args_str.contains('\n')) || is_extendable {
+    if !use_block_indent(context) || (context.inside_macro && !args_str.contains('\n')) ||
+       is_extendable {
         if context.config.spaces_within_parens() && args_str.len() > 0 {
             format!("( {} )", args_str)
         } else {
@@ -2062,9 +2087,10 @@ fn shape_from_fn_call_style(context: &RewriteContext,
                             overhead: usize,
                             offset: usize)
                             -> Option<Shape> {
-    match context.config.fn_call_style() {
-        IndentStyle::Block => Some(shape.block().block_indent(context.config.tab_spaces())),
-        IndentStyle::Visual => shape.visual_indent(offset).sub_width(overhead),
+    if use_block_indent(context) {
+        Some(shape.block().block_indent(context.config.tab_spaces()))
+    } else {
+        shape.visual_indent(offset).sub_width(overhead)
     }
 }
 
