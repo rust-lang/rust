@@ -208,56 +208,55 @@ other use cases.
 ## A case for structs
 
 In addition to enums, it makes sense to extend this feature to structs as well.
-For example, consider [`syn::Generics`]:
+The most common use case for this would be config structs, like the one below:
 
 ```rust
-pub struct Generics {
-    pub lifetimes: Vec<LifetimeDef>,
-    pub ty_params: Vec<TyParam>,
-    pub where_clause: WhereClause,
+pub struct Config {
+    pub window_width: u16,
+    pub window_height: u16,
 }
 ```
 
-Let's say that the language introduces `use` clauses, as described by
-@petrochenkov [here][use clauses]. Now, it seems natural to add a new field to
-this struct:
+As this configuration struct gets larger, it makes sense that more fields will
+be added. In the future, the crate may decide to add more public fields, or some
+private fields. For example, let's assume we make the following addition:
 
 ```rust
-pub struct Generics {
-    pub lifetimes: Vec<LifetimeDef>,
-    pub ty_params: Vec<TyParam>,
-    pub where_clause: WhereClause,
-    pub use_clause: UseClause,
+pub struct Config {
+    pub window_width: u16,
+    pub window_height: u16,
+    pub is_fullscreen: bool,
 }
 ```
 
-Unfortunately, this is a breaking change. Because we have full knowledge of the
-fields in the struct, we can construct `Generics` without a special constructor:
+Now, code that constructs the struct, like below, will fail to compile:
 
-```rust
-let gens = Generics {
-    lifetimes: Vec::new(),
-    ty_params: Vec::new(),
-    where_clause: WhereClause::none(),
-};
+```
+let config = Config { window_width: 640, window_height: 480 };
 ```
 
-If we add this field, this will turn into a compiler error; we didn't add a
-value for the use clause!
-
-To rectify this, we can add a private field to the struct:
+And code that matches the struct, like below, will also fail to compile:
 
 ```rust
-pub struct Generics {
-    pub lifetimes: Vec<LifetimeDef>,
-    pub ty_params: Vec<TyParam>,
-    pub where_clause: WhereClause,
+if let Ok(Config { window_width, window_height }) = load_config() {
+    // ...
+}
+```
+
+Adding this new setting is now a breaking change! To rectify this, we could
+always add a private field:
+
+```rust
+pub struct Config {
+    pub window_width: u16,
+    pub window_height: u16,
+    pub is_fullscreen: bool,
     non_exhaustive: (),
 }
 ```
 
-But this makes it more difficult for the crate itself to construct `Generics`,
-because they have to add a `non_exhaustive: ()` field every time they make a new
+But this makes it more difficult for the crate itself to construct `Config`,
+because you have to add a `non_exhaustive: ()` field every time you make a new
 value.
 
 # Detailed design
@@ -316,32 +315,56 @@ dead and remove it.
 
 Like with enums, the attribute is essentially ignored in the crate that defines
 the struct, so that users can continue to construct values for the struct.
-However, this will prevent downstream users from constructing values, because
-fields may be added to the struct in the future.
+However, this will prevent downstream users from constructing values or
+exhaustively matching values, because fields may be added to the struct in the
+future.
 
-For example, using [`syn::Generics`] again:
+For example, using our `Config` again:
 
 ```rust
 #[non_exhaustive]
-pub struct Generics {
-    pub lifetimes: Vec<LifetimeDef>,
-    pub ty_params: Vec<TyParam>,
-    pub where_clause: WhereClause,
+pub struct Config {
+    pub window_width: u16,
+    pub window_height: u16,
 }
 ```
 
-This will still allow the crate to create values of `Generics`, but it will
-prevent the user from doing so, because more fields might be added in the
-future. Similarly, this will prevent functional record updates like the below:
+We can still construct our config within the defining crate like so:
 
 ```rust
-let val = Generics {
-    lifetimes: Vec::new(),
+let config = Config { window_width: 640, window_height: 480 };
+```
+
+And we can even exhaustively match on it, like so:
+
+```rust
+if let Ok(Config { window_width, window_height }) = load_config() {
+    // ...
+}
+```
+
+But users outside the crate won't be able to construct their own values, because
+otherwise, adding extra fields would be a breaking change.
+
+Users can still match on `Config`s non-exhaustively, as usual:
+
+```rust
+let &Config { window_width, window_height, .. } = config;
+```
+
+But without the `..`, this code will fail to compile. Additionally, the user
+won't be able to perform any functional-record-updates like the below:
+
+```rust
+let val = Config {
+    window_width: 640,
+    window_height: 480,
     ..Default::default()
 };
 ```
 
-Because this would require full knowledge of all of the fields of the struct.
+Because there's no guarantee that the remaining fields will satisfy the
+requirements (in this case, `Default`).
 
 Although it should not be explicitly forbidden by the language to mark a struct
 with some private fields as non-exhaustive, it should emit a warning to tell the
@@ -455,6 +478,5 @@ implemented downstream.
 [RFC 757]: https://github.com/rust-lang/rfcs/pull/757
 [`std::io::ErrorKind`]: https://doc.rust-lang.org/1.17.0/std/io/enum.ErrorKind.html
 [`diesel::result::Error`]: https://docs.rs/diesel/0.13.0/diesel/result/enum.Error.html
-[`syn::Generics`]: https://dtolnay.github.io/syn/syn/struct.Generics.html
 [use clauses]: https://github.com/rust-lang/rfcs/pull/1976#issuecomment-301903528
 [`byteorder`]: https://github.com/BurntSushi/byteorder/tree/f8e7685b3a81c52f5448fd77fb4e0535bc92f880
