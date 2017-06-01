@@ -210,6 +210,7 @@ mod tests {
     }
 
     quickcheck! {
+        /// The `Ord` instance of `Change` obeys transitivity.
         fn ord_change_transitive(c1: Change_, c2: Change_, c3: Change_) -> bool {
             let ch1 = build_change(c1.0, c1.1.inner());
             let ch2 = build_change(c2.0, c2.1.inner());
