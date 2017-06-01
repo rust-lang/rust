@@ -8,20 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(question_mark, question_mark_carrier)]
+#![feature(try_trait)]
 
-use std::ops::Carrier;
+use std::ops::Try;
 
 enum MyResult<T, U> {
     Awesome(T),
     Terrible(U)
 }
 
-impl<U, V> Carrier for MyResult<U, V> {
-    type Success = U;
+impl<U, V> Try for MyResult<U, V> {
+    type Ok = U;
     type Error = V;
 
-    fn from_success(u: U) -> MyResult<U, V> {
+    fn from_ok(u: U) -> MyResult<U, V> {
         MyResult::Awesome(u)
     }
 
@@ -29,12 +29,10 @@ impl<U, V> Carrier for MyResult<U, V> {
         MyResult::Terrible(e)
     }
 
-    fn translate<T>(self) -> T
-        where T: Carrier<Success=U, Error=V>
-    {
+    fn into_result(self) -> Result<U, V> {
         match self {
-            MyResult::Awesome(u) => T::from_success(u),
-            MyResult::Terrible(e) => T::from_error(e),
+            MyResult::Awesome(u) => Ok(u),
+            MyResult::Terrible(e) => Err(e),
         }
     }
 }

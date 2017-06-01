@@ -208,6 +208,7 @@
     - [toowned_clone_into](library-features/toowned-clone-into.md)
     - [trusted_len](library-features/trusted-len.md)
     - [try_from](library-features/try-from.md)
+    - [try_trait](library-features/try-trait.md)
     - [unicode](library-features/unicode.md)
     - [unique](library-features/unique.md)
     - [unsize](library-features/unsize.md)
