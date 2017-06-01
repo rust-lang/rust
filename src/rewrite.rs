@@ -27,6 +27,7 @@ pub struct RewriteContext<'a> {
     pub codemap: &'a CodeMap,
     pub config: &'a Config,
     pub inside_macro: bool,
+    pub use_block: bool,
 }
 
 impl<'a> RewriteContext<'a> {

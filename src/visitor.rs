@@ -610,6 +610,7 @@ impl<'a> FmtVisitor<'a> {
             codemap: self.codemap,
             config: self.config,
             inside_macro: false,
+            use_block: false,
         }
     }
 }
