@@ -746,8 +746,8 @@ pub trait LintContext<'tcx>: Sized {
                                     continue;
                                 }
                             }
-                        },
-                        Err(FindLintError::Removed) => { continue; }
+                        }
+                        Err(FindLintError::Removed) => continue,
                     }
                 }
             };
@@ -1298,7 +1298,7 @@ fn check_lint_name_cmdline(sess: &Session, lint_cx: &LintStore,
             Some(sess.struct_warn(msg))
         },
         CheckLintNameResult::NoLint => {
-            Some(sess.struct_err(&format!("unknown lint: `{}`", lint_name)))
+            Some(struct_err!(sess, E0602, "unknown lint: `{}`", lint_name))
         }
     };
 

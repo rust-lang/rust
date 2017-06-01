@@ -1900,6 +1900,19 @@ If you don't know the basics of Rust, you can go look to the Rust Book to get
 started: https://doc.rust-lang.org/book/
 "##,
 
+E0602: r##"
+An unknown lint was used on the command line.
+
+Erroneous example:
+
+```ignore
+rustc -D bogus omse_file.rs
+```
+
+Maybe you just misspelled the lint name or the lint doesn't exist anymore.
+Either way, try to update/remove it in order to fix the error.
+"##,
+
 }
 
 
