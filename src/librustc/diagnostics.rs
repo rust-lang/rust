@@ -1871,7 +1871,9 @@ makes a difference in practice.)
 
 E0593: r##"
 You tried to supply an `Fn`-based type with an incorrect number of arguments
-than what was expected. Erroneous code example:
+than what was expected.
+
+Erroneous code example:
 
 ```compile_fail,E0593
 fn foo<F: Fn()>(x: F) { }
@@ -1881,6 +1883,21 @@ fn main() {
     foo(|y| { });
 }
 ```
+"##,
+
+E0601: r##"
+No `main` function was found in a binary crate. To fix this error, just add a
+`main` function. For example:
+
+```
+fn main() {
+    // Your program will start here.
+    println!("Hello world!");
+}
+```
+
+If you don't know the basics of Rust, you can go look to the Rust Book to get
+started: https://doc.rust-lang.org/book/
 "##,
 
 }
