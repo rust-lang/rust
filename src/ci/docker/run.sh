@@ -79,6 +79,7 @@ exec docker \
   --env DEPLOY_ALT=$DEPLOY_ALT \
   --env LOCAL_USER_ID=`id -u` \
   --env TRAVIS=${TRAVIS-false} \
+  --env TRAVIS_BRANCH \
   --volume "$HOME/.cargo:/cargo" \
   --volume "$HOME/rustsrc:$HOME/rustsrc" \
   --privileged \
