@@ -79,6 +79,7 @@ extern crate toml;
 #[cfg(unix)]
 extern crate libc;
 
+use std::cell::Cell;
 use std::cmp;
 use std::collections::HashMap;
 use std::env;
@@ -88,7 +89,7 @@ use std::io::Read;
 use std::path::{PathBuf, Path};
 use std::process::Command;
 
-use build_helper::{run_silent, run_suppressed, output, mtime};
+use build_helper::{run_silent, run_suppressed, try_run_silent, output, mtime};
 
 use util::{exe, libdir, add_lib_path};
 
@@ -179,6 +180,7 @@ pub struct Build {
     crates: HashMap<String, Crate>,
     is_sudo: bool,
     src_is_git: bool,
+    delayed_failures: Cell<usize>,
 }
 
 #[derive(Debug)]
@@ -272,6 +274,7 @@ impl Build {
             lldb_python_dir: None,
             is_sudo: is_sudo,
             src_is_git: src_is_git,
+            delayed_failures: Cell::new(0),
         }
     }
 
@@ -777,6 +780,14 @@ impl Build {
     fn run_quiet(&self, cmd: &mut Command) {
         self.verbose(&format!("running: {:?}", cmd));
         run_suppressed(cmd)
+    }
+
+    /// Runs a command, printing out nice contextual information if it fails.
+    /// Exits if the command failed to execute at all, otherwise returns its
+    /// `status.success()`.
+    fn try_run(&self, cmd: &mut Command) -> bool {
+        self.verbose(&format!("running: {:?}", cmd));
+        try_run_silent(cmd)
     }
 
     /// Prints a message if this build is configured in verbose mode.
