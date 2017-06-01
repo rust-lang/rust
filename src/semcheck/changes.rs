@@ -75,8 +75,6 @@ pub struct Change {
     export: Export,
 }
 
-// TODO: test the properties imposed by ord on all our custom impls
-
 impl Change {
     pub fn new(change_type: ChangeType, path: ExportPath, export: Export) -> Change {
         Change {
@@ -128,8 +126,6 @@ pub struct ChangeSet {
     max: ChangeCategory,
 }
 
-// TODO: test that the stored max is indeed the maximum of all categories
-
 impl ChangeSet {
     /// Add a change to the set and record it's category for later use.
     pub fn add_change(&mut self, change: Change) {
@@ -161,9 +157,32 @@ mod tests {
 
     use rustc::hir::def::Def;
 
-    use syntax_pos::DUMMY_SP;
+    use std::cmp::{max, min};
+
+    use syntax_pos::BytePos;
     use syntax_pos::hygiene::SyntaxContext;
     use syntax_pos::symbol::{Ident, Interner};
+
+    #[derive(Clone, Debug)]
+    struct Span_(Span);
+
+    impl Span_ {
+        pub fn inner(self) -> Span {
+            self.0
+        }
+    }
+
+    impl Arbitrary for Span_ {
+        fn arbitrary<G: Gen>(g: &mut G) -> Span_ {
+            let a: u32 = Arbitrary::arbitrary(g);
+            let b: u32 = Arbitrary::arbitrary(g);
+            Span_(Span {
+                lo: BytePos(min(a, b)),
+                hi: BytePos(max(a, b)),
+                ctxt: SyntaxContext::empty()
+            })
+        }
+    }
 
     impl Arbitrary for ChangeType {
         fn arbitrary<G: Gen>(g: &mut G) -> ChangeType {
@@ -171,8 +190,10 @@ mod tests {
         }
     }
 
+    type Change_ = (ChangeType, Span_);
+
     /// We build these by hand, because symbols can't be sent between threads.
-    fn build_change(t: ChangeType) -> Change {
+    fn build_change(t: ChangeType, s: Span) -> Change {
         let mut interner = Interner::new();
         let ident = Ident {
             name: interner.intern("test"),
@@ -182,21 +203,43 @@ mod tests {
         let export = Export {
             ident: ident,
             def: Def::Err,
-            span: DUMMY_SP,
+            span: s,
         };
 
         Change::new(t, ExportPath::new(vec!["this is elegant enough".to_owned()]), export)
     }
 
     quickcheck! {
+        fn ord_change_transitive(c1: Change_, c2: Change_, c3: Change_) -> bool {
+            let ch1 = build_change(c1.0, c1.1.inner());
+            let ch2 = build_change(c2.0, c2.1.inner());
+            let ch3 = build_change(c3.0, c3.1.inner());
+
+            let mut res = true;
+
+            if ch1 < ch2 && ch2 < ch3 {
+                res &= ch1 < ch3;
+            }
+
+            if ch1 == ch2 && ch2 == ch3 {
+                res &= ch1 == ch3;
+            }
+
+            if ch1 > ch2 && ch2 > ch3 {
+                res &= ch1 > ch3;
+            }
+
+            res
+        }
+
         /// The maximal change category for a change set gets computed correctly.
-        fn prop_max_change(changes: Vec<ChangeType>) -> bool {
+        fn max_change(changes: Vec<Change_>) -> bool {
             let mut set = ChangeSet::default();
 
-            let max = changes.iter().map(|c| c.to_category()).max().unwrap_or(Patch);
+            let max = changes.iter().map(|c| c.0.to_category()).max().unwrap_or(Patch);
 
-            for change in changes.iter() {
-                set.add_change(build_change(change.clone()));
+            for &(ref change, ref span) in changes.iter() {
+                set.add_change(build_change(change.clone(), span.clone().inner()));
             }
 
             set.max == max
