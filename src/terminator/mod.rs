@@ -1,6 +1,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir;
-use rustc::ty::{self, TypeVariants, Ty, TypeAndMut};
+use rustc::ty::{self, TypeVariants, Ty};
 use rustc::ty::layout::Layout;
 use syntax::codemap::Span;
 use syntax::attr;
@@ -730,12 +730,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let dtor = if dtor_ptr.is_null_ptr() { None } else { Some(self.memory.get_fn(dtor_ptr.alloc_id)?) };
 
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
-                let key_size = match self.operand_ty(&arg_operands[0]).sty {
-                    TypeVariants::TyRawPtr(TypeAndMut { ty, .. }) => {
-                        let layout = self.type_layout(ty)?;
-                        layout.size(&self.tcx.data_layout)
-                    }
-                    _ => return Err(EvalError::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))
+                let key_type = self.operand_ty(&arg_operands[0]).builtin_deref(true, ty::LvaluePreference::NoPreference)
+                                   .ok_or(EvalError::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))?.ty;
+                let key_size = {
+                    let layout = self.type_layout(key_type)?;
+                    layout.size(&self.tcx.data_layout)
                 };
 
                 // Create key and write it into the memory where key_ptr wants it

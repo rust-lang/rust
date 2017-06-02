@@ -1,6 +1,5 @@
 use rustc::mir;
 use rustc::ty::{self, Ty};
-use rustc::ty::subst::Kind;
 use syntax::codemap::Span;
 
 use error::EvalResult;
@@ -21,7 +20,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         };
         self.drop(val, instance, ty, span)
     }
-    pub(crate) fn drop(&mut self, mut arg: Value, mut instance: ty::Instance<'tcx>, ty: Ty<'tcx>, span: Span) -> EvalResult<'tcx> {
+    pub(crate) fn drop(&mut self, arg: Value, mut instance: ty::Instance<'tcx>, ty: Ty<'tcx>, span: Span) -> EvalResult<'tcx> {
         trace!("drop: {:#?}, {:?}, {:?}", arg, ty.sty, instance.def);
 
         if let ty::InstanceDef::DropGlue(_, None) = instance.def {
@@ -43,23 +42,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     // no drop fn -> bail out
                     None => return Ok(()),
                 }
-            },
-            ty::TyArray(elem, n) => {
-                instance.substs = self.tcx.mk_substs([
-                    Kind::from(elem),
-                ].iter().cloned());
-                let ptr = match arg {
-                    Value::ByVal(PrimVal::Ptr(src_ptr)) => src_ptr,
-                    _ => bug!("expected thin ptr, got {:?}", arg),
-                };
-                arg = Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(n as u128));
-                self.seq_drop_glue
-            },
-            ty::TySlice(elem) => {
-                instance.substs = self.tcx.mk_substs([
-                    Kind::from(elem),
-                ].iter().cloned());
-                self.seq_drop_glue
             },
             _ => self.load_mir(instance.def)?,
         };

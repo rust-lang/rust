@@ -1,4 +1,4 @@
-struct Bar(i32); // ZSTs are tested separately
+struct Bar;
 
 static mut DROP_COUNT: usize = 0;
 
@@ -9,7 +9,7 @@ impl Drop for Bar {
 }
 
 fn main() {
-    let b = [Bar(0), Bar(0), Bar(0), Bar(0)];
+    let b = [Bar, Bar, Bar, Bar];
     assert_eq!(unsafe { DROP_COUNT }, 0);
     drop(b);
     assert_eq!(unsafe { DROP_COUNT }, 4);

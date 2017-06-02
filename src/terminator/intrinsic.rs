@@ -360,11 +360,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "size_of" => {
                 let ty = substs.type_at(0);
-                // FIXME: change the `box_free` lang item to take `T: ?Sized` and have it use the
-                // `size_of_val` intrinsic, then change this back to
-                // .expect("size_of intrinsic called on unsized value")
-                // see https://github.com/rust-lang/rust/pull/37708
-                let size = self.type_size(ty)?.unwrap_or(!0) as u128;
+                let size = self.type_size(ty)?.expect("size_of intrinsic called on unsized value") as u128;
                 self.write_primval(dest, PrimVal::from_u128(size), dest_ty)?;
             }
 
