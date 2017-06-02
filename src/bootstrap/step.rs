@@ -28,6 +28,7 @@
 
 use std::collections::{BTreeMap, HashSet, HashMap};
 use std::mem;
+use std::process;
 
 use check::{self, TestKind};
 use compile;
@@ -1174,8 +1175,8 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
         let (kind, paths) = match self.build.flags.cmd {
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
             Subcommand::Doc { ref paths } => (Kind::Doc, &paths[..]),
-            Subcommand::Test { ref paths, test_args: _ } => (Kind::Test, &paths[..]),
-            Subcommand::Bench { ref paths, test_args: _ } => (Kind::Bench, &paths[..]),
+            Subcommand::Test { ref paths, .. } => (Kind::Test, &paths[..]),
+            Subcommand::Bench { ref paths, .. } => (Kind::Bench, &paths[..]),
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
             Subcommand::Clean => panic!(),
@@ -1267,6 +1268,13 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             }
             self.build.verbose(&format!("executing step {:?}", step));
             (self.rules[step.name].run)(step);
+        }
+
+        // Check for postponed failures from `test --no-fail-fast`.
+        let failures = self.build.delayed_failures.get();
+        if failures > 0 {
+            println!("\n{} command(s) did not execute successfully.\n", failures);
+            process::exit(1);
         }
     }
 
