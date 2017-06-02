@@ -38,8 +38,11 @@
 // gdbg-check:$6 = None
 // gdbr-check:$6 = core::option::Option::None
 
-// gdb-command: print some_string
-// gdbr-check:$7 = Some = {"IAMA optional string!"}
+// gdbr-command: print os_string
+// gdbr-check:$7 = "IAMA OS string 😃"
+
+// gdbr-command: print some_string
+// gdbr-check:$8 = Some = {"IAMA optional string!"}
 
 
 // === LLDB TESTS ==================================================================================
@@ -66,6 +69,8 @@
 
 
 #![allow(unused_variables)]
+use std::ffi::OsString;
+
 
 fn main() {
 
@@ -80,6 +85,9 @@ fn main() {
 
     // String
     let string = "IAMA string!".to_string();
+
+    // OsString
+    let os_string = OsString::from("IAMA OS string \u{1F603}");
 
     // Option
     let some = Some(8i16);

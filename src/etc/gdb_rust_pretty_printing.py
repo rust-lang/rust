@@ -125,6 +125,9 @@ def rust_pretty_printer_lookup_function(gdb_val):
     if type_kind == rustpp.TYPE_KIND_STD_STRING:
         return RustStdStringPrinter(val)
 
+    if type_kind == rustpp.TYPE_KIND_OS_STRING:
+        return RustOsStringPrinter(val)
+
     if type_kind == rustpp.TYPE_KIND_TUPLE:
         return RustStructPrinter(val,
                                  omit_first_field = False,
@@ -267,6 +270,21 @@ class RustStdStringPrinter(object):
         (length, data_ptr, cap) = rustpp.extract_length_ptr_and_cap_from_std_vec(vec)
         return '"%s"' % data_ptr.get_wrapped_value().string(encoding="utf-8",
                                                             length=length)
+
+
+class RustOsStringPrinter(object):
+    def __init__(self, val):
+        self.__val = val
+
+    def to_string(self):
+        buf = self.__val.get_child_at_index(0)
+        vec = buf.get_child_at_index(0)
+        if vec.type.get_unqualified_type_name() == "Wtf8Buf":
+            vec = vec.get_child_at_index(0)
+
+        (length, data_ptr, cap) = rustpp.extract_length_ptr_and_cap_from_std_vec(
+            vec)
+        return '"%s"' % data_ptr.get_wrapped_value().string(length=length)
 
 
 class RustCStyleVariantPrinter(object):
