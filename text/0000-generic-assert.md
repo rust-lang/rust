@@ -20,7 +20,9 @@ Unit test frameworks like [Catch](https://github.com/philsquared/Catch) for C++ 
 
 We're going to parse AST and break up them by operators (excluding `.` (dot, member access operator)). Function calls and bracket surrounded blocks are considered as one block and don't get split further.
 
-On assertion failure, the expression itself is stringified, and another line with intermediate values are printed out. The values should be printed with `Debug`, and compilation failure if not implemented (custom message should be used for that case).
+On assertion failure, the expression itself is stringified, and another line with intermediate values are printed out. The values should be printed with `Debug`, and a plain text fallback if the following conditions fail:
+- the type doesn't implement `Debug`.
+- the operator is non-comparison (those in `std::ops`) and the type (may also be a reference) doesn't implement `Copy`.
 
 To make sure that there's no side effects involved (e.g. running `next()` twice on `Iterator`), each value should be stored as temporaries and dumped on assertion failure.
 
@@ -88,6 +90,19 @@ thread '<main>' panicked at 'assertion failed:
 Expected: {a + b} == c
 With expansion: 2 == 3'
 ```
+
+With fallback:
+```rust
+let a = NonDebug{};
+let b = NonDebug{};
+assert!(a == b);
+```
+```
+thread '<main>' panicked at 'assertion failed:
+Expected: a == b
+With expansion: (a) == (b)'
+```
+
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
