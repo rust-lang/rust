@@ -118,7 +118,7 @@ for (i, j) in v_slice[n..].iter().zip(v_slice) {
 
 ## Language
 
-The core of this proposal is the ability to cast a `&T` to a `&Cell<T>`,
+The core of this proposal is the ability to convert a `&T` to a `&Cell<T>`,
 so in order for it to be safe, __it needs to be guaranteed that
 `T` and `Cell<T>` have the same memory layout__, and that there are no codegen
 issues based on viewing a reference to a type that does not contain a
@@ -175,7 +175,7 @@ effect on any existing code.
 
 ### Cell Slicing
 
-We enable a cast from `&Cell<[T]>` to `&[Cell<T>]`. This seems like it violates
+We enable a conversion from `&Cell<[T]>` to `&[Cell<T>]`. This seems like it violates
 the "no interior references" API of `Cell` at first glance, but is actually
 safe:
 
@@ -189,10 +189,10 @@ safe:
   through a `&Cell<[T]>`, or just a memcopy to a single element through a
   `&Cell<T>`.
 - Yet another way to look at it is that if we created a `&mut T` to each element
-  of a `&mut [T]`, and casted each of them to a `&Cell<T>`, their addresses
+  of a `&mut [T]`, and converted each of them to a `&Cell<T>`, their addresses
   would allow "stitching" them back together to a single `&[Cell<T>]`
 
-For convenience, we expose this cast by implementing `Index` for `Cell<[T]>`:
+For convenience, we expose this conversion by implementing `Index` for `Cell<[T]>`:
 
 ```rust
 impl<T> Index<RangeFull> for Cell<[T]> {
@@ -286,8 +286,8 @@ you have mutable access to it.
 > Would the acceptance of this proposal change how Rust is taught to new users at any level?
 How should this feature be introduced and taught to existing Rust users?
 
-As it is, the API just provides a few neat casting functions. Nevertheless,
-with the legalization of the `&mut T -> &Cell<T>` cast there is the
+As it is, the API just provides a few neat conversion functions. Nevertheless,
+with the legalization of the `&mut T -> &Cell<T>` conversion there is the
 potential for a major change in how accessors to data structures are provided:
 
 In todays Rust, there are generally three different ways:
@@ -317,8 +317,8 @@ of ownership and change it to a "rule of four".
 
 > What additions or changes to the Rust Reference, _The Rust Programming Language_, and/or _Rust by Example_ does it entail?
 
-- The reference should explain that the `&mut T -> &Cell<T>` cast,
-  or specifically the `&mut T -> &UnsafeCell<T>` cast is fine.
+- The reference should explain that the `&mut T -> &Cell<T>` conversion,
+  or specifically the `&mut T -> &UnsafeCell<T>` conversion is fine.
 - The book could use the API introduced here if it talks about internal mutability,
   and use it as a "temporary opt-in" example.
 - Rust by Example could have a few basic examples of situations where this API
@@ -378,13 +378,13 @@ conversions steps, while still offering essentially the same API.
 
 ## Just the language guarantee
 
-The cast could be guaranteed as correct, but not be provided by std
+The conversion could be guaranteed as correct, but not be provided by std
 itself. This would serve as legitimization of external implementations like
 [alias](https://crates.io/crates/alias).
 
 ## No guarantees
 
-If the casting guarantees can not be granted,
+If the safety guarantees of the conversion can not be granted,
 code would have to use direct indexing as today, with either possible
 bound checking costs or the use of unsafe code to avoid them.
 
@@ -416,10 +416,10 @@ Cons:
 
 ## Cast to `&mut Cell<T>` instead of `&Cell<T>`
 
-Nothing that makes the `&mut T -> &Cell<T>` cast safe would prevent
+Nothing that makes the `&mut T -> &Cell<T>` conversion safe would prevent
 `&mut T -> &mut Cell<T>` from being safe either, and the latter can be
 trivially turned into a `&Cell<T>` while also allowing mutable access - eg to
-call `Cell::as_mut()` to cast back again.
+call `Cell::as_mut()` to conversion back again.
 
 Similar to that, there could also be a way to turn a `&mut [Cell<T>]` back
 into a `&mut [T]`.
