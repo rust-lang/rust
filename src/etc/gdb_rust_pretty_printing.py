@@ -100,8 +100,10 @@ def rust_pretty_printer_lookup_function(gdb_val):
     val = GdbValue(gdb_val)
     type_kind = val.type.get_type_kind()
 
-    if (type_kind == rustpp.TYPE_KIND_REGULAR_STRUCT or
-        type_kind == rustpp.TYPE_KIND_EMPTY):
+    if type_kind == rustpp.TYPE_KIND_EMPTY:
+        return RustEmptyPrinter(val)
+
+    if type_kind == rustpp.TYPE_KIND_REGULAR_STRUCT:
         return RustStructPrinter(val,
                                  omit_first_field = False,
                                  omit_type_name = False,
@@ -174,6 +176,14 @@ def rust_pretty_printer_lookup_function(gdb_val):
 #=------------------------------------------------------------------------------
 # Pretty Printer Classes
 #=------------------------------------------------------------------------------
+class RustEmptyPrinter(object):
+    def __init__(self, val):
+        self.__val = val
+
+    def to_string(self):
+        return self.__val.type.get_unqualified_type_name()
+
+
 class RustStructPrinter(object):
     def __init__(self, val, omit_first_field, omit_type_name, is_tuple_like):
         self.__val = val
