@@ -41,6 +41,7 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     let libdir = build.sysroot_libdir(compiler, target);
     t!(fs::create_dir_all(&libdir));
 
+    let _folder = build.fold_output(|| format!("stage{}-std", compiler.stage));
     println!("Building stage{} std artifacts ({} -> {})", compiler.stage,
              compiler.host, target);
 
@@ -192,6 +193,7 @@ pub fn build_startup_objects(build: &Build, for_compiler: &Compiler, target: &st
 /// the build using the `compiler` targeting the `target` architecture. The
 /// artifacts created will also be linked into the sysroot directory.
 pub fn test(build: &Build, target: &str, compiler: &Compiler) {
+    let _folder = build.fold_output(|| format!("stage{}-test", compiler.stage));
     println!("Building stage{} test artifacts ({} -> {})", compiler.stage,
              compiler.host, target);
     let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
@@ -228,6 +230,7 @@ pub fn test_link(build: &Build,
 /// the `compiler` targeting the `target` architecture. The artifacts
 /// created will also be linked into the sysroot directory.
 pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
+    let _folder = build.fold_output(|| format!("stage{}-rustc", compiler.stage));
     println!("Building stage{} compiler artifacts ({} -> {})",
              compiler.stage, compiler.host, target);
 
@@ -435,6 +438,7 @@ pub fn maybe_clean_tools(build: &Build, stage: u32, target: &str, mode: Mode) {
 /// This will build the specified tool with the specified `host` compiler in
 /// `stage` into the normal cargo output directory.
 pub fn tool(build: &Build, stage: u32, target: &str, tool: &str) {
+    let _folder = build.fold_output(|| format!("stage{}-{}", stage, tool));
     println!("Building stage{} tool {} ({})", stage, tool, target);
 
     let compiler = Compiler::new(stage, &build.config.build);

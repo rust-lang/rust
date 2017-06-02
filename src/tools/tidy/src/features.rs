@@ -49,7 +49,7 @@ pub struct Feature {
     pub has_gate_test: bool,
 }
 
-pub fn check(path: &Path, bad: &mut bool) {
+pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
     let mut features = collect_lang_features(path);
     assert!(!features.is_empty());
 
@@ -132,6 +132,10 @@ pub fn check(path: &Path, bad: &mut bool) {
     }
 
     if *bad {
+        return;
+    }
+    if quiet {
+        println!("* {} features", features.len());
         return;
     }
 

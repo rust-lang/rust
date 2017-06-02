@@ -63,6 +63,7 @@ pub fn llvm(build: &Build, target: &str) {
         drop(fs::remove_dir_all(&out_dir));
     }
 
+    let _folder = build.fold_output(|| "llvm");
     println!("Building LLVM for {}", target);
     let _time = util::timeit();
     t!(fs::create_dir_all(&out_dir));
@@ -218,6 +219,7 @@ pub fn test_helpers(build: &Build, target: &str) {
         return
     }
 
+    let _folder = build.fold_output(|| "build_test_helpers");
     println!("Building test helpers");
     t!(fs::create_dir_all(&dst));
     let mut cfg = gcc::Config::new();

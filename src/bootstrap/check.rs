@@ -124,12 +124,16 @@ pub fn cargo(build: &Build, stage: u32, host: &str) {
 /// otherwise just implements a few lint-like checks that are specific to the
 /// compiler itself.
 pub fn tidy(build: &Build, host: &str) {
+    let _folder = build.fold_output(|| "tidy");
     println!("tidy check ({})", host);
     let compiler = Compiler::new(0, host);
     let mut cmd = build.tool_cmd(&compiler, "tidy");
     cmd.arg(build.src.join("src"));
     if !build.config.vendor {
         cmd.arg("--no-vendor");
+    }
+    if build.config.quiet_tests {
+        cmd.arg("--quiet");
     }
     build.run(&mut cmd);
 }
@@ -148,6 +152,7 @@ pub fn compiletest(build: &Build,
                    target: &str,
                    mode: &str,
                    suite: &str) {
+    let _folder = build.fold_output(|| format!("test_{}", suite));
     println!("Check compiletest suite={} mode={} ({} -> {})",
              suite, mode, compiler.host, target);
     let mut cmd = Command::new(build.tool(&Compiler::new(0, compiler.host),
@@ -278,6 +283,8 @@ pub fn compiletest(build: &Build,
         cmd.arg("--android-cross-path").arg("");
     }
 
+    build.ci_env.force_coloring_in_ci(&mut cmd);
+
     let _time = util::timeit();
     build.run(&mut cmd);
 }
@@ -292,6 +299,7 @@ pub fn docs(build: &Build, compiler: &Compiler) {
     // tests for all files that end in `*.md`
     let mut stack = vec![build.src.join("src/doc")];
     let _time = util::timeit();
+    let _folder = build.fold_output(|| "test_docs");
 
     while let Some(p) = stack.pop() {
         if p.is_dir() {
@@ -325,6 +333,7 @@ pub fn docs(build: &Build, compiler: &Compiler) {
 /// generate a markdown file from the error indexes of the code base which is
 /// then passed to `rustdoc --test`.
 pub fn error_index(build: &Build, compiler: &Compiler) {
+    let _folder = build.fold_output(|| "test_error_index");
     println!("Testing error-index stage{}", compiler.stage);
 
     let dir = testdir(build, compiler.host);
@@ -349,13 +358,14 @@ fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
     cmd.arg(markdown);
     cmd.env("RUSTC_BOOTSTRAP", "1");
 
-    let mut test_args = build.flags.cmd.test_args().join(" ");
-    if build.config.quiet_tests {
-        test_args.push_str(" --quiet");
-    }
+    let test_args = build.flags.cmd.test_args().join(" ");
     cmd.arg("--test-args").arg(test_args);
 
-    build.run(&mut cmd);
+    if build.config.quiet_tests {
+        build.run_quiet(&mut cmd);
+    } else {
+        build.run(&mut cmd);
+    }
 }
 
 /// Run all unit tests plus documentation tests for an entire crate DAG defined
@@ -384,6 +394,9 @@ pub fn krate(build: &Build,
         }
         _ => panic!("can only test libraries"),
     };
+    let _folder = build.fold_output(|| {
+        format!("{}_stage{}-{}", test_kind.subcommand(), compiler.stage, name)
+    });
     println!("{} {} stage{} ({} -> {})", test_kind, name, compiler.stage,
              compiler.host, target);
 
