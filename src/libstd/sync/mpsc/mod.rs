@@ -1370,14 +1370,16 @@ impl<T> Receiver<T> {
     /// let (send, recv) = channel();
     ///
     /// thread::spawn(move || {
-    ///     send.send(1u8).unwrap();
-    ///     send.send(2u8).unwrap();
-    ///     send.send(3u8).unwrap();
+    ///     send.send(1).unwrap();
+    ///     send.send(2).unwrap();
+    ///     send.send(3).unwrap();
     /// });
     ///
-    /// for x in recv.iter() {
-    ///     println!("Got: {}", x);
-    /// }
+    /// let mut iter = recv.iter();
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(3));
+    /// assert_eq!(iter.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
