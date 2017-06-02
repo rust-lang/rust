@@ -35,31 +35,31 @@ error[E0423]: expected value, found struct `xcrate::S`
 help: possible better candidate is found in another module, you can import it into scope
    | use m::S;
 
-error: tuple struct `Z` is private
+error[E0603]: tuple struct `Z` is private
   --> $DIR/privacy-struct-ctor.rs:25:9
    |
 25 |         n::Z; //~ ERROR tuple struct `Z` is private
    |         ^^^^
 
-error: tuple struct `S` is private
+error[E0603]: tuple struct `S` is private
   --> $DIR/privacy-struct-ctor.rs:35:5
    |
 35 |     m::S; //~ ERROR tuple struct `S` is private
    |     ^^^^
 
-error: tuple struct `Z` is private
+error[E0603]: tuple struct `Z` is private
   --> $DIR/privacy-struct-ctor.rs:39:5
    |
 39 |     m::n::Z; //~ ERROR tuple struct `Z` is private
    |     ^^^^^^^
 
-error: tuple struct `S` is private
+error[E0603]: tuple struct `S` is private
   --> $DIR/privacy-struct-ctor.rs:41:5
    |
 41 |     xcrate::m::S; //~ ERROR tuple struct `S` is private
    |     ^^^^^^^^^^^^
 
-error: tuple struct `Z` is private
+error[E0603]: tuple struct `Z` is private
   --> $DIR/privacy-struct-ctor.rs:45:5
    |
 45 |     xcrate::m::n::Z; //~ ERROR tuple struct `Z` is private
