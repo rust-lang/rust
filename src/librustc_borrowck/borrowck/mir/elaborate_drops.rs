@@ -585,11 +585,6 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             // drop elaboration should handle that by itself
                             continue
                         }
-                        TerminatorKind::Resume => {
-                            // We can replace resumes with gotos
-                            // jumping to a canonical resume.
-                            continue
-                        }
                         TerminatorKind::DropAndReplace { .. } => {
                             // this contains the move of the source and
                             // the initialization of the destination. We
@@ -598,6 +593,11 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             // *after* the destination is dropped.
                             assert!(self.patch.is_patched(bb));
                             allow_initializations = false;
+                        }
+                        TerminatorKind::Resume => {
+                            // It is possible for `Resume` to be patched
+                            // (in particular it can be patched to be replaced with
+                            // a Goto; see `MirPatch::new`).
                         }
                         _ => {
                             assert!(!self.patch.is_patched(bb));
