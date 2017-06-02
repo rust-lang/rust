@@ -1506,8 +1506,8 @@ pub enum Type {
     /// extern "ABI" fn
     BareFunction(Box<BareFunctionDecl>),
     Tuple(Vec<Type>),
-    Vector(Box<Type>),
-    FixedVector(Box<Type>, String),
+    Slice(Box<Type>),
+    Array(Box<Type>, usize),
     Never,
     Unique(Box<Type>),
     RawPointer(Mutability, Box<Type>),
@@ -1573,10 +1573,8 @@ impl Type {
     pub fn primitive_type(&self) -> Option<PrimitiveType> {
         match *self {
             Primitive(p) | BorrowedRef { type_: box Primitive(p), ..} => Some(p),
-            Vector(..) | BorrowedRef{ type_: box Vector(..), ..  } => Some(PrimitiveType::Slice),
-            FixedVector(..) | BorrowedRef { type_: box FixedVector(..), .. } => {
-                Some(PrimitiveType::Array)
-            }
+            Slice(..) | BorrowedRef { type_: box Slice(..), .. } => Some(PrimitiveType::Slice),
+            Array(..) | BorrowedRef { type_: box Array(..), .. } => Some(PrimitiveType::Array),
             Tuple(..) => Some(PrimitiveType::Tuple),
             RawPointer(..) => Some(PrimitiveType::RawPointer),
             _ => None,
@@ -1717,11 +1715,11 @@ impl Clean<Type> for hir::Ty {
                 BorrowedRef {lifetime: lifetime, mutability: m.mutbl.clean(cx),
                              type_: box m.ty.clean(cx)}
             }
-            TySlice(ref ty) => Vector(box ty.clean(cx)),
+            TySlice(ref ty) => Slice(box ty.clean(cx)),
             TyArray(ref ty, length) => {
                 use rustc::middle::const_val::eval_length;
                 let n = eval_length(cx.tcx, length, "array length").unwrap();
-                FixedVector(box ty.clean(cx), n.to_string())
+                Array(box ty.clean(cx), n)
             },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
             TyPath(hir::QPath::Resolved(None, ref path)) => {
@@ -1832,9 +1830,8 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyUint(uint_ty) => Primitive(uint_ty.into()),
             ty::TyFloat(float_ty) => Primitive(float_ty.into()),
             ty::TyStr => Primitive(PrimitiveType::Str),
-            ty::TySlice(ty) => Vector(box ty.clean(cx)),
-            ty::TyArray(ty, i) => FixedVector(box ty.clean(cx),
-                                              format!("{}", i)),
+            ty::TySlice(ty) => Slice(box ty.clean(cx)),
+            ty::TyArray(ty, n) => Array(box ty.clean(cx), n),
             ty::TyRawPtr(mt) => RawPointer(mt.mutbl.clean(cx), box mt.ty.clean(cx)),
             ty::TyRef(r, mt) => BorrowedRef {
                 lifetime: r.clean(cx),

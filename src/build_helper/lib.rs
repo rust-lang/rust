@@ -73,6 +73,21 @@ pub fn run_suppressed(cmd: &mut Command) {
     }
 }
 
+pub fn try_run_silent(cmd: &mut Command) -> bool {
+    let status = match cmd.status() {
+        Ok(status) => status,
+        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}",
+                                cmd, e)),
+    };
+    if !status.success() {
+        println!("\n\ncommand did not execute successfully: {:?}\n\
+                  expected success, got: {}\n\n",
+                 cmd,
+                 status);
+    }
+    status.success()
+}
+
 pub fn gnu_target(target: &str) -> String {
     match target {
         "i686-pc-windows-msvc" => "i686-pc-win32".to_string(),
