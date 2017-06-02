@@ -184,12 +184,8 @@ pub fn match_type(cx: &LateContext, ty: ty::Ty, path: &[&str]) -> bool {
 
 /// Check if the method call given in `expr` belongs to given type.
 pub fn match_impl_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
-    let method_call = ty::MethodCall::expr(expr.id);
-
-    let trt_id = cx.tables
-        .method_map
-        .get(&method_call)
-        .and_then(|callee| cx.tcx.impl_of_method(callee.def_id));
+    let method_call = cx.tables.type_dependent_defs[&expr.id];
+    let trt_id = cx.tcx.impl_of_method(method_call.def_id());
     if let Some(trt_id) = trt_id {
         match_def_path(cx.tcx, trt_id, path)
     } else {
@@ -199,12 +195,8 @@ pub fn match_impl_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
 
 /// Check if the method call given in `expr` belongs to given trait.
 pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
-    let method_call = ty::MethodCall::expr(expr.id);
-
-    let trt_id = cx.tables
-        .method_map
-        .get(&method_call)
-        .and_then(|callee| cx.tcx.trait_of_item(callee.def_id));
+    let method_call = cx.tables.type_dependent_defs[&expr.id];
+    let trt_id = cx.tcx.trait_of_item(method_call.def_id());
     if let Some(trt_id) = trt_id {
         match_def_path(cx.tcx, trt_id, path)
     } else {

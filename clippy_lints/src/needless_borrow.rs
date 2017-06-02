@@ -41,7 +41,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
         }
         if let ExprAddrOf(MutImmutable, ref inner) = e.node {
             if let ty::TyRef(..) = cx.tables.expr_ty(inner).sty {
-                if let Some(&ty::adjustment::Adjust::DerefRef { autoderefs, autoref, .. }) =
+                if let Some(&ty::adjustment::Adjust::Deref(ref overloaded)) =
                     cx.tables.adjustments.get(&e.id).map(|a| &a.kind) {
                     if autoderefs > 1 && autoref.is_some() {
                         span_lint(cx,

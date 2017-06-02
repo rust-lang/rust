@@ -160,14 +160,14 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
 
         if let Categorization::Local(lid) = cmt.cat {
             if self.set.contains(&lid) {
-                if let Some(&Adjust::DerefRef { autoderefs, .. }) =
+                if let Some(&Adjust::Deref(ref overloaded)) =
                     self.tables
                         .adjustments
                         .get(&borrow_id)
                         .map(|a| &a.kind) {
                     if LoanCause::AutoRef == loan_cause {
                         // x.foo()
-                        if autoderefs == 0 {
+                        if overloaded == 0 {
                             self.set.remove(&lid); // Used without autodereffing (i.e. x.clone())
                         }
                     } else {
@@ -175,14 +175,14 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                     }
                 } else if LoanCause::AddrOf == loan_cause {
                     // &x
-                    if let Some(&Adjust::DerefRef { autoderefs, .. }) =
+                    if let Some(&Adjust::Deref(ref overloaded)) =
                         self.tables
                             .adjustments
                             .get(&self.tcx
                                 .hir
                                 .get_parent_node(borrow_id))
                             .map(|a| &a.kind) {
-                        if autoderefs <= 1 {
+                        if overloaded <= 1 {
                             // foo(&x) where no extra autoreffing is happening
                             self.set.remove(&lid);
                         }

@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use rustc::ty::{TypeAndMut, TypeVariants, MethodCall, TyS};
+use rustc::ty::{TypeAndMut, TypeVariants, TyS};
 use rustc::hir::*;
 use utils::span_lint;
 
@@ -49,9 +49,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
                 }
             },
             ExprMethodCall(ref name, _, ref arguments) => {
-                let method_call = MethodCall::expr(e.id);
-                let method_type = borrowed_table.method_map.get(&method_call).expect("This should never happen.");
-                check_arguments(cx, arguments, method_type.ty, &name.node.as_str())
+                let method_type = borrowed_table.expr_ty(e);
+                check_arguments(cx, arguments, method_type, &name.node.as_str())
             },
             _ => (),
         }

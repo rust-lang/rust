@@ -676,13 +676,8 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                     lint_iter_method(cx, args, arg, &method_name);
                 }
             } else if method_name == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
-                let method_call = ty::MethodCall::expr(arg.id);
-                let fn_ty = cx.tables
-                    .method_map
-                    .get(&method_call)
-                    .map(|method_callee| method_callee.ty)
-                    .expect("method calls need an entry in the method map");
-                let fn_arg_tys = fn_ty.fn_args();
+                let fn_ty = cx.tables.expr_ty(arg);
+                let fn_arg_tys = fn_ty.fn_sig().inputs();
                 assert_eq!(fn_arg_tys.skip_binder().len(), 1);
                 if fn_arg_tys.skip_binder()[0].is_region_ptr() {
                     lint_iter_method(cx, args, arg, &method_name);
