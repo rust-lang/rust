@@ -88,8 +88,7 @@ use std::rc::Rc;
 
 #[derive(Clone, PartialEq)]
 pub enum Categorization<'tcx> {
-    // temporary val, argument is its scope
-    Rvalue(ty::Region<'tcx>, ty::Region<'tcx>),
+    Rvalue(ty::Region<'tcx>),              // temporary val, argument is its scope
     StaticItem,
     Upvar(Upvar),                          // upvar referenced by closure env
     Local(ast::NodeId),                    // local variable
@@ -827,18 +826,13 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
     /// Returns the lifetime of a temporary created by expr with id `id`.
     /// This could be `'static` if `id` is part of a constant expression.
-    pub fn temporary_scope(&self, id: ast::NodeId) -> (ty::Region<'tcx>, ty::Region<'tcx>)
+    pub fn temporary_scope(&self, id: ast::NodeId) -> ty::Region<'tcx>
     {
-        let (scope, old_scope) =
-            self.region_maps.old_and_new_temporary_scope(id);
-        (self.tcx().mk_region(match scope {
+        let scope = self.region_maps.temporary_scope(id);
+        self.tcx().mk_region(match scope {
             Some(scope) => ty::ReScope(scope),
             None => ty::ReStatic
-        }),
-         self.tcx().mk_region(match old_scope {
-            Some(scope) => ty::ReScope(scope),
-            None => ty::ReStatic
-        }))
+        })
     }
 
     pub fn cat_rvalue_node(&self,
@@ -858,13 +852,12 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // Compute maximum lifetime of this rvalue. This is 'static if
         // we can promote to a constant, otherwise equal to enclosing temp
         // lifetime.
-        let (re, old_re) = if promotable {
-            (self.tcx().types.re_static,
-             self.tcx().types.re_static)
+        let re = if promotable {
+            self.tcx().types.re_static
         } else {
             self.temporary_scope(id)
         };
-        let ret = self.cat_rvalue(id, span, re, old_re, expr_ty);
+        let ret = self.cat_rvalue(id, span, re, expr_ty);
         debug!("cat_rvalue_node ret {:?}", ret);
         ret
     }
@@ -873,12 +866,11 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                       cmt_id: ast::NodeId,
                       span: Span,
                       temp_scope: ty::Region<'tcx>,
-                      old_temp_scope: ty::Region<'tcx>,
                       expr_ty: Ty<'tcx>) -> cmt<'tcx> {
         let ret = Rc::new(cmt_ {
             id:cmt_id,
             span:span,
-            cat:Categorization::Rvalue(temp_scope, old_temp_scope),
+            cat:Categorization::Rvalue(temp_scope),
             mutbl:McDeclared,
             ty:expr_ty,
             note: NoteNone
@@ -1415,9 +1407,7 @@ impl<'tcx> fmt::Debug for Categorization<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Categorization::StaticItem => write!(f, "static"),
-            Categorization::Rvalue(r, or) => {
-                write!(f, "rvalue({:?}, {:?})", r, or)
-            }
+            Categorization::Rvalue(r) => { write!(f, "rvalue({:?})", r) }
             Categorization::Local(id) => {
                let name = ty::tls::with(|tcx| tcx.local_var_name_str(id));
                write!(f, "local({})", name)

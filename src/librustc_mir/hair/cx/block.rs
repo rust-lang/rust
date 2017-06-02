@@ -82,11 +82,10 @@ pub fn to_expr_ref<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    block: &'tcx hir::Block)
                                    -> ExprRef<'tcx> {
     let block_ty = cx.tables().node_id_to_type(block.id);
-    let (temp_lifetime, was_shrunk) = cx.region_maps.temporary_scope2(block.id);
+    let temp_lifetime = cx.region_maps.temporary_scope(block.id);
     let expr = Expr {
         ty: block_ty,
         temp_lifetime: temp_lifetime,
-        temp_lifetime_was_shrunk: was_shrunk,
         span: block.span,
         kind: ExprKind::Block { body: block },
     };

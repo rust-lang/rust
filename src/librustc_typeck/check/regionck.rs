@@ -911,7 +911,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                                                      cmt: mc::cmt<'tcx>,
                                                      span: Span) {
         match cmt.cat {
-            Categorization::Rvalue(region, _) => {
+            Categorization::Rvalue(region) => {
                 match *region {
                     ty::ReScope(rvalue_scope) => {
                         let typ = self.resolve_type(cmt.ty);
@@ -1029,7 +1029,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             let arg_ty = self.node_ty(arg.id);
             let re_scope = self.tcx.mk_region(ty::ReScope(body_scope));
             let arg_cmt = mc.cat_rvalue(
-                arg.id, arg.pat.span, re_scope, re_scope, arg_ty);
+                arg.id, arg.pat.span, re_scope, arg_ty);
             debug!("arg_ty={:?} arg_cmt={:?} arg={:?}",
                    arg_ty,
                    arg_cmt,

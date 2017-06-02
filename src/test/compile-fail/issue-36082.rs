@@ -16,12 +16,10 @@ fn main() {
     let x = RefCell::new((&mut r,s));
 
     let val: &_ = x.borrow().0;
-    //~^ WARNING this temporary used to live longer - see issue #39283
-    //~^^ ERROR borrowed value does not live long enough
+    //~^ ERROR borrowed value does not live long enough
     //~| temporary value dropped here while still borrowed
     //~| temporary value created here
     //~| consider using a `let` binding to increase its lifetime
-    //~| before rustc 1.16, this temporary lived longer - see issue #39283
     println!("{}", val);
 }
 //~^ temporary value needs to live until here
