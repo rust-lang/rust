@@ -130,7 +130,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             StorageLive(ref lvalue) | StorageDead(ref lvalue)=> {
                 let (frame, local) = match self.eval_lvalue(lvalue)? {
                     Lvalue::Local{ frame, local, field: None } if self.stack.len() == frame+1 => (frame, local),
-                    _ => return Err(EvalError::Unimplemented("Stroage annotations must refer to locals of the topmost stack frame.".to_owned())) // FIXME maybe this should get its own error type
+                    _ => return Err(EvalError::Unimplemented("Storage annotations must refer to locals of the topmost stack frame.".to_owned())) // FIXME maybe this should get its own error type
                 };
                 let old_val = match stmt.kind {
                     StorageLive(_) => self.stack[frame].storage_live(local)?,
