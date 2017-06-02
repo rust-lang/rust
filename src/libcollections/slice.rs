@@ -1515,6 +1515,7 @@ pub trait SliceConcatExt<T: ?Sized> {
     ///
     /// ```
     /// assert_eq!(["hello", "world"].concat(), "helloworld");
+    /// assert_eq!([[1, 2], [3, 4]].concat(), [1, 2, 3, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn concat(&self) -> Self::Output;
@@ -1526,6 +1527,7 @@ pub trait SliceConcatExt<T: ?Sized> {
     ///
     /// ```
     /// assert_eq!(["hello", "world"].join(" "), "hello world");
+    /// assert_eq!([[1, 2], [3, 4]].join(&0), [1, 2, 0, 3, 4]);
     /// ```
     #[stable(feature = "rename_connect_to_join", since = "1.3.0")]
     fn join(&self, sep: &T) -> Self::Output;
