@@ -1094,11 +1094,12 @@ impl<T> JoinInner<T> {
 
 /// An owned permission to join on a thread (block on its termination).
 ///
-/// A `JoinHandle` *detaches* the child thread when it is dropped.
+/// A `JoinHandle` *detaches* the associated thread when it is dropped, which
+/// means that there is no longer any handle to thread and no way to `join`
+/// on it.
 ///
 /// Due to platform restrictions, it is not possible to [`Clone`] this
-/// handle: the ability to join a child thread is a uniquely-owned
-/// permission.
+/// handle: the ability to join a thread is a uniquely-owned permission.
 ///
 /// This `struct` is created by the [`thread::spawn`] function and the
 /// [`thread::Builder::spawn`] method.
@@ -1125,6 +1126,30 @@ impl<T> JoinInner<T> {
 /// let join_handle: thread::JoinHandle<_> = builder.spawn(|| {
 ///     // some work here
 /// }).unwrap();
+/// ```
+///
+/// Child being detached and outliving its parent:
+///
+/// ```no_run
+/// use std::thread;
+/// use std::time::Duration;
+///
+/// let original_thread = thread::spawn(|| {
+///     let _detached_thread = thread::spawn(|| {
+///         // Here we sleep to make sure that the first thread returns before.
+///         thread::sleep(Duration::from_millis(10));
+///         // This will be called, even though the JoinHandle is dropped.
+///         println!("♫ Still alive ♫");
+///     });
+/// });
+///
+/// let _ = original_thread.join();
+/// println!("Original thread is joined.");
+///
+/// // We make sure that the new thread has time to run, before the main
+/// // thread returns.
+///
+/// thread::sleep(Duration::from_millis(1000));
 /// ```
 ///
 /// [`Clone`]: ../../std/clone/trait.Clone.html

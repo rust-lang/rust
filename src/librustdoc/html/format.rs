@@ -25,7 +25,6 @@ use rustc::hir;
 use clean::{self, PrimitiveType};
 use core::DocAccessLevels;
 use html::item_type::ItemType;
-use html::escape::Escape;
 use html::render;
 use html::render::{cache, CURRENT_LOCATION_KEY};
 
@@ -643,21 +642,15 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
                 }
             }
         }
-        clean::Vector(ref t) => {
+        clean::Slice(ref t) => {
             primitive_link(f, PrimitiveType::Slice, "[")?;
             fmt::Display::fmt(t, f)?;
             primitive_link(f, PrimitiveType::Slice, "]")
         }
-        clean::FixedVector(ref t, ref s) => {
+        clean::Array(ref t, n) => {
             primitive_link(f, PrimitiveType::Array, "[")?;
             fmt::Display::fmt(t, f)?;
-            if f.alternate() {
-                primitive_link(f, PrimitiveType::Array,
-                               &format!("; {}]", s))
-            } else {
-                primitive_link(f, PrimitiveType::Array,
-                               &format!("; {}]", Escape(s)))
-            }
+            primitive_link(f, PrimitiveType::Array, &format!("; {}]", n))
         }
         clean::Never => f.write_str("!"),
         clean::RawPointer(m, ref t) => {
@@ -685,7 +678,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
             };
             let m = MutableSpace(mutability);
             match **ty {
-                clean::Vector(ref bt) => { // BorrowedRef{ ... Vector(T) } is &[T]
+                clean::Slice(ref bt) => { // BorrowedRef{ ... Slice(T) } is &[T]
                     match **bt {
                         clean::Generic(_) => {
                             if f.alternate() {
