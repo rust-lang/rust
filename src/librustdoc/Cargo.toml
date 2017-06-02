@@ -30,4 +30,4 @@ pulldown-cmark = { version = "0.0.14", default-features = false }
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }
-gcc = "0.3.27"
+gcc = "0.3.50"
