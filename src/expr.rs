@@ -1698,7 +1698,6 @@ fn rewrite_call_inner(context: &RewriteContext,
         .ok_or(Ordering::Less)?;
 
     if !use_block_indent(context) && need_block_indent(&list_str, nested_shape) && !extendable {
-        println!("here");
         let mut new_context = context.clone();
         new_context.use_block = true;
         return rewrite_call_inner(&new_context,
