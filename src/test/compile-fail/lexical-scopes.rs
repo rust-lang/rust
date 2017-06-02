@@ -17,7 +17,7 @@ mod Foo {
     pub fn f() {}
 }
 fn g<Foo>() {
-    Foo::f(); //~ ERROR no associated item named `f`
+    Foo::f(); //~ ERROR no function or associated item named `f`
 }
 
 fn main() {}

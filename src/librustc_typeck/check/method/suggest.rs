@@ -173,7 +173,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                      if mode == Mode::MethodCall {
                                          "method"
                                      } else {
-                                         "associated item"
+                                         match item_name.as_str().chars().next() {
+                                             Some(name) => {
+                                                 if name.is_lowercase() {
+                                                     "function or associated item"
+                                                 } else {
+                                                     "associated item"
+                                                 }
+                                             },
+                                             None => {
+                                                 ""
+                                             },
+                                         }
                                      },
                                      item_name,
                                      self.ty_to_string(actual))
