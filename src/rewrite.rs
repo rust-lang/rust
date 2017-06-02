@@ -27,7 +27,11 @@ pub struct RewriteContext<'a> {
     pub codemap: &'a CodeMap,
     pub config: &'a Config,
     pub inside_macro: bool,
+    // Force block indent style even if we are using visual indent style.
     pub use_block: bool,
+    // When `format_if_else_cond_comment` is true, unindent the comment on top
+    // of the `else` or `else if`.
+    pub is_if_else_block: bool,
 }
 
 impl<'a> RewriteContext<'a> {
