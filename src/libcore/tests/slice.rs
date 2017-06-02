@@ -239,6 +239,22 @@ fn test_find_rfind() {
 }
 
 #[test]
+fn test_rotate() {
+    const N: usize = 600;
+    let a: &mut [_] = &mut [0; N];
+    for i in 0..N {
+        a[i] = i;
+    }
+
+    a.rotate(42);
+    let k = N - 42;
+
+    for i in 0..N {
+        assert_eq!(a[(i+k)%N], i);
+    }
+}
+
+#[test]
 fn sort_unstable() {
     let mut v = [0; 600];
     let mut tmp = [0; 600];

@@ -1347,6 +1347,61 @@ impl<T> [T] {
         core_slice::SliceExt::sort_unstable_by_key(self, f);
     }
 
+    /// Permutes the slice in-place such that `self[mid..]` moves to the
+    /// beginning of the slice while `self[..mid]` moves to the end of the
+    /// slice.  Equivalently, rotates the slice `mid` places to the left
+    /// or `k = self.len() - mid` places to the right.
+    ///
+    /// This is a "k-rotation", a permutation in which item `i` moves to
+    /// position `i + k`, modulo the length of the slice.  See _Elements
+    /// of Programming_ [§10.4][eop].
+    ///
+    /// Rotation by `mid` and rotation by `k` are inverse operations.
+    ///
+    /// [eop]: https://books.google.com/books?id=CO9ULZGINlsC&pg=PA178&q=k-rotation
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `mid` is greater than the length of the
+    /// slice.  (Note that `mid == self.len()` does _not_ panic; it's a nop
+    /// rotation with `k == 0`, the inverse of a rotation with `mid == 0`.)
+    ///
+    /// # Complexity
+    ///
+    /// Takes linear (in `self.len()`) time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_rotate)]
+    ///
+    /// let mut a = [1, 2, 3, 4, 5, 6, 7];
+    /// let mid = 2;
+    /// a.rotate(mid);
+    /// assert_eq!(&a, &[3, 4, 5, 6, 7, 1, 2]);
+    /// let k = a.len() - mid;
+    /// a.rotate(k);
+    /// assert_eq!(&a, &[1, 2, 3, 4, 5, 6, 7]);
+    ///
+    /// use std::ops::Range;
+    /// fn slide<T>(slice: &mut [T], range: Range<usize>, to: usize) {
+    ///     if to < range.start {
+    ///         slice[to..range.end].rotate(range.start-to);
+    ///     } else if to > range.end {
+    ///         slice[range.start..to].rotate(range.end-range.start);
+    ///     }
+    /// }
+    /// let mut v: Vec<_> = (0..10).collect();
+    /// slide(&mut v, 1..4, 7);
+    /// assert_eq!(&v, &[0, 4, 5, 6, 1, 2, 3, 7, 8, 9]);
+    /// slide(&mut v, 6..8, 1);
+    /// assert_eq!(&v, &[0, 3, 7, 4, 5, 6, 1, 2, 8, 9]);
+    /// ```
+    #[unstable(feature = "slice_rotate", issue = "41891")]
+    pub fn rotate(&mut self, mid: usize) {
+        core_slice::SliceExt::rotate(self, mid);
+    }
+
     /// Copies the elements from `src` into `self`.
     ///
     /// The length of `src` must be the same as `self`.

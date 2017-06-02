@@ -51,6 +51,7 @@ use mem;
 use marker::{Copy, Send, Sync, Sized, self};
 use iter_private::TrustedRandomAccess;
 
+mod rotate;
 mod sort;
 
 #[repr(C)]
@@ -201,6 +202,9 @@ pub trait SliceExt {
 
     #[stable(feature = "core", since = "1.6.0")]
     fn ends_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
+
+    #[unstable(feature = "slice_rotate", issue = "41891")]
+    fn rotate(&mut self, mid: usize);
 
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
     fn clone_from_slice(&mut self, src: &[Self::Item]) where Self::Item: Clone;
@@ -633,6 +637,16 @@ impl<T> SliceExt for [T] {
               Q: Ord
     {
         self.binary_search_by(|p| p.borrow().cmp(x))
+    }
+
+    fn rotate(&mut self, mid: usize) {
+        assert!(mid <= self.len());
+        let k = self.len() - mid;
+
+        unsafe {
+            let p = self.as_mut_ptr();
+            rotate::ptr_rotate(mid, p.offset(mid as isize), k);
+        }
     }
 
     #[inline]

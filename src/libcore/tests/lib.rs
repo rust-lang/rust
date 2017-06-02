@@ -30,6 +30,7 @@
 #![feature(raw)]
 #![feature(sip_hash_13)]
 #![feature(slice_patterns)]
+#![feature(slice_rotate)]
 #![feature(sort_internals)]
 #![feature(sort_unstable)]
 #![feature(specialization)]
