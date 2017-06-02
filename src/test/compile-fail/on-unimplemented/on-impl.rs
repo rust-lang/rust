@@ -33,4 +33,6 @@ fn main() {
     //~^ ERROR E0277
     //~| NOTE a usize is required
     //~| NOTE required by
+    //~| ERROR E0277
+    //~| NOTE a usize is required
 }
