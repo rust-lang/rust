@@ -133,6 +133,14 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   ],
                tcx.mk_nil())
             }
+            "prefetch_read_data" | "prefetch_write_data" |
+            "prefetch_read_instruction" | "prefetch_write_instruction" => {
+                (1, vec![tcx.mk_ptr(ty::TypeAndMut {
+                          ty: param(0),
+                          mutbl: hir::MutImmutable
+                         }), tcx.types.i32],
+                    tcx.mk_nil())
+            }
             "drop_in_place" => {
                 (1, vec![tcx.mk_mut_ptr(param(0))], tcx.mk_nil())
             }

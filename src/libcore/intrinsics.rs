@@ -564,7 +564,54 @@ extern "rust-intrinsic" {
     pub fn atomic_umax_rel<T>(dst: *mut T, src: T) -> T;
     pub fn atomic_umax_acqrel<T>(dst: *mut T, src: T) -> T;
     pub fn atomic_umax_relaxed<T>(dst: *mut T, src: T) -> T;
+
+    /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
+    /// if supported; otherwise, it is a noop.
+    /// Prefetches have no effect on the behavior of the program but can change its performance
+    /// characteristics.
+    ///
+    /// The `locality` argument must be a constant integer and is a temporal locality specifier
+    /// ranging from (0) - no locality, to (3) - extremely local keep in cache
+    #[cfg(not(stage0))]
+    pub fn prefetch_read_data<T>(data: *const T, locality: i32);
+    /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
+    /// if supported; otherwise, it is a noop.
+    /// Prefetches have no effect on the behavior of the program but can change its performance
+    /// characteristics.
+    ///
+    /// The `locality` argument must be a constant integer and is a temporal locality specifier
+    /// ranging from (0) - no locality, to (3) - extremely local keep in cache
+    #[cfg(not(stage0))]
+    pub fn prefetch_write_data<T>(data: *const T, locality: i32);
+    /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
+    /// if supported; otherwise, it is a noop.
+    /// Prefetches have no effect on the behavior of the program but can change its performance
+    /// characteristics.
+    ///
+    /// The `locality` argument must be a constant integer and is a temporal locality specifier
+    /// ranging from (0) - no locality, to (3) - extremely local keep in cache
+    #[cfg(not(stage0))]
+    pub fn prefetch_read_instruction<T>(data: *const T, locality: i32);
+    /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
+    /// if supported; otherwise, it is a noop.
+    /// Prefetches have no effect on the behavior of the program but can change its performance
+    /// characteristics.
+    ///
+    /// The `locality` argument must be a constant integer and is a temporal locality specifier
+    /// ranging from (0) - no locality, to (3) - extremely local keep in cache
+    #[cfg(not(stage0))]
+    pub fn prefetch_write_instruction<T>(data: *const T, locality: i32);
 }
+
+// Empty bootstrap implementations for stage0 compilation
+#[cfg(stage0)]
+pub fn prefetch_read_data<T>(_data: *const T, _locality: i32) { /* EMPTY */ }
+#[cfg(stage0)]
+pub fn prefetch_write_data<T>(_data: *const T, _locality: i32) { /* EMPTY */ }
+#[cfg(stage0)]
+pub fn prefetch_read_instruction<T>(_data: *const T, _locality: i32) { /* EMPTY */ }
+#[cfg(stage0)]
+pub fn prefetch_write_instruction<T>(_data: *const T, _locality: i32) { /* EMPTY */ }
 
 extern "rust-intrinsic" {
 

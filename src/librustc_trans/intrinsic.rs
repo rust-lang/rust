@@ -255,7 +255,18 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             }
             C_nil(ccx)
         },
-
+        "prefetch_read_data" | "prefetch_write_data" |
+        "prefetch_read_instruction" | "prefetch_write_instruction" => {
+            let expect = ccx.get_intrinsic(&("llvm.prefetch"));
+            let (rw, cache_type) = match name {
+                "prefetch_read_data" => (0, 1),
+                "prefetch_write_data" => (1, 1),
+                "prefetch_read_instruction" => (0, 0),
+                "prefetch_write_instruction" => (1, 0),
+                _ => bug!()
+            };
+            bcx.call(expect, &[llargs[0], C_i32(ccx, rw), llargs[1], C_i32(ccx, cache_type)], None)
+        },
         "ctlz" | "cttz" | "ctpop" | "bswap" |
         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" |
         "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
