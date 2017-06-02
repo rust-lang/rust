@@ -1,3 +1,150 @@
+Version 1.18.0 (2017-06-08)
+===========================
+
+Language
+--------
+
+- [Stabilize pub(restricted)][40556] `pub` can now accept a module path to
+  make the item visible to just that module tree. Also accepts the keyword
+  `crate` to make something public to the whole crate but not users of the
+  library. Example: `pub(crate) mod utils;`.
+- [Stabilize `#![windows_subsystem]` attribute][40870] conservative exposure of the
+  `/SUBSYSTEM` linker flag on Windows platforms.
+- [Refactor of trait object type parsing][40043] Now `ty` in macros can accept
+  types like `Write + Send`, trailing `+` are now supported in trait objects,
+  and better error reporting for trait objects starting with `?Sized`.
+- [0e+10 is now a valid floating point literal][40589]
+- [Now warns if you bind a lifetime parameter to 'static][40734]
+- [Tuples, Enum variant fields, and structs with no `repr` attribute or with
+  `#[repr(Rust)]` are reordered to minimize padding and produce a smaller
+  representation in some cases.][40377]
+
+Compiler
+--------
+
+- [rustc can now emit mir with `--emit mir`][39891]
+- [Improved LLVM IR for trivial functions][40367]
+- [Added explanation for E0090(Wrong number of lifetimes are supplied)][40723]
+- [rustc compilation is now 15%-20% faster][41469] Thanks to optimisation
+  opportunities found through profiling
+- [Improved backtrace formatting when panicking][38165]
+
+Libraries
+---------
+
+- [Specialized `Vec::from_iter` being passed `vec::IntoIter`][40731] if the
+  iterator hasn't been advanced the original `Vec` is reassembled with no actual
+  iteration or reallocation.
+- [Simplified HashMap Bucket interface][40561] provides performance
+  improvements for iterating and cloning.
+- [Specialize Vec::from_elem to use calloc][40409]
+- [Fixed Race condition in fs::create_dir_all][39799]
+- [No longer caching stdio on Windows][40516]
+- [Optimized insertion sort in slice][40807] insertion sort in some cases
+  2.50%~ faster and in one case now 12.50% faster.
+- [Optimized `AtomicBool::fetch_nand`][41143]
+
+Stabilized APIs
+---------------
+
+- [`Child::try_wait`]
+- [`HashMap::retain`]
+- [`HashSet::retain`]
+- [`PeekMut::pop`]
+- [`TcpSteam::peek`]
+- [`UdpSocket::peek`]
+- [`UdpSocket::peek_from`]
+
+Cargo
+-----
+
+- [Added partial Pijul support][cargo/3842] Pijul is a version control system in Rust.
+  You can now create new cargo projects with Pijul using `cargo new --vcs pijul`
+- [Now always emits build script warnings for crates that fail to build][cargo/3847]
+- [Added Android build support][cargo/3885]
+- [Added `--bins` and `--tests` flags][cargo/3901] now you can build all programs
+  of a certain type, for example `cargo build --bins` will build all
+  binaries.
+- [Added support for haiku][cargo/3952]
+
+Misc
+----
+
+- [rustdoc can now use pulldown-cmark with the `--enable-commonmark` flag][40338]
+- [Added rust-winbg script for better debugging on Windows][39983]
+- [Rust now uses the official cross compiler for NetBSD][40612]
+- [rustdoc now accepts `#` at the start of files][40828]
+- [Fixed jemalloc support for musl][41168]
+
+Compatibility Notes
+-------------------
+
+- [Changes to how the `0` flag works in format!][40241] Padding zeroes are now
+  always placed after the sign if it exists and before the digits. With the `#`
+  flag the zeroes are placed after the prefix and before the digits.
+- [Due to the struct field optimisation][40377], using `transmute` on structs
+  that have no `repr` attribute or `#[repr(Rust)]` will longer work.
+- [The refactor of trait object type parsing][40043] fixed a bug where `+` was
+  receiving the wrong priority parsing things like `&for<'a> Tr<'a> + Send` as
+  `&(for<'a> Tr<'a> + Send)` instead of `(&for<'a> Tr<'a>) + Send`
+- [Overlapping inherent `impl`s are now a hard error][40728]
+- [`PartialOrd` and `Ord` must to agree on the ordering.][41270]
+- [`rustc main.rs -o out --emit=asm,llvm-ir`][41085] Now will output
+  `out.asm` and `out.ll` instead of only one of the filetypes.
+- [ calling a function that returns `Self` will no longer work][41805] when
+  the size of `Self` cannot be statically determined.
+- [rustc now builds with a "pthreads" flavour of MinGW for Windows GNU][40805]
+  this has caused a few regressions namely:
+  
+  - Changed the link order of local static/dynamic libraries (respecting the
+    order on given rather than having the compiler reorder).
+  - Changed how MinGW is linked, native code linked to dynamic libraries
+    may require manually linking to the gcc support library (for the native
+    code itself)
+
+[38165]: https://github.com/rust-lang/rust/pull/38165
+[39799]: https://github.com/rust-lang/rust/pull/39799
+[39891]: https://github.com/rust-lang/rust/pull/39891
+[39983]: https://github.com/rust-lang/rust/pull/39983
+[40043]: https://github.com/rust-lang/rust/pull/40043
+[40241]: https://github.com/rust-lang/rust/pull/40241
+[40338]: https://github.com/rust-lang/rust/pull/40338
+[40367]: https://github.com/rust-lang/rust/pull/40367
+[40409]: https://github.com/rust-lang/rust/pull/40409
+[40516]: https://github.com/rust-lang/rust/pull/40516
+[40556]: https://github.com/rust-lang/rust/pull/40556
+[40561]: https://github.com/rust-lang/rust/pull/40561
+[40589]: https://github.com/rust-lang/rust/pull/40589
+[40612]: https://github.com/rust-lang/rust/pull/40612
+[40723]: https://github.com/rust-lang/rust/pull/40723
+[40728]: https://github.com/rust-lang/rust/pull/40728
+[40731]: https://github.com/rust-lang/rust/pull/40731
+[40734]: https://github.com/rust-lang/rust/pull/40734
+[40807]: https://github.com/rust-lang/rust/pull/40807
+[40828]: https://github.com/rust-lang/rust/pull/40828
+[40870]: https://github.com/rust-lang/rust/pull/40870
+[41143]: https://github.com/rust-lang/rust/pull/41143
+[41168]: https://github.com/rust-lang/rust/pull/41168
+[41469]: https://github.com/rust-lang/rust/pull/41469
+[41085]: https://github.com/rust-lang/rust/pull/41085
+[41805]: https://github.com/rust-lang/rust/issues/41805
+[40805]: https://github.com/rust-lang/rust/pull/40805
+[41270]: https://github.com/rust-lang/rust/issues/41270
+[40377]: https://github.com/rust-lang/rust/pull/40377
+[cargo/3842]: https://github.com/rust-lang/cargo/pull/3842
+[cargo/3847]: https://github.com/rust-lang/cargo/pull/3847
+[cargo/3885]: https://github.com/rust-lang/cargo/pull/3885
+[cargo/3901]: https://github.com/rust-lang/cargo/pull/3901
+[cargo/3952]: https://github.com/rust-lang/cargo/pull/3952
+[`HashMap::retain`]: https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.retain
+[`HashSet::retain`]: https://doc.rust-lang.org/std/collections/struct.HashSet.html#method.retain
+[`PeekMut::pop`]: https://doc.rust-lang.org/std/collections/binary_heap/struct.PeekMut.html#method.pop
+[`TcpSteam::peek`]: https://doc.rust-lang.org/std/net/struct.TcpStream.html#method.peek
+[`UdpSocket::peek`]: https://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.peek
+[`UdpSocket::peek_from`]: https://doc.rust-lang.org/std/net/struct.UdpSocket.html#method.peek_from
+[`Child::try_wait`]: https://doc.rust-lang.org/std/process/struct.Child.html#method.try_wait
+
+
 Version 1.17.0 (2017-04-27)
 ===========================
 
