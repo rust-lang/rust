@@ -291,7 +291,7 @@ impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, &a.def_id, &b.def_id)))
         } else {
-            let substs = relation.relate_item_substs(a.def_id, a.substs, b.substs)?;
+            let substs = relate_substs(relation, None, a.substs, b.substs)?;
             Ok(ty::TraitRef { def_id: a.def_id, substs: substs })
         }
     }
@@ -308,7 +308,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, &a.def_id, &b.def_id)))
         } else {
-            let substs = relation.relate_item_substs(a.def_id, a.substs, b.substs)?;
+            let substs = relate_substs(relation, None, a.substs, b.substs)?;
             Ok(ty::ExistentialTraitRef { def_id: a.def_id, substs: substs })
         }
     }
@@ -443,7 +443,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         (&ty::TyFnDef(a_def_id, a_substs), &ty::TyFnDef(b_def_id, b_substs))
             if a_def_id == b_def_id =>
         {
-            let substs = relate_substs(relation, None, a_substs, b_substs)?;
+            let substs = relation.relate_item_substs(a_def_id, a_substs, b_substs)?;
             Ok(tcx.mk_fn_def(a_def_id, substs))
         }
 

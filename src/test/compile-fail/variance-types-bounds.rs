@@ -36,35 +36,12 @@ struct TestIndirect2<A:'static, B:'static> { //~ ERROR [o, o]
     m: TestMut<B, A>
 }
 
-#[rustc_variance]
-trait Getter<A> { //~ ERROR [o, o]
+trait Getter<A> {
     fn get(&self) -> A;
 }
 
-#[rustc_variance]
-trait Setter<A> { //~ ERROR [o, o]
+trait Setter<A> {
     fn set(&mut self, a: A);
-}
-
-#[rustc_variance]
-trait GetterSetter<A> { //~ ERROR [o, o]
-    fn get(&self) -> A;
-    fn set(&mut self, a: A);
-}
-
-#[rustc_variance]
-trait GetterInTypeBound<A> { //~ ERROR [o, o]
-    // Here, the use of `A` in the method bound *does* affect
-    // variance.  Think of it as if the method requested a dictionary
-    // for `T:Getter<A>`.  Since this dictionary is an input, it is
-    // contravariant, and the Getter is covariant w/r/t A, yielding an
-    // overall contravariant result.
-    fn do_it<T:Getter<A>>(&self);
-}
-
-#[rustc_variance]
-trait SetterInTypeBound<A> { //~ ERROR [o, o]
-    fn do_it<T:Setter<A>>(&self);
 }
 
 #[rustc_variance]

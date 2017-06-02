@@ -524,7 +524,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
             ty: Some(self.encode_item_type(def_id)),
             inherent_impls: LazySeq::empty(),
-            variances: LazySeq::empty(),
+            variances: if variant.ctor_kind == CtorKind::Fn {
+                self.encode_variances_of(def_id)
+            } else {
+                LazySeq::empty()
+            },
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 
@@ -652,7 +656,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
             ty: Some(self.encode_item_type(def_id)),
             inherent_impls: LazySeq::empty(),
-            variances: LazySeq::empty(),
+            variances: if variant.ctor_kind == CtorKind::Fn {
+                self.encode_variances_of(def_id)
+            } else {
+                LazySeq::empty()
+            },
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 
@@ -744,7 +752,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 }
             },
             inherent_impls: LazySeq::empty(),
-            variances: LazySeq::empty(),
+            variances: if trait_item.kind == ty::AssociatedKind::Method {
+                self.encode_variances_of(def_id)
+            } else {
+                LazySeq::empty()
+            },
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 
@@ -821,7 +833,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
             ty: Some(self.encode_item_type(def_id)),
             inherent_impls: LazySeq::empty(),
-            variances: LazySeq::empty(),
+            variances: if impl_item.kind == ty::AssociatedKind::Method {
+                self.encode_variances_of(def_id)
+            } else {
+                LazySeq::empty()
+            },
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 
@@ -1055,7 +1071,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemEnum(..) |
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) |
-                hir::ItemTrait(..) => self.encode_variances_of(def_id),
+                hir::ItemFn(..) => self.encode_variances_of(def_id),
                 _ => LazySeq::empty(),
             },
             generics: match item.node {
@@ -1400,7 +1416,10 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
             ty: Some(self.encode_item_type(def_id)),
             inherent_impls: LazySeq::empty(),
-            variances: LazySeq::empty(),
+            variances: match nitem.node {
+                hir::ForeignItemFn(..) => self.encode_variances_of(def_id),
+                _ => LazySeq::empty(),
+            },
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 

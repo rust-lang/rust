@@ -14,11 +14,9 @@
 //! We walk the set of items and, for each member, generate new constraints.
 
 use hir::def_id::DefId;
-use middle::resolve_lifetime as rl;
 use rustc::dep_graph::{AssertDepGraphSafe, DepKind};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::hir::map as hir_map;
 use syntax::ast;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -61,10 +59,10 @@ pub struct Constraint<'a> {
 ///     }
 ///
 /// then while we are visiting `Bar<T>`, the `CurrentItem` would have
-/// the def-id and generics of `Foo`.
-pub struct CurrentItem<'a> {
+/// the def-id and the start of `Foo`'s inferreds.
+pub struct CurrentItem {
     def_id: DefId,
-    generics: &'a ty::Generics,
+    inferred_start: InferredIndex,
 }
 
 pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
@@ -91,8 +89,59 @@ pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
 
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
+        match item.node {
+            hir::ItemStruct(ref struct_def, _) |
+            hir::ItemUnion(ref struct_def, _) => {
+                self.visit_node_helper(item.id);
+
+                if let hir::VariantData::Tuple(..) = *struct_def {
+                    self.visit_node_helper(struct_def.id());
+                }
+            }
+
+            hir::ItemEnum(ref enum_def, _) => {
+                self.visit_node_helper(item.id);
+
+                for variant in &enum_def.variants {
+                    if let hir::VariantData::Tuple(..) = variant.node.data {
+                        self.visit_node_helper(variant.node.data.id());
+                    }
+                }
+            }
+
+            hir::ItemFn(..) => {
+                self.visit_node_helper(item.id);
+            }
+
+            hir::ItemForeignMod(ref foreign_mod) => {
+                for foreign_item in &foreign_mod.items {
+                    if let hir::ForeignItemFn(..) = foreign_item.node {
+                        self.visit_node_helper(foreign_item.id);
+                    }
+                }
+            }
+
+            _ => {}
+        }
+    }
+
+    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem) {
+        if let hir::TraitItemKind::Method(..) = trait_item.node {
+            self.visit_node_helper(trait_item.id);
+        }
+    }
+
+    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem) {
+        if let hir::ImplItemKind::Method(..) = impl_item.node {
+            self.visit_node_helper(impl_item.id);
+        }
+    }
+}
+
+impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
+    fn visit_node_helper(&mut self, id: ast::NodeId) {
         let tcx = self.terms_cx.tcx;
-        let def_id = tcx.hir.local_def_id(item.id);
+        let def_id = tcx.hir.local_def_id(id);
 
         // Encapsulate constructing the constraints into a task we can
         // reference later. This can go away once the red-green
@@ -100,20 +149,11 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
         //
         // See README.md for a detailed discussion
         // on dep-graph management.
-        match item.node {
-            hir::ItemEnum(..) |
-            hir::ItemStruct(..) |
-            hir::ItemUnion(..) => {
-                let dep_node = def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
-                tcx.dep_graph.with_task(dep_node,
-                                        AssertDepGraphSafe(self),
-                                        def_id,
-                                        visit_item_task);
-            }
-            _ => {
-                // Nothing to do here, skip the task.
-            }
-        }
+        let dep_node = def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
+        tcx.dep_graph.with_task(dep_node,
+                                AssertDepGraphSafe(self),
+                                def_id,
+                                visit_item_task);
 
         fn visit_item_task<'a, 'tcx>(ccx: AssertDepGraphSafe<&mut ConstraintContext<'a, 'tcx>>,
                                      def_id: DefId)
@@ -122,197 +162,57 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
-    }
-
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
-    }
-}
-
-/// Is `param_id` a lifetime according to `map`?
-fn is_lifetime(map: &hir_map::Map, param_id: ast::NodeId) -> bool {
-    match map.find(param_id) {
-        Some(hir_map::NodeLifetime(..)) => true,
-        _ => false,
-    }
-}
-
-impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.terms_cx.tcx
     }
 
     fn build_constraints_for_item(&mut self, def_id: DefId) {
         let tcx = self.tcx();
-        let id = self.tcx().hir.as_local_node_id(def_id).unwrap();
-        let item = tcx.hir.expect_item(id);
-        debug!("visit_item item={}", tcx.hir.node_to_string(item.id));
+        debug!("build_constraints_for_item({})", tcx.item_path_str(def_id));
 
-        match item.node {
-            hir::ItemEnum(..) |
-            hir::ItemStruct(..) |
-            hir::ItemUnion(..) => {
-                let generics = tcx.generics_of(def_id);
-                let current_item = &CurrentItem { def_id, generics };
+        // Skip items with no generics - there's nothing to infer in them.
+        if tcx.generics_of(def_id).count() == 0 {
+            return;
+        }
 
+        let id = tcx.hir.as_local_node_id(def_id).unwrap();
+        let inferred_start = self.terms_cx.inferred_starts[&id];
+        let current_item = &CurrentItem { def_id, inferred_start };
+        match tcx.type_of(def_id).sty {
+            ty::TyAdt(def, _) => {
                 // Not entirely obvious: constraints on structs/enums do not
                 // affect the variance of their type parameters. See discussion
                 // in comment at top of module.
                 //
                 // self.add_constraints_from_generics(generics);
 
-                for field in tcx.adt_def(def_id).all_fields() {
+                for field in def.all_fields() {
                     self.add_constraints_from_ty(current_item,
                                                  tcx.type_of(field.did),
                                                  self.covariant);
                 }
             }
 
-            hir::ItemTrait(..) |
-            hir::ItemExternCrate(_) |
-            hir::ItemUse(..) |
-            hir::ItemStatic(..) |
-            hir::ItemConst(..) |
-            hir::ItemFn(..) |
-            hir::ItemMod(..) |
-            hir::ItemForeignMod(..) |
-            hir::ItemGlobalAsm(..) |
-            hir::ItemTy(..) |
-            hir::ItemImpl(..) |
-            hir::ItemDefaultImpl(..) => {
-                span_bug!(item.span, "`build_constraints_for_item` invoked for non-type-def");
-            }
-        }
-    }
-
-    /// Load the generics for another item, adding a corresponding
-    /// relation into the dependencies to indicate that the variance
-    /// for `current` relies on `def_id`.
-    fn read_generics(&mut self, current: &CurrentItem, def_id: DefId) -> &'tcx ty::Generics {
-        let generics = self.tcx().generics_of(def_id);
-        if self.tcx().dep_graph.is_fully_enabled() {
-            self.dependencies.add(current.def_id, def_id);
-        }
-        generics
-    }
-
-    fn opt_inferred_index(&self, param_id: ast::NodeId) -> Option<&InferredIndex> {
-        self.terms_cx.inferred_map.get(&param_id)
-    }
-
-    fn find_binding_for_lifetime(&self, param_id: ast::NodeId) -> ast::NodeId {
-        let tcx = self.terms_cx.tcx;
-        assert!(is_lifetime(&tcx.hir, param_id));
-        match tcx.named_region_map.defs.get(&param_id) {
-            Some(&rl::Region::EarlyBound(_, lifetime_decl_id)) => lifetime_decl_id,
-            Some(_) => bug!("should not encounter non early-bound cases"),
-
-            // The lookup should only fail when `param_id` is
-            // itself a lifetime binding: use it as the decl_id.
-            None => param_id,
-        }
-
-    }
-
-    /// Is `param_id` a type parameter for which we infer variance?
-    fn is_to_be_inferred(&self, param_id: ast::NodeId) -> bool {
-        let result = self.terms_cx.inferred_map.contains_key(&param_id);
-
-        // To safe-guard against invalid inferred_map constructions,
-        // double-check if variance is inferred at some use of a type
-        // parameter (by inspecting parent of its binding declaration
-        // to see if it is introduced by a type or by a fn/impl).
-
-        let check_result = |this: &ConstraintContext| -> bool {
-            let tcx = this.terms_cx.tcx;
-            let decl_id = this.find_binding_for_lifetime(param_id);
-            // Currently only called on lifetimes; double-checking that.
-            assert!(is_lifetime(&tcx.hir, param_id));
-            let parent_id = tcx.hir.get_parent(decl_id);
-            let parent = tcx.hir
-                .find(parent_id)
-                .unwrap_or_else(|| bug!("tcx.hir missing entry for id: {}", parent_id));
-
-            let is_inferred;
-            macro_rules! cannot_happen { () => { {
-                bug!("invalid parent: {} for {}",
-                     tcx.hir.node_to_string(parent_id),
-                     tcx.hir.node_to_string(param_id));
-            } } }
-
-            match parent {
-                hir_map::NodeItem(p) => {
-                    match p.node {
-                        hir::ItemTy(..) |
-                        hir::ItemEnum(..) |
-                        hir::ItemStruct(..) |
-                        hir::ItemUnion(..) |
-                        hir::ItemTrait(..) => is_inferred = true,
-                        hir::ItemFn(..) => is_inferred = false,
-                        _ => cannot_happen!(),
-                    }
-                }
-                hir_map::NodeTraitItem(..) => is_inferred = false,
-                hir_map::NodeImplItem(..) => is_inferred = false,
-                _ => cannot_happen!(),
+            ty::TyFnDef(..) => {
+                self.add_constraints_from_sig(current_item,
+                                              tcx.fn_sig(def_id),
+                                              self.covariant);
             }
 
-            return is_inferred;
-        };
-
-        assert_eq!(result, check_result(self));
-
-        return result;
-    }
-
-    /// Returns a variance term representing the declared variance of the type/region parameter
-    /// with the given id.
-    fn declared_variance(&self,
-                         param_def_id: DefId,
-                         item_def_id: DefId,
-                         index: usize)
-                         -> VarianceTermPtr<'a> {
-        assert_eq!(param_def_id.krate, item_def_id.krate);
-
-        if let Some(param_node_id) = self.tcx().hir.as_local_node_id(param_def_id) {
-            // Parameter on an item defined within current crate:
-            // variance not yet inferred, so return a symbolic
-            // variance.
-            if let Some(&InferredIndex(index)) = self.opt_inferred_index(param_node_id) {
-                self.terms_cx.inferred_infos[index].term
-            } else {
-                // If there is no inferred entry for a type parameter,
-                // it must be declared on a (locally defiend) trait -- they don't
-                // get inferreds because they are always invariant.
-                if cfg!(debug_assertions) {
-                    let item_node_id = self.tcx().hir.as_local_node_id(item_def_id).unwrap();
-                    let item = self.tcx().hir.expect_item(item_node_id);
-                    let success = match item.node {
-                        hir::ItemTrait(..) => true,
-                        _ => false,
-                    };
-                    if !success {
-                        bug!("parameter {:?} has no inferred, but declared on non-trait: {:?}",
-                             item_def_id,
-                             item);
-                    }
-                }
-                self.invariant
+            _ => {
+                span_bug!(tcx.def_span(def_id),
+                          "`build_constraints_for_item` unsupported for this item");
             }
-        } else {
-            // Parameter on an item defined within another crate:
-            // variance already inferred, just look it up.
-            let variances = self.tcx().variances_of(item_def_id);
-            self.constant_term(variances[index])
         }
     }
 
     fn add_constraint(&mut self,
-                      InferredIndex(index): InferredIndex,
+                      current: &CurrentItem,
+                      index: u32,
                       variance: VarianceTermPtr<'a>) {
         debug!("add_constraint(index={}, variance={:?})", index, variance);
         self.constraints.push(Constraint {
-            inferred: InferredIndex(index),
+            inferred: InferredIndex(current.inferred_start.0 + index as usize),
             variance: variance,
         });
     }
@@ -354,15 +254,26 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         debug!("add_constraints_from_trait_ref: trait_ref={:?} variance={:?}",
                trait_ref,
                variance);
+        self.add_constraints_from_invariant_substs(current, trait_ref.substs, variance);
+    }
 
-        let trait_generics = self.tcx().generics_of(trait_ref.def_id);
+    fn add_constraints_from_invariant_substs(&mut self,
+                                             current: &CurrentItem,
+                                             substs: &Substs<'tcx>,
+                                             variance: VarianceTermPtr<'a>) {
+        debug!("add_constraints_from_invariant_substs: substs={:?} variance={:?}",
+               substs,
+               variance);
 
-        self.add_constraints_from_substs(current,
-                                         trait_ref.def_id,
-                                         &trait_generics.types,
-                                         &trait_generics.regions,
-                                         trait_ref.substs,
-                                         variance);
+        // Trait are always invariant so we can take advantage of that.
+        let variance_i = self.invariant(variance);
+        for ty in substs.types() {
+            self.add_constraints_from_ty(current, ty, variance_i);
+        }
+
+        for region in substs.regions() {
+            self.add_constraints_from_region(current, region, variance_i);
+        }
     }
 
     /// Adds constraints appropriate for an instance of `ty` appearing
@@ -383,8 +294,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::TyFnDef(..) |
-            ty::TyClosure(..) |
-            ty::TyAnon(..) => {
+            ty::TyClosure(..) => {
                 bug!("Unexpected closure type in variance computation");
             }
 
@@ -410,26 +320,15 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::TyAdt(def, substs) => {
-                let adt_generics = self.read_generics(current, def.did);
-
-                self.add_constraints_from_substs(current,
-                                                 def.did,
-                                                 &adt_generics.types,
-                                                 &adt_generics.regions,
-                                                 substs,
-                                                 variance);
+                self.add_constraints_from_substs(current, def.did, substs, variance);
             }
 
             ty::TyProjection(ref data) => {
-                let trait_ref = &data.trait_ref;
-                let trait_generics = self.tcx().generics_of(trait_ref.def_id);
+                self.add_constraints_from_trait_ref(current, data.trait_ref, variance);
+            }
 
-                self.add_constraints_from_substs(current,
-                                                 trait_ref.def_id,
-                                                 &trait_generics.types,
-                                                 &trait_generics.regions,
-                                                 trait_ref.substs,
-                                                 variance);
+            ty::TyAnon(_, substs) => {
+                self.add_constraints_from_invariant_substs(current, substs, variance);
             }
 
             ty::TyDynamic(ref data, r) => {
@@ -448,23 +347,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::TyParam(ref data) => {
-                assert_eq!(current.generics.parent, None);
-                let mut i = data.idx as usize;
-                if !current.generics.has_self || i > 0 {
-                    i -= current.generics.regions.len();
-                }
-                let def_id = current.generics.types[i].def_id;
-                let node_id = self.tcx().hir.as_local_node_id(def_id).unwrap();
-                match self.terms_cx.inferred_map.get(&node_id) {
-                    Some(&index) => {
-                        self.add_constraint(index, variance);
-                    }
-                    None => {
-                        // We do not infer variance for type parameters
-                        // declared on methods. They will not be present
-                        // in the inferred_map.
-                    }
-                }
+                self.add_constraint(current, data.idx, variance);
             }
 
             ty::TyFnPtr(sig) => {
@@ -489,8 +372,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn add_constraints_from_substs(&mut self,
                                    current: &CurrentItem,
                                    def_id: DefId,
-                                   type_param_defs: &[ty::TypeParameterDef],
-                                   region_param_defs: &[ty::RegionParameterDef],
                                    substs: &Substs<'tcx>,
                                    variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_substs(def_id={:?}, substs={:?}, variance={:?})",
@@ -498,21 +379,45 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                substs,
                variance);
 
-        for p in type_param_defs {
-            let variance_decl = self.declared_variance(p.def_id, def_id, p.index as usize);
+        // We don't record `inferred_starts` entries for empty generics.
+        if substs.is_empty() {
+            return;
+        }
+
+        // Add a corresponding relation into the dependencies to
+        // indicate that the variance for `current` relies on `def_id`.
+        if self.tcx().dep_graph.is_fully_enabled() {
+            self.dependencies.add(current.def_id, def_id);
+        }
+
+        let (local, remote) = if let Some(id) = self.tcx().hir.as_local_node_id(def_id) {
+            (Some(self.terms_cx.inferred_starts[&id]), None)
+        } else {
+            (None, Some(self.tcx().variances_of(def_id)))
+        };
+
+        for (i, k) in substs.iter().enumerate() {
+            let variance_decl = if let Some(InferredIndex(start)) = local {
+                // Parameter on an item defined within current crate:
+                // variance not yet inferred, so return a symbolic
+                // variance.
+                self.terms_cx.inferred_terms[start + i]
+            } else {
+                // Parameter on an item defined within another crate:
+                // variance already inferred, just look it up.
+                self.constant_term(remote.as_ref().unwrap()[i])
+            };
             let variance_i = self.xform(variance, variance_decl);
-            let substs_ty = substs.type_for_def(p);
             debug!("add_constraints_from_substs: variance_decl={:?} variance_i={:?}",
                    variance_decl,
                    variance_i);
-            self.add_constraints_from_ty(current, substs_ty, variance_i);
-        }
-
-        for p in region_param_defs {
-            let variance_decl = self.declared_variance(p.def_id, def_id, p.index as usize);
-            let variance_i = self.xform(variance, variance_decl);
-            let substs_r = substs.region_for_def(p);
-            self.add_constraints_from_region(current, substs_r, variance_i);
+            if let Some(ty) = k.as_type() {
+                self.add_constraints_from_ty(current, ty, variance_i);
+            } else if let Some(r) = k.as_region() {
+                self.add_constraints_from_region(current, r, variance_i);
+            } else {
+                bug!();
+            }
         }
     }
 
@@ -537,21 +442,14 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                    variance: VarianceTermPtr<'a>) {
         match *region {
             ty::ReEarlyBound(ref data) => {
-                assert_eq!(current.generics.parent, None);
-                let i = data.index as usize - current.generics.has_self as usize;
-                let def_id = current.generics.regions[i].def_id;
-                let node_id = self.tcx().hir.as_local_node_id(def_id).unwrap();
-                if self.is_to_be_inferred(node_id) {
-                    let &index = self.opt_inferred_index(node_id).unwrap();
-                    self.add_constraint(index, variance);
-                }
+                self.add_constraint(current, data.index, variance);
             }
 
             ty::ReStatic => {}
 
             ty::ReLateBound(..) => {
-                // We do not infer variance for region parameters on
-                // methods or in fn types.
+                // Late-bound regions do not get substituted the same
+                // way early-bound regions do, so we skip them here.
             }
 
             ty::ReFree(..) |
