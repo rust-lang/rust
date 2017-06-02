@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 use rustc::hir::def_id::DefId;
@@ -74,11 +74,12 @@ pub struct Frame<'tcx> {
     pub return_lvalue: Lvalue<'tcx>,
 
     /// The list of locals for this stack frame, stored in order as
-    /// `[arguments..., variables..., temporaries...]`. The locals are stored as `Value`s, which
+    /// `[arguments..., variables..., temporaries...]`. The locals are stored as `Option<Value>`s.
+    /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `PrimVal` or refer to some part of an `Allocation`.
     ///
-    /// Before being initialized, all locals are `Value::ByVal(PrimVal::Undef)`.
-    pub locals: Vec<Value>,
+    /// Before being initialized, arguments are `Value::ByVal(PrimVal::Undef)` and other locals are `None`.
+    pub locals: Vec<Option<Value>>,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -452,10 +453,35 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
 
+        /// Return the set of locals that have a storage annotation anywhere
+        fn collect_storage_annotations<'tcx>(mir: &'tcx mir::Mir<'tcx>) -> HashSet<mir::Local> {
+            use rustc::mir::StatementKind::*;
+
+            let mut set = HashSet::new();
+            for block in mir.basic_blocks() {
+                for stmt in block.statements.iter() {
+                    match stmt.kind {
+                        StorageLive(mir::Lvalue::Local(local)) | StorageDead(mir::Lvalue::Local(local)) => {
+                            set.insert(local);
+                        }
+                        _ => {}
+                    }
+                }
+            };
+            set
+        }
+
         // Subtract 1 because `local_decls` includes the ReturnPointer, but we don't store a local
         // `Value` for that.
+        let annotated_locals = collect_storage_annotations(mir);
         let num_locals = mir.local_decls.len() - 1;
-        let locals = vec![Value::ByVal(PrimVal::Undef); num_locals];
+        let mut locals = vec![None; num_locals];
+        for i in 0..num_locals {
+            let local = mir::Local::new(i+1);
+            if !annotated_locals.contains(&local) {
+                locals[i] = Some(Value::ByVal(PrimVal::Undef));
+            }
+        }
 
         self.stack.push(Frame {
             mir,
@@ -509,18 +535,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
         // deallocate all locals that are backed by an allocation
         for local in frame.locals {
-            if let Value::ByRef(ptr) = local {
-                trace!("deallocating local");
-                self.memory.dump_alloc(ptr.alloc_id);
-                match self.memory.deallocate(ptr) {
-                    // We could alternatively check whether the alloc_id is static before calling
-                    // deallocate, but this is much simpler and is probably the rare case.
-                    Ok(()) | Err(EvalError::DeallocatedStaticMemory) => {},
-                    other => return other,
-                }
-            }
+            self.deallocate_local(local)?;
         }
 
+        Ok(())
+    }
+
+    pub fn deallocate_local(&mut self, local: Option<Value>) -> EvalResult<'tcx> {
+        if let Some(Value::ByRef(ptr)) = local {
+            trace!("deallocating local");
+            self.memory.dump_alloc(ptr.alloc_id);
+            match self.memory.deallocate(ptr) {
+                // We could alternatively check whether the alloc_id is static before calling
+                // deallocate, but this is much simpler and is probably the rare case.
+                Ok(()) | Err(EvalError::DeallocatedStaticMemory) => {},
+                other => return other,
+            }
+        };
         Ok(())
     }
 
@@ -1047,16 +1078,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Lvalue::Local { frame, local, field } => {
                 // -1 since we don't store the return value
                 match self.stack[frame].locals[local.index() - 1] {
-                    Value::ByRef(ptr) => {
+                    None => return Err(EvalError::DeadLocal),
+                    Some(Value::ByRef(ptr)) => {
                         assert!(field.is_none());
                         Lvalue::from_ptr(ptr)
                     },
-                    val => {
+                    Some(val) => {
                         let ty = self.stack[frame].mir.local_decls[local].ty;
                         let ty = self.monomorphize(ty, self.stack[frame].instance.substs);
                         let substs = self.stack[frame].instance.substs;
                         let ptr = self.alloc_ptr_with_substs(ty, substs)?;
-                        self.stack[frame].locals[local.index() - 1] = Value::ByRef(ptr);
+                        self.stack[frame].locals[local.index() - 1] = Some(Value::ByRef(ptr)); // it stays live
                         self.write_value_to_ptr(val, ptr, ty)?;
                         let lval = Lvalue::from_ptr(ptr);
                         if let Some((field, field_ty)) = field {
@@ -1139,7 +1171,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     *this.globals.get_mut(&cid).expect("already checked") = Global {
                         value: val,
                         ..dest
-                    }
+                    };
+                    Ok(())
                 };
                 self.write_value_possibly_by_val(src_val, write_dest, dest.value, dest_ty)
             },
@@ -1150,7 +1183,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Lvalue::Local { frame, local, field } => {
-                let dest = self.stack[frame].get_local(local, field.map(|(i, _)| i));
+                let dest = self.stack[frame].get_local(local, field.map(|(i, _)| i))?;
                 self.write_value_possibly_by_val(
                     src_val,
                     |this, val| this.stack[frame].set_local(local, field.map(|(i, _)| i), val),
@@ -1162,7 +1195,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     // The cases here can be a bit subtle. Read carefully!
-    fn write_value_possibly_by_val<F: FnOnce(&mut Self, Value)>(
+    fn write_value_possibly_by_val<F: FnOnce(&mut Self, Value) -> EvalResult<'tcx>>(
         &mut self,
         src_val: Value,
         write_dest: F,
@@ -1192,17 +1225,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // source and write that into the destination without making an allocation, so
             // we do so here.
             if let Ok(Some(src_val)) = self.try_read_value(src_ptr, dest_ty) {
-                write_dest(self, src_val);
+                write_dest(self, src_val)?;
             } else {
                 let dest_ptr = self.alloc_ptr(dest_ty)?;
                 self.copy(src_ptr, dest_ptr, dest_ty)?;
-                write_dest(self, Value::ByRef(dest_ptr));
+                write_dest(self, Value::ByRef(dest_ptr))?;
             }
 
         } else {
             // Finally, we have the simple case where neither source nor destination are
             // `ByRef`. We may simply copy the source value over the the destintion.
-            write_dest(self, src_val);
+            write_dest(self, src_val)?;
         }
         Ok(())
     }
@@ -1572,14 +1605,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             write!(msg, ":").unwrap();
 
             match self.stack[frame].get_local(local, field.map(|(i, _)| i)) {
-                Value::ByRef(ptr) => {
+                Err(EvalError::DeadLocal) => {
+                    write!(msg, " is dead").unwrap();
+                }
+                Err(err) => {
+                    panic!("Failed to access local: {:?}", err);
+                }
+                Ok(Value::ByRef(ptr)) => {
                     allocs.push(ptr.alloc_id);
                 }
-                Value::ByVal(val) => {
+                Ok(Value::ByVal(val)) => {
                     write!(msg, " {:?}", val).unwrap();
                     if let PrimVal::Ptr(ptr) = val { allocs.push(ptr.alloc_id); }
                 }
-                Value::ByValPair(val1, val2) => {
+                Ok(Value::ByValPair(val1, val2)) => {
                     write!(msg, " ({:?}, {:?})", val1, val2).unwrap();
                     if let PrimVal::Ptr(ptr) = val1 { allocs.push(ptr.alloc_id); }
                     if let PrimVal::Ptr(ptr) = val2 { allocs.push(ptr.alloc_id); }
@@ -1614,9 +1653,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx>
         where F: FnOnce(&mut Self, Value) -> EvalResult<'tcx, Value>,
     {
-        let val = self.stack[frame].get_local(local, field);
+        let val = self.stack[frame].get_local(local, field)?;
         let new_val = f(self, val)?;
-        self.stack[frame].set_local(local, field, new_val);
+        self.stack[frame].set_local(local, field, new_val)?;
         // FIXME(solson): Run this when setting to Undef? (See previous version of this code.)
         // if let Value::ByRef(ptr) = self.stack[frame].get_local(local) {
         //     self.memory.deallocate(ptr)?;
@@ -1626,53 +1665,76 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 }
 
 impl<'tcx> Frame<'tcx> {
-    pub fn get_local(&self, local: mir::Local, field: Option<usize>) -> Value {
+    pub fn get_local(&self, local: mir::Local, field: Option<usize>) -> EvalResult<'tcx, Value> {
         // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
         if let Some(field) = field {
-            match self.locals[local.index() - 1] {
-                Value::ByRef(_) => bug!("can't have lvalue fields for ByRef"),
-                val @ Value::ByVal(_) => {
+            Ok(match self.locals[local.index() - 1] {
+                None => return Err(EvalError::DeadLocal),
+                Some(Value::ByRef(_)) => bug!("can't have lvalue fields for ByRef"),
+                Some(val @ Value::ByVal(_)) => {
                     assert_eq!(field, 0);
                     val
                 },
-                Value::ByValPair(a, b) => {
+                Some(Value::ByValPair(a, b)) => {
                     match field {
                         0 => Value::ByVal(a),
                         1 => Value::ByVal(b),
                         _ => bug!("ByValPair has only two fields, tried to access {}", field),
                     }
                 },
-            }
+            })
         } else {
-            self.locals[local.index() - 1]
+            self.locals[local.index() - 1].ok_or(EvalError::DeadLocal)
         }
     }
 
-    fn set_local(&mut self, local: mir::Local, field: Option<usize>, value: Value) {
+    fn set_local(&mut self, local: mir::Local, field: Option<usize>, value: Value) -> EvalResult<'tcx> {
         // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
         if let Some(field) = field {
             match self.locals[local.index() - 1] {
-                Value::ByRef(_) => bug!("can't have lvalue fields for ByRef"),
-                Value::ByVal(_) => {
+                None => return Err(EvalError::DeadLocal),
+                Some(Value::ByRef(_)) => bug!("can't have lvalue fields for ByRef"),
+                Some(Value::ByVal(_)) => {
                     assert_eq!(field, 0);
-                    self.set_local(local, None, value);
+                    self.set_local(local, None, value)?;
                 },
-                Value::ByValPair(a, b) => {
+                Some(Value::ByValPair(a, b)) => {
                     let prim = match value {
                         Value::ByRef(_) => bug!("can't set ValPair field to ByRef"),
                         Value::ByVal(val) => val,
                         Value::ByValPair(_, _) => bug!("can't set ValPair field to ValPair"),
                     };
                     match field {
-                        0 => self.set_local(local, None, Value::ByValPair(prim, b)),
-                        1 => self.set_local(local, None, Value::ByValPair(a, prim)),
+                        0 => self.set_local(local, None, Value::ByValPair(prim, b))?,
+                        1 => self.set_local(local, None, Value::ByValPair(a, prim))?,
                         _ => bug!("ByValPair has only two fields, tried to access {}", field),
                     }
                 },
             }
         } else {
-            self.locals[local.index() - 1] = value;
+            match self.locals[local.index() - 1] {
+                None => return Err(EvalError::DeadLocal),
+                Some(ref mut local) => { *local = value; }
+            }
         }
+        return Ok(());
+    }
+
+    pub fn storage_live(&mut self, local: mir::Local) -> EvalResult<'tcx, Option<Value>> {
+        trace!("{:?} is now live", local);
+
+        let old = self.locals[local.index() - 1];
+        self.locals[local.index() - 1] = Some(Value::ByVal(PrimVal::Undef)); // StorageLive *always* kills the value that's currently stored
+        return Ok(old);
+    }
+
+    /// Returns the old value of the local
+    pub fn storage_dead(&mut self, local: mir::Local) -> EvalResult<'tcx, Option<Value>> {
+        trace!("{:?} is now dead", local);
+
+        let old = self.locals[local.index() - 1];
+        self.locals[local.index() - 1] = None;
+        return Ok(old);
     }
 }
 

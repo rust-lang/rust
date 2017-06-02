@@ -130,7 +130,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(Value::ByRef(ptr))
             }
             Lvalue::Local { frame, local, field } => {
-                Ok(self.stack[frame].get_local(local, field.map(|(i, _)| i)))
+                self.stack[frame].get_local(local, field.map(|(i, _)| i))
             }
             Lvalue::Global(cid) => {
                 Ok(self.globals.get(&cid).expect("global not cached").value)
@@ -226,7 +226,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         let (base_ptr, base_extra) = match base {
             Lvalue::Ptr { ptr, extra } => (ptr, extra),
-            Lvalue::Local { frame, local, field } => match self.stack[frame].get_local(local, field.map(|(i, _)| i)) {
+            Lvalue::Local { frame, local, field } => match self.stack[frame].get_local(local, field.map(|(i, _)| i))? {
                 Value::ByRef(ptr) => {
                     assert!(field.is_none(), "local can't be ByRef and have a field offset");
                     (ptr, LvalueExtra::None)
