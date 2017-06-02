@@ -1720,15 +1720,12 @@ impl<'tcx> Frame<'tcx> {
         return Ok(());
     }
 
-    pub fn storage_live(&mut self, local: mir::Local) -> EvalResult<'tcx> {
+    pub fn storage_live(&mut self, local: mir::Local) -> EvalResult<'tcx, Option<Value>> {
         trace!("{:?} is now live", local);
-        if self.locals[local.index() - 1].is_some() {
-            // The variables comes live now, but was already accessed previously, when it was still dead
-            return Err(EvalError::DeadLocal);
-        } else {
-            self.locals[local.index() - 1] = Some(Value::ByVal(PrimVal::Undef));
-        }
-        return Ok(());
+
+        let old = self.locals[local.index() - 1];
+        self.locals[local.index() - 1] = Some(Value::ByVal(PrimVal::Undef)); // StorageLive *always* kills the value that's currently stored
+        return Ok(old);
     }
 
     /// Returns the old value of the local

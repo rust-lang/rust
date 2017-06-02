@@ -132,13 +132,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Lvalue::Local{ frame, local, field: None } if self.stack.len() == frame+1 => (frame, local),
                     _ => return Err(EvalError::Unimplemented("Stroage annotations must refer to locals of the topmost stack frame.".to_owned())) // FIXME maybe this should get its own error type
                 };
-                match stmt.kind {
+                let old_val = match stmt.kind {
                     StorageLive(_) => self.stack[frame].storage_live(local)?,
-                    _ =>  {
-                        let old_val = self.stack[frame].storage_dead(local)?;
-                        self.deallocate_local(old_val)?;
-                    }
+                    StorageDead(_) =>  self.stack[frame].storage_dead(local)?,
+                    _ => bug!("We already checked that we are a storage stmt")
                 };
+                self.deallocate_local(old_val)?;
             }
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
