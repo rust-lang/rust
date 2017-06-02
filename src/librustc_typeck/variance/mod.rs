@@ -12,7 +12,7 @@
 //! parameters. See README.md for details.
 
 use arena;
-use rustc::dep_graph::DepNode;
+use rustc::dep_graph::DepKind;
 use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::ty::{self, CrateVariancesMap, TyCtxt};
@@ -72,12 +72,15 @@ fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
             // Lacking red/green, we read the variances for all items here
             // but ignore the dependencies, then re-synthesize the ones we need.
             let crate_map = tcx.dep_graph.with_ignore(|| tcx.crate_variances(LOCAL_CRATE));
-            tcx.dep_graph.read(DepNode::ItemVarianceConstraints(item_def_id));
+            let dep_node = item_def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
+            tcx.dep_graph.read(dep_node);
             for &dep_def_id in crate_map.dependencies.less_than(&item_def_id) {
                 if dep_def_id.is_local() {
-                    tcx.dep_graph.read(DepNode::ItemVarianceConstraints(dep_def_id));
+                    let dep_node = dep_def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
+                    tcx.dep_graph.read(dep_node);
                 } else {
-                    tcx.dep_graph.read(DepNode::ItemVariances(dep_def_id));
+                    let dep_node = dep_def_id.to_dep_node(tcx, DepKind::ItemVariances);
+                    tcx.dep_graph.read(dep_node);
                 }
             }
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::dep_graph::DepNode;
+use rustc::dep_graph::{DepNode, DepKind};
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::svh::Svh;
 use rustc::ich::Fingerprint;
@@ -45,31 +45,29 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
     }
 
-    pub fn is_hashable(dep_node: &DepNode<DefId>) -> bool {
-        match *dep_node {
-            DepNode::Krate |
-            DepNode::Hir(_) |
-            DepNode::HirBody(_) =>
+    pub fn is_hashable(tcx: TyCtxt, dep_node: &DepNode) -> bool {
+        match dep_node.kind {
+            DepKind::Krate |
+            DepKind::Hir |
+            DepKind::HirBody =>
                 true,
-            DepNode::MetaData(def_id) => !def_id.is_local(),
+            DepKind::MetaData => {
+                let def_id = dep_node.extract_def_id(tcx).unwrap();
+                !def_id.is_local()
+            }
             _ => false,
         }
     }
 
-    pub fn hash(&mut self, dep_node: &DepNode<DefId>) -> Option<Fingerprint> {
-        match *dep_node {
-            DepNode::Krate => {
+    pub fn hash(&mut self, dep_node: &DepNode) -> Option<Fingerprint> {
+        match dep_node.kind {
+            DepKind::Krate => {
                 Some(self.incremental_hashes_map[dep_node])
             }
 
             // HIR nodes (which always come from our crate) are an input:
-            DepNode::Hir(def_id) |
-            DepNode::HirBody(def_id) => {
-                assert!(def_id.is_local(),
-                        "cannot hash HIR for non-local def-id {:?} => {:?}",
-                        def_id,
-                        self.tcx.item_path_str(def_id));
-
+            DepKind::Hir |
+            DepKind::HirBody => {
                 Some(self.incremental_hashes_map[dep_node])
             }
 
@@ -77,10 +75,15 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             // MetaData nodes from *our* crates are an *output*; we
             // don't hash them, but we do compute a hash for them and
             // save it for others to use.
-            DepNode::MetaData(def_id) if !def_id.is_local() => {
-                Some(self.metadata_hash(def_id,
+            DepKind::MetaData => {
+                let def_id = dep_node.extract_def_id(self.tcx).unwrap();
+                if !def_id.is_local() {
+                    Some(self.metadata_hash(def_id,
                                         def_id.krate,
                                         |this| &mut this.metadata_hashes))
+                } else {
+                    None
+                }
             }
 
             _ => {

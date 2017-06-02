@@ -167,8 +167,8 @@ impl<'tcx> CodegenUnit<'tcx> {
         WorkProductId::from_cgu_name(self.name())
     }
 
-    pub fn work_product_dep_node(&self) -> DepNode<DefId> {
-        DepNode::WorkProduct(self.work_product_id())
+    pub fn work_product_dep_node(&self) -> DepNode {
+        self.work_product_id().to_dep_node()
     }
 
     pub fn compute_symbol_name_hash<'a>(&self,

@@ -13,7 +13,7 @@
 use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
 use schema::*;
 
-use rustc::dep_graph::{DepGraph, DepNode};
+use rustc::dep_graph::{DepGraph, DepNode, DepKind};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::hir::map::definitions::GlobalMetaDataKind;
 use rustc::hir;
@@ -876,7 +876,8 @@ impl<'a, 'tcx> CrateMetadata {
             return Rc::new([]);
         }
 
-        dep_graph.read(DepNode::MetaData(self.local_def_id(node_id)));
+        let dep_node = self.def_path_hash(node_id).to_dep_node(DepKind::MetaData);
+        dep_graph.read(dep_node);
 
         if let Some(&Some(ref val)) =
             self.attribute_cache.borrow()[node_as].get(node_index) {
@@ -1194,8 +1195,9 @@ impl<'a, 'tcx> CrateMetadata {
         self.codemap_import_info.borrow()
     }
 
-    pub fn metadata_dep_node(&self, kind: GlobalMetaDataKind) -> DepNode<DefId> {
+    pub fn metadata_dep_node(&self, kind: GlobalMetaDataKind) -> DepNode {
         let def_index = kind.def_index(&self.def_path_table);
-        DepNode::MetaData(self.local_def_id(def_index))
+        let def_path_hash = self.def_path_table.def_path_hash(def_index);
+        def_path_hash.to_dep_node(DepKind::MetaData)
     }
 }

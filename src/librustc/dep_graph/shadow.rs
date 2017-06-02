@@ -26,7 +26,6 @@
 //! specify an edge filter to be applied to each edge as it is
 //! created.  See `./README.md` for details.
 
-use hir::def_id::DefId;
 use std::cell::RefCell;
 use std::env;
 
@@ -36,7 +35,7 @@ use super::debug::EdgeFilter;
 
 pub struct ShadowGraph {
     // if you push None onto the stack, that corresponds to an Ignore
-    stack: RefCell<Vec<Option<DepNode<DefId>>>>,
+    stack: RefCell<Vec<Option<DepNode>>>,
     forbidden_edge: Option<EdgeFilter>,
 }
 
@@ -114,8 +113,8 @@ impl ShadowGraph {
     }
 
     fn check_edge(&self,
-                  source: Option<Option<&DepNode<DefId>>>,
-                  target: Option<Option<&DepNode<DefId>>>) {
+                  source: Option<Option<&DepNode>>,
+                  target: Option<Option<&DepNode>>) {
         assert!(ENABLED);
         match (source, target) {
             // cannot happen, one side is always Some(Some(_))
@@ -141,9 +140,9 @@ impl ShadowGraph {
 
 // Do a little juggling: we get back a reference to an option at the
 // top of the stack, convert it to an optional reference.
-fn top<'s>(stack: &'s Vec<Option<DepNode<DefId>>>) -> Option<Option<&'s DepNode<DefId>>> {
+fn top<'s>(stack: &'s Vec<Option<DepNode>>) -> Option<Option<&'s DepNode>> {
     stack.last()
-        .map(|n: &'s Option<DepNode<DefId>>| -> Option<&'s DepNode<DefId>> {
+        .map(|n: &'s Option<DepNode>| -> Option<&'s DepNode> {
             // (*)
             // (*) type annotation just there to clarify what would
             // otherwise be some *really* obscure code

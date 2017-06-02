@@ -22,7 +22,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedDepGraph {
     /// The set of all DepNodes in the graph
-    pub nodes: IndexVec<DepNodeIndex, DepNode<DefPathHash>>,
+    pub nodes: IndexVec<DepNodeIndex, DepNode>,
     /// For each DepNode, stores the list of edges originating from that
     /// DepNode. Encoded as a [start, end) pair indexing into edge_list_data,
     /// which holds the actual DepNodeIndices of the target nodes.
@@ -34,7 +34,7 @@ pub struct SerializedDepGraph {
     /// These are output nodes that have no incoming edges. We track
     /// these separately so that when we reload all edges, we don't
     /// lose track of these nodes.
-    pub bootstrap_outputs: Vec<DepNode<DefPathHash>>,
+    pub bootstrap_outputs: Vec<DepNode>,
 
     /// These are hashes of two things:
     /// - the HIR nodes in this crate
@@ -87,7 +87,7 @@ impl Idx for DepNodeIndex {
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedHash {
     /// def-id of thing being hashed
-    pub dep_node: DepNode<DefPathHash>,
+    pub dep_node: DepNode,
 
     /// the hash as of previous compilation, computed by code in
     /// `hash` module

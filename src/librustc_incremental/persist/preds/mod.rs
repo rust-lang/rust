@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::dep_graph::{DepGraphQuery, DepNode};
-use rustc::hir::def_id::DefId;
+use rustc::dep_graph::{DepGraphQuery, DepNode, DepKind};
 use rustc::ich::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::{Graph, NodeIndex};
@@ -26,7 +25,7 @@ pub struct Predecessors<'query> {
     // nodes) and all of the "work-products" we may care about
     // later. Other nodes may be retained if it keeps the overall size
     // of the graph down.
-    pub reduced_graph: Graph<&'query DepNode<DefId>, ()>,
+    pub reduced_graph: Graph<&'query DepNode, ()>,
 
     // These are output nodes that have no incoming edges. We have to
     // track these specially because, when we load the data back up
@@ -34,32 +33,32 @@ pub struct Predecessors<'query> {
     // to recreate the nodes where all incoming edges are clean; but
     // since we ordinarily just serialize edges, we wind up just
     // forgetting that bootstrap outputs even exist in that case.)
-    pub bootstrap_outputs: Vec<&'query DepNode<DefId>>,
+    pub bootstrap_outputs: Vec<&'query DepNode>,
 
     // For the inputs (hir/foreign-metadata), we include hashes.
-    pub hashes: FxHashMap<&'query DepNode<DefId>, Fingerprint>,
+    pub hashes: FxHashMap<&'query DepNode, Fingerprint>,
 }
 
 impl<'q> Predecessors<'q> {
-    pub fn new(query: &'q DepGraphQuery<DefId>, hcx: &mut HashContext) -> Self {
+    pub fn new(query: &'q DepGraphQuery, hcx: &mut HashContext) -> Self {
         let tcx = hcx.tcx;
 
         // Find the set of "start nodes". These are nodes that we will
         // possibly query later.
-        let is_output = |node: &DepNode<DefId>| -> bool {
-            match *node {
-                DepNode::WorkProduct(_) => true,
-                DepNode::MetaData(ref def_id) => {
+        let is_output = |node: &DepNode| -> bool {
+            match node.kind {
+                DepKind::WorkProduct => true,
+                DepKind::MetaData => {
                     // We do *not* create dep-nodes for the current crate's
                     // metadata anymore, just for metadata that we import/read
                     // from other crates.
-                    debug_assert!(!def_id.is_local());
+                    debug_assert!(!node.extract_def_id(tcx).unwrap().is_local());
                     false
                 }
                 // if -Z query-dep-graph is passed, save more extended data
                 // to enable better unit testing
-                DepNode::TypeckTables(_) |
-                DepNode::TransCrateItem(_) => tcx.sess.opts.debugging_opts.query_dep_graph,
+                DepKind::TypeckTables |
+                DepKind::TransCrateItem => tcx.sess.opts.debugging_opts.query_dep_graph,
 
                 _ => false,
             }
@@ -67,7 +66,9 @@ impl<'q> Predecessors<'q> {
 
         // Reduce the graph to the most important nodes.
         let compress::Reduction { graph, input_nodes } =
-            compress::reduce_graph(&query.graph, HashContext::is_hashable, |n| is_output(n));
+            compress::reduce_graph(&query.graph,
+                                   |n| HashContext::is_hashable(tcx, n),
+                                   |n| is_output(n));
 
         let mut hashes = FxHashMap();
         for input_index in input_nodes {
@@ -81,8 +82,8 @@ impl<'q> Predecessors<'q> {
             // Not all inputs might have been reachable from an output node,
             // but we still want their hash for our unit tests.
             let hir_nodes = query.graph.all_nodes().iter().filter_map(|node| {
-                match node.data {
-                    DepNode::Hir(_) => Some(&node.data),
+                match node.data.kind {
+                    DepKind::Hir => Some(&node.data),
                     _ => None,
                 }
             });
@@ -93,7 +94,7 @@ impl<'q> Predecessors<'q> {
             }
         }
 
-        let bootstrap_outputs: Vec<&'q DepNode<DefId>> =
+        let bootstrap_outputs: Vec<&'q DepNode> =
             (0 .. graph.len_nodes())
             .map(NodeIndex)
             .filter(|&n| graph.incoming_edges(n).next().is_none())

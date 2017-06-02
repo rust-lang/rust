@@ -183,7 +183,9 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
 
         assert!(!infcx.is_in_snapshot());
 
-        if infcx.tcx.fulfilled_predicates.borrow().check_duplicate(&obligation.predicate) {
+        let tcx = infcx.tcx;
+
+        if tcx.fulfilled_predicates.borrow().check_duplicate(tcx, &obligation.predicate) {
             debug!("register_predicate_obligation: duplicate");
             return
         }
@@ -373,7 +375,8 @@ fn process_predicate<'a, 'gcx, 'tcx>(
 
     match obligation.predicate {
         ty::Predicate::Trait(ref data) => {
-            if selcx.tcx().fulfilled_predicates.borrow().check_duplicate_trait(data) {
+            let tcx = selcx.tcx();
+            if tcx.fulfilled_predicates.borrow().check_duplicate_trait(tcx, data) {
                 return Ok(Some(vec![]));
             }
 
@@ -607,22 +610,22 @@ impl<'a, 'gcx, 'tcx> GlobalFulfilledPredicates<'gcx> {
         }
     }
 
-    pub fn check_duplicate(&self, key: &ty::Predicate<'tcx>) -> bool {
+    pub fn check_duplicate(&self, tcx: TyCtxt, key: &ty::Predicate<'tcx>) -> bool {
         if let ty::Predicate::Trait(ref data) = *key {
-            self.check_duplicate_trait(data)
+            self.check_duplicate_trait(tcx, data)
         } else {
             false
         }
     }
 
-    pub fn check_duplicate_trait(&self, data: &ty::PolyTraitPredicate<'tcx>) -> bool {
+    pub fn check_duplicate_trait(&self, tcx: TyCtxt, data: &ty::PolyTraitPredicate<'tcx>) -> bool {
         // For the global predicate registry, when we find a match, it
         // may have been computed by some other task, so we want to
         // add a read from the node corresponding to the predicate
         // processing to make sure we get the transitive dependencies.
         if self.set.contains(data) {
             debug_assert!(data.is_global());
-            self.dep_graph.read(data.dep_node());
+            self.dep_graph.read(data.dep_node(tcx));
             debug!("check_duplicate: global predicate `{:?}` already proved elsewhere", data);
 
             true

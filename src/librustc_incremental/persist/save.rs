@@ -11,7 +11,6 @@
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
 use rustc::hir::svh::Svh;
-use rustc::hir::map::DefPathHash;
 use rustc::ich::Fingerprint;
 use rustc::middle::cstore::EncodedMetadataHashes;
 use rustc::session::Session;
@@ -174,16 +173,12 @@ pub fn encode_dep_graph(tcx: TyCtxt,
     // First encode the commandline arguments hash
     tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
 
-    let to_hash_based_node = |dep_node: &DepNode<DefId>| {
-        dep_node.map_def(|&def_id| Some(tcx.def_path_hash(def_id))).unwrap()
-    };
-
     // NB: We rely on this Vec being indexable by reduced_graph's NodeIndex.
-    let nodes: IndexVec<DepNodeIndex, DepNode<DefPathHash>> = preds
+    let nodes: IndexVec<DepNodeIndex, DepNode> = preds
         .reduced_graph
         .all_nodes()
         .iter()
-        .map(|node| to_hash_based_node(node.data))
+        .map(|node| node.data.clone())
         .collect();
 
     let mut edge_list_indices = Vec::with_capacity(nodes.len());
@@ -206,18 +201,17 @@ pub fn encode_dep_graph(tcx: TyCtxt,
     // Check that we have a consistent number of edges.
     assert_eq!(edge_list_data.len(), preds.reduced_graph.len_edges());
 
-    let bootstrap_outputs = preds
-        .bootstrap_outputs
-        .iter()
-        .map(|n| to_hash_based_node(n))
-        .collect();
+    let bootstrap_outputs = preds.bootstrap_outputs
+                                 .iter()
+                                 .map(|dep_node| (**dep_node).clone())
+                                 .collect();
 
     let hashes = preds
         .hashes
         .iter()
         .map(|(&dep_node, &hash)| {
             SerializedHash {
-                dep_node: to_hash_based_node(dep_node),
+                dep_node: dep_node.clone(),
                 hash: hash,
             }
         })

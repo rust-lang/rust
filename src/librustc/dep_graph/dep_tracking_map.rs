@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashMap;
 use std::cell::RefCell;
-use std::ops::Index;
 use std::hash::Hash;
 use std::marker::PhantomData;
+use ty::TyCtxt;
 use util::common::MemoizationMap;
 
 use super::{DepNode, DepGraph};
@@ -30,7 +29,7 @@ pub struct DepTrackingMap<M: DepTrackingMapConfig> {
 pub trait DepTrackingMapConfig {
     type Key: Eq + Hash + Clone;
     type Value: Clone;
-    fn to_dep_node(key: &Self::Key) -> DepNode<DefId>;
+    fn to_dep_node(tcx: TyCtxt, key: &Self::Key) -> DepNode;
 }
 
 impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
@@ -44,18 +43,18 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
 
     /// Registers a (synthetic) read from the key `k`. Usually this
     /// is invoked automatically by `get`.
-    fn read(&self, k: &M::Key) {
-        let dep_node = M::to_dep_node(k);
+    fn read(&self, tcx: TyCtxt, k: &M::Key) {
+        let dep_node = M::to_dep_node(tcx, k);
         self.graph.read(dep_node);
     }
 
-    pub fn get(&self, k: &M::Key) -> Option<&M::Value> {
-        self.read(k);
+    pub fn get(&self, tcx: TyCtxt, k: &M::Key) -> Option<&M::Value> {
+        self.read(tcx, k);
         self.map.get(k)
     }
 
-    pub fn contains_key(&self, k: &M::Key) -> bool {
-        self.read(k);
+    pub fn contains_key(&self, tcx: TyCtxt, k: &M::Key) -> bool {
+        self.read(tcx, k);
         self.map.contains_key(k)
     }
 
@@ -99,32 +98,22 @@ impl<M: DepTrackingMapConfig> MemoizationMap for RefCell<DepTrackingMap<M>> {
     /// The key is the line marked `(*)`: the closure implicitly
     /// accesses the body of the item `item`, so we register a read
     /// from `Hir(item_def_id)`.
-    fn memoize<OP>(&self, key: M::Key, op: OP) -> M::Value
+    fn memoize<OP>(&self, tcx: TyCtxt, key: M::Key, op: OP) -> M::Value
         where OP: FnOnce() -> M::Value
     {
         let graph;
         {
             let this = self.borrow();
             if let Some(result) = this.map.get(&key) {
-                this.read(&key);
+                this.read(tcx, &key);
                 return result.clone();
             }
             graph = this.graph.clone();
         }
 
-        let _task = graph.in_task(M::to_dep_node(&key));
+        let _task = graph.in_task(M::to_dep_node(tcx, &key));
         let result = op();
         self.borrow_mut().map.insert(key, result.clone());
         result
     }
 }
-
-impl<'k, M: DepTrackingMapConfig> Index<&'k M::Key> for DepTrackingMap<M> {
-    type Output = M::Value;
-
-    #[inline]
-    fn index(&self, k: &'k M::Key) -> &M::Value {
-        self.get(k).unwrap()
-    }
-}
-

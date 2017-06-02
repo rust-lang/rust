@@ -255,6 +255,13 @@ impl CStore {
     pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> {
         self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
     }
+
+    pub fn read_dep_node(&self, def_id: DefId) {
+        use rustc::middle::cstore::CrateStore;
+        let def_path_hash = self.def_path_hash(def_id);
+        let dep_node = def_path_hash.to_dep_node(::rustc::dep_graph::DepKind::MetaData);
+        self.dep_graph.read(dep_node);
+    }
 }
 
 impl CrateMetadata {

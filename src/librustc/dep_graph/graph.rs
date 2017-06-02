@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashMap;
 use session::config::OutputType;
 use std::cell::{Ref, RefCell};
@@ -57,7 +56,7 @@ impl DepGraph {
         self.data.thread.is_fully_enabled()
     }
 
-    pub fn query(&self) -> DepGraphQuery<DefId> {
+    pub fn query(&self) -> DepGraphQuery {
         self.data.thread.query()
     }
 
@@ -65,7 +64,7 @@ impl DepGraph {
         raii::IgnoreTask::new(&self.data.thread)
     }
 
-    pub fn in_task<'graph>(&'graph self, key: DepNode<DefId>) -> Option<raii::DepTask<'graph>> {
+    pub fn in_task<'graph>(&'graph self, key: DepNode) -> Option<raii::DepTask<'graph>> {
         raii::DepTask::new(&self.data.thread, key)
     }
 
@@ -103,14 +102,14 @@ impl DepGraph {
     ///   `arg` parameter.
     ///
     /// [README]: README.md
-    pub fn with_task<C, A, R>(&self, key: DepNode<DefId>, cx: C, arg: A, task: fn(C, A) -> R) -> R
+    pub fn with_task<C, A, R>(&self, key: DepNode, cx: C, arg: A, task: fn(C, A) -> R) -> R
         where C: DepGraphSafe, A: DepGraphSafe
     {
         let _task = self.in_task(key);
         task(cx, arg)
     }
 
-    pub fn read(&self, v: DepNode<DefId>) {
+    pub fn read(&self, v: DepNode) {
         if self.data.thread.is_enqueue_enabled() {
             self.data.thread.enqueue(DepMessage::Read(v));
         }
