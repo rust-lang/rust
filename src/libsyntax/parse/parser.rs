@@ -5985,6 +5985,10 @@ impl<'a> Parser<'a> {
             return Ok(Some(self.parse_item_foreign_fn(visibility, lo, attrs)?));
         }
 
+        if self.check_keyword(keywords::Const) {
+            return Err(self.span_fatal(self.span, "extern items cannot be `const`"));
+        }
+
         // FIXME #5668: this will occur for a macro invocation:
         match self.parse_macro_use_or_failure(attrs, true, false, lo, visibility)? {
             Some(item) => {

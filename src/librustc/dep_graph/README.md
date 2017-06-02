@@ -254,7 +254,7 @@ and `...` are whatever edges the `/* compute value */` closure creates.
 In particular, using the memoize helper is much better than writing
 the obvious code yourself:
 
-```
+```rust
 if let Some(result) = map.get(key) {
     return result;
 }
