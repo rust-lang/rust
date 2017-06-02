@@ -29,8 +29,8 @@ pub struct CachingCodemapView<'tcx> {
     time_stamp: usize,
 }
 
-impl<'tcx> CachingCodemapView<'tcx> {
-    pub fn new<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CachingCodemapView<'tcx> {
+impl<'gcx> CachingCodemapView<'gcx> {
+    pub fn new<'a, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> CachingCodemapView<'gcx> {
         let codemap = tcx.sess.codemap();
         let files = codemap.files();
         let first_file = files[0].clone();

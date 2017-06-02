@@ -33,9 +33,9 @@ use rustc_data_structures::accumulate_vec::AccumulateVec;
 /// enough information to transform DefIds and HirIds into stable DefPaths (i.e.
 /// a reference to the TyCtxt) and it holds a few caches for speeding up various
 /// things (e.g. each DefId/DefPath is only hashed once).
-pub struct StableHashingContext<'a, 'tcx: 'a> {
-    tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-    codemap: CachingCodemapView<'tcx>,
+pub struct StableHashingContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    tcx: ty::TyCtxt<'a, 'gcx, 'tcx>,
+    codemap: CachingCodemapView<'gcx>,
     hash_spans: bool,
     hash_bodies: bool,
     overflow_checks_enabled: bool,
@@ -51,9 +51,9 @@ pub enum NodeIdHashingMode {
     HashTraitsInScope,
 }
 
-impl<'a, 'tcx: 'a> StableHashingContext<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
 
-    pub fn new(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>) -> Self {
+    pub fn new(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>) -> Self {
         let hash_spans_initial = tcx.sess.opts.debuginfo != NoDebugInfo;
         let check_overflow_initial = tcx.sess.overflow_checks();
 
@@ -111,7 +111,7 @@ impl<'a, 'tcx: 'a> StableHashingContext<'a, 'tcx> {
     }
 
     #[inline]
-    pub fn tcx(&self) -> ty::TyCtxt<'a, 'tcx, 'tcx> {
+    pub fn tcx(&self) -> ty::TyCtxt<'a, 'gcx, 'tcx> {
         self.tcx
     }
 
@@ -131,7 +131,7 @@ impl<'a, 'tcx: 'a> StableHashingContext<'a, 'tcx> {
     }
 
     #[inline]
-    pub fn codemap(&mut self) -> &mut CachingCodemapView<'tcx> {
+    pub fn codemap(&mut self) -> &mut CachingCodemapView<'gcx> {
         &mut self.codemap
     }
 
@@ -195,9 +195,9 @@ impl<'a, 'tcx: 'a> StableHashingContext<'a, 'tcx> {
 }
 
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ast::NodeId {
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ast::NodeId {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         match hcx.node_id_hashing_mode {
             NodeIdHashingMode::Ignore => {
@@ -230,7 +230,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ast::NodeId {
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for Span {
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Span {
 
     // Hash a span in a stable way. We can't directly hash the span's BytePos
     // fields (that would be similar to hashing pointers, since those are just
@@ -242,7 +242,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for Span {
     // Also, hashing filenames is expensive so we avoid doing it twice when the
     // span starts and ends in the same file, which is almost always the case.
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         use syntax_pos::Pos;
 
@@ -305,15 +305,16 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for Span {
     }
 }
 
-pub fn hash_stable_hashmap<'a, 'tcx, K, V, R, SK, F, W>(hcx: &mut StableHashingContext<'a, 'tcx>,
-                                                        hasher: &mut StableHasher<W>,
-                                                        map: &HashMap<K, V, R>,
-                                                        extract_stable_key: F)
+pub fn hash_stable_hashmap<'a, 'gcx, 'tcx, K, V, R, SK, F, W>(
+    hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+    hasher: &mut StableHasher<W>,
+    map: &HashMap<K, V, R>,
+    extract_stable_key: F)
     where K: Eq + std_hash::Hash,
-          V: HashStable<StableHashingContext<'a, 'tcx>>,
+          V: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>,
           R: std_hash::BuildHasher,
-          SK: HashStable<StableHashingContext<'a, 'tcx>> + Ord + Clone,
-          F: Fn(&mut StableHashingContext<'a, 'tcx>, &K) -> SK,
+          SK: HashStable<StableHashingContext<'a, 'gcx, 'tcx>> + Ord + Clone,
+          F: Fn(&mut StableHashingContext<'a, 'gcx, 'tcx>, &K) -> SK,
           W: StableHasherResult,
 {
     let mut keys: Vec<_> = map.keys()
@@ -327,14 +328,15 @@ pub fn hash_stable_hashmap<'a, 'tcx, K, V, R, SK, F, W>(hcx: &mut StableHashingC
     }
 }
 
-pub fn hash_stable_hashset<'a, 'tcx, K, R, SK, F, W>(hcx: &mut StableHashingContext<'a, 'tcx>,
-                                                     hasher: &mut StableHasher<W>,
-                                                     set: &HashSet<K, R>,
-                                                     extract_stable_key: F)
+pub fn hash_stable_hashset<'a, 'tcx, 'gcx, K, R, SK, F, W>(
+    hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+    hasher: &mut StableHasher<W>,
+    set: &HashSet<K, R>,
+    extract_stable_key: F)
     where K: Eq + std_hash::Hash,
           R: std_hash::BuildHasher,
-          SK: HashStable<StableHashingContext<'a, 'tcx>> + Ord + Clone,
-          F: Fn(&mut StableHashingContext<'a, 'tcx>, &K) -> SK,
+          SK: HashStable<StableHashingContext<'a, 'gcx, 'tcx>> + Ord + Clone,
+          F: Fn(&mut StableHashingContext<'a, 'gcx, 'tcx>, &K) -> SK,
           W: StableHasherResult,
 {
     let mut keys: Vec<_> = set.iter()
@@ -344,10 +346,11 @@ pub fn hash_stable_hashset<'a, 'tcx, K, R, SK, F, W>(hcx: &mut StableHashingCont
     keys.hash_stable(hcx, hasher);
 }
 
-pub fn hash_stable_nodemap<'a, 'tcx, V, W>(hcx: &mut StableHashingContext<'a, 'tcx>,
-                                           hasher: &mut StableHasher<W>,
-                                           map: &NodeMap<V>)
-    where V: HashStable<StableHashingContext<'a, 'tcx>>,
+pub fn hash_stable_nodemap<'a, 'tcx, 'gcx, V, W>(
+    hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+    hasher: &mut StableHasher<W>,
+    map: &NodeMap<V>)
+    where V: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>,
           W: StableHasherResult,
 {
     hash_stable_hashmap(hcx, hasher, map, |hcx, node_id| {
@@ -356,14 +359,15 @@ pub fn hash_stable_nodemap<'a, 'tcx, V, W>(hcx: &mut StableHashingContext<'a, 't
 }
 
 
-pub fn hash_stable_btreemap<'a, 'tcx, K, V, SK, F, W>(hcx: &mut StableHashingContext<'a, 'tcx>,
-                                                      hasher: &mut StableHasher<W>,
-                                                      map: &BTreeMap<K, V>,
-                                                      extract_stable_key: F)
+pub fn hash_stable_btreemap<'a, 'tcx, 'gcx, K, V, SK, F, W>(
+    hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+    hasher: &mut StableHasher<W>,
+    map: &BTreeMap<K, V>,
+    extract_stable_key: F)
     where K: Eq + Ord,
-          V: HashStable<StableHashingContext<'a, 'tcx>>,
-          SK: HashStable<StableHashingContext<'a, 'tcx>> + Ord + Clone,
-          F: Fn(&mut StableHashingContext<'a, 'tcx>, &K) -> SK,
+          V: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>,
+          SK: HashStable<StableHashingContext<'a, 'gcx, 'tcx>> + Ord + Clone,
+          F: Fn(&mut StableHashingContext<'a, 'gcx, 'tcx>, &K) -> SK,
           W: StableHasherResult,
 {
     let mut keys: Vec<_> = map.keys()
