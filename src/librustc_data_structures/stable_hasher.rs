@@ -244,6 +244,14 @@ impl<CTX> HashStable<CTX> for f64 {
     }
 }
 
+impl<T1: HashStable<CTX>, CTX> HashStable<CTX> for (T1,) {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        self.0.hash_stable(ctx, hasher);
+    }
+}
+
 impl<T1: HashStable<CTX>, T2: HashStable<CTX>, CTX> HashStable<CTX> for (T1, T2) {
     fn hash_stable<W: StableHasherResult>(&self,
                                           ctx: &mut CTX,
@@ -270,6 +278,24 @@ impl<T: HashStable<CTX>, CTX> HashStable<CTX> for Vec<T> {
                                           ctx: &mut CTX,
                                           hasher: &mut StableHasher<W>) {
         (&self[..]).hash_stable(ctx, hasher);
+    }
+}
+
+impl<T: HashStable<CTX>, CTX> HashStable<CTX> for ::std::rc::Rc<T> {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        (**self).hash_stable(ctx, hasher);
+    }
+}
+
+impl<T: HashStable<CTX>, CTX> HashStable<CTX> for ::std::sync::Arc<T> {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        (**self).hash_stable(ctx, hasher);
     }
 }
 

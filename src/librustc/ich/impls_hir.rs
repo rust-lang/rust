@@ -12,7 +12,7 @@
 //! types in no particular order.
 
 use hir;
-use hir::def_id::DefId;
+use hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 use ich::{StableHashingContext, NodeIdHashingMode};
 use std::mem;
 
@@ -43,6 +43,19 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::H
 
         hcx.def_path_hash(DefId::local(owner)).hash_stable(hcx, hasher);
         local_id.hash_stable(hcx, hasher);
+    }
+}
+
+
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for CrateNum {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        hcx.def_path_hash(DefId {
+            krate: *self,
+            index: CRATE_DEF_INDEX
+        }).hash_stable(hcx, hasher);
     }
 }
 
