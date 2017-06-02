@@ -47,7 +47,7 @@
 #![cfg_attr(stage0, feature(staged_api))]
 #![cfg_attr(stage0, feature(loop_break_value))]
 
-#![recursion_limit="192"]
+#![recursion_limit="256"]
 
 extern crate arena;
 extern crate core;

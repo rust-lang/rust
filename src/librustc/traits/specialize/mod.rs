@@ -41,6 +41,7 @@ pub struct OverlapError {
 /// Given a subst for the requested impl, translate it to a subst
 /// appropriate for the actual item definition (whether it be in that impl,
 /// a parent impl, or the trait).
+///
 /// When we have selected one impl, but are actually using item definitions from
 /// a parent impl providing a default, we need a way to translate between the
 /// type parameters of the two impls. Here the `source_impl` is the one we've
@@ -73,6 +74,7 @@ pub struct OverlapError {
 /// *fulfillment* to relate the two impls, requiring that all projections are
 /// resolved.
 pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                        param_env: ty::ParamEnv<'tcx>,
                                         source_impl: DefId,
                                         source_substs: &'tcx Substs<'tcx>,
                                         target_node: specialization_graph::Node)
@@ -91,10 +93,11 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                 return source_substs;
             }
 
-            fulfill_implication(infcx, source_trait_ref, target_impl).unwrap_or_else(|_| {
-                bug!("When translating substitutions for specialization, the expected \
-                      specializaiton failed to hold")
-            })
+            fulfill_implication(infcx, param_env, source_trait_ref, target_impl)
+                .unwrap_or_else(|_| {
+                    bug!("When translating substitutions for specialization, the expected \
+                          specializaiton failed to hold")
+                })
         }
         specialization_graph::Node::Trait(..) => source_trait_ref.substs,
     };
@@ -122,9 +125,10 @@ pub fn find_associated_item<'a, 'tcx>(
     let ancestors = trait_def.ancestors(tcx, impl_data.impl_def_id);
     match ancestors.defs(tcx, item.name, item.kind).next() {
         Some(node_item) => {
-            let substs = tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
+            let substs = tcx.infer_ctxt(()).enter(|infcx| {
+                let param_env = ty::ParamEnv::empty(Reveal::All);
                 let substs = substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
-                let substs = translate_substs(&infcx, impl_data.impl_def_id,
+                let substs = translate_substs(&infcx, param_env, impl_data.impl_def_id,
                                               substs, node_item.node);
                 let substs = infcx.tcx.erase_regions(&substs);
                 tcx.lift(&substs).unwrap_or_else(|| {
@@ -184,11 +188,14 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap();
 
     // Create a infcx, taking the predicates of impl1 as assumptions:
-    let result = tcx.infer_ctxt(penv, Reveal::UserFacing).enter(|infcx| {
+    let result = tcx.infer_ctxt(()).enter(|infcx| {
         // Normalize the trait reference. The WF rules ought to ensure
         // that this always succeeds.
         let impl1_trait_ref =
-            match traits::fully_normalize(&infcx, ObligationCause::dummy(), &impl1_trait_ref) {
+            match traits::fully_normalize(&infcx,
+                                          ObligationCause::dummy(),
+                                          penv,
+                                          &impl1_trait_ref) {
                 Ok(impl1_trait_ref) => impl1_trait_ref,
                 Err(err) => {
                     bug!("failed to fully normalize {:?}: {:?}", impl1_trait_ref, err);
@@ -196,7 +203,7 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             };
 
         // Attempt to prove that impl2 applies, given all of the above.
-        fulfill_implication(&infcx, impl1_trait_ref, impl2_def_id).is_ok()
+        fulfill_implication(&infcx, penv, impl1_trait_ref, impl2_def_id).is_ok()
     });
 
     tcx.specializes_cache.borrow_mut().insert(impl1_def_id, impl2_def_id, result);
@@ -209,20 +216,20 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// `source_trait_ref` and those whose identity is determined via a where
 /// clause in the impl.
 fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                       param_env: ty::ParamEnv<'tcx>,
                                        source_trait_ref: ty::TraitRef<'tcx>,
                                        target_impl: DefId)
                                        -> Result<&'tcx Substs<'tcx>, ()> {
     let selcx = &mut SelectionContext::new(&infcx);
     let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
     let (target_trait_ref, mut obligations) = impl_trait_ref_and_oblig(selcx,
-                                                                   target_impl,
-                                                                   target_substs);
+                                                                       param_env,
+                                                                       target_impl,
+                                                                       target_substs);
 
     // do the impls unify? If not, no specialization.
-    match infcx.eq_trait_refs(true,
-                              &ObligationCause::dummy(),
-                              source_trait_ref,
-                              target_trait_ref) {
+    match infcx.at(&ObligationCause::dummy(), param_env)
+               .eq(source_trait_ref, target_trait_ref) {
         Ok(InferOk { obligations: o, .. }) => {
             obligations.extend(o);
         }
@@ -250,7 +257,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                        source_trait_ref,
                        target_trait_ref,
                        errors,
-                       infcx.param_env.caller_bounds);
+                       param_env.caller_bounds);
                 Err(())
             }
 

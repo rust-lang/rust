@@ -11,7 +11,7 @@
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::traits::{self, Reveal};
+use rustc::traits;
 use rustc::ty::{self, TyCtxt};
 
 pub fn crate_inherent_impls_overlap_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -70,7 +70,7 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 
         for (i, &impl1_def_id) in impls.iter().enumerate() {
             for &impl2_def_id in &impls[(i + 1)..] {
-                self.tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
+                self.tcx.infer_ctxt(()).enter(|infcx| {
                     if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id).is_some() {
                         self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id)
                     }

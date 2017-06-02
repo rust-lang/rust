@@ -466,6 +466,20 @@ impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for ty::ParamEnv<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        ty::ParamEnv {
+            reveal: self.reveal,
+            caller_bounds: self.caller_bounds.fold_with(folder),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        let &ty::ParamEnv { reveal: _, ref caller_bounds } = self;
+        caller_bounds.super_visit_with(visitor)
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<ty::ExistentialPredicate<'tcx>> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let v = self.iter().map(|p| p.fold_with(folder)).collect::<AccumulateVec<[_; 8]>>();
@@ -768,6 +782,17 @@ impl<'tcx> TypeFoldable<'tcx> for ty::GenericPredicates<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.predicates.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<ty::Predicate<'tcx>> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        let v = self.iter().map(|p| p.fold_with(folder)).collect::<AccumulateVec<[_; 8]>>();
+        folder.tcx().intern_predicates(&v)
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.iter().any(|p| p.visit_with(visitor))
     }
 }
 

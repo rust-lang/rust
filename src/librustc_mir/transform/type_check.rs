@@ -12,7 +12,7 @@
 #![allow(unreachable_code)]
 
 use rustc::infer::{self, InferCtxt, InferOk};
-use rustc::traits::{self, Reveal};
+use rustc::traits;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt, TypeVariants};
 use rustc::middle::const_val::ConstVal;
@@ -320,6 +320,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
 pub struct TypeChecker<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    param_env: ty::ParamEnv<'gcx>,
     fulfillment_cx: traits::FulfillmentContext<'tcx>,
     last_span: Span,
     body_id: ast::NodeId,
@@ -327,12 +328,16 @@ pub struct TypeChecker<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
-    fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, body_id: ast::NodeId) -> Self {
+    fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+           body_id: ast::NodeId,
+           param_env: ty::ParamEnv<'gcx>)
+           -> Self {
         TypeChecker {
             infcx: infcx,
             fulfillment_cx: traits::FulfillmentContext::new(),
             last_span: DUMMY_SP,
-            body_id: body_id,
+            body_id,
+            param_env,
             reported_errors: FxHashSet(),
         }
     }
@@ -348,18 +353,20 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         infer_ok.value
     }
 
-    fn sub_types(&mut self, sup: Ty<'tcx>, sub: Ty<'tcx>)
+    fn sub_types(&mut self, sub: Ty<'tcx>, sup: Ty<'tcx>)
                  -> infer::UnitResult<'tcx>
     {
-        self.infcx.sub_types(false, &self.misc(self.last_span), sup, sub)
-            .map(|ok| self.register_infer_ok_obligations(ok))
+        self.infcx.at(&self.misc(self.last_span), self.param_env)
+                  .sup(sup, sub)
+                  .map(|ok| self.register_infer_ok_obligations(ok))
     }
 
     fn eq_types(&mut self, span: Span, a: Ty<'tcx>, b: Ty<'tcx>)
                 -> infer::UnitResult<'tcx>
     {
-        self.infcx.eq_types(false, &self.misc(span), a, b)
-            .map(|ok| self.register_infer_ok_obligations(ok))
+        self.infcx.at(&self.misc(span), self.param_env)
+                  .eq(b, a)
+                  .map(|ok| self.register_infer_ok_obligations(ok))
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
@@ -665,7 +672,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         let span = local_decl.source_info.span;
         let ty = local_decl.ty;
-        if !ty.is_sized(self.tcx().global_tcx(), self.infcx.param_env(), span) {
+        if !ty.is_sized(self.tcx().global_tcx(), self.param_env, span) {
             // in current MIR construction, all non-control-flow rvalue
             // expressions evaluate through `as_temp` or `into` a return
             // slot or local, so to find all unsized rvalues it is enough
@@ -706,7 +713,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let mut selcx = traits::SelectionContext::new(self.infcx);
         let cause = traits::ObligationCause::misc(self.last_span, ast::CRATE_NODE_ID);
         let traits::Normalized { value, obligations } =
-            traits::normalize(&mut selcx, cause, value);
+            traits::normalize(&mut selcx, self.param_env, cause, value);
 
         debug!("normalize: value={:?} obligations={:?}",
                value,
@@ -752,8 +759,8 @@ impl MirPass for TypeckMir {
             return;
         }
         let param_env = tcx.param_env(def_id);
-        tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
-            let mut checker = TypeChecker::new(&infcx, item_id);
+        tcx.infer_ctxt(()).enter(|infcx| {
+            let mut checker = TypeChecker::new(&infcx, item_id, param_env);
             {
                 let mut verifier = TypeVerifier::new(&mut checker, mir);
                 verifier.visit_mir(mir);

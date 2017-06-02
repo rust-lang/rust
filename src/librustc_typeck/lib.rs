@@ -155,9 +155,10 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 expected: Ty<'tcx>,
                                 actual: Ty<'tcx>)
                                 -> bool {
-    tcx.infer_ctxt((), Reveal::UserFacing).enter(|ref infcx| {
+    tcx.infer_ctxt(()).enter(|ref infcx| {
+        let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
         let mut fulfill_cx = FulfillmentContext::new();
-        match infcx.eq_types(false, &cause, expected, actual) {
+        match infcx.at(&cause, param_env).eq(expected, actual) {
             Ok(InferOk { obligations, .. }) => {
                 fulfill_cx.register_predicate_obligations(infcx, obligations);
             }

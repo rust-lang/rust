@@ -81,9 +81,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let fn_sig = self.liberate_late_bound_regions(expr_def_id, &sig);
         let fn_sig = self.inh.normalize_associated_types_in(body.value.span,
-                                                            body.value.id, &fn_sig);
+                                                            body.value.id,
+                                                            self.param_env,
+                                                            &fn_sig);
 
-        check_fn(self, fn_sig, decl, expr.id, body);
+        check_fn(self, self.param_env, fn_sig, decl, expr.id, body);
 
         // Tuple up the arguments and insert the resulting function type into
         // the `closures` table.

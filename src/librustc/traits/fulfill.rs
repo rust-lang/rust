@@ -113,6 +113,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
     /// `projection_ty` again.
     pub fn normalize_projection_type(&mut self,
                                      infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                     param_env: ty::ParamEnv<'tcx>,
                                      projection_ty: ty::ProjectionTy<'tcx>,
                                      cause: ObligationCause<'tcx>)
                                      -> Ty<'tcx>
@@ -125,7 +126,11 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         // FIXME(#20304) -- cache
 
         let mut selcx = SelectionContext::new(infcx);
-        let normalized = project::normalize_projection_type(&mut selcx, projection_ty, cause, 0);
+        let normalized = project::normalize_projection_type(&mut selcx,
+                                                            param_env,
+                                                            projection_ty,
+                                                            cause,
+                                                            0);
 
         for obligation in normalized.obligations {
             self.register_predicate_obligation(infcx, obligation);
@@ -136,8 +141,12 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         normalized.value
     }
 
+    /// Requires that `ty` must implement the trait with `def_id` in
+    /// the given environment. This trait must not have any type
+    /// parameters (except for `Self`).
     pub fn register_bound(&mut self,
                           infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                          param_env: ty::ParamEnv<'tcx>,
                           ty: Ty<'tcx>,
                           def_id: DefId,
                           cause: ObligationCause<'tcx>)
@@ -149,6 +158,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         self.register_predicate_obligation(infcx, Obligation {
             cause: cause,
             recursion_depth: 0,
+            param_env,
             predicate: trait_ref.to_predicate()
         });
     }
@@ -410,7 +420,9 @@ fn process_predicate<'a, 'gcx, 'tcx>(
         }
 
         ty::Predicate::Equate(ref binder) => {
-            match selcx.infcx().equality_predicate(&obligation.cause, binder) {
+            match selcx.infcx().equality_predicate(&obligation.cause,
+                                                   obligation.param_env,
+                                                   binder) {
                 Ok(InferOk { obligations, value: () }) => {
                     Ok(Some(obligations))
                 },
@@ -498,7 +510,9 @@ fn process_predicate<'a, 'gcx, 'tcx>(
         }
 
         ty::Predicate::WellFormed(ty) => {
-            match ty::wf::obligations(selcx.infcx(), obligation.cause.body_id,
+            match ty::wf::obligations(selcx.infcx(),
+                                      obligation.param_env,
+                                      obligation.cause.body_id,
                                       ty, obligation.cause.span) {
                 None => {
                     pending_obligation.stalled_on = vec![ty];
@@ -509,7 +523,9 @@ fn process_predicate<'a, 'gcx, 'tcx>(
         }
 
         ty::Predicate::Subtype(ref subtype) => {
-            match selcx.infcx().subtype_predicate(&obligation.cause, subtype) {
+            match selcx.infcx().subtype_predicate(&obligation.cause,
+                                                  obligation.param_env,
+                                                  subtype) {
                 None => {
                     // none means that both are unresolved
                     pending_obligation.stalled_on = vec![subtype.skip_binder().a,

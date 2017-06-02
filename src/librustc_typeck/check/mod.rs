@@ -93,7 +93,7 @@ use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region::CodeExtent;
 use rustc::ty::subst::{Kind, Subst, Substs};
-use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode, Reveal};
+use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
 use rustc::ty::{ParamTy, LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, Ty, TyCtxt, Visibility};
 use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
@@ -450,6 +450,14 @@ impl<'gcx, 'tcx> EnclosingBreakables<'gcx, 'tcx> {
 pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     body_id: ast::NodeId,
 
+    /// The parameter environment used for proving trait obligations
+    /// in this function. This can change when we descend into
+    /// closures (as they bring new things into scope), hence it is
+    /// not part of `Inherited` (as of the time of this writing,
+    /// closures do not yet change the environment, but they will
+    /// eventually).
+    param_env: ty::ParamEnv<'tcx>,
+
     // Number of errors that had been reported when we started
     // checking this function. On exit, if we find that *more* errors
     // have been reported, we will skip regionck and other work that
@@ -528,9 +536,8 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
     pub fn build(tcx: TyCtxt<'a, 'gcx, 'gcx>, def_id: DefId)
                  -> InheritedBuilder<'a, 'gcx, 'tcx> {
         let tables = ty::TypeckTables::empty();
-        let param_env = tcx.param_env(def_id);
         InheritedBuilder {
-            infcx: tcx.infer_ctxt((tables, param_env), Reveal::UserFacing),
+            infcx: tcx.infer_ctxt(tables),
             def_id,
         }
     }
@@ -590,16 +597,18 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
     fn normalize_associated_types_in<T>(&self,
                                         span: Span,
                                         body_id: ast::NodeId,
+                                        param_env: ty::ParamEnv<'tcx>,
                                         value: &T) -> T
         where T : TypeFoldable<'tcx>
     {
-        let ok = self.normalize_associated_types_in_as_infer_ok(span, body_id, value);
+        let ok = self.normalize_associated_types_in_as_infer_ok(span, body_id, param_env, value);
         self.register_infer_ok_obligations(ok)
     }
 
     fn normalize_associated_types_in_as_infer_ok<T>(&self,
                                                     span: Span,
                                                     body_id: ast::NodeId,
+                                                    param_env: ty::ParamEnv<'tcx>,
                                                     value: &T)
                                                     -> InferOk<'tcx, T>
         where T : TypeFoldable<'tcx>
@@ -608,7 +617,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
         let mut selcx = traits::SelectionContext::new(self);
         let cause = ObligationCause::misc(span, body_id);
         let traits::Normalized { value, obligations } =
-            traits::normalize(&mut selcx, cause, value);
+            traits::normalize(&mut selcx, param_env, cause, value);
         debug!("normalize_associated_types_in: result={:?} predicates={:?}",
             value,
             obligations);
@@ -797,6 +806,7 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let body = tcx.hir.body(body_id);
 
     Inherited::build(tcx, def_id).enter(|inh| {
+        let param_env = tcx.param_env(def_id);
         let fcx = if let Some(decl) = fn_decl {
             let fn_sig = tcx.type_of(def_id).fn_sig();
 
@@ -806,11 +816,14 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let fn_sig =
                 inh.liberate_late_bound_regions(def_id, &fn_sig);
             let fn_sig =
-                inh.normalize_associated_types_in(body.value.span, body_id.node_id, &fn_sig);
+                inh.normalize_associated_types_in(body.value.span,
+                                                  body_id.node_id,
+                                                  param_env,
+                                                  &fn_sig);
 
-            check_fn(&inh, fn_sig, decl, id, body)
+            check_fn(&inh, param_env, fn_sig, decl, id, body)
         } else {
-            let fcx = FnCtxt::new(&inh, body.value.id);
+            let fcx = FnCtxt::new(&inh, param_env, body.value.id);
             let expected_type = tcx.type_of(def_id);
             let expected_type = fcx.normalize_associated_types_in(body.value.span, &expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
@@ -919,6 +932,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
 /// * ...
 /// * inherited: other fields inherited from the enclosing fn (if any)
 fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
+                            param_env: ty::ParamEnv<'tcx>,
                             fn_sig: ty::FnSig<'tcx>,
                             decl: &'gcx hir::FnDecl,
                             fn_id: ast::NodeId,
@@ -927,11 +941,11 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 {
     let mut fn_sig = fn_sig.clone();
 
-    debug!("check_fn(sig={:?}, fn_id={})", fn_sig, fn_id);
+    debug!("check_fn(sig={:?}, fn_id={}, param_env={:?})", fn_sig, fn_id, param_env);
 
     // Create the function context.  This is either derived from scratch or,
     // in the case of function expressions, based on the outer context.
-    let mut fcx = FnCtxt::new(inherited, body.value.id);
+    let mut fcx = FnCtxt::new(inherited, param_env, body.value.id);
     *fcx.ps.borrow_mut() = UnsafetyState::function(fn_sig.unsafety, fn_id);
 
     let ret_ty = fn_sig.output();
@@ -1633,10 +1647,12 @@ enum TupleArgumentsFlag {
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn new(inh: &'a Inherited<'a, 'gcx, 'tcx>,
+               param_env: ty::ParamEnv<'tcx>,
                body_id: ast::NodeId)
                -> FnCtxt<'a, 'gcx, 'tcx> {
         FnCtxt {
             body_id: body_id,
+            param_env,
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
             ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal,
@@ -1870,7 +1886,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // Require that the predicate holds for the concrete type.
                     let cause = traits::ObligationCause::new(span, self.body_id,
                                                              traits::ReturnType);
-                    self.register_predicate(traits::Obligation::new(cause, predicate));
+                    self.register_predicate(traits::Obligation::new(cause,
+                                                                    self.param_env,
+                                                                    predicate));
                 }
 
                 ty_var
@@ -1883,15 +1901,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
         where T : TypeFoldable<'tcx>
     {
-        let ok = self.normalize_associated_types_in_as_infer_ok(span, value);
-        self.register_infer_ok_obligations(ok)
+        self.inh.normalize_associated_types_in(span, self.body_id, self.param_env, value)
     }
 
     fn normalize_associated_types_in_as_infer_ok<T>(&self, span: Span, value: &T)
                                                     -> InferOk<'tcx, T>
         where T : TypeFoldable<'tcx>
     {
-        self.inh.normalize_associated_types_in_as_infer_ok(span, self.body_id, value)
+        self.inh.normalize_associated_types_in_as_infer_ok(span,
+                                                           self.body_id,
+                                                           self.param_env,
+                                                           value)
     }
 
     pub fn write_nil(&self, node_id: ast::NodeId) {
@@ -1929,7 +1949,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           cause: traits::ObligationCause<'tcx>)
     {
         self.fulfillment_cx.borrow_mut()
-            .register_bound(self, ty, def_id, cause);
+                           .register_bound(self, self.param_env, ty, def_id, cause);
     }
 
     pub fn to_ty(&self, ast_t: &hir::Ty) -> Ty<'tcx> {
@@ -1970,7 +1990,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     {
         // WF obligations never themselves fail, so no real need to give a detailed cause:
         let cause = traits::ObligationCause::new(span, self.body_id, code);
-        self.register_predicate(traits::Obligation::new(cause, ty::Predicate::WellFormed(ty)));
+        self.register_predicate(traits::Obligation::new(cause,
+                                                        self.param_env,
+                                                        ty::Predicate::WellFormed(ty)));
     }
 
     pub fn register_old_wf_obligation(&self,
@@ -2023,7 +2045,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("add_obligations_for_parameters(predicates={:?})",
                predicates);
 
-        for obligation in traits::predicates_for_generics(cause, predicates) {
+        for obligation in traits::predicates_for_generics(cause, self.param_env, predicates) {
             self.register_predicate(obligation);
         }
     }
@@ -2704,7 +2726,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // is polymorphic) and the expected return type.
                 // No argument expectations are produced if unification fails.
                 let origin = self.misc(call_span);
-                let ures = self.sub_types(false, &origin, formal_ret, ret_ty);
+                let ures = self.at(&origin, self.param_env).sup(ret_ty, formal_ret);
 
                 // FIXME(#15760) can't use try! here, FromError doesn't default
                 // to identity so the resulting type is not constrained.
@@ -4199,7 +4221,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => return,
         };
         let last_expr_ty = self.expr_ty(last_expr);
-        if self.can_sub_types(last_expr_ty, expected_ty).is_err() {
+        if self.can_sub(self.param_env, last_expr_ty, expected_ty).is_err() {
             return;
         }
         let original_span = original_sp(last_stmt.span, blk.span);
@@ -4459,7 +4481,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let ty = self.tcx.type_of(impl_def_id);
 
             let impl_ty = self.instantiate_type_scheme(span, &substs, &ty);
-            match self.sub_types(false, &self.misc(span), self_ty, impl_ty) {
+            match self.at(&self.misc(span), self.param_env).sup(impl_ty, self_ty) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
                     span_bug!(span,

@@ -57,7 +57,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let trait_ref = ty::TraitRef::new(fn_once, fn_once_substs);
                         let poly_trait_ref = trait_ref.to_poly_trait_ref();
                         let obligation =
-                            Obligation::misc(span, self.body_id, poly_trait_ref.to_predicate());
+                            Obligation::misc(span,
+                                             self.body_id,
+                                             self.param_env,
+                                             poly_trait_ref.to_predicate());
                         SelectionContext::new(self).evaluate_obligation(&obligation)
                     })
                 })

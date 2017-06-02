@@ -46,6 +46,7 @@ use rustc::hir;
 struct Env<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a infer::InferCtxt<'a, 'gcx, 'tcx>,
     region_maps: &'a mut RegionMaps,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 struct RH<'a> {
@@ -153,9 +154,13 @@ fn test_env<F>(source_string: &str,
                              index,
                              "test_crate",
                              |tcx| {
-        tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
+        tcx.infer_ctxt(()).enter(|infcx| {
             let mut region_maps = RegionMaps::new();
-            body(Env { infcx: &infcx, region_maps: &mut region_maps });
+            body(Env {
+                infcx: &infcx,
+                region_maps: &mut region_maps,
+                param_env: ty::ParamEnv::empty(Reveal::UserFacing),
+            });
             let free_regions = FreeRegionMap::new();
             let def_id = tcx.hir.local_def_id(ast::CRATE_NODE_ID);
             infcx.resolve_regions_and_report_errors(def_id, &region_maps, &free_regions);
@@ -250,14 +255,14 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn make_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-        match self.infcx.sub_types(true, &ObligationCause::dummy(), a, b) {
+        match self.infcx.at(&ObligationCause::dummy(), self.param_env).sub(a, b) {
             Ok(_) => true,
             Err(ref e) => panic!("Encountered error: {}", e),
         }
     }
 
     pub fn is_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-        self.infcx.can_sub_types(a, b).is_ok()
+        self.infcx.can_sub(self.param_env, a, b).is_ok()
     }
 
     pub fn assert_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) {
@@ -354,30 +359,23 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
                                   self.tcx().types.isize)
     }
 
-    pub fn dummy_type_trace(&self) -> infer::TypeTrace<'tcx> {
-        infer::TypeTrace::dummy(self.tcx())
-    }
-
-    pub fn sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
-        let trace = self.dummy_type_trace();
-        self.infcx.sub(true, trace, &t1, &t2)
+    pub fn sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> InferResult<'tcx, ()> {
+        self.infcx.at(&ObligationCause::dummy(), self.param_env).sub(t1, t2)
     }
 
     pub fn lub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
-        let trace = self.dummy_type_trace();
-        self.infcx.lub(true, trace, &t1, &t2)
+        self.infcx.at(&ObligationCause::dummy(), self.param_env).lub(t1, t2)
     }
 
     pub fn glb(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
-        let trace = self.dummy_type_trace();
-        self.infcx.glb(true, trace, &t1, &t2)
+        self.infcx.at(&ObligationCause::dummy(), self.param_env).glb(t1, t2)
     }
 
     /// Checks that `t1 <: t2` is true (this may register additional
     /// region checks).
     pub fn check_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
         match self.sub(t1, t2) {
-            Ok(InferOk { obligations, .. }) => {
+            Ok(InferOk { obligations, value: () }) => {
                 // None of these tests should require nested obligations:
                 assert!(obligations.is_empty());
             }

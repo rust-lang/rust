@@ -10,8 +10,6 @@
 
 use hir::def::Def;
 use hir::def_id::DefId;
-use infer::InferCtxt;
-use traits::Reveal;
 use ty::{self, Ty, TyCtxt};
 use ty::layout::{LayoutError, Pointer, SizeSkeleton};
 
@@ -31,8 +29,10 @@ struct ItemVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>
 }
 
-struct ExprVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>
+struct ExprVisitor<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tables: &'tcx ty::TypeckTables<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 /// If the type is `Option<T>`, it will return `T`, otherwise
@@ -64,18 +64,18 @@ fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty
 }
 
-impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
-        let intrinsic = match self.infcx.tcx.type_of(def_id).sty {
+        let intrinsic = match self.tcx.type_of(def_id).sty {
             ty::TyFnDef(.., bfty) => bfty.abi() == RustIntrinsic,
             _ => return false
         };
-        intrinsic && self.infcx.tcx.item_name(def_id) == "transmute"
+        intrinsic && self.tcx.item_name(def_id) == "transmute"
     }
 
-    fn check_transmute(&self, span: Span, from: Ty<'gcx>, to: Ty<'gcx>) {
-        let sk_from = SizeSkeleton::compute(from, self.infcx);
-        let sk_to = SizeSkeleton::compute(to, self.infcx);
+    fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>) {
+        let sk_from = SizeSkeleton::compute(from, self.tcx, self.param_env);
+        let sk_to = SizeSkeleton::compute(to, self.tcx, self.param_env);
 
         // Check for same size using the skeletons.
         if let (Ok(sk_from), Ok(sk_to)) = (sk_from, sk_to) {
@@ -85,11 +85,11 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
 
             // Special-case transmutting from `typeof(function)` and
             // `Option<typeof(function)>` to present a clearer error.
-            let from = unpack_option_like(self.infcx.tcx.global_tcx(), from);
+            let from = unpack_option_like(self.tcx.global_tcx(), from);
             match (&from.sty, sk_to) {
                 (&ty::TyFnDef(..), SizeSkeleton::Known(size_to))
-                        if size_to == Pointer.size(self.infcx) => {
-                    struct_span_err!(self.infcx.tcx.sess, span, E0591,
+                        if size_to == Pointer.size(self.tcx) => {
+                    struct_span_err!(self.tcx.sess, span, E0591,
                                      "`{}` is zero-sized and can't be transmuted to `{}`",
                                      from, to)
                         .span_note(span, "cast with `as` to a pointer instead")
@@ -101,7 +101,7 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
         }
 
         // Try to display a sensible error with as much information as possible.
-        let skeleton_string = |ty: Ty<'gcx>, sk| {
+        let skeleton_string = |ty: Ty<'tcx>, sk| {
             match sk {
                 Ok(SizeSkeleton::Known(size)) => {
                     format!("{} bits", size.bits())
@@ -120,7 +120,7 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
             }
         };
 
-        struct_span_err!(self.infcx.tcx.sess, span, E0512,
+        struct_span_err!(self.tcx.sess, span, E0512,
                   "transmute called with differently sized types: \
                    {} ({}) to {} ({})",
                   from, skeleton_string(from, sk_from),
@@ -139,32 +139,30 @@ impl<'a, 'tcx> Visitor<'tcx> for ItemVisitor<'a, 'tcx> {
     }
 
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
+        let owner_def_id = self.tcx.hir.body_owner_def_id(body_id);
         let body = self.tcx.hir.body(body_id);
-        self.tcx.infer_ctxt(body_id, Reveal::All).enter(|infcx| {
-            let mut visitor = ExprVisitor {
-                infcx: &infcx
-            };
-            visitor.visit_body(body);
-        });
+        let param_env = self.tcx.param_env(owner_def_id);
+        let tables = self.tcx.typeck_tables_of(owner_def_id);
+        ExprVisitor { tcx: self.tcx, param_env, tables }.visit_body(body);
         self.visit_body(body);
     }
 }
 
-impl<'a, 'gcx, 'tcx> Visitor<'gcx> for ExprVisitor<'a, 'gcx, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+impl<'a, 'tcx> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         let def = if let hir::ExprPath(ref qpath) = expr.node {
-            self.infcx.tables.borrow().qpath_def(qpath, expr.id)
+            self.tables.qpath_def(qpath, expr.id)
         } else {
             Def::Err
         };
         match def {
             Def::Fn(did) if self.def_id_is_transmute(did) => {
-                let typ = self.infcx.tables.borrow().node_id_to_type(expr.id);
-                let typ = self.infcx.tcx.lift_to_global(&typ).unwrap();
+                let typ = self.tables.node_id_to_type(expr.id);
+                let typ = self.tcx.lift_to_global(&typ).unwrap();
                 match typ.sty {
                     ty::TyFnDef(.., sig) if sig.abi() == RustIntrinsic => {
                         let from = sig.inputs().skip_binder()[0];

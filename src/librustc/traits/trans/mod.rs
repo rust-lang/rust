@@ -46,12 +46,14 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
             // Do the initial selection for the obligation. This yields the
             // shallow result we are looking for -- that is, what specific impl.
-            self.infer_ctxt((), Reveal::All).enter(|infcx| {
+            self.infer_ctxt(()).enter(|infcx| {
                 let mut selcx = SelectionContext::new(&infcx);
 
+                let param_env = ty::ParamEnv::empty(Reveal::All);
                 let obligation_cause = ObligationCause::misc(span,
                                                              ast::DUMMY_NODE_ID);
                 let obligation = Obligation::new(obligation_cause,
+                                                 param_env,
                                                  trait_ref.to_poly_trait_predicate());
 
                 let selection = match selcx.select(&obligation) {

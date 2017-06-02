@@ -166,9 +166,11 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
         {
             let body_owner_def_id = self.fcx.tcx.hir.body_owner_def_id(body.id());
             let region_maps = &self.fcx.tcx.region_maps(body_owner_def_id);
+            let param_env = self.fcx.param_env;
             let mut euv =
                 euv::ExprUseVisitor::with_options(self,
                                                   self.fcx,
+                                                  param_env,
                                                   region_maps,
                                                   mc::MemCategorizationOptions {
                                                       during_closure_kind_inference: true

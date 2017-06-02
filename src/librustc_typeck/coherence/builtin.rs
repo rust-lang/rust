@@ -15,7 +15,7 @@ use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::region::RegionMaps;
 use rustc::middle::lang_items::UnsizeTraitLangItem;
 
-use rustc::traits::{self, ObligationCause, Reveal};
+use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::TypeFoldable;
 use rustc::ty::adjustment::CoerceUnsizedInfo;
@@ -208,7 +208,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            source,
            target);
 
-    tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
+    tcx.infer_ctxt(()).enter(|infcx| {
         let cause = ObligationCause::misc(span, impl_node_id);
         let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>,
                            mt_b: ty::TypeAndMut<'tcx>,
@@ -308,7 +308,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         // we may have to evaluate constraint
                         // expressions in the course of execution.)
                         // See e.g. #41936.
-                        if let Ok(ok) = infcx.eq_types(false, &cause, b, a) {
+                        if let Ok(ok) = infcx.at(&cause, param_env).eq(a, b) {
                             if ok.obligations.is_empty() {
                                 return None;
                             }
@@ -376,7 +376,12 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Register an obligation for `A: Trait<B>`.
         let cause = traits::ObligationCause::misc(span, impl_node_id);
-        let predicate = tcx.predicate_for_trait_def(cause, trait_def_id, 0, source, &[target]);
+        let predicate = tcx.predicate_for_trait_def(param_env,
+                                                    cause,
+                                                    trait_def_id,
+                                                    0,
+                                                    source,
+                                                    &[target]);
         fulfill_cx.register_predicate_obligation(&infcx, predicate);
 
         // Check that all transitive obligations are satisfied.
@@ -387,8 +392,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Finally, resolve all regions.
         let region_maps = RegionMaps::new();
         let mut free_regions = FreeRegionMap::new();
-        free_regions.relate_free_regions_from_predicates(&infcx.param_env
-            .caller_bounds);
+        free_regions.relate_free_regions_from_predicates(&param_env.caller_bounds);
         infcx.resolve_regions_and_report_errors(impl_did, &region_maps, &free_regions);
 
         CoerceUnsizedInfo {

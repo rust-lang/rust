@@ -212,18 +212,19 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_node_id);
-    let param_env = ty::ParamEnv::new(tcx.intern_predicates(&hybrid_preds.predicates));
+    let param_env = ty::ParamEnv::new(tcx.intern_predicates(&hybrid_preds.predicates),
+                                      Reveal::UserFacing);
     let param_env = traits::normalize_param_env_or_error(tcx,
                                                          impl_m.def_id,
                                                          param_env,
                                                          normalize_cause.clone());
 
-    tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
+    tcx.infer_ctxt(()).enter(|infcx| {
         let inh = Inherited::new(infcx, impl_m.def_id);
         let infcx = &inh.infcx;
 
         debug!("compare_impl_method: caller_bounds={:?}",
-               infcx.param_env.caller_bounds);
+               param_env.caller_bounds);
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
@@ -233,10 +234,10 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                        &ty::Binder(impl_m_own_bounds.predicates));
         for predicate in impl_m_own_bounds {
             let traits::Normalized { value: predicate, obligations } =
-                traits::normalize(&mut selcx, normalize_cause.clone(), &predicate);
+                traits::normalize(&mut selcx, param_env, normalize_cause.clone(), &predicate);
 
             inh.register_predicates(obligations);
-            inh.register_predicate(traits::Obligation::new(cause.clone(), predicate));
+            inh.register_predicate(traits::Obligation::new(cause.clone(), param_env, predicate));
         }
 
         // We now need to check that the signature of the impl method is
@@ -269,6 +270,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let impl_sig =
             inh.normalize_associated_types_in(impl_m_span,
                                               impl_m_node_id,
+                                              param_env,
                                               &impl_sig);
         let impl_fty = tcx.mk_fn_ptr(ty::Binder(impl_sig));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
@@ -281,12 +283,14 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let trait_sig =
             inh.normalize_associated_types_in(impl_m_span,
                                               impl_m_node_id,
+                                              param_env,
                                               &trait_sig);
         let trait_fty = tcx.mk_fn_ptr(ty::Binder(trait_sig));
 
         debug!("compare_impl_method: trait_fty={:?}", trait_fty);
 
-        let sub_result = infcx.sub_types(false, &cause, impl_fty, trait_fty)
+        let sub_result = infcx.at(&cause, param_env)
+                              .sup(trait_fty, impl_fty)
                               .map(|InferOk { obligations, .. }| {
                                   inh.register_predicates(obligations);
                               });
@@ -297,6 +301,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    trait_fty);
 
             let (impl_err_span, trait_err_span) = extract_spans_for_error_reporting(&infcx,
+                                                                                    param_env,
                                                                                     &terr,
                                                                                     &cause,
                                                                                     impl_m,
@@ -344,11 +349,10 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // pass around temporarily.
             let region_maps = RegionMaps::new();
             let mut free_regions = FreeRegionMap::new();
-            free_regions.relate_free_regions_from_predicates(
-                &infcx.param_env.caller_bounds);
+            free_regions.relate_free_regions_from_predicates(&param_env.caller_bounds);
             infcx.resolve_regions_and_report_errors(impl_m.def_id, &region_maps, &free_regions);
         } else {
-            let fcx = FnCtxt::new(&inh, impl_m_node_id);
+            let fcx = FnCtxt::new(&inh, param_env, impl_m_node_id);
             fcx.regionck_item(impl_m_node_id, impl_m_span, &[]);
         }
 
@@ -399,6 +403,7 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
+                                                     param_env: ty::ParamEnv<'tcx>,
                                                      terr: &TypeError,
                                                      cause: &ObligationCause<'tcx>,
                                                      impl_m: &ty::AssociatedItem,
@@ -456,21 +461,23 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                 impl_iter.zip(trait_iter)
                          .zip(impl_m_iter)
                          .zip(trait_m_iter)
-                         .filter_map(|(((impl_arg_ty, trait_arg_ty), impl_arg), trait_arg)| {
-                             match infcx.sub_types(true, &cause, trait_arg_ty, impl_arg_ty) {
+                         .filter_map(|(((&impl_arg_ty, &trait_arg_ty), impl_arg), trait_arg)| {
+                             match infcx.at(&cause, param_env).sub(trait_arg_ty, impl_arg_ty) {
                                  Ok(_) => None,
                                  Err(_) => Some((impl_arg.span, Some(trait_arg.span))),
                              }
                          })
                          .next()
                          .unwrap_or_else(|| {
-                             if infcx.sub_types(false, &cause, impl_sig.output(),
-                                                trait_sig.output())
-                                     .is_err() {
-                                         (impl_m_output.span(), Some(trait_m_output.span()))
-                                     } else {
-                                         (cause.span, tcx.hir.span_if_local(trait_m.def_id))
-                                     }
+                             if
+                                 infcx.at(&cause, param_env)
+                                      .sup(trait_sig.output(), impl_sig.output())
+                                      .is_err()
+                             {
+                                 (impl_m_output.span(), Some(trait_m_output.span()))
+                             } else {
+                                 (cause.span, tcx.hir.span_if_local(trait_m.def_id))
+                             }
                          })
             } else {
                 (cause.span, tcx.hir.span_if_local(trait_m.def_id))
@@ -713,7 +720,8 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     impl_trait_ref: ty::TraitRef<'tcx>) {
     debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
 
-    tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
+    tcx.infer_ctxt(()).enter(|infcx| {
+        let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
         let inh = Inherited::new(infcx, impl_c.def_id);
         let infcx = &inh.infcx;
 
@@ -736,18 +744,21 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // There is no "body" here, so just pass dummy id.
         let impl_ty = inh.normalize_associated_types_in(impl_c_span,
                                                         impl_c_node_id,
+                                                        param_env,
                                                         &impl_ty);
 
         debug!("compare_const_impl: impl_ty={:?}", impl_ty);
 
         let trait_ty = inh.normalize_associated_types_in(impl_c_span,
                                                          impl_c_node_id,
+                                                         param_env,
                                                          &trait_ty);
 
         debug!("compare_const_impl: trait_ty={:?}", trait_ty);
 
-        let err = infcx.sub_types(false, &cause, impl_ty, trait_ty)
-            .map(|ok| inh.register_infer_ok_obligations(ok));
+        let err = infcx.at(&cause, param_env)
+                       .sup(trait_ty, impl_ty)
+                       .map(|ok| inh.register_infer_ok_obligations(ok));
 
         if let Err(terr) = err {
             debug!("checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
@@ -794,7 +805,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             return;
         }
 
-        let fcx = FnCtxt::new(&inh, impl_c_node_id);
+        let fcx = FnCtxt::new(&inh, param_env, impl_c_node_id);
         fcx.regionck_item(impl_c_node_id, impl_c_span, &[]);
     });
 }

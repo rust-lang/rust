@@ -386,7 +386,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         for &ty in fn_sig_tys {
             let ty = self.resolve_type(ty);
             debug!("relate_free_regions(t={:?})", ty);
-            let implied_bounds = ty::wf::implied_bounds(self, body_id, ty, span);
+            let implied_bounds =
+                ty::wf::implied_bounds(self, self.fcx.param_env, body_id, ty, span);
 
             // Record any relations between free regions that we observe into the free-region-map.
             self.free_region_map.relate_free_regions_from_implied_bounds(&implied_bounds);
@@ -1660,7 +1661,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
                     // check whether this predicate applies to our current projection
                     let cause = self.fcx.misc(span);
-                    match self.eq_types(false, &cause, ty, outlives.0) {
+                    match self.at(&cause, self.fcx.param_env).eq(outlives.0, ty) {
                         Ok(ok) => {
                             self.register_infer_ok_obligations(ok);
                             Ok(outlives.1)

@@ -519,9 +519,6 @@ pub struct GlobalCtxt<'tcx> {
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
 
-    /// Cache for layouts computed from types.
-    pub layout_cache: RefCell<FxHashMap<Ty<'tcx>, &'tcx Layout>>,
-
     /// Used to prevent layout from recursing too deeply.
     pub layout_depth: Cell<usize>,
 
@@ -718,7 +715,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             rvalue_promotable_to_static: RefCell::new(NodeMap()),
             crate_name: Symbol::intern(crate_name),
             data_layout: data_layout,
-            layout_cache: RefCell::new(FxHashMap()),
             layout_interner: RefCell::new(FxHashSet()),
             layout_depth: Cell::new(0),
             derive_macros: RefCell::new(NodeMap()),
@@ -763,6 +759,18 @@ impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
 pub trait Lift<'tcx> {
     type Lifted;
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted>;
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
+    type Lifted = ty::ParamEnv<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<ty::ParamEnv<'tcx>> {
+        self.caller_bounds.lift_to_tcx(tcx).and_then(|caller_bounds| {
+            Some(ty::ParamEnv {
+                reveal: self.reveal,
+                caller_bounds,
+            })
+        })
+    }
 }
 
 impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
@@ -836,6 +844,25 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<ExistentialPredicate<'a>> {
     type Lifted = &'tcx Slice<ExistentialPredicate<'tcx>>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
         -> Option<&'tcx Slice<ExistentialPredicate<'tcx>>> {
+        if self.is_empty() {
+            return Some(Slice::empty());
+        }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
+        }
+        // Also try in the global tcx if we're not that.
+        if !tcx.is_global() {
+            self.lift_to_tcx(tcx.global_tcx())
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Predicate<'a>> {
+    type Lifted = &'tcx Slice<Predicate<'tcx>>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
+        -> Option<&'tcx Slice<Predicate<'tcx>>> {
         if self.is_empty() {
             return Some(Slice::empty());
         }

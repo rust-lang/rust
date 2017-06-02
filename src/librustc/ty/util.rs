@@ -12,7 +12,6 @@
 
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::map::DefPathData;
-use infer::InferCtxt;
 use ich::{StableHashingContext, NodeIdHashingMode};
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -150,20 +149,33 @@ pub enum Representability {
 impl<'tcx> ty::ParamEnv<'tcx> {
     /// Construct a trait environment suitable for contexts where
     /// there are no where clauses in scope.
-    pub fn empty() -> Self {
-        Self::new(ty::Slice::empty())
+    pub fn empty(reveal: Reveal) -> Self {
+        Self::new(ty::Slice::empty(), reveal)
     }
 
     /// Construct a trait environment with the given set of predicates.
-    pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>) -> Self {
-        ty::ParamEnv { caller_bounds }
+    pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>,
+               reveal: Reveal)
+               -> Self {
+        ty::ParamEnv { caller_bounds, reveal }
     }
 
-    pub fn can_type_implement_copy<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    /// Returns a new parameter environment with the same clauses, but
+    /// which "reveals" the true results of projections in all cases
+    /// (even for associated types that are specializable).  This is
+    /// the desired behavior during trans and certain other special
+    /// contexts; normally though we want to use `Reveal::UserFacing`,
+    /// which is the default.
+    pub fn reveal_all(self) -> Self {
+        ty::ParamEnv { reveal: Reveal::All, ..self }
+    }
+
+    pub fn can_type_implement_copy<'a>(self,
+                                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        self_type: Ty<'tcx>, span: Span)
-                                       -> Result<(), CopyImplementationError> {
+                                       -> Result<(), CopyImplementationError<'tcx>> {
         // FIXME: (@jroesch) float this code up
-        tcx.infer_ctxt(self.clone(), Reveal::UserFacing).enter(|infcx| {
+        tcx.infer_ctxt(()).enter(|infcx| {
             let (adt, substs) = match self_type.sty {
                 ty::TyAdt(adt, substs) => (adt, substs),
                 _ => return Err(CopyImplementationError::NotAnAdt),
@@ -171,8 +183,8 @@ impl<'tcx> ty::ParamEnv<'tcx> {
 
             let field_implements_copy = |field: &ty::FieldDef| {
                 let cause = traits::ObligationCause::dummy();
-                match traits::fully_normalize(&infcx, cause, &field.ty(tcx, substs)) {
-                    Ok(ty) => !infcx.type_moves_by_default(ty, span),
+                match traits::fully_normalize(&infcx, cause, self, &field.ty(tcx, substs)) {
+                    Ok(ty) => !infcx.type_moves_by_default(self, ty, span),
                     Err(..) => false,
                 }
             };
@@ -779,32 +791,27 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         tcx.needs_drop_raw(param_env.and(self))
     }
 
+    /// Computes the layout of a type. Note that this implicitly
+    /// executes in "reveal all" mode.
     #[inline]
-    pub fn layout<'lcx>(&'tcx self, infcx: &InferCtxt<'a, 'tcx, 'lcx>)
+    pub fn layout<'lcx>(&'tcx self,
+                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        param_env: ty::ParamEnv<'tcx>)
                         -> Result<&'tcx Layout, LayoutError<'tcx>> {
-        let tcx = infcx.tcx.global_tcx();
-        let can_cache = !self.has_param_types() && !self.has_self_ty();
-        if can_cache {
-            if let Some(&cached) = tcx.layout_cache.borrow().get(&self) {
-                return Ok(cached);
-            }
+        let ty = tcx.erase_regions(&self);
+        let layout = tcx.layout_raw(param_env.reveal_all().and(ty));
+
+        // NB: This recording is normally disabled; when enabled, it
+        // can however trigger recursive invocations of `layout()`.
+        // Therefore, we execute it *after* the main query has
+        // completed, to avoid problems around recursive structures
+        // and the like. (Admitedly, I wasn't able to reproduce a problem
+        // here, but it seems like the right thing to do. -nmatsakis)
+        if let Ok(l) = layout {
+            Layout::record_layout_for_printing(tcx, ty, param_env, l);
         }
 
-        let rec_limit = tcx.sess.recursion_limit.get();
-        let depth = tcx.layout_depth.get();
-        if depth > rec_limit {
-            tcx.sess.fatal(
-                &format!("overflow representing the type `{}`", self));
-        }
-
-        tcx.layout_depth.set(depth+1);
-        let layout = Layout::compute_uncached(self, infcx);
-        tcx.layout_depth.set(depth);
-        let layout = layout?;
-        if can_cache {
-            tcx.layout_cache.borrow_mut().insert(self, layout);
-        }
-        Ok(layout)
+        layout
     }
 
 
@@ -970,8 +977,12 @@ fn is_copy_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::CopyTraitLangItem);
-    tcx.infer_ctxt(param_env, Reveal::UserFacing)
-       .enter(|infcx| traits::type_known_to_meet_bound(&infcx, ty, trait_def_id, DUMMY_SP))
+    tcx.infer_ctxt(())
+       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
+                                                       param_env,
+                                                       ty,
+                                                       trait_def_id,
+                                                       DUMMY_SP))
 }
 
 fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -980,8 +991,12 @@ fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::SizedTraitLangItem);
-    tcx.infer_ctxt(param_env, Reveal::UserFacing)
-       .enter(|infcx| traits::type_known_to_meet_bound(&infcx, ty, trait_def_id, DUMMY_SP))
+    tcx.infer_ctxt(())
+       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
+                                                       param_env,
+                                                       ty,
+                                                       trait_def_id,
+                                                       DUMMY_SP))
 }
 
 fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -990,8 +1005,12 @@ fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::FreezeTraitLangItem);
-    tcx.infer_ctxt(param_env, Reveal::UserFacing)
-       .enter(|infcx| traits::type_known_to_meet_bound(&infcx, ty, trait_def_id, DUMMY_SP))
+    tcx.infer_ctxt(())
+       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
+                                                       param_env,
+                                                       ty,
+                                                       trait_def_id,
+                                                       DUMMY_SP))
 }
 
 fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1062,6 +1081,25 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
+fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
+                        -> Result<&'tcx Layout, LayoutError<'tcx>>
+{
+    let (param_env, ty) = query.into_parts();
+
+    let rec_limit = tcx.sess.recursion_limit.get();
+    let depth = tcx.layout_depth.get();
+    if depth > rec_limit {
+        tcx.sess.fatal(
+            &format!("overflow representing the type `{}`", ty));
+    }
+
+    tcx.layout_depth.set(depth+1);
+    let layout = Layout::compute_uncached(tcx, param_env, ty);
+    tcx.layout_depth.set(depth);
+
+    layout
+}
 
 pub fn provide(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
@@ -1069,6 +1107,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         is_sized_raw,
         is_freeze_raw,
         needs_drop_raw,
+        layout_raw,
         ..*providers
     };
 }

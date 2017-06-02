@@ -23,11 +23,11 @@ use monomorphize::Instance;
 use partitioning::CodegenUnit;
 use type_::Type;
 use rustc_data_structures::base_n;
-use rustc::ty::subst::Substs;
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{LayoutTyper, TyLayout};
 use rustc::session::config::{self, NoDebugInfo};
 use rustc::session::Session;
+use rustc::ty::subst::Substs;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::layout::{LayoutCx, LayoutError, LayoutTyper, TyLayout};
 use rustc::util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use std::ffi::{CStr, CString};
@@ -320,15 +320,15 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     }
 
     pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        ty.needs_drop(self.tcx, ty::ParamEnv::empty())
+        ty.needs_drop(self.tcx, ty::ParamEnv::empty(traits::Reveal::All))
     }
 
     pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx, ty::ParamEnv::empty(), DUMMY_SP)
+        ty.is_sized(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
     }
 
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(self.tcx, ty::ParamEnv::empty(), DUMMY_SP)
+        ty.is_freeze(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
     }
 
     pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {
@@ -709,41 +709,27 @@ impl<'a, 'tcx> ty::layout::HasDataLayout for &'a SharedCrateContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
-        self.tcx
-    }
-}
-
 impl<'a, 'tcx> ty::layout::HasDataLayout for &'a CrateContext<'a, 'tcx> {
     fn data_layout(&self) -> &ty::layout::TargetDataLayout {
         &self.shared.tcx.data_layout
     }
 }
 
-impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a CrateContext<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
-        self.shared.tcx
-    }
-}
-
 impl<'a, 'tcx> LayoutTyper<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
     type TyLayout = TyLayout<'tcx>;
 
-    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        if let Some(&layout) = self.tcx().layout_cache.borrow().get(&ty) {
-            return TyLayout { ty: ty, layout: layout, variant_index: None };
-        }
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
+        self.tcx
+    }
 
-        self.tcx().infer_ctxt((), traits::Reveal::All).enter(|infcx| {
-            infcx.layout_of(ty).unwrap_or_else(|e| {
-                match e {
-                    ty::layout::LayoutError::SizeOverflow(_) =>
-                        self.sess().fatal(&e.to_string()),
-                    _ => bug!("failed to get layout for `{}`: {}", ty, e)
-                }
+    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
+        let param_env = ty::ParamEnv::empty(traits::Reveal::All);
+        LayoutCx::new(self.tcx, param_env)
+            .layout_of(ty)
+            .unwrap_or_else(|e| match e {
+                LayoutError::SizeOverflow(_) => self.sess().fatal(&e.to_string()),
+                _ => bug!("failed to get layout for `{}`: {}", ty, e)
             })
-        })
     }
 
     fn normalize_projections(self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -753,6 +739,10 @@ impl<'a, 'tcx> LayoutTyper<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
 
 impl<'a, 'tcx> LayoutTyper<'tcx> for &'a CrateContext<'a, 'tcx> {
     type TyLayout = TyLayout<'tcx>;
+
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
+        self.shared.tcx
+    }
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
         self.shared.layout_of(ty)

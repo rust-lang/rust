@@ -242,6 +242,7 @@ impl OverloadedCallType {
 pub struct ExprUseVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     mc: mc::MemCategorizationContext<'a, 'gcx, 'tcx>,
     delegate: &'a mut Delegate<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 // If the TYPER results in an error, it's because the type check
@@ -266,24 +267,28 @@ macro_rules! return_if_err {
 impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     pub fn new(delegate: &'a mut (Delegate<'tcx>+'a),
                region_maps: &'a RegionMaps,
-               infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
+               infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+               param_env: ty::ParamEnv<'tcx>)
                -> Self
     {
         ExprUseVisitor::with_options(delegate,
                                      infcx,
+                                     param_env,
                                      region_maps,
                                      mc::MemCategorizationOptions::default())
     }
 
     pub fn with_options(delegate: &'a mut (Delegate<'tcx>+'a),
                         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                        param_env: ty::ParamEnv<'tcx>,
                         region_maps: &'a RegionMaps,
                         options: mc::MemCategorizationOptions)
                -> Self
     {
         ExprUseVisitor {
             mc: mc::MemCategorizationContext::with_options(infcx, region_maps, options),
-            delegate: delegate
+            delegate,
+            param_env,
         }
     }
 
@@ -318,7 +323,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         debug!("delegate_consume(consume_id={}, cmt={:?})",
                consume_id, cmt);
 
-        let mode = copy_or_move(self.mc.infcx, &cmt, DirectRefMove);
+        let mode = copy_or_move(self.mc.infcx, self.param_env, &cmt, DirectRefMove);
         self.delegate.consume(consume_id, consume_span, cmt, mode);
     }
 
@@ -797,7 +802,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 PatKind::Binding(hir::BindByRef(..), ..) =>
                     mode.lub(BorrowingMatch),
                 PatKind::Binding(hir::BindByValue(..), ..) => {
-                    match copy_or_move(self.mc.infcx, &cmt_pat, PatBindingMove) {
+                    match copy_or_move(self.mc.infcx, self.param_env, &cmt_pat, PatBindingMove) {
                         Copy => mode.lub(CopyingMatch),
                         Move(..) => mode.lub(MovingMatch),
                     }
@@ -813,10 +818,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     fn walk_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat, match_mode: MatchMode) {
         debug!("walk_pat cmt_discr={:?} pat={:?}", cmt_discr, pat);
 
-        let tcx = &self.tcx();
-        let mc = &self.mc;
+        let tcx = self.tcx();
         let infcx = self.mc.infcx;
-        let delegate = &mut self.delegate;
+        let ExprUseVisitor { ref mc, ref mut delegate, param_env } = *self;
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |mc, cmt_pat, pat| {
             if let PatKind::Binding(bmode, def_id, ..) = pat.node {
                 debug!("binding cmt_pat={:?} pat={:?} match_mode={:?}", cmt_pat, pat, match_mode);
@@ -840,7 +844,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         }
                     }
                     hir::BindByValue(..) => {
-                        let mode = copy_or_move(infcx, &cmt_pat, PatBindingMove);
+                        let mode = copy_or_move(infcx, param_env, &cmt_pat, PatBindingMove);
                         debug!("walk_pat binding consuming pat");
                         delegate.consume_pat(pat, cmt_pat, mode);
                     }
@@ -899,7 +903,10 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                                                                    freevar.def));
                 match upvar_capture {
                     ty::UpvarCapture::ByValue => {
-                        let mode = copy_or_move(self.mc.infcx, &cmt_var, CaptureMove);
+                        let mode = copy_or_move(self.mc.infcx,
+                                                self.param_env,
+                                                &cmt_var,
+                                                CaptureMove);
                         self.delegate.consume(closure_expr.id, freevar.span, cmt_var, mode);
                     }
                     ty::UpvarCapture::ByRef(upvar_borrow) => {
@@ -929,11 +936,12 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 }
 
 fn copy_or_move<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                param_env: ty::ParamEnv<'tcx>,
                                 cmt: &mc::cmt<'tcx>,
                                 move_reason: MoveReason)
                                 -> ConsumeMode
 {
-    if infcx.type_moves_by_default(cmt.ty, cmt.span) {
+    if infcx.type_moves_by_default(param_env, cmt.ty, cmt.span) {
         Move(move_reason)
     } else {
         Copy
