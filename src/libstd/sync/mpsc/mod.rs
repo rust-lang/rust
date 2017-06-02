@@ -1395,29 +1395,34 @@ impl<T> Receiver<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```no_run
     /// use std::sync::mpsc::channel;
     /// use std::thread;
     /// use std::time::Duration;
     ///
     /// let (sender, receiver) = channel();
     ///
-    /// // Nothing is in the buffer yet
+    /// // nothing is in the buffer yet
     /// assert!(receiver.try_iter().next().is_none());
-    /// println!("Nothing in the buffer...");
     ///
     /// thread::spawn(move || {
+    ///     thread::sleep(Duration::from_secs(1));
     ///     sender.send(1).unwrap();
     ///     sender.send(2).unwrap();
     ///     sender.send(3).unwrap();
     /// });
     ///
-    /// println!("Going to sleep...");
-    /// thread::sleep(Duration::from_secs(2)); // block for two seconds
+    /// // nothing is in the buffer yet
+    /// assert!(receiver.try_iter().next().is_none());
     ///
-    /// for x in receiver.try_iter() {
-    ///     println!("Got: {}", x);
-    /// }
+    /// // block for two seconds
+    /// thread::sleep(Duration::from_secs(2));
+    ///
+    /// let mut iter = receiver.try_iter();
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(3));
+    /// assert_eq!(iter.next(), None);
     /// ```
     #[stable(feature = "receiver_try_iter", since = "1.15.0")]
     pub fn try_iter(&self) -> TryIter<T> {
