@@ -1,6 +1,7 @@
 use semcheck::path::ExportPath;
 
 use rustc::hir::def::Export;
+use rustc::session::Session;
 
 use std::collections::BTreeSet;
 use std::cmp::Ordering;
@@ -149,11 +150,13 @@ impl ChangeSet {
     /// Format the contents of a change set for user output.
     ///
     /// TODO: replace this with something more sophisticated.
-    pub fn output(&self) {
+    pub fn output(&self, session: &Session) {
         println!("max: {:?}", self.max);
 
         for change in &self.changes {
             println!("  {:?}: {}", change.type_(), change.path().inner());
+            // span_note!(session, change.span(), "S0001");
+            // session.span_warn(*change.span(), "change");
         }
     }
 }
