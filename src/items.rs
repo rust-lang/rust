@@ -1998,10 +1998,10 @@ fn compute_budgets_for_args(context: &RewriteContext,
 
         if one_line_budget > 0 {
             // 4 = "() {".len()
-            let multi_line_budget = try_opt!(context
-                                                 .config
-                                                 .max_width()
-                                                 .checked_sub(indent.width() + result.len() + 4));
+            let multi_line_overhead = indent.width() + result.len() +
+                                      if newline_brace { 2 } else { 4 };
+            let multi_line_budget =
+                try_opt!(context.config.max_width().checked_sub(multi_line_overhead));
 
             return Some((one_line_budget, multi_line_budget, indent + result.len() + 1));
         }
@@ -2009,14 +2009,10 @@ fn compute_budgets_for_args(context: &RewriteContext,
 
     // Didn't work. we must force vertical layout and put args on a newline.
     let new_indent = indent.block_indent(context.config);
-    let used_space = new_indent.width() + 4; // Account for `(` and `)` and possibly ` {`.
-    let max_space = context.config.max_width();
-    if used_space <= max_space {
-        Some((0, max_space - used_space, new_indent))
-    } else {
-        // Whoops! bankrupt.
-        None
-    }
+    // Account for `)` and possibly ` {`.
+    let used_space = new_indent.width() + if ret_str_len == 0 { 1 } else { 3 };
+    let max_space = try_opt!(context.config.max_width().checked_sub(used_space));
+    Some((0, max_space, new_indent))
 }
 
 fn newline_for_brace(config: &Config, where_clause: &ast::WhereClause) -> bool {
