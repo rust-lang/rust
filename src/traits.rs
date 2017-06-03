@@ -16,11 +16,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(crate) fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
         // Do the initial selection for the obligation. This yields the shallow result we are
         // looking for -- that is, what specific impl.
-        self.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
+        self.tcx.infer_ctxt(()).enter(|infcx| {
             let mut selcx = traits::SelectionContext::new(&infcx);
 
             let obligation = traits::Obligation::new(
                 traits::ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID),
+                ty::ParamEnv::empty(Reveal::All),
                 trait_ref.to_poly_trait_predicate(),
             );
             let selection = selcx.select(&obligation).unwrap().unwrap();

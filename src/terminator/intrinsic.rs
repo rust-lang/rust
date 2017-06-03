@@ -1,4 +1,5 @@
 use rustc::mir;
+use rustc::traits::Reveal;
 use rustc::ty::layout::{Layout, Size, Align};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
@@ -291,7 +292,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "needs_drop" => {
                 let ty = substs.type_at(0);
-                let env = ty::ParamEnv::empty();
+                let env = ty::ParamEnv::empty(Reveal::All);
                 let needs_drop = ty.needs_drop(self.tcx, env);
                 self.write_primval(dest, PrimVal::from_bool(needs_drop), dest_ty)?;
             }
