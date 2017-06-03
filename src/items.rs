@@ -259,10 +259,11 @@ impl<'a> FmtVisitor<'a> {
                                                                          has_body,
                                                                          true));
 
-        if self.config.fn_brace_style() != BraceStyle::AlwaysNextLine && !result.contains('\n') {
-            newline_brace = false;
-        } else if force_newline_brace {
+        if force_newline_brace {
             newline_brace = true;
+        } else if self.config.fn_brace_style() != BraceStyle::AlwaysNextLine &&
+                  !result.contains('\n') {
+            newline_brace = false;
         }
 
         // Prepare for the function body by possibly adding a newline and
@@ -1764,10 +1765,25 @@ fn rewrite_fn_base(context: &RewriteContext,
         if where_clause.predicates.is_empty() {
             let snippet_hi = span.hi;
             let snippet = context.snippet(mk_sp(snippet_lo, snippet_hi));
+            // Try to preserve the layout of the original snippet.
+            let original_starts_with_newline =
+                snippet
+                    .find(|c| c != ' ')
+                    .map_or(false, |i| snippet[i..].starts_with('\n'));
+            let original_ends_with_newline = snippet
+                .rfind(|c| c != ' ')
+                .map_or(false, |i| snippet[i..].ends_with('\n'));
             let snippet = snippet.trim();
             if !snippet.is_empty() {
-                result.push(' ');
+                result.push(if original_starts_with_newline {
+                                '\n'
+                            } else {
+                                ' '
+                            });
                 result.push_str(snippet);
+                if original_ends_with_newline {
+                    force_new_line_for_brace = true;
+                }
             }
         } else {
             // FIXME it would be nice to catch comments between the return type
