@@ -980,12 +980,14 @@ impl<'a> Rewrite for ControlFlow<'a> {
         // for event in event
         let between_kwd_cond = mk_sp(
             context.codemap.span_after(self.span, self.keyword.trim()),
-            self.pat
-                .map_or(cond_span.lo, |p| if self.matcher.is_empty() {
+            self.pat.map_or(
+                cond_span.lo,
+                |p| if self.matcher.is_empty() {
                     p.span.lo
                 } else {
                     context.codemap.span_before(self.span, self.matcher.trim())
-                }),
+                },
+            ),
         );
 
         let between_kwd_cond_comment = extract_comment(between_kwd_cond, context, shape);
@@ -1863,7 +1865,7 @@ fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_len: 
         ast::ExprKind::Loop(..) |
         ast::ExprKind::While(..) |
         ast::ExprKind::WhileLet(..) => {
-            context.use_block_indent() && args_len == 1
+            context.config.combine_control_expr() && context.use_block_indent() && args_len == 1
         }
         ast::ExprKind::Block(..) |
         ast::ExprKind::Closure(..) => {
