@@ -1622,24 +1622,28 @@ fn rewrite_fn_base(context: &RewriteContext,
     // Check if vertical layout was forced.
     if one_line_budget == 0 {
         if snuggle_angle_bracket {
-            result.push_str("(");
-        } else if context.config.fn_args_paren_newline() {
-            result.push('\n');
-            result.push_str(&arg_indent.to_string(context.config));
-            arg_indent = arg_indent + 1; // extra space for `(`
             result.push('(');
-            if context.config.spaces_within_parens() && fd.inputs.len() > 0 {
-                result.push(' ')
-            }
         } else {
-            result.push_str("(\n");
-            result.push_str(&arg_indent.to_string(context.config));
+            if context.config.fn_args_paren_newline() {
+                result.push('\n');
+                result.push_str(&arg_indent.to_string(context.config));
+                if context.config.fn_args_layout() == IndentStyle::Visual {
+                    arg_indent = arg_indent + 1; // extra space for `(`
+                }
+                result.push('(');
+            } else {
+                result.push_str("(");
+                if context.config.fn_args_layout() == IndentStyle::Visual {
+                    result.push('\n');
+                    result.push_str(&arg_indent.to_string(context.config));
+                }
+            }
         }
     } else {
         result.push('(');
-        if context.config.spaces_within_parens() && fd.inputs.len() > 0 {
-            result.push(' ')
-        }
+    }
+    if context.config.spaces_within_parens() && fd.inputs.len() > 0 && result.ends_with('(') {
+        result.push(' ')
     }
 
     if multi_line_ret_str {
