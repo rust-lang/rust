@@ -414,8 +414,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let size = self.type_size(ty)?.expect("write_bytes() type must be sized");
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let count = self.value_to_primval(arg_vals[2], usize)?.to_u64()?;
-                self.memory.check_align(ptr, ty_align, size * count)?;
-                self.memory.write_repeat(ptr, val_byte, size * count)?;
+                if count > 0 {
+                    self.memory.check_align(ptr, ty_align, size * count)?;
+                    self.memory.write_repeat(ptr, val_byte, size * count)?;
+                }
             }
 
             name => return Err(EvalError::Unimplemented(format!("unimplemented intrinsic: {}", name))),

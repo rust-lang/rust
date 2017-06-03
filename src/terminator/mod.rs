@@ -742,6 +742,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if key_size.bits() < 128 && key >= (1u128 << key_size.bits() as u128) {
                     return Err(EvalError::OutOfTls);
                 }
+                // TODO: Does this need checking for alignment?
                 self.memory.write_uint(key_ptr, key, key_size.bytes())?;
 
                 // Return success (0)
