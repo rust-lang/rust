@@ -377,11 +377,12 @@ impl Rewrite for ast::WherePredicate {
                     let used_width = lifetime_str.len() + type_str.len() + colon.len() + 6;
                     let budget = try_opt!(shape.width.checked_sub(used_width));
                     let bounds_str: String = try_opt!(bounds
-                                                          .iter()
-                                                          .map(|ty_bound| {
-                        ty_bound.rewrite(context, Shape::legacy(budget, shape.indent + used_width))
-                    })
-                                                          .collect::<Option<Vec<_>>>())
+                        .iter()
+                        .map(|ty_bound| {
+                            ty_bound
+                                .rewrite(context, Shape::legacy(budget, shape.indent + used_width))
+                        })
+                        .collect::<Option<Vec<_>>>())
                         .join(joiner);
 
                     if context.config.spaces_within_angle_brackets() && lifetime_str.len() > 0 {
@@ -401,11 +402,12 @@ impl Rewrite for ast::WherePredicate {
                     let used_width = type_str.len() + colon.len();
                     let budget = try_opt!(shape.width.checked_sub(used_width));
                     let bounds_str: String = try_opt!(bounds
-                                                          .iter()
-                                                          .map(|ty_bound| {
-                        ty_bound.rewrite(context, Shape::legacy(budget, shape.indent + used_width))
-                    })
-                                                          .collect::<Option<Vec<_>>>())
+                        .iter()
+                        .map(|ty_bound| {
+                            ty_bound
+                                .rewrite(context, Shape::legacy(budget, shape.indent + used_width))
+                        })
+                        .collect::<Option<Vec<_>>>())
                         .join(joiner);
 
                     format!("{}{}{}", type_str, colon, bounds_str)
@@ -700,14 +702,14 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
         // This doesn't work out so nicely for mutliline situation with lots of
         // rightward drift. If that is a problem, we could use the list stuff.
         result.push_str(&try_opt!(bare_fn
-                                      .lifetimes
-                                      .iter()
-                                      .map(|l| {
-            l.rewrite(context,
-                      Shape::legacy(try_opt!(shape.width.checked_sub(6)), shape.indent + 4))
-        })
-                                      .collect::<Option<Vec<_>>>())
-                            .join(", "));
+            .lifetimes
+            .iter()
+            .map(|l| {
+                l.rewrite(context,
+                          Shape::legacy(try_opt!(shape.width.checked_sub(6)), shape.indent + 4))
+            })
+            .collect::<Option<Vec<_>>>())
+            .join(", "));
         result.push_str("> ");
     }
 

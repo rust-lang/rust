@@ -22,8 +22,9 @@ impl<'a> FmtVisitor<'a> {
     // TODO these format_missing methods are ugly. Refactor and add unit tests
     // for the central whitespace stripping loop.
     pub fn format_missing(&mut self, end: BytePos) {
-        self.format_missing_inner(end,
-                                  |this, last_snippet, _| this.buffer.push_str(last_snippet))
+        self.format_missing_inner(end, |this, last_snippet, _| {
+            this.buffer.push_str(last_snippet)
+        })
     }
 
     pub fn format_missing_with_indent(&mut self, end: BytePos) {
