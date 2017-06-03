@@ -1125,17 +1125,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 if let Some(_) = statement_scope_span(self.tcx, super_scope) {
                     db.note("consider using a `let` binding to increase its lifetime");
                 }
-
-
-
-                match err.cmt.cat {
-                    mc::Categorization::Rvalue(r, or) if r != or => {
-                        db.note("\
-before rustc 1.16, this temporary lived longer - see issue #39283 \
-(https://github.com/rust-lang/rust/issues/39283)");
-                    }
-                    _ => {}
-                }
             }
 
             err_borrowed_pointer_too_short(loan_scope, ptr_scope) => {

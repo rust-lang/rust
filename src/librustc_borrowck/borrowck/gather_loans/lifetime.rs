@@ -108,7 +108,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
         //! rooting etc, and presuming `cmt` is not mutated.
 
         match cmt.cat {
-            Categorization::Rvalue(temp_scope, _) => {
+            Categorization::Rvalue(temp_scope) => {
                 temp_scope
             }
             Categorization::Upvar(..) => {

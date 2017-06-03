@@ -99,9 +99,6 @@ pub struct Expr<'tcx> {
     /// temporary; should be None only if in a constant context
     pub temp_lifetime: Option<CodeExtent>,
 
-    /// whether this temp lifetime was shrunk by #36082.
-    pub temp_lifetime_was_shrunk: bool,
-
     /// span of the expression in the source
     pub span: Span,
 
