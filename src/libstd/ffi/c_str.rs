@@ -457,9 +457,9 @@ impl From<Box<CStr>> for CString {
 }
 
 #[stable(feature = "box_from_c_string", since = "1.18.0")]
-impl Into<Box<CStr>> for CString {
-    fn into(self) -> Box<CStr> {
-        self.into_boxed_c_str()
+impl From<CString> for Box<CStr> {
+    fn from(s: CString) -> Box<CStr> {
+        s.into_boxed_c_str()
     }
 }
 
