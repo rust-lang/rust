@@ -191,13 +191,16 @@ impl<'a, B: ?Sized> Cow<'a, B>
     /// # Examples
     ///
     /// ```
+    /// use std::ascii::AsciiExt;
     /// use std::borrow::Cow;
     ///
-    /// let mut cow: Cow<[_]> = Cow::Owned(vec![1, 2, 3]);
+    /// let mut cow = Cow::Borrowed("foo");
+    /// cow.to_mut().make_ascii_uppercase();
     ///
-    /// let hello = cow.to_mut();
-    ///
-    /// assert_eq!(hello, &[1, 2, 3]);
+    /// assert_eq!(
+    ///   cow,
+    ///   Cow::Owned(String::from("FOO")) as Cow<str>
+    /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_mut(&mut self) -> &mut <B as ToOwned>::Owned {
