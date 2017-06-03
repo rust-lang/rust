@@ -153,7 +153,8 @@ before_script:
       df -h;
       du . | sort -nr | head -n100
   - >
-      if [ "$ALLOW_PR" = "" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
+      if ([ "$ALLOW_PR" = "" ] && [ "$TRAVIS_BRANCH" != "auto" ]) || \
+         ([ "$TRAVIS_BRANCH" == "master" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]); then
           export RUN_SCRIPT="echo 'skipping, not a full build'";
       else
           RUN_SCRIPT="stamp src/ci/init_repo.sh . $HOME/rustsrc";
