@@ -49,7 +49,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
                 }
             },
             ExprMethodCall(ref name, _, ref arguments) => {
-                let method_type = borrowed_table.expr_ty(e);
+                let def_id = borrowed_table.type_dependent_defs[&e.id].def_id();
+                let method_type = cx.tcx.type_of(def_id);
                 check_arguments(cx, arguments, method_type, &name.node.as_str())
             },
             _ => (),
@@ -70,7 +71,7 @@ fn check_arguments(cx: &LateContext, arguments: &[Expr], type_definition: &TyS, 
                             span_lint(cx,
                                       UNNECESSARY_MUT_PASSED,
                                       argument.span,
-                                      &format!("The function/method \"{}\" doesn't need a mutable reference", name));
+                                      &format!("The function/method `{}` doesn't need a mutable reference", name));
                         }
                     },
                     _ => (),

@@ -81,7 +81,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         let fn_def_id = cx.tcx.hir.local_def_id(node_id);
         let region_maps = &cx.tcx.region_maps(fn_def_id);
         {
-            let mut vis = ExprUseVisitor::new(&mut v, region_maps, &infcx);
+            let def_id = cx.tcx.hir.body_owner_def_id(body.id());
+            let param_env = cx.tcx.param_env(def_id);
+            let mut vis = ExprUseVisitor::new(&mut v, region_maps, &infcx, param_env);
             vis.consume_body(body);
         }
 
@@ -205,7 +207,7 @@ impl<'a, 'tcx: 'a> EscapeDelegate<'a, 'tcx> {
         // overflows.
         if ty.is_box() {
             let inner = ty.boxed_ty();
-            self.tcx.infer_ctxt((), Reveal::All).enter(|infcx| if let Ok(layout) = inner.layout(&infcx) {
+            self.tcx.infer_ctxt(()).enter(|infcx| if let Ok(layout) = inner.layout(&infcx) {
                 let size = layout.size(&self.target);
                 size.bytes() > self.too_large_for_stack
             } else {

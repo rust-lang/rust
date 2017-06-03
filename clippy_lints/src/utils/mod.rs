@@ -259,7 +259,6 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
 }
 
 /// Get the definition associated to a path.
-/// TODO: investigate if there is something more efficient for that.
 pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<def::Def> {
     let cstore = &cx.tcx.sess.cstore;
 
@@ -319,9 +318,9 @@ pub fn implements_trait<'a, 'tcx>(
 ) -> bool {
     let ty = cx.tcx.erase_regions(&ty);
     let mut b = if let Some(id) = parent_node_id {
-        cx.tcx.infer_ctxt(BodyId { node_id: id }, Reveal::All)
+        cx.tcx.infer_ctxt(BodyId { node_id: id })
     } else {
-        cx.tcx.infer_ctxt((), Reveal::All)
+        cx.tcx.infer_ctxt(())
     };
     b.enter(|infcx| {
         let obligation = cx.tcx.predicate_for_trait_def(traits::ObligationCause::dummy(), trait_id, 0, ty, ty_params);
@@ -780,7 +779,7 @@ pub fn same_tys<'a, 'tcx>(
     parameter_item: DefId
 ) -> bool {
     let parameter_env = cx.tcx.param_env(parameter_item);
-    cx.tcx.infer_ctxt(parameter_env, Reveal::All).enter(|infcx| {
+    cx.tcx.infer_ctxt(parameter_env).enter(|infcx| {
         let substs = Substs::identity_for_item(cx.tcx, parameter_item);
         let new_a = a.subst(infcx.tcx, substs);
         let new_b = b.subst(infcx.tcx, substs);
@@ -963,6 +962,6 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
 
 pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>) -> Option<u64> {
     cx.tcx
-        .infer_ctxt((), Reveal::All)
+        .infer_ctxt(())
         .enter(|infcx| ty.layout(&infcx).ok().map(|lay| lay.size(&TargetDataLayout::parse(cx.sess())).bytes()))
 }
