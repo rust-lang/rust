@@ -12,22 +12,30 @@
 
 use rustc::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use rustc::hir::def_id::DefIndex;
+use rustc::hir::map::DefPathHash;
 use rustc::ich::Fingerprint;
 use rustc::middle::cstore::EncodedMetadataHash;
 use std::sync::Arc;
 use rustc_data_structures::fx::FxHashMap;
-
-use super::directory::DefPathIndex;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 /// Data for use when recompiling the **current crate**.
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedDepGraph {
-    pub edges: Vec<SerializedEdgeSet>,
+    /// The set of all DepNodes in the graph
+    pub nodes: IndexVec<DepNodeIndex, DepNode<DefPathHash>>,
+    /// For each DepNode, stores the list of edges originating from that
+    /// DepNode. Encoded as a [start, end) pair indexing into edge_list_data,
+    /// which holds the actual DepNodeIndices of the target nodes.
+    pub edge_list_indices: Vec<(u32, u32)>,
+    /// A flattened list of all edge targets in the graph. Edge sources are
+    /// implicit in edge_list_indices.
+    pub edge_list_data: Vec<DepNodeIndex>,
 
     /// These are output nodes that have no incoming edges. We track
     /// these separately so that when we reload all edges, we don't
     /// lose track of these nodes.
-    pub bootstrap_outputs: Vec<DepNode<DefPathIndex>>,
+    pub bootstrap_outputs: Vec<DepNode<DefPathHash>>,
 
     /// These are hashes of two things:
     /// - the HIR nodes in this crate
@@ -51,18 +59,36 @@ pub struct SerializedDepGraph {
     pub hashes: Vec<SerializedHash>,
 }
 
-/// Represents a set of "reduced" dependency edge. We group the
-/// outgoing edges from a single source together.
-#[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct SerializedEdgeSet {
-    pub source: DepNode<DefPathIndex>,
-    pub targets: Vec<DepNode<DefPathIndex>>
+/// The index of a DepNode in the SerializedDepGraph::nodes array.
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Debug,
+         RustcEncodable, RustcDecodable)]
+pub struct DepNodeIndex(pub u32);
+
+impl DepNodeIndex {
+    #[inline]
+    pub fn new(idx: usize) -> DepNodeIndex {
+        assert!(idx <= ::std::u32::MAX as usize);
+        DepNodeIndex(idx as u32)
+    }
+}
+
+impl Idx for DepNodeIndex {
+    #[inline]
+    fn new(idx: usize) -> Self {
+        assert!(idx <= ::std::u32::MAX as usize);
+        DepNodeIndex(idx as u32)
+    }
+
+    #[inline]
+    fn index(self) -> usize {
+        self.0 as usize
+    }
 }
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedHash {
     /// def-id of thing being hashed
-    pub dep_node: DepNode<DefPathIndex>,
+    pub dep_node: DepNode<DefPathHash>,
 
     /// the hash as of previous compilation, computed by code in
     /// `hash` module
@@ -115,5 +141,5 @@ pub struct SerializedMetadataHashes {
     /// is only populated if -Z query-dep-graph is specified. It will be
     /// empty otherwise. Importing crates are perfectly happy with just having
     /// the DefIndex.
-    pub index_map: FxHashMap<DefIndex, DefPathIndex>
+    pub index_map: FxHashMap<DefIndex, DefPathHash>
 }

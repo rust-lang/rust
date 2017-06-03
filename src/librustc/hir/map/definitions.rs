@@ -36,7 +36,7 @@ use util::nodemap::NodeMap;
 pub struct DefPathTable {
     index_to_key: [Vec<DefKey>; 2],
     key_to_index: FxHashMap<DefKey, DefIndex>,
-    def_path_hashes: [Vec<Fingerprint>; 2],
+    def_path_hashes: [Vec<DefPathHash>; 2],
 }
 
 // Unfortunately we have to provide a manual impl of Clone because of the
@@ -57,7 +57,7 @@ impl DefPathTable {
 
     fn allocate(&mut self,
                 key: DefKey,
-                def_path_hash: Fingerprint,
+                def_path_hash: DefPathHash,
                 address_space: DefIndexAddressSpace)
                 -> DefIndex {
         let index = {
@@ -81,7 +81,7 @@ impl DefPathTable {
     }
 
     #[inline(always)]
-    pub fn def_path_hash(&self, index: DefIndex) -> Fingerprint {
+    pub fn def_path_hash(&self, index: DefIndex) -> DefPathHash {
         self.def_path_hashes[index.address_space().index()]
                             [index.as_array_index()]
     }
@@ -126,6 +126,30 @@ impl DefPathTable {
 
         Some(index)
     }
+
+    pub fn add_def_path_hashes_to(&self,
+                                  cnum: CrateNum,
+                                  out: &mut FxHashMap<DefPathHash, DefId>) {
+        for address_space in &[DefIndexAddressSpace::Low, DefIndexAddressSpace::High] {
+            let start_index = address_space.start();
+            out.extend(
+                (&self.def_path_hashes[address_space.index()])
+                    .iter()
+                    .enumerate()
+                    .map(|(index, &hash)| {
+                        let def_id = DefId {
+                            krate: cnum,
+                            index: DefIndex::new(index + start_index),
+                        };
+                        (hash, def_id)
+                    })
+            );
+        }
+    }
+
+    pub fn size(&self) -> usize {
+        self.key_to_index.len()
+    }
 }
 
 
@@ -148,8 +172,8 @@ impl Decodable for DefPathTable {
         let index_to_key_lo: Vec<DefKey> = Decodable::decode(d)?;
         let index_to_key_hi: Vec<DefKey> = Decodable::decode(d)?;
 
-        let def_path_hashes_lo: Vec<Fingerprint> = Decodable::decode(d)?;
-        let def_path_hashes_hi: Vec<Fingerprint> = Decodable::decode(d)?;
+        let def_path_hashes_lo: Vec<DefPathHash> = Decodable::decode(d)?;
+        let def_path_hashes_hi: Vec<DefPathHash> = Decodable::decode(d)?;
 
         let index_to_key = [index_to_key_lo, index_to_key_hi];
         let def_path_hashes = [def_path_hashes_lo, def_path_hashes_hi];
@@ -216,7 +240,7 @@ pub struct DefKey {
 }
 
 impl DefKey {
-    fn compute_stable_hash(&self, parent_hash: Fingerprint) -> Fingerprint {
+    fn compute_stable_hash(&self, parent_hash: DefPathHash) -> DefPathHash {
         let mut hasher = StableHasher::new();
 
         // We hash a 0u8 here to disambiguate between regular DefPath hashes,
@@ -224,17 +248,17 @@ impl DefKey {
         0u8.hash(&mut hasher);
         parent_hash.hash(&mut hasher);
         self.disambiguated_data.hash(&mut hasher);
-        hasher.finish()
+        DefPathHash(hasher.finish())
     }
 
-    fn root_parent_stable_hash(crate_name: &str, crate_disambiguator: &str) -> Fingerprint {
+    fn root_parent_stable_hash(crate_name: &str, crate_disambiguator: &str) -> DefPathHash {
         let mut hasher = StableHasher::new();
         // Disambiguate this from a regular DefPath hash,
         // see compute_stable_hash() above.
         1u8.hash(&mut hasher);
         crate_name.hash(&mut hasher);
         crate_disambiguator.hash(&mut hasher);
-        hasher.finish()
+        DefPathHash(hasher.finish())
     }
 }
 
@@ -296,7 +320,9 @@ impl DefPath {
 
         s.push_str(&tcx.original_crate_name(self.krate).as_str());
         s.push_str("/");
-        s.push_str(&tcx.crate_disambiguator(self.krate).as_str());
+        // Don't print the whole crate disambiguator. That's just annoying in
+        // debug output.
+        s.push_str(&tcx.crate_disambiguator(self.krate).as_str()[..7]);
 
         for component in &self.data {
             write!(s,
@@ -372,6 +398,12 @@ pub enum DefPathData {
     Typeof,
 }
 
+#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug,
+         RustcEncodable, RustcDecodable)]
+pub struct DefPathHash(pub Fingerprint);
+
+impl_stable_hash_for!(tuple_struct DefPathHash { fingerprint });
+
 impl Definitions {
     /// Create new empty definition map.
     pub fn new() -> Definitions {
@@ -404,7 +436,7 @@ impl Definitions {
     }
 
     #[inline(always)]
-    pub fn def_path_hash(&self, index: DefIndex) -> Fingerprint {
+    pub fn def_path_hash(&self, index: DefIndex) -> DefPathHash {
         self.table.def_path_hash(index)
     }
 

@@ -18,7 +18,7 @@ use hir::TraitMap;
 use hir::def::{Def, ExportMap};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
-use hir::map::DisambiguatedDefPathData;
+use hir::map::{DisambiguatedDefPathData, DefPathHash};
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
 use middle::resolve_lifetime;
@@ -461,6 +461,10 @@ pub struct GlobalCtxt<'tcx> {
 
     pub hir: hir_map::Map<'tcx>,
 
+    /// A map from DefPathHash -> DefId. Includes DefIds from the local crate
+    /// as well as all upstream crates. Only populated in incremental mode.
+    pub def_path_hash_to_def_id: Option<FxHashMap<DefPathHash, DefId>>,
+
     pub maps: maps::Maps<'tcx>,
 
     pub mir_passes: Rc<Passes>,
@@ -686,6 +690,40 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let max_cnum = s.cstore.crates().iter().map(|c| c.as_usize()).max().unwrap_or(0);
         let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
         providers[LOCAL_CRATE] = local_providers;
+
+        let def_path_hash_to_def_id = if s.opts.build_dep_graph() {
+            let upstream_def_path_tables: Vec<(CrateNum, Rc<_>)> = s
+                .cstore
+                .crates()
+                .iter()
+                .map(|&cnum| (cnum, s.cstore.def_path_table(cnum)))
+                .collect();
+
+            let def_path_tables = || {
+                upstream_def_path_tables
+                    .iter()
+                    .map(|&(cnum, ref rc)| (cnum, &**rc))
+                    .chain(iter::once((LOCAL_CRATE, hir.definitions().def_path_table())))
+            };
+
+            // Precompute the capacity of the hashmap so we don't have to
+            // re-allocate when populating it.
+            let capacity = def_path_tables().map(|(_, t)| t.size()).sum::<usize>();
+
+            let mut map: FxHashMap<_, _> = FxHashMap::with_capacity_and_hasher(
+                capacity,
+                ::std::default::Default::default()
+            );
+
+            for (cnum, def_path_table) in def_path_tables() {
+                def_path_table.add_def_path_hashes_to(cnum, &mut map);
+            }
+
+            Some(map)
+        } else {
+            None
+        };
+
         tls::enter_global(GlobalCtxt {
             sess: s,
             trans_trait_caches: traits::trans::TransTraitCaches::new(dep_graph.clone()),
@@ -699,6 +737,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             export_map: resolutions.export_map,
             fulfilled_predicates: RefCell::new(fulfilled_predicates),
             hir: hir,
+            def_path_hash_to_def_id: def_path_hash_to_def_id,
             maps: maps::Maps::new(providers),
             mir_passes,
             freevars: RefCell::new(resolutions.freevars),

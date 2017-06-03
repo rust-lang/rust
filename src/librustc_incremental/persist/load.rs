@@ -12,6 +12,7 @@
 
 use rustc::dep_graph::{DepNode, WorkProductId};
 use rustc::hir::def_id::DefId;
+use rustc::hir::map::DefPathHash;
 use rustc::hir::svh::Svh;
 use rustc::ich::Fingerprint;
 use rustc::session::Session;
@@ -19,12 +20,12 @@ use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_serialize::opaque::Decoder;
+use std::default::Default;
 use std::path::{Path};
 use std::sync::Arc;
 
 use IncrementalHashesMap;
 use super::data::*;
-use super::directory::*;
 use super::dirty_clean;
 use super::hash::*;
 use super::fs::*;
@@ -33,7 +34,7 @@ use super::work_product;
 
 // The key is a dirty node. The value is **some** base-input that we
 // can blame it on.
-pub type DirtyNodes = FxHashMap<DepNode<DefPathIndex>, DepNode<DefPathIndex>>;
+pub type DirtyNodes = FxHashMap<DepNode<DefPathHash>, DepNode<DefPathHash>>;
 
 /// If we are in incremental mode, and a previous dep-graph exists,
 /// then load up those nodes/edges that are still valid into the
@@ -118,6 +119,16 @@ fn load_data(sess: &Session, path: &Path) -> Option<Vec<u8>> {
     None
 }
 
+/// Try to convert a DepNode from the old dep-graph into a DepNode in the
+/// current graph by mapping the DefPathHash to a valid DefId. This will fail
+/// if the DefPathHash refers to something that has been removed (because
+/// there is no DefId for that thing anymore).
+fn retrace(tcx: TyCtxt, dep_node: &DepNode<DefPathHash>) -> Option<DepNode<DefId>> {
+    dep_node.map_def(|def_path_hash| {
+        tcx.def_path_hash_to_def_id.as_ref().unwrap().get(def_path_hash).cloned()
+    })
+}
+
 /// Decode the dep graph and load the edges/nodes that are still clean
 /// into `tcx.dep_graph`.
 pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -149,16 +160,25 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return Ok(());
     }
 
-    let directory = DefIdDirectory::decode(&mut dep_graph_decoder)?;
     let serialized_dep_graph = SerializedDepGraph::decode(&mut dep_graph_decoder)?;
 
-    let edge_map: FxHashMap<_, _> = serialized_dep_graph.edges
-                                                        .into_iter()
-                                                        .map(|s| (s.source, s.targets))
-                                                        .collect();
+    let edge_map: FxHashMap<DepNode<DefPathHash>, Vec<DepNode<DefPathHash>>> = {
+        let capacity = serialized_dep_graph.edge_list_data.len();
+        let mut edge_map = FxHashMap::with_capacity_and_hasher(capacity, Default::default());
 
-    // Retrace the paths in the directory to find their current location (if any).
-    let retraced = directory.retrace(tcx);
+        for (node_index, source) in serialized_dep_graph.nodes.iter().enumerate() {
+            let (start, end) = serialized_dep_graph.edge_list_indices[node_index];
+            let targets =
+                (&serialized_dep_graph.edge_list_data[start as usize .. end as usize])
+                .into_iter()
+                .map(|&node_index| serialized_dep_graph.nodes[node_index].clone())
+                .collect();
+
+            edge_map.insert(source.clone(), targets);
+        }
+
+        edge_map
+    };
 
     // Compute the set of nodes from the old graph where some input
     // has changed or been removed. These are "raw" source nodes,
@@ -169,8 +189,7 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // the current compilation).
     let dirty_raw_nodes = initial_dirty_nodes(tcx,
                                               incremental_hashes_map,
-                                              &serialized_dep_graph.hashes,
-                                              &retraced);
+                                              &serialized_dep_graph.hashes);
     let dirty_raw_nodes = transitive_dirty_nodes(&edge_map, dirty_raw_nodes);
 
     // Recreate the edges in the graph that are still clean.
@@ -179,7 +198,7 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut extra_edges = vec![];
     for (source, targets) in &edge_map {
         for target in targets {
-            process_edges(tcx, source, target, &edge_map, &directory, &retraced, &dirty_raw_nodes,
+            process_edges(tcx, source, target, &edge_map, &dirty_raw_nodes,
                           &mut clean_work_products, &mut dirty_work_products, &mut extra_edges);
         }
     }
@@ -187,7 +206,7 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Recreate bootstrap outputs, which are outputs that have no incoming edges (and hence cannot
     // be dirty).
     for bootstrap_output in &serialized_dep_graph.bootstrap_outputs {
-        if let Some(n) = retraced.map(bootstrap_output) {
+        if let Some(n) = retrace(tcx, bootstrap_output) {
             if let DepNode::WorkProduct(ref wp) = n {
                 clean_work_products.insert(wp.clone());
             }
@@ -214,7 +233,7 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // the edge from `Hir(X)` to `Bar` (or, if `Bar` itself cannot be
     // recreated, to the targets of `Bar`).
     while let Some((source, target)) = extra_edges.pop() {
-        process_edges(tcx, source, target, &edge_map, &directory, &retraced, &dirty_raw_nodes,
+        process_edges(tcx, source, target, &edge_map, &dirty_raw_nodes,
                       &mut clean_work_products, &mut dirty_work_products, &mut extra_edges);
     }
 
@@ -222,10 +241,9 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // dirty.
     reconcile_work_products(tcx, work_products, &clean_work_products);
 
-    dirty_clean::check_dirty_clean_annotations(tcx, &dirty_raw_nodes, &retraced);
+    dirty_clean::check_dirty_clean_annotations(tcx, &dirty_raw_nodes);
 
     load_prev_metadata_hashes(tcx,
-                              &retraced,
                               &mut *incremental_hashes_map.prev_metadata_hashes.borrow_mut());
     Ok(())
 }
@@ -234,8 +252,7 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// a bit vector where the index is the DefPathIndex.
 fn initial_dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  incremental_hashes_map: &IncrementalHashesMap,
-                                 serialized_hashes: &[SerializedHash],
-                                 retraced: &RetracedDefIdDirectory)
+                                 serialized_hashes: &[SerializedHash])
                                  -> DirtyNodes {
     let mut hcx = HashContext::new(tcx, incremental_hashes_map);
     let mut dirty_nodes = FxHashMap();
@@ -249,7 +266,7 @@ fn initial_dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     for hash in serialized_hashes {
-        if let Some(dep_node) = retraced.map(&hash.dep_node) {
+        if let Some(dep_node) = retrace(tcx, &hash.dep_node) {
             if let Some(current_hash) = hcx.hash(&dep_node) {
                 if current_hash == hash.hash {
                     debug!("initial_dirty_nodes: {:?} is clean (hash={:?})",
@@ -282,11 +299,11 @@ fn initial_dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     dirty_nodes
 }
 
-fn transitive_dirty_nodes(edge_map: &FxHashMap<DepNode<DefPathIndex>, Vec<DepNode<DefPathIndex>>>,
+fn transitive_dirty_nodes(edge_map: &FxHashMap<DepNode<DefPathHash>, Vec<DepNode<DefPathHash>>>,
                           mut dirty_nodes: DirtyNodes)
                           -> DirtyNodes
 {
-    let mut stack: Vec<(DepNode<DefPathIndex>, DepNode<DefPathIndex>)> = vec![];
+    let mut stack: Vec<(DepNode<DefPathHash>, DepNode<DefPathHash>)> = vec![];
     stack.extend(dirty_nodes.iter().map(|(s, b)| (s.clone(), b.clone())));
     while let Some((source, blame)) = stack.pop() {
         // we know the source is dirty (because of the node `blame`)...
@@ -348,7 +365,6 @@ fn delete_dirty_work_product(tcx: TyCtxt,
 }
 
 fn load_prev_metadata_hashes(tcx: TyCtxt,
-                             retraced: &RetracedDefIdDirectory,
                              output: &mut FxHashMap<DefId, Fingerprint>) {
     if !tcx.sess.opts.debugging_opts.query_dep_graph {
         return
@@ -388,9 +404,11 @@ fn load_prev_metadata_hashes(tcx: TyCtxt,
     debug!("load_prev_metadata_hashes() - Mapping DefIds");
 
     assert_eq!(serialized_hashes.index_map.len(), serialized_hashes.entry_hashes.len());
+    let def_path_hash_to_def_id = tcx.def_path_hash_to_def_id.as_ref().unwrap();
+
     for serialized_hash in serialized_hashes.entry_hashes {
-        let def_path_index = serialized_hashes.index_map[&serialized_hash.def_index];
-        if let Some(def_id) = retraced.def_id(def_path_index) {
+        let def_path_hash = serialized_hashes.index_map[&serialized_hash.def_index];
+        if let Some(&def_id) = def_path_hash_to_def_id.get(&def_path_hash) {
             let old = output.insert(def_id, serialized_hash.hash);
             assert!(old.is_none(), "already have hash for {:?}", def_id);
         }
@@ -402,15 +420,13 @@ fn load_prev_metadata_hashes(tcx: TyCtxt,
 
 fn process_edges<'a, 'tcx, 'edges>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    source: &'edges DepNode<DefPathIndex>,
-    target: &'edges DepNode<DefPathIndex>,
-    edges: &'edges FxHashMap<DepNode<DefPathIndex>, Vec<DepNode<DefPathIndex>>>,
-    directory: &DefIdDirectory,
-    retraced: &RetracedDefIdDirectory,
+    source: &'edges DepNode<DefPathHash>,
+    target: &'edges DepNode<DefPathHash>,
+    edges: &'edges FxHashMap<DepNode<DefPathHash>, Vec<DepNode<DefPathHash>>>,
     dirty_raw_nodes: &DirtyNodes,
     clean_work_products: &mut FxHashSet<Arc<WorkProductId>>,
     dirty_work_products: &mut FxHashSet<Arc<WorkProductId>>,
-    extra_edges: &mut Vec<(&'edges DepNode<DefPathIndex>, &'edges DepNode<DefPathIndex>)>)
+    extra_edges: &mut Vec<(&'edges DepNode<DefPathHash>, &'edges DepNode<DefPathHash>)>)
 {
     // If the target is dirty, skip the edge. If this is an edge
     // that targets a work-product, we can print the blame
@@ -419,14 +435,21 @@ fn process_edges<'a, 'tcx, 'edges>(
         if let DepNode::WorkProduct(ref wp) = *target {
             if tcx.sess.opts.debugging_opts.incremental_info {
                 if dirty_work_products.insert(wp.clone()) {
-                    // It'd be nice to pretty-print these paths better than just
-                    // using the `Debug` impls, but wev.
+                    // Try to reconstruct the human-readable version of the
+                    // DepNode. This cannot be done for things that where
+                    // removed.
+                    let readable_blame = if let Some(dep_node) = retrace(tcx, blame) {
+                        dep_node.map_def(|&def_id| Some(tcx.def_path(def_id).to_string(tcx)))
+                                .unwrap()
+                    } else {
+                        blame.map_def(|def_path_hash| Some(format!("{:?}", def_path_hash)))
+                             .unwrap()
+                    };
+
                     println!("incremental: module {:?} is dirty because {:?} \
                               changed or was removed",
                              wp,
-                             blame.map_def(|&index| {
-                                 Some(directory.def_path_string(tcx, index))
-                             }).unwrap());
+                             readable_blame);
                 }
             }
         }
@@ -439,8 +462,8 @@ fn process_edges<'a, 'tcx, 'edges>(
     // Retrace the source -> target edges to def-ids and then create
     // an edge in the graph. Retracing may yield none if some of the
     // data happens to have been removed.
-    if let Some(source_node) = retraced.map(source) {
-        if let Some(target_node) = retraced.map(target) {
+    if let Some(source_node) = retrace(tcx, source) {
+        if let Some(target_node) = retrace(tcx, target) {
             let _task = tcx.dep_graph.in_task(target_node);
             tcx.dep_graph.read(source_node);
             if let DepNode::WorkProduct(ref wp) = *target {

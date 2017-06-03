@@ -13,7 +13,6 @@
 //! various HIR nodes.
 
 mod data;
-mod directory;
 mod dirty_clean;
 mod fs;
 mod hash;

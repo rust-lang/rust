@@ -32,6 +32,7 @@ use std::hash::Hash;
 use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::map::DefPathHash;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ich::{Fingerprint, StableHashingContext};
 use rustc::ty::TyCtxt;
@@ -218,7 +219,7 @@ impl<'a, 'tcx: 'a> ComputeItemHashesVisitor<'a, 'tcx> {
     {
         let tcx = self.hcx.tcx();
 
-        let mut impls: Vec<(Fingerprint, Fingerprint)> = krate
+        let mut impls: Vec<(DefPathHash, Fingerprint)> = krate
             .trait_impls
             .iter()
             .map(|(&trait_id, impls)| {

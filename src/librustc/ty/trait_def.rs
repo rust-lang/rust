@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use ich::Fingerprint;
+use hir::map::DefPathHash;
 use traits::specialization_graph;
 use ty::fast_reject;
 use ty::fold::TypeFoldable;
@@ -33,7 +33,7 @@ pub struct TraitDef {
 
     /// The ICH of this trait's DefPath, cached here so it doesn't have to be
     /// recomputed all the time.
-    pub def_path_hash: Fingerprint,
+    pub def_path_hash: DefPathHash,
 }
 
 // We don't store the list of impls in a flat list because each cached list of
@@ -95,7 +95,7 @@ impl<'a, 'gcx, 'tcx> TraitDef {
                unsafety: hir::Unsafety,
                paren_sugar: bool,
                has_default_impl: bool,
-               def_path_hash: Fingerprint)
+               def_path_hash: DefPathHash)
                -> TraitDef {
         TraitDef {
             def_id,

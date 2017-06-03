@@ -326,7 +326,7 @@ impl<'a> CrateLoader<'a> {
         let mut cmeta = cstore::CrateMetadata {
             name: name,
             extern_crate: Cell::new(None),
-            def_path_table: def_path_table,
+            def_path_table: Rc::new(def_path_table),
             exported_symbols: exported_symbols,
             trait_impls: trait_impls,
             proc_macros: crate_root.macro_derive_registrar.map(|_| {

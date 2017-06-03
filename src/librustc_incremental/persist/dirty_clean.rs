@@ -40,7 +40,6 @@
 //! previous revision to compare things to.
 //!
 
-use super::directory::RetracedDefIdDirectory;
 use super::load::DirtyNodes;
 use rustc::dep_graph::{DepGraphQuery, DepNode};
 use rustc::hir;
@@ -58,18 +57,23 @@ const LABEL: &'static str = "label";
 const CFG: &'static str = "cfg";
 
 pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                               dirty_inputs: &DirtyNodes,
-                                               retraced: &RetracedDefIdDirectory) {
+                                               dirty_inputs: &DirtyNodes) {
     // can't add `#[rustc_dirty]` etc without opting in to this feature
     if !tcx.sess.features.borrow().rustc_attrs {
         return;
     }
 
     let _ignore = tcx.dep_graph.in_ignore();
+    let def_path_hash_to_def_id = tcx.def_path_hash_to_def_id.as_ref().unwrap();
     let dirty_inputs: FxHashSet<DepNode<DefId>> =
         dirty_inputs.keys()
-                    .filter_map(|d| retraced.map(d))
+                    .filter_map(|dep_node| {
+                        dep_node.map_def(|def_path_hash| {
+                            def_path_hash_to_def_id.get(def_path_hash).cloned()
+                        })
+                    })
                     .collect();
+
     let query = tcx.dep_graph.query();
     debug!("query-nodes: {:?}", query.nodes());
     let krate = tcx.hir.krate();

@@ -13,7 +13,7 @@ use self::MapEntry::*;
 use self::collector::NodeCollector;
 pub use self::def_collector::{DefCollector, MacroInvocationData};
 pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
-                            DisambiguatedDefPathData};
+                            DisambiguatedDefPathData, DefPathHash};
 
 use dep_graph::{DepGraph, DepNode};
 
