@@ -928,6 +928,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                                           cond,
                                           self.matcher,
                                           self.connector,
+                                          self.keyword,
                                           cond_shape))
             }
             None => String::new(),
@@ -1529,6 +1530,7 @@ fn rewrite_pat_expr(context: &RewriteContext,
                     // Connecting piece between pattern and expression,
                     // *without* trailing space.
                     connector: &str,
+                    keyword: &str,
                     shape: Shape)
                     -> Option<String> {
     debug!("rewrite_pat_expr {:?} {:?} {:?}", shape, pat, expr);
@@ -1565,6 +1567,10 @@ fn rewrite_pat_expr(context: &RewriteContext,
                 return Some(result);
             }
         }
+    }
+
+    if pat.is_none() && keyword == "if" {
+        return None;
     }
 
     let nested_indent = shape.indent.block_only().block_indent(context.config);
