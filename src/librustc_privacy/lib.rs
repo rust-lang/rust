@@ -591,12 +591,23 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
     }
 
     fn check_expr_pat_type(&mut self, id: ast::NodeId, span: Span) -> bool {
+        self.span = span;
         if let Some(ty) = self.tables.node_id_to_type_opt(id) {
-            self.span = span;
-            ty.visit_with(self)
-        } else {
-            false
+            if ty.visit_with(self) {
+                return true;
+            }
         }
+        if self.tables.node_substs(id).visit_with(self) {
+            return true;
+        }
+        if let Some(adjustments) = self.tables.adjustments.get(&id) {
+            for adjustment in adjustments {
+                if adjustment.target.visit_with(self) {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     fn check_item(&mut self, item_id: ast::NodeId) -> &mut Self {
@@ -660,17 +671,34 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             }
             hir::ExprMethodCall(name, ..) => {
                 // Method calls have to be checked specially.
-                if let Some(method) = self.tables.method_map.get(&ty::MethodCall::expr(expr.id)) {
-                    self.span = name.span;
-                    if method.ty.visit_with(self) || method.substs.visit_with(self) {
-                        return;
-                    }
+                let def_id = self.tables.type_dependent_defs[&expr.id].def_id();
+                self.span = name.span;
+                if self.tcx.type_of(def_id).visit_with(self) {
+                    return;
                 }
             }
             _ => {}
         }
 
         intravisit::walk_expr(self, expr);
+    }
+
+    fn visit_qpath(&mut self, qpath: &'tcx hir::QPath, id: ast::NodeId, span: Span) {
+        // Inherent associated constants don't have self type in substs,
+        // we have to check it additionally.
+        if let hir::QPath::TypeRelative(..) = *qpath {
+            if let Some(def) = self.tables.type_dependent_defs.get(&id).cloned() {
+                if let Some(assoc_item) = self.tcx.opt_associated_item(def.def_id()) {
+                    if let ty::ImplContainer(impl_def_id) = assoc_item.container {
+                        if self.tcx.type_of(impl_def_id).visit_with(self) {
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        intravisit::walk_qpath(self, qpath, id, span);
     }
 
     // Check types of patterns
@@ -769,25 +797,11 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                     self.tcx.sess.span_err(self.span, &msg);
                     return true;
                 }
-                if let ty::TyFnDef(..) = ty.sty {
-                    // Inherent static methods don't have self type in substs,
-                    // we have to check it additionally.
-                    let mut impl_def_id = None;
-                    if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
-                        if let hir::map::NodeImplItem(..) = self.tcx.hir.get(node_id) {
-                            impl_def_id = Some(self.tcx.hir.get_parent_did(node_id));
-                        }
-                    } else if let Some(Def::Method(..)) = self.tcx.describe_def(def_id) {
-                        let candidate_impl_def_id = self.tcx.parent_def_id(def_id)
-                                                            .expect("no parent for method def_id");
-                        // `is_none` means it's an impl, not a trait
-                        if self.tcx.describe_def(candidate_impl_def_id).is_none() {
-                            impl_def_id = Some(candidate_impl_def_id)
-                        }
-                    }
-                    if let Some(impl_def_id) = impl_def_id {
-                        let self_ty = self.tcx.type_of(impl_def_id);
-                        if self_ty.visit_with(self) {
+                // Inherent static methods don't have self type in substs,
+                // we have to check it additionally.
+                if let Some(assoc_item) = self.tcx.opt_associated_item(def_id) {
+                    if let ty::ImplContainer(impl_def_id) = assoc_item.container {
+                        if self.tcx.type_of(impl_def_id).visit_with(self) {
                             return true;
                         }
                     }
@@ -829,7 +843,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                             self.tcx.sess.span_err(self.span, &msg);
                             return true;
                         }
-                        // Skip `Self` to avoid infinite recursion
+                        // `Self` here is the same `TyAnon`, so skip it to avoid infinite recursion
                         for subst in trait_ref.substs.iter().skip(1) {
                             if subst.visit_with(self) {
                                 return true;

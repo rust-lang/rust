@@ -15,7 +15,7 @@
 // error-pattern:type `fn() {<u8 as ext::PrivTrait>::method}` is private
 // error-pattern:type `fn(u8) -> ext::PrivTupleStruct {ext::PrivTupleStruct::{{constructor}}}` is pr
 // error-pattern:type `fn(u8) -> ext::PubTupleStruct {ext::PubTupleStruct::{{constructor}}}` is priv
-// error-pattern:type `ext::Priv` is private
+// error-pattern:type `fn(&ext::Pub<u8>) {<ext::Pub<u8>>::priv_metod}` is private
 
 #![feature(decl_macro)]
 

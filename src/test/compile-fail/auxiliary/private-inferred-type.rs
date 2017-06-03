@@ -28,6 +28,9 @@ pub struct Pub<T = Alias>(pub T);
 impl Pub<Priv> {
     pub fn static_method() {}
 }
+impl Pub<u8> {
+    fn priv_metod(&self) {}
+}
 
 pub macro m() {
     priv_fn;
@@ -37,5 +40,5 @@ pub macro m() {
     <u8 as PubTrait>::method;
     PrivTupleStruct;
     PubTupleStruct;
-    Pub::static_method;
+    Pub(0u8).priv_metod();
 }
