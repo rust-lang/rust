@@ -187,6 +187,7 @@ impl fmt::Debug for DefId {
 
 
 impl DefId {
+    /// Make a local `DefId` with the given index.
     pub fn local(index: DefIndex) -> DefId {
         DefId { krate: LOCAL_CRATE, index: index }
     }
