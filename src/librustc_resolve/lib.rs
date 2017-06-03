@@ -3428,7 +3428,7 @@ impl<'a> Resolver<'a> {
 
         for &PrivacyError(span, name, binding) in &self.privacy_errors {
             if !reported_spans.insert(span) { continue }
-            self.session.span_err(span, &format!("{} `{}` is private", binding.descr(), name));
+            span_err!(self.session, span, E0603, "{} `{}` is private", binding.descr(), name);
         }
     }
 
