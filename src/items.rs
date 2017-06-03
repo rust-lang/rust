@@ -1944,7 +1944,11 @@ fn rewrite_args(context: &RewriteContext,
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
-        trailing_separator: trailing_comma,
+        trailing_separator: if variadic {
+            SeparatorTactic::Never
+        } else {
+            trailing_comma
+        },
         shape: Shape::legacy(budget, indent),
         ends_with_newline: end_with_newline,
         config: context.config,

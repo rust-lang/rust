@@ -14,3 +14,9 @@ extern "system" {
     pub fn GetConsoleHistoryInfo(console_history_info: *mut ConsoleHistoryInfo) -> Boooooooooooooool;
 }
 
+// rustfmt should not add trailing comma for variadic function. See #1623.
+extern "C" {
+    pub fn variadic_fn(first_parameter: FirstParameterType,
+                       second_parameter: SecondParameterType,
+                       ...);
+}
