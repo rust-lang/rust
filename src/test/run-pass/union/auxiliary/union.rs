@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(untagged_unions)]
-
 pub union U {
     pub a: u8,
     pub b: u16,

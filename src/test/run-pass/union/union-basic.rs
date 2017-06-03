@@ -13,8 +13,6 @@
 // FIXME: This test case makes little-endian assumptions.
 // ignore-s390x
 
-#![feature(untagged_unions)]
-
 extern crate union;
 use std::mem::{size_of, align_of, zeroed};
 
