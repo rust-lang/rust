@@ -1587,7 +1587,10 @@ fn rewrite_fn_base(context: &RewriteContext,
     let generics_str = try_opt!(rewrite_generics(context, generics, shape, generics_span));
     result.push_str(&generics_str);
 
-    let snuggle_angle_bracket = last_line_width(&generics_str) == 1;
+    let snuggle_angle_bracket = generics_str
+        .lines()
+        .last()
+        .map_or(false, |l| l.trim_left().len() == 1);
 
     // Note that the width and indent don't really matter, we'll re-layout the
     // return type later anyway.
