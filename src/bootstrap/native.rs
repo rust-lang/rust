@@ -184,7 +184,7 @@ pub fn llvm(build: &Build, target: &str) {
     configure_compilers(&mut cfg);
 
     if env::var_os("SCCACHE_ERROR_LOG").is_some() {
-        cfg.env("RUST_LOG", "sccache=info");
+        cfg.env("RUST_LOG", "sccache=warn");
     }
 
     // FIXME: we don't actually need to build all LLVM tools and all LLVM
