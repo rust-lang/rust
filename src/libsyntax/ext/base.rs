@@ -552,7 +552,9 @@ pub enum SyntaxExtension {
     BuiltinDerive(BuiltinDeriveFn),
 
     /// A declarative macro, e.g. `macro m() {}`.
-    DeclMacro(Box<TTMacroExpander>, Option<Span> /* definition site span */),
+    ///
+    /// The second element is the definition site span.
+    DeclMacro(Box<TTMacroExpander>, Option<(ast::NodeId, Span)>),
 }
 
 impl SyntaxExtension {

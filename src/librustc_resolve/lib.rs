@@ -1204,7 +1204,7 @@ pub struct Resolver<'a> {
     pub found_unresolved_macro: bool,
 
     // List of crate local macros that we need to warn about as being unused.
-    // Right now this only includes macro_rules! macros.
+    // Right now this only includes macro_rules! macros, and macros 2.0.
     unused_macros: FxHashSet<DefId>,
 
     // Maps the `Mark` of an expansion to its containing module or block.
