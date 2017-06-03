@@ -590,6 +590,27 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 }
             }
 
+            // There's no good place to insert stability check for non-Copy unions,
+            // so semi-randomly perform it here in stability.rs
+            hir::ItemUnion(..) if !self.tcx.sess.features.borrow().untagged_unions => {
+                let def_id = self.tcx.hir.local_def_id(item.id);
+                let adt_def = self.tcx.lookup_adt_def(def_id);
+                let ty = self.tcx.item_type(def_id);
+
+                if adt_def.has_dtor(self.tcx) {
+                    emit_feature_err(&self.tcx.sess.parse_sess,
+                                     "untagged_unions", item.span, GateIssue::Language,
+                                     "unions with `Drop` implementations are unstable");
+                } else {
+                    let param_env = ty::ParameterEnvironment::for_item(self.tcx, item.id);
+                    if !param_env.can_type_implement_copy(self.tcx, ty, item.span).is_ok() {
+                        emit_feature_err(&self.tcx.sess.parse_sess,
+                                        "untagged_unions", item.span, GateIssue::Language,
+                                        "unions with non-`Copy` fields are unstable");
+                    }
+                }
+            }
+
             _ => (/* pass */)
         }
         intravisit::walk_item(self, item);
