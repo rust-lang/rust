@@ -8,16 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:clibrary.rs
-// compile-flags: -lstatic=wronglibrary:clibrary
+// compile-flags: -lstatic=wronglibrary:rust_test_helpers
 
 #[link(name = "wronglibrary", kind = "dylib")]
 extern "C" {
-    pub fn foo(x:i32) -> i32;
+    pub fn rust_dbg_extern_identity_u32(x: u32) -> u32;
 }
 
 fn main() {
     unsafe {
-        foo(42);
+        rust_dbg_extern_identity_u32(42);
     }
 }

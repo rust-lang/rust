@@ -15,6 +15,7 @@ log = { version = "0.3", features = ["release_max_level_info"] }
 env_logger = { version = "0.4", default-features = false }
 proc_macro_plugin = { path = "../libproc_macro_plugin" }
 rustc = { path = "../librustc" }
+rustc_allocator = { path = "../librustc_allocator" }
 rustc_back = { path = "../librustc_back" }
 rustc_borrowck = { path = "../librustc_borrowck" }
 rustc_const_eval = { path = "../librustc_const_eval" }

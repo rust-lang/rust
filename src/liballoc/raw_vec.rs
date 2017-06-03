@@ -12,7 +12,7 @@ use allocator::{Alloc, Layout};
 use core::ptr::{self, Unique};
 use core::mem;
 use core::slice;
-use heap::{HeapAlloc};
+use heap::Heap;
 use super::boxed::Box;
 use core::ops::Drop;
 use core::cmp;
@@ -45,7 +45,7 @@ use core::cmp;
 /// field. This allows zero-sized types to not be special-cased by consumers of
 /// this type.
 #[allow(missing_debug_implementations)]
-pub struct RawVec<T, A: Alloc = HeapAlloc> {
+pub struct RawVec<T, A: Alloc = Heap> {
     ptr: Unique<T>,
     cap: usize,
     a: A,
@@ -112,14 +112,14 @@ impl<T, A: Alloc> RawVec<T, A> {
     }
 }
 
-impl<T> RawVec<T, HeapAlloc> {
+impl<T> RawVec<T, Heap> {
     /// Creates the biggest possible RawVec (on the system heap)
     /// without allocating. If T has positive size, then this makes a
     /// RawVec with capacity 0. If T has 0 size, then it it makes a
     /// RawVec with capacity `usize::MAX`. Useful for implementing
     /// delayed allocation.
     pub fn new() -> Self {
-        Self::new_in(HeapAlloc)
+        Self::new_in(Heap)
     }
 
     /// Creates a RawVec (on the system heap) with exactly the
@@ -139,13 +139,13 @@ impl<T> RawVec<T, HeapAlloc> {
     /// Aborts on OOM
     #[inline]
     pub fn with_capacity(cap: usize) -> Self {
-        RawVec::allocate_in(cap, false, HeapAlloc)
+        RawVec::allocate_in(cap, false, Heap)
     }
 
     /// Like `with_capacity` but guarantees the buffer is zeroed.
     #[inline]
     pub fn with_capacity_zeroed(cap: usize) -> Self {
-        RawVec::allocate_in(cap, true, HeapAlloc)
+        RawVec::allocate_in(cap, true, Heap)
     }
 }
 
@@ -166,7 +166,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     }
 }
 
-impl<T> RawVec<T, HeapAlloc> {
+impl<T> RawVec<T, Heap> {
     /// Reconstitutes a RawVec from a pointer, capacity.
     ///
     /// # Undefined Behavior
@@ -178,7 +178,7 @@ impl<T> RawVec<T, HeapAlloc> {
         RawVec {
             ptr: Unique::new(ptr),
             cap: cap,
-            a: HeapAlloc,
+            a: Heap,
         }
     }
 
@@ -609,7 +609,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     }
 }
 
-impl<T> RawVec<T, HeapAlloc> {
+impl<T> RawVec<T, Heap> {
     /// Converts the entire buffer into `Box<[T]>`.
     ///
     /// While it is not *strictly* Undefined Behavior to call
@@ -693,13 +693,13 @@ mod tests {
                 if size > self.fuel {
                     return Err(AllocErr::Unsupported { details: "fuel exhausted" });
                 }
-                match HeapAlloc.alloc(layout) {
+                match Heap.alloc(layout) {
                     ok @ Ok(_) => { self.fuel -= size; ok }
                     err @ Err(_) => err,
                 }
             }
             unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-                HeapAlloc.dealloc(ptr, layout)
+                Heap.dealloc(ptr, layout)
             }
         }
 

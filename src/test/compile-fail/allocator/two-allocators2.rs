@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:system-allocator.rs
 // no-prefer-dynamic
+// error-pattern: the #[global_allocator] in
 
-#![feature(allocator)]
-#![allocator]
-#![crate_type = "rlib"]
-#![no_std]
+#![feature(global_allocator, allocator_api)]
+
+extern crate system_allocator;
+
+use std::heap::System;
+
+#[global_allocator]
+static A: System = System;
+
+fn main() {}
+

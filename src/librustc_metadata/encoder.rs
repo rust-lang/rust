@@ -400,12 +400,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
         let link_meta = self.link_meta;
         let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateTypeProcMacro);
+        let has_default_lib_allocator =
+            attr::contains_name(tcx.hir.krate_attrs(), "default_lib_allocator");
+        let has_global_allocator = tcx.sess.has_global_allocator.get();
         let root = self.lazy(&CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
             triple: tcx.sess.opts.target_triple.clone(),
             hash: link_meta.crate_hash,
             disambiguator: tcx.sess.local_crate_disambiguator(),
             panic_strategy: Tracked::new(tcx.sess.panic_strategy()),
+            has_global_allocator: Tracked::new(has_global_allocator),
+            has_default_lib_allocator: Tracked::new(has_default_lib_allocator),
             plugin_registrar_fn: tcx.sess
                 .plugin_registrar_fn
                 .get()

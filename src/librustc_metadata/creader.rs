@@ -16,6 +16,7 @@ use schema::{CrateRoot, Tracked};
 
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::svh::Svh;
+use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::DepKind;
 use rustc::session::Session;
 use rustc::session::config::{Sanitizer, self};
@@ -40,6 +41,7 @@ use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
 use syntax::feature_gate::{self, GateIssue};
 use syntax::symbol::Symbol;
+use syntax::visit;
 use syntax_pos::{Span, DUMMY_SP};
 use log;
 
@@ -920,34 +922,28 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    fn inject_allocator_crate(&mut self) {
-        // Make sure that we actually need an allocator, if none of our
-        // dependencies need one then we definitely don't!
-        //
-        // Also, if one of our dependencies has an explicit allocator, then we
-        // also bail out as we don't need to implicitly inject one.
-        let mut needs_allocator = false;
-        let mut found_required_allocator = false;
-        let dep_graph = &self.sess.dep_graph;
-        self.cstore.iter_crate_data(|cnum, data| {
-            needs_allocator = needs_allocator || data.needs_allocator(dep_graph);
-            if data.is_allocator(dep_graph) {
-                info!("{} required by rlib and is an allocator", data.name());
-                self.inject_dependency_if(cnum, "an allocator",
-                                          &|data| data.needs_allocator(dep_graph));
-                found_required_allocator = found_required_allocator ||
-                    data.dep_kind.get() == DepKind::Explicit;
-            }
-        });
-        if !needs_allocator || found_required_allocator { return }
+    fn inject_allocator_crate(&mut self, krate: &ast::Crate) {
+        let has_global_allocator = has_global_allocator(krate);
+        if has_global_allocator {
+            self.sess.has_global_allocator.set(true);
+        }
 
-        // At this point we've determined that we need an allocator and no
-        // previous allocator has been activated. We look through our outputs of
-        // crate types to see what kind of allocator types we may need.
-        //
-        // The main special output type here is that rlibs do **not** need an
-        // allocator linked in (they're just object files), only final products
-        // (exes, dylibs, staticlibs) need allocators.
+        // Check to see if we actually need an allocator. This desire comes
+        // about through the `#![needs_allocator]` attribute and is typically
+        // written down in liballoc.
+        let mut needs_allocator = attr::contains_name(&krate.attrs,
+                                                      "needs_allocator");
+        let dep_graph = &self.sess.dep_graph;
+        self.cstore.iter_crate_data(|_, data| {
+            needs_allocator = needs_allocator || data.needs_allocator(dep_graph);
+        });
+        if !needs_allocator {
+            return
+        }
+
+        // At this point we've determined that we need an allocator. Let's see
+        // if our compilation session actually needs an allocator based on what
+        // we're emitting.
         let mut need_lib_alloc = false;
         let mut need_exe_alloc = false;
         for ct in self.sess.crate_types.borrow().iter() {
@@ -960,43 +956,131 @@ impl<'a> CrateLoader<'a> {
                 config::CrateTypeRlib => {}
             }
         }
-        if !need_lib_alloc && !need_exe_alloc { return }
-
-        // The default allocator crate comes from the custom target spec, and we
-        // choose between the standard library allocator or exe allocator. This
-        // distinction exists because the default allocator for binaries (where
-        // the world is Rust) is different than library (where the world is
-        // likely *not* Rust).
-        //
-        // If a library is being produced, but we're also flagged with `-C
-        // prefer-dynamic`, then we interpret this as a *Rust* dynamic library
-        // is being produced so we use the exe allocator instead.
-        //
-        // What this boils down to is:
-        //
-        // * Binaries use jemalloc
-        // * Staticlibs and Rust dylibs use system malloc
-        // * Rust dylibs used as dependencies to rust use jemalloc
-        let name = if need_lib_alloc && !self.sess.opts.cg.prefer_dynamic {
-            Symbol::intern(&self.sess.target.target.options.lib_allocation_crate)
-        } else {
-            Symbol::intern(&self.sess.target.target.options.exe_allocation_crate)
-        };
-        let dep_kind = DepKind::Implicit;
-        let (cnum, data) =
-            self.resolve_crate(&None, name, name, None, DUMMY_SP, PathKind::Crate, dep_kind);
-
-        // Sanity check the crate we loaded to ensure that it is indeed an
-        // allocator.
-        if !data.is_allocator(dep_graph) {
-            self.sess.err(&format!("the allocator crate `{}` is not tagged \
-                                    with #![allocator]", data.name()));
+        if !need_lib_alloc && !need_exe_alloc {
+            return
         }
 
-        self.sess.injected_allocator.set(Some(cnum));
-        self.inject_dependency_if(cnum, "an allocator",
-                                  &|data| data.needs_allocator(dep_graph));
+        // Ok, we need an allocator. Not only that but we're actually going to
+        // create an artifact that needs one linked in. Let's go find the one
+        // that we're going to link in.
+        //
+        // First up we check for global allocators. Look at the crate graph here
+        // and see what's a global allocator, including if we ourselves are a
+        // global allocator.
+        let dep_graph = &self.sess.dep_graph;
+        let mut global_allocator = if has_global_allocator {
+            Some(None)
+        } else {
+            None
+        };
+        self.cstore.iter_crate_data(|_, data| {
+            if !data.has_global_allocator(dep_graph) {
+                return
+            }
+            match global_allocator {
+                Some(Some(other_crate)) => {
+                    self.sess.err(&format!("the #[global_allocator] in {} \
+                                            conflicts with this global \
+                                            allocator in: {}",
+                                           other_crate,
+                                           data.name()));
+                }
+                Some(None) => {
+                    self.sess.err(&format!("the #[global_allocator] in this \
+                                            crate conflicts with global \
+                                            allocator in: {}", data.name()));
+                }
+                None => global_allocator = Some(Some(data.name())),
+            }
+        });
+        if global_allocator.is_some() {
+            self.sess.allocator_kind.set(Some(AllocatorKind::Global));
+            return
+        }
+
+        // Ok we haven't found a global allocator but we still need an
+        // allocator. At this point we'll either fall back to the "library
+        // allocator" or the "exe allocator" depending on a few variables. Let's
+        // figure out which one.
+        //
+        // Note that here we favor linking to the "library allocator" as much as
+        // possible. If we're not creating rustc's version of libstd
+        // (need_lib_alloc and prefer_dynamic) then we select `None`, and if the
+        // exe allocation crate doesn't exist for this target then we also
+        // select `None`.
+        let exe_allocation_crate =
+            if need_lib_alloc && !self.sess.opts.cg.prefer_dynamic {
+                None
+            } else {
+                self.sess.target.target.options.exe_allocation_crate.as_ref()
+            };
+
+        match exe_allocation_crate {
+            // We've determined that we're injecting an "exe allocator" which
+            // means that we're going to load up a whole new crate. An example
+            // of this is that we're producing a normal binary on Linux which
+            // means we need to load the `alloc_jemalloc` crate to link as an
+            // allocator.
+            Some(krate) => {
+                self.sess.allocator_kind.set(Some(AllocatorKind::DefaultExe));
+                let name = Symbol::intern(krate);
+                let dep_kind = DepKind::Implicit;
+                let (cnum, _data) =
+                    self.resolve_crate(&None,
+                                       name,
+                                       name,
+                                       None,
+                                       DUMMY_SP,
+                                       PathKind::Crate, dep_kind);
+                self.sess.injected_allocator.set(Some(cnum));
+            //     self.cstore.iter_crate_data(|_, data| {
+            //         if !data.needs_allocator(dep_graph) {
+            //             return
+            //         }
+            //         data.cnum_map.borrow_mut().push(cnum);
+            //     });
+            }
+
+            // We're not actually going to inject an allocator, we're going to
+            // require that something in our crate graph is the default lib
+            // allocator. This is typically libstd, so this'll rarely be an
+            // error.
+            None => {
+                self.sess.allocator_kind.set(Some(AllocatorKind::DefaultLib));
+                let mut found_lib_allocator =
+                    attr::contains_name(&krate.attrs, "default_lib_allocator");
+                self.cstore.iter_crate_data(|_, data| {
+                    if !found_lib_allocator {
+                        if data.has_default_lib_allocator(dep_graph) {
+                            found_lib_allocator = true;
+                        }
+                    }
+                });
+                if found_lib_allocator {
+                    return
+                }
+                self.sess.err("no #[default_lib_allocator] found but one is \
+                               required; is libstd not linked?");
+            }
+        }
+
+        fn has_global_allocator(krate: &ast::Crate) -> bool {
+            struct Finder(bool);
+            let mut f = Finder(false);
+            visit::walk_crate(&mut f, krate);
+            return f.0;
+
+            impl<'ast> visit::Visitor<'ast> for Finder {
+                fn visit_item(&mut self, i: &'ast ast::Item) {
+                    if attr::contains_name(&i.attrs, "global_allocator") {
+                        self.0 = true;
+                    }
+                    visit::walk_item(self, i)
+                }
+            }
+        }
     }
+
 
     fn inject_dependency_if(&self,
                             krate: CrateNum,
@@ -1123,7 +1207,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         // sanitizers force the use of the `alloc_system` allocator
         self.inject_sanitizer_runtime();
         self.inject_profiler_runtime();
-        self.inject_allocator_crate();
+        self.inject_allocator_crate(krate);
         self.inject_panic_runtime(krate);
 
         if log_enabled!(log::LogLevel::Info) {

@@ -214,10 +214,9 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     //
     // Things like allocators and panic runtimes may not have been activated
     // quite yet, so do so here.
-    activate_injected_dep(sess.injected_allocator.get(), &mut ret,
-                          &|cnum| tcx.is_allocator(cnum.as_def_id()));
     activate_injected_dep(sess.injected_panic_runtime.get(), &mut ret,
                           &|cnum| tcx.is_panic_runtime(cnum.as_def_id()));
+    activate_injected_allocator(sess, &mut ret);
 
     // When dylib B links to dylib A, then when using B we must also link to A.
     // It could be the case, however, that the rlib for A is present (hence we
@@ -295,10 +294,9 @@ fn attempt_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<DependencyLis
     // Our allocator/panic runtime may not have been linked above if it wasn't
     // explicitly linked, which is the case for any injected dependency. Handle
     // that here and activate them.
-    activate_injected_dep(sess.injected_allocator.get(), &mut ret,
-                          &|cnum| tcx.is_allocator(cnum.as_def_id()));
     activate_injected_dep(sess.injected_panic_runtime.get(), &mut ret,
                           &|cnum| tcx.is_panic_runtime(cnum.as_def_id()));
+    activate_injected_allocator(sess, &mut ret);
 
     Some(ret)
 }
@@ -331,6 +329,18 @@ fn activate_injected_dep(injected: Option<CrateNum>,
     }
 }
 
+fn activate_injected_allocator(sess: &session::Session,
+                               list: &mut DependencyList) {
+    let cnum = match sess.injected_allocator.get() {
+        Some(cnum) => cnum,
+        None => return,
+    };
+    let idx = cnum.as_usize() - 1;
+    if list[idx] == Linkage::NotLinked {
+        list[idx] = Linkage::Static;
+    }
+}
+
 // After the linkage for a crate has been determined we need to verify that
 // there's only going to be one allocator in the output.
 fn verify_ok<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, list: &[Linkage]) {
@@ -338,23 +348,12 @@ fn verify_ok<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, list: &[Linkage]) {
     if list.len() == 0 {
         return
     }
-    let mut allocator = None;
     let mut panic_runtime = None;
     for (i, linkage) in list.iter().enumerate() {
         if let Linkage::NotLinked = *linkage {
             continue
         }
         let cnum = CrateNum::new(i + 1);
-        if tcx.is_allocator(cnum.as_def_id()) {
-            if let Some(prev) = allocator {
-                let prev_name = sess.cstore.crate_name(prev);
-                let cur_name = sess.cstore.crate_name(cnum);
-                sess.err(&format!("cannot link together two \
-                                   allocators: {} and {}",
-                                  prev_name, cur_name));
-            }
-            allocator = Some(cnum);
-        }
 
         if tcx.is_panic_runtime(cnum.as_def_id()) {
             if let Some((prev, _)) = panic_runtime {

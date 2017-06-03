@@ -252,13 +252,13 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 use core::marker;
 use core::marker::Unsize;
-use core::mem::{self, align_of_val, forget, size_of, size_of_val, uninitialized};
+use core::mem::{self, forget, size_of, size_of_val, uninitialized};
 use core::ops::Deref;
 use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
 use core::convert::From;
 
-use heap::{allocate, deallocate, box_free};
+use heap::{Heap, Alloc, Layout, box_free};
 use raw_vec::RawVec;
 
 struct RcBox<T: ?Sized> {
@@ -461,7 +461,8 @@ impl<T> Rc<[T]> {
             // FIXME(custom-DST): creating this invalid &[T] is dubiously defined,
             // we should have a better way of getting the size/align
             // of a DST from its unsized part.
-            let ptr = allocate(size_of_val(&*ptr), align_of_val(&*ptr));
+            let ptr = Heap.alloc(Layout::for_value(&*ptr))
+                .unwrap_or_else(|e| Heap.oom(e));
             let ptr: *mut RcBox<[T]> = mem::transmute([ptr as usize, value.len()]);
 
             // Initialize the new RcBox.
@@ -719,7 +720,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
                 self.dec_weak();
 
                 if self.weak() == 0 {
-                    deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
+                    Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr));
                 }
             }
         }
@@ -1097,7 +1098,7 @@ impl<T: ?Sized> Drop for Weak<T> {
             // the weak count starts at 1, and will only go to zero if all
             // the strong pointers have disappeared.
             if self.weak() == 0 {
-                deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
+                Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr));
             }
         }
     }

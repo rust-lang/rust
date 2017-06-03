@@ -644,6 +644,7 @@ pub fn run_passes(sess: &Session,
 
     let mut modules_config = ModuleConfig::new(tm, sess.opts.cg.passes.clone());
     let mut metadata_config = ModuleConfig::new(tm, vec![]);
+    let mut allocator_config = ModuleConfig::new(tm, vec![]);
 
     if let Some(ref sanitizer) = sess.opts.debugging_opts.sanitizer {
         match *sanitizer {
@@ -674,6 +675,7 @@ pub fn run_passes(sess: &Session,
         modules_config.emit_bc = true;
         modules_config.emit_lto_bc = true;
         metadata_config.emit_bc = true;
+        allocator_config.emit_bc = true;
     }
 
     // Emit bitcode files for the crate if we're emitting an rlib.
@@ -699,6 +701,7 @@ pub fn run_passes(sess: &Session,
                 // in this case we still want the metadata object file.
                 if !sess.opts.output_types.contains_key(&OutputType::Assembly) {
                     metadata_config.emit_obj = true;
+                    allocator_config.emit_obj = true;
                 }
             }
             OutputType::Object => { modules_config.emit_obj = true; }
@@ -706,6 +709,7 @@ pub fn run_passes(sess: &Session,
             OutputType::Exe => {
                 modules_config.emit_obj = true;
                 metadata_config.emit_obj = true;
+                allocator_config.emit_obj = true;
             },
             OutputType::Mir => {}
             OutputType::DepInfo => {}
@@ -714,6 +718,7 @@ pub fn run_passes(sess: &Session,
 
     modules_config.set_flags(sess, trans);
     metadata_config.set_flags(sess, trans);
+    allocator_config.set_flags(sess, trans);
 
 
     // Populate a buffer with a list of codegen threads.  Items are processed in
@@ -725,6 +730,14 @@ pub fn run_passes(sess: &Session,
         let work = build_work_item(sess,
                                    trans.metadata_module.clone(),
                                    metadata_config.clone(),
+                                   crate_output.clone());
+        work_items.push(work);
+    }
+
+    if let Some(allocator) = trans.allocator_module.clone() {
+        let work = build_work_item(sess,
+                                   allocator,
+                                   allocator_config.clone(),
                                    crate_output.clone());
         work_items.push(work);
     }
@@ -904,6 +917,13 @@ pub fn run_passes(sess: &Session,
             let path = crate_output.temp_path(OutputType::Bitcode,
                                               Some(&trans.metadata_module.name));
             remove(sess, &path);
+        }
+        if allocator_config.emit_bc && !user_wants_bitcode {
+            if let Some(ref module) = trans.allocator_module {
+                let path = crate_output.temp_path(OutputType::Bitcode,
+                                                  Some(&module.name));
+                remove(sess, &path);
+            }
         }
     }
 

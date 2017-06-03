@@ -8,20 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(alloc, allocator_api, heap_api, unique)]
+#![feature(allocator_api, unique)]
 
-extern crate alloc;
-
-use alloc::heap::HeapAlloc;
-use alloc::allocator::Alloc;
+use std::heap::{Heap, Alloc};
 
 fn main() {
     unsafe {
-        let ptr = HeapAlloc.alloc_one::<i32>().unwrap_or_else(|e| {
-            HeapAlloc.oom(e)
+        let ptr = Heap.alloc_one::<i32>().unwrap_or_else(|e| {
+            Heap.oom(e)
         });
         *ptr.as_ptr() = 4;
         assert_eq!(*ptr.as_ptr(), 4);
-        HeapAlloc.dealloc_one(ptr);
+        Heap.dealloc_one(ptr);
     }
 }

@@ -11,7 +11,7 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-#![feature(allocator)]
+#![feature(custom_attribute)]
 
 pub struct S {
   _field: [i64; 4],

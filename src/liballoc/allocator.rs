@@ -13,7 +13,7 @@
                       slightly, especially to possibly take into account the \
                       types being stored to make room for a future \
                       tracing garbage collector",
-            issue = "27700")]
+            issue = "32838")]
 
 use core::cmp;
 use core::fmt;
@@ -73,6 +73,7 @@ impl Layout {
     /// * `size`, when rounded up to the nearest multiple of `align`,
     ///    must not overflow (i.e. the rounded value must be less than
     ///    `usize::MAX`).
+    #[inline]
     pub fn from_size_align(size: usize, align: usize) -> Option<Layout> {
         if !align.is_power_of_two() {
             return None;
@@ -96,13 +97,28 @@ impl Layout {
             return None;
         }
 
-        Some(Layout { size: size, align: align })
+        unsafe {
+            Some(Layout::from_size_align_unchecked(size, align))
+        }
+    }
+
+    /// Creates a layout, bypassing all checks.
+    ///
+    /// # Unsafety
+    ///
+    /// This function is unsafe as it does not verify that `align` is a power of
+    /// two nor that `size` aligned to `align` fits within the address space.
+    #[inline]
+    pub unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Layout {
+        Layout { size: size, align: align }
     }
 
     /// The minimum size in bytes for a memory block of this layout.
+    #[inline]
     pub fn size(&self) -> usize { self.size }
 
     /// The minimum byte alignment for a memory block of this layout.
+    #[inline]
     pub fn align(&self) -> usize { self.align }
 
     /// Constructs a `Layout` suitable for holding a value of type `T`.
@@ -135,6 +151,7 @@ impl Layout {
     ///
     /// Panics if the combination of `self.size` and the given `align`
     /// violates the conditions listed in `from_size_align`.
+    #[inline]
     pub fn align_to(&self, align: usize) -> Self {
         Layout::from_size_align(self.size, cmp::max(self.align, align)).unwrap()
     }
@@ -155,6 +172,7 @@ impl Layout {
     /// to be less than or equal to the alignment of the starting
     /// address for the whole allocated block of memory. One way to
     /// satisfy this constraint is to ensure `align <= self.align`.
+    #[inline]
     pub fn padding_needed_for(&self, align: usize) -> usize {
         let len = self.size();
 
@@ -556,6 +574,7 @@ pub unsafe trait Alloc {
     /// However, for clients that do not wish to track the capacity
     /// returned by `alloc_excess` locally, this method is likely to
     /// produce useful results.
+    #[inline]
     fn usable_size(&self, layout: &Layout) -> (usize, usize) {
         (layout.size(), layout.size())
     }

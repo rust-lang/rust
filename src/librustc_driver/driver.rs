@@ -27,6 +27,7 @@ use rustc::traits;
 use rustc::util::common::{ErrorReported, time};
 use rustc::util::nodemap::NodeSet;
 use rustc::util::fs::rename_or_copy_remove;
+use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
 use rustc_incremental::{self, IncrementalHashesMap};
 use rustc_resolve::{MakeGlobMap, Resolver};
@@ -749,6 +750,13 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
                                                      sess.diagnostic())
         });
     }
+
+    krate = time(time_passes, "creating allocators", || {
+        allocator::expand::modify(&sess.parse_sess,
+                                  &mut resolver,
+                                  krate,
+                                  sess.diagnostic())
+    });
 
     after_expand(&krate)?;
 

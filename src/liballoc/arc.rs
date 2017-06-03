@@ -23,7 +23,6 @@ use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 use core::borrow;
 use core::fmt;
 use core::cmp::Ordering;
-use core::mem::{align_of_val, size_of_val};
 use core::intrinsics::abort;
 use core::mem;
 use core::mem::uninitialized;
@@ -34,7 +33,8 @@ use core::marker::Unsize;
 use core::hash::{Hash, Hasher};
 use core::{isize, usize};
 use core::convert::From;
-use heap::deallocate;
+
+use heap::{Heap, Alloc, Layout};
 
 /// A soft limit on the amount of references that may be made to an `Arc`.
 ///
@@ -503,7 +503,7 @@ impl<T: ?Sized> Arc<T> {
 
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
+            Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr))
         }
     }
 
@@ -1007,7 +1007,9 @@ impl<T: ?Sized> Drop for Weak<T> {
         // ref, which can only happen after the lock is released.
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            unsafe { deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr)) }
+            unsafe {
+                Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr))
+            }
         }
     }
 }

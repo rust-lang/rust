@@ -10,32 +10,32 @@
 
 // Smallest "hello world" with a libc runtime
 
-// pretty-expanded FIXME #23616
 // ignore-windows
+// ignore-android
 
 #![feature(intrinsics, lang_items, start, no_core, alloc_system)]
-#![no_core]
+#![feature(global_allocator, allocator_api)]
+#![no_std]
 
 extern crate alloc_system;
 
-extern { fn puts(s: *const u8); }
-extern "rust-intrinsic" { fn transmute<T, U>(t: T) -> U; }
+use alloc_system::System;
 
-#[lang = "eh_personality"] extern fn eh_personality() {}
-#[lang = "eh_unwind_resume"] extern fn eh_unwind_resume() {}
+#[global_allocator]
+static A: System = System;
+
+extern {
+    fn puts(s: *const u8);
+}
+
+#[no_mangle]
+#[lang = "eh_personality"] pub extern fn rust_eh_personality() {}
 #[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
-#[no_mangle] pub extern fn rust_eh_register_frames () {}
-#[no_mangle] pub extern fn rust_eh_unregister_frames () {}
 
 #[start]
 fn main(_: isize, _: *const *const u8) -> isize {
     unsafe {
-        let (ptr, _): (*const u8, usize) = transmute("Hello!\0");
-        puts(ptr);
+        puts("Hello!\0".as_ptr() as *const u8);
     }
-    return 0;
+    return 0
 }
-
-#[cfg(target_os = "android")]
-#[link(name="gcc")]
-extern { }

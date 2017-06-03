@@ -48,7 +48,7 @@ use core::ptr::{self, Unique};
 use core::slice;
 
 use boxed::Box;
-use heap;
+use heap::{Heap, Alloc, Layout};
 
 const B: usize = 6;
 pub const MIN_LEN: usize = B - 1;
@@ -254,11 +254,7 @@ impl<K, V> Root<K, V> {
         self.as_mut().as_leaf_mut().parent = ptr::null();
 
         unsafe {
-            heap::deallocate(
-                top,
-                mem::size_of::<InternalNode<K, V>>(),
-                mem::align_of::<InternalNode<K, V>>()
-            );
+            Heap.dealloc(top, Layout::new::<InternalNode<K, V>>());
         }
     }
 }
@@ -445,7 +441,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
     > {
         let ptr = self.as_leaf() as *const LeafNode<K, V> as *const u8 as *mut u8;
         let ret = self.ascend().ok();
-        heap::deallocate(ptr, mem::size_of::<LeafNode<K, V>>(), mem::align_of::<LeafNode<K, V>>());
+        Heap.dealloc(ptr, Layout::new::<LeafNode<K, V>>());
         ret
     }
 }
@@ -466,11 +462,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
     > {
         let ptr = self.as_internal() as *const InternalNode<K, V> as *const u8 as *mut u8;
         let ret = self.ascend().ok();
-        heap::deallocate(
-            ptr,
-            mem::size_of::<InternalNode<K, V>>(),
-            mem::align_of::<InternalNode<K, V>>()
-        );
+        Heap.dealloc(ptr, Layout::new::<InternalNode<K, V>>());
         ret
     }
 }
@@ -1252,16 +1244,14 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                     ).correct_parent_link();
                 }
 
-                heap::deallocate(
+                Heap.dealloc(
                     right_node.node.get() as *mut u8,
-                    mem::size_of::<InternalNode<K, V>>(),
-                    mem::align_of::<InternalNode<K, V>>()
+                    Layout::new::<InternalNode<K, V>>(),
                 );
             } else {
-                heap::deallocate(
+                Heap.dealloc(
                     right_node.node.get() as *mut u8,
-                    mem::size_of::<LeafNode<K, V>>(),
-                    mem::align_of::<LeafNode<K, V>>()
+                    Layout::new::<LeafNode<K, V>>(),
                 );
             }
 

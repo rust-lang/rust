@@ -275,14 +275,25 @@ impl CrateMetadata {
         self.root.disambiguator
     }
 
-    pub fn is_allocator(&self, dep_graph: &DepGraph) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, dep_graph);
-        attr::contains_name(&attrs, "allocator")
-    }
-
     pub fn needs_allocator(&self, dep_graph: &DepGraph) -> bool {
         let attrs = self.get_item_attrs(CRATE_DEF_INDEX, dep_graph);
         attr::contains_name(&attrs, "needs_allocator")
+    }
+
+    pub fn has_global_allocator(&self, dep_graph: &DepGraph) -> bool {
+        let dep_node = self.metadata_dep_node(GlobalMetaDataKind::Krate);
+        self.root
+            .has_global_allocator
+            .get(dep_graph, dep_node)
+            .clone()
+    }
+
+    pub fn has_default_lib_allocator(&self, dep_graph: &DepGraph) -> bool {
+        let dep_node = self.metadata_dep_node(GlobalMetaDataKind::Krate);
+        self.root
+            .has_default_lib_allocator
+            .get(dep_graph, dep_node)
+            .clone()
     }
 
     pub fn is_panic_runtime(&self, dep_graph: &DepGraph) -> bool {

@@ -243,6 +243,8 @@ pub struct CrateRoot {
     pub hash: hir::svh::Svh,
     pub disambiguator: Symbol,
     pub panic_strategy: Tracked<PanicStrategy>,
+    pub has_global_allocator: Tracked<bool>,
+    pub has_default_lib_allocator: Tracked<bool>,
     pub plugin_registrar_fn: Option<DefIndex>,
     pub macro_derive_registrar: Option<DefIndex>,
 

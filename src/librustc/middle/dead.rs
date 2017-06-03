@@ -287,6 +287,11 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
         return true;
     }
 
+    // Don't lint about global allocators
+    if attr::contains_name(attrs, "global_allocator") {
+        return true;
+    }
+
     let dead_code = lint::builtin::DEAD_CODE.name_lower();
     for attr in lint::gather_attrs(attrs) {
         match attr {
