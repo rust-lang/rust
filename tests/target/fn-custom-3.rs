@@ -54,8 +54,7 @@ impl Foo {
         'a: 'bbbbbbbbbbbbbbbbbbbbbbbbbbb,
         TTTTTTTTTTTTT,
         UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW
-    >
-        (
+    >(
         a: Aaaaaaaaaaaaaaa,
     ) {
         bar();
