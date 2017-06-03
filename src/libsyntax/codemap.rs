@@ -563,6 +563,15 @@ impl CodeMapper for CodeMap {
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span> {
         self.merge_spans(sp_lhs, sp_rhs)
     }
+    fn call_span_if_macro(&self, sp: Span) -> Span {
+        if self.span_to_filename(sp.clone()).contains("macros>") {
+            let v = sp.macro_backtrace();
+            if let Some(use_site) = v.last() {
+                return use_site.call_site;
+            }
+        }
+        sp
+    }
 }
 
 #[derive(Clone)]
