@@ -219,14 +219,33 @@ impl<'a, B: ?Sized> Cow<'a, B>
     ///
     /// # Examples
     ///
+    /// Calling `into_owned` on a `Cow::Borrowed` clones the underlying data
+    /// and becomes a `Cow::Owned`:
+    ///
     /// ```
     /// use std::borrow::Cow;
     ///
-    /// let cow: Cow<[_]> = Cow::Owned(vec![1, 2, 3]);
+    /// let s = "Hello world!";
+    /// let cow = Cow::Borrowed(s);
     ///
-    /// let hello = cow.into_owned();
+    /// assert_eq!(
+    ///   cow.into_owned(),
+    ///   Cow::Owned(String::from(s))
+    /// );
+    /// ```
     ///
-    /// assert_eq!(vec![1, 2, 3], hello);
+    /// Calling `into_owned` on a `Cow::Owned` is a no-op:
+    ///
+    /// ```
+    /// use std::borrow::Cow;
+    ///
+    /// let s = "Hello world!";
+    /// let cow: Cow<str> = Cow::Owned(String::from(s));
+    ///
+    /// assert_eq!(
+    ///   cow.into_owned(),
+    ///   Cow::Owned(String::from(s))
+    /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_owned(self) -> <B as ToOwned>::Owned {
