@@ -499,8 +499,6 @@ unsafe impl<T: Send> Send for Sender<T> { }
 impl<T> !Sync for Sender<T> { }
 
 /// The sending-half of Rust's synchronous [`sync_channel`] type.
-/// This half can only be owned by one thread, but it can be cloned
-/// to send to other threads.
 ///
 /// Messages can be sent through this channel with [`send`] or [`try_send`].
 ///
@@ -554,9 +552,6 @@ pub struct SyncSender<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Send> Send for SyncSender<T> {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> !Sync for SyncSender<T> {}
 
 /// An error returned from the [`Sender::send`] or [`SyncSender::send`]
 /// function on **channel**s.
