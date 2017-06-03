@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::cmp::{Ordering, min};
-use std::mem::swap;
 use std::ops::Deref;
 use std::iter::ExactSizeIterator;
 use std::fmt::Write;
@@ -1376,7 +1375,7 @@ impl Rewrite for ast::Arm {
             ast::ExprKind::Tup(..) => (true, &**body),
             _ => (false, &**body),
         };
-        extend &= context.config.fn_call_style() == IndentStyle::Block;
+        extend &= context.use_block_indent();
 
         let comma = arm_comma(&context.config, body);
         let alt_block_sep = String::from("\n") +
@@ -1697,17 +1696,17 @@ fn rewrite_call_inner(context: &RewriteContext,
         .ok_or(Ordering::Greater)?;
 
     let span_lo = context.codemap.span_after(span, "(");
-    let new_span = mk_sp(span_lo, span.hi);
+    let args_span = mk_sp(span_lo, span.hi);
 
     let (extendable, list_str) = rewrite_call_args(context,
                                                    args,
-                                                   new_span,
+                                                   args_span,
                                                    nested_shape,
                                                    one_line_width,
                                                    force_trailing_comma)
         .ok_or(Ordering::Less)?;
 
-    if !use_block_indent(context) && need_block_indent(&list_str, nested_shape) && !extendable {
+    if !context.use_block_indent() && need_block_indent(&list_str, nested_shape) && !extendable {
         let mut new_context = context.clone();
         new_context.use_block = true;
         return rewrite_call_inner(&new_context,
@@ -1752,41 +1751,49 @@ fn rewrite_call_args(context: &RewriteContext,
     // Try letting the last argument overflow to the next line with block
     // indentation. If its first line fits on one line with the other arguments,
     // we format the function arguments horizontally.
-    let overflow_last = can_be_overflowed(&item_context, args);
+    let tactic = try_overflow_last_arg(&item_context, &mut item_vec, args, shape, one_line_width);
 
-    let mut orig_last = None;
-    let mut placeholder = None;
+    let fmt = ListFormatting {
+        tactic: tactic,
+        separator: ",",
+        trailing_separator: if force_trailing_comma {
+            SeparatorTactic::Always
+        } else if context.inside_macro || !context.use_block_indent() {
+            SeparatorTactic::Never
+        } else {
+            context.config.trailing_comma()
+        },
+        shape: shape,
+        ends_with_newline: false,
+        config: context.config,
+    };
+
+    write_list(&item_vec, &fmt).map(|args_str| (tactic != DefinitiveListTactic::Vertical, args_str))
+}
+
+fn try_overflow_last_arg(context: &RewriteContext,
+                         item_vec: &mut Vec<ListItem>,
+                         args: &[ptr::P<ast::Expr>],
+                         shape: Shape,
+                         one_line_width: usize)
+                         -> DefinitiveListTactic {
+    let overflow_last = can_be_overflowed(&context, args);
 
     // Replace the last item with its first line to see if it fits with
     // first arguments.
-    if overflow_last {
-        let arg_shape = if use_block_indent(context) && is_extendable(args) {
-            Shape {
-                width: context.config.fn_call_width(),
-                indent: shape.block().indent.block_unindent(context.config),
-                offset: 0,
-            }
-        } else {
-            shape.block()
-        };
-        let rewrite = args.last().unwrap().rewrite(&item_context, arg_shape);
-        swap(&mut item_vec[args.len() - 1].item, &mut orig_last);
-
-        if let Some(rewrite) = rewrite {
-            let rewrite_first_line = Some(rewrite[..first_line_width(&rewrite)].to_owned());
-            placeholder = Some(rewrite);
-
-            item_vec[args.len() - 1].item = rewrite_first_line;
-        }
-    }
-
-    let one_line_shape = Shape {
-        width: one_line_width,
-        ..shape
+    let (orig_last, placeholder) = if overflow_last {
+        last_arg_shape(&context, &item_vec, shape).map_or((None, None), |arg_shape| {
+            rewrite_last_arg_with_overflow(&context,
+                                           &args[args.len() - 1],
+                                           &mut item_vec[args.len() - 1],
+                                           arg_shape)
+        })
+    } else {
+        (None, None)
     };
 
     let tactic =
-        definitive_tactic(&item_vec,
+        definitive_tactic(&*item_vec,
                           ListTactic::LimitedHorizontalVertical(context.config.fn_call_width()),
                           one_line_width);
 
@@ -1802,100 +1809,78 @@ fn rewrite_call_args(context: &RewriteContext,
         (false, _, _) => {}
     }
 
-    let mut fmt = ListFormatting {
-        tactic: tactic,
-        separator: ",",
-        trailing_separator: if force_trailing_comma {
-            SeparatorTactic::Always
-        } else if context.inside_macro || context.config.fn_call_style() == IndentStyle::Visual ||
-                  args.len() <= 1 {
-            SeparatorTactic::Never
-        } else {
-            context.config.trailing_comma()
-        },
-        shape: one_line_shape,
-        ends_with_newline: false,
-        config: context.config,
-    };
-
-    let one_line_budget = min(one_line_width, context.config.fn_call_width());
-    let almost_no_newline =
-        item_vec
-            .iter()
-            .rev()
-            .skip(1)
-            .all(|item| item.item.as_ref().map_or(false, |s| !s.contains('\n')));
-    let extendable = almost_no_newline &&
-                     item_vec.iter().fold(0, |acc, item| {
-        acc + item.item.as_ref().map_or(0, |s| 2 + first_line_width(s))
-    }) <= one_line_budget + 2;
-
-    let result = write_list(&item_vec, &fmt);
-    let last_char_is_not_comma = result
-        .as_ref()
-        .map_or(false, |r| r.chars().last().unwrap_or(' ') != ',');
-    match result {
-        // If arguments do not fit in a single line and do not contain newline,
-        // try to put it on the next line. Try this only when we are in block mode
-        // and not rewriting macro.
-        Some(ref s) if use_block_indent(context) && !context.inside_macro &&
-                       ((!can_be_overflowed(context, args) && last_char_is_not_comma &&
-                         s.contains('\n')) ||
-                        first_line_width(s) > one_line_budget) => {
-            fmt.trailing_separator = SeparatorTactic::Vertical;
-            fmt.tactic = DefinitiveListTactic::Vertical;
-            write_list(&item_vec, &fmt).map(|rw| (false, rw))
-        }
-        rewrite @ _ => {
-            rewrite.map(|rw| (extendable && (last_char_is_not_comma || force_trailing_comma), rw))
-        }
-    }
+    tactic
 }
 
-fn use_block_indent(context: &RewriteContext) -> bool {
-    context.config.fn_call_style() == IndentStyle::Block || context.use_block
+fn last_arg_shape(context: &RewriteContext, items: &Vec<ListItem>, shape: Shape) -> Option<Shape> {
+    let overhead = items.iter().rev().skip(1).fold(0, |acc, i| {
+        acc + i.item.as_ref().map_or(0, |s| first_line_width(&s))
+    });
+    let max_width = min(context.config.fn_call_width(), shape.width);
+    let arg_indent = if context.use_block_indent() {
+        shape.block().indent.block_unindent(context.config)
+    } else {
+        shape.block().indent
+    };
+    Some(Shape {
+             width: try_opt!(max_width.checked_sub(overhead)),
+             indent: arg_indent,
+             offset: 0,
+         })
+}
+
+fn rewrite_last_arg_with_overflow(context: &RewriteContext,
+                                  last_arg: &ptr::P<ast::Expr>,
+                                  last_item: &mut ListItem,
+                                  shape: Shape)
+                                  -> (Option<String>, Option<String>) {
+    let rewrite = last_arg.rewrite(context, shape);
+    let orig_last = last_item.item.clone();
+
+    if let Some(rewrite) = rewrite {
+        let rewrite_first_line = Some(rewrite[..first_line_width(&rewrite)].to_owned());
+        last_item.item = rewrite_first_line;
+        (orig_last, Some(rewrite))
+    } else {
+        (orig_last, None)
+    }
 }
 
 fn can_be_overflowed(context: &RewriteContext, args: &[ptr::P<ast::Expr>]) -> bool {
-    match args.last().map(|x| &x.node) {
-        Some(&ast::ExprKind::Match(..)) => {
-            (use_block_indent(context) && args.len() == 1) ||
-            (context.config.fn_call_style() == IndentStyle::Visual && args.len() > 1)
-        }
-        Some(&ast::ExprKind::Block(..)) |
-        Some(&ast::ExprKind::Closure(..)) => {
-            use_block_indent(context) ||
-            context.config.fn_call_style() == IndentStyle::Visual && args.len() > 1
-        }
-        Some(&ast::ExprKind::Call(..)) |
-        Some(&ast::ExprKind::Mac(..)) |
-        Some(&ast::ExprKind::Struct(..)) => use_block_indent(context) && args.len() == 1,
-        Some(&ast::ExprKind::Tup(..)) => use_block_indent(context),
-        _ => false,
-    }
+    args.last()
+        .map_or(false, |x| can_be_overflowed_expr(context, &x, args.len()))
 }
 
-fn is_extendable(args: &[ptr::P<ast::Expr>]) -> bool {
-    if args.len() == 1 {
-        match args[0].node {
-            ast::ExprKind::Block(..) |
-            ast::ExprKind::Call(..) |
-            ast::ExprKind::Closure(..) |
-            ast::ExprKind::Match(..) |
-            ast::ExprKind::Mac(..) |
-            ast::ExprKind::Struct(..) |
-            ast::ExprKind::Tup(..) => true,
-            _ => false,
+fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_len: usize) -> bool {
+    match expr.node {
+        ast::ExprKind::Match(..) => {
+            (context.use_block_indent() && args_len == 1) ||
+            (context.config.fn_call_style() == IndentStyle::Visual && args_len > 1)
         }
-    } else if args.len() > 1 {
-        match args[args.len() - 1].node {
-            ast::ExprKind::Block(..) |
-            ast::ExprKind::Closure(..) |
-            ast::ExprKind::Tup(..) => true,
-            _ => false,
+        ast::ExprKind::If(..) |
+        ast::ExprKind::IfLet(..) |
+        ast::ExprKind::ForLoop(..) |
+        ast::ExprKind::Loop(..) |
+        ast::ExprKind::While(..) |
+        ast::ExprKind::WhileLet(..) => {
+            context.use_block_indent() && args_len == 1
         }
-    } else {
-        false
+        ast::ExprKind::Block(..) |
+        ast::ExprKind::Closure(..) => {
+            context.use_block_indent() ||
+            context.config.fn_call_style() == IndentStyle::Visual && args_len > 1
+        }
+        ast::ExprKind::Call(..) |
+        ast::ExprKind::MethodCall(..) |
+        ast::ExprKind::Mac(..) |
+        ast::ExprKind::Struct(..) => context.use_block_indent() && args_len == 1,
+        ast::ExprKind::Tup(..) => context.use_block_indent(),
+        ast::ExprKind::AddrOf(_, ref expr) |
+        ast::ExprKind::Box(ref expr) |
+        ast::ExprKind::Try(ref expr) |
+        ast::ExprKind::Unary(_, ref expr) |
+        ast::ExprKind::Cast(ref expr, _) => can_be_overflowed_expr(context, expr, args_len),
+        _ => false,
     }
 }
 
@@ -1905,7 +1890,7 @@ fn wrap_args_with_parens(context: &RewriteContext,
                          shape: Shape,
                          nested_shape: Shape)
                          -> String {
-    if !use_block_indent(context) || (context.inside_macro && !args_str.contains('\n')) ||
+    if !context.use_block_indent() || (context.inside_macro && !args_str.contains('\n')) ||
        is_extendable {
         if context.config.spaces_within_parens() && args_str.len() > 0 {
             format!("( {} )", args_str)
@@ -2102,7 +2087,7 @@ fn shape_from_fn_call_style(context: &RewriteContext,
                             overhead: usize,
                             offset: usize)
                             -> Option<Shape> {
-    if use_block_indent(context) {
+    if context.use_block_indent() {
         Some(shape.block().block_indent(context.config.tab_spaces()))
     } else {
         shape.visual_indent(offset).sub_width(overhead)
