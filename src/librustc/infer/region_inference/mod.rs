@@ -35,31 +35,31 @@ use std::u32;
 
 mod graphviz;
 
-// A constraint that influences the inference process.
+/// A constraint that influences the inference process.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Constraint<'tcx> {
-    // One region variable is subregion of another
+    /// One region variable is subregion of another
     ConstrainVarSubVar(RegionVid, RegionVid),
 
-    // Concrete region is subregion of region variable
+    /// Concrete region is subregion of region variable
     ConstrainRegSubVar(Region<'tcx>, RegionVid),
 
-    // Region variable is subregion of concrete region. This does not
-    // directly affect inference, but instead is checked after
-    // inference is complete.
+    /// Region variable is subregion of concrete region. This does not
+    /// directly affect inference, but instead is checked after
+    /// inference is complete.
     ConstrainVarSubReg(RegionVid, Region<'tcx>),
 
-    // A constraint where neither side is a variable. This does not
-    // directly affect inference, but instead is checked after
-    // inference is complete.
+    /// A constraint where neither side is a variable. This does not
+    /// directly affect inference, but instead is checked after
+    /// inference is complete.
     ConstrainRegSubReg(Region<'tcx>, Region<'tcx>),
 }
 
-// VerifyGenericBound(T, _, R, RS): The parameter type `T` (or
-// associated type) must outlive the region `R`. `T` is known to
-// outlive `RS`. Therefore verify that `R <= RS[i]` for some
-// `i`. Inference variables may be involved (but this verification
-// step doesn't influence inference).
+/// VerifyGenericBound(T, _, R, RS): The parameter type `T` (or
+/// associated type) must outlive the region `R`. `T` is known to
+/// outlive `RS`. Therefore verify that `R <= RS[i]` for some
+/// `i`. Inference variables may be involved (but this verification
+/// step doesn't influence inference).
 #[derive(Debug)]
 pub struct Verify<'tcx> {
     kind: GenericKind<'tcx>,
@@ -74,29 +74,29 @@ pub enum GenericKind<'tcx> {
     Projection(ty::ProjectionTy<'tcx>),
 }
 
-// When we introduce a verification step, we wish to test that a
-// particular region (let's call it `'min`) meets some bound.
-// The bound is described the by the following grammar:
+/// When we introduce a verification step, we wish to test that a
+/// particular region (let's call it `'min`) meets some bound.
+/// The bound is described the by the following grammar:
 #[derive(Debug)]
 pub enum VerifyBound<'tcx> {
-    // B = exists {R} --> some 'r in {R} must outlive 'min
-    //
-    // Put another way, the subject value is known to outlive all
-    // regions in {R}, so if any of those outlives 'min, then the
-    // bound is met.
+    /// B = exists {R} --> some 'r in {R} must outlive 'min
+    ///
+    /// Put another way, the subject value is known to outlive all
+    /// regions in {R}, so if any of those outlives 'min, then the
+    /// bound is met.
     AnyRegion(Vec<Region<'tcx>>),
 
-    // B = forall {R} --> all 'r in {R} must outlive 'min
-    //
-    // Put another way, the subject value is known to outlive some
-    // region in {R}, so if all of those outlives 'min, then the bound
-    // is met.
+    /// B = forall {R} --> all 'r in {R} must outlive 'min
+    ///
+    /// Put another way, the subject value is known to outlive some
+    /// region in {R}, so if all of those outlives 'min, then the bound
+    /// is met.
     AllRegions(Vec<Region<'tcx>>),
 
-    // B = exists {B} --> 'min must meet some bound b in {B}
+    /// B = exists {B} --> 'min must meet some bound b in {B}
     AnyBound(Vec<VerifyBound<'tcx>>),
 
-    // B = forall {B} --> 'min must meet all bounds b in {B}
+    /// B = forall {B} --> 'min must meet all bounds b in {B}
     AllBounds(Vec<VerifyBound<'tcx>>),
 }
 
@@ -183,35 +183,35 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     var_origins: RefCell<Vec<RegionVariableOrigin>>,
 
-    // Constraints of the form `A <= B` introduced by the region
-    // checker.  Here at least one of `A` and `B` must be a region
-    // variable.
+    /// Constraints of the form `A <= B` introduced by the region
+    /// checker.  Here at least one of `A` and `B` must be a region
+    /// variable.
     constraints: RefCell<FxHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>>,
 
-    // A "verify" is something that we need to verify after inference is
-    // done, but which does not directly affect inference in any way.
-    //
-    // An example is a `A <= B` where neither `A` nor `B` are
-    // inference variables.
+    /// A "verify" is something that we need to verify after inference is
+    /// done, but which does not directly affect inference in any way.
+    ///
+    /// An example is a `A <= B` where neither `A` nor `B` are
+    /// inference variables.
     verifys: RefCell<Vec<Verify<'tcx>>>,
 
-    // A "given" is a relationship that is known to hold. In particular,
-    // we often know from closure fn signatures that a particular free
-    // region must be a subregion of a region variable:
-    //
-    //    foo.iter().filter(<'a> |x: &'a &'b T| ...)
-    //
-    // In situations like this, `'b` is in fact a region variable
-    // introduced by the call to `iter()`, and `'a` is a bound region
-    // on the closure (as indicated by the `<'a>` prefix). If we are
-    // naive, we wind up inferring that `'b` must be `'static`,
-    // because we require that it be greater than `'a` and we do not
-    // know what `'a` is precisely.
-    //
-    // This hashmap is used to avoid that naive scenario. Basically we
-    // record the fact that `'a <= 'b` is implied by the fn signature,
-    // and then ignore the constraint when solving equations. This is
-    // a bit of a hack but seems to work.
+    /// A "given" is a relationship that is known to hold. In particular,
+    /// we often know from closure fn signatures that a particular free
+    /// region must be a subregion of a region variable:
+    ///
+    ///    foo.iter().filter(<'a> |x: &'a &'b T| ...)
+    ///
+    /// In situations like this, `'b` is in fact a region variable
+    /// introduced by the call to `iter()`, and `'a` is a bound region
+    /// on the closure (as indicated by the `<'a>` prefix). If we are
+    /// naive, we wind up inferring that `'b` must be `'static`,
+    /// because we require that it be greater than `'a` and we do not
+    /// know what `'a` is precisely.
+    ///
+    /// This hashmap is used to avoid that naive scenario. Basically we
+    /// record the fact that `'a <= 'b` is implied by the fn signature,
+    /// and then ignore the constraint when solving equations. This is
+    /// a bit of a hack but seems to work.
     givens: RefCell<FxHashSet<(Region<'tcx>, ty::RegionVid)>>,
 
     lubs: RefCell<CombineMap<'tcx>>,
@@ -219,20 +219,21 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     skolemization_count: Cell<u32>,
     bound_count: Cell<u32>,
 
-    // The undo log records actions that might later be undone.
-    //
-    // Note: when the undo_log is empty, we are not actively
-    // snapshotting. When the `start_snapshot()` method is called, we
-    // push an OpenSnapshot entry onto the list to indicate that we
-    // are now actively snapshotting. The reason for this is that
-    // otherwise we end up adding entries for things like the lower
-    // bound on a variable and so forth, which can never be rolled
-    // back.
+    /// The undo log records actions that might later be undone.
+    ///
+    /// Note: when the undo_log is empty, we are not actively
+    /// snapshotting. When the `start_snapshot()` method is called, we
+    /// push an OpenSnapshot entry onto the list to indicate that we
+    /// are now actively snapshotting. The reason for this is that
+    /// otherwise we end up adding entries for things like the lower
+    /// bound on a variable and so forth, which can never be rolled
+    /// back.
     undo_log: RefCell<Vec<UndoLogEntry<'tcx>>>,
+    
     unification_table: RefCell<UnificationTable<ty::RegionVid>>,
 
-    // This contains the results of inference.  It begins as an empty
-    // option and only acquires a value after inference is complete.
+    /// This contains the results of inference.  It begins as an empty
+    /// option and only acquires a value after inference is complete.
     values: RefCell<Option<Vec<VarValue<'tcx>>>>,
 }
 
