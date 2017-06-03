@@ -229,7 +229,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     }
 
     // Try overflowing the last element if we are using block indent.
-    if !fits_single_line && context.config.fn_call_style() == IndentStyle::Block {
+    if !fits_single_line && context.use_block_indent() {
         let (init, last) = rewrites.split_at_mut(last_non_try_index);
         let almost_single_line = init.iter().all(|s| !s.contains('\n'));
         if almost_single_line {
@@ -339,9 +339,7 @@ fn join_rewrites(rewrites: &[String], subexps: &[ast::Expr], connector: &str) ->
 // parens, braces, and brackets in its idiomatic formatting.
 fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool {
     match expr.node {
-        ast::ExprKind::Call(..) => {
-            context.config.fn_call_style() == IndentStyle::Block && repr.contains('\n')
-        }
+        ast::ExprKind::Call(..) => context.use_block_indent() && repr.contains('\n'),
         ast::ExprKind::Struct(..) |
         ast::ExprKind::While(..) |
         ast::ExprKind::WhileLet(..) |
