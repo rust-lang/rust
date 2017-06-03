@@ -10,6 +10,7 @@
 
 #![deny(warnings)]
 
+#![feature(attr_literals)]
 #![feature(box_syntax)]
 #![feature(inclusive_range_syntax)]
 #![feature(collection_placement)]
@@ -20,6 +21,7 @@
 #![feature(pattern)]
 #![feature(placement_in_syntax)]
 #![feature(rand)]
+#![feature(repr_align)]
 #![feature(slice_rotate)]
 #![feature(splice)]
 #![feature(str_escape)]

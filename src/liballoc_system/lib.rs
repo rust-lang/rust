@@ -171,6 +171,8 @@ mod imp {
 #[cfg(windows)]
 #[allow(bad_style)]
 mod imp {
+    use core::cmp::min;
+    use core::ptr::copy_nonoverlapping;
     use MIN_ALIGN;
 
     type LPVOID = *mut u8;
@@ -225,19 +227,16 @@ mod imp {
         allocate_with_flags(size, align, HEAP_ZERO_MEMORY)
     }
 
-    pub unsafe fn reallocate(ptr: *mut u8, _old_size: usize, size: usize, align: usize) -> *mut u8 {
+    pub unsafe fn reallocate(ptr: *mut u8, old_size: usize, size: usize, align: usize) -> *mut u8 {
         if align <= MIN_ALIGN {
             HeapReAlloc(GetProcessHeap(), 0, ptr as LPVOID, size as SIZE_T) as *mut u8
         } else {
-            let header = get_header(ptr);
-            let new = HeapReAlloc(GetProcessHeap(),
-                                  0,
-                                  header.0 as LPVOID,
-                                  (size + align) as SIZE_T) as *mut u8;
-            if new.is_null() {
-                return new;
+            let new = allocate(size, align);
+            if !new.is_null() {
+                copy_nonoverlapping(ptr, new, min(size, old_size));
+                deallocate(ptr, old_size, align);
             }
-            align_ptr(new, align)
+            new
         }
     }
 
@@ -246,15 +245,19 @@ mod imp {
                                      size: usize,
                                      align: usize)
                                      -> usize {
-        if align <= MIN_ALIGN {
-            let new = HeapReAlloc(GetProcessHeap(),
-                                  HEAP_REALLOC_IN_PLACE_ONLY,
-                                  ptr as LPVOID,
-                                  size as SIZE_T) as *mut u8;
-            if new.is_null() { old_size } else { size }
+        let new = if align <= MIN_ALIGN {
+            HeapReAlloc(GetProcessHeap(),
+                        HEAP_REALLOC_IN_PLACE_ONLY,
+                        ptr as LPVOID,
+                        size as SIZE_T) as *mut u8
         } else {
-            old_size
-        }
+            let header = get_header(ptr);
+            HeapReAlloc(GetProcessHeap(),
+                        HEAP_REALLOC_IN_PLACE_ONLY,
+                        header.0 as LPVOID,
+                        size + align as SIZE_T) as *mut u8
+        };
+        if new.is_null() { old_size } else { size }
     }
 
     pub unsafe fn deallocate(ptr: *mut u8, _old_size: usize, align: usize) {
