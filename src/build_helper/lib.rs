@@ -42,35 +42,49 @@ pub fn run(cmd: &mut Command) {
 }
 
 pub fn run_silent(cmd: &mut Command) {
+    if !try_run_silent(cmd) {
+        std::process::exit(1);
+    }
+}
+
+pub fn try_run_silent(cmd: &mut Command) -> bool {
     let status = match cmd.status() {
         Ok(status) => status,
         Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}",
                                 cmd, e)),
     };
     if !status.success() {
-        fail(&format!("command did not execute successfully: {:?}\n\
-                       expected success, got: {}",
-                      cmd,
-                      status));
+        println!("\n\ncommand did not execute successfully: {:?}\n\
+                  expected success, got: {}\n\n",
+                 cmd,
+                 status);
     }
+    status.success()
 }
 
 pub fn run_suppressed(cmd: &mut Command) {
+    if !try_run_suppressed(cmd) {
+        std::process::exit(1);
+    }
+}
+
+pub fn try_run_suppressed(cmd: &mut Command) -> bool {
     let output = match cmd.output() {
         Ok(status) => status,
         Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}",
                                 cmd, e)),
     };
     if !output.status.success() {
-        fail(&format!("command did not execute successfully: {:?}\n\
-                       expected success, got: {}\n\n\
-                       stdout ----\n{}\n\
-                       stderr ----\n{}\n",
-                      cmd,
-                      output.status,
-                      String::from_utf8_lossy(&output.stdout),
-                      String::from_utf8_lossy(&output.stderr)));
+        println!("\n\ncommand did not execute successfully: {:?}\n\
+                  expected success, got: {}\n\n\
+                  stdout ----\n{}\n\
+                  stderr ----\n{}\n\n",
+                 cmd,
+                 output.status,
+                 String::from_utf8_lossy(&output.stdout),
+                 String::from_utf8_lossy(&output.stderr));
     }
+    output.status.success()
 }
 
 pub fn gnu_target(target: &str) -> String {
