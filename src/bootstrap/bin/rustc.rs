@@ -232,12 +232,6 @@ fn main() {
             if let Some(rpath) = rpath {
                 cmd.arg("-C").arg(format!("link-args={}", rpath));
             }
-
-            if let Ok(s) = env::var("RUSTFLAGS") {
-                for flag in s.split_whitespace() {
-                    cmd.arg(flag);
-                }
-            }
         }
 
         if target.contains("pc-windows-msvc") {

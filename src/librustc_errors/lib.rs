@@ -102,6 +102,7 @@ pub trait CodeMapper {
     fn span_to_string(&self, sp: Span) -> String;
     fn span_to_filename(&self, sp: Span) -> FileName;
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span>;
+    fn call_span_if_macro(&self, sp: Span) -> Span;
 }
 
 impl CodeSuggestion {

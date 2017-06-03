@@ -705,11 +705,9 @@ impl EmitterWriter {
                 if *sp == DUMMY_SP {
                     continue;
                 }
-                if cm.span_to_filename(sp.clone()).contains("macros>") {
-                    let v = sp.macro_backtrace();
-                    if let Some(use_site) = v.last() {
-                        before_after.push((sp.clone(), use_site.call_site.clone()));
-                    }
+                let call_sp = cm.call_span_if_macro(*sp);
+                if call_sp != *sp {
+                    before_after.push((sp.clone(), call_sp));
                 }
                 for trace in sp.macro_backtrace().iter().rev() {
                     // Only show macro locations that are local
