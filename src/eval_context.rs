@@ -379,7 +379,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
         // generics are weird, don't run this function on a generic
         assert!(!ty.needs_subst());
-        ty.is_sized(self.tcx, ty::ParamEnv::empty(), DUMMY_SP)
+        ty.is_sized(self.tcx, ty::ParamEnv::empty(Reveal::All), DUMMY_SP)
     }
 
     pub fn load_mir(&self, instance: ty::InstanceDef<'tcx>) -> EvalResult<'tcx, &'tcx mir::Mir<'tcx>> {
@@ -438,9 +438,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // TODO(solson): Is this inefficient? Needs investigation.
         let ty = self.monomorphize(ty, substs);
 
-        self.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
-            ty.layout(&infcx).map_err(EvalError::Layout)
-        })
+        ty.layout(self.tcx, ty::ParamEnv::empty(Reveal::All)).map_err(EvalError::Layout)
     }
 
     pub fn push_stack_frame(
@@ -2033,7 +2031,7 @@ pub fn needs_drop_glue<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, t: Ty<'tcx>) -> bo
     // returned `false` does not appear unsound. The impact on
     // code quality is unknown at this time.)
 
-    let env = ty::ParamEnv::empty();
+    let env = ty::ParamEnv::empty(Reveal::All);
     if !t.needs_drop(tcx, env) {
         return false;
     }
@@ -2041,11 +2039,9 @@ pub fn needs_drop_glue<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, t: Ty<'tcx>) -> bo
         ty::TyAdt(def, _) if def.is_box() => {
             let typ = t.boxed_ty();
             if !typ.needs_drop(tcx, env) && type_is_sized(tcx, typ) {
-                tcx.infer_ctxt((), traits::Reveal::All).enter(|infcx| {
-                    let layout = t.layout(&infcx).unwrap();
-                    // `Box<ZeroSizeType>` does not allocate.
-                    layout.size(&tcx.data_layout).bytes() != 0
-                })
+                let layout = t.layout(tcx, ty::ParamEnv::empty(Reveal::All)).unwrap();
+                // `Box<ZeroSizeType>` does not allocate.
+                layout.size(&tcx.data_layout).bytes() != 0
             } else {
                 true
             }
@@ -2157,7 +2153,7 @@ impl<'a, 'tcx> ::rustc::ty::fold::TypeFolder<'tcx, 'tcx> for AssociatedTypeNorma
 fn type_is_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     // generics are weird, don't run this function on a generic
     assert!(!ty.needs_subst());
-    ty.is_sized(tcx, ty::ParamEnv::empty(), DUMMY_SP)
+    ty.is_sized(tcx, ty::ParamEnv::empty(Reveal::All), DUMMY_SP)
 }
 
 /// Attempts to resolve an obligation. The result is a shallow vtable resolution -- meaning that we
@@ -2176,13 +2172,14 @@ fn fulfill_obligation<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
-    tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
+    tcx.infer_ctxt(()).enter(|infcx| {
         let mut selcx = traits::SelectionContext::new(&infcx);
 
         let obligation_cause = traits::ObligationCause::misc(span,
                                                             ast::DUMMY_NODE_ID);
         let obligation = traits::Obligation::new(obligation_cause,
-                                                    trait_ref.to_poly_trait_predicate());
+                                                 ty::ParamEnv::empty(Reveal::All),
+                                                 trait_ref.to_poly_trait_predicate());
 
         let selection = match selcx.select(&obligation) {
             Ok(Some(selection)) => selection,

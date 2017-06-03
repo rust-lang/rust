@@ -6,6 +6,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir;
+use rustc::traits::Reveal;
 use rustc::ty::layout::Layout;
 use rustc::ty::{subst, self};
 
@@ -197,7 +198,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
             let mutable = !shared ||
                 !mir.return_ty.is_freeze(
                     this.ecx.tcx,
-                    ty::ParamEnv::empty(),
+                    ty::ParamEnv::empty(Reveal::All),
                     span);
             let cleanup = StackPopCleanup::MarkStatic(mutable);
             let name = ty::tls::with(|tcx| tcx.item_path_str(def_id));
