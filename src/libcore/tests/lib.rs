@@ -13,6 +13,7 @@
 #![feature(box_syntax)]
 #![feature(char_escape_debug)]
 #![feature(const_fn)]
+#![feature(core_float)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
 #![feature(dec2flt)]
