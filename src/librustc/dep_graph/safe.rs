@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! The `DepGraphSafe` trait
+
 use hir::BodyId;
 use hir::def_id::DefId;
 use syntax::ast::NodeId;

@@ -27,35 +27,35 @@ pub enum DepNode<D: Clone + Debug> {
     // During compilation, it is always `DefId`, but when serializing
     // it is mapped to `DefPath`.
 
-    // Represents the `Krate` as a whole (the `hir::Krate` value) (as
-    // distinct from the krate module). This is basically a hash of
-    // the entire krate, so if you read from `Krate` (e.g., by calling
-    // `tcx.hir.krate()`), we will have to assume that any change
-    // means that you need to be recompiled. This is because the
-    // `Krate` value gives you access to all other items. To avoid
-    // this fate, do not call `tcx.hir.krate()`; instead, prefer
-    // wrappers like `tcx.visit_all_items_in_krate()`.  If there is no
-    // suitable wrapper, you can use `tcx.dep_graph.ignore()` to gain
-    // access to the krate, but you must remember to add suitable
-    // edges yourself for the individual items that you read.
+    /// Represents the `Krate` as a whole (the `hir::Krate` value) (as
+    /// distinct from the krate module). This is basically a hash of
+    /// the entire krate, so if you read from `Krate` (e.g., by calling
+    /// `tcx.hir.krate()`), we will have to assume that any change
+    /// means that you need to be recompiled. This is because the
+    /// `Krate` value gives you access to all other items. To avoid
+    /// this fate, do not call `tcx.hir.krate()`; instead, prefer
+    /// wrappers like `tcx.visit_all_items_in_krate()`.  If there is no
+    /// suitable wrapper, you can use `tcx.dep_graph.ignore()` to gain
+    /// access to the krate, but you must remember to add suitable
+    /// edges yourself for the individual items that you read.
     Krate,
 
-    // Represents the HIR node with the given node-id
+    /// Represents the HIR node with the given node-id
     Hir(D),
 
-    // Represents the body of a function or method. The def-id is that of the
-    // function/method.
+    /// Represents the body of a function or method. The def-id is that of the
+    /// function/method.
     HirBody(D),
 
-    // Represents the metadata for a given HIR node, typically found
-    // in an extern crate.
+    /// Represents the metadata for a given HIR node, typically found
+    /// in an extern crate.
     MetaData(D),
 
-    // Represents some piece of metadata global to its crate.
+    /// Represents some piece of metadata global to its crate.
     GlobalMetaData(D, GlobalMetaDataKind),
 
-    // Represents some artifact that we save to disk. Note that these
-    // do not have a def-id as part of their identifier.
+    /// Represents some artifact that we save to disk. Note that these
+    /// do not have a def-id as part of their identifier.
     WorkProduct(Arc<WorkProductId>),
 
     // Represents different phases in the compiler.
@@ -114,13 +114,13 @@ pub enum DepNode<D: Clone + Debug> {
     NeedsDrop(D),
     Layout(D),
 
-    // The set of impls for a given trait. Ultimately, it would be
-    // nice to get more fine-grained here (e.g., to include a
-    // simplified type), but we can't do that until we restructure the
-    // HIR to distinguish the *header* of an impl from its body.  This
-    // is because changes to the header may change the self-type of
-    // the impl and hence would require us to be more conservative
-    // than changes in the impl body.
+    /// The set of impls for a given trait. Ultimately, it would be
+    /// nice to get more fine-grained here (e.g., to include a
+    /// simplified type), but we can't do that until we restructure the
+    /// HIR to distinguish the *header* of an impl from its body.  This
+    /// is because changes to the header may change the self-type of
+    /// the impl and hence would require us to be more conservative
+    /// than changes in the impl body.
     TraitImpls(D),
 
     AllLocalTraitImpls,
@@ -133,35 +133,35 @@ pub enum DepNode<D: Clone + Debug> {
     TraitItems(D),
     ReprHints(D),
 
-    // Trait selection cache is a little funny. Given a trait
-    // reference like `Foo: SomeTrait<Bar>`, there could be
-    // arbitrarily many def-ids to map on in there (e.g., `Foo`,
-    // `SomeTrait`, `Bar`). We could have a vector of them, but it
-    // requires heap-allocation, and trait sel in general can be a
-    // surprisingly hot path. So instead we pick two def-ids: the
-    // trait def-id, and the first def-id in the input types. If there
-    // is no def-id in the input types, then we use the trait def-id
-    // again. So for example:
-    //
-    // - `i32: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Clone }`
-    // - `u32: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Clone }`
-    // - `Clone: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Clone }`
-    // - `Vec<i32>: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Vec }`
-    // - `String: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: String }`
-    // - `Foo: Trait<Bar>` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
-    // - `Foo: Trait<i32>` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
-    // - `(Foo, Bar): Trait` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
-    // - `i32: Trait<Foo>` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
-    //
-    // You can see that we map many trait refs to the same
-    // trait-select node.  This is not a problem, it just means
-    // imprecision in our dep-graph tracking.  The important thing is
-    // that for any given trait-ref, we always map to the **same**
-    // trait-select node.
+    /// Trait selection cache is a little funny. Given a trait
+    /// reference like `Foo: SomeTrait<Bar>`, there could be
+    /// arbitrarily many def-ids to map on in there (e.g., `Foo`,
+    /// `SomeTrait`, `Bar`). We could have a vector of them, but it
+    /// requires heap-allocation, and trait sel in general can be a
+    /// surprisingly hot path. So instead we pick two def-ids: the
+    /// trait def-id, and the first def-id in the input types. If there
+    /// is no def-id in the input types, then we use the trait def-id
+    /// again. So for example:
+    ///
+    /// - `i32: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Clone }`
+    /// - `u32: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Clone }`
+    /// - `Clone: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Clone }`
+    /// - `Vec<i32>: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Vec }`
+    /// - `String: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: String }`
+    /// - `Foo: Trait<Bar>` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
+    /// - `Foo: Trait<i32>` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
+    /// - `(Foo, Bar): Trait` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
+    /// - `i32: Trait<Foo>` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
+    ///
+    /// You can see that we map many trait refs to the same
+    /// trait-select node.  This is not a problem, it just means
+    /// imprecision in our dep-graph tracking.  The important thing is
+    /// that for any given trait-ref, we always map to the **same**
+    /// trait-select node.
     TraitSelect { trait_def_id: D, input_def_id: D },
 
-    // For proj. cache, we just keep a list of all def-ids, since it is
-    // not a hotspot.
+    /// For proj. cache, we just keep a list of all def-ids, since it is
+    /// not a hotspot.
     ProjectionCache { def_ids: Vec<D> },
 
     ParamEnv(D),
