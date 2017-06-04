@@ -229,7 +229,7 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// bound on a variable and so forth, which can never be rolled
     /// back.
     undo_log: RefCell<Vec<UndoLogEntry<'tcx>>>,
-    
+
     unification_table: RefCell<UnificationTable<ty::RegionVid>>,
 
     /// This contains the results of inference.  It begins as an empty
