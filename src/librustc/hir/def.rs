@@ -163,7 +163,7 @@ impl Def {
             }
         }
     }
-    
+
     /// A human readable kind name
     pub fn kind_name(&self) -> &'static str {
         match *self {
