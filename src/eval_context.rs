@@ -1438,6 +1438,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     panic!("Failed to access local: {:?}", err);
                 }
                 Ok(Value::ByRef(ptr)) => {
+                    write!(msg, " by ref:").unwrap();
                     allocs.push(ptr.alloc_id);
                 }
                 Ok(Value::ByVal(val)) => {
