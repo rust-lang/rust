@@ -1,25 +1,28 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 0.0.136 - 2017-05-26
+## 0.0.137 — 2017-06-05
+* Update to *rustc 1.19.0-nightly (6684d176c 2017-06-03)*
+
+## 0.0.136 — 2017—05—26
 * Update to *rustc 1.19.0-nightly (557967766 2017-05-26)*
 
-## 0.0.135 - 2017-05-24
+## 0.0.135 — 2017—05—24
 * Update to *rustc 1.19.0-nightly (5b13bff52 2017-05-23)*
 
-## 0.0.134 - 2017-05-19
+## 0.0.134 — 2017—05—19
 * Update to *rustc 1.19.0-nightly (0ed1ec9f9 2017-05-18)*
 
-## 0.0.133 - 2017-05-14
+## 0.0.133 — 2017—05—14
 * Update to *rustc 1.19.0-nightly (826d8f385 2017-05-13)*
 
-## 0.0.132 - 2017-05-05
+## 0.0.132 — 2017—05—05
 * Fix various bugs and some ices
 
-## 0.0.131 - 2017-05-04
+## 0.0.131 — 2017—05—04
 * Update to *rustc 1.19.0-nightly (2d4ed8e0c 2017-05-03)*
 
-## 0.0.130 - 2017-05-03
+## 0.0.130 — 2017—05—03
 * Update to *rustc 1.19.0-nightly (6a5fc9eec 2017-05-02)*
 
 ## 0.0.129 — 2017-05-01
