@@ -65,6 +65,51 @@ impl OsString {
         OsString { inner: Buf::from_string(String::new()) }
     }
 
+    /// Checks whether the `OsString` is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    ///
+    /// let mut os_string = OsString::new();
+    /// assert!(os_string.is_empty());
+    ///
+    /// os_string.push("foo");
+    /// assert!(!os_string.is_empty());
+    /// ```
+    #[stable(feature = "osstring_len", since = "1.18.0")]
+    pub fn is_empty(&self) -> bool {
+        self.inner.inner.is_empty()
+    }
+
+    /// Returns the length of this `OsString`.
+    ///
+    /// Note that this does **not** return the number of bytes in this string
+    /// as, for example, OS strings on Windows are encoded as a list of `u16`
+    /// rather than a list of bytes. This number is simply useful for passing to
+    /// other methods like [`OsString::with_capacity`] to avoid reallocations.
+    ///
+    /// See `OsStr` introduction for more information about encoding.
+    ///
+    /// [`OsString::with_capacity`]: struct.OsString.html#method.with_capacity
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    ///
+    /// let mut os_string = OsString::new();
+    /// assert_eq!(os_string.len(), 0);
+    ///
+    /// os_string.push("foo");
+    /// assert_eq!(os_string.len(), 3);
+    /// ```
+    #[stable(feature = "osstring_len", since = "1.18.0")]
+    pub fn len(&self) -> usize {
+        self.inner.inner.len()
+    }
+
     /// Converts to an [`OsStr`] slice.
     ///
     /// [`OsStr`]: struct.OsStr.html
