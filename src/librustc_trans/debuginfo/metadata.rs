@@ -811,14 +811,10 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
                                                                  unit_metadata);
 
             let gcov_cu_info = [
-                // Ideally we would be using the three-element form of !llvm.gcov metadata,
-                // which allows us to specify gcno/gcda files explicitly, but that's only
-                // available in LLVM 3.9+; so we rely on LLVM chopping off the extension
-                // and replacing it with gcno/gcda, instead.
                 path_to_mdstring(debug_context.llcontext,
                                  &scc.output_filenames().with_extension("gcno")),
-                // path_to_mdstring(debug_context.llcontext,
-                //                  &scc.output_filenames().with_extension("gcda")),
+                path_to_mdstring(debug_context.llcontext,
+                                 &scc.output_filenames().with_extension("gcda")),
                 cu_desc_metadata,
             ];
             let gcov_metadata = llvm::LLVMMDNodeInContext(debug_context.llcontext,
