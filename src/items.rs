@@ -456,15 +456,30 @@ impl<'a> FmtVisitor<'a> {
             return Some(self.snippet(span));
         }
 
+        let context = self.get_context();
         let indent = self.block_indent;
-        let mut result = try_opt!(field.node.attrs.rewrite(&self.get_context(),
-                                                           Shape::indented(indent, self.config)));
+        let mut result = try_opt!(field
+                                      .node
+                                      .attrs
+                                      .rewrite(&context, Shape::indented(indent, self.config)));
         if !result.is_empty() {
-            result.push('\n');
-            result.push_str(&indent.to_string(self.config));
+            let shape = Shape {
+                width: context.config.max_width(),
+                indent: self.block_indent,
+                offset: self.block_indent.alignment,
+            };
+            let missing_comment =
+                rewrite_missing_comment_on_field(&context,
+                                                 shape,
+                                                 field.node.attrs[field.node.attrs.len() - 1]
+                                                     .span
+                                                     .hi,
+                                                 field.span.lo,
+                                                 &mut result)
+                    .unwrap_or(String::new());
+            result.push_str(&missing_comment);
         }
 
-        let context = self.get_context();
         let variant_body = match field.node.data {
             ast::VariantData::Tuple(..) |
             ast::VariantData::Struct(..) => {
@@ -1194,6 +1209,31 @@ fn type_annotation_spacing(config: &Config) -> (&str, &str) {
      })
 }
 
+fn rewrite_missing_comment_on_field(context: &RewriteContext,
+                                    shape: Shape,
+                                    lo: BytePos,
+                                    hi: BytePos,
+                                    result: &mut String)
+                                    -> Option<String> {
+    let possibly_comment_snippet = context.snippet(mk_sp(lo, hi));
+    let newline_index = possibly_comment_snippet.find('\n');
+    let comment_index = possibly_comment_snippet.find('/');
+    match (newline_index, comment_index) {
+        (Some(i), Some(j)) if i > j => result.push(' '),
+        _ => {
+            result.push('\n');
+            result.push_str(&shape.indent.to_string(context.config));
+        }
+    }
+    let trimmed = possibly_comment_snippet.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        rewrite_comment(trimmed, false, shape, context.config)
+            .map(|s| format!("{}\n{}", s, shape.indent.to_string(context.config)))
+    }
+}
+
 impl Rewrite for ast::StructField {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         if contains_skip(&self.attrs) {
@@ -1208,25 +1248,12 @@ impl Rewrite for ast::StructField {
                                                                        context.config)));
         // Try format missing comments after attributes
         let missing_comment = if !self.attrs.is_empty() {
-            let possibly_comment_snippet =
-                context.snippet(mk_sp(self.attrs[self.attrs.len() - 1].span.hi, self.span.lo));
-            let newline_index = possibly_comment_snippet.find('\n');
-            let comment_index = possibly_comment_snippet.find('/');
-            match (newline_index, comment_index) {
-                (Some(i), Some(j)) if i > j => attr_str.push(' '),
-                _ => {
-                    attr_str.push('\n');
-                    attr_str.push_str(&shape.indent.to_string(context.config));
-                }
-            }
-            let trimmed = possibly_comment_snippet.trim();
-            if trimmed.is_empty() {
-                String::new()
-            } else {
-                rewrite_comment(trimmed, false, shape, context.config).map_or(String::new(), |s| {
-                    format!("{}\n{}", s, shape.indent.to_string(context.config))
-                })
-            }
+            rewrite_missing_comment_on_field(context,
+                                             shape,
+                                             self.attrs[self.attrs.len() - 1].span.hi,
+                                             self.span.lo,
+                                             &mut attr_str)
+                .unwrap_or(String::new())
         } else {
             String::new()
         };

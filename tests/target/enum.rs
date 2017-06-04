@@ -127,3 +127,15 @@ fn nested_enum_test() {
 pub struct EmtpyWithComment {
     // FIXME: Implement this struct
 }
+
+// #1115
+pub enum Bencoding<'i> {
+    Str(&'i [u8]),
+    Int(i64),
+    List(Vec<Bencoding<'i>>),
+    /// A bencoded dict value. The first element the slice of bytes in the
+    /// source that the dict is
+    /// composed of. The second is the dict, decoded into an ordered map.
+    // TODO make Dict "structlike" AKA name the two values.
+    Dict(&'i [u8], BTreeMap<&'i [u8], Bencoding<'i>>),
+}
