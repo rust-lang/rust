@@ -339,6 +339,7 @@ fn join_rewrites(rewrites: &[String], subexps: &[ast::Expr], connector: &str) ->
 // parens, braces, and brackets in its idiomatic formatting.
 fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool {
     match expr.node {
+        ast::ExprKind::Mac(..) |
         ast::ExprKind::Call(..) => context.use_block_indent() && repr.contains('\n'),
         ast::ExprKind::Struct(..) |
         ast::ExprKind::While(..) |
