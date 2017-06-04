@@ -95,7 +95,7 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItemRef]
             {
                 let did = cx.tcx.hir.local_def_id(item.id.node_id);
                 let impl_ty = cx.tcx.type_of(did);
-                impl_ty.fn_args().skip_binder().len() == 1
+                impl_ty.fn_sig().inputs().skip_binder().len() == 1
             }
         } else {
             false
@@ -122,7 +122,7 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
             {
                 let did = cx.tcx.hir.local_def_id(item.id.node_id);
                 let impl_ty = cx.tcx.type_of(did);
-                impl_ty.fn_args().skip_binder().len() == 1
+                impl_ty.fn_sig().inputs().skip_binder().len() == 1
             }
         } else {
             false

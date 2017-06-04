@@ -286,9 +286,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         match def {
             Def::Const(def_id) |
             Def::AssociatedConst(def_id) => {
-                let substs = self.tables
-                    .node_id_item_substs(id)
-                    .unwrap_or_else(|| self.tcx.intern_substs(&[]));
+                let substs = self.tables.node_substs(id);
                 let substs = if self.substs.is_empty() {
                     substs
                 } else {

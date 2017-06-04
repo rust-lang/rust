@@ -295,6 +295,14 @@ error: this range is empty so this for loop will never run
     |
     = note: `-D reverse-range-loop` implied by `-D warnings`
 
+error: use of deprecated item: replaced by `Iterator::step_by`
+   --> for_loop.rs:192:22
+    |
+192 |     for i in (10..8).step_by(-1) {
+    |                      ^^^^^^^
+    |
+    = note: `-D deprecated` implied by `-D warnings`
+
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
    --> for_loop.rs:207:15
     |

@@ -91,12 +91,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         // Collect moved variables and spans which will need dereferencings from the function body.
         let MovedVariablesCtxt { moved_vars, spans_need_deref, .. } = {
             let mut ctx = MovedVariablesCtxt::new(cx);
-            let infcx = cx.tcx.borrowck_fake_infer_ctxt(body.id());
-            let region_maps = &cx.tcx.region_maps(fn_def_id);
-            {
-                let mut v = euv::ExprUseVisitor::new(&mut ctx, region_maps, &infcx);
-                v.consume_body(body);
-            }
+            cx.tcx.infer_ctxt(body.id()).enter(|infcx| {
+                let param_env = cx.tcx.param_env(fn_def_id);
+                let region_maps = &cx.tcx.region_maps(fn_def_id);
+                euv::ExprUseVisitor::new(&mut ctx, region_maps, &infcx, param_env)
+                    .consume_body(body);
+            });
             ctx
         };
 
@@ -199,7 +199,7 @@ impl<'a, 'tcx: 'a> MovedVariablesCtxt<'a, 'tcx> {
         }
     }
 
-    fn move_common(&mut self, _consume_id: NodeId, _span: Span, cmt: mc::cmt<'tcx>) {
+    fn move_common(&mut self, _consume_id: NodeId, _span: Span, cmt: mc::cmt) {
         let cmt = unwrap_downcast_or_interior(cmt);
 
         if_let_chain! {[
@@ -210,7 +210,7 @@ impl<'a, 'tcx: 'a> MovedVariablesCtxt<'a, 'tcx> {
         }}
     }
 
-    fn non_moving_pat(&mut self, matched_pat: &Pat, cmt: mc::cmt<'tcx>) {
+    fn non_moving_pat(&mut self, matched_pat: &Pat, cmt: mc::cmt) {
         let cmt = unwrap_downcast_or_interior(cmt);
 
         if_let_chain! {[
@@ -262,7 +262,7 @@ impl<'a, 'tcx: 'a> MovedVariablesCtxt<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx: 'a> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
+impl<'a, 'gcx: 'tcx, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'gcx> {
     fn consume(&mut self, consume_id: NodeId, consume_span: Span, cmt: mc::cmt<'tcx>, mode: euv::ConsumeMode) {
         if let euv::ConsumeMode::Move(_) = mode {
             self.move_common(consume_id, consume_span, cmt);

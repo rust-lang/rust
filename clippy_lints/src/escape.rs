@@ -5,8 +5,6 @@ use rustc::lint::*;
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::{cmt, Categorization};
 use rustc::ty;
-use rustc::ty::layout::TargetDataLayout;
-use rustc::traits::Reveal;
 use rustc::util::nodemap::NodeSet;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
@@ -46,8 +44,7 @@ fn is_non_trait_box(ty: ty::Ty) -> bool {
 struct EscapeDelegate<'a, 'tcx: 'a> {
     set: NodeSet,
     tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-    tables: &'a ty::TypeckTables<'tcx>,
-    target: TargetDataLayout,
+    param_env: ty::ParamEnv<'tcx>,
     too_large_for_stack: u64,
 }
 
@@ -67,23 +64,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         _: Span,
         node_id: NodeId
     ) {
-        // we store the infcx because it is expensive to recreate
-        // the context each time.
+        let fn_def_id = cx.tcx.hir.local_def_id(node_id);
+        let param_env = cx.tcx.param_env(fn_def_id).reveal_all();
         let mut v = EscapeDelegate {
             set: NodeSet(),
             tcx: cx.tcx,
-            tables: cx.tables,
-            target: TargetDataLayout::parse(cx.sess()),
+            param_env: param_env,
             too_large_for_stack: self.too_large_for_stack,
         };
 
-        let infcx = cx.tcx.borrowck_fake_infer_ctxt(body.id());
-        let fn_def_id = cx.tcx.hir.local_def_id(node_id);
-        let region_maps = &cx.tcx.region_maps(fn_def_id);
-        {
-            let mut vis = ExprUseVisitor::new(&mut v, region_maps, &infcx);
+        cx.tcx.infer_ctxt(body.id()).enter(|infcx| {
+            let region_maps = &cx.tcx.region_maps(fn_def_id);
+            let mut vis = ExprUseVisitor::new(&mut v, region_maps, &infcx, param_env);
             vis.consume_body(body);
-        }
+        });
 
         for node in v.set {
             span_lint(cx,
@@ -94,14 +88,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
+impl<'a, 'gcx: 'tcx, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'gcx> {
     fn consume(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, mode: ConsumeMode) {
         if let Categorization::Local(lid) = cmt.cat {
-            if self.set.contains(&lid) {
-                if let Move(DirectRefMove) = mode {
-                    // moved out or in. clearly can't be localized
-                    self.set.remove(&lid);
-                }
+            if let Move(DirectRefMove) = mode {
+                // moved out or in. clearly can't be localized
+                self.set.remove(&lid);
             }
         }
     }
@@ -149,49 +141,30 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     }
     fn borrow(
         &mut self,
-        borrow_id: NodeId,
+        _: NodeId,
         _: Span,
         cmt: cmt<'tcx>,
         _: ty::Region,
         _: ty::BorrowKind,
         loan_cause: LoanCause
     ) {
-        use rustc::ty::adjustment::Adjust;
-
         if let Categorization::Local(lid) = cmt.cat {
-            if self.set.contains(&lid) {
-                if let Some(&Adjust::DerefRef { autoderefs, .. }) =
-                    self.tables
-                        .adjustments
-                        .get(&borrow_id)
-                        .map(|a| &a.kind) {
-                    if LoanCause::AutoRef == loan_cause {
-                        // x.foo()
-                        if autoderefs == 0 {
-                            self.set.remove(&lid); // Used without autodereffing (i.e. x.clone())
-                        }
-                    } else {
-                        span_bug!(cmt.span, "Unknown adjusted AutoRef");
-                    }
-                } else if LoanCause::AddrOf == loan_cause {
-                    // &x
-                    if let Some(&Adjust::DerefRef { autoderefs, .. }) =
-                        self.tables
-                            .adjustments
-                            .get(&self.tcx
-                                .hir
-                                .get_parent_node(borrow_id))
-                            .map(|a| &a.kind) {
-                        if autoderefs <= 1 {
-                            // foo(&x) where no extra autoreffing is happening
-                            self.set.remove(&lid);
-                        }
-                    }
+            match loan_cause {
+                // x.foo()
+                // Used without autodereffing (i.e. x.clone())
+                LoanCause::AutoRef |
 
-                } else if LoanCause::MatchDiscriminant == loan_cause {
-                    self.set.remove(&lid); // `match x` can move
+                // &x
+                // foo(&x) where no extra autoreffing is happening
+                LoanCause::AddrOf |
+
+                // `match x` can move
+                LoanCause::MatchDiscriminant => {
+                    self.set.remove(&lid);
                 }
+
                 // do nothing for matches, etc. These can't escape
+                _ => {}
             }
         }
     }
@@ -200,19 +173,17 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
 }
 
 impl<'a, 'tcx: 'a> EscapeDelegate<'a, 'tcx> {
-    fn is_large_box(&self, ty: ty::Ty<'tcx>) -> bool {
+    fn is_large_box(&self, ty: ty::Ty) -> bool {
         // Large types need to be boxed to avoid stack
         // overflows.
         if ty.is_box() {
-            let inner = ty.boxed_ty();
-            self.tcx.infer_ctxt((), Reveal::All).enter(|infcx| if let Ok(layout) = inner.layout(&infcx) {
-                let size = layout.size(&self.target);
-                size.bytes() > self.too_large_for_stack
-            } else {
-                false
-            })
-        } else {
-            false
+            if let Some(inner) = self.tcx.lift(&ty.boxed_ty()) {
+                if let Ok(layout) = inner.layout(self.tcx, self.param_env) {
+                    return layout.size(self.tcx).bytes() > self.too_large_for_stack;
+                }
+            }
         }
+
+        false
     }
 }

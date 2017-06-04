@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.0.136"
+version = "0.0.137"
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",
 	"Andre Bogus <bogusandre@gmail.com>",
@@ -31,7 +31,7 @@ test = false
 
 [dependencies]
 # begin automatic update
-clippy_lints = { version = "0.0.136", path = "clippy_lints" }
+clippy_lints = { version = "0.0.137", path = "clippy_lints" }
 # end automatic update
 cargo_metadata = "0.2"
 
