@@ -91,7 +91,10 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
     fn visit_local(&mut self, loc: &'tcx hir::Local) {
         intravisit::walk_local(self, loc);
 
-        self.check_irrefutable(&loc.pat, false);
+        self.check_irrefutable(&loc.pat, match loc.source {
+            hir::LocalSource::Normal => "local binding",
+            hir::LocalSource::ForLoopDesugar => "`for` loop binding",
+        });
 
         // Check legality of move bindings and `@` patterns.
         self.check_patterns(false, slice::ref_slice(&loc.pat));
@@ -101,7 +104,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
         intravisit::walk_body(self, body);
 
         for arg in &body.arguments {
-            self.check_irrefutable(&arg.pat, true);
+            self.check_irrefutable(&arg.pat, "function argument");
             self.check_patterns(false, slice::ref_slice(&arg.pat));
         }
     }
@@ -210,7 +213,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 .map(|pat| vec![pat.0])
                 .collect();
             let scrut_ty = self.tables.node_id_to_type(scrut.id);
-            check_exhaustive(cx, scrut_ty, scrut.span, &matrix, source);
+            check_exhaustive(cx, scrut_ty, scrut.span, &matrix);
         })
     }
 
@@ -223,13 +226,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_irrefutable(&self, pat: &Pat, is_fn_arg: bool) {
-        let origin = if is_fn_arg {
-            "function argument"
-        } else {
-            "local binding"
-        };
-
+    fn check_irrefutable(&self, pat: &Pat, origin: &str) {
         let module = self.tcx.hir.get_module_parent(pat.id);
         MatchCheckCtxt::create_and_enter(self.tcx, module, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx, self.tables);
@@ -395,8 +392,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                               scrut_ty: Ty<'tcx>,
                               sp: Span,
-                              matrix: &Matrix<'a, 'tcx>,
-                              source: hir::MatchSource) {
+                              matrix: &Matrix<'a, 'tcx>) {
     let wild_pattern = Pattern {
         ty: scrut_ty,
         span: DUMMY_SP,
@@ -409,52 +405,32 @@ fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             } else {
                 pats.iter().map(|w| w.single_pattern()).collect()
             };
-            match source {
-                hir::MatchSource::ForLoopDesugar => {
-                    // `witnesses[0]` has the form `Some(<head>)`, peel off the `Some`
-                    let witness = match *witnesses[0].kind {
-                        PatternKind::Variant { ref subpatterns, .. } => match &subpatterns[..] {
-                            &[ref pat] => &pat.pattern,
-                            _ => bug!(),
-                        },
-                        _ => bug!(),
-                    };
-                    let pattern_string = witness.to_string();
-                    struct_span_err!(cx.tcx.sess, sp, E0297,
-                        "refutable pattern in `for` loop binding: \
-                                `{}` not covered",
-                                pattern_string)
-                        .span_label(sp, format!("pattern `{}` not covered", pattern_string))
-                        .emit();
+
+            const LIMIT: usize = 3;
+            let joined_patterns = match witnesses.len() {
+                0 => bug!(),
+                1 => format!("`{}`", witnesses[0]),
+                2...LIMIT => {
+                    let (tail, head) = witnesses.split_last().unwrap();
+                    let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
+                    format!("`{}` and `{}`", head.join("`, `"), tail)
                 },
                 _ => {
-                    const LIMIT: usize = 3;
-                    let joined_patterns = match witnesses.len() {
-                        0 => bug!(),
-                        1 => format!("`{}`", witnesses[0]),
-                        2...LIMIT => {
-                            let (tail, head) = witnesses.split_last().unwrap();
-                            let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
-                            format!("`{}` and `{}`", head.join("`, `"), tail)
-                        },
-                        _ => {
-                            let (head, tail) = witnesses.split_at(LIMIT);
-                            let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
-                            format!("`{}` and {} more", head.join("`, `"), tail.len())
-                        }
-                    };
+                    let (head, tail) = witnesses.split_at(LIMIT);
+                    let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
+                    format!("`{}` and {} more", head.join("`, `"), tail.len())
+                }
+            };
 
-                    let label_text = match witnesses.len() {
-                        1 => format!("pattern {} not covered", joined_patterns),
-                        _ => format!("patterns {} not covered", joined_patterns)
-                    };
-                    create_e0004(cx.tcx.sess, sp,
-                                 format!("non-exhaustive patterns: {} not covered",
-                                         joined_patterns))
-                        .span_label(sp, label_text)
-                        .emit();
-                },
-            }
+            let label_text = match witnesses.len() {
+                1 => format!("pattern {} not covered", joined_patterns),
+                _ => format!("patterns {} not covered", joined_patterns)
+            };
+            create_e0004(cx.tcx.sess, sp,
+                            format!("non-exhaustive patterns: {} not covered",
+                                    joined_patterns))
+                .span_label(sp, label_text)
+                .emit();
         }
         NotUseful => {
             // This is good, wildcard pattern isn't reachable

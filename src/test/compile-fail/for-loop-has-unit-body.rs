@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,9 +9,9 @@
 // except according to those terms.
 
 fn main() {
-    let xs : Vec<Option<i32>> = vec![Some(1), None];
-
-    for Some(x) in xs {}
-    //~^ ERROR E0005
-    //~| NOTE pattern `None` not covered
+    for x in 0..3 {
+        x //~ ERROR mismatched types
+        //~| NOTE expected ()
+        //~| NOTE expected type `()`
+    }
 }

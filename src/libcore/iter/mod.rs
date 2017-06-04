@@ -191,10 +191,11 @@
 //! {
 //!     let result = match IntoIterator::into_iter(values) {
 //!         mut iter => loop {
-//!             match iter.next() {
-//!                 Some(x) => { println!("{}", x); },
+//!             let x = match iter.next() {
+//!                 Some(val) => val,
 //!                 None => break,
-//!             }
+//!             };
+//!             let () = { println!("{}", x); };
 //!         },
 //!     };
 //!     result
