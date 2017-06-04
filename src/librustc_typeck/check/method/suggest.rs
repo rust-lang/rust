@@ -315,8 +315,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let mut candidates = valid_out_of_scope_traits;
             candidates.sort();
             candidates.dedup();
-            let mut msg = format!("items from traits can only be used if the trait is in scope; \
-                                   the following {traits_are} implemented but not in scope, \
+            err.help("items from traits can only be used if the trait is in scope");
+            let mut msg = format!("the following {traits_are} implemented but not in scope, \
                                    perhaps add a `use` for {one_of_them}:",
                               traits_are = if candidates.len() == 1 {
                                   "trait is"
@@ -338,7 +338,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if candidates.len() > limit {
                 msg.push_str(&format!("\nand {} others", candidates.len() - limit));
             }
-            err.help(&msg[..]);
+            err.note(&msg[..]);
 
             return;
         }
@@ -369,8 +369,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // FIXME #21673 this help message could be tuned to the case
             // of a type parameter: suggest adding a trait bound rather
             // than implementing.
-            let mut msg = format!("items from traits can only be used if the trait is implemented \
-                                   and in scope; the following {traits_define} an item `{name}`, \
+            err.help("items from traits can only be used if the trait is implemented and in scope");
+            let mut msg = format!("the following {traits_define} an item `{name}`, \
                                    perhaps you need to implement {one_of_them}:",
                                   traits_define = if candidates.len() == 1 {
                                       "trait defines"
@@ -389,7 +389,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                       i + 1,
                                       self.tcx.item_path_str(trait_info.def_id)));
             }
-            err.help(&msg[..]);
+            err.note(&msg[..]);
         }
     }
 

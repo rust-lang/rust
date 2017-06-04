@@ -4,7 +4,8 @@ error[E0599]: no method named `is_empty` found for type `Foo` in the current sco
 19 |     foo(|s| s.is_empty());
    |               ^^^^^^^^
    |
-   = help: items from traits can only be used if the trait is implemented and in scope; the following traits define an item `is_empty`, perhaps you need to implement one of them:
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `is_empty`, perhaps you need to implement one of them:
            candidate #1: `std::iter::ExactSizeIterator`
            candidate #2: `core::slice::SliceExt`
            candidate #3: `core::str::StrExt`

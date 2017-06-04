@@ -33,5 +33,6 @@ fn main() {
     y.zero()
      .take()    //~ ERROR no method named `take` found for type `Foo` in the current scope
      //~^ NOTE the method `take` exists but the following trait bounds were not satisfied
+     //~| NOTE the following traits define an item `take`, perhaps you need to implement one of them
      .one(0);
 }

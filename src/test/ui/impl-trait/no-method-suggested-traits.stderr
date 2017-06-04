@@ -4,7 +4,8 @@ error[E0599]: no method named `method` found for type `u32` in the current scope
 33 |     1u32.method();
    |          ^^^^^^
    |
-   = help: items from traits can only be used if the trait is in scope; the following traits are implemented but not in scope, perhaps add a `use` for one of them:
+   = help: items from traits can only be used if the trait is in scope
+   = note: the following traits are implemented but not in scope, perhaps add a `use` for one of them:
            candidate #1: `use foo::Bar;`
            candidate #2: `use no_method_suggested_traits::foo::PubPub;`
 
@@ -14,7 +15,8 @@ error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::box
 38 |     std::rc::Rc::new(&mut Box::new(&1u32)).method();
    |                                            ^^^^^^
    |
-   = help: items from traits can only be used if the trait is in scope; the following traits are implemented but not in scope, perhaps add a `use` for one of them:
+   = help: items from traits can only be used if the trait is in scope
+   = note: the following traits are implemented but not in scope, perhaps add a `use` for one of them:
            candidate #1: `use foo::Bar;`
            candidate #2: `use no_method_suggested_traits::foo::PubPub;`
 
@@ -24,7 +26,8 @@ error[E0599]: no method named `method` found for type `char` in the current scop
 44 |     'a'.method();
    |         ^^^^^^
    |
-   = help: items from traits can only be used if the trait is in scope; the following trait is implemented but not in scope, perhaps add a `use` for it:
+   = help: items from traits can only be used if the trait is in scope
+   = note: the following trait is implemented but not in scope, perhaps add a `use` for it:
            candidate #1: `use foo::Bar;`
 
 error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::boxed::Box<&char>>` in the current scope
@@ -33,7 +36,8 @@ error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::box
 48 |     std::rc::Rc::new(&mut Box::new(&'a')).method();
    |                                           ^^^^^^
    |
-   = help: items from traits can only be used if the trait is in scope; the following trait is implemented but not in scope, perhaps add a `use` for it:
+   = help: items from traits can only be used if the trait is in scope
+   = note: the following trait is implemented but not in scope, perhaps add a `use` for it:
            candidate #1: `use foo::Bar;`
 
 error[E0599]: no method named `method` found for type `i32` in the current scope
@@ -42,7 +46,8 @@ error[E0599]: no method named `method` found for type `i32` in the current scope
 53 |     1i32.method();
    |          ^^^^^^
    |
-   = help: items from traits can only be used if the trait is in scope; the following trait is implemented but not in scope, perhaps add a `use` for it:
+   = help: items from traits can only be used if the trait is in scope
+   = note: the following trait is implemented but not in scope, perhaps add a `use` for it:
            candidate #1: `use no_method_suggested_traits::foo::PubPub;`
 
 error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::boxed::Box<&i32>>` in the current scope
@@ -51,7 +56,8 @@ error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::box
 57 |     std::rc::Rc::new(&mut Box::new(&1i32)).method();
    |                                            ^^^^^^
    |
-   = help: items from traits can only be used if the trait is in scope; the following trait is implemented but not in scope, perhaps add a `use` for it:
+   = help: items from traits can only be used if the trait is in scope
+   = note: the following trait is implemented but not in scope, perhaps add a `use` for it:
            candidate #1: `use no_method_suggested_traits::foo::PubPub;`
 
 error[E0599]: no method named `method` found for type `Foo` in the current scope
@@ -60,7 +66,8 @@ error[E0599]: no method named `method` found for type `Foo` in the current scope
 62 |     Foo.method();
    |         ^^^^^^
    |
-   = help: items from traits can only be used if the trait is implemented and in scope; the following traits define an item `method`, perhaps you need to implement one of them:
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `method`, perhaps you need to implement one of them:
            candidate #1: `foo::Bar`
            candidate #2: `no_method_suggested_traits::foo::PubPub`
            candidate #3: `no_method_suggested_traits::bar::PubPriv`
@@ -74,7 +81,8 @@ error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::box
 71 |     std::rc::Rc::new(&mut Box::new(&Foo)).method();
    |                                           ^^^^^^
    |
-   = help: items from traits can only be used if the trait is implemented and in scope; the following traits define an item `method`, perhaps you need to implement one of them:
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `method`, perhaps you need to implement one of them:
            candidate #1: `foo::Bar`
            candidate #2: `no_method_suggested_traits::foo::PubPub`
            candidate #3: `no_method_suggested_traits::bar::PubPriv`
@@ -88,7 +96,8 @@ error[E0599]: no method named `method2` found for type `u64` in the current scop
 81 |     1u64.method2();
    |          ^^^^^^^
    |
-   = help: items from traits can only be used if the trait is implemented and in scope; the following trait defines an item `method2`, perhaps you need to implement it:
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `method2`, perhaps you need to implement it:
            candidate #1: `foo::Bar`
 
 error[E0599]: no method named `method2` found for type `std::rc::Rc<&mut std::boxed::Box<&u64>>` in the current scope
@@ -97,7 +106,8 @@ error[E0599]: no method named `method2` found for type `std::rc::Rc<&mut std::bo
 85 |     std::rc::Rc::new(&mut Box::new(&1u64)).method2();
    |                                            ^^^^^^^
    |
-   = help: items from traits can only be used if the trait is implemented and in scope; the following trait defines an item `method2`, perhaps you need to implement it:
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `method2`, perhaps you need to implement it:
            candidate #1: `foo::Bar`
 
 error[E0599]: no method named `method2` found for type `no_method_suggested_traits::Foo` in the current scope
@@ -106,7 +116,8 @@ error[E0599]: no method named `method2` found for type `no_method_suggested_trai
 90 |     no_method_suggested_traits::Foo.method2();
    |                                     ^^^^^^^
    |
-   = help: items from traits can only be used if the trait is implemented and in scope; the following trait defines an item `method2`, perhaps you need to implement it:
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `method2`, perhaps you need to implement it:
            candidate #1: `foo::Bar`
 
 error[E0599]: no method named `method2` found for type `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Foo>>` in the current scope
@@ -115,7 +126,8 @@ error[E0599]: no method named `method2` found for type `std::rc::Rc<&mut std::bo
 94 |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).method2();
    |                                                                       ^^^^^^^
    |
-   = help: items from traits can only be used if the trait is implemented and in scope; the following trait defines an item `method2`, perhaps you need to implement it:
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `method2`, perhaps you need to implement it:
            candidate #1: `foo::Bar`
 
 error[E0599]: no method named `method2` found for type `no_method_suggested_traits::Bar` in the current scope
@@ -124,7 +136,8 @@ error[E0599]: no method named `method2` found for type `no_method_suggested_trai
 98 |     no_method_suggested_traits::Bar::X.method2();
    |                                        ^^^^^^^
    |
-   = help: items from traits can only be used if the trait is implemented and in scope; the following trait defines an item `method2`, perhaps you need to implement it:
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `method2`, perhaps you need to implement it:
            candidate #1: `foo::Bar`
 
 error[E0599]: no method named `method2` found for type `std::rc::Rc<&mut std::boxed::Box<&no_method_suggested_traits::Bar>>` in the current scope
@@ -133,7 +146,8 @@ error[E0599]: no method named `method2` found for type `std::rc::Rc<&mut std::bo
 102 |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Bar::X)).method2();
     |                                                                          ^^^^^^^
     |
-    = help: items from traits can only be used if the trait is implemented and in scope; the following trait defines an item `method2`, perhaps you need to implement it:
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `method2`, perhaps you need to implement it:
             candidate #1: `foo::Bar`
 
 error[E0599]: no method named `method3` found for type `Foo` in the current scope
@@ -142,7 +156,8 @@ error[E0599]: no method named `method3` found for type `Foo` in the current scop
 107 |     Foo.method3();
     |         ^^^^^^^
     |
-    = help: items from traits can only be used if the trait is implemented and in scope; the following trait defines an item `method3`, perhaps you need to implement it:
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `method3`, perhaps you need to implement it:
             candidate #1: `no_method_suggested_traits::foo::PubPub`
 
 error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::boxed::Box<&Foo>>` in the current scope
@@ -151,7 +166,8 @@ error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::bo
 111 |     std::rc::Rc::new(&mut Box::new(&Foo)).method3();
     |                                           ^^^^^^^
     |
-    = help: items from traits can only be used if the trait is implemented and in scope; the following trait defines an item `method3`, perhaps you need to implement it:
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `method3`, perhaps you need to implement it:
             candidate #1: `no_method_suggested_traits::foo::PubPub`
 
 error[E0599]: no method named `method3` found for type `Bar` in the current scope
@@ -160,7 +176,8 @@ error[E0599]: no method named `method3` found for type `Bar` in the current scop
 115 |     Bar::X.method3();
     |            ^^^^^^^
     |
-    = help: items from traits can only be used if the trait is implemented and in scope; the following trait defines an item `method3`, perhaps you need to implement it:
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `method3`, perhaps you need to implement it:
             candidate #1: `no_method_suggested_traits::foo::PubPub`
 
 error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::boxed::Box<&Bar>>` in the current scope
@@ -169,7 +186,8 @@ error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::bo
 119 |     std::rc::Rc::new(&mut Box::new(&Bar::X)).method3();
     |                                              ^^^^^^^
     |
-    = help: items from traits can only be used if the trait is implemented and in scope; the following trait defines an item `method3`, perhaps you need to implement it:
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `method3`, perhaps you need to implement it:
             candidate #1: `no_method_suggested_traits::foo::PubPub`
 
 error[E0599]: no method named `method3` found for type `usize` in the current scope
