@@ -208,6 +208,7 @@ impl ErrorKind {
 /// the heap (for normal construction via Error::new) is too costly.
 #[stable(feature = "io_error_from_errorkind", since = "1.14.0")]
 impl From<ErrorKind> for Error {
+    #[inline]
     fn from(kind: ErrorKind) -> Error {
         Error {
             repr: Repr::Simple(kind)
