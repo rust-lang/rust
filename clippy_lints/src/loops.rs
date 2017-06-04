@@ -8,6 +8,7 @@ use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::region::CodeExtent;
 use rustc::ty;
+use rustc::ty::subst::Subst;
 use rustc_const_eval::ConstContext;
 use std::collections::HashMap;
 use syntax::ast;
@@ -676,8 +677,11 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                     lint_iter_method(cx, args, arg, &method_name);
                 }
             } else if method_name == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
-                let fn_ty = cx.tables.expr_ty(arg);
-                let fn_arg_tys = fn_ty.fn_sig().inputs();
+                let def_id = cx.tables.type_dependent_defs[&arg.id].def_id();
+                let substs = cx.tables.node_substs(arg.id);
+                let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
+
+                let fn_arg_tys = method_type.fn_sig().inputs();
                 assert_eq!(fn_arg_tys.skip_binder().len(), 1);
                 if fn_arg_tys.skip_binder()[0].is_region_ptr() {
                     lint_iter_method(cx, args, arg, &method_name);

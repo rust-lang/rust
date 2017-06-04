@@ -5,6 +5,7 @@
 use rustc::lint::*;
 use rustc::hir::{ExprAddrOf, Expr, MutImmutable, Pat, PatKind, BindingMode};
 use rustc::ty;
+use rustc::ty::adjustment::{Adjustment, Adjust};
 use utils::{span_lint, in_macro};
 
 /// **What it does:** Checks for address of operations (`&`) that are going to
@@ -41,13 +42,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
         }
         if let ExprAddrOf(MutImmutable, ref inner) = e.node {
             if let ty::TyRef(..) = cx.tables.expr_ty(inner).sty {
-                if let Some(&ty::adjustment::Adjust::Deref(Some(_))) =
-                    cx.tables.adjustments.get(&e.id).map(|a| &a.kind) {
-                    span_lint(cx,
-                              NEEDLESS_BORROW,
-                              e.span,
-                              "this expression borrows a reference that is immediately dereferenced by the \
-                               compiler");
+                for adj3 in cx.tables.expr_adjustments(e).windows(3) {
+                    if let [
+                        Adjustment { kind: Adjust::Deref(_), .. },
+                        Adjustment { kind: Adjust::Deref(_), .. },
+                        Adjustment { kind: Adjust::Borrow(_), .. }
+                    ] = *adj3 {
+                        span_lint(cx,
+                                  NEEDLESS_BORROW,
+                                  e.span,
+                                  "this expression borrows a reference that is immediately dereferenced by the \
+                                   compiler");
+                    }
                 }
             }
         }

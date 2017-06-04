@@ -9,7 +9,6 @@ use rustc::traits::Reveal;
 use rustc::traits;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty;
-use rustc::ty::layout::TargetDataLayout;
 use rustc::mir::transform::MirSource;
 use rustc_errors;
 use std::borrow::Cow;
@@ -317,13 +316,15 @@ pub fn implements_trait<'a, 'tcx>(
     parent_node_id: Option<NodeId>
 ) -> bool {
     let ty = cx.tcx.erase_regions(&ty);
-    let mut b = if let Some(id) = parent_node_id {
-        cx.tcx.infer_ctxt(BodyId { node_id: id })
+    let param_env = if let Some(id) = parent_node_id {
+        let def_id = cx.tcx.hir.body_owner_def_id(BodyId { node_id: id });
+        cx.tcx.param_env(def_id).reveal_all()
     } else {
-        cx.tcx.infer_ctxt(())
+        ty::ParamEnv::empty(Reveal::All)
     };
-    b.enter(|infcx| {
-        let obligation = cx.tcx.predicate_for_trait_def(traits::ObligationCause::dummy(), trait_id, 0, ty, ty_params);
+    cx.tcx.infer_ctxt(()).enter(|infcx| {
+        let obligation = cx.tcx.predicate_for_trait_def(
+            param_env, traits::ObligationCause::dummy(), trait_id, 0, ty, ty_params);
 
         traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
     })
@@ -778,12 +779,9 @@ pub fn same_tys<'a, 'tcx>(
     b: ty::Ty<'tcx>,
     parameter_item: DefId
 ) -> bool {
-    let parameter_env = cx.tcx.param_env(parameter_item);
-    cx.tcx.infer_ctxt(parameter_env).enter(|infcx| {
-        let substs = Substs::identity_for_item(cx.tcx, parameter_item);
-        let new_a = a.subst(infcx.tcx, substs);
-        let new_b = b.subst(infcx.tcx, substs);
-        infcx.can_equate(&new_a, &new_b).is_ok()
+    let param_env = cx.tcx.param_env(parameter_item).reveal_all();
+    cx.tcx.infer_ctxt(()).enter(|infcx| {
+        infcx.can_eq(param_env, a, b).is_ok()
     })
 }
 
@@ -961,7 +959,6 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
 }
 
 pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>) -> Option<u64> {
-    cx.tcx
-        .infer_ctxt(())
-        .enter(|infcx| ty.layout(&infcx).ok().map(|lay| lay.size(&TargetDataLayout::parse(cx.sess())).bytes()))
+    ty.layout(cx.tcx, ty::ParamEnv::empty(Reveal::All))
+      .ok().map(|layout| layout.size(cx.tcx).bytes())
 }

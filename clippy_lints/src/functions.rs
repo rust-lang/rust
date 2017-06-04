@@ -1,6 +1,5 @@
 use rustc::hir::intravisit;
 use rustc::hir;
-use rustc::ty;
 use rustc::lint::*;
 use std::collections::HashSet;
 use syntax::ast;
