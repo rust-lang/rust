@@ -252,6 +252,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         String::new()
     } else {
         // Use new lines.
+        if context.force_one_line_chain {
+            return None;
+        }
         format!("\n{}", nested_shape.indent.to_string(context.config))
     };
 

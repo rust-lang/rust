@@ -32,6 +32,8 @@ pub struct RewriteContext<'a> {
     // When `format_if_else_cond_comment` is true, unindent the comment on top
     // of the `else` or `else if`.
     pub is_if_else_block: bool,
+    // When rewriting chain, veto going multi line except the last element
+    pub force_one_line_chain: bool,
 }
 
 impl<'a> RewriteContext<'a> {

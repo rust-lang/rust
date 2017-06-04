@@ -1784,6 +1784,11 @@ fn try_overflow_last_arg(context: &RewriteContext,
     // Replace the last item with its first line to see if it fits with
     // first arguments.
     let (orig_last, placeholder) = if overflow_last {
+        let mut context = context.clone();
+        match args[args.len() - 1].node {
+            ast::ExprKind::MethodCall(..) => context.force_one_line_chain = true,
+            _ => (),
+        }
         last_arg_shape(&context, &item_vec, shape).map_or((None, None), |arg_shape| {
             rewrite_last_arg_with_overflow(&context,
                                            &args[args.len() - 1],
