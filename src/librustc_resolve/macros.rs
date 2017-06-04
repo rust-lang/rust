@@ -285,10 +285,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                      -> Result<Option<Rc<SyntaxExtension>>, Determinacy> {
         let def = match invoc.kind {
             InvocationKind::Attr { attr: None, .. } => return Ok(None),
-            _ => match self.resolve_invoc_to_def(invoc, scope, force) {
-                Ok(def) => def,
-                Err(determinacy) => return Err(determinacy),
-            },
+            _ => self.resolve_invoc_to_def(invoc, scope, force)?,
         };
 
         self.macro_defs.insert(invoc.expansion_data.mark, def.def_id());
