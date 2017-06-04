@@ -1918,11 +1918,19 @@ mod traits {
         type Output = str;
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
-            (self.start..self.end+1).get(slice)
+            if let Some(end) = self.end.checked_add(1) {
+                (self.start..end).get(slice)
+            } else {
+                None
+            }
         }
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-            (self.start..self.end+1).get_mut(slice)
+            if let Some(end) = self.end.checked_add(1) {
+                (self.start..end).get_mut(slice)
+            } else {
+                None
+            }
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
@@ -1953,7 +1961,7 @@ mod traits {
         type Output = str;
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
-            if slice.is_char_boundary(self.end + 1) {
+            if self.end < usize::max_value() && slice.is_char_boundary(self.end + 1) {
                 Some(unsafe { self.get_unchecked(slice) })
             } else {
                 None
@@ -1961,7 +1969,7 @@ mod traits {
         }
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-            if slice.is_char_boundary(self.end + 1) {
+            if self.end < usize::max_value() && slice.is_char_boundary(self.end + 1) {
                 Some(unsafe { self.get_unchecked_mut(slice) })
             } else {
                 None
