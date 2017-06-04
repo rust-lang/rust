@@ -908,27 +908,18 @@ impl<'a> CrateLoader<'a> {
 
     fn inject_profiler_runtime(&mut self) {
         if self.sess.opts.debugging_opts.profile {
-            let mut uses_std = false;
-            self.cstore.iter_crate_data(|_, data| {
-                if data.name == "std" {
-                    uses_std = true;
-                }
-            });
+            info!("loading profiler");
 
-            if uses_std {
-                info!("loading profiler");
+            let symbol = Symbol::intern("profiler_builtins");
+            let dep_kind = DepKind::Implicit;
+            let (_, data) =
+                self.resolve_crate(&None, symbol, symbol, None, DUMMY_SP,
+                                   PathKind::Crate, dep_kind);
 
-                let symbol = Symbol::intern("profiler_builtins");
-                let dep_kind = DepKind::Implicit;
-                let (_, data) =
-                    self.resolve_crate(&None, symbol, symbol, None, DUMMY_SP,
-                                       PathKind::Crate, dep_kind);
-
-                // Sanity check the loaded crate to ensure it is indeed a profiler runtime
-                if !data.is_profiler_runtime(&self.sess.dep_graph) {
-                    self.sess.err(&format!("the crate `profiler_builtins` is not \
-                                            a profiler runtime"));
-                }
+            // Sanity check the loaded crate to ensure it is indeed a profiler runtime
+            if !data.is_profiler_runtime(&self.sess.dep_graph) {
+                self.sess.err(&format!("the crate `profiler_builtins` is not \
+                                        a profiler runtime"));
             }
         }
     }
