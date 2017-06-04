@@ -15,7 +15,8 @@
 // ignore-windows
 
 // Ignore 32 bit targets:
-// ignore-x86, ignore-arm
+// ignore-x86
+// ignore-arm
 
 // ignore-emscripten
 
