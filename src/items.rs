@@ -18,7 +18,7 @@ use utils::{format_mutability, format_visibility, contains_skip, end_typaram, wr
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, list_helper,
             DefinitiveListTactic, ListTactic, definitive_tactic, format_item_list};
 use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, type_annotation_separator};
-use comment::{FindUncommented, contains_comment, rewrite_comment};
+use comment::{FindUncommented, contains_comment, rewrite_comment, recover_comment_removed};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
 use config::{Config, IndentStyle, Density, ReturnIndent, BraceStyle, Style, TypeDensity};
@@ -1299,6 +1299,7 @@ pub fn rewrite_static(prefix: &str,
                       mutability: ast::Mutability,
                       expr_opt: Option<&ptr::P<ast::Expr>>,
                       offset: Indent,
+                      span: Span,
                       context: &RewriteContext)
                       -> Option<String> {
     let type_annotation_spacing = type_annotation_spacing(context.config);
@@ -1325,7 +1326,17 @@ pub fn rewrite_static(prefix: &str,
                            lhs,
                            expr,
                            Shape::legacy(remaining_width, offset.block_only()))
-            .map(|s| s + ";")
+            .and_then(|res| {
+                recover_comment_removed(res,
+                                        span,
+                                        context,
+                                        Shape {
+                                            width: context.config.max_width(),
+                                            indent: offset,
+                                            offset: offset.alignment,
+                                        })
+            })
+            .map(|s| if s.ends_with(';') { s } else { s + ";" })
     } else {
         let lhs = format!("{}{};", prefix, ty_str);
         Some(lhs)
