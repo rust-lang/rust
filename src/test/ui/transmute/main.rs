@@ -7,6 +7,12 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+// ignore-x86
+// ignore-arm
+// ignore-emscripten
+// ignore 32-bit platforms (test output is different)
+
 #![feature(untagged_unions)]
 use std::mem::transmute;
 

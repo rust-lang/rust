@@ -87,7 +87,7 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
             // `Option<typeof(function)>` to present a clearer error.
             let from = unpack_option_like(self.tcx.global_tcx(), from);
             if let (&ty::TyFnDef(..), SizeSkeleton::Known(size_to)) = (&from.sty, sk_to) {
-                if size_to == Pointer.size(self.tcx) => {
+                if size_to == Pointer.size(self.tcx) {
                     struct_span_err!(self.tcx.sess, span, E0591,
                                      "can't transmute zero-sized type")
                         .note(&format!("source type: {}", from))

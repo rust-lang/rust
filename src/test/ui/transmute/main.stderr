@@ -1,34 +1,34 @@
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/main.rs:20:5
+  --> $DIR/main.rs:26:5
    |
-20 |     transmute(x) //~ ERROR transmute called with types of different sizes
+26 |     transmute(x) //~ ERROR transmute called with types of different sizes
    |     ^^^^^^^^^
    |
    = note: source type: <C as TypeConstructor<'a>>::T (size can vary because of <C as TypeConstructor>::T)
    = note: target type: <C as TypeConstructor<'b>>::T (size can vary because of <C as TypeConstructor>::T)
 
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/main.rs:24:17
+  --> $DIR/main.rs:30:17
    |
-24 |     let x: u8 = transmute(10u16); //~ ERROR transmute called with types of different sizes
+30 |     let x: u8 = transmute(10u16); //~ ERROR transmute called with types of different sizes
    |                 ^^^^^^^^^
    |
    = note: source type: u16 (16 bits)
    = note: target type: u8 (8 bits)
 
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/main.rs:28:17
+  --> $DIR/main.rs:34:17
    |
-28 |     let x: u8 = transmute("test"); //~ ERROR transmute called with types of different sizes
+34 |     let x: u8 = transmute("test"); //~ ERROR transmute called with types of different sizes
    |                 ^^^^^^^^^
    |
    = note: source type: &str (128 bits)
    = note: target type: u8 (8 bits)
 
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/main.rs:33:18
+  --> $DIR/main.rs:39:18
    |
-33 |     let x: Foo = transmute(10); //~ ERROR transmute called with types of different sizes
+39 |     let x: Foo = transmute(10); //~ ERROR transmute called with types of different sizes
    |                  ^^^^^^^^^
    |
    = note: source type: i32 (32 bits)
