@@ -338,6 +338,7 @@ impl<'a> FmtVisitor<'a> {
                                              mutability,
                                              Some(expr),
                                              self.block_indent,
+                                             item.span,
                                              &self.get_context());
                 self.push_rewrite(item.span, rewrite);
             }
@@ -349,6 +350,7 @@ impl<'a> FmtVisitor<'a> {
                                              ast::Mutability::Immutable,
                                              Some(expr),
                                              self.block_indent,
+                                             item.span,
                                              &self.get_context());
                 self.push_rewrite(item.span, rewrite);
             }
@@ -399,6 +401,7 @@ impl<'a> FmtVisitor<'a> {
                                              ast::Mutability::Immutable,
                                              expr_opt.as_ref(),
                                              self.block_indent,
+                                             ti.span,
                                              &self.get_context());
                 self.push_rewrite(ti.span, rewrite);
             }
@@ -450,6 +453,7 @@ impl<'a> FmtVisitor<'a> {
                                              ast::Mutability::Immutable,
                                              Some(expr),
                                              self.block_indent,
+                                             ii.span,
                                              &self.get_context());
                 self.push_rewrite(ii.span, rewrite);
             }
