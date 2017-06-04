@@ -70,10 +70,10 @@ const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
 pub struct LoweringContext<'a> {
     crate_root: Option<&'static str>,
-    
+
     // Use to assign ids to hir nodes that do not directly correspond to an ast node
     sess: &'a Session,
-    
+
     // As we walk the AST we must keep track of the current 'parent' def id (in
     // the form of a DefIndex) so that if we create a new node which introduces
     // a definition, then we can properly create the def id.
