@@ -594,6 +594,9 @@ impl Build {
         if self.config.backtrace {
             features.push_str(" backtrace");
         }
+        if self.config.profiler {
+            features.push_str(" profiler");
+        }
         return features
     }
 

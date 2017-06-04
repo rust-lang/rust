@@ -38,10 +38,12 @@ use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::layout::{self, LayoutTyper};
 use rustc::session::{Session, config};
 use rustc::util::nodemap::FxHashMap;
+use rustc::util::common::path2cstr;
 
 use libc::{c_uint, c_longlong};
 use std::ffi::CString;
 use std::ptr;
+use std::path::Path;
 use syntax::ast;
 use syntax::symbol::{Interner, InternedString, Symbol};
 use syntax_pos::{self, Span};
@@ -794,7 +796,7 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
         let file_metadata = llvm::LLVMRustDIBuilderCreateFile(
             debug_context.builder, name_in_debuginfo.as_ptr(), work_dir.as_ptr());
 
-        return llvm::LLVMRustDIBuilderCreateCompileUnit(
+        let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder,
             DW_LANG_RUST,
             file_metadata,
@@ -802,8 +804,42 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
             sess.opts.optimize != config::OptLevel::No,
             flags.as_ptr() as *const _,
             0,
-            split_name.as_ptr() as *const _)
+            split_name.as_ptr() as *const _);
+
+        let cu_desc_metadata = llvm::LLVMRustMetadataAsValue(debug_context.llcontext,
+                                                             unit_metadata);
+
+        let gcov_cu_info = [
+            // Ideally we would be using the three-element form of !llvm.gcov metadata,
+            // which allows us to specify gcno/gcda files explicitly, but that's only
+            // available in LLVM 3.9+; so we rely on LLVM chopping off the extension
+            // and replacing it with gcno/gcda, instead.
+            path_to_mdstring(debug_context.llcontext,
+                             &scc.output_filenames().with_extension("gcno")),
+            // path_to_mdstring(debug_context.llcontext,
+            //                  &scc.output_filenames().with_extension("gcda")),
+            cu_desc_metadata,
+        ];
+        let gcov_metadata = llvm::LLVMMDNodeInContext(debug_context.llcontext,
+                                                      gcov_cu_info.as_ptr(),
+                                                      gcov_cu_info.len() as c_uint);
+
+        let llvm_gcov_ident = CString::new("llvm.gcov").unwrap();
+        llvm::LLVMAddNamedMetadataOperand(debug_context.llmod,
+                                          llvm_gcov_ident.as_ptr(),
+                                          gcov_metadata);
+
+        return unit_metadata;
     };
+
+    fn path_to_mdstring(llcx: llvm::ContextRef, path: &Path) -> llvm::ValueRef {
+        let path_str = path2cstr(path);
+        unsafe {
+            llvm::LLVMMDStringInContext(llcx,
+                                        path_str.as_ptr(),
+                                        path_str.as_bytes().len() as c_uint)
+        }
+    }
 }
 
 struct MetadataCreationResult {

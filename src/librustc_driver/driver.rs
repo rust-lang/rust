@@ -204,7 +204,8 @@ pub fn compile_input(sess: &Session,
                 println!("Pre-trans");
                 tcx.print_debug_stats();
             }
-            let trans = phase_4_translate_to_llvm(tcx, analysis, &incremental_hashes_map);
+            let trans = phase_4_translate_to_llvm(tcx, analysis, &incremental_hashes_map,
+                                                  &outputs);
 
             if log_enabled!(::log::LogLevel::Info) {
                 println!("Post-trans");
@@ -1042,7 +1043,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 /// be discarded.
 pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            analysis: ty::CrateAnalysis,
-                                           incremental_hashes_map: &IncrementalHashesMap)
+                                           incremental_hashes_map: &IncrementalHashesMap,
+                                           output_filenames: &OutputFilenames)
                                            -> trans::CrateTranslation {
     let time_passes = tcx.sess.time_passes();
 
@@ -1053,7 +1055,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let translation =
         time(time_passes,
              "translation",
-             move || trans::trans_crate(tcx, analysis, &incremental_hashes_map));
+             move || trans::trans_crate(tcx, analysis, &incremental_hashes_map, output_filenames));
 
     time(time_passes,
          "assert dep graph",

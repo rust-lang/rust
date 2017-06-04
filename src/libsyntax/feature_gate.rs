@@ -325,6 +325,10 @@ declare_features! (
     // rustc internal
     (active, sanitizer_runtime, "1.17.0", None),
 
+    // Used to identify crates that contain the profiler runtime
+    // rustc internal
+    (active, profiler_runtime, "1.18.0", None),
+
     // `extern "x86-interrupt" fn()`
     (active, abi_x86_interrupt, "1.17.0", Some(40180)),
 
@@ -691,6 +695,13 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                               identify crates that contain the runtime of a \
                                               sanitizer and will never be stable",
                                              cfg_fn!(sanitizer_runtime))),
+    ("profiler_runtime", Whitelisted, Gated(Stability::Unstable,
+                                             "profiler_runtime",
+                                             "the `#[profiler_runtime]` attribute is used to \
+                                              identify the `profiler_builtins` crate which \
+                                              contains the profiler runtime and will never be \
+                                              stable",
+                                             cfg_fn!(profiler_runtime))),
 
     ("allow_internal_unstable", Normal, Gated(Stability::Unstable,
                                               "allow_internal_unstable",
