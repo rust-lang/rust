@@ -205,18 +205,23 @@ impl Float for f64 {
         }
     }
 
-    /// Returns `true` if `self` is positive, including `+0.0` and
-    /// `Float::infinity()`.
+    /// Returns `true` if and only if `self` has a positive sign, including `+0.0`, `NaN`s with
+    /// positive sign bit and positive infinity.
     #[inline]
     fn is_sign_positive(self) -> bool {
-        self > 0.0 || (1.0 / self) == INFINITY
+        !self.is_sign_negative()
     }
 
-    /// Returns `true` if `self` is negative, including `-0.0` and
-    /// `Float::neg_infinity()`.
+    /// Returns `true` if and only if `self` has a negative sign, including `-0.0`, `NaN`s with
+    /// negative sign bit and negative infinity.
     #[inline]
     fn is_sign_negative(self) -> bool {
-        self < 0.0 || (1.0 / self) == NEG_INFINITY
+        #[repr(C)]
+        union F64Bytes {
+            f: f64,
+            b: u64
+        }
+        unsafe { F64Bytes { f: self }.b & 0x8000_0000_0000_0000 != 0 }
     }
 
     /// Returns the reciprocal (multiplicative inverse) of the number.
