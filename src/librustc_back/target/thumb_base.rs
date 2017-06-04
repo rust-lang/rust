@@ -42,6 +42,7 @@ use target::TargetOptions;
 pub fn opts() -> TargetOptions {
     // See rust-lang/rfcs#1645 for a discussion about these defaults
     TargetOptions {
+        function_sections: true,
         executables: true,
         // In 99%+ of cases, we want to use the `arm-none-eabi-gcc` compiler (there aren't many
         // options around)
