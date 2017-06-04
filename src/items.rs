@@ -1161,21 +1161,23 @@ pub fn rewrite_type_alias(context: &RewriteContext,
         .unwrap_or(0);
     let type_indent = indent + line_width;
     // Try to fit the type on the same line
-    let ty_str = try_opt!(ty.rewrite(context, Shape::legacy(budget, type_indent))
-        .or_else(|| {
-            // The line was too short, try to put the type on the next line
+    let ty_str = try_opt!(
+        ty.rewrite(context, Shape::legacy(budget, type_indent))
+            .or_else(|| {
+                // The line was too short, try to put the type on the next line
 
-            // Remove the space after '='
-            result.pop();
-            let type_indent = indent.block_indent(context.config);
-            result.push('\n');
-            result.push_str(&type_indent.to_string(context.config));
-            let budget = try_opt!(context
-                                      .config
-                                      .max_width()
-                                      .checked_sub(type_indent.width() + ";".len()));
-            ty.rewrite(context, Shape::legacy(budget, type_indent))
-        }));
+                // Remove the space after '='
+                result.pop();
+                let type_indent = indent.block_indent(context.config);
+                result.push('\n');
+                result.push_str(&type_indent.to_string(context.config));
+                let budget = try_opt!(context
+                                          .config
+                                          .max_width()
+                                          .checked_sub(type_indent.width() + ";".len()));
+                ty.rewrite(context, Shape::legacy(budget, type_indent))
+            })
+    );
     result.push_str(&ty_str);
     result.push_str(";");
     Some(result)
