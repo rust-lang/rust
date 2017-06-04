@@ -33,7 +33,7 @@ matrix:
     - env: IMAGE=dist-powerpc64le-linux DEPLOY=1
     - env: IMAGE=dist-s390x-linux DEPLOY=1
     - env: IMAGE=dist-x86_64-freebsd DEPLOY=1
-    - env: IMAGE=dist-x86_64-linux DEPLOY=1
+    - env: IMAGE=dist-x86_64-linux DEPLOY=1 ALLOW_TRY=1
     - env: IMAGE=dist-x86_64-musl DEPLOY=1
     - env: IMAGE=dist-x86_64-netbsd DEPLOY=1
     - env: IMAGE=emscripten
@@ -153,15 +153,15 @@ before_script:
       df -h;
       du . | sort -nr | head -n100
   - >
-      if [ "$ALLOW_PR" = "" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
-          export RUN_SCRIPT="echo 'skipping, not a full build'";
-      else
+      if [[ "$ALLOW_PR" = "1" || "$TRAVIS_BRANCH" == "auto" || ( "$ALLOW_TRY" = "1" && "$TRAVIS_BRANCH" = "try" ) ]]; then
           RUN_SCRIPT="stamp src/ci/init_repo.sh . $HOME/rustsrc";
           if [ "$TRAVIS_OS_NAME" = "osx" ]; then
               export RUN_SCRIPT="$RUN_SCRIPT && stamp src/ci/run.sh";
           else
               export RUN_SCRIPT="$RUN_SCRIPT && stamp src/ci/docker/run.sh $IMAGE";
           fi
+      else
+          export RUN_SCRIPT="echo 'skipping, not a full build'";
       fi
 
 script:
@@ -238,6 +238,20 @@ deploy:
     on:
       branch: auto
       condition: $DEPLOY = 1
+
+  - provider: s3
+    bucket: rust-lang-ci
+    skip_cleanup: true
+    local_dir: deploy
+    upload_dir: rustc-builds-try
+    acl: public_read
+    region: us-east-1
+    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    secret_access_key:
+      secure: "FBqDqOTeIPMu6v/WYPf4CFSlh9rLRZGKVtpLa5KkyuOhXRTrnEzBduEtS8/FMIxdQImvurhSvxWvqRybMOi4qoVfjMqqpHAI7uBbidbrvAcJoHNsx6BgUNVCIoH6a0UsAjTUtm6/YPIpzbHoLZXPL0GrHPMk6Mu04qVSmcYNWn4="
+    on:
+      branch: try
+      condition: $DEPLOY = 1 && $ALLOW_TRY = 1
 
   # this is the same as the above deployment provider except that it uploads to
   # a slightly different directory and has a different trigger
