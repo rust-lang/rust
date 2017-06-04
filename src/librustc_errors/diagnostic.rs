@@ -157,6 +157,14 @@ impl Diagnostic {
         self
     }
 
+    pub fn note_trait_signature(&mut self, name: String, signature: String) -> &mut Self {
+        self.highlighted_note(vec![
+            (format!("`{}` from trait: `", name), Style::NoStyle),
+            (signature, Style::Highlight),
+            ("`".to_string(), Style::NoStyle)]);
+        self
+    }
+
     pub fn note(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Note, msg, MultiSpan::new(), None);
         self
