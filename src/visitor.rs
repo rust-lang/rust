@@ -56,6 +56,7 @@ pub struct FmtVisitor<'a> {
     pub block_indent: Indent,
     pub config: &'a Config,
     pub failed: bool,
+    pub is_if_else_block: bool,
 }
 
 impl<'a> FmtVisitor<'a> {
@@ -117,9 +118,22 @@ impl<'a> FmtVisitor<'a> {
             }
         }
 
+        let mut unindent_comment = self.is_if_else_block && !b.stmts.is_empty();
+        if unindent_comment {
+            let end_pos = source!(self, b.span).hi - brace_compensation;
+            let snippet = self.get_context()
+                .snippet(codemap::mk_sp(self.last_pos, end_pos));
+            unindent_comment = snippet.contains("//") || snippet.contains("/*");
+        }
         // FIXME: we should compress any newlines here to just one
+        if unindent_comment {
+            self.block_indent = self.block_indent.block_unindent(self.config);
+        }
         self.format_missing_with_indent(source!(self, b.span).hi - brace_compensation);
-        self.close_block();
+        if unindent_comment {
+            self.block_indent = self.block_indent.block_indent(self.config);
+        }
+        self.close_block(unindent_comment);
         self.last_pos = source!(self, b.span).hi;
     }
 
@@ -127,9 +141,11 @@ impl<'a> FmtVisitor<'a> {
     // item in the block and the closing brace to the block's level.
     // The closing brace itself, however, should be indented at a shallower
     // level.
-    fn close_block(&mut self) {
+    fn close_block(&mut self, unindent_comment: bool) {
         let total_len = self.buffer.len;
-        let chars_too_many = if self.config.hard_tabs() {
+        let chars_too_many = if unindent_comment {
+            0
+        } else if self.config.hard_tabs() {
             1
         } else {
             self.config.tab_spaces()
@@ -484,6 +500,7 @@ impl<'a> FmtVisitor<'a> {
             block_indent: Indent::empty(),
             config: config,
             failed: false,
+            is_if_else_block: false,
         }
     }
 
@@ -587,7 +604,7 @@ impl<'a> FmtVisitor<'a> {
                 self.block_indent = self.block_indent.block_indent(self.config);
                 self.walk_mod_items(m);
                 self.format_missing_with_indent(source!(self, m.inner).hi - BytePos(1));
-                self.close_block();
+                self.close_block(false);
             }
             self.last_pos = source!(self, m.inner).hi;
         } else {
@@ -611,6 +628,7 @@ impl<'a> FmtVisitor<'a> {
             config: self.config,
             inside_macro: false,
             use_block: false,
+            is_if_else_block: false,
         }
     }
 }

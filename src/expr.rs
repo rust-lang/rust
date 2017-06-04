@@ -666,6 +666,7 @@ impl Rewrite for ast::Block {
 
         let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
         visitor.block_indent = shape.indent;
+        visitor.is_if_else_block = context.is_if_else_block;
 
         let prefix = match self.rules {
             ast::BlockCheckMode::Unsafe(..) => {
@@ -965,7 +966,10 @@ impl<'a> Rewrite for ControlFlow<'a> {
             width: block_width,
             ..shape
         };
-        let block_str = try_opt!(self.block.rewrite(context, block_shape));
+        let mut block_context = context.clone();
+        block_context.is_if_else_block = self.else_block.is_some();
+
+        let block_str = try_opt!(self.block.rewrite(&block_context, block_shape));
 
         let cond_span = if let Some(cond) = self.cond {
             cond.span
