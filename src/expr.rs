@@ -1205,8 +1205,10 @@ fn rewrite_match(context: &RewriteContext,
     }
 
     // `match `cond` {`
-    let cond_shape = try_opt!(shape.shrink_left(6));
-    let cond_shape = try_opt!(cond_shape.sub_width(2));
+    let cond_shape = match context.config.control_style() {
+        Style::Legacy => try_opt!(shape.shrink_left(6).and_then(|s| s.sub_width(2))),
+        Style::Rfc => try_opt!(shape.sub_width(8)),
+    };
     let cond_str = try_opt!(cond.rewrite(context, cond_shape));
     let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
     let block_sep = match context.config.control_brace_style() {
