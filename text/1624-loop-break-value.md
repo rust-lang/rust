@@ -305,7 +305,7 @@ let x = for thing in things default "nope" {
 There are two things to bear in mind when considering new syntax:
 
 *   It is undesirable to add a new keyword to the list of Rust's keywords
-*   It is strongly desirable that unbounded lookahead is required while syntax
+*   It is strongly desirable that unbounded lookahead is *not* required while syntax
     parsing Rust code
 
 For more discussion on this topic, see [issue #961](https://github.com/rust-lang/rfcs/issues/961).
