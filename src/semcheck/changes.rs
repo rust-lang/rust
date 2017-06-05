@@ -226,7 +226,7 @@ pub mod tests {
     }
 
     quickcheck! {
-        /// The `Ord` instance of `Change` obeys transitivity.
+        /// The `Ord` instance of `Change` is transitive.
         fn ord_change_transitive(c1: Change_, c2: Change_, c3: Change_) -> bool {
             let ch1 = build_change(c1.0, c1.1.inner());
             let ch2 = build_change(c2.0, c2.1.inner());
@@ -262,7 +262,7 @@ pub mod tests {
             set.max == max
         }
 
-        /// Different spans imply different items.
+        /// Difference in spans implies difference in `Change`s.
         fn change_span_neq(c1: Change_, c2: Change_) -> bool {
             let s1 = c1.1.inner();
             let s2 = c2.1.inner();
@@ -277,7 +277,7 @@ pub mod tests {
             }
         }
 
-        /// Different paths imply different items.
+        /// Difference in paths implies difference in `Change`s.
         fn change_path_neq(c1: Change_, c2: ChangeType) -> bool {
             let span = c1.1.inner();
             let ch1 = build_change(c1.0, span.clone());

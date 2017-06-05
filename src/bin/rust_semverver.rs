@@ -32,27 +32,55 @@ fn callback(state: &driver::CompileState) {
     let tcx = state.tcx.unwrap();
     let cstore = &tcx.sess.cstore;
 
-    let cnums = cstore
-        .crates()
-        .iter()
-        .fold((None, None), |(n, o), crate_num| {
-            let name = cstore.crate_name(*crate_num);
-            if name == "new" {
-                (Some(*crate_num), o)
-            } else if name == "old" {
-                (n, Some(*crate_num))
-            } else {
-                (n, o)
-            }
-        });
+    let (new_did, old_did) = if std::env::var("RUST_SEMVERVER_TEST").is_err() {
+        // this is an actual program run
+        let cnums = cstore
+            .crates()
+            .iter()
+            .fold((None, None), |(n, o), crate_num| {
+                let name = cstore.crate_name(*crate_num);
+                if name == "new" {
+                    (Some(*crate_num), o)
+                } else if name == "old" {
+                    (n, Some(*crate_num))
+                } else {
+                    (n, o)
+                }
+            });
 
-    let new_did = DefId {
-        krate: cnums.0.unwrap(),
-        index: CRATE_DEF_INDEX,
-    };
-    let old_did = DefId {
-        krate: cnums.1.unwrap(),
-        index: CRATE_DEF_INDEX,
+        let new_did = DefId {
+            krate: cnums.0.unwrap(),
+            index: CRATE_DEF_INDEX,
+        };
+        let old_did = DefId {
+            krate: cnums.1.unwrap(),
+            index: CRATE_DEF_INDEX,
+        };
+
+        (new_did, old_did)
+    } else {
+        // we are testing, so just fetch the *modules* `old` and `new`
+        let mod_id = DefId {
+            krate: LOCAL_CRATE,
+            index: CRATE_DEF_INDEX,
+        };
+
+        let mut children = cstore.item_children(mod_id);
+
+        let dids = children
+            .drain(..)
+            .fold((mod_id, mod_id), |(n, o), child| {
+                let child_name = String::from(&*child.ident.name.as_str());
+                if child_name == "new" {
+                    (child.def.def_id(), o)
+                } else if child_name == "old" {
+                    (n, child.def.def_id())
+                } else {
+                    (n, o)
+                }
+            });
+
+        dids
     };
 
     let new_map = ExportMap::new(new_did, cstore.borrow());
