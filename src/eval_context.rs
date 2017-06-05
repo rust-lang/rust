@@ -662,7 +662,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let src = self.eval_operand(operand)?;
                         let src_ty = self.operand_ty(operand);
                         if self.type_is_fat_ptr(src_ty) {
-                            trace!("misc cast: {:?}", src);
                             match (src, self.type_is_fat_ptr(dest_ty)) {
                                 (Value::ByRef(_), _) |
                                 (Value::ByValPair(..), true) => {
@@ -674,9 +673,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 (Value::ByVal(_), _) => bug!("expected fat ptr"),
                             }
                         } else {
-                            let src_val = self.value_to_primval(src, src_ty)?;
-                            let dest_val = self.cast_primval(src_val, src_ty, dest_ty)?;
-                            self.write_value(Value::ByVal(dest_val), dest, dest_ty)?;
+                            // First, try casting
+                            let dest_val = self.value_to_primval(src, src_ty).and_then(
+                                |src_val| { self.cast_primval(src_val, src_ty, dest_ty) })
+                                // Alternatively, if the sizes are equal, try just reading at the target type
+                                .or_else(|err| {
+                                    let size = self.type_size(src_ty)?;
+                                    if size.is_some() && size == self.type_size(dest_ty)? {
+                                        self.value_to_primval(src, dest_ty)
+                                    } else {
+                                        Err(err)
+                                    }
+                                });
+                            self.write_value(Value::ByVal(dest_val?), dest, dest_ty)?;
                         }
                     }
 
