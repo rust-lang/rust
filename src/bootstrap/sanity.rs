@@ -122,7 +122,8 @@ pub fn check(build: &mut Build) {
         // On emscripten we don't actually need the C compiler to just
         // build the target artifacts, only for testing. For the sake
         // of easier bot configuration, just skip detection.
-        if target.contains("emscripten") {
+        // Likewise with the thumbv*m-none-eabi* targets
+        if target.contains("emscripten") || target.starts_with("thumbv") {
             continue;
         }
 

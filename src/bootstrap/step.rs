@@ -267,6 +267,12 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
         .dep(|s| s.name("libtest-link"));
 
     for (krate, path, _default) in krates("std") {
+        if krate.name == "core" {
+            rules.build("build-crate-core", "src/libcore")
+                .dep(move |s| s.name("rustc").host(&build.config.build).target(s.host))
+                .run(move |s| compile::core(build, s.target, &s.compiler()));
+            continue;
+        }
         rules.build(&krate.build_step, path)
              .dep(|s| s.name("startup-objects"))
              .dep(move |s| s.name("rustc").host(&build.config.build).target(s.host))

@@ -32,6 +32,18 @@ use channel::GitInfo;
 use util::{exe, libdir, is_dylib, copy};
 use {Build, Compiler, Mode};
 
+pub fn core(build: &Build, target: &str, compiler: &Compiler) {
+    println!("Building stage{} core artifacts ({} -> {})", compiler.stage,
+             compiler.host, target);
+
+    let mut cargo = build.cargo(compiler, Mode::Libstd, target, "build");
+
+    cargo.arg("--manifest-path")
+        .arg(build.src.join("src/libcore/Cargo.toml"));
+
+    build.run(&mut cargo);
+}
+
 /// Build the standard library.
 ///
 /// This will build the standard library for a particular stage of the build
