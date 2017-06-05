@@ -29,7 +29,7 @@ use hir::{self, intravisit, Local, Pat, Body};
 use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::map::NodeExpr;
 use hir::def_id::DefId;
-use infer::{self, InferCtxt};
+use infer::{self, InferCtxt, InferTables, InferTablesRef};
 use infer::type_variable::TypeVariableOrigin;
 use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use std::fmt;
@@ -640,16 +640,38 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     ty::Predicate::ClosureKind(closure_def_id, kind) => {
                         let found_kind = self.closure_kind(closure_def_id).unwrap();
                         let closure_span = self.tcx.hir.span_if_local(closure_def_id).unwrap();
+                        let node_id = self.tcx.hir.as_local_node_id(closure_def_id).unwrap();
                         let mut err = struct_span_err!(
                             self.tcx.sess, closure_span, E0525,
                             "expected a closure that implements the `{}` trait, \
                                 but this closure only implements `{}`",
                             kind,
                             found_kind);
-                        err.span_note(
-                            obligation.cause.span,
-                            &format!("the requirement to implement \
-                                        `{}` derives from here", kind));
+
+                        let infer_tables = match self.tables {
+                            InferTables::Interned(tables) =>
+                                Some(InferTablesRef::Interned(tables)),
+                            InferTables::InProgress(tables) =>
+                                Some(InferTablesRef::InProgress(tables.borrow())),
+                            InferTables::Missing => None,
+                        };
+
+                        if let Some(tables) = infer_tables {
+                            if let Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) =
+                                tables.closure_kinds.get(&node_id)
+                            {
+                                err.span_note(
+                                    span,
+                                    &format!("closure is `FnOnce` because it moves the \
+                                              variable `{}` out of its environment", name));
+                            }
+                        } else {
+                            err.span_note(
+                                obligation.cause.span,
+                                &format!("the requirement to implement `{}` \
+                                          derives from here", kind));
+                        }
+
                         err.emit();
                         return;
                     }
