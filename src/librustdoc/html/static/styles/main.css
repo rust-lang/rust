@@ -38,7 +38,7 @@ pre {
 }
 
 .sidebar {
-	background-color: #F1F1F1;
+	background-color: #F8F8F8;
 }
 
 .sidebar .current {
@@ -50,13 +50,11 @@ pre {
 }
 
 .sidebar .location {
-	border-color: #000;
-	background-color: #fff;
-	color: #333;
+	background-color: #e1e1e1;
 }
 
 .block a:hover {
-	background: #F5F5F5;
+	background: #EEEEEE;
 }
 
 .line-numbers span { color: #c67e2d; }
