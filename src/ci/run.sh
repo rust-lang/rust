@@ -32,6 +32,7 @@ RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-locked-deps"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-cargo-openssl-static"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-clean-rebuild"
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-profiling"
 
 if [ "$DIST_SRC" = "" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-dist-src"
