@@ -235,6 +235,27 @@ impl<'a, B: ?Sized> Cow<'a, B>
             Owned(owned) => owned,
         }
     }
+
+    /// Makes a shallow copy of the data.
+    ///
+    /// Reborrows the data if it is already owned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cow_shallow_copy)]
+    /// use std::borrow::Cow;
+    ///
+    /// let cow: Cow<[_]> = Cow::Owned(vec![1, 2, 3]);
+    /// match cow.shallow_copy() {
+    ///     Cow::Owned(_) => panic!("needless clone!"),
+    ///     Cow::Borrowed(vec) => assert_eq!(vec, &[1, 2, 3]),
+    /// }
+    /// ```
+    #[unstable(feature = "cow_shallow_copy", issue="0")]
+    pub fn shallow_copy(&self) -> Cow<B> {
+        Borrowed(&**self)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
