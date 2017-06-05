@@ -4,7 +4,6 @@ use std::fmt::Write;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::middle::const_val::ConstVal;
-use rustc_const_math::{ConstInt, ConstUsize};
 use rustc::mir;
 use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size};
@@ -15,7 +14,6 @@ use rustc_data_structures::indexed_vec::Idx;
 use syntax::codemap::{self, DUMMY_SP, Span};
 use syntax::ast;
 use syntax::abi::Abi;
-use syntax::symbol::Symbol;
 
 use error::{EvalError, EvalResult};
 use lvalue::{Global, GlobalId, Lvalue, LvalueExtra};
@@ -43,9 +41,6 @@ pub struct EvalContext<'a, 'tcx: 'a> {
     /// This prevents infinite loops and huge computations from freezing up const eval.
     /// Remove once halting problem is solved.
     pub(crate) steps_remaining: u64,
-
-    /// Drop glue for arrays and slices
-    pub(crate) seq_drop_glue: &'tcx mir::Mir<'tcx>,
 }
 
 /// A stack frame.
@@ -127,180 +122,6 @@ impl Default for ResourceLimits {
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, limits: ResourceLimits) -> Self {
-        // Register array drop glue code
-        let source_info = mir::SourceInfo {
-            span: DUMMY_SP,
-            scope: mir::ARGUMENT_VISIBILITY_SCOPE
-        };
-        // i = 0; len = Len(*a0); goto head;
-        let start_block = mir::BasicBlockData {
-            statements: vec![
-                mir::Statement {
-                    source_info,
-                    kind: mir::StatementKind::Assign(
-                        mir::Lvalue::Local(mir::Local::new(2)),
-                        mir::Rvalue::Use(mir::Operand::Constant(Box::new(mir::Constant {
-                            span: DUMMY_SP,
-                            ty: tcx.types.usize,
-                            literal: mir::Literal::Value {
-                                value: ConstVal::Integral(ConstInt::Usize(ConstUsize::new(0, tcx.sess.target.uint_type).unwrap())),
-                            },
-                        })))
-                    )
-                },
-                mir::Statement {
-                    source_info,
-                    kind: mir::StatementKind::Assign(
-                        mir::Lvalue::Local(mir::Local::new(3)),
-                        mir::Rvalue::Len(mir::Lvalue::Projection(Box::new(mir::LvalueProjection {
-                            base: mir::Lvalue::Local(mir::Local::new(1)),
-                            elem: mir::ProjectionElem::Deref,
-                        }))),
-                    )
-                },
-            ],
-            terminator: Some(mir::Terminator {
-                source_info: source_info,
-                kind: mir::TerminatorKind::Goto { target: mir::BasicBlock::new(1) },
-            }),
-            is_cleanup: false
-        };
-        // head: done = i == len; switch done { 1 => ret, 0 => loop }
-        let head = mir::BasicBlockData {
-            statements: vec![
-                mir::Statement {
-                    source_info,
-                    kind: mir::StatementKind::Assign(
-                        mir::Lvalue::Local(mir::Local::new(4)),
-                        mir::Rvalue::BinaryOp(
-                            mir::BinOp::Eq,
-                            mir::Operand::Consume(mir::Lvalue::Local(mir::Local::new(2))),
-                            mir::Operand::Consume(mir::Lvalue::Local(mir::Local::new(3))),
-                        )
-                    )
-                },
-            ],
-            terminator: Some(mir::Terminator {
-                source_info: source_info,
-                kind: mir::TerminatorKind::SwitchInt {
-                    targets: vec![
-                        mir::BasicBlock::new(2),
-                        mir::BasicBlock::new(4),
-                    ],
-                    discr: mir::Operand::Consume(mir::Lvalue::Local(mir::Local::new(4))),
-                    switch_ty: tcx.types.bool,
-                    values: vec![ConstInt::U8(0)].into(),
-                },
-            }),
-            is_cleanup: false
-        };
-        // loop: drop (*a0)[i]; goto inc;
-        let loop_ = mir::BasicBlockData {
-            statements: Vec::new(),
-            terminator: Some(mir::Terminator {
-                source_info: source_info,
-                kind: mir::TerminatorKind::Drop {
-                    target: mir::BasicBlock::new(3),
-                    unwind: None,
-                    location: mir::Lvalue::Projection(Box::new(
-                        mir::LvalueProjection {
-                            base: mir::Lvalue::Projection(Box::new(
-                                mir::LvalueProjection {
-                                    base: mir::Lvalue::Local(mir::Local::new(1)),
-                                    elem: mir::ProjectionElem::Deref,
-                                }
-                            )),
-                            elem: mir::ProjectionElem::Index(mir::Operand::Consume(mir::Lvalue::Local(mir::Local::new(2)))),
-                        }
-                    )),
-                },
-            }),
-            is_cleanup: false
-        };
-        // inc: i++; goto head;
-        let inc = mir::BasicBlockData {
-            statements: vec![
-                mir::Statement {
-                    source_info,
-                    kind: mir::StatementKind::Assign(
-                        mir::Lvalue::Local(mir::Local::new(2)),
-                        mir::Rvalue::BinaryOp(
-                            mir::BinOp::Add,
-                            mir::Operand::Consume(mir::Lvalue::Local(mir::Local::new(2))),
-                            mir::Operand::Constant(Box::new(mir::Constant {
-                                span: DUMMY_SP,
-                                ty: tcx.types.usize,
-                                literal: mir::Literal::Value {
-                                    value: ConstVal::Integral(ConstInt::Usize(ConstUsize::new(1, tcx.sess.target.uint_type).unwrap())),
-                                },
-                            })),
-                        )
-                    )
-                },
-            ],
-            terminator: Some(mir::Terminator {
-                source_info: source_info,
-                kind: mir::TerminatorKind::Goto { target: mir::BasicBlock::new(1) },
-            }),
-            is_cleanup: false
-        };
-        // ret: return;
-        let ret = mir::BasicBlockData {
-            statements: Vec::new(),
-            terminator: Some(mir::Terminator {
-                source_info: source_info,
-                kind: mir::TerminatorKind::Return,
-            }),
-            is_cleanup: false
-        };
-        let locals = vec![
-            mir::LocalDecl {
-                mutability: mir::Mutability::Mut,
-                ty: tcx.mk_nil(),
-                name: None,
-                source_info,
-                is_user_variable: false,
-            },
-            mir::LocalDecl {
-                mutability: mir::Mutability::Mut,
-                ty: tcx.mk_mut_ptr(tcx.mk_slice(tcx.mk_param(0, Symbol::intern("T")))),
-                name: None,
-                source_info,
-                is_user_variable: false,
-            },
-            mir::LocalDecl {
-                mutability: mir::Mutability::Mut,
-                ty: tcx.types.usize,
-                name: None,
-                source_info,
-                is_user_variable: false,
-            },
-            mir::LocalDecl {
-                mutability: mir::Mutability::Mut,
-                ty: tcx.types.usize,
-                name: None,
-                source_info,
-                is_user_variable: false,
-            },
-            mir::LocalDecl {
-                mutability: mir::Mutability::Mut,
-                ty: tcx.types.bool,
-                name: None,
-                source_info,
-                is_user_variable: false,
-            },
-        ];
-        let seq_drop_glue = mir::Mir::new(
-            vec![start_block, head, loop_, inc, ret].into_iter().collect(),
-            Vec::new().into_iter().collect(), // vis scopes
-            Vec::new().into_iter().collect(), // promoted
-            tcx.mk_nil(), // return type
-            locals.into_iter().collect(),
-            1, // arg_count
-            Vec::new(), // upvars
-            DUMMY_SP,
-        );
-        let seq_drop_glue = tcx.alloc_mir(seq_drop_glue);
         EvalContext {
             tcx,
             memory: Memory::new(&tcx.data_layout, limits.memory_size),
@@ -308,7 +129,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             stack: Vec::new(),
             stack_limit: limits.stack_limit,
             steps_remaining: limits.step_limit,
-            seq_drop_glue: seq_drop_glue,
         }
     }
 
@@ -823,8 +643,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
 
-            NullaryOp(mir::NullOp::SizeOf, _ty) => {
-                unimplemented!()
+            NullaryOp(mir::NullOp::SizeOf, ty) => {
+                let size = self.type_size(ty)?.expect("SizeOf nullary MIR operator called for unsized type");
+                self.write_primval(dest, PrimVal::from_u128(size as u128), dest_ty)?;
             }
 
             Cast(kind, ref operand, cast_ty) => {
@@ -1018,6 +839,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Err(EvalError::Unimplemented(msg))
             }
         }
+    }
+
+    pub(super) fn pointer_offset(&self, ptr: Pointer, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, Pointer> {
+        // FIXME: assuming here that type size is < i64::max_value()
+        let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
+        // FIXME: Check overflow, out-of-bounds
+        Ok(ptr.signed_offset(offset * pointee_size))
     }
 
     pub(super) fn eval_operand_to_primval(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, PrimVal> {

@@ -362,7 +362,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let n_ptr = self.eval_operand(operand)?;
                 let usize = self.tcx.types.usize;
                 let n = self.value_to_primval(n_ptr, usize)?.to_u64()?;
-                assert!(n < len);
+                assert!(n < len, "Tried to access element {} of array/slice with length {}", n, len);
                 let ptr = base_ptr.offset(n * elem_size);
                 (ptr, LvalueExtra::None)
             }

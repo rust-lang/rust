@@ -1,5 +1,5 @@
 use rustc::mir;
-use rustc::ty::Ty;
+use rustc::ty::{self, Ty};
 
 use error::{EvalError, EvalResult};
 use eval_context::EvalContext;
@@ -25,11 +25,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx, (PrimVal, bool)> {
         let left_ty    = self.operand_ty(left);
         let right_ty   = self.operand_ty(right);
-        let left_kind  = self.ty_to_primval_kind(left_ty)?;
-        let right_kind = self.ty_to_primval_kind(right_ty)?;
         let left_val   = self.eval_operand_to_primval(left)?;
         let right_val  = self.eval_operand_to_primval(right)?;
-        binary_op(op, left_val, left_kind, right_val, right_kind)
+        self.binary_op(op, left_val, left_ty, right_val, right_ty)
     }
 
     /// Applies the binary operation `op` to the two operands and writes a tuple of the result
@@ -132,119 +130,141 @@ macro_rules! f64_arithmetic {
     )
 }
 
-/// Returns the result of the specified operation and whether it overflowed.
-pub fn binary_op<'tcx>(
-    bin_op: mir::BinOp,
-    left: PrimVal,
-    left_kind: PrimValKind,
-    right: PrimVal,
-    right_kind: PrimValKind,
-) -> EvalResult<'tcx, (PrimVal, bool)> {
-    use rustc::mir::BinOp::*;
-    use value::PrimValKind::*;
+impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+    /// Returns the result of the specified operation and whether it overflowed.
+    pub fn binary_op(
+        &self,
+        bin_op: mir::BinOp,
+        left: PrimVal,
+        left_ty: Ty<'tcx>,
+        right: PrimVal,
+        right_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, (PrimVal, bool)> {
+        use rustc::mir::BinOp::*;
+        use value::PrimValKind::*;
 
-    // FIXME(solson): Temporary hack. It will go away when we get rid of Pointer's ability to store
-    // plain bytes, and leave that to PrimVal::Bytes.
-    fn normalize(val: PrimVal) -> PrimVal {
-        if let PrimVal::Ptr(ptr) = val {
-            if let Ok(bytes) = ptr.to_int() {
-                return PrimVal::Bytes(bytes as u128);
+        // FIXME(solson): Temporary hack. It will go away when we get rid of Pointer's ability to store
+        // plain bytes, and leave that to PrimVal::Bytes.
+        fn normalize(val: PrimVal) -> PrimVal {
+            if let PrimVal::Ptr(ptr) = val {
+                if let Ok(bytes) = ptr.to_int() {
+                    return PrimVal::Bytes(bytes as u128);
+                }
             }
+            val
         }
-        val
-    }
-    let (left, right) = (normalize(left), normalize(right));
+        let (left, right) = (normalize(left), normalize(right));
 
-    let (l, r) = match (left, right) {
-        (PrimVal::Bytes(left_bytes), PrimVal::Bytes(right_bytes)) => (left_bytes, right_bytes),
+        // Offset is handled early, before we dispatch to unrelated_ptr_ops.  We have to also catch the case where both arguments *are* convertible to integers.
+        if bin_op == Offset {
+            let pointee_ty = left_ty.builtin_deref(true, ty::LvaluePreference::NoPreference).expect("Offset called on non-ptr type").ty;
+            let ptr = self.pointer_offset(left.to_ptr()?, pointee_ty, right.to_bytes()? as i64)?;
+            return Ok((PrimVal::Ptr(ptr), false));
+        }
 
-        (PrimVal::Ptr(left_ptr), PrimVal::Ptr(right_ptr)) => {
-            if left_ptr.alloc_id == right_ptr.alloc_id {
-                // If the pointers are into the same allocation, fall through to the more general
-                // match later, which will do comparisons on the pointer offsets.
-                (left_ptr.offset as u128, right_ptr.offset as u128)
-            } else {
-                return Ok((unrelated_ptr_ops(bin_op, left_ptr, right_ptr)?, false));
+        let (l, r) = match (left, right) {
+            (PrimVal::Bytes(left_bytes), PrimVal::Bytes(right_bytes)) => (left_bytes, right_bytes),
+
+            (PrimVal::Ptr(left_ptr), PrimVal::Ptr(right_ptr)) => {
+                if left_ptr.alloc_id == right_ptr.alloc_id {
+                    // If the pointers are into the same allocation, fall through to the more general
+                    // match later, which will do comparisons on the pointer offsets.
+                    (left_ptr.offset as u128, right_ptr.offset as u128)
+                } else {
+                    return Ok((unrelated_ptr_ops(bin_op, left_ptr, right_ptr)?, false));
+                }
             }
-        }
 
-        (PrimVal::Ptr(ptr), PrimVal::Bytes(bytes)) |
-        (PrimVal::Bytes(bytes), PrimVal::Ptr(ptr)) => {
-            return Ok((unrelated_ptr_ops(bin_op, ptr, Pointer::from_int(bytes as u64))?, false));
-        }
+            (PrimVal::Ptr(ptr), PrimVal::Bytes(bytes)) |
+            (PrimVal::Bytes(bytes), PrimVal::Ptr(ptr)) => {
+                return Ok((unrelated_ptr_ops(bin_op, ptr, Pointer::from_int(bytes as u64))?, false));
+            }
 
-        (PrimVal::Undef, _) | (_, PrimVal::Undef) => return Err(EvalError::ReadUndefBytes),
-    };
-
-    // These ops can have an RHS with a different numeric type.
-    if bin_op == Shl || bin_op == Shr {
-        return match bin_op {
-            Shl => int_shift!(left_kind, overflowing_shl, l, r as u32),
-            Shr => int_shift!(left_kind, overflowing_shr, l, r as u32),
-            _ => bug!("it has already been checked that this is a shift op"),
+            (PrimVal::Undef, _) | (_, PrimVal::Undef) => return Err(EvalError::ReadUndefBytes),
         };
-    }
 
-    if left_kind != right_kind {
-        let msg = format!("unimplemented binary op: {:?}, {:?}, {:?}", left, right, bin_op);
-        return Err(EvalError::Unimplemented(msg));
-    }
+        let left_kind  = self.ty_to_primval_kind(left_ty)?;
+        let right_kind = self.ty_to_primval_kind(right_ty)?;
 
-    let val = match (bin_op, left_kind) {
-        (Eq, F32) => PrimVal::from_bool(bytes_to_f32(l) == bytes_to_f32(r)),
-        (Ne, F32) => PrimVal::from_bool(bytes_to_f32(l) != bytes_to_f32(r)),
-        (Lt, F32) => PrimVal::from_bool(bytes_to_f32(l) <  bytes_to_f32(r)),
-        (Le, F32) => PrimVal::from_bool(bytes_to_f32(l) <= bytes_to_f32(r)),
-        (Gt, F32) => PrimVal::from_bool(bytes_to_f32(l) >  bytes_to_f32(r)),
-        (Ge, F32) => PrimVal::from_bool(bytes_to_f32(l) >= bytes_to_f32(r)),
+        // These ops can have an RHS with a different numeric type.
+        if bin_op == Shl || bin_op == Shr {
+            return match bin_op {
+                Shl => int_shift!(left_kind, overflowing_shl, l, r as u32),
+                Shr => int_shift!(left_kind, overflowing_shr, l, r as u32),
+                _ => bug!("it has already been checked that this is a shift op"),
+            };
+        }
+        if bin_op == Offset {
+            // We permit offset-by-0 in any case.  Drop glue actually does this, and it's probably (TM) fine for LLVM.
+            if left_kind == PrimValKind::Ptr && right_kind.is_int() && r == 0 {
+                return Ok((PrimVal::Bytes(l), false));
+            } else {
+                let msg = format!("unimplemented Offset: {:?}, {:?}", left, right);
+                return Err(EvalError::Unimplemented(msg));
+            }
+        }
 
-        (Eq, F64) => PrimVal::from_bool(bytes_to_f64(l) == bytes_to_f64(r)),
-        (Ne, F64) => PrimVal::from_bool(bytes_to_f64(l) != bytes_to_f64(r)),
-        (Lt, F64) => PrimVal::from_bool(bytes_to_f64(l) <  bytes_to_f64(r)),
-        (Le, F64) => PrimVal::from_bool(bytes_to_f64(l) <= bytes_to_f64(r)),
-        (Gt, F64) => PrimVal::from_bool(bytes_to_f64(l) >  bytes_to_f64(r)),
-        (Ge, F64) => PrimVal::from_bool(bytes_to_f64(l) >= bytes_to_f64(r)),
-
-        (Add, F32) => f32_arithmetic!(+, l, r),
-        (Sub, F32) => f32_arithmetic!(-, l, r),
-        (Mul, F32) => f32_arithmetic!(*, l, r),
-        (Div, F32) => f32_arithmetic!(/, l, r),
-        (Rem, F32) => f32_arithmetic!(%, l, r),
-
-        (Add, F64) => f64_arithmetic!(+, l, r),
-        (Sub, F64) => f64_arithmetic!(-, l, r),
-        (Mul, F64) => f64_arithmetic!(*, l, r),
-        (Div, F64) => f64_arithmetic!(/, l, r),
-        (Rem, F64) => f64_arithmetic!(%, l, r),
-
-        (Eq, _) => PrimVal::from_bool(l == r),
-        (Ne, _) => PrimVal::from_bool(l != r),
-        (Lt, k) if k.is_signed_int() => PrimVal::from_bool((l as i128) < (r as i128)),
-        (Lt, _) => PrimVal::from_bool(l <  r),
-        (Le, k) if k.is_signed_int() => PrimVal::from_bool((l as i128) <= (r as i128)),
-        (Le, _) => PrimVal::from_bool(l <= r),
-        (Gt, k) if k.is_signed_int() => PrimVal::from_bool((l as i128) > (r as i128)),
-        (Gt, _) => PrimVal::from_bool(l >  r),
-        (Ge, k) if k.is_signed_int() => PrimVal::from_bool((l as i128) >= (r as i128)),
-        (Ge, _) => PrimVal::from_bool(l >= r),
-
-        (BitOr,  _) => PrimVal::Bytes(l | r),
-        (BitAnd, _) => PrimVal::Bytes(l & r),
-        (BitXor, _) => PrimVal::Bytes(l ^ r),
-
-        (Add, k) if k.is_int() => return int_arithmetic!(k, overflowing_add, l, r),
-        (Sub, k) if k.is_int() => return int_arithmetic!(k, overflowing_sub, l, r),
-        (Mul, k) if k.is_int() => return int_arithmetic!(k, overflowing_mul, l, r),
-        (Div, k) if k.is_int() => return int_arithmetic!(k, overflowing_div, l, r),
-        (Rem, k) if k.is_int() => return int_arithmetic!(k, overflowing_rem, l, r),
-
-        _ => {
+        if left_kind != right_kind {
             let msg = format!("unimplemented binary op: {:?}, {:?}, {:?}", left, right, bin_op);
             return Err(EvalError::Unimplemented(msg));
         }
-    };
 
-    Ok((val, false))
+        let val = match (bin_op, left_kind) {
+            (Eq, F32) => PrimVal::from_bool(bytes_to_f32(l) == bytes_to_f32(r)),
+            (Ne, F32) => PrimVal::from_bool(bytes_to_f32(l) != bytes_to_f32(r)),
+            (Lt, F32) => PrimVal::from_bool(bytes_to_f32(l) <  bytes_to_f32(r)),
+            (Le, F32) => PrimVal::from_bool(bytes_to_f32(l) <= bytes_to_f32(r)),
+            (Gt, F32) => PrimVal::from_bool(bytes_to_f32(l) >  bytes_to_f32(r)),
+            (Ge, F32) => PrimVal::from_bool(bytes_to_f32(l) >= bytes_to_f32(r)),
+
+            (Eq, F64) => PrimVal::from_bool(bytes_to_f64(l) == bytes_to_f64(r)),
+            (Ne, F64) => PrimVal::from_bool(bytes_to_f64(l) != bytes_to_f64(r)),
+            (Lt, F64) => PrimVal::from_bool(bytes_to_f64(l) <  bytes_to_f64(r)),
+            (Le, F64) => PrimVal::from_bool(bytes_to_f64(l) <= bytes_to_f64(r)),
+            (Gt, F64) => PrimVal::from_bool(bytes_to_f64(l) >  bytes_to_f64(r)),
+            (Ge, F64) => PrimVal::from_bool(bytes_to_f64(l) >= bytes_to_f64(r)),
+
+            (Add, F32) => f32_arithmetic!(+, l, r),
+            (Sub, F32) => f32_arithmetic!(-, l, r),
+            (Mul, F32) => f32_arithmetic!(*, l, r),
+            (Div, F32) => f32_arithmetic!(/, l, r),
+            (Rem, F32) => f32_arithmetic!(%, l, r),
+
+            (Add, F64) => f64_arithmetic!(+, l, r),
+            (Sub, F64) => f64_arithmetic!(-, l, r),
+            (Mul, F64) => f64_arithmetic!(*, l, r),
+            (Div, F64) => f64_arithmetic!(/, l, r),
+            (Rem, F64) => f64_arithmetic!(%, l, r),
+
+            (Eq, _) => PrimVal::from_bool(l == r),
+            (Ne, _) => PrimVal::from_bool(l != r),
+            (Lt, k) if k.is_signed_int() => PrimVal::from_bool((l as i128) < (r as i128)),
+            (Lt, _) => PrimVal::from_bool(l <  r),
+            (Le, k) if k.is_signed_int() => PrimVal::from_bool((l as i128) <= (r as i128)),
+            (Le, _) => PrimVal::from_bool(l <= r),
+            (Gt, k) if k.is_signed_int() => PrimVal::from_bool((l as i128) > (r as i128)),
+            (Gt, _) => PrimVal::from_bool(l >  r),
+            (Ge, k) if k.is_signed_int() => PrimVal::from_bool((l as i128) >= (r as i128)),
+            (Ge, _) => PrimVal::from_bool(l >= r),
+
+            (BitOr,  _) => PrimVal::Bytes(l | r),
+            (BitAnd, _) => PrimVal::Bytes(l & r),
+            (BitXor, _) => PrimVal::Bytes(l ^ r),
+
+            (Add, k) if k.is_int() => return int_arithmetic!(k, overflowing_add, l, r),
+            (Sub, k) if k.is_int() => return int_arithmetic!(k, overflowing_sub, l, r),
+            (Mul, k) if k.is_int() => return int_arithmetic!(k, overflowing_mul, l, r),
+            (Div, k) if k.is_int() => return int_arithmetic!(k, overflowing_div, l, r),
+            (Rem, k) if k.is_int() => return int_arithmetic!(k, overflowing_rem, l, r),
+
+            _ => {
+                let msg = format!("unimplemented binary op: {:?}, {:?}, {:?}", left, right, bin_op);
+                return Err(EvalError::Unimplemented(msg));
+            }
+        };
+
+        Ok((val, false))
+    }
 }
 
 fn unrelated_ptr_ops<'tcx>(bin_op: mir::BinOp, left: Pointer, right: Pointer) -> EvalResult<'tcx, PrimVal> {

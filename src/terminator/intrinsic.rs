@@ -7,7 +7,6 @@ use rustc::ty::{self, Ty};
 use error::{EvalError, EvalResult};
 use eval_context::EvalContext;
 use lvalue::{Lvalue, LvalueExtra};
-use operator;
 use value::{PrimVal, PrimValKind, Value};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
@@ -103,8 +102,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Value::ByRef(_) => bug!("just read the value, can't be byref"),
                     Value::ByValPair(..) => bug!("atomic_cxchg doesn't work with nonprimitives"),
                 };
-                let kind = self.ty_to_primval_kind(ty)?;
-                let (val, _) = operator::binary_op(mir::BinOp::Eq, old, kind, expect_old, kind)?;
+                let (val, _) = self.binary_op(mir::BinOp::Eq, old, ty, expect_old, ty)?;
                 let dest = self.force_allocation(dest)?.to_ptr();
                 self.write_pair_to_ptr(old, val, dest, dest_ty)?;
                 self.write_primval(Lvalue::from_ptr(ptr), change, ty)?;
@@ -125,7 +123,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Value::ByValPair(..) => bug!("atomic_xadd_relaxed doesn't work with nonprimitives"),
                 };
                 self.write_primval(dest, old, ty)?;
-                let kind = self.ty_to_primval_kind(ty)?;
                 let op = match intrinsic_name.split('_').nth(1).unwrap() {
                     "or" => mir::BinOp::BitOr,
                     "xor" => mir::BinOp::BitXor,
@@ -135,7 +132,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     _ => bug!(),
                 };
                 // FIXME: what do atomics do on overflow?
-                let (val, _) = operator::binary_op(op, old, kind, change, kind)?;
+                let (val, _) = self.binary_op(op, old, ty, change, ty)?;
                 self.write_primval(Lvalue::from_ptr(ptr), val, ty)?;
             },
 
@@ -219,7 +216,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
                 let ty = substs.type_at(0);
-                let kind = self.ty_to_primval_kind(ty)?;
                 let a = self.value_to_primval(arg_vals[0], ty)?;
                 let b = self.value_to_primval(arg_vals[1], ty)?;
                 let op = match intrinsic_name {
@@ -230,7 +226,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     "frem_fast" => mir::BinOp::Rem,
                     _ => bug!(),
                 };
-                let result = operator::binary_op(op, a, kind, b, kind)?;
+                let result = self.binary_op(op, a, ty, b, ty)?;
                 self.write_primval(dest, result.0, dest_ty)?;
             }
 
@@ -298,13 +294,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "offset" => {
-                let pointee_ty = substs.type_at(0);
-                // FIXME: assuming here that type size is < i64::max_value()
-                let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
                 let offset = self.value_to_primval(arg_vals[1], isize)?.to_i128()? as i64;
-
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
-                let result_ptr = ptr.signed_offset(offset * pointee_size);
+                let result_ptr = self.pointer_offset(ptr, substs.type_at(0), offset)?;
                 self.write_primval(dest, PrimVal::Ptr(result_ptr), dest_ty)?;
             }
 
@@ -360,11 +352,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "size_of" => {
                 let ty = substs.type_at(0);
-                // FIXME: change the `box_free` lang item to take `T: ?Sized` and have it use the
-                // `size_of_val` intrinsic, then change this back to
-                // .expect("size_of intrinsic called on unsized value")
-                // see https://github.com/rust-lang/rust/pull/37708
-                let size = self.type_size(ty)?.unwrap_or(!0) as u128;
+                let size = self.type_size(ty)?.expect("size_of intrinsic called on unsized value") as u128;
                 self.write_primval(dest, PrimVal::from_u128(size), dest_ty)?;
             }
 
