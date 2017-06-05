@@ -60,7 +60,11 @@ mod imp {
     // This is initialized in init() and only read from after
     static mut PAGE_SIZE: usize = 0;
 
-    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[cfg(any(target_os = "linux",
+              target_os = "android",
+              target_os = "bitrig",
+              target_os = "openbsd",
+              all(target_os = "netbsd", target_pointer_width = "32")))]
     unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> usize {
         #[repr(C)]
         struct siginfo_t {
@@ -71,7 +75,39 @@ mod imp {
         (*(info as *const siginfo_t)).si_addr as usize
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "android")))]
+    #[cfg(all(target_os = "netbsd", target_pointer_width = "64"))]
+    unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> usize {
+        #[repr(C)]
+        struct siginfo_t {
+            a: [libc::c_int; 4], // si_signo, si_code, si_errno, pad to 8 byte boundary
+            si_addr: *mut libc::c_void,
+        }
+
+        (*(info as *const siginfo_t)).si_addr as usize
+    }
+
+    #[cfg(any(target_os = "freebsd",
+              target_os = "dragonfly"))]
+    unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> usize {
+        #[repr(C)]
+        struct siginfo_t {
+            a: [libc::c_int; 3], // si_signo, si_code, si_errno
+            b: libc::pid_t,      // si_pid
+            c: libc::uid_t,      // si_gid
+            d: libc::c_int,      // si_status
+            si_addr: *mut libc::c_void,
+        }
+
+        (*(info as *const siginfo_t)).si_addr as usize
+    }
+
+    #[cfg(not(any(target_os = "linux",
+                  target_os = "android",
+                  target_os = "bitrig",
+                  target_os = "openbsd",
+                  target_os = "freebsd",
+                  target_os = "dragonfly",
+                  target_os = "netbsd")))]
     unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> usize {
         (*info).si_addr as usize
     }
