@@ -120,7 +120,7 @@ pub type TlsKey = usize;
 
 #[derive(Copy, Clone, Debug)]
 pub struct TlsEntry<'tcx> {
-    data: Pointer, // will eventually become a map from thread IDs to pointers
+    data: Pointer, // Will eventually become a map from thread IDs to pointers, if we ever support more than one thread.
     dtor: Option<ty::Instance<'tcx>>,
 }
 
@@ -173,8 +173,8 @@ pub struct Memory<'a, 'tcx> {
     /// A cache for basic byte allocations keyed by their contents. This is used to deduplicate
     /// allocations for string and bytestring literals.
     literal_alloc_cache: HashMap<Vec<u8>, AllocId>,
-    
-    /// pthreads-style Thread-local storage.  We only have one thread, so this is just a map from TLS keys (indices into the vector) to the pointer stored there.
+
+    /// pthreads-style thread-local storage.
     thread_local: HashMap<TlsKey, TlsEntry<'tcx>>,
 
     /// The Key to use for the next thread-local allocation.
@@ -364,6 +364,15 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                 required: align,
             })
         }
+    }
+
+    pub(crate) fn check_bounds(&self, ptr: Pointer, access: bool) -> EvalResult<'tcx> {
+        let alloc = self.get(ptr.alloc_id)?;
+        let allocation_size = alloc.bytes.len() as u64;
+        if ptr.offset > allocation_size {
+            return Err(EvalError::PointerOutOfBounds { ptr, access, allocation_size });
+        }
+        Ok(())
     }
 
     pub(crate) fn mark_packed(&mut self, ptr: Pointer, len: u64) {
@@ -586,11 +595,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Ok(&[]);
         }
         self.check_align(ptr, align, size)?;
+        self.check_bounds(ptr.offset(size)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get(ptr.alloc_id)?;
-        let allocation_size = alloc.bytes.len() as u64;
-        if ptr.offset + size > allocation_size {
-            return Err(EvalError::PointerOutOfBounds { ptr, size, allocation_size });
-        }
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
         assert_eq!(size as usize as u64, size);
         let offset = ptr.offset as usize;
@@ -602,11 +608,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Ok(&mut []);
         }
         self.check_align(ptr, align, size)?;
+        self.check_bounds(ptr.offset(size)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get_mut(ptr.alloc_id)?;
-        let allocation_size = alloc.bytes.len() as u64;
-        if ptr.offset + size > allocation_size {
-            return Err(EvalError::PointerOutOfBounds { ptr, size, allocation_size });
-        }
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
         assert_eq!(size as usize as u64, size);
         let offset = ptr.offset as usize;

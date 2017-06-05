@@ -849,11 +849,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub(super) fn pointer_offset(&self, ptr: Pointer, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, Pointer> {
+        if offset == 0 {
+            // rustc relies on Offset-by-0 to be well-defined even for "bad" pointers like Unique::empty().
+            return Ok(ptr);
+        }
         // FIXME: assuming here that type size is < i64::max_value()
         let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
-        // FIXME: Check out-of-bounds
         return if let Some(offset) = offset.checked_mul(pointee_size) {
-            ptr.signed_offset(offset)
+            let ptr = ptr.signed_offset(offset)?;
+            self.memory.check_bounds(ptr, false)?;
+            Ok(ptr)
         } else {
             Err(EvalError::OverflowingPointerMath)
         }
