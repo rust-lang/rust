@@ -242,7 +242,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     macro_rules! report_function {
                         ($span:expr, $name:expr) => {
                             err.note(&format!("{} is a function, perhaps you wish to call it",
-                                         $name));
+                                              $name));
                         }
                     }
 
@@ -329,9 +329,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let mut candidates = valid_out_of_scope_traits;
             candidates.sort();
             candidates.dedup();
-            let msg = format!("items from traits can only be used if the trait is in scope; the \
-                               following {traits_are} implemented but not in scope, perhaps add \
-                               a `use` for {one_of_them}:",
+            err.help("items from traits can only be used if the trait is in scope");
+            let mut msg = format!("the following {traits_are} implemented but not in scope, \
+                                   perhaps add a `use` for {one_of_them}:",
                               traits_are = if candidates.len() == 1 {
                                   "trait is"
                               } else {
@@ -343,17 +343,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   "one of them"
                               });
 
-            err.help(&msg[..]);
-
             let limit = if candidates.len() == 5 { 5 } else { 4 };
             for (i, trait_did) in candidates.iter().take(limit).enumerate() {
-                err.help(&format!("candidate #{}: `use {};`",
-                                  i + 1,
-                                  self.tcx.item_path_str(*trait_did)));
+                msg.push_str(&format!("\ncandidate #{}: `use {};`",
+                                      i + 1,
+                                      self.tcx.item_path_str(*trait_did)));
             }
             if candidates.len() > limit {
-                err.note(&format!("and {} others", candidates.len() - limit));
+                msg.push_str(&format!("\nand {} others", candidates.len() - limit));
             }
+            err.note(&msg[..]);
+
             return;
         }
 
@@ -383,28 +383,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // FIXME #21673 this help message could be tuned to the case
             // of a type parameter: suggest adding a trait bound rather
             // than implementing.
-            let msg = format!("items from traits can only be used if the trait is implemented \
-                               and in scope; the following {traits_define} an item `{name}`, \
-                               perhaps you need to implement {one_of_them}:",
-                              traits_define = if candidates.len() == 1 {
-                                  "trait defines"
-                              } else {
-                                  "traits define"
-                              },
-                              one_of_them = if candidates.len() == 1 {
-                                  "it"
-                              } else {
-                                  "one of them"
-                              },
-                              name = item_name);
-
-            err.help(&msg[..]);
+            err.help("items from traits can only be used if the trait is implemented and in scope");
+            let mut msg = format!("the following {traits_define} an item `{name}`, \
+                                   perhaps you need to implement {one_of_them}:",
+                                  traits_define = if candidates.len() == 1 {
+                                      "trait defines"
+                                  } else {
+                                      "traits define"
+                                  },
+                                  one_of_them = if candidates.len() == 1 {
+                                      "it"
+                                  } else {
+                                      "one of them"
+                                  },
+                                  name = item_name);
 
             for (i, trait_info) in candidates.iter().enumerate() {
-                err.help(&format!("candidate #{}: `{}`",
-                                  i + 1,
-                                  self.tcx.item_path_str(trait_info.def_id)));
+                msg.push_str(&format!("\ncandidate #{}: `{}`",
+                                      i + 1,
+                                      self.tcx.item_path_str(trait_info.def_id)));
             }
+            err.note(&msg[..]);
         }
     }
 
