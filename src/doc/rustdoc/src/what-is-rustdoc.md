@@ -1,6 +1,6 @@
 # What is rustdoc?
 
-The standard Rust distribution ships with a tool called `rustdoc`. It's job is
+The standard Rust distribution ships with a tool called `rustdoc`. Its job is
 to generate documentation for Rust projects. On a fundamental level, Rustdoc
 takes as an argument either a crate root or a Markdown file, and produces HTML,
 CSS, and JavaScript.
@@ -10,7 +10,7 @@ CSS, and JavaScript.
 Let's give it a try! Let's create a new project with Cargo:
 
 ```bash
-$ cargo new docs -- lib
+$ cargo new docs
 $ cd docs
 ```
 
@@ -52,7 +52,7 @@ our code...
 
 ```rust
 /// foo is a function
-fn foo() {}
+pub fn foo() {}
 ```
 
 ... and then re-run `rustdoc`:
@@ -81,6 +81,8 @@ Internally, this calls out to `rustdoc` like this:
 $ rustdoc --crate-name docs srclib.rs -o <path>\docs\target\doc -L
 dependency=<path>docs\target\debug\deps
 ```
+
+You can see this with `cargo doc --verbose`.
 
 It generates the correct `--crate-name` for us, as well as pointing to
 `src/lib.rs` But what about those other arguments? `-o` controls the

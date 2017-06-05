@@ -30,7 +30,7 @@ This will show `rustdoc`'s version, which will look something
 like this:
 
 ```text
-rustdoc 1.y.0 (hash date)
+rustdoc 1.17.0 (56124baa9 2017-04-24)
 ```
 
 ## `-v`/`--verbose`: more verbose output
@@ -47,18 +47,16 @@ to standard out. What is written depends on the other flags you've passed in.
 For example, with `--version`:
 
 ```text
-$ rustdoc --version -v
-rustdoc 1.y.0 (hash date)
+$ rustdoc --verbose --version
+rustdoc 1.17.0 (56124baa9 2017-04-24)
 binary: rustdoc
 commit-hash: hash
 commit-date: date
 host: host-triple
-release: 1.y.0
-LLVM version: x.y
+release: 1.17.0
+LLVM version: 3.9
 ```
 
-stable(optopt("r", "input-format", "the input type of the specified file",
-                "[rust]")),
 ## `-r`/`--input-format`: input format
 
 This flag is currently ignored; the idea is that `rustdoc` would support various
@@ -69,8 +67,6 @@ file ends in `.md` or `.markdown`, `rustdoc` treats it as a Markdown file.
 Otherwise, it assumes that the input file is Rust.
 
 
-stable(optopt("w", "output-format", "the output type to write",
-                "[html]")),
 ## `-w`/`--output-format`: output format
 
 This flag is currently ignored; the idea is that `rustdoc` would support
@@ -92,7 +88,6 @@ the current working directory. With this flag, it will place all output
 into the directory you specify.
 
 
-stable(optopt("", "crate-name", "specify the name of this crate", "NAME")),
 ## `--crate-name`: controlling the name of the crate
 
 Using this flag looks like this:
@@ -105,8 +100,6 @@ By default, `rustodc` assumes that the name of your crate is the same name
 as the `.rs` file. `--crate-name` lets you override this assumption with
 whatever name you choose.
 
-stable(optmulti("L", "library-path", "directory to add to crate search path",
-                "DIR")),
 ## `-L`/`--library-path`: 
 
 Using this flag looks like this:
@@ -219,8 +212,6 @@ on documentation tests](documentation-tests.html).
 
 See also `--test-args`.
 
-stable(optmulti("", "test-args", "arguments to pass to the test runner",
-                "ARGS")),
 ## `--test-args`: 
 
 Using this flag looks like this:
@@ -234,7 +225,6 @@ For more, see [the chapter on documentation tests](documentation-tests.html).
 
 See also `--test`.
 
-stable(optopt("", "target", "target triple to document", "TRIPLE")),
 ## `--target`: 
 
 Using this flag looks like this:
