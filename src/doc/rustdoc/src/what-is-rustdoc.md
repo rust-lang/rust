@@ -98,6 +98,7 @@ documentation for them as well!
 `rustdoc` can also generate HTML from standalone Markdown files. Let's
 give it a try: create a `README.md` file with these contents:
 
+```text
     # Docs
 
     This is a project to test out `rustdoc`.
@@ -111,6 +112,7 @@ give it a try: create a `README.md` file with these contents:
         1 + 1
     }
     ```
+```
 
 And call `rustdoc` on it:
 
