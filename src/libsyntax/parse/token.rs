@@ -20,8 +20,8 @@ use serialize::{Decodable, Decoder, Encodable, Encoder};
 use symbol::keywords;
 use tokenstream::{TokenStream, TokenTree};
 
-use std::cell::RefCell;
-use std::fmt;
+use std::cell::Cell;
+use std::{cmp, fmt};
 use std::rc::Rc;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -169,7 +169,8 @@ pub enum Token {
     Underscore,
     Lifetime(ast::Ident),
 
-    /* For interpolation */
+    // The `LazyTokenStream` is a pure function of the `Nonterminal`,
+    // and so the `LazyTokenStream` can be ignored by Eq, Hash, etc.
     Interpolated(Rc<(Nonterminal, LazyTokenStream)>),
     // Can be expanded into several tokens.
     /// Doc comment
@@ -468,19 +469,40 @@ pub fn is_op(tok: &Token) -> bool {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct LazyTokenStream(RefCell<Option<TokenStream>>);
+pub struct LazyTokenStream(Cell<Option<TokenStream>>);
+
+impl Clone for LazyTokenStream {
+    fn clone(&self) -> Self {
+        let opt_stream = self.0.take();
+        self.0.set(opt_stream.clone());
+        LazyTokenStream(Cell::new(opt_stream))
+    }
+}
+
+impl cmp::Eq for LazyTokenStream {}
+impl PartialEq for LazyTokenStream {
+    fn eq(&self, _other: &LazyTokenStream) -> bool {
+        true
+    }
+}
+
+impl fmt::Debug for LazyTokenStream {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.clone().0.into_inner(), f)
+    }
+}
 
 impl LazyTokenStream {
     pub fn new() -> Self {
-        LazyTokenStream(RefCell::new(None))
+        LazyTokenStream(Cell::new(None))
     }
 
     pub fn force<F: FnOnce() -> TokenStream>(&self, f: F) -> TokenStream {
-        let mut opt_stream = self.0.borrow_mut();
+        let mut opt_stream = self.0.take();
         if opt_stream.is_none() {
-            *opt_stream = Some(f());
-        };
+            opt_stream = Some(f());
+        }
+        self.0.set(opt_stream.clone());
         opt_stream.clone().unwrap()
     }
 }
@@ -498,7 +520,5 @@ impl Decodable for LazyTokenStream {
 }
 
 impl ::std::hash::Hash for LazyTokenStream {
-    fn hash<H: ::std::hash::Hasher>(&self, hasher: &mut H) {
-        self.0.borrow().hash(hasher);
-    }
+    fn hash<H: ::std::hash::Hasher>(&self, _hasher: &mut H) {}
 }

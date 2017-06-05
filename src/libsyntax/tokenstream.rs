@@ -201,10 +201,6 @@ impl TokenStream {
         }
     }
 
-    pub fn builder() -> TokenStreamBuilder {
-        TokenStreamBuilder(Vec::new())
-    }
-
     pub fn concat(mut streams: Vec<TokenStream>) -> TokenStream {
         match streams.len() {
             0 => TokenStream::empty(),
@@ -235,6 +231,8 @@ impl TokenStream {
         true
     }
 
+    /// Precondition: `self` consists of a single token tree.
+    /// Returns true if the token tree is a joint operation w.r.t. `proc_macro::TokenNode`.
     pub fn as_tree(self) -> (TokenTree, bool /* joint? */) {
         match self.kind {
             TokenStreamKind::Tree(tree) => (tree, false),
@@ -277,6 +275,10 @@ impl TokenStream {
 pub struct TokenStreamBuilder(Vec<TokenStream>);
 
 impl TokenStreamBuilder {
+    pub fn new() -> TokenStreamBuilder {
+        TokenStreamBuilder(Vec::new())
+    }
+
     pub fn push<T: Into<TokenStream>>(&mut self, stream: T) {
         let stream = stream.into();
         let last_tree_if_joint = self.0.last().and_then(TokenStream::last_tree_if_joint);

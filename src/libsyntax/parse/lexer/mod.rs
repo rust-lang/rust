@@ -483,7 +483,7 @@ impl<'a> StringReader<'a> {
         self.with_str_from(start, |string| {
             if string == "_" {
                 self.sess.span_diagnostic
-                    .struct_span_warn(mk_sp(start, self.pos),
+                    .struct_span_warn(self.mk_sp(start, self.pos),
                                       "underscore literal suffix is not allowed")
                     .warn("this was previously accepted by the compiler but is \
                           being phased out; it will become a hard error in \

@@ -14,7 +14,7 @@ use cstore::{self, CStore, CrateSource, MetadataBlob};
 use locator::{self, CratePaths};
 use schema::{CrateRoot, Tracked};
 
-use rustc::hir::def_id::{CrateNum, DefIndex};
+use rustc::hir::def_id::{CrateNum, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::DepKind;
 use rustc::session::Session;
@@ -35,7 +35,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::{cmp, fs};
 
-use syntax::ast::{self, Ident};
+use syntax::ast;
 use syntax::abi::Abi;
 use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
@@ -1238,7 +1238,7 @@ fn proc_macro_def_path_table(proc_macros: &[(ast::Name, Rc<SyntaxExtension>)]) -
         let key = DefKey {
             parent: Some(CRATE_DEF_INDEX),
             disambiguated_data: DisambiguatedDefPathData {
-                data: DefPathData::MacroDef(Ident::with_empty_ctxt(proc_macro.0)),
+                data: DefPathData::MacroDef(proc_macro.0),
                 disambiguator: 0,
             },
         };

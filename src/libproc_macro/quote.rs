@@ -9,13 +9,17 @@
 // except according to those terms.
 
 //! # Quasiquoter
-//! This file contains the implementation internals of the quasiquoter provided by `qquote!`.
+//! This file contains the implementation internals of the quasiquoter provided by `quote!`.
+
+//! This quasiquoter uses macros 2.0 hygiene to reliably use items from `__rt`,
+//! including re-exported API `libsyntax`, to build a `syntax::tokenstream::TokenStream`
+//! and wrap it into a `proc_macro::TokenStream`.
 
 use syntax::ast::Ident;
 use syntax::ext::base::{ExtCtxt, ProcMacro};
 use syntax::parse::token::{self, Token, Lit};
 use syntax::symbol::Symbol;
-use syntax::tokenstream::{Delimited, TokenTree, TokenStream};
+use syntax::tokenstream::{Delimited, TokenTree, TokenStream, TokenStreamBuilder};
 use syntax_pos::{DUMMY_SP, Span};
 use syntax_pos::hygiene::SyntaxContext;
 
@@ -25,7 +29,7 @@ pub mod __rt {
     pub use syntax::ast::Ident;
     pub use syntax::parse::token;
     pub use syntax::symbol::Symbol;
-    pub use syntax::tokenstream::{TokenStream, TokenTree, Delimited};
+    pub use syntax::tokenstream::{TokenStream, TokenStreamBuilder, TokenTree, Delimited};
     pub use super::{ctxt, span};
 
     pub fn unquote<T: Into<::TokenStream> + Clone>(tokens: &T) -> TokenStream {
@@ -41,7 +45,7 @@ pub fn span() -> Span {
     ::Span::default().0
 }
 
-trait Quote {
+pub trait Quote {
     fn quote(&self) -> TokenStream;
 }
 
@@ -98,8 +102,8 @@ impl<T: Quote> Quote for Option<T> {
 
 impl Quote for TokenStream {
     fn quote(&self) -> TokenStream {
-        let mut builder = TokenStream::builder();
-        builder.push(quote!(rt::TokenStream::builder()));
+        let mut builder = TokenStreamBuilder::new();
+        builder.push(quote!(rt::TokenStreamBuilder::new()));
 
         let mut trees = self.trees();
         loop {
