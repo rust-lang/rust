@@ -131,17 +131,40 @@ impl FileDesc {
                   target_os = "fuchsia",
                   target_os = "haiku")))]
     pub fn set_cloexec(&self) -> io::Result<()> {
-        unsafe {
-            cvt(libc::ioctl(self.fd, libc::FIOCLEX))?;
-            Ok(())
+        static UNKNOWN_IOCTL: AtomicBool = AtomicBool::new(false);
+        if !UNKNOWN_IOCTL.load(Ordering::Relaxed) {
+            let r = self.set_cloexec_ioctl();
+            if let Some(libc::EINVAL) = r.as_ref().err().and_then(|e| e.raw_os_error()) {
+                UNKNOWN_IOCTL.store(true, Ordering::Relaxed);
+                // Fall through.
+            } else {
+                return r;
+            }
         }
+        self.set_cloexec_fcntl()
     }
+
     #[cfg(any(target_env = "newlib",
               target_os = "solaris",
               target_os = "emscripten",
               target_os = "fuchsia",
               target_os = "haiku"))]
     pub fn set_cloexec(&self) -> io::Result<()> {
+        self.set_cloexec_fcntl()
+    }
+
+    #[cfg(not(any(target_env = "newlib",
+                  target_os = "solaris",
+                  target_os = "emscripten",
+                  target_os = "fuchsia",
+                  target_os = "haiku")))]
+    pub fn set_cloexec_ioctl(&self) -> io::Result<()> {
+        unsafe {
+            cvt(libc::ioctl(self.fd, libc::FIOCLEX, 0))?;
+            Ok(())
+        }
+    }
+    pub fn set_cloexec_fcntl(&self) -> io::Result<()> {
         unsafe {
             let previous = cvt(libc::fcntl(self.fd, libc::F_GETFD))?;
             let new = previous | libc::FD_CLOEXEC;
