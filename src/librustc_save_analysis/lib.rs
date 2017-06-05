@@ -141,8 +141,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     visibility: From::from(&item.vis),
                     parent: None,
                     docs: docs_for_attrs(&item.attrs),
-                    // TODO
-                    sig: None,
+                    sig: sig::foreign_item_signature(item, self),
                     attributes: item.attrs.clone(),
                 }))
             }
@@ -162,8 +161,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     type_value: ty_to_string(ty),
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
-                    // TODO
-                    sig: None,
+                    sig: sig::foreign_item_signature(item, self),
                     attributes: item.attrs.clone(),
                 }))
             }
@@ -361,8 +359,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 type_value: typ,
                 visibility: From::from(&field.vis),
                 docs: docs_for_attrs(&field.attrs),
-                // TODO
-                sig: None,
+                sig: sig::field_signature(field, self),
                 attributes: field.attrs.clone(),
             })
         } else {

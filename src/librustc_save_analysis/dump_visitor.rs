@@ -701,8 +701,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             scope: enum_data.scope,
                             parent: Some(make_def_id(item.id, &self.tcx.hir)),
                             docs: docs_for_attrs(&variant.node.attrs),
-                            // TODO
-                            sig: None,
+                            sig: sig::variant_signature(variant, &self.save_ctxt),
                             attributes: variant.node.attrs.clone(),
                         }.lower(self.tcx));
                     }
@@ -729,8 +728,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             scope: enum_data.scope,
                             parent: Some(make_def_id(item.id, &self.tcx.hir)),
                             docs: docs_for_attrs(&variant.node.attrs),
-                            // TODO
-                            sig: None,
+                            sig: sig::variant_signature(variant, &self.save_ctxt),
                             attributes: variant.node.attrs.clone(),
                         }.lower(self.tcx));
                     }
