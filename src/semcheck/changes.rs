@@ -64,9 +64,8 @@ impl ChangeType {
 /// the change, as well as data we use to output it in a nice fashion.
 ///
 /// It is important to note that the `Eq` and `Ord` instances are constucted to only
-/// regard the span of the associated item export. This allows us to sort them by
-/// appearance in the source, but possibly could create conflict later on.
-/// TODO: decide about this.
+/// regard the span and path of the associated item export. This allows us to sort them
+/// by appearance in the source, but possibly could create conflict later on.
 pub struct Change {
     /// The type of the change in question - see above.
     change_type: ChangeType,
@@ -261,6 +260,34 @@ pub mod tests {
             }
 
             set.max == max
+        }
+
+        /// Different spans imply different items.
+        fn change_span_neq(c1: Change_, c2: Change_) -> bool {
+            let s1 = c1.1.inner();
+            let s2 = c2.1.inner();
+
+            if s1 != s2 {
+                let ch1 = build_change(c1.0, s1);
+                let ch2 = build_change(c2.0, s2);
+
+                ch1 != ch2
+            } else {
+                true
+            }
+        }
+
+        /// Different paths imply different items.
+        fn change_path_neq(c1: Change_, c2: ChangeType) -> bool {
+            let span = c1.1.inner();
+            let ch1 = build_change(c1.0, span.clone());
+            let ch2 = build_change(c2, span);
+
+            if ch1.path() != ch2.path() {
+                ch1 != ch2
+            } else {
+                true
+            }
         }
     }
 }
