@@ -42,8 +42,8 @@ use heap::deallocate;
 /// necessarily) at _exactly_ `MAX_REFCOUNT + 1` references.
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 
-/// A thread-safe reference-counting pointer. "Arc" stands for "Atomically
-/// Reference Counted".
+/// A thread-safe reference-counting pointer. 'Arc' stands for 'Atomically
+/// Reference Counted'.
 ///
 /// The type `Arc<T>` provides shared ownership of a value of type `T`,
 /// allocated in the heap. Invoking [`clone`][clone] on `Arc` produces

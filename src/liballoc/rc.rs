@@ -10,8 +10,8 @@
 
 #![allow(deprecated)]
 
-//! Single-threaded reference-counting pointers. "Rc" stands for "Reference
-//! Counted".
+//! Single-threaded reference-counting pointers. 'Rc' stands for 'Reference
+//! Counted'.
 //!
 //! The type [`Rc<T>`][`Rc`] provides shared ownership of a value of type `T`,
 //! allocated in the heap. Invoking [`clone`][clone] on [`Rc`] produces a new
@@ -267,7 +267,8 @@ struct RcBox<T: ?Sized> {
     value: T,
 }
 
-/// A single-threaded reference-counting pointer.
+/// A single-threaded reference-counting pointer. 'Rc' stands for 'Reference
+/// Counted'.
 ///
 /// See the [module-level documentation](./index.html) for more details.
 ///
