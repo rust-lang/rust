@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::convert::TryFrom;
 use core::cmp::PartialEq;
 use core::fmt::Debug;
 use core::marker::Copy;
@@ -212,58 +211,58 @@ fn test_f32f64() {
     assert!(nan.is_nan());
 }
 
-macro_rules! test_impl_try_from_always_ok {
+macro_rules! test_impl_cast_always_ok {
     ($fn_name:ident, $source:ty, $target: ty) => {
         #[test]
         fn $fn_name() {
             let max = <$source>::max_value();
             let min = <$source>::min_value();
             let zero: $source = 0;
-            assert_eq!(<$target as TryFrom<$source>>::try_from(max).unwrap(),
+            assert_eq!(<$target>::cast(max).unwrap(),
                        max as $target);
-            assert_eq!(<$target as TryFrom<$source>>::try_from(min).unwrap(),
+            assert_eq!(<$target>::cast(min).unwrap(),
                        min as $target);
-            assert_eq!(<$target as TryFrom<$source>>::try_from(zero).unwrap(),
+            assert_eq!(<$target>::cast(zero).unwrap(),
                        zero as $target);
         }
     }
 }
 
-test_impl_try_from_always_ok! { test_try_u8u8, u8, u8 }
-test_impl_try_from_always_ok! { test_try_u8u16, u8, u16 }
-test_impl_try_from_always_ok! { test_try_u8u32, u8, u32 }
-test_impl_try_from_always_ok! { test_try_u8u64, u8, u64 }
-test_impl_try_from_always_ok! { test_try_u8i16, u8, i16 }
-test_impl_try_from_always_ok! { test_try_u8i32, u8, i32 }
-test_impl_try_from_always_ok! { test_try_u8i64, u8, i64 }
+test_impl_cast_always_ok! { test_try_u8u8, u8, u8 }
+test_impl_cast_always_ok! { test_try_u8u16, u8, u16 }
+test_impl_cast_always_ok! { test_try_u8u32, u8, u32 }
+test_impl_cast_always_ok! { test_try_u8u64, u8, u64 }
+test_impl_cast_always_ok! { test_try_u8i16, u8, i16 }
+test_impl_cast_always_ok! { test_try_u8i32, u8, i32 }
+test_impl_cast_always_ok! { test_try_u8i64, u8, i64 }
 
-test_impl_try_from_always_ok! { test_try_u16u16, u16, u16 }
-test_impl_try_from_always_ok! { test_try_u16u32, u16, u32 }
-test_impl_try_from_always_ok! { test_try_u16u64, u16, u64 }
-test_impl_try_from_always_ok! { test_try_u16i32, u16, i32 }
-test_impl_try_from_always_ok! { test_try_u16i64, u16, i64 }
+test_impl_cast_always_ok! { test_try_u16u16, u16, u16 }
+test_impl_cast_always_ok! { test_try_u16u32, u16, u32 }
+test_impl_cast_always_ok! { test_try_u16u64, u16, u64 }
+test_impl_cast_always_ok! { test_try_u16i32, u16, i32 }
+test_impl_cast_always_ok! { test_try_u16i64, u16, i64 }
 
-test_impl_try_from_always_ok! { test_try_u32u32, u32, u32 }
-test_impl_try_from_always_ok! { test_try_u32u64, u32, u64 }
-test_impl_try_from_always_ok! { test_try_u32i64, u32, i64 }
+test_impl_cast_always_ok! { test_try_u32u32, u32, u32 }
+test_impl_cast_always_ok! { test_try_u32u64, u32, u64 }
+test_impl_cast_always_ok! { test_try_u32i64, u32, i64 }
 
-test_impl_try_from_always_ok! { test_try_u64u64, u64, u64 }
+test_impl_cast_always_ok! { test_try_u64u64, u64, u64 }
 
-test_impl_try_from_always_ok! { test_try_i8i8, i8, i8 }
-test_impl_try_from_always_ok! { test_try_i8i16, i8, i16 }
-test_impl_try_from_always_ok! { test_try_i8i32, i8, i32 }
-test_impl_try_from_always_ok! { test_try_i8i64, i8, i64 }
+test_impl_cast_always_ok! { test_try_i8i8, i8, i8 }
+test_impl_cast_always_ok! { test_try_i8i16, i8, i16 }
+test_impl_cast_always_ok! { test_try_i8i32, i8, i32 }
+test_impl_cast_always_ok! { test_try_i8i64, i8, i64 }
 
-test_impl_try_from_always_ok! { test_try_i16i16, i16, i16 }
-test_impl_try_from_always_ok! { test_try_i16i32, i16, i32 }
-test_impl_try_from_always_ok! { test_try_i16i64, i16, i64 }
+test_impl_cast_always_ok! { test_try_i16i16, i16, i16 }
+test_impl_cast_always_ok! { test_try_i16i32, i16, i32 }
+test_impl_cast_always_ok! { test_try_i16i64, i16, i64 }
 
-test_impl_try_from_always_ok! { test_try_i32i32, i32, i32 }
-test_impl_try_from_always_ok! { test_try_i32i64, i32, i64 }
+test_impl_cast_always_ok! { test_try_i32i32, i32, i32 }
+test_impl_cast_always_ok! { test_try_i32i64, i32, i64 }
 
-test_impl_try_from_always_ok! { test_try_i64i64, i64, i64 }
+test_impl_cast_always_ok! { test_try_i64i64, i64, i64 }
 
-macro_rules! test_impl_try_from_signed_to_unsigned_upper_ok {
+macro_rules! test_impl_cast_signed_to_unsigned_upper_ok {
     ($fn_name:ident, $source:ty, $target:ty) => {
         #[test]
         fn $fn_name() {
@@ -271,61 +270,61 @@ macro_rules! test_impl_try_from_signed_to_unsigned_upper_ok {
             let min = <$source>::min_value();
             let zero: $source = 0;
             let neg_one: $source = -1;
-            assert_eq!(<$target as TryFrom<$source>>::try_from(max).unwrap(),
+            assert_eq!(<$target>::cast(max).unwrap(),
                        max as $target);
-            assert!(<$target as TryFrom<$source>>::try_from(min).is_err());
-            assert_eq!(<$target as TryFrom<$source>>::try_from(zero).unwrap(),
+            assert!(<$target>::cast(min).is_err());
+            assert_eq!(<$target>::cast(zero).unwrap(),
                        zero as $target);
-            assert!(<$target as TryFrom<$source>>::try_from(neg_one).is_err());
+            assert!(<$target>::cast(neg_one).is_err());
         }
     }
 }
 
-test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i8u8, i8, u8 }
-test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i8u16, i8, u16 }
-test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i8u32, i8, u32 }
-test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i8u64, i8, u64 }
+test_impl_cast_signed_to_unsigned_upper_ok! { test_try_i8u8, i8, u8 }
+test_impl_cast_signed_to_unsigned_upper_ok! { test_try_i8u16, i8, u16 }
+test_impl_cast_signed_to_unsigned_upper_ok! { test_try_i8u32, i8, u32 }
+test_impl_cast_signed_to_unsigned_upper_ok! { test_try_i8u64, i8, u64 }
 
-test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i16u16, i16, u16 }
-test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i16u32, i16, u32 }
-test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i16u64, i16, u64 }
+test_impl_cast_signed_to_unsigned_upper_ok! { test_try_i16u16, i16, u16 }
+test_impl_cast_signed_to_unsigned_upper_ok! { test_try_i16u32, i16, u32 }
+test_impl_cast_signed_to_unsigned_upper_ok! { test_try_i16u64, i16, u64 }
 
-test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i32u32, i32, u32 }
-test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i32u64, i32, u64 }
+test_impl_cast_signed_to_unsigned_upper_ok! { test_try_i32u32, i32, u32 }
+test_impl_cast_signed_to_unsigned_upper_ok! { test_try_i32u64, i32, u64 }
 
-test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i64u64, i64, u64 }
+test_impl_cast_signed_to_unsigned_upper_ok! { test_try_i64u64, i64, u64 }
 
-macro_rules! test_impl_try_from_unsigned_to_signed_upper_err {
+macro_rules! test_impl_cast_unsigned_to_signed_upper_err {
     ($fn_name:ident, $source:ty, $target:ty) => {
         #[test]
         fn $fn_name() {
             let max = <$source>::max_value();
             let min = <$source>::min_value();
             let zero: $source = 0;
-            assert!(<$target as TryFrom<$source>>::try_from(max).is_err());
-            assert_eq!(<$target as TryFrom<$source>>::try_from(min).unwrap(),
+            assert!(<$target>::cast(max).is_err());
+            assert_eq!(<$target>::cast(min).unwrap(),
                        min as $target);
-            assert_eq!(<$target as TryFrom<$source>>::try_from(zero).unwrap(),
+            assert_eq!(<$target>::cast(zero).unwrap(),
                        zero as $target);
         }
     }
 }
 
-test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u8i8, u8, i8 }
+test_impl_cast_unsigned_to_signed_upper_err! { test_try_u8i8, u8, i8 }
 
-test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u16i8, u16, i8 }
-test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u16i16, u16, i16 }
+test_impl_cast_unsigned_to_signed_upper_err! { test_try_u16i8, u16, i8 }
+test_impl_cast_unsigned_to_signed_upper_err! { test_try_u16i16, u16, i16 }
 
-test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u32i8, u32, i8 }
-test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u32i16, u32, i16 }
-test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u32i32, u32, i32 }
+test_impl_cast_unsigned_to_signed_upper_err! { test_try_u32i8, u32, i8 }
+test_impl_cast_unsigned_to_signed_upper_err! { test_try_u32i16, u32, i16 }
+test_impl_cast_unsigned_to_signed_upper_err! { test_try_u32i32, u32, i32 }
 
-test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u64i8, u64, i8 }
-test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u64i16, u64, i16 }
-test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u64i32, u64, i32 }
-test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u64i64, u64, i64 }
+test_impl_cast_unsigned_to_signed_upper_err! { test_try_u64i8, u64, i8 }
+test_impl_cast_unsigned_to_signed_upper_err! { test_try_u64i16, u64, i16 }
+test_impl_cast_unsigned_to_signed_upper_err! { test_try_u64i32, u64, i32 }
+test_impl_cast_unsigned_to_signed_upper_err! { test_try_u64i64, u64, i64 }
 
-macro_rules! test_impl_try_from_same_sign_err {
+macro_rules! test_impl_cast_same_sign_err {
     ($fn_name:ident, $source:ty, $target:ty) => {
         #[test]
         fn $fn_name() {
@@ -334,41 +333,41 @@ macro_rules! test_impl_try_from_same_sign_err {
             let zero: $source = 0;
             let t_max = <$target>::max_value();
             let t_min = <$target>::min_value();
-            assert!(<$target as TryFrom<$source>>::try_from(max).is_err());
+            assert!(<$target>::cast(max).is_err());
             if min != 0 {
-                assert!(<$target as TryFrom<$source>>::try_from(min).is_err());
+                assert!(<$target>::cast(min).is_err());
             }
-            assert_eq!(<$target as TryFrom<$source>>::try_from(zero).unwrap(),
+            assert_eq!(<$target>::cast(zero).unwrap(),
                        zero as $target);
-            assert_eq!(<$target as TryFrom<$source>>::try_from(t_max as $source)
+            assert_eq!(<$target>::cast(t_max as $source)
                             .unwrap(),
                        t_max as $target);
-            assert_eq!(<$target as TryFrom<$source>>::try_from(t_min as $source)
+            assert_eq!(<$target>::cast(t_min as $source)
                             .unwrap(),
                        t_min as $target);
         }
     }
 }
 
-test_impl_try_from_same_sign_err! { test_try_u16u8, u16, u8 }
+test_impl_cast_same_sign_err! { test_try_u16u8, u16, u8 }
 
-test_impl_try_from_same_sign_err! { test_try_u32u8, u32, u8 }
-test_impl_try_from_same_sign_err! { test_try_u32u16, u32, u16 }
+test_impl_cast_same_sign_err! { test_try_u32u8, u32, u8 }
+test_impl_cast_same_sign_err! { test_try_u32u16, u32, u16 }
 
-test_impl_try_from_same_sign_err! { test_try_u64u8, u64, u8 }
-test_impl_try_from_same_sign_err! { test_try_u64u16, u64, u16 }
-test_impl_try_from_same_sign_err! { test_try_u64u32, u64, u32 }
+test_impl_cast_same_sign_err! { test_try_u64u8, u64, u8 }
+test_impl_cast_same_sign_err! { test_try_u64u16, u64, u16 }
+test_impl_cast_same_sign_err! { test_try_u64u32, u64, u32 }
 
-test_impl_try_from_same_sign_err! { test_try_i16i8, i16, i8 }
+test_impl_cast_same_sign_err! { test_try_i16i8, i16, i8 }
 
-test_impl_try_from_same_sign_err! { test_try_i32i8, i32, i8 }
-test_impl_try_from_same_sign_err! { test_try_i32i16, i32, i16 }
+test_impl_cast_same_sign_err! { test_try_i32i8, i32, i8 }
+test_impl_cast_same_sign_err! { test_try_i32i16, i32, i16 }
 
-test_impl_try_from_same_sign_err! { test_try_i64i8, i64, i8 }
-test_impl_try_from_same_sign_err! { test_try_i64i16, i64, i16 }
-test_impl_try_from_same_sign_err! { test_try_i64i32, i64, i32 }
+test_impl_cast_same_sign_err! { test_try_i64i8, i64, i8 }
+test_impl_cast_same_sign_err! { test_try_i64i16, i64, i16 }
+test_impl_cast_same_sign_err! { test_try_i64i32, i64, i32 }
 
-macro_rules! test_impl_try_from_signed_to_unsigned_err {
+macro_rules! test_impl_cast_signed_to_unsigned_err {
     ($fn_name:ident, $source:ty, $target:ty) => {
         #[test]
         fn $fn_name() {
@@ -377,28 +376,28 @@ macro_rules! test_impl_try_from_signed_to_unsigned_err {
             let zero: $source = 0;
             let t_max = <$target>::max_value();
             let t_min = <$target>::min_value();
-            assert!(<$target as TryFrom<$source>>::try_from(max).is_err());
-            assert!(<$target as TryFrom<$source>>::try_from(min).is_err());
-            assert_eq!(<$target as TryFrom<$source>>::try_from(zero).unwrap(),
+            assert!(<$target>::cast(max).is_err());
+            assert!(<$target>::cast(min).is_err());
+            assert_eq!(<$target>::cast(zero).unwrap(),
                        zero as $target);
-            assert_eq!(<$target as TryFrom<$source>>::try_from(t_max as $source)
+            assert_eq!(<$target>::cast(t_max as $source)
                             .unwrap(),
                        t_max as $target);
-            assert_eq!(<$target as TryFrom<$source>>::try_from(t_min as $source)
+            assert_eq!(<$target>::cast(t_min as $source)
                             .unwrap(),
                        t_min as $target);
         }
     }
 }
 
-test_impl_try_from_signed_to_unsigned_err! { test_try_i16u8, i16, u8 }
+test_impl_cast_signed_to_unsigned_err! { test_try_i16u8, i16, u8 }
 
-test_impl_try_from_signed_to_unsigned_err! { test_try_i32u8, i32, u8 }
-test_impl_try_from_signed_to_unsigned_err! { test_try_i32u16, i32, u16 }
+test_impl_cast_signed_to_unsigned_err! { test_try_i32u8, i32, u8 }
+test_impl_cast_signed_to_unsigned_err! { test_try_i32u16, i32, u16 }
 
-test_impl_try_from_signed_to_unsigned_err! { test_try_i64u8, i64, u8 }
-test_impl_try_from_signed_to_unsigned_err! { test_try_i64u16, i64, u16 }
-test_impl_try_from_signed_to_unsigned_err! { test_try_i64u32, i64, u32 }
+test_impl_cast_signed_to_unsigned_err! { test_try_i64u8, i64, u8 }
+test_impl_cast_signed_to_unsigned_err! { test_try_i64u16, i64, u16 }
+test_impl_cast_signed_to_unsigned_err! { test_try_i64u32, i64, u32 }
 
 macro_rules! test_float {
     ($modname: ident, $fty: ty, $inf: expr, $neginf: expr, $nan: expr) => { mod $modname {
