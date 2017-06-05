@@ -26,6 +26,7 @@
 #![feature(iter_rfind)]
 #![feature(libc)]
 #![feature(nonzero)]
+#![feature(num_cast)]
 #![feature(rand)]
 #![feature(raw)]
 #![feature(sip_hash_13)]
