@@ -7,7 +7,7 @@ mod mymod1 {
     mod mod3a;
 }
 
-#[path="mod2c.rs"]
+#[path = "mod2c.rs"]
 mod mymod2;
 
 mod submod2;

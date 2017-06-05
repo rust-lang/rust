@@ -109,3 +109,14 @@ pub enum Bencoding<'i> {
     // TODO make Dict "structlike" AKA name the two values.
     Dict(&'i [u8], BTreeMap<&'i [u8], Bencoding<'i>>),
 }
+
+// #1261
+pub enum CoreResourceMsg {
+    SetCookieForUrl(
+        ServoUrl,
+        #[serde(deserialize_with = "::hyper_serde::deserialize",
+                serialize_with = "::hyper_serde::serialize")]
+        Cookie,
+        CookieSource
+    ),
+}

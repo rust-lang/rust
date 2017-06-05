@@ -26,6 +26,7 @@ use comment::rewrite_comment;
 use macros::{rewrite_macro, MacroPosition};
 use items::{rewrite_static, rewrite_associated_type, rewrite_associated_impl_type,
             rewrite_type_alias, format_impl, format_trait};
+use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorTactic};
 
 fn is_use_item(item: &ast::Item) -> bool {
     match item.node {
@@ -637,6 +638,81 @@ impl<'a> FmtVisitor<'a> {
     }
 }
 
+impl Rewrite for ast::NestedMetaItem {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        match self.node {
+            ast::NestedMetaItemKind::MetaItem(ref meta_item) => meta_item.rewrite(context, shape),
+            ast::NestedMetaItemKind::Literal(..) => Some(context.snippet(self.span)),
+        }
+    }
+}
+
+impl Rewrite for ast::MetaItem {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        Some(match self.node {
+                 ast::MetaItemKind::Word => String::from(&*self.name.as_str()),
+                 ast::MetaItemKind::List(ref list) => {
+                     let name = self.name.as_str();
+                     // 3 = `#[` and `(`, 2 = `]` and `)`
+                     let item_shape = try_opt!(shape
+                                                   .shrink_left(name.len() + 3)
+                                                   .and_then(|s| s.sub_width(2)));
+                     let items = itemize_list(context.codemap,
+                                              list.iter(),
+                                              ")",
+                                              |nested_meta_item| nested_meta_item.span.lo,
+                                              |nested_meta_item| nested_meta_item.span.hi,
+                                              |nested_meta_item| {
+                                                  nested_meta_item.rewrite(context, item_shape)
+                                              },
+                                              self.span.lo,
+                                              self.span.hi);
+                     let item_vec = items.collect::<Vec<_>>();
+                     let fmt = ListFormatting {
+                         tactic: DefinitiveListTactic::Mixed,
+                         separator: ",",
+                         trailing_separator: SeparatorTactic::Never,
+                         shape: item_shape,
+                         ends_with_newline: false,
+                         config: context.config,
+                     };
+                     format!("{}({})", name, try_opt!(write_list(&item_vec, &fmt)))
+                 }
+                 ast::MetaItemKind::NameValue(ref literal) => {
+                     let name = self.name.as_str();
+                     let value = context.snippet(literal.span);
+                     if &*name == "doc" && value.starts_with("///") {
+                         let doc_shape = Shape {
+                             width: cmp::min(shape.width, context.config.comment_width())
+                                 .checked_sub(shape.indent.width())
+                                 .unwrap_or(0),
+                             ..shape
+                         };
+                         format!("{}",
+                                 try_opt!(rewrite_comment(&value,
+                                                          false,
+                                                          doc_shape,
+                                                          context.config)))
+                     } else {
+                         format!("{} = {}", name, value)
+                     }
+                 }
+             })
+    }
+}
+
+impl Rewrite for ast::Attribute {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        self.value
+            .rewrite(context, shape)
+            .map(|rw| if rw.starts_with("///") {
+                     rw
+                 } else {
+                     format!("#[{}]", rw)
+                 })
+    }
+}
+
 impl<'a> Rewrite for [ast::Attribute] {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let mut result = String::new();
@@ -646,7 +722,7 @@ impl<'a> Rewrite for [ast::Attribute] {
         let indent = shape.indent.to_string(context.config);
 
         for (i, a) in self.iter().enumerate() {
-            let mut a_str = context.snippet(a.span);
+            let a_str = try_opt!(a.rewrite(context, shape));
 
             // Write comments and blank lines between attributes.
             if i > 0 {
@@ -671,15 +747,6 @@ impl<'a> Rewrite for [ast::Attribute] {
                     result.push('\n');
                 }
                 result.push_str(&indent);
-            }
-
-            if a_str.starts_with("//") {
-                a_str = try_opt!(rewrite_comment(&a_str,
-                                                 false,
-                                                 Shape::legacy(context.config.comment_width() -
-                                                               shape.indent.width(),
-                                                               shape.indent),
-                                                 context.config));
             }
 
             // Write the attribute itself.
