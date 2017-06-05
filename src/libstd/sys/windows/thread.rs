@@ -18,6 +18,22 @@ use sys::c;
 use sys::handle::Handle;
 use sys_common::thread::*;
 use time::Duration;
+use cell::Cell;
+use sync;
+
+thread_local! {
+    static IGNORE_EXCEPTIONS: Cell<bool> = Cell::new(false);
+}
+
+extern "system"
+fn exception_filter(_ExceptionInfo: *mut c::EXCEPTION_POINTERS) -> c::LONG {
+    IGNORE_EXCEPTIONS.with(|ignoring| {
+        match ignoring.get() {
+            true => c::EXCEPTION_CONTINUE_EXECUTION,
+            false => c::EXCEPTION_CONTINUE_SEARCH,
+        }
+    })
+}
 
 pub struct Thread {
     handle: Handle
@@ -53,11 +69,40 @@ impl Thread {
         }
     }
 
-    pub fn set_name(_name: &CStr) {
-        // Windows threads are nameless
-        // The names in MSVC debugger are obtained using a "magic" exception,
-        // which requires a use of MS C++ extensions.
-        // See https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx
+    pub fn set_name(name: &CStr) {
+        // Most Windows debuggers support setting thread names by throwing a
+        // magic exception. Windows itself is unaware of the exceptions
+        // non-exceptional meaning and will crash the process if nothing
+        // catches it, so we register an exception handler to filter them.
+        // See: https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx
+
+        static FILTER_INIT: sync::Once = sync::ONCE_INIT;
+
+        FILTER_INIT.call_once(|| {
+            unsafe {
+                if c::AddVectoredExceptionHandler(0, exception_filter).is_null() {
+                    panic!("failed to install exception filter");
+                }
+            }
+        });
+
+        let info = c::THREADNAME_INFO {
+            dwType: 0x1000,
+            szName: name.as_ptr(),
+            dwThreadID: 0xffffffff,
+            dwFlags: 0,
+        };
+
+        let size = (mem::size_of::<c::THREADNAME_INFO>() /
+                    mem::size_of::<c::ULONG_PTR>()) as c::DWORD;
+
+        let args = &info as *const _ as *const _;
+
+        IGNORE_EXCEPTIONS.with(|ignoring| {
+            ignoring.set(true);
+            unsafe { c::RaiseException(c::MS_VC_EXCEPTION, 0, size, args); }
+            ignoring.set(false);
+        });
     }
 
     pub fn join(self) {
