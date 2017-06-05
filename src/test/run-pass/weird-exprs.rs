@@ -79,7 +79,8 @@ fn evil_lincoln() { let _evil = println!("lincoln"); }
 
 fn dots() {
     assert_eq!(String::from(".................................................."),
-               format!("{:?}", .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. ..));
+               format!("{:?}", .. .. .. .. .. .. .. .. .. .. .. .. ..
+                               .. .. .. .. .. .. .. .. .. .. .. ..));
 }
 
 fn you_eight() {
@@ -94,7 +95,7 @@ fn you_eight() {
                 }
             };
         }
-        
+
         u8!(u8);
         let &u8: &u8 = u8::u8(&8u8);
         u8
@@ -102,7 +103,8 @@ fn you_eight() {
 }
 
 fn fishy() {
-    assert_eq!(String::from("><>"), String::<>::from::<>("><>").chars::<>().rev::<>().collect::<String>());
+    assert_eq!(String::from("><>"),
+               String::<>::from::<>("><>").chars::<>().rev::<>().collect::<String>());
 }
 
 pub fn main() {
