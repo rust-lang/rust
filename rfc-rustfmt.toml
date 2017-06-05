@@ -4,3 +4,4 @@ control_style = "Rfc"
 where_style = "Rfc"
 generics_indent = "Block"
 fn_call_style = "Block"
+combine_control_expr = true

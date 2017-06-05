@@ -1,4 +1,5 @@
 // rustfmt-fn_call_style: Block
+// rustfmt-combine_control_expr: false
 // Combining openings and closings. See https://github.com/rust-lang-nursery/fmt-rfcs/issues/61.
 
 fn main() {
@@ -45,42 +46,54 @@ fn main() {
     });
 
     // If
-    foo!(if x {
-        foo();
-    } else {
-        bar();
-    });
+    foo!(
+        if x {
+            foo();
+        } else {
+            bar();
+        }
+    );
 
     // IfLet
-    foo!(if let Some(..) = x {
-        foo();
-    } else {
-        bar();
-    });
+    foo!(
+        if let Some(..) = x {
+            foo();
+        } else {
+            bar();
+        }
+    );
 
     // While
-    foo!(while x {
-        foo();
-        bar();
-    });
+    foo!(
+        while x {
+            foo();
+            bar();
+        }
+    );
 
     // WhileLet
-    foo!(while let Some(..) = x {
-        foo();
-        bar();
-    });
+    foo!(
+        while let Some(..) = x {
+            foo();
+            bar();
+        }
+    );
 
     // ForLoop
-    foo!(for x in y {
-        foo();
-        bar();
-    });
+    foo!(
+        for x in y {
+            foo();
+            bar();
+        }
+    );
 
     // Loop
-    foo!(loop {
-        foo();
-        bar();
-    });
+    foo!(
+        loop {
+            foo();
+            bar();
+        }
+    );
 
     // Tuple
     foo((
