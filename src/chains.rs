@@ -117,22 +117,18 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     };
     let parent_rewrite = try_opt!(parent.rewrite(context, parent_shape));
     let parent_rewrite_contains_newline = parent_rewrite.contains('\n');
+    let is_small_parent = parent_rewrite.len() <= context.config.tab_spaces();
 
     // Decide how to layout the rest of the chain. `extend` is true if we can
     // put the first non-parent item on the same line as the parent.
-    let first_subexpr_is_try = match subexpr_list.last().unwrap().node {
-        ast::ExprKind::Try(..) => true,
-        _ => false,
-    };
+    let first_subexpr_is_try = subexpr_list.last().map_or(false, is_try);
     let (nested_shape, extend) = if !parent_rewrite_contains_newline && is_continuable(&parent) {
         let nested_shape = if first_subexpr_is_try {
             parent_shape.block_indent(context.config.tab_spaces())
         } else {
             chain_indent(context, shape.add_offset(parent_rewrite.len()))
         };
-        (nested_shape,
-         context.config.chain_indent() == IndentStyle::Visual ||
-         parent_rewrite.len() <= context.config.tab_spaces())
+        (nested_shape, context.config.chain_indent() == IndentStyle::Visual || is_small_parent)
     } else if is_block_expr(context, &parent, &parent_rewrite) {
         match context.config.chain_indent() {
             // Try to put the first child on the same line with parent's last line
@@ -258,26 +254,47 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         format!("\n{}", nested_shape.indent.to_string(context.config))
     };
 
-    let first_connector = if subexpr_list.is_empty() {
-        ""
-    } else if extend || first_subexpr_is_try {
-        // 1 = ";", being conservative here.
-        if last_line_width(&parent_rewrite) + first_line_width(&rewrites[0]) + 1 <=
-           context.config.max_width() {
-            ""
-        } else {
-            &*connector
-        }
-    } else {
-        &*connector
-    };
+    let first_connector = choose_first_connector(context,
+                                                 &parent_rewrite,
+                                                 &rewrites[0],
+                                                 &connector,
+                                                 &subexpr_list,
+                                                 extend);
 
-    wrap_str(format!("{}{}{}",
-                     parent_rewrite,
-                     first_connector,
-                     join_rewrites(&rewrites, &subexpr_list, &connector)),
-             context.config.max_width(),
-             shape)
+    if is_small_parent && rewrites.len() > 1 {
+        let second_connector = choose_first_connector(context,
+                                                      &rewrites[0],
+                                                      &rewrites[1],
+                                                      &connector,
+                                                      &subexpr_list[0..subexpr_list.len() - 1],
+                                                      false);
+        wrap_str(format!("{}{}{}{}{}",
+                         parent_rewrite,
+                         first_connector,
+                         rewrites[0],
+                         second_connector,
+                         join_rewrites(&rewrites[1..],
+                                       &subexpr_list[0..subexpr_list.len() - 1],
+                                       &connector)),
+                 context.config.max_width(),
+                 shape)
+    } else {
+        wrap_str(format!("{}{}{}",
+                         parent_rewrite,
+                         first_connector,
+                         join_rewrites(&rewrites, &subexpr_list, &connector)),
+                 context.config.max_width(),
+                 shape)
+    }
+}
+
+fn is_extendable_parent(context: &RewriteContext, parent_str: &str) -> bool {
+    context.config.chain_indent() == IndentStyle::Block &&
+    parent_str.lines().last().map_or(false, |s| {
+        s.trim()
+            .chars()
+            .all(|c| c == ')' || c == ']' || c == '}' || c == '?')
+    })
 }
 
 // True if the chain is only `?`s.
@@ -473,6 +490,36 @@ fn is_continuable(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprKind::Path(..) => true,
         _ => false,
+    }
+}
+
+fn is_try(expr: &ast::Expr) -> bool {
+    match expr.node {
+        ast::ExprKind::Try(..) => true,
+        _ => false,
+    }
+}
+
+fn choose_first_connector<'a>(context: &RewriteContext,
+                              parent_str: &str,
+                              first_child_str: &str,
+                              connector: &'a str,
+                              subexpr_list: &[ast::Expr],
+                              extend: bool)
+                              -> &'a str {
+    if subexpr_list.is_empty() {
+        ""
+    } else if extend || subexpr_list.last().map_or(false, is_try) ||
+              is_extendable_parent(context, parent_str) {
+        // 1 = ";", being conservative here.
+        if last_line_width(parent_str) + first_line_width(first_child_str) + 1 <=
+           context.config.max_width() {
+            ""
+        } else {
+            connector
+        }
+    } else {
+        connector
     }
 }
 
