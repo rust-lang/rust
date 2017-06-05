@@ -60,20 +60,32 @@ impl Pointer {
         Pointer { alloc_id, offset }
     }
 
-    pub fn signed_offset(self, i: i64) -> Self {
+    pub fn wrapping_signed_offset<'tcx>(self, i: i64) -> Self {
+        Pointer::new(self.alloc_id, self.offset.wrapping_add(i as u64))
+    }
+
+    pub fn signed_offset<'tcx>(self, i: i64) -> EvalResult<'tcx, Self> {
         // FIXME: is it possible to over/underflow here?
         if i < 0 {
             // trickery to ensure that i64::min_value() works fine
             // this formula only works for true negative values, it panics for zero!
             let n = u64::max_value() - (i as u64) + 1;
-            Pointer::new(self.alloc_id, self.offset - n)
+            if let Some(res) = self.offset.checked_sub(n) {
+                Ok(Pointer::new(self.alloc_id, res))
+            } else {
+                Err(EvalError::OverflowingPointerMath)
+            }
         } else {
             self.offset(i as u64)
         }
     }
 
-    pub fn offset(self, i: u64) -> Self {
-        Pointer::new(self.alloc_id, self.offset + i)
+    pub fn offset<'tcx>(self, i: u64) -> EvalResult<'tcx, Self> {
+        if let Some(res) = self.offset.checked_add(i) {
+            Ok(Pointer::new(self.alloc_id, res))
+        } else {
+            Err(EvalError::OverflowingPointerMath)
+        }
     }
 
     pub fn points_to_zst(&self) -> bool {
@@ -271,7 +283,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             alloc.undef_mask.grow(amount, false);
         } else if size > new_size {
             self.memory_usage -= size - new_size;
-            self.clear_relocations(ptr.offset(new_size), size - new_size)?;
+            self.clear_relocations(ptr.offset(new_size)?, size - new_size)?;
             let alloc = self.get_mut(ptr.alloc_id)?;
             // `as usize` is fine here, since it is smaller than `size`, which came from a usize
             alloc.bytes.truncate(new_size as usize);
@@ -919,7 +931,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     fn check_relocation_edges(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx> {
         let overlapping_start = self.relocations(ptr, 0)?.count();
-        let overlapping_end = self.relocations(ptr.offset(size), 0)?.count();
+        let overlapping_end = self.relocations(ptr.offset(size)?, 0)?.count();
         if overlapping_start + overlapping_end != 0 {
             return Err(EvalError::ReadPointerAsBytes);
         }

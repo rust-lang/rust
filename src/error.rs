@@ -23,6 +23,7 @@ pub enum EvalError<'tcx> {
     },
     ReadPointerAsBytes,
     InvalidPointerMath,
+    OverflowingPointerMath,
     ReadUndefBytes,
     DeadLocal,
     InvalidBoolOp(mir::BinOp),
@@ -82,6 +83,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "a raw memory access tried to access part of a pointer value as raw bytes",
             EvalError::InvalidPointerMath =>
                 "attempted to do math or a comparison on pointers into different allocations",
+            EvalError::OverflowingPointerMath =>
+                "attempted to do overflowing math on a pointer",
             EvalError::ReadUndefBytes =>
                 "attempted to read undefined bytes",
             EvalError::DeadLocal =>

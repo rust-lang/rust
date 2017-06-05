@@ -46,7 +46,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // FIXME: Switch to non-checked, wrapped version of pointer_offset
                 let offset = self.value_to_primval(arg_vals[1], isize)?.to_i128()? as i64;
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
-                let result_ptr = self.pointer_offset(ptr, substs.type_at(0), offset)?;
+                let result_ptr = self.wrapping_pointer_offset(ptr, substs.type_at(0), offset)?;
                 self.write_primval(dest, PrimVal::Ptr(result_ptr), dest_ty)?;
             }
 
