@@ -1069,12 +1069,12 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop_front(&mut self) -> Option<T> {
-        if self.is_empty() {
-            None
-        } else {
+        if !self.is_empty() {
             let tail = self.tail;
             self.tail = self.wrap_add(self.tail, 1);
             unsafe { Some(self.buffer_read(tail)) }
+        } else {
+            None
         }
     }
 
@@ -1138,12 +1138,12 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop_back(&mut self) -> Option<T> {
-        if self.is_empty() {
-            None
-        } else {
+        if !self.is_empty() {
             self.head = self.wrap_sub(self.head, 1);
             let head = self.head;
             unsafe { Some(self.buffer_read(head)) }
+        } else {
+            None
         }
     }
 
