@@ -3,7 +3,7 @@ use rustc::hir::def::Export;
 use std::collections::HashMap;
 
 /// An export path through which an item in a crate is made available.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ExportPath {
     /// The components of the path, stored as simple strings.
     inner: Vec<String>,

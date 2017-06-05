@@ -100,7 +100,7 @@ impl Change {
 
 impl PartialEq for Change {
     fn eq(&self, other: &Change) -> bool {
-        self.span() == other.span()
+        self.span() == other.span() && self.path() == other.path()
     }
 }
 
@@ -108,13 +108,19 @@ impl Eq for Change {}
 
 impl PartialOrd for Change {
     fn partial_cmp(&self, other: &Change) -> Option<Ordering> {
-        self.span().partial_cmp(other.span())
+        if let Some(ord1) = self.span().partial_cmp(other.span()) {
+            if let Some(ord2) = self.path().partial_cmp(other.path()) {
+                return Some(ord1.then(ord2));
+            }
+        }
+
+        None
     }
 }
 
 impl Ord for Change {
     fn cmp(&self, other: &Change) -> Ordering {
-        self.span().cmp(other.span())
+        self.span().cmp(other.span()).then(self.path().cmp(other.path()))
     }
 }
 

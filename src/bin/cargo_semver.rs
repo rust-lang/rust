@@ -72,9 +72,6 @@ fn do_main() -> CargoResult<()> {
         .find(|t| t.0.name() == name)
         .ok_or_else(|| human("lost a build artifact"))?;
 
-    println!("{}", local_rlib.1.display());
-    println!("{}", local_compilation.deps_output.display());
-
     let source_id = SourceId::crates_io(&config)?;
     let mut registry_source = RegistrySource::remote(&source_id, &config);
 
@@ -90,9 +87,6 @@ fn do_main() -> CargoResult<()> {
         .iter()
         .find(|t| t.0.name() == name)
         .ok_or_else(|| human("lost a build artifact"))?;
-
-    println!("{}", stable_rlib.1.display());
-    println!("{}", stable_compilation.deps_output.display());
 
     let mut child = Command::new("rust-semverver")
         .arg("--crate-type=lib")
