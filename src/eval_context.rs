@@ -451,18 +451,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_value(value, dest, dest_ty)?;
             }
 
-            BinaryOp(mir::BinOp::Offset, ref left, ref right) => {
-                let pointer_ty = self.operand_ty(left);
-                let pointee_ty = pointer_ty.builtin_deref(true, ty::LvaluePreference::NoPreference).expect("Offset called on non-ptr type").ty;
-                // FIXME: assuming here that type size is < i64::max_value()
-                let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
-                let offset = self.eval_operand_to_primval(right)?.to_i128()? as i64;
-
-                let ptr = self.eval_operand_to_primval(left)?.to_ptr()?;
-                let result_ptr = ptr.signed_offset(offset * pointee_size);
-                self.write_primval(dest, PrimVal::Ptr(result_ptr), dest_ty)?;
-            }
-
             BinaryOp(bin_op, ref left, ref right) => {
                 // ignore overflow bit, rustc inserts check branches for us
                 self.intrinsic_overflowing(bin_op, left, right, dest, dest_ty)?;
@@ -851,6 +839,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Err(EvalError::Unimplemented(msg))
             }
         }
+    }
+
+    pub(super) fn pointer_offset(&self, ptr: Pointer, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, Pointer> {
+        // FIXME: assuming here that type size is < i64::max_value()
+        let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
+        // FIXME: Check overflow, out-of-bounds
+        Ok(ptr.signed_offset(offset * pointee_size))
     }
 
     pub(super) fn eval_operand_to_primval(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, PrimVal> {
