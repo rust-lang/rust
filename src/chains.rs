@@ -164,9 +164,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
             .into_iter()
             .chain(::std::iter::repeat(other_child_shape).take(subexpr_list.len() - 1));
     let iter = subexpr_list.iter().rev().zip(child_shape_iter);
-    let mut rewrites =
-        try_opt!(iter.map(|(e, shape)| rewrite_chain_subexpr(e, total_span, context, shape))
-                     .collect::<Option<Vec<_>>>());
+    let mut rewrites = try_opt!(iter.map(|(e, shape)| {
+                                             rewrite_chain_subexpr(e, total_span, context, shape)
+                                         }).collect::<Option<Vec<_>>>());
 
     // Total of all items excluding the last.
     let last_non_try_index = rewrites.len() - (1 + trailing_try_num);

@@ -384,8 +384,7 @@ impl Rewrite for ast::WherePredicate {
                                                  Shape::legacy(budget, shape.indent + used_width))
                             })
                             .collect::<Option<Vec<_>>>()
-                    )
-                        .join(joiner);
+                    ).join(joiner);
 
                     if context.config.spaces_within_angle_brackets() && lifetime_str.len() > 0 {
                         format!("for< {} > {}{}{}",
@@ -411,8 +410,7 @@ impl Rewrite for ast::WherePredicate {
                                                  Shape::legacy(budget, shape.indent + used_width))
                             })
                             .collect::<Option<Vec<_>>>()
-                    )
-                        .join(joiner);
+                    ).join(joiner);
 
                     format!("{}{}{}", type_str, colon, bounds_str)
                 }
