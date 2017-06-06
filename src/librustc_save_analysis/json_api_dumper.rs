@@ -17,7 +17,7 @@ use data::{VariableKind, Visibility};
 use dump::Dump;
 use id_from_def_id;
 
-use rls_data::{Analysis, Import, ImportKind, Def, DefKind, CratePreludeData};
+use rls_data::{Analysis, Import, ImportKind, Def, DefKind, CratePreludeData, Format};
 
 
 // A dumper to dump a restricted set of JSON information, designed for use with
@@ -33,7 +33,9 @@ pub struct JsonApiDumper<'b, W: Write + 'b> {
 
 impl<'b, W: Write> JsonApiDumper<'b, W> {
     pub fn new(writer: &'b mut W) -> JsonApiDumper<'b, W> {
-        JsonApiDumper { output: writer, result: Analysis::new() }
+        let mut result = Analysis::new();
+        result.kind = Format::JsonApi;
+        JsonApiDumper { output: writer, result }
     }
 }
 
