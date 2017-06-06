@@ -47,7 +47,6 @@ fn callback(state: &driver::CompileState) {
                     (n, o)
                 }
             });
-
         let new_did = DefId {
             krate: cnums.0.unwrap(),
             index: CRATE_DEF_INDEX,
@@ -60,16 +59,26 @@ fn callback(state: &driver::CompileState) {
         (new_did, old_did)
     } else {
         // we are testing, so just fetch the *modules* `old` and `new`
-        let mod_id = DefId {
-            krate: LOCAL_CRATE,
+        let cnum = cstore
+            .crates()
+            .iter()
+            .fold(None, |k, crate_num| {
+                if cstore.crate_name(*crate_num) == "oldandnew" {
+                    Some(*crate_num)
+                } else {
+                    k
+                }
+            });
+        let mod_did = DefId {
+            krate: cnum.unwrap(),
             index: CRATE_DEF_INDEX,
         };
 
-        let mut children = cstore.item_children(mod_id);
+        let mut children = cstore.item_children(mod_did);
 
         let dids = children
             .drain(..)
-            .fold((mod_id, mod_id), |(n, o), child| {
+            .fold((mod_did, mod_did), |(n, o), child| {
                 let child_name = String::from(&*child.ident.name.as_str());
                 if child_name == "new" {
                     (child.def.def_id(), o)

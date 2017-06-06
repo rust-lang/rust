@@ -1,7 +1,7 @@
-mod old {
-    pub struct Abc {}
+pub mod old {
+    pub struct Abc;
 }
 
-mod new {
+pub mod new {
 
 }
