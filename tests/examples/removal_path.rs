@@ -10,6 +10,8 @@ pub mod old {
     pub mod c {
         pub use old::a::Abc;
     }
+
+    pub use self::a::Abc;
 }
 
 pub mod new {

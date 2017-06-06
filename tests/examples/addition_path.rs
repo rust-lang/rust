@@ -16,4 +16,6 @@ pub mod new {
     pub mod c {
         pub use new::a::Abc;
     }
+
+    pub use self::a::Abc;
 }
