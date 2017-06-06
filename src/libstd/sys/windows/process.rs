@@ -427,20 +427,22 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
     // Encode the command and arguments in a command line string such
     // that the spawned process may recover them using CommandLineToArgvW.
     let mut cmd: Vec<u16> = Vec::new();
-    append_arg(&mut cmd, prog)?;
+    // Always quote the program name so CreateProcess doesn't interpret args as
+    // part of the name if the binary wasn't found first time.
+    append_arg(&mut cmd, prog, true)?;
     for arg in args {
         cmd.push(' ' as u16);
-        append_arg(&mut cmd, arg)?;
+        append_arg(&mut cmd, arg, false)?;
     }
     return Ok(cmd);
 
-    fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr) -> io::Result<()> {
+    fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr, force_quotes: bool) -> io::Result<()> {
         // If an argument has 0 characters then we need to quote it to ensure
         // that it actually gets passed through on the command line or otherwise
         // it will be dropped entirely when parsed on the other end.
         ensure_no_nuls(arg)?;
         let arg_bytes = &arg.as_inner().inner.as_inner();
-        let quote = arg_bytes.iter().any(|c| *c == b' ' || *c == b'\t')
+        let quote = force_quotes || arg_bytes.iter().any(|c| *c == b' ' || *c == b'\t')
             || arg_bytes.is_empty();
         if quote {
             cmd.push('"' as u16);
@@ -526,7 +528,7 @@ mod tests {
 
         assert_eq!(
             test_wrapper("prog", &["aaa", "bbb", "ccc"]),
-            "prog aaa bbb ccc"
+            "\"prog\" aaa bbb ccc"
         );
 
         assert_eq!(
@@ -539,15 +541,15 @@ mod tests {
         );
         assert_eq!(
             test_wrapper("echo", &["a b c"]),
-            "echo \"a b c\""
+            "\"echo\" \"a b c\""
         );
         assert_eq!(
             test_wrapper("echo", &["\" \\\" \\", "\\"]),
-            "echo \"\\\" \\\\\\\" \\\\\" \\"
+            "\"echo\" \"\\\" \\\\\\\" \\\\\" \\"
         );
         assert_eq!(
             test_wrapper("\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}", &[]),
-            "\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}"
+            "\"\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}\""
         );
     }
 }
