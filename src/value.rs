@@ -90,7 +90,7 @@ impl<'a, 'tcx: 'a> Value {
         match *self {
             ByRef(ref_ptr) => {
                 let ptr = mem.read_ptr(ref_ptr)?;
-                let vtable = mem.read_ptr(ref_ptr.offset(mem.pointer_size())?)?;
+                let vtable = mem.read_ptr(ref_ptr.offset(mem.pointer_size(), mem.layout)?)?;
                 Ok((ptr, vtable))
             }
 
@@ -105,7 +105,7 @@ impl<'a, 'tcx: 'a> Value {
         match *self {
             ByRef(ref_ptr) => {
                 let ptr = mem.read_ptr(ref_ptr)?;
-                let len = mem.read_usize(ref_ptr.offset(mem.pointer_size())?)?;
+                let len = mem.read_usize(ref_ptr.offset(mem.pointer_size(), mem.layout)?)?;
                 Ok((ptr, len))
             },
             ByValPair(ptr, val) => {

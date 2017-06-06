@@ -56,14 +56,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let drop = self.memory.create_fn_alloc(drop);
         self.memory.write_ptr(vtable, drop)?;
 
-        self.memory.write_usize(vtable.offset(ptr_size)?, size)?;
-        self.memory.write_usize(vtable.offset(ptr_size * 2)?, align)?;
+        self.memory.write_usize(vtable.offset(ptr_size, self.memory.layout)?, size)?;
+        self.memory.write_usize(vtable.offset(ptr_size * 2, self.memory.layout)?, align)?;
 
         for (i, method) in ::rustc::traits::get_vtable_methods(self.tcx, trait_ref).enumerate() {
             if let Some((def_id, substs)) = method {
                 let instance = ::eval_context::resolve(self.tcx, def_id, substs);
                 let fn_ptr = self.memory.create_fn_alloc(instance);
-                self.memory.write_ptr(vtable.offset(ptr_size * (3 + i as u64))?, fn_ptr)?;
+                self.memory.write_ptr(vtable.offset(ptr_size * (3 + i as u64), self.memory.layout)?, fn_ptr)?;
             }
         }
 
@@ -88,8 +88,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     pub fn read_size_and_align_from_vtable(&self, vtable: Pointer) -> EvalResult<'tcx, (u64, u64)> {
         let pointer_size = self.memory.pointer_size();
-        let size = self.memory.read_usize(vtable.offset(pointer_size)?)?;
-        let align = self.memory.read_usize(vtable.offset(pointer_size * 2)?)?;
+        let size = self.memory.read_usize(vtable.offset(pointer_size, self.memory.layout)?)?;
+        let align = self.memory.read_usize(vtable.offset(pointer_size * 2, self.memory.layout)?)?;
         Ok((size, align))
     }
 
