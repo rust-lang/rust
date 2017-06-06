@@ -18,9 +18,10 @@ extern crate build_helper;
 use std::collections::HashSet;
 use std::env;
 use std::fmt;
-use std::fs;
+use std::fs::{self, File};
 use std::path::{PathBuf, Path};
 use std::process::Command;
+use std::io::Read;
 
 use build_helper::output;
 
@@ -328,22 +329,13 @@ pub fn docs(build: &Build, compiler: &Compiler) {
 
     while let Some(p) = stack.pop() {
         if p.is_dir() {
-            stack.extend(t!(p.read_dir()).map(|p| t!(p).path()));
+            stack.extend(t!(p.read_dir()).map(|p| t!(p).path()).filter(|p| {
+                p.extension().and_then(|s| s.to_str()) == Some("md") &&
+                // The nostarch directory in the book is for no starch, and so isn't guaranteed to
+                // build. We don't care if it doesn't build, so skip it.
+                p.to_str().map_or(true, |p| !p.contains("nostarch"))
+            }));
             continue
-        }
-
-        if p.extension().and_then(|s| s.to_str()) != Some("md") {
-            continue
-        }
-
-        // The nostarch directory in the book is for no starch, and so isn't guaranteed to build.
-        // we don't care if it doesn't build, so skip it.
-        use std::ffi::OsStr;
-        let path: &OsStr = p.as_ref();
-        if let Some(path) = path.to_str() {
-            if path.contains("nostarch") {
-                continue;
-            }
         }
 
         println!("doc tests for: {}", p.display());
@@ -376,6 +368,13 @@ pub fn error_index(build: &Build, compiler: &Compiler) {
 }
 
 fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
+    let mut file = t!(File::open(markdown));
+    let mut contents = String::new();
+    t!(file.read_to_string(&mut contents));
+    if !contents.contains("```") {
+        return;
+    }
+
     let mut cmd = Command::new(build.rustdoc(compiler));
     build.add_rustc_lib_path(compiler, &mut cmd);
     build.add_rust_test_threads(&mut cmd);
