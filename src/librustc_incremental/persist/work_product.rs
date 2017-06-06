@@ -16,7 +16,6 @@ use rustc::session::Session;
 use rustc::session::config::OutputType;
 use rustc::util::fs::link_or_copy;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::fs as std_fs;
 
 pub fn save_trans_partition(sess: &Session,
@@ -30,7 +29,7 @@ pub fn save_trans_partition(sess: &Session,
     if sess.opts.incremental.is_none() {
         return;
     }
-    let work_product_id = Arc::new(WorkProductId(cgu_name.to_string()));
+    let work_product_id = WorkProductId::from_cgu_name(cgu_name);
 
     let saved_files: Option<Vec<_>> =
         files.iter()

@@ -9,8 +9,10 @@
 // except according to those terms.
 
 use hir::def_id::CrateNum;
+use ich::Fingerprint;
+use rustc_data_structures::stable_hasher::StableHasher;
 use std::fmt::Debug;
-use std::sync::Arc;
+use std::hash::Hash;
 
 macro_rules! try_opt {
     ($e:expr) => (
@@ -56,7 +58,7 @@ pub enum DepNode<D: Clone + Debug> {
 
     /// Represents some artifact that we save to disk. Note that these
     /// do not have a def-id as part of their identifier.
-    WorkProduct(Arc<WorkProductId>),
+    WorkProduct(WorkProductId),
 
     // Represents different phases in the compiler.
     RegionMaps(D),
@@ -318,7 +320,16 @@ impl<D: Clone + Debug> DepNode<D> {
 /// the need to be mapped or unmapped. (This ensures we can serialize
 /// them even in the absence of a tcx.)
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
-pub struct WorkProductId(pub String);
+pub struct WorkProductId(pub Fingerprint);
+
+impl WorkProductId {
+    pub fn from_cgu_name(cgu_name: &str) -> WorkProductId {
+        let mut hasher = StableHasher::new();
+        cgu_name.len().hash(&mut hasher);
+        cgu_name.hash(&mut hasher);
+        WorkProductId(hasher.finish())
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum GlobalMetaDataKind {

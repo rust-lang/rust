@@ -13,7 +13,6 @@ use rustc_data_structures::fx::FxHashMap;
 use session::config::OutputType;
 use std::cell::{Ref, RefCell};
 use std::rc::Rc;
-use std::sync::Arc;
 
 use super::dep_node::{DepNode, WorkProductId};
 use super::query::DepGraphQuery;
@@ -35,10 +34,10 @@ struct DepGraphData {
     /// things available to us. If we find that they are not dirty, we
     /// load the path to the file storing those work-products here into
     /// this map. We can later look for and extract that data.
-    previous_work_products: RefCell<FxHashMap<Arc<WorkProductId>, WorkProduct>>,
+    previous_work_products: RefCell<FxHashMap<WorkProductId, WorkProduct>>,
 
     /// Work-products that we generate in this run.
-    work_products: RefCell<FxHashMap<Arc<WorkProductId>, WorkProduct>>,
+    work_products: RefCell<FxHashMap<WorkProductId, WorkProduct>>,
 }
 
 impl DepGraph {
@@ -120,7 +119,7 @@ impl DepGraph {
     /// Indicates that a previous work product exists for `v`. This is
     /// invoked during initial start-up based on what nodes are clean
     /// (and what files exist in the incr. directory).
-    pub fn insert_previous_work_product(&self, v: &Arc<WorkProductId>, data: WorkProduct) {
+    pub fn insert_previous_work_product(&self, v: &WorkProductId, data: WorkProduct) {
         debug!("insert_previous_work_product({:?}, {:?})", v, data);
         self.data.previous_work_products.borrow_mut()
                                         .insert(v.clone(), data);
@@ -129,7 +128,7 @@ impl DepGraph {
     /// Indicates that we created the given work-product in this run
     /// for `v`. This record will be preserved and loaded in the next
     /// run.
-    pub fn insert_work_product(&self, v: &Arc<WorkProductId>, data: WorkProduct) {
+    pub fn insert_work_product(&self, v: &WorkProductId, data: WorkProduct) {
         debug!("insert_work_product({:?}, {:?})", v, data);
         self.data.work_products.borrow_mut()
                                .insert(v.clone(), data);
@@ -137,7 +136,7 @@ impl DepGraph {
 
     /// Check whether a previous work product exists for `v` and, if
     /// so, return the path that leads to it. Used to skip doing work.
-    pub fn previous_work_product(&self, v: &Arc<WorkProductId>) -> Option<WorkProduct> {
+    pub fn previous_work_product(&self, v: &WorkProductId) -> Option<WorkProduct> {
         self.data.previous_work_products.borrow()
                                         .get(v)
                                         .cloned()
@@ -145,13 +144,13 @@ impl DepGraph {
 
     /// Access the map of work-products created during this run. Only
     /// used during saving of the dep-graph.
-    pub fn work_products(&self) -> Ref<FxHashMap<Arc<WorkProductId>, WorkProduct>> {
+    pub fn work_products(&self) -> Ref<FxHashMap<WorkProductId, WorkProduct>> {
         self.data.work_products.borrow()
     }
 
     /// Access the map of work-products created during the cached run. Only
     /// used during saving of the dep-graph.
-    pub fn previous_work_products(&self) -> Ref<FxHashMap<Arc<WorkProductId>, WorkProduct>> {
+    pub fn previous_work_products(&self) -> Ref<FxHashMap<WorkProductId, WorkProduct>> {
         self.data.previous_work_products.borrow()
     }
 }
