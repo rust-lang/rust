@@ -14,7 +14,7 @@
 //
 // ```
 // fn foo(x: String) {
-//     println!("{}", x);   
+//     println!("{}", x);
 // }
 // ```
 // The signature string is something like "fn foo(x: String) {}" and the signature
@@ -61,6 +61,32 @@ pub fn field_signature(field: &ast::StructField, scx: &SaveContext) -> Option<Si
 /// Does not include a trailing comma.
 pub fn variant_signature(variant: &ast::Variant, scx: &SaveContext) -> Option<Signature> {
     variant.node.make(0, None, scx).ok()
+}
+
+pub fn method_signature(id: NodeId,
+                        ident: ast::Ident,
+                        m: &ast::MethodSig,
+                        scx: &SaveContext)
+                        -> Option<Signature> {
+    make_method_signature(id, ident, m, scx).ok()
+}
+
+pub fn assoc_const_signature(id: NodeId,
+                             ident: ast::Name,
+                             ty: &ast::Ty,
+                             default: Option<&ast::Expr>,
+                             scx: &SaveContext)
+                             -> Option<Signature> {
+    make_assoc_const_signature(id, ident, ty, default, scx).ok()
+}
+
+pub fn assoc_type_signature(id: NodeId,
+                            ident: ast::Ident,
+                            bounds: Option<&ast::TyParamBounds>,
+                            default: Option<&ast::Ty>,
+                            scx: &SaveContext)
+                            -> Option<Signature> {
+    make_assoc_type_signature(id, ident, bounds, default, scx).ok()
 }
 
 type Result = ::std::result::Result<Signature, &'static str>;
@@ -215,7 +241,7 @@ impl Sig for ast::Ty {
                     format!("<{} as {}>::", nested_ty.text, first)
                 } else {
                     // FIXME handle path instead of elipses.
-                    format!("<{} as ...>::", nested_ty.text)                    
+                    format!("<{} as ...>::", nested_ty.text)
                 };
 
                 let name = pprust::path_segment_to_string(path.segments.last().ok_or("Bad path")?);
@@ -263,7 +289,7 @@ impl Sig for ast::Ty {
             ast::TyKind::ImplicitSelf |
             ast::TyKind::Mac(_) => Err("Ty"),
         }
-    }    
+    }
 }
 
 impl Sig for ast::Item {
@@ -497,7 +523,7 @@ impl Sig for ast::Item {
 
                 let ty_sig = ty.make(offset + text.len(), id, scx)?;
                 text.push_str(&ty_sig.text);
-                
+
                 text.push_str(" {}");
 
                 Ok(merge_sigs(text, vec![generics_sig, trait_sig, ty_sig]))
@@ -582,7 +608,9 @@ impl Sig for ast::Generics {
 
             if !l.bounds.is_empty() {
                 l_text.push_str(": ");
-                let bounds = l.bounds.iter().map(|l| l.ident.to_string()).collect::<Vec<_>>().join(" + ");
+                let bounds = l.bounds.iter().map(|l| {
+                    l.ident.to_string()
+                }).collect::<Vec<_>>().join(" + ");
                 l_text.push_str(&bounds);
                 // FIXME add lifetime bounds refs.
             }
@@ -783,5 +811,115 @@ fn name_and_generics(mut text: String,
 }
 
 
-// TODO impl items, trait items
-// for impl/trait sigs - function for each kind, rather than use trait.
+fn make_assoc_type_signature(id: NodeId,
+                             ident: ast::Ident,
+                             bounds: Option<&ast::TyParamBounds>,
+                             default: Option<&ast::Ty>,
+                             scx: &SaveContext)
+                             -> Result {
+    let mut text = "type ".to_owned();
+    let name = ident.to_string();
+    let mut defs = vec![SigElement {
+        id: id_from_node_id(id, scx),
+        start: text.len(),
+        end: text.len() + name.len(),
+    }];
+    let mut refs = vec![];
+    text.push_str(&name);
+    if let Some(bounds) = bounds {
+        text.push_str(": ");
+        // FIXME should descend into bounds
+        text.push_str(&pprust::bounds_to_string(bounds));
+    }
+    if let Some(default) = default {
+        text.push_str(" = ");
+        let ty_sig = default.make(text.len(), Some(id), scx)?;
+        text.push_str(&ty_sig.text);
+        defs.extend(ty_sig.defs.into_iter());
+        refs.extend(ty_sig.refs.into_iter());
+    }
+    text.push(';');
+    Ok(Signature { text, defs, refs })
+}
+
+fn make_assoc_const_signature(id: NodeId,
+                              ident: ast::Name,
+                              ty: &ast::Ty,
+                              default: Option<&ast::Expr>,
+                              scx: &SaveContext)
+                              -> Result {
+    let mut text = "const ".to_owned();
+    let name = ident.to_string();
+    let mut defs = vec![SigElement {
+        id: id_from_node_id(id, scx),
+        start: text.len(),
+        end: text.len() + name.len(),
+    }];
+    let mut refs = vec![];
+    text.push_str(&name);
+    text.push_str(": ");
+
+    let ty_sig = ty.make(text.len(), Some(id), scx)?;
+    text.push_str(&ty_sig.text);
+    defs.extend(ty_sig.defs.into_iter());
+    refs.extend(ty_sig.refs.into_iter());
+
+    if let Some(default) = default {
+        text.push_str(" = ");
+        text.push_str(&pprust::expr_to_string(default));
+    }
+    text.push(';');
+    Ok(Signature { text, defs, refs })
+}
+
+fn make_method_signature(id: NodeId,
+                         ident: ast::Ident,
+                         m: &ast::MethodSig,
+                         scx: &SaveContext)
+                         -> Result {
+    // FIXME code dup with function signature
+    let mut text = String::new();
+    if m.constness.node == ast::Constness::Const {
+        text.push_str("const ");
+    }
+    if m.unsafety == ast::Unsafety::Unsafe {
+        text.push_str("unsafe ");
+    }
+    if m.abi != ::syntax::abi::Abi::Rust {
+        text.push_str("extern");
+        text.push_str(&m.abi.to_string());
+        text.push(' ');
+    }
+    text.push_str("fn ");
+
+    let mut sig = name_and_generics(text,
+                                    0,
+                                    &m.generics,
+                                    id,
+                                    ident,
+                                    scx)?;
+
+    sig.text.push('(');
+    for i in &m.decl.inputs {
+        // FIXME shoudl descend into patterns to add defs.
+        sig.text.push_str(&pprust::pat_to_string(&i.pat));
+        sig.text.push_str(": ");
+        let nested = i.ty.make(sig.text.len(), Some(i.id), scx)?;
+        sig.text.push_str(&nested.text);
+        sig.text.push(',');
+        sig.defs.extend(nested.defs.into_iter());
+        sig.refs.extend(nested.refs.into_iter());
+    }
+    sig.text.push(')');
+
+    if let ast::FunctionRetTy::Ty(ref t) = m.decl.output {
+        sig.text.push_str(" -> ");
+        let nested = t.make(sig.text.len(), None, scx)?;
+        sig.text.push_str(&nested.text);
+        sig.defs.extend(nested.defs.into_iter());
+        sig.refs.extend(nested.refs.into_iter());
+    }
+    sig.text.push_str(" {}");
+
+    Ok(sig)
+}

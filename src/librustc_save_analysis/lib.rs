@@ -369,8 +369,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     // FIXME would be nice to take a MethodItem here, but the ast provides both
     // trait and impl flavours, so the caller must do the disassembly.
-    pub fn get_method_data(&self, id: ast::NodeId,
-                           name: ast::Name, span: Span) -> Option<FunctionData> {
+    pub fn get_method_data(&self,
+                           id: ast::NodeId,
+                           name: ast::Name,
+                           span: Span)
+                           -> Option<FunctionData> {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
         let (qualname, parent_scope, decl_id, vis, docs, attributes) =
@@ -460,7 +463,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             visibility: vis,
             parent: parent_scope,
             docs: docs,
-            // TODO
             sig: None,
             attributes: attributes,
         })
