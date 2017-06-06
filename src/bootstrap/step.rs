@@ -1190,8 +1190,18 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             if paths.len() == 0 && rule.default {
                 Some((rule, 0))
             } else {
-                paths.iter().position(|path| path.ends_with(rule.path))
-                     .map(|priority| (rule, priority))
+                paths.iter().position(|path| {
+                    // Try `path` and also `path` with some prefixes, so commands
+                    // `test run-pass`, `test test/run-pass`, `test src/test/run-pass`
+                    // all execute rule `src/test/run-pass`.
+                    for prefix in &["", "src/", "src/test/", "src/tools/"] {
+                        if rule.path.starts_with(prefix) &&
+                           path.ends_with(&rule.path[prefix.len()..]) {
+                            return true;
+                        }
+                    }
+                    false
+                }).map(|priority| (rule, priority))
             }
         }).collect();
 
