@@ -8,13 +8,13 @@ error[E0425]: cannot find function `clone` in this scope
   --> $DIR/issue-2356.rs:35:5
    |
 35 |     clone();
-   |     ^^^^^ did you mean `self.clone(...)`?
+   |     ^^^^^ help: try: `self.clone`
 
 error[E0425]: cannot find function `default` in this scope
   --> $DIR/issue-2356.rs:43:5
    |
 43 |     default();
-   |     ^^^^^^^ did you mean `Self::default`?
+   |     ^^^^^^^ help: try: `Self::default`
 
 error[E0425]: cannot find value `whiskers` in this scope
   --> $DIR/issue-2356.rs:52:5
@@ -22,14 +22,14 @@ error[E0425]: cannot find value `whiskers` in this scope
 52 |     whiskers -= other;
    |     ^^^^^^^^
    |     |
-   |     did you mean `self.whiskers`?
+   |     help: try: `self.whiskers`
    |     `self` value is only available in methods with `self` parameter
 
 error[E0425]: cannot find function `shave` in this scope
   --> $DIR/issue-2356.rs:57:5
    |
 57 |     shave(4);
-   |     ^^^^^ did you mean `Self::shave`?
+   |     ^^^^^ help: try: `Self::shave`
 
 error[E0425]: cannot find function `purr` in this scope
   --> $DIR/issue-2356.rs:60:5
@@ -83,7 +83,7 @@ error[E0425]: cannot find value `whiskers` in this scope
    --> $DIR/issue-2356.rs:104:5
     |
 104 |     whiskers = 0;
-    |     ^^^^^^^^ did you mean `self.whiskers`?
+    |     ^^^^^^^^ help: try: `self.whiskers`
 
 error[E0425]: cannot find value `whiskers` in this scope
    --> $DIR/issue-2356.rs:110:5
@@ -91,7 +91,7 @@ error[E0425]: cannot find value `whiskers` in this scope
 110 |     whiskers = 4;
     |     ^^^^^^^^
     |     |
-    |     did you mean `self.whiskers`?
+    |     help: try: `self.whiskers`
     |     `self` value is only available in methods with `self` parameter
 
 error[E0425]: cannot find function `purr_louder` in this scope

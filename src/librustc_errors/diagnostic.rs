@@ -211,6 +211,18 @@ impl Diagnostic {
 
     /// Prints out a message with a suggested edit of the code.
     ///
+    /// In case of short messages and a simple suggestion,
+    /// rustc displays it as a label like
+    ///
+    /// "try adding parentheses: `(tup.0).1`"
+    ///
+    /// The message
+    /// * should not end in any punctuation (a `:` is added automatically)
+    /// * should not be a question
+    /// * should not contain any parts like "the following", "as shown"
+    /// * may look like "to do xyz, use" or "to do xyz, use abc"
+    /// * may contain a name of a function, variable or type, but not whole expressions
+    ///
     /// See `diagnostic::CodeSuggestion` for more information.
     pub fn span_suggestion(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
