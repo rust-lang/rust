@@ -381,6 +381,16 @@ impl CString {
     /// includes the trailing nul byte.
     ///
     /// [`as_bytes`]: #method.as_bytes
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let c_string = CString::new("foo").unwrap();
+    /// let bytes = c_string.as_bytes_with_nul();
+    /// assert_eq!(bytes, &[b'f', b'o', b'o', b'\0']);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes_with_nul(&self) -> &[u8] {
         &self.inner
