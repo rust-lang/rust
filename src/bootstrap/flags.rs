@@ -198,7 +198,11 @@ Arguments:
 
     For a quick build with a usable compile, you can pass:
 
-        ./x.py build --stage 1 src/libtest");
+        ./x.py build --stage 1 src/libtest
+
+    This will first build everything once (like --stage 0 without further
+    arguments would), and then use the compiler built in stage 0 to build
+    src/libtest and its dependencies.");
             }
             "test" => {
                 subcommand_help.push_str("\n
