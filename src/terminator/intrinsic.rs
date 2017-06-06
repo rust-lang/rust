@@ -43,10 +43,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
 
             "arith_offset" => {
+                // FIXME: Switch to non-checked, wrapped version of pointer_offset
+                let offset = self.value_to_primval(arg_vals[1], isize)?.to_i128()? as i64;
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
-                let offset = self.value_to_primval(arg_vals[1], isize)?.to_i128()?;
-                let new_ptr = ptr.signed_offset(offset as i64);
-                self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
+                let result_ptr = self.wrapping_pointer_offset(ptr, substs.type_at(0), offset)?;
+                self.write_primval(dest, PrimVal::Ptr(result_ptr), dest_ty)?;
             }
 
             "assume" => {
@@ -414,8 +415,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let size = self.type_size(ty)?.expect("write_bytes() type must be sized");
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let count = self.value_to_primval(arg_vals[2], usize)?.to_u64()?;
-                self.memory.check_align(ptr, ty_align, size * count)?;
-                self.memory.write_repeat(ptr, val_byte, size * count)?;
+                if count > 0 {
+                    self.memory.check_align(ptr, ty_align, size * count)?;
+                    self.memory.write_repeat(ptr, val_byte, size * count)?;
+                }
             }
 
             name => return Err(EvalError::Unimplemented(format!("unimplemented intrinsic: {}", name))),

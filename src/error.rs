@@ -18,11 +18,12 @@ pub enum EvalError<'tcx> {
     InvalidDiscriminant,
     PointerOutOfBounds {
         ptr: Pointer,
-        size: u64,
+        access: bool,
         allocation_size: u64,
     },
     ReadPointerAsBytes,
     InvalidPointerMath,
+    OverflowingPointerMath,
     ReadUndefBytes,
     DeadLocal,
     InvalidBoolOp(mir::BinOp),
@@ -82,6 +83,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "a raw memory access tried to access part of a pointer value as raw bytes",
             EvalError::InvalidPointerMath =>
                 "attempted to do math or a comparison on pointers into different allocations",
+            EvalError::OverflowingPointerMath =>
+                "attempted to do overflowing math on a pointer",
             EvalError::ReadUndefBytes =>
                 "attempted to read undefined bytes",
             EvalError::DeadLocal =>
@@ -147,9 +150,10 @@ impl<'tcx> Error for EvalError<'tcx> {
 impl<'tcx> fmt::Display for EvalError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            EvalError::PointerOutOfBounds { ptr, size, allocation_size } => {
-                write!(f, "memory access of {}..{} outside bounds of allocation {} which has size {}",
-                       ptr.offset, ptr.offset + size, ptr.alloc_id, allocation_size)
+            EvalError::PointerOutOfBounds { ptr, access, allocation_size } => {
+                write!(f, "{} at offset {}, outside bounds of allocation {} which has size {}",
+                       if access { "memory access" } else { "pointer computed" },
+                       ptr.offset, ptr.alloc_id, allocation_size)
             },
             EvalError::NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
             EvalError::FunctionPointerTyMismatch(sig, got) =>

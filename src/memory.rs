@@ -60,20 +60,36 @@ impl Pointer {
         Pointer { alloc_id, offset }
     }
 
-    pub fn signed_offset(self, i: i64) -> Self {
+    pub fn wrapping_signed_offset<'tcx>(self, i: i64, layout: &TargetDataLayout) -> Self {
+        Pointer::new(self.alloc_id, (self.offset.wrapping_add(i as u64) as u128 % (1u128 << layout.pointer_size.bits())) as u64)
+    }
+
+    pub fn signed_offset<'tcx>(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
         // FIXME: is it possible to over/underflow here?
         if i < 0 {
             // trickery to ensure that i64::min_value() works fine
             // this formula only works for true negative values, it panics for zero!
             let n = u64::max_value() - (i as u64) + 1;
-            Pointer::new(self.alloc_id, self.offset - n)
+            if let Some(res) = self.offset.checked_sub(n) {
+                Ok(Pointer::new(self.alloc_id, res))
+            } else {
+                Err(EvalError::OverflowingPointerMath)
+            }
         } else {
-            self.offset(i as u64)
+            self.offset(i as u64, layout)
         }
     }
 
-    pub fn offset(self, i: u64) -> Self {
-        Pointer::new(self.alloc_id, self.offset + i)
+    pub fn offset<'tcx>(self, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
+        if let Some(res) = self.offset.checked_add(i) {
+            if res as u128 >= (1u128 << layout.pointer_size.bits()) {
+                Err(EvalError::OverflowingPointerMath)
+            } else {
+                Ok(Pointer::new(self.alloc_id, res))
+            }
+        } else {
+            Err(EvalError::OverflowingPointerMath)
+        }
     }
 
     pub fn points_to_zst(&self) -> bool {
@@ -108,7 +124,7 @@ pub type TlsKey = usize;
 
 #[derive(Copy, Clone, Debug)]
 pub struct TlsEntry<'tcx> {
-    data: Pointer, // will eventually become a map from thread IDs to pointers
+    data: Pointer, // Will eventually become a map from thread IDs to pointers, if we ever support more than one thread.
     dtor: Option<ty::Instance<'tcx>>,
 }
 
@@ -161,8 +177,8 @@ pub struct Memory<'a, 'tcx> {
     /// A cache for basic byte allocations keyed by their contents. This is used to deduplicate
     /// allocations for string and bytestring literals.
     literal_alloc_cache: HashMap<Vec<u8>, AllocId>,
-    
-    /// pthreads-style Thread-local storage.  We only have one thread, so this is just a map from TLS keys (indices into the vector) to the pointer stored there.
+
+    /// pthreads-style thread-local storage.
     thread_local: HashMap<TlsKey, TlsEntry<'tcx>>,
 
     /// The Key to use for the next thread-local allocation.
@@ -271,7 +287,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             alloc.undef_mask.grow(amount, false);
         } else if size > new_size {
             self.memory_usage -= size - new_size;
-            self.clear_relocations(ptr.offset(new_size), size - new_size)?;
+            self.clear_relocations(ptr.offset(new_size, self.layout)?, size - new_size)?;
             let alloc = self.get_mut(ptr.alloc_id)?;
             // `as usize` is fine here, since it is smaller than `size`, which came from a usize
             alloc.bytes.truncate(new_size as usize);
@@ -352,6 +368,15 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                 required: align,
             })
         }
+    }
+
+    pub(crate) fn check_bounds(&self, ptr: Pointer, access: bool) -> EvalResult<'tcx> {
+        let alloc = self.get(ptr.alloc_id)?;
+        let allocation_size = alloc.bytes.len() as u64;
+        if ptr.offset > allocation_size {
+            return Err(EvalError::PointerOutOfBounds { ptr, access, allocation_size });
+        }
+        Ok(())
     }
 
     pub(crate) fn mark_packed(&mut self, ptr: Pointer, len: u64) {
@@ -574,11 +599,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Ok(&[]);
         }
         self.check_align(ptr, align, size)?;
+        self.check_bounds(ptr.offset(size, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get(ptr.alloc_id)?;
-        let allocation_size = alloc.bytes.len() as u64;
-        if ptr.offset + size > allocation_size {
-            return Err(EvalError::PointerOutOfBounds { ptr, size, allocation_size });
-        }
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
         assert_eq!(size as usize as u64, size);
         let offset = ptr.offset as usize;
@@ -590,11 +612,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Ok(&mut []);
         }
         self.check_align(ptr, align, size)?;
+        self.check_bounds(ptr.offset(size, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get_mut(ptr.alloc_id)?;
-        let allocation_size = alloc.bytes.len() as u64;
-        if ptr.offset + size > allocation_size {
-            return Err(EvalError::PointerOutOfBounds { ptr, size, allocation_size });
-        }
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
         assert_eq!(size as usize as u64, size);
         let offset = ptr.offset as usize;
@@ -746,7 +765,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn write_ptr(&mut self, dest: Pointer, ptr: Pointer) -> EvalResult<'tcx> {
         self.write_usize(dest, ptr.offset as u64)?;
-        self.get_mut(dest.alloc_id)?.relocations.insert(dest.offset, ptr.alloc_id);
+        if ptr.alloc_id != NEVER_ALLOC_ID {
+            self.get_mut(dest.alloc_id)?.relocations.insert(dest.offset, ptr.alloc_id);
+        }
         Ok(())
     }
 
@@ -913,7 +934,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     fn check_relocation_edges(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx> {
         let overlapping_start = self.relocations(ptr, 0)?.count();
-        let overlapping_end = self.relocations(ptr.offset(size), 0)?.count();
+        let overlapping_end = self.relocations(ptr.offset(size, self.layout)?, 0)?.count();
         if overlapping_start + overlapping_end != 0 {
             return Err(EvalError::ReadPointerAsBytes);
         }
