@@ -288,6 +288,26 @@ impl CString {
     /// Failure to call [`from_raw`] will lead to a memory leak.
     ///
     /// [`from_raw`]: #method.from_raw
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let c_string = CString::new("foo").unwrap();
+    ///
+    /// let ptr = c_string.into_raw();
+    ///
+    /// unsafe {
+    ///     assert_eq!(b'f', *ptr as u8);
+    ///     assert_eq!(b'o', *ptr.offset(1) as u8);
+    ///     assert_eq!(b'o', *ptr.offset(2) as u8);
+    ///     assert_eq!(b'\0', *ptr.offset(3) as u8);
+    ///
+    ///     // retake pointer to free memory
+    ///     let _ = CString::from_raw(ptr);
+    /// }
+    /// ```
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub fn into_raw(self) -> *mut c_char {
         Box::into_raw(self.into_inner()) as *mut c_char
