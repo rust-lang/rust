@@ -22,7 +22,7 @@ use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTacti
 use string::{StringFormat, rewrite_string};
 use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
             semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr,
-            colon_spaces, contains_skip};
+            colon_spaces, contains_skip, mk_sp};
 use visitor::FmtVisitor;
 use config::{Config, IndentStyle, MultilineStyle, ControlBraceStyle, Style};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
@@ -32,7 +32,7 @@ use chains::rewrite_chain;
 use macros::{rewrite_macro, MacroPosition};
 
 use syntax::{ast, ptr};
-use syntax::codemap::{CodeMap, Span, BytePos, mk_sp};
+use syntax::codemap::{CodeMap, Span, BytePos};
 use syntax::parse::classify;
 
 impl Rewrite for ast::Expr {
@@ -253,6 +253,8 @@ fn format_expr(expr: &ast::Expr,
                      context.config.max_width(),
                      shape)
         }
+        // FIXME(#1537)
+        ast::ExprKind::Catch(..) => unimplemented!(),
     };
     match (attr_rw, expr_rw) {
         (Some(attr_str), Some(expr_str)) => {

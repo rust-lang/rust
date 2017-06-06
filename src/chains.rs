@@ -78,7 +78,7 @@
 
 use Shape;
 use rewrite::{Rewrite, RewriteContext};
-use utils::{wrap_str, first_line_width, last_line_width};
+use utils::{wrap_str, first_line_width, last_line_width, mk_sp};
 use expr::rewrite_call;
 use config::IndentStyle;
 use macros::convert_try_mac;
@@ -86,7 +86,7 @@ use macros::convert_try_mac;
 use std::cmp::min;
 use std::iter;
 use syntax::{ast, ptr};
-use syntax::codemap::{mk_sp, Span};
+use syntax::codemap::Span;
 
 pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -> Option<String> {
     debug!("rewrite_chain {:?}", shape);

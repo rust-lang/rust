@@ -21,7 +21,7 @@ use {Shape, Spanned};
 use codemap::SpanUtils;
 use lists::{format_item_list, itemize_list, format_fn_args};
 use rewrite::{Rewrite, RewriteContext};
-use utils::{extra_offset, format_mutability, colon_spaces, wrap_str};
+use utils::{extra_offset, format_mutability, colon_spaces, wrap_str, mk_sp};
 use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple_type};
 use config::TypeDensity;
 
@@ -206,9 +206,7 @@ fn rewrite_segment(path_context: PathContext,
                     .collect::<Vec<_>>();
 
                 let next_span_lo = param_list.last().unwrap().get_span().hi + BytePos(1);
-                let list_lo = context
-                    .codemap
-                    .span_after(codemap::mk_sp(*span_lo, span_hi), "<");
+                let list_lo = context.codemap.span_after(mk_sp(*span_lo, span_hi), "<");
                 let separator = if path_context == PathContext::Expr {
                     "::"
                 } else {
@@ -686,6 +684,7 @@ impl Rewrite for ast::Ty {
                 it.rewrite(context, shape)
                     .map(|it_str| format!("impl {}", it_str))
             }
+            ast::TyKind::Err |
             ast::TyKind::Typeof(..) => unreachable!(),
         }
     }

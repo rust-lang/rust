@@ -14,7 +14,7 @@ use {Indent, Shape};
 use codemap::SpanUtils;
 use utils::{format_mutability, format_visibility, contains_skip, end_typaram, wrap_str,
             last_line_width, format_unsafety, trim_newlines, stmt_expr, semicolon_for_expr,
-            trimmed_last_line_width, colon_spaces};
+            trimmed_last_line_width, colon_spaces, mk_sp};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, list_helper,
             DefinitiveListTactic, ListTactic, definitive_tactic, format_item_list};
 use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
@@ -23,8 +23,8 @@ use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
 use config::{Config, IndentStyle, Density, ReturnIndent, BraceStyle, Style, TypeDensity};
 
-use syntax::{ast, abi, codemap, ptr, symbol};
-use syntax::codemap::{Span, BytePos, mk_sp};
+use syntax::{ast, abi, ptr, symbol};
+use syntax::codemap::{Span, BytePos};
 use syntax::ast::ImplItem;
 
 fn type_annotation_separator(config: &Config) -> &str {
@@ -246,7 +246,7 @@ impl<'a> FmtVisitor<'a> {
         let mut newline_brace = newline_for_brace(self.config, &generics.where_clause);
         let context = self.get_context();
 
-        let block_snippet = self.snippet(codemap::mk_sp(block.span.lo, block.span.hi));
+        let block_snippet = self.snippet(mk_sp(block.span.lo, block.span.hi));
         let has_body = !block_snippet[1..block_snippet.len() - 1].trim().is_empty() ||
                        !context.config.fn_empty_single_line();
 
@@ -527,7 +527,7 @@ pub fn format_impl(context: &RewriteContext,
                    offset: Indent,
                    where_span_end: Option<BytePos>)
                    -> Option<String> {
-    if let ast::ItemKind::Impl(_, _, ref generics, ref trait_ref, _, ref items) = item.node {
+    if let ast::ItemKind::Impl(_, _, _, ref generics, ref trait_ref, _, ref items) = item.node {
         let mut result = String::new();
         // First try to format the ref and type without a split at the 'for'.
         let mut ref_and_type = try_opt!(format_impl_ref_and_type(context, item, offset, false));
@@ -647,8 +647,13 @@ fn format_impl_ref_and_type(context: &RewriteContext,
                             offset: Indent,
                             split_at_for: bool)
                             -> Option<String> {
-    if let ast::ItemKind::Impl(unsafety, polarity, ref generics, ref trait_ref, ref self_ty, _) =
-        item.node {
+    if let ast::ItemKind::Impl(unsafety,
+                               polarity,
+                               _,
+                               ref generics,
+                               ref trait_ref,
+                               ref self_ty,
+                               _) = item.node {
         let mut result = String::new();
 
         result.push_str(&format_visibility(&item.vis));

@@ -20,9 +20,10 @@
 // and those with brackets will be formatted as array literals.
 
 use syntax::ast;
-use syntax::codemap::{mk_sp, BytePos};
+use syntax::codemap::BytePos;
 use syntax::parse::token::Token;
-use syntax::parse::tts_to_parser;
+use syntax::parse::new_parser_from_tts;
+use syntax::tokenstream::TokenStream;
 use syntax::symbol;
 use syntax::util::ThinVec;
 
@@ -31,6 +32,7 @@ use codemap::SpanUtils;
 use rewrite::{Rewrite, RewriteContext};
 use expr::{rewrite_call, rewrite_array, rewrite_pair};
 use comment::{FindUncommented, contains_comment};
+use utils::mk_sp;
 
 const FORCED_BRACKET_MACROS: &'static [&'static str] = &["vec!"];
 
@@ -92,7 +94,8 @@ pub fn rewrite_macro(mac: &ast::Mac,
         original_style
     };
 
-    if mac.node.tts.is_empty() && !contains_comment(&context.snippet(mac.span)) {
+    let ts: TokenStream = mac.node.tts.clone().into();
+    if ts.is_empty() && !contains_comment(&context.snippet(mac.span)) {
         return match style {
             MacroStyle::Parens if position == MacroPosition::Item => {
                 Some(format!("{}();", macro_name))
@@ -103,7 +106,7 @@ pub fn rewrite_macro(mac: &ast::Mac,
         };
     }
 
-    let mut parser = tts_to_parser(context.parse_session, mac.node.tts.clone());
+    let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
     let mut expr_vec = Vec::new();
     let mut vec_with_semi = false;
 
@@ -222,7 +225,8 @@ pub fn rewrite_macro(mac: &ast::Mac,
 /// failed).
 pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext) -> Option<ast::Expr> {
     if &format!("{}", mac.node.path)[..] == "try" {
-        let mut parser = tts_to_parser(context.parse_session, mac.node.tts.clone());
+        let ts: TokenStream = mac.node.tts.clone().into();
+        let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
 
         Some(ast::Expr {
                  id: ast::NodeId::new(0), // dummy value

@@ -33,7 +33,7 @@ extern crate term;
 use errors::{Handler, DiagnosticBuilder};
 use errors::emitter::{ColorConfig, EmitterWriter};
 use syntax::ast;
-use syntax::codemap::{mk_sp, CodeMap, Span};
+use syntax::codemap::{CodeMap, Span, FilePathMapping};
 use syntax::parse::{self, ParseSess};
 
 use strings::string_buffer::StringBuffer;
@@ -107,7 +107,7 @@ impl Spanned for ast::Ty {
 impl Spanned for ast::Arg {
     fn span(&self) -> Span {
         if items::is_named_arg(self) {
-            mk_sp(self.pat.span.lo, self.ty.span.hi)
+            utils::mk_sp(self.pat.span.lo, self.ty.span.hi)
         } else {
             self.ty.span
         }
@@ -578,7 +578,7 @@ pub fn format_input<T: Write>(input: Input,
     if config.disable_all_formatting() {
         return Ok((summary, FileMap::new(), FormatReport::new()));
     }
-    let codemap = Rc::new(CodeMap::new());
+    let codemap = Rc::new(CodeMap::new(FilePathMapping::empty()));
 
     let tty_handler =
         Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()));
