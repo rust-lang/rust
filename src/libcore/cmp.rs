@@ -443,6 +443,42 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn cmp(&self, other: &Self) -> Ordering;
+
+    /// Compares and returns the maximum of two values.
+    ///
+    /// Returns the second argument if the comparison determines them to be equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ord_max_min)]
+    ///
+    /// assert_eq!(2, 1.max(2));
+    /// assert_eq!(2, 2.max(2));
+    /// ```
+    #[unstable(feature = "ord_max_min", issue = "25663")]
+    fn max(self, other: Self) -> Self
+    where Self: Sized {
+        if other >= self { other } else { self }
+    }
+
+    /// Compares and returns the minimum of two values.
+    ///
+    /// Returns the first argument if the comparison determines them to be equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ord_max_min)]
+    ///
+    /// assert_eq!(1, 1.min(2));
+    /// assert_eq!(2, 2.min(2));
+    /// ```
+    #[unstable(feature = "ord_max_min", issue = "25663")]
+    fn min(self, other: Self) -> Self
+    where Self: Sized {
+        if self <= other { self } else { other }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
