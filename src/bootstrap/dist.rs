@@ -964,8 +964,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         let _ = fs::remove_dir_all(&exe);
         t!(fs::create_dir_all(exe.join("rustc")));
         t!(fs::create_dir_all(exe.join("cargo")));
-        t!(fs::create_dir_all(exe.join("rls")));
-        t!(fs::create_dir_all(exe.join("rust-analysis")));
         t!(fs::create_dir_all(exe.join("rust-docs")));
         t!(fs::create_dir_all(exe.join("rust-std")));
         cp_r(&work.join(&format!("{}-{}", pkgname(build, "rustc"), target))
@@ -980,19 +978,11 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-std"), target))
                   .join(format!("rust-std-{}", target)),
              &exe.join("rust-std"));
-        cp_r(&work.join(&format!("{}-{}", pkgname(build, "rls"), target))
-                  .join("rls"),
-             &exe.join("rls"));
-        cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-analysis"), target))
-                  .join(format!("rust-analysis-{}", target)),
-             &exe.join("rust-analysis"));
 
         t!(fs::remove_file(exe.join("rustc/manifest.in")));
         t!(fs::remove_file(exe.join("cargo/manifest.in")));
         t!(fs::remove_file(exe.join("rust-docs/manifest.in")));
         t!(fs::remove_file(exe.join("rust-std/manifest.in")));
-        t!(fs::remove_file(exe.join("rls/manifest.in")));
-        t!(fs::remove_file(exe.join("rust-analysis/manifest.in")));
 
         if target.contains("windows-gnu") {
             t!(fs::create_dir_all(exe.join("rust-mingw")));
@@ -1066,26 +1056,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
                         .arg("-dr").arg("Std")
                         .arg("-var").arg("var.StdDir")
                         .arg("-out").arg(exe.join("StdGroup.wxs")));
-        build.run(Command::new(&heat)
-                        .current_dir(&exe)
-                        .arg("dir")
-                        .arg("rls")
-                        .args(&heat_flags)
-                        .arg("-cg").arg("RlsGroup")
-                        .arg("-dr").arg("Rls")
-                        .arg("-var").arg("var.RlsDir")
-                        .arg("-out").arg(exe.join("RlsGroup.wxs"))
-                        .arg("-t").arg(etc.join("msi/remove-duplicates.xsl")));
-        build.run(Command::new(&heat)
-                        .current_dir(&exe)
-                        .arg("dir")
-                        .arg("rust-analysis")
-                        .args(&heat_flags)
-                        .arg("-cg").arg("AnalysisGroup")
-                        .arg("-dr").arg("Analysis")
-                        .arg("-var").arg("var.AnalysisDir")
-                        .arg("-out").arg(exe.join("AnalysisGroup.wxs"))
-                        .arg("-t").arg(etc.join("msi/remove-duplicates.xsl")));
         if target.contains("windows-gnu") {
             build.run(Command::new(&heat)
                             .current_dir(&exe)
@@ -1109,8 +1079,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
                .arg("-dDocsDir=rust-docs")
                .arg("-dCargoDir=cargo")
                .arg("-dStdDir=rust-std")
-               .arg("-dRlsDir=rls")
-               .arg("-dAnalysisDir=rust-analysis")
                .arg("-arch").arg(&arch)
                .arg("-out").arg(&output)
                .arg(&input);
@@ -1128,8 +1096,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         candle("DocsGroup.wxs".as_ref());
         candle("CargoGroup.wxs".as_ref());
         candle("StdGroup.wxs".as_ref());
-        candle("RlsGroup.wxs".as_ref());
-        candle("AnalysisGroup.wxs".as_ref());
 
         if target.contains("windows-gnu") {
             candle("GccGroup.wxs".as_ref());
@@ -1152,8 +1118,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
            .arg("DocsGroup.wixobj")
            .arg("CargoGroup.wixobj")
            .arg("StdGroup.wixobj")
-           .arg("RlsGroup.wixobj")
-           .arg("AnalysisGroup.wixobj")
            .current_dir(&exe);
 
         if target.contains("windows-gnu") {
