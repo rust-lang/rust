@@ -10,6 +10,7 @@
 
 use super::{probe, MethodCallee};
 
+use astconv::AstConv;
 use check::{FnCtxt, LvalueOp, callee};
 use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
@@ -282,52 +283,25 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                  segment: &hir::PathSegment,
                                  substs: &Substs<'tcx>)
                                  -> &'tcx Substs<'tcx> {
-        let supplied_method_types = match segment.parameters {
-            hir::AngleBracketedParameters(ref data) => &data.types,
-            _ => bug!("unexpected generic arguments: {:?}", segment.parameters),
-        };
-
         // Determine the values for the generic parameters of the method.
         // If they were not explicitly supplied, just construct fresh
         // variables.
-        let num_supplied_types = supplied_method_types.len();
         let method_generics = self.tcx.generics_of(pick.item.def_id);
-        let num_method_types = method_generics.types.len();
-
-        if num_supplied_types > 0 && num_supplied_types != num_method_types {
-            if num_method_types == 0 {
-                struct_span_err!(self.tcx.sess,
-                                 self.span,
-                                 E0035,
-                                 "does not take type parameters")
-                    .span_label(self.span, "called with unneeded type parameters")
-                    .emit();
-            } else {
-                struct_span_err!(self.tcx.sess,
-                                 self.span,
-                                 E0036,
-                                 "incorrect number of type parameters given for this method: \
-                                  expected {}, found {}",
-                                 num_method_types,
-                                 num_supplied_types)
-                    .span_label(self.span,
-                                format!("Passed {} type argument{}, expected {}",
-                                         num_supplied_types,
-                                         if num_supplied_types != 1 { "s" } else { "" },
-                                         num_method_types))
-                    .emit();
-            }
-        }
+        let mut fn_segment = Some((segment, method_generics));
+        self.fcx.check_path_parameter_count(self.span, &mut fn_segment);
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
-        //
-        // FIXME -- permit users to manually specify lifetimes
-        let supplied_start = substs.len() + method_generics.regions.len();
+        let (supplied_types, supplied_lifetimes) = match segment.parameters {
+            hir::AngleBracketedParameters(ref data) => (&data.types, &data.lifetimes),
+            _ => bug!("unexpected generic arguments: {:?}", segment.parameters),
+        };
         Substs::for_item(self.tcx, pick.item.def_id, |def, _| {
             let i = def.index as usize;
             if i < substs.len() {
                 substs.region_at(i)
+            } else if let Some(lifetime) = supplied_lifetimes.get(i - substs.len()) {
+                AstConv::ast_region_to_region(self.fcx, lifetime, Some(def))
             } else {
                 self.region_var_for_def(self.span, def)
             }
@@ -335,7 +309,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             let i = def.index as usize;
             if i < substs.len() {
                 substs.type_at(i)
-            } else if let Some(ast_ty) = supplied_method_types.get(i - supplied_start) {
+            } else if let Some(ast_ty) = supplied_types.get(i - substs.len()) {
                 self.to_ty(ast_ty)
             } else {
                 self.type_var_for_def(self.span, def, cur_substs)

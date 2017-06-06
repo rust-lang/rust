@@ -332,92 +332,6 @@ fn main() {
 ```
 "##,
 
-E0035: r##"
-You tried to give a type parameter where it wasn't needed. Erroneous code
-example:
-
-```compile_fail,E0035
-struct Test;
-
-impl Test {
-    fn method(&self) {}
-}
-
-fn main() {
-    let x = Test;
-
-    x.method::<i32>(); // Error: Test::method doesn't need type parameter!
-}
-```
-
-To fix this error, just remove the type parameter:
-
-```
-struct Test;
-
-impl Test {
-    fn method(&self) {}
-}
-
-fn main() {
-    let x = Test;
-
-    x.method(); // OK, we're good!
-}
-```
-"##,
-
-E0036: r##"
-This error occurrs when you pass too many or not enough type parameters to
-a method. Erroneous code example:
-
-```compile_fail,E0036
-struct Test;
-
-impl Test {
-    fn method<T>(&self, v: &[T]) -> usize {
-        v.len()
-    }
-}
-
-fn main() {
-    let x = Test;
-    let v = &[0];
-
-    x.method::<i32, i32>(v); // error: only one type parameter is expected!
-}
-```
-
-To fix it, just specify a correct number of type parameters:
-
-```
-struct Test;
-
-impl Test {
-    fn method<T>(&self, v: &[T]) -> usize {
-        v.len()
-    }
-}
-
-fn main() {
-    let x = Test;
-    let v = &[0];
-
-    x.method::<i32>(v); // OK, we're good!
-}
-```
-
-Please note on the last example that we could have called `method` like this:
-
-```
-# struct Test;
-# impl Test { fn method<T>(&self, v: &[T]) -> usize { v.len() } }
-# let x = Test;
-# let v = &[0];
-x.method(v);
-```
-"##,
-
 E0040: r##"
 It is not allowed to manually call destructors in Rust. It is also not
 necessary to do this since `drop` is called automatically whenever a value goes
@@ -4681,6 +4595,8 @@ error, just declare a function.
 }
 
 register_diagnostics! {
+//  E0035, merged into E0087/E0089
+//  E0036, merged into E0087/E0089
 //  E0068,
 //  E0085,
 //  E0086,
