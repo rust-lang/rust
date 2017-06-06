@@ -11,13 +11,13 @@
 use std::cmp;
 
 use syntax::{ast, ptr, visit};
-use syntax::codemap::{self, CodeMap, Span, BytePos};
+use syntax::codemap::{CodeMap, Span, BytePos};
 use syntax::parse::ParseSess;
 
 use strings::string_buffer::StringBuffer;
 
 use {Indent, Shape};
-use utils;
+use utils::{self, mk_sp};
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::FindUncommented;
 use config::Config;
@@ -43,7 +43,7 @@ fn item_bound(item: &ast::Item) -> Span {
             Span {
                 lo: cmp::min(bound.lo, span.lo),
                 hi: cmp::max(bound.hi, span.hi),
-                expn_id: span.expn_id,
+                ctxt: span.ctxt,
             }
         })
 }
@@ -122,8 +122,7 @@ impl<'a> FmtVisitor<'a> {
         let mut unindent_comment = self.is_if_else_block && !b.stmts.is_empty();
         if unindent_comment {
             let end_pos = source!(self, b.span).hi - brace_compensation;
-            let snippet = self.get_context()
-                .snippet(codemap::mk_sp(self.last_pos, end_pos));
+            let snippet = self.get_context().snippet(mk_sp(self.last_pos, end_pos));
             unindent_comment = snippet.contains("//") || snippet.contains("/*");
         }
         // FIXME: we should compress any newlines here to just one
@@ -178,7 +177,7 @@ impl<'a> FmtVisitor<'a> {
                                 defaultness,
                                 abi,
                                 vis,
-                                codemap::mk_sp(s.lo, b.span.lo),
+                                mk_sp(s.lo, b.span.lo),
                                 &b)
             }
             visit::FnKind::Method(ident, sig, vis, b) => {
@@ -192,7 +191,7 @@ impl<'a> FmtVisitor<'a> {
                                 defaultness,
                                 sig.abi,
                                 vis.unwrap_or(&ast::Visibility::Inherited),
-                                codemap::mk_sp(s.lo, b.span.lo),
+                                mk_sp(s.lo, b.span.lo),
                                 &b)
             }
             visit::FnKind::Closure(_) => unreachable!(),
@@ -383,6 +382,15 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ItemKind::Union(..) => {
                 // FIXME(#1157): format union definitions.
+            }
+            ast::ItemKind::GlobalAsm(..) => {
+                let snippet = Some(self.snippet(item.span));
+                self.push_rewrite(item.span, snippet);
+            }
+            ast::ItemKind::MacroDef(..) => {
+                // FIXME(#1539): macros 2.0
+                let snippet = Some(self.snippet(item.span));
+                self.push_rewrite(item.span, snippet);
             }
         }
     }
@@ -599,8 +607,7 @@ impl<'a> FmtVisitor<'a> {
             self.buffer.push_str(" {");
             // Hackery to account for the closing }.
             let mod_lo = self.codemap.span_after(source!(self, s), "{");
-            let body_snippet =
-                self.snippet(codemap::mk_sp(mod_lo, source!(self, m.inner).hi - BytePos(1)));
+            let body_snippet = self.snippet(mk_sp(mod_lo, source!(self, m.inner).hi - BytePos(1)));
             let body_snippet = body_snippet.trim();
             if body_snippet.is_empty() {
                 self.buffer.push_str("}");
@@ -704,7 +711,7 @@ impl Rewrite for ast::MetaItem {
 
 impl Rewrite for ast::Attribute {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        self.value
+        try_opt!(self.meta())
             .rewrite(context, shape)
             .map(|rw| if rw.starts_with("///") {
                      rw
@@ -727,7 +734,7 @@ impl<'a> Rewrite for [ast::Attribute] {
 
             // Write comments and blank lines between attributes.
             if i > 0 {
-                let comment = context.snippet(codemap::mk_sp(self[i - 1].span.hi, a.span.lo));
+                let comment = context.snippet(mk_sp(self[i - 1].span.hi, a.span.lo));
                 // This particular horror show is to preserve line breaks in between doc
                 // comments. An alternative would be to force such line breaks to start
                 // with the usual doc comment token.

@@ -13,7 +13,7 @@ use std::cmp::Ordering;
 
 use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItemKind, NestedMetaItem,
                   NestedMetaItemKind, Path};
-use syntax::codemap::BytePos;
+use syntax::codemap::{BytePos, Span, NO_EXPANSION};
 use syntax::abi;
 
 use Shape;
@@ -48,8 +48,11 @@ pub fn format_visibility(vis: &Visibility) -> Cow<'static, str> {
                     .next()
                     .expect("Non-global path in pub(restricted)?");
             }
+            let is_keyword = |s: &str| s == "self" || s == "super";
+            let path = segments_iter.collect::<Vec<_>>().join("::");
+            let in_str = if is_keyword(&path) { "" } else { "in " };
 
-            Cow::from(format!("pub({}) ", segments_iter.collect::<Vec<_>>().join("::")))
+            Cow::from(format!("pub({}{}) ", in_str, path))
         }
     }
 }
@@ -125,7 +128,9 @@ fn is_skip_nested(meta_item: &NestedMetaItem) -> bool {
 
 #[inline]
 pub fn contains_skip(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(|a| is_skip(&a.value))
+    attrs
+        .iter()
+        .any(|a| a.meta().map_or(false, |a| is_skip(&a)))
 }
 
 // Find the end of a TyParam
@@ -287,7 +292,15 @@ macro_rules! msg {
 // Required as generated code spans aren't guaranteed to follow on from the last span.
 macro_rules! source {
     ($this:ident, $sp: expr) => {
-        $this.codemap.source_callsite($sp)
+        $sp.source_callsite()
+    }
+}
+
+pub fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
+    Span {
+        lo,
+        hi,
+        ctxt: NO_EXPANSION,
     }
 }
 

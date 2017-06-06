@@ -24,7 +24,7 @@ pub(  crate  ) enum WriteState<D> {
     WriteData(Writer<D>),
 }
 
-pub(  ::global::  path :: to::some_mod  ) enum WriteState<D> {
+pub(in  ::global::  path :: to::some_mod  ) enum WriteState<D> {
     WriteId {
         id: U64Writer,
         size: U64Writer,
@@ -37,7 +37,7 @@ pub(  ::global::  path :: to::some_mod  ) enum WriteState<D> {
     WriteData(Writer<D>),
 }
 
-pub(  local::  path :: to::some_mod  ) enum WriteState<D> {
+pub(   in  local::  path :: to::some_mod  ) enum WriteState<D> {
     WriteId {
         id: U64Writer,
         size: U64Writer,

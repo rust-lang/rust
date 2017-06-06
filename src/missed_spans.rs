@@ -10,9 +10,10 @@
 
 use config::WriteMode;
 use visitor::FmtVisitor;
-use syntax::codemap::{self, BytePos, Span, Pos};
+use syntax::codemap::{BytePos, Span, Pos};
 use comment::{CodeCharKind, CommentCodeSlices, rewrite_comment};
 use Shape;
+use utils::mk_sp;
 
 impl<'a> FmtVisitor<'a> {
     fn output_at_start(&self) -> bool {
@@ -65,7 +66,7 @@ impl<'a> FmtVisitor<'a> {
                 self.codemap.lookup_char_pos(end));
 
         self.last_pos = end;
-        let span = codemap::mk_sp(start, end);
+        let span = mk_sp(start, end);
 
         self.write_snippet(span, &process_last_snippet);
     }

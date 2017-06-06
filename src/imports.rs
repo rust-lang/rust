@@ -10,7 +10,7 @@
 
 use Shape;
 use utils;
-use syntax::codemap::{self, BytePos, Span};
+use syntax::codemap::{BytePos, Span};
 use codemap::SpanUtils;
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, definitive_tactic};
 use types::{rewrite_path, PathContext};
@@ -202,7 +202,7 @@ impl<'a> FmtVisitor<'a> {
         // Order the imports by view-path & other import path properties
         ordered_use_items.sort_by(|a, b| compare_use_items(a.0, b.0).unwrap());
         // First, output the span before the first import
-        let prev_span_str = self.snippet(codemap::mk_sp(self.last_pos, pos_before_first_use_item));
+        let prev_span_str = self.snippet(utils::mk_sp(self.last_pos, pos_before_first_use_item));
         // Look for purely trailing space at the start of the prefix snippet before a linefeed, or
         // a prefix that's entirely horizontal whitespace.
         let prefix_span_start = match prev_span_str.find('\n') {
@@ -241,7 +241,7 @@ impl<'a> FmtVisitor<'a> {
                          Shape::legacy(self.config.max_width() - offset.width() - 1, offset)) {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
-                let prev_span = codemap::mk_sp(self.last_pos, source!(self, span).lo);
+                let prev_span = utils::mk_sp(self.last_pos, source!(self, span).lo);
                 let span_end = match self.snippet(prev_span).rfind('\n') {
                     Some(offset) => self.last_pos + BytePos(offset as u32),
                     None => source!(self, span).lo,

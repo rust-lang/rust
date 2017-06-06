@@ -22,7 +22,7 @@ use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTacti
 use string::{StringFormat, rewrite_string};
 use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
             semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr,
-            colon_spaces, contains_skip};
+            colon_spaces, contains_skip, mk_sp};
 use visitor::FmtVisitor;
 use config::{Config, IndentStyle, MultilineStyle, ControlBraceStyle, Style};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
@@ -32,7 +32,7 @@ use chains::rewrite_chain;
 use macros::{rewrite_macro, MacroPosition};
 
 use syntax::{ast, ptr};
-use syntax::codemap::{CodeMap, Span, BytePos, mk_sp};
+use syntax::codemap::{CodeMap, Span, BytePos};
 use syntax::parse::classify;
 
 impl Rewrite for ast::Expr {
@@ -253,6 +253,16 @@ fn format_expr(expr: &ast::Expr,
                      context.config.max_width(),
                      shape)
         }
+        ast::ExprKind::Catch(ref block) => {
+            if let rewrite @ Some(_) = try_one_line_block(context, shape, "do catch ", block) {
+                return rewrite;
+            }
+            // 9 = `do catch `
+            let budget = shape.width.checked_sub(9).unwrap_or(0);
+            Some(format!("{}{}",
+                         "do catch ",
+                         try_opt!(block.rewrite(&context, Shape::legacy(budget, shape.indent)))))
+        }
     };
     match (attr_rw, expr_rw) {
         (Some(attr_str), Some(expr_str)) => {
@@ -264,6 +274,22 @@ fn format_expr(expr: &ast::Expr,
         }
         _ => None,
     }
+}
+
+fn try_one_line_block(context: &RewriteContext,
+                      shape: Shape,
+                      prefix: &str,
+                      block: &ast::Block)
+                      -> Option<String> {
+    if is_simple_block(block, context.codemap) {
+        let expr_shape = Shape::legacy(shape.width - prefix.len(), shape.indent);
+        let expr_str = try_opt!(block.stmts[0].rewrite(context, expr_shape));
+        let result = format!("{}{{ {} }}", prefix, expr_str);
+        if result.len() <= shape.width && !result.contains('\n') {
+            return Some(result);
+        }
+    }
+    None
 }
 
 pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
@@ -620,9 +646,7 @@ fn rewrite_closure(capture: ast::CaptureBy,
         // means we must re-format.
         let block_shape = shape.block().with_max_width(context.config);
         let block_str = try_opt!(block.rewrite(&context, block_shape));
-        Some(format!("{} {}",
-                     prefix,
-                     try_opt!(block_str.rewrite(context, block_shape))))
+        Some(format!("{} {}", prefix, block_str))
     }
 }
 
@@ -687,24 +711,13 @@ impl Rewrite for ast::Block {
                 } else {
                     "unsafe ".to_owned()
                 };
-
-                if is_simple_block(self, context.codemap) && prefix.len() < shape.width {
-                    let expr_str =
-                        self.stmts[0].rewrite(context,
-                                              Shape::legacy(shape.width - prefix.len(),
-                                                            shape.indent));
-                    let expr_str = try_opt!(expr_str);
-                    let result = format!("{}{{ {} }}", prefix, expr_str);
-                    if result.len() <= shape.width && !result.contains('\n') {
-                        return Some(result);
-                    }
+                if let result @ Some(_) = try_one_line_block(context, shape, &prefix, self) {
+                    return result;
                 }
-
                 prefix
             }
             ast::BlockCheckMode::Default => {
                 visitor.last_pos = self.span.lo;
-
                 String::new()
             }
         };

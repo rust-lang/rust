@@ -12,7 +12,7 @@ use Shape;
 use codemap::SpanUtils;
 use config::{IndentStyle, MultilineStyle};
 use rewrite::{Rewrite, RewriteContext};
-use utils::{wrap_str, format_mutability};
+use utils::{wrap_str, format_mutability, mk_sp};
 use lists::{DefinitiveListTactic, SeparatorTactic, format_item_list, itemize_list, ListItem,
             struct_lit_shape, struct_lit_tactic, shape_for_tactic, struct_lit_formatting,
             write_list};
@@ -261,14 +261,14 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
         } else {
             pats[pos + 1].span().lo
         };
-        let dot_span = codemap::mk_sp(prev, next);
+        let dot_span = mk_sp(prev, next);
         let snippet = context.snippet(dot_span);
         let lo = dot_span.lo + BytePos(snippet.find_uncommented("..").unwrap() as u32);
         let span = Span {
             lo: lo,
             // 2 == "..".len()
             hi: lo + BytePos(2),
-            expn_id: codemap::NO_EXPANSION,
+            ctxt: codemap::NO_EXPANSION,
         };
         let dotdot = TuplePatField::Dotdot(span);
         pat_vec.insert(pos, dotdot);
