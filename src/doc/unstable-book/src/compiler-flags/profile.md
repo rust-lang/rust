@@ -6,13 +6,13 @@ The tracking issue for this feature is: None
 
 This feature allows the generation of code coverage reports.
 
-Set the compiler flags `-Ccodegen-units=1 -Clink-dead-code -Cpasses=insert-gcov-profiling -Zno-landing-pads` to enable gcov profiling.
+Set the `-Zprofile` compiler flag in order to enable gcov profiling.
 
 For example:
 ```Bash
 cargo new testgcov --bin
 cd testgcov
-export RUSTFLAGS="-Ccodegen-units=1 -Clink-dead-code -Cpasses=insert-gcov-profiling -Zno-landing-pads"
+export RUSTFLAGS="-Zprofile"
 cargo build
 cargo run
 ```
