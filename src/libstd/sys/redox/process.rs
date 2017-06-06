@@ -400,6 +400,18 @@ impl Stdio {
     }
 }
 
+impl From<AnonPipe> for Stdio {
+    fn from(pipe: AnonPipe) -> Stdio {
+        Stdio::Fd(pipe.into_fd())
+    }
+}
+
+impl From<File> for Stdio {
+    fn from(file: File) -> Stdio {
+        Stdio::Fd(file.into_fd())
+    }
+}
+
 impl ChildStdio {
     fn fd(&self) -> Option<usize> {
         match *self {

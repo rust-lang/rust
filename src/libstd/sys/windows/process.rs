@@ -306,6 +306,18 @@ impl Stdio {
     }
 }
 
+impl From<AnonPipe> for Stdio {
+    fn from(pipe: AnonPipe) -> Stdio {
+        Stdio::Handle(pipe.into_handle())
+    }
+}
+
+impl From<File> for Stdio {
+    fn from(file: File) -> Stdio {
+        Stdio::Handle(file.into_handle())
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Processes
 ////////////////////////////////////////////////////////////////////////////////
