@@ -262,6 +262,7 @@ pub struct Cache {
     stripped_mod: bool,
     deref_trait_did: Option<DefId>,
     deref_mut_trait_did: Option<DefId>,
+    owned_box_did: Option<DefId>,
 
     // In rare case where a structure is defined in one module but implemented
     // in another, if the implementing module is parsed before defining module,
@@ -280,6 +281,7 @@ pub struct RenderInfo {
     pub external_typarams: FxHashMap<DefId, String>,
     pub deref_trait_did: Option<DefId>,
     pub deref_mut_trait_did: Option<DefId>,
+    pub owned_box_did: Option<DefId>,
 }
 
 /// Helper struct to render all source code to HTML pages
@@ -507,6 +509,7 @@ pub fn run(mut krate: clean::Crate,
         external_typarams,
         deref_trait_did,
         deref_mut_trait_did,
+        owned_box_did,
     } = renderinfo;
 
     let external_paths = external_paths.into_iter()
@@ -530,6 +533,7 @@ pub fn run(mut krate: clean::Crate,
         traits: mem::replace(&mut krate.external_traits, FxHashMap()),
         deref_trait_did: deref_trait_did,
         deref_mut_trait_did: deref_mut_trait_did,
+        owned_box_did: owned_box_did,
         typarams: external_typarams,
     };
 
@@ -2933,17 +2937,18 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 };
 
                 if let Some(self_ty) = self_type_opt {
-                    let by_mut_ref = match self_ty {
-                        SelfTy::SelfBorrowed(_lifetime, mutability) => {
-                            mutability == Mutability::Mutable
-                        },
+                    let (by_mut_ref, by_box) = match self_ty {
+                        SelfTy::SelfBorrowed(_, mutability) |
                         SelfTy::SelfExplicit(clean::BorrowedRef { mutability, .. }) => {
-                            mutability == Mutability::Mutable
+                            (mutability == Mutability::Mutable, false)
                         },
-                        _ => false,
+                        SelfTy::SelfExplicit(clean::ResolvedPath { did, .. }) => {
+                            (false, Some(did) == cache().owned_box_did)
+                        },
+                        _ => (false, false),
                     };
 
-                    deref_mut_ || !by_mut_ref
+                    (deref_mut_ || !by_mut_ref) && !by_box
                 } else {
                     false
                 }

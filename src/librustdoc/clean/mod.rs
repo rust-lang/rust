@@ -124,6 +124,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             let mut r = cx.renderinfo.borrow_mut();
             r.deref_trait_did = cx.tcx.lang_items.deref_trait();
             r.deref_mut_trait_did = cx.tcx.lang_items.deref_mut_trait();
+            r.owned_box_did = cx.tcx.lang_items.owned_box();
         }
 
         let mut externs = Vec::new();
