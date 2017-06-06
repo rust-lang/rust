@@ -1,5 +1,3 @@
 max: Breaking
-  Removal: ::b
-  Removal: ::b::Abc
-  Removal: ::c
-  Removal: ::c::Abc
+  Removal: b
+  Removal: c

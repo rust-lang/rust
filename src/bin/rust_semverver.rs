@@ -9,8 +9,7 @@ extern crate rustc_metadata;
 extern crate semverver;
 extern crate syntax;
 
-use semverver::semcheck::changes::ChangeSet;
-use semverver::semcheck::export_map::{Checking, ExportMap};
+use semverver::semcheck::export_map::traverse;
 
 use rustc::hir::def_id::*;
 use rustc::session::{config, Session};
@@ -92,13 +91,7 @@ fn callback(state: &driver::CompileState) {
         dids
     };
 
-    let new_map = ExportMap::new(new_did, cstore.borrow());
-    let old_map = ExportMap::new(old_did, cstore.borrow());
-
-    let mut changes = ChangeSet::default();
-
-    old_map.compare(&new_map, Checking::FromOld, &mut changes);
-    new_map.compare(&old_map, Checking::FromNew, &mut changes);
+    let changes = traverse(cstore.borrow(), new_did, old_did);
 
     changes.output(tcx.sess);
 }

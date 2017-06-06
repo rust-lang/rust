@@ -1,21 +1,61 @@
 use semcheck::changes::{Addition, Removal, Change, ChangeSet};
-use semcheck::path::{ExportPath, PathMap};
 
-use rustc::hir::def::{Def, Export};
+use rustc::hir::def::Export;
+use rustc::hir::def::Def::Mod;
 use rustc::hir::def_id::DefId;
 use rustc::middle::cstore::CrateStore;
 use rustc::ty::Visibility::Public;
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
-/// A marker to identify the current export map.
-pub enum Checking {
-    /// We're running from the old crate's export map.
-    FromOld,
-    /// We're running from the new crate's export map.
-    FromNew,
+pub fn traverse(cstore: &CrateStore, new: DefId, old: DefId) -> ChangeSet {
+    let mut changes = ChangeSet::default();
+    let mut visited = HashSet::new();
+    let mut children = HashMap::new();
+    let mut mod_queue = VecDeque::new();
+
+    mod_queue.push_back((new, old));
+
+    while let Some((new_did, old_did)) = mod_queue.pop_front() {
+        let mut c_new = cstore.item_children(new_did);
+        let mut c_old = cstore.item_children(old_did);
+
+        for child in c_new.drain(..).filter(|c| cstore.visibility(c.def.def_id()) == Public) {
+            let child_name = String::from(&*child.ident.name.as_str());
+            children.entry(child_name).or_insert((None, None)).0 = Some(child);
+        }
+
+        for child in c_old.drain(..).filter(|c| cstore.visibility(c.def.def_id()) == Public) {
+            let child_name = String::from(&*child.ident.name.as_str());
+            children.entry(child_name).or_insert((None, None)).1 = Some(child);
+        }
+
+        for (_, items) in children.drain() {
+            match items {
+                (Some(Export { def: Mod(n), .. }), Some(Export { def: Mod(o), .. })) => {
+                    if !visited.insert((n, o)) {
+                        mod_queue.push_back((n, o));
+                    }
+                    changes.register_change(Mod(n), Mod(o));
+                },
+                (Some(Export { def: n, ..}), Some(Export { def: o, .. })) => {
+                    changes.register_change(n, o);
+                },
+                (Some(new), None) => {
+                    changes.add_change(Change::new(Addition, new));
+                },
+                (None, Some(old)) => {
+                    changes.add_change(Change::new(Removal, old));
+                },
+                (None, None) => unreachable!(),
+            }
+        }
+    }
+
+    changes
 }
 
+/*
 /// The map of all exports from a crate.
 ///
 /// Mapping paths to item exports.
@@ -23,6 +63,8 @@ pub enum Checking {
 pub struct ExportMap {
     /// The map of paths and item exports.
     paths: PathMap,
+    // submods: HashMap<DefId, Vec<Export>>,
+    // items: HashMap<DefId, Export>,
 }
 
 // TODO: test that we fetch all modules from a crate store (by iterating over all DefIds) it
@@ -94,41 +136,16 @@ impl ExportMap {
         }
     }
 }
+*/
 
 #[cfg(test)]
 pub mod tests {
     pub use super::*;
 
-    use semcheck::changes::tests as changes;
-    use semcheck::path::tests as path;
+    /* use semcheck::changes::tests as changes;
 
     use syntax_pos::hygiene::SyntaxContext;
     use syntax_pos::symbol::{Ident, Interner};
-
-    pub type ChangeType = Vec<(changes::Span_, path::ExportPath)>;
-
-    pub fn build_export_map(change_data: ChangeType) -> ExportMap {
-        let mut paths = HashMap::new();
-
-        let mut interner = Interner::new();
-
-        for &(ref span, ref path) in change_data.iter() {
-            let ident = Ident {
-                name: interner.intern("test"),
-                ctxt: SyntaxContext::empty(),
-            };
-
-            let export = Export {
-                ident: ident,
-                def: Def::Err,
-                span: span.clone().inner(),
-            };
-
-            paths.insert(path.clone(), export);
-        }
-
-        ExportMap::construct(paths)
-    }
 
     quickcheck! {
         /// If we compare an export map to itself, it shouldn't detect any changes.
@@ -144,5 +161,5 @@ pub mod tests {
 
             change_set.is_empty()
         }
-    }
+    } */
 }

@@ -1,10 +1,10 @@
-use semcheck::path::ExportPath;
-
-use rustc::hir::def::Export;
+use rustc::hir::def::{Def, Export};
 use rustc::session::Session;
 
 use std::collections::BTreeSet;
 use std::cmp::Ordering;
+
+use syntax::symbol::Ident;
 
 use syntax_pos::Span;
 
@@ -44,6 +44,8 @@ pub enum ChangeType {
     Removal,
     /// The addition of a path for an item (which possibly didn't exist previously).
     Addition,
+    /// An unknown change.
+    Unknown,
 }
 
 pub use self::ChangeType::*;
@@ -54,6 +56,7 @@ impl ChangeType {
         match *self {
             Removal => Breaking,
             Addition => TechnicallyBreaking,
+            Unknown => Breaking, // TODO
         }
     }
 }
@@ -69,17 +72,17 @@ impl ChangeType {
 pub struct Change {
     /// The type of the change in question - see above.
     change_type: ChangeType,
-    /// The export path this change was recorded for.
-    path: ExportPath,
+    // The export path this change was recorded for.
+    // path: ExportPath,
     /// The associated item's export.
     export: Export,
 }
 
 impl Change {
-    pub fn new(change_type: ChangeType, path: ExportPath, export: Export) -> Change {
+    pub fn new(change_type: ChangeType, export: Export) -> Change {
         Change {
             change_type: change_type,
-            path: path,
+            //path: path,
             export: export,
         }
     }
@@ -92,14 +95,18 @@ impl Change {
         &self.change_type
     }
 
-    pub fn path(&self) -> &ExportPath {
-        &self.path
+    pub fn ident(&self) -> &Ident {
+        &self.export.ident
     }
+
+    /*pub fn path(&self) -> &ExportPath {
+        &self.path
+    }*/
 }
 
 impl PartialEq for Change {
     fn eq(&self, other: &Change) -> bool {
-        self.span() == other.span() && self.path() == other.path()
+        self.span() == other.span() //&& self.path() == other.path()
     }
 }
 
@@ -107,19 +114,19 @@ impl Eq for Change {}
 
 impl PartialOrd for Change {
     fn partial_cmp(&self, other: &Change) -> Option<Ordering> {
-        if let Some(ord1) = self.span().partial_cmp(other.span()) {
+        /*if let Some(ord1) = */ self.span().partial_cmp(other.span()) /* {
             if let Some(ord2) = self.path().partial_cmp(other.path()) {
                 return Some(ord1.then(ord2));
             }
         }
 
-        None
+        None*/
     }
 }
 
 impl Ord for Change {
     fn cmp(&self, other: &Change) -> Ordering {
-        self.span().cmp(other.span()).then(self.path().cmp(other.path()))
+        self.span().cmp(other.span()) // .then(self.path().cmp(other.path()))
     }
 }
 
@@ -144,6 +151,10 @@ impl ChangeSet {
         self.changes.insert(change);
     }
 
+    pub fn register_change(&mut self, new: Def, old: Def) {
+        // TODO
+    }
+
     /// Check for emptyness.
     ///
     /// Currently only used in tests.
@@ -159,7 +170,9 @@ impl ChangeSet {
         println!("max: {:?}", self.max);
 
         for change in &self.changes {
-            println!("  {:?}: {}", change.type_(), change.path().inner());
+            // println!("  {:?}: {}", change.type_(), change.path().inner());
+            println!("  {:?}: {}", change.type_(), change.ident().name.as_str());
+            // session.span_warn(*change.span(), "change");
             // span_note!(session, change.span(), "S0001");
             // session.span_warn(*change.span(), "change");
         }
@@ -222,7 +235,7 @@ pub mod tests {
             span: s,
         };
 
-        Change::new(t, ExportPath::new(vec!["this is elegant enough".to_owned()]), export)
+        Change::new(t, /*ExportPath::new(vec!["this is elegant enough".to_owned()]),*/ export)
     }
 
     quickcheck! {
@@ -271,19 +284,6 @@ pub mod tests {
                 let ch1 = build_change(c1.0, s1);
                 let ch2 = build_change(c2.0, s2);
 
-                ch1 != ch2
-            } else {
-                true
-            }
-        }
-
-        /// Difference in paths implies difference in `Change`s.
-        fn change_path_neq(c1: Change_, c2: ChangeType) -> bool {
-            let span = c1.1.inner();
-            let ch1 = build_change(c1.0, span.clone());
-            let ch2 = build_change(c2, span);
-
-            if ch1.path() != ch2.path() {
                 ch1 != ch2
             } else {
                 true
