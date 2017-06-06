@@ -155,57 +155,48 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
         let (left, right) = (normalize(left), normalize(right));
 
+        let left_kind  = self.ty_to_primval_kind(left_ty)?;
+        let right_kind = self.ty_to_primval_kind(right_ty)?;
+
         // Offset is handled early, before we dispatch to unrelated_ptr_ops.  We have to also catch the case where both arguments *are* convertible to integers.
         if bin_op == Offset {
-            let pointee_ty = left_ty.builtin_deref(true, ty::LvaluePreference::NoPreference).expect("Offset called on non-ptr type").ty;
-            let ptr = self.pointer_offset(left.to_ptr()?, pointee_ty, right.to_bytes()? as i64)?;
-            return Ok((PrimVal::Ptr(ptr), false));
+            if left_kind == Ptr && right_kind == PrimValKind::from_uint_size(self.memory.pointer_size()) {
+                let pointee_ty = left_ty.builtin_deref(true, ty::LvaluePreference::NoPreference).expect("Offset called on non-ptr type").ty;
+                let ptr = self.pointer_offset(left.to_ptr()?, pointee_ty, right.to_bytes()? as i64)?;
+                return Ok((PrimVal::Ptr(ptr), false));
+            } else {
+                bug!("Offset used with wrong type");
+            }
         }
 
         let (l, r) = match (left, right) {
             (PrimVal::Bytes(left_bytes), PrimVal::Bytes(right_bytes)) => (left_bytes, right_bytes),
 
+            // One argument is a pointer value -- this is handled separately
             (PrimVal::Ptr(left_ptr), PrimVal::Ptr(right_ptr)) => {
-                if left_ptr.alloc_id == right_ptr.alloc_id {
-                    // If the pointers are into the same allocation, fall through to the more general
-                    // match later, which will do comparisons on the pointer offsets.
-                    (left_ptr.offset as u128, right_ptr.offset as u128)
-                } else {
-                    return Ok((unrelated_ptr_ops(bin_op, left_ptr, right_ptr)?, false));
-                }
+                return self.ptr_ops(bin_op, left_ptr, left_kind, right_ptr, right_kind);
             }
-
-            (PrimVal::Ptr(ptr), PrimVal::Bytes(bytes)) |
+            (PrimVal::Ptr(ptr), PrimVal::Bytes(bytes)) => {
+                return self.ptr_ops(bin_op, ptr, left_kind, Pointer::from_int(bytes as u64), right_kind);
+            }
             (PrimVal::Bytes(bytes), PrimVal::Ptr(ptr)) => {
-                return Ok((unrelated_ptr_ops(bin_op, ptr, Pointer::from_int(bytes as u64))?, false));
+                return self.ptr_ops(bin_op, Pointer::from_int(bytes as u64), left_kind, ptr, right_kind);
             }
 
             (PrimVal::Undef, _) | (_, PrimVal::Undef) => return Err(EvalError::ReadUndefBytes),
         };
 
-        let left_kind  = self.ty_to_primval_kind(left_ty)?;
-        let right_kind = self.ty_to_primval_kind(right_ty)?;
-
         // These ops can have an RHS with a different numeric type.
-        if bin_op == Shl || bin_op == Shr {
+        if right_kind.is_int() && (bin_op == Shl || bin_op == Shr) {
             return match bin_op {
                 Shl => int_shift!(left_kind, overflowing_shl, l, r as u32),
                 Shr => int_shift!(left_kind, overflowing_shr, l, r as u32),
                 _ => bug!("it has already been checked that this is a shift op"),
             };
         }
-        if bin_op == Offset {
-            // We permit offset-by-0 in any case.  Drop glue actually does this, and it's probably (TM) fine for LLVM.
-            if left_kind == PrimValKind::Ptr && right_kind.is_int() && r == 0 {
-                return Ok((PrimVal::Bytes(l), false));
-            } else {
-                let msg = format!("unimplemented Offset: {:?}, {:?}", left, right);
-                return Err(EvalError::Unimplemented(msg));
-            }
-        }
 
         if left_kind != right_kind {
-            let msg = format!("unimplemented binary op: {:?}, {:?}, {:?}", left, right, bin_op);
+            let msg = format!("unimplemented binary op {:?}: {:?} ({:?}), {:?} ({:?})", bin_op, left, left_kind, right, right_kind);
             return Err(EvalError::Unimplemented(msg));
         }
 
@@ -258,25 +249,58 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             (Rem, k) if k.is_int() => return int_arithmetic!(k, overflowing_rem, l, r),
 
             _ => {
-                let msg = format!("unimplemented binary op: {:?}, {:?}, {:?}", left, right, bin_op);
+                let msg = format!("unimplemented binary op {:?}: {:?} ({:?}), {:?} ({:?})", bin_op, left, left_kind, right, right_kind);
                 return Err(EvalError::Unimplemented(msg));
             }
         };
 
         Ok((val, false))
     }
-}
 
-fn unrelated_ptr_ops<'tcx>(bin_op: mir::BinOp, left: Pointer, right: Pointer) -> EvalResult<'tcx, PrimVal> {
-    use rustc::mir::BinOp::*;
-    match bin_op {
-        Eq => Ok(PrimVal::from_bool(false)),
-        Ne => Ok(PrimVal::from_bool(true)),
-        Lt | Le | Gt | Ge => Err(EvalError::InvalidPointerMath),
-        _ if left.to_int().is_ok() ^ right.to_int().is_ok() => {
-            Err(EvalError::ReadPointerAsBytes)
-        },
-        _ => bug!(),
+    fn ptr_ops(
+        &self,
+        bin_op: mir::BinOp,
+        left: Pointer,
+        left_kind: PrimValKind,
+        right: Pointer,
+        right_kind: PrimValKind,
+    ) -> EvalResult<'tcx, (PrimVal, bool)> {
+        use rustc::mir::BinOp::*;
+        use value::PrimValKind::*;
+
+        if left_kind != right_kind {
+            let msg = format!("unimplemented binary op {:?}: {:?} ({:?}), {:?} ({:?})", bin_op, left, left_kind, right, right_kind);
+            return Err(EvalError::Unimplemented(msg));
+        }
+
+        let val = match (bin_op, left_kind) {
+            (Eq, k) if k.is_ptr() => PrimVal::from_bool(left == right),
+            (Ne, k) if k.is_ptr() => PrimVal::from_bool(left != right),
+            (Lt, k) | (Le, k) | (Gt, k) | (Ge, k) if k.is_ptr() => {
+                if left.alloc_id == right.alloc_id {
+                    PrimVal::from_bool(match bin_op {
+                        Lt => left.offset < right.offset,
+                        Le => left.offset <= right.offset,
+                        Gt => left.offset > right.offset,
+                        Ge => left.offset >= right.offset,
+                        _ => bug!("We already established it has to be a comparison operator."),
+                    })
+                } else {
+                    return Err(EvalError::InvalidPointerMath);
+                }
+            }
+            (Sub, k) if k == PrimValKind::from_uint_size(self.memory.pointer_size())  => {
+                if left.alloc_id == right.alloc_id {
+                    return int_arithmetic!(k, overflowing_sub, left.offset, right.offset);
+                } else {
+                    return Err(EvalError::InvalidPointerMath);
+                }
+            }
+            _ => {
+                return Err(EvalError::ReadPointerAsBytes);
+            }
+        };
+        Ok((val, false))
     }
 }
 

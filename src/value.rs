@@ -243,4 +243,12 @@ impl PrimValKind {
             _ => bug!("can't make int with size {}", size),
         }
     }
+
+    pub fn is_ptr(self) -> bool {
+        use self::PrimValKind::*;
+        match self {
+            Ptr | FnPtr => true,
+            _ => false,
+        }
+    }
 }
