@@ -353,6 +353,16 @@ impl CString {
     /// includes the trailing nul byte.
     ///
     /// [`into_bytes`]: #method.into_bytes
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let c_string = CString::new("foo").unwrap();
+    /// let bytes = c_string.into_bytes_with_nul();
+    /// assert_eq!(bytes, vec![b'f', b'o', b'o', b'\0']);
+    /// ```
     #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_bytes_with_nul(self) -> Vec<u8> {
         self.into_inner().into_vec()
