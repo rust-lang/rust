@@ -828,9 +828,127 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     })
 }
 
-pub fn profile_queries_thread(_r:Receiver<ProfileQueriesMsg>) {
-    // XXX
-    panic!("TODO")
+mod trace {
+    use super::*;
+    use syntax_pos::Span;
+    use self::ty::maps::QueryMsg;
+    
+    #[derive(Debug,Clone)]
+    pub struct Query {
+        pub span: Span,
+        pub msg: QueryMsg,        
+    }
+    pub enum Effect {
+        QueryBegin(Query,CacheCase),
+    }
+    pub enum CacheCase { 
+        Hit, Miss 
+    }
+    /// Recursive trace structure
+    pub struct Rec {
+        pub effect: Effect,
+        pub extent: Box<Vec<Rec>>
+    }
+    /// State for parsing recursive trace structure
+    #[derive(Clone)]
+    pub enum ParseState {
+        NoQuery,
+        HaveQuery(Query),
+        RunningProvider(Query),
+    }
+    pub struct StackFrame {
+        pub parse_st: ParseState,
+        pub traces:   Vec<Rec>,
+    }
+}    
+
+pub fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
+    use self::trace::*;
+    //use std::sync::mpsc::*; // for Receiver
+
+    let mut queries  : Vec<ProfileQueriesMsg> = vec![];
+    let mut frame    : StackFrame = StackFrame{ parse_st:ParseState::NoQuery, traces:vec![] };
+    let mut stack    : Vec<StackFrame> = vec![];
+    loop {
+        let msg = r.recv().unwrap();
+        // Meta-level versus _actual_ queries messages
+        match msg {
+            ProfileQueriesMsg::Halt => return,
+            ProfileQueriesMsg::Dump(path) => {
+                panic!("XXX:TODO: Dump: {:?}", path)
+            }
+            // Actual query message:
+            msg => {
+                queries.push(msg.clone());
+                match (frame.parse_st.clone(), msg) {
+                    (_,ProfileQueriesMsg::Halt) => unreachable!(),
+                    (_,ProfileQueriesMsg::Dump(_)) => unreachable!(),
+
+                    // QueryBegin
+                    (ParseState::HaveQuery(q1),
+                     ProfileQueriesMsg::QueryBegin(span2,querymsg2)) => {
+                        panic!("parse error: first query is unfinished: {:?} and now {:?}",
+                               q1, Query{span:span2, msg:querymsg2})
+                    },
+                    (ParseState::NoQuery,
+                     ProfileQueriesMsg::QueryBegin(span,querymsg)) => {
+                        frame.parse_st = ParseState::HaveQuery(Query{span:span, msg:querymsg})
+                    }
+                    // CacheHit
+                    (ParseState::NoQuery,
+                     ProfileQueriesMsg::CacheHit) => {
+                        panic!("parse error: CacheHit before QueryBegin")
+                    }
+                    (ParseState::HaveQuery(q),
+                     ProfileQueriesMsg::CacheHit) => {
+                        let trace : Rec = Rec{ 
+                            effect: Effect::QueryBegin(q, CacheCase::Hit),
+                            extent: Box::new(vec![])
+                        };
+                        frame.traces.push( trace );
+                    }
+                    // ProviderBegin
+                    (ParseState::NoQuery,
+                     ProfileQueriesMsg::ProviderBegin) => {
+                        panic!("parse error: expected a query before beginning a provider")
+                    },
+                    (ParseState::HaveQuery(q),
+                     ProfileQueriesMsg::ProviderBegin) => { 
+                        frame.parse_st = ParseState::RunningProvider(q);
+                        let old_frame = frame;
+                        stack.push(old_frame);
+                        frame = StackFrame{parse_st:ParseState::NoQuery, traces:vec![]};
+                    }
+                    // ProviderEnd
+                    (ParseState::HaveQuery(q),
+                     ProfileQueriesMsg::ProviderEnd) => {
+                        panic!("parse error: expected something to following BeginQuery for {:?}", q)
+                    },
+                    (ParseState::NoQuery,
+                     ProfileQueriesMsg::ProviderEnd) => {
+                        panic!("parse error")
+                    },
+                    (ParseState::RunningProvider(q),
+                     ProfileQueriesMsg::ProviderEnd) => {
+                        match stack.pop() {
+                            None => panic!("parse error: expected a stack frame"),
+                            Some(old_frame) => {
+                                let top_frame = frame;
+                                frame = old_frame;
+                                let trace : Rec = Rec {
+                                    effect: Effect::QueryBegin(q, CacheCase::Miss),
+                                    extent: Box::new(top_frame.traces) };
+                                frame.traces.push( trace )
+                            }
+                        }
+                    }
+                    (ParseState::RunningProvider(q), _) => {
+                        panic!("parse error: {:?}", q)
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// Run the resolution, typechecking, region checking and other
