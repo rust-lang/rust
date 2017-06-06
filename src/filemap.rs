@@ -128,9 +128,12 @@ pub fn write_file<T>(text: &StringBuffer,
             }
         }
         WriteMode::Overwrite => {
-            // Write text directly over original file.
-            let file = File::create(filename)?;
-            write_system_newlines(file, text, config)?;
+            // Write text directly over original file if there is a diff.
+            let (source, formatted) = source_and_formatted_text(text, filename, config)?;
+            if source != formatted {
+                let file = File::create(filename)?;
+                write_system_newlines(file, text, config)?;
+            }
         }
         WriteMode::Plain => {
             write_system_newlines(out, text, config)?;
