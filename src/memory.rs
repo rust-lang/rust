@@ -620,7 +620,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(&[]);
         }
-        if self.has_non_int_relocations(ptr, size)? {
+        if self.relocations(ptr, size)?.count() != 0 {
             return Err(EvalError::ReadPointerAsBytes);
         }
         self.check_defined(ptr, size)?;
@@ -718,7 +718,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let offset = ptr.offset as usize;
         match alloc.bytes[offset..].iter().position(|&c| c == 0) {
             Some(size) => {
-                if self.has_non_int_relocations(ptr, (size + 1) as u64)? {
+                if self.relocations(ptr, (size + 1) as u64)?.count() != 0 {
                     return Err(EvalError::ReadPointerAsBytes);
                 }
                 self.check_defined(ptr, (size + 1) as u64)?;
@@ -761,7 +761,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn write_ptr(&mut self, dest: Pointer, ptr: Pointer) -> EvalResult<'tcx> {
         self.write_usize(dest, ptr.offset as u64)?;
-        self.get_mut(dest.alloc_id)?.relocations.insert(dest.offset, ptr.alloc_id);
+        if ptr.alloc_id != NEVER_ALLOC_ID {
+            self.get_mut(dest.alloc_id)?.relocations.insert(dest.offset, ptr.alloc_id);
+        }
         Ok(())
     }
 
@@ -900,12 +902,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let start = ptr.offset.saturating_sub(self.pointer_size() - 1);
         let end = ptr.offset + size;
         Ok(self.get(ptr.alloc_id)?.relocations.range(start..end))
-    }
-
-    fn has_non_int_relocations(&self, ptr: Pointer, size: u64)
-        -> EvalResult<'tcx, bool>
-    {
-        Ok(self.relocations(ptr, size)?.any(|(_, &alloc_id)| alloc_id != NEVER_ALLOC_ID))
     }
 
     fn clear_relocations(&mut self, ptr: Pointer, size: u64) -> EvalResult<'tcx> {
