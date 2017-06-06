@@ -372,6 +372,16 @@ impl CString {
     ///
     /// The returned slice does **not** contain the trailing nul separator and
     /// it is guaranteed to not have any interior nul bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let c_string = CString::new("foo").unwrap();
+    /// let bytes = c_string.as_bytes();
+    /// assert_eq!(bytes, &[b'f', b'o', b'o']);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes(&self) -> &[u8] {
         &self.inner[..self.inner.len() - 1]
