@@ -33,46 +33,49 @@ fn examples() {
             let err = unsafe {Stdio::from_raw_fd(fd)};
             let out = unsafe {Stdio::from_raw_fd(fd)}; 
 
-            success &= Command::new("rustc")
+            let compile_success = Command::new("rustc")
                 .args(&["--crate-type=lib", "-o", "liboldandnew.rlib"])
                 .arg(file)
-                .env("RUST_LOG", "debug")
                 .env("RUST_BACKTRACE", "full")
                 .stdin(Stdio::null())
                 .status()
                 .unwrap()
                 .success();
 
-            let mut child = Command::new(exe_path.clone())
-                .args(&["--crate-type=lib",
-                      "--extern",
-                      "oldandnew=liboldandnew.rlib",
-                      "-"])
-                .env("RUST_SEMVERVER_TEST", "1")
-                .env("RUST_LOG", "debug")
-                .env("RUST_BACKTRACE", "full")
-                .stdin(Stdio::piped())
-                .stdout(out)
-                .stderr(err)
-                .spawn()
-                .unwrap();
+            success &= compile_success;
 
-            if let Some(ref mut stdin) = child.stdin {
-                stdin.write_fmt(format_args!("extern crate oldandnew;")).unwrap();
-            } else {
-                panic!("could not pipe to rustc (wtf?)");
+            if compile_success {
+                let mut child = Command::new(exe_path.clone())
+                    .args(&["--crate-type=lib",
+                          "--extern",
+                          "oldandnew=liboldandnew.rlib",
+                          "-"])
+                    .env("RUST_SEMVERVER_TEST", "1")
+                    .env("RUST_LOG", "debug")
+                    .env("RUST_BACKTRACE", "full")
+                    .stdin(Stdio::piped())
+                    .stdout(out)
+                    .stderr(err)
+                    .spawn()
+                    .unwrap();
+
+                if let Some(ref mut stdin) = child.stdin {
+                    stdin.write_fmt(format_args!("extern crate oldandnew;")).unwrap();
+                } else {
+                    panic!("could not pipe to rustc (wtf?)");
+                }
+
+                success &= child
+                    .wait()
+                    .unwrap()
+                    .success();
+
+                success &= Command::new("git")
+                    .args(&["diff", "--exit-code", out_file.to_str().unwrap()])
+                    .status()
+                    .unwrap()
+                    .success();
             }
-
-            success &= child
-                .wait()
-                .unwrap()
-                .success();
-
-            success &= Command::new("git")
-                .args(&["diff", "--exit-code", out_file.to_str().unwrap()])
-                .status()
-                .unwrap()
-                .success();
         }
     }
 
