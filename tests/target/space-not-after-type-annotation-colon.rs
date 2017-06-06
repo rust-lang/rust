@@ -10,5 +10,5 @@ struct S {
     fieldVar :i32,
 }
 fn f() {
-    S { fieldVar :42 }
+    S { fieldVar: 42 }
 }

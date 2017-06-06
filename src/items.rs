@@ -14,10 +14,10 @@ use {Indent, Shape};
 use codemap::SpanUtils;
 use utils::{format_mutability, format_visibility, contains_skip, end_typaram, wrap_str,
             last_line_width, format_unsafety, trim_newlines, stmt_expr, semicolon_for_expr,
-            trimmed_last_line_width};
+            trimmed_last_line_width, colon_spaces};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, list_helper,
             DefinitiveListTactic, ListTactic, definitive_tactic, format_item_list};
-use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, type_annotation_separator};
+use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
 use comment::{FindUncommented, contains_comment, rewrite_comment, recover_comment_removed};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
@@ -26,6 +26,12 @@ use config::{Config, IndentStyle, Density, ReturnIndent, BraceStyle, Style, Type
 use syntax::{ast, abi, codemap, ptr, symbol};
 use syntax::codemap::{Span, BytePos, mk_sp};
 use syntax::ast::ImplItem;
+
+fn type_annotation_separator(config: &Config) -> &str {
+    colon_spaces(config.space_before_type_annotation(),
+                 config.space_after_type_annotation_colon())
+}
+
 
 // Statements of the form
 // let pat: ty = init;

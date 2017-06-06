@@ -2050,18 +2050,18 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     // FIXME if context.config.struct_lit_style() == Visual, but we run out
     // of space, we should fall back to BlockIndent.
 }
-
-pub fn type_annotation_separator(config: &Config) -> &str {
-    colon_spaces(config.space_before_type_annotation(),
-                 config.space_after_type_annotation_colon())
+pub fn struct_lit_field_separator(config: &Config) -> &str {
+    colon_spaces(config.space_before_struct_lit_field_colon(),
+                 config.space_after_struct_lit_field_colon())
 }
+
 
 fn rewrite_field(context: &RewriteContext, field: &ast::Field, shape: Shape) -> Option<String> {
     let name = &field.ident.node.to_string();
     if field.is_shorthand {
         Some(name.to_string())
     } else {
-        let separator = type_annotation_separator(context.config);
+        let separator = struct_lit_field_separator(context.config);
         let overhead = name.len() + separator.len();
         let mut expr_shape = try_opt!(shape.sub_width(overhead));
         expr_shape.offset += overhead;
