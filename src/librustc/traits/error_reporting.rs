@@ -657,13 +657,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         };
 
                         if let Some(tables) = infer_tables {
-                            if let Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) =
-                                tables.closure_kinds.get(&node_id)
-                            {
-                                err.span_note(
-                                    span,
-                                    &format!("closure is `FnOnce` because it moves the \
-                                              variable `{}` out of its environment", name));
+                            match tables.closure_kinds.get(&node_id) {
+                                Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) => {
+                                    err.span_note(span, &format!(
+                                        "closure is `FnOnce` because it moves the \
+                                         variable `{}` out of its environment", name));
+                                },
+                                Some(&(ty::ClosureKind::FnMut, Some((span, name)))) => {
+                                    err.span_note(span, &format!(
+                                        "closure is `FnMut` because it mutates the \
+                                         variable `{}` here", name));
+                                },
+                                _ => {}
                             }
                         } else {
                             err.span_note(
