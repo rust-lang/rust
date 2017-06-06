@@ -143,8 +143,9 @@ pub fn write_file<T>(text: &StringBuffer,
             if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {
                 let mismatch = make_diff(&ori, &fmt, 3);
                 let has_diff = !mismatch.is_empty();
-                print_diff(mismatch,
-                           |line_num| format!("Diff in {} at line {}:", filename, line_num));
+                print_diff(mismatch, |line_num| {
+                    format!("Diff in {} at line {}:", filename, line_num)
+                });
                 return Ok(has_diff);
             }
         }

@@ -166,6 +166,62 @@ lorem_ipsum(|| {
 });
 ```
 
+## `combine_control_expr`
+
+Combine control expressions with function calls.
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+
+#### `true`
+
+```rust
+fn example() {
+    // If
+    foo!(if x {
+        foo();
+    } else {
+        bar();
+    });
+
+    // IfLet
+    foo!(if let Some(..) = x {
+        foo();
+    } else {
+        bar();
+    });
+
+    // While
+    foo!(while x {
+        foo();
+        bar();
+    });
+
+    // WhileLet
+    foo!(while let Some(..) = x {
+        foo();
+        bar();
+    });
+
+    // ForLoop
+    foo!(for x in y {
+        foo();
+        bar();
+    });
+
+    // Loop
+    foo!(loop {
+        foo();
+        bar();
+    });
+}
+```
+
+#### `false`
+
+```rust
+```
+
 ## `comment_width`
 
 Maximum length of comments. No effect unless`wrap_comments = true`.

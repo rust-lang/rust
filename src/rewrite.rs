@@ -14,7 +14,7 @@ use syntax::codemap::{CodeMap, Span};
 use syntax::parse::ParseSess;
 
 use Shape;
-use config::Config;
+use config::{Config, IndentStyle};
 
 pub trait Rewrite {
     /// Rewrite self into shape.
@@ -32,10 +32,17 @@ pub struct RewriteContext<'a> {
     // When `format_if_else_cond_comment` is true, unindent the comment on top
     // of the `else` or `else if`.
     pub is_if_else_block: bool,
+    // When rewriting chain, veto going multi line except the last element
+    pub force_one_line_chain: bool,
 }
 
 impl<'a> RewriteContext<'a> {
     pub fn snippet(&self, span: Span) -> String {
         self.codemap.span_to_snippet(span).unwrap()
+    }
+
+    /// Return true if we should use block indent style for rewriting function call.
+    pub fn use_block_indent(&self) -> bool {
+        self.config.fn_call_style() == IndentStyle::Block || self.use_block
     }
 }

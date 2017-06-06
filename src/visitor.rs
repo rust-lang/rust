@@ -633,6 +633,7 @@ impl<'a> FmtVisitor<'a> {
             inside_macro: false,
             use_block: false,
             is_if_else_block: false,
+            force_one_line_chain: false,
         }
     }
 }

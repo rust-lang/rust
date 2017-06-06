@@ -626,7 +626,7 @@ pub fn format_input<T: Write>(input: Input,
                 return filemap::write_file(file, file_name, out, config);
             }
             Ok(false)
-        }
+        },
     ) {
         Ok((file_map, has_diff)) => {
             if report.has_warnings() {

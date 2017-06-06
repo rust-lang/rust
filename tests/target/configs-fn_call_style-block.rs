@@ -134,15 +134,14 @@ impl Cursor {
 }
 
 fn issue1581() {
-    bootstrap.checks.register(
-        "PERSISTED_LOCATIONS",
-        move || if locations2.0.inner_mut.lock().poisoned {
+    bootstrap.checks.register("PERSISTED_LOCATIONS", move || {
+        if locations2.0.inner_mut.lock().poisoned {
             Check::new(
                 State::Error,
                 "Persisted location storage is poisoned due to a write failure",
             )
         } else {
             Check::new(State::Healthy, "Persisted location storage is healthy")
-        },
-    );
+        }
+    });
 }
