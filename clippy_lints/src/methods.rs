@@ -10,7 +10,7 @@ use syntax::codemap::Span;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, match_path, match_trait_method,
             match_type, method_chain_args, return_ty, same_tys, snippet, span_lint, span_lint_and_then,
             span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, last_path_segment, single_segment_path,
-            match_def_path, is_self, is_self_ty, iter_input_pats};
+            match_def_path, is_self, is_self_ty, iter_input_pats, match_path_old};
 use utils::paths;
 use utils::sugg;
 
@@ -649,7 +649,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 if name == method_name &&
                    sig.decl.inputs.len() == n_args &&
                    out_type.matches(&sig.decl.output) &&
-                   self_kind.matches(first_arg_ty, first_arg, self_ty, false) {
+                   self_kind.matches(first_arg_ty, first_arg, self_ty, false, &sig.generics) {
                     span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
                         "defining a method called `{}` on this type; consider implementing \
                          the `{}` trait or choosing a less ambiguous name", name, trait_name));
@@ -663,7 +663,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             for &(ref conv, self_kinds) in &CONVENTIONS {
                 if_let_chain! {[
                     conv.check(&name.as_str()),
-                    !self_kinds.iter().any(|k| k.matches(first_arg_ty, first_arg, self_ty, is_copy)),
+                    !self_kinds.iter().any(|k| k.matches(first_arg_ty, first_arg, self_ty, is_copy, &sig.generics)),
                 ], {
                     let lint = if item.vis == hir::Visibility::Public {
                         WRONG_PUB_SELF_CONVENTION
@@ -1353,7 +1353,7 @@ enum SelfKind {
 }
 
 impl SelfKind {
-    fn matches(self, ty: &hir::Ty, arg: &hir::Arg, self_ty: &hir::Ty, allow_value_for_ref: bool) -> bool {
+    fn matches(self, ty: &hir::Ty, arg: &hir::Arg, self_ty: &hir::Ty, allow_value_for_ref: bool, generics: &hir::Generics) -> bool {
         // Self types in the HIR are desugared to explicit self types. So it will always be `self:
         // SomeType`,
         // where SomeType can be `Self` or an explicit impl self type (e.g. `Foo` if the impl is on `Foo`)
@@ -1384,7 +1384,12 @@ impl SelfKind {
                 _ => false,
             }
         } else {
-            self == SelfKind::No
+            match self {
+                SelfKind::Value => false,
+                SelfKind::Ref => is_astrait(ty, self_ty, generics, &paths::ASREF_TRAIT),
+                SelfKind::RefMut => is_astrait(ty, self_ty, generics, &paths::ASMUT_TRAIT),
+                SelfKind::No => true
+            }
         }
     }
 
@@ -1395,6 +1400,45 @@ impl SelfKind {
             SelfKind::RefMut => "self by mutable reference",
             SelfKind::No => "no self",
         }
+    }
+}
+
+fn is_astrait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Generics, name: &[&str]) -> bool {
+    single_segment_ty(ty).map_or(false, |seg| {
+        generics.ty_params.iter().any(|param| {
+            param.name == seg.name && param.bounds.iter().any(|bound| {
+                if let hir::TyParamBound::TraitTyParamBound(ref ptr, ..) = *bound {
+                    let path = &ptr.trait_ref.path;
+                    match_path_old(path, name) && path.segments.last().map_or(false, |s| {
+                        if let hir::PathParameters::AngleBracketedParameters(ref data) = s.parameters {
+                            data.types.len() == 1 && (is_self_ty(&data.types[0]) || is_ty(&*data.types[0], self_ty))
+                        } else {
+                            false
+                        }
+                    })
+                } else {
+                    false
+                }
+            })
+        })
+    })
+}
+
+fn is_ty(ty: &hir::Ty, self_ty: &hir::Ty) -> bool {
+    match (&ty.node, &self_ty.node) {
+        (&hir::TyPath(hir::QPath::Resolved(_, ref ty_path)), &hir::TyPath(hir::QPath::Resolved(_, ref self_ty_path))) => {
+            ty_path.segments.iter().rev().map(|seg| seg.name).zip(
+                self_ty_path.segments.iter().rev().map(|seg| seg.name)).all(|(l, r)| l == r)
+        }
+        _ => false
+    }
+}
+
+fn single_segment_ty(ty: &hir::Ty) -> Option<&hir::PathSegment> {
+    if let hir::TyPath(ref path) = ty.node {
+        single_segment_path(path)
+    } else {
+        None
     }
 }
 

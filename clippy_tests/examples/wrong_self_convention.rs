@@ -29,6 +29,8 @@ impl Foo {
     #[allow(wrong_self_convention)]
     pub fn from_cake(self) {}
 
+    fn as_x<F: AsRef<Self>>(_: F) { }
+    fn as_y<F: AsRef<Foo>>(_: F) { }
 }
 
 struct Bar;
