@@ -9,7 +9,7 @@ extern crate rustc_metadata;
 extern crate semverver;
 extern crate syntax;
 
-use semverver::semcheck::export_map::traverse;
+use semverver::semcheck::traverse::traverse;
 
 use rustc::hir::def_id::*;
 use rustc::session::{config, Session};
@@ -57,7 +57,7 @@ fn callback(state: &driver::CompileState) {
 
         (new_did, old_did)
     } else {
-        // we are testing, so just fetch the *modules* `old` and `new`
+        // we are testing, so just fetch the *modules* `old` and `new` from a crate `oldandnew`
         let cnum = cstore
             .crates()
             .iter()
@@ -103,7 +103,7 @@ struct SemVerVerCompilerCalls {
 
 impl SemVerVerCompilerCalls {
     pub fn new() -> SemVerVerCompilerCalls {
-        SemVerVerCompilerCalls { default: RustcDefaultCalls } // TODO: replace with constant
+        SemVerVerCompilerCalls { default: RustcDefaultCalls }
     }
 }
 
@@ -148,11 +148,13 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
                         -> driver::CompileController<'a> {
         let mut controller = self.default.build_controller(sess, matches);
 
-        let old_callback = std::mem::replace(&mut controller.after_analysis.callback, box |_| {});
+        let old_callback = std::mem::replace(&mut controller.after_analysis.callback,
+                                             box |_| {});
         controller.after_analysis.callback = box move |state| {
                                                      callback(state);
                                                      old_callback(state);
                                                  };
+        controller.after_analysis.stop = Compilation::Stop;
 
         controller
     }

@@ -36,15 +36,13 @@ impl Default for ChangeCategory {
 }
 
 /// The types of changes we identify.
-///
-/// TODO: This will be further extended in the future.
 #[derive(Clone, Debug)]
 pub enum ChangeType {
     /// The removal of a path an item is exported through.
     Removal,
     /// The addition of a path for an item (which possibly didn't exist previously).
     Addition,
-    /// An unknown change.
+    /// An unknown change is any change we don't yet explicitly handle.
     Unknown,
 }
 
@@ -54,9 +52,8 @@ impl ChangeType {
     /// Map a change type to the category it is part of.
     pub fn to_category(&self) -> ChangeCategory {
         match *self {
-            Removal => Breaking,
+            Removal | Unknown => Breaking,
             Addition => TechnicallyBreaking,
-            Unknown => Breaking, // TODO
         }
     }
 }
@@ -72,8 +69,6 @@ impl ChangeType {
 pub struct Change {
     /// The type of the change in question - see above.
     change_type: ChangeType,
-    // The export path this change was recorded for.
-    // path: ExportPath,
     /// The associated item's export.
     export: Export,
 }
@@ -82,7 +77,6 @@ impl Change {
     pub fn new(change_type: ChangeType, export: Export) -> Change {
         Change {
             change_type: change_type,
-            //path: path,
             export: export,
         }
     }
@@ -98,15 +92,11 @@ impl Change {
     pub fn ident(&self) -> &Ident {
         &self.export.ident
     }
-
-    /*pub fn path(&self) -> &ExportPath {
-        &self.path
-    }*/
 }
 
 impl PartialEq for Change {
     fn eq(&self, other: &Change) -> bool {
-        self.span() == other.span() //&& self.path() == other.path()
+        self.span() == other.span()
     }
 }
 
@@ -114,19 +104,13 @@ impl Eq for Change {}
 
 impl PartialOrd for Change {
     fn partial_cmp(&self, other: &Change) -> Option<Ordering> {
-        /*if let Some(ord1) = */ self.span().partial_cmp(other.span()) /* {
-            if let Some(ord2) = self.path().partial_cmp(other.path()) {
-                return Some(ord1.then(ord2));
-            }
-        }
-
-        None*/
+        self.span().partial_cmp(other.span())
     }
 }
 
 impl Ord for Change {
     fn cmp(&self, other: &Change) -> Ordering {
-        self.span().cmp(other.span()) // .then(self.path().cmp(other.path()))
+        self.span().cmp(other.span())
     }
 }
 
@@ -153,14 +137,6 @@ impl ChangeSet {
 
     pub fn register_change(&mut self, new: Def, old: Def) {
         // TODO
-    }
-
-    /// Check for emptyness.
-    ///
-    /// Currently only used in tests.
-    #[cfg(test)]
-    pub fn is_empty(&self) -> bool {
-        self.changes.is_empty()
     }
 
     /// Format the contents of a change set for user output.
