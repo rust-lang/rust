@@ -268,15 +268,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::mir::BinOp::*;
         use value::PrimValKind::*;
 
-        if left_kind != right_kind {
+        if left_kind != right_kind || !(left_kind.is_ptr() || left_kind == PrimValKind::from_uint_size(self.memory.pointer_size())) {
             let msg = format!("unimplemented binary op {:?}: {:?} ({:?}), {:?} ({:?})", bin_op, left, left_kind, right, right_kind);
             return Err(EvalError::Unimplemented(msg));
         }
 
-        let val = match (bin_op, left_kind) {
-            (Eq, k) if k.is_ptr() => PrimVal::from_bool(left == right),
-            (Ne, k) if k.is_ptr() => PrimVal::from_bool(left != right),
-            (Lt, k) | (Le, k) | (Gt, k) | (Ge, k) if k.is_ptr() => {
+        let val = match bin_op {
+            Eq => PrimVal::from_bool(left == right),
+            Ne => PrimVal::from_bool(left != right),
+            Lt | Le | Gt | Ge => {
                 if left.alloc_id == right.alloc_id {
                     PrimVal::from_bool(match bin_op {
                         Lt => left.offset < right.offset,
@@ -289,9 +289,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     return Err(EvalError::InvalidPointerMath);
                 }
             }
-            (Sub, k) if k == PrimValKind::from_uint_size(self.memory.pointer_size())  => {
+            Sub => {
                 if left.alloc_id == right.alloc_id {
-                    return int_arithmetic!(k, overflowing_sub, left.offset, right.offset);
+                    return int_arithmetic!(left_kind, overflowing_sub, left.offset, right.offset);
                 } else {
                     return Err(EvalError::InvalidPointerMath);
                 }
