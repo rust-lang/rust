@@ -385,8 +385,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "transmute" => {
                 let src_ty = substs.type_at(0);
                 let dest_ty = substs.type_at(1);
-                let (_, src_align) = self.size_and_align_of_dst(src_ty, arg_vals[0])?;
-                let (size, dest_align) = self.size_and_align_of_dst(dest_ty, arg_vals[0])?;
+                let src_align = self.type_align(src_ty)?;
+                let dest_align = self.type_align(dest_ty)?;
+                let size = self.type_size(dest_ty)?.expect("transmute() type must be sized");
                 if dest_align < src_align {
                     let ptr = self.force_allocation(dest)?.to_ptr();
                     self.memory.mark_packed(ptr, size);
