@@ -36,15 +36,12 @@ environment:
 # Install Rust and Cargo
 # (Based on from https://github.com/rust-lang/libc/blob/master/appveyor.yml)
 install:
-  - ps: Start-FileDownload "https://static.rust-lang.org/dist/channel-rust-stable"
-  - ps: $env:RUST_VERSION = Get-Content channel-rust-stable | select -first 1 | %{$_.split('-')[1]}
-  - if NOT "%CHANNEL%" == "stable" set RUST_VERSION=%CHANNEL%
-  - ps: Start-FileDownload "https://static.rust-lang.org/dist/rust-${env:RUST_VERSION}-${env:TARGET}.exe"
-  - rust-%RUST_VERSION%-%TARGET%.exe /VERYSILENT /NORESTART /DIR="C:\Program Files (x86)\Rust"
-  - SET PATH=%PATH%;C:\Program Files (x86)\Rust\bin
+  - appveyor-retry appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
   - if "%TARGET%" == "i686-pc-windows-gnu" set PATH=%PATH%;C:\msys64\mingw32\bin
   - if "%TARGET%" == "x86_64-pc-windows-gnu" set PATH=%PATH%;C:\msys64\mingw64\bin
-  - rustc -V
+  - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+  - rustup-init.exe --default-host %TARGET% --default-toolchain %CHANNEL% -y
+  - rustc -Vv
   - cargo -V
 
 # ???
