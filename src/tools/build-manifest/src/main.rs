@@ -246,7 +246,7 @@ impl Builder {
         self.package("rust-std", &mut manifest.pkg, TARGETS);
         self.package("rust-docs", &mut manifest.pkg, TARGETS);
         self.package("rust-src", &mut manifest.pkg, &["*"]);
-        self.package("rls", &mut manifest.pkg, HOSTS);
+        // self.package("rls", &mut manifest.pkg, HOSTS);
         self.package("rust-analysis", &mut manifest.pkg, TARGETS);
 
         let mut pkg = Package {
@@ -282,10 +282,10 @@ impl Builder {
                 });
             }
 
-            extensions.push(Component {
-                pkg: "rls".to_string(),
-                target: host.to_string(),
-            });
+            // extensions.push(Component {
+            //     pkg: "rls".to_string(),
+            //     target: host.to_string(),
+            // });
             extensions.push(Component {
                 pkg: "rust-analysis".to_string(),
                 target: host.to_string(),
