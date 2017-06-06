@@ -1,3 +1,3 @@
 
-#[path="mod2a.rs"]
+#[path = "mod2a.rs"]
 mod c;

@@ -41,4 +41,14 @@ impl Bar {
     /// Blah blah bing.
     fn f4(self) -> Cat {
     }
+
+    // We want spaces around `=`
+    #[cfg(feature="nightly")]
+    fn f5(self) -> Monkey {}
+}
+
+// #984
+struct Foo {
+    # [ derive ( Clone , PartialEq , Debug , Deserialize , Serialize ) ]
+    foo: usize,
 }

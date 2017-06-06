@@ -20,3 +20,18 @@ fn do_something() -> Foo {
 fn main() {
     do_something();
 }
+
+// #1462
+struct Foo {
+    foo: usize,
+    #[cfg(feature = "include-bar")]
+    bar: usize,
+}
+
+fn new_foo() -> Foo {
+    Foo {
+        foo: 0,
+        #[cfg(feature = "include-bar")]
+        bar: 0,
+    }
+}
