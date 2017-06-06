@@ -1179,6 +1179,33 @@ fn lorem<T: Eq>(t: T) {
 
 See also: [`space_before_bound`](#space_before_bound).
 
+## `space_after_struct_lit_field_colon`
+
+Leave a space after the colon in a struct literal field
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+
+#### `false`:
+
+```rust
+let lorem = Lorem {
+    ipsum:dolor,
+    sit:amet,
+};
+```
+
+#### `true`:
+
+```rust
+let lorem = Lorem {
+    ipsum: dolor,
+    sit: amet,
+};
+```
+
+See also: [`space_before_struct_lit_field_colon`](#space_before_struct_lit_field_colon).
+
 ## `space_after_type_annotation_colon`
 
 Leave a space after the colon in a type annotation
@@ -1228,6 +1255,33 @@ fn lorem<T : Eq>(t: T) {
 ```
 
 See also: [`space_after_bound_colon`](#space_after_bound_colon).
+
+## `space_before_struct_lit_field_colon`
+
+Leave a space before the colon in a struct literal field
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+
+#### `false`:
+
+```rust
+let lorem = Lorem {
+    ipsum: dolor,
+    sit: amet,
+};
+```
+
+#### `true`:
+
+```rust
+let lorem = Lorem {
+    ipsum : dolor,
+    sit : amet,
+};
+```
+
+See also: [`space_after_struct_lit_field_colon`](#space_after_struct_lit_field_colon).
 
 ## `space_before_type_annotation`
 

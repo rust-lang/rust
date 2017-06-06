@@ -564,6 +564,10 @@ create_config! {
         "Leave a space before the colon in a type annotation";
     space_after_type_annotation_colon: bool, true,
         "Leave a space after the colon in a type annotation";
+    space_before_struct_lit_field_colon: bool, false,
+        "Leave a space before the colon in a struct literal field";
+    space_after_struct_lit_field_colon: bool, true,
+        "Leave a space after the colon in a struct literal field";
     space_before_bound: bool, false, "Leave a space before the colon in a trait or lifetime bound";
     space_after_bound_colon: bool, true,
         "Leave a space after the colon in a trait or lifetime bound";
