@@ -90,8 +90,6 @@ impl ExportMap {
                 Checking::FromOld => Removal,
             };
 
-            println!("{:?}", path.clone());
-
             changes.add_change(Change::new(change_type, path.clone(), *export));
         }
     }

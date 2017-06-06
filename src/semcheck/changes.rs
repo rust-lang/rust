@@ -155,7 +155,7 @@ impl ChangeSet {
     /// Format the contents of a change set for user output.
     ///
     /// TODO: replace this with something more sophisticated.
-    pub fn output(&self, session: &Session) {
+    pub fn output(&self, _: &Session) {
         println!("max: {:?}", self.max);
 
         for change in &self.changes {
