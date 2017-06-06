@@ -155,11 +155,6 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_stmt(&mut self, s: &'gcx hir::Stmt) {
-        self.visit_node_id(s.span, s.node.id());
-        intravisit::walk_stmt(self, s);
-    }
-
     fn visit_expr(&mut self, e: &'gcx hir::Expr) {
         self.fix_scalar_builtin_expr(e);
 
