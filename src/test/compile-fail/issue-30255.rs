@@ -17,19 +17,19 @@ struct S<'a> {
 
 fn f(a: &S, b: i32) -> &i32 {
 //~^ ERROR missing lifetime specifier [E0106]
-//~^^ HELP does not say which one of `a`'s 2 elided lifetimes it is borrowed from
+//~^^ HELP does not say which one of `a`'s 2 lifetimes it is borrowed from
     panic!();
 }
 
 fn g(a: &S, b: bool, c: &i32) -> &i32 {
 //~^ ERROR missing lifetime specifier [E0106]
-//~^^ HELP does not say whether it is borrowed from one of `a`'s 2 elided lifetimes or `c`
+//~^^ HELP does not say whether it is borrowed from one of `a`'s 2 lifetimes or `c`
     panic!();
 }
 
 fn h(a: &bool, b: bool, c: &S, d: &i32) -> &i32 {
 //~^ ERROR missing lifetime specifier [E0106]
-//~^^ HELP does not say whether it is borrowed from `a`, one of `c`'s 2 elided lifetimes, or `d`
+//~^^ HELP does not say whether it is borrowed from `a`, one of `c`'s 2 lifetimes, or `d`
     panic!();
 }
 

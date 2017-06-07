@@ -205,7 +205,7 @@ pub trait Unsize<T: ?Sized> {
 /// but not `Copy`.
 ///
 /// [`Clone`] is a supertrait of `Copy`, so everything which is `Copy` must also implement
-/// [`Clone`]. If a type is `Copy` then its [`Clone`] implementation need only return `*self`
+/// [`Clone`]. If a type is `Copy` then its [`Clone`] implementation only needs to return `*self`
 /// (see the example above).
 ///
 /// ## When can my type be `Copy`?
