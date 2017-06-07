@@ -35,6 +35,8 @@ macro_rules! panic {
 /// This will invoke the [`panic!`] macro if the provided expression cannot be
 /// evaluated to `true` at runtime.
 ///
+/// # Uses
+///
 /// Assertions are always checked in both debug and release builds, and cannot
 /// be disabled. See [`debug_assert!`] for assertions that are not enabled in
 /// release builds by default.
@@ -45,7 +47,9 @@ macro_rules! panic {
 /// Other use-cases of `assert!` include [testing] and enforcing run-time
 /// invariants in safe code (whose violation cannot result in unsafety).
 ///
-/// This macro has a second version, where a custom panic message can
+/// # Custom Messages
+///
+/// This macro has a second form, where a custom panic message can
 /// be provided with or without arguments for formatting.
 ///
 /// [`panic!`]: macro.panic.html
@@ -85,14 +89,15 @@ macro_rules! assert {
     );
 }
 
-/// Asserts that two expressions are equal to each other.
+/// Asserts that two expressions are equal to each other (using [`PartialEq`]).
 ///
 /// On panic, this macro will print the values of the expressions with their
 /// debug representations.
 ///
-/// Like [`assert!`], this macro has a second version, where a custom
+/// Like [`assert!`], this macro has a second form, where a custom
 /// panic message can be provided.
 ///
+/// [`PartialEq`]: cmp/trait.PartialEq.html
 /// [`assert!`]: macro.assert.html
 ///
 /// # Examples
@@ -130,14 +135,15 @@ macro_rules! assert_eq {
     });
 }
 
-/// Asserts that two expressions are not equal to each other.
+/// Asserts that two expressions are not equal to each other (using [`PartialEq`]).
 ///
 /// On panic, this macro will print the values of the expressions with their
 /// debug representations.
 ///
-/// Like `assert!()`, this macro has a second version, where a custom
+/// Like [`assert!`], this macro has a second form, where a custom
 /// panic message can be provided.
 ///
+/// [`PartialEq`]: cmp/trait.PartialEq.html
 /// [`assert!`]: macro.assert.html
 ///
 /// # Examples
@@ -182,6 +188,8 @@ macro_rules! assert_ne {
 ///
 /// Like [`assert!`], this macro also has a second version, where a custom panic
 /// message can be provided.
+///
+/// # Uses
 ///
 /// Unlike [`assert!`], `debug_assert!` statements are only enabled in non
 /// optimized builds by default. An optimized build will omit all
