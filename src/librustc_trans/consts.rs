@@ -273,7 +273,7 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         if attr::contains_name(attrs, "used") {
             // This static will be stored in the llvm.used variable which is an array of i8*
-            let cast = llvm::LLVMConstPointerCast(g, Type::i8p(ccx).to_ref());
+            let cast = ptrcast(g, Type::i8p(ccx));
             ccx.used_statics().borrow_mut().push(cast);
         }
 

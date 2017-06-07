@@ -701,7 +701,7 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
 
         let bld = Builder::new_block(ccx, llfn, "top");
 
-        debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(ccx, &bld);
+        debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(ccx);
 
         let (start_fn, args) = if use_start_lang_item {
             let start_def_id = ccx.tcx().require_lang_item(StartFnLangItem);
@@ -781,15 +781,17 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
         let section_name = metadata::metadata_section_name(&tcx.sess.target.target);
         let name = CString::new(section_name).unwrap();
         llvm::LLVMSetSection(llglobal, name.as_ptr());
-
-        // Also generate a .section directive to force no
-        // flags, at least for ELF outputs, so that the
-        // metadata doesn't get loaded into memory.
-        let directive = format!(".section {}", section_name);
-        let directive = CString::new(directive).unwrap();
-        llvm::LLVMSetModuleInlineAsm(metadata_llmod, directive.as_ptr())
+        make_section_non_loadable(metadata_llmod, section_name);
     }
     return (metadata_llcx, metadata_llmod, metadata);
+}
+
+/// Generate a .section directive to force no flags (e.g. for ELF outputs)
+/// so that the contents of that section don't get loaded into memory.
+pub unsafe fn make_section_non_loadable(llmod: ModuleRef, section: &str) {
+    let directive = format!(".section {}", section);
+    let directive = CString::new(directive).unwrap();
+    llvm::LLVMSetModuleInlineAsm(llmod, directive.as_ptr())
 }
 
 /// Find any symbols that are defined in one compilation unit, but not declared
