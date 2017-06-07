@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use cmp;
-use io::{self, SeekFrom, Read, Write, Seek, BufRead, Error, ErrorKind};
+use io::{self, SeekFrom, Read, Write, Seek, BufRead, ErrorKind};
 use fmt;
 use mem;
 
@@ -174,8 +174,7 @@ impl<'a> Read for &'a [u8] {
     #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         if buf.len() > self.len() {
-            return Err(Error::new(ErrorKind::UnexpectedEof,
-                                  "failed to fill whole buffer"));
+            return Err(ErrorKind::UnexpectedEof.into());
         }
         let (a, b) = self.split_at(buf.len());
 
@@ -223,7 +222,7 @@ impl<'a> Write for &'a mut [u8] {
         if self.write(data)? == data.len() {
             Ok(())
         } else {
-            Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"))
+            Err(ErrorKind::WriteZero.into())
         }
     }
 
