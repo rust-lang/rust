@@ -59,7 +59,7 @@ environment:
     SCRIPT: python x.py dist
     DEPLOY: 1
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended --enable-profiler
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended
     SCRIPT: python x.py dist
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
@@ -67,7 +67,7 @@ environment:
     DEPLOY: 1
   - MSYS_BITS: 64
     SCRIPT: python x.py dist
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended --enable-profiler
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
     MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
     MINGW_DIR: mingw64
