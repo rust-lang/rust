@@ -714,6 +714,8 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
 ///
 /// Returns the first argument if the comparison determines them to be equal.
 ///
+/// Internally uses an alias to `Ord::min`.
+///
 /// # Examples
 ///
 /// ```
@@ -725,12 +727,14 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn min<T: Ord>(v1: T, v2: T) -> T {
-    if v1 <= v2 { v1 } else { v2 }
+    v1.min(v2)
 }
 
 /// Compares and returns the maximum of two values.
 ///
 /// Returns the second argument if the comparison determines them to be equal.
+///
+/// Internally uses an alias to `Ord::max`.
 ///
 /// # Examples
 ///
@@ -743,7 +747,7 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn max<T: Ord>(v1: T, v2: T) -> T {
-    if v2 >= v1 { v2 } else { v1 }
+    v1.max(v2)
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
