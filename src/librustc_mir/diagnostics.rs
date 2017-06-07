@@ -309,7 +309,7 @@ use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
 
 const A: AtomicUsize = ATOMIC_USIZE_INIT;
 static B: &'static AtomicUsize = &A;
-// error: cannot borrow a constant which may contain interior mutability,  
+// error: cannot borrow a constant which may contain interior mutability,
 //        create a static instead
 ```
 
@@ -338,7 +338,7 @@ use std::cell::Cell;
 
 const A: Cell<usize> = Cell::new(1);
 const B: &'static Cell<usize> = &A;
-// error: cannot borrow a constant which may contain interior mutability, 
+// error: cannot borrow a constant which may contain interior mutability,
 //        create a static instead
 
 // or:
