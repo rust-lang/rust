@@ -85,9 +85,9 @@ Cargo
   the members in a given workspace.][cargo/3988]
 - [Updated `libssh2-sys` to 0.2.6][cargo/4008]
 - [Target directory path is now in the cargo metadata][cargo/4022]
-- [Cargo no longer checks the crates.io index locally][cargo/4026] This should
-  provide smaller file size for the registry, and improve cloning times,
-  especially on Windows machines.
+- [Cargo no longer checks out a local working directory for the
+  crates.io index][cargo/4026] This should provide smaller file size for the
+  registry, and improve cloning times, especially on Windows machines.
 - [Added an `--exclude` option for excluding certain packages when using the
   `--all` option][cargo/4031]
 - [Cargo will now automatically retry when receiving a 5xx error
