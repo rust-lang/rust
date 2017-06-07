@@ -124,8 +124,8 @@ are incompatible.
 ### Scenario: augmenting with a bugfix
 
 Let's say that while developing `foo` we've got a lock file pointing to `xml-rs`
-`0.8.0`, and we found the `0.8.0` branch of `xml-rs` that hasn't been touched
-since it was published. We then find a bug in the 0.8.0 publication of `xml-rs`
+`0.9.0`, and we found the `0.9.0` branch of `xml-rs` that hasn't been touched
+since it was published. We then find a bug in the 0.9.0 publication of `xml-rs`
 which we'd like to fix.
 
 First we'll check out `foo` locally and implement what we believe is a fix for
@@ -136,9 +136,9 @@ this bug, and next, we change `Cargo.toml` for `foo`:
 xml-rs = { path = "../xml-rs" }
 ```
 
-When compiling `foo`, Cargo will resolve the `xml-rs` dependency to `0.8.0`,
+When compiling `foo`, Cargo will resolve the `xml-rs` dependency to `0.9.0`,
 as it did before, but that version's been replaced with our local copy. The
-local path dependency, which has version 0.8.0, takes precedence over the
+local path dependency, which has version 0.9.0, takes precedence over the
 version found in the registry.
 
 Once we've confirmed a fix bug we then continue to run tests in `xml-rs` itself,
