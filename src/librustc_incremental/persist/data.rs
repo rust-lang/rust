@@ -126,10 +126,6 @@ pub struct SerializedMetadataHashes {
     /// (matching the one found in this structure).
     pub entry_hashes: Vec<EncodedMetadataHash>,
 
-    /// This map contains fingerprints that are not specific to some DefId but
-    /// describe something global to the whole crate.
-    pub global_hashes: Vec<(DepNode<()>, Fingerprint)>,
-
     /// For each DefIndex (as it occurs in SerializedMetadataHash), this
     /// map stores the DefPathIndex (as it occurs in DefIdDirectory), so
     /// that we can find the new DefId for a SerializedMetadataHash in a

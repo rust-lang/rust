@@ -13,9 +13,9 @@
 
 use schema::{self, Tracked};
 
-use rustc::dep_graph::{DepGraph, DepNode, GlobalMetaDataKind};
+use rustc::dep_graph::DepGraph;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefIndex, DefId};
-use rustc::hir::map::definitions::DefPathTable;
+use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
 use rustc_back::PanicStrategy;
@@ -304,12 +304,7 @@ impl CrateMetadata {
     }
 
     pub fn panic_strategy(&self, dep_graph: &DepGraph) -> PanicStrategy {
-        let def_id = DefId {
-            krate: self.cnum,
-            index: CRATE_DEF_INDEX,
-        };
-        let dep_node = DepNode::GlobalMetaData(def_id, GlobalMetaDataKind::Krate);
-
+        let dep_node = self.metadata_dep_node(GlobalMetaDataKind::Krate);
         self.root
             .panic_strategy
             .get(dep_graph, dep_node)

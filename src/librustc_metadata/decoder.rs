@@ -13,8 +13,9 @@
 use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
 use schema::*;
 
-use rustc::dep_graph::{DepGraph, DepNode, GlobalMetaDataKind};
+use rustc::dep_graph::{DepGraph, DepNode};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
+use rustc::hir::map::definitions::GlobalMetaDataKind;
 use rustc::hir;
 
 use rustc::middle::cstore::LinkagePreference;
@@ -993,12 +994,8 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn get_dylib_dependency_formats(&self,
                                         dep_graph: &DepGraph)
                                         -> Vec<(CrateNum, LinkagePreference)> {
-        let def_id = DefId {
-            krate: self.cnum,
-            index: CRATE_DEF_INDEX,
-        };
-        let dep_node = DepNode::GlobalMetaData(def_id,
-                                               GlobalMetaDataKind::DylibDependencyFormats);
+        let dep_node =
+            self.metadata_dep_node(GlobalMetaDataKind::DylibDependencyFormats);
         self.root
             .dylib_dependency_formats
             .get(dep_graph, dep_node)
@@ -1198,11 +1195,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn metadata_dep_node(&self, kind: GlobalMetaDataKind) -> DepNode<DefId> {
-        let def_id = DefId {
-            krate: self.cnum,
-            index: CRATE_DEF_INDEX,
-        };
-
-        DepNode::GlobalMetaData(def_id, kind)
+        let def_index = kind.def_index(&self.def_path_table);
+        DepNode::MetaData(self.local_def_id(def_index))
     }
 }

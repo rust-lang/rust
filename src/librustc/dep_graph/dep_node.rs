@@ -53,9 +53,6 @@ pub enum DepNode<D: Clone + Debug> {
     /// in an extern crate.
     MetaData(D),
 
-    /// Represents some piece of metadata global to its crate.
-    GlobalMetaData(D, GlobalMetaDataKind),
-
     /// Represents some artifact that we save to disk. Note that these
     /// do not have a def-id as part of their identifier.
     WorkProduct(WorkProductId),
@@ -309,7 +306,6 @@ impl<D: Clone + Debug> DepNode<D> {
             ItemBodyNestedBodies(ref d) => op(d).map(ItemBodyNestedBodies),
             ConstIsRvaluePromotableToStatic(ref d) => op(d).map(ConstIsRvaluePromotableToStatic),
             IsMirAvailable(ref d) => op(d).map(IsMirAvailable),
-            GlobalMetaData(ref d, kind) => op(d).map(|d| GlobalMetaData(d, kind)),
         }
     }
 }
@@ -329,17 +325,4 @@ impl WorkProductId {
         cgu_name.hash(&mut hasher);
         WorkProductId(hasher.finish())
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
-pub enum GlobalMetaDataKind {
-    Krate,
-    CrateDeps,
-    DylibDependencyFormats,
-    LangItems,
-    LangItemsMissing,
-    NativeLibraries,
-    CodeMap,
-    Impls,
-    ExportedSymbols,
 }

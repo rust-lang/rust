@@ -15,7 +15,8 @@
 //! expressions) that are mostly just leftovers.
 
 use hir;
-use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, DefIndexAddressSpace};
+use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, DefIndexAddressSpace,
+                  CRATE_DEF_INDEX};
 use ich::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -396,6 +397,11 @@ pub enum DefPathData {
     ImplTrait,
     /// A `typeof` type node.
     Typeof,
+
+    /// GlobalMetaData identifies a piece of crate metadata that is global to
+    /// a whole crate (as opposed to just one item). GlobalMetaData components
+    /// are only supposed to show up right below the crate root.
+    GlobalMetaData(Ident)
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug,
@@ -427,8 +433,8 @@ impl Definitions {
 
     /// Get the number of definitions.
     pub fn def_index_counts_lo_hi(&self) -> (usize, usize) {
-        (self.def_index_to_node[DefIndexAddressSpace::Low.index()].len(),
-         self.def_index_to_node[DefIndexAddressSpace::High.index()].len())
+        (self.table.index_to_key[DefIndexAddressSpace::Low.index()].len(),
+         self.table.index_to_key[DefIndexAddressSpace::High.index()].len())
     }
 
     pub fn def_key(&self, index: DefIndex) -> DefKey {
@@ -469,7 +475,12 @@ impl Definitions {
         if def_id.krate == LOCAL_CRATE {
             let space_index = def_id.index.address_space().index();
             let array_index = def_id.index.as_array_index();
-            Some(self.def_index_to_node[space_index][array_index])
+            let node_id = self.def_index_to_node[space_index][array_index];
+            if node_id != ast::DUMMY_NODE_ID {
+                Some(node_id)
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -498,12 +509,16 @@ impl Definitions {
 
         // Create the definition.
         let address_space = super::ITEM_LIKE_SPACE;
-        let index = self.table.allocate(key, def_path_hash, address_space);
+        let root_index = self.table.allocate(key, def_path_hash, address_space);
+        assert_eq!(root_index, CRATE_DEF_INDEX);
         assert!(self.def_index_to_node[address_space.index()].is_empty());
         self.def_index_to_node[address_space.index()].push(ast::CRATE_NODE_ID);
-        self.node_to_def_index.insert(ast::CRATE_NODE_ID, index);
+        self.node_to_def_index.insert(ast::CRATE_NODE_ID, root_index);
 
-        index
+        // Allocate some other DefIndices that always must exist.
+        GlobalMetaDataKind::allocate_def_indices(self);
+
+        root_index
     }
 
     /// Add a definition with a parent definition.
@@ -550,12 +565,18 @@ impl Definitions {
         assert_eq!(index.as_array_index(),
                    self.def_index_to_node[address_space.index()].len());
         self.def_index_to_node[address_space.index()].push(node_id);
+
+        // Some things for which we allocate DefIndices don't correspond to
+        // anything in the AST, so they don't have a NodeId. For these cases
+        // we don't need a mapping from NodeId to DefIndex.
+        if node_id != ast::DUMMY_NODE_ID {
+            debug!("create_def_with_parent: def_index_to_node[{:?} <-> {:?}", index, node_id);
+            self.node_to_def_index.insert(node_id, index);
+        }
+
         if expansion.is_modern() {
             self.expansions.insert(index, expansion);
         }
-
-        debug!("create_def_with_parent: def_index_to_node[{:?} <-> {:?}", index, node_id);
-        self.node_to_def_index.insert(node_id, index);
 
         index
     }
@@ -594,7 +615,8 @@ impl DefPathData {
             LifetimeDef(ident) |
             EnumVariant(ident) |
             Binding(ident) |
-            Field(ident) => Some(ident),
+            Field(ident) |
+            GlobalMetaData(ident) => Some(ident),
 
             Impl |
             CrateRoot |
@@ -622,7 +644,8 @@ impl DefPathData {
             LifetimeDef(ident) |
             EnumVariant(ident) |
             Binding(ident) |
-            Field(ident) => {
+            Field(ident) |
+            GlobalMetaData(ident) => {
                 return ident.name.as_str();
             }
 
@@ -667,3 +690,74 @@ impl ::std::hash::Hash for DefPathData {
         }
     }
 }
+
+
+// We define the GlobalMetaDataKind enum with this macro because we want to
+// make sure that we exhaustively iterate over all variants when registering
+// the corresponding DefIndices in the DefTable.
+macro_rules! define_global_metadata_kind {
+    (pub enum GlobalMetaDataKind {
+        $($variant:ident),*
+    }) => (
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
+                 RustcEncodable, RustcDecodable)]
+        pub enum GlobalMetaDataKind {
+            $($variant),*
+        }
+
+        impl GlobalMetaDataKind {
+            fn allocate_def_indices(definitions: &mut Definitions) {
+                $({
+                    let instance = GlobalMetaDataKind::$variant;
+                    definitions.create_def_with_parent(
+                        CRATE_DEF_INDEX,
+                        ast::DUMMY_NODE_ID,
+                        DefPathData::GlobalMetaData(instance.ident()),
+                        DefIndexAddressSpace::High,
+                        Mark::root()
+                    );
+
+                    // Make sure calling def_index does not crash.
+                    instance.def_index(&definitions.table);
+                })*
+            }
+
+            pub fn def_index(&self, def_path_table: &DefPathTable) -> DefIndex {
+                let def_key = DefKey {
+                    parent: Some(CRATE_DEF_INDEX),
+                    disambiguated_data: DisambiguatedDefPathData {
+                        data: DefPathData::GlobalMetaData(self.ident()),
+                        disambiguator: 0,
+                    }
+                };
+
+                def_path_table.key_to_index[&def_key]
+            }
+
+            fn ident(&self) -> Ident {
+
+                let string = match *self {
+                    $(
+                        GlobalMetaDataKind::$variant => {
+                            concat!("{{GlobalMetaData::", stringify!($variant), "}}")
+                        }
+                    )*
+                };
+
+                Ident::from_str(string)
+            }
+        }
+    )
+}
+
+define_global_metadata_kind!(pub enum GlobalMetaDataKind {
+    Krate,
+    CrateDeps,
+    DylibDependencyFormats,
+    LangItems,
+    LangItemsMissing,
+    NativeLibraries,
+    CodeMap,
+    Impls,
+    ExportedSymbols
+});
