@@ -209,13 +209,13 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                  "only `u8` can be cast as `char`, not `{}`", self.expr_ty).emit();
             }
             CastError::NonScalar => {
-                fcx.type_error_message(self.span,
-                                       |actual| {
-                                           format!("non-scalar cast: `{}` as `{}`",
-                                                   actual,
-                                                   fcx.ty_to_string(self.cast_ty))
-                                       },
-                                       self.expr_ty);
+                struct_span_err!(fcx.tcx.sess, self.span, E0605,
+                                 "non-scalar cast: `{}` as `{}`",
+                                 self.expr_ty,
+                                 fcx.ty_to_string(self.cast_ty))
+                                .note("an `as` expression can only be used to convert between \
+                                       primitive types. Consider using the `From` trait")
+                                .emit();
             }
             CastError::IllegalCast => {
                 fcx.type_error_message(self.span,

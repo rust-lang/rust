@@ -20,35 +20,45 @@ error[E0609]: no field `f` on type `fn() {main}`
 75 |     let _ = main.f as *const u32;
    |                  ^
 
-error: non-scalar cast: `*const u8` as `&u8`
+error[E0605]: non-scalar cast: `*const u8` as `&u8`
   --> $DIR/cast-rfc0401.rs:39:13
    |
 39 |     let _ = v as &u8;
    |             ^^^^^^^^
+   |
+   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
 
-error: non-scalar cast: `*const u8` as `E`
+error[E0605]: non-scalar cast: `*const u8` as `E`
   --> $DIR/cast-rfc0401.rs:40:13
    |
 40 |     let _ = v as E;
    |             ^^^^^^
+   |
+   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
 
-error: non-scalar cast: `*const u8` as `fn()`
+error[E0605]: non-scalar cast: `*const u8` as `fn()`
   --> $DIR/cast-rfc0401.rs:41:13
    |
 41 |     let _ = v as fn();
    |             ^^^^^^^^^
+   |
+   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
 
-error: non-scalar cast: `*const u8` as `(u32,)`
+error[E0605]: non-scalar cast: `*const u8` as `(u32,)`
   --> $DIR/cast-rfc0401.rs:42:13
    |
 42 |     let _ = v as (u32,);
    |             ^^^^^^^^^^^
+   |
+   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
 
-error: non-scalar cast: `std::option::Option<&*const u8>` as `*const u8`
+error[E0605]: non-scalar cast: `std::option::Option<&*const u8>` as `*const u8`
   --> $DIR/cast-rfc0401.rs:43:13
    |
 43 |     let _ = Some(&v) as *const u8;
    |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
 
 error: casting `*const u8` as `f32` is invalid
   --> $DIR/cast-rfc0401.rs:45:13

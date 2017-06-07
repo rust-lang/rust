@@ -4225,6 +4225,32 @@ assert!(c, 'V');
 ```
 "##,
 
+E0605: r##"
+An invalid cast was attempted.
+
+Erroneous code examples:
+
+```compile_fail,E0605
+let x = 0u8;
+x as Vec<u8>; // error: non-scalar cast: `u8` as `std::vec::Vec<u8>`
+
+// Another example
+
+let v = 0 as *const u8; // So here, `v` is a `*const u8`.
+v as &u8; // error: non-scalar cast: `*const u8` as `&u8`
+```
+
+Only primitive types cast be casted into each others. Examples:
+
+```
+let x = 0u8;
+x as u32; // ok!
+
+let v = 0 as *const u8;
+v as *const i8; // ok!
+```
+"##,
+
 E0609: r##"
 Attempted to access a non-existent field in a struct.
 
