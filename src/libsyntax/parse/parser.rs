@@ -2338,7 +2338,7 @@ impl<'a> Parser<'a> {
                          -> PResult<'a, P<Expr>> {
         self.bump();
         let mut fields = Vec::new();
-        let mut base = None;
+        let mut base : Option<P<Expr>> = None;
 
         attrs.extend(self.parse_inner_attributes()?);
 
@@ -2346,22 +2346,29 @@ impl<'a> Parser<'a> {
             if self.eat(&token::DotDot) {
                 match self.parse_expr() {
                     Ok(e) => {
-                        base = Some(e);
+                        if let Some(ref prev) = base {
+                            let mut err = self.diagnostic().struct_span_err(e.span,
+                                    "struct update syntax specified more than once");
+                            err.span_label(prev.span, "first use of struct update syntax");
+                            err.help("multiple use of struct update syntax");
+                            err.emit();
+                        } else {
+                            base = Some(e);
+                        }
                     }
                     Err(mut e) => {
                         e.emit();
                         self.recover_stmt();
                     }
                 }
-                break;
-            }
-
-            match self.parse_field() {
-                Ok(f) => fields.push(f),
-                Err(mut e) => {
-                    e.emit();
-                    self.recover_stmt();
-                    break;
+            } else {
+                match self.parse_field() {
+                    Ok(f) => fields.push(f),
+                    Err(mut e) => {
+                        e.emit();
+                        self.recover_stmt();
+                        break;
+                    }
                 }
             }
 
