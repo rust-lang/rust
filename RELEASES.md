@@ -5,7 +5,7 @@ Language
 --------
 
 - [Numeric fields can now be used for creating tuple structs.][36868]
-  For example `struct Point(u32, u32); let x = Foo { 0: 7, 1: 0 };`.
+  For example `struct Point(u32, u32); let x = Point { 0: 7, 1: 0 };`.
 - [Macro recursion limit increased to 1024 from 64.][41676]
 - [Added lint for detecting unused macros.][41907]
 - [`loop` can now return a value with `break`.][42016]
