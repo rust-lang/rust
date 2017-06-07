@@ -69,8 +69,8 @@ fn main() {
         Command::new(name)
             .arg("--child")
             .stdin(Stdio::inherit())
-            .stdout(unsafe { FromRawFd::from_raw_fd(libc::STDERR_FILENO) })
-            .stderr(unsafe { FromRawFd::from_raw_fd(libc::STDOUT_FILENO) })
+            .stdout(unsafe { Stdio::from_raw_fd(libc::STDERR_FILENO) })
+            .stderr(unsafe { Stdio::from_raw_fd(libc::STDOUT_FILENO) })
             .spawn()
     };
 

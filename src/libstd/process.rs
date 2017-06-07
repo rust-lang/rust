@@ -59,6 +59,7 @@ use io::prelude::*;
 
 use ffi::OsStr;
 use fmt;
+use fs;
 use io;
 use path::Path;
 use str;
@@ -544,8 +545,8 @@ impl Command {
     ///         .expect("ls command failed to start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn stdin(&mut self, cfg: Stdio) -> &mut Command {
-        self.inner.stdin(cfg.0);
+    pub fn stdin<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Command {
+        self.inner.stdin(cfg.into().0);
         self
     }
 
@@ -564,8 +565,8 @@ impl Command {
     ///         .expect("ls command failed to start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn stdout(&mut self, cfg: Stdio) -> &mut Command {
-        self.inner.stdout(cfg.0);
+    pub fn stdout<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Command {
+        self.inner.stdout(cfg.into().0);
         self
     }
 
@@ -584,8 +585,8 @@ impl Command {
     ///         .expect("ls command failed to start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn stderr(&mut self, cfg: Stdio) -> &mut Command {
-        self.inner.stderr(cfg.0);
+    pub fn stderr<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Command {
+        self.inner.stderr(cfg.into().0);
         self
     }
 
@@ -750,6 +751,34 @@ impl FromInner<imp::Stdio> for Stdio {
 impl fmt::Debug for Stdio {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Stdio { .. }")
+    }
+}
+
+#[stable(feature = "stdio_from", since = "1.20.0")]
+impl From<ChildStdin> for Stdio {
+    fn from(child: ChildStdin) -> Stdio {
+        Stdio::from_inner(child.into_inner().into())
+    }
+}
+
+#[stable(feature = "stdio_from", since = "1.20.0")]
+impl From<ChildStdout> for Stdio {
+    fn from(child: ChildStdout) -> Stdio {
+        Stdio::from_inner(child.into_inner().into())
+    }
+}
+
+#[stable(feature = "stdio_from", since = "1.20.0")]
+impl From<ChildStderr> for Stdio {
+    fn from(child: ChildStderr) -> Stdio {
+        Stdio::from_inner(child.into_inner().into())
+    }
+}
+
+#[stable(feature = "stdio_from", since = "1.20.0")]
+impl From<fs::File> for Stdio {
+    fn from(file: fs::File) -> Stdio {
+        Stdio::from_inner(file.into_inner().into())
     }
 }
 
