@@ -73,7 +73,7 @@ impl Pointer {
             if let Some(res) = self.offset.checked_sub(n) {
                 Ok(Pointer::new(self.alloc_id, res))
             } else {
-                Err(EvalError::OverflowingPointerMath)
+                Err(EvalError::OverflowingMath)
             }
         } else {
             self.offset(i as u64, layout)
@@ -83,12 +83,12 @@ impl Pointer {
     pub fn offset<'tcx>(self, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
         if let Some(res) = self.offset.checked_add(i) {
             if res as u128 >= (1u128 << layout.pointer_size.bits()) {
-                Err(EvalError::OverflowingPointerMath)
+                Err(EvalError::OverflowingMath)
             } else {
                 Ok(Pointer::new(self.alloc_id, res))
             }
         } else {
-            Err(EvalError::OverflowingPointerMath)
+            Err(EvalError::OverflowingMath)
         }
     }
 

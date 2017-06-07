@@ -1,4 +1,4 @@
-// error-pattern: overflowing math on a pointer
+// error-pattern: overflowing math
 fn main() {
     let v = [0i8; 4];
     let x = &v as *const i8;
