@@ -17,11 +17,11 @@ use hir;
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum CtorKind {
-    // Constructor function automatically created by a tuple struct/variant.
+    /// Constructor function automatically created by a tuple struct/variant.
     Fn,
-    // Constructor constant automatically created by a unit struct/variant.
+    /// Constructor constant automatically created by a unit struct/variant.
     Const,
-    // Unusable name in value namespace created by a struct variant.
+    /// Unusable name in value namespace created by a struct variant.
     Fictive,
 }
 
@@ -109,17 +109,21 @@ impl PathResolution {
     }
 }
 
-// Definition mapping
+/// Definition mapping
 pub type DefMap = NodeMap<PathResolution>;
-// This is the replacement export map. It maps a module to all of the exports
-// within.
+
+/// This is the replacement export map. It maps a module to all of the exports
+/// within.
 pub type ExportMap = NodeMap<Vec<Export>>;
 
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Export {
-    pub ident: ast::Ident, // The name of the target.
-    pub def: Def, // The definition of the target.
-    pub span: Span, // The span of the target definition.
+    /// The name of the target.
+    pub ident: ast::Ident,
+    /// The definition of the target.
+    pub def: Def,
+    /// The span of the target definition.
+    pub span: Span,
 }
 
 impl CtorKind {
@@ -160,6 +164,7 @@ impl Def {
         }
     }
 
+    /// A human readable kind name
     pub fn kind_name(&self) -> &'static str {
         match *self {
             Def::Fn(..) => "function",
