@@ -411,9 +411,6 @@ pub struct LateContext<'a, 'tcx: 'a> {
     /// Side-tables for the body we are in.
     pub tables: &'a ty::TypeckTables<'tcx>,
 
-    /// The crate being checked.
-    pub krate: &'a hir::Crate,
-
     /// Items accessible from the crate being checked.
     pub access_levels: &'a AccessLevels,
 
@@ -1330,7 +1327,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut cx = LateContext {
         tcx: tcx,
         tables: &ty::TypeckTables::empty(),
-        krate: krate,
         access_levels: access_levels,
         lint_sess: LintSession::new(&tcx.sess.lint_store),
     };
