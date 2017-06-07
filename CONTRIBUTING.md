@@ -1,11 +1,11 @@
 # Contributing to Rust
 
 Thank you for your interest in contributing to Rust! There are many ways to
-contribute, and we appreciate all of them. This document is a bit long, so here's
-links to the major sections:
+contribute, and we appreciate all of them. This document is a bit long, so
+here are links to its major sections:
 
 * [Feature Requests](#feature-requests)
-* [Bug Reports](#bug-reports)
+* [Issue and Bug Reports](#issue-and-bug-reports)
 * [The Build System](#the-build-system)
 * [Pull Requests](#pull-requests)
 * [Writing Documentation](#writing-documentation)
@@ -29,54 +29,77 @@ issue in the [RFCs repository](https://github.com/rust-lang/rfcs/issues/new)
 rather than this one. New features and other significant language changes
 must go through the RFC process.
 
-## Bug Reports
+## Issue and Bug Reports
 
 While bugs are unfortunate, they're a reality in software. We can't fix what we
 don't know about, so please report liberally. If you're not sure if something
-is a bug or not, feel free to file a bug anyway.
+is a bug or not, feel free to file an issue anyway.
 
-**If you believe reporting your bug publicly represents a security risk to Rust users,
-please follow our [instructions for reporting security vulnerabilities](https://www.rust-lang.org/security.html)**.
+**If you believe reporting your bug publicly represents a security risk to Rust
+users, however, please follow our
+[instructions for reporting security vulnerabilities](https://www.rust-lang.org/security.html)**.
 
 If you have the chance, before reporting a bug, please [search existing
 issues](https://github.com/rust-lang/rust/search?q=&type=Issues&utf8=%E2%9C%93),
-as it's possible that someone else has already reported your error. This doesn't
-always work, and sometimes it's hard to know what to search for, so consider this
-extra credit. We won't mind if you accidentally file a duplicate report.
+as it's possible that someone else has already reported your issue. This doesn't
+always work, and sometimes it's hard to know what to search for, so consider
+this extra credit. We won't mind if you accidentally file a duplicate report.
 
 Opening an issue is as easy as following [this
-link](https://github.com/rust-lang/rust/issues/new) and filling out the fields.
-Here's a template that you can use to file a bug, though it's not necessary to
-use it exactly:
+link](https://github.com/rust-lang/rust/issues/new) and optionally providing
+some specific information, depending on the kind of issue you're reporting.
 
-    <short summary of the bug>
+### Compiler bugs
+If `rustc` incorrectly fails compile your code, and especially if compilation
+results in an ICE (_internal compiler error_), you may have a compiler bug at
+your hands.
 
-    I tried this code:
+#### Code sample
+Please craft a minimal/simple and self-contained code example that (re)produces
+the issue. An example is very self-contained if you can run it on
+https://play.rust-lang.org/.
+<!---
+`main.rs`:
+```rust
 
-    <code sample that causes the bug>
+```
+--->
 
-    I expected to see this happen: <explanation>
+#### Expected behavior
+Please concisely explain what you expected instead of encountering of the issue.
+Check if it's helpful to refer to some relevant externalities.
+* Did/does the issue not occur with past/other versions?
+* Are there very similar (perhaps informal) issue reports outside this issue
+  tracker?
 
-    Instead, this happened: <explanation>
+#### Actual behavior
+Please paste here any human readable output in full. Important information can
+be in the initial details, so please don't cut.
 
-    ## Meta
+#### Meta
+Please include the output of `rustc --version --verbose`, which includes
+important information about what platform you're on, what version of Rust you're
+using, etc.
 
-    `rustc --version --verbose`:
+<!---
+`rustc --version --verbose`:
+```
 
-    Backtrace:
+```
+--->
 
-All three components are important: what you did, what you expected, what
-happened instead. Please include the output of `rustc --version --verbose`,
-which includes important information about what platform you're on, what
-version of Rust you're using, etc.
+#### Backtrace
+When compilation has completed but your executable exhibits unexpected errors in
+the form of panics, a backtrace is helpful. To produce a backtrace, reproduce
+the issue with your compiled minimal example code like so:
 
-Sometimes, a backtrace is helpful, and so including that is nice. To get
-a backtrace, set the `RUST_BACKTRACE` environment variable to a value
-other than `0`. The easiest way
-to do this is to invoke `rustc` like this:
-
-```bash
-$ RUST_BACKTRACE=1 rustc ...
+On Windows, issue in PowerShell:
+```powershell
+$env:RUST_BACKTRACE=1; &".\problematic_executable.exe"
+```
+On other platforms, issue in your `sh` shell:
+```sh
+env RUST_BACKTRACE=1 ./problematic_executable
 ```
 
 ## The Build System
