@@ -1386,8 +1386,8 @@ impl SelfKind {
         } else {
             match self {
                 SelfKind::Value => false,
-                SelfKind::Ref => is_astrait(ty, self_ty, generics, &paths::ASREF_TRAIT),
-                SelfKind::RefMut => is_astrait(ty, self_ty, generics, &paths::ASMUT_TRAIT),
+                SelfKind::Ref => is_as_ref_or_mut_trait(ty, self_ty, generics, &paths::ASREF_TRAIT),
+                SelfKind::RefMut => is_as_ref_or_mut_trait(ty, self_ty, generics, &paths::ASMUT_TRAIT),
                 SelfKind::No => true
             }
         }
@@ -1403,7 +1403,7 @@ impl SelfKind {
     }
 }
 
-fn is_astrait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Generics, name: &[&str]) -> bool {
+fn is_as_ref_or_mut_trait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Generics, name: &[&str]) -> bool {
     single_segment_ty(ty).map_or(false, |seg| {
         generics.ty_params.iter().any(|param| {
             param.name == seg.name && param.bounds.iter().any(|bound| {
@@ -1426,9 +1426,10 @@ fn is_astrait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Generics, name: &
 
 fn is_ty(ty: &hir::Ty, self_ty: &hir::Ty) -> bool {
     match (&ty.node, &self_ty.node) {
-        (&hir::TyPath(hir::QPath::Resolved(_, ref ty_path)), &hir::TyPath(hir::QPath::Resolved(_, ref self_ty_path))) => {
-            ty_path.segments.iter().rev().map(|seg| seg.name).zip(
-                self_ty_path.segments.iter().rev().map(|seg| seg.name)).all(|(l, r)| l == r)
+        (&hir::TyPath(hir::QPath::Resolved(_, ref ty_path)),
+         &hir::TyPath(hir::QPath::Resolved(_, ref self_ty_path))) => {
+            ty_path.segments.iter().map(|seg| seg.name).eq(
+                self_ty_path.segments.iter().map(|seg| seg.name))
         }
         _ => false
     }
