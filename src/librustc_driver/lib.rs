@@ -28,11 +28,6 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(set_stdio)]
 
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
-#![cfg_attr(stage0, feature(loop_break_value))]
-
 extern crate arena;
 extern crate getopts;
 extern crate graphviz;

@@ -37,9 +37,6 @@
 #![feature(specialization)]
 #![feature(manually_drop)]
 
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
 #![cfg_attr(stage0, feature(struct_field_attributes))]
 
 #![cfg_attr(unix, feature(libc))]

@@ -15,9 +15,6 @@ Core encoding and decoding interfaces.
 */
 
 #![crate_name = "serialize"]
-#![cfg_attr(stage0, unstable(feature = "rustc_private",
-            reason = "deprecated in favor of rustc-serialize on crates.io",
-            issue = "27812"))]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -31,7 +28,6 @@ Core encoding and decoding interfaces.
 #![feature(core_intrinsics)]
 #![feature(i128_type)]
 #![feature(specialization)]
-#![cfg_attr(stage0, feature(staged_api))]
 #![cfg_attr(test, feature(test))]
 
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable};

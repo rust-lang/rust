@@ -36,10 +36,6 @@
 #![feature(conservative_impl_trait)]
 #![feature(command_envs)]
 
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
-
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
 

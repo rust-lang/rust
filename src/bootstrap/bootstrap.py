@@ -385,6 +385,7 @@ class RustBuild(object):
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
         env = os.environ.copy()
+        env["RUSTC_BOOTSTRAP"] = '1'
         env["CARGO_TARGET_DIR"] = build_dir
         env["RUSTC"] = self.rustc()
         env["LD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
