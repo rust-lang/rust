@@ -4208,6 +4208,23 @@ println!("{}", v[2]);
 ```
 "##,
 
+E0604: r##"
+A cast to `char` was attempted on another type than `u8`.
+
+Erroneous code example:
+
+```compile_fail,E0604
+0u32 as char; // error: only `u8` can be cast as `char`, not `u32`
+```
+
+As the error message indicates, only `u8` can be casted into `char`. Example:
+
+```
+let c = 86u8 as char; // ok!
+assert!(c, 'V');
+```
+"##,
+
 E0609: r##"
 Attempted to access a non-existent field in a struct.
 

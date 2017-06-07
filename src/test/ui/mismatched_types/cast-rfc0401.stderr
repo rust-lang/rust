@@ -92,7 +92,7 @@ error[E0054]: cannot cast as `bool`
    |
    = help: compare with zero instead
 
-error: only `u8` can be cast as `char`, not `u32`
+error[E0604]: only `u8` can be cast as `char`, not `u32`
   --> $DIR/cast-rfc0401.rs:51:13
    |
 51 |     let _ = 0x61u32 as char;
