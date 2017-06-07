@@ -443,7 +443,7 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
         // two namespaces, so the target may be listed twice. Make sure we only
         // visit each node at most once.
         let mut visited = FxHashSet();
-        for item in cx.tcx.sess.cstore.item_children(did) {
+        for item in cx.tcx.sess.cstore.item_children(did, cx.tcx.sess) {
             let def_id = item.def.def_id();
             if cx.tcx.sess.cstore.visibility(def_id) == ty::Visibility::Public {
                 if !visited.insert(def_id) { continue }

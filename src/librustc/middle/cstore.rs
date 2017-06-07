@@ -232,7 +232,7 @@ pub trait CrateStore {
 
     // item info
     fn visibility(&self, def: DefId) -> ty::Visibility;
-    fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>>;
+    fn visible_parent_map<'a>(&'a self, sess: &Session) -> ::std::cell::Ref<'a, DefIdMap<DefId>>;
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics;
 
     // trait info
@@ -285,7 +285,7 @@ pub trait CrateStore {
     fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash;
     fn def_path_table(&self, cnum: CrateNum) -> Rc<DefPathTable>;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
-    fn item_children(&self, did: DefId) -> Vec<def::Export>;
+    fn item_children(&self, did: DefId, sess: &Session) -> Vec<def::Export>;
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro;
 
     // misc. metadata
@@ -347,7 +347,9 @@ impl CrateStore for DummyCrateStore {
         { bug!("crate_data_as_rc_any") }
     // item info
     fn visibility(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
-    fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>> {
+    fn visible_parent_map<'a>(&'a self, session: &Session)
+        -> ::std::cell::Ref<'a, DefIdMap<DefId>>
+    {
         bug!("visible_parent_map")
     }
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics
@@ -421,7 +423,9 @@ impl CrateStore for DummyCrateStore {
         bug!("def_path_table")
     }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
-    fn item_children(&self, did: DefId) -> Vec<def::Export> { bug!("item_children") }
+    fn item_children(&self, did: DefId, sess: &Session) -> Vec<def::Export> {
+        bug!("item_children")
+    }
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
 
     // misc. metadata
