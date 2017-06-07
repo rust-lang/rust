@@ -225,14 +225,10 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                 .emit();
             }
             CastError::SizedUnsizedCast => {
-                fcx.type_error_message(self.span,
-                                       |actual| {
-                                           format!("cannot cast thin pointer `{}` to fat pointer \
-                                                    `{}`",
-                                                   actual,
-                                                   fcx.ty_to_string(self.cast_ty))
-                                       },
-                                       self.expr_ty)
+                struct_span_err!(fcx.tcx.sess, self.span, E0607,
+                                 "cannot cast thin pointer `{}` to fat pointer `{}`",
+                                 self.expr_ty,
+                                 fcx.ty_to_string(self.cast_ty)).emit();
             }
         }
     }

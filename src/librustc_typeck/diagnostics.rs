@@ -4270,6 +4270,29 @@ let y: u32 = *x as u32; // We dereference it first and then cast it.
 ```
 "##,
 
+E0607: r##"
+A cast between a thin and a fat pointer was attempted.
+
+Erroneous code example:
+
+```compile_fail,E0607
+let v = 0 as *const u8;
+v as *const [u8];
+```
+
+First: what are thin and fat pointers?
+
+Thin pointers are "simple" pointers that simply reference a memory address.
+
+Fat pointers are pointers referencing Dynamically Sized Types (also called DST).
+They don't have a statically known size, therefore they can only exist behind
+some kind of pointers that contain additional information. Slices and trait
+objects are DSTs.
+
+So in order to fix this error, don't try to cast directly between thin and fat
+pointers.
+"##,
+
 E0609: r##"
 Attempted to access a non-existent field in a struct.
 
