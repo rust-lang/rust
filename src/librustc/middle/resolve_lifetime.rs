@@ -1363,7 +1363,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             m.push_str(&(if n == 1 {
                 help_name
             } else {
-                format!("one of {}'s {} elided {}lifetimes", help_name, n,
+                format!("one of {}'s {} {}lifetimes", help_name, n,
                         if have_bound_regions { "free " } else { "" } )
             })[..]);
 
