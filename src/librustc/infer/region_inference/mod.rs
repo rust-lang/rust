@@ -1201,6 +1201,13 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         for verify in self.verifys.borrow().iter() {
             debug!("collect_errors: verify={:?}", verify);
             let sub = normalize(self.tcx, var_data, verify.region);
+
+            // This was an inference variable which didn't get
+            // constrained, therefore it can be assume to hold.
+            if let ty::ReEmpty = *sub {
+                continue;
+            }
+
             if verify.bound.is_met(region_rels, var_data, sub) {
                 continue;
             }
