@@ -1,5 +1,6 @@
 //! This module contains paths to types and functions Clippy needs to know about.
 
+pub const ASMUT_TRAIT: [&'static str; 3] = ["core", "convert", "AsMut"];
 pub const ASREF_TRAIT: [&'static str; 3] = ["core", "convert", "AsRef"];
 pub const BEGIN_PANIC: [&'static str; 3] = ["std", "panicking", "begin_panic"];
 pub const BINARY_HEAP: [&'static str; 3] = ["collections", "binary_heap", "BinaryHeap"];
