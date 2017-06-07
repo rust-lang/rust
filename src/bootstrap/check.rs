@@ -338,7 +338,6 @@ pub fn docs(build: &Build, compiler: &Compiler) {
             continue
         }
 
-        println!("doc tests for: {}", p.display());
         markdown_test(build, compiler, &p);
     }
 }
@@ -375,6 +374,7 @@ fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
         return;
     }
 
+    println!("doc tests for: {}", markdown.display());
     let mut cmd = Command::new(build.rustdoc(compiler));
     build.add_rustc_lib_path(compiler, &mut cmd);
     build.add_rust_test_threads(&mut cmd);
