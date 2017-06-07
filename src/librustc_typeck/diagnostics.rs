@@ -4251,6 +4251,25 @@ v as *const i8; // ok!
 ```
 "##,
 
+E0606: r##"
+An incompatible cast was attempted.
+
+Erroneous code example:
+
+```compile_fail,E0606
+let x = &0u8; // Here, `x` is a `&u8`.
+let y: u32 = x as u32; // error: casting `&u8` as `u32` is invalid
+```
+
+When casting, keep in mind that only primitive types cast be casted into each
+others. Example:
+
+```
+let x = &0u8;
+let y: u32 = *x as u32; // We dereference it first and then cast it.
+```
+"##,
+
 E0609: r##"
 Attempted to access a non-existent field in a struct.
 
