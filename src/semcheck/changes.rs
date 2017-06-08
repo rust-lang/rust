@@ -1,4 +1,4 @@
-use rustc::hir::def::{Def, Export};
+use rustc::hir::def::Export;
 use rustc::session::Session;
 
 use std::collections::BTreeSet;
@@ -29,88 +29,181 @@ pub enum ChangeCategory {
 
 pub use self::ChangeCategory::*;
 
-impl Default for ChangeCategory {
+impl<'a> Default for ChangeCategory {
     fn default() -> ChangeCategory {
         Patch
     }
 }
 
+impl<'a> From<&'a UnaryChange> for ChangeCategory {
+    fn from(change: &UnaryChange) -> ChangeCategory {
+        match *change {
+            UnaryChange::Addition(_) => TechnicallyBreaking,
+            UnaryChange::Removal(_) => Breaking,
+        }
+    }
+}
+
+impl<'a> From<&'a BinaryChangeType> for ChangeCategory {
+    fn from(type_: &BinaryChangeType) -> ChangeCategory {
+        match *type_ {
+            Unknown => Breaking,
+        }
+    }
+}
+
+impl<'a> From<&'a BinaryChange> for ChangeCategory {
+    fn from(change: &BinaryChange) -> ChangeCategory {
+        From::from(change.type_())
+    }
+}
+
+impl<'a> From<&'a Change> for ChangeCategory {
+    fn from(change: &Change) -> ChangeCategory {
+        match *change {
+            Change::Unary(ref u) => From::from(u),
+            Change::Binary(ref b) => From::from(b),
+        }
+    }
+}
+
 /// The types of changes we identify.
 #[derive(Clone, Debug)]
-pub enum ChangeType {
-    /// The removal of a path an item is exported through.
-    Removal,
-    /// The addition of a path for an item (which possibly didn't exist previously).
-    Addition,
+pub enum BinaryChangeType {
     /// An unknown change is any change we don't yet explicitly handle.
     Unknown,
 }
 
-pub use self::ChangeType::*;
-
-impl ChangeType {
-    /// Map a change type to the category it is part of.
-    pub fn to_category(&self) -> ChangeCategory {
-        match *self {
-            Removal | Unknown => Breaking,
-            Addition => TechnicallyBreaking,
-        }
-    }
-}
+pub use self::BinaryChangeType::*;
 
 /// A change record.
 ///
 /// Consists of all information we need to compute semantic versioning properties of
 /// the change, as well as data we use to output it in a nice fashion.
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub enum Change {
+    Unary(UnaryChange),
+    Binary(BinaryChange),
+}
+
+impl Change {
+    pub fn new_addition(export: Export) -> Change {
+        Change::Unary(UnaryChange::Addition(export))
+    }
+
+    pub fn new_removal(export: Export) -> Change {
+        Change::Unary(UnaryChange::Removal(export))
+    }
+
+    pub fn new_binary(type_: BinaryChangeType, old: Export, new: Export) -> Change {
+        Change::Binary(BinaryChange::new(type_, old, new))
+    }
+}
+
+/// A change record of a change that introduced or removed an item.
 ///
 /// It is important to note that the `Eq` and `Ord` instances are constucted to only
 /// regard the span and path of the associated item export. This allows us to sort them
 /// by appearance in the source, but possibly could create conflict later on.
-pub struct Change {
-    /// The type of the change in question - see above.
-    change_type: ChangeType,
-    /// The associated item's export.
-    export: Export,
+pub enum UnaryChange {
+    /// An item has been added.
+    Addition(Export),
+    /// An item has been removed.
+    Removal(Export),
 }
 
-impl Change {
-    pub fn new(change_type: ChangeType, export: Export) -> Change {
-        Change {
-            change_type: change_type,
-            export: export,
+impl UnaryChange {
+    fn export(&self) -> &Export {
+        match *self {
+            UnaryChange::Addition(ref e) | UnaryChange::Removal(ref e) => e,
         }
     }
 
     pub fn span(&self) -> &Span {
-        &self.export.span
-    }
-
-    pub fn type_(&self) -> &ChangeType {
-        &self.change_type
+        &self.export().span
     }
 
     pub fn ident(&self) -> &Ident {
-        &self.export.ident
+        &self.export().ident
+    }
+
+    pub fn type_(&self) -> &'static str {
+        match *self {
+            UnaryChange::Addition(_) => "Addition",
+            UnaryChange::Removal(_) => "Removal",
+        }
     }
 }
 
-impl PartialEq for Change {
-    fn eq(&self, other: &Change) -> bool {
+impl PartialEq for UnaryChange {
+    fn eq(&self, other: &UnaryChange) -> bool {
         self.span() == other.span()
     }
 }
 
-impl Eq for Change {}
+impl Eq for UnaryChange {}
 
-impl PartialOrd for Change {
-    fn partial_cmp(&self, other: &Change) -> Option<Ordering> {
+impl PartialOrd for UnaryChange {
+    fn partial_cmp(&self, other: &UnaryChange) -> Option<Ordering> {
         self.span().partial_cmp(other.span())
     }
 }
 
-impl Ord for Change {
-    fn cmp(&self, other: &Change) -> Ordering {
+impl Ord for UnaryChange {
+    fn cmp(&self, other: &UnaryChange) -> Ordering {
         self.span().cmp(other.span())
+    }
+}
+
+pub struct BinaryChange {
+    type_: BinaryChangeType,
+    old: Export,
+    new: Export,
+}
+
+impl BinaryChange {
+    pub fn new(type_: BinaryChangeType, old: Export, new: Export) -> BinaryChange {
+        BinaryChange {
+            type_: type_,
+            old: old,
+            new: new,
+        }
+    }
+
+    pub fn type_(&self) -> &BinaryChangeType {
+        &self.type_
+    }
+
+    pub fn new_span(&self) -> &Span {
+        &self.new.span
+    }
+
+    pub fn old_span(&self) -> &Span {
+        &self.old.span
+    }
+
+    pub fn ident(&self) -> &Ident {
+        &self.old.ident
+    }
+}
+
+impl PartialEq for BinaryChange {
+    fn eq(&self, other: &BinaryChange) -> bool {
+        self.new_span() == other.new_span()
+    }
+}
+
+impl Eq for BinaryChange {}
+
+impl PartialOrd for BinaryChange {
+    fn partial_cmp(&self, other: &BinaryChange) -> Option<Ordering> {
+        self.new_span().partial_cmp(other.new_span())
+    }
+}
+
+impl Ord for BinaryChange {
+    fn cmp(&self, other: &BinaryChange) -> Ordering {
+        self.new_span().cmp(other.new_span())
     }
 }
 
@@ -126,17 +219,13 @@ pub struct ChangeSet {
 impl ChangeSet {
     /// Add a change to the set and record it's category for later use.
     pub fn add_change(&mut self, change: Change) {
-        let cat = change.type_().to_category();
+        let cat: ChangeCategory = From::from(&change);
 
         if cat > self.max {
             self.max = cat;
         }
 
         self.changes.insert(change);
-    }
-
-    pub fn register_change(&mut self, new: Def, old: Def) {
-        // TODO
     }
 
     /// Format the contents of a change set for user output.
@@ -146,7 +235,14 @@ impl ChangeSet {
         println!("max: {:?}", self.max);
 
         for change in &self.changes {
-            println!("  {:?}: {}", change.type_(), change.ident().name.as_str());
+            match *change {
+                Change::Unary(ref c) => {
+                    println!("  {}: {}", c.type_(), c.ident().name.as_str());
+                },
+                Change::Binary(ref c) => {
+                    println!("  {:?}: {}", c.type_(), c.ident().name.as_str());
+                },
+            }
             // session.span_warn(*change.span(), "change");
             // span_note!(session, change.span(), "S0001");
         }
@@ -187,16 +283,31 @@ pub mod tests {
         }
     }
 
-    impl Arbitrary for ChangeType {
-        fn arbitrary<G: Gen>(g: &mut G) -> ChangeType {
-            g.choose(&[Removal, Addition]).unwrap().clone()
+    #[derive(Clone, Debug)]
+    pub enum UnaryChangeType {
+        Removal,
+        Addition,
+    }
+
+    impl Arbitrary for UnaryChangeType {
+        fn arbitrary<G: Gen>(g: &mut G) -> UnaryChangeType {
+            g.choose(&[UnaryChangeType::Removal, UnaryChangeType::Addition]).unwrap().clone()
         }
     }
 
-    pub type Change_ = (ChangeType, Span_);
+    impl<'a> From<&'a UnaryChangeType> for ChangeCategory {
+        fn from(change: &UnaryChangeType) -> ChangeCategory {
+            match *change {
+                UnaryChangeType::Addition => TechnicallyBreaking,
+                UnaryChangeType::Removal => Breaking,
+            }
+        }
+    }
+
+    pub type UnaryChange_ = (UnaryChangeType, Span_);
 
     /// We build these by hand, because symbols can't be sent between threads.
-    fn build_change(t: ChangeType, s: Span) -> Change {
+    fn build_unary_change(t: UnaryChangeType, s: Span) -> UnaryChange {
         let mut interner = Interner::new();
         let ident = Ident {
             name: interner.intern("test"),
@@ -209,15 +320,18 @@ pub mod tests {
             span: s,
         };
 
-        Change::new(t, export)
+        match t {
+            UnaryChangeType::Addition => UnaryChange::Addition(export),
+            UnaryChangeType::Removal => UnaryChange::Removal(export),
+        }
     }
 
     quickcheck! {
         /// The `Ord` instance of `Change` is transitive.
-        fn ord_change_transitive(c1: Change_, c2: Change_, c3: Change_) -> bool {
-            let ch1 = build_change(c1.0, c1.1.inner());
-            let ch2 = build_change(c2.0, c2.1.inner());
-            let ch3 = build_change(c3.0, c3.1.inner());
+        fn ord_change_transitive(c1: UnaryChange_, c2: UnaryChange_, c3: UnaryChange_) -> bool {
+            let ch1 = build_unary_change(c1.0, c1.1.inner());
+            let ch2 = build_unary_change(c2.0, c2.1.inner());
+            let ch3 = build_unary_change(c3.0, c3.1.inner());
 
             let mut res = true;
 
@@ -237,26 +351,27 @@ pub mod tests {
         }
 
         /// The maximal change category for a change set gets computed correctly.
-        fn max_change(changes: Vec<Change_>) -> bool {
+        fn max_change(changes: Vec<UnaryChange_>) -> bool {
             let mut set = ChangeSet::default();
 
-            let max = changes.iter().map(|c| c.0.to_category()).max().unwrap_or(Patch);
+            let max = changes.iter().map(|c| From::from(&c.0)).max().unwrap_or(Patch);
 
             for &(ref change, ref span) in changes.iter() {
-                set.add_change(build_change(change.clone(), span.clone().inner()));
+                set.add_change(
+                    Change::Unary(build_unary_change(change.clone(), span.clone().inner())));
             }
 
             set.max == max
         }
 
         /// Difference in spans implies difference in `Change`s.
-        fn change_span_neq(c1: Change_, c2: Change_) -> bool {
+        fn change_span_neq(c1: UnaryChange_, c2: UnaryChange_) -> bool {
             let s1 = c1.1.inner();
             let s2 = c2.1.inner();
 
             if s1 != s2 {
-                let ch1 = build_change(c1.0, s1);
-                let ch2 = build_change(c2.0, s2);
+                let ch1 = build_unary_change(c1.0, s1);
+                let ch2 = build_unary_change(c2.0, s2);
 
                 ch1 != ch2
             } else {

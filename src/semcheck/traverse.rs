@@ -1,4 +1,4 @@
-use semcheck::changes::{Addition, Removal, Change, ChangeSet};
+use semcheck::changes::{Change, ChangeSet};
 
 use rustc::hir::def::Export;
 use rustc::hir::def::Def::Mod;
@@ -44,16 +44,15 @@ pub fn traverse(cstore: &CrateStore, new: DefId, old: DefId) -> ChangeSet {
                     if !visited.insert((n, o)) {
                         mod_queue.push_back((n, o));
                     }
-                    changes.register_change(Mod(n), Mod(o));
                 }
                 (Some(Export { def: n, .. }), Some(Export { def: o, .. })) => {
-                    changes.register_change(n, o);
+                    // changes.add_change(Change::construct(n, o));
                 }
                 (Some(new), None) => {
-                    changes.add_change(Change::new(Addition, new));
+                    changes.add_change(Change::new_addition(new));
                 }
                 (None, Some(old)) => {
-                    changes.add_change(Change::new(Removal, old));
+                    changes.add_change(Change::new_removal(old));
                 }
                 (None, None) => unreachable!(),
             }
