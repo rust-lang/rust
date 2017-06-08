@@ -106,6 +106,7 @@
     - [c_void_variant](library-features/c-void-variant.md)
     - [char_escape_debug](library-features/char-escape-debug.md)
     - [coerce_unsized](library-features/coerce-unsized.md)
+    - [core_collections](library-features/core-collections.md)
     - [collection_placement](library-features/collection-placement.md)
     - [collections_range](library-features/collections-range.md)
     - [collections](library-features/collections.md)
