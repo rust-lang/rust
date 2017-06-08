@@ -12,15 +12,6 @@ use core::iter::*;
 use core::{i16, usize, isize};
 use core::ops::RangeInclusive;
 
-// FIXME #27741: This is here to simplify calling Iterator::step_by. Remove
-// once Range::step_by is completely gone (not just deprecated).
-trait IterEx: Sized {
-    fn iter_step_by(self, n: usize) -> StepBy<Self>;
-}
-impl<I:Iterator> IterEx for I {
-    fn iter_step_by(self, n: usize) -> StepBy<Self> { self.step_by(n) }
-}
-
 #[test]
 fn test_lt() {
     let empty: [isize; 0] = [];
@@ -76,7 +67,7 @@ fn test_multi_iter() {
 
 #[test]
 fn test_counter_from_iter() {
-    let it = (0..).iter_step_by(5).take(10);
+    let it = (0..).step_by(5).take(10);
     let xs: Vec<isize> = FromIterator::from_iter(it);
     assert_eq!(xs, [0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
 }
@@ -94,7 +85,7 @@ fn test_iterator_chain() {
     }
     assert_eq!(i, expected.len());
 
-    let ys = (30..).iter_step_by(10).take(4);
+    let ys = (30..).step_by(10).take(4);
     let it = xs.iter().cloned().chain(ys);
     let mut i = 0;
     for x in it {
@@ -156,13 +147,13 @@ fn test_iterator_chain_find() {
 #[test]
 fn test_iterator_step_by() {
     // Identity
-    let mut it = (0..).iter_step_by(1).take(3);
+    let mut it = (0..).step_by(1).take(3);
     assert_eq!(it.next(), Some(0));
     assert_eq!(it.next(), Some(1));
     assert_eq!(it.next(), Some(2));
     assert_eq!(it.next(), None);
 
-    let mut it = (0..).iter_step_by(3).take(4);
+    let mut it = (0..).step_by(3).take(4);
     assert_eq!(it.next(), Some(0));
     assert_eq!(it.next(), Some(3));
     assert_eq!(it.next(), Some(6));
@@ -173,7 +164,7 @@ fn test_iterator_step_by() {
 #[test]
 #[should_panic]
 fn test_iterator_step_by_zero() {
-    let mut it = (0..).iter_step_by(0);
+    let mut it = (0..).step_by(0);
     it.next();
 }
 
@@ -252,7 +243,7 @@ fn test_iterator_step_by_size_hint() {
 
 #[test]
 fn test_filter_map() {
-    let it = (0..).iter_step_by(1).take(10)
+    let it = (0..).step_by(1).take(10)
         .filter_map(|x| if x % 2 == 0 { Some(x*x) } else { None });
     assert_eq!(it.collect::<Vec<usize>>(), [0*0, 2*2, 4*4, 6*6, 8*8]);
 }
@@ -654,7 +645,7 @@ fn test_iterator_scan() {
 fn test_iterator_flat_map() {
     let xs = [0, 3, 6];
     let ys = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-    let it = xs.iter().flat_map(|&x| (x..).iter_step_by(1).take(3));
+    let it = xs.iter().flat_map(|&x| (x..).step_by(1).take(3));
     let mut i = 0;
     for x in it {
         assert_eq!(x, ys[i]);
@@ -680,13 +671,13 @@ fn test_inspect() {
 #[test]
 fn test_cycle() {
     let cycle_len = 3;
-    let it = (0..).iter_step_by(1).take(cycle_len).cycle();
+    let it = (0..).step_by(1).take(cycle_len).cycle();
     assert_eq!(it.size_hint(), (usize::MAX, None));
     for (i, x) in it.take(100).enumerate() {
         assert_eq!(i % cycle_len, x);
     }
 
-    let mut it = (0..).iter_step_by(1).take(0).cycle();
+    let mut it = (0..).step_by(1).take(0).cycle();
     assert_eq!(it.size_hint(), (0, Some(0)));
     assert_eq!(it.next(), None);
 }
@@ -765,7 +756,7 @@ fn test_iterator_min() {
 
 #[test]
 fn test_iterator_size_hint() {
-    let c = (0..).iter_step_by(1);
+    let c = (0..).step_by(1);
     let v: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     let v2 = &[10, 11, 12];
     let vi = v.iter();
@@ -1090,6 +1081,7 @@ fn test_range_step() {
     #![allow(deprecated)]
 
     assert_eq!((0..20).step_by(5).collect::<Vec<isize>>(), [0, 5, 10, 15]);
+    assert_eq!((1..21).rev().step_by(5).collect::<Vec<isize>>(), [20, 15, 10, 5]);
     assert_eq!((200..255).step_by(50).collect::<Vec<u8>>(), [200, 250]);
     assert_eq!((200..-5).step_by(1).collect::<Vec<isize>>(), []);
     assert_eq!((200..200).step_by(1).collect::<Vec<isize>>(), []);
@@ -1097,6 +1089,8 @@ fn test_range_step() {
     assert_eq!((0..20).step_by(1).size_hint(), (20, Some(20)));
     assert_eq!((0..20).step_by(21).size_hint(), (1, Some(1)));
     assert_eq!((0..20).step_by(5).size_hint(), (4, Some(4)));
+    assert_eq!((1..21).rev().step_by(5).size_hint(), (4, Some(4)));
+    assert_eq!((1..21).rev().step_by(6).size_hint(), (4, Some(4)));
     assert_eq!((20..-5).step_by(1).size_hint(), (0, Some(0)));
     assert_eq!((20..20).step_by(1).size_hint(), (0, Some(0)));
     assert_eq!((i16::MIN..i16::MAX).step_by(i16::MAX as usize).size_hint(), (3, Some(3)));
@@ -1137,6 +1131,26 @@ fn test_range_nth() {
     assert_eq!(r.nth(0), Some(!0 - 1));
     assert_eq!(r.nth(0), Some(!0));
     assert_eq!(r.nth(0), None);
+    let mut r = 0i32...!0;
+    assert_eq!(r.nth(!0), None);
+}
+
+#[test]
+fn test_rangefrom_nth() {
+    let mut r = (!0u32 - 2)..;
+    assert_eq!(r.nth(0), Some(!0 - 2));
+    assert_eq!(r.nth(0), Some(!0 - 1));
+    let mut r = 42..;
+    assert_eq!(r.nth(2), Some(44));
+    assert_eq!(r.nth(2), Some(47));
+    assert_eq!(r.nth(2), Some(50));
+}
+
+#[test]
+#[should_panic] // This could be fixed somehow eventually maybe?
+fn test_rangefrom_nth_oflow() {
+    let mut r = (!0u32)..;
+    assert_eq!(r.nth(0), Some(!0));
 }
 
 #[test]
@@ -1153,7 +1167,7 @@ fn test_usize_range_count_oflow() {
 
 #[test]
 #[should_panic]
-fn test_usize_range_no_last() {
+fn test_rangefrom_no_last() {
     assert_eq!((0..).last(), None);
 }
 
@@ -1167,7 +1181,10 @@ fn test_isize_range_count_oflow() {
 fn test_range_last() {
     assert_eq!((0..10).last(), Some(9));
     assert_eq!((0u32..!0).last(), Some(!0 - 1));
-    assert_eq!(RangeInclusive { start: 0, end: 10 }.last(), Some(10));
+    assert_eq!((11..10).last(), None);
+    assert_eq!(RangeInclusive { start: 0u32, end: 10 }.last(), Some(10));
+    assert_eq!(RangeInclusive { start: 0u32, end: !0 }.last(), Some(!0));
+    assert_eq!(RangeInclusive { start: 40, end: 39 }.last(), None);
 }
 
 #[test]
