@@ -32,7 +32,7 @@ use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
 use core::marker::Unsize;
 use core::hash::{Hash, Hasher};
-use core::{isize, usize};
+use core::{i32, u32};
 use core::convert::From;
 use heap::deallocate;
 
@@ -40,7 +40,8 @@ use heap::deallocate;
 ///
 /// Going above this limit will abort your program (although not
 /// necessarily) at _exactly_ `MAX_REFCOUNT + 1` references.
-const MAX_REFCOUNT: usize = (isize::MAX) as usize;
+const MAX_REFCOUNT: u32 = (i32::MAX) as u32;
+const WEAK_LOCK_SENTINEL: u32 = u32::MAX;
 
 /// A thread-safe reference-counting pointer.
 ///
@@ -246,12 +247,12 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
 }
 
 struct ArcInner<T: ?Sized> {
-    strong: atomic::AtomicUsize,
+    strong: atomic::AtomicU32,
 
-    // the value usize::MAX acts as a sentinel for temporarily "locking" the
+    // the value u32::MAX acts as a sentinel for temporarily "locking" the
     // ability to upgrade weak pointers or downgrade strong ones; this is used
     // to avoid races in `make_mut` and `get_mut`.
-    weak: atomic::AtomicUsize,
+    weak: atomic::AtomicU32,
 
     data: T,
 }
@@ -275,8 +276,8 @@ impl<T> Arc<T> {
         // Start the weak pointer count as 1 which is the weak pointer that's
         // held by all the strong pointers (kinda), see std/rc.rs for more info
         let x: Box<_> = box ArcInner {
-            strong: atomic::AtomicUsize::new(1),
-            weak: atomic::AtomicUsize::new(1),
+            strong: atomic::AtomicU32::new(1),
+            weak: atomic::AtomicU32::new(1),
             data: data,
         };
         Arc { ptr: unsafe { Shared::new(Box::into_raw(x)) } }
@@ -408,13 +409,13 @@ impl<T: ?Sized> Arc<T> {
 
         loop {
             // check if the weak counter is currently "locked"; if so, spin.
-            if cur == usize::MAX {
+            if cur == WEAK_LOCK_SENTINEL {
                 cur = this.inner().weak.load(Relaxed);
                 continue;
             }
 
             // NOTE: this code currently ignores the possibility of overflow
-            // into usize::MAX; in general both Rc and Arc need to be adjusted
+            // into u32::MAX; in general both Rc and Arc need to be adjusted
             // to deal with overflow.
 
             // Unlike with Clone(), we need this to be an Acquire read to
@@ -452,7 +453,7 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[stable(feature = "arc_counts", since = "1.15.0")]
     pub fn weak_count(this: &Self) -> usize {
-        this.inner().weak.load(SeqCst) - 1
+        (this.inner().weak.load(SeqCst) - 1) as usize
     }
 
     /// Gets the number of strong (`Arc`) pointers to this value.
@@ -478,7 +479,7 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[stable(feature = "arc_counts", since = "1.15.0")]
     pub fn strong_count(this: &Self) -> usize {
-        this.inner().strong.load(SeqCst)
+        this.inner().strong.load(SeqCst) as usize
     }
 
     #[inline]
@@ -642,7 +643,7 @@ impl<T: Clone> Arc<T> {
             // invalidate the other weak refs.
 
             // Note that it is not possible for the read of `weak` to yield
-            // usize::MAX (i.e., locked), since the weak count can only be
+            // u32::MAX (i.e., locked), since the weak count can only be
             // locked by a thread with a strong reference.
 
             // Materialize our own implicit weak pointer, so that it can clean
@@ -728,7 +729,7 @@ impl<T: ?Sized> Arc<T> {
         // The acquire label here ensures a happens-before relationship with any
         // writes to `strong` prior to decrements of the `weak` count (via drop,
         // which uses Release).
-        if self.inner().weak.compare_exchange(1, usize::MAX, Acquire, Relaxed).is_ok() {
+        if self.inner().weak.compare_exchange(1, WEAK_LOCK_SENTINEL, Acquire, Relaxed).is_ok() {
             // Due to the previous acquire read, this will observe any writes to
             // `strong` that were due to upgrading weak pointers; only strong
             // clones remain, which require that the strong count is > 1 anyway.
@@ -839,8 +840,8 @@ impl<T> Weak<T> {
         unsafe {
             Weak {
                 ptr: Shared::new(Box::into_raw(box ArcInner {
-                    strong: atomic::AtomicUsize::new(0),
-                    weak: atomic::AtomicUsize::new(1),
+                    strong: atomic::AtomicU32::new(0),
+                    weak: atomic::AtomicU32::new(1),
                     data: uninitialized(),
                 })),
             }
@@ -1226,7 +1227,7 @@ mod tests {
     use std::sync::Mutex;
     use std::convert::From;
 
-    struct Canary(*mut atomic::AtomicUsize);
+    struct Canary(*mut atomic::AtomicU32);
 
     impl Drop for Canary {
         fn drop(&mut self) {
@@ -1391,16 +1392,16 @@ mod tests {
 
     #[test]
     fn drop_arc() {
-        let mut canary = atomic::AtomicUsize::new(0);
-        let x = Arc::new(Canary(&mut canary as *mut atomic::AtomicUsize));
+        let mut canary = atomic::AtomicU32::new(0);
+        let x = Arc::new(Canary(&mut canary as *mut atomic::AtomicU32));
         drop(x);
         assert!(canary.load(Acquire) == 1);
     }
 
     #[test]
     fn drop_arc_weak() {
-        let mut canary = atomic::AtomicUsize::new(0);
-        let arc = Arc::new(Canary(&mut canary as *mut atomic::AtomicUsize));
+        let mut canary = atomic::AtomicU32::new(0);
+        let arc = Arc::new(Canary(&mut canary as *mut atomic::AtomicU32));
         let arc_weak = Arc::downgrade(&arc);
         assert!(canary.load(Acquire) == 0);
         drop(arc);

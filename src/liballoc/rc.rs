@@ -261,8 +261,8 @@ use heap::{allocate, deallocate, box_free};
 use raw_vec::RawVec;
 
 struct RcBox<T: ?Sized> {
-    strong: Cell<usize>,
-    weak: Cell<usize>,
+    strong: Cell<u32>,
+    weak: Cell<u32>,
     value: T,
 }
 
@@ -430,8 +430,8 @@ impl Rc<str> {
     pub fn __from_str(value: &str) -> Rc<str> {
         unsafe {
             // Allocate enough space for `RcBox<str>`.
-            let aligned_len = 2 + (value.len() + size_of::<usize>() - 1) / size_of::<usize>();
-            let vec = RawVec::<usize>::with_capacity(aligned_len);
+            let aligned_len = 2 + (value.len() + size_of::<u32>() - 1) / size_of::<u32>();
+            let vec = RawVec::<u32>::with_capacity(aligned_len);
             let ptr = vec.ptr();
             forget(vec);
             // Initialize fields of `RcBox<str>`.
@@ -440,7 +440,7 @@ impl Rc<str> {
             ptr::copy_nonoverlapping(value.as_ptr(), ptr.offset(2) as *mut u8, value.len());
             // Combine the allocation address and the string length into a fat pointer to `RcBox`.
             let rcbox_ptr: *mut RcBox<str> = mem::transmute([ptr as usize, value.len()]);
-            assert!(aligned_len * size_of::<usize>() == size_of_val(&*rcbox_ptr));
+            assert!(aligned_len * size_of::<u32>() == size_of_val(&*rcbox_ptr));
             Rc { ptr: Shared::new(rcbox_ptr) }
         }
     }
@@ -515,7 +515,7 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[stable(feature = "rc_counts", since = "1.15.0")]
     pub fn weak_count(this: &Self) -> usize {
-        this.weak() - 1
+        (this.weak() - 1) as usize
     }
 
     /// Gets the number of strong (`Rc`) pointers to this value.
@@ -533,7 +533,7 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[stable(feature = "rc_counts", since = "1.15.0")]
     pub fn strong_count(this: &Self) -> usize {
-        this.strong()
+        this.strong() as usize
     }
 
     /// Returns true if there are no other `Rc` or [`Weak`][weak] pointers to
@@ -1163,7 +1163,7 @@ trait RcBoxPtr<T: ?Sized> {
     fn inner(&self) -> &RcBox<T>;
 
     #[inline]
-    fn strong(&self) -> usize {
+    fn strong(&self) -> u32 {
         self.inner().strong.get()
     }
 
@@ -1178,7 +1178,7 @@ trait RcBoxPtr<T: ?Sized> {
     }
 
     #[inline]
-    fn weak(&self) -> usize {
+    fn weak(&self) -> u32 {
         self.inner().weak.get()
     }
 
