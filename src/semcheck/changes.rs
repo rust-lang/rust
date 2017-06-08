@@ -142,15 +142,13 @@ impl ChangeSet {
     /// Format the contents of a change set for user output.
     ///
     /// TODO: replace this with something more sophisticated.
-    pub fn output(&self, _: &Session) {
+    pub fn output(&self, session: &Session) {
         println!("max: {:?}", self.max);
 
         for change in &self.changes {
-            // println!("  {:?}: {}", change.type_(), change.path().inner());
             println!("  {:?}: {}", change.type_(), change.ident().name.as_str());
             // session.span_warn(*change.span(), "change");
             // span_note!(session, change.span(), "S0001");
-            // session.span_warn(*change.span(), "change");
         }
     }
 }
@@ -182,10 +180,10 @@ pub mod tests {
             let a: u32 = Arbitrary::arbitrary(g);
             let b: u32 = Arbitrary::arbitrary(g);
             Span_(Span {
-                lo: BytePos(min(a, b)),
-                hi: BytePos(max(a, b)),
-                ctxt: SyntaxContext::empty()
-            })
+                      lo: BytePos(min(a, b)),
+                      hi: BytePos(max(a, b)),
+                      ctxt: SyntaxContext::empty(),
+                  })
         }
     }
 
@@ -211,7 +209,7 @@ pub mod tests {
             span: s,
         };
 
-        Change::new(t, /*ExportPath::new(vec!["this is elegant enough".to_owned()]),*/ export)
+        Change::new(t, export)
     }
 
     quickcheck! {

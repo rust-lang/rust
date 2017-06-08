@@ -46,49 +46,62 @@ fn callback(state: &driver::CompileState) {
                     (n, o)
                 }
             });
-        let new_did = DefId {
-            krate: cnums.0.unwrap(),
-            index: CRATE_DEF_INDEX,
-        };
-        let old_did = DefId {
-            krate: cnums.1.unwrap(),
-            index: CRATE_DEF_INDEX,
-        };
-
-        (new_did, old_did)
+        if let (Some(c0), Some(c1)) = cnums {
+            (DefId {
+                 krate: c0,
+                 index: CRATE_DEF_INDEX,
+             },
+             DefId {
+                 krate: c1,
+                 index: CRATE_DEF_INDEX,
+             })
+        } else {
+            tcx.sess.err("could not find crate `new` and/or `old`");
+            return;
+        }
     } else {
         // we are testing, so just fetch the *modules* `old` and `new` from a crate `oldandnew`
         let cnum = cstore
             .crates()
             .iter()
-            .fold(None, |k, crate_num| {
-                if cstore.crate_name(*crate_num) == "oldandnew" {
-                    Some(*crate_num)
-                } else {
-                    k
-                }
-            });
-        let mod_did = DefId {
-            krate: cnum.unwrap(),
-            index: CRATE_DEF_INDEX,
+            .fold(None,
+                  |k, crate_num| if cstore.crate_name(*crate_num) == "oldandnew" {
+                      Some(*crate_num)
+                  } else {
+                      k
+                  });
+
+        let mod_did = if let Some(c) = cnum {
+            DefId {
+                krate: c,
+                index: CRATE_DEF_INDEX,
+            }
+        } else {
+            tcx.sess.err("could not find crate `oldandnew`");
+            return;
         };
 
         let mut children = cstore.item_children(mod_did);
 
         let dids = children
             .drain(..)
-            .fold((mod_did, mod_did), |(n, o), child| {
+            .fold((None, None), |(n, o), child| {
                 let child_name = String::from(&*child.ident.name.as_str());
                 if child_name == "new" {
-                    (child.def.def_id(), o)
+                    (Some(child.def.def_id()), o)
                 } else if child_name == "old" {
-                    (n, child.def.def_id())
+                    (n, Some(child.def.def_id()))
                 } else {
                     (n, o)
                 }
             });
 
-        dids
+        if let (Some(n), Some(o)) = dids {
+            (n, o)
+        } else {
+            tcx.sess.err("could not find module `new` and/or `old` in crate `oldandnew`");
+            return;
+        }
     };
 
     let changes = traverse(cstore.borrow(), new_did, old_did);
@@ -148,8 +161,7 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
                         -> driver::CompileController<'a> {
         let mut controller = self.default.build_controller(sess, matches);
 
-        let old_callback = std::mem::replace(&mut controller.after_analysis.callback,
-                                             box |_| {});
+        let old_callback = std::mem::replace(&mut controller.after_analysis.callback, box |_| {});
         controller.after_analysis.callback = box move |state| {
                                                      callback(state);
                                                      old_callback(state);
@@ -200,5 +212,6 @@ fn main() {
                 std::process::exit(1);
             }
         }
-    }).expect("rustc thread failed");
+    })
+            .expect("rustc thread failed");
 }

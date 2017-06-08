@@ -24,12 +24,16 @@ pub fn traverse(cstore: &CrateStore, new: DefId, old: DefId) -> ChangeSet {
         let mut c_new = cstore.item_children(new_did);
         let mut c_old = cstore.item_children(old_did);
 
-        for child in c_new.drain(..).filter(|c| cstore.visibility(c.def.def_id()) == Public) {
+        for child in c_new
+                .drain(..)
+                .filter(|c| cstore.visibility(c.def.def_id()) == Public) {
             let child_name = String::from(&*child.ident.name.as_str());
             children.entry(child_name).or_insert((None, None)).0 = Some(child);
         }
 
-        for child in c_old.drain(..).filter(|c| cstore.visibility(c.def.def_id()) == Public) {
+        for child in c_old
+                .drain(..)
+                .filter(|c| cstore.visibility(c.def.def_id()) == Public) {
             let child_name = String::from(&*child.ident.name.as_str());
             children.entry(child_name).or_insert((None, None)).1 = Some(child);
         }
@@ -41,16 +45,16 @@ pub fn traverse(cstore: &CrateStore, new: DefId, old: DefId) -> ChangeSet {
                         mod_queue.push_back((n, o));
                     }
                     changes.register_change(Mod(n), Mod(o));
-                },
-                (Some(Export { def: n, ..}), Some(Export { def: o, .. })) => {
+                }
+                (Some(Export { def: n, .. }), Some(Export { def: o, .. })) => {
                     changes.register_change(n, o);
-                },
+                }
                 (Some(new), None) => {
                     changes.add_change(Change::new(Addition, new));
-                },
+                }
                 (None, Some(old)) => {
                     changes.add_change(Change::new(Removal, old));
-                },
+                }
                 (None, None) => unreachable!(),
             }
         }
