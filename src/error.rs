@@ -23,7 +23,6 @@ pub enum EvalError<'tcx> {
     },
     ReadPointerAsBytes,
     InvalidPointerMath,
-    OverflowingPointerMath,
     ReadUndefBytes,
     DeadLocal,
     InvalidBoolOp(mir::BinOp),
@@ -32,6 +31,7 @@ pub enum EvalError<'tcx> {
     ExecuteMemory,
     ArrayIndexOutOfBounds(Span, u64, u64),
     Math(Span, ConstMathErr),
+    OverflowingMath,
     InvalidChar(u128),
     OutOfMemory {
         allocation_size: u64,
@@ -83,8 +83,6 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "a raw memory access tried to access part of a pointer value as raw bytes",
             EvalError::InvalidPointerMath =>
                 "attempted to do math or a comparison on pointers into different allocations",
-            EvalError::OverflowingPointerMath =>
-                "attempted to do overflowing math on a pointer",
             EvalError::ReadUndefBytes =>
                 "attempted to read undefined bytes",
             EvalError::DeadLocal =>
@@ -100,6 +98,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "array index out of bounds",
             EvalError::Math(..) =>
                 "mathematical operation failed",
+            EvalError::OverflowingMath =>
+                "attempted to do overflowing math",
             EvalError::NoMirFor(..) =>
                 "mir not found",
             EvalError::InvalidChar(..) =>

@@ -73,7 +73,7 @@ impl Pointer {
             if let Some(res) = self.offset.checked_sub(n) {
                 Ok(Pointer::new(self.alloc_id, res))
             } else {
-                Err(EvalError::OverflowingPointerMath)
+                Err(EvalError::OverflowingMath)
             }
         } else {
             self.offset(i as u64, layout)
@@ -83,12 +83,12 @@ impl Pointer {
     pub fn offset<'tcx>(self, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
         if let Some(res) = self.offset.checked_add(i) {
             if res as u128 >= (1u128 << layout.pointer_size.bits()) {
-                Err(EvalError::OverflowingPointerMath)
+                Err(EvalError::OverflowingMath)
             } else {
                 Ok(Pointer::new(self.alloc_id, res))
             }
         } else {
-            Err(EvalError::OverflowingPointerMath)
+            Err(EvalError::OverflowingMath)
         }
     }
 
@@ -166,7 +166,8 @@ pub struct Memory<'a, 'tcx> {
     /// We mark memory as "packed" or "unaligned" for a single statement, and clear the marking
     /// afterwards. In the case where no packed structs are present, it's just a single emptyness
     /// check of a set instead of heavily influencing all memory access code as other solutions
-    /// would.
+    /// would. This is simpler than the alternative of passing a "packed" parameter to every
+    /// load/store method.
     ///
     /// One disadvantage of this solution is the fact that you can cast a pointer to a packed
     /// struct to a pointer to a normal struct and if you access a field of both in the same MIR
