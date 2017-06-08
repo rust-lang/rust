@@ -158,7 +158,7 @@ pub fn log_enabled() -> Option<PrintFormat> {
     }
 
     let val = match env::var_os("RUST_BACKTRACE") {
-        Some(x) => if &x == "0" {
+        Some(x) => if &x == "0" || &x == "no" {
             None
         } else if &x == "full" {
             Some(PrintFormat::Full)
