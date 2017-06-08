@@ -39,7 +39,7 @@
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
 
-extern crate flate;
+extern crate flate2;
 extern crate libc;
 extern crate owning_ref;
 #[macro_use] extern crate rustc;

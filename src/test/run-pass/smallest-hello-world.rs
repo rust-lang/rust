@@ -12,10 +12,10 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(intrinsics, lang_items, start, no_core, libc)]
+#![feature(intrinsics, lang_items, start, no_core, alloc_system)]
 #![no_core]
 
-extern crate libc;
+extern crate alloc_system;
 
 extern { fn puts(s: *const u8); }
 extern "rust-intrinsic" { fn transmute<T, U>(t: T) -> U; }

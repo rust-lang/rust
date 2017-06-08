@@ -33,7 +33,7 @@ extern crate log;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
-extern crate flate;
+extern crate flate2;
 extern crate serialize as rustc_serialize; // used by deriving
 extern crate owning_ref;
 extern crate rustc_errors as errors;

@@ -63,6 +63,8 @@ extern crate syntax_pos;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
+extern crate flate2;
+
 #[macro_use]
 mod macros;
 

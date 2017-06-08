@@ -9,7 +9,7 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-flate = { path = "../libflate" }
+flate2 = "0.2"
 log = "0.3"
 owning_ref = "0.3.3"
 proc_macro = { path = "../libproc_macro" }
