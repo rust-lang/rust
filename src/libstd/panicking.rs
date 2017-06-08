@@ -206,6 +206,18 @@ impl<'a> PanicInfo<'a> {
         self.payload
     }
 
+    /// Returns the payload as a slice if it is a `&'static str` or `String`.
+    #[unstable(feature = "panic_handler", issue = "30449")]
+    pub fn payload_as_str(&self) -> Option<&str> {
+        match self.payload.downcast_ref::<&'static str>() {
+            Some(s) => Some(*s),
+            None => match self.payload.downcast_ref::<String>() {
+                Some(s) => Some(&s[..]),
+                None => None,
+            }
+        }
+    }
+
     /// Returns information about the location from which the panic originated,
     /// if available.
     ///
@@ -330,13 +342,7 @@ fn default_hook(info: &PanicInfo) {
     let file = info.location.file;
     let line = info.location.line;
 
-    let msg = match info.payload.downcast_ref::<&'static str>() {
-        Some(s) => *s,
-        None => match info.payload.downcast_ref::<String>() {
-            Some(s) => &s[..],
-            None => "Box<Any>",
-        }
-    };
+    let msg = info.payload_as_str().unwrap_or("Box<Any>");
     let mut err = Stderr::new().ok();
     let thread = thread_info::current_thread();
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
