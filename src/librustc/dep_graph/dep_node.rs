@@ -315,9 +315,6 @@ define_dep_nodes!(
     Coherence,
     Resolve,
     CoherenceCheckTrait(DefId),
-    CoherenceCheckImpl(DefId),
-    CoherenceOverlapCheck(DefId),
-    CoherenceOverlapCheckSpecial(DefId),
     Variance,
     PrivacyAccessLevels(CrateNum),
 
@@ -332,8 +329,6 @@ define_dep_nodes!(
     RvalueCheck(DefId),
     Reachability,
     MirKeys,
-    LateLintCheck,
-    TransCrateItem(DefId),
     TransWriteMetadata,
     CrateVariances,
 

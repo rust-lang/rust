@@ -18,7 +18,7 @@ one of three things:
 1. HIR nodes (like `Hir(DefId)`) represent the HIR input itself.
 2. Data nodes (like `ItemSignature(DefId)`) represent some computed
    information about a particular item.
-3. Procedure notes (like `CoherenceCheckImpl(DefId)`) represent some
+3. Procedure nodes (like `CoherenceCheckTrait(DefId)`) represent some
    procedure that is executing. Usually this procedure is
    performing some kind of check for errors. You can think of them as
    computed values where the value being computed is `()` (and the
@@ -57,139 +57,10 @@ recompile that item for sure. But we need the dep tracking map to tell
 us what *else* we have to recompile. Shared state is anything that is
 used to communicate results from one item to another.
 
-### Identifying the current task
+### Identifying the current task, tracking reads/writes, etc
 
-The dep graph always tracks a current task: this is basically the
-`DepNode` that the compiler is computing right now. Typically it would
-be a procedure node, but it can also be a data node (as noted above,
-the two are kind of equivalent).
-
-You set the current task by calling `dep_graph.in_task(node)`. For example:
-
-```rust
-let _task = tcx.dep_graph.in_task(DepNode::Privacy);
-```
-
-Now all the code until `_task` goes out of scope will be considered
-part of the "privacy task".
-
-The tasks are maintained in a stack, so it is perfectly fine to nest
-one task within another. Because pushing a task is considered to be
-computing a value, when you nest a task `N2` inside of a task `N1`, we
-automatically add an edge `N2 -> N1` (since `N1` presumably needed the
-result of `N2` to complete):
-
-```rust
-let _n1 = tcx.dep_graph.in_task(DepNode::N1);
-let _n2 = tcx.dep_graph.in_task(DepNode::N2);
-// this will result in an edge N1 -> n2
-```
-
-### Ignore tasks
-
-Although it is rarely needed, you can also push a special "ignore"
-task:
-
-```rust
-let _ignore = tc.dep_graph.in_ignore();
-```
-
-This will cause all read/write edges to be ignored until it goes out
-of scope or until something else is pushed. For example, we could
-suppress the edge between nested tasks like so:
-
-```rust
-let _n1 = tcx.dep_graph.in_task(DepNode::N1);
-let _ignore = tcx.dep_graph.in_ignore();
-let _n2 = tcx.dep_graph.in_task(DepNode::N2);
-// now no edge is added
-```
-
-### Tracking reads and writes
-
-We need to identify what shared state is read/written by the current
-task as it executes. The most fundamental way of doing that is to invoke
-the `read` and `write` methods on `DepGraph`:
-
-```rust
-// Adds an edge from DepNode::Hir(some_def_id) to the current task
-tcx.dep_graph.read(DepNode::Hir(some_def_id))
-
-// Adds an edge from the current task to DepNode::ItemSignature(some_def_id)
-tcx.dep_graph.write(DepNode::ItemSignature(some_def_id))
-```
-
-However, you should rarely need to invoke those methods directly.
-Instead, the idea is to *encapsulate* shared state into some API that
-will invoke `read` and `write` automatically. The most common way to
-do this is to use a `DepTrackingMap`, described in the next section,
-but any sort of abstraction barrier will do. In general, the strategy
-is that getting access to information implicitly adds an appropriate
-`read`. So, for example, when you use the
-`dep_graph::visit_all_items_in_krate` helper method, it will visit
-each item `X`, start a task `Foo(X)` for that item, and automatically
-add an edge `Hir(X) -> Foo(X)`. This edge is added because the code is
-being given access to the HIR node for `X`, and hence it is expected
-to read from it. Similarly, reading from the `tcache` map for item `X`
-(which is a `DepTrackingMap`, described below) automatically invokes
-`dep_graph.read(ItemSignature(X))`.
-
-**Note:** adding `Hir` nodes requires a bit of caution due to the
-"inlining" that old trans and constant evaluation still use. See the
-section on inlining below.
-
-To make this strategy work, a certain amount of indirection is
-required. For example, modules in the HIR do not have direct pointers
-to the items that they contain. Rather, they contain node-ids -- one
-can then ask the HIR map for the item with a given node-id. This gives
-us an opportunity to add an appropriate read edge.
-
-#### Explicit calls to read and write when starting a new subtask
-
-One time when you *may* need to call `read` and `write` directly is
-when you push a new task onto the stack, either by calling `in_task`
-as shown above or indirectly, such as with the `memoize` pattern
-described below. In that case, any data that the task has access to
-from the surrounding environment must be explicitly "read". For
-example, in `librustc_typeck`, the collection code visits all items
-and, among other things, starts a subtask producing its signature
-(what follows is simplified pseudocode, of course):
-
-```rust
-fn visit_item(item: &hir::Item) {
-    // Here, current subtask is "Collect(X)", and an edge Hir(X) -> Collect(X)
-    // has automatically been added by `visit_all_items_in_krate`.
-    let sig = signature_of_item(item);
-}
-
-fn signature_of_item(item: &hir::Item) {
-    let def_id = tcx.map.local_def_id(item.id);
-    let task = tcx.dep_graph.in_task(DepNode::ItemSignature(def_id));
-    tcx.dep_graph.read(DepNode::Hir(def_id)); // <-- the interesting line
-    ...
-}
-```
-
-Here you can see that, in `signature_of_item`, we started a subtask
-corresponding to producing the `ItemSignature`. This subtask will read from
-`item` -- but it gained access to `item` implicitly. This means that if it just
-reads from `item`, there would be missing edges in the graph:
-
-    Hir(X) --+ // added by the explicit call to `read`
-      |      |
-      |      +---> ItemSignature(X) -> Collect(X)
-      |                                 ^
-      |                                 |
-      +---------------------------------+ // added by `visit_all_items_in_krate`
-
-In particular, the edge from `Hir(X)` to `ItemSignature(X)` is only
-present because we called `read` ourselves when entering the `ItemSignature(X)`
-task.
-
-So, the rule of thumb: when entering a new task yourself, register
-reads on any shared state that you inherit. (This actually comes up
-fairly infrequently though: the main place you need caution is around
-memoization.)
+FIXME(#42293). This text needs to be rewritten for the new red-green
+system, which doesn't fully exist yet.
 
 #### Dependency tracking map
 

@@ -23,7 +23,6 @@ use common;
 use declare;
 use llvm;
 use monomorphize::Instance;
-use rustc::dep_graph::DepKind;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -63,22 +62,9 @@ impl<'a, 'tcx> TransItem<'tcx> {
                   self.to_raw_string(),
                   ccx.codegen_unit().name());
 
-        // (*) This code executes in the context of a dep-node for the
-        // entire CGU. In some cases, we introduce dep-nodes for
-        // particular items that we are translating (these nodes will
-        // have read edges coming into the CGU node). These smaller
-        // nodes are not needed for correctness -- we always
-        // invalidate an entire CGU at a time -- but they enable
-        // finer-grained testing, since you can write tests that check
-        // that the incoming edges to a particular fn are from a
-        // particular set.
-
         match *self {
             TransItem::Static(node_id) => {
                 let tcx = ccx.tcx();
-                let def_id = tcx.hir.local_def_id(node_id);
-                let dep_node = def_id.to_dep_node(tcx, DepKind::TransCrateItem);
-                let _task = ccx.tcx().dep_graph.in_task(dep_node); // (*)
                 let item = tcx.hir.expect_item(node_id);
                 if let hir::ItemStatic(_, m, _) = item.node {
                     match consts::trans_static(&ccx, m, item.id, &item.attrs) {
@@ -100,10 +86,6 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 }
             }
             TransItem::Fn(instance) => {
-                let _task = ccx.tcx().dep_graph.in_task(
-                    instance.def_id()
-                            .to_dep_node(ccx.tcx(), DepKind::TransCrateItem)); // (*)
-
                 base::trans_instance(&ccx, instance);
             }
         }
