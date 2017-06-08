@@ -35,7 +35,6 @@ extern crate rls_data;
 extern crate rls_span;
 
 
-mod csv_dumper;
 mod json_api_dumper;
 mod json_dumper;
 mod data;
@@ -68,7 +67,6 @@ use syntax::print::pprust::{ty_to_string, arg_to_string};
 use syntax::codemap::MacroAttribute;
 use syntax_pos::*;
 
-pub use self::csv_dumper::CsvDumper;
 pub use self::json_api_dumper::JsonApiDumper;
 pub use self::json_dumper::JsonDumper;
 pub use self::data::*;
@@ -866,17 +864,13 @@ fn docs_for_attrs(attrs: &[Attribute]) -> String {
 
 #[derive(Clone, Copy, Debug, RustcEncodable)]
 pub enum Format {
-    Csv,
     Json,
     JsonApi,
 }
 
 impl Format {
     fn extension(&self) -> &'static str {
-        match *self {
-            Format::Csv => ".csv",
-            Format::Json | Format::JsonApi => ".json",
-        }
+        ".json"
     }
 }
 
@@ -959,7 +953,6 @@ impl<'a> SaveHandler for DumpHandler<'a> {
         let output = &mut self.output_file(&save_ctxt.tcx.sess);
 
         match self.format {
-            Format::Csv => dump!(CsvDumper::new(output)),
             Format::Json => dump!(JsonDumper::new(output)),
             Format::JsonApi => dump!(JsonApiDumper::new(output)),
         }
