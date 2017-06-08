@@ -455,7 +455,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if self.intrinsic_overflowing(bin_op, left, right, dest, dest_ty)? {
                     // There was an overflow in an unchecked binop.  Right now, we consider this an error and bail out.
                     // The rationale is that the reason rustc emits unchecked binops in release mode (vs. the checked binops
-                    // it emits in debug mode) is performance, but it doesn't cust us any performance in miri.
+                    // it emits in debug mode) is performance, but it doesn't cost us any performance in miri.
                     // If, however, the compiler ever starts transforming unchecked intrinsics into unchecked binops,
                     // we have to go back to just ignoring the overflow here.
                     return Err(EvalError::OverflowingMath);
