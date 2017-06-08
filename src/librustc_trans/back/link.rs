@@ -699,15 +699,29 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
                                  platforms, and so may need to be preserved");
     }
 
+    let mut libraries = String::new();
+    let mut frameworks = String::new();
+    fn push(s: &mut String, kind: &str, lib: &NativeLibrary) {
+        if s.is_empty() {
+            *s = format!("{}: {}", kind, lib.name)
+        } else {
+            s.push_str(&format!(", {}", lib.name))
+        }
+    }
     for lib in all_native_libs.iter().filter(|l| relevant_lib(sess, l)) {
-        let name = match lib.kind {
+        match lib.kind {
             NativeLibraryKind::NativeStaticNobundle |
-            NativeLibraryKind::NativeUnknown => "library",
-            NativeLibraryKind::NativeFramework => "framework",
+            NativeLibraryKind::NativeUnknown => push(&mut libraries, "library", lib),
+            NativeLibraryKind::NativeFramework => push(&mut frameworks, "framework", lib),
             // These are included, no need to print them
             NativeLibraryKind::NativeStatic => continue,
-        };
-        sess.note_without_error(&format!("{}: {}", name, lib.name));
+        }
+    }
+    if !libraries.is_empty() {
+        sess.note_without_error(&libraries);
+    }
+    if !frameworks.is_empty() {
+        sess.note_without_error(&frameworks);
     }
 }
 
