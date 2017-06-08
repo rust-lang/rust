@@ -417,7 +417,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                                        pattern: self.lower_pattern(field),
                                    })
                                    .collect();
-                self.lower_variant_or_leaf(def, ty, subpatterns)
+                self.lower_variant_or_leaf(def, ty, subpatterns, pat.span)
             }
 
             PatKind::Struct(ref qpath, ref fields, _) => {
@@ -449,7 +449,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                           })
                           .collect();
 
-                self.lower_variant_or_leaf(def, ty, subpatterns)
+                self.lower_variant_or_leaf(def, ty, subpatterns, pat.span)
             }
         };
 
@@ -540,7 +540,8 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
         &mut self,
         def: Def,
         ty: Ty<'tcx>,
-        subpatterns: Vec<FieldPattern<'tcx>>)
+        subpatterns: Vec<FieldPattern<'tcx>>,
+        span: Span)
         -> PatternKind<'tcx>
     {
         match def {
@@ -568,8 +569,19 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) => {
                 PatternKind::Leaf { subpatterns: subpatterns }
             }
-
-            _ => bug!()
+            Def::Fn(..) => {
+                let mut err = self.tcx.sess.struct_span_err(span, "pattern contains `Fn`, \
+                                                                   use pattern guard instead");
+                err.span_label(span, &"pattern contains `Fn`");
+                if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
+                    err.span_suggestion(span,
+                                        "use a pattern guard instead:",
+                                        format!("x if x == {}", snippet));
+                }
+                err.emit();
+                PatternKind::Wild
+            },
+            d => bug!("lower_variant_or_leaf with incorrect Def: {:?}", d)
         }
     }
 
@@ -605,7 +617,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            _ => self.lower_variant_or_leaf(def, ty, vec![]),
+            _ => self.lower_variant_or_leaf(def, ty, vec![], span),
         };
 
         Pattern {
@@ -687,7 +699,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                                 pattern: self.lower_const_expr(expr, pat_id, span)
                             }
                         }).collect();
-                        self.lower_variant_or_leaf(def, ty, subpatterns)
+                        self.lower_variant_or_leaf(def, ty, subpatterns, span)
                     }
                 }
             }
@@ -721,7 +733,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                           })
                           .collect();
 
-                self.lower_variant_or_leaf(def, pat_ty, subpatterns)
+                self.lower_variant_or_leaf(def, pat_ty, subpatterns, span)
             }
 
             hir::ExprArray(ref exprs) => {
