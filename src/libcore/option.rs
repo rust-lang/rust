@@ -1124,7 +1124,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     }
 }
 
-/// The `Option` type. See [the module level documentation](index.html) for more.
+/// The equivalent of `Option::None` for a `Result::Err`.
 #[unstable(feature = "try_trait", issue = "42327")]
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub struct Missing;
