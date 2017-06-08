@@ -132,8 +132,8 @@ pub trait SliceExt {
 
     #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
     fn binary_search_by_key<'a, B, F, Q: ?Sized>(&'a self, b: &Q, f: F) -> Result<usize, usize>
-        where F: FnMut(&'a Self::Item) -> B,
-              B: Borrow<Q>,
+        where F: FnMut(&'a Self::Item) -> &'a B,
+              B: Borrow<Q> + 'a,
               Q: Ord;
 
     #[stable(feature = "core", since = "1.6.0")]
@@ -675,8 +675,8 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn binary_search_by_key<'a, B, F, Q: ?Sized>(&'a self, b: &Q, mut f: F) -> Result<usize, usize>
-        where F: FnMut(&'a Self::Item) -> B,
-              B: Borrow<Q>,
+        where F: FnMut(&'a Self::Item) -> &'a B,
+              B: Borrow<Q> + 'a,
               Q: Ord
     {
         self.binary_search_by(|k| f(k).borrow().cmp(b))

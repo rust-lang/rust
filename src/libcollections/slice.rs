@@ -1056,8 +1056,9 @@ impl<T> [T] {
     /// assert!(match r { Ok(1...4) => true, _ => false, });
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn binary_search(&self, x: &T) -> Result<usize, usize>
-        where T: Ord
+    pub fn binary_search<Q: ?Sized>(&self, x: &Q) -> Result<usize, usize>
+        where T: Borrow<Q>,
+              Q: Ord
     {
         core_slice::SliceExt::binary_search(self, x)
     }
@@ -1125,17 +1126,18 @@ impl<T> [T] {
     ///          (1, 2), (2, 3), (4, 5), (5, 8), (3, 13),
     ///          (1, 21), (2, 34), (4, 55)];
     ///
-    /// assert_eq!(s.binary_search_by_key(&13, |&(a,b)| b),  Ok(9));
-    /// assert_eq!(s.binary_search_by_key(&4, |&(a,b)| b),   Err(7));
-    /// assert_eq!(s.binary_search_by_key(&100, |&(a,b)| b), Err(13));
-    /// let r = s.binary_search_by_key(&1, |&(a,b)| b);
+    /// assert_eq!(s.binary_search_by_key(&13, |&(a, ref b)| b),  Ok(9));
+    /// assert_eq!(s.binary_search_by_key(&4, |&(a, ref b)| b),   Err(7));
+    /// assert_eq!(s.binary_search_by_key(&100, |&(a, ref b)| b), Err(13));
+    /// let r = s.binary_search_by_key(&1, |&(a, ref b)| b);
     /// assert!(match r { Ok(1...4) => true, _ => false, });
     /// ```
     #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
     #[inline]
-    pub fn binary_search_by_key<'a, B, F>(&'a self, b: &B, f: F) -> Result<usize, usize>
-        where F: FnMut(&'a T) -> B,
-              B: Ord
+    pub fn binary_search_by_key<'a, B, F, Q: ?Sized>(&'a self, b: &Q, f: F) -> Result<usize, usize>
+        where F: FnMut(&'a T) -> &'a B,
+              B: Borrow<Q> + 'a,
+              Q: Ord
     {
         core_slice::SliceExt::binary_search_by_key(self, b, f)
     }

@@ -354,8 +354,8 @@ fn test_binary_search() {
     assert_eq!([2].binary_search(&5).ok(), None);
     assert_eq!([2].binary_search(&2).ok(), Some(0));
 
-    assert_eq!([].binary_search(&1).ok(), None);
-    assert_eq!([].binary_search(&5).ok(), None);
+    assert_eq!([0;0].binary_search(&1).ok(), None);
+    assert_eq!([0;0].binary_search(&5).ok(), None);
 
     assert!([1, 1, 1, 1, 1].binary_search(&1).ok() != None);
     assert!([1, 1, 1, 1, 2].binary_search(&1).ok() != None);
