@@ -501,6 +501,16 @@ impl Error {
     }
 }
 
+#[stable(feature = "error_partial_eq", since = "1.11.0")]
+impl PartialEq for Error {
+    fn eq(&self, other: &Error) -> bool {
+        match (&self.repr, &other.repr) {
+            (&Repr::Os(code), &Repr::Os(other)) => code == other,
+            _ => false,
+        }
+    }
+}
+
 impl fmt::Debug for Repr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -557,6 +567,21 @@ mod test {
     use fmt;
     use sys::os::error_string;
 
+    #[derive(Debug)]
+    struct TestError;
+
+    impl fmt::Display for TestError {
+        fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
+            Ok(())
+        }
+    }
+
+    impl error::Error for TestError {
+        fn description(&self) -> &str {
+            "asdf"
+        }
+    }
+
     #[test]
     fn test_debug_error() {
         let code = 6;
@@ -567,22 +592,18 @@ mod test {
     }
 
     #[test]
+    fn test_partial_eq() {
+        let code = 6;
+        let err = Error { repr: super::Repr::Os(code) };
+        let err2 = Error { repr: super::Repr::Os(code) };
+        assert_eq!(err, err2);
+
+        let err = Error::new(ErrorKind::Other, TestError);
+        assert!(err != err);
+    }
+
+    #[test]
     fn test_downcasting() {
-        #[derive(Debug)]
-        struct TestError;
-
-        impl fmt::Display for TestError {
-            fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
-                Ok(())
-            }
-        }
-
-        impl error::Error for TestError {
-            fn description(&self) -> &str {
-                "asdf"
-            }
-        }
-
         // we have to call all of these UFCS style right now since method
         // resolution won't implicitly drop the Send+Sync bounds
         let mut err = Error::new(ErrorKind::Other, TestError);
