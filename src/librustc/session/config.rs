@@ -1527,11 +1527,12 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         // Parse string of the form "[KIND=]lib[:new_name]",
         // where KIND is one of "dylib", "framework", "static".
         let mut parts = s.splitn(2, '=');
-        let kind = parts.next().unwrap();
-        let (name, kind) = match (parts.next(), kind) {
+        let kind_name = parts.next().unwrap();
+        let (name, kind) = match (parts.next(), kind_name) {
             (None, name) => (name, None),
             (Some(name), "dylib") => (name, Some(cstore::NativeUnknown)),
             (Some(name), "framework") => (name, Some(cstore::NativeFramework)),
+            (Some(name), "js") => (name, Some(cstore::NativeJS)),
             (Some(name), "static") => (name, Some(cstore::NativeStatic)),
             (Some(name), "static-nobundle") => (name, Some(cstore::NativeStaticNobundle)),
             (_, s) => {
@@ -1540,9 +1541,13 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
                                                  s));
             }
         };
-        if kind == Some(cstore::NativeStaticNobundle) && !nightly_options::is_nightly_build() {
-            early_error(error_format, &format!("the library kind 'static-nobundle' is only \
-                                                accepted on the nightly compiler"));
+        match kind {
+            Some(cstore::NativeStaticNobundle) | Some(cstore::NativeJS)
+            if !nightly_options::is_nightly_build() => {
+                early_error(error_format, &format!("the library kind '{}' is only \
+                                                    accepted on the nightly compiler", kind_name));
+            }
+            _ => {}
         }
         let mut name_parts = name.splitn(2, ':');
         let name = name_parts.next().unwrap();
