@@ -1159,12 +1159,6 @@ fn test_usize_range_no_last() {
 
 #[test]
 #[should_panic]
-fn test_usize_range_no_last() {
-    assert_eq!((0..).last(), None);
-}
-
-#[test]
-#[should_panic]
 fn test_isize_range_count_oflow() {
     assert_eq!(RangeInclusive { start:isize::min_value(), end: isize::max_value() }.count(), 0);
 }
@@ -1172,6 +1166,7 @@ fn test_isize_range_count_oflow() {
 #[test]
 fn test_range_last() {
     assert_eq!((0..10).last(), Some(9));
+    assert_eq!((0u32..!0).last(), Some(!0 - 1));
     assert_eq!(RangeInclusive { start: 0, end: 10 }.last(), Some(10));
 }
 

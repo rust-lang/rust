@@ -249,8 +249,32 @@ impl<A: Step> Iterator for ops::Range<A> where
         })
     }
 
-    // TODO: last specialisation if `A: Sub` and/or Range<A> is a DoubleEndedIterator.
-    // so self.end.sub_one() or self.next_back()
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        <Self as SpecLast>::last(self)
+    }
+}
+
+trait SpecLast {
+    type Item;
+    fn last(self) -> Option<Self::Item>;
+}
+
+impl<It> SpecLast for It
+where It: Iterator {
+    type Item = <Self as Iterator>::Item;
+    #[inline]
+    default fn last(self) -> Option<Self::Item> {
+        <Self as Iterator>::last(self)
+    }
+}
+
+impl<It> SpecLast for It
+where It: DoubleEndedIterator {
+    #[inline]
+    fn last(mut self) -> Option<Self::Item> {
+        <Self as DoubleEndedIterator>::next_back(&mut self)
+    }
 }
 
 // These macros generate `ExactSizeIterator` impls for various range types.
@@ -319,7 +343,7 @@ impl<A: Step> Iterator for ops::RangeFrom<A> where
 
     #[cold]
     fn last(self) -> Option<Self::Item> {
-        panic!("Iterator::last on a `x..` cannot work")
+        panic!("Iterator::last on a `x..` will overflow")
     }
 }
 
