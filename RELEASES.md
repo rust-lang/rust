@@ -4,7 +4,7 @@ Version 1.19.0 (2017-07-20)
 Language
 --------
 
-- [Numeric fields can now be used for creating tuple structs.][36868]
+- [Numeric fields can now be used for creating tuple structs.][41145]
   For example `struct Point(u32, u32); let x = Point { 0: 7, 1: 0 };`.
 - [Macro recursion limit increased to 1024 from 64.][41676]
 - [Added lint for detecting unused macros.][41907]
@@ -12,14 +12,17 @@ Language
   For example: `let x = loop { break 7; };`
 - [C compatible `union`s are now available.][42068] They can only contain `Copy`
   types and cannot have a `Drop` implementation.
-  Example: `union Foo { bar: u8 }`
+  Example: `union Foo { bar: u8, baz: usize }`
+- [Non capturing closures can now be coerced into `fn`s,][42162]
+  Example: `let foo: fn(u8) -> u8 = |v: u8| { v };`
 
 Compiler
 --------
 
-- [Added bootstrap support for Android.][41370]
+- [Add support for bootstrapping the Rust compiler toolchain on Android.][41370]
 - [Change `arm-linux-androideabi` to correspond to the `armeabi`
-  official ABI.][41656]
+  official ABI.][41656] If you wish to continue targeting the `armeabi-v7a` ABI
+  you should use `--target armv7-linux-androideabi`.
 - [Fixed ICE when removing a source file between compilation sessions.][41873]
 - [Minor optimisation of string operations.][42037]
 - [Compiler error message is now `aborting due to previous error(s)` instead of
@@ -34,9 +37,12 @@ Libraries
 - [`String` now implements `FromIterator<Cow<'a, str>>` and
   `Extend<Cow<'a, str>>`][41449]
 - [`Vec` now implements `From<&mut [T]>`][41530]
+- [`Box<[u8]>` now implements `From<Box<str>>`][41258]
 - [`SplitWhitespace` now implements `Clone`][41659]
 - [`[u8]::reverse` is now 5x faster and `[u16]::reverse` is now
   1.5x faster][41764]
+- [`eprint!` and `eprintln!` macros added to prelude.][41192] Same as the `print!`
+  macros, but for printing to stderr.
 
 Compatibility Notes
 -------------------
@@ -46,14 +52,10 @@ Compatibility Notes
   compiler.][41751] This has been a warning for a year previous to this.
 - [Ending a float literal with `._` is now a hard error.
   Example: `42._` .][41946]
-- [Ending a str literal with an underscore is now a hard error
-  Example: `"foo"_`][41990]
-- [Publicly exposing a private type is now a hard error][34537] This was
+- [Publicly reexporting a private enum variant is now a hard error][34537] This was
   previously a warning.
-- [Type parameter defaults in trait impls and functions is now a
-  hard error][36887] This was previously a warning.
-- [`use` imports on a private `extern crate` in a module is now a hard
-  error.][36886] This was previously a warning.
+- [Any use of a private `extern crate` outside of it's module is now a
+  hard error.][36886] This was previously a warning.
 - [`use ::self::foo;` is now a hard error.][36888] `self` paths are always
   relative while the `::` prefix makes a path absolute, but was ignored and the
   path was relative regardless.
@@ -69,8 +71,6 @@ Misc
 
 - [Added `rust-windbg.cmd`][39983] for loading rust `.natvis` files in the
   Windows Debugger.
-- [Rust Language Server is now packaged as a non default component with the
-  `.exe`, `.msi`, and `.pkg` installers][42306]
 
 Cargo
 -----
@@ -97,7 +97,7 @@ Cargo
 - [Added a GNU make jobserver implementation to Cargo.][cargo/4110]
 
 [39983]: https://github.com/rust-lang/rust/pull/39983
-[36868]: https://github.com/rust-lang/rust/pull/36868
+[41145]: https://github.com/rust-lang/rust/pull/41145
 [41370]: https://github.com/rust-lang/rust/pull/41370
 [41449]: https://github.com/rust-lang/rust/pull/41449
 [41530]: https://github.com/rust-lang/rust/pull/41530
@@ -110,12 +110,11 @@ Cargo
 [41873]: https://github.com/rust-lang/rust/pull/41873
 [41907]: https://github.com/rust-lang/rust/pull/41907
 [41946]: https://github.com/rust-lang/rust/pull/41946
-[41990]: https://github.com/rust-lang/rust/pull/41990
 [42016]: https://github.com/rust-lang/rust/pull/42016
 [42037]: https://github.com/rust-lang/rust/pull/42037
 [42068]: https://github.com/rust-lang/rust/pull/42068
+[41258]: https://github.com/rust-lang/rust/pull/41258
 [34537]: https://github.com/rust-lang/rust/issues/34537
-[36887]: https://github.com/rust-lang/rust/issues/36887
 [36886]: https://github.com/rust-lang/rust/issues/36886
 [36888]: https://github.com/rust-lang/rust/issues/36888
 [36890]: https://github.com/rust-lang/rust/issues/36890
@@ -123,9 +122,10 @@ Cargo
 [36892]: https://github.com/rust-lang/rust/issues/36892
 [42150]: https://github.com/rust-lang/rust/pull/42150
 [42225]: https://github.com/rust-lang/rust/pull/42225
-[42306]: https://github.com/rust-lang/rust/pull/42306
 [42264]: https://github.com/rust-lang/rust/pull/42264
 [42302]: https://github.com/rust-lang/rust/pull/42302
+[41192]: https://github.com/rust-lang/rust/pull/41192
+[42162]: https://github.com/rust-lang/rust/pull/42162
 [cargo/3929]: https://github.com/rust-lang/cargo/pull/3929
 [cargo/3970]: https://github.com/rust-lang/cargo/pull/3970
 [cargo/3979]: https://github.com/rust-lang/cargo/pull/3979
