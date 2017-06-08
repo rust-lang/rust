@@ -305,6 +305,7 @@ pub mod tests {
         }
     }
 
+    // we don't need this type elsewhere, so we define it here.
     #[derive(Clone, Debug)]
     pub enum UnaryChangeType {
         Removal,
@@ -326,6 +327,12 @@ pub mod tests {
         }
     }
 
+    impl Arbitrary for BinaryChangeType {
+        fn arbitrary<G: Gen>(g: &mut G) -> BinaryChangeType {
+            g.choose(&[BinaryChangeType::Unknown]).unwrap().clone()
+        }
+    }
+
     pub type UnaryChange_ = (UnaryChangeType, Span_);
 
     /// We build these by hand, because symbols can't be sent between threads.
@@ -335,7 +342,6 @@ pub mod tests {
             name: interner.intern("test"),
             ctxt: SyntaxContext::empty(),
         };
-
         let export = Export {
             ident: ident,
             def: Def::Err,
@@ -348,9 +354,35 @@ pub mod tests {
         }
     }
 
+    pub type BinaryChange_ = (BinaryChangeType, Span_, Span_);
+
+    fn build_binary_change(t: BinaryChangeType, s1: Span, s2: Span) -> BinaryChange {
+        let mut interner = Interner::new();
+        let ident1 = Ident {
+            name: interner.intern("test"),
+            ctxt: SyntaxContext::empty(),
+        };
+        let ident2 = Ident {
+            name: interner.intern("test"),
+            ctxt: SyntaxContext::empty(),
+        };
+        let export1 = Export {
+            ident: ident1,
+            def: Def::Err,
+            span: s1,
+        };
+        let export2 = Export {
+            ident: ident2,
+            def: Def::Err,
+            span: s2,
+        };
+
+        BinaryChange::new(t, export1, export2)
+    }
+
     quickcheck! {
         /// The `Ord` instance of `Change` is transitive.
-        fn ord_change_transitive(c1: UnaryChange_, c2: UnaryChange_, c3: UnaryChange_) -> bool {
+        fn ord_uchange_transitive(c1: UnaryChange_, c2: UnaryChange_, c3: UnaryChange_) -> bool {
             let ch1 = build_unary_change(c1.0, c1.1.inner());
             let ch2 = build_unary_change(c2.0, c2.1.inner());
             let ch3 = build_unary_change(c3.0, c3.1.inner());
@@ -372,8 +404,32 @@ pub mod tests {
             res
         }
 
+        fn ord_bchange_transitive(c1: BinaryChange_, c2: BinaryChange_, c3: BinaryChange_)
+            -> bool
+        {
+            let ch1 = build_binary_change(c1.0, c1.1.inner(), c1.2.inner());
+            let ch2 = build_binary_change(c2.0, c2.1.inner(), c2.2.inner());
+            let ch3 = build_binary_change(c3.0, c3.1.inner(), c3.2.inner());
+
+            let mut res = true;
+
+            if ch1 < ch2 && ch2 < ch3 {
+                res &= ch1 < ch3;
+            }
+
+            if ch1 == ch2 && ch2 == ch3 {
+                res &= ch1 == ch3;
+            }
+
+            if ch1 > ch2 && ch2 > ch3 {
+                res &= ch1 > ch3;
+            }
+
+            res
+        }
+
         /// The maximal change category for a change set gets computed correctly.
-        fn max_change(changes: Vec<UnaryChange_>) -> bool {
+        fn max_uchange(changes: Vec<UnaryChange_>) -> bool {
             let mut set = ChangeSet::default();
 
             let max = changes.iter().map(|c| From::from(&c.0)).max().unwrap_or(Patch);
@@ -386,14 +442,44 @@ pub mod tests {
             set.max == max
         }
 
+        /// The maximal change category for a change set gets computed correctly.
+        fn max_bchange(changes: Vec<BinaryChange_>) -> bool {
+            let mut set = ChangeSet::default();
+
+            let max = changes.iter().map(|c| From::from(&c.0)).max().unwrap_or(Patch);
+
+            for &(ref change, ref span1, ref span2) in changes.iter() {
+                set.add_change(
+                    Change::Binary(build_binary_change(
+                            change.clone(), span1.clone().inner(), span2.clone().inner())));
+            }
+
+            set.max == max
+        }
+
         /// Difference in spans implies difference in `Change`s.
-        fn change_span_neq(c1: UnaryChange_, c2: UnaryChange_) -> bool {
+        fn uchange_span_neq(c1: UnaryChange_, c2: UnaryChange_) -> bool {
             let s1 = c1.1.inner();
             let s2 = c2.1.inner();
 
             if s1 != s2 {
                 let ch1 = build_unary_change(c1.0, s1);
                 let ch2 = build_unary_change(c2.0, s2);
+
+                ch1 != ch2
+            } else {
+                true
+            }
+        }
+
+        /// Difference in spans implies difference in `Change`s.
+        fn bchange_span_neq(c1: BinaryChange_, c2: BinaryChange_) -> bool {
+            let s1 = c1.1.inner();
+            let s2 = c2.1.inner();
+
+            if s1 != s2 {
+                let ch1 = build_binary_change(c1.0, s1, c1.2.inner());
+                let ch2 = build_binary_change(c2.0, s2, c2.2.inner());
 
                 ch1 != ch2
             } else {
