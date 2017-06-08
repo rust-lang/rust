@@ -391,17 +391,17 @@ impl<T> Cell<T> {
         }
     }
 
-    /// Replaces the contained value.
+    /// Replaces the contained value, and returns it.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::cell::Cell;
     ///
-    /// let c = Cell::new(5);
-    /// let old = c.replace(10);
-    ///
-    /// assert_eq!(5, old);
+    /// let cell = Cell::new(5);
+    /// assert_eq!(cell.get(), 5);
+    /// assert_eq!(cell.replace(10), 5);
+    /// assert_eq!(cell.get(), 10);
     /// ```
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn replace(&self, val: T) -> T {
