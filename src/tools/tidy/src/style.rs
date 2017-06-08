@@ -169,8 +169,10 @@ fn licenseck(file: &Path, contents: &str) -> bool {
     lines.windows(LICENSE.lines().count()).any(|window| {
         let offset = if window.iter().all(|w| w.starts_with("//")) {
             2
-        } else if window.iter().all(|w| w.starts_with("#")) {
+        } else if window.iter().all(|w| w.starts_with('#')) {
             1
+        } else if window.iter().all(|w| w.starts_with(" *")) {
+            2
         } else {
             return false
         };
