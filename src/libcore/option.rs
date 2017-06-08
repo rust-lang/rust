@@ -146,7 +146,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use iter::{FromIterator, FusedIterator, TrustedLen};
-use mem;
+use {mem, ops};
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -1121,5 +1121,28 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
         } else {
             Some(v)
         }
+    }
+}
+
+/// The `Option` type. See [the module level documentation](index.html) for more.
+#[unstable(feature = "try_trait", issue = "42327")]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+pub struct Missing;
+
+#[unstable(feature = "try_trait", issue = "42327")]
+impl<T> ops::Try for Option<T> {
+    type Ok = T;
+    type Error = Missing;
+
+    fn into_result(self) -> Result<T, Missing> {
+        self.ok_or(Missing)
+    }
+
+    fn from_ok(v: T) -> Self {
+        Some(v)
+    }
+
+    fn from_error(_: Missing) -> Self {
+        None
     }
 }
