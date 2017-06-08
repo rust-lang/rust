@@ -166,6 +166,9 @@ pub struct Config {
     // Version of LLVM
     pub llvm_version: Option<String>,
 
+    // Is LLVM a system LLVM
+    pub system_llvm: bool,
+
     // Path to the android tools
     pub android_cross_path: PathBuf,
 

@@ -7,16 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+//
+// no-system-llvm
+// compile-flags: -O
 #![crate_type="lib"]
-
-#[no_mangle]
-pub fn alloc_zeroed_test(size: u8) {
-    // CHECK-LABEL: @alloc_zeroed_test
-    // CHECK-NEXT: start:
-    // CHECK-NEXT: ret void
-    let x = vec![0u8; size as usize];
-    drop(x);
-}
 
 #[no_mangle]
 pub fn alloc_test(data: u32) {
