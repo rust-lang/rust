@@ -23,4 +23,5 @@ RUST_GDB="${RUST_GDB:-gdb}"
 PYTHONPATH="$PYTHONPATH:$GDB_PYTHON_MODULE_DIRECTORY" ${RUST_GDB} \
   -d "$GDB_PYTHON_MODULE_DIRECTORY" \
   -iex "add-auto-load-safe-path $GDB_PYTHON_MODULE_DIRECTORY" \
+  -iex "source $GDB_PYTHON_MODULE_DIRECTORY/gdb_load_rust_pretty_printers.py" \
   "$@"
