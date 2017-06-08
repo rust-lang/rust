@@ -45,6 +45,14 @@ pub fn main() {
     };
     assert_eq!(r, 42);
 
+    // raw DST tuple
+    let p = (A { f: 42 },);
+    let o: *const (Trait,) = &p;
+    let r = unsafe {
+        (&*o).0.foo()
+    };
+    assert_eq!(r, 42);
+
     // raw slice
     let a: *const [_] = &[1, 2, 3];
     unsafe {
@@ -72,6 +80,15 @@ pub fn main() {
         assert_eq!(len, 3);
     }
 
+    // raw DST tuple with slice
+    let c: *const ([_],) = &([1, 2, 3],);
+    unsafe {
+        let b = (&*c).0[0];
+        assert_eq!(b, 1);
+        let len = (&*c).0.len();
+        assert_eq!(len, 3);
+    }
+
     // all of the above with *mut
     let mut x = A { f: 42 };
     let z: *mut Trait = &mut x;
@@ -84,6 +101,13 @@ pub fn main() {
     let o: *mut Foo<Trait> = &mut p;
     let r = unsafe {
         (&*o).f.foo()
+    };
+    assert_eq!(r, 42);
+
+    let mut p = (A { f: 42 },);
+    let o: *mut (Trait,) = &mut p;
+    let r = unsafe {
+        (&*o).0.foo()
     };
     assert_eq!(r, 42);
 
@@ -108,6 +132,14 @@ pub fn main() {
         let b = (&*c).f[0];
         assert_eq!(b, 1);
         let len = (&*c).f.len();
+        assert_eq!(len, 3);
+    }
+
+    let c: *mut ([_],) = &mut ([1, 2, 3],);
+    unsafe {
+        let b = (&*c).0[0];
+        assert_eq!(b, 1);
+        let len = (&*c).0.len();
         assert_eq!(len, 3);
     }
 }

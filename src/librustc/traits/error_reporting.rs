@@ -1060,7 +1060,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.note("slice and array elements must have `Sized` type");
             }
             ObligationCauseCode::TupleElem => {
-                err.note("tuple elements must have `Sized` type");
+                err.note("only the last element of a tuple may have a dynamically sized type");
             }
             ObligationCauseCode::ProjectionWf(data) => {
                 err.note(&format!("required so that the projection `{}` is well-formed",

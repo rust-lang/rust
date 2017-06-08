@@ -8,30 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
-
-static mut DROP_RAN: bool = false;
-
-struct Foo;
-impl Drop for Foo {
-    fn drop(&mut self) {
-        unsafe { DROP_RAN = true; }
-    }
-}
-
-trait Trait { fn dummy(&self) { } }
-impl Trait for Foo {}
-
-struct Fat<T: ?Sized> {
-    f: T
-}
+// Try to initialise a DST struct where the lost information is deeply nested.
+// This is an error because it requires an unsized rvalue. This is a problem
+// because it would require stack allocation of an unsized temporary (*g in the
+// test).
 
 pub fn main() {
-    {
-        let _x: Box<(i32, Fat<Trait>)> =
-            Box::<(i32, Fat<Foo>)>::new((42, Fat { f: Foo }));
-    }
-    unsafe {
-        assert!(DROP_RAN);
-    }
+    let f: ([isize; 3],) = ([5, 6, 7],);
+    let g: &([isize],) = &f;
+    let h: &(([isize],),) = &(*g,);
+    //~^ ERROR `[isize]: std::marker::Sized` is not satisfied
 }

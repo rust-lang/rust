@@ -29,4 +29,16 @@ pub fn main() {
     let f2: &Fat<Foo> = &f1;
     let f3: &Fat<Bar> = f2;
     //~^ ERROR `Foo: Bar` is not satisfied
+
+    // Tuple with a vec of isize.
+    let f1 = ([1, 2, 3],);
+    let f2: &([isize; 3],) = &f1;
+    let f3: &([usize],) = f2;
+    //~^ ERROR mismatched types
+
+    // Tuple with a trait.
+    let f1 = (Foo,);
+    let f2: &(Foo,) = &f1;
+    let f3: &(Bar,) = f2;
+    //~^ ERROR `Foo: Bar` is not satisfied
 }

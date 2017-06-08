@@ -28,6 +28,16 @@ fn baz<'a>() {
     let f1 = Fat { ptr: Foo };
     let f2: &Fat<Foo> = &f1; //~ ERROR `f1` does not live long enough
     let f3: &'a Fat<Bar> = f2;
+
+    // Tuple with a vec of ints.
+    let f1 = ([1, 2, 3],);
+    let f2: &([isize; 3],) = &f1; //~ ERROR `f1` does not live long enough
+    let f3: &'a ([isize],) = f2;
+
+    // Tuple with a trait.
+    let f1 = (Foo,);
+    let f2: &(Foo,) = &f1; //~ ERROR `f1` does not live long enough
+    let f3: &'a (Bar,) = f2;
 }
 
 pub fn main() {
