@@ -3854,6 +3854,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if tuple.references_error() {
                 tcx.types.err
             } else {
+                self.require_type_is_sized(tuple, expr.span, traits::TupleInitializerSized);
                 tuple
             }
           }

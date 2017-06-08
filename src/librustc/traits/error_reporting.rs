@@ -1097,6 +1097,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ObligationCauseCode::AssignmentLhsSized => {
                 err.note("the left-hand-side of an assignment must have a statically known size");
             }
+            ObligationCauseCode::TupleInitializerSized => {
+                err.note("tuples must have a statically known size to be initialized");
+            }
             ObligationCauseCode::StructInitializerSized => {
                 err.note("structs must have a statically known size to be initialized");
             }
