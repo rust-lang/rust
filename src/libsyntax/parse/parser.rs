@@ -1249,10 +1249,7 @@ impl<'a> Parser<'a> {
             let mac = respan(lo.to(self.prev_span), Mac_ { path: pth, tts: tts });
             (keywords::Invalid.ident(), ast::TraitItemKind::Macro(mac))
         } else {
-            let (constness, unsafety, abi) = match self.parse_fn_front_matter() {
-                Ok(cua) => cua,
-                Err(e) => return Err(e),
-            };
+            let (constness, unsafety, abi) = self.parse_fn_front_matter()?;
 
             let ident = self.parse_ident()?;
             let mut generics = self.parse_generics()?;
