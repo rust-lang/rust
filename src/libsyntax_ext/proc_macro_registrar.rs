@@ -441,8 +441,12 @@ fn mk_registrar(cx: &mut ExtCtxt,
         i.vis = ast::Visibility::Public;
         i
     });
+    let doc_hidden = cx.meta_list_item_word(span, Symbol::intern("hidden"));
+    let doc_hidden = cx.meta_list(span, Symbol::intern("doc"), vec![doc_hidden]);
+    let doc_hidden = cx.attribute(span, doc_hidden);
     let ident = ast::Ident::with_empty_ctxt(Symbol::gensym("registrar"));
     let module = cx.item_mod(span, span, ident, Vec::new(), vec![krate, func]).map(|mut i| {
+        i.attrs.push(doc_hidden);
         i.vis = ast::Visibility::Public;
         i
     });
