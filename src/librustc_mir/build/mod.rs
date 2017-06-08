@@ -365,13 +365,14 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
         freevars.iter().map(|fv| {
             let var_id = tcx.hir.as_local_node_id(fv.def.def_id()).unwrap();
-            let by_ref = hir.tables().upvar_capture(ty::UpvarId {
+            let capture = hir.tables().upvar_capture(ty::UpvarId {
                 var_id: var_id,
                 closure_expr_id: fn_id
-            }).map_or(false, |capture| match capture {
+            });
+            let by_ref = match capture {
                 ty::UpvarCapture::ByValue => false,
                 ty::UpvarCapture::ByRef(..) => true
-            });
+            };
             let mut decl = UpvarDecl {
                 debug_name: keywords::Invalid.name(),
                 by_ref: by_ref

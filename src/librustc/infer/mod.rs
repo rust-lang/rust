@@ -1521,10 +1521,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         !traits::type_known_to_meet_bound(self, param_env, ty, copy_def_id, span)
     }
 
-    pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture<'tcx>> {
-        self.tables.borrow().upvar_capture_map.get(&upvar_id).cloned()
-    }
-
     pub fn closure_kind(&self,
                         def_id: DefId)
                         -> Option<ty::ClosureKind>

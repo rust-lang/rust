@@ -834,8 +834,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             mc.cat_expr_unadjusted(expr)?
         };
 
-        //NOTE(@jroesch): mixed RefCell borrow causes crash
-        let adjustments = self.tables.borrow().expr_adjustments(&expr).to_vec();
+        let tables = self.tables.borrow();
+        let adjustments = tables.expr_adjustments(&expr);
         if adjustments.is_empty() {
             return Ok(cmt);
         }
@@ -1215,8 +1215,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // Detect by-ref upvar `x`:
         let cause = match note {
             mc::NoteUpvarRef(ref upvar_id) => {
-                let upvar_capture_map = &self.tables.borrow_mut().upvar_capture_map;
-                match upvar_capture_map.get(upvar_id) {
+                match self.tables.borrow().upvar_capture_map.get(upvar_id) {
                     Some(&ty::UpvarCapture::ByRef(ref upvar_borrow)) => {
                         // The mutability of the upvar may have been modified
                         // by the above adjustment, so update our local variable.

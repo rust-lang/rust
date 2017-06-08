@@ -376,8 +376,8 @@ impl<'tcx> TypeckTables<'tcx> {
         }
     }
 
-    pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture<'tcx>> {
-        Some(self.upvar_capture_map.get(&upvar_id).unwrap().clone())
+    pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> ty::UpvarCapture<'tcx> {
+        self.upvar_capture_map[&upvar_id]
     }
 }
 

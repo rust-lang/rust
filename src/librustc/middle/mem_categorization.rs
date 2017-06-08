@@ -283,18 +283,6 @@ impl ast_node for hir::Pat {
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     pub region_maps: &'a RegionMaps,
-    options: MemCategorizationOptions,
-}
-
-#[derive(Copy, Clone, Default)]
-pub struct MemCategorizationOptions {
-    // If true, then when analyzing a closure upvar, if the closure
-    // has a missing kind, we treat it like a Fn closure. When false,
-    // we ICE if the closure has a missing kind. Should be false
-    // except during closure kind inference. It is used by the
-    // mem-categorization code to be able to have stricter assertions
-    // (which are always true except during upvar inference).
-    pub during_closure_kind_inference: bool,
 }
 
 pub type McResult<T> = Result<T, ()>;
@@ -400,20 +388,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
                region_maps: &'a RegionMaps)
                -> MemCategorizationContext<'a, 'gcx, 'tcx> {
-        MemCategorizationContext::with_options(infcx,
-                                               region_maps,
-                                               MemCategorizationOptions::default())
-    }
-
-    pub fn with_options(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-                        region_maps: &'a RegionMaps,
-                        options: MemCategorizationOptions)
-                        -> MemCategorizationContext<'a, 'gcx, 'tcx> {
-        MemCategorizationContext {
-            infcx: infcx,
-            region_maps: region_maps,
-            options: options,
-        }
+        MemCategorizationContext { infcx, region_maps }
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
@@ -620,38 +595,14 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
           Def::Upvar(def_id, _, fn_node_id) => {
               let var_id = self.tcx().hir.as_local_node_id(def_id).unwrap();
-              let ty = self.node_ty(fn_node_id)?;
-              match ty.sty {
-                  ty::TyClosure(closure_id, _) => {
-                      match self.infcx.closure_kind(closure_id) {
-                          Some(kind) => {
-                              self.cat_upvar(id, span, var_id, fn_node_id, kind)
-                          }
-                          None => {
-                              if !self.options.during_closure_kind_inference {
-                                  span_bug!(
-                                      span,
-                                      "No closure kind for {:?}",
-                                      closure_id);
-                              }
-
-                              // during closure kind inference, we
-                              // don't know the closure kind yet, but
-                              // it's ok because we detect that we are
-                              // accessing an upvar and handle that
-                              // case specially anyhow. Use Fn
-                              // arbitrarily.
-                              self.cat_upvar(id, span, var_id, fn_node_id, ty::ClosureKind::Fn)
-                          }
-                      }
-                  }
-                  _ => {
-                      span_bug!(
-                          span,
-                          "Upvar of non-closure {} - {:?}",
-                          fn_node_id,
-                          ty);
-                  }
+              let closure_id = self.tcx().hir.local_def_id(fn_node_id);
+              match self.infcx.closure_kind(closure_id) {
+                Some(kind) => {
+                    self.cat_upvar(id, span, var_id, fn_node_id, kind)
+                }
+                None => {
+                    span_bug!(span, "No closure kind for {:?}", closure_id);
+                }
               }
           }
 
@@ -743,7 +694,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // for that.
         let upvar_id = ty::UpvarId { var_id: var_id,
                                      closure_expr_id: fn_node_id };
-        let upvar_capture = self.infcx.upvar_capture(upvar_id).unwrap();
+        let upvar_capture = self.infcx.tables.borrow().upvar_capture(upvar_id);
         let cmt_result = match upvar_capture {
             ty::UpvarCapture::ByValue => {
                 cmt_result

@@ -271,22 +271,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                param_env: ty::ParamEnv<'tcx>)
                -> Self
     {
-        ExprUseVisitor::with_options(delegate,
-                                     infcx,
-                                     param_env,
-                                     region_maps,
-                                     mc::MemCategorizationOptions::default())
-    }
-
-    pub fn with_options(delegate: &'a mut (Delegate<'tcx>+'a),
-                        infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-                        param_env: ty::ParamEnv<'tcx>,
-                        region_maps: &'a RegionMaps,
-                        options: mc::MemCategorizationOptions)
-               -> Self
-    {
         ExprUseVisitor {
-            mc: mc::MemCategorizationContext::with_options(infcx, region_maps, options),
+            mc: mc::MemCategorizationContext::new(infcx, region_maps),
             delegate,
             param_env,
         }
@@ -678,8 +664,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     // consumed or borrowed as part of the automatic adjustment
     // process.
     fn walk_adjustment(&mut self, expr: &hir::Expr) {
-        //NOTE(@jroesch): mixed RefCell borrow causes crash
-        let adjustments = self.mc.infcx.tables.borrow().expr_adjustments(expr).to_vec();
+        let tables = self.mc.infcx.tables.borrow();
+        let adjustments = tables.expr_adjustments(expr);
         let mut cmt = return_if_err!(self.mc.cat_expr_unadjusted(expr));
         for adjustment in adjustments {
             debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
@@ -896,7 +882,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 let id_var = self.tcx().hir.as_local_node_id(def_id).unwrap();
                 let upvar_id = ty::UpvarId { var_id: id_var,
                                              closure_expr_id: closure_expr.id };
-                let upvar_capture = self.mc.infcx.upvar_capture(upvar_id).unwrap();
+                let upvar_capture = self.mc.infcx.tables.borrow().upvar_capture(upvar_id);
                 let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
                                                                    fn_decl_span,
                                                                    freevar.def));
