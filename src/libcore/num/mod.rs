@@ -15,7 +15,6 @@
 use convert::TryFrom;
 use fmt;
 use intrinsics;
-use mem::size_of;
 use str::FromStr;
 
 /// Provides intentionally-wrapped arithmetic on `T`.
@@ -2176,8 +2175,32 @@ macro_rules! uint_impl {
             (self.wrapping_sub(1)) & self == 0 && !(self == 0)
         }
 
+        // Returns one less than next power of two.
+        // (For 8u8 next power of two is 8u8 and for 6u8 it is 8u8)
+        //
+        // 8u8.one_less_than_next_power_of_two() == 7
+        // 6u8.one_less_than_next_power_of_two() == 7
+        //
+        // This method cannot overflow, as in the `next_power_of_two`
+        // overflow cases it instead ends up returning the maximum value
+        // of the type, and can return 0 for 0.
+        fn one_less_than_next_power_of_two(self) -> Self {
+            if self <= 1 { return 0; }
+
+            // Because `p > 0`, it cannot consist entirely of leading zeros.
+            // That means the shift is always in-bounds, and some processors
+            // (such as intel pre-haswell) have more efficient ctlz
+            // intrinsics when the argument is non-zero.
+            let p = self - 1;
+            let z = p.leading_zeros();
+            <$SelfT>::max_value() >> z
+        }
+
         /// Returns the smallest power of two greater than or equal to `self`.
-        /// Unspecified behavior on overflow.
+        ///
+        /// When return value overflows (i.e. `self > (1 << (N-1))` for type
+        /// `uN`), it panics in debug mode and return value is wrapped to 0 in
+        /// release mode (the only situation in which method can return 0).
         ///
         /// # Examples
         ///
@@ -2190,9 +2213,7 @@ macro_rules! uint_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub fn next_power_of_two(self) -> Self {
-            let bits = size_of::<Self>() * 8;
-            let one: Self = 1;
-            one << ((bits - self.wrapping_sub(one).leading_zeros() as usize) % bits)
+            self.one_less_than_next_power_of_two() + 1
         }
 
         /// Returns the smallest power of two greater than or equal to `n`. If
@@ -2210,12 +2231,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         pub fn checked_next_power_of_two(self) -> Option<Self> {
-            let npot = self.next_power_of_two();
-            if npot >= self {
-                Some(npot)
-            } else {
-                None
-            }
+            self.one_less_than_next_power_of_two().checked_add(1)
         }
     }
 }
