@@ -1,6 +1,7 @@
 // aux-build:dep.rs
-// This ignores the test against rustc, but runs it against miri:
+
 // ignore-cross-compile
+// TODO: The above accidentally also ignores this test against rustc even when are are not cross-compiling.
 
 extern crate dep;
 
