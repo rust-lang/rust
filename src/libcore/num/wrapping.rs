@@ -36,6 +36,7 @@ macro_rules! sh_impl_signed {
                 *self = *self << other;
             }
         }
+        forward_ref_op_assign! { impl ShlAssign, shl_assign for Wrapping<$t>, $f }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Shr<$f> for Wrapping<$t> {
@@ -58,6 +59,7 @@ macro_rules! sh_impl_signed {
                 *self = *self >> other;
             }
         }
+        forward_ref_op_assign! { impl ShrAssign, shr_assign for Wrapping<$t>, $f }
     )
 }
 
@@ -80,6 +82,7 @@ macro_rules! sh_impl_unsigned {
                 *self = *self << other;
             }
         }
+        forward_ref_op_assign! { impl ShlAssign, shl_assign for Wrapping<$t>, $f }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Shr<$f> for Wrapping<$t> {
@@ -98,6 +101,7 @@ macro_rules! sh_impl_unsigned {
                 *self = *self >> other;
             }
         }
+        forward_ref_op_assign! { impl ShrAssign, shr_assign for Wrapping<$t>, $f }
     )
 }
 
@@ -142,6 +146,7 @@ macro_rules! wrapping_impl {
                 *self = *self + other;
             }
         }
+        forward_ref_op_assign! { impl AddAssign, add_assign for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Sub for Wrapping<$t> {
@@ -162,6 +167,7 @@ macro_rules! wrapping_impl {
                 *self = *self - other;
             }
         }
+        forward_ref_op_assign! { impl SubAssign, sub_assign for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Mul for Wrapping<$t> {
@@ -182,6 +188,7 @@ macro_rules! wrapping_impl {
                 *self = *self * other;
             }
         }
+        forward_ref_op_assign! { impl MulAssign, mul_assign for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "wrapping_div", since = "1.3.0")]
         impl Div for Wrapping<$t> {
@@ -202,6 +209,7 @@ macro_rules! wrapping_impl {
                 *self = *self / other;
             }
         }
+        forward_ref_op_assign! { impl DivAssign, div_assign for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "wrapping_impls", since = "1.7.0")]
         impl Rem for Wrapping<$t> {
@@ -222,6 +230,7 @@ macro_rules! wrapping_impl {
                 *self = *self % other;
             }
         }
+        forward_ref_op_assign! { impl RemAssign, rem_assign for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Not for Wrapping<$t> {
@@ -254,6 +263,7 @@ macro_rules! wrapping_impl {
                 *self = *self ^ other;
             }
         }
+        forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl BitOr for Wrapping<$t> {
@@ -274,6 +284,7 @@ macro_rules! wrapping_impl {
                 *self = *self | other;
             }
         }
+        forward_ref_op_assign! { impl BitOrAssign, bitor_assign for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl BitAnd for Wrapping<$t> {
@@ -294,6 +305,7 @@ macro_rules! wrapping_impl {
                 *self = *self & other;
             }
         }
+        forward_ref_op_assign! { impl BitAndAssign, bitand_assign for Wrapping<$t>, Wrapping<$t> }
 
         #[stable(feature = "wrapping_neg", since = "1.10.0")]
         impl Neg for Wrapping<$t> {

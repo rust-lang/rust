@@ -173,6 +173,15 @@ fn test_op_assigns() {
                 tmp.$op(Wrapping($rhs));
                 assert_eq!(black_box(tmp), Wrapping($ans));
             }
+
+            // also test that a &Wrapping<T> right-hand side is possible
+            {
+                let mut tmp = Wrapping($initial);
+                tmp = black_box(tmp);
+                tmp.$op(&Wrapping($rhs));
+                assert_eq!(black_box(tmp), Wrapping($ans));
+            }
+
             // FIXME(30524): Uncomment this test
             /*
             {
