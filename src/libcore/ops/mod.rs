@@ -149,6 +149,7 @@
 
 mod arith;
 mod bit;
+mod deref;
 mod function;
 mod place;
 mod range;
@@ -163,6 +164,9 @@ pub use self::arith::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
 pub use self::bit::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 pub use self::bit::{BitAndAssign, BitOrAssign, BitXorAssign, ShlAssign, ShrAssign};
+
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::deref::{Deref, DerefMut};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::function::{Fn, FnMut, FnOnce};
@@ -421,116 +425,6 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
     /// The method for the mutable indexing (`container[index]`) operation
     #[stable(feature = "rust1", since = "1.0.0")]
     fn index_mut(&mut self, index: Idx) -> &mut Self::Output;
-}
-
-/// The `Deref` trait is used to specify the functionality of dereferencing
-/// operations, like `*v`.
-///
-/// `Deref` also enables ['`Deref` coercions'][coercions].
-///
-/// [coercions]: ../../book/deref-coercions.html
-///
-/// # Examples
-///
-/// A struct with a single field which is accessible via dereferencing the
-/// struct.
-///
-/// ```
-/// use std::ops::Deref;
-///
-/// struct DerefExample<T> {
-///     value: T
-/// }
-///
-/// impl<T> Deref for DerefExample<T> {
-///     type Target = T;
-///
-///     fn deref(&self) -> &T {
-///         &self.value
-///     }
-/// }
-///
-/// fn main() {
-///     let x = DerefExample { value: 'a' };
-///     assert_eq!('a', *x);
-/// }
-/// ```
-#[lang = "deref"]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub trait Deref {
-    /// The resulting type after dereferencing
-    #[stable(feature = "rust1", since = "1.0.0")]
-    type Target: ?Sized;
-
-    /// The method called to dereference a value
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn deref(&self) -> &Self::Target;
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> Deref for &'a T {
-    type Target = T;
-
-    fn deref(&self) -> &T { *self }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> Deref for &'a mut T {
-    type Target = T;
-
-    fn deref(&self) -> &T { *self }
-}
-
-/// The `DerefMut` trait is used to specify the functionality of dereferencing
-/// mutably like `*v = 1;`
-///
-/// `DerefMut` also enables ['`Deref` coercions'][coercions].
-///
-/// [coercions]: ../../book/deref-coercions.html
-///
-/// # Examples
-///
-/// A struct with a single field which is modifiable via dereferencing the
-/// struct.
-///
-/// ```
-/// use std::ops::{Deref, DerefMut};
-///
-/// struct DerefMutExample<T> {
-///     value: T
-/// }
-///
-/// impl<T> Deref for DerefMutExample<T> {
-///     type Target = T;
-///
-///     fn deref(&self) -> &T {
-///         &self.value
-///     }
-/// }
-///
-/// impl<T> DerefMut for DerefMutExample<T> {
-///     fn deref_mut(&mut self) -> &mut T {
-///         &mut self.value
-///     }
-/// }
-///
-/// fn main() {
-///     let mut x = DerefMutExample { value: 'a' };
-///     *x = 'b';
-///     assert_eq!('b', *x);
-/// }
-/// ```
-#[lang = "deref_mut"]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub trait DerefMut: Deref {
-    /// The method called to mutably dereference a value
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn deref_mut(&mut self) -> &mut Self::Target;
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> DerefMut for &'a mut T {
-    fn deref_mut(&mut self) -> &mut T { *self }
 }
 
 /// Trait that indicates that this is a pointer or a wrapper for one,
