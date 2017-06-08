@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use core::iter::*;
-use core::{i8, i16, isize};
-use core::usize;
+use core::{i16, usize, isize};
+use core::ops::RangeInclusive;
 
 // FIXME #27741: This is here to simplify calling Iterator::step_by. Remove
 // once Range::step_by is completely gone (not just deprecated).
@@ -1090,8 +1090,6 @@ fn test_range_step() {
     #![allow(deprecated)]
 
     assert_eq!((0..20).step_by(5).collect::<Vec<isize>>(), [0, 5, 10, 15]);
-    assert_eq!((20..0).step_by(-5).collect::<Vec<isize>>(), [20, 15, 10, 5]);
-    assert_eq!((20..0).step_by(-6).collect::<Vec<isize>>(), [20, 14, 8, 2]);
     assert_eq!((200..255).step_by(50).collect::<Vec<u8>>(), [200, 250]);
     assert_eq!((200..-5).step_by(1).collect::<Vec<isize>>(), []);
     assert_eq!((200..200).step_by(1).collect::<Vec<isize>>(), []);
@@ -1099,14 +1097,82 @@ fn test_range_step() {
     assert_eq!((0..20).step_by(1).size_hint(), (20, Some(20)));
     assert_eq!((0..20).step_by(21).size_hint(), (1, Some(1)));
     assert_eq!((0..20).step_by(5).size_hint(), (4, Some(4)));
-    assert_eq!((20..0).step_by(-5).size_hint(), (4, Some(4)));
-    assert_eq!((20..0).step_by(-6).size_hint(), (4, Some(4)));
     assert_eq!((20..-5).step_by(1).size_hint(), (0, Some(0)));
     assert_eq!((20..20).step_by(1).size_hint(), (0, Some(0)));
-    assert_eq!((0..1).step_by(0).size_hint(), (0, None));
-    assert_eq!((i8::MAX..i8::MIN).step_by(i8::MIN).size_hint(), (2, Some(2)));
-    assert_eq!((i16::MIN..i16::MAX).step_by(i16::MAX).size_hint(), (3, Some(3)));
+    assert_eq!((i16::MIN..i16::MAX).step_by(i16::MAX as usize).size_hint(), (3, Some(3)));
     assert_eq!((isize::MIN..isize::MAX).step_by(1).size_hint(), (usize::MAX, Some(usize::MAX)));
+}
+
+#[test]
+fn test_range_count() {
+    assert_eq!((0..10).count(), 10);
+    assert_eq!(RangeInclusive { start: 0, end: 10 }.count(), 11);
+    assert_eq!((10..0).count(), 0);
+    assert_eq!(RangeInclusive { start: 10, end: 0 }.count(), 0);
+}
+
+#[test]
+fn test_range_nth() {
+    let mut r = 0..6;
+    assert_eq!(r.nth(1), Some(1));
+    assert_eq!(r.nth(1), Some(3));
+    assert_eq!(r.nth(1), Some(5));
+    assert_eq!(r.nth(1), None);
+    let mut r = 0..3;
+    assert_eq!(r.nth(0), Some(0));
+    assert_eq!(r.nth(0), Some(1));
+    assert_eq!(r.nth(0), Some(2));
+    assert_eq!(r.nth(0), None);
+    let mut r = (!0u32 - 2)..!0;
+    assert_eq!(r.nth(0), Some(!0 - 2));
+    assert_eq!(r.nth(0), Some(!0 - 1));
+    assert_eq!(r.nth(0), None);
+    let mut r = 0...6;
+    assert_eq!(r.nth(1), Some(1));
+    assert_eq!(r.nth(1), Some(3));
+    assert_eq!(r.nth(1), Some(5));
+    assert_eq!(r.nth(1), None);
+    let mut r = (!0u32 - 2)...!0;
+    assert_eq!(r.nth(0), Some(!0 - 2));
+    assert_eq!(r.nth(0), Some(!0 - 1));
+    assert_eq!(r.nth(0), Some(!0));
+    assert_eq!(r.nth(0), None);
+}
+
+#[test]
+fn test_range_count_large() {
+    assert_eq!((0..!0usize).count(), !0usize);
+    assert_eq!((isize::min_value()..isize::max_value()).count(), !0usize);
+}
+
+#[test]
+#[should_panic]
+fn test_usize_range_count_oflow() {
+    assert_eq!(RangeInclusive { start: 0, end: !0usize }.count(), 0);
+}
+
+#[test]
+#[should_panic]
+fn test_usize_range_no_last() {
+    assert_eq!((0..).last(), None);
+}
+
+#[test]
+#[should_panic]
+fn test_usize_range_no_last() {
+    assert_eq!((0..).last(), None);
+}
+
+#[test]
+#[should_panic]
+fn test_isize_range_count_oflow() {
+    assert_eq!(RangeInclusive { start:isize::min_value(), end: isize::max_value() }.count(), 0);
+}
+
+#[test]
+fn test_range_last() {
+    assert_eq!((0..10).last(), Some(9));
+    assert_eq!(RangeInclusive { start: 0, end: 10 }.last(), Some(10));
 }
 
 #[test]
@@ -1194,12 +1260,12 @@ fn test_chain_fold() {
 #[test]
 fn test_step_replace_unsigned() {
     let mut x = 4u32;
-    let y = x.replace_zero();
+    let y = Step::replace_zero(&mut x);
     assert_eq!(x, 0);
     assert_eq!(y, 4);
 
     x = 5;
-    let y = x.replace_one();
+    let y = Step::replace_one(&mut x);
     assert_eq!(x, 1);
     assert_eq!(y, 5);
 }
@@ -1207,12 +1273,12 @@ fn test_step_replace_unsigned() {
 #[test]
 fn test_step_replace_signed() {
     let mut x = 4i32;
-    let y = x.replace_zero();
+    let y = Step::replace_zero(&mut x);
     assert_eq!(x, 0);
     assert_eq!(y, 4);
 
     x = 5;
-    let y = x.replace_one();
+    let y = Step::replace_one(&mut x);
     assert_eq!(x, 1);
     assert_eq!(y, 5);
 }
@@ -1220,12 +1286,12 @@ fn test_step_replace_signed() {
 #[test]
 fn test_step_replace_no_between() {
     let mut x = 4u128;
-    let y = x.replace_zero();
+    let y = Step::replace_zero(&mut x);
     assert_eq!(x, 0);
     assert_eq!(y, 4);
 
     x = 5;
-    let y = x.replace_one();
+    let y = Step::replace_one(&mut x);
     assert_eq!(x, 1);
     assert_eq!(y, 5);
 }
