@@ -112,7 +112,7 @@ pub trait UnwindSafe {}
 /// This is a "helper marker trait" used to provide impl blocks for the
 /// `UnwindSafe` trait, for more information see that documentation.
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-#[rustc_on_unimplemented = "the type {Self} contains interior mutability \
+#[rustc_on_unimplemented = "the type {Self} may contain interior mutability \
                             and a reference may not be safely transferrable \
                             across a catch_unwind boundary"]
 pub trait RefUnwindSafe {}
