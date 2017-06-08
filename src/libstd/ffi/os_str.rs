@@ -230,8 +230,6 @@ impl OsString {
     /// # Examples
     ///
     /// ```
-    /// #![feature(osstring_shrink_to_fit)]
-    ///
     /// use std::ffi::OsString;
     ///
     /// let mut s = OsString::from("foo");
@@ -242,7 +240,7 @@ impl OsString {
     /// s.shrink_to_fit();
     /// assert_eq!(3, s.capacity());
     /// ```
-    #[unstable(feature = "osstring_shrink_to_fit", issue = "40421")]
+    #[stable(feature = "osstring_shrink_to_fit", since = "1.19.0")]
     pub fn shrink_to_fit(&mut self) {
         self.inner.shrink_to_fit()
     }
