@@ -1753,6 +1753,26 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
     }
 }
 
+#[unstable(feature = "vec_add", issue = "38573")]
+impl<T> ops::Add for Vec<T> {
+    type Output = Vec<T>;
+
+    fn add(mut self, rhs: Vec<T>) -> Vec<T> {
+        self.extend(rhs);
+        self
+    }
+}
+
+#[unstable(feature = "vec_add", issue = "38573")]
+impl<'a, T: Clone> ops::Add<&'a [T]> for Vec<T> {
+    type Output = Vec<T>;
+
+    fn add(mut self, rhs: &'a [T]) -> Vec<T> {
+        self.extend_from_slice(rhs);
+        self
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Extend<T> for Vec<T> {
     #[inline]
