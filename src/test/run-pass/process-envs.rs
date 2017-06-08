@@ -10,8 +10,6 @@
 
 // ignore-emscripten
 
-#![feature(command_envs)]
-
 use std::process::Command;
 use std::env;
 use std::collections::HashMap;

@@ -34,7 +34,6 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
-#![feature(command_envs)]
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
