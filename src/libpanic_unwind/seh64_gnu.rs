@@ -128,9 +128,10 @@ unsafe fn find_landing_pad(dc: &c::DISPATCHER_CONTEXT) -> Option<usize> {
         get_data_start: &|| unimplemented!(),
     };
     match find_eh_action(dc.HandlerData, &eh_ctx) {
-        EHAction::None => None,
-        EHAction::Cleanup(lpad) |
-        EHAction::Catch(lpad) => Some(lpad),
-        EHAction::Terminate => intrinsics::abort(),
+        Err(_) |
+        Ok(EHAction::None) => None,
+        Ok(EHAction::Cleanup(lpad)) |
+        Ok(EHAction::Catch(lpad)) => Some(lpad),
+        Ok(EHAction::Terminate) => intrinsics::abort(),
     }
 }
