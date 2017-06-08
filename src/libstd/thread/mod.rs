@@ -825,8 +825,6 @@ pub fn park_timeout(dur: Duration) {
 /// # Examples
 ///
 /// ```
-/// #![feature(thread_id)]
-///
 /// use std::thread;
 ///
 /// let other_thread = thread::spawn(|| {
@@ -836,7 +834,7 @@ pub fn park_timeout(dur: Duration) {
 /// let other_thread_id = other_thread.join().unwrap();
 /// assert!(thread::current().id() != other_thread_id);
 /// ```
-#[unstable(feature = "thread_id", issue = "21507")]
+#[stable(feature = "thread_id", since = "1.19.0")]
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
 pub struct ThreadId(u64);
 
@@ -966,8 +964,6 @@ impl Thread {
     /// # Examples
     ///
     /// ```
-    /// #![feature(thread_id)]
-    ///
     /// use std::thread;
     ///
     /// let other_thread = thread::spawn(|| {
@@ -977,7 +973,7 @@ impl Thread {
     /// let other_thread_id = other_thread.join().unwrap();
     /// assert!(thread::current().id() != other_thread_id);
     /// ```
-    #[unstable(feature = "thread_id", issue = "21507")]
+    #[stable(feature = "thread_id", since = "1.19.0")]
     pub fn id(&self) -> ThreadId {
         self.inner.id
     }
@@ -1168,8 +1164,6 @@ impl<T> JoinHandle<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(thread_id)]
-    ///
     /// use std::thread;
     ///
     /// let builder = thread::Builder::new();
