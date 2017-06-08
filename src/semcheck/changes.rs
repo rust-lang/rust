@@ -67,7 +67,7 @@ impl<'a> From<&'a Change> for ChangeCategory {
     }
 }
 
-/// The types of changes we identify.
+/// The types of changes we identify between items present in both crate versions.
 #[derive(Clone, Debug)]
 pub enum BinaryChangeType {
     /// An unknown change is any change we don't yet explicitly handle.
@@ -82,19 +82,24 @@ pub use self::BinaryChangeType::*;
 /// the change, as well as data we use to output it in a nice fashion.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Change {
+    /// A wrapper around a unary change.
     Unary(UnaryChange),
+    /// A wrapper around a binary change.
     Binary(BinaryChange),
 }
 
 impl Change {
+    /// Construct a new addition change from it's export. 
     pub fn new_addition(export: Export) -> Change {
         Change::Unary(UnaryChange::Addition(export))
     }
 
+    /// Construct a new removal change from it's export. 
     pub fn new_removal(export: Export) -> Change {
         Change::Unary(UnaryChange::Removal(export))
     }
 
+    /// Construct a new binary change from it's exports and type. 
     pub fn new_binary(type_: BinaryChangeType, old: Export, new: Export) -> Change {
         Change::Binary(BinaryChange::new(type_, old, new))
     }
@@ -103,8 +108,8 @@ impl Change {
 /// A change record of a change that introduced or removed an item.
 ///
 /// It is important to note that the `Eq` and `Ord` instances are constucted to only
-/// regard the span and path of the associated item export. This allows us to sort them
-/// by appearance in the source, but possibly could create conflict later on.
+/// regard the span of the associated item export. This allows us to sort them by appearance
+/// in the source, but possibly could create conflict later on.
 pub enum UnaryChange {
     /// An item has been added.
     Addition(Export),
@@ -113,20 +118,24 @@ pub enum UnaryChange {
 }
 
 impl UnaryChange {
+    /// Get the change item's sole export.
     fn export(&self) -> &Export {
         match *self {
             UnaryChange::Addition(ref e) | UnaryChange::Removal(ref e) => e,
         }
     }
 
+    /// Get the change item's sole span.
     pub fn span(&self) -> &Span {
         &self.export().span
     }
 
+    /// Get the change item's ident.
     pub fn ident(&self) -> &Ident {
         &self.export().ident
     }
 
+    /// Render the change's type to a string.
     pub fn type_(&self) -> &'static str {
         match *self {
             UnaryChange::Addition(_) => "Addition",
@@ -155,13 +164,22 @@ impl Ord for UnaryChange {
     }
 }
 
+/// A change record of a change of an item between versions.
+///
+/// It is important to note that the `Eq` and `Ord` instances are constucted to only
+/// regard the *new* span of the associated item export. This allows us to sort them
+/// by appearance in *new* the source, but possibly could create conflict later on.
 pub struct BinaryChange {
+    /// The type of the change affecting the item.
     type_: BinaryChangeType,
+    /// The old export of the change item.
     old: Export,
+    /// The new export of the change item.
     new: Export,
 }
 
 impl BinaryChange {
+    /// Construct a new binary change record.
     pub fn new(type_: BinaryChangeType, old: Export, new: Export) -> BinaryChange {
         BinaryChange {
             type_: type_,
@@ -170,18 +188,22 @@ impl BinaryChange {
         }
     }
 
+    /// Get the change's type.
     pub fn type_(&self) -> &BinaryChangeType {
         &self.type_
     }
 
+    /// Get the new span of the change item.
     pub fn new_span(&self) -> &Span {
         &self.new.span
     }
 
+    /// Get the old span of the change item.
     pub fn old_span(&self) -> &Span {
         &self.old.span
     }
 
+    /// Get the ident of the change item.
     pub fn ident(&self) -> &Ident {
         &self.old.ident
     }
