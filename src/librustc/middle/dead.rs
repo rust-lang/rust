@@ -422,10 +422,10 @@ struct DeadVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     fn should_warn_about_item(&mut self, item: &hir::Item) -> bool {
         let should_warn = match item.node {
+            hir::ItemTy(ref ty, _) => self.live_symbols.contains(&ty.id),
             hir::ItemStatic(..)
             | hir::ItemConst(..)
             | hir::ItemFn(..)
-            | hir::ItemTy(..)
             | hir::ItemEnum(..)
             | hir::ItemStruct(..)
             | hir::ItemUnion(..) => true,
