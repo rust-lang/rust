@@ -393,27 +393,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             fresh_tables: env.fresh_tables().map(RefCell::new),
         }
     }
-
-    /// Fake InferCtxt with the global tcx. Used by pre-MIR borrowck
-    /// for MemCategorizationContext/ExprUseVisitor.
-    /// If any inference functionality is used, ICEs will occur.
-    pub fn borrowck_fake_infer_ctxt(self) -> InferCtxt<'a, 'gcx, 'gcx> {
-        InferCtxt {
-            tcx: self,
-            tables: InferTables::Missing,
-            type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
-            int_unification_table: RefCell::new(UnificationTable::new()),
-            float_unification_table: RefCell::new(UnificationTable::new()),
-            region_vars: RegionVarBindings::new(self),
-            selection_cache: traits::SelectionCache::new(),
-            evaluation_cache: traits::EvaluationCache::new(),
-            projection_cache: RefCell::new(traits::ProjectionCache::new()),
-            reported_trait_errors: RefCell::new(FxHashSet()),
-            tainted_by_errors_flag: Cell::new(false),
-            err_count_on_creation: self.sess.err_count(),
-            in_snapshot: Cell::new(false),
-        }
-    }
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {

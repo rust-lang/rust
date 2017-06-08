@@ -282,9 +282,10 @@ impl ast_node for hir::Pat {
 
 #[derive(Clone)]
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pub region_maps: &'a RegionMaps,
     pub tables: &'a ty::TypeckTables<'tcx>,
+    infcx: Option<&'a InferCtxt<'a, 'gcx, 'tcx>>,
 }
 
 pub type McResult<T> = Result<T, ()>;
@@ -385,27 +386,51 @@ impl MutabilityCategory {
     }
 }
 
-impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
-    /// Context should be the `DefId` we use to fetch region-maps.
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                region_maps: &'a RegionMaps,
                tables: &'a ty::TypeckTables<'tcx>)
-               -> MemCategorizationContext<'a, 'gcx, 'tcx> {
-        MemCategorizationContext { infcx, region_maps, tables }
+               -> MemCategorizationContext<'a, 'tcx, 'tcx> {
+        MemCategorizationContext { tcx, region_maps, tables, infcx: None }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
+    pub fn with_infer(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                      region_maps: &'a RegionMaps,
+                      tables: &'a ty::TypeckTables<'tcx>)
+                      -> MemCategorizationContext<'a, 'gcx, 'tcx> {
+        MemCategorizationContext {
+            tcx: infcx.tcx,
+            region_maps,
+            tables,
+            infcx: Some(infcx),
+        }
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
-        self.infcx.tcx
+    pub fn type_moves_by_default(&self,
+                                 param_env: ty::ParamEnv<'tcx>,
+                                 ty: Ty<'tcx>,
+                                 span: Span)
+                                 -> bool {
+        self.infcx.map(|infcx| infcx.type_moves_by_default(param_env, ty, span))
+            .or_else(|| {
+                self.tcx.lift_to_global(&(param_env, ty)).map(|(param_env, ty)| {
+                    ty.moves_by_default(self.tcx.global_tcx(), param_env, span)
+                })
+            })
+            .unwrap_or(true)
     }
 
     fn resolve_type_vars_if_possible<T>(&self, value: &T) -> T
         where T: TypeFoldable<'tcx>
     {
-        self.infcx.resolve_type_vars_if_possible(value)
+        self.infcx.map(|infcx| infcx.resolve_type_vars_if_possible(value))
+            .unwrap_or_else(|| value.clone())
     }
 
     fn is_tainted_by_errors(&self) -> bool {
-        self.infcx.is_tainted_by_errors()
+        self.infcx.map_or(false, |infcx| infcx.is_tainted_by_errors())
     }
 
     fn resolve_type_vars_or_error(&self,
@@ -426,7 +451,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             None if self.is_tainted_by_errors() => Err(()),
             None => {
                 bug!("no type for node {}: {} in mem_categorization",
-                     id, self.tcx().hir.node_to_string(id));
+                     id, self.tcx.hir.node_to_string(id));
             }
         }
     }
@@ -506,7 +531,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             adjustment::Adjust::Deref(overloaded) => {
                 // Equivalent to *expr or something similar.
                 let base = if let Some(deref) = overloaded {
-                    let ref_ty = self.tcx().mk_ref(deref.region, ty::TypeAndMut {
+                    let ref_ty = self.tcx.mk_ref(deref.region, ty::TypeAndMut {
                         ty: target,
                         mutbl: deref.mutbl,
                     });
@@ -624,17 +649,17 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           }
 
           Def::Upvar(def_id, _, fn_node_id) => {
-              let var_id = self.tcx().hir.as_local_node_id(def_id).unwrap();
+              let var_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
               self.cat_upvar(id, span, var_id, fn_node_id)
           }
 
           Def::Local(def_id) => {
-            let vid = self.tcx().hir.as_local_node_id(def_id).unwrap();
+            let vid = self.tcx.hir.as_local_node_id(def_id).unwrap();
             Ok(Rc::new(cmt_ {
                 id: id,
                 span: span,
                 cat: Categorization::Local(vid),
-                mutbl: MutabilityCategory::from_local(self.tcx(), vid),
+                mutbl: MutabilityCategory::from_local(self.tcx, vid),
                 ty: expr_ty,
                 note: NoteNone
             }))
@@ -686,7 +711,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let var_ty = self.node_ty(var_id)?;
 
         // Mutability of original variable itself
-        let var_mutbl = MutabilityCategory::from_local(self.tcx(), var_id);
+        let var_mutbl = MutabilityCategory::from_local(self.tcx, var_id);
 
         // Construct the upvar. This represents access to the field
         // from the environment (perhaps we should eventually desugar
@@ -753,11 +778,11 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                  -> cmt_<'tcx>
     {
         // Region of environment pointer
-        let env_region = self.tcx().mk_region(ty::ReFree(ty::FreeRegion {
+        let env_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
-            scope: self.tcx().hir.local_def_id(upvar_id.closure_expr_id),
+            scope: self.tcx.hir.local_def_id(upvar_id.closure_expr_id),
             bound_region: ty::BrEnv
         }));
 
@@ -774,7 +799,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // one.
         let cmt_result = cmt_ {
             mutbl: McImmutable,
-            ty: self.tcx().types.err,
+            ty: self.tcx.types.err,
             ..cmt_result
         };
 
@@ -806,7 +831,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn temporary_scope(&self, id: ast::NodeId) -> ty::Region<'tcx>
     {
         let scope = self.region_maps.temporary_scope(id);
-        self.tcx().mk_region(match scope {
+        self.tcx.mk_region(match scope {
             Some(scope) => ty::ReScope(scope),
             None => ty::ReStatic
         })
@@ -817,20 +842,20 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                            span: Span,
                            expr_ty: Ty<'tcx>)
                            -> cmt<'tcx> {
-        let promotable = self.tcx().rvalue_promotable_to_static.borrow().get(&id).cloned()
+        let promotable = self.tcx.rvalue_promotable_to_static.borrow().get(&id).cloned()
                                    .unwrap_or(false);
 
         // When the corresponding feature isn't toggled, only promote `[T; 0]`.
         let promotable = match expr_ty.sty {
             ty::TyArray(_, 0) => true,
-            _ => promotable && self.tcx().sess.features.borrow().rvalue_static_promotion,
+            _ => promotable && self.tcx.sess.features.borrow().rvalue_static_promotion,
         };
 
         // Compute maximum lifetime of this rvalue. This is 'static if
         // we can promote to a constant, otherwise equal to enclosing temp
         // lifetime.
         let re = if promotable {
-            self.tcx().types.re_static
+            self.tcx.types.re_static
         } else {
             self.temporary_scope(id)
         };
@@ -911,7 +936,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 span_bug!(expr.span, "cat_overloaded_lvalue: base is not a reference")
             }
         };
-        let ref_ty = self.tcx().mk_ref(region, ty::TypeAndMut {
+        let ref_ty = self.tcx.mk_ref(region, ty::TypeAndMut {
             ty: lvalue_ty,
             mutbl,
         });
@@ -1098,8 +1123,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                     Def::Variant(variant_did) |
                     Def::VariantCtor(variant_did, ..) => {
                         // univariant enums do not need downcasts
-                        let enum_did = self.tcx().parent_def_id(variant_did).unwrap();
-                        if !self.tcx().adt_def(enum_did).is_univariant() {
+                        let enum_did = self.tcx.parent_def_id(variant_did).unwrap();
+                        if !self.tcx.adt_def(enum_did).is_univariant() {
                             self.cat_downcast(pat, cmt.clone(), cmt.ty, variant_did)
                         } else {
                             cmt
@@ -1116,8 +1141,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             let def = self.tables.qpath_def(qpath, pat.id);
             let expected_len = match def {
                 Def::VariantCtor(def_id, CtorKind::Fn) => {
-                    let enum_def = self.tcx().parent_def_id(def_id).unwrap();
-                    self.tcx().adt_def(enum_def).variant_with_id(def_id).fields.len()
+                    let enum_def = self.tcx.parent_def_id(def_id).unwrap();
+                    self.tcx.adt_def(enum_def).variant_with_id(def_id).fields.len()
                 }
                 Def::StructCtor(_, CtorKind::Fn) => {
                     match self.pat_ty(&pat)?.sty {

@@ -200,8 +200,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         all_loans: all_loans,
         param_env,
     };
-    let infcx = bccx.tcx.borrowck_fake_infer_ctxt();
-    euv::ExprUseVisitor::new(&mut clcx, &infcx, param_env, &bccx.region_maps, bccx.tables)
+    euv::ExprUseVisitor::new(&mut clcx, bccx.tcx, param_env, &bccx.region_maps, bccx.tables)
         .consume_body(body);
 }
 

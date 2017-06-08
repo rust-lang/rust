@@ -828,9 +828,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn with_mc<F, R>(&self, f: F) -> R
         where F: for<'b> FnOnce(mc::MemCategorizationContext<'b, 'gcx, 'tcx>) -> R
     {
-        f(mc::MemCategorizationContext::new(&self.infcx,
-                                            &self.region_maps,
-                                            &self.tables.borrow()))
+        f(mc::MemCategorizationContext::with_infer(&self.infcx,
+                                                   &self.region_maps,
+                                                   &self.tables.borrow()))
     }
 
     /// Invoked on any adjustments that occur. Checks that if this is a region pointer being
