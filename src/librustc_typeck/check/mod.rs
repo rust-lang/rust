@@ -120,7 +120,7 @@ use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, InternedString, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::{self, BytePos, Span, DUMMY_SP};
+use syntax_pos::{self, BytePos, Span};
 
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -1899,14 +1899,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                            self.body_id,
                                                            self.param_env,
                                                            value)
-    }
-
-    pub fn write_nil(&self, node_id: ast::NodeId) {
-        self.write_ty(node_id, self.tcx.mk_nil());
-    }
-
-    pub fn write_error(&self, node_id: ast::NodeId) {
-        self.write_ty(node_id, self.tcx.types.err);
     }
 
     pub fn require_type_meets(&self,
@@ -4020,11 +4012,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_stmt(&self, stmt: &'gcx hir::Stmt) {
         // Don't do all the complex logic below for DeclItem.
         match stmt.node {
-            hir::StmtDecl(ref decl, id) => {
+            hir::StmtDecl(ref decl, _) => {
                 match decl.node {
                     hir::DeclLocal(_) => {}
                     hir::DeclItem(_) => {
-                        self.write_nil(id);
                         return;
                     }
                 }
@@ -4040,34 +4031,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.diverges.set(Diverges::Maybe);
         self.has_errors.set(false);
 
-        let (node_id, _span) = match stmt.node {
-            hir::StmtDecl(ref decl, id) => {
-                let span = match decl.node {
+        match stmt.node {
+            hir::StmtDecl(ref decl, _) => {
+                match decl.node {
                     hir::DeclLocal(ref l) => {
                         self.check_decl_local(&l);
-                        l.span
                     }
-                    hir::DeclItem(_) => {/* ignore for now */
-                        DUMMY_SP
-                    }
-                };
-                (id, span)
+                    hir::DeclItem(_) => {/* ignore for now */}
+                }
             }
-            hir::StmtExpr(ref expr, id) => {
+            hir::StmtExpr(ref expr, _) => {
                 // Check with expected type of ()
                 self.check_expr_has_type(&expr, self.tcx.mk_nil());
-                (id, expr.span)
             }
-            hir::StmtSemi(ref expr, id) => {
+            hir::StmtSemi(ref expr, _) => {
                 self.check_expr(&expr);
-                (id, expr.span)
             }
-        };
-
-        if self.has_errors.get() {
-            self.write_error(node_id);
-        } else {
-            self.write_nil(node_id);
         }
 
         // Combine the diverging and has_error flags.
