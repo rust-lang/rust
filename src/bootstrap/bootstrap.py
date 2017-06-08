@@ -86,7 +86,7 @@ def _download(path, url, probably_big, verbose, exception):
             option = "-#"
         else:
             option = "-s"
-        run(["curl", option, "--retry", "3", "-Sf", "-o", path, url],
+        run(["curl", option, "-Sf", "-o", path, url],
             verbose=verbose,
             exception=exception)
 

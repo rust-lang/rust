@@ -21,6 +21,7 @@ if [ "$NO_CHANGE_USER" = "" ]; then
 fi
 
 ci_dir=`cd $(dirname $0) && pwd`
+source "$ci_dir/retryify.sh"
 source "$ci_dir/shared.sh"
 
 if [ "$TRAVIS" == "true" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then

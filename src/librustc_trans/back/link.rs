@@ -799,38 +799,7 @@ fn link_natively(sess: &Session,
     // with some thread pool working in the background. It seems that no one
     // currently knows a fix for this so in the meantime we're left with this...
     info!("{:?}", &cmd);
-    let retry_on_segfault = env::var("RUSTC_RETRY_LINKER_ON_SEGFAULT").is_ok();
-    let mut prog;
-    let mut i = 0;
-    loop {
-        i += 1;
-        prog = time(sess.time_passes(), "running linker", || cmd.output());
-        if !retry_on_segfault || i > 3 {
-            break
-        }
-        let output = match prog {
-            Ok(ref output) => output,
-            Err(_) => break,
-        };
-        if output.status.success() {
-            break
-        }
-        let mut out = output.stderr.clone();
-        out.extend(&output.stdout);
-        let out = String::from_utf8_lossy(&out);
-        let msg = "clang: error: unable to execute command: \
-                   Segmentation fault: 11";
-        if !out.contains(msg) {
-            break
-        }
-
-        sess.struct_warn("looks like the linker segfaulted when we tried to \
-                          call it, automatically retrying again")
-            .note(&format!("{:?}", cmd))
-            .note(&out)
-            .emit();
-    }
-
+    let prog = time(sess.time_passes(), "running linker", || cmd.output());
     match prog {
         Ok(prog) => {
             fn escape_string(s: &[u8]) -> String {
