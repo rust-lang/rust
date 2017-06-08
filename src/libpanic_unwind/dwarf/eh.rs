@@ -61,9 +61,11 @@ pub enum EHAction {
 
 pub const USING_SJLJ_EXCEPTIONS: bool = cfg!(all(target_os = "ios", target_arch = "arm"));
 
-pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext) -> EHAction {
+pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext)
+    -> Result<EHAction, ()>
+{
     if lsda.is_null() {
-        return EHAction::None;
+        return Ok(EHAction::None)
     }
 
     let func_start = context.func_start;
@@ -72,7 +74,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext) -> EHAction {
     let start_encoding = reader.read::<u8>();
     // base address for landing pad offsets
     let lpad_base = if start_encoding != DW_EH_PE_omit {
-        read_encoded_pointer(&mut reader, context, start_encoding)
+        read_encoded_pointer(&mut reader, context, start_encoding)?
     } else {
         func_start
     };
@@ -90,9 +92,9 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext) -> EHAction {
 
     if !USING_SJLJ_EXCEPTIONS {
         while reader.ptr < action_table {
-            let cs_start = read_encoded_pointer(&mut reader, context, call_site_encoding);
-            let cs_len = read_encoded_pointer(&mut reader, context, call_site_encoding);
-            let cs_lpad = read_encoded_pointer(&mut reader, context, call_site_encoding);
+            let cs_start = read_encoded_pointer(&mut reader, context, call_site_encoding)?;
+            let cs_len = read_encoded_pointer(&mut reader, context, call_site_encoding)?;
+            let cs_lpad = read_encoded_pointer(&mut reader, context, call_site_encoding)?;
             let cs_action = reader.read_uleb128();
             // Callsite table is sorted by cs_start, so if we've passed the ip, we
             // may stop searching.
@@ -101,23 +103,23 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext) -> EHAction {
             }
             if ip < func_start + cs_start + cs_len {
                 if cs_lpad == 0 {
-                    return EHAction::None;
+                    return Ok(EHAction::None)
                 } else {
                     let lpad = lpad_base + cs_lpad;
-                    return interpret_cs_action(cs_action, lpad);
+                    return Ok(interpret_cs_action(cs_action, lpad))
                 }
             }
         }
         // Ip is not present in the table.  This should not happen... but it does: issue #35011.
         // So rather than returning EHAction::Terminate, we do this.
-        EHAction::None
+        Ok(EHAction::None)
     } else {
         // SjLj version:
         // The "IP" is an index into the call-site table, with two exceptions:
         // -1 means 'no-action', and 0 means 'terminate'.
         match ip as isize {
-            -1 => return EHAction::None,
-            0 => return EHAction::Terminate,
+            -1 => return Ok(EHAction::None),
+            0 => return Ok(EHAction::Terminate),
             _ => (),
         }
         let mut idx = ip;
@@ -129,7 +131,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext) -> EHAction {
                 // Can never have null landing pad for sjlj -- that would have
                 // been indicated by a -1 call site index.
                 let lpad = (cs_lpad + 1) as usize;
-                return interpret_cs_action(cs_action, lpad);
+                return Ok(interpret_cs_action(cs_action, lpad))
             }
         }
     }
@@ -144,21 +146,26 @@ fn interpret_cs_action(cs_action: u64, lpad: usize) -> EHAction {
 }
 
 #[inline]
-fn round_up(unrounded: usize, align: usize) -> usize {
-    assert!(align.is_power_of_two());
-    (unrounded + align - 1) & !(align - 1)
+fn round_up(unrounded: usize, align: usize) -> Result<usize, ()> {
+    if align.is_power_of_two() {
+        Ok((unrounded + align - 1) & !(align - 1))
+    } else {
+        Err(())
+    }
 }
 
 unsafe fn read_encoded_pointer(reader: &mut DwarfReader,
                                context: &EHContext,
                                encoding: u8)
-                               -> usize {
-    assert!(encoding != DW_EH_PE_omit);
+                               -> Result<usize, ()> {
+    if encoding == DW_EH_PE_omit {
+        return Err(())
+    }
 
     // DW_EH_PE_aligned implies it's an absolute pointer value
     if encoding == DW_EH_PE_aligned {
-        reader.ptr = round_up(reader.ptr as usize, mem::size_of::<usize>()) as *const u8;
-        return reader.read::<usize>();
+        reader.ptr = round_up(reader.ptr as usize, mem::size_of::<usize>())? as *const u8;
+        return Ok(reader.read::<usize>())
     }
 
     let mut result = match encoding & 0x0F {
@@ -171,7 +178,7 @@ unsafe fn read_encoded_pointer(reader: &mut DwarfReader,
         DW_EH_PE_sdata2 => reader.read::<i16>() as usize,
         DW_EH_PE_sdata4 => reader.read::<i32>() as usize,
         DW_EH_PE_sdata8 => reader.read::<i64>() as usize,
-        _ => panic!(),
+        _ => return Err(()),
     };
 
     result += match encoding & 0x70 {
@@ -179,17 +186,19 @@ unsafe fn read_encoded_pointer(reader: &mut DwarfReader,
         // relative to address of the encoded value, despite the name
         DW_EH_PE_pcrel => reader.ptr as usize,
         DW_EH_PE_funcrel => {
-            assert!(context.func_start != 0);
+            if context.func_start == 0 {
+                return Err(())
+            }
             context.func_start
         }
         DW_EH_PE_textrel => (*context.get_text_start)(),
         DW_EH_PE_datarel => (*context.get_data_start)(),
-        _ => panic!(),
+        _ => return Err(()),
     };
 
     if encoding & DW_EH_PE_indirect != 0 {
         result = *(result as *const usize);
     }
 
-    result
+    Ok(result)
 }
