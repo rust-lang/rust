@@ -17,7 +17,7 @@
 
 // gdb-command:print arg
 // gdbg-check:$1 = {b = -1, b1 = 0}
-// gdbr-check:$1 = associated_types::Struct<i32> {b: -1, b1: 0}
+// gdbr-check:$1 = Struct<i32> = {b = -1, b1 = 0}
 // gdb-command:continue
 
 // gdb-command:print inferred
@@ -32,7 +32,7 @@
 
 // gdb-command:print arg
 // gdbg-check:$5 = {__0 = 4, __1 = 5}
-// gdbr-check:$5 = (4, 5)
+// gdbr-check:$5 = {4, 5}
 // gdb-command:continue
 
 // gdb-command:print a

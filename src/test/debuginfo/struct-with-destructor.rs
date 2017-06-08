@@ -19,19 +19,19 @@
 // gdb-command:run
 // gdb-command:print simple
 // gdbg-check:$1 = {x = 10, y = 20}
-// gdbr-check:$1 = struct_with_destructor::WithDestructor {x: 10, y: 20}
+// gdbr-check:$1 = WithDestructor = {x = 10, y = 20}
 
 // gdb-command:print noDestructor
 // gdbg-check:$2 = {a = {x = 10, y = 20}, guard = -1}
-// gdbr-check:$2 = struct_with_destructor::NoDestructorGuarded {a: struct_with_destructor::NoDestructor {x: 10, y: 20}, guard: -1}
+// gdbr-check:$2 = NoDestructorGuarded = {a = NoDestructor = {x = 10, y = 20}, guard = -1}
 
 // gdb-command:print withDestructor
 // gdbg-check:$3 = {a = {x = 10, y = 20}, guard = -1}
-// gdbr-check:$3 = struct_with_destructor::WithDestructorGuarded {a: struct_with_destructor::WithDestructor {x: 10, y: 20}, guard: -1}
+// gdbr-check:$3 = WithDestructorGuarded = {a = WithDestructor = {x = 10, y = 20}, guard = -1}
 
 // gdb-command:print nested
 // gdbg-check:$4 = {a = {a = {x = 7890, y = 9870}}}
-// gdbr-check:$4 = struct_with_destructor::NestedOuter {a: struct_with_destructor::NestedInner {a: struct_with_destructor::WithDestructor {x: 7890, y: 9870}}}
+// gdbr-check:$4 = NestedOuter = {a = NestedInner = {a = WithDestructor = {x = 7890, y = 9870}}}
 
 
 // === LLDB TESTS ==================================================================================

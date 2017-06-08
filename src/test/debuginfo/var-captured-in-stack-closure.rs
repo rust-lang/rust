@@ -22,10 +22,10 @@
 // gdb-check:$2 = 2
 // gdb-command:print a_struct
 // gdbg-check:$3 = {a = -3, b = 4.5, c = 5}
-// gdbr-check:$3 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
+// gdbr-check:$3 = Struct = {a = -3, b = 4.5, c = 5}
 // gdb-command:print *struct_ref
 // gdbg-check:$4 = {a = -3, b = 4.5, c = 5}
-// gdbr-check:$4 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
+// gdbr-check:$4 = Struct = {a = -3, b = 4.5, c = 5}
 // gdb-command:print *owned
 // gdb-check:$5 = 6
 
@@ -37,10 +37,10 @@
 // gdb-check:$7 = 2
 // gdb-command:print a_struct
 // gdbg-check:$8 = {a = -3, b = 4.5, c = 5}
-// gdbr-check:$8 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
+// gdbr-check:$8 = Struct = {a = -3, b = 4.5, c = 5}
 // gdb-command:print *struct_ref
 // gdbg-check:$9 = {a = -3, b = 4.5, c = 5}
-// gdbr-check:$9 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
+// gdbr-check:$9 = Struct = {a = -3, b = 4.5, c = 5}
 // gdb-command:print *owned
 // gdb-check:$10 = 6
 

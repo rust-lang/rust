@@ -20,15 +20,15 @@
 
 // gdb-command:print *the_a
 // gdbg-check:$1 = {{RUST$ENUM$DISR = TheA, x = 0, y = 8970181431921507452}, {RUST$ENUM$DISR = TheA, [...]}}
-// gdbr-check:$1 = unique_enum::ABC::TheA{x: 0, y: 8970181431921507452}
+// gdbr-check:$1 = TheA = {x = 0, y = 8970181431921507452}
 
 // gdb-command:print *the_b
 // gdbg-check:$2 = {{RUST$ENUM$DISR = TheB, [...]}, {RUST$ENUM$DISR = TheB, __0 = 0, __1 = 286331153, __2 = 286331153}}
-// gdbr-check:$2 = unique_enum::ABC::TheB(0, 286331153, 286331153)
+// gdbr-check:$2 = TheB = {0, 286331153, 286331153}
 
 // gdb-command:print *univariant
 // gdbg-check:$3 = {{__0 = 123234}}
-// gdbr-check:$3 = unique_enum::Univariant::TheOnlyCase(123234)
+// gdbr-check:$3 = TheOnlyCase = {123234}
 
 
 // === LLDB TESTS ==================================================================================

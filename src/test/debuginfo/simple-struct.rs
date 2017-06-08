@@ -48,57 +48,57 @@
 
 // gdb-command:print no_padding16
 // gdbg-check:$7 = {x = 10000, y = -10001}
-// gdbr-check:$7 = simple_struct::NoPadding16 {x: 10000, y: -10001}
+// gdbr-check:$7 = NoPadding16 = {x = 10000, y = -10001}
 
 // gdb-command:print no_padding32
 // gdbg-check:$8 = {x = -10002, y = -10003.5, z = 10004}
-// gdbr-check:$8 = simple_struct::NoPadding32 {x: -10002, y: -10003.5, z: 10004}
+// gdbr-check:$8 = NoPadding32 = {x = -10002, y = -10003.5, z = 10004}
 
 // gdb-command:print no_padding64
 // gdbg-check:$9 = {x = -10005.5, y = 10006, z = 10007}
-// gdbr-check:$9 = simple_struct::NoPadding64 {x: -10005.5, y: 10006, z: 10007}
+// gdbr-check:$9 = NoPadding64 = {x = -10005.5, y = 10006, z = 10007}
 
 // gdb-command:print no_padding163264
 // gdbg-check:$10 = {a = -10008, b = 10009, c = 10010, d = 10011}
-// gdbr-check:$10 = simple_struct::NoPadding163264 {a: -10008, b: 10009, c: 10010, d: 10011}
+// gdbr-check:$10 = NoPadding163264 = {a = -10008, b = 10009, c = 10010, d = 10011}
 
 // gdb-command:print internal_padding
 // gdbg-check:$11 = {x = 10012, y = -10013}
-// gdbr-check:$11 = simple_struct::InternalPadding {x: 10012, y: -10013}
+// gdbr-check:$11 = InternalPadding = {x = 10012, y = -10013}
 
 // gdb-command:print padding_at_end
 // gdbg-check:$12 = {x = -10014, y = 10015}
-// gdbr-check:$12 = simple_struct::PaddingAtEnd {x: -10014, y: 10015}
+// gdbr-check:$12 = PaddingAtEnd = {x = -10014, y = 10015}
 
 // gdbg-command:print 'simple_struct::NO_PADDING_16'
 // gdbr-command:print simple_struct::NO_PADDING_16
 // gdbg-check:$13 = {x = 100, y = -101}
-// gdbr-check:$13 = simple_struct::NoPadding16 {x: 100, y: -101}
+// gdbr-check:$13 = NoPadding16 = {x = 100, y = -101}
 
 // gdbg-command:print 'simple_struct::NO_PADDING_32'
 // gdbr-command:print simple_struct::NO_PADDING_32
 // gdbg-check:$14 = {x = -15, y = -16, z = 17}
-// gdbr-check:$14 = simple_struct::NoPadding32 {x: -15, y: -16, z: 17}
+// gdbr-check:$14 = NoPadding32 = {x = -15, y = -16, z = 17}
 
 // gdbg-command:print 'simple_struct::NO_PADDING_64'
 // gdbr-command:print simple_struct::NO_PADDING_64
 // gdbg-check:$15 = {x = -18, y = 19, z = 20}
-// gdbr-check:$15 = simple_struct::NoPadding64 {x: -18, y: 19, z: 20}
+// gdbr-check:$15 = NoPadding64 = {x = -18, y = 19, z = 20}
 
 // gdbg-command:print 'simple_struct::NO_PADDING_163264'
 // gdbr-command:print simple_struct::NO_PADDING_163264
 // gdbg-check:$16 = {a = -21, b = 22, c = 23, d = 24}
-// gdbr-check:$16 = simple_struct::NoPadding163264 {a: -21, b: 22, c: 23, d: 24}
+// gdbr-check:$16 = NoPadding163264 = {a = -21, b = 22, c = 23, d = 24}
 
 // gdbg-command:print 'simple_struct::INTERNAL_PADDING'
 // gdbr-command:print simple_struct::INTERNAL_PADDING
 // gdbg-check:$17 = {x = 25, y = -26}
-// gdbr-check:$17 = simple_struct::InternalPadding {x: 25, y: -26}
+// gdbr-check:$17 = InternalPadding = {x = 25, y = -26}
 
 // gdbg-command:print 'simple_struct::PADDING_AT_END'
 // gdbr-command:print simple_struct::PADDING_AT_END
 // gdbg-check:$18 = {x = -27, y = 28}
-// gdbr-check:$18 = simple_struct::PaddingAtEnd {x: -27, y: 28}
+// gdbr-check:$18 = PaddingAtEnd = {x = -27, y = 28}
 
 // gdb-command:continue
 

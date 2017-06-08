@@ -16,11 +16,11 @@
 
 // gdb-command:print *a
 // gdbg-check:$1 = {value = [...] "abc"}
-// gdbr-check:$1 = unsized::Foo<[u8]> {value: [...]}
+// gdbr-check:$1 = Foo<[u8]> = {value = 0x3fffffffe718}
 
 // gdb-command:print *b
 // gdbg-check:$2 = {value = {value = [...] "abc"}}
-// gdbr-check:$2 = unsized::Foo<unsized::Foo<[u8]>> {value: unsized::Foo<[u8]> {value: [...]}}
+// gdbr-check:$2 = Foo<unsized::Foo<[u8]>> = {value = Foo<[u8]> = {value = 0x3fffffffe718}}
 
 
 #![feature(omit_gdb_pretty_printer_section)]

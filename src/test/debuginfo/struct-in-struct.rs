@@ -19,15 +19,15 @@
 
 // gdb-command:print three_simple_structs
 // gdbg-check:$1 = {x = {x = 1}, y = {x = 2}, z = {x = 3}}
-// gdbr-check:$1 = struct_in_struct::ThreeSimpleStructs {x: struct_in_struct::Simple {x: 1}, y: struct_in_struct::Simple {x: 2}, z: struct_in_struct::Simple {x: 3}}
+// gdbr-check:$1 = ThreeSimpleStructs = {x = Simple = {x = 1}, y = Simple = {x = 2}, z = Simple = {x = 3}}
 
 // gdb-command:print internal_padding_parent
 // gdbg-check:$2 = {x = {x = 4, y = 5}, y = {x = 6, y = 7}, z = {x = 8, y = 9}}
-// gdbr-check:$2 = struct_in_struct::InternalPaddingParent {x: struct_in_struct::InternalPadding {x: 4, y: 5}, y: struct_in_struct::InternalPadding {x: 6, y: 7}, z: struct_in_struct::InternalPadding {x: 8, y: 9}}
+// gdbr-check:$2 = InternalPaddingParent = {x = InternalPadding = {x = 4, y = 5}, y = InternalPadding = {x = 6, y = 7}, z = InternalPadding = {x = 8, y = 9}}
 
 // gdb-command:print padding_at_end_parent
 // gdbg-check:$3 = {x = {x = 10, y = 11}, y = {x = 12, y = 13}, z = {x = 14, y = 15}}
-// gdbr-check:$3 = struct_in_struct::PaddingAtEndParent {x: struct_in_struct::PaddingAtEnd {x: 10, y: 11}, y: struct_in_struct::PaddingAtEnd {x: 12, y: 13}, z: struct_in_struct::PaddingAtEnd {x: 14, y: 15}}
+// gdbr-check:$3 = PaddingAtEndParent = {x = PaddingAtEnd = {x = 10, y = 11}, y = PaddingAtEnd = {x = 12, y = 13}, z = PaddingAtEnd = {x = 14, y = 15}}
 
 
 // === LLDB TESTS ==================================================================================

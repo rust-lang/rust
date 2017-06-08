@@ -74,12 +74,12 @@
 
 // gdb-command:print simple_struct_ident
 // gdbg-check:$23 = {x = 3537, y = 35437.5, z = true}
-// gdbr-check:$23 = destructured_for_loop_variable::Struct {x: 3537, y: 35437.5, z: true}
+// gdbr-check:$23 = Struct = {x = 3537, y = 35437.5, z = true}
 // gdb-command:continue
 
 // gdb-command:print simple_tuple_ident
 // gdbg-check:$24 = {__0 = 34903493, __1 = 232323}
-// gdbr-check:$24 = (34903493, 232323)
+// gdbr-check:$24 = {34903493, 232323}
 // gdb-command:continue
 
 // === LLDB TESTS ==================================================================================

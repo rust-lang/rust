@@ -44,19 +44,19 @@
 // gdb-check:$8 = 2
 // gdb-command:print padded_tuple.data_ptr[0]
 // gdbg-check:$9 = {__0 = 6, __1 = 7}
-// gdbr-check:$9 = (6, 7)
+// gdbr-check:$9 = {6, 7}
 // gdb-command:print padded_tuple.data_ptr[1]
 // gdbg-check:$10 = {__0 = 8, __1 = 9}
-// gdbr-check:$10 = (8, 9)
+// gdbr-check:$10 = {8, 9}
 
 // gdb-command:print padded_struct.length
 // gdb-check:$11 = 2
 // gdb-command:print padded_struct.data_ptr[0]
 // gdbg-check:$12 = {x = 10, y = 11, z = 12}
-// gdbr-check:$12 = vec_slices::AStruct {x: 10, y: 11, z: 12}
+// gdbr-check:$12 = AStruct = {x = 10, y = 11, z = 12}
 // gdb-command:print padded_struct.data_ptr[1]
 // gdbg-check:$13 = {x = 13, y = 14, z = 15}
-// gdbr-check:$13 = vec_slices::AStruct {x: 13, y: 14, z: 15}
+// gdbr-check:$13 = AStruct = {x = 13, y = 14, z = 15}
 
 // gdbg-command:print 'vec_slices::MUT_VECT_SLICE'.length
 // gdbr-command:print MUT_VECT_SLICE.length
