@@ -192,7 +192,6 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     debug!("check_loans(body id={})", body.value.id);
 
     let def_id = bccx.tcx.hir.body_owner_def_id(body.id());
-    let infcx = bccx.tcx.borrowck_fake_infer_ctxt(body.id());
     let param_env = bccx.tcx.param_env(def_id);
     let mut clcx = CheckLoanCtxt {
         bccx: bccx,
@@ -201,7 +200,9 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         all_loans: all_loans,
         param_env,
     };
-    euv::ExprUseVisitor::new(&mut clcx, &bccx.region_maps, &infcx, param_env).consume_body(body);
+    let infcx = bccx.tcx.borrowck_fake_infer_ctxt();
+    euv::ExprUseVisitor::new(&mut clcx, &infcx, param_env, &bccx.region_maps, bccx.tables)
+        .consume_body(body);
 }
 
 #[derive(PartialEq)]

@@ -235,17 +235,14 @@ impl OverloadedCallType {
 ///////////////////////////////////////////////////////////////////////////
 // The ExprUseVisitor type
 //
-// This is the code that actually walks the tree. Like
-// mem_categorization, it requires a TYPER, which is a type that
-// supplies types from the tree. After type checking is complete, you
-// can just use the tcx as the typer.
+// This is the code that actually walks the tree.
 pub struct ExprUseVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     mc: mc::MemCategorizationContext<'a, 'gcx, 'tcx>,
     delegate: &'a mut Delegate<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
-// If the TYPER results in an error, it's because the type check
+// If the MC results in an error, it's because the type check
 // failed (or will fail, when the error is uncovered and reported
 // during writeback). In this case, we just ignore this part of the
 // code.
@@ -266,13 +263,14 @@ macro_rules! return_if_err {
 
 impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     pub fn new(delegate: &'a mut (Delegate<'tcx>+'a),
-               region_maps: &'a RegionMaps,
                infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-               param_env: ty::ParamEnv<'tcx>)
+               param_env: ty::ParamEnv<'tcx>,
+               region_maps: &'a RegionMaps,
+               tables: &'a ty::TypeckTables<'tcx>)
                -> Self
     {
         ExprUseVisitor {
-            mc: mc::MemCategorizationContext::new(infcx, region_maps),
+            mc: mc::MemCategorizationContext::new(infcx, region_maps, tables),
             delegate,
             param_env,
         }
@@ -282,7 +280,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         debug!("consume_body(body={:?})", body);
 
         for arg in &body.arguments {
-            let arg_ty = return_if_err!(self.mc.infcx.node_ty(arg.pat.id));
+            let arg_ty = return_if_err!(self.mc.node_ty(arg.pat.id));
 
             let fn_body_scope_r = self.tcx().node_scope_region(body.value.id);
             let arg_cmt = self.mc.cat_rvalue(
@@ -427,7 +425,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             hir::ExprAddrOf(m, ref base) => {   // &base
                 // make sure that the thing we are pointing out stays valid
                 // for the lifetime `scope_r` of the resulting ptr:
-                let expr_ty = return_if_err!(self.mc.infcx.node_ty(expr.id));
+                let expr_ty = return_if_err!(self.mc.expr_ty(expr));
                 if let ty::TyRef(r, _) = expr_ty.sty {
                     let bk = ty::BorrowKind::from_mutbl(m);
                     self.borrow_expr(&base, r, bk, AddrOf);
@@ -491,7 +489,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
 
             hir::ExprAssignOp(_, ref lhs, ref rhs) => {
-                if self.mc.infcx.tables.borrow().is_method_call(expr) {
+                if self.mc.tables.is_method_call(expr) {
                     self.consume_expr(lhs);
                 } else {
                     self.mutate_expr(expr, &lhs, MutateMode::WriteAndRead);
@@ -514,7 +512,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn walk_callee(&mut self, call: &hir::Expr, callee: &hir::Expr) {
-        let callee_ty = return_if_err!(self.mc.infcx.expr_ty_adjusted(callee));
+        let callee_ty = return_if_err!(self.mc.expr_ty_adjusted(callee));
         debug!("walk_callee: callee={:?} callee_ty={:?}",
                callee, callee_ty);
         match callee_ty.sty {
@@ -523,7 +521,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
             ty::TyError => { }
             _ => {
-                let def_id = self.mc.infcx.tables.borrow().type_dependent_defs[&call.id].def_id();
+                let def_id = self.mc.tables.type_dependent_defs[&call.id].def_id();
                 match OverloadedCallType::from_method_id(self.tcx(), def_id) {
                     FnMutOverloadedCall => {
                         let call_scope_r = self.tcx().node_scope_region(call.id);
@@ -664,8 +662,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     // consumed or borrowed as part of the automatic adjustment
     // process.
     fn walk_adjustment(&mut self, expr: &hir::Expr) {
-        let tables = self.mc.infcx.tables.borrow();
-        let adjustments = tables.expr_adjustments(expr);
+        let adjustments = self.mc.tables.expr_adjustments(expr);
         let mut cmt = return_if_err!(self.mc.cat_expr_unadjusted(expr));
         for adjustment in adjustments {
             debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
@@ -782,7 +779,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                                mode: &mut TrackMatchMode) {
         debug!("determine_pat_move_mode cmt_discr={:?} pat={:?}", cmt_discr,
                pat);
-        return_if_err!(self.mc.cat_pattern(cmt_discr, pat, |_mc, cmt_pat, pat| {
+        return_if_err!(self.mc.cat_pattern(cmt_discr, pat, |cmt_pat, pat| {
             match pat.node {
                 PatKind::Binding(hir::BindByRef(..), ..) =>
                     mode.lub(BorrowingMatch),
@@ -806,12 +803,12 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         let tcx = self.tcx();
         let infcx = self.mc.infcx;
         let ExprUseVisitor { ref mc, ref mut delegate, param_env } = *self;
-        return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |mc, cmt_pat, pat| {
+        return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |cmt_pat, pat| {
             if let PatKind::Binding(bmode, def_id, ..) = pat.node {
                 debug!("binding cmt_pat={:?} pat={:?} match_mode={:?}", cmt_pat, pat, match_mode);
 
                 // pat_ty: the type of the binding being produced.
-                let pat_ty = return_if_err!(infcx.node_ty(pat.id));
+                let pat_ty = return_if_err!(mc.node_ty(pat.id));
 
                 // Each match binding is effectively an assignment to the
                 // binding being produced.
@@ -841,14 +838,14 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         // the interior nodes (enum variants and structs), as opposed
         // to the above loop's visit of than the bindings that form
         // the leaves of the pattern tree structure.
-        return_if_err!(mc.cat_pattern(cmt_discr, pat, |mc, cmt_pat, pat| {
+        return_if_err!(mc.cat_pattern(cmt_discr, pat, |cmt_pat, pat| {
             let qpath = match pat.node {
                 PatKind::Path(ref qpath) |
                 PatKind::TupleStruct(ref qpath, ..) |
                 PatKind::Struct(ref qpath, ..) => qpath,
                 _ => return
             };
-            let def = infcx.tables.borrow().qpath_def(qpath, pat.id);
+            let def = mc.tables.qpath_def(qpath, pat.id);
             match def {
                 Def::Variant(variant_did) |
                 Def::VariantCtor(variant_did, ..) => {
@@ -882,7 +879,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 let id_var = self.tcx().hir.as_local_node_id(def_id).unwrap();
                 let upvar_id = ty::UpvarId { var_id: id_var,
                                              closure_expr_id: closure_expr.id };
-                let upvar_capture = self.mc.infcx.tables.borrow().upvar_capture(upvar_id);
+                let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
                 let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
                                                                    fn_decl_span,
                                                                    freevar.def));
@@ -915,7 +912,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
         let var_id = self.tcx().hir.as_local_node_id(upvar_def.def_id()).unwrap();
-        let var_ty = self.mc.infcx.node_ty(var_id)?;
+        let var_ty = self.mc.node_ty(var_id)?;
         self.mc.cat_def(closure_id, closure_span, var_ty, upvar_def)
     }
 }

@@ -83,7 +83,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
     };
 
     let src = MirSource::from_node(tcx, id);
-    tcx.infer_ctxt(body_id).enter(|infcx| {
+    tcx.infer_ctxt(()).enter(|infcx| {
         let cx = Cx::new(&infcx, src);
         let mut mir = if cx.tables().tainted_by_errors {
             build::construct_error(cx, body_id)

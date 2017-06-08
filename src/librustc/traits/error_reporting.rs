@@ -29,7 +29,7 @@ use hir::{self, intravisit, Local, Pat, Body};
 use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::map::NodeExpr;
 use hir::def_id::DefId;
-use infer::{self, InferCtxt, InferTables, InferTablesRef};
+use infer::{self, InferCtxt, InferTables};
 use infer::type_variable::TypeVariableOrigin;
 use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use std::fmt;
@@ -652,18 +652,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             obligation.cause.span,
                             format!("the requirement to implement `{}` derives from here", kind));
 
-                        let infer_tables = match self.tables {
-                            InferTables::Interned(tables) =>
-                                Some(InferTablesRef::Interned(tables)),
-                            InferTables::InProgress(tables) =>
-                                Some(InferTablesRef::InProgress(tables.borrow())),
-                            InferTables::Missing => None,
-                        };
-
                         // Additional context information explaining why the closure only implements
                         // a particular trait.
-                        if let Some(tables) = infer_tables {
-                            match tables.closure_kinds.get(&node_id) {
+                        if let InferTables::InProgress(tables) = self.tables {
+                            match tables.borrow().closure_kinds.get(&node_id) {
                                 Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) => {
                                     err.span_note(span, &format!(
                                         "closure is `FnOnce` because it moves the \

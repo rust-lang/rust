@@ -76,6 +76,7 @@ use infer::InferCtxt;
 use hir::def::{Def, CtorKind};
 use ty::adjustment;
 use ty::{self, Ty, TyCtxt};
+use ty::fold::TypeFoldable;
 
 use hir::{MutImmutable, MutMutable, PatKind};
 use hir::pat_util::EnumerateAndAdjustIterator;
@@ -283,6 +284,7 @@ impl ast_node for hir::Pat {
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     pub region_maps: &'a RegionMaps,
+    pub tables: &'a ty::TypeckTables<'tcx>,
 }
 
 pub type McResult<T> = Result<T, ()>;
@@ -386,35 +388,63 @@ impl MutabilityCategory {
 impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     /// Context should be the `DefId` we use to fetch region-maps.
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-               region_maps: &'a RegionMaps)
+               region_maps: &'a RegionMaps,
+               tables: &'a ty::TypeckTables<'tcx>)
                -> MemCategorizationContext<'a, 'gcx, 'tcx> {
-        MemCategorizationContext { infcx, region_maps }
+        MemCategorizationContext { infcx, region_maps, tables }
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    fn expr_ty(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
-        match self.infcx.node_ty(expr.id) {
-            Ok(t) => Ok(t),
-            Err(()) => {
-                debug!("expr_ty({:?}) yielded Err", expr);
-                Err(())
+    fn resolve_type_vars_if_possible<T>(&self, value: &T) -> T
+        where T: TypeFoldable<'tcx>
+    {
+        self.infcx.resolve_type_vars_if_possible(value)
+    }
+
+    fn is_tainted_by_errors(&self) -> bool {
+        self.infcx.is_tainted_by_errors()
+    }
+
+    fn resolve_type_vars_or_error(&self,
+                                  id: ast::NodeId,
+                                  ty: Option<Ty<'tcx>>)
+                                  -> McResult<Ty<'tcx>> {
+        match ty {
+            Some(ty) => {
+                let ty = self.resolve_type_vars_if_possible(&ty);
+                if ty.references_error() || ty.is_ty_var() {
+                    debug!("resolve_type_vars_or_error: error from {:?}", ty);
+                    Err(())
+                } else {
+                    Ok(ty)
+                }
+            }
+            // FIXME
+            None if self.is_tainted_by_errors() => Err(()),
+            None => {
+                bug!("no type for node {}: {} in mem_categorization",
+                     id, self.tcx().hir.node_to_string(id));
             }
         }
     }
 
-    fn expr_ty_adjusted(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
-        self.infcx.expr_ty_adjusted(expr)
+    pub fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
+        self.resolve_type_vars_or_error(id, self.tables.node_id_to_type_opt(id))
     }
 
-    fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
-        self.infcx.node_ty(id)
+    pub fn expr_ty(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
+        self.resolve_type_vars_or_error(expr.id, self.tables.expr_ty_opt(expr))
+    }
+
+    pub fn expr_ty_adjusted(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
+        self.resolve_type_vars_or_error(expr.id, self.tables.expr_ty_adjusted_opt(expr))
     }
 
     fn pat_ty(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
-        let base_ty = self.infcx.node_ty(pat.id)?;
+        let base_ty = self.node_ty(pat.id)?;
         // FIXME (Issue #18207): This code detects whether we are
         // looking at a `ref x`, and if so, figures out what the type
         // *being borrowed* is.  But ideally we would put in a more
@@ -454,7 +484,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
         }
 
-        helper(self, expr, self.infcx.tables.borrow().expr_adjustments(expr))
+        helper(self, expr, self.tables.expr_adjustments(expr))
     }
 
     pub fn cat_expr_adjusted(&self, expr: &hir::Expr,
@@ -471,7 +501,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         where F: FnOnce() -> McResult<cmt<'tcx>>
     {
         debug!("cat_expr_adjusted_with({:?}): {:?}", adjustment, expr);
-        let target = self.infcx.resolve_type_vars_if_possible(&adjustment.target);
+        let target = self.resolve_type_vars_if_possible(&adjustment.target);
         match adjustment.kind {
             adjustment::Adjust::Deref(overloaded) => {
                 // Equivalent to *expr or something similar.
@@ -506,7 +536,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let expr_ty = self.expr_ty(expr)?;
         match expr.node {
           hir::ExprUnary(hir::UnDeref, ref e_base) => {
-            if self.infcx.tables.borrow().is_method_call(expr) {
+            if self.tables.is_method_call(expr) {
                 self.cat_overloaded_lvalue(expr, e_base, false)
             } else {
                 let base_cmt = self.cat_expr(&e_base)?;
@@ -529,7 +559,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           }
 
           hir::ExprIndex(ref base, _) => {
-            if self.infcx.tables.borrow().is_method_call(expr) {
+            if self.tables.is_method_call(expr) {
                 // If this is an index implemented by a method call, then it
                 // will include an implicit deref of the result.
                 // The call to index() returns a `&T` value, which
@@ -543,7 +573,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           }
 
           hir::ExprPath(ref qpath) => {
-            let def = self.infcx.tables.borrow().qpath_def(qpath, expr.id);
+            let def = self.tables.qpath_def(qpath, expr.id);
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
@@ -595,15 +625,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
           Def::Upvar(def_id, _, fn_node_id) => {
               let var_id = self.tcx().hir.as_local_node_id(def_id).unwrap();
-              let closure_id = self.tcx().hir.local_def_id(fn_node_id);
-              match self.infcx.closure_kind(closure_id) {
-                Some(kind) => {
-                    self.cat_upvar(id, span, var_id, fn_node_id, kind)
-                }
-                None => {
-                    span_bug!(span, "No closure kind for {:?}", closure_id);
-                }
-              }
+              self.cat_upvar(id, span, var_id, fn_node_id)
           }
 
           Def::Local(def_id) => {
@@ -628,8 +650,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                  id: ast::NodeId,
                  span: Span,
                  var_id: ast::NodeId,
-                 fn_node_id: ast::NodeId,
-                 kind: ty::ClosureKind)
+                 fn_node_id: ast::NodeId)
                  -> McResult<cmt<'tcx>>
     {
         // An upvar can have up to 3 components. We translate first to a
@@ -654,6 +675,11 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // Fn             | copied -> &'env      | upvar -> &'env -> &'up bk
         // FnMut          | copied -> &'env mut  | upvar -> &'env mut -> &'up bk
         // FnOnce         | copied               | upvar -> &'up bk
+
+        let kind = match self.tables.closure_kinds.get(&fn_node_id) {
+            Some(&(kind, _)) => kind,
+            None => span_bug!(span, "missing closure kind")
+        };
 
         let upvar_id = ty::UpvarId { var_id: var_id,
                                      closure_expr_id: fn_node_id };
@@ -694,7 +720,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // for that.
         let upvar_id = ty::UpvarId { var_id: var_id,
                                      closure_expr_id: fn_node_id };
-        let upvar_capture = self.infcx.tables.borrow().upvar_capture(upvar_id);
+        let upvar_capture = self.tables.upvar_capture(upvar_id);
         let cmt_result = match upvar_capture {
             ty::UpvarCapture::ByValue => {
                 cmt_result
@@ -1000,14 +1026,14 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     }
 
     pub fn cat_pattern<F>(&self, cmt: cmt<'tcx>, pat: &hir::Pat, mut op: F) -> McResult<()>
-        where F: FnMut(&MemCategorizationContext<'a, 'gcx, 'tcx>, cmt<'tcx>, &hir::Pat),
+        where F: FnMut(cmt<'tcx>, &hir::Pat),
     {
         self.cat_pattern_(cmt, pat, &mut op)
     }
 
     // FIXME(#19596) This is a workaround, but there should be a better way to do this
     fn cat_pattern_<F>(&self, cmt: cmt<'tcx>, pat: &hir::Pat, op: &mut F) -> McResult<()>
-        where F : FnMut(&MemCategorizationContext<'a, 'gcx, 'tcx>, cmt<'tcx>, &hir::Pat)
+        where F : FnMut(cmt<'tcx>, &hir::Pat)
     {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.
@@ -1056,7 +1082,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         debug!("cat_pattern: {:?} cmt={:?}", pat, cmt);
 
-        op(self, cmt.clone(), pat);
+        op(cmt.clone(), pat);
 
         // Note: This goes up here (rather than within the PatKind::TupleStruct arm
         // alone) because PatKind::Struct can also refer to variants.
@@ -1087,7 +1113,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         match pat.node {
           PatKind::TupleStruct(ref qpath, ref subpats, ddpos) => {
-            let def = self.infcx.tables.borrow().qpath_def(qpath, pat.id);
+            let def = self.tables.qpath_def(qpath, pat.id);
             let expected_len = match def {
                 Def::VariantCtor(def_id, CtorKind::Fn) => {
                     let enum_def = self.tcx().parent_def_id(def_id).unwrap();

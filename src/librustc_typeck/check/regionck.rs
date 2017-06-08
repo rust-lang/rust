@@ -824,15 +824,21 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// Create a temporary `MemCategorizationContext` and pass it to the closure.
+    fn with_mc<F, R>(&self, f: F) -> R
+        where F: for<'b> FnOnce(mc::MemCategorizationContext<'b, 'gcx, 'tcx>) -> R
+    {
+        f(mc::MemCategorizationContext::new(&self.infcx,
+                                            &self.region_maps,
+                                            &self.tables.borrow()))
+    }
+
     /// Invoked on any adjustments that occur. Checks that if this is a region pointer being
     /// dereferenced, the lifetime of the pointer includes the deref expr.
     fn constrain_adjustments(&mut self, expr: &hir::Expr) -> mc::McResult<mc::cmt<'tcx>> {
         debug!("constrain_adjustments(expr={:?})", expr);
 
-        let mut cmt = {
-            let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
-            mc.cat_expr_unadjusted(expr)?
-        };
+        let mut cmt = self.with_mc(|mc| mc.cat_expr_unadjusted(expr))?;
 
         let tables = self.tables.borrow();
         let adjustments = tables.expr_adjustments(&expr);
@@ -886,10 +892,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                                                expr.id, expr_region);
             }
 
-            {
-                let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
-                cmt = mc.cat_expr_adjusted(expr, cmt, &adjustment)?;
-            }
+            cmt = self.with_mc(|mc| mc.cat_expr_adjusted(expr, cmt, &adjustment))?;
 
             if let Categorization::Deref(_, mc::BorrowedPtr(_, r_ptr)) = cmt.cat {
                 self.mk_subregion_due_to_dereference(expr.span,
@@ -981,10 +984,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     mutability: hir::Mutability, base: &hir::Expr) {
         debug!("link_addr_of(expr={:?}, base={:?})", expr, base);
 
-        let cmt = {
-            let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
-            ignore_err!(mc.cat_expr(base))
-        };
+        let cmt = ignore_err!(self.with_mc(|mc| mc.cat_expr(base)));
 
         debug!("link_addr_of: cmt={:?}", cmt);
 
@@ -1000,9 +1000,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             None => { return; }
             Some(ref expr) => &**expr,
         };
-        let mc = &mc::MemCategorizationContext::new(self, &self.region_maps);
-        let discr_cmt = ignore_err!(mc.cat_expr(init_expr));
-        self.link_pattern(mc, discr_cmt, &local.pat);
+        let discr_cmt = ignore_err!(self.with_mc(|mc| mc.cat_expr(init_expr)));
+        self.link_pattern(discr_cmt, &local.pat);
     }
 
     /// Computes the guarantors for any ref bindings in a match and
@@ -1010,12 +1009,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// linked to the lifetime of its guarantor (if any).
     fn link_match(&self, discr: &hir::Expr, arms: &[hir::Arm]) {
         debug!("regionck::for_match()");
-        let mc = &mc::MemCategorizationContext::new(self, &self.region_maps);
-        let discr_cmt = ignore_err!(mc.cat_expr(discr));
+        let discr_cmt = ignore_err!(self.with_mc(|mc| mc.cat_expr(discr)));
         debug!("discr_cmt={:?}", discr_cmt);
         for arm in arms {
             for root_pat in &arm.pats {
-                self.link_pattern(mc, discr_cmt.clone(), &root_pat);
+                self.link_pattern(discr_cmt.clone(), &root_pat);
             }
         }
     }
@@ -1025,30 +1023,28 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// linked to the lifetime of its guarantor (if any).
     fn link_fn_args(&self, body_scope: CodeExtent, args: &[hir::Arg]) {
         debug!("regionck::link_fn_args(body_scope={:?})", body_scope);
-        let mc = &mc::MemCategorizationContext::new(self, &self.region_maps);
         for arg in args {
             let arg_ty = self.node_ty(arg.id);
             let re_scope = self.tcx.mk_region(ty::ReScope(body_scope));
-            let arg_cmt = mc.cat_rvalue(
-                arg.id, arg.pat.span, re_scope, arg_ty);
+            let arg_cmt = self.with_mc(|mc| {
+                mc.cat_rvalue(arg.id, arg.pat.span, re_scope, arg_ty)
+            });
             debug!("arg_ty={:?} arg_cmt={:?} arg={:?}",
                    arg_ty,
                    arg_cmt,
                    arg);
-            self.link_pattern(mc, arg_cmt, &arg.pat);
+            self.link_pattern(arg_cmt, &arg.pat);
         }
     }
 
     /// Link lifetimes of any ref bindings in `root_pat` to the pointers found
     /// in the discriminant, if needed.
-    fn link_pattern<'t>(&self,
-                        mc: &mc::MemCategorizationContext<'a, 'gcx, 'tcx>,
-                        discr_cmt: mc::cmt<'tcx>,
-                        root_pat: &hir::Pat) {
+    fn link_pattern(&self, discr_cmt: mc::cmt<'tcx>, root_pat: &hir::Pat) {
         debug!("link_pattern(discr_cmt={:?}, root_pat={:?})",
                discr_cmt,
                root_pat);
-        let _ = mc.cat_pattern(discr_cmt, root_pat, |_, sub_cmt, sub_pat| {
+        let _ = self.with_mc(|mc| {
+            mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, sub_pat| {
                 match sub_pat.node {
                     // `ref x` pattern
                     PatKind::Binding(hir::BindByRef(mutbl), ..) => {
@@ -1057,7 +1053,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     }
                     _ => {}
                 }
-            });
+            })
+        });
     }
 
     /// Link lifetime of borrowed pointer resulting from autoref to lifetimes in the value being

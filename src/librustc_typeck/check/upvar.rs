@@ -142,7 +142,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 adjust_closure_kinds: NodeMap(),
                 adjust_upvar_captures: ty::UpvarCaptureMap::default(),
             };
-            euv::ExprUseVisitor::new(&mut delegate, region_maps, self, self.param_env)
+            euv::ExprUseVisitor::new(&mut delegate,
+                                     &self.infcx,
+                                     self.param_env,
+                                     region_maps,
+                                     &self.tables.borrow())
                 .consume_body(body);
 
             // Write the adjusted values back into the main tables.
