@@ -37,17 +37,14 @@ extern crate rls_span;
 
 mod json_api_dumper;
 mod json_dumper;
-mod data;
-mod dump;
 mod dump_visitor;
-pub mod external_data;
 #[macro_use]
-pub mod span_utils;
+mod span_utils;
 mod sig;
 
 use rustc::hir;
-use rustc::hir::def::Def;
-use rustc::hir::map::Node;
+use rustc::hir::def::Def as HirDef;
+use rustc::hir::map::{Node, NodeItem};
 use rustc::hir::def_id::DefId;
 use rustc::session::config::CrateType::CrateTypeExecutable;
 use rustc::session::Session;
@@ -61,32 +58,21 @@ use std::path::{Path, PathBuf};
 use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::parse::token;
+use syntax::print::pprust;
 use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{ty_to_string, arg_to_string};
 use syntax::codemap::MacroAttribute;
 use syntax_pos::*;
 
-pub use self::json_api_dumper::JsonApiDumper;
-pub use self::json_dumper::JsonDumper;
-pub use self::data::*;
-pub use self::external_data::make_def_id;
-pub use self::dump::Dump;
-pub use self::dump_visitor::DumpVisitor;
-use self::span_utils::SpanUtils;
+pub use json_api_dumper::JsonApiDumper;
+pub use json_dumper::JsonDumper;
+use dump_visitor::DumpVisitor;
+use span_utils::SpanUtils;
 
-// FIXME this is legacy code and should be removed
-pub mod recorder {
-    pub use self::Row::*;
+use rls_data::{Ref, RefKind, SpanData, MacroRef, Def, DefKind, Relation, RelationKind,
+               ExternalCrateData, Import, CratePreludeData};
 
-    #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-    pub enum Row {
-        TypeRef,
-        ModRef,
-        VarRef,
-        FnRef,
-    }
-}
 
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
@@ -95,13 +81,49 @@ pub struct SaveContext<'l, 'tcx: 'l> {
     span_utils: SpanUtils<'tcx>,
 }
 
+#[derive(Debug)]
+pub enum Data {
+    /// Data about a macro use.
+    MacroUseData(MacroRef),
+    RefData(Ref),
+    DefData(Def),
+    RelationData(Relation),
+}
+
+pub trait Dump {
+    fn crate_prelude(&mut self, _: CratePreludeData);
+    fn macro_use(&mut self, _: MacroRef) {}
+    fn import(&mut self, _: bool, _: Import);
+    fn dump_ref(&mut self, _: Ref) {}
+    fn dump_def(&mut self, _: bool, _: Def);
+    fn dump_relation(&mut self, data: Relation);
+}
+
 macro_rules! option_try(
     ($e:expr) => (match $e { Some(e) => e, None => return None })
 );
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
+    fn span_from_span(&self, span: Span) -> SpanData {
+        use rls_span::{Row, Column};
+
+        let cm = self.tcx.sess.codemap();
+        let start = cm.lookup_char_pos(span.lo);
+        let end = cm.lookup_char_pos(span.hi);
+
+        SpanData {
+            file_name: start.file.name.clone().into(),
+            byte_start: span.lo.0,
+            byte_end: span.hi.0,
+            line_start: Row::new_one_indexed(start.line as u32),
+            line_end: Row::new_one_indexed(end.line as u32),
+            column_start: Column::new_one_indexed(start.col.0 as u32 + 1),
+            column_end: Column::new_one_indexed(end.col.0 as u32 + 1),
+        }
+    }
+
     // List external crates used by the current crate.
-    pub fn get_external_crates(&self) -> Vec<CrateData> {
+    pub fn get_external_crates(&self) -> Vec<ExternalCrateData> {
         let mut result = Vec::new();
 
         for n in self.tcx.sess.cstore.crates() {
@@ -112,10 +134,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     continue;
                 }
             };
-            result.push(CrateData {
+            let lo_loc = self.span_utils.sess.codemap().lookup_char_pos(span.lo);
+            result.push(ExternalCrateData {
                 name: self.tcx.sess.cstore.crate_name(n).to_string(),
-                number: n.as_u32(),
-                span: span,
+                num: n.as_u32(),
+                file_name: SpanUtils::make_path_string(&lo_loc.file.name),
             });
         }
 
@@ -128,39 +151,43 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
                 filter!(self.span_utils, sub_span, item.span, None);
-                Some(Data::FunctionData(FunctionData {
-                    id: item.id,
+
+                Some(Data::DefData(Def {
+                    kind: DefKind::Function,
+                    id: id_from_node_id(item.id, self),
+                    span: self.span_from_span(sub_span.unwrap()),
                     name: item.ident.to_string(),
-                    qualname: qualname,
-                    declaration: None,
-                    span: sub_span.unwrap(),
-                    scope: self.enclosing_scope(item.id),
+                    qualname,
                     value: make_signature(decl, generics),
-                    visibility: From::from(&item.vis),
                     parent: None,
+                    children: vec![],
+                    decl_id: None,
                     docs: docs_for_attrs(&item.attrs),
                     sig: sig::foreign_item_signature(item, self),
-                    attributes: item.attrs.clone(),
+                    attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
             ast::ForeignItemKind::Static(ref ty, m) => {
                 let keyword = if m { keywords::Mut } else { keywords::Static };
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keyword);
                 filter!(self.span_utils, sub_span, item.span, None);
-                Some(Data::VariableData(VariableData {
-                    id: item.id,
-                    kind: VariableKind::Static,
+
+                let id = ::id_from_node_id(item.id, self);
+                let span = self.span_from_span(sub_span.unwrap());
+
+                Some(Data::DefData(Def {
+                    kind: DefKind::Static,
+                    id,
+                    span,
                     name: item.ident.to_string(),
-                    qualname: qualname,
-                    span: sub_span.unwrap(),
-                    scope: self.enclosing_scope(item.id),
+                    qualname,
+                    value: ty_to_string(ty),
                     parent: None,
-                    value: String::new(),
-                    type_value: ty_to_string(ty),
-                    visibility: From::from(&item.vis),
+                    children: vec![],
+                    decl_id: None,
                     docs: docs_for_attrs(&item.attrs),
                     sig: sig::foreign_item_signature(item, self),
-                    attributes: item.attrs.clone(),
+                    attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
         }
@@ -172,70 +199,71 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 let qualname = format!("::{}", self.tcx.node_path_str(item.id));
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
                 filter!(self.span_utils, sub_span, item.span, None);
-
-
-                Some(Data::FunctionData(FunctionData {
-                    id: item.id,
+                Some(Data::DefData(Def {
+                    kind: DefKind::Function,
+                    id: id_from_node_id(item.id, self),
+                    span: self.span_from_span(sub_span.unwrap()),
                     name: item.ident.to_string(),
-                    qualname: qualname,
-                    declaration: None,
-                    span: sub_span.unwrap(),
-                    scope: self.enclosing_scope(item.id),
+                    qualname,
                     value: make_signature(decl, generics),
-                    visibility: From::from(&item.vis),
                     parent: None,
+                    children: vec![],
+                    decl_id: None,
                     docs: docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: item.attrs.clone(),
+                    attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
-            ast::ItemKind::Static(ref typ, mt, ref expr) => {
+            ast::ItemKind::Static(ref typ, mt, _) => {
                 let qualname = format!("::{}", self.tcx.node_path_str(item.id));
 
-                // If the variable is immutable, save the initialising expression.
-                let (value, keyword) = match mt {
-                    ast::Mutability::Mutable => (String::from("<mutable>"), keywords::Mut),
-                    ast::Mutability::Immutable => {
-                        (self.span_utils.snippet(expr.span), keywords::Static)
-                    },
+                let keyword = match mt {
+                    ast::Mutability::Mutable => keywords::Mut,
+                    ast::Mutability::Immutable => keywords::Static,
                 };
 
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keyword);
                 filter!(self.span_utils, sub_span, item.span, None);
-                Some(Data::VariableData(VariableData {
-                    id: item.id,
-                    kind: VariableKind::Static,
+
+                let id = id_from_node_id(item.id, self);
+                let span = self.span_from_span(sub_span.unwrap());
+
+                Some(Data::DefData(Def {
+                    kind: DefKind::Static,
+                    id,
+                    span,
                     name: item.ident.to_string(),
-                    qualname: qualname,
-                    span: sub_span.unwrap(),
-                    scope: self.enclosing_scope(item.id),
+                    qualname,
+                    value: ty_to_string(&typ),
                     parent: None,
-                    value: value,
-                    type_value: ty_to_string(&typ),
-                    visibility: From::from(&item.vis),
+                    children: vec![],
+                    decl_id: None,
                     docs: docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: item.attrs.clone(),
+                    attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
-            ast::ItemKind::Const(ref typ, ref expr) => {
+            ast::ItemKind::Const(ref typ, _) => {
                 let qualname = format!("::{}", self.tcx.node_path_str(item.id));
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Const);
                 filter!(self.span_utils, sub_span, item.span, None);
-                Some(Data::VariableData(VariableData {
-                    id: item.id,
-                    kind: VariableKind::Const,
+
+                let id = id_from_node_id(item.id, self);
+                let span = self.span_from_span(sub_span.unwrap());
+
+                Some(Data::DefData(Def {
+                    kind: DefKind::Const,
+                    id,
+                    span,
                     name: item.ident.to_string(),
-                    qualname: qualname,
-                    span: sub_span.unwrap(),
-                    scope: self.enclosing_scope(item.id),
+                    qualname,
+                    value: ty_to_string(typ),
                     parent: None,
-                    value: self.span_utils.snippet(expr.span),
-                    type_value: ty_to_string(&typ),
-                    visibility: From::from(&item.vis),
+                    children: vec![],
+                    decl_id: None,
                     docs: docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: item.attrs.clone(),
+                    attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
             ast::ItemKind::Mod(ref m) => {
@@ -247,18 +275,19 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Mod);
                 filter!(self.span_utils, sub_span, item.span, None);
 
-                Some(Data::ModData(ModData {
-                    id: item.id,
+                Some(Data::DefData(Def {
+                    kind: DefKind::Mod,
+                    id: id_from_node_id(item.id, self),
                     name: item.ident.to_string(),
-                    qualname: qualname,
-                    span: sub_span.unwrap(),
-                    scope: self.enclosing_scope(item.id),
-                    filename: filename,
-                    items: m.items.iter().map(|i| i.id).collect(),
-                    visibility: From::from(&item.vis),
+                    qualname,
+                    span: self.span_from_span(sub_span.unwrap()),
+                    value: filename,
+                    parent: None,
+                    children: m.items.iter().map(|i| id_from_node_id(i.id, self)).collect(),
+                    decl_id: None,
                     docs: docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: item.attrs.clone(),
+                    attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
             ast::ItemKind::Enum(ref def, _) => {
@@ -270,61 +299,47 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                       .map(|v| v.node.name.to_string())
                                       .collect::<Vec<_>>()
                                       .join(", ");
-                let val = format!("{}::{{{}}}", name, variants_str);
-                Some(Data::EnumData(EnumData {
-                    id: item.id,
-                    name: name,
-                    value: val,
-                    span: sub_span.unwrap(),
-                    qualname: qualname,
-                    scope: self.enclosing_scope(item.id),
-                    variants: def.variants.iter().map(|v| v.node.data.id()).collect(),
-                    visibility: From::from(&item.vis),
+                let value = format!("{}::{{{}}}", name, variants_str);
+                Some(Data::DefData(Def {
+                    kind: DefKind::Enum,
+                    id: id_from_node_id(item.id, self),
+                    span: self.span_from_span(sub_span.unwrap()),
+                    name,
+                    qualname,
+                    value,
+                    parent: None,
+                    children: def.variants
+                                 .iter()
+                                 .map(|v| id_from_node_id(v.node.data.id(), self))
+                                 .collect(),
+                    decl_id: None,
                     docs: docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: item.attrs.clone(),
+                    attributes: lower_attributes(item.attrs.to_owned(), self),
                 }))
             }
             ast::ItemKind::Impl(.., ref trait_ref, ref typ, _) => {
-                let mut type_data = None;
-                let sub_span;
-
-                let parent = self.enclosing_scope(item.id);
-
-                match typ.node {
+                if let ast::TyKind::Path(None, ref path) = typ.node {
                     // Common case impl for a struct or something basic.
-                    ast::TyKind::Path(None, ref path) => {
-                        if generated_code(path.span) {
-                            return None;
-                        }
-                        sub_span = self.span_utils.sub_span_for_type_name(path.span);
-                        type_data = self.lookup_ref_id(typ.id).map(|id| {
-                            TypeRefData {
-                                span: sub_span.unwrap(),
-                                scope: parent,
-                                ref_id: Some(id),
-                                qualname: String::new() // FIXME: generate the real qualname
-                            }
-                        });
+                    if generated_code(path.span) {
+                        return None;
                     }
-                    _ => {
-                        // Less useful case, impl for a compound type.
-                        let span = typ.span;
-                        sub_span = self.span_utils.sub_span_for_type_name(span).or(Some(span));
-                    }
+                    let sub_span = self.span_utils.sub_span_for_type_name(path.span);
+                    filter!(self.span_utils, sub_span, typ.span, None);
+
+                    let type_data = self.lookup_ref_id(typ.id);
+                    type_data.map(|type_data| Data::RelationData(Relation {
+                        kind: RelationKind::Impl,
+                        span: self.span_from_span(sub_span.unwrap()),
+                        from: id_from_def_id(type_data),
+                        to: trait_ref.as_ref()
+                                     .and_then(|t| self.lookup_ref_id(t.ref_id))
+                                     .map(id_from_def_id)
+                                     .unwrap_or(null_id()),
+                    }))
+                } else {
+                    None
                 }
-
-                let trait_data = trait_ref.as_ref()
-                                          .and_then(|tr| self.get_trait_ref_data(tr, parent));
-
-                filter!(self.span_utils, sub_span, typ.span, None);
-                Some(Data::ImplData(ImplData2 {
-                    id: item.id,
-                    span: sub_span.unwrap(),
-                    scope: parent,
-                    trait_ref: trait_data,
-                    self_ref: type_data,
-                }))
             }
             _ => {
                 // FIXME
@@ -336,7 +351,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_field_data(&self,
                           field: &ast::StructField,
                           scope: NodeId)
-                          -> Option<VariableData> {
+                          -> Option<Def> {
         if let Some(ident) = field.ident {
             let name = ident.to_string();
             let qualname = format!("::{}::{}", self.tcx.node_path_str(scope), ident);
@@ -345,20 +360,23 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             let def_id = self.tcx.hir.local_def_id(field.id);
             let typ = self.tcx.type_of(def_id).to_string();
 
-            Some(VariableData {
-                id: field.id,
-                kind: VariableKind::Field,
-                name: name,
-                qualname: qualname,
-                span: sub_span.unwrap(),
-                scope: scope,
-                parent: Some(make_def_id(scope, &self.tcx.hir)),
-                value: "".to_owned(),
-                type_value: typ,
-                visibility: From::from(&field.vis),
+
+            let id = id_from_node_id(field.id, self);
+            let span = self.span_from_span(sub_span.unwrap());
+
+            Some(Def {
+                kind: DefKind::Field,
+                id,
+                span,
+                name,
+                qualname,
+                value: typ,
+                parent: Some(id_from_node_id(scope, self)),
+                children: vec![],
+                decl_id: None,
                 docs: docs_for_attrs(&field.attrs),
                 sig: sig::field_signature(field, self),
-                attributes: field.attrs.clone(),
+                attributes: lower_attributes(field.attrs.clone(), self),
             })
         } else {
             None
@@ -371,10 +389,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                            id: ast::NodeId,
                            name: ast::Name,
                            span: Span)
-                           -> Option<FunctionData> {
+                           -> Option<Def> {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
-        let (qualname, parent_scope, decl_id, vis, docs, attributes) =
+        let (qualname, parent_scope, decl_id, docs, attributes) =
           match self.tcx.impl_of_method(self.tcx.hir.local_def_id(id)) {
             Some(impl_id) => match self.tcx.hir.get_if_local(impl_id) {
                 Some(Node::NodeItem(item)) => {
@@ -383,7 +401,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             let mut result = String::from("<");
                             result.push_str(&self.tcx.hir.node_to_pretty_string(ty.id));
 
-                            let trait_id = self.tcx.trait_id_of_impl(impl_id);
+                            let mut trait_id = self.tcx.trait_id_of_impl(impl_id);
                             let mut decl_id = None;
                             if let Some(def_id) = trait_id {
                                 result.push_str(" as ");
@@ -391,11 +409,16 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 self.tcx.associated_items(def_id)
                                     .find(|item| item.name == name)
                                     .map(|item| decl_id = Some(item.def_id));
+                            } else {
+                                if let Some(NodeItem(item)) = self.tcx.hir.find(id) {
+                                    if let hir::ItemImpl(_, _, _, _, _, ref ty, _) = item.node {
+                                        trait_id = self.lookup_ref_id(ty.id);
+                                    }
+                                }
                             }
                             result.push_str(">");
 
                             (result, trait_id, decl_id,
-                             From::from(&item.vis),
                              docs_for_attrs(&item.attrs),
                              item.attrs.to_vec())
                         }
@@ -421,7 +444,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         Some(Node::NodeItem(item)) => {
                             (format!("::{}", self.tcx.item_path_str(def_id)),
                              Some(def_id), None,
-                             From::from(&item.vis),
                              docs_for_attrs(&item.attrs),
                              item.attrs.to_vec())
                         }
@@ -449,27 +471,26 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let sub_span = self.span_utils.sub_span_after_keyword(span, keywords::Fn);
         filter!(self.span_utils, sub_span, span, None);
 
-        Some(FunctionData {
-            id: id,
+        Some(Def {
+            kind: DefKind::Method,
+            id: id_from_node_id(id, self),
+            span: self.span_from_span(sub_span.unwrap()),
             name: name.to_string(),
-            qualname: qualname,
-            declaration: decl_id,
-            span: sub_span.unwrap(),
-            scope: self.enclosing_scope(id),
+            qualname,
             // FIXME you get better data here by using the visitor.
             value: String::new(),
-            visibility: vis,
-            parent: parent_scope,
-            docs: docs,
+            parent: parent_scope.map(|id| id_from_def_id(id)),
+            children: vec![],
+            decl_id: decl_id.map(|id| id_from_def_id(id)),
+            docs,
             sig: None,
-            attributes: attributes,
+            attributes: lower_attributes(attributes, self),
         })
     }
 
     pub fn get_trait_ref_data(&self,
-                              trait_ref: &ast::TraitRef,
-                              parent: NodeId)
-                              -> Option<TypeRefData> {
+                              trait_ref: &ast::TraitRef)
+                              -> Option<Ref> {
         self.lookup_ref_id(trait_ref.ref_id).and_then(|def_id| {
             let span = trait_ref.path.span;
             if generated_code(span) {
@@ -477,11 +498,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             let sub_span = self.span_utils.sub_span_for_type_name(span).or(Some(span));
             filter!(self.span_utils, sub_span, span, None);
-            Some(TypeRefData {
-                span: sub_span.unwrap(),
-                scope: parent,
-                ref_id: Some(def_id),
-                qualname: String::new() // FIXME: generate the real qualname
+            let span = self.span_from_span(sub_span.unwrap());
+            Some(Ref {
+                kind: RefKind::Type,
+                span,
+                ref_id: id_from_def_id(def_id),
             })
         })
     }
@@ -507,11 +528,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         let f = def.struct_variant().field_named(ident.node.name);
                         let sub_span = self.span_utils.span_for_last_ident(expr.span);
                         filter!(self.span_utils, sub_span, expr.span, None);
-                        return Some(Data::VariableRefData(VariableRefData {
-                            name: ident.node.to_string(),
-                            span: sub_span.unwrap(),
-                            scope: self.enclosing_scope(expr.id),
-                            ref_id: f.did,
+                        let span = self.span_from_span(sub_span.unwrap());
+                        return Some(Data::RefData(Ref {
+                            kind: RefKind::Variable,
+                            span,
+                            ref_id: id_from_def_id(f.did),
                         }));
                     }
                     _ => {
@@ -525,11 +546,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ty::TyAdt(def, _) if !def.is_enum() => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
                         filter!(self.span_utils, sub_span, path.span, None);
-                        Some(Data::TypeRefData(TypeRefData {
-                            span: sub_span.unwrap(),
-                            scope: self.enclosing_scope(expr.id),
-                            ref_id: Some(def.did),
-                            qualname: String::new() // FIXME: generate the real qualname
+                        let span = self.span_from_span(sub_span.unwrap());
+                        Some(Data::RefData(Ref {
+                            kind: RefKind::Type,
+                            span,
+                            ref_id: id_from_def_id(def.did),
                         }))
                     }
                     _ => {
@@ -548,16 +569,15 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 };
                 let sub_span = self.span_utils.sub_span_for_meth_name(expr.span);
                 filter!(self.span_utils, sub_span, expr.span, None);
-                let parent = self.enclosing_scope(expr.id);
-                Some(Data::MethodCallData(MethodCallData {
-                    span: sub_span.unwrap(),
-                    scope: parent,
-                    ref_id: def_id,
-                    decl_id: decl_id,
+                let span = self.span_from_span(sub_span.unwrap());
+                Some(Data::RefData(Ref {
+                    kind: RefKind::Function,
+                    span,
+                    ref_id: def_id.or(decl_id).map(|id| id_from_def_id(id)).unwrap_or(null_id()),
                 }))
             }
             ast::ExprKind::Path(_, ref path) => {
-                self.get_path_data(expr.id, path)
+                self.get_path_data(expr.id, path).map(|d| Data::RefData(d))
             }
             _ => {
                 // FIXME
@@ -566,7 +586,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_path_def(&self, id: NodeId) -> Def {
+    pub fn get_path_def(&self, id: NodeId) -> HirDef {
         match self.tcx.hir.get(id) {
             Node::NodeTraitRef(tr) => tr.path.def,
 
@@ -582,7 +602,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
 
             Node::NodeLocal(&hir::Pat { node: hir::PatKind::Binding(_, def_id, ..), .. }) => {
-                Def::Local(def_id)
+                HirDef::Local(def_id)
             }
 
             Node::NodeTy(ty) => {
@@ -595,58 +615,58 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 for item in self.tcx.associated_items(proj.trait_ref.def_id) {
                                     if item.kind == ty::AssociatedKind::Type {
                                         if item.name == proj.item_name(self.tcx) {
-                                            return Def::AssociatedTy(item.def_id);
+                                            return HirDef::AssociatedTy(item.def_id);
                                         }
                                     }
                                 }
                             }
-                            Def::Err
+                            HirDef::Err
                         }
                     }
                 } else {
-                    Def::Err
+                    HirDef::Err
                 }
             }
 
-            _ => Def::Err
+            _ => HirDef::Err
         }
     }
 
-    pub fn get_path_data(&self, id: NodeId, path: &ast::Path) -> Option<Data> {
+    pub fn get_path_data(&self, id: NodeId, path: &ast::Path) -> Option<Ref> {
         let def = self.get_path_def(id);
         let sub_span = self.span_utils.span_for_last_ident(path.span);
         filter!(self.span_utils, sub_span, path.span, None);
         match def {
-            Def::Upvar(..) |
-            Def::Local(..) |
-            Def::Static(..) |
-            Def::Const(..) |
-            Def::AssociatedConst(..) |
-            Def::StructCtor(..) |
-            Def::VariantCtor(..) => {
-                Some(Data::VariableRefData(VariableRefData {
-                    name: self.span_utils.snippet(sub_span.unwrap()),
-                    span: sub_span.unwrap(),
-                    scope: self.enclosing_scope(id),
-                    ref_id: def.def_id(),
-                }))
+            HirDef::Upvar(..) |
+            HirDef::Local(..) |
+            HirDef::Static(..) |
+            HirDef::Const(..) |
+            HirDef::AssociatedConst(..) |
+            HirDef::StructCtor(..) |
+            HirDef::VariantCtor(..) => {
+                let span = self.span_from_span(sub_span.unwrap());
+                Some(Ref {
+                    kind: RefKind::Variable,
+                    span,
+                    ref_id: id_from_def_id(def.def_id()),
+                })
             }
-            Def::Struct(def_id) |
-            Def::Variant(def_id, ..) |
-            Def::Union(def_id) |
-            Def::Enum(def_id) |
-            Def::TyAlias(def_id) |
-            Def::AssociatedTy(def_id) |
-            Def::Trait(def_id) |
-            Def::TyParam(def_id) => {
-                Some(Data::TypeRefData(TypeRefData {
-                    span: sub_span.unwrap(),
-                    ref_id: Some(def_id),
-                    scope: self.enclosing_scope(id),
-                    qualname: String::new() // FIXME: generate the real qualname
-                }))
+            HirDef::Struct(def_id) |
+            HirDef::Variant(def_id, ..) |
+            HirDef::Union(def_id) |
+            HirDef::Enum(def_id) |
+            HirDef::TyAlias(def_id) |
+            HirDef::AssociatedTy(def_id) |
+            HirDef::Trait(def_id) |
+            HirDef::TyParam(def_id) => {
+                let span = self.span_from_span(sub_span.unwrap());
+                Some(Ref {
+                    kind: RefKind::Type,
+                    span,
+                    ref_id: id_from_def_id(def_id),
+                })
             }
-            Def::Method(decl_id) => {
+            HirDef::Method(decl_id) => {
                 let sub_span = self.span_utils.sub_span_for_meth_name(path.span);
                 filter!(self.span_utils, sub_span, path.span, None);
                 let def_id = if decl_id.is_local() {
@@ -657,60 +677,60 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 } else {
                     None
                 };
-                Some(Data::MethodCallData(MethodCallData {
-                    span: sub_span.unwrap(),
-                    scope: self.enclosing_scope(id),
-                    ref_id: def_id,
-                    decl_id: Some(decl_id),
-                }))
+                let span = self.span_from_span(sub_span.unwrap());
+                Some(Ref {
+                    kind: RefKind::Function,
+                    span,
+                    ref_id: id_from_def_id(def_id.unwrap_or(decl_id)),
+                })
             }
-            Def::Fn(def_id) => {
-                Some(Data::FunctionCallData(FunctionCallData {
-                    ref_id: def_id,
-                    span: sub_span.unwrap(),
-                    scope: self.enclosing_scope(id),
-                }))
+            HirDef::Fn(def_id) => {
+                let span = self.span_from_span(sub_span.unwrap());
+                Some(Ref {
+                    kind: RefKind::Function,
+                    span,
+                    ref_id: id_from_def_id(def_id),
+                })
             }
-            Def::Mod(def_id) => {
-                Some(Data::ModRefData(ModRefData {
-                    ref_id: Some(def_id),
-                    span: sub_span.unwrap(),
-                    scope: self.enclosing_scope(id),
-                    qualname: String::new() // FIXME: generate the real qualname
-                }))
+            HirDef::Mod(def_id) => {
+                let span = self.span_from_span(sub_span.unwrap());
+                Some(Ref {
+                    kind: RefKind::Mod,
+                    span,
+                    ref_id: id_from_def_id(def_id),
+                })
             }
-            Def::PrimTy(..) |
-            Def::SelfTy(..) |
-            Def::Label(..) |
-            Def::Macro(..) |
-            Def::GlobalAsm(..) |
-            Def::Err => None,
+            HirDef::PrimTy(..) |
+            HirDef::SelfTy(..) |
+            HirDef::Label(..) |
+            HirDef::Macro(..) |
+            HirDef::GlobalAsm(..) |
+            HirDef::Err => None,
         }
     }
 
     pub fn get_field_ref_data(&self,
                               field_ref: &ast::Field,
-                              variant: &ty::VariantDef,
-                              parent: NodeId)
-                              -> Option<VariableRefData> {
+                              variant: &ty::VariantDef)
+                              -> Option<Ref> {
         let f = variant.field_named(field_ref.ident.node.name);
         // We don't really need a sub-span here, but no harm done
         let sub_span = self.span_utils.span_for_last_ident(field_ref.ident.span);
         filter!(self.span_utils, sub_span, field_ref.ident.span, None);
-        Some(VariableRefData {
-            name: field_ref.ident.node.to_string(),
-            span: sub_span.unwrap(),
-            scope: parent,
-            ref_id: f.did,
+        let span = self.span_from_span(sub_span.unwrap());
+        Some(Ref {
+            kind: RefKind::Variable,
+            span,
+            ref_id: id_from_def_id(f.did),
         })
     }
 
-    /// Attempt to return MacroUseData for any AST node.
+    /// Attempt to return MacroRef for any AST node.
     ///
     /// For a given piece of AST defined by the supplied Span and NodeId,
     /// returns None if the node is not macro-generated or the span is malformed,
-    /// else uses the expansion callsite and callee to return some MacroUseData.
-    pub fn get_macro_use_data(&self, span: Span, id: NodeId) -> Option<MacroUseData> {
+    /// else uses the expansion callsite and callee to return some MacroRef.
+    pub fn get_macro_use_data(&self, span: Span) -> Option<MacroRef> {
         if !generated_code(span) {
             return None;
         }
@@ -718,6 +738,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         // nested expansions and ensure we only generate data for source-visible
         // macro uses.
         let callsite = span.source_callsite();
+        let callsite_span = self.span_from_span(callsite);
         let callee = option_try!(span.source_callee());
         let callee_span = option_try!(callee.span);
 
@@ -731,34 +752,25 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         // when read in, and no longer correspond to the source.
         if let Some(mac) = self.tcx.sess.imported_macro_spans.borrow().get(&callee_span) {
             let &(ref mac_name, mac_span) = mac;
-            return Some(MacroUseData {
-                                        span: callsite,
-                                        name: mac_name.clone(),
-                                        callee_span: mac_span,
-                                        scope: self.enclosing_scope(id),
-                                        imported: true,
-                                        qualname: String::new()// FIXME: generate the real qualname
-                                    });
+            let mac_span = self.span_from_span(mac_span);
+            return Some(MacroRef {
+                span: callsite_span,
+                qualname: mac_name.clone(), // FIXME: generate the real qualname
+                callee_span: mac_span,
+            });
         }
 
-        Some(MacroUseData {
-            span: callsite,
-            name: callee.name().to_string(),
-            callee_span: callee_span,
-            scope: self.enclosing_scope(id),
-            imported: false,
-            qualname: String::new() // FIXME: generate the real qualname
+        let callee_span = self.span_from_span(callee_span);
+        Some(MacroRef {
+            span: callsite_span,
+            qualname: callee.name().to_string(), // FIXME: generate the real qualname
+            callee_span,
         })
-    }
-
-    pub fn get_data_for_id(&self, _id: &NodeId) -> Data {
-        // FIXME
-        bug!();
     }
 
     fn lookup_ref_id(&self, ref_id: NodeId) -> Option<DefId> {
         match self.get_path_def(ref_id) {
-            Def::PrimTy(_) | Def::SelfTy(..) | Def::Err => None,
+            HirDef::PrimTy(_) | HirDef::SelfTy(..) | HirDef::Err => None,
             def => Some(def.def_id()),
         }
     }
@@ -800,7 +812,7 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
 // An AST visitor for collecting paths from patterns.
 struct PathCollector {
     // The Row field identifies the kind of pattern.
-    collected_paths: Vec<(NodeId, ast::Path, ast::Mutability, recorder::Row)>,
+    collected_paths: Vec<(NodeId, ast::Path, ast::Mutability)>,
 }
 
 impl PathCollector {
@@ -814,12 +826,12 @@ impl<'a> Visitor<'a> for PathCollector {
         match p.node {
             PatKind::Struct(ref path, ..) => {
                 self.collected_paths.push((p.id, path.clone(),
-                                           ast::Mutability::Mutable, recorder::TypeRef));
+                                           ast::Mutability::Mutable));
             }
             PatKind::TupleStruct(ref path, ..) |
             PatKind::Path(_, ref path) => {
                 self.collected_paths.push((p.id, path.clone(),
-                                           ast::Mutability::Mutable, recorder::VarRef));
+                                           ast::Mutability::Mutable));
             }
             PatKind::Ident(bm, ref path1, _) => {
                 debug!("PathCollector, visit ident in pat {}: {:?} {:?}",
@@ -835,7 +847,7 @@ impl<'a> Visitor<'a> for PathCollector {
                 };
                 // collect path for either visit_local or visit_arm
                 let path = ast::Path::from_ident(path1.span, path1.node);
-                self.collected_paths.push((p.id, path, immut, recorder::VarRef));
+                self.collected_paths.push((p.id, path, immut));
             }
             _ => {}
         }
@@ -1032,6 +1044,34 @@ fn id_from_def_id(id: DefId) -> rls_data::Id {
 }
 
 fn id_from_node_id(id: NodeId, scx: &SaveContext) -> rls_data::Id {
-    let def_id = scx.tcx.hir.local_def_id(id);
-    id_from_def_id(def_id)
+    let def_id = scx.tcx.hir.opt_local_def_id(id);
+    def_id.map(|id| id_from_def_id(id)).unwrap_or_else(null_id)
+}
+
+fn null_id() -> rls_data::Id {
+    rls_data::Id {
+        krate: u32::max_value(),
+        index: u32::max_value(),
+    }
+}
+
+fn lower_attributes(attrs: Vec<Attribute>, scx: &SaveContext) -> Vec<rls_data::Attribute> {
+    attrs.into_iter()
+    // Only retain real attributes. Doc comments are lowered separately.
+    .filter(|attr| attr.path != "doc")
+    .map(|mut attr| {
+        // Remove the surrounding '#[..]' or '#![..]' of the pretty printed
+        // attribute. First normalize all inner attribute (#![..]) to outer
+        // ones (#[..]), then remove the two leading and the one trailing character.
+        attr.style = ast::AttrStyle::Outer;
+        let value = pprust::attribute_to_string(&attr);
+        // This str slicing works correctly, because the leading and trailing characters
+        // are in the ASCII range and thus exactly one byte each.
+        let value = value[2..value.len()-1].to_string();
+
+        rls_data::Attribute {
+            value: value,
+            span: scx.span_from_span(attr.span),
+        }
+    }).collect()
 }
