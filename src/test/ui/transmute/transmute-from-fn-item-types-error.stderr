@@ -1,0 +1,108 @@
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-from-fn-item-types-error.rs:16:13
+   |
+16 |     let i = mem::transmute(bar);
+   |             ^^^^^^^^^^^^^^
+   |
+   = note: source type: unsafe fn() {bar} (0 bits)
+   = note: target type: i32 (32 bits)
+
+error[E0591]: can't transmute zero-sized type
+  --> $DIR/transmute-from-fn-item-types-error.rs:20:13
+   |
+20 |     let p = mem::transmute(foo);
+   |             ^^^^^^^^^^^^^^
+   |
+   = note: source type: unsafe fn() -> (i32, *const (), std::option::Option<fn()>) {foo}
+   = note: target type: *const ()
+   = help: cast with `as` to a pointer instead
+
+error[E0591]: can't transmute zero-sized type
+  --> $DIR/transmute-from-fn-item-types-error.rs:24:14
+   |
+24 |     let of = mem::transmute(main);
+   |              ^^^^^^^^^^^^^^
+   |
+   = note: source type: fn() {main}
+   = note: target type: std::option::Option<fn()>
+   = help: cast with `as` to a pointer instead
+
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-from-fn-item-types-error.rs:33:5
+   |
+33 |     mem::transmute::<_, u8>(main);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: fn() {main} (0 bits)
+   = note: target type: u8 (8 bits)
+
+error[E0591]: can't transmute zero-sized type
+  --> $DIR/transmute-from-fn-item-types-error.rs:37:5
+   |
+37 |     mem::transmute::<_, *mut ()>(foo);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: unsafe fn() -> (i32, *const (), std::option::Option<fn()>) {foo}
+   = note: target type: *mut ()
+   = help: cast with `as` to a pointer instead
+
+error[E0591]: can't transmute zero-sized type
+  --> $DIR/transmute-from-fn-item-types-error.rs:41:5
+   |
+41 |     mem::transmute::<_, fn()>(bar);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: unsafe fn() {bar}
+   = note: target type: fn()
+   = help: cast with `as` to a pointer instead
+
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-from-fn-item-types-error.rs:46:5
+   |
+46 |     mem::transmute::<fn(), u32>(main);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: fn() (64 bits)
+   = note: target type: u32 (32 bits)
+
+error[E0591]: can't transmute zero-sized type
+  --> $DIR/transmute-from-fn-item-types-error.rs:50:5
+   |
+50 |     mem::transmute::<_, *mut ()>(Some(foo));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: unsafe fn() -> (i32, *const (), std::option::Option<fn()>) {foo}
+   = note: target type: *mut ()
+   = help: cast with `as` to a pointer instead
+
+error[E0591]: can't transmute zero-sized type
+  --> $DIR/transmute-from-fn-item-types-error.rs:54:5
+   |
+54 |     mem::transmute::<_, fn()>(Some(bar));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: unsafe fn() {bar}
+   = note: target type: fn()
+   = help: cast with `as` to a pointer instead
+
+error[E0591]: can't transmute zero-sized type
+  --> $DIR/transmute-from-fn-item-types-error.rs:58:5
+   |
+58 |     mem::transmute::<_, Option<fn()>>(Some(baz));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: unsafe fn() {baz}
+   = note: target type: std::option::Option<fn()>
+   = help: cast with `as` to a pointer instead
+
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/transmute-from-fn-item-types-error.rs:63:5
+   |
+63 |     mem::transmute::<Option<fn()>, u32>(Some(main));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: std::option::Option<fn()> (64 bits)
+   = note: target type: u32 (32 bits)
+
+error: aborting due to previous error(s)
+
