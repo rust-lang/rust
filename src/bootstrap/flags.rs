@@ -196,9 +196,14 @@ Arguments:
         ./x.py build
         ./x.py build --stage 1
 
-    For a quick build with a usable compile, you can pass:
+    For a quick build of a usable compiler, you can pass:
 
-        ./x.py build --stage 1 src/libtest");
+        ./x.py build --stage 1 src/libtest
+
+    This will first build everything once (like --stage 0 without further
+    arguments would), and then use the compiler built in stage 0 to build
+    src/libtest and its dependencies.
+    Once this is done, build/$ARCH/stage1 contains a usable compiler.");
             }
             "test" => {
                 subcommand_help.push_str("\n
