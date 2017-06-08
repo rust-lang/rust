@@ -77,7 +77,7 @@ implementations, for example.
 ```rust
 pub struct Jemalloc;
 
-impl<'a> Allocate for &'a Jemalloc {
+impl<'a> Allocator for &'a Jemalloc {
     // ...
 }
 ```
