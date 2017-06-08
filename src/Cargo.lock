@@ -285,6 +285,7 @@ dependencies = [
  "diff 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "filetime 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -423,14 +424,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "flate"
-version = "0.0.0"
-dependencies = [
- "build_helper 0.1.0",
- "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "flate2"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -462,10 +455,6 @@ dependencies = [
 name = "gcc"
 version = "0.3.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "getopts"
-version = "0.0.0"
 
 [[package]]
 name = "getopts"
@@ -1107,6 +1096,7 @@ name = "rustc"
 version = "0.0.0"
 dependencies = [
  "arena 0.0.0",
+ "flate2 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "fmt_macros 0.0.0",
  "graphviz 0.0.0",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1296,7 +1286,7 @@ dependencies = [
 name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
- "flate 0.0.0",
+ "flate2 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc_macro 0.0.0",
@@ -1404,7 +1394,7 @@ dependencies = [
 name = "rustc_trans"
 version = "0.0.0"
 dependencies = [
- "flate 0.0.0",
+ "flate2 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1790,7 +1780,7 @@ dependencies = [
 name = "test"
 version = "0.0.0"
 dependencies = [
- "getopts 0.0.0",
+ "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "term 0.0.0",
 ]
 

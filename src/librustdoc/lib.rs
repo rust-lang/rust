@@ -116,94 +116,149 @@ fn get_args() -> Option<Vec<String>> {
         .collect()
 }
 
-fn stable(g: getopts::OptGroup) -> RustcOptGroup { RustcOptGroup::stable(g) }
-fn unstable(g: getopts::OptGroup) -> RustcOptGroup { RustcOptGroup::unstable(g) }
+fn stable<F>(name: &'static str, f: F) -> RustcOptGroup
+    where F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static
+{
+    RustcOptGroup::stable(name, f)
+}
+
+fn unstable<F>(name: &'static str, f: F) -> RustcOptGroup
+    where F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static
+{
+    RustcOptGroup::unstable(name, f)
+}
 
 pub fn opts() -> Vec<RustcOptGroup> {
-    use getopts::*;
     vec![
-        stable(optflag("h", "help", "show this help message")),
-        stable(optflag("V", "version", "print rustdoc's version")),
-        stable(optflag("v", "verbose", "use verbose output")),
-        stable(optopt("r", "input-format", "the input type of the specified file",
-                      "[rust]")),
-        stable(optopt("w", "output-format", "the output type to write",
-                      "[html]")),
-        stable(optopt("o", "output", "where to place the output", "PATH")),
-        stable(optopt("", "crate-name", "specify the name of this crate", "NAME")),
-        stable(optmulti("L", "library-path", "directory to add to crate search path",
-                        "DIR")),
-        stable(optmulti("", "cfg", "pass a --cfg to rustc", "")),
-        stable(optmulti("", "extern", "pass an --extern to rustc", "NAME=PATH")),
-        stable(optmulti("", "plugin-path", "directory to load plugins from", "DIR")),
-        stable(optmulti("", "passes",
-                        "list of passes to also run, you might want \
-                         to pass it multiple times; a value of `list` \
-                         will print available passes",
-                        "PASSES")),
-        stable(optmulti("", "plugins", "space separated list of plugins to also load",
-                        "PLUGINS")),
-        stable(optflag("", "no-defaults", "don't run the default passes")),
-        stable(optflag("", "test", "run code examples as tests")),
-        stable(optmulti("", "test-args", "arguments to pass to the test runner",
-                        "ARGS")),
-        stable(optopt("", "target", "target triple to document", "TRIPLE")),
-        stable(optmulti("", "markdown-css",
-                        "CSS files to include via <link> in a rendered Markdown file",
-                        "FILES")),
-        stable(optmulti("", "html-in-header",
-                        "files to include inline in the <head> section of a rendered Markdown file \
-                         or generated documentation",
-                        "FILES")),
-        stable(optmulti("", "html-before-content",
-                        "files to include inline between <body> and the content of a rendered \
-                         Markdown file or generated documentation",
-                        "FILES")),
-        stable(optmulti("", "html-after-content",
-                        "files to include inline between the content and </body> of a rendered \
-                         Markdown file or generated documentation",
-                        "FILES")),
-        unstable(optmulti("", "markdown-before-content",
-                          "files to include inline between <body> and the content of a rendered \
-                           Markdown file or generated documentation",
-                          "FILES")),
-        unstable(optmulti("", "markdown-after-content",
-                          "files to include inline between the content and </body> of a rendered \
-                           Markdown file or generated documentation",
-                          "FILES")),
-        stable(optopt("", "markdown-playground-url",
-                      "URL to send code snippets to", "URL")),
-        stable(optflag("", "markdown-no-toc", "don't include table of contents")),
-        stable(optopt("e", "extend-css",
-                      "To add some CSS rules with a given file to generate doc with your \
-                       own theme. However, your theme might break if the rustdoc's generated HTML \
-                       changes, so be careful!", "PATH")),
-        unstable(optmulti("Z", "",
-                          "internal and debugging options (only on nightly build)", "FLAG")),
-        stable(optopt("", "sysroot", "Override the system root", "PATH")),
-        unstable(optopt("", "playground-url",
-                        "URL to send code snippets to, may be reset by --markdown-playground-url \
-                         or `#![doc(html_playground_url=...)]`",
-                        "URL")),
-        unstable(optflag("", "enable-commonmark", "to enable commonmark doc rendering/testing")),
-        unstable(optflag("", "display-warnings", "to print code warnings when testing doc")),
+        stable("h", |o| o.optflag("h", "help", "show this help message")),
+        stable("V", |o| o.optflag("V", "version", "print rustdoc's version")),
+        stable("v", |o| o.optflag("v", "verbose", "use verbose output")),
+        stable("r", |o| {
+            o.optopt("r", "input-format", "the input type of the specified file",
+                     "[rust]")
+        }),
+        stable("w", |o| {
+            o.optopt("w", "output-format", "the output type to write", "[html]")
+        }),
+        stable("o", |o| o.optopt("o", "output", "where to place the output", "PATH")),
+        stable("crate-name", |o| {
+            o.optopt("", "crate-name", "specify the name of this crate", "NAME")
+        }),
+        stable("L", |o| {
+            o.optmulti("L", "library-path", "directory to add to crate search path",
+                       "DIR")
+        }),
+        stable("cfg", |o| o.optmulti("", "cfg", "pass a --cfg to rustc", "")),
+        stable("extern", |o| {
+            o.optmulti("", "extern", "pass an --extern to rustc", "NAME=PATH")
+        }),
+        stable("plugin-path", |o| {
+            o.optmulti("", "plugin-path", "directory to load plugins from", "DIR")
+        }),
+        stable("passes", |o| {
+            o.optmulti("", "passes",
+                       "list of passes to also run, you might want \
+                        to pass it multiple times; a value of `list` \
+                        will print available passes",
+                       "PASSES")
+        }),
+        stable("plugins", |o| {
+            o.optmulti("", "plugins", "space separated list of plugins to also load",
+                       "PLUGINS")
+        }),
+        stable("no-default", |o| {
+            o.optflag("", "no-defaults", "don't run the default passes")
+        }),
+        stable("test", |o| o.optflag("", "test", "run code examples as tests")),
+        stable("test-args", |o| {
+            o.optmulti("", "test-args", "arguments to pass to the test runner",
+                       "ARGS")
+        }),
+        stable("target", |o| o.optopt("", "target", "target triple to document", "TRIPLE")),
+        stable("markdown-css", |o| {
+            o.optmulti("", "markdown-css",
+                       "CSS files to include via <link> in a rendered Markdown file",
+                       "FILES")
+        }),
+        stable("html-in-header", |o|  {
+            o.optmulti("", "html-in-header",
+                       "files to include inline in the <head> section of a rendered Markdown file \
+                        or generated documentation",
+                       "FILES")
+        }),
+        stable("html-before-content", |o| {
+            o.optmulti("", "html-before-content",
+                       "files to include inline between <body> and the content of a rendered \
+                        Markdown file or generated documentation",
+                       "FILES")
+        }),
+        stable("html-after-content", |o| {
+            o.optmulti("", "html-after-content",
+                       "files to include inline between the content and </body> of a rendered \
+                        Markdown file or generated documentation",
+                       "FILES")
+        }),
+        unstable("markdown-before-content", |o| {
+            o.optmulti("", "markdown-before-content",
+                       "files to include inline between <body> and the content of a rendered \
+                        Markdown file or generated documentation",
+                       "FILES")
+        }),
+        unstable("markdown-after-content", |o| {
+            o.optmulti("", "markdown-after-content",
+                       "files to include inline between the content and </body> of a rendered \
+                        Markdown file or generated documentation",
+                       "FILES")
+        }),
+        stable("markdown-playground-url", |o| {
+            o.optopt("", "markdown-playground-url",
+                     "URL to send code snippets to", "URL")
+        }),
+        stable("markdown-no-toc", |o| {
+            o.optflag("", "markdown-no-toc", "don't include table of contents")
+        }),
+        stable("e", |o| {
+            o.optopt("e", "extend-css",
+                     "To add some CSS rules with a given file to generate doc with your \
+                      own theme. However, your theme might break if the rustdoc's generated HTML \
+                      changes, so be careful!", "PATH")
+        }),
+        unstable("Z", |o| {
+            o.optmulti("Z", "",
+                       "internal and debugging options (only on nightly build)", "FLAG")
+        }),
+        stable("sysroot", |o| {
+            o.optopt("", "sysroot", "Override the system root", "PATH")
+        }),
+        unstable("playground-url", |o| {
+            o.optopt("", "playground-url",
+                     "URL to send code snippets to, may be reset by --markdown-playground-url \
+                      or `#![doc(html_playground_url=...)]`",
+                     "URL")
+        }),
+        unstable("enable-commonmark", |o| {
+            o.optflag("", "enable-commonmark", "to enable commonmark doc rendering/testing")
+        }),
+        unstable("display-warnings", |o| {
+            o.optflag("", "display-warnings", "to print code warnings when testing doc")
+        }),
     ]
 }
 
 pub fn usage(argv0: &str) {
-    println!("{}",
-             getopts::usage(&format!("{} [options] <input>", argv0),
-                            &opts().into_iter()
-                                   .map(|x| x.opt_group)
-                                   .collect::<Vec<getopts::OptGroup>>()));
+    let mut options = getopts::Options::new();
+    for option in opts() {
+        (option.apply)(&mut options);
+    }
+    println!("{}", options.usage(&format!("{} [options] <input>", argv0)));
 }
 
 pub fn main_args(args: &[String]) -> isize {
-    let all_groups: Vec<getopts::OptGroup> = opts()
-                                             .into_iter()
-                                             .map(|x| x.opt_group)
-                                             .collect();
-    let matches = match getopts::getopts(&args[1..], &all_groups) {
+    let mut options = getopts::Options::new();
+    for option in opts() {
+        (option.apply)(&mut options);
+    }
+    let matches = match options.parse(&args[1..]) {
         Ok(m) => m,
         Err(err) => {
             print_error(err);

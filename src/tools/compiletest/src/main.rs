@@ -11,7 +11,6 @@
 #![crate_name = "compiletest"]
 
 #![feature(box_syntax)]
-#![feature(rustc_private)]
 #![feature(test)]
 #![feature(libc)]
 
@@ -34,7 +33,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use filetime::FileTime;
-use getopts::{optopt, optflag, reqopt};
+use getopts::Options;
 use common::Config;
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Mode};
 use test::{TestPaths, ColorConfig};
@@ -66,68 +65,68 @@ fn main() {
 
 pub fn parse_config(args: Vec<String> ) -> Config {
 
-    let groups : Vec<getopts::OptGroup> =
-        vec![reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
-          reqopt("", "run-lib-path", "path to target shared libraries", "PATH"),
-          reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH"),
-          reqopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH"),
-          reqopt("", "lldb-python", "path to python to use for doc tests", "PATH"),
-          reqopt("", "docck-python", "path to python to use for doc tests", "PATH"),
-          optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM"),
-          optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind"),
-          optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR"),
-          reqopt("", "src-base", "directory to scan for test files", "PATH"),
-          reqopt("", "build-base", "directory to deposit test outputs", "PATH"),
-          reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET"),
-          reqopt("", "mode", "which sort of compile tests to run",
-                 "(compile-fail|parse-fail|run-fail|run-pass|\
-                  run-pass-valgrind|pretty|debug-info|incremental|mir-opt)"),
-          optflag("", "ignored", "run tests marked as ignored"),
-          optflag("", "exact", "filters match exactly"),
-          optopt("", "runtool", "supervisor program to run tests under \
-                                 (eg. emulator, valgrind)", "PROGRAM"),
-          optopt("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS"),
-          optopt("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS"),
-          optflag("", "verbose", "run tests verbosely, showing all output"),
-          optflag("", "quiet", "print one character per test instead of one line"),
-          optopt("", "color", "coloring: auto, always, never", "WHEN"),
-          optopt("", "logfile", "file to log test execution to", "FILE"),
-          optopt("", "target", "the target to build for", "TARGET"),
-          optopt("", "host", "the host to build for", "HOST"),
-          optopt("", "gdb", "path to GDB to use for GDB debuginfo tests", "PATH"),
-          optopt("", "lldb-version", "the version of LLDB used", "VERSION STRING"),
-          optopt("", "llvm-version", "the version of LLVM used", "VERSION STRING"),
-          optflag("", "system-llvm", "is LLVM the system LLVM"),
-          optopt("", "android-cross-path", "Android NDK standalone path", "PATH"),
-          optopt("", "adb-path", "path to the android debugger", "PATH"),
-          optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
-          optopt("", "lldb-python-dir", "directory containing LLDB's python module", "PATH"),
-          reqopt("", "cc", "path to a C compiler", "PATH"),
-          reqopt("", "cxx", "path to a C++ compiler", "PATH"),
-          reqopt("", "cflags", "flags for the C compiler", "FLAGS"),
-          reqopt("", "llvm-components", "list of LLVM components built in", "LIST"),
-          reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS"),
-          optopt("", "nodejs", "the name of nodejs", "PATH"),
-          optopt("", "remote-test-client", "path to the remote test client", "PATH"),
-          optflag("h", "help", "show this message")];
+    let mut opts = Options::new();
+    opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
+        .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
+        .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
+        .reqopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
+        .reqopt("", "lldb-python", "path to python to use for doc tests", "PATH")
+        .reqopt("", "docck-python", "path to python to use for doc tests", "PATH")
+        .optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM")
+        .optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind")
+        .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
+        .reqopt("", "src-base", "directory to scan for test files", "PATH")
+        .reqopt("", "build-base", "directory to deposit test outputs", "PATH")
+        .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
+        .reqopt("", "mode", "which sort of compile tests to run",
+                "(compile-fail|parse-fail|run-fail|run-pass|\
+                 run-pass-valgrind|pretty|debug-info|incremental|mir-opt)")
+        .optflag("", "ignored", "run tests marked as ignored")
+        .optflag("", "exact", "filters match exactly")
+        .optopt("", "runtool", "supervisor program to run tests under \
+                                (eg. emulator, valgrind)", "PROGRAM")
+        .optopt("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
+        .optopt("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
+        .optflag("", "verbose", "run tests verbosely, showing all output")
+        .optflag("", "quiet", "print one character per test instead of one line")
+        .optopt("", "color", "coloring: auto, always, never", "WHEN")
+        .optopt("", "logfile", "file to log test execution to", "FILE")
+        .optopt("", "target", "the target to build for", "TARGET")
+        .optopt("", "host", "the host to build for", "HOST")
+        .optopt("", "gdb", "path to GDB to use for GDB debuginfo tests", "PATH")
+        .optopt("", "lldb-version", "the version of LLDB used", "VERSION STRING")
+        .optopt("", "llvm-version", "the version of LLVM used", "VERSION STRING")
+        .optflag("", "system-llvm", "is LLVM the system LLVM")
+        .optopt("", "android-cross-path", "Android NDK standalone path", "PATH")
+        .optopt("", "adb-path", "path to the android debugger", "PATH")
+        .optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH")
+        .optopt("", "lldb-python-dir", "directory containing LLDB's python module", "PATH")
+        .reqopt("", "cc", "path to a C compiler", "PATH")
+        .reqopt("", "cxx", "path to a C++ compiler", "PATH")
+        .reqopt("", "cflags", "flags for the C compiler", "FLAGS")
+        .reqopt("", "llvm-components", "list of LLVM components built in", "LIST")
+        .reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS")
+        .optopt("", "nodejs", "the name of nodejs", "PATH")
+        .optopt("", "remote-test-client", "path to the remote test client", "PATH")
+        .optflag("h", "help", "show this message");
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
-        println!("{}", getopts::usage(&message, &groups));
+        println!("{}", opts.usage(&message));
         println!("");
         panic!()
     }
 
     let matches =
-        &match getopts::getopts(args_, &groups) {
+        &match opts.parse(args_) {
           Ok(m) => m,
           Err(f) => panic!("{:?}", f)
         };
 
     if matches.opt_present("h") || matches.opt_present("help") {
         let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
-        println!("{}", getopts::usage(&message, &groups));
+        println!("{}", opts.usage(&message));
         println!("");
         panic!()
     }

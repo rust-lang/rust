@@ -11,6 +11,7 @@
 // Smallest "hello world" with a libc runtime
 
 // pretty-expanded FIXME #23616
+// ignore-windows
 
 #![feature(intrinsics, lang_items, start, no_core, alloc_system)]
 #![no_core]

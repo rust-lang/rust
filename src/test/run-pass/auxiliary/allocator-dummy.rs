@@ -10,33 +10,40 @@
 
 // no-prefer-dynamic
 
-#![feature(allocator, core_intrinsics, libc)]
+#![feature(allocator, core_intrinsics)]
 #![allocator]
 #![crate_type = "rlib"]
 #![no_std]
 
-extern crate libc;
-
 pub static mut HITS: usize = 0;
+
+type size_t = usize;
+
+extern {
+    fn malloc(size: usize) -> *mut u8;
+    fn free(ptr: *mut u8);
+    fn calloc(size: usize, amt: usize) -> *mut u8;
+    fn realloc(ptr: *mut u8, size: usize) -> *mut u8;
+}
 
 #[no_mangle]
 pub extern fn __rust_allocate(size: usize, align: usize) -> *mut u8 {
     unsafe {
         HITS += 1;
-        libc::malloc(size as libc::size_t) as *mut u8
+        malloc(size as size_t) as *mut u8
     }
 }
 
 #[no_mangle]
 pub extern fn __rust_allocate_zeroed(size: usize, _align: usize) -> *mut u8 {
-    unsafe { libc::calloc(size as libc::size_t, 1) as *mut u8 }
+    unsafe { calloc(size as size_t, 1) as *mut u8 }
 }
 
 #[no_mangle]
 pub extern fn __rust_deallocate(ptr: *mut u8, old_size: usize, align: usize) {
     unsafe {
         HITS += 1;
-        libc::free(ptr as *mut _)
+        free(ptr as *mut _)
     }
 }
 
@@ -44,7 +51,7 @@ pub extern fn __rust_deallocate(ptr: *mut u8, old_size: usize, align: usize) {
 pub extern fn __rust_reallocate(ptr: *mut u8, old_size: usize, size: usize,
                                 align: usize) -> *mut u8 {
     unsafe {
-        libc::realloc(ptr as *mut _, size as libc::size_t) as *mut u8
+        realloc(ptr as *mut _, size as size_t) as *mut u8
     }
 }
 

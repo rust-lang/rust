@@ -41,6 +41,7 @@
 #![feature(discriminant_value)]
 #![feature(sort_unstable)]
 #![feature(trace_macros)]
+#![feature(test)]
 
 #![recursion_limit="256"]
 
@@ -63,7 +64,10 @@ extern crate syntax_pos;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
+// Note that librustc doesn't actually depend on these crates, see the note in
+// `Cargo.toml` for this crate about why these are here.
 extern crate flate2;
+extern crate test;
 
 #[macro_use]
 mod macros;
