@@ -125,7 +125,7 @@ pub fn is_from_for_desugar(decl: &hir::Decl) -> bool {
 /// `for pat in arg { body }` becomes `(pat, arg, body)`.
 pub fn for_loop(expr: &hir::Expr) -> Option<(&hir::Pat, &hir::Expr, &hir::Expr)> {
     if_let_chain! {[
-        let hir::ExprMatch(ref iterexpr, ref arms, _) = expr.node,
+        let hir::ExprMatch(ref iterexpr, ref arms, hir::MatchSource::ForLoopDesugar) = expr.node,
         let hir::ExprCall(_, ref iterargs) = iterexpr.node,
         iterargs.len() == 1 && arms.len() == 1 && arms[0].guard.is_none(),
         let hir::ExprLoop(ref block, _, _) = arms[0].body.node,
