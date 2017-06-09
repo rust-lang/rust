@@ -80,7 +80,7 @@ provide! { <'tcx> tcx, def_id, cdata
     variances_of => { Rc::new(cdata.get_item_variances(def_id.index)) }
     associated_item_def_ids => {
         let mut result = vec![];
-        cdata.each_child_of_item(def_id.index, |child| result.push(child.def.def_id()));
+        cdata.each_child_of_item(def_id.index, |child| result.push(child.def.def_id()), tcx.sess);
         Rc::new(result)
     }
     associated_item => { cdata.get_associated_item(def_id.index) }
@@ -348,12 +348,12 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(def.krate).get_struct_field_names(def.index)
     }
 
-    fn item_children(&self, def_id: DefId) -> Vec<def::Export>
+    fn item_children(&self, def_id: DefId, sess: &Session) -> Vec<def::Export>
     {
         self.dep_graph.read(DepNode::MetaData(def_id));
         let mut result = vec![];
         self.get_crate_data(def_id.krate)
-            .each_child_of_item(def_id.index, |child| result.push(child));
+            .each_child_of_item(def_id.index, |child| result.push(child), sess);
         result
     }
 
@@ -456,7 +456,7 @@ impl CrateStore for cstore::CStore {
     /// Returns a map from a sufficiently visible external item (i.e. an external item that is
     /// visible from at least one local module) to a sufficiently visible parent (considering
     /// modules that re-export the external item to be parents).
-    fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>> {
+    fn visible_parent_map<'a>(&'a self, sess: &Session) -> ::std::cell::Ref<'a, DefIdMap<DefId>> {
         {
             let visible_parent_map = self.visible_parent_map.borrow();
             if !visible_parent_map.is_empty() {
@@ -506,7 +506,7 @@ impl CrateStore for cstore::CStore {
                 index: CRATE_DEF_INDEX
             });
             while let Some(def) = bfs_queue.pop_front() {
-                for child in self.item_children(def) {
+                for child in self.item_children(def, sess) {
                     add_child(bfs_queue, child, def);
                 }
             }

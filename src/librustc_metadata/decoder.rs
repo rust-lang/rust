@@ -654,7 +654,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     /// Iterates over each child of the given item.
-    pub fn each_child_of_item<F>(&self, id: DefIndex, mut callback: F)
+    pub fn each_child_of_item<F>(&self, id: DefIndex, mut callback: F, sess: &Session)
         where F: FnMut(def::Export)
     {
         if let Some(ref proc_macros) = self.proc_macros {
@@ -677,19 +677,19 @@ impl<'a, 'tcx> CrateMetadata {
         // Find the item.
         let item = match self.maybe_entry(id) {
             None => return,
-            Some(item) => item.decode(self),
+            Some(item) => item.decode((self, sess)),
         };
 
         // Iterate over all children.
         let macros_only = self.dep_kind.get().macros_only();
-        for child_index in item.children.decode(self) {
+        for child_index in item.children.decode((self, sess)) {
             if macros_only {
                 continue
             }
 
             // Get the item.
             if let Some(child) = self.maybe_entry(child_index) {
-                let child = child.decode(self);
+                let child = child.decode((self, sess));
                 match child.kind {
                     EntryKind::MacroDef(..) => {}
                     _ if macros_only => continue,
@@ -700,12 +700,12 @@ impl<'a, 'tcx> CrateMetadata {
                 match child.kind {
                     // FIXME(eddyb) Don't encode these in children.
                     EntryKind::ForeignMod => {
-                        for child_index in child.children.decode(self) {
+                        for child_index in child.children.decode((self, sess)) {
                             if let Some(def) = self.get_def(child_index) {
                                 callback(def::Export {
                                     def: def,
                                     ident: Ident::with_empty_ctxt(self.item_name(child_index)),
-                                    span: self.entry(child_index).span.decode(self),
+                                    span: self.entry(child_index).span.decode((self, sess)),
                                 });
                             }
                         }
@@ -718,7 +718,7 @@ impl<'a, 'tcx> CrateMetadata {
                 }
 
                 let def_key = self.def_key(child_index);
-                let span = child.span.decode(self);
+                let span = child.span.decode((self, sess));
                 if let (Some(def), Some(name)) =
                     (self.get_def(child_index), def_key.disambiguated_data.data.get_opt_name()) {
                     let ident = Ident::with_empty_ctxt(name);
@@ -747,7 +747,7 @@ impl<'a, 'tcx> CrateMetadata {
         }
 
         if let EntryKind::Mod(data) = item.kind {
-            for exp in data.decode(self).reexports.decode(self) {
+            for exp in data.decode((self, sess)).reexports.decode((self, sess)) {
                 match exp.def {
                     Def::Macro(..) => {}
                     _ if macros_only => continue,
