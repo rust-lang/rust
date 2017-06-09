@@ -50,12 +50,16 @@ impl<'a> From<&'a BinaryChangeType> for ChangeCategory {
         match *type_ {
             KindDifference |
             TypeSpecialization |
-            StructFieldAdded(_, _) |
-            StructFieldRemoved(_, _) |
+            StructFieldAdded { .. } |
+            StructFieldRemoved { .. } |
+            StructStyleChanged { .. } |
             EnumVariantAdded |
             EnumVariantRemoved |
-            ImplItemAdded(_) |
-            ImplItemRemoved |
+            VariantFieldAdded |
+            VariantFieldRemoved |
+            VariantFieldStyleChanged { .. } |
+            TraitImplItemAdded { .. } |
+            TraitImplItemRemoved |
             Unknown => Breaking,
             TypeGeneralization => TechnicallyBreaking,
         }
@@ -88,17 +92,25 @@ pub enum BinaryChangeType {
     /// An item has changed it's type (signature) to be less general.
     TypeSpecialization,
     /// A field has been added to a struct.
-    StructFieldAdded(bool, bool), // TODO: EXXXXPPPPLAAAAIN!
+    StructFieldAdded { public: bool, total_public: bool }, // TODO: EXXXXPPPPLAAAAIN!
     /// A field has been removed from a struct.
-    StructFieldRemoved(bool, bool), // TODO: EXXXXPPPPLAAAIN!
+    StructFieldRemoved { public: bool, total_public: bool }, // TODO: EXXXXPPPPLAAAIN!
+    /// A struct has changed it's style.
+    StructStyleChanged { now_tuple: bool, total_private: bool },
     /// A variant has been added to an enum.
     EnumVariantAdded,
-    /// A variant has been removed to an enum.
+    /// A variant has been removed from an enum.
     EnumVariantRemoved,
+    /// A field hasb been added to an enum variant.
+    VariantFieldAdded,
+    /// A field has been removed from an enum variant.
+    VariantFieldRemoved,
+    /// An enum variant has changed it's style.
+    VariantFieldStyleChanged { now_tuple: bool },
     /// An impl item has been added.
-    ImplItemAdded(bool), // TODO: EXPLAAAIN!
+    TraitImplItemAdded { defaulted: bool }, // TODO: EXPLAAAIN!
     /// An impl item has been removed.
-    ImplItemRemoved,
+    TraitImplItemRemoved,
     /// An unknown change is any change we don't yet explicitly handle.
     Unknown,
 }
@@ -282,7 +294,7 @@ impl ChangeSet {
     /// Format the contents of a change set for user output.
     ///
     /// TODO: replace this with something more sophisticated.
-    pub fn output(&self, session: &Session) {
+    pub fn output(&self, _: &Session) {
         println!("max: {:?}", self.max);
 
         for change in &self.changes {
