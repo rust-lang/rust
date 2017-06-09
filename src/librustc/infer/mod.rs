@@ -31,7 +31,7 @@ use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::relate::RelateResult;
 use traits::{self, ObligationCause, PredicateObligations, Reveal};
 use rustc_data_structures::unify::{self, UnificationTable};
-use std::cell::{Cell, RefCell, Ref, RefMut};
+use std::cell::{Cell, RefCell, Ref};
 use std::fmt;
 use syntax::ast;
 use errors::DiagnosticBuilder;
@@ -72,39 +72,14 @@ pub type Bound<T> = Option<T>;
 pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
 pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 
-/// A version of &ty::TypeckTables which can be `Missing` (not needed),
-/// `InProgress` (during typeck) or `Interned` (result of typeck).
-/// Only the `InProgress` version supports `borrow_mut`.
-#[derive(Copy, Clone)]
-pub enum InferTables<'a, 'tcx: 'a> {
-    InProgress(&'a RefCell<ty::TypeckTables<'tcx>>),
-    Missing
-}
-
-impl<'a, 'tcx> InferTables<'a, 'tcx> {
-    pub fn borrow(self) -> Ref<'a, ty::TypeckTables<'tcx>> {
-        match self {
-            InferTables::InProgress(tables) => tables.borrow(),
-            InferTables::Missing => {
-                bug!("InferTables: infcx.tables.borrow() with no tables")
-            }
-        }
-    }
-
-    pub fn borrow_mut(self) -> RefMut<'a, ty::TypeckTables<'tcx>> {
-        match self {
-            InferTables::InProgress(tables) => tables.borrow_mut(),
-            InferTables::Missing => {
-                bug!("InferTables: infcx.tables.borrow_mut() with no tables")
-            }
-        }
-    }
-}
-
 pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
-    pub tables: InferTables<'a, 'tcx>,
+    /// During type-checking/inference of a body, `in_progress_tables`
+    /// contains a reference to the tables being built up, which are
+    /// used for reading closure kinds/signatures as they are inferred,
+    /// and for error reporting logic to read arbitrary node types.
+    pub in_progress_tables: Option<&'a RefCell<ty::TypeckTables<'tcx>>>,
 
     // Cache for projections. This cache is snapshotted along with the
     // infcx.
@@ -360,23 +335,7 @@ impl fmt::Display for FixupError {
     }
 }
 
-pub trait InferEnv<'a, 'tcx> {
-    fn fresh_tables(self) -> Option<ty::TypeckTables<'tcx>>;
-}
-
-impl<'a, 'tcx> InferEnv<'a, 'tcx> for () {
-    fn fresh_tables(self) -> Option<ty::TypeckTables<'tcx>> {
-        None
-    }
-}
-
-impl<'a, 'tcx> InferEnv<'a, 'tcx> for ty::TypeckTables<'tcx> {
-    fn fresh_tables(self) -> Option<ty::TypeckTables<'tcx>> {
-        Some(self)
-    }
-}
-
-/// Helper type of a temporary returned by tcx.infer_ctxt(...).
+/// Helper type of a temporary returned by tcx.infer_ctxt().
 /// Necessary because we can't write the following bound:
 /// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>).
 pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
@@ -386,16 +345,23 @@ pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
-    pub fn infer_ctxt<E: InferEnv<'a, 'gcx>>(self, env: E) -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
+    pub fn infer_ctxt(self) -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         InferCtxtBuilder {
             global_tcx: self,
             arena: DroplessArena::new(),
-            fresh_tables: env.fresh_tables().map(RefCell::new),
+            fresh_tables: None,
         }
     }
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
+    /// Used only by `rustc_typeck` during body type-checking/inference,
+    /// will initialize `in_progress_tables` with fresh `TypeckTables`.
+    pub fn with_fresh_in_progress_tables(mut self) -> Self {
+        self.fresh_tables = Some(RefCell::new(ty::TypeckTables::empty()));
+        self
+    }
+
     pub fn enter<F, R>(&'tcx mut self, f: F) -> R
         where F: for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>) -> R
     {
@@ -404,11 +370,10 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             ref arena,
             ref fresh_tables,
         } = *self;
-        let tables = fresh_tables.as_ref()
-            .map_or(InferTables::Missing, InferTables::InProgress);
+        let in_progress_tables = fresh_tables.as_ref();
         global_tcx.enter_local(arena, |tcx| f(InferCtxt {
-            tcx: tcx,
-            tables: tables,
+            tcx,
+            in_progress_tables,
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
             type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
             int_unification_table: RefCell::new(UnificationTable::new()),
@@ -531,7 +496,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return value;
         }
 
-        self.infer_ctxt(()).enter(|infcx| {
+        self.infer_ctxt().enter(|infcx| {
             value.trans_normalize(&infcx, param_env)
         })
     }
@@ -553,7 +518,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return value;
         }
 
-        self.infer_ctxt(()).enter(|infcx| {
+        self.infer_ctxt().enter(|infcx| {
             value.trans_normalize(&infcx, env.reveal_all())
        })
     }
@@ -757,10 +722,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             was_in_snapshot: in_snapshot,
             // Borrow tables "in progress" (i.e. during typeck)
             // to ban writes from within a snapshot to them.
-            _in_progress_tables: match self.tables {
-                InferTables::InProgress(ref tables) => tables.try_borrow().ok(),
-                _ => None
-            }
+            _in_progress_tables: self.in_progress_tables.map(|tables| {
+                tables.borrow()
+            })
         }
     }
 
@@ -1366,14 +1330,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                  span: Span)
                                  -> bool {
         let ty = self.resolve_type_vars_if_possible(&ty);
-        if let Some((param_env, ty)) = self.tcx.lift_to_global(&(param_env, ty)) {
-            // Even if the type may have no inference variables, during
-            // type-checking closure types are in local tables only.
-            let local_closures = match self.tables {
-                InferTables::InProgress(_) => ty.has_closure_types(),
-                _ => false
-            };
-            if !local_closures {
+        // Even if the type may have no inference variables, during
+        // type-checking closure types are in local tables only.
+        if !self.in_progress_tables.is_some() || !ty.has_closure_types() {
+            if let Some((param_env, ty)) = self.tcx.lift_to_global(&(param_env, ty)) {
                 return ty.moves_by_default(self.tcx.global_tcx(), param_env, span);
             }
         }
@@ -1391,7 +1351,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         def_id: DefId)
                         -> Option<ty::ClosureKind>
     {
-        if let InferTables::InProgress(tables) = self.tables {
+        if let Some(tables) = self.in_progress_tables {
             if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
                 return tables.borrow()
                              .closure_kinds
@@ -1409,7 +1369,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn closure_type(&self, def_id: DefId) -> ty::PolyFnSig<'tcx> {
-        if let InferTables::InProgress(tables) = self.tables {
+        if let Some(tables) = self.in_progress_tables {
             if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
                 if let Some(&ty) = tables.borrow().closure_tys.get(&id) {
                     return ty;

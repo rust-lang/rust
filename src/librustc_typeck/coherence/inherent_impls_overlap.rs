@@ -70,7 +70,7 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 
         for (i, &impl1_def_id) in impls.iter().enumerate() {
             for &impl2_def_id in &impls[(i + 1)..] {
-                self.tcx.infer_ctxt(()).enter(|infcx| {
+                self.tcx.infer_ctxt().enter(|infcx| {
                     if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id).is_some() {
                         self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id)
                     }

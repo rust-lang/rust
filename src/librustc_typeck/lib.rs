@@ -155,7 +155,7 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 expected: Ty<'tcx>,
                                 actual: Ty<'tcx>)
                                 -> bool {
-    tcx.infer_ctxt(()).enter(|ref infcx| {
+    tcx.infer_ctxt().enter(|ref infcx| {
         let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
         let mut fulfill_cx = FulfillmentContext::new();
         match infcx.at(&cause, param_env).eq(expected, actual) {
