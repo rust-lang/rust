@@ -38,11 +38,11 @@
 // gdbg-check:$6 = None
 // gdbr-check:$6 = core::option::Option::None
 
-// gdbr-command: print os_string
-// gdbr-check:$7 = "IAMA OS string 😃"
+// gdb-command: print os_string
+// gdb-check:$7 = "IAMA OS string 😃"
 
-// gdbr-command: print some_string
-// gdbr-check:$8 = Some = {"IAMA optional string!"}
+// gdb-command: print some_string
+// gdb-check:$8 = Some = {"IAMA optional string!"}
 
 
 // === LLDB TESTS ==================================================================================
