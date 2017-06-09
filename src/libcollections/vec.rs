@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //! A contiguous growable array type with heap-allocated contents, written
-//! `Vec<T>` but pronounced 'vector.'
+//! `Vec<T>`.
 //!
 //! Vectors have `O(1)` indexing, amortized `O(1)` push (to the end) and
 //! `O(1)` pop (from the end).
