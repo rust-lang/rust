@@ -329,9 +329,9 @@ impl<A: Step> Iterator for ops::RangeFrom<A> where
         (usize::MAX, None)
     }
 
-    #[inline]
+    #[cold]
     fn count(self) -> usize {
-        usize::MAX
+        panic!("Iterator::count on a `x..` will overflow")
     }
 
     #[inline]
