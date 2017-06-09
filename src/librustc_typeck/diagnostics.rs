@@ -4209,7 +4209,7 @@ println!("{}", v[2]);
 "##,
 
 E0604: r##"
-A cast to `char` was attempted on another type than `u8`.
+A cast to `char` was attempted on a type other than `u8`.
 
 Erroneous code example:
 
@@ -4217,11 +4217,11 @@ Erroneous code example:
 0u32 as char; // error: only `u8` can be cast as `char`, not `u32`
 ```
 
-As the error message indicates, only `u8` can be casted into `char`. Example:
+As the error message indicates, only `u8` can be cast into `char`. Example:
 
 ```
 let c = 86u8 as char; // ok!
-assert!(c, 'V');
+assert_eq!(c, 'V');
 ```
 "##,
 
@@ -4232,15 +4232,15 @@ Erroneous code examples:
 
 ```compile_fail,E0605
 let x = 0u8;
-x as Vec<u8>; // error: non-scalar cast: `u8` as `std::vec::Vec<u8>`
+x as Vec<u8>; // error: non-primitive cast: `u8` as `std::vec::Vec<u8>`
 
 // Another example
 
 let v = 0 as *const u8; // So here, `v` is a `*const u8`.
-v as &u8; // error: non-scalar cast: `*const u8` as `&u8`
+v as &u8; // error: non-primitive cast: `*const u8` as `&u8`
 ```
 
-Only primitive types cast be casted into each others. Examples:
+Only primitive types can be cast into each other. Examples:
 
 ```
 let x = 0u8;
@@ -4261,8 +4261,8 @@ let x = &0u8; // Here, `x` is a `&u8`.
 let y: u32 = x as u32; // error: casting `&u8` as `u32` is invalid
 ```
 
-When casting, keep in mind that only primitive types cast be casted into each
-others. Example:
+When casting, keep in mind that only primitive types can be cast into each
+other. Example:
 
 ```
 let x = &0u8;
@@ -4282,15 +4282,16 @@ v as *const [u8];
 
 First: what are thin and fat pointers?
 
-Thin pointers are "simple" pointers that simply reference a memory address.
+Thin pointers are "simple" pointers: they are purely a reference to a memory
+address.
 
 Fat pointers are pointers referencing Dynamically Sized Types (also called DST).
-They don't have a statically known size, therefore they can only exist behind
+DST don't have a statically known size, therefore they can only exist behind
 some kind of pointers that contain additional information. Slices and trait
-objects are DSTs.
+objects are DSTs. In the case of slices, the additional information the fat
+pointer holds is their size.
 
-So in order to fix this error, don't try to cast directly between thin and fat
-pointers.
+To fix this error, don't try to cast directly between thin and fat pointers.
 "##,
 
 E0609: r##"

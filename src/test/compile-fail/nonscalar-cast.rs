@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:non-scalar cast
-
 #[derive(Debug)]
 struct foo {
     x: isize
 }
 
 fn main() {
-    println!("{}", foo{ x: 1 } as isize);
+    println!("{}", foo{ x: 1 } as isize); //~ non-primitive cast: `foo` as `isize` [E0605]
 }

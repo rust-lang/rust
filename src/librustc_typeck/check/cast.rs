@@ -217,7 +217,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             }
             CastError::NonScalar => {
                 struct_span_err!(fcx.tcx.sess, self.span, E0605,
-                                 "non-scalar cast: `{}` as `{}`",
+                                 "non-primitive cast: `{}` as `{}`",
                                  self.expr_ty,
                                  fcx.ty_to_string(self.cast_ty))
                                 .note("an `as` expression can only be used to convert between \
