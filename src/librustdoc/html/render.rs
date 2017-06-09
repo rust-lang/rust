@@ -3082,7 +3082,13 @@ fn item_typedef(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            where_clause = WhereClause { gens: &t.generics, indent: 0, end_newline: true },
            type_ = t.type_)?;
 
-    document(w, cx, it)
+    document(w, cx, it)?;
+
+    // Render any items associated directly to this alias, as otherwise they
+    // won't be visible anywhere in the docs. It would be nice to also show
+    // associated items from the aliased type (see discussion in #32077), but
+    // we need #14072 to make sense of the generics.
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
 impl<'a> fmt::Display for Sidebar<'a> {
@@ -3092,7 +3098,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
         let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
 
         if it.is_struct() || it.is_trait() || it.is_primitive() || it.is_union()
-            || it.is_enum() || it.is_mod()
+            || it.is_enum() || it.is_mod() || it.is_typedef()
         {
             write!(fmt, "<p class='location'>")?;
             match it.inner {
@@ -3101,6 +3107,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
                 clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
                 clean::UnionItem(..) => write!(fmt, "Union ")?,
                 clean::EnumItem(..) => write!(fmt, "Enum ")?,
+                clean::TypedefItem(..) => write!(fmt, "Type Definition ")?,
                 clean::ModuleItem(..) => if it.is_crate() {
                     write!(fmt, "Crate ")?;
                 } else {
@@ -3117,6 +3124,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
                 clean::PrimitiveItem(ref p) => sidebar_primitive(fmt, it, p)?,
                 clean::UnionItem(ref u) => sidebar_union(fmt, it, u)?,
                 clean::EnumItem(ref e) => sidebar_enum(fmt, it, e)?,
+                clean::TypedefItem(ref t, _) => sidebar_typedef(fmt, it, t)?,
                 clean::ModuleItem(ref m) => sidebar_module(fmt, it, &m.items)?,
                 _ => (),
             }
@@ -3251,6 +3259,16 @@ fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
 
 fn sidebar_primitive(fmt: &mut fmt::Formatter, it: &clean::Item,
                      _p: &clean::PrimitiveType) -> fmt::Result {
+    let sidebar = sidebar_assoc_items(it);
+
+    if !sidebar.is_empty() {
+        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+    }
+    Ok(())
+}
+
+fn sidebar_typedef(fmt: &mut fmt::Formatter, it: &clean::Item,
+                   _t: &clean::Typedef) -> fmt::Result {
     let sidebar = sidebar_assoc_items(it);
 
     if !sidebar.is_empty() {

@@ -311,6 +311,9 @@ impl Item {
     pub fn is_ty_method(&self) -> bool {
         self.type_() == ItemType::TyMethod
     }
+    pub fn is_typedef(&self) -> bool {
+        self.type_() == ItemType::Typedef
+    }
     pub fn is_primitive(&self) -> bool {
         self.type_() == ItemType::Primitive
     }
