@@ -354,3 +354,8 @@ def extract_type_name(qualified_type_name):
         return qualified_type_name
     else:
         return qualified_type_name[index + 2:]
+
+try:
+    compat_str = unicode  # Python 2
+except NameError:
+    compat_str = str
