@@ -8,6 +8,58 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
+//! This module defines the `DepNode` type which the compiler uses to represent
+//! nodes in the dependency graph. A `DepNode` consists of a `DepKind` (which
+//! specifies the kind of thing it represents, like a piece of HIR, MIR, etc)
+//! and a `Fingerprint`, a 128 bit hash value the exact meaning of which
+//! depends on the node's `DepKind`. Together, the kind and the fingerprint
+//! fully identify a dependency node, even across multiple compilation sessions.
+//! In other words, the value of the fingerprint does not depend on anything
+//! that is specific to a given compilation session, like an unpredictable
+//! interning key (e.g. NodeId, DefId, Symbol) or the numeric value of a
+//! pointer. The concept behind this could be compared to how git commit hashes
+//! uniquely identify a given commit and has a few advantages:
+//!
+//! * A `DepNode` can simply be serialized to disk and loaded in another session
+//!   without the need to do any "rebasing (like we have to do for Spans and
+//!   NodeIds) or "retracing" like we had to do for `DefId` in earlier
+//!   implementations of the dependency graph.
+//! * A `Fingerprint` is just a bunch of bits, which allows `DepNode` to
+//!   implement `Copy`, `Sync`, `Send`, `Freeze`, etc.
+//! * Since we just have a bit pattern, `DepNode` can be mapped from disk into
+//!   memory without any post-processing (e.g. "abomination-style" pointer
+//!   reconstruction).
+//! * Because a `DepNode` is self-contained, we can instantiate `DepNodes` that
+//!   refer to things that do not exist anymore. In previous implementations
+//!   `DepNode` contained a `DefId`. A `DepNode` referring to something that
+//!   had been removed between the previous and the current compilation session
+//!   could not be instantiated because the current compilation session
+//!   contained no `DefId` for thing that had been removed.
+//!
+//! `DepNode` definition happens in the `define_dep_nodes!()` macro. This macro
+//! defines the `DepKind` enum and a corresponding `DepConstructor` enum. The
+//! `DepConstructor` enum links a `DepKind` to the parameters that are needed at
+//! runtime in order to construct a valid `DepNode` fingerprint.
+//!
+//! Because the macro sees what parameters a given `DepKind` requires, it can
+//! "infer" some properties for each kind of `DepNode`:
+//!
+//! * Whether a `DepNode` of a given kind has any parameters at all. Some
+//!   `DepNode`s, like `Krate`, represent global concepts with only one value.
+//! * Whether it is possible, in principle, to reconstruct a query key from a
+//!   given `DepNode`. Many `DepKind`s only require a single `DefId` parameter,
+//!   in which case it is possible to map the node's fingerprint back to the
+//!   `DefId` it was computed from. In other cases, too much information gets
+//!   lost during fingerprint computation.
+//!
+//! The `DepConstructor` enum, together with `DepNode::new()` ensures that only
+//! valid `DepNode` instances can be constructed. For example, the API does not
+//! allow for constructing parameterless `DepNode`s with anything other
+//! than a zeroed out fingerprint. More generally speaking, it relieves the
+//! user of the `DepNode` API of having to know how to compute the expected
+//! fingerprint for a given set of node parameters.
+
 use hir::def_id::{CrateNum, DefId};
 use hir::map::DefPathHash;
 
