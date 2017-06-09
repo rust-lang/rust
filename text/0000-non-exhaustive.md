@@ -6,20 +6,25 @@
 # Summary
 
 This RFC introduces the `#[non_exhaustive]` attribute for enums and structs,
-which indicates that more variants/public fields may be added to an enum in the
-future. Adding this hint to enums will force downstream crates to add a wildcard
-arm to `match` statements, ensuring that adding new variants is not a breaking
-change. Adding this hint to structs will prevent downstream crates from
-constructing values, because more fields may be added.
+which indicates that more variants/fields may be added to an enum/struct in the
+future.
 
-This is a post-1.0 version of [RFC 757], modified to use an attribute instead of
-a custom syntax, and extended to structs.
+Adding this hint to enums will force downstream crates to add a wildcard arm to
+`match` statements, ensuring that adding new variants is not a breaking change.
+
+Adding this hint to structs or enum variants will prevent downstream crates
+from constructing or exhaustively matching, to ensure that adding new fields is
+not a breaking change.
+
+This is a post-1.0 version of [RFC 757], with some additions.
 
 # Motivation
 
-The most common use of this feature is error types. Because adding features to a
-crate may result in different possibilities for errors, it makes sense that more
-types of errors will be added in the future.
+## Enums
+
+The most common use for non-exhaustive enums is error types. Because adding
+features to a crate may result in different possibilities for errors, it makes
+sense that more types of errors will be added in the future.
 
 For example, the rustdoc for [`std::io::ErrorKind`] shows:
 
@@ -48,7 +53,8 @@ pub enum ErrorKind {
 ```
 
 Because the standard library continues to grow, it makes sense to eventually add
-more error types. However, this can be a breaking change if we're not careful:
+more error types. However, this can be a breaking change if we're not careful;
+let's say that a user does a match statement like this:
 
 ```rust
 use std::io::ErrorKind::*;
@@ -86,9 +92,10 @@ match error_kind {
 }
 ```
 
-Then we can add as many variants as we want!
+Then we can add as many variants as we want without breaking any downstream
+matches.
 
-## How we do this today
+### How we do this today
 
 We force users add this arm for [`std::io::ErrorKind`] by adding a hidden
 variant:
@@ -123,9 +130,9 @@ pub enum Error {
 }
 ```
 
-Even though the variant is hidden in the rustdoc, there's nothing actually stopping a
-user from using the `__Nonexhaustive` variant. This code works totally fine on
-stable rust:
+Even though the variant is hidden in the rustdoc, there's nothing actually
+stopping a user from using the `__Nonexhaustive` variant. This code works
+totally fine, for example:
 
 ```rust
 use diesel::Error::*;
@@ -139,8 +146,8 @@ match error {
 }
 ```
 
-This is obviously unintended, and this is currently the best way to make
-non-exhaustive enums outside the standard library. Plus, even the standard
+This seems unintended, even tohugh this is currently the best way to make
+non-exhaustive enums outside the standard library. In fact, even the standard
 library remarks that this is a hack. Recall the hidden variant for
 [`std::io::ErrorKind`]:
 
@@ -158,7 +165,7 @@ Additionally, while plenty of crates could benefit from the idea of
 non-exhaustiveness, plenty don't because this isn't documented in the Rust book,
 and only documented elsewhere as a hack until a better solution is proposed.
 
-## Opportunity for optimisation
+### Opportunity for optimisation
 
 Currently, the `#[doc(hidden)]` hack leads to a few missed opportunities
 for optimisation. For example, take this enum:
@@ -205,10 +212,13 @@ Although these options will unlikely matter in this example because
 error-handling code (hopefully) shouldn't run very often, it could matter for
 other use cases.
 
-## A case for structs
+## Structs
 
-In addition to enums, it makes sense to extend this feature to structs as well.
-The most common use case for this would be config structs, like the one below:
+The most common use for non-exhaustive structs is config types. It often makes
+sense to make fields public for ease-of-use, although this can ultimately lead
+to breaking changes if we're not careful.
+
+For example, take this config struct:
 
 ```rust
 pub struct Config {
@@ -259,11 +269,17 @@ But this makes it more difficult for the crate itself to construct `Config`,
 because you have to add a `non_exhaustive: ()` field every time you make a new
 value.
 
+### Other kinds of structs
+
+Because enum variants are *kind* of like a struct, any change we make to structs
+should apply to them too. Additionally, any change should apply to tuple structs
+as well.
+
 # Detailed design
 
 An attribute `#[non_exhaustive]` is added to the language, which will (for now)
-fail to compile if it's used on anything other than an enum or struct
-definition.
+fail to compile if it's used on anything other than an enum, struct definition,
+or enum variant.
 
 ## Enums
 
@@ -311,15 +327,23 @@ match error {
 And it should *not* be marked as dead code, even if the compiler does mark it as
 dead and remove it.
 
+Note that this can *potentially* cause breaking changes if a user adds
+`#[deny(dead_code)]` to a match statement *and* the upstream crate removes the
+`#[non_exhaustive]` lint. That said, modifying warn-only lints is generally
+assumed to not be a breaking change, even though users can make it a breaking
+change by manually denying lints.
+
 ## Structs
 
 Like with enums, the attribute is essentially ignored in the crate that defines
 the struct, so that users can continue to construct values for the struct.
-However, this will prevent downstream users from constructing values or
-exhaustively matching values, because fields may be added to the struct in the
-future.
+However, this will prevent downstream users from constructing or exhaustively
+matching the struct, because fields may be added to the struct in the future.
 
-For example, using our `Config` again:
+Additionally, adding `#[non_exhaustive]` to an enum variant will operate exactly
+the same as if the variant were a struct.
+
+Using our `Config` again:
 
 ```rust
 #[non_exhaustive]
@@ -352,23 +376,62 @@ Users can still match on `Config`s non-exhaustively, as usual:
 let &Config { window_width, window_height, .. } = config;
 ```
 
-But without the `..`, this code will fail to compile. Additionally, the user
-won't be able to perform any functional-record-updates like the below:
-
-```rust
-let val = Config {
-    window_width: 640,
-    window_height: 480,
-    ..Default::default()
-};
-```
-
-Because there's no guarantee that the remaining fields will satisfy the
-requirements (in this case, `Default`).
+But without the `..`, this code will fail to compile.
 
 Although it should not be explicitly forbidden by the language to mark a struct
 with some private fields as non-exhaustive, it should emit a warning to tell the
 user that the attribute has no effect.
+
+## Tuple structs
+
+Non-exhaustive tuple structs will operate similarly to structs, however, will
+disallow matching directly. For example, take this example on stable today:
+
+```rust
+pub Config(pub u16, pub u16, ());
+```
+
+The below code does not work, because you can't match tuple structs with private
+fields:
+
+```rust
+let Config(width, height, ..) = config;
+```
+
+However, this code *does* work:
+
+```rust
+let Config { 0: width, 1: height, .. } = config;
+```
+
+So, if we label a struct non-exhaustive:
+
+```
+#[non_exhaustive]
+pub Config(pub u16, pub u16)
+```
+
+Then we the only valid way of matching will be:
+
+```rust
+let Config { 0: width, 1: height, .. } = config;
+```
+
+## Unit structs
+
+Unit structs will work very similarly to tuple structs. Consider this struct:
+
+```rust
+#[non_exhaustive]
+pub struct Unit;
+```
+
+We won't be able to construct any values of this struct, but we will be able to
+match it like:
+
+```rust
+let Unit { .. } = unit;
+```
 
 ## Changes to rustdoc
 
@@ -400,7 +463,8 @@ time.
 Additionally, non-exhaustive structs should be documented in an early chapter on
 structs. Public fields should be preferred over getter/setter methods in Rust,
 although users should be aware that adding extra fields is a potentially
-breaking change.
+breaking change. In this chapter, users should be taught about non-exhaustive
+enum variants as well.
 
 # Drawbacks
 
@@ -413,16 +477,18 @@ breaking change.
 * Provide a dedicated syntax instead of an attribute. This would likely be done
   by adding a `...` variant or field, as proposed by the original
   [extensible enums RFC][RFC 757].
-* Allow creating private enum variants, giving a less-hacky way to create a
-  hidden variant.
+* Allow creating private enum variants and/or private fields for enum variants,
+  giving a less-hacky way to create a hidden variant/field.
 * Document the `#[doc(hidden)]` hack and make it more well-known.
 
 # Unresolved questions
 
-Should there be a way to warn downstream crate users when their match is
-non-exuhaustive? What if a user wants to add a warning to their matches using
-non-exhaustive enums, to indicate that more code should be added to handle a new
-variant?
+It may make sense to have a "not exhaustive enough" lint to non-exhaustive
+enums or structs, so that users can be warned if they are missing fields or
+variants despite having a wildcard arm to warn on them.
+
+Although this is beyond the scope of this particular RFC, it may be good as a
+clippy lint in the future.
 
 ## Extending to traits
 
