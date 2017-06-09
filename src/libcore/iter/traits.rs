@@ -798,6 +798,23 @@ impl<I, T, E> Iterator for ResultShunt<I, E>
 impl<T, U, E> Sum<Result<U, E>> for Result<T, E>
     where T: Sum<U>,
 {
+    /// Takes each element in the `Iterator`: if it is an `Err`, no further
+    /// elements are taken, and the `Err` is returned. Should no `Err` occur,
+    /// the sum of all elements is returned.
+    ///
+    /// # Examples
+    ///
+    /// This sums up every integer in a vector, rejecting the sum if a negative
+    /// element is encountered:
+    ///
+    /// ```
+    /// let v = vec![1, 2];
+    /// let res: Result<i32, &'static str> = v.iter().map(|&x: &i32|
+    ///     if x < 0 { Err("Negative element found") }
+    ///     else { Ok(x) }
+    /// ).sum();
+    /// assert_eq!(res, Ok(3));
+    /// ```
     fn sum<I>(iter: I) -> Result<T, E>
         where I: Iterator<Item = Result<U, E>>,
     {
@@ -809,6 +826,9 @@ impl<T, U, E> Sum<Result<U, E>> for Result<T, E>
 impl<T, U, E> Product<Result<U, E>> for Result<T, E>
     where T: Product<U>,
 {
+    /// Takes each element in the `Iterator`: if it is an `Err`, no further
+    /// elements are taken, and the `Err` is returned. Should no `Err` occur,
+    /// the product of all elements is returned.
     fn product<I>(iter: I) -> Result<T, E>
         where I: Iterator<Item = Result<U, E>>,
     {
@@ -819,7 +839,7 @@ impl<T, U, E> Product<Result<U, E>> for Result<T, E>
 /// An iterator that always continues to yield `None` when exhausted.
 ///
 /// Calling next on a fused iterator that has returned `None` once is guaranteed
-/// to return [`None`] again. This trait is should be implemented by all iterators
+/// to return [`None`] again. This trait should be implemented by all iterators
 /// that behave this way because it allows for some significant optimizations.
 ///
 /// Note: In general, you should not use `FusedIterator` in generic bounds if
