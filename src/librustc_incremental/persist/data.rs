@@ -26,7 +26,7 @@ pub struct SerializedDepGraph {
     /// For each DepNode, stores the list of edges originating from that
     /// DepNode. Encoded as a [start, end) pair indexing into edge_list_data,
     /// which holds the actual DepNodeIndices of the target nodes.
-    pub edge_list_indices: Vec<(u32, u32)>,
+    pub edge_list_indices: IndexVec<DepNodeIndex, (u32, u32)>,
     /// A flattened list of all edge targets in the graph. Edge sources are
     /// implicit in edge_list_indices.
     pub edge_list_data: Vec<DepNodeIndex>,
@@ -55,7 +55,14 @@ pub struct SerializedDepGraph {
     /// will be different when we next compile) related to each node,
     /// but rather the `DefPathIndex`. This can then be retraced
     /// to find the current def-id.
-    pub hashes: Vec<SerializedHash>,
+    pub hashes: Vec<(DepNodeIndex, Fingerprint)>,
+}
+
+impl SerializedDepGraph {
+    pub fn edge_targets_from(&self, source: DepNodeIndex) -> &[DepNodeIndex] {
+        let targets = self.edge_list_indices[source];
+        &self.edge_list_data[targets.0 as usize .. targets.1 as usize]
+    }
 }
 
 /// The index of a DepNode in the SerializedDepGraph::nodes array.
@@ -82,16 +89,6 @@ impl Idx for DepNodeIndex {
     fn index(self) -> usize {
         self.0 as usize
     }
-}
-
-#[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct SerializedHash {
-    /// def-id of thing being hashed
-    pub dep_node: DepNode,
-
-    /// the hash as of previous compilation, computed by code in
-    /// `hash` module
-    pub hash: Fingerprint,
 }
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]

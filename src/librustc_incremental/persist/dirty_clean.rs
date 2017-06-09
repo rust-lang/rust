@@ -40,6 +40,7 @@
 //! previous revision to compare things to.
 //!
 
+use super::data::DepNodeIndex;
 use super::load::DirtyNodes;
 use rustc::dep_graph::{DepGraphQuery, DepNode, DepKind};
 use rustc::hir;
@@ -50,6 +51,7 @@ use rustc::ich::{Fingerprint, ATTR_DIRTY, ATTR_CLEAN, ATTR_DIRTY_METADATA,
                  ATTR_CLEAN_METADATA};
 use syntax::ast::{self, Attribute, NestedMetaItem};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc_data_structures::indexed_vec::IndexVec;
 use syntax_pos::Span;
 use rustc::ty::TyCtxt;
 
@@ -57,6 +59,7 @@ const LABEL: &'static str = "label";
 const CFG: &'static str = "cfg";
 
 pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                               nodes: &IndexVec<DepNodeIndex, DepNode>,
                                                dirty_inputs: &DirtyNodes) {
     // can't add `#[rustc_dirty]` etc without opting in to this feature
     if !tcx.sess.features.borrow().rustc_attrs {
@@ -66,8 +69,14 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let _ignore = tcx.dep_graph.in_ignore();
     let dirty_inputs: FxHashSet<DepNode> =
         dirty_inputs.keys()
-                    .filter(|dep_node| dep_node.extract_def_id(tcx).is_some())
-                    .cloned()
+                    .filter_map(|dep_node_index| {
+                        let dep_node = nodes[*dep_node_index];
+                        if dep_node.extract_def_id(tcx).is_some() {
+                            Some(dep_node)
+                        } else {
+                            None
+                        }
+                    })
                     .collect();
 
     let query = tcx.dep_graph.query();
