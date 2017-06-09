@@ -19,3 +19,7 @@ fn foo<F, G>(a: aaaaaaaaaaaaa, // A comment
 fn bar<F /* comment on F */, G /* comment on G */>() {}
 
 fn baz() -> Baz /* Comment after return type */ {}
+
+fn some_fn<T>() where T: Eq // some comment
+{
+}

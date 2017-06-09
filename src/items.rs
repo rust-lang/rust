@@ -1871,6 +1871,7 @@ fn rewrite_fn_base(context: &RewriteContext,
 
                 result.push_str(&where_clause_str);
 
+                force_new_line_for_brace |= last_line_contains_single_line_comment(&result);
                 return Some((result, force_new_line_for_brace));
             }
         }
@@ -1888,7 +1889,12 @@ fn rewrite_fn_base(context: &RewriteContext,
 
     result.push_str(&where_clause_str);
 
-    Some((result, force_new_line_for_brace))
+    force_new_line_for_brace |= last_line_contains_single_line_comment(&result);
+    return Some((result, force_new_line_for_brace));
+}
+
+fn last_line_contains_single_line_comment(s: &str) -> bool {
+    s.lines().last().map_or(false, |l| l.contains("//"))
 }
 
 fn rewrite_args(context: &RewriteContext,
