@@ -7,9 +7,9 @@ standard library, and documentation.
 
 ## Quick Start
 
-Read ["Installing Rust"] from [The Book].
+Read ["Installation"] from [The Book].
 
-["Installing Rust"]: https://doc.rust-lang.org/book/getting-started.html#installing-rust
+["Installation"]: https://doc.rust-lang.org/book/second-edition/ch01-01-installation.html
 [The Book]: https://doc.rust-lang.org/book/index.html
 
 ## Building from Source
