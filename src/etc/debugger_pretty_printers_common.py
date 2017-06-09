@@ -46,6 +46,7 @@ TYPE_KIND_CSTYLE_ENUM       = 14
 TYPE_KIND_PTR               = 15
 TYPE_KIND_FIXED_SIZE_VEC    = 16
 TYPE_KIND_REGULAR_UNION     = 17
+TYPE_KIND_OS_STRING         = 18
 
 ENCODED_ENUM_PREFIX = "RUST$ENCODED$ENUM$"
 ENUM_DISR_FIELD_NAME = "RUST$ENUM$DISR"
@@ -63,6 +64,9 @@ STD_VEC_FIELD_NAMES = [STD_VEC_FIELD_NAME_BUF,
 
 # std::String related constants
 STD_STRING_FIELD_NAMES = ["vec"]
+
+# std::ffi::OsString related constants
+OS_STRING_FIELD_NAMES = ["inner"]
 
 
 class Type(object):
@@ -161,6 +165,11 @@ class Type(object):
         if (unqualified_type_name.startswith("String") and
             self.__conforms_to_field_layout(STD_STRING_FIELD_NAMES)):
             return TYPE_KIND_STD_STRING
+
+        # OS STRING
+        if (unqualified_type_name == "OsString" and
+            self.__conforms_to_field_layout(OS_STRING_FIELD_NAMES)):
+            return TYPE_KIND_OS_STRING
 
         # ENUM VARIANTS
         if fields[0].name == ENUM_DISR_FIELD_NAME:
@@ -345,3 +354,8 @@ def extract_type_name(qualified_type_name):
         return qualified_type_name
     else:
         return qualified_type_name[index + 2:]
+
+try:
+    compat_str = unicode  # Python 2
+except NameError:
+    compat_str = str
