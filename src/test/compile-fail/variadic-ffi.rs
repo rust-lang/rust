@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-arm stdcall isn't suppported
+// ignore-aarch64 stdcall isn't suppported
 
 extern "stdcall" {
     fn printf(_: *const u8, ...); //~ ERROR: variadic function must have C or cdecl calling
