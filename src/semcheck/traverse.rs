@@ -65,6 +65,10 @@ pub fn traverse_modules(cstore: &CrateStore, new: DefId, old: DefId) -> ChangeSe
     changes
 }
 
+/// Given two items, dispatch to further checks.
+///
+/// If the two items can't be meaningfully compared because they are of different kinds,
+/// we return that difference directly.
 pub fn diff_items(_: &CrateStore, new: Export, old: Export) -> Option<Change> {
     match (new.def, old.def) {
         (Struct(_), Struct(_)) => Some(Change::new_binary(Unknown, old, new)),
@@ -77,6 +81,6 @@ pub fn diff_items(_: &CrateStore, new: Export, old: Export) -> Option<Change> {
         (Static(_, _), Static(_, _)) => Some(Change::new_binary(Unknown, old, new)),
         (Method(_), Method(_)) => Some(Change::new_binary(Unknown, old, new)),
         (Macro(_, _), Macro(_, _)) => Some(Change::new_binary(Unknown, old, new)),
-        (n, o) => Some(Change::new_binary(KindDifference, old, new)),
+        _ => Some(Change::new_binary(KindDifference, old, new)),
     }
 }
