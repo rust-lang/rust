@@ -44,10 +44,20 @@ impl<'a> From<&'a UnaryChange> for ChangeCategory {
     }
 }
 
+// TODO: this will need a lot of changes
 impl<'a> From<&'a BinaryChangeType> for ChangeCategory {
     fn from(type_: &BinaryChangeType) -> ChangeCategory {
         match *type_ {
+            KindDifference |
+            TypeSpecialization |
+            StructFieldAdded(_, _) |
+            StructFieldRemoved(_, _) |
+            EnumVariantAdded |
+            EnumVariantRemoved |
+            ImplItemAdded(_) |
+            ImplItemRemoved |
             Unknown => Breaking,
+            TypeGeneralization => TechnicallyBreaking,
         }
     }
 }
@@ -68,8 +78,27 @@ impl<'a> From<&'a Change> for ChangeCategory {
 }
 
 /// The types of changes we identify between items present in both crate versions.
+/// TODO: this needs a lot of refinement still
 #[derive(Clone, Debug)]
 pub enum BinaryChangeType {
+    /// An item has changed it's kind.
+    KindDifference,
+    /// An item has changed it's type (signature) to be more general.
+    TypeGeneralization,
+    /// An item has changed it's type (signature) to be less general.
+    TypeSpecialization,
+    /// A field has been added to a struct.
+    StructFieldAdded(bool, bool), // TODO: EXXXXPPPPLAAAAIN!
+    /// A field has been removed from a struct.
+    StructFieldRemoved(bool, bool), // TODO: EXXXXPPPPLAAAIN!
+    /// A variant has been added to an enum.
+    EnumVariantAdded,
+    /// A variant has been removed to an enum.
+    EnumVariantRemoved,
+    /// An impl item has been added.
+    ImplItemAdded(bool), // TODO: EXPLAAAIN!
+    /// An impl item has been removed.
+    ImplItemRemoved,
     /// An unknown change is any change we don't yet explicitly handle.
     Unknown,
 }
