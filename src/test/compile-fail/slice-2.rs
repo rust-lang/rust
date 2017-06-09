@@ -14,8 +14,8 @@ struct Foo;
 
 fn main() {
     let x = Foo;
-    &x[..]; //~ ERROR cannot index a value of type `Foo`
-    &x[Foo..]; //~ ERROR cannot index a value of type `Foo`
-    &x[..Foo]; //~ ERROR cannot index a value of type `Foo`
-    &x[Foo..Foo]; //~ ERROR cannot index a value of type `Foo`
+    &x[..]; //~ ERROR cannot index into a value of type `Foo`
+    &x[Foo..]; //~ ERROR cannot index into a value of type `Foo`
+    &x[..Foo]; //~ ERROR cannot index into a value of type `Foo`
+    &x[Foo..Foo]; //~ ERROR cannot index into a value of type `Foo`
 }

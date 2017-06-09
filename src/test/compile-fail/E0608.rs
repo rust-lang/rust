@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(_: &[f32]) {}
-
 fn main() {
-    ()[f(&[1.0])];
-    //~^ ERROR cannot index into a value of type `()`
+    0u8[2]; //~ ERROR E0608
 }
