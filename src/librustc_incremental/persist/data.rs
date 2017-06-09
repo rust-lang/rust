@@ -15,7 +15,6 @@ use rustc::hir::def_id::DefIndex;
 use rustc::hir::map::DefPathHash;
 use rustc::ich::Fingerprint;
 use rustc::middle::cstore::EncodedMetadataHash;
-use std::sync::Arc;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
@@ -98,7 +97,7 @@ pub struct SerializedHash {
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedWorkProduct {
     /// node that produced the work-product
-    pub id: Arc<WorkProductId>,
+    pub id: WorkProductId,
 
     /// work-product data itself
     pub work_product: WorkProduct,
@@ -126,10 +125,6 @@ pub struct SerializedMetadataHashes {
     /// a `DefPathIndex` that gets retracted to the current `DefId`
     /// (matching the one found in this structure).
     pub entry_hashes: Vec<EncodedMetadataHash>,
-
-    /// This map contains fingerprints that are not specific to some DefId but
-    /// describe something global to the whole crate.
-    pub global_hashes: Vec<(DepNode<()>, Fingerprint)>,
 
     /// For each DefIndex (as it occurs in SerializedMetadataHash), this
     /// map stores the DefPathIndex (as it occurs in DefIdDirectory), so

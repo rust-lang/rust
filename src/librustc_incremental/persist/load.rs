@@ -22,7 +22,6 @@ use rustc_serialize::Decodable as RustcDecodable;
 use rustc_serialize::opaque::Decoder;
 use std::default::Default;
 use std::path::{Path};
-use std::sync::Arc;
 
 use IncrementalHashesMap;
 use super::data::*;
@@ -327,7 +326,7 @@ fn transitive_dirty_nodes(edge_map: &FxHashMap<DepNode<DefPathHash>, Vec<DepNode
 /// otherwise no longer applicable.
 fn reconcile_work_products<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      work_products: Vec<SerializedWorkProduct>,
-                                     clean_work_products: &FxHashSet<Arc<WorkProductId>>) {
+                                     clean_work_products: &FxHashSet<WorkProductId>) {
     debug!("reconcile_work_products({:?})", work_products);
     for swp in work_products {
         if !clean_work_products.contains(&swp.id) {
@@ -424,8 +423,8 @@ fn process_edges<'a, 'tcx, 'edges>(
     target: &'edges DepNode<DefPathHash>,
     edges: &'edges FxHashMap<DepNode<DefPathHash>, Vec<DepNode<DefPathHash>>>,
     dirty_raw_nodes: &DirtyNodes,
-    clean_work_products: &mut FxHashSet<Arc<WorkProductId>>,
-    dirty_work_products: &mut FxHashSet<Arc<WorkProductId>>,
+    clean_work_products: &mut FxHashSet<WorkProductId>,
+    dirty_work_products: &mut FxHashSet<WorkProductId>,
     extra_edges: &mut Vec<(&'edges DepNode<DefPathHash>, &'edges DepNode<DefPathHash>)>)
 {
     // If the target is dirty, skip the edge. If this is an edge

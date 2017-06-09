@@ -221,11 +221,11 @@ impl<T> Tracked<T> {
     }
 }
 
-impl<'a, 'tcx, T> HashStable<StableHashingContext<'a, 'tcx>> for Tracked<T>
-    where T: HashStable<StableHashingContext<'a, 'tcx>>
+impl<'a, 'gcx, 'tcx, T> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Tracked<T>
+    where T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
 {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         let Tracked {
             ref state
@@ -277,9 +277,9 @@ pub struct TraitImpls {
     pub impls: LazySeq<DefIndex>,
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for TraitImpls {
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for TraitImpls {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         let TraitImpls {
             trait_id: (krate, def_index),
@@ -359,9 +359,9 @@ pub enum EntryKind<'tcx> {
     AssociatedConst(AssociatedContainer, u8),
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for EntryKind<'tcx> {
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for EntryKind<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {

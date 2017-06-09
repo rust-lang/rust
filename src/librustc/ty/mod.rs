@@ -465,9 +465,9 @@ impl<'tcx> Hash for TyS<'tcx> {
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::TyS<'tcx> {
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::TyS<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         let ty::TyS {
             ref sty,
@@ -1318,9 +1318,9 @@ impl<'tcx> serialize::UseSpecializedEncodable for &'tcx AdtDef {
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx AdtDef {}
 
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for AdtDef {
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for AdtDef {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         let ty::AdtDef {
             did,

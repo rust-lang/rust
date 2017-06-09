@@ -114,7 +114,6 @@ use rustc::ty::{self, TyCtxt};
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use rustc_incremental::IchHasher;
 use std::hash::Hash;
-use std::sync::Arc;
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
 use trans_item::{TransItem, InstantiationMode};
@@ -164,8 +163,8 @@ impl<'tcx> CodegenUnit<'tcx> {
         &self.items
     }
 
-    pub fn work_product_id(&self) -> Arc<WorkProductId> {
-        Arc::new(WorkProductId(self.name().to_string()))
+    pub fn work_product_id(&self) -> WorkProductId {
+        WorkProductId::from_cgu_name(self.name())
     }
 
     pub fn work_product_dep_node(&self) -> DepNode<DefId> {

@@ -14,8 +14,7 @@ use cstore::{self, CStore, CrateSource, MetadataBlob};
 use locator::{self, CratePaths};
 use schema::{CrateRoot, Tracked};
 
-use rustc::dep_graph::{DepNode, GlobalMetaDataKind};
-use rustc::hir::def_id::{DefId, CrateNum, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::DepKind;
 use rustc::session::Session;
@@ -516,14 +515,11 @@ impl<'a> CrateLoader<'a> {
             return cstore::CrateNumMap::new();
         }
 
-        let dep_node = DepNode::GlobalMetaData(DefId { krate, index: CRATE_DEF_INDEX },
-                                               GlobalMetaDataKind::CrateDeps);
-
         // The map from crate numbers in the crate we're resolving to local crate numbers.
         // We map 0 and all other holes in the map to our parent crate. The "additional"
         // self-dependencies should be harmless.
         ::std::iter::once(krate).chain(crate_root.crate_deps
-                                                 .get(&self.sess.dep_graph, dep_node)
+                                                 .get_untracked()
                                                  .decode(metadata)
                                                  .map(|dep| {
             debug!("resolving dep crate {} hash: `{}`", dep.name, dep.hash);

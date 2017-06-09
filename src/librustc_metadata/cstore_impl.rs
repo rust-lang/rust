@@ -23,9 +23,9 @@ use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 
-use rustc::dep_graph::{DepNode, GlobalMetaDataKind};
+use rustc::dep_graph::{DepNode};
 use rustc::hir::map::{DefKey, DefPath, DisambiguatedDefPathData, DefPathHash};
-use rustc::hir::map::definitions::DefPathTable;
+use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
 use rustc::util::nodemap::{NodeSet, DefIdMap};
 use rustc_back::PanicStrategy;
 

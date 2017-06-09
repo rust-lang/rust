@@ -197,7 +197,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data @ DefPathData::ClosureExpr |
             data @ DefPathData::Binding(..) |
             data @ DefPathData::ImplTrait |
-            data @ DefPathData::Typeof => {
+            data @ DefPathData::Typeof |
+            data @ DefPathData::GlobalMetaData(..) => {
                 let parent_def_id = self.parent_def_id(def_id).unwrap();
                 self.push_item_path(buffer, parent_def_id);
                 buffer.push(&data.as_interned_str());

@@ -23,7 +23,6 @@
 // probably get a better home if someone can find one.
 
 use hir::def;
-use dep_graph::DepNode;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::map as hir_map;
 use hir::map::definitions::{Definitions, DefKey, DisambiguatedDefPathData,
@@ -190,15 +189,14 @@ pub struct EncodedMetadataHash {
 /// upstream crate.
 #[derive(Debug, RustcEncodable, RustcDecodable, Clone)]
 pub struct EncodedMetadataHashes {
-    pub entry_hashes: Vec<EncodedMetadataHash>,
-    pub global_hashes: Vec<(DepNode<()>, ich::Fingerprint)>,
+    // Stable content hashes for things in crate metadata, indexed by DefIndex.
+    pub hashes: Vec<EncodedMetadataHash>,
 }
 
 impl EncodedMetadataHashes {
     pub fn new() -> EncodedMetadataHashes {
         EncodedMetadataHashes {
-            entry_hashes: Vec::new(),
-            global_hashes: Vec::new(),
+            hashes: Vec::new(),
         }
     }
 }

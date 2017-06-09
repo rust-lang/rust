@@ -255,9 +255,11 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
                               current_metadata_hashes: &mut FxHashMap<DefId, Fingerprint>,
                               encoder: &mut Encoder)
                               -> io::Result<()> {
+    assert_eq!(metadata_hashes.hashes.len(),
+        metadata_hashes.hashes.iter().map(|x| (x.def_index, ())).collect::<FxHashMap<_,_>>().len());
+
     let mut serialized_hashes = SerializedMetadataHashes {
-        entry_hashes: metadata_hashes.entry_hashes.to_vec(),
-        global_hashes: metadata_hashes.global_hashes.to_vec(),
+        entry_hashes: metadata_hashes.hashes.to_vec(),
         index_map: FxHashMap()
     };
 
