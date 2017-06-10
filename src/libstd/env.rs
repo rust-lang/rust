@@ -367,7 +367,7 @@ fn _remove_var(k: &OsStr) {
 /// An iterator that splits an environment variable into paths according to
 /// platform-specific conventions.
 ///
-/// This structure is created by the [`std::env::split_paths`] function See its
+/// This structure is created by the [`std::env::split_paths`] function. See its
 /// documentation for more.
 ///
 /// [`std::env::split_paths`]: fn.split_paths.html
@@ -605,14 +605,15 @@ pub fn current_exe() -> io::Result<PathBuf> {
     os_imp::current_exe()
 }
 
-/// An iterator over the arguments of a process, yielding a [`String`] value
-/// for each argument.
+/// An iterator over the arguments of a process, yielding a [`String`] value for
+/// each argument.
 ///
-/// This structure is created through the [`std::env::args`] function.
+/// This struct is created by the [`std::env::args`] function. See its
+/// documentation for more.
 ///
 /// The first element is traditionally the path of the executable, but it can be
-/// set to arbitrary text, and may not even exist. This means this property should
-/// not be relied upon for security purposes.
+/// set to arbitrary text, and may not even exist. This means this property
+/// should not be relied upon for security purposes.
 ///
 /// [`String`]: ../string/struct.String.html
 /// [`std::env::args`]: ./fn.args.html
@@ -622,11 +623,12 @@ pub struct Args { inner: ArgsOs }
 /// An iterator over the arguments of a process, yielding an [`OsString`] value
 /// for each argument.
 ///
-/// This structure is created through the [`std::env::args_os`] function.
+/// This struct is created by the [`std::env::args_os`] function. See its
+/// documentation for more.
 ///
 /// The first element is traditionally the path of the executable, but it can be
-/// set to arbitrary text, and may not even exist. This means this property should
-/// not be relied upon for security purposes.
+/// set to arbitrary text, and may not even exist. This means this property
+/// should not be relied upon for security purposes.
 ///
 /// [`OsString`]: ../ffi/struct.OsString.html
 /// [`std::env::args_os`]: ./fn.args_os.html
