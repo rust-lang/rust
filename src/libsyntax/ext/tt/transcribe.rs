@@ -182,15 +182,16 @@ fn lookup_cur_matched(ident: Ident,
                       repeats: &[(usize, usize)])
                       -> Option<Rc<NamedMatch>> {
     interpolations.get(&ident).map(|matched| {
-        repeats.iter().fold(matched.clone(), |ad, &(idx, _)| {
-            match *ad {
-                MatchedNonterminal(_) => {
-                    // end of the line; duplicate henceforth
-                    ad.clone()
-                }
-                MatchedSeq(ref ads, _) => ads[idx].clone()
+        let mut matched = matched.clone();
+        for &(idx, _) in repeats {
+            let m = matched.clone();
+            match *m {
+                MatchedNonterminal(_) => break,
+                MatchedSeq(ref ads, _) => matched = Rc::new(ads[idx].clone()),
             }
-        })
+        }
+
+        matched
     })
 }
 

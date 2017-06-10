@@ -54,7 +54,7 @@ fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
     let mac_expr = match (&*matched_nt, &*map[&Ident::from_str("pat")]) {
         (&NtExpr(ref matched_expr), &MatchedSeq(ref pats, seq_sp)) => {
             let pats: Vec<P<Pat>> = pats.iter().map(|pat_nt| {
-                match **pat_nt {
+                match *pat_nt {
                     MatchedNonterminal(ref nt) => match **nt {
                         NtPat(ref pat) => pat.clone(),
                         _ => unreachable!(),
