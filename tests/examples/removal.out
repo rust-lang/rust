@@ -1,3 +1,9 @@
 max: Breaking
   Removal: Abc
+/home/twk/gsoc/rust-semverver/tests/examples/removal.rs:2:5: 2:20
+warning: change
+
   Removal: a
+/home/twk/gsoc/rust-semverver/tests/examples/removal.rs:6:5: 6:6
+warning: change
+

@@ -294,19 +294,20 @@ impl ChangeSet {
     /// Format the contents of a change set for user output.
     ///
     /// TODO: replace this with something more sophisticated.
-    pub fn output(&self, _: &Session) {
+    pub fn output(&self, session: &Session) {
         println!("max: {:?}", self.max);
 
         for change in &self.changes {
             match *change {
                 Change::Unary(ref c) => {
                     println!("  {}: {}", c.type_(), c.ident().name.as_str());
+                    session.span_warn(*c.span(), "change");
                 },
                 Change::Binary(ref c) => {
                     println!("  {:?}: {}", c.type_(), c.ident().name.as_str());
+                    session.span_warn(*c.new_span(), "change");
                 },
             }
-            // session.span_warn(*change.span(), "change");
             // span_note!(session, change.span(), "S0001");
         }
     }

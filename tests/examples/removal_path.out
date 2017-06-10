@@ -1,4 +1,13 @@
 max: Breaking
   Removal: b
+/home/twk/gsoc/rust-semverver/tests/examples/removal_path.rs:7:9: 8:6
+warning: change
+
   Removal: c
+/home/twk/gsoc/rust-semverver/tests/examples/removal_path.rs:11:9: 12:6
+warning: change
+
   Removal: Abc
+/home/twk/gsoc/rust-semverver/tests/examples/removal_path.rs:14:13: 14:25
+warning: change
+

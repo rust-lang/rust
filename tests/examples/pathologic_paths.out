@@ -1,3 +1,9 @@
 max: TechnicallyBreaking
   Addition: a
+/home/twk/gsoc/rust-semverver/tests/examples/pathologic_paths.rs:11:25: 11:44
+warning: change
+
   Addition: b
+/home/twk/gsoc/rust-semverver/tests/examples/pathologic_paths.rs:12:25: 12:47
+warning: change
+

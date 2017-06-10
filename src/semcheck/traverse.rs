@@ -5,15 +5,18 @@ use rustc::hir::def::Def::*;
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
 use rustc::middle::cstore::CrateStore;
+use rustc::ty::TyCtxt;
 use rustc::ty::Visibility::Public;
 
+use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Traverse the two root modules in an interleaved manner.
 ///
 /// Match up pairs of modules from the two crate versions and compare for changes.
 /// Matching children get processed in the same fashion.
-pub fn traverse_modules(cstore: &CrateStore, new: DefId, old: DefId) -> ChangeSet {
+pub fn traverse_modules(tcx: &TyCtxt, new: DefId, old: DefId) -> ChangeSet {
+    let cstore = &tcx.sess.cstore;
     let mut changes = ChangeSet::default();
     let mut visited = HashSet::new();
     let mut children = HashMap::new();
@@ -22,8 +25,8 @@ pub fn traverse_modules(cstore: &CrateStore, new: DefId, old: DefId) -> ChangeSe
     mod_queue.push_back((new, old));
 
     while let Some((new_did, old_did)) = mod_queue.pop_front() {
-        let mut c_new = cstore.item_children(new_did);
-        let mut c_old = cstore.item_children(old_did);
+        let mut c_new = cstore.item_children(new_did, tcx.sess);
+        let mut c_old = cstore.item_children(old_did, tcx.sess);
 
         for child in c_new
                 .drain(..)
@@ -47,7 +50,7 @@ pub fn traverse_modules(cstore: &CrateStore, new: DefId, old: DefId) -> ChangeSe
                     }
                 }
                 (Some(n), Some(o)) => {
-                    if let Some(change) = diff_items(cstore, n, o) {
+                    if let Some(change) = diff_items(cstore.borrow(), n, o) {
                         changes.add_change(change);
                     }
                 }

@@ -17,7 +17,6 @@ use rustc::session::config::{Input, ErrorOutputType};
 
 use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
 
-use std::borrow::Borrow;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -81,7 +80,7 @@ fn callback(state: &driver::CompileState) {
             return;
         };
 
-        let mut children = cstore.item_children(mod_did);
+        let mut children = cstore.item_children(mod_did, tcx.sess);
 
         let dids = children
             .drain(..)
@@ -104,7 +103,7 @@ fn callback(state: &driver::CompileState) {
         }
     };
 
-    let changes = traverse_modules(cstore.borrow(), new_did, old_did);
+    let changes = traverse_modules(&tcx, new_did, old_did);
 
     changes.output(tcx.sess);
 }
