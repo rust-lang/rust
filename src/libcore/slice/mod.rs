@@ -1159,11 +1159,6 @@ macro_rules! iterator {
                 self.iter_nth(n)
             }
 
-            #[inline]
-            fn last(mut self) -> Option<$elem> {
-                self.next_back()
-            }
-
             fn all<F>(&mut self, mut predicate: F) -> bool
                 where F: FnMut(Self::Item) -> bool,
             {

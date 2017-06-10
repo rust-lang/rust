@@ -203,9 +203,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn last(self) -> Option<Self::Item> where Self: Sized {
-        let mut last = None;
-        for x in self { last = Some(x); }
-        last
+        SpecLast::last(self)
     }
 
     /// Returns the `n`th element of the iterator.
@@ -2237,5 +2235,22 @@ impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
     fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)
+    }
+}
+
+/// Allows specialization for `Iterator::last`.
+trait SpecLast: Iterator + Sized {
+    fn last(self) -> Option<Self::Item>;
+}
+impl<T: Iterator> SpecLast for T {
+    default fn last(self) -> Option<Self::Item> {
+        let mut last = None;
+        for x in self { last = Some(x); }
+        last
+    }
+}
+impl<T: DoubleEndedIterator> SpecLast for T {
+    fn last(mut self) -> Option<Self::Item> {
+        self.next_back()
     }
 }
