@@ -268,7 +268,7 @@ pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<def::Def> {
             krate: *krate,
             index: CRATE_DEF_INDEX,
         };
-        let mut items = cstore.item_children(krate);
+        let mut items = cstore.item_children(krate, cx.tcx.sess);
         let mut path_it = path.iter().skip(1).peekable();
 
         loop {
@@ -283,7 +283,7 @@ pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<def::Def> {
                         return Some(item.def);
                     }
 
-                    items = cstore.item_children(item.def.def_id());
+                    items = cstore.item_children(item.def.def_id(), cx.tcx.sess);
                     break;
                 }
             }
