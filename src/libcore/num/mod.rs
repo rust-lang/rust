@@ -1262,6 +1262,7 @@ macro_rules! uint_impl {
     ($SelfT:ty, $ActualT:ty, $BITS:expr,
      $ctpop:path,
      $ctlz:path,
+     $ctlz_nonzero:path,
      $cttz:path,
      $bswap:path,
      $add_with_overflow:path,
@@ -2184,6 +2185,7 @@ macro_rules! uint_impl {
         // This method cannot overflow, as in the `next_power_of_two`
         // overflow cases it instead ends up returning the maximum value
         // of the type, and can return 0 for 0.
+        #[inline]
         fn one_less_than_next_power_of_two(self) -> Self {
             if self <= 1 { return 0; }
 
@@ -2192,7 +2194,7 @@ macro_rules! uint_impl {
             // (such as intel pre-haswell) have more efficient ctlz
             // intrinsics when the argument is non-zero.
             let p = self - 1;
-            let z = p.leading_zeros();
+            let z = unsafe { $ctlz_nonzero(p) };
             <$SelfT>::max_value() >> z
         }
 
@@ -2236,11 +2238,17 @@ macro_rules! uint_impl {
     }
 }
 
+#[cfg(stage0)]
+unsafe fn ctlz_nonzero<T>(x: T) -> T { intrinsics::ctlz(x) }
+#[cfg(not(stage0))]
+unsafe fn ctlz_nonzero<T>(x: T) -> T { intrinsics::ctlz_nonzero(x) }
+
 #[lang = "u8"]
 impl u8 {
     uint_impl! { u8, u8, 8,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2253,6 +2261,7 @@ impl u16 {
     uint_impl! { u16, u16, 16,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2265,6 +2274,7 @@ impl u32 {
     uint_impl! { u32, u32, 32,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2277,6 +2287,7 @@ impl u64 {
     uint_impl! { u64, u64, 64,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2289,6 +2300,7 @@ impl u128 {
     uint_impl! { u128, u128, 128,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2302,6 +2314,7 @@ impl usize {
     uint_impl! { usize, u16, 16,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2314,6 +2327,7 @@ impl usize {
     uint_impl! { usize, u32, 32,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2327,6 +2341,7 @@ impl usize {
     uint_impl! { usize, u64, 64,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,

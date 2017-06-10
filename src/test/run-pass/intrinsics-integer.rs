@@ -14,7 +14,9 @@ mod rusti {
     extern "rust-intrinsic" {
         pub fn ctpop<T>(x: T) -> T;
         pub fn ctlz<T>(x: T) -> T;
+        pub fn ctlz_nonzero<T>(x: T) -> T;
         pub fn cttz<T>(x: T) -> T;
+        pub fn cttz_nonzero<T>(x: T) -> T;
         pub fn bswap<T>(x: T) -> T;
     }
 }
@@ -68,6 +70,21 @@ pub fn main() {
         assert_eq!(ctlz(100u32), 25); assert_eq!(ctlz(100i32), 25);
         assert_eq!(ctlz(100u64), 57); assert_eq!(ctlz(100i64), 57);
 
+        assert_eq!(ctlz_nonzero(1u8), 7); assert_eq!(ctlz_nonzero(1i8), 7);
+        assert_eq!(ctlz_nonzero(1u16), 15); assert_eq!(ctlz_nonzero(1i16), 15);
+        assert_eq!(ctlz_nonzero(1u32), 31); assert_eq!(ctlz_nonzero(1i32), 31);
+        assert_eq!(ctlz_nonzero(1u64), 63); assert_eq!(ctlz_nonzero(1i64), 63);
+
+        assert_eq!(ctlz_nonzero(10u8), 4); assert_eq!(ctlz_nonzero(10i8), 4);
+        assert_eq!(ctlz_nonzero(10u16), 12); assert_eq!(ctlz_nonzero(10i16), 12);
+        assert_eq!(ctlz_nonzero(10u32), 28); assert_eq!(ctlz_nonzero(10i32), 28);
+        assert_eq!(ctlz_nonzero(10u64), 60); assert_eq!(ctlz_nonzero(10i64), 60);
+
+        assert_eq!(ctlz_nonzero(100u8), 1); assert_eq!(ctlz_nonzero(100i8), 1);
+        assert_eq!(ctlz_nonzero(100u16), 9); assert_eq!(ctlz_nonzero(100i16), 9);
+        assert_eq!(ctlz_nonzero(100u32), 25); assert_eq!(ctlz_nonzero(100i32), 25);
+        assert_eq!(ctlz_nonzero(100u64), 57); assert_eq!(ctlz_nonzero(100i64), 57);
+
         assert_eq!(cttz(-1i8 as u8), 0); assert_eq!(cttz(-1i8), 0);
         assert_eq!(cttz(-1i16 as u16), 0); assert_eq!(cttz(-1i16), 0);
         assert_eq!(cttz(-1i32 as u32), 0); assert_eq!(cttz(-1i32), 0);
@@ -92,6 +109,26 @@ pub fn main() {
         assert_eq!(cttz(100u16), 2); assert_eq!(cttz(100i16), 2);
         assert_eq!(cttz(100u32), 2); assert_eq!(cttz(100i32), 2);
         assert_eq!(cttz(100u64), 2); assert_eq!(cttz(100i64), 2);
+
+        assert_eq!(cttz_nonzero(-1i8 as u8), 0); assert_eq!(cttz_nonzero(-1i8), 0);
+        assert_eq!(cttz_nonzero(-1i16 as u16), 0); assert_eq!(cttz_nonzero(-1i16), 0);
+        assert_eq!(cttz_nonzero(-1i32 as u32), 0); assert_eq!(cttz_nonzero(-1i32), 0);
+        assert_eq!(cttz_nonzero(-1i64 as u64), 0); assert_eq!(cttz_nonzero(-1i64), 0);
+
+        assert_eq!(cttz_nonzero(1u8), 0); assert_eq!(cttz_nonzero(1i8), 0);
+        assert_eq!(cttz_nonzero(1u16), 0); assert_eq!(cttz_nonzero(1i16), 0);
+        assert_eq!(cttz_nonzero(1u32), 0); assert_eq!(cttz_nonzero(1i32), 0);
+        assert_eq!(cttz_nonzero(1u64), 0); assert_eq!(cttz_nonzero(1i64), 0);
+
+        assert_eq!(cttz_nonzero(10u8), 1); assert_eq!(cttz_nonzero(10i8), 1);
+        assert_eq!(cttz_nonzero(10u16), 1); assert_eq!(cttz_nonzero(10i16), 1);
+        assert_eq!(cttz_nonzero(10u32), 1); assert_eq!(cttz_nonzero(10i32), 1);
+        assert_eq!(cttz_nonzero(10u64), 1); assert_eq!(cttz_nonzero(10i64), 1);
+
+        assert_eq!(cttz_nonzero(100u8), 2); assert_eq!(cttz_nonzero(100i8), 2);
+        assert_eq!(cttz_nonzero(100u16), 2); assert_eq!(cttz_nonzero(100i16), 2);
+        assert_eq!(cttz_nonzero(100u32), 2); assert_eq!(cttz_nonzero(100i32), 2);
+        assert_eq!(cttz_nonzero(100u64), 2); assert_eq!(cttz_nonzero(100i64), 2);
 
         assert_eq!(bswap(0x0Au8), 0x0A); // no-op
         assert_eq!(bswap(0x0Ai8), 0x0A); // no-op
