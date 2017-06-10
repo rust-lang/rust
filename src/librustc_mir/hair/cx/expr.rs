@@ -758,13 +758,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 var_id: id_var,
                 closure_expr_id: closure_expr_id,
             };
-            let upvar_capture = match cx.tables().upvar_capture(upvar_id) {
-                Some(c) => c,
-                None => {
-                    span_bug!(expr.span, "no upvar_capture for {:?}", upvar_id);
-                }
-            };
-            match upvar_capture {
+            match cx.tables().upvar_capture(upvar_id) {
                 ty::UpvarCapture::ByValue => field_kind,
                 ty::UpvarCapture::ByRef(borrow) => {
                     ExprKind::Deref {
@@ -878,7 +872,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         var_id: id_var,
         closure_expr_id: closure_expr.id,
     };
-    let upvar_capture = cx.tables().upvar_capture(upvar_id).unwrap();
+    let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_maps.temporary_scope(closure_expr.id);
     let var_ty = cx.tables().node_id_to_type(id_var);
     let captured_var = Expr {

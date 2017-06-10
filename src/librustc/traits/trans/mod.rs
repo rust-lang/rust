@@ -46,7 +46,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
             // Do the initial selection for the obligation. This yields the
             // shallow result we are looking for -- that is, what specific impl.
-            self.infer_ctxt(()).enter(|infcx| {
+            self.infer_ctxt().enter(|infcx| {
                 let mut selcx = SelectionContext::new(&infcx);
 
                 let param_env = ty::ParamEnv::empty(Reveal::All);

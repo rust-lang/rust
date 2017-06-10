@@ -493,19 +493,18 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
 ///
 /// FIXME: this should be done by borrowck.
 fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Expr) {
-    cx.tcx.infer_ctxt(cx.tables).enter(|infcx| {
-        let mut checker = MutationChecker {
-            cx: cx,
-        };
-        ExprUseVisitor::new(&mut checker, cx.region_maps, &infcx, cx.param_env).walk_expr(guard);
-    });
+    let mut checker = MutationChecker {
+        cx: cx,
+    };
+    ExprUseVisitor::new(&mut checker, cx.tcx, cx.param_env, cx.region_maps, cx.tables)
+        .walk_expr(guard);
 }
 
-struct MutationChecker<'a, 'gcx: 'a> {
-    cx: &'a MatchVisitor<'a, 'gcx>,
+struct MutationChecker<'a, 'tcx: 'a> {
+    cx: &'a MatchVisitor<'a, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'gcx> {
+impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
     fn matched_pat(&mut self, _: &Pat, _: cmt, _: euv::MatchMode) {}
     fn consume(&mut self, _: ast::NodeId, _: Span, _: cmt, _: ConsumeMode) {}
     fn consume_pat(&mut self, _: &Pat, _: cmt, _: ConsumeMode) {}

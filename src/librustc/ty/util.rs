@@ -175,7 +175,7 @@ impl<'tcx> ty::ParamEnv<'tcx> {
                                        self_type: Ty<'tcx>, span: Span)
                                        -> Result<(), CopyImplementationError<'tcx>> {
         // FIXME: (@jroesch) float this code up
-        tcx.infer_ctxt(()).enter(|infcx| {
+        tcx.infer_ctxt().enter(|infcx| {
             let (adt, substs) = match self_type.sty {
                 ty::TyAdt(adt, substs) => (adt, substs),
                 _ => return Err(CopyImplementationError::NotAnAdt),
@@ -977,7 +977,7 @@ fn is_copy_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::CopyTraitLangItem);
-    tcx.infer_ctxt(())
+    tcx.infer_ctxt()
        .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
                                                        param_env,
                                                        ty,
@@ -991,7 +991,7 @@ fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::SizedTraitLangItem);
-    tcx.infer_ctxt(())
+    tcx.infer_ctxt()
        .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
                                                        param_env,
                                                        ty,
@@ -1005,7 +1005,7 @@ fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::FreezeTraitLangItem);
-    tcx.infer_ctxt(())
+    tcx.infer_ctxt()
        .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
                                                        param_env,
                                                        ty,

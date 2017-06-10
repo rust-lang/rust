@@ -18,7 +18,6 @@
 
 use borrowck::*;
 use borrowck::move_data::MoveData;
-use rustc::infer::InferCtxt;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
@@ -40,11 +39,9 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                     body: hir::BodyId)
                                     -> (Vec<Loan<'tcx>>, move_data::MoveData<'tcx>) {
     let def_id = bccx.tcx.hir.body_owner_def_id(body);
-    let infcx = bccx.tcx.borrowck_fake_infer_ctxt(body);
     let param_env = bccx.tcx.param_env(def_id);
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
-        infcx: &infcx,
         all_loans: Vec::new(),
         item_ub: region::CodeExtent::Misc(body.node_id),
         move_data: MoveData::new(),
@@ -52,7 +49,8 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     };
 
     let body = glcx.bccx.tcx.hir.body(body);
-    euv::ExprUseVisitor::new(&mut glcx, &bccx.region_maps, &infcx, param_env).consume_body(body);
+    euv::ExprUseVisitor::new(&mut glcx, bccx.tcx, param_env, &bccx.region_maps, bccx.tables)
+        .consume_body(body);
 
     glcx.report_potential_errors();
     let GatherLoanCtxt { all_loans, move_data, .. } = glcx;
@@ -61,7 +59,6 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
 struct GatherLoanCtxt<'a, 'tcx: 'a> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
-    infcx: &'a InferCtxt<'a, 'tcx, 'tcx>,
     move_data: move_data::MoveData<'tcx>,
     move_error_collector: move_error::MoveErrorCollector<'tcx>,
     all_loans: Vec<Loan<'tcx>>,
@@ -158,7 +155,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
     }
 
     fn decl_without_init(&mut self, id: ast::NodeId, _span: Span) {
-        let ty = self.infcx.tables.borrow().node_id_to_type(id);
+        let ty = self.bccx.tables.node_id_to_type(id);
         gather_moves::gather_decl(self.bccx, &self.move_data, id, ty);
     }
 }

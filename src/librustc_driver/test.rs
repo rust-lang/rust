@@ -154,7 +154,7 @@ fn test_env<F>(source_string: &str,
                              index,
                              "test_crate",
                              |tcx| {
-        tcx.infer_ctxt(()).enter(|infcx| {
+        tcx.infer_ctxt().enter(|infcx| {
             let mut region_maps = RegionMaps::new();
             body(Env {
                 infcx: &infcx,

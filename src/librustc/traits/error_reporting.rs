@@ -29,7 +29,7 @@ use hir::{self, intravisit, Local, Pat, Body};
 use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::map::NodeExpr;
 use hir::def_id::DefId;
-use infer::{self, InferCtxt, InferTables, InferTablesRef};
+use infer::{self, InferCtxt};
 use infer::type_variable::TypeVariableOrigin;
 use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use std::fmt;
@@ -72,9 +72,12 @@ struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
-    fn node_matches_type(&mut self, node_id: &'gcx NodeId) -> bool {
-        match self.infcx.tables.borrow().node_types.get(node_id) {
-            Some(&ty) => {
+    fn node_matches_type(&mut self, node_id: NodeId) -> bool {
+        let ty_opt = self.infcx.in_progress_tables.and_then(|tables| {
+            tables.borrow().node_id_to_type_opt(node_id)
+        });
+        match ty_opt {
+            Some(ty) => {
                 let ty = self.infcx.resolve_type_vars_if_possible(&ty);
                 ty.walk().any(|inner_ty| {
                     inner_ty == *self.target_ty || match (&inner_ty.sty, &self.target_ty.sty) {
@@ -88,7 +91,7 @@ impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
                     }
                 })
             }
-            _ => false,
+            None => false,
         }
     }
 }
@@ -99,7 +102,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn visit_local(&mut self, local: &'gcx Local) {
-        if self.found_local_pattern.is_none() && self.node_matches_type(&local.id) {
+        if self.found_local_pattern.is_none() && self.node_matches_type(local.id) {
             self.found_local_pattern = Some(&*local.pat);
         }
         intravisit::walk_local(self, local);
@@ -107,7 +110,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
 
     fn visit_body(&mut self, body: &'gcx Body) {
         for argument in &body.arguments {
-            if self.found_arg_pattern.is_none() && self.node_matches_type(&argument.id) {
+            if self.found_arg_pattern.is_none() && self.node_matches_type(argument.id) {
                 self.found_arg_pattern = Some(&*argument.pat);
             }
         }
@@ -652,18 +655,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             obligation.cause.span,
                             format!("the requirement to implement `{}` derives from here", kind));
 
-                        let infer_tables = match self.tables {
-                            InferTables::Interned(tables) =>
-                                Some(InferTablesRef::Interned(tables)),
-                            InferTables::InProgress(tables) =>
-                                Some(InferTablesRef::InProgress(tables.borrow())),
-                            InferTables::Missing => None,
-                        };
-
                         // Additional context information explaining why the closure only implements
                         // a particular trait.
-                        if let Some(tables) = infer_tables {
-                            match tables.closure_kinds.get(&node_id) {
+                        if let Some(tables) = self.in_progress_tables {
+                            match tables.borrow().closure_kinds.get(&node_id) {
                                 Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) => {
                                     err.span_note(span, &format!(
                                         "closure is `FnOnce` because it moves the \

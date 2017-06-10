@@ -32,7 +32,7 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::cfg;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty};
 use rustc::traits::{self, Reveal};
 use rustc::hir::map as hir_map;
 use util::nodemap::NodeSet;
@@ -893,7 +893,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             for adjustment in cx.tables.expr_adjustments(expr) {
                 if let Adjust::Deref(Some(deref)) = adjustment.kind {
                     let (def_id, substs) = deref.method_call(cx.tcx, source);
-                    if method_call_refers_to_method(cx.tcx, method, def_id, substs, id) {
+                    if method_call_refers_to_method(cx, method, def_id, substs, id) {
                         return true;
                     }
                 }
@@ -904,7 +904,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             if cx.tables.is_method_call(expr) {
                 let def_id = cx.tables.type_dependent_defs[&id].def_id();
                 let substs = cx.tables.node_substs(id);
-                if method_call_refers_to_method(cx.tcx, method, def_id, substs, id) {
+                if method_call_refers_to_method(cx, method, def_id, substs, id) {
                     return true;
                 }
             }
@@ -920,8 +920,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                     match def {
                         Def::Method(def_id) => {
                             let substs = cx.tables.node_substs(callee.id);
-                            method_call_refers_to_method(
-                                cx.tcx, method, def_id, substs, id)
+                            method_call_refers_to_method(cx, method, def_id, substs, id)
                         }
                         _ => false,
                     }
@@ -932,12 +931,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
 
         // Check if the method call to the method with the ID `callee_id`
         // and instantiated with `callee_substs` refers to method `method`.
-        fn method_call_refers_to_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        fn method_call_refers_to_method<'a, 'tcx>(cx: &LateContext<'a, 'tcx>,
                                                   method: &ty::AssociatedItem,
                                                   callee_id: DefId,
                                                   callee_substs: &Substs<'tcx>,
                                                   expr_id: ast::NodeId)
                                                   -> bool {
+            let tcx = cx.tcx;
             let callee_item = tcx.associated_item(callee_id);
 
             match callee_item.container {
@@ -951,13 +951,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                     let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, callee_substs);
                     let trait_ref = ty::Binder(trait_ref);
                     let span = tcx.hir.span(expr_id);
-                    let param_env = tcx.param_env(method.def_id);
                     let obligation =
                         traits::Obligation::new(traits::ObligationCause::misc(span, expr_id),
-                                                param_env,
+                                                cx.param_env,
                                                 trait_ref.to_poly_trait_predicate());
 
-                    tcx.infer_ctxt(()).enter(|infcx| {
+                    tcx.infer_ctxt().enter(|infcx| {
                         let mut selcx = traits::SelectionContext::new(&infcx);
                         match selcx.select(&obligation) {
                             // The method comes from a `T: Trait` bound.
@@ -1224,11 +1223,9 @@ impl LintPass for UnionsWithDropFields {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
     fn check_item(&mut self, ctx: &LateContext, item: &hir::Item) {
         if let hir::ItemUnion(ref vdata, _) = item.node {
-            let item_def_id = ctx.tcx.hir.local_def_id(item.id);
-            let param_env = ctx.tcx.param_env(item_def_id);
             for field in vdata.fields() {
                 let field_ty = ctx.tcx.type_of(ctx.tcx.hir.local_def_id(field.id));
-                if field_ty.needs_drop(ctx.tcx, param_env) {
+                if field_ty.needs_drop(ctx.tcx, ctx.param_env) {
                     ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
                                   field.span,
                                   "union contains a field with possibly non-trivial drop code, \

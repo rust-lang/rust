@@ -108,7 +108,7 @@ use lint;
 use util::common::{ErrorReported, indenter};
 use util::nodemap::{DefIdMap, FxHashMap, NodeMap};
 
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::collections::hash_map::Entry;
 use std::cmp;
 use std::mem::replace;
@@ -147,6 +147,33 @@ mod compare_method;
 mod intrinsic;
 mod op;
 
+/// A wrapper for InferCtxt's `in_progress_tables` field.
+#[derive(Copy, Clone)]
+struct MaybeInProgressTables<'a, 'tcx: 'a> {
+    maybe_tables: Option<&'a RefCell<ty::TypeckTables<'tcx>>>,
+}
+
+impl<'a, 'tcx> MaybeInProgressTables<'a, 'tcx> {
+    fn borrow(self) -> Ref<'a, ty::TypeckTables<'tcx>> {
+        match self.maybe_tables {
+            Some(tables) => tables.borrow(),
+            None => {
+                bug!("MaybeInProgressTables: inh/fcx.tables.borrow() with no tables")
+            }
+        }
+    }
+
+    fn borrow_mut(self) -> RefMut<'a, ty::TypeckTables<'tcx>> {
+        match self.maybe_tables {
+            Some(tables) => tables.borrow_mut(),
+            None => {
+                bug!("MaybeInProgressTables: inh/fcx.tables.borrow_mut() with no tables")
+            }
+        }
+    }
+}
+
+
 /// closures defined within the function.  For example:
 ///
 ///     fn foo() {
@@ -158,6 +185,8 @@ mod op;
 /// share the inherited fields.
 pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: InferCtxt<'a, 'gcx, 'tcx>,
+
+    tables: MaybeInProgressTables<'a, 'tcx>,
 
     locals: RefCell<NodeMap<Ty<'tcx>>>,
 
@@ -535,9 +564,8 @@ pub struct InheritedBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
     pub fn build(tcx: TyCtxt<'a, 'gcx, 'gcx>, def_id: DefId)
                  -> InheritedBuilder<'a, 'gcx, 'tcx> {
-        let tables = ty::TypeckTables::empty();
         InheritedBuilder {
-            infcx: tcx.infer_ctxt(tables),
+            infcx: tcx.infer_ctxt().with_fresh_in_progress_tables(),
             def_id,
         }
     }
@@ -562,6 +590,9 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
         });
 
         Inherited {
+            tables: MaybeInProgressTables {
+                maybe_tables: infcx.in_progress_tables,
+            },
             infcx: infcx,
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
             locals: RefCell::new(NodeMap()),
@@ -3302,14 +3333,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.check_expr_has_type(base_expr, struct_ty);
             match struct_ty.sty {
                 ty::TyAdt(adt, substs) if adt.is_struct() => {
-                    self.tables.borrow_mut().fru_field_types.insert(
-                        expr.id,
-                        adt.struct_variant().fields.iter().map(|f| {
-                            self.normalize_associated_types_in(
-                                expr.span, &f.ty(self.tcx, substs)
-                            )
-                        }).collect()
-                    );
+                    let fru_field_types = adt.struct_variant().fields.iter().map(|f| {
+                        self.normalize_associated_types_in(expr.span, &f.ty(self.tcx, substs))
+                    }).collect();
+                    self.tables.borrow_mut().fru_field_types.insert(expr.id, fru_field_types);
                 }
                 _ => {
                     span_err!(self.tcx.sess, base_expr.span, E0436,
@@ -4186,7 +4213,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::StmtSemi(ref e, _) => e,
             _ => return,
         };
-        let last_expr_ty = self.expr_ty(last_expr);
+        let last_expr_ty = self.node_ty(last_expr.id);
         if self.can_sub(self.param_env, last_expr_ty, expected_ty).is_err() {
             return;
         }
