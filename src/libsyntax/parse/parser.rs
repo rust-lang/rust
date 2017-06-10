@@ -193,11 +193,13 @@ pub struct Parser<'a> {
 }
 
 
+#[derive(Clone)]
 struct TokenCursor {
     frame: TokenCursorFrame,
     stack: Vec<TokenCursorFrame>,
 }
 
+#[derive(Clone)]
 struct TokenCursorFrame {
     delim: token::DelimToken,
     span: Span,
@@ -397,6 +399,7 @@ impl Error {
     }
 }
 
+#[derive(Debug)]
 pub enum LhsExpr {
     NotYetParsed,
     AttributesParsed(ThinVec<Attribute>),
@@ -437,6 +440,8 @@ fn dummy_arg(span: Span) -> Arg {
     };
     Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID }
 }
+
+type RewindPoint = (token::Token, Span, Option<Span>, Span, TokenCursor, Vec<TokenType>);
 
 impl<'a> Parser<'a> {
     pub fn new(sess: &'a ParseSess,
@@ -783,6 +788,13 @@ impl<'a> Parser<'a> {
                 }
                 self.span_err(sp, &format!("{} with a suffix is invalid", kind));
             }
+        }
+    }
+
+    fn is_lt(&mut self) -> bool {
+        match self.token {
+            token::Lt | token::BinOp(token::Shl) => true,
+            _ => false,
         }
     }
 
@@ -1724,7 +1736,7 @@ impl<'a> Parser<'a> {
 
         let segments = match mode {
             PathStyle::Type => {
-                self.parse_path_segments_without_colons()?
+                self.parse_path_segments_without_colons(false)?
             }
             PathStyle::Expr => {
                 self.parse_path_segments_with_colons()?
@@ -1745,6 +1757,16 @@ impl<'a> Parser<'a> {
     /// bounds are permitted and whether `::` must precede type parameter
     /// groups.
     pub fn parse_path(&mut self, mode: PathStyle) -> PResult<'a, ast::Path> {
+        self.parse_path_common(mode, false)
+    }
+
+    pub fn parse_path_without_generics(&mut self, mode: PathStyle) -> PResult<'a, ast::Path> {
+        self.parse_path_common(mode, true)
+    }
+
+    fn parse_path_common(&mut self, mode: PathStyle, dont_parse_generics: bool)
+        -> PResult<'a, ast::Path>
+    {
         maybe_whole!(self, NtPath, |x| x);
 
         let lo = self.meta_var_span.unwrap_or(self.span);
@@ -1755,7 +1777,7 @@ impl<'a> Parser<'a> {
         // A bound set is a set of type parameter bounds.
         let mut segments = match mode {
             PathStyle::Type => {
-                self.parse_path_segments_without_colons()?
+                self.parse_path_segments_without_colons(dont_parse_generics)?
             }
             PathStyle::Expr => {
                 self.parse_path_segments_with_colons()?
@@ -1800,7 +1822,9 @@ impl<'a> Parser<'a> {
     /// - `a::b<T,U>::c<V,W>`
     /// - `a::b<T,U>::c(V) -> W`
     /// - `a::b<T,U>::c(V)`
-    pub fn parse_path_segments_without_colons(&mut self) -> PResult<'a, Vec<PathSegment>> {
+    pub fn parse_path_segments_without_colons(&mut self, dont_parse_generics: bool)
+        -> PResult<'a, Vec<PathSegment>>
+    {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
@@ -1819,7 +1843,8 @@ impl<'a> Parser<'a> {
             }
 
             // Parse types, optionally.
-            let parameters = if self.eat_lt() {
+            let parameters = if self.is_lt() && !dont_parse_generics {
+                let _ = self.eat_lt();
                 let (lifetimes, types, bindings) = self.parse_generic_args()?;
                 self.expect_gt()?;
                 ast::AngleBracketedParameterData {
@@ -2798,8 +2823,40 @@ impl<'a> Parser<'a> {
             }
             // Special cases:
             if op == AssocOp::As {
-                let rhs = self.parse_ty_no_plus()?;
-                lhs = self.mk_expr(lhs_span.to(rhs.span), ExprKind::Cast(lhs, rhs), ThinVec::new());
+                // Save the state of the parser before parsing type normally, in case there is a
+                // LessThan comparison after this cast.
+                let rp = self.get_rewind_point();
+                match self.parse_ty_no_plus() {
+                    Ok(rhs) => {
+                        lhs = self.mk_expr(lhs_span.to(rhs.span),
+                                           ExprKind::Cast(lhs, rhs), ThinVec::new());
+                    }
+                    Err(mut err) => {
+                        // Rewind to before attempting to parse the type with generics, to get
+                        // arround #22644.
+                        let rp_err = self.get_rewind_point();
+                        self.rewind(rp);
+                        let lo = self.span;
+                        let path = match self.parse_path_without_generics(PathStyle::Type) {
+                            Ok(path) => {
+                                // Successfully parsed the type leaving a `<` yet to parse
+                                err.cancel();
+                                path
+                            }
+                            Err(mut path_err) => {
+                                // Still couldn't parse, return original error and parser state
+                                path_err.cancel();
+                                self.rewind(rp_err);
+                                return Err(err);
+                            }
+                        };
+                        let path = TyKind::Path(None, path);
+                        let span = lo.to(self.prev_span);
+                        let rhs = P(Ty { node: path, span: span, id: ast::DUMMY_NODE_ID });
+                        lhs = self.mk_expr(lhs_span.to(rhs.span),
+                                           ExprKind::Cast(lhs, rhs), ThinVec::new());
+                    }
+                };
                 continue
             } else if op == AssocOp::Colon {
                 let rhs = self.parse_ty_no_plus()?;
@@ -2901,7 +2958,9 @@ impl<'a> Parser<'a> {
     /// We only need to check lhs, not rhs, because all comparison ops
     /// have same precedence and are left-associative
     fn check_no_chained_comparison(&mut self, lhs: &Expr, outer_op: &AssocOp) {
-        debug_assert!(outer_op.is_comparison());
+        debug_assert!(outer_op.is_comparison(),
+                      "check_no_chained_comparison: {:?} is not comparison",
+                      outer_op);
         match lhs.node {
             ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
                 // respan to include both operators
@@ -2925,7 +2984,9 @@ impl<'a> Parser<'a> {
     fn parse_prefix_range_expr(&mut self,
                                already_parsed_attrs: Option<ThinVec<Attribute>>)
                                -> PResult<'a, P<Expr>> {
-        debug_assert!(self.token == token::DotDot || self.token == token::DotDotDot);
+        debug_assert!(self.token == token::DotDot || self.token == token::DotDotDot,
+                      "parse_prefix_range_expr: token {:?} is not DotDot or DotDotDot",
+                      self.token);
         let tok = self.token.clone();
         let attrs = self.parse_or_use_outer_attributes(already_parsed_attrs)?;
         let lo = self.span;
@@ -6173,5 +6234,26 @@ impl<'a> Parser<'a> {
             }
             _ =>  Err(self.fatal("expected string literal"))
         }
+    }
+
+    fn get_rewind_point(&mut self) -> RewindPoint {
+        (
+            self.token.clone(),
+            self.span,
+            self.meta_var_span,
+            self.prev_span,
+            self.token_cursor.clone(),
+            self.expected_tokens.clone(),
+        )
+    }
+
+    fn rewind(&mut self, rp: RewindPoint) {
+        let (token, span, meta_var_span, prev_span, token_cursor, expected_tokens,) = rp;
+        self.token = token;
+        self.span = span;
+        self.meta_var_span = meta_var_span;
+        self.prev_span = prev_span;
+        self.token_cursor = token_cursor;
+        self.expected_tokens = expected_tokens;
     }
 }
