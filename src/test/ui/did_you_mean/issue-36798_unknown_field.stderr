@@ -1,4 +1,4 @@
-error: no field `zz` on type `Foo`
+error[E0609]: no field `zz` on type `Foo`
   --> $DIR/issue-36798_unknown_field.rs:17:7
    |
 17 |     f.zz;

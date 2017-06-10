@@ -75,6 +75,17 @@ macro_rules! struct_span_err {
 }
 
 #[macro_export]
+macro_rules! type_error_struct {
+    ($session:expr, $span:expr, $typ:expr, $code:ident, $($message:tt)*) => ({
+        if $typ.references_error() {
+            $session.diagnostic().struct_dummy()
+        } else {
+            struct_span_err!($session, $span, $code, $($message)*)
+        }
+    })
+}
+
+#[macro_export]
 macro_rules! struct_span_warn {
     ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);

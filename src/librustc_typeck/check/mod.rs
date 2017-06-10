@@ -2921,10 +2921,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 .emit();
             self.tcx().types.err
         } else {
-            let mut err = self.type_error_struct(field.span, |actual| {
-                format!("no field `{}` on type `{}`",
-                        field.node, actual)
-            }, expr_t);
+            let mut err = type_error_struct!(self.tcx().sess, field.span, expr_t, E0609,
+                                             "no field `{}` on type `{}`",
+                                             field.node, expr_t);
             match expr_t.sty {
                 ty::TyAdt(def, _) if !def.is_enum() => {
                     if let Some(suggested_field_name) =

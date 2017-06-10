@@ -4095,6 +4095,33 @@ assert_eq!(!Question::No, true);
 ```
 "##,
 
+E0609: r##"
+An attempt to access a non-existent field in a struct was performed.
+
+Erroneous code example:
+
+```compile_fail,E0609
+struct StructWithFields {
+    x: u32,
+}
+
+let s = StructWithFields { x: 0 };
+println!("{}", s.foo); // error: no field `foo` on type `StructWithFields`
+```
+
+To fix this error, check if you didn't misspell the field's name or that the
+field actually exist. Example:
+
+```
+struct StructWithFields {
+    x: u32,
+}
+
+let s = StructWithFields { x: 0 };
+println!("{}", s.x); // ok!
+```
+"##,
+
 }
 
 register_diagnostics! {
