@@ -427,9 +427,10 @@ impl fmt::Display for FormatReport {
 
 // Formatting which depends on the AST.
 fn format_ast<F>(krate: &ast::Crate,
-                 parse_session: &ParseSess,
+                 mut parse_session: &mut ParseSess,
                  main_file: &Path,
                  config: &Config,
+                 codemap: &Rc<CodeMap>,
                  mut after_file: F)
                  -> Result<(FileMap, bool), io::Error>
     where F: FnMut(&str, &mut StringBuffer) -> Result<bool, io::Error>
@@ -449,12 +450,19 @@ fn format_ast<F>(krate: &ast::Crate,
         if config.verbose() {
             println!("Formatting {}", path);
         }
-        let mut visitor = FmtVisitor::from_codemap(parse_session, config);
-        visitor.format_separate_mod(module);
+        {
+            let mut visitor = FmtVisitor::from_codemap(parse_session, config);
+            visitor.format_separate_mod(module);
 
-        has_diff |= after_file(path, &mut visitor.buffer)?;
+            has_diff |= after_file(path, &mut visitor.buffer)?;
 
-        result.push((path.to_owned(), visitor.buffer));
+            result.push((path.to_owned(), visitor.buffer));
+        }
+        // Reset the error count.
+        if parse_session.span_diagnostic.has_errors() {
+            parse_session.span_diagnostic =
+                Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()));
+        }
     }
 
     Ok((result, has_diff))
@@ -612,9 +620,10 @@ pub fn format_input<T: Write>(input: Input,
 
     match format_ast(
         &krate,
-        &parse_session,
+        &mut parse_session,
         &main_file,
         config,
+        &codemap,
         |file_name, file| {
             // For some reason, the codemap does not include terminating
             // newlines so we must add one on for each file. This is sad.
