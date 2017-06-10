@@ -529,7 +529,8 @@ pub fn struct_lit_shape(shape: Shape,
                         -> Option<(Option<Shape>, Shape)> {
     let v_shape = match context.config.struct_lit_style() {
         IndentStyle::Visual => {
-            try_opt!(try_opt!(shape.shrink_left(prefix_width)).sub_width(suffix_width))
+            try_opt!(try_opt!(shape.visual_indent(0).shrink_left(prefix_width))
+                         .sub_width(suffix_width))
         }
         IndentStyle::Block => {
             let shape = shape.block_indent(context.config.tab_spaces());
