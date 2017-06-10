@@ -1442,7 +1442,7 @@ let lorem = Lorem {
 
 ```rust
 let lorem = Lorem { ipsum: dolor,
-        sit: amet, };
+                    sit: amet, };
 ```
 
 See also: [`struct_lit_multiline_style`](#struct_lit_multiline_style), [`struct_lit_style`](#struct_lit_style).
