@@ -13,9 +13,8 @@
 
 mod a {
     mod b {
-        use self as A; //~ ERROR `self` imports are only allowed within a { } list
-        //~^ ERROR unresolved import `self` [E0432]
-        //~| no `self` in the root
+        use self as A;
+        //~^ ERROR `self` imports are only allowed within a { } list
         use super as B;
         //~^ ERROR unresolved import `super` [E0432]
         //~| no `super` in the root

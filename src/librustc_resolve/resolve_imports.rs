@@ -482,6 +482,16 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             if let Some(err) = self.finalize_import(import) {
                 errors = true;
 
+                if let SingleImport { source, ref result, .. } = import.subclass {
+                    if source.name == "self" {
+                        // Silence `unresolved import` error if E0429 is already emitted
+                        match result.value_ns.get() {
+                            Err(Determined) => continue,
+                            _ => {},
+                        }
+                    }
+                }
+
                 // If the error is a single failed import then create a "fake" import
                 // resolution for it so that later resolve stages won't complain.
                 self.import_dummy_binding(import);
