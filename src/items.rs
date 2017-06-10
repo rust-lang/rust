@@ -16,7 +16,7 @@ use utils::{format_mutability, format_visibility, contains_skip, end_typaram, wr
             last_line_width, format_unsafety, trim_newlines, stmt_expr, semicolon_for_expr,
             trimmed_last_line_width, colon_spaces, mk_sp};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, list_helper,
-            DefinitiveListTactic, ListTactic, definitive_tactic, format_item_list};
+            DefinitiveListTactic, ListTactic, definitive_tactic};
 use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
 use comment::{FindUncommented, contains_comment, rewrite_comment, recover_comment_removed};
 use visitor::FmtVisitor;
@@ -2111,21 +2111,13 @@ fn rewrite_generics(context: &RewriteContext,
         return Some(String::new());
     }
 
-    let offset = match context.config.generics_indent() {
-        IndentStyle::Block => shape.indent.block_only().block_indent(context.config),
-        // 1 = <
-        IndentStyle::Visual => shape.indent + 1,
-    };
-
-    let h_budget = try_opt!(shape.width.checked_sub(2));
-    // FIXME: might need to insert a newline if the generics are really long.
-
+    let generics_shape = generics_shape_from_config(context.config, shape, 0);
     // Strings for the generics.
     let lt_strs = lifetimes
         .iter()
-        .map(|lt| lt.rewrite(context, Shape::legacy(h_budget, offset)));
+        .map(|lt| lt.rewrite(context, generics_shape));
     let ty_strs = tys.iter()
-        .map(|ty_param| ty_param.rewrite(context, Shape::legacy(h_budget, offset)));
+        .map(|ty_param| ty_param.rewrite(context, generics_shape));
 
     // Extract comments between generics.
     let lt_spans = lifetimes.iter().map(|l| {
@@ -2147,21 +2139,64 @@ fn rewrite_generics(context: &RewriteContext,
                              |&(_, ref str)| str.clone(),
                              context.codemap.span_after(span, "<"),
                              span.hi);
-    let list_str =
-        try_opt!(format_item_list(items, Shape::legacy(h_budget, offset), context.config));
+    format_generics_item_list(context, items, generics_shape, generics_shape.width)
+}
 
-    let result = if context.config.generics_indent() != IndentStyle::Visual &&
-                    list_str.contains('\n') {
+pub fn generics_shape_from_config(config: &Config, shape: Shape, offset: usize) -> Shape {
+    Shape {
+        // 2 = `<>`
+        width: shape.width.checked_sub(offset + 2).unwrap_or(0),
+        ..match config.generics_indent() {
+              IndentStyle::Visual => shape.visual_indent(1 + offset),
+              IndentStyle::Block => shape.block().block_indent(config.tab_spaces()),
+          }
+    }
+}
+
+pub fn format_generics_item_list<I>(context: &RewriteContext,
+                                    items: I,
+                                    shape: Shape,
+                                    one_line_budget: usize)
+                                    -> Option<String>
+    where I: Iterator<Item = ListItem>
+{
+    let item_vec = items.collect::<Vec<_>>();
+
+    let fmt = ListFormatting {
+        tactic: definitive_tactic(&item_vec, ListTactic::HorizontalVertical, one_line_budget),
+        separator: ",",
+        trailing_separator: if context.config.generics_indent() == IndentStyle::Visual {
+            SeparatorTactic::Never
+        } else {
+            context.config.trailing_comma()
+        },
+        shape: shape,
+        ends_with_newline: false,
+        config: context.config,
+    };
+
+    let list_str = try_opt!(write_list(&item_vec, &fmt));
+
+    Some(wrap_generics_with_angle_brackets(context, &list_str, shape.indent))
+}
+
+pub fn wrap_generics_with_angle_brackets(context: &RewriteContext,
+                                         list_str: &str,
+                                         list_offset: Indent)
+                                         -> String {
+    if context.config.generics_indent() == IndentStyle::Block &&
+       (list_str.contains('\n') || list_str.ends_with(',')) {
         format!("<\n{}{}\n{}>",
-                offset.to_string(context.config),
+                list_offset.to_string(context.config),
                 list_str,
-                shape.indent.block_only().to_string(context.config))
+                list_offset
+                    .block_unindent(context.config)
+                    .to_string(context.config))
     } else if context.config.spaces_within_angle_brackets() {
         format!("< {} >", list_str)
     } else {
         format!("<{}>", list_str)
-    };
-    Some(result)
+    }
 }
 
 fn rewrite_trait_bounds(context: &RewriteContext,

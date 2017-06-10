@@ -19,7 +19,8 @@ use syntax::symbol::keywords;
 
 use {Shape, Spanned};
 use codemap::SpanUtils;
-use lists::{format_item_list, itemize_list, format_fn_args};
+use items::{format_generics_item_list, generics_shape_from_config};
+use lists::{itemize_list, format_fn_args};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, format_mutability, colon_spaces, wrap_str, mk_sp};
 use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple_type};
@@ -213,31 +214,25 @@ fn rewrite_segment(path_context: PathContext,
                     ""
                 };
 
-                // 1 for <
-                let extra_offset = 1 + separator.len();
-                // 1 for >
-                // TODO bad visual indent
-                let list_shape = try_opt!(try_opt!(shape.shrink_left(extra_offset)).sub_width(1))
-                    .visual_indent(0);
-
+                let generics_shape =
+                    generics_shape_from_config(context.config, shape, separator.len());
                 let items = itemize_list(context.codemap,
                                          param_list.into_iter(),
                                          ">",
                                          |param| param.get_span().lo,
                                          |param| param.get_span().hi,
-                                         |seg| seg.rewrite(context, list_shape),
+                                         |seg| seg.rewrite(context, generics_shape),
                                          list_lo,
                                          span_hi);
-                let list_str = try_opt!(format_item_list(items, list_shape, context.config));
+                let generics_str = try_opt!(format_generics_item_list(context,
+                                                                      items,
+                                                                      generics_shape,
+                                                                      generics_shape.width));
 
                 // Update position of last bracket.
                 *span_lo = next_span_lo;
 
-                if context.config.spaces_within_angle_brackets() && list_str.len() > 0 {
-                    format!("{}< {} >", separator, list_str)
-                } else {
-                    format!("{}<{}>", separator, list_str)
-                }
+                format!("{}{}", separator, generics_str)
             }
             ast::PathParameters::Parenthesized(ref data) => {
                 let output = match data.output {
