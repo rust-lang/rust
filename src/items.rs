@@ -678,83 +678,30 @@ fn format_impl_ref_and_type(context: &RewriteContext,
                                                0);
         let mut generics_str =
             try_opt!(rewrite_generics(context, generics, shape, shape.width, mk_sp(lo, hi)));
+        add_polarity(&mut generics_str, &polarity, trait_ref.is_some());
 
-        if polarity == ast::ImplPolarity::Negative {
-            generics_str.push_str(" !");
-        }
-
-        let mut retry_with_multiline = true;
         if let Some(ref trait_ref) = *trait_ref {
-            if polarity != ast::ImplPolarity::Negative {
-                generics_str.push_str(" ");
-            }
-            let used_space = if generics_str.contains('\n') {
-                last_line_width(&generics_str)
-            } else {
-                result.len() + generics_str.len()
-            };
-            let budget = context
-                .config
-                .max_width()
-                .checked_sub(used_space)
-                .unwrap_or(0);
-            let indent = offset + used_space;
-            if let Some(trait_ref_str) = trait_ref.rewrite(context, Shape::legacy(budget, indent)) {
-                if !trait_ref_str.contains('\n') {
-                    result.push_str(&generics_str);
-                    result.push_str(&trait_ref_str);
-                    if split_at_for {
-                        result.push('\n');
-                        // Add indentation of one additional tab.
-                        result.push_str(&offset
-                                            .block_indent(context.config)
-                                            .to_string(context.config));
-                        result.push_str("for");
-                    } else {
-                        result.push_str(" for");
-                    }
-                    retry_with_multiline = false;
-                }
-            }
-            if retry_with_multiline {
+            let success = format_trait_ref_then_update_result(context,
+                                                              &trait_ref,
+                                                              offset,
+                                                              &generics_str,
+                                                              split_at_for,
+                                                              &mut result);
+            if !success {
                 let mut generics_str =
                     try_opt!(rewrite_generics(context, generics, shape, 0, mk_sp(lo, hi)));
-                if polarity == ast::ImplPolarity::Negative {
-                    generics_str.push_str(" !");
-                } else {
-                    generics_str.push_str(" ");
-                }
-                let used_space = if generics_str.contains('\n') {
-                    last_line_width(&generics_str)
-                } else {
-                    result.len() + generics_str.len()
-                };
-                let budget = context
-                    .config
-                    .max_width()
-                    .checked_sub(used_space)
-                    .unwrap_or(0);
-                let indent = offset + used_space;
-                if let Some(trait_ref_str) =
-                    trait_ref.rewrite(context, Shape::legacy(budget, indent)) {
-                    result.push_str(&generics_str);
-                    result.push_str(&trait_ref_str);
-                    if split_at_for {
-                        result.push('\n');
-                        // Add indentation of one additional tab.
-                        result.push_str(&offset
-                                            .block_indent(context.config)
-                                            .to_string(context.config));
-                        result.push_str("for");
-                    } else {
-                        result.push_str(" for");
-                    }
+                add_polarity(&mut generics_str, &polarity, true);
+                if !format_trait_ref_then_update_result(context,
+                                                        &trait_ref,
+                                                        offset,
+                                                        &generics_str,
+                                                        split_at_for,
+                                                        &mut result) {
+                    // FIXME: should be unreachable
+                    return None;
                 }
             }
         } else {
-            if polarity == ast::ImplPolarity::Negative {
-                generics_str.push_str(" ");
-            }
             result.push_str(&generics_str);
         }
 
@@ -787,6 +734,55 @@ fn format_impl_ref_and_type(context: &RewriteContext,
         Some(result)
     } else {
         unreachable!();
+    }
+}
+
+// Returns false if failed to update result: then, try using multiline.
+fn format_trait_ref_then_update_result(context: &RewriteContext,
+                                       trait_ref: &ast::TraitRef,
+                                       offset: Indent,
+                                       generics_str: &str,
+                                       split_at_for: bool,
+                                       result: &mut String)
+                                       -> bool {
+    let used_space = if generics_str.contains('\n') {
+        last_line_width(&generics_str)
+    } else {
+        result.len() + generics_str.len()
+    };
+    let budget = context
+        .config
+        .max_width()
+        .checked_sub(used_space)
+        .unwrap_or(0);
+    let indent = offset + used_space;
+    if let Some(trait_ref_str) = trait_ref.rewrite(context, Shape::legacy(budget, indent)) {
+        if !trait_ref_str.contains('\n') {
+            result.push_str(&generics_str);
+            result.push_str(&trait_ref_str);
+            if split_at_for {
+                result.push('\n');
+                // Add indentation of one additional tab.
+                let for_offset = match context.config.where_style() {
+                    Style::Legacy => offset.block_indent(context.config),
+                    Style::Rfc => offset,
+                };
+                result.push_str(&for_offset.to_string(context.config));
+                result.push_str("for");
+            } else {
+                result.push_str(" for");
+            }
+            return true;
+        }
+    }
+    false
+}
+
+fn add_polarity(s: &mut String, polarity: &ast::ImplPolarity, has_trait_ref: bool) {
+    if polarity == &ast::ImplPolarity::Negative {
+        s.push_str(" !")
+    } else if has_trait_ref {
+        s.push(' ')
     }
 }
 
