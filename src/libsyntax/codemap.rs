@@ -27,11 +27,8 @@ use std::rc::Rc;
 
 use std::env;
 use std::fs;
-use std::hash::Hasher;
 use std::io::{self, Read};
 use errors::CodeMapper;
-
-use rustc_data_structures::stable_hasher::StableHasher;
 
 /// Return the span itself if it doesn't come from a macro expansion,
 /// otherwise return the call site span up to the `enclosing_sp` by
@@ -161,34 +158,13 @@ impl CodeMap {
 
     /// Creates a new filemap without setting its line information. If you don't
     /// intend to set the line information yourself, you should use new_filemap_and_lines.
-    pub fn new_filemap(&self, filename: FileName, mut src: String) -> Rc<FileMap> {
+    pub fn new_filemap(&self, filename: FileName, src: String) -> Rc<FileMap> {
         let start_pos = self.next_start_pos();
         let mut files = self.files.borrow_mut();
 
-        // Remove utf-8 BOM if any.
-        if src.starts_with("\u{feff}") {
-            src.drain(..3);
-        }
-
-        let end_pos = start_pos + src.len();
-
         let (filename, was_remapped) = self.path_mapping.map_prefix(filename);
-
-        let mut hasher: StableHasher<u128> = StableHasher::new();
-        hasher.write(src.as_bytes());
-        let src_hash = hasher.finish();
-
-        let filemap = Rc::new(FileMap {
-            name: filename,
-            name_was_remapped: was_remapped,
-            crate_of_origin: 0,
-            src: Some(Rc::new(src)),
-            src_hash: src_hash,
-            start_pos: Pos::from_usize(start_pos),
-            end_pos: Pos::from_usize(end_pos),
-            lines: RefCell::new(Vec::new()),
-            multibyte_chars: RefCell::new(Vec::new()),
-        });
+        let filemap =
+            Rc::new(FileMap::new(filename, was_remapped, src, Pos::from_usize(start_pos)));
 
         files.push(filemap.clone());
 

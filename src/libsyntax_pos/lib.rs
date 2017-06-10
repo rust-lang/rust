@@ -38,6 +38,11 @@ use std::ops::{Add, Sub};
 use std::rc::Rc;
 use std::cmp;
 use std::fmt;
+use std::hash::Hasher;
+
+use rustc_data_structures::stable_hasher::StableHasher;
+
+extern crate rustc_data_structures;
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -522,6 +527,31 @@ impl fmt::Debug for FileMap {
 }
 
 impl FileMap {
+    pub fn new(name: FileName,
+               name_was_remapped: bool,
+               mut src: String,
+               start_pos: BytePos) -> FileMap {
+        remove_bom(&mut src);
+
+        let mut hasher: StableHasher<u128> = StableHasher::new();
+        hasher.write(src.as_bytes());
+        let src_hash = hasher.finish();
+
+        let end_pos = start_pos.to_usize() + src.len();
+
+        FileMap {
+            name: name,
+            name_was_remapped: name_was_remapped,
+            crate_of_origin: 0,
+            src: Some(Rc::new(src)),
+            src_hash: src_hash,
+            start_pos: start_pos,
+            end_pos: Pos::from_usize(end_pos),
+            lines: RefCell::new(Vec::new()),
+            multibyte_chars: RefCell::new(Vec::new()),
+        }
+    }
+
     /// EFFECT: register a start-of-line offset in the
     /// table of line-beginnings.
     /// UNCHECKED INVARIANT: these offsets must be added in the right
@@ -618,6 +648,13 @@ impl FileMap {
         } else {
             (lines[line_index], lines[line_index + 1])
         }
+    }
+}
+
+/// Remove utf-8 BOM if any.
+fn remove_bom(src: &mut String) {
+    if src.starts_with("\u{feff}") {
+        src.drain(..3);
     }
 }
 
