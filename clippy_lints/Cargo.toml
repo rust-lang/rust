@@ -20,7 +20,6 @@ workspace = "../clippy_tests"
 itertools = "0.6.0"
 lazy_static = "0.2.8"
 matches = "0.1.2"
-pulldown-cmark = { version = "0.0.14", default-features = false }
 quine-mc_cluskey = "0.2.2"
 regex-syntax = "0.4.0"
 semver = "0.6.0"
