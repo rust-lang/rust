@@ -27,8 +27,11 @@ use std::rc::Rc;
 
 use std::env;
 use std::fs;
+use std::hash::Hasher;
 use std::io::{self, Read};
 use errors::CodeMapper;
+
+use rustc_data_structures::stable_hasher::StableHasher;
 
 /// Return the span itself if it doesn't come from a macro expansion,
 /// otherwise return the call site span up to the `enclosing_sp` by
@@ -171,11 +174,16 @@ impl CodeMap {
 
         let (filename, was_remapped) = self.path_mapping.map_prefix(filename);
 
+        let mut hasher: StableHasher<u128> = StableHasher::new();
+        hasher.write(src.as_bytes());
+        let src_hash = hasher.finish();
+
         let filemap = Rc::new(FileMap {
             name: filename,
             name_was_remapped: was_remapped,
             crate_of_origin: 0,
             src: Some(Rc::new(src)),
+            src_hash: src_hash,
             start_pos: Pos::from_usize(start_pos),
             end_pos: Pos::from_usize(end_pos),
             lines: RefCell::new(Vec::new()),
@@ -210,6 +218,7 @@ impl CodeMap {
                                 filename: FileName,
                                 name_was_remapped: bool,
                                 crate_of_origin: u32,
+                                src_hash: u128,
                                 source_len: usize,
                                 mut file_local_lines: Vec<BytePos>,
                                 mut file_local_multibyte_chars: Vec<MultiByteChar>)
@@ -233,6 +242,7 @@ impl CodeMap {
             name_was_remapped: name_was_remapped,
             crate_of_origin: crate_of_origin,
             src: None,
+            src_hash: src_hash,
             start_pos: start_pos,
             end_pos: end_pos,
             lines: RefCell::new(file_local_lines),

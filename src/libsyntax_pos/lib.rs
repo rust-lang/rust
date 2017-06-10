@@ -24,6 +24,7 @@
 
 #![feature(const_fn)]
 #![feature(custom_attribute)]
+#![feature(i128_type)]
 #![feature(optin_builtin_traits)]
 #![allow(unused_attributes)]
 #![feature(specialization)]
@@ -36,7 +37,6 @@ use std::cell::{Cell, RefCell};
 use std::ops::{Add, Sub};
 use std::rc::Rc;
 use std::cmp;
-
 use std::fmt;
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -382,6 +382,8 @@ pub struct FileMap {
     pub crate_of_origin: u32,
     /// The complete source code
     pub src: Option<Rc<String>>,
+    /// The source code's hash
+    pub src_hash: u128,
     /// The start position of this source in the CodeMap
     pub start_pos: BytePos,
     /// The end position of this source in the CodeMap
@@ -394,9 +396,10 @@ pub struct FileMap {
 
 impl Encodable for FileMap {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_struct("FileMap", 6, |s| {
+        s.emit_struct("FileMap", 7, |s| {
             s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
             s.emit_struct_field("name_was_remapped", 1, |s| self.name_was_remapped.encode(s))?;
+            s.emit_struct_field("src_hash", 6, |s| self.src_hash.encode(s))?;
             s.emit_struct_field("start_pos", 2, |s| self.start_pos.encode(s))?;
             s.emit_struct_field("end_pos", 3, |s| self.end_pos.encode(s))?;
             s.emit_struct_field("lines", 4, |s| {
@@ -459,7 +462,10 @@ impl Decodable for FileMap {
             let name: String = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
             let name_was_remapped: bool =
                 d.read_struct_field("name_was_remapped", 1, |d| Decodable::decode(d))?;
-            let start_pos: BytePos = d.read_struct_field("start_pos", 2, |d| Decodable::decode(d))?;
+            let src_hash: u128 =
+                d.read_struct_field("src_hash", 6, |d| Decodable::decode(d))?;
+            let start_pos: BytePos =
+                d.read_struct_field("start_pos", 2, |d| Decodable::decode(d))?;
             let end_pos: BytePos = d.read_struct_field("end_pos", 3, |d| Decodable::decode(d))?;
             let lines: Vec<BytePos> = d.read_struct_field("lines", 4, |d| {
                 let num_lines: u32 = Decodable::decode(d)?;
@@ -501,6 +507,7 @@ impl Decodable for FileMap {
                 start_pos: start_pos,
                 end_pos: end_pos,
                 src: None,
+                src_hash: src_hash,
                 lines: RefCell::new(lines),
                 multibyte_chars: RefCell::new(multibyte_chars)
             })

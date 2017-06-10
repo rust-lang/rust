@@ -1148,6 +1148,7 @@ impl<'a, 'tcx> CrateMetadata {
             // containing the information we need.
             let syntax_pos::FileMap { name,
                                       name_was_remapped,
+                                      src_hash,
                                       start_pos,
                                       end_pos,
                                       lines,
@@ -1173,6 +1174,7 @@ impl<'a, 'tcx> CrateMetadata {
             let local_version = local_codemap.new_imported_filemap(name,
                                                                    name_was_remapped,
                                                                    self.cnum.as_u32(),
+                                                                   src_hash,
                                                                    source_length,
                                                                    lines,
                                                                    multibyte_chars);
