@@ -78,6 +78,17 @@ impl StableHasherResult for [u8; 20] {
     }
 }
 
+impl StableHasherResult for u128 {
+    fn finish(mut hasher: StableHasher<Self>) -> Self {
+        let hash_bytes: &[u8] = hasher.finalize();
+        assert!(hash_bytes.len() >= mem::size_of::<u64>() * 2);
+
+        unsafe {
+            ::std::ptr::read_unaligned(hash_bytes.as_ptr() as *const u128)
+        }
+    }
+}
+
 impl StableHasherResult for u64 {
     fn finish(mut hasher: StableHasher<Self>) -> Self {
         hasher.state.finalize();
