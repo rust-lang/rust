@@ -374,6 +374,14 @@ pub struct MultiByteChar {
     pub bytes: usize,
 }
 
+#[derive(PartialEq, Eq, Clone)]
+pub enum ExternalSource {
+    Present(String),
+    AbsentOk,
+    AbsentErr,
+    Unneeded,
+}
+
 /// A single source in the CodeMap.
 #[derive(Clone)]
 pub struct FileMap {
@@ -389,6 +397,9 @@ pub struct FileMap {
     pub src: Option<Rc<String>>,
     /// The source code's hash
     pub src_hash: u128,
+    /// The external source code (used for external crates, which will have a `None`
+    /// value as `self.src`.
+    pub external_src: RefCell<ExternalSource>,
     /// The start position of this source in the CodeMap
     pub start_pos: BytePos,
     /// The end position of this source in the CodeMap
@@ -513,6 +524,7 @@ impl Decodable for FileMap {
                 end_pos: end_pos,
                 src: None,
                 src_hash: src_hash,
+                external_src: RefCell::new(ExternalSource::AbsentOk),
                 lines: RefCell::new(lines),
                 multibyte_chars: RefCell::new(multibyte_chars)
             })
@@ -545,6 +557,7 @@ impl FileMap {
             crate_of_origin: 0,
             src: Some(Rc::new(src)),
             src_hash: src_hash,
+            external_src: RefCell::new(ExternalSource::Unneeded),
             start_pos: start_pos,
             end_pos: Pos::from_usize(end_pos),
             lines: RefCell::new(Vec::new()),

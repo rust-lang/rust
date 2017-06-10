@@ -337,6 +337,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for FileMa
             // Do not hash the source as it is not encoded
             src: _,
             src_hash,
+            external_src: _,
             start_pos,
             end_pos: _,
             ref lines,

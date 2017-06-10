@@ -219,6 +219,7 @@ impl CodeMap {
             crate_of_origin: crate_of_origin,
             src: None,
             src_hash: src_hash,
+            external_src: RefCell::new(ExternalSource::AbsentOk),
             start_pos: start_pos,
             end_pos: end_pos,
             lines: RefCell::new(file_local_lines),
@@ -557,6 +558,25 @@ impl CodeMapper for CodeMap {
             }
         }
         sp
+    }
+    fn load_source_for_filemap(&mut self, filename: FileName) -> bool {
+        let file_map = if let Some(fm) = self.get_filemap(&filename) {
+            fm
+        } else {
+            return false;
+        };
+
+        if *file_map.external_src.borrow() == ExternalSource::AbsentOk {
+            let mut external_src = file_map.external_src.borrow_mut();
+            if let Ok(src) = self.file_loader.read_file(Path::new(&filename)) {
+                *external_src = ExternalSource::Present(src);
+                return true;
+            } else {
+                *external_src = ExternalSource::AbsentErr;
+            }
+        }
+
+        false
     }
 }
 
