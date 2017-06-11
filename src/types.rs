@@ -22,7 +22,7 @@ use codemap::SpanUtils;
 use items::{format_generics_item_list, generics_shape_from_config};
 use lists::{itemize_list, format_fn_args};
 use rewrite::{Rewrite, RewriteContext};
-use utils::{extra_offset, format_mutability, colon_spaces, wrap_str, mk_sp};
+use utils::{extra_offset, format_mutability, colon_spaces, wrap_str, mk_sp, last_line_width};
 use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple_type};
 use config::TypeDensity;
 
@@ -362,22 +362,15 @@ impl Rewrite for ast::WherePredicate {
                                                             .collect::<Option<Vec<_>>>())
                         .join(", ");
 
-                    let joiner = match context.config.type_punctuation_density() {
-                        TypeDensity::Compressed => "+",
-                        TypeDensity::Wide => " + ",
-                    };
                     // 6 = "for<> ".len()
                     let used_width = lifetime_str.len() + type_str.len() + colon.len() + 6;
-                    let budget = try_opt!(shape.width.checked_sub(used_width));
-                    let bounds_str: String = try_opt!(
-                        bounds
-                            .iter()
-                            .map(|ty_bound| {
-                                ty_bound.rewrite(context,
-                                                 Shape::legacy(budget, shape.indent + used_width))
-                            })
-                            .collect::<Option<Vec<_>>>()
-                    ).join(joiner);
+                    let ty_shape = try_opt!(shape.block_left(used_width));
+                    let bounds: Vec<_> =
+                        try_opt!(bounds
+                                     .iter()
+                                     .map(|ty_bound| ty_bound.rewrite(context, ty_shape))
+                                     .collect());
+                    let bounds_str = join_bounds(context, ty_shape, &bounds);
 
                     if context.config.spaces_within_angle_brackets() && lifetime_str.len() > 0 {
                         format!("for< {} > {}{}{}",
@@ -389,21 +382,14 @@ impl Rewrite for ast::WherePredicate {
                         format!("for<{}> {}{}{}", lifetime_str, type_str, colon, bounds_str)
                     }
                 } else {
-                    let joiner = match context.config.type_punctuation_density() {
-                        TypeDensity::Compressed => "+",
-                        TypeDensity::Wide => " + ",
-                    };
                     let used_width = type_str.len() + colon.len();
-                    let budget = try_opt!(shape.width.checked_sub(used_width));
-                    let bounds_str: String = try_opt!(
-                        bounds
-                            .iter()
-                            .map(|ty_bound| {
-                                ty_bound.rewrite(context,
-                                                 Shape::legacy(budget, shape.indent + used_width))
-                            })
-                            .collect::<Option<Vec<_>>>()
-                    ).join(joiner);
+                    let ty_shape = try_opt!(shape.block_left(used_width));
+                    let bounds: Vec<_> =
+                        try_opt!(bounds
+                                     .iter()
+                                     .map(|ty_bound| ty_bound.rewrite(context, ty_shape))
+                                     .collect());
+                    let bounds_str = join_bounds(context, ty_shape, &bounds);
 
                     format!("{}{}{}", type_str, colon, bounds_str)
                 }
@@ -458,11 +444,11 @@ fn rewrite_bounded_lifetime<'b, I>(lt: &ast::Lifetime,
                                             .map(|b| b.rewrite(context, shape))
                                             .collect());
         let colon = type_bound_colon(context);
-        let joiner = match context.config.type_punctuation_density() {
-            TypeDensity::Compressed => "+",
-            TypeDensity::Wide => " + ",
-        };
-        let result = format!("{}{}{}", result, colon, appendix.join(joiner));
+        let overhead = last_line_width(&result) + colon.len();
+        let result = format!("{}{}{}",
+                             result,
+                             colon,
+                             join_bounds(context, try_opt!(shape.sub_width(overhead)), &appendix));
         wrap_str(result, context.config.max_width(), shape)
     }
 }
@@ -494,12 +480,8 @@ impl Rewrite for ast::Lifetime {
 
 impl Rewrite for ast::TyParamBounds {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let joiner = match context.config.type_punctuation_density() {
-            TypeDensity::Compressed => "+",
-            TypeDensity::Wide => " + ",
-        };
         let strs: Vec<_> = try_opt!(self.iter().map(|b| b.rewrite(context, shape)).collect());
-        wrap_str(strs.join(joiner), context.config.max_width(), shape)
+        join_bounds(context, shape, &strs).rewrite(context, shape)
     }
 }
 
@@ -514,24 +496,12 @@ impl Rewrite for ast::TyParam {
         result.push_str(&attr_str);
         result.push_str(&self.ident.to_string());
         if !self.bounds.is_empty() {
-            if context.config.space_before_bound() {
-                result.push_str(" ");
-            }
-            result.push_str(":");
-            if context.config.space_after_bound_colon() {
-                result.push_str(" ");
-            }
-            let joiner = match context.config.type_punctuation_density() {
-                TypeDensity::Compressed => "+",
-                TypeDensity::Wide => " + ",
-            };
-            let bounds: String = try_opt!(self.bounds
-                                              .iter()
-                                              .map(|ty_bound| ty_bound.rewrite(context, shape))
-                                              .collect::<Option<Vec<_>>>())
-                .join(joiner);
-
-            result.push_str(&bounds);
+            result.push_str(type_bound_colon(context));
+            let strs: Vec<_> = try_opt!(self.bounds
+                                            .iter()
+                                            .map(|ty_bound| ty_bound.rewrite(context, shape))
+                                            .collect());
+            result.push_str(&join_bounds(context, shape, &strs));
         }
         if let Some(ref def) = self.default {
 
@@ -731,4 +701,20 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
     result.push_str(&rewrite);
 
     Some(result)
+}
+
+pub fn join_bounds(context: &RewriteContext, shape: Shape, type_strs: &Vec<String>) -> String {
+    // Try to join types in a single line
+    let joiner = match context.config.type_punctuation_density() {
+        TypeDensity::Compressed => "+",
+        TypeDensity::Wide => " + ",
+    };
+    let result = type_strs.join(joiner);
+    if result.contains('\n') || result.len() > shape.width {
+        let joiner_indent = shape.indent.block_indent(context.config);
+        let joiner = format!("\n{}+ ", joiner_indent.to_string(context.config));
+        type_strs.join(&joiner)
+    } else {
+        result
+    }
 }

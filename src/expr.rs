@@ -2063,11 +2063,11 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     // FIXME if context.config.struct_lit_style() == Visual, but we run out
     // of space, we should fall back to BlockIndent.
 }
+
 pub fn struct_lit_field_separator(config: &Config) -> &str {
     colon_spaces(config.space_before_struct_lit_field_colon(),
                  config.space_after_struct_lit_field_colon())
 }
-
 
 fn rewrite_field(context: &RewriteContext, field: &ast::Field, shape: Shape) -> Option<String> {
     let name = &field.ident.node.to_string();

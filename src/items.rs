@@ -21,7 +21,8 @@ use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
 use comment::{FindUncommented, contains_comment, rewrite_comment, recover_comment_removed};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
-use config::{Config, IndentStyle, Density, ReturnIndent, BraceStyle, Style, TypeDensity};
+use config::{Config, IndentStyle, Density, ReturnIndent, BraceStyle, Style};
+use types::join_bounds;
 
 use syntax::{ast, abi, ptr, symbol};
 use syntax::codemap::{Span, BytePos};
@@ -666,7 +667,7 @@ fn format_impl_ref_and_type(context: &RewriteContext,
                                                                context.config),
                                                0);
         let generics_str =
-            try_opt!(rewrite_generics(context, generics, shape, shape.width, mk_sp(lo, hi)));
+            try_opt!(rewrite_generics_inner(context, generics, shape, shape.width, mk_sp(lo, hi)));
 
         let polarity_str = if polarity == ast::ImplPolarity::Negative {
             "!"
@@ -684,7 +685,7 @@ fn format_impl_ref_and_type(context: &RewriteContext,
                                                               &mut result);
             if !success {
                 let generics_str =
-                    try_opt!(rewrite_generics(context, generics, shape, 0, mk_sp(lo, hi)));
+                    try_opt!(rewrite_generics_inner(context, generics, shape, 0, mk_sp(lo, hi)));
                 if !format_trait_ref_then_update_result(context,
                                                         &trait_ref,
                                                         offset,
@@ -839,15 +840,9 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         let body_lo = context.codemap.span_after(item.span, "{");
 
-        let generics_indent = offset + last_line_width(&result);
-        let shape = generics_shape_from_config(context.config,
-                                               Shape::indented(generics_indent, context.config),
-                                               0);
-        let generics_str = try_opt!(rewrite_generics(context,
-                                                     generics,
-                                                     shape,
-                                                     shape.width,
-                                                     mk_sp(item.span.lo, body_lo)));
+        let shape = Shape::indented(offset + last_line_width(&result), context.config);
+        let generics_str =
+            try_opt!(rewrite_generics(context, generics, shape, mk_sp(item.span.lo, body_lo)));
         result.push_str(&generics_str);
 
         let trait_bound_str =
@@ -1091,16 +1086,9 @@ fn format_tuple_struct(context: &RewriteContext,
 
     let where_clause_str = match generics {
         Some(generics) => {
-            let generics_indent = offset + last_line_width(&header_str);
-            let shape = generics_shape_from_config(context.config,
-                                                   Shape::indented(generics_indent,
-                                                                   context.config),
-                                                   0);
-            let generics_str = try_opt!(rewrite_generics(context,
-                                                         generics,
-                                                         shape,
-                                                         shape.width,
-                                                         mk_sp(span.lo, body_lo)));
+            let shape = Shape::indented(offset + last_line_width(&header_str), context.config);
+            let g_span = mk_sp(span.lo, body_lo);
+            let generics_str = try_opt!(rewrite_generics(context, generics, shape, g_span));
             result.push_str(&generics_str);
 
             let where_budget = try_opt!(context
@@ -1227,16 +1215,10 @@ pub fn rewrite_type_alias(context: &RewriteContext,
     result.push_str("type ");
     result.push_str(&ident.to_string());
 
-    let generics_indent = indent + result.len();
-    let generics_span = mk_sp(context.codemap.span_after(span, "type"), ty.span.lo);
-    let shape = generics_shape_from_config(context.config,
-                                           try_opt!(Shape::indented(generics_indent,
-                                                                    context.config)
-                                                        .sub_width(" =".len())),
-                                           0);
-    let generics_str =
-        try_opt!(rewrite_generics(context, generics, shape, shape.width, generics_span));
-
+    // 2 = `= `
+    let shape = try_opt!(Shape::indented(indent + result.len(), context.config).sub_width(2));
+    let g_span = mk_sp(context.codemap.span_after(span, "type"), ty.span.lo);
+    let generics_str = try_opt!(rewrite_generics(context, generics, shape, g_span));
     result.push_str(&generics_str);
 
     let where_budget = try_opt!(context
@@ -1470,23 +1452,14 @@ pub fn rewrite_associated_type(ident: ast::Ident,
     let prefix = format!("type {}", ident);
 
     let type_bounds_str = if let Some(ty_param_bounds) = ty_param_bounds_opt {
-        let joiner = match context.config.type_punctuation_density() {
-            TypeDensity::Compressed => "+",
-            TypeDensity::Wide => " + ",
-        };
+        let shape = Shape::legacy(context.config.max_width(), indent);
         let bounds: &[_] = ty_param_bounds;
-        let bound_str =
-            try_opt!(bounds
-                         .iter()
-                         .map(|ty_bound| {
-                                  ty_bound.rewrite(context,
-                                                   Shape::legacy(context.config.max_width(),
-                                                                 indent))
-                              })
-                         .collect::<Option<Vec<_>>>())
-                .join(joiner);
+        let bound_str = try_opt!(bounds
+                                     .iter()
+                                     .map(|ty_bound| ty_bound.rewrite(context, shape))
+                                     .collect::<Option<Vec<_>>>());
         if bounds.len() > 0 {
-            format!(": {}", bound_str)
+            format!(": {}", join_bounds(context, shape, &bound_str))
         } else {
             String::new()
         }
@@ -1711,13 +1684,9 @@ fn rewrite_fn_base(context: &RewriteContext,
     result.push_str(&ident.to_string());
 
     // Generics.
-    let generics_indent = indent + last_line_width(&result);
-    let generics_span = mk_sp(span.lo, span_for_return(&fd.output).lo);
-    let shape = generics_shape_from_config(context.config,
-                                           Shape::indented(generics_indent, context.config),
-                                           0);
-    let generics_str =
-        try_opt!(rewrite_generics(context, generics, shape, shape.width, generics_span));
+    let shape = Shape::indented(indent + last_line_width(&result), context.config);
+    let g_span = mk_sp(span.lo, span_for_return(&fd.output).lo);
+    let generics_str = try_opt!(rewrite_generics(context, generics, shape, g_span));
     result.push_str(&generics_str);
 
     let snuggle_angle_bracket = generics_str
@@ -2182,9 +2151,19 @@ fn newline_for_brace(config: &Config, where_clause: &ast::WhereClause) -> bool {
 fn rewrite_generics(context: &RewriteContext,
                     generics: &ast::Generics,
                     shape: Shape,
-                    one_line_width: usize,
                     span: Span)
                     -> Option<String> {
+    let shape = generics_shape_from_config(context.config, shape, 0);
+    rewrite_generics_inner(context, generics, shape, shape.width, span)
+        .or_else(|| rewrite_generics_inner(context, generics, shape, 0, span))
+}
+
+fn rewrite_generics_inner(context: &RewriteContext,
+                          generics: &ast::Generics,
+                          shape: Shape,
+                          one_line_width: usize,
+                          span: Span)
+                          -> Option<String> {
     // FIXME: convert bounds to where clauses where they get too big or if
     // there is a where clause at all.
     let lifetimes: &[_] = &generics.lifetimes;
@@ -2286,20 +2265,11 @@ fn rewrite_trait_bounds(context: &RewriteContext,
     if bounds.is_empty() {
         return Some(String::new());
     }
-    let joiner = match context.config.type_punctuation_density() {
-        TypeDensity::Compressed => "+",
-        TypeDensity::Wide => " + ",
-    };
     let bound_str = try_opt!(bounds
                                  .iter()
                                  .map(|ty_bound| ty_bound.rewrite(&context, shape))
-                                 .collect::<Option<Vec<_>>>())
-        .join(joiner);
-
-    let mut result = String::new();
-    result.push_str(": ");
-    result.push_str(&bound_str);
-    Some(result)
+                                 .collect::<Option<Vec<_>>>());
+    Some(format!(": {}", join_bounds(context, shape, &bound_str)))
 }
 
 fn rewrite_where_clause_rfc_style(context: &RewriteContext,
@@ -2463,9 +2433,8 @@ fn format_generics(context: &RewriteContext,
                    offset: Indent,
                    span: Span)
                    -> Option<String> {
-    let shape =
-        generics_shape_from_config(context.config, Shape::indented(offset, context.config), 0);
-    let mut result = try_opt!(rewrite_generics(context, generics, shape, shape.width, span));
+    let shape = Shape::indented(offset, context.config);
+    let mut result = try_opt!(rewrite_generics(context, generics, shape, span));
 
     if !generics.where_clause.predicates.is_empty() || result.contains('\n') {
         let budget = try_opt!(context
