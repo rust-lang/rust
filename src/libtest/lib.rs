@@ -212,6 +212,7 @@ pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,
     pub should_panic: ShouldPanic,
+    pub serial: bool,
 }
 
 #[derive(Clone)]
@@ -423,7 +424,10 @@ Test Attributes:
     #[ignore]      - When applied to a function which is already attributed as a
                      test, then the test runner will ignore these tests during
                      normal test runs. Running with --ignored will run these
-                     tests."#,
+                     tests.
+    #[serial]      - When applied to a function which is already attributed as a
+                     test, then the test runner will not run these tests in
+                     parallel with any other tests."#,
              usage = getopts::usage(&message, &optgroups()));
 }
 
@@ -944,12 +948,14 @@ fn should_sort_failures_before_printing_them() {
         name: StaticTestName("a"),
         ignore: false,
         should_panic: ShouldPanic::No,
+        serial: false,
     };
 
     let test_b = TestDesc {
         name: StaticTestName("b"),
         ignore: false,
         should_panic: ShouldPanic::No,
+        serial: false,
     };
 
     let mut st = ConsoleTestState {
@@ -1705,6 +1711,7 @@ mod tests {
                 name: StaticTestName("whatever"),
                 ignore: true,
                 should_panic: ShouldPanic::No,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1722,6 +1729,7 @@ mod tests {
                 name: StaticTestName("whatever"),
                 ignore: true,
                 should_panic: ShouldPanic::No,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1741,6 +1749,7 @@ mod tests {
                 name: StaticTestName("whatever"),
                 ignore: false,
                 should_panic: ShouldPanic::Yes,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1760,6 +1769,7 @@ mod tests {
                 name: StaticTestName("whatever"),
                 ignore: false,
                 should_panic: ShouldPanic::YesWithMessage("error message"),
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1781,6 +1791,7 @@ mod tests {
                 name: StaticTestName("whatever"),
                 ignore: false,
                 should_panic: ShouldPanic::YesWithMessage(expected),
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1798,6 +1809,7 @@ mod tests {
                 name: StaticTestName("whatever"),
                 ignore: false,
                 should_panic: ShouldPanic::Yes,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1831,6 +1843,7 @@ mod tests {
                                  name: StaticTestName("1"),
                                  ignore: true,
                                  should_panic: ShouldPanic::No,
+                                 serial: false,
                              },
                              testfn: DynTestFn(Box::new(move |()| {})),
                          },
@@ -1839,6 +1852,7 @@ mod tests {
                                  name: StaticTestName("2"),
                                  ignore: false,
                                  should_panic: ShouldPanic::No,
+                                 serial: false,
                              },
                              testfn: DynTestFn(Box::new(move |()| {})),
                          }];
@@ -1862,6 +1876,7 @@ mod tests {
                     name: StaticTestName(name),
                     ignore: false,
                     should_panic: ShouldPanic::No,
+                    serial: false,
                 },
                 testfn: DynTestFn(Box::new(move |()| {}))
             })
@@ -1943,6 +1958,7 @@ mod tests {
                         name: DynTestName((*name).clone()),
                         ignore: false,
                         should_panic: ShouldPanic::No,
+                        serial: false,
                     },
                     testfn: DynTestFn(Box::new(move |()| testfn())),
                 };
