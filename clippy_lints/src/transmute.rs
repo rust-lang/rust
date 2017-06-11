@@ -1,6 +1,5 @@
 use rustc::lint::*;
-use rustc::ty::TypeVariants::{TyRawPtr, TyRef};
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use rustc::hir::*;
 use utils::{match_def_path, paths, span_lint, span_lint_and_then, snippet, last_path_segment};
 use utils::sugg;
@@ -101,7 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                       e.span,
                                       &format!("transmute from a type (`{}`) to itself", from_ty))
                         },
-                        (&TyRef(_, rty), &TyRawPtr(ptr_ty)) => {
+                        (&ty::TyRef(_, rty), &ty::TyRawPtr(ptr_ty)) => {
                             span_lint_and_then(cx,
                                                USELESS_TRANSMUTE,
                                                e.span,
@@ -116,8 +115,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                                    db.span_suggestion(e.span, "try", sugg.to_string());
                                                })
                         },
-                        (&ty::TyInt(_), &TyRawPtr(_)) |
-                        (&ty::TyUint(_), &TyRawPtr(_)) => {
+                        (&ty::TyInt(_), &ty::TyRawPtr(_)) |
+                        (&ty::TyUint(_), &ty::TyRawPtr(_)) => {
                             span_lint_and_then(cx,
                                                USELESS_TRANSMUTE,
                                                e.span,
@@ -128,16 +127,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                                                       arg.as_ty(&to_ty.to_string()).to_string());
                                                })
                         },
-                        (&ty::TyFloat(_), &TyRef(..)) |
-                        (&ty::TyFloat(_), &TyRawPtr(_)) |
-                        (&ty::TyChar, &TyRef(..)) |
-                        (&ty::TyChar, &TyRawPtr(_)) => {
+                        (&ty::TyFloat(_), &ty::TyRef(..)) |
+                        (&ty::TyFloat(_), &ty::TyRawPtr(_)) |
+                        (&ty::TyChar, &ty::TyRef(..)) |
+                        (&ty::TyChar, &ty::TyRawPtr(_)) => {
                             span_lint(cx,
                                       WRONG_TRANSMUTE,
                                       e.span,
                                       &format!("transmute from a `{}` to a pointer", from_ty))
                         },
-                        (&TyRawPtr(from_ptr), _) if from_ptr.ty == to_ty => {
+                        (&ty::TyRawPtr(from_ptr), _) if from_ptr.ty == to_ty => {
                             span_lint(cx,
                                       CROSSPOINTER_TRANSMUTE,
                                       e.span,
@@ -145,7 +144,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                                from_ty,
                                                to_ty))
                         },
-                        (_, &TyRawPtr(to_ptr)) if to_ptr.ty == from_ty => {
+                        (_, &ty::TyRawPtr(to_ptr)) if to_ptr.ty == from_ty => {
                             span_lint(cx,
                                       CROSSPOINTER_TRANSMUTE,
                                       e.span,
@@ -153,7 +152,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                                from_ty,
                                                to_ty))
                         },
-                        (&TyRawPtr(from_pty), &TyRef(_, to_rty)) => {
+                        (&ty::TyRawPtr(from_pty), &ty::TyRef(_, to_rty)) => {
                             span_lint_and_then(cx,
                                                TRANSMUTE_PTR_TO_REF,
                                                e.span,
@@ -189,7 +188,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
 /// Get the snippet of `Bar` in `…::transmute<Foo, &Bar>`. If that snippet is not available , use
 /// the type's `ToString` implementation. In weird cases it could lead to types with invalid `'_`
 /// lifetime, but it should be rare.
-fn get_type_snippet(cx: &LateContext, path: &QPath, to_rty: ty::Ty) -> String {
+fn get_type_snippet(cx: &LateContext, path: &QPath, to_rty: Ty) -> String {
     let seg = last_path_segment(path);
     if_let_chain!{[
         let PathParameters::AngleBracketedParameters(ref ang) = seg.parameters,

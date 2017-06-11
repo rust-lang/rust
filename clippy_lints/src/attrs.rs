@@ -3,7 +3,7 @@
 use reexport::*;
 use rustc::lint::*;
 use rustc::hir::*;
-use rustc::ty;
+use rustc::ty::{self, TyCtxt};
 use semver::Version;
 use syntax::ast::{Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use syntax::codemap::Span;
@@ -158,7 +158,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
     }
 }
 
-fn is_relevant_item(tcx: ty::TyCtxt, item: &Item) -> bool {
+fn is_relevant_item(tcx: TyCtxt, item: &Item) -> bool {
     if let ItemFn(_, _, _, _, _, eid) = item.node {
         is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir.body(eid).value)
     } else {
@@ -166,14 +166,14 @@ fn is_relevant_item(tcx: ty::TyCtxt, item: &Item) -> bool {
     }
 }
 
-fn is_relevant_impl(tcx: ty::TyCtxt, item: &ImplItem) -> bool {
+fn is_relevant_impl(tcx: TyCtxt, item: &ImplItem) -> bool {
     match item.node {
         ImplItemKind::Method(_, eid) => is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir.body(eid).value),
         _ => false,
     }
 }
 
-fn is_relevant_trait(tcx: ty::TyCtxt, item: &TraitItem) -> bool {
+fn is_relevant_trait(tcx: TyCtxt, item: &TraitItem) -> bool {
     match item.node {
         TraitItemKind::Method(_, TraitMethod::Required(_)) => true,
         TraitItemKind::Method(_, TraitMethod::Provided(eid)) => {
@@ -183,7 +183,7 @@ fn is_relevant_trait(tcx: ty::TyCtxt, item: &TraitItem) -> bool {
     }
 }
 
-fn is_relevant_block(tcx: ty::TyCtxt, tables: &ty::TypeckTables, block: &Block) -> bool {
+fn is_relevant_block(tcx: TyCtxt, tables: &ty::TypeckTables, block: &Block) -> bool {
     for stmt in &block.stmts {
         match stmt.node {
             StmtDecl(_, _) => return true,
@@ -196,7 +196,7 @@ fn is_relevant_block(tcx: ty::TyCtxt, tables: &ty::TypeckTables, block: &Block) 
     block.expr.as_ref().map_or(false, |e| is_relevant_expr(tcx, tables, e))
 }
 
-fn is_relevant_expr(tcx: ty::TyCtxt, tables: &ty::TypeckTables, expr: &Expr) -> bool {
+fn is_relevant_expr(tcx: TyCtxt, tables: &ty::TypeckTables, expr: &Expr) -> bool {
     match expr.node {
         ExprBlock(ref block) => is_relevant_block(tcx, tables, block),
         ExprRet(Some(ref e)) => is_relevant_expr(tcx, tables, e),

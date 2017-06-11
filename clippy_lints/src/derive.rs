@@ -1,6 +1,5 @@
 use rustc::lint::*;
-use rustc::ty::TypeVariants;
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use rustc::hir::*;
 use syntax::codemap::Span;
 use utils::paths;
@@ -89,7 +88,7 @@ fn check_hash_peq<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     span: Span,
     trait_ref: &TraitRef,
-    ty: ty::Ty<'tcx>,
+    ty: Ty<'tcx>,
     hash_is_automatically_derived: bool
 ) {
     if_let_chain! {[
@@ -134,27 +133,27 @@ fn check_hash_peq<'a, 'tcx>(
 }
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
-fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref: &TraitRef, ty: ty::Ty<'tcx>) {
+fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref: &TraitRef, ty: Ty<'tcx>) {
     if match_path_old(&trait_ref.path, &paths::CLONE_TRAIT) {
         if !is_copy(cx, ty) {
             return;
         }
 
         match ty.sty {
-            TypeVariants::TyAdt(def, _) if def.is_union() => return,
+            ty::TyAdt(def, _) if def.is_union() => return,
 
             // Some types are not Clone by default but could be cloned “by hand” if necessary
-            TypeVariants::TyAdt(def, substs) => {
+            ty::TyAdt(def, substs) => {
                 for variant in &def.variants {
                     for field in &variant.fields {
                         match field.ty(cx.tcx, substs).sty {
-                            TypeVariants::TyArray(_, size) if size > 32 => {
+                            ty::TyArray(_, size) if size > 32 => {
                                 return;
                             },
-                            TypeVariants::TyFnPtr(..) => {
+                            ty::TyFnPtr(..) => {
                                 return;
                             },
-                            TypeVariants::TyTuple(tys, _) if tys.len() > 12 => {
+                            ty::TyTuple(tys, _) if tys.len() > 12 => {
                                 return;
                             },
                             _ => (),

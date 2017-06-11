@@ -1,6 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::*;
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use rustc_const_eval::ConstContext;
 use syntax::codemap::Span;
 use utils::{higher, is_copy, snippet, span_lint_and_then};
@@ -35,8 +35,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // search for `&vec![_]` expressions where the adjusted type is `&[_]`
         if_let_chain!{[
-            let ty::TypeVariants::TyRef(_, ref ty) = cx.tables.expr_ty_adjusted(expr).sty,
-            let ty::TypeVariants::TySlice(..) = ty.ty.sty,
+            let ty::TyRef(_, ref ty) = cx.tables.expr_ty_adjusted(expr).sty,
+            let ty::TySlice(..) = ty.ty.sty,
             let ExprAddrOf(_, ref addressee) = expr.node,
             let Some(vec_args) = higher::vec_macro(cx, addressee),
         ], {
@@ -88,7 +88,7 @@ fn check_vec_macro(cx: &LateContext, vec_args: &higher::VecArgs, span: Span) {
 }
 
 /// Return the item type of the vector (ie. the `T` in `Vec<T>`).
-fn vec_type(ty: ty::Ty) -> ty::Ty {
+fn vec_type(ty: Ty) -> Ty {
     if let ty::TyAdt(_, substs) = ty.sty {
         substs.type_at(0)
     } else {

@@ -4,7 +4,7 @@ use rustc::hir::map::Node::{NodeExpr, NodeStmt};
 use rustc::lint::*;
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::{cmt, Categorization};
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use rustc::util::nodemap::NodeSet;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
@@ -37,7 +37,7 @@ declare_lint! {
     "using `Box<T>` where unnecessary"
 }
 
-fn is_non_trait_box(ty: ty::Ty) -> bool {
+fn is_non_trait_box(ty: Ty) -> bool {
     ty.is_box() && !ty.boxed_ty().is_trait()
 }
 
@@ -168,7 +168,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {
-    fn is_large_box(&self, ty: ty::Ty<'tcx>) -> bool {
+    fn is_large_box(&self, ty: Ty<'tcx>) -> bool {
         // Large types need to be boxed to avoid stack
         // overflows.
         if ty.is_box() {

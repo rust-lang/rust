@@ -1,7 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use rustc_const_eval::ConstContext;
 use rustc_const_math::ConstInt;
 use std::cmp::Ordering;
@@ -231,7 +231,7 @@ fn check_single_match_opt_like(
     ex: &Expr,
     arms: &[Arm],
     expr: &Expr,
-    ty: ty::Ty,
+    ty: Ty,
     els: Option<&Expr>
 ) {
     // list of candidate Enums we know will never get any more members

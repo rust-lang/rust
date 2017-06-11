@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use rustc::ty::{TypeAndMut, TypeVariants, TyS};
+use rustc::ty::{self, Ty};
 use rustc::ty::subst::Subst;
 use rustc::hir::*;
 use utils::span_lint;
@@ -55,15 +55,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
     }
 }
 
-fn check_arguments(cx: &LateContext, arguments: &[Expr], type_definition: &TyS, name: &str) {
+fn check_arguments(cx: &LateContext, arguments: &[Expr], type_definition: Ty, name: &str) {
     match type_definition.sty {
-        TypeVariants::TyFnDef(_, _, fn_type) |
-        TypeVariants::TyFnPtr(fn_type) => {
+        ty::TyFnDef(_, _, fn_type) |
+        ty::TyFnPtr(fn_type) => {
             let parameters = fn_type.skip_binder().inputs();
             for (argument, parameter) in arguments.iter().zip(parameters.iter()) {
                 match parameter.sty {
-                    TypeVariants::TyRef(_, TypeAndMut { mutbl: MutImmutable, .. }) |
-                    TypeVariants::TyRawPtr(TypeAndMut { mutbl: MutImmutable, .. }) => {
+                    ty::TyRef(_, ty::TypeAndMut { mutbl: MutImmutable, .. }) |
+                    ty::TyRawPtr(ty::TypeAndMut { mutbl: MutImmutable, .. }) => {
                         if let ExprAddrOf(MutMutable, _) = argument.node {
                             span_lint(cx,
                                       UNNECESSARY_MUT_PASSED,

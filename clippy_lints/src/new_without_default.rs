@@ -2,7 +2,7 @@ use rustc::hir::intravisit::FnKind;
 use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::lint::*;
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use syntax::ast;
 use syntax::codemap::Span;
 use utils::paths;
@@ -150,7 +150,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
     }
 }
 
-fn can_derive_default<'t, 'c>(ty: ty::Ty<'t>, cx: &LateContext<'c, 't>, default_trait_id: DefId) -> Option<Span> {
+fn can_derive_default<'t, 'c>(ty: Ty<'t>, cx: &LateContext<'c, 't>, default_trait_id: DefId) -> Option<Span> {
     match ty.sty {
         ty::TyAdt(adt_def, substs) if adt_def.is_struct() => {
             for field in adt_def.all_fields() {

@@ -7,7 +7,7 @@ use rustc::hir::map::Node::NodeBlock;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::region::CodeExtent;
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use rustc::ty::subst::Subst;
 use rustc_const_eval::ConstContext;
 use std::collections::HashMap;
@@ -985,7 +985,7 @@ fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
     match_type(cx, ty, &paths::BTREESET)
 }
 
-fn is_iterable_array(ty: ty::Ty) -> bool {
+fn is_iterable_array(ty: Ty) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
     match ty.sty {
         ty::TyArray(_, 0...32) => true,

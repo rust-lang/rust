@@ -1,8 +1,9 @@
 use reexport::*;
+use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::intravisit::{FnKind, Visitor, walk_ty, NestedVisitorMap};
 use rustc::lint::*;
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use std::cmp::Ordering;
 use syntax::ast::{IntTy, UintTy, FloatTy};
 use syntax::attr::IntType;
@@ -106,7 +107,7 @@ fn check_fn_decl(cx: &LateContext, decl: &FnDecl) {
     }
 }
 
-fn check_ty(cx: &LateContext, ast_ty: &Ty) {
+fn check_ty(cx: &LateContext, ast_ty: &hir::Ty) {
     if in_macro(ast_ty.span) {
         return;
     }
@@ -398,7 +399,7 @@ declare_lint! {
 
 /// Returns the size in bits of an integral type.
 /// Will return 0 if the type is not an int or uint variant
-fn int_ty_to_nbits(typ: &ty::TyS) -> usize {
+fn int_ty_to_nbits(typ: Ty) -> usize {
     let n = match typ.sty {
         ty::TyInt(i) => 4 << (i as usize),
         ty::TyUint(u) => 4 << (u as usize),
@@ -412,7 +413,7 @@ fn int_ty_to_nbits(typ: &ty::TyS) -> usize {
     }
 }
 
-fn is_isize_or_usize(typ: &ty::TyS) -> bool {
+fn is_isize_or_usize(typ: Ty) -> bool {
     match typ.sty {
         ty::TyInt(IntTy::Is) |
         ty::TyUint(UintTy::Us) => true,
@@ -420,7 +421,7 @@ fn is_isize_or_usize(typ: &ty::TyS) -> bool {
     }
 }
 
-fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: &ty::TyS, cast_to_f64: bool) {
+fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: Ty, cast_to_f64: bool) {
     let mantissa_nbits = if cast_to_f64 { 52 } else { 23 };
     let arch_dependent = is_isize_or_usize(cast_from) && cast_to_f64;
     let arch_dependent_str = "on targets with 64-bit wide pointers ";
@@ -453,7 +454,7 @@ enum ArchSuffix {
     None,
 }
 
-fn check_truncation_and_wrapping(cx: &LateContext, expr: &Expr, cast_from: &ty::TyS, cast_to: &ty::TyS) {
+fn check_truncation_and_wrapping(cx: &LateContext, expr: &Expr, cast_from: Ty, cast_to: Ty) {
     let arch_64_suffix = " on targets with 64-bit wide pointers";
     let arch_32_suffix = " on targets with 32-bit wide pointers";
     let cast_unsigned_to_signed = !cast_from.is_signed() && cast_to.is_signed();
@@ -693,7 +694,7 @@ impl<'a, 'tcx> TypeComplexityPass {
         }
     }
 
-    fn check_type(&self, cx: &LateContext, ty: &Ty) {
+    fn check_type(&self, cx: &LateContext, ty: &hir::Ty) {
         if in_macro(ty.span) {
             return;
         }
@@ -724,7 +725,7 @@ struct TypeComplexityVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
-    fn visit_ty(&mut self, ty: &'tcx Ty) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         let (add_score, sub_nest) = match ty.node {
             // _, &x and *x have only small overhead; don't mess with nesting level
             TyInfer | TyPtr(..) | TyRptr(..) => (1, 0),
@@ -1070,7 +1071,6 @@ impl Ord for FullInt {
 
 
 fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(FullInt, FullInt)> {
-    use rustc::ty::TypeVariants::{TyInt, TyUint};
     use syntax::ast::{IntTy, UintTy};
     use std::*;
 
@@ -1082,7 +1082,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
             return None;
         }
         match pre_cast_ty.sty {
-            TyInt(int_ty) => {
+            ty::TyInt(int_ty) => {
                 Some(match int_ty {
                     IntTy::I8 => (FullInt::S(i8::min_value() as i128), FullInt::S(i8::max_value() as i128)),
                     IntTy::I16 => (FullInt::S(i16::min_value() as i128), FullInt::S(i16::max_value() as i128)),
@@ -1092,7 +1092,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
                     IntTy::Is => (FullInt::S(isize::min_value() as i128), FullInt::S(isize::max_value() as i128)),
                 })
             },
-            TyUint(uint_ty) => {
+            ty::TyUint(uint_ty) => {
                 Some(match uint_ty {
                     UintTy::U8 => (FullInt::U(u8::min_value() as u128), FullInt::U(u8::max_value() as u128)),
                     UintTy::U16 => (FullInt::U(u16::min_value() as u128), FullInt::U(u16::max_value() as u128)),

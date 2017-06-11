@@ -1,7 +1,7 @@
 use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::lint::*;
-use rustc::ty::{TypeAndMut, TyRef};
+use rustc::ty;
 use utils::{higher, in_external_macro, span_lint};
 
 /// **What it does:** Checks for instances of `mut mut` references.
@@ -68,7 +68,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
                           MUT_MUT,
                           expr.span,
                           "generally you want to avoid `&mut &mut _` if possible");
-            } else if let TyRef(_, TypeAndMut { mutbl: hir::MutMutable, .. }) = self.cx.tables.expr_ty(e).sty {
+            } else if let ty::TyRef(_, ty::TypeAndMut { mutbl: hir::MutMutable, .. }) = self.cx.tables.expr_ty(e).sty {
                 span_lint(self.cx,
                           MUT_MUT,
                           expr.span,
