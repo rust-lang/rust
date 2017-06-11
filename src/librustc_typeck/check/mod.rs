@@ -2952,30 +2952,34 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 .emit();
             self.tcx().types.err
         } else {
-            let mut err = self.type_error_struct(field.span, |actual| {
-                format!("no field `{}` on type `{}`",
-                        field.node, actual)
-            }, expr_t);
-            match expr_t.sty {
-                ty::TyAdt(def, _) if !def.is_enum() => {
-                    if let Some(suggested_field_name) =
-                        Self::suggest_field_name(def.struct_variant(), field, vec![]) {
-                            err.span_label(field.span,
-                                           format!("did you mean `{}`?", suggested_field_name));
-                        } else {
-                            err.span_label(field.span,
-                                           "unknown field");
-                        };
+            if !expr_t.is_primitive_ty() {
+                let mut err = type_error_struct!(self.tcx().sess, field.span, expr_t, E0609,
+                                                 "no field `{}` on type `{}`",
+                                                 field.node, expr_t);
+                match expr_t.sty {
+                    ty::TyAdt(def, _) if !def.is_enum() => {
+                        if let Some(suggested_field_name) =
+                            Self::suggest_field_name(def.struct_variant(), field, vec![]) {
+                                err.span_label(field.span,
+                                               format!("did you mean `{}`?", suggested_field_name));
+                            } else {
+                                err.span_label(field.span, "unknown field");
+                            };
+                    }
+                    ty::TyRawPtr(..) => {
+                        err.note(&format!("`{0}` is a native pointer; perhaps you need to deref \
+                                           with `(*{0}).{1}`",
+                                          self.tcx.hir.node_to_pretty_string(base.id),
+                                          field.node));
+                    }
+                    _ => {}
                 }
-                ty::TyRawPtr(..) => {
-                    err.note(&format!("`{0}` is a native pointer; perhaps you need to deref with \
-                                      `(*{0}).{1}`",
-                                      self.tcx.hir.node_to_pretty_string(base.id),
-                                      field.node));
-                }
-                _ => {}
-            }
-            err.emit();
+                err
+            } else {
+                type_error_struct!(self.tcx().sess, field.span, expr_t, E0610,
+                                   "`{}` is a primitive type and therefore doesn't have fields",
+                                   expr_t)
+            }.emit();
             self.tcx().types.err
         }
     }
