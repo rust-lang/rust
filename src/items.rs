@@ -676,25 +676,26 @@ fn format_impl_ref_and_type(context: &RewriteContext,
         };
 
         if let Some(ref trait_ref) = *trait_ref {
-            let success = format_trait_ref_then_update_result(context,
-                                                              &trait_ref,
-                                                              offset,
-                                                              &generics_str,
-                                                              true,
-                                                              polarity_str,
-                                                              &mut result);
-            if !success {
+            let result_len = result.len();
+            if let Some(trait_ref_str) =
+                rewrite_trait_ref(context,
+                                  &trait_ref,
+                                  offset,
+                                  &generics_str,
+                                  true,
+                                  polarity_str,
+                                  result_len) {
+                result.push_str(&trait_ref_str);
+            } else {
                 let generics_str =
                     try_opt!(rewrite_generics_inner(context, generics, shape, 0, mk_sp(lo, hi)));
-                if !format_trait_ref_then_update_result(context,
-                                                        &trait_ref,
-                                                        offset,
-                                                        &generics_str,
-                                                        false,
-                                                        polarity_str,
-                                                        &mut result) {
-                    return None;
-                }
+                result.push_str(&try_opt!(rewrite_trait_ref(context,
+                                                            &trait_ref,
+                                                            offset,
+                                                            &generics_str,
+                                                            false,
+                                                            polarity_str,
+                                                            result_len)));
             }
         } else {
             result.push_str(&generics_str);
@@ -752,43 +753,40 @@ fn format_impl_ref_and_type(context: &RewriteContext,
     }
 }
 
-// Returns false if failed to update result: then, try using multiline.
-fn format_trait_ref_then_update_result(context: &RewriteContext,
-                                       trait_ref: &ast::TraitRef,
-                                       offset: Indent,
-                                       generics_str: &str,
-                                       retry: bool,
-                                       polarity_str: &str,
-                                       result: &mut String)
-                                       -> bool {
+fn rewrite_trait_ref(context: &RewriteContext,
+                     trait_ref: &ast::TraitRef,
+                     offset: Indent,
+                     generics_str: &str,
+                     retry: bool,
+                     polarity_str: &str,
+                     result_len: usize)
+                     -> Option<String> {
     // 1 = space between generics and trait_ref
     let used_space = 1 + polarity_str.len() +
                      if generics_str.contains('\n') {
                          last_line_width(&generics_str)
                      } else {
-                         result.len() + generics_str.len()
+                         result_len + generics_str.len()
                      };
     let shape = Shape::indented(offset + used_space, context.config);
     if let Some(trait_ref_str) = trait_ref.rewrite(context, shape) {
         if !(retry && trait_ref_str.contains('\n')) {
-            result.push_str(&format!("{} {}{}", generics_str, polarity_str, &trait_ref_str));
-            return true;
+            return Some(format!("{} {}{}", generics_str, polarity_str, &trait_ref_str));
         }
     }
     // We could not make enough space for trait_ref, so put it on new line.
     if !retry {
         let offset = offset.block_indent(context.config);
         let shape = Shape::indented(offset, context.config);
-        if let Some(trait_ref_str) = trait_ref.rewrite(context, shape) {
-            result.push_str(&format!("{}\n{}{}{}",
-                                     generics_str,
-                                     &offset.to_string(context.config),
-                                     polarity_str,
-                                     &trait_ref_str));
-            return true;
-        }
+        let trait_ref_str = try_opt!(trait_ref.rewrite(context, shape));
+        Some(format!("{}\n{}{}{}",
+                     generics_str,
+                     &offset.to_string(context.config),
+                     polarity_str,
+                     &trait_ref_str))
+    } else {
+        None
     }
-    false
 }
 
 pub fn format_struct(context: &RewriteContext,
