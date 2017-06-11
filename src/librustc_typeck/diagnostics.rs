@@ -4096,7 +4096,7 @@ assert_eq!(!Question::No, true);
 "##,
 
 E0609: r##"
-An attempt to access a non-existent field in a struct was performed.
+Attempted to access a non-existent field in a struct.
 
 Erroneous code example:
 
@@ -4109,8 +4109,8 @@ let s = StructWithFields { x: 0 };
 println!("{}", s.foo); // error: no field `foo` on type `StructWithFields`
 ```
 
-To fix this error, check if you didn't misspell the field's name or that the
-field actually exist. Example:
+To fix this error, check that you didn't misspell the field's name or that the
+field actually exists. Example:
 
 ```
 struct StructWithFields {
@@ -4120,6 +4120,36 @@ struct StructWithFields {
 let s = StructWithFields { x: 0 };
 println!("{}", s.x); // ok!
 ```
+"##,
+
+E0610: r##"
+Attempted to access a field on a primitive type.
+
+Erroneous code example:
+
+```compile_fail,E0610
+let x: u32 = 0;
+println!("{}", x.foo); // error: `{integer}` is a primitive type, therefore
+                       //        doesn't have fields
+```
+
+Primitive types are the most basic types available in Rust and don't have
+fields. To access data via named fields, struct types are used. Example:
+
+```
+// We declare struct called `Foo` containing two fields:
+struct Foo {
+    x: u32,
+    y: i64,
+}
+
+// We create an instance of this struct:
+let variable = Foo { x: 0, y: -12 };
+// And we can now access its fields:
+println!("x: {}, y: {}", variable.x, variable.y);
+```
+
+For more information see The Rust Book: https://doc.rust-lang.org/book/
 "##,
 
 }

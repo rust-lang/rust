@@ -465,6 +465,24 @@ impl<'tcx> Hash for TyS<'tcx> {
     }
 }
 
+impl<'tcx> TyS<'tcx> {
+    pub fn is_primitive_ty(&self) -> bool {
+        match self.sty {
+            TypeVariants::TyBool |
+                TypeVariants::TyChar |
+                TypeVariants::TyInt(_) |
+                TypeVariants::TyUint(_) |
+                TypeVariants::TyFloat(_) |
+                TypeVariants::TyInfer(InferTy::IntVar(_)) |
+                TypeVariants::TyInfer(InferTy::FloatVar(_)) |
+                TypeVariants::TyInfer(InferTy::FreshIntTy(_)) |
+                TypeVariants::TyInfer(InferTy::FreshFloatTy(_)) => true,
+            TypeVariants::TyRef(_, x) => x.ty.is_primitive_ty(),
+            _ => false,
+        }
+    }
+}
+
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::TyS<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
