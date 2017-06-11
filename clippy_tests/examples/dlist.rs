@@ -34,6 +34,11 @@ pub fn test_ret() -> Option<LinkedList<u8>> {
     unimplemented!();
 }
 
+pub fn test_local_not_linted() {
+    let _: LinkedList<u8>;
+}
+
 fn main(){
     test(LinkedList::new());
+    test_local_not_linted();
 }
