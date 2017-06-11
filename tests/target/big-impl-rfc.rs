@@ -5,7 +5,7 @@
 
 // #1357
 impl<'a, Select, From, Distinct, Where, Order, Limit, Offset, Groupby, DB> InternalBoxedDsl<'a, DB>
-for SelectStatement<Select, From, Distinct, Where, Order, Limit, Offset, GroupBy>
+    for SelectStatement<Select, From, Distinct, Where, Order, Limit, Offset, GroupBy>
 where
     DB: Backend,
     Select: QueryFragment<DB> + SelectableExpression<From> + 'a,
@@ -32,11 +32,11 @@ where
 
 // #1369
 impl<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName> Foo
-for Bar {
+    for Bar {
     fn foo() {}
 }
 impl Foo<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName>
-for Bar {
+    for Bar {
     fn foo() {}
 }
 impl<
@@ -44,15 +44,23 @@ impl<
     ExcessivelyLongGenericName,
     AnotherExcessivelyLongGenericName,
 > Foo<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName>
-for Bar {
+    for Bar {
     fn foo() {}
 }
 impl<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName> Foo
-for Bar<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName> {
+    for Bar<
+        ExcessivelyLongGenericName,
+        ExcessivelyLongGenericName,
+        AnotherExcessivelyLongGenericName,
+    > {
     fn foo() {}
 }
 impl Foo<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName>
-for Bar<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName> {
+    for Bar<
+        ExcessivelyLongGenericName,
+        ExcessivelyLongGenericName,
+        AnotherExcessivelyLongGenericName,
+    > {
     fn foo() {}
 }
 impl<
@@ -60,6 +68,10 @@ impl<
     ExcessivelyLongGenericName,
     AnotherExcessivelyLongGenericName,
 > Foo<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName>
-for Bar<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName> {
+    for Bar<
+        ExcessivelyLongGenericName,
+        ExcessivelyLongGenericName,
+        AnotherExcessivelyLongGenericName,
+    > {
     fn foo() {}
 }
