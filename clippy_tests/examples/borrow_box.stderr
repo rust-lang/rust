@@ -1,0 +1,28 @@
+error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
+  --> borrow_box.rs:10:19
+   |
+10 | pub fn test1(foo: &Box<bool>) { //~ ERROR you seem to be trying to use `&Box<T>`
+   |                   ^^^^^^^^^^
+   |
+   = note: #[deny(borrowed_box)] implied by #[deny(clippy)]
+note: lint level defined here
+  --> borrow_box.rs:4:9
+   |
+4  | #![deny(clippy)]
+   |         ^^^^^^
+   = help: replace `&Box<T>` with simply `&T`
+
+error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
+  --> borrow_box.rs:19:10
+   |
+19 |     foo: &'a Box<bool> //~ ERROR you seem to be trying to use `&Box<T>`
+   |          ^^^^^^^^^^^^^
+   |
+   = note: #[deny(borrowed_box)] implied by #[deny(clippy)]
+   = help: replace `&Box<T>` with simply `&T`
+
+error: aborting due to previous error(s)
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.
