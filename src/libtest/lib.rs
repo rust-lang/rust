@@ -1069,7 +1069,9 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
         None => get_concurrency(),
     };
 
-    let mut remaining = filtered_tests;
+    let partitioned = filtered_tests.into_iter().partition(|t| t.desc.serial);
+    let serial: Vec<_> = partitioned.0;
+    let mut remaining: Vec<_> = partitioned.1;
     remaining.reverse();
     let mut pending = 0;
 
@@ -1138,6 +1140,34 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
         callback(TeResult(desc, result, stdout))?;
         pending -= 1;
     }
+
+                             for test in serial {
+                                 callback(TeWait(test.desc.clone(), test.testfn.padding()))?;
+                                 let timeout = Instant::now() + Duration::from_secs(TEST_WARN_TIMEOUT_S);
+                                 running_tests.insert(test.desc.clone(), timeout);
+                                 run_test(opts, !opts.run_tests, test, tx.clone());
+
+                                 let mut res;
+                                 loop {
+                                     if let Some(timeout) = calc_timeout(&running_tests) {
+                                         res = rx.recv_timeout(timeout);
+                                         for test in get_timed_out_tests(&mut running_tests) {
+                                             callback(TeTimeout(test))?;
+                                         }
+                                         if res != Err(RecvTimeoutError::Timeout) {
+                                             break;
+                                         }
+                                     } else {
+                                         res = rx.recv().map_err(|_| RecvTimeoutError::Disconnected);
+                                         break;
+                                     }
+                                 }
+
+                                 let (desc, result, stdout) = res.unwrap();
+                                 running_tests.remove(&desc);
+
+                                 callback(TeResult(desc, result, stdout))?;
+                             }
 
     if opts.bench_benchmarks {
         // All benchmarks run at the end, in serial.
