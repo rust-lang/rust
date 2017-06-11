@@ -197,8 +197,7 @@ declare_lint! {
 
 fn check_let_unit(cx: &LateContext, decl: &Decl) {
     if let DeclLocal(ref local) = decl.node {
-        let bindtype = &cx.tables.pat_ty(&local.pat).sty;
-        match *bindtype {
+        match cx.tables.pat_ty(&local.pat).sty {
             ty::TyTuple(slice, _) if slice.is_empty() => {
                 if in_external_macro(cx, decl.span) || in_macro(local.pat.span) {
                     return;
@@ -268,8 +267,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
         if let ExprBinary(ref cmp, ref left, _) = expr.node {
             let op = cmp.node;
             if op.is_comparison() {
-                let sty = &cx.tables.expr_ty(left).sty;
-                match *sty {
+                match cx.tables.expr_ty(left).sty {
                     ty::TyTuple(slice, _) if slice.is_empty() => {
                         let result = match op {
                             BiEq | BiLe | BiGe => "true",
@@ -910,9 +908,9 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
     use rustc_const_eval::*;
     use types::ExtremeType::*;
 
-    let ty = &cx.tables.expr_ty(expr).sty;
+    let ty = cx.tables.expr_ty(expr);
 
-    match *ty {
+    match ty.sty {
         ty::TyBool | ty::TyInt(_) | ty::TyUint(_) => (),
         _ => return None,
     };
@@ -922,7 +920,7 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
         Err(_) => return None,
     };
 
-    let which = match (ty, cv) {
+    let which = match (&ty.sty, cv) {
         (&ty::TyBool, Bool(false)) |
         (&ty::TyInt(IntTy::Is), Integral(Isize(Is32(::std::i32::MIN)))) |
         (&ty::TyInt(IntTy::Is), Integral(Isize(Is64(::std::i64::MIN)))) |
