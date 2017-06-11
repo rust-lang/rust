@@ -1,13 +1,10 @@
 max: TechnicallyBreaking
   Addition: b
-/home/twk/gsoc/rust-semverver/tests/examples/addition_path.rs:13:9: 14:6
 warning: change
 
   Addition: c
-/home/twk/gsoc/rust-semverver/tests/examples/addition_path.rs:17:9: 18:6
 warning: change
 
   Addition: Abc
-/home/twk/gsoc/rust-semverver/tests/examples/addition_path.rs:20:13: 20:25
 warning: change
 
