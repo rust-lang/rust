@@ -100,35 +100,41 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
     }
 
     fn check_struct_field(&mut self, cx: &LateContext, field: &StructField) {
-        check_ty(cx, &field.ty);
+        check_ty(cx, &field.ty, false);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
         match item.node {
             TraitItemKind::Const(ref ty, _) |
-            TraitItemKind::Type(_, Some(ref ty)) => check_ty(cx, ty),
+            TraitItemKind::Type(_, Some(ref ty)) => check_ty(cx, ty, false),
             TraitItemKind::Method(ref sig, _) => check_fn_decl(cx, &sig.decl),
             _ => (),
+        }
+    }
+
+    fn check_local(&mut self, cx: &LateContext, local: &Local) {
+        if let Some(ref ty) = local.ty {
+            check_ty(cx, ty, true);
         }
     }
 }
 
 fn check_fn_decl(cx: &LateContext, decl: &FnDecl) {
     for input in &decl.inputs {
-        check_ty(cx, input);
+        check_ty(cx, input, false);
     }
 
     if let FunctionRetTy::Return(ref ty) = decl.output {
-        check_ty(cx, ty);
+        check_ty(cx, ty, false);
     }
 }
 
-fn check_ty(cx: &LateContext, ast_ty: &hir::Ty) {
+fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
     if in_macro(ast_ty.span) {
         return;
     }
     match ast_ty.node {
-        TyPath(ref qpath) => {
+        TyPath(ref qpath) if !is_local => {
             let def = cx.tables.qpath_def(qpath, ast_ty.id);
             if let Some(def_id) = opt_def_id(def) {
                 if Some(def_id) == cx.tcx.lang_items.owned_box() {
@@ -159,20 +165,20 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty) {
             }
             match *qpath {
                 QPath::Resolved(Some(ref ty), ref p) => {
-                    check_ty(cx, ty);
+                    check_ty(cx, ty, is_local);
                     for ty in p.segments.iter().flat_map(|seg| seg.parameters.types()) {
-                        check_ty(cx, ty);
+                        check_ty(cx, ty, is_local);
                     }
                 },
                 QPath::Resolved(None, ref p) => {
                     for ty in p.segments.iter().flat_map(|seg| seg.parameters.types()) {
-                        check_ty(cx, ty);
+                        check_ty(cx, ty, is_local);
                     }
                 },
                 QPath::TypeRelative(ref ty, ref seg) => {
-                    check_ty(cx, ty);
+                    check_ty(cx, ty, is_local);
                     for ty in seg.parameters.types() {
-                        check_ty(cx, ty);
+                        check_ty(cx, ty, is_local);
                     }
                 },
             }
@@ -213,18 +219,18 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty) {
                             }};
                         }
                     }
-                    check_ty(cx, ty);
+                    check_ty(cx, ty, is_local);
                 },
-                _ => check_ty(cx, ty),
+                _ => check_ty(cx, ty, is_local),
             }
         },
         // recurse
         TySlice(ref ty) |
         TyArray(ref ty, _) |
-        TyPtr(MutTy { ref ty, .. }) => check_ty(cx, ty),
+        TyPtr(MutTy { ref ty, .. }) => check_ty(cx, ty, is_local),
         TyTup(ref tys) => {
             for ty in tys {
-                check_ty(cx, ty);
+                check_ty(cx, ty, is_local);
             }
         },
         _ => {},

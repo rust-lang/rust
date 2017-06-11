@@ -11,6 +11,12 @@ note: lint level defined here
   |         ^^^^^^^^^^^^
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
+  --> borrow_box.rs:14:14
+   |
+14 |     let foo: &Box<bool>;
+   |              ^^^^^^^^^^ help: try `&bool`
+
+error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
   --> borrow_box.rs:18:10
    |
 18 |     foo: &'a Box<bool>
