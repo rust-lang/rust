@@ -550,7 +550,8 @@ macro_rules! unreachable {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! unimplemented {
-    () => (panic!("not yet implemented"))
+    () => (panic!("not yet implemented"));
+    ($($arg:tt)+) => (panic!("not yet implemented: {}", format_args!($($arg)*)));
 }
 
 /// Built-in macros to the compiler itself.
