@@ -2032,7 +2032,7 @@ fn fulfill_obligation<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
-    tcx.infer_ctxt(()).enter(|infcx| {
+    tcx.infer_ctxt().enter(|infcx| {
         let mut selcx = traits::SelectionContext::new(&infcx);
 
         let obligation_cause = traits::ObligationCause::misc(span,
