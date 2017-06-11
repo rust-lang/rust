@@ -8,7 +8,7 @@ use std::cmp::Ordering;
 use syntax::ast::{IntTy, UintTy, FloatTy};
 use syntax::attr::IntType;
 use syntax::codemap::Span;
-use utils::{comparisons, higher, in_external_macro, in_macro, match_def_path, snippet, span_help_and_lint, span_lint,
+use utils::{comparisons, higher, in_external_macro, in_macro, match_def_path, snippet, span_help_and_lint, span_lint, span_lint_and_then,
             opt_def_id, last_path_segment, type_size};
 use utils::paths;
 
@@ -177,18 +177,40 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty) {
                 },
             }
         },
-        TyRptr(_, MutTy { ref ty, .. }) => {
+        TyRptr(ref lt, MutTy { ref ty, ref mutbl }) => {
             match ty.node {
                 TyPath(ref qpath) => {
                     let def = cx.tables.qpath_def(qpath, ast_ty.id);
                     if let Some(def_id) = opt_def_id(def) {
                         if Some(def_id) == cx.tcx.lang_items.owned_box() {
-                            span_help_and_lint(cx,
-                                               BORROWED_BOX,
-                                               ast_ty.span,
-                                               "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
-                                               "replace `&Box<T>` with simply `&T`");
-                            return; // don't recurse into the type
+                            if_let_chain! {[
+                                let &QPath::Resolved(None, ref path) = qpath,
+                                let [ref bx] = *path.segments,
+                                let PathParameters::AngleBracketedParameters(ref ab_data) = bx.parameters,
+                                let [ref inner] = *ab_data.types
+                            ], {
+                                let ltopt = if lt.is_elided() {
+                                    "".to_owned()
+                                } else {
+                                    format!("{} ", lt.name.as_str())
+                                };
+                                let mutopt = if *mutbl == Mutability::MutMutable {
+                                    "mut "
+                                } else {
+                                    ""
+                                };
+                                span_lint_and_then(cx,
+                                    BORROWED_BOX,
+                                    ast_ty.span,
+                                    "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
+                                    |db| {
+                                        db.span_suggestion(ast_ty.span,
+                                            "try",
+                                            format!("&{}{}{}", ltopt, mutopt, &snippet(cx, inner.span, "..")));
+                                    }
+                                );
+                                return; // don't recurse into the type
+                            }};
                         }
                     }
                     check_ty(cx, ty);
