@@ -159,7 +159,7 @@ fn can_derive_default<'t, 'c>(ty: Ty<'t>, cx: &LateContext<'c, 't>, default_trai
                     return None;
                 }
             }
-            cx.tcx.hir.span_if_local(adt_def.did)
+            Some(cx.tcx.def_span(adt_def.did))
         },
         _ => None,
     }
