@@ -1,7 +1,7 @@
 use rustc::hir::*;
 use rustc::hir::map::Node::NodeItem;
 use rustc::lint::*;
-use rustc::ty::TypeVariants;
+use rustc::ty;
 use syntax::ast::LitKind;
 use syntax::symbol::InternedString;
 use utils::paths;
@@ -132,7 +132,7 @@ fn check_arg_is_display(cx: &LateContext, expr: &Expr) -> bool {
     ], {
         let ty = walk_ptrs_ty(cx.tables.pat_ty(&pat[0]));
 
-        return ty.sty == TypeVariants::TyStr || match_type(cx, ty, &paths::STRING);
+        return ty.sty == ty::TyStr || match_type(cx, ty, &paths::STRING);
     }}
 
     false

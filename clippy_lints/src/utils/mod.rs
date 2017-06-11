@@ -1,14 +1,13 @@
 use reexport::*;
+use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::hir::def::Def;
 use rustc::hir::map::Node;
 use rustc::lint::{LintContext, LateContext, Level, Lint};
 use rustc::session::Session;
-use rustc::traits::Reveal;
 use rustc::traits;
-use rustc::ty::subst::{Subst, Substs};
-use rustc::ty;
+use rustc::ty::{self, TyCtxt, Ty};
 use rustc::mir::transform::MirSource;
 use rustc_errors;
 use std::borrow::Cow;
@@ -25,12 +24,12 @@ use syntax::symbol::keywords;
 pub mod comparisons;
 pub mod conf;
 pub mod constants;
-mod hir;
+mod hir_utils;
 pub mod paths;
 pub mod sugg;
 pub mod inspector;
 pub mod internal_lints;
-pub use self::hir::{SpanlessEq, SpanlessHash};
+pub use self::hir_utils::{SpanlessEq, SpanlessHash};
 
 pub type MethodArgs = HirVec<P<Expr>>;
 
@@ -148,7 +147,7 @@ pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
 /// ```
 ///
 /// See also the `paths` module.
-pub fn match_def_path(tcx: ty::TyCtxt, def_id: DefId, path: &[&str]) -> bool {
+pub fn match_def_path(tcx: TyCtxt, def_id: DefId, path: &[&str]) -> bool {
     use syntax::symbol;
 
     struct AbsolutePathBuffer {
@@ -174,7 +173,7 @@ pub fn match_def_path(tcx: ty::TyCtxt, def_id: DefId, path: &[&str]) -> bool {
 }
 
 /// Check if type is struct, enum or union type with given def path.
-pub fn match_type(cx: &LateContext, ty: ty::Ty, path: &[&str]) -> bool {
+pub fn match_type(cx: &LateContext, ty: Ty, path: &[&str]) -> bool {
     match ty.sty {
         ty::TyAdt(adt, _) => match_def_path(cx.tcx, adt.did, path),
         _ => false,
@@ -310,22 +309,14 @@ pub fn get_trait_def_id(cx: &LateContext, path: &[&str]) -> Option<DefId> {
 /// See also `get_trait_def_id`.
 pub fn implements_trait<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    ty: ty::Ty<'tcx>,
+    ty: Ty<'tcx>,
     trait_id: DefId,
-    ty_params: &[ty::Ty<'tcx>],
-    parent_node_id: Option<NodeId>
+    ty_params: &[Ty<'tcx>]
 ) -> bool {
     let ty = cx.tcx.erase_regions(&ty);
-    let param_env = if let Some(id) = parent_node_id {
-        let def_id = cx.tcx.hir.body_owner_def_id(BodyId { node_id: id });
-        cx.tcx.param_env(def_id).reveal_all()
-    } else {
-        ty::ParamEnv::empty(Reveal::All)
-    };
-    cx.tcx.infer_ctxt(()).enter(|infcx| {
-        let obligation = cx.tcx.predicate_for_trait_def(
-            param_env, traits::ObligationCause::dummy(), trait_id, 0, ty, ty_params);
-
+    let obligation = cx.tcx.predicate_for_trait_def(
+        cx.param_env, traits::ObligationCause::dummy(), trait_id, 0, ty, ty_params);
+    cx.tcx.infer_ctxt().enter(|infcx| {
         traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
     })
 }
@@ -591,7 +582,7 @@ pub fn multispan_sugg(db: &mut DiagnosticBuilder, help_msg: String, sugg: Vec<(S
 }
 
 /// Return the base type for references and raw pointers.
-pub fn walk_ptrs_ty(ty: ty::Ty) -> ty::Ty {
+pub fn walk_ptrs_ty(ty: Ty) -> Ty {
     match ty.sty {
         ty::TyRef(_, ref tm) => walk_ptrs_ty(tm.ty),
         _ => ty,
@@ -599,8 +590,8 @@ pub fn walk_ptrs_ty(ty: ty::Ty) -> ty::Ty {
 }
 
 /// Return the base type for references and raw pointers, and count reference depth.
-pub fn walk_ptrs_ty_depth(ty: ty::Ty) -> (ty::Ty, usize) {
-    fn inner(ty: ty::Ty, depth: usize) -> (ty::Ty, usize) {
+pub fn walk_ptrs_ty_depth(ty: Ty) -> (Ty, usize) {
+    fn inner(ty: Ty, depth: usize) -> (Ty, usize) {
         match ty.sty {
             ty::TyRef(_, ref tm) => inner(tm.ty, depth + 1),
             _ => (ty, depth),
@@ -764,7 +755,7 @@ pub fn camel_case_from(s: &str) -> usize {
 }
 
 /// Convenience function to get the return type of a function
-pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> ty::Ty<'tcx> {
+pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Ty<'tcx> {
     let fn_def_id = cx.tcx.hir.local_def_id(fn_item);
     let ret_ty = cx.tcx.type_of(fn_def_id).fn_sig().output();
     cx.tcx.erase_late_bound_regions(&ret_ty)
@@ -775,18 +766,16 @@ pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> ty::T
 // not for type parameters.
 pub fn same_tys<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    a: ty::Ty<'tcx>,
-    b: ty::Ty<'tcx>,
-    parameter_item: DefId
+    a: Ty<'tcx>,
+    b: Ty<'tcx>
 ) -> bool {
-    let param_env = cx.tcx.param_env(parameter_item).reveal_all();
-    cx.tcx.infer_ctxt(()).enter(|infcx| {
-        infcx.can_eq(param_env, a, b).is_ok()
+    cx.tcx.infer_ctxt().enter(|infcx| {
+        infcx.can_eq(cx.param_env, a, b).is_ok()
     })
 }
 
 /// Return whether the given type is an `unsafe` function.
-pub fn type_is_unsafe_function(ty: ty::Ty) -> bool {
+pub fn type_is_unsafe_function(ty: Ty) -> bool {
     match ty.sty {
         ty::TyFnDef(_, _, f) |
         ty::TyFnPtr(f) => f.unsafety() == Unsafety::Unsafe,
@@ -794,10 +783,8 @@ pub fn type_is_unsafe_function(ty: ty::Ty) -> bool {
     }
 }
 
-pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, env: DefId) -> bool {
-    let substs = Substs::identity_for_item(cx.tcx, env);
-    let env = cx.tcx.param_env(env);
-    !ty.subst(cx.tcx, substs).moves_by_default(cx.tcx.global_tcx(), env, DUMMY_SP)
+pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
+    !ty.moves_by_default(cx.tcx.global_tcx(), cx.param_env, DUMMY_SP)
 }
 
 /// Return whether a pattern is refutable.
@@ -899,7 +886,7 @@ pub fn is_self(slf: &Arg) -> bool {
     }
 }
 
-pub fn is_self_ty(slf: &Ty) -> bool {
+pub fn is_self_ty(slf: &hir::Ty) -> bool {
     if_let_chain! {[
         let TyPath(ref qp) = slf.node,
         let QPath::Resolved(None, ref path) = *qp,
@@ -958,7 +945,6 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
     None
 }
 
-pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>) -> Option<u64> {
-    ty.layout(cx.tcx, ty::ParamEnv::empty(Reveal::All))
-      .ok().map(|layout| layout.size(cx.tcx).bytes())
+pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Option<u64> {
+    ty.layout(cx.tcx, cx.param_env).ok().map(|layout| layout.size(cx.tcx).bytes())
 }

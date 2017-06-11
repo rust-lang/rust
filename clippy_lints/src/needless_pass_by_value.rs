@@ -82,8 +82,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         let fn_def_id = cx.tcx.hir.local_def_id(node_id);
 
         let preds: Vec<ty::Predicate> = {
-            let parameter_env = cx.tcx.param_env(fn_def_id);
-            traits::elaborate_predicates(cx.tcx, parameter_env.caller_bounds.to_vec())
+            traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds.to_vec())
                 .filter(|p| !p.is_global())
                 .collect()
         };
@@ -91,12 +90,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         // Collect moved variables and spans which will need dereferencings from the function body.
         let MovedVariablesCtxt { moved_vars, spans_need_deref, .. } = {
             let mut ctx = MovedVariablesCtxt::new(cx);
-            cx.tcx.infer_ctxt(body.id()).enter(|infcx| {
-                let param_env = cx.tcx.param_env(fn_def_id);
-                let region_maps = &cx.tcx.region_maps(fn_def_id);
-                euv::ExprUseVisitor::new(&mut ctx, region_maps, &infcx, param_env)
-                    .consume_body(body);
-            });
+            let region_maps = &cx.tcx.region_maps(fn_def_id);
+            euv::ExprUseVisitor::new(&mut ctx, cx.tcx, cx.param_env, region_maps, cx.tables)
+                .consume_body(body);
             ctx
         };
 
@@ -119,9 +115,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             if_let_chain! {[
                 !is_self(arg),
                 !ty.is_mutable_pointer(),
-                !is_copy(cx, ty, fn_def_id),
-                !implements_trait(cx, ty, fn_trait, &[], Some(node_id)),
-                !implements_trait(cx, ty, asref_trait, &[], Some(node_id)),
+                !is_copy(cx, ty),
+                !implements_trait(cx, ty, fn_trait, &[]),
+                !implements_trait(cx, ty, asref_trait, &[]),
                 !implements_borrow_trait,
 
                 let PatKind::Binding(mode, defid, ..) = arg.pat.node,
@@ -190,7 +186,7 @@ struct MovedVariablesCtxt<'a, 'tcx: 'a> {
     spans_need_deref: HashMap<DefId, HashSet<Span>>,
 }
 
-impl<'a, 'tcx: 'a> MovedVariablesCtxt<'a, 'tcx> {
+impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
     fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
         MovedVariablesCtxt {
             cx: cx,
@@ -199,7 +195,7 @@ impl<'a, 'tcx: 'a> MovedVariablesCtxt<'a, 'tcx> {
         }
     }
 
-    fn move_common(&mut self, _consume_id: NodeId, _span: Span, cmt: mc::cmt) {
+    fn move_common(&mut self, _consume_id: NodeId, _span: Span, cmt: mc::cmt<'tcx>) {
         let cmt = unwrap_downcast_or_interior(cmt);
 
         if_let_chain! {[
@@ -210,7 +206,7 @@ impl<'a, 'tcx: 'a> MovedVariablesCtxt<'a, 'tcx> {
         }}
     }
 
-    fn non_moving_pat(&mut self, matched_pat: &Pat, cmt: mc::cmt) {
+    fn non_moving_pat(&mut self, matched_pat: &Pat, cmt: mc::cmt<'tcx>) {
         let cmt = unwrap_downcast_or_interior(cmt);
 
         if_let_chain! {[
@@ -262,7 +258,7 @@ impl<'a, 'tcx: 'a> MovedVariablesCtxt<'a, 'tcx> {
     }
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'gcx> {
+impl<'a, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
     fn consume(&mut self, consume_id: NodeId, consume_span: Span, cmt: mc::cmt<'tcx>, mode: euv::ConsumeMode) {
         if let euv::ConsumeMode::Move(_) = mode {
             self.move_common(consume_id, consume_span, cmt);

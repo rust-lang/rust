@@ -3,7 +3,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::{LintPass, LintArray, LateLintPass, LateContext};
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use rustc::hir::Expr;
 use syntax::ast;
 use utils::{match_type, paths, span_lint};
@@ -59,12 +59,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutexAtomic {
         let ty = cx.tables.expr_ty(expr);
         if let ty::TyAdt(_, subst) = ty.sty {
             if match_type(cx, ty, &paths::MUTEX) {
-                let mutex_param = &subst.type_at(0).sty;
+                let mutex_param = subst.type_at(0);
                 if let Some(atomic_name) = get_atomic_name(mutex_param) {
                     let msg = format!("Consider using an {} instead of a Mutex here. If you just want the locking \
                                        behaviour and not the internal type, consider using Mutex<()>.",
                                       atomic_name);
-                    match *mutex_param {
+                    match mutex_param.sty {
                         ty::TyUint(t) if t != ast::UintTy::Us => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
                         ty::TyInt(t) if t != ast::IntTy::Is => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
                         _ => span_lint(cx, MUTEX_ATOMIC, expr.span, &msg),
@@ -75,8 +75,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutexAtomic {
     }
 }
 
-fn get_atomic_name(ty: &ty::TypeVariants) -> Option<(&'static str)> {
-    match *ty {
+fn get_atomic_name(ty: Ty) -> Option<(&'static str)> {
+    match ty.sty {
         ty::TyBool => Some("AtomicBool"),
         ty::TyUint(_) => Some("AtomicUsize"),
         ty::TyInt(_) => Some("AtomicIsize"),

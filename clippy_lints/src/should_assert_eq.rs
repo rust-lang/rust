@@ -49,10 +49,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ShouldAssertEq {
             let ty1 = cx.tables.expr_ty(expr1);
             let ty2 = cx.tables.expr_ty(expr2);
 
-            let parent = cx.tcx.hir.get_parent(e.id);
-
-            if implements_trait(cx, ty1, debug_trait, &[], Some(parent)) &&
-                implements_trait(cx, ty2, debug_trait, &[], Some(parent)) {
+            if implements_trait(cx, ty1, debug_trait, &[]) &&
+                implements_trait(cx, ty2, debug_trait, &[]) {
                 span_lint(cx, SHOULD_ASSERT_EQ, e.span, &format!("use `{}{}` for better reporting", debug, sugg));
             }
         }}

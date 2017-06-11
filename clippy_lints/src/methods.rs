@@ -1,7 +1,7 @@
 use rustc::hir;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use rustc::hir::def::Def;
 use rustc_const_eval::ConstContext;
 use std::borrow::Cow;
@@ -659,7 +659,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             // check conventions w.r.t. conversion method names and predicates
             let def_id = cx.tcx.hir.local_def_id(item.id);
             let ty = cx.tcx.type_of(def_id);
-            let is_copy = is_copy(cx, ty, def_id);
+            let is_copy = is_copy(cx, ty);
             for &(ref conv, self_kinds) in &CONVENTIONS {
                 if_let_chain! {[
                     conv.check(&name.as_str()),
@@ -684,9 +684,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
 
             let ret_ty = return_ty(cx, implitem.id);
-            let implitem_defid = cx.tcx.hir.local_def_id(implitem.id);
             if name == "new" &&
-               !ret_ty.walk().any(|t| same_tys(cx, t, ty, implitem_defid)) {
+               !ret_ty.walk().any(|t| same_tys(cx, t, ty)) {
                 span_lint(cx,
                           NEW_RET_NO_SELF,
                           implitem.span,
@@ -725,7 +724,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
                         return false;
                     };
 
-                    if implements_trait(cx, arg_ty, default_trait_id, &[], None) {
+                    if implements_trait(cx, arg_ty, default_trait_id, &[]) {
                         span_lint_and_then(cx,
                                            OR_FUN_CALL,
                                            span,
@@ -820,9 +819,8 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
 }
 
 /// Checks for the `CLONE_ON_COPY` lint.
-fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_ty: ty::Ty) {
+fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_ty: Ty) {
     let ty = cx.tables.expr_ty(expr);
-    let parent = cx.tcx.hir.get_parent(expr.id);
     if let ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) = arg_ty.sty {
         if let ty::TyRef(..) = inner.sty {
             span_lint_and_then(cx,
@@ -839,7 +837,7 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_t
         }
     }
 
-    if is_copy(cx, ty, cx.tcx.hir.local_def_id(parent)) {
+    if is_copy(cx, ty) {
         span_lint_and_then(cx,
                            CLONE_ON_COPY,
                            expr.span,
@@ -979,8 +977,8 @@ fn lint_iter_skip_next(cx: &LateContext, expr: &hir::Expr) {
     }
 }
 
-fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: ty::Ty) -> Option<sugg::Sugg<'static>> {
-    fn may_slice(cx: &LateContext, ty: ty::Ty) -> bool {
+fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: Ty) -> Option<sugg::Sugg<'static>> {
+    fn may_slice(cx: &LateContext, ty: Ty) -> bool {
         match ty.sty {
             ty::TySlice(_) => true,
             ty::TyAdt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
@@ -1253,7 +1251,7 @@ fn lint_single_char_pattern(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr)
 }
 
 /// Given a `Result<T, E>` type, return its error type (`E`).
-fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
+fn get_error_type<'a>(cx: &LateContext, ty: Ty<'a>) -> Option<Ty<'a>> {
     if let ty::TyAdt(_, substs) = ty.sty {
         if match_type(cx, ty, &paths::RESULT) {
             substs.types().nth(1)
@@ -1266,9 +1264,9 @@ fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
 }
 
 /// This checks whether a given type is known to implement Debug.
-fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
+fn has_debug_impl<'a, 'b>(ty: Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
     match cx.tcx.lang_items.debug_trait() {
-        Some(debug) => implements_trait(cx, ty, debug, &[], None),
+        Some(debug) => implements_trait(cx, ty, debug, &[]),
         None => false,
     }
 }
