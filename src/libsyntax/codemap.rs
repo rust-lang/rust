@@ -618,6 +618,7 @@ impl FilePathMapping {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::borrow::Cow;
     use std::rc::Rc;
 
     #[test]
@@ -627,12 +628,12 @@ mod tests {
                                 "first line.\nsecond line".to_string());
         fm.next_line(BytePos(0));
         // Test we can get lines with partial line info.
-        assert_eq!(fm.get_line(0), Some("first line."));
+        assert_eq!(fm.get_line(0), Some(Cow::from("first line.")));
         // TESTING BROKEN BEHAVIOR: line break declared before actual line break.
         fm.next_line(BytePos(10));
-        assert_eq!(fm.get_line(1), Some("."));
+        assert_eq!(fm.get_line(1), Some(Cow::from(".")));
         fm.next_line(BytePos(12));
-        assert_eq!(fm.get_line(2), Some("second line"));
+        assert_eq!(fm.get_line(2), Some(Cow::from("second line")));
     }
 
     #[test]
