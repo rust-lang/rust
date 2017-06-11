@@ -131,7 +131,7 @@ impl EmitterWriter {
         }
     }
 
-    fn preprocess_annotations(&self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
+    fn preprocess_annotations(&mut self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
         fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
                                   file: Rc<FileMap>,
                                   line_index: usize,
@@ -175,6 +175,9 @@ impl EmitterWriter {
                 if span_label.span == DUMMY_SP {
                     continue;
                 }
+
+                cm.load_source_for_filemap(cm.span_to_filename(span_label.span));
+
                 let lo = cm.lookup_char_pos(span_label.span.lo);
                 let mut hi = cm.lookup_char_pos(span_label.span.hi);
 

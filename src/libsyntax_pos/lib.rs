@@ -374,12 +374,33 @@ pub struct MultiByteChar {
     pub bytes: usize,
 }
 
+/// The state of the lazy external source loading mechanism of a FileMap.
 #[derive(PartialEq, Eq, Clone)]
 pub enum ExternalSource {
+    /// The external source has been loaded already.
     Present(String),
+    /// No attempt has been made to load the external source.
     AbsentOk,
+    /// A failed attempt has been made to load the external source.
     AbsentErr,
+    /// No external source has to be loaded, since the FileMap represents a local crate.
     Unneeded,
+}
+
+impl ExternalSource {
+    pub fn is_absent(&self) -> bool {
+        match *self {
+            ExternalSource::Present(_) => false,
+            _ => true,
+        }
+    }
+
+    pub fn get_source(&self) -> Option<&str> {
+        match *self {
+            ExternalSource::Present(ref src) => Some(src),
+            _ => None,
+        }
+    }
 }
 
 /// A single source in the CodeMap.
@@ -620,7 +641,7 @@ impl FileMap {
     }
 
     pub fn is_imported(&self) -> bool {
-        self.src.is_none()
+        self.src.is_none() // TODO: change to something more sensible
     }
 
     pub fn byte_length(&self) -> u32 {

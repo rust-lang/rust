@@ -559,7 +559,7 @@ impl CodeMapper for CodeMap {
         }
         sp
     }
-    fn load_source_for_filemap(&mut self, filename: FileName) -> bool {
+    fn load_source_for_filemap(&self, filename: FileName) -> bool {
         let file_map = if let Some(fm) = self.get_filemap(&filename) {
             fm
         } else {
