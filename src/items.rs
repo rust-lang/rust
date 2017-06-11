@@ -527,19 +527,9 @@ pub fn format_impl(context: &RewriteContext,
                    offset: Indent,
                    where_span_end: Option<BytePos>)
                    -> Option<String> {
-    if let ast::ItemKind::Impl(_, _, _, ref generics, ref trait_ref, _, ref items) = item.node {
+    if let ast::ItemKind::Impl(_, _, _, ref generics, _, _, ref items) = item.node {
         let mut result = String::new();
-        // First try to format the ref and type without a split at the 'for'.
-        let mut ref_and_type =
-            format_impl_ref_and_type(context, item, offset, false)
-                .unwrap_or(try_opt!(format_impl_ref_and_type(context, item, offset, true)));
-
-        // If there is a line break present in the first result format it again
-        // with a split at the 'for'. Skip this if there is no trait ref and
-        // therefore no 'for'.
-        if ref_and_type.contains('\n') && trait_ref.is_some() {
-            ref_and_type = try_opt!(format_impl_ref_and_type(context, item, offset, true));
-        }
+        let ref_and_type = try_opt!(format_impl_ref_and_type(context, item, offset));
         result.push_str(&ref_and_type);
 
         let where_budget = if result.contains('\n') {
@@ -651,8 +641,7 @@ fn is_impl_single_line(context: &RewriteContext,
 
 fn format_impl_ref_and_type(context: &RewriteContext,
                             item: &ast::Item,
-                            offset: Indent,
-                            split_at_for: bool)
+                            offset: Indent)
                             -> Option<String> {
     if let ast::ItemKind::Impl(unsafety,
                                polarity,
@@ -672,32 +661,37 @@ fn format_impl_ref_and_type(context: &RewriteContext,
             Some(ref tr) => tr.path.span.lo,
             None => self_ty.span.lo,
         };
-        let generics_indent = offset + last_line_width(&result);
         let shape = generics_shape_from_config(context.config,
-                                               Shape::indented(generics_indent, context.config),
+                                               Shape::indented(offset + last_line_width(&result),
+                                                               context.config),
                                                0);
-        let mut generics_str =
+        let generics_str =
             try_opt!(rewrite_generics(context, generics, shape, shape.width, mk_sp(lo, hi)));
-        add_polarity(&mut generics_str, &polarity, trait_ref.is_some());
+
+        let polarity_str = if polarity == ast::ImplPolarity::Negative {
+            "!"
+        } else {
+            ""
+        };
 
         if let Some(ref trait_ref) = *trait_ref {
             let success = format_trait_ref_then_update_result(context,
                                                               &trait_ref,
                                                               offset,
                                                               &generics_str,
-                                                              split_at_for,
+                                                              true,
+                                                              polarity_str,
                                                               &mut result);
             if !success {
-                let mut generics_str =
+                let generics_str =
                     try_opt!(rewrite_generics(context, generics, shape, 0, mk_sp(lo, hi)));
-                add_polarity(&mut generics_str, &polarity, true);
                 if !format_trait_ref_then_update_result(context,
                                                         &trait_ref,
                                                         offset,
                                                         &generics_str,
-                                                        split_at_for,
+                                                        false,
+                                                        polarity_str,
                                                         &mut result) {
-                    // FIXME: should be unreachable
                     return None;
                 }
             }
@@ -705,32 +699,52 @@ fn format_impl_ref_and_type(context: &RewriteContext,
             result.push_str(&generics_str);
         }
 
-        let mut used_space = last_line_width(&result);
-        if generics.where_clause.predicates.is_empty() {
+        // Try to put the self type in a single line.
+        // ` for`
+        let trait_ref_overhead = if trait_ref.is_some() { 4 } else { 0 };
+        let curly_brace_overhead = if generics.where_clause.predicates.is_empty() {
             // If there is no where clause adapt budget for type formatting to take space and curly
             // brace into account.
             match context.config.item_brace_style() {
-                BraceStyle::AlwaysNextLine => {}
-                BraceStyle::PreferSameLine => used_space += 2,
-                BraceStyle::SameLineWhere => used_space += 2,
+                BraceStyle::AlwaysNextLine => 0,
+                _ => 2,
+            }
+        } else {
+            0
+        };
+        let used_space = last_line_width(&result) + trait_ref_overhead + curly_brace_overhead;
+        // 1 = space before the type.
+        let budget = context
+            .config
+            .max_width()
+            .checked_sub(used_space + 1)
+            .unwrap_or(0);
+        if let Some(self_ty_str) = self_ty.rewrite(context, Shape::legacy(budget, offset)) {
+            if !self_ty_str.contains('\n') {
+                if trait_ref.is_some() {
+                    result.push_str(" for ");
+                } else {
+                    result.push(' ');
+                }
+                result.push_str(&self_ty_str);
+                return Some(result);
             }
         }
 
-        // 1 = space before the type.
-        let budget = try_opt!(context.config.max_width().checked_sub(used_space + 1));
-        let indent = offset + last_line_width(&result) + 1;
-        let self_ty_str = self_ty.rewrite(context, Shape::legacy(budget, indent));
-        if let Some(self_ty_str) = self_ty_str {
-            result.push_str(" ");
-            result.push_str(&self_ty_str);
-            return Some(result);
+        // Couldn't fit the self type on a single line, put it on a new line.
+        result.push('\n');
+        // Add indentation of one additional tab.
+        let new_line_offset = offset.block_indent(context.config);
+        result.push_str(&new_line_offset.to_string(context.config));
+        if trait_ref.is_some() {
+            result.push_str("for ");
         }
-
-        // Can't fit the self type on what's left of the line, so start a new one.
-        let indent = offset.block_indent(context.config);
-        result.push_str(&format!("\n{}", indent.to_string(context.config)));
-        result.push_str(&*try_opt!(self_ty.rewrite(context,
-                                                   Shape::indented(indent, context.config))));
+        let budget = context.config.max_width() - last_line_width(&result);
+        let type_offset = match context.config.where_style() {
+            Style::Legacy => new_line_offset + trait_ref_overhead,
+            Style::Rfc => new_line_offset,
+        };
+        result.push_str(&*try_opt!(self_ty.rewrite(context, Shape::legacy(budget, type_offset))));
         Some(result)
     } else {
         unreachable!();
@@ -742,48 +756,38 @@ fn format_trait_ref_then_update_result(context: &RewriteContext,
                                        trait_ref: &ast::TraitRef,
                                        offset: Indent,
                                        generics_str: &str,
-                                       split_at_for: bool,
+                                       retry: bool,
+                                       polarity_str: &str,
                                        result: &mut String)
                                        -> bool {
-    let used_space = if generics_str.contains('\n') {
-        last_line_width(&generics_str)
-    } else {
-        result.len() + generics_str.len()
-    };
-    let budget = context
-        .config
-        .max_width()
-        .checked_sub(used_space)
-        .unwrap_or(0);
-    let indent = offset + used_space;
-    if let Some(trait_ref_str) = trait_ref.rewrite(context, Shape::legacy(budget, indent)) {
-        if !trait_ref_str.contains('\n') {
-            result.push_str(&generics_str);
-            result.push_str(&trait_ref_str);
-            if split_at_for {
-                result.push('\n');
-                // Add indentation of one additional tab.
-                let for_offset = match context.config.where_style() {
-                    Style::Legacy => offset.block_indent(context.config),
-                    Style::Rfc => offset,
-                };
-                result.push_str(&for_offset.to_string(context.config));
-                result.push_str("for");
-            } else {
-                result.push_str(" for");
-            }
+    // 1 = space between generics and trait_ref
+    let used_space = 1 + polarity_str.len() +
+                     if generics_str.contains('\n') {
+                         last_line_width(&generics_str)
+                     } else {
+                         result.len() + generics_str.len()
+                     };
+    let shape = Shape::indented(offset + used_space, context.config);
+    if let Some(trait_ref_str) = trait_ref.rewrite(context, shape) {
+        if !(retry && trait_ref_str.contains('\n')) {
+            result.push_str(&format!("{} {}{}", generics_str, polarity_str, &trait_ref_str));
+            return true;
+        }
+    }
+    // We could not make enough space for trait_ref, so put it on new line.
+    if !retry {
+        let offset = offset.block_indent(context.config);
+        let shape = Shape::indented(offset, context.config);
+        if let Some(trait_ref_str) = trait_ref.rewrite(context, shape) {
+            result.push_str(&format!("{}\n{}{}{}",
+                                     generics_str,
+                                     &offset.to_string(context.config),
+                                     polarity_str,
+                                     &trait_ref_str));
             return true;
         }
     }
     false
-}
-
-fn add_polarity(s: &mut String, polarity: &ast::ImplPolarity, has_trait_ref: bool) {
-    if polarity == &ast::ImplPolarity::Negative {
-        s.push_str(" !")
-    } else if has_trait_ref {
-        s.push(' ')
-    }
 }
 
 pub fn format_struct(context: &RewriteContext,
