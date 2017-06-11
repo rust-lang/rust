@@ -1349,7 +1349,7 @@ impl Context {
         // these modules are recursed into, but not rendered normally
         // (a flag on the context).
         if !self.render_redirect_pages {
-            self.render_redirect_pages = maybe_ignore_item(&item);
+            self.render_redirect_pages = item.is_stripped();
         }
 
         if item.is_mod() {
@@ -1432,7 +1432,7 @@ impl Context {
         // BTreeMap instead of HashMap to get a sorted output
         let mut map = BTreeMap::new();
         for item in &m.items {
-            if maybe_ignore_item(item) { continue }
+            if item.is_stripped() { continue }
 
             let short = item.type_().css_class();
             let myname = match item.name {
@@ -1733,7 +1733,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         if let clean::DefaultImplItem(..) = items[*i].inner {
             return false;
         }
-        !maybe_ignore_item(&items[*i])
+        !items[*i].is_stripped()
     }).collect::<Vec<usize>>();
 
     // the order of item types in the listing
@@ -1900,17 +1900,6 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         write!(w, "</table>")?;
     }
     Ok(())
-}
-
-fn maybe_ignore_item(it: &clean::Item) -> bool {
-    match it.inner {
-        clean::StrippedItem(..) => true,
-        clean::ModuleItem(ref m) => {
-            it.doc_value().is_none() && m.items.is_empty()
-                                     && it.visibility != Some(clean::Public)
-        },
-        _ => false,
-    }
 }
 
 fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<String> {
@@ -3332,7 +3321,7 @@ fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
             if let clean::DefaultImplItem(..) = it.inner {
                 false
             } else {
-                !maybe_ignore_item(it) && !it.is_stripped() && it.type_() == myty
+                !it.is_stripped() && it.type_() == myty
             }
         }) {
             let (short, name) = match myty {
