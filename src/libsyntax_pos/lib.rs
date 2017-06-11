@@ -33,6 +33,7 @@
 #![cfg_attr(stage0, feature(rustc_private))]
 #![cfg_attr(stage0, feature(staged_api))]
 
+use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::ops::{Add, Sub};
 use std::rc::Rc;
@@ -605,24 +606,33 @@ impl FileMap {
 
     /// get a line from the list of pre-computed line-beginnings.
     /// line-number here is 0-based.
-    pub fn get_line(&self, line_number: usize) -> Option<&str> {
-        match self.src {
-            Some(ref src) => {
-                let lines = self.lines.borrow();
-                lines.get(line_number).map(|&line| {
-                    let begin: BytePos = line - self.start_pos;
-                    let begin = begin.to_usize();
-                    // We can't use `lines.get(line_number+1)` because we might
-                    // be parsing when we call this function and thus the current
-                    // line is the last one we have line info for.
-                    let slice = &src[begin..];
-                    match slice.find('\n') {
-                        Some(e) => &slice[..e],
-                        None => slice
-                    }
-                })
+    pub fn get_line(&self, line_number: usize) -> Option<Cow<str>> {
+        fn get_until_newline(src: &str, begin: usize) -> &str {
+            // We can't use `lines.get(line_number+1)` because we might
+            // be parsing when we call this function and thus the current
+            // line is the last one we have line info for.
+            let slice = &src[begin..];
+            match slice.find('\n') {
+                Some(e) => &slice[..e],
+                None => slice
             }
-            None => None
+        }
+
+        let lines = self.lines.borrow();
+        let line = if let Some(line) = lines.get(line_number) {
+            line
+        } else {
+            return None;
+        };
+        let begin: BytePos = *line - self.start_pos;
+        let begin = begin.to_usize();
+
+        if let Some(ref src) = self.src {
+            Some(Cow::from(get_until_newline(src, begin)))
+        } else if let Some(src) = self.external_src.borrow().get_source() {
+            Some(Cow::Owned(String::from(get_until_newline(src, begin))))
+        } else {
+            None
         }
     }
 
@@ -641,7 +651,7 @@ impl FileMap {
     }
 
     pub fn is_imported(&self) -> bool {
-        self.src.is_none() // TODO: change to something more sensible
+        self.src.is_none()
     }
 
     pub fn byte_length(&self) -> u32 {

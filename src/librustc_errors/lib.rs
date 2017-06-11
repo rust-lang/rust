@@ -37,6 +37,7 @@ use self::Level::*;
 
 use emitter::{Emitter, EmitterWriter};
 
+use std::borrow::Cow;
 use std::cell::{RefCell, Cell};
 use std::{error, fmt};
 use std::rc::Rc;
@@ -122,7 +123,7 @@ impl CodeSuggestion {
         use syntax_pos::{CharPos, Loc, Pos};
 
         fn push_trailing(buf: &mut String,
-                         line_opt: Option<&str>,
+                         line_opt: Option<&Cow<str>>,
                          lo: &Loc,
                          hi_opt: Option<&Loc>) {
             let (lo, hi_opt) = (lo.col.to_usize(), hi_opt.map(|hi| hi.col.to_usize()));
@@ -184,13 +185,13 @@ impl CodeSuggestion {
             let cur_lo = cm.lookup_char_pos(sp.lo);
             for (buf, substitute) in bufs.iter_mut().zip(substitutes) {
                 if prev_hi.line == cur_lo.line {
-                    push_trailing(buf, prev_line, &prev_hi, Some(&cur_lo));
+                    push_trailing(buf, prev_line.as_ref(), &prev_hi, Some(&cur_lo));
                 } else {
-                    push_trailing(buf, prev_line, &prev_hi, None);
+                    push_trailing(buf, prev_line.as_ref(), &prev_hi, None);
                     // push lines between the previous and current span (if any)
                     for idx in prev_hi.line..(cur_lo.line - 1) {
                         if let Some(line) = fm.get_line(idx) {
-                            buf.push_str(line);
+                            buf.push_str(line.as_ref());
                             buf.push('\n');
                         }
                     }
@@ -206,7 +207,7 @@ impl CodeSuggestion {
         for buf in &mut bufs {
             // if the replacement already ends with a newline, don't print the next line
             if !buf.ends_with('\n') {
-                push_trailing(buf, prev_line, &prev_hi, None);
+                push_trailing(buf, prev_line.as_ref(), &prev_hi, None);
             }
             // remove trailing newline
             buf.pop();

@@ -17,6 +17,7 @@ use RenderSpan::*;
 use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
 use styled_buffer::StyledBuffer;
 
+use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
@@ -911,7 +912,8 @@ impl EmitterWriter {
         // Print out the annotate source lines that correspond with the error
         for annotated_file in annotated_files {
             // we can't annotate anything if the source is unavailable.
-            if annotated_file.file.src.is_none() {
+            if annotated_file.file.src.is_none()
+                    && annotated_file.file.external_src.borrow().is_absent() {
                 continue;
             }
 
@@ -1012,7 +1014,7 @@ impl EmitterWriter {
                     } else if line_idx_delta == 2 {
                         let unannotated_line = annotated_file.file
                             .get_line(annotated_file.lines[line_idx].line_index)
-                            .unwrap_or("");
+                            .unwrap_or_else(|| Cow::from(""));
 
                         let last_buffer_line_num = buffer.num_lines();
 
