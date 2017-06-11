@@ -1351,7 +1351,14 @@ enum SelfKind {
 }
 
 impl SelfKind {
-    fn matches(self, ty: &hir::Ty, arg: &hir::Arg, self_ty: &hir::Ty, allow_value_for_ref: bool, generics: &hir::Generics) -> bool {
+    fn matches(
+        self,
+        ty: &hir::Ty,
+        arg: &hir::Arg,
+        self_ty: &hir::Ty,
+        allow_value_for_ref: bool,
+        generics: &hir::Generics
+    ) -> bool {
         // Self types in the HIR are desugared to explicit self types. So it will always be `self:
         // SomeType`,
         // where SomeType can be `Self` or an explicit impl self type (e.g. `Foo` if the impl is on `Foo`)
@@ -1386,7 +1393,7 @@ impl SelfKind {
                 SelfKind::Value => false,
                 SelfKind::Ref => is_as_ref_or_mut_trait(ty, self_ty, generics, &paths::ASREF_TRAIT),
                 SelfKind::RefMut => is_as_ref_or_mut_trait(ty, self_ty, generics, &paths::ASMUT_TRAIT),
-                SelfKind::No => true
+                SelfKind::No => true,
             }
         }
     }
@@ -1404,19 +1411,18 @@ impl SelfKind {
 fn is_as_ref_or_mut_trait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Generics, name: &[&str]) -> bool {
     single_segment_ty(ty).map_or(false, |seg| {
         generics.ty_params.iter().any(|param| {
-            param.name == seg.name && param.bounds.iter().any(|bound| {
-                if let hir::TyParamBound::TraitTyParamBound(ref ptr, ..) = *bound {
-                    let path = &ptr.trait_ref.path;
-                    match_path_old(path, name) && path.segments.last().map_or(false, |s| {
-                        if let hir::PathParameters::AngleBracketedParameters(ref data) = s.parameters {
-                            data.types.len() == 1 && (is_self_ty(&data.types[0]) || is_ty(&*data.types[0], self_ty))
-                        } else {
-                            false
-                        }
-                    })
+            param.name == seg.name &&
+            param.bounds.iter().any(|bound| if let hir::TyParamBound::TraitTyParamBound(ref ptr, ..) = *bound {
+                let path = &ptr.trait_ref.path;
+                match_path_old(path, name) &&
+                path.segments.last().map_or(false, |s| if let hir::PathParameters::AngleBracketedParameters(ref data) =
+                    s.parameters {
+                    data.types.len() == 1 && (is_self_ty(&data.types[0]) || is_ty(&*data.types[0], self_ty))
                 } else {
                     false
-                }
+                })
+            } else {
+                false
             })
         })
     })
@@ -1426,10 +1432,9 @@ fn is_ty(ty: &hir::Ty, self_ty: &hir::Ty) -> bool {
     match (&ty.node, &self_ty.node) {
         (&hir::TyPath(hir::QPath::Resolved(_, ref ty_path)),
          &hir::TyPath(hir::QPath::Resolved(_, ref self_ty_path))) => {
-            ty_path.segments.iter().map(|seg| seg.name).eq(
-                self_ty_path.segments.iter().map(|seg| seg.name))
-        }
-        _ => false
+            ty_path.segments.iter().map(|seg| seg.name).eq(self_ty_path.segments.iter().map(|seg| seg.name))
+        },
+        _ => false,
     }
 }
 

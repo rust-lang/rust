@@ -516,7 +516,9 @@ fn non_macro_local(cx: &LateContext, def: &def::Def) -> bool {
     match *def {
         def::Def::Local(def_id) |
         def::Def::Upvar(def_id, _, _) => {
-            let id = cx.tcx.hir.as_local_node_id(def_id)
+            let id = cx.tcx
+                .hir
+                .as_local_node_id(def_id)
                 .expect("local variables should be found in the same crate");
             !in_macro(cx.tcx.hir.span(id))
         },

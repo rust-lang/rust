@@ -1107,6 +1107,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
     }
 }
 
+#[allow(cast_possible_wrap)]
 fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
     use rustc::middle::const_val::ConstVal::*;
     use rustc_const_eval::ConstContext;
@@ -1115,7 +1116,7 @@ fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
         Ok(val) => {
             if let Integral(const_int) = val {
                 match const_int.int_type() {
-                    IntType::SignedInt(_) => #[allow(cast_possible_wrap)] Some(FullInt::S(const_int.to_u128_unchecked() as i128)),
+                    IntType::SignedInt(_) => Some(FullInt::S(const_int.to_u128_unchecked() as i128)),
                     IntType::UnsignedInt(_) => Some(FullInt::U(const_int.to_u128_unchecked())),
                 }
             } else {

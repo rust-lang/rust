@@ -226,14 +226,7 @@ fn report_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm],
     });
 }
 
-fn check_single_match_opt_like(
-    cx: &LateContext,
-    ex: &Expr,
-    arms: &[Arm],
-    expr: &Expr,
-    ty: Ty,
-    els: Option<&Expr>
-) {
+fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, ty: Ty, els: Option<&Expr>) {
     // list of candidate Enums we know will never get any more members
     let candidates = &[(&paths::COW, "Borrowed"),
                        (&paths::COW, "Cow::Borrowed"),

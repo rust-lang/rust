@@ -91,8 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         let MovedVariablesCtxt { moved_vars, spans_need_deref, .. } = {
             let mut ctx = MovedVariablesCtxt::new(cx);
             let region_maps = &cx.tcx.region_maps(fn_def_id);
-            euv::ExprUseVisitor::new(&mut ctx, cx.tcx, cx.param_env, region_maps, cx.tables)
-                .consume_body(body);
+            euv::ExprUseVisitor::new(&mut ctx, cx.tcx, cx.param_env, region_maps, cx.tables).consume_body(body);
             ctx
         };
 

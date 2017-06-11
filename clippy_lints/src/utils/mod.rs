@@ -314,11 +314,11 @@ pub fn implements_trait<'a, 'tcx>(
     ty_params: &[Ty<'tcx>]
 ) -> bool {
     let ty = cx.tcx.erase_regions(&ty);
-    let obligation = cx.tcx.predicate_for_trait_def(
-        cx.param_env, traits::ObligationCause::dummy(), trait_id, 0, ty, ty_params);
-    cx.tcx.infer_ctxt().enter(|infcx| {
-        traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
-    })
+    let obligation = cx.tcx
+        .predicate_for_trait_def(cx.param_env, traits::ObligationCause::dummy(), trait_id, 0, ty, ty_params);
+    cx.tcx
+        .infer_ctxt()
+        .enter(|infcx| traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation))
 }
 
 /// Resolve the definition of a node from its `NodeId`.
@@ -575,7 +575,14 @@ pub fn span_lint_and_sugg<'a, 'tcx: 'a, T: LintContext<'tcx>>(
 /// replacement. In human-readable format though, it only appears once before the whole suggestion.
 pub fn multispan_sugg(db: &mut DiagnosticBuilder, help_msg: String, sugg: Vec<(Span, String)>) {
     let sugg = rustc_errors::CodeSuggestion {
-        substitution_parts: sugg.into_iter().map(|(span, sub)| rustc_errors::Substitution { span, substitutions: vec![sub] }).collect(),
+        substitution_parts: sugg.into_iter()
+            .map(|(span, sub)| {
+                rustc_errors::Substitution {
+                    span: span,
+                    substitutions: vec![sub],
+                }
+            })
+            .collect(),
         msg: help_msg,
     };
     db.suggestions.push(sugg);
@@ -764,14 +771,8 @@ pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Ty<'t
 /// Check if two types are the same.
 // FIXME: this works correctly for lifetimes bounds (`for <'a> Foo<'a>` == `for <'b> Foo<'b>` but
 // not for type parameters.
-pub fn same_tys<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    a: Ty<'tcx>,
-    b: Ty<'tcx>
-) -> bool {
-    cx.tcx.infer_ctxt().enter(|infcx| {
-        infcx.can_eq(cx.param_env, a, b).is_ok()
-    })
+pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+    cx.tcx.infer_ctxt().enter(|infcx| infcx.can_eq(cx.param_env, a, b).is_ok())
 }
 
 /// Return whether the given type is an `unsafe` function.

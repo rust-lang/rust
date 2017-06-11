@@ -98,17 +98,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                 let rsnip = snippet(cx, r.span, "...").to_string();
                                 multispan_sugg(db,
                                                "use the values directly".to_string(),
-                                               vec![(left.span, lsnip),
-                                                    (right.span, rsnip)]);
+                                               vec![(left.span, lsnip), (right.span, rsnip)]);
                             })
-                        } else if lcpy && !rcpy &&
-                                  implements_trait(cx, lty, trait_id, &[cx.tables.expr_ty(right)]) {
+                        } else if lcpy && !rcpy && implements_trait(cx, lty, trait_id, &[cx.tables.expr_ty(right)]) {
                             span_lint_and_then(cx, OP_REF, e.span, "needlessly taken reference of left operand", |db| {
                                 let lsnip = snippet(cx, l.span, "...").to_string();
                                 db.span_suggestion(left.span, "use the left value directly", lsnip);
                             })
-                        } else if !lcpy && rcpy &&
-                                  implements_trait(cx, cx.tables.expr_ty(left), trait_id, &[rty]) {
+                        } else if !lcpy && rcpy && implements_trait(cx, cx.tables.expr_ty(left), trait_id, &[rty]) {
                             span_lint_and_then(cx,
                                                OP_REF,
                                                e.span,
@@ -123,8 +120,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                     (&ExprAddrOf(_, ref l), _) => {
                         let lty = cx.tables.expr_ty(l);
                         let lcpy = is_copy(cx, lty);
-                        if (requires_ref || lcpy) &&
-                           implements_trait(cx, lty, trait_id, &[cx.tables.expr_ty(right)]) {
+                        if (requires_ref || lcpy) && implements_trait(cx, lty, trait_id, &[cx.tables.expr_ty(right)]) {
                             span_lint_and_then(cx, OP_REF, e.span, "needlessly taken reference of left operand", |db| {
                                 let lsnip = snippet(cx, l.span, "...").to_string();
                                 db.span_suggestion(left.span, "use the left value directly", lsnip);
@@ -135,8 +131,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                     (_, &ExprAddrOf(_, ref r)) => {
                         let rty = cx.tables.expr_ty(r);
                         let rcpy = is_copy(cx, rty);
-                        if (requires_ref || rcpy) &&
-                           implements_trait(cx, cx.tables.expr_ty(left), trait_id, &[rty]) {
+                        if (requires_ref || rcpy) && implements_trait(cx, cx.tables.expr_ty(left), trait_id, &[rty]) {
                             span_lint_and_then(cx, OP_REF, e.span, "taken reference of right operand", |db| {
                                 let rsnip = snippet(cx, r.span, "...").to_string();
                                 db.span_suggestion(right.span, "use the right value directly", rsnip);

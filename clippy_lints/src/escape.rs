@@ -71,8 +71,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         };
 
         let region_maps = &cx.tcx.region_maps(fn_def_id);
-        ExprUseVisitor::new(&mut v, cx.tcx, cx.param_env, region_maps, cx.tables)
-            .consume_body(body);
+        ExprUseVisitor::new(&mut v, cx.tcx, cx.param_env, region_maps, cx.tables).consume_body(body);
 
         for node in v.set {
             span_lint(cx,
@@ -134,15 +133,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
 
     }
-    fn borrow(
-        &mut self,
-        _: NodeId,
-        _: Span,
-        cmt: cmt<'tcx>,
-        _: ty::Region,
-        _: ty::BorrowKind,
-        loan_cause: LoanCause
-    ) {
+    fn borrow(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, _: ty::Region, _: ty::BorrowKind, loan_cause: LoanCause) {
         if let Categorization::Local(lid) = cmt.cat {
             match loan_cause {
                 // x.foo()
