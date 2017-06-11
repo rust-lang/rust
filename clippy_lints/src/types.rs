@@ -184,7 +184,7 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty) {
                     if let Some(def_id) = opt_def_id(def) {
                         if Some(def_id) == cx.tcx.lang_items.owned_box() {
                             if_let_chain! {[
-                                let &QPath::Resolved(None, ref path) = qpath,
+                                let QPath::Resolved(None, ref path) = *qpath,
                                 let [ref bx] = *path.segments,
                                 let PathParameters::AngleBracketedParameters(ref ab_data) = bx.parameters,
                                 let [ref inner] = *ab_data.types
