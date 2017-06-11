@@ -567,13 +567,8 @@ impl CodeMapper for CodeMap {
         };
 
         if *file_map.external_src.borrow() == ExternalSource::AbsentOk {
-            let mut external_src = file_map.external_src.borrow_mut();
-            if let Ok(src) = self.file_loader.read_file(Path::new(&filename)) {
-                *external_src = ExternalSource::Present(src);
-                return true;
-            } else {
-                *external_src = ExternalSource::AbsentErr;
-            }
+            let src = self.file_loader.read_file(Path::new(&filename)).ok();
+            return file_map.add_external_src(src);
         }
 
         false
