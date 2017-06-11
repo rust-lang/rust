@@ -108,15 +108,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                 // can't be implemented by default
                 return;
             }
-            let def_id = cx.tcx.hir.local_def_id(id);
             if decl.inputs.is_empty() && name == "new" && cx.access_levels.is_reachable(id) {
                 let self_ty = cx.tcx
                     .type_of(cx.tcx.hir.local_def_id(cx.tcx.hir.get_parent(id)));
                 if_let_chain!{[
-                    self_ty.walk_shallow().next().is_none(), // implements_trait does not work with generics
-                    same_tys(cx, self_ty, return_ty(cx, id), def_id),
+                    same_tys(cx, self_ty, return_ty(cx, id)),
                     let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT),
-                    !implements_trait(cx, self_ty, default_trait_id, &[], None)
+                    !implements_trait(cx, self_ty, default_trait_id, &[])
                 ], {
                     if let Some(sp) = can_derive_default(self_ty, cx, default_trait_id) {
                         span_lint_and_then(cx,
@@ -157,7 +155,7 @@ fn can_derive_default<'t, 'c>(ty: ty::Ty<'t>, cx: &LateContext<'c, 't>, default_
         ty::TyAdt(adt_def, substs) if adt_def.is_struct() => {
             for field in adt_def.all_fields() {
                 let f_ty = field.ty(cx.tcx, substs);
-                if !implements_trait(cx, f_ty, default_trait_id, &[], None) {
+                if !implements_trait(cx, f_ty, default_trait_id, &[]) {
                     return None;
                 }
             }

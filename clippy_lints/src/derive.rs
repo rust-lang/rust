@@ -136,8 +136,7 @@ fn check_hash_peq<'a, 'tcx>(
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
 fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref: &TraitRef, ty: ty::Ty<'tcx>) {
     if match_path_old(&trait_ref.path, &paths::CLONE_TRAIT) {
-        let def_id = cx.tcx.hir.local_def_id(item.id);
-        if !is_copy(cx, ty, def_id) {
+        if !is_copy(cx, ty) {
             return;
         }
 

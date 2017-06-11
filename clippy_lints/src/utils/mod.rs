@@ -5,9 +5,7 @@ use rustc::hir::def::Def;
 use rustc::hir::map::Node;
 use rustc::lint::{LintContext, LateContext, Level, Lint};
 use rustc::session::Session;
-use rustc::traits::Reveal;
 use rustc::traits;
-use rustc::ty::subst::{Subst, Substs};
 use rustc::ty;
 use rustc::mir::transform::MirSource;
 use rustc_errors;
@@ -312,20 +310,12 @@ pub fn implements_trait<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     ty: ty::Ty<'tcx>,
     trait_id: DefId,
-    ty_params: &[ty::Ty<'tcx>],
-    parent_node_id: Option<NodeId>
+    ty_params: &[ty::Ty<'tcx>]
 ) -> bool {
     let ty = cx.tcx.erase_regions(&ty);
-    let param_env = if let Some(id) = parent_node_id {
-        let def_id = cx.tcx.hir.body_owner_def_id(BodyId { node_id: id });
-        cx.tcx.param_env(def_id).reveal_all()
-    } else {
-        ty::ParamEnv::empty(Reveal::All)
-    };
-    cx.tcx.infer_ctxt(()).enter(|infcx| {
-        let obligation = cx.tcx.predicate_for_trait_def(
-            param_env, traits::ObligationCause::dummy(), trait_id, 0, ty, ty_params);
-
+    let obligation = cx.tcx.predicate_for_trait_def(
+        cx.param_env, traits::ObligationCause::dummy(), trait_id, 0, ty, ty_params);
+    cx.tcx.infer_ctxt().enter(|infcx| {
         traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
     })
 }
@@ -776,12 +766,10 @@ pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> ty::T
 pub fn same_tys<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     a: ty::Ty<'tcx>,
-    b: ty::Ty<'tcx>,
-    parameter_item: DefId
+    b: ty::Ty<'tcx>
 ) -> bool {
-    let param_env = cx.tcx.param_env(parameter_item).reveal_all();
-    cx.tcx.infer_ctxt(()).enter(|infcx| {
-        infcx.can_eq(param_env, a, b).is_ok()
+    cx.tcx.infer_ctxt().enter(|infcx| {
+        infcx.can_eq(cx.param_env, a, b).is_ok()
     })
 }
 
@@ -794,10 +782,8 @@ pub fn type_is_unsafe_function(ty: ty::Ty) -> bool {
     }
 }
 
-pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, env: DefId) -> bool {
-    let substs = Substs::identity_for_item(cx.tcx, env);
-    let env = cx.tcx.param_env(env);
-    !ty.subst(cx.tcx, substs).moves_by_default(cx.tcx.global_tcx(), env, DUMMY_SP)
+pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>) -> bool {
+    !ty.moves_by_default(cx.tcx.global_tcx(), cx.param_env, DUMMY_SP)
 }
 
 /// Return whether a pattern is refutable.
@@ -959,6 +945,5 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
 }
 
 pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>) -> Option<u64> {
-    ty.layout(cx.tcx, ty::ParamEnv::empty(Reveal::All))
-      .ok().map(|layout| layout.size(cx.tcx).bytes())
+    ty.layout(cx.tcx, cx.param_env).ok().map(|layout| layout.size(cx.tcx).bytes())
 }

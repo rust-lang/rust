@@ -8,7 +8,7 @@ use rustc::ty;
 use rustc::util::nodemap::NodeSet;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
-use utils::span_lint;
+use utils::{span_lint, type_size};
 
 pub struct Pass {
     pub too_large_for_stack: u64,
@@ -42,9 +42,8 @@ fn is_non_trait_box(ty: ty::Ty) -> bool {
 }
 
 struct EscapeDelegate<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
     set: NodeSet,
-    tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     too_large_for_stack: u64,
 }
 
@@ -65,19 +64,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         node_id: NodeId
     ) {
         let fn_def_id = cx.tcx.hir.local_def_id(node_id);
-        let param_env = cx.tcx.param_env(fn_def_id).reveal_all();
         let mut v = EscapeDelegate {
+            cx: cx,
             set: NodeSet(),
-            tcx: cx.tcx,
-            param_env: param_env,
             too_large_for_stack: self.too_large_for_stack,
         };
 
-        cx.tcx.infer_ctxt(body.id()).enter(|infcx| {
-            let region_maps = &cx.tcx.region_maps(fn_def_id);
-            let mut vis = ExprUseVisitor::new(&mut v, region_maps, &infcx, param_env);
-            vis.consume_body(body);
-        });
+        let region_maps = &cx.tcx.region_maps(fn_def_id);
+        ExprUseVisitor::new(&mut v, cx.tcx, cx.param_env, region_maps, cx.tables)
+            .consume_body(body);
 
         for node in v.set {
             span_lint(cx,
@@ -88,7 +83,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'gcx> {
+impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn consume(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, mode: ConsumeMode) {
         if let Categorization::Local(lid) = cmt.cat {
             if let Move(DirectRefMove) = mode {
@@ -99,7 +94,7 @@ impl<'a, 'gcx: 'tcx, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'gcx> {
     }
     fn matched_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: MatchMode) {}
     fn consume_pat(&mut self, consume_pat: &Pat, cmt: cmt<'tcx>, _: ConsumeMode) {
-        let map = &self.tcx.hir;
+        let map = &self.cx.tcx.hir;
         if map.is_argument(consume_pat.id) {
             // Skip closure arguments
             if let Some(NodeExpr(..)) = map.find(map.get_parent_node(consume_pat.id)) {
@@ -172,18 +167,14 @@ impl<'a, 'gcx: 'tcx, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'gcx> {
     fn mutate(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: MutateMode) {}
 }
 
-impl<'a, 'tcx: 'a> EscapeDelegate<'a, 'tcx> {
-    fn is_large_box(&self, ty: ty::Ty) -> bool {
+impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {
+    fn is_large_box(&self, ty: ty::Ty<'tcx>) -> bool {
         // Large types need to be boxed to avoid stack
         // overflows.
         if ty.is_box() {
-            if let Some(inner) = self.tcx.lift(&ty.boxed_ty()) {
-                if let Ok(layout) = inner.layout(self.tcx, self.param_env) {
-                    return layout.size(self.tcx).bytes() > self.too_large_for_stack;
-                }
-            }
+            type_size(self.cx, ty.boxed_ty()).unwrap_or(0) > self.too_large_for_stack
+        } else {
+            false
         }
-
-        false
     }
 }
