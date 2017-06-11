@@ -166,6 +166,14 @@ error: manual implementation of an assign operation
    |
    = note: `-D assign-op-pattern` implied by `-D warnings`
 
+error: manual implementation of an assign operation
+  --> assign_ops.rs:40:5
+   |
+40 |     s = s + "bla";
+   |     ^^^^^^^^^^^^^ help: replace it with `s += "bla"`
+   |
+   = note: `-D assign-op-pattern` implied by `-D warnings`
+
 error: aborting due to previous error(s)
 
 error: Could not compile `clippy_tests`.

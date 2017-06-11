@@ -82,14 +82,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                 if let hir::ExprBinary(binop, ref l, ref r) = rhs.node {
                     if op.node == binop.node {
                         let lint = |assignee: &hir::Expr, rhs: &hir::Expr| {
-                            let ty = cx.tables.expr_ty(assignee);
-                            if ty.walk_shallow().next().is_some() {
-                                return; // implements_trait does not work with generics
-                            }
-                            let rty = cx.tables.expr_ty(rhs);
-                            if rty.walk_shallow().next().is_some() {
-                                return; // implements_trait does not work with generics
-                            }
                             span_lint_and_then(cx,
                                                MISREFACTORED_ASSIGN_OP,
                                                expr.span,
@@ -120,13 +112,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                     #[allow(cyclomatic_complexity)]
                     let lint = |assignee: &hir::Expr, rhs: &hir::Expr| {
                         let ty = cx.tables.expr_ty(assignee);
-                        if ty.walk_shallow().next().is_some() {
-                            return; // implements_trait does not work with generics
-                        }
                         let rty = cx.tables.expr_ty(rhs);
-                        if rty.walk_shallow().next().is_some() {
-                            return; // implements_trait does not work with generics
-                        }
                         macro_rules! ops {
                             ($op:expr,
                              $cx:expr,
@@ -152,7 +138,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                             let hir::Item_::ItemImpl(_, _, _, _, Some(ref trait_ref), _, _) = item.node,
                                             trait_ref.path.def.def_id() == trait_id
                                         ], { return; }}
-                                        implements_trait($cx, $ty, trait_id, &[$rty], None)
+                                        implements_trait($cx, $ty, trait_id, &[$rty])
                                     },)*
                                     _ => false,
                                 }

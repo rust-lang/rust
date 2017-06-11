@@ -385,10 +385,12 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                                    e.span,
                                    "this boolean expression can be simplified",
                                    |db| {
-                                       db.span_suggestions(e.span, "try", improvements.into_iter().map(|suggestion| {
-                                           suggest(self.cx, suggestion, &h2q.terminals)
-                                       }).collect());
-                                   });
+                    db.span_suggestions(e.span,
+                                        "try",
+                                        improvements.into_iter()
+                                            .map(|suggestion| suggest(self.cx, suggestion, &h2q.terminals))
+                                            .collect());
+                });
             }
         }
     }

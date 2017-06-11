@@ -1,5 +1,6 @@
 //! This module contains paths to types and functions Clippy needs to know about.
 
+pub const ASMUT_TRAIT: [&'static str; 3] = ["core", "convert", "AsMut"];
 pub const ASREF_TRAIT: [&'static str; 3] = ["core", "convert", "AsRef"];
 pub const BEGIN_PANIC: [&'static str; 3] = ["std", "panicking", "begin_panic"];
 pub const BINARY_HEAP: [&'static str; 3] = ["collections", "binary_heap", "BinaryHeap"];
@@ -9,7 +10,6 @@ pub const BOX_NEW: [&'static str; 4] = ["std", "boxed", "Box", "new"];
 pub const BTREEMAP: [&'static str; 4] = ["collections", "btree", "map", "BTreeMap"];
 pub const BTREEMAP_ENTRY: [&'static str; 4] = ["collections", "btree", "map", "Entry"];
 pub const BTREESET: [&'static str; 4] = ["collections", "btree", "set", "BTreeSet"];
-pub const CARRIER_TRANSLATE: [&'static str; 4] = ["std", "ops", "Carrier", "translate"];
 pub const CLONE: [&'static str; 4] = ["core", "clone", "Clone", "clone"];
 pub const CLONE_TRAIT: [&'static str; 3] = ["core", "clone", "Clone"];
 pub const CMP_MAX: [&'static str; 3] = ["core", "cmp", "max"];
@@ -72,6 +72,7 @@ pub const STRING: [&'static str; 3] = ["collections", "string", "String"];
 pub const TO_OWNED: [&'static str; 3] = ["collections", "borrow", "ToOwned"];
 pub const TO_STRING: [&'static str; 3] = ["collections", "string", "ToString"];
 pub const TRANSMUTE: [&'static str; 4] = ["core", "intrinsics", "", "transmute"];
+pub const TRY_INTO_RESULT: [&'static str; 4] = ["std", "ops", "Try", "into_result"];
 pub const VEC: [&'static str; 3] = ["collections", "vec", "Vec"];
 pub const VEC_DEQUE: [&'static str; 3] = ["collections", "vec_deque", "VecDeque"];
 pub const VEC_FROM_ELEM: [&'static str; 3] = ["collections", "vec", "from_elem"];

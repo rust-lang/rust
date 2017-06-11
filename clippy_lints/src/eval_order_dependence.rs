@@ -137,11 +137,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
                 }
             },
             ExprMethodCall(..) => {
-                let method_call = ty::MethodCall::expr(e.id);
                 let borrowed_table = self.cx.tables;
-                let method_type = borrowed_table.method_map.get(&method_call).expect("This should never happen.");
-                let result_ty = method_type.ty.fn_ret();
-                if let ty::TyNever = self.cx.tcx.erase_late_bound_regions(&result_ty).sty {
+                if borrowed_table.expr_ty(e).is_never() {
                     self.report_diverging_sub_expr(e);
                 }
             },

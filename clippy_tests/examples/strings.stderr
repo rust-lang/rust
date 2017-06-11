@@ -1,3 +1,11 @@
+error: manual implementation of an assign operation
+  --> strings.rs:10:9
+   |
+10 |         x = x + ".";
+   |         ^^^^^^^^^^^ help: replace it with `x += "."`
+   |
+   = note: `-D assign-op-pattern` implied by `-D warnings`
+
 error: you added something to a string. Consider using `String::push_str()` instead
   --> strings.rs:10:13
    |
@@ -22,6 +30,14 @@ error: you assigned the result of adding something to this string. Consider usin
    |
    = note: `-D string-add-assign` implied by `-D warnings`
 
+error: manual implementation of an assign operation
+  --> strings.rs:24:9
+   |
+24 |         x = x + ".";
+   |         ^^^^^^^^^^^ help: replace it with `x += "."`
+   |
+   = note: `-D assign-op-pattern` implied by `-D warnings`
+
 error: you assigned the result of adding something to this string. Consider using `String::push_str()` instead
   --> strings.rs:38:9
    |
@@ -29,6 +45,14 @@ error: you assigned the result of adding something to this string. Consider usin
    |         ^^^^^^^^^^^
    |
    = note: `-D string-add-assign` implied by `-D warnings`
+
+error: manual implementation of an assign operation
+  --> strings.rs:38:9
+   |
+38 |         x = x + ".";
+   |         ^^^^^^^^^^^ help: replace it with `x += "."`
+   |
+   = note: `-D assign-op-pattern` implied by `-D warnings`
 
 error: you added something to a string. Consider using `String::push_str()` instead
   --> strings.rs:42:13

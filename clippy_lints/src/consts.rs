@@ -5,7 +5,7 @@ use rustc::hir::def::Def;
 use rustc_const_eval::lookup_const_by_id;
 use rustc_const_math::ConstInt;
 use rustc::hir::*;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, Ty};
 use rustc::ty::subst::{Substs, Subst};
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
@@ -161,7 +161,7 @@ impl PartialOrd for Constant {
 
 /// parse a `LitKind` to a `Constant`
 #[allow(cast_possible_wrap)]
-pub fn lit_to_constant<'a, 'tcx>(lit: &LitKind, tcx: TyCtxt<'a, 'tcx, 'tcx>, mut ty: ty::Ty<'tcx>) -> Constant {
+pub fn lit_to_constant<'a, 'tcx>(lit: &LitKind, tcx: TyCtxt<'a, 'tcx, 'tcx>, mut ty: Ty<'tcx>) -> Constant {
     use syntax::ast::*;
     use syntax::ast::LitIntType::*;
     use rustc::ty::util::IntTypeExt;
@@ -286,9 +286,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         match def {
             Def::Const(def_id) |
             Def::AssociatedConst(def_id) => {
-                let substs = self.tables
-                    .node_id_item_substs(id)
-                    .unwrap_or_else(|| self.tcx.intern_substs(&[]));
+                let substs = self.tables.node_substs(id);
                 let substs = if self.substs.is_empty() {
                     substs
                 } else {

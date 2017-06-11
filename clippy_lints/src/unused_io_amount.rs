@@ -46,7 +46,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
             hir::ExprMatch(ref res, _, _) if is_try(expr).is_some() => {
                 if let hir::ExprCall(ref func, ref args) = res.node {
                     if let hir::ExprPath(ref path) = func.node {
-                        if match_path(path, &paths::CARRIER_TRANSLATE) && args.len() == 1 {
+                        if match_path(path, &paths::TRY_INTO_RESULT) && args.len() == 1 {
                             check_method_call(cx, &args[0], expr);
                         }
                     }

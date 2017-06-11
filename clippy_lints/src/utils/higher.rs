@@ -76,8 +76,7 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
                     end: None,
                     limits: ast::RangeLimits::HalfOpen,
                 })
-            } else if match_path(path, &paths::RANGE_INCLUSIVE_STD) ||
-                      match_path(path, &paths::RANGE_INCLUSIVE) {
+            } else if match_path(path, &paths::RANGE_INCLUSIVE_STD) || match_path(path, &paths::RANGE_INCLUSIVE) {
                 Some(Range {
                     start: get_field("start", fields),
                     end: get_field("end", fields),
@@ -125,20 +124,17 @@ pub fn is_from_for_desugar(decl: &hir::Decl) -> bool {
 /// `for pat in arg { body }` becomes `(pat, arg, body)`.
 pub fn for_loop(expr: &hir::Expr) -> Option<(&hir::Pat, &hir::Expr, &hir::Expr)> {
     if_let_chain! {[
-        let hir::ExprMatch(ref iterexpr, ref arms, _) = expr.node,
+        let hir::ExprMatch(ref iterexpr, ref arms, hir::MatchSource::ForLoopDesugar) = expr.node,
         let hir::ExprCall(_, ref iterargs) = iterexpr.node,
         iterargs.len() == 1 && arms.len() == 1 && arms[0].guard.is_none(),
         let hir::ExprLoop(ref block, _, _) = arms[0].body.node,
-        block.stmts.is_empty(),
-        let Some(ref loopexpr) = block.expr,
-        let hir::ExprMatch(_, ref innerarms, hir::MatchSource::ForLoopDesugar) = loopexpr.node,
-        innerarms.len() == 2 && innerarms[0].pats.len() == 1,
-        let hir::PatKind::TupleStruct(_, ref somepats, _) = innerarms[0].pats[0].node,
-        somepats.len() == 1
+        block.expr.is_none(),
+        let [ ref let_stmt, ref body ] = *block.stmts,
+        let hir::StmtDecl(ref decl, _) = let_stmt.node,
+        let hir::DeclLocal(ref decl) = decl.node,
+        let hir::StmtExpr(ref expr, _) = body.node,
     ], {
-        return Some((&somepats[0],
-                     &iterargs[0],
-                     &innerarms[0].body));
+        return Some((&*decl.pat, &iterargs[0], expr));
     }}
     None
 }

@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use rustc::ty;
+use rustc::ty::Ty;
 use rustc::hir::*;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
@@ -251,12 +251,8 @@ fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
 }
 
 /// Return the list of bindings in a pattern.
-fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<InternedString, ty::Ty<'tcx>> {
-    fn bindings_impl<'a, 'tcx>(
-        cx: &LateContext<'a, 'tcx>,
-        pat: &Pat,
-        map: &mut HashMap<InternedString, ty::Ty<'tcx>>
-    ) {
+fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<InternedString, Ty<'tcx>> {
+    fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat, map: &mut HashMap<InternedString, Ty<'tcx>>) {
         match pat.node {
             PatKind::Box(ref pat) |
             PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),

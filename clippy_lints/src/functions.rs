@@ -1,6 +1,5 @@
 use rustc::hir::intravisit;
 use rustc::hir;
-use rustc::ty;
 use rustc::lint::*;
 use std::collections::HashSet;
 use syntax::ast;
@@ -184,8 +183,8 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                 }
             },
             hir::ExprMethodCall(_, _, ref args) => {
-                let method_call = ty::MethodCall::expr(expr.id);
-                let base_type = self.cx.tables.method_map[&method_call].ty;
+                let def_id = self.cx.tables.type_dependent_defs[&expr.id].def_id();
+                let base_type = self.cx.tcx.type_of(def_id);
 
                 if type_is_unsafe_function(base_type) {
                     for arg in args {
