@@ -604,28 +604,33 @@ impl FileMap {
         lines.push(pos);
     }
 
-    /// add externally loaded source.
-    /// if the hash of the input doesn't match or no input is supplied via None,
+    /// Add externally loaded source.
+    /// If the hash of the input doesn't match or no input is supplied via None,
     /// it is interpreted as an error and the corresponding enum variant is set.
+    /// The return value signifies whether some kind of source is present.
     pub fn add_external_src(&self, src: Option<String>) -> bool {
-        let mut external_src = self.external_src.borrow_mut();
-        if let Some(src) = src {
-            let mut hasher: StableHasher<u128> = StableHasher::new();
-            hasher.write(src.as_bytes());
+        if *self.external_src.borrow() == ExternalSource::AbsentOk {
+            let mut external_src = self.external_src.borrow_mut();
+            if let Some(src) = src {
+                let mut hasher: StableHasher<u128> = StableHasher::new();
+                hasher.write(src.as_bytes());
 
-            if hasher.finish() == self.src_hash {
-                *external_src = ExternalSource::Present(src);
-                return true;
+                if hasher.finish() == self.src_hash {
+                    *external_src = ExternalSource::Present(src);
+                    return true;
+                }
+            } else {
+                *external_src = ExternalSource::AbsentErr;
             }
-        } else {
-            *external_src = ExternalSource::AbsentErr;
-        }
 
-        false
+            false
+        } else {
+            self.src.is_some() || self.external_src.borrow().get_source().is_some()
+        }
     }
 
-    /// get a line from the list of pre-computed line-beginnings.
-    /// line-number here is 0-based.
+    /// Get a line from the list of pre-computed line-beginnings.
+    /// The line number here is 0-based.
     pub fn get_line(&self, line_number: usize) -> Option<Cow<str>> {
         fn get_until_newline(src: &str, begin: usize) -> &str {
             // We can't use `lines.get(line_number+1)` because we might

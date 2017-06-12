@@ -177,8 +177,6 @@ impl EmitterWriter {
                     continue;
                 }
 
-                cm.load_source_for_filemap(cm.span_to_filename(span_label.span));
-
                 let lo = cm.lookup_char_pos(span_label.span.lo);
                 let mut hi = cm.lookup_char_pos(span_label.span.hi);
 
@@ -891,10 +889,10 @@ impl EmitterWriter {
         let mut annotated_files = self.preprocess_annotations(msp);
 
         // Make sure our primary file comes first
-        let primary_lo = if let (Some(ref cm), Some(ref primary_span)) =
+        let (primary_lo, cm) = if let (Some(cm), Some(ref primary_span)) =
             (self.cm.as_ref(), msp.primary_span().as_ref()) {
             if primary_span != &&DUMMY_SP {
-                cm.lookup_char_pos(primary_span.lo)
+                (cm.lookup_char_pos(primary_span.lo), cm)
             } else {
                 emit_to_destination(&buffer.render(), level, &mut self.dst)?;
                 return Ok(());
@@ -912,8 +910,7 @@ impl EmitterWriter {
         // Print out the annotate source lines that correspond with the error
         for annotated_file in annotated_files {
             // we can't annotate anything if the source is unavailable.
-            if annotated_file.file.src.is_none()
-                    && annotated_file.file.external_src.borrow().is_absent() {
+            if !cm.ensure_filemap_source_present(annotated_file.file.clone()) {
                 continue;
             }
 
