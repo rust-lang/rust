@@ -3889,9 +3889,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           element_ty
                       }
                       None => {
-                          let mut err = struct_span_err!(tcx.sess, expr.span, E0608,
-                                                         "cannot index into a value of type `{}`",
-                                                         base_t);
+                          let mut err = type_error_struct!(tcx.sess, expr.span, base_t, E0608,
+                                                           "cannot index into a value of type `{}`",
+                                                           base_t);
                           // Try to give some advice about indexing tuples.
                           if let ty::TyTuple(..) = base_t.sty {
                               let mut needs_note = true;

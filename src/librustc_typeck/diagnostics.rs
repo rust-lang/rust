@@ -4105,8 +4105,8 @@ Erroneous code example:
 0u8[2]; // error: cannot index into a value of type `u8`
 ```
 
-To be able to index a value from a type, it needs to implement the
-`std::ops::Index` trait. Example:
+To be able to index into a type it needs to implement the `std::ops::Index`
+trait. Example:
 
 ```
 let v: Vec<u8> = vec![0, 1, 2, 3];
