@@ -21,9 +21,24 @@ fn main() {
     let target = env::var("TARGET").expect("TARGET was not set");
     let cfg = &mut gcc::Config::new();
 
+    let mut profile_sources = vec!["GCDAProfiling.c",
+                                   "InstrProfiling.c",
+                                   "InstrProfilingBuffer.c",
+                                   "InstrProfilingFile.c",
+                                   "InstrProfilingMerge.c",
+                                   "InstrProfilingMergeFile.c",
+                                   "InstrProfilingPlatformDarwin.c",
+                                   "InstrProfilingPlatformLinux.c",
+                                   "InstrProfilingPlatformOther.c",
+                                   "InstrProfilingRuntime.cc",
+                                   "InstrProfilingUtil.c",
+                                   "InstrProfilingValue.c",
+                                   "InstrProfilingWriter.c"];
+
     if target.contains("msvc") {
         // Don't pull in extra libraries on MSVC
         cfg.flag("/Zl");
+        profile_sources.push("WindowsMMap.c");
     } else {
         // Turn off various features of gcc and such, mostly copying
         // compiler-rt's build system already
@@ -33,20 +48,6 @@ fn main() {
         cfg.flag("-ffreestanding");
         cfg.define("VISIBILITY_HIDDEN", None);
     }
-
-    let profile_sources = &["GCDAProfiling.c",
-                            "InstrProfiling.c",
-                            "InstrProfilingBuffer.c",
-                            "InstrProfilingFile.c",
-                            "InstrProfilingMerge.c",
-                            "InstrProfilingMergeFile.c",
-                            "InstrProfilingPlatformDarwin.c",
-                            "InstrProfilingPlatformLinux.c",
-                            "InstrProfilingPlatformOther.c",
-                            "InstrProfilingRuntime.cc",
-                            "InstrProfilingUtil.c",
-                            "InstrProfilingValue.c",
-                            "InstrProfilingWriter.c"];
 
     for src in profile_sources {
         cfg.file(Path::new("../compiler-rt/lib/profile").join(src));
