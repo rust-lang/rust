@@ -23,6 +23,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::map::{DefKey, DefPath, DisambiguatedDefPathData, DefPathHash};
+use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
 use rustc::util::nodemap::{NodeSet, DefIdMap};
 use rustc_back::PanicStrategy;
@@ -106,6 +107,7 @@ provide! { <'tcx> tcx, def_id, cdata
     closure_kind => { cdata.closure_kind(def_id.index) }
     closure_type => { cdata.closure_ty(def_id.index, tcx) }
     inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
+    is_const_fn => { cdata.is_const_fn(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     is_default_impl => { cdata.is_default_impl(def_id.index) }
     describe_def => { cdata.get_def(def_id.index) }
@@ -129,6 +131,24 @@ provide! { <'tcx> tcx, def_id, cdata
         cdata.const_is_rvalue_promotable_to_static(def_id.index)
     }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
+}
+
+pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
+    fn is_const_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+        let node_id = tcx.hir.as_local_node_id(def_id)
+                             .expect("Non-local call to local provider is_const_fn");
+
+        if let Some(fn_like) = FnLikeNode::from_node(tcx.hir.get(node_id)) {
+            fn_like.constness() == hir::Constness::Const
+        } else {
+            false
+        }
+    }
+
+    *providers = Providers {
+        is_const_fn,
+        ..*providers
+    };
 }
 
 impl CrateStore for cstore::CStore {
@@ -170,12 +190,6 @@ impl CrateStore for cstore::CStore {
     {
         self.read_dep_node(def);
         self.get_crate_data(def.krate).get_associated_item(def.index)
-    }
-
-    fn is_const_fn(&self, did: DefId) -> bool
-    {
-        self.read_dep_node(did);
-        self.get_crate_data(did.krate).is_const_fn(did.index)
     }
 
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool

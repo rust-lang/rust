@@ -101,7 +101,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
                 fn_like.constness() == hir::Constness::Const
             })
         } else {
-            self.tcx.sess.cstore.is_const_fn(def_id)
+            self.tcx.is_const_fn(def_id)
         };
     }
 }

@@ -899,6 +899,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     reachable::provide(&mut local_providers);
     rustc_const_eval::provide(&mut local_providers);
     middle::region::provide(&mut local_providers);
+    cstore::provide_local(&mut local_providers);
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);

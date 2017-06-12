@@ -476,6 +476,12 @@ impl<'tcx> QueryDescription for queries::is_object_safe<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::is_const_fn<'tcx> {
+    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+        format!("checking if item is const fn: `{}`", tcx.item_path_str(def_id))
+    }
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -790,6 +796,9 @@ define_maps! { <'tcx>
     [] adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
     [] adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
     [] adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
+
+    /// True if this is a const fn
+    [] is_const_fn: IsConstFn(DefId) -> bool,
 
     /// True if this is a foreign item (i.e., linked via `extern { ... }`).
     [] is_foreign_item: IsForeignItem(DefId) -> bool,

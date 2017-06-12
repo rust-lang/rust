@@ -339,6 +339,7 @@ define_dep_nodes!(
     ItemSignature(DefId),
     ItemVarianceConstraints(DefId),
     ItemVariances(DefId),
+    IsConstFn(DefId),
     IsForeignItem(DefId),
     TypeParamPredicates { item_id: DefId, param_id: DefId },
     SizedConstraint(DefId),

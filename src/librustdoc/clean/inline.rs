@@ -151,7 +151,7 @@ pub fn build_external_trait(cx: &DocContext, did: DefId) -> clean::Trait {
 fn build_external_function(cx: &DocContext, did: DefId) -> clean::Function {
     let sig = cx.tcx.type_of(did).fn_sig();
 
-    let constness = if cx.tcx.sess.cstore.is_const_fn(did) {
+    let constness = if cx.tcx.is_const_fn(did) {
         hir::Constness::Const
     } else {
         hir::Constness::NotConst
@@ -352,7 +352,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
                     clean::TyMethodItem(clean::TyMethod {
                         unsafety, decl, generics, abi
                     }) => {
-                        let constness = if tcx.sess.cstore.is_const_fn(item.def_id) {
+                        let constness = if tcx.is_const_fn(item.def_id) {
                             hir::Constness::Const
                         } else {
                             hir::Constness::NotConst
