@@ -42,7 +42,7 @@ use ast::RangeEnd;
 use {ast, attr};
 use codemap::{self, CodeMap, Spanned, respan};
 use syntax_pos::{self, Span, BytePos};
-use errors::{self, DiagnosticBuilder};
+use errors::{self, DiagnosticBuilder, Level};
 use parse::{self, classify, token};
 use parse::common::SeqSep;
 use parse::lexer::TokenAndSpan;
@@ -2840,7 +2840,24 @@ impl<'a> Parser<'a> {
                         let path = match self.parse_path_without_generics(PathStyle::Type) {
                             Ok(path) => {
                                 // Successfully parsed the type leaving a `<` yet to parse
-                                err.cancel();
+                                let codemap = self.sess.codemap();
+                                let suggestion_span = lhs_span.to(self.prev_span);
+                                let suggestion = match codemap.span_to_snippet(suggestion_span) {
+                                    Ok(lstring) => format!("({})", lstring),
+                                    _ => format!("(<expression>)")
+                                };
+                                let warn_message = match codemap.span_to_snippet(self.prev_span) {
+                                    Ok(lstring) => format!("`{}`", lstring),
+                                    _ => "a type".to_string(),
+                                };
+                                err.span_suggestion(suggestion_span,
+                                                    "if you want to compare the casted value then write",
+                                                    suggestion);
+                                err.level = Level::Warning;
+                                err.set_message(&format!("`<` is interpreted as a start of generic \
+                                                          arguments for {}, not a comparison",
+                                                          warn_message));
+                                err.emit();
                                 path
                             }
                             Err(mut path_err) => {

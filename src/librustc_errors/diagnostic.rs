@@ -248,6 +248,10 @@ impl Diagnostic {
         self.message.iter().map(|i| i.0.to_owned()).collect::<String>()
     }
 
+    pub fn set_message(&mut self, message: &str) {
+        self.message = vec![(message.to_owned(), Style::NoStyle)];
+    }
+
     pub fn styled_message(&self) -> &Vec<(String, Style)> {
         &self.message
     }
