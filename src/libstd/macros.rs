@@ -486,7 +486,7 @@ pub mod builtin {
     /// leads to less duplicated code.
     ///
     /// The syntax given to this macro is the same syntax as [the `cfg`
-    /// attribute](../book/conditional-compilation.html).
+    /// attribute](../book/first-edition/conditional-compilation.html).
     ///
     /// # Examples
     ///

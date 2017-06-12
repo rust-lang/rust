@@ -405,7 +405,7 @@ impl Quux for Foo { }
 Lifetime elision in implementation headers was part of the lifetime elision
 RFC. It is, however, [currently unimplemented][iss15872].
 
-[book-le]: https://doc.rust-lang.org/nightly/book/lifetimes.html#lifetime-elision
+[book-le]: https://doc.rust-lang.org/nightly/book/first-edition/lifetimes.html#lifetime-elision
 [iss15872]: https://github.com/rust-lang/rust/issues/15872
 "##,
 
@@ -501,7 +501,7 @@ fn main() {
 }
 ```
 
-See also https://doc.rust-lang.org/book/unsafe.html
+See also https://doc.rust-lang.org/book/first-edition/unsafe.html
 "##,
 
 // This shouldn't really ever trigger since the repeated value error comes first
@@ -666,7 +666,7 @@ attributes:
 #![no_std]
 ```
 
-See also https://doc.rust-lang.org/book/no-stdlib.html
+See also https://doc.rust-lang.org/book/first-edition/no-stdlib.html
 "##,
 
 E0261: r##"
@@ -1779,7 +1779,7 @@ fn main() {
 ```
 
 To understand better how closures work in Rust, read:
-https://doc.rust-lang.org/book/closures.html
+https://doc.rust-lang.org/book/first-edition/closures.html
 "##,
 
 E0580: r##"

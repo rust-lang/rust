@@ -13,7 +13,7 @@
 ///
 /// `Deref` also enables ['`Deref` coercions'][coercions].
 ///
-/// [coercions]: ../../book/deref-coercions.html
+/// [coercions]: ../../book/first-edition/deref-coercions.html
 ///
 /// # Examples
 ///
@@ -71,7 +71,7 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 ///
 /// `DerefMut` also enables ['`Deref` coercions'][coercions].
 ///
-/// [coercions]: ../../book/deref-coercions.html
+/// [coercions]: ../../book/first-edition/deref-coercions.html
 ///
 /// # Examples
 ///

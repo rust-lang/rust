@@ -85,7 +85,7 @@ impl<T: ?Sized> !Send for *mut T { }
 ///                         // be made into an object
 /// ```
 ///
-/// [trait object]: ../../book/trait-objects.html
+/// [trait object]: ../../book/first-edition/trait-objects.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sized"]
 #[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
@@ -493,7 +493,7 @@ macro_rules! impls{
 /// types. We track the Rust type using a phantom type parameter on
 /// the struct `ExternalResource` which wraps a handle.
 ///
-/// [FFI]: ../../book/ffi.html
+/// [FFI]: ../../book/first-edition/ffi.html
 ///
 /// ```
 /// # #![allow(dead_code)]
