@@ -30,19 +30,19 @@ fn callback(state: &driver::CompileState) {
     let tcx = state.tcx.unwrap();
     let cstore = &tcx.sess.cstore;
 
-    let (new_did, old_did) = if std::env::var("RUST_SEMVERVER_TEST").is_err() {
+    let (old_did, new_did) = if std::env::var("RUST_SEMVERVER_TEST").is_err() {
         // this is an actual program run
         let cnums = cstore
             .crates()
             .iter()
-            .fold((None, None), |(n, o), crate_num| {
+            .fold((None, None), |(o, n), crate_num| {
                 let name = cstore.crate_name(*crate_num);
-                if name == "new" {
-                    (Some(*crate_num), o)
-                } else if name == "old" {
-                    (n, Some(*crate_num))
+                if name == "old" {
+                    (Some(*crate_num), n)
+                } else if name == "new" {
+                    (o, Some(*crate_num))
                 } else {
-                    (n, o)
+                    (o, n)
                 }
             });
         if let (Some(c0), Some(c1)) = cnums {
@@ -55,7 +55,7 @@ fn callback(state: &driver::CompileState) {
                  index: CRATE_DEF_INDEX,
              })
         } else {
-            tcx.sess.err("could not find crate `new` and/or `old`");
+            tcx.sess.err("could not find crate `old` and/or `new`");
             return;
         }
     } else {
@@ -84,26 +84,26 @@ fn callback(state: &driver::CompileState) {
 
         let dids = children
             .drain(..)
-            .fold((None, None), |(n, o), child| {
+            .fold((None, None), |(o, n), child| {
                 let child_name = String::from(&*child.ident.name.as_str());
-                if child_name == "new" {
-                    (Some(child.def.def_id()), o)
-                } else if child_name == "old" {
-                    (n, Some(child.def.def_id()))
+                if child_name == "old" {
+                    (Some(child.def.def_id()), n)
+                } else if child_name == "new" {
+                    (o, Some(child.def.def_id()))
                 } else {
-                    (n, o)
+                    (o, n)
                 }
             });
 
-        if let (Some(n), Some(o)) = dids {
-            (n, o)
+        if let (Some(o), Some(n)) = dids {
+            (o, n)
         } else {
             tcx.sess.err("could not find module `new` and/or `old` in crate `oldandnew`");
             return;
         }
     };
 
-    let changes = traverse_modules(&tcx, new_did, old_did);
+    let changes = traverse_modules(&tcx, old_did, new_did);
 
     changes.output(tcx.sess);
 }
