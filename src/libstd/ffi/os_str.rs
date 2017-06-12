@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use borrow::{Borrow, Cow};
-use fmt::{self, Debug};
+use fmt;
 use mem;
 use ops;
 use cmp;
@@ -312,8 +312,8 @@ impl Default for OsString {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Debug for OsString {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+impl fmt::Debug for OsString {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, formatter)
     }
 }
@@ -669,9 +669,15 @@ impl Hash for OsStr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Debug for OsStr {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        self.inner.fmt(formatter)
+impl fmt::Debug for OsStr {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.inner, formatter)
+    }
+}
+
+impl OsStr {
+    pub(crate) fn display(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.inner, formatter)
     }
 }
 

@@ -2281,8 +2281,8 @@ impl AsRef<OsStr> for Path {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Path {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        self.inner.fmt(formatter)
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.inner, formatter)
     }
 }
 
@@ -2314,14 +2314,14 @@ pub struct Display<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> fmt::Debug for Display<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.path.to_string_lossy(), f)
+        fmt::Debug::fmt(&self.path, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> fmt::Display for Display<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.path.to_string_lossy(), f)
+        self.path.inner.display(f)
     }
 }
 
