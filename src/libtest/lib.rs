@@ -2020,6 +2020,7 @@ mod tests {
 
         let mut opts = TestOpts::new();
         opts.run_tests = true;
+        opts.test_threads = Some(100);
 
         let limit = 100;
 
@@ -2054,6 +2055,71 @@ mod tests {
         }).unwrap();
 
         assert_eq!(*(*lock).read().unwrap(), limit);
+    }
+
+    #[test]
+    pub fn run_concurrent_tests_concurrently() {
+        use super::{TestEvent, TestResult, run_tests};
+        use std::sync::{Arc, RwLock};
+        use std::thread::sleep;
+        use std::time::Duration;
+
+        let mut opts = TestOpts::new();
+        opts.run_tests = true;
+        opts.test_threads = Some(2);
+
+        let lock = Arc::new(RwLock::new(0));
+
+        let lock2 = lock.clone();
+        let lock3 = lock.clone();
+
+        let tests = vec![
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: DynTestName("first".to_string()),
+                    ignore: false,
+                    should_panic: ShouldPanic::No,
+                    serial: false,
+                },
+                testfn: DynTestFn(Box::new(move |()| {
+                    let mut c = lock2.write().unwrap();
+                    sleep(Duration::from_millis(1000));
+                    *c += 1
+                }))
+            },
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: DynTestName("second".to_string()),
+                    ignore: false,
+                    should_panic: ShouldPanic::No,
+                    serial: false,
+                },
+                testfn: DynTestFn(Box::new(move |()| {
+                    sleep(Duration::from_millis(500));
+                    let mut c = lock3.write().unwrap();
+                    *c += 1
+                }))
+            }
+        ];
+
+        run_tests(&opts, tests, |e| {
+            match e {
+                TestEvent::TeFilteredOut(n) if n > 0 => panic!("filtered out"),
+                TestEvent::TeTimeout(_) => panic!("timeout"),
+                TestEvent::TeResult(ref desc, ref result, _) => { // XXX this is ridiculous
+                    if let DynTestName(ref n) = desc.name {
+                        if result != &TestResult::TrFailed && *n == "second".to_string() {
+                            panic!("Test passed somehow");
+                        } else {
+                            Ok(())
+                        }
+                    } else {
+                        Ok(())
+                    }
+                }
+                _ => Ok(())
+            }
+        }).unwrap();
     }
 
     #[test]
