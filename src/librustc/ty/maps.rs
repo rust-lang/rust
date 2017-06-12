@@ -489,6 +489,18 @@ impl<'tcx> QueryDescription for queries::dylib_dependency_formats<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::is_allocator<'tcx> {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
+        "checking if the crate is_allocator".to_string()
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_panic_runtime<'tcx> {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
+        "checking if the crate is_panic_runtime".to_string()
+    }
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -948,6 +960,9 @@ define_maps! { <'tcx>
 
     [] dylib_dependency_formats: MetaDataByCrateNum(CrateNum)
                                     -> Rc<Vec<(CrateNum, LinkagePreference)>>,
+
+    [] is_allocator: MetaDataByCrateNum(CrateNum) -> bool,
+    [] is_panic_runtime: MetaDataByCrateNum(CrateNum) -> bool,
 }
 
 fn type_param_predicates((item_id, param_id): (DefId, DefId)) -> DepConstructor {

@@ -92,8 +92,8 @@ impl ExportedSymbols {
             // Down below we'll hardwire all of the symbols to the `Rust` export
             // level instead.
             let special_runtime_crate =
-                scx.sess().cstore.is_allocator(cnum) ||
-                scx.sess().cstore.is_panic_runtime(cnum) ||
+                scx.tcx().is_allocator(cnum) ||
+                scx.tcx().is_panic_runtime(cnum) ||
                 scx.sess().cstore.is_compiler_builtins(cnum);
 
             let crate_exports = scx

@@ -154,6 +154,8 @@ provide! { <'tcx> tcx, def_id, cdata, cnum,
 
     ByCrateNum {
         dylib_dependency_formats => { Rc::new(cdata.get_dylib_dependency_formats(&tcx.dep_graph)) }
+        is_allocator => { cdata.is_allocator(&tcx.dep_graph) }
+        is_panic_runtime => { cdata.is_panic_runtime(&tcx.dep_graph) }
     }
 }
 
@@ -257,16 +259,6 @@ impl CrateStore for cstore::CStore {
                           -> Vec<lang_items::LangItem>
     {
         self.get_crate_data(cnum).get_missing_lang_items(&self.dep_graph)
-    }
-
-    fn is_allocator(&self, cnum: CrateNum) -> bool
-    {
-        self.get_crate_data(cnum).is_allocator(&self.dep_graph)
-    }
-
-    fn is_panic_runtime(&self, cnum: CrateNum) -> bool
-    {
-        self.get_crate_data(cnum).is_panic_runtime(&self.dep_graph)
     }
 
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool {

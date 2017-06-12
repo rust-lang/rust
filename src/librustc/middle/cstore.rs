@@ -251,8 +251,6 @@ pub trait CrateStore {
     fn export_macros(&self, cnum: CrateNum);
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>;
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>;
-    fn is_allocator(&self, cnum: CrateNum) -> bool;
-    fn is_panic_runtime(&self, cnum: CrateNum) -> bool;
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool;
     fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool;
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy;
@@ -371,8 +369,6 @@ impl CrateStore for DummyCrateStore {
         { bug!("missing_lang_items") }
     fn dep_kind(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
     fn export_macros(&self, cnum: CrateNum) { bug!("export_macros") }
-    fn is_allocator(&self, cnum: CrateNum) -> bool { bug!("is_allocator") }
-    fn is_panic_runtime(&self, cnum: CrateNum) -> bool { bug!("is_panic_runtime") }
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool { bug!("is_compiler_builtins") }
     fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool { bug!("is_sanitizer_runtime") }
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy {
