@@ -22,8 +22,6 @@ use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
-
-use rustc::dep_graph::{DepNode};
 use rustc::hir::map::{DefKey, DefPath, DisambiguatedDefPathData, DefPathHash};
 use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
 use rustc::util::nodemap::{NodeSet, DefIdMap};
@@ -48,7 +46,10 @@ macro_rules! provide {
                                         DepTrackingMapConfig>::Value {
                 assert!(!$def_id.is_local());
 
-                $tcx.dep_graph.read(DepNode::MetaData($def_id));
+                let def_path_hash = $tcx.def_path_hash($def_id);
+                let dep_node = def_path_hash.to_dep_node(::rustc::dep_graph::DepKind::MetaData);
+
+                $tcx.dep_graph.read(dep_node);
 
                 let $cdata = $tcx.sess.cstore.crate_data_as_rc_any($def_id.krate);
                 let $cdata = $cdata.downcast_ref::<cstore::CrateMetadata>()
@@ -140,12 +141,12 @@ impl CrateStore for cstore::CStore {
     }
 
     fn visibility(&self, def: DefId) -> ty::Visibility {
-        self.dep_graph.read(DepNode::MetaData(def));
+        self.read_dep_node(def);
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics {
-        self.dep_graph.read(DepNode::MetaData(def));
+        self.read_dep_node(def);
         self.get_crate_data(def.krate).get_generics(def.index)
     }
 
@@ -161,19 +162,19 @@ impl CrateStore for cstore::CStore {
 
     fn impl_defaultness(&self, def: DefId) -> hir::Defaultness
     {
-        self.dep_graph.read(DepNode::MetaData(def));
+        self.read_dep_node(def);
         self.get_crate_data(def.krate).get_impl_defaultness(def.index)
     }
 
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem
     {
-        self.dep_graph.read(DepNode::MetaData(def));
+        self.read_dep_node(def);
         self.get_crate_data(def.krate).get_associated_item(def.index)
     }
 
     fn is_const_fn(&self, did: DefId) -> bool
     {
-        self.dep_graph.read(DepNode::MetaData(did));
+        self.read_dep_node(did);
         self.get_crate_data(did.krate).is_const_fn(did.index)
     }
 
@@ -344,13 +345,13 @@ impl CrateStore for cstore::CStore {
 
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>
     {
-        self.dep_graph.read(DepNode::MetaData(def));
+        self.read_dep_node(def);
         self.get_crate_data(def.krate).get_struct_field_names(def.index)
     }
 
     fn item_children(&self, def_id: DefId, sess: &Session) -> Vec<def::Export>
     {
-        self.dep_graph.read(DepNode::MetaData(def_id));
+        self.read_dep_node(def_id);
         let mut result = vec![];
         self.get_crate_data(def_id.krate)
             .each_child_of_item(def_id.index, |child| result.push(child), sess);
@@ -398,11 +399,12 @@ impl CrateStore for cstore::CStore {
                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            def_id: DefId)
                            -> &'tcx hir::Body {
-        if let Some(cached) = tcx.hir.get_inlined_body(def_id) {
+        self.read_dep_node(def_id);
+
+        if let Some(cached) = tcx.hir.get_inlined_body_untracked(def_id) {
             return cached;
         }
 
-        self.dep_graph.read(DepNode::MetaData(def_id));
         debug!("item_body({:?}): inlining item", def_id);
 
         self.get_crate_data(def_id.krate).item_body(tcx, def_id.index)

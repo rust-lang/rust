@@ -381,7 +381,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         assert!(!obligation.predicate.has_escaping_regions());
 
         let tcx = self.tcx();
-        let dep_node = obligation.predicate.dep_node();
+        let dep_node = obligation.predicate.dep_node(tcx);
         let _task = tcx.dep_graph.in_task(dep_node);
 
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
@@ -514,11 +514,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         debug!("evaluate_predicate_recursively({:?})",
                obligation);
 
+        let tcx = self.tcx();
+
         // Check the cache from the tcx of predicates that we know
         // have been proven elsewhere. This cache only contains
         // predicates that are global in scope and hence unaffected by
         // the current environment.
-        if self.tcx().fulfilled_predicates.borrow().check_duplicate(&obligation.predicate) {
+        if tcx.fulfilled_predicates.borrow().check_duplicate(tcx, &obligation.predicate) {
             return EvaluatedToOk;
         }
 

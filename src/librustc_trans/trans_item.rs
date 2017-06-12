@@ -23,7 +23,7 @@ use common;
 use declare;
 use llvm;
 use monomorphize::Instance;
-use rustc::dep_graph::DepNode;
+use rustc::dep_graph::DepKind;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -75,14 +75,16 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
         match *self {
             TransItem::Static(node_id) => {
-                let def_id = ccx.tcx().hir.local_def_id(node_id);
-                let _task = ccx.tcx().dep_graph.in_task(DepNode::TransCrateItem(def_id)); // (*)
-                let item = ccx.tcx().hir.expect_item(node_id);
+                let tcx = ccx.tcx();
+                let def_id = tcx.hir.local_def_id(node_id);
+                let dep_node = def_id.to_dep_node(tcx, DepKind::TransCrateItem);
+                let _task = ccx.tcx().dep_graph.in_task(dep_node); // (*)
+                let item = tcx.hir.expect_item(node_id);
                 if let hir::ItemStatic(_, m, _) = item.node {
                     match consts::trans_static(&ccx, m, item.id, &item.attrs) {
                         Ok(_) => { /* Cool, everything's alright. */ },
                         Err(err) => {
-                            err.report(ccx.tcx(), item.span, "static");
+                            err.report(tcx, item.span, "static");
                         }
                     };
                 } else {
@@ -99,7 +101,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
             }
             TransItem::Fn(instance) => {
                 let _task = ccx.tcx().dep_graph.in_task(
-                    DepNode::TransCrateItem(instance.def_id())); // (*)
+                    instance.def_id()
+                            .to_dep_node(ccx.tcx(), DepKind::TransCrateItem)); // (*)
 
                 base::trans_instance(&ccx, instance);
             }

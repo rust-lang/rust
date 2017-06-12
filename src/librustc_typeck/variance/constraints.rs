@@ -15,7 +15,7 @@
 
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
-use rustc::dep_graph::{AssertDepGraphSafe, DepNode};
+use rustc::dep_graph::{AssertDepGraphSafe, DepKind};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::hir::map as hir_map;
@@ -104,7 +104,8 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
             hir::ItemEnum(..) |
             hir::ItemStruct(..) |
             hir::ItemUnion(..) => {
-                tcx.dep_graph.with_task(DepNode::ItemVarianceConstraints(def_id),
+                let dep_node = def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
+                tcx.dep_graph.with_task(dep_node,
                                         AssertDepGraphSafe(self),
                                         def_id,
                                         visit_item_task);
