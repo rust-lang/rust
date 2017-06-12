@@ -31,9 +31,20 @@ impl Fingerprint {
         self.0
     }
 
+    #[inline]
+    pub fn combine(self, other: Fingerprint) -> Fingerprint {
+        // See https://stackoverflow.com/a/27952689 on why this function is
+        // implemented this way.
+        Fingerprint(
+            self.0.wrapping_mul(3).wrapping_add(other.0),
+            self.1.wrapping_mul(3).wrapping_add(other.1)
+        )
+    }
+
     pub fn to_hex(&self) -> String {
         format!("{:x}{:x}", self.0, self.1)
     }
+
 }
 
 impl ::std::fmt::Display for Fingerprint {
