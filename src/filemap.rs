@@ -31,7 +31,8 @@ pub fn append_newline(s: &mut StringBuffer) {
 }
 
 pub fn write_all_files<T>(file_map: &FileMap, out: &mut T, config: &Config) -> Result<(), io::Error>
-    where T: Write
+where
+    T: Write,
 {
     output_header(out, config.write_mode()).ok();
     for &(ref filename, ref text) in file_map {
@@ -43,11 +44,13 @@ pub fn write_all_files<T>(file_map: &FileMap, out: &mut T, config: &Config) -> R
 }
 
 // Prints all newlines either as `\n` or as `\r\n`.
-pub fn write_system_newlines<T>(writer: T,
-                                text: &StringBuffer,
-                                config: &Config)
-                                -> Result<(), io::Error>
-    where T: Write
+pub fn write_system_newlines<T>(
+    writer: T,
+    text: &StringBuffer,
+    config: &Config,
+) -> Result<(), io::Error>
+where
+    T: Write,
 {
     // Buffer output, since we're writing a since char at a time.
     let mut writer = BufWriter::new(writer);
@@ -78,18 +81,21 @@ pub fn write_system_newlines<T>(writer: T,
     }
 }
 
-pub fn write_file<T>(text: &StringBuffer,
-                     filename: &str,
-                     out: &mut T,
-                     config: &Config)
-                     -> Result<bool, io::Error>
-    where T: Write
+pub fn write_file<T>(
+    text: &StringBuffer,
+    filename: &str,
+    out: &mut T,
+    config: &Config,
+) -> Result<bool, io::Error>
+where
+    T: Write,
 {
 
-    fn source_and_formatted_text(text: &StringBuffer,
-                                 filename: &str,
-                                 config: &Config)
-                                 -> Result<(String, String), io::Error> {
+    fn source_and_formatted_text(
+        text: &StringBuffer,
+        filename: &str,
+        config: &Config,
+    ) -> Result<(String, String), io::Error> {
         let mut f = File::open(filename)?;
         let mut ori_text = String::new();
         f.read_to_string(&mut ori_text)?;
@@ -99,10 +105,11 @@ pub fn write_file<T>(text: &StringBuffer,
         Ok((ori_text, fmt_text))
     }
 
-    fn create_diff(filename: &str,
-                   text: &StringBuffer,
-                   config: &Config)
-                   -> Result<Vec<Mismatch>, io::Error> {
+    fn create_diff(
+        filename: &str,
+        text: &StringBuffer,
+        config: &Config,
+    ) -> Result<Vec<Mismatch>, io::Error> {
         let (ori, fmt) = source_and_formatted_text(text, filename, config)?;
         Ok(make_diff(&ori, &fmt, 3))
     }

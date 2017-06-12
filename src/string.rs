@@ -42,10 +42,12 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
 
     // `cur_start` is the position in `orig` of the start of the current line.
     let mut cur_start = 0;
-    let mut result = String::with_capacity(stripped_str
-                                               .len()
-                                               .checked_next_power_of_two()
-                                               .unwrap_or(usize::max_value()));
+    let mut result = String::with_capacity(
+        stripped_str
+            .len()
+            .checked_next_power_of_two()
+            .unwrap_or(usize::max_value()),
+    );
     result.push_str(fmt.opener);
 
     let ender_length = fmt.line_end.len();
@@ -81,7 +83,8 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
                     if cur_end < cur_start + MIN_STRING {
                         cur_end = cur_start + max_chars;
                         while !(punctuation.contains(graphemes[cur_end - 1]) ||
-                                graphemes[cur_end - 1].trim().is_empty()) {
+                              graphemes[cur_end - 1].trim().is_empty())
+                        {
                             if cur_end >= graphemes.len() {
                                 let line = &graphemes[cur_start..].join("");
                                 result.push_str(line);

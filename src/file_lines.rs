@@ -52,7 +52,7 @@ impl Range {
             false
         } else {
             (self.lo <= other.hi && other.hi <= self.hi) ||
-            (other.lo <= self.hi && self.hi <= other.hi)
+                (other.lo <= self.hi && self.hi <= other.hi)
         }
     }
 
@@ -68,7 +68,10 @@ impl Range {
     /// intersect; returns `None` otherwise.
     fn merge(self, other: Range) -> Option<Range> {
         if self.adjacent_to(other) || self.intersects(other) {
-            Some(Range::new(cmp::min(self.lo, other.lo), cmp::max(self.hi, other.hi)))
+            Some(Range::new(
+                cmp::min(self.lo, other.lo),
+                cmp::max(self.hi, other.hi),
+            ))
         } else {
             None
         }
@@ -127,7 +130,8 @@ impl FileLines {
     /// Returns true if `self` includes all lines in all files. Otherwise runs `f` on all ranges in
     /// the designated file (if any) and returns true if `f` ever does.
     fn file_range_matches<F>(&self, file_name: &str, f: F) -> bool
-        where F: FnMut(&Range) -> bool
+    where
+        F: FnMut(&Range) -> bool,
     {
         let map = match self.0 {
             // `None` means "all lines in all files".
@@ -209,8 +213,9 @@ struct JsonSpan {
 impl JsonSpan {
     fn into_tuple(self) -> Result<(String, Range), String> {
         let (lo, hi) = self.range;
-        let canonical = canonicalize_path_string(&self.file)
-            .ok_or_else(|| format!("Can't canonicalize {}", &self.file))?;
+        let canonical = canonicalize_path_string(&self.file).ok_or_else(|| {
+            format!("Can't canonicalize {}", &self.file)
+        })?;
         Ok((canonical, Range::new(lo, hi)))
     }
 }
@@ -219,10 +224,13 @@ impl JsonSpan {
 // for `FileLines`, so it will just panic instead.
 impl<'de> ::serde::de::Deserialize<'de> for FileLines {
     fn deserialize<D>(_: D) -> Result<Self, D::Error>
-        where D: ::serde::de::Deserializer<'de>
+    where
+        D: ::serde::de::Deserializer<'de>,
     {
-        panic!("FileLines cannot be deserialized from a project rustfmt.toml file: please \
-                specify it via the `--file-lines` option instead");
+        panic!(
+            "FileLines cannot be deserialized from a project rustfmt.toml file: please \
+                specify it via the `--file-lines` option instead"
+        );
     }
 }
 
@@ -230,7 +238,8 @@ impl<'de> ::serde::de::Deserialize<'de> for FileLines {
 // `Config` struct should ensure this impl is never reached.
 impl ::serde::ser::Serialize for FileLines {
     fn serialize<S>(&self, _: S) -> Result<S::Ok, S::Error>
-        where S: ::serde::ser::Serializer
+    where
+        S: ::serde::ser::Serializer,
     {
         unreachable!("FileLines cannot be serialized. This is a rustfmt bug.");
     }
@@ -270,13 +279,21 @@ mod test {
     fn test_range_merge() {
         assert_eq!(None, Range::new(1, 3).merge(Range::new(5, 5)));
         assert_eq!(None, Range::new(4, 7).merge(Range::new(0, 1)));
-        assert_eq!(Some(Range::new(3, 7)),
-                   Range::new(3, 5).merge(Range::new(4, 7)));
-        assert_eq!(Some(Range::new(3, 7)),
-                   Range::new(3, 5).merge(Range::new(5, 7)));
-        assert_eq!(Some(Range::new(3, 7)),
-                   Range::new(3, 5).merge(Range::new(6, 7)));
-        assert_eq!(Some(Range::new(3, 7)),
-                   Range::new(3, 7).merge(Range::new(4, 5)));
+        assert_eq!(
+            Some(Range::new(3, 7)),
+            Range::new(3, 5).merge(Range::new(4, 7))
+        );
+        assert_eq!(
+            Some(Range::new(3, 7)),
+            Range::new(3, 5).merge(Range::new(5, 7))
+        );
+        assert_eq!(
+            Some(Range::new(3, 7)),
+            Range::new(3, 5).merge(Range::new(6, 7))
+        );
+        assert_eq!(
+            Some(Range::new(3, 7)),
+            Range::new(3, 7).merge(Range::new(4, 5))
+        );
     }
 }

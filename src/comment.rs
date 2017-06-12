@@ -45,9 +45,9 @@ pub enum CommentStyle<'a> {
 
 fn custom_opener(s: &str) -> &str {
     s.lines().next().map_or("", |first_line| {
-        first_line
-            .find(' ')
-            .map_or(first_line, |space_index| &first_line[0..space_index + 1])
+        first_line.find(' ').map_or(first_line, |space_index| {
+            &first_line[0..space_index + 1]
+        })
     })
 }
 
@@ -98,14 +98,14 @@ impl<'a> CommentStyle<'a> {
             CommentStyle::TripleSlash |
             CommentStyle::Doc => {
                 line.trim_left().starts_with(self.line_start().trim_left()) ||
-                comment_style(line, normalize_comments) == *self
+                    comment_style(line, normalize_comments) == *self
             }
             CommentStyle::DoubleBullet |
             CommentStyle::SingleBullet |
             CommentStyle::Exclamation => {
                 line.trim_left().starts_with(self.closer().trim_left()) ||
-                line.trim_left().starts_with(self.line_start().trim_left()) ||
-                comment_style(line, normalize_comments) == *self
+                    line.trim_left().starts_with(self.line_start().trim_left()) ||
+                    comment_style(line, normalize_comments) == *self
             }
             CommentStyle::Custom(opener) => line.trim_left().starts_with(opener.trim_right()),
         }
@@ -130,7 +130,8 @@ fn comment_style(orig: &str, normalize_comments: bool) -> CommentStyle {
             CommentStyle::DoubleSlash
         }
     } else if (orig.starts_with("///") && orig.chars().nth(3).map_or(true, |c| c != '/')) ||
-              (orig.starts_with("/**") && !orig.starts_with("/**/")) {
+               (orig.starts_with("/**") && !orig.starts_with("/**/"))
+    {
         CommentStyle::TripleSlash
     } else if orig.starts_with("//!") || orig.starts_with("/*!") {
         CommentStyle::Doc
@@ -141,17 +142,20 @@ fn comment_style(orig: &str, normalize_comments: bool) -> CommentStyle {
     }
 }
 
-pub fn rewrite_comment(orig: &str,
-                       block_style: bool,
-                       shape: Shape,
-                       config: &Config)
-                       -> Option<String> {
+pub fn rewrite_comment(
+    orig: &str,
+    block_style: bool,
+    shape: Shape,
+    config: &Config,
+) -> Option<String> {
     // If there are lines without a starting sigil, we won't format them correctly
     // so in that case we won't even re-align (if !config.normalize_comments()) and
     // we should stop now.
     let num_bare_lines = orig.lines()
         .map(|line| line.trim())
-        .filter(|l| !(l.starts_with('*') || l.starts_with("//") || l.starts_with("/*")))
+        .filter(|l| {
+            !(l.starts_with('*') || l.starts_with("//") || l.starts_with("/*"))
+        })
         .count();
     if num_bare_lines > 0 && !config.normalize_comments() {
         return Some(orig.to_owned());
@@ -163,11 +167,12 @@ pub fn rewrite_comment(orig: &str,
     identify_comment(orig, block_style, shape, config)
 }
 
-fn identify_comment(orig: &str,
-                    block_style: bool,
-                    shape: Shape,
-                    config: &Config)
-                    -> Option<String> {
+fn identify_comment(
+    orig: &str,
+    block_style: bool,
+    shape: Shape,
+    config: &Config,
+) -> Option<String> {
     let style = comment_style(orig, false);
     let first_group = orig.lines()
         .take_while(|l| style.line_with_same_comment_style(l, false))
@@ -178,28 +183,34 @@ fn identify_comment(orig: &str,
         .collect::<Vec<_>>()
         .join("\n");
 
-    let first_group_str =
-        try_opt!(rewrite_comment_inner(&first_group, block_style, style, shape, config));
+    let first_group_str = try_opt!(rewrite_comment_inner(
+        &first_group,
+        block_style,
+        style,
+        shape,
+        config,
+    ));
     if rest.is_empty() {
         Some(first_group_str)
     } else {
         identify_comment(&rest, block_style, shape, config).map(|rest_str| {
-                                                                    format!("{}\n{}{}",
-                                                                            first_group_str,
-                                                                            shape
-                                                                                .indent
-                                                                                .to_string(config),
-                                                                            rest_str)
-                                                                })
+            format!(
+                "{}\n{}{}",
+                first_group_str,
+                shape.indent.to_string(config),
+                rest_str
+            )
+        })
     }
 }
 
-fn rewrite_comment_inner(orig: &str,
-                         block_style: bool,
-                         style: CommentStyle,
-                         shape: Shape,
-                         config: &Config)
-                         -> Option<String> {
+fn rewrite_comment_inner(
+    orig: &str,
+    block_style: bool,
+    style: CommentStyle,
+    shape: Shape,
+    config: &Config,
+) -> Option<String> {
     let (opener, closer, line_start) = if block_style {
         CommentStyle::SingleBullet.to_str_tuplet()
     } else {
@@ -235,10 +246,10 @@ fn rewrite_comment_inner(orig: &str,
         })
         .map(|s| left_trim_comment_line(s, &style))
         .map(|line| if orig.starts_with("/*") && line_breaks == 0 {
-                 line.trim_left()
-             } else {
-                 line
-             });
+            line.trim_left()
+        } else {
+            line
+        });
 
     let mut result = opener.to_owned();
     for line in lines {
@@ -299,7 +310,8 @@ fn light_rewrite_comment(orig: &str, offset: Indent, config: &Config) -> Option<
 /// Does not trim all whitespace.
 fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle) -> &'a str {
     if line.starts_with("//! ") || line.starts_with("/// ") || line.starts_with("/*! ") ||
-       line.starts_with("/** ") {
+        line.starts_with("/** ")
+    {
         &line[4..]
     } else if let &CommentStyle::Custom(opener) = style {
         if line.starts_with(opener) {
@@ -307,13 +319,15 @@ fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle) -> &'a str {
         } else {
             &line[opener.trim_right().len()..]
         }
-    } else if line.starts_with("/* ") || line.starts_with("// ") || line.starts_with("//!") ||
-              line.starts_with("///") ||
-              line.starts_with("** ") || line.starts_with("/*!") ||
-              (line.starts_with("/**") && !line.starts_with("/**/")) {
+    } else if line.starts_with("/* ") || line.starts_with("// ") ||
+               line.starts_with("//!") || line.starts_with("///") ||
+               line.starts_with("** ") || line.starts_with("/*!") ||
+               (line.starts_with("/**") && !line.starts_with("/**/"))
+    {
         &line[3..]
     } else if line.starts_with("/*") || line.starts_with("* ") || line.starts_with("//") ||
-              line.starts_with("**") {
+               line.starts_with("**")
+    {
         &line[2..]
     } else if line.starts_with('*') {
         &line[1..]
@@ -379,8 +393,9 @@ pub fn contains_comment(text: &str) -> bool {
 }
 
 struct CharClasses<T>
-    where T: Iterator,
-          T::Item: RichChar
+where
+    T: Iterator,
+    T::Item: RichChar,
 {
     base: iter::Peekable<T>,
     status: CharClassesStatus,
@@ -462,8 +477,9 @@ impl FullCodeCharKind {
 }
 
 impl<T> CharClasses<T>
-    where T: Iterator,
-          T::Item: RichChar
+where
+    T: Iterator,
+    T::Item: RichChar,
 {
     fn new(base: T) -> CharClasses<T> {
         CharClasses {
@@ -474,8 +490,9 @@ impl<T> CharClasses<T>
 }
 
 impl<T> Iterator for CharClasses<T>
-    where T: Iterator,
-          T::Item: RichChar
+where
+    T: Iterator,
+    T::Item: RichChar,
 {
     type Item = (FullCodeCharKind, T::Item);
 
@@ -603,13 +620,15 @@ impl<'a> Iterator for UngroupedCommentCodeSlices<'a> {
             Some(&(_, (end_idx, _))) => &self.slice[start_idx..end_idx],
             None => &self.slice[start_idx..],
         };
-        Some((if kind.is_comment() {
-                  CodeCharKind::Comment
-              } else {
-                  CodeCharKind::Normal
-              },
-              start_idx,
-              slice))
+        Some((
+            if kind.is_comment() {
+                CodeCharKind::Comment
+            } else {
+                CodeCharKind::Normal
+            },
+            start_idx,
+            slice,
+        ))
     }
 }
 
@@ -650,8 +669,8 @@ impl<'a> Iterator for CommentCodeSlices<'a> {
 
         for (kind, (i, c)) in &mut iter {
             let is_comment_connector = self.last_slice_kind == CodeCharKind::Normal &&
-                                       &subslice[..2] == "//" &&
-                                       [' ', '\t'].contains(&c);
+                &subslice[..2] == "//" &&
+                [' ', '\t'].contains(&c);
 
             if is_comment_connector && first_whitespace.is_none() {
                 first_whitespace = Some(i);
@@ -683,7 +702,11 @@ impl<'a> Iterator for CommentCodeSlices<'a> {
             CodeCharKind::Comment => CodeCharKind::Normal,
             CodeCharKind::Normal => CodeCharKind::Comment,
         };
-        let res = (kind, self.last_slice_end, &self.slice[self.last_slice_end..sub_slice_end]);
+        let res = (
+            kind,
+            self.last_slice_end,
+            &self.slice[self.last_slice_end..sub_slice_end],
+        );
         self.last_slice_end = sub_slice_end;
         self.last_slice_kind = kind;
 
@@ -693,11 +716,12 @@ impl<'a> Iterator for CommentCodeSlices<'a> {
 
 /// Checks is `new` didn't miss any comment from `span`, if it removed any, return previous text
 /// (if it fits in the width/offset, else return None), else return `new`
-pub fn recover_comment_removed(new: String,
-                               span: Span,
-                               context: &RewriteContext,
-                               shape: Shape)
-                               -> Option<String> {
+pub fn recover_comment_removed(
+    new: String,
+    span: Span,
+    context: &RewriteContext,
+    shape: Shape,
+) -> Option<String> {
     let snippet = context.snippet(span);
     if changed_comment_content(&snippet, &new) {
         // We missed some comments
@@ -723,12 +747,14 @@ fn changed_comment_content(orig: &str, new: &str) -> bool {
             .flat_map(|(_, _, s)| CommentReducer::new(s))
     };
     let res = code_comment_content(orig).ne(code_comment_content(new));
-    debug!("comment::changed_comment_content: {}\norig: '{}'\nnew: '{}'\nraw_old: {}\nraw_new: {}",
-           res,
-           orig,
-           new,
-           code_comment_content(orig).collect::<String>(),
-           code_comment_content(new).collect::<String>());
+    debug!(
+        "comment::changed_comment_content: {}\norig: '{}'\nnew: '{}'\nraw_old: {}\nraw_new: {}",
+        res,
+        orig,
+        new,
+        code_comment_content(orig).collect::<String>(),
+        code_comment_content(new).collect::<String>()
+    );
     res
 }
 
@@ -787,11 +813,14 @@ fn remove_comment_header(comment: &str) -> &str {
     } else if comment.starts_with("//") {
         &comment[2..]
     } else if (comment.starts_with("/**") && !comment.starts_with("/**/")) ||
-              comment.starts_with("/*!") {
+               comment.starts_with("/*!")
+    {
         &comment[3..comment.len() - 2]
     } else {
-        assert!(comment.starts_with("/*"),
-                format!("string '{}' is not a comment", comment));
+        assert!(
+            comment.starts_with("/*"),
+            format!("string '{}' is not a comment", comment)
+        );
         &comment[2..comment.len() - 2]
     }
 }
@@ -819,8 +848,10 @@ mod test {
         let mut iter = CommentCodeSlices::new(input);
 
         assert_eq!((CodeCharKind::Normal, 0, "code(); "), iter.next().unwrap());
-        assert_eq!((CodeCharKind::Comment, 8, "/* test */"),
-                   iter.next().unwrap());
+        assert_eq!(
+            (CodeCharKind::Comment, 8, "/* test */"),
+            iter.next().unwrap()
+        );
         assert_eq!((CodeCharKind::Normal, 18, " 1 + 1"), iter.next().unwrap());
         assert_eq!(None, iter.next());
     }
@@ -831,10 +862,14 @@ mod test {
         let mut iter = CommentCodeSlices::new(input);
 
         assert_eq!((CodeCharKind::Normal, 0, ""), iter.next().unwrap());
-        assert_eq!((CodeCharKind::Comment, 0, "// comment\n"),
-                   iter.next().unwrap());
-        assert_eq!((CodeCharKind::Normal, 11, "    test();"),
-                   iter.next().unwrap());
+        assert_eq!(
+            (CodeCharKind::Comment, 0, "// comment\n"),
+            iter.next().unwrap()
+        );
+        assert_eq!(
+            (CodeCharKind::Normal, 11, "    test();"),
+            iter.next().unwrap()
+        );
         assert_eq!(None, iter.next());
     }
 
@@ -844,8 +879,10 @@ mod test {
         let mut iter = CommentCodeSlices::new(input);
 
         assert_eq!((CodeCharKind::Normal, 0, "1 "), iter.next().unwrap());
-        assert_eq!((CodeCharKind::Comment, 2, "// comment\n    // comment2\n"),
-                   iter.next().unwrap());
+        assert_eq!(
+            (CodeCharKind::Comment, 2, "// comment\n    // comment2\n"),
+            iter.next().unwrap()
+        );
         assert_eq!((CodeCharKind::Normal, 29, "\n"), iter.next().unwrap());
         assert_eq!(None, iter.next());
     }
@@ -896,17 +933,19 @@ mod test {
     fn uncommented(text: &str) -> String {
         CharClasses::new(text.chars())
             .filter_map(|(s, c)| match s {
-                            FullCodeCharKind::Normal => Some(c),
-                            _ => None,
-                        })
+                FullCodeCharKind::Normal => Some(c),
+                _ => None,
+            })
             .collect()
     }
 
     #[test]
     fn test_uncommented() {
         assert_eq!(&uncommented("abc/*...*/"), "abc");
-        assert_eq!(&uncommented("// .... /* \n../* /* *** / */ */a/* // */c\n"),
-                   "..ac\n");
+        assert_eq!(
+            &uncommented("// .... /* \n../* /* *** / */ */a/* // */c\n"),
+            "..ac\n"
+        );
         assert_eq!(&uncommented("abc \" /* */\" qsdf"), "abc \" /* */\" qsdf");
     }
 
@@ -927,9 +966,11 @@ mod test {
         check("/*/ */test", "test", Some(6));
         check("//test\ntest", "test", Some(7));
         check("/* comment only */", "whatever", None);
-        check("/* comment */ some text /* more commentary */ result",
-              "result",
-              Some(46));
+        check(
+            "/* comment */ some text /* more commentary */ result",
+            "result",
+            Some(46),
+        );
         check("sup // sup", "p", Some(2));
         check("sup", "x", None);
         check(r#"π? /**/ π is nice!"#, r#"π is nice"#, Some(9));

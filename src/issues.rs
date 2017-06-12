@@ -172,11 +172,12 @@ impl BadIssueSeeker {
         }
     }
 
-    fn inspect_number(&mut self,
-                      c: char,
-                      issue: Issue,
-                      mut part: NumberPart)
-                      -> IssueClassification {
+    fn inspect_number(
+        &mut self,
+        c: char,
+        issue: Issue,
+        mut part: NumberPart,
+    ) -> IssueClassification {
         if !issue.missing_number || c == '\n' {
             return IssueClassification::Bad(issue);
         } else if c == ')' {
@@ -223,8 +224,10 @@ impl BadIssueSeeker {
 fn find_unnumbered_issue() {
     fn check_fail(text: &str, failing_pos: usize) {
         let mut seeker = BadIssueSeeker::new(ReportTactic::Unnumbered, ReportTactic::Unnumbered);
-        assert_eq!(Some(failing_pos),
-                   text.chars().position(|c| seeker.inspect(c).is_some()));
+        assert_eq!(
+            Some(failing_pos),
+            text.chars().position(|c| seeker.inspect(c).is_some())
+        );
     }
 
     fn check_pass(text: &str) {
@@ -252,46 +255,60 @@ fn find_issue() {
         text.chars().any(|c| seeker.inspect(c).is_some())
     }
 
-    assert!(is_bad_issue("TODO(@maintainer, #1222, hello)\n",
-                         ReportTactic::Always,
-                         ReportTactic::Never));
+    assert!(is_bad_issue(
+        "TODO(@maintainer, #1222, hello)\n",
+        ReportTactic::Always,
+        ReportTactic::Never,
+    ));
 
-    assert!(!is_bad_issue("TODO: no number\n",
-                          ReportTactic::Never,
-                          ReportTactic::Always));
+    assert!(!is_bad_issue(
+        "TODO: no number\n",
+        ReportTactic::Never,
+        ReportTactic::Always,
+    ));
 
-    assert!(is_bad_issue("This is a FIXME(#1)\n",
-                         ReportTactic::Never,
-                         ReportTactic::Always));
+    assert!(is_bad_issue(
+        "This is a FIXME(#1)\n",
+        ReportTactic::Never,
+        ReportTactic::Always,
+    ));
 
-    assert!(!is_bad_issue("bad FIXME\n", ReportTactic::Always, ReportTactic::Never));
+    assert!(!is_bad_issue(
+        "bad FIXME\n",
+        ReportTactic::Always,
+        ReportTactic::Never,
+    ));
 }
 
 #[test]
 fn issue_type() {
     let mut seeker = BadIssueSeeker::new(ReportTactic::Always, ReportTactic::Never);
     let expected = Some(Issue {
-                            issue_type: IssueType::Todo,
-                            missing_number: false,
-                        });
+        issue_type: IssueType::Todo,
+        missing_number: false,
+    });
 
-    assert_eq!(expected,
-               "TODO(#100): more awesomeness"
-                   .chars()
-                   .map(|c| seeker.inspect(c))
-                   .find(Option::is_some)
-                   .unwrap());
+    assert_eq!(
+        expected,
+        "TODO(#100): more awesomeness"
+            .chars()
+            .map(|c| seeker.inspect(c))
+            .find(Option::is_some)
+            .unwrap()
+    );
 
     let mut seeker = BadIssueSeeker::new(ReportTactic::Never, ReportTactic::Unnumbered);
     let expected = Some(Issue {
-                            issue_type: IssueType::Fixme,
-                            missing_number: true,
-                        });
+        issue_type: IssueType::Fixme,
+        missing_number: true,
+    });
 
-    assert_eq!(expected,
-               "Test. FIXME: bad, bad, not good"
-                   .chars()
-                   .map(|c| seeker.inspect(c))
-                   .find(Option::is_some)
-                   .unwrap());
+    assert_eq!(
+        expected,
+        "Test. FIXME: bad, bad, not good"
+            .chars()
+            .map(|c| seeker.inspect(c))
+            .find(Option::is_some)
+            .unwrap()
+    );
 }

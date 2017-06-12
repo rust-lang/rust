@@ -42,10 +42,12 @@ fn execute() -> i32 {
     opts.optflag("h", "help", "show this message");
     opts.optflag("q", "quiet", "no output printed to stdout");
     opts.optflag("v", "verbose", "use verbose output");
-    opts.optmulti("p",
-                  "package",
-                  "specify package to format (only usable in workspaces)",
-                  "<package>");
+    opts.optmulti(
+        "p",
+        "package",
+        "specify package to format (only usable in workspaces)",
+        "<package>",
+    );
     opts.optflag("", "all", "format all packages (only usable in workspaces)");
 
     let matches = match opts.parse(env::args().skip(1).take_while(|a| a != "--")) {
@@ -90,9 +92,11 @@ fn execute() -> i32 {
 
 fn print_usage(opts: &Options, reason: &str) {
     let msg = format!("{}\nusage: cargo fmt [options]", reason);
-    println!("{}\nThis utility formats all bin and lib files of the current crate using rustfmt. \
+    println!(
+        "{}\nThis utility formats all bin and lib files of the current crate using rustfmt. \
               Arguments after `--` are passed to rustfmt.",
-             opts.usage(&msg));
+        opts.usage(&msg)
+    );
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -102,9 +106,10 @@ pub enum Verbosity {
     Quiet,
 }
 
-fn format_crate(verbosity: Verbosity,
-                workspace_hitlist: WorkspaceHitlist)
-                -> Result<ExitStatus, std::io::Error> {
+fn format_crate(
+    verbosity: Verbosity,
+    workspace_hitlist: WorkspaceHitlist,
+) -> Result<ExitStatus, std::io::Error> {
     let targets = get_targets(workspace_hitlist)?;
 
     // Currently only bin and lib files get formatted
@@ -112,8 +117,8 @@ fn format_crate(verbosity: Verbosity,
         .into_iter()
         .filter(|t| t.kind.should_format())
         .inspect(|t| if verbosity == Verbosity::Verbose {
-                     println!("[{:?}] {:?}", t.kind, t.path)
-                 })
+            println!("[{:?}] {:?}", t.kind, t.path)
+        })
         .map(|t| t.path)
         .collect();
 
@@ -194,8 +199,10 @@ fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::
 
             return Ok(targets);
         }
-        return Err(std::io::Error::new(std::io::ErrorKind::NotFound,
-                                       str::from_utf8(&output.stderr).unwrap()));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            str::from_utf8(&output.stderr).unwrap(),
+        ));
     }
     // This happens when cargo-fmt is not used inside a crate or
     // is used inside a workspace.
@@ -221,18 +228,22 @@ fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::
             .unwrap()
             .into_iter()
             .filter(|member| if workspace_hitlist == WorkspaceHitlist::All {
-                        true
-                    } else {
-                        let member_obj = member.as_object().unwrap();
-                        let member_name = member_obj.get("name").unwrap().as_str().unwrap();
-                        hitlist.take(&member_name.to_string()).is_some()
-                    })
+                true
+            } else {
+                let member_obj = member.as_object().unwrap();
+                let member_name = member_obj.get("name").unwrap().as_str().unwrap();
+                hitlist.take(&member_name.to_string()).is_some()
+            })
             .collect();
         if hitlist.len() != 0 {
             // Mimick cargo of only outputting one <package> spec.
-            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput,
-                                           format!("package `{}` is not a member of the workspace",
-                                                   hitlist.iter().next().unwrap())));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!(
+                    "package `{}` is not a member of the workspace",
+                    hitlist.iter().next().unwrap()
+                ),
+            ));
         }
         for member in members {
             let member_obj = member.as_object().unwrap();
@@ -243,8 +254,10 @@ fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::
         }
         return Ok(targets);
     }
-    Err(std::io::Error::new(std::io::ErrorKind::NotFound,
-                            str::from_utf8(&output.stderr).unwrap()))
+    Err(std::io::Error::new(
+        std::io::ErrorKind::NotFound,
+        str::from_utf8(&output.stderr).unwrap(),
+    ))
 
 }
 
@@ -268,10 +281,11 @@ fn target_from_json(jtarget: &Value) -> Target {
     }
 }
 
-fn format_files(files: &[PathBuf],
-                fmt_args: &[String],
-                verbosity: Verbosity)
-                -> Result<ExitStatus, std::io::Error> {
+fn format_files(
+    files: &[PathBuf],
+    fmt_args: &[String],
+    verbosity: Verbosity,
+) -> Result<ExitStatus, std::io::Error> {
     let stdout = if verbosity == Verbosity::Quiet {
         std::process::Stdio::null()
     } else {
@@ -294,8 +308,10 @@ fn format_files(files: &[PathBuf],
         .spawn()
         .map_err(|e| match e.kind() {
             std::io::ErrorKind::NotFound => {
-                std::io::Error::new(std::io::ErrorKind::Other,
-                                    "Could not run rustfmt, please make sure it is in your PATH.")
+                std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Could not run rustfmt, please make sure it is in your PATH.",
+                )
             }
             _ => e,
         })?;

@@ -47,9 +47,11 @@ impl<'a> FmtVisitor<'a> {
         })
     }
 
-    fn format_missing_inner<F: Fn(&mut FmtVisitor, &str, &str)>(&mut self,
-                                                                end: BytePos,
-                                                                process_last_snippet: F) {
+    fn format_missing_inner<F: Fn(&mut FmtVisitor, &str, &str)>(
+        &mut self,
+        end: BytePos,
+        process_last_snippet: F,
+    ) {
         let start = self.last_pos;
 
         if start == end {
@@ -60,10 +62,12 @@ impl<'a> FmtVisitor<'a> {
             return;
         }
 
-        assert!(start < end,
-                "Request to format inverted span: {:?} to {:?}",
-                self.codemap.lookup_char_pos(start),
-                self.codemap.lookup_char_pos(end));
+        assert!(
+            start < end,
+            "Request to format inverted span: {:?} to {:?}",
+            self.codemap.lookup_char_pos(start),
+            self.codemap.lookup_char_pos(end)
+        );
 
         self.last_pos = end;
         let span = mk_sp(start, end);
@@ -72,7 +76,8 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn write_snippet<F>(&mut self, span: Span, process_last_snippet: F)
-        where F: Fn(&mut FmtVisitor, &str, &str)
+    where
+        F: Fn(&mut FmtVisitor, &str, &str),
     {
         // Get a snippet from the file start to the span's hi without allocating.
         // We need it to determine what precedes the current comment. If the comment
@@ -92,13 +97,15 @@ impl<'a> FmtVisitor<'a> {
         self.write_snippet_inner(big_snippet, big_diff, &snippet, span, process_last_snippet);
     }
 
-    fn write_snippet_inner<F>(&mut self,
-                              big_snippet: &str,
-                              big_diff: usize,
-                              old_snippet: &str,
-                              span: Span,
-                              process_last_snippet: F)
-        where F: Fn(&mut FmtVisitor, &str, &str)
+    fn write_snippet_inner<F>(
+        &mut self,
+        big_snippet: &str,
+        big_diff: usize,
+        old_snippet: &str,
+        span: Span,
+        process_last_snippet: F,
+    ) where
+        F: Fn(&mut FmtVisitor, &str, &str),
     {
         // Trim whitespace from the right hand side of each line.
         // Annoyingly, the library functions for splitting by lines etc. are not
@@ -139,9 +146,12 @@ impl<'a> FmtVisitor<'a> {
                 let subslice_num_lines = subslice.chars().filter(|c| *c == '\n').count();
 
                 if rewrite_next_comment &&
-                   !self.config
-                       .file_lines()
-                       .intersects_range(file_name, cur_line, cur_line + subslice_num_lines) {
+                    !self.config.file_lines().intersects_range(
+                        file_name,
+                        cur_line,
+                        cur_line + subslice_num_lines,
+                    )
+                {
                     rewrite_next_comment = false;
                 }
 
@@ -150,32 +160,34 @@ impl<'a> FmtVisitor<'a> {
                         if let Some('{') = last_char {
                             self.buffer.push_str("\n");
                         }
-                        self.buffer
-                            .push_str(&self.block_indent.to_string(self.config));
+                        self.buffer.push_str(
+                            &self.block_indent.to_string(self.config),
+                        );
                     } else {
                         self.buffer.push_str(" ");
                     }
 
-                    let comment_width = ::std::cmp::min(self.config.comment_width(),
-                                                        self.config.max_width() -
-                                                        self.block_indent.width());
+                    let comment_width = ::std::cmp::min(
+                        self.config.comment_width(),
+                        self.config.max_width() - self.block_indent.width(),
+                    );
 
-                    self.buffer.push_str(&rewrite_comment(subslice,
-                                                          false,
-                                                          Shape::legacy(comment_width,
-                                                                        self.block_indent),
-                                                          self.config)
-                                             .unwrap());
+                    self.buffer.push_str(&rewrite_comment(
+                        subslice,
+                        false,
+                        Shape::legacy(comment_width, self.block_indent),
+                        self.config,
+                    ).unwrap());
 
                     last_wspace = None;
                     line_start = offset + subslice.len();
 
                     if let Some('/') = subslice.chars().skip(1).next() {
                         // check that there are no contained block comments
-                        if !subslice
-                               .split('\n')
-                               .map(|s| s.trim_left())
-                               .any(|s| s.len() >= 2 && &s[0..2] == "/*") {
+                        if !subslice.split('\n').map(|s| s.trim_left()).any(|s| {
+                            s.len() >= 2 && &s[0..2] == "/*"
+                        })
+                        {
                             // Add a newline after line comments
                             self.buffer.push_str("\n");
                         }

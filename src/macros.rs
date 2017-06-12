@@ -61,12 +61,13 @@ impl MacroStyle {
     }
 }
 
-pub fn rewrite_macro(mac: &ast::Mac,
-                     extra_ident: Option<ast::Ident>,
-                     context: &RewriteContext,
-                     shape: Shape,
-                     position: MacroPosition)
-                     -> Option<String> {
+pub fn rewrite_macro(
+    mac: &ast::Mac,
+    extra_ident: Option<ast::Ident>,
+    context: &RewriteContext,
+    shape: Shape,
+    position: MacroPosition,
+) -> Option<String> {
     let mut context = &mut context.clone();
     context.inside_macro = true;
     if context.config.use_try_shorthand() {
@@ -191,24 +192,29 @@ pub fn rewrite_macro(mac: &ast::Mac,
                 } else {
                     ("[", "]")
                 };
-                rewrite_pair(&*expr_vec[0],
-                             &*expr_vec[1],
-                             lbr,
-                             "; ",
-                             rbr,
-                             context,
-                             mac_shape)
-                    .map(|s| format!("{}{}", macro_name, s))
+                rewrite_pair(
+                    &*expr_vec[0],
+                    &*expr_vec[1],
+                    lbr,
+                    "; ",
+                    rbr,
+                    context,
+                    mac_shape,
+                ).map(|s| format!("{}{}", macro_name, s))
             } else {
                 // Format macro invocation as array literal.
-                let rewrite =
-                    try_opt!(rewrite_array(expr_vec.iter().map(|x| &**x),
-                                           mk_sp(context
-                                                     .codemap
-                                                     .span_after(mac.span, original_style.opener()),
-                                               mac.span.hi - BytePos(1)),
-                                           context,
-                                           mac_shape));
+                let rewrite = try_opt!(rewrite_array(
+                    expr_vec.iter().map(|x| &**x),
+                    mk_sp(
+                        context.codemap.span_after(
+                            mac.span,
+                            original_style.opener(),
+                        ),
+                        mac.span.hi - BytePos(1),
+                    ),
+                    context,
+                    mac_shape,
+                ));
 
                 Some(format!("{}{}", macro_name, rewrite))
             }
@@ -229,11 +235,11 @@ pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext) -> Option<ast::
         let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
 
         Some(ast::Expr {
-                 id: ast::NodeId::new(0), // dummy value
-                 node: ast::ExprKind::Try(try_opt!(parser.parse_expr().ok())),
-                 span: mac.span, // incorrect span, but shouldn't matter too much
-                 attrs: ThinVec::new(),
-             })
+            id: ast::NodeId::new(0), // dummy value
+            node: ast::ExprKind::Try(try_opt!(parser.parse_expr().ok())),
+            span: mac.span, // incorrect span, but shouldn't matter too much
+            attrs: ThinVec::new(),
+        })
     } else {
         None
     }

@@ -605,7 +605,9 @@ mod test {
 
         let used_options = config.used_options();
         let toml = used_options.to_toml().unwrap();
-        assert_eq!(toml,
-                   format!("verbose = {}\nskip_children = {}\n", verbose, skip_children));
+        assert_eq!(
+            toml,
+            format!("verbose = {}\nskip_children = {}\n", verbose, skip_children)
+        );
     }
 }

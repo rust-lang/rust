@@ -36,16 +36,16 @@ fn is_use_item(item: &ast::Item) -> bool {
 }
 
 fn item_bound(item: &ast::Item) -> Span {
-    item.attrs
-        .iter()
-        .map(|attr| attr.span)
-        .fold(item.span, |bound, span| {
+    item.attrs.iter().map(|attr| attr.span).fold(
+        item.span,
+        |bound, span| {
             Span {
                 lo: cmp::min(bound.lo, span.lo),
                 hi: cmp::max(bound.hi, span.hi),
                 ctxt: span.ctxt,
             }
-        })
+        },
+    )
 }
 
 pub struct FmtVisitor<'a> {
@@ -62,14 +62,19 @@ pub struct FmtVisitor<'a> {
 
 impl<'a> FmtVisitor<'a> {
     fn visit_stmt(&mut self, stmt: &ast::Stmt) {
-        debug!("visit_stmt: {:?} {:?}",
-               self.codemap.lookup_char_pos(stmt.span.lo),
-               self.codemap.lookup_char_pos(stmt.span.hi));
+        debug!(
+            "visit_stmt: {:?} {:?}",
+            self.codemap.lookup_char_pos(stmt.span.lo),
+            self.codemap.lookup_char_pos(stmt.span.hi)
+        );
 
         // FIXME(#434): Move this check to somewhere more central, eg Rewrite.
-        if !self.config
-               .file_lines()
-               .intersects(&self.codemap.lookup_line_range(stmt.span)) {
+        if !self.config.file_lines().intersects(
+            &self.codemap.lookup_line_range(
+                stmt.span,
+            ),
+        )
+        {
             return;
         }
 
@@ -80,9 +85,10 @@ impl<'a> FmtVisitor<'a> {
             ast::StmtKind::Local(..) |
             ast::StmtKind::Expr(..) |
             ast::StmtKind::Semi(..) => {
-                let rewrite =
-                    stmt.rewrite(&self.get_context(),
-                                 Shape::indented(self.block_indent, self.config));
+                let rewrite = stmt.rewrite(
+                    &self.get_context(),
+                    Shape::indented(self.block_indent, self.config),
+                );
                 self.push_rewrite(stmt.span, rewrite);
             }
             ast::StmtKind::Mac(ref mac) => {
@@ -94,9 +100,11 @@ impl<'a> FmtVisitor<'a> {
     }
 
     pub fn visit_block(&mut self, b: &ast::Block) {
-        debug!("visit_block: {:?} {:?}",
-               self.codemap.lookup_char_pos(b.span.lo),
-               self.codemap.lookup_char_pos(b.span.hi));
+        debug!(
+            "visit_block: {:?} {:?}",
+            self.codemap.lookup_char_pos(b.span.lo),
+            self.codemap.lookup_char_pos(b.span.hi)
+        );
 
         // Check if this block has braces.
         let snippet = self.snippet(b.span);
@@ -157,42 +165,48 @@ impl<'a> FmtVisitor<'a> {
 
     // Note that this only gets called for function definitions. Required methods
     // on traits do not get handled here.
-    fn visit_fn(&mut self,
-                fk: visit::FnKind,
-                fd: &ast::FnDecl,
-                s: Span,
-                _: ast::NodeId,
-                defaultness: ast::Defaultness) {
+    fn visit_fn(
+        &mut self,
+        fk: visit::FnKind,
+        fd: &ast::FnDecl,
+        s: Span,
+        _: ast::NodeId,
+        defaultness: ast::Defaultness,
+    ) {
         let indent = self.block_indent;
         let block;
         let rewrite = match fk {
             visit::FnKind::ItemFn(ident, generics, unsafety, constness, abi, vis, b) => {
                 block = b;
-                self.rewrite_fn(indent,
-                                ident,
-                                fd,
-                                generics,
-                                unsafety,
-                                constness.node,
-                                defaultness,
-                                abi,
-                                vis,
-                                mk_sp(s.lo, b.span.lo),
-                                &b)
+                self.rewrite_fn(
+                    indent,
+                    ident,
+                    fd,
+                    generics,
+                    unsafety,
+                    constness.node,
+                    defaultness,
+                    abi,
+                    vis,
+                    mk_sp(s.lo, b.span.lo),
+                    &b,
+                )
             }
             visit::FnKind::Method(ident, sig, vis, b) => {
                 block = b;
-                self.rewrite_fn(indent,
-                                ident,
-                                fd,
-                                &sig.generics,
-                                sig.unsafety,
-                                sig.constness.node,
-                                defaultness,
-                                sig.abi,
-                                vis.unwrap_or(&ast::Visibility::Inherited),
-                                mk_sp(s.lo, b.span.lo),
-                                &b)
+                self.rewrite_fn(
+                    indent,
+                    ident,
+                    fd,
+                    &sig.generics,
+                    sig.unsafety,
+                    sig.constness.node,
+                    defaultness,
+                    sig.abi,
+                    vis.unwrap_or(&ast::Visibility::Inherited),
+                    mk_sp(s.lo, b.span.lo),
+                    &b,
+                )
             }
             visit::FnKind::Closure(_) => unreachable!(),
         };
@@ -267,23 +281,28 @@ impl<'a> FmtVisitor<'a> {
             ast::ItemKind::Impl(..) => {
                 self.format_missing_with_indent(source!(self, item.span).lo);
                 let snippet = self.get_context().snippet(item.span);
-                let where_span_end =
-                    snippet
-                        .find_uncommented("{")
-                        .map(|x| (BytePos(x as u32)) + source!(self, item.span).lo);
-                if let Some(impl_str) = format_impl(&self.get_context(),
-                                                    item,
-                                                    self.block_indent,
-                                                    where_span_end) {
+                let where_span_end = snippet.find_uncommented("{").map(|x| {
+                    (BytePos(x as u32)) + source!(self, item.span).lo
+                });
+                if let Some(impl_str) = format_impl(
+                    &self.get_context(),
+                    item,
+                    self.block_indent,
+                    where_span_end,
+                )
+                {
                     self.buffer.push_str(&impl_str);
                     self.last_pos = source!(self, item.span).hi;
                 }
             }
             ast::ItemKind::Trait(..) => {
                 self.format_missing_with_indent(item.span.lo);
-                if let Some(trait_str) = format_trait(&self.get_context(),
-                                                      item,
-                                                      self.block_indent) {
+                if let Some(trait_str) = format_trait(
+                    &self.get_context(),
+                    item,
+                    self.block_indent,
+                )
+                {
                     self.buffer.push_str(&trait_str);
                     self.last_pos = source!(self, item.span).hi;
                 }
@@ -298,19 +317,20 @@ impl<'a> FmtVisitor<'a> {
                 let rewrite = {
                     let indent = self.block_indent;
                     let context = self.get_context();
-                    ::items::format_struct(&context,
-                                           "struct ",
-                                           item.ident,
-                                           &item.vis,
-                                           def,
-                                           Some(generics),
-                                           item.span,
-                                           indent,
-                                           None)
-                        .map(|s| match *def {
-                                 ast::VariantData::Tuple(..) => s + ";",
-                                 _ => s,
-                             })
+                    ::items::format_struct(
+                        &context,
+                        "struct ",
+                        item.ident,
+                        &item.vis,
+                        def,
+                        Some(generics),
+                        item.span,
+                        indent,
+                        None,
+                    ).map(|s| match *def {
+                        ast::VariantData::Tuple(..) => s + ";",
+                        _ => s,
+                    })
                 };
                 self.push_rewrite(item.span, rewrite);
             }
@@ -331,53 +351,63 @@ impl<'a> FmtVisitor<'a> {
                 self.format_foreign_mod(foreign_mod, item.span);
             }
             ast::ItemKind::Static(ref ty, mutability, ref expr) => {
-                let rewrite = rewrite_static("static",
-                                             &item.vis,
-                                             item.ident,
-                                             ty,
-                                             mutability,
-                                             Some(expr),
-                                             self.block_indent,
-                                             item.span,
-                                             &self.get_context());
+                let rewrite = rewrite_static(
+                    "static",
+                    &item.vis,
+                    item.ident,
+                    ty,
+                    mutability,
+                    Some(expr),
+                    self.block_indent,
+                    item.span,
+                    &self.get_context(),
+                );
                 self.push_rewrite(item.span, rewrite);
             }
             ast::ItemKind::Const(ref ty, ref expr) => {
-                let rewrite = rewrite_static("const",
-                                             &item.vis,
-                                             item.ident,
-                                             ty,
-                                             ast::Mutability::Immutable,
-                                             Some(expr),
-                                             self.block_indent,
-                                             item.span,
-                                             &self.get_context());
+                let rewrite = rewrite_static(
+                    "const",
+                    &item.vis,
+                    item.ident,
+                    ty,
+                    ast::Mutability::Immutable,
+                    Some(expr),
+                    self.block_indent,
+                    item.span,
+                    &self.get_context(),
+                );
                 self.push_rewrite(item.span, rewrite);
             }
             ast::ItemKind::DefaultImpl(..) => {
                 // FIXME(#78): format impl definitions.
             }
             ast::ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
-                self.visit_fn(visit::FnKind::ItemFn(item.ident,
-                                                    generics,
-                                                    unsafety,
-                                                    constness,
-                                                    abi,
-                                                    &item.vis,
-                                                    body),
-                              decl,
-                              item.span,
-                              item.id,
-                              ast::Defaultness::Final)
+                self.visit_fn(
+                    visit::FnKind::ItemFn(
+                        item.ident,
+                        generics,
+                        unsafety,
+                        constness,
+                        abi,
+                        &item.vis,
+                        body,
+                    ),
+                    decl,
+                    item.span,
+                    item.id,
+                    ast::Defaultness::Final,
+                )
             }
             ast::ItemKind::Ty(ref ty, ref generics) => {
-                let rewrite = rewrite_type_alias(&self.get_context(),
-                                                 self.block_indent,
-                                                 item.ident,
-                                                 ty,
-                                                 generics,
-                                                 &item.vis,
-                                                 item.span);
+                let rewrite = rewrite_type_alias(
+                    &self.get_context(),
+                    self.block_indent,
+                    item.ident,
+                    ty,
+                    generics,
+                    &item.vis,
+                    item.span,
+                );
                 self.push_rewrite(item.span, rewrite);
             }
             ast::ItemKind::Union(..) => {
@@ -403,15 +433,17 @@ impl<'a> FmtVisitor<'a> {
 
         match ti.node {
             ast::TraitItemKind::Const(ref ty, ref expr_opt) => {
-                let rewrite = rewrite_static("const",
-                                             &ast::Visibility::Inherited,
-                                             ti.ident,
-                                             ty,
-                                             ast::Mutability::Immutable,
-                                             expr_opt.as_ref(),
-                                             self.block_indent,
-                                             ti.span,
-                                             &self.get_context());
+                let rewrite = rewrite_static(
+                    "const",
+                    &ast::Visibility::Inherited,
+                    ti.ident,
+                    ty,
+                    ast::Mutability::Immutable,
+                    expr_opt.as_ref(),
+                    self.block_indent,
+                    ti.span,
+                    &self.get_context(),
+                );
                 self.push_rewrite(ti.span, rewrite);
             }
             ast::TraitItemKind::Method(ref sig, None) => {
@@ -420,18 +452,22 @@ impl<'a> FmtVisitor<'a> {
                 self.push_rewrite(ti.span, rewrite);
             }
             ast::TraitItemKind::Method(ref sig, Some(ref body)) => {
-                self.visit_fn(visit::FnKind::Method(ti.ident, sig, None, body),
-                              &sig.decl,
-                              ti.span,
-                              ti.id,
-                              ast::Defaultness::Final);
+                self.visit_fn(
+                    visit::FnKind::Method(ti.ident, sig, None, body),
+                    &sig.decl,
+                    ti.span,
+                    ti.id,
+                    ast::Defaultness::Final,
+                );
             }
             ast::TraitItemKind::Type(ref type_param_bounds, ref type_default) => {
-                let rewrite = rewrite_associated_type(ti.ident,
-                                                      type_default.as_ref(),
-                                                      Some(type_param_bounds),
-                                                      &self.get_context(),
-                                                      self.block_indent);
+                let rewrite = rewrite_associated_type(
+                    ti.ident,
+                    type_default.as_ref(),
+                    Some(type_param_bounds),
+                    &self.get_context(),
+                    self.block_indent,
+                );
                 self.push_rewrite(ti.span, rewrite);
             }
             ast::TraitItemKind::Macro(ref mac) => {
@@ -448,31 +484,37 @@ impl<'a> FmtVisitor<'a> {
 
         match ii.node {
             ast::ImplItemKind::Method(ref sig, ref body) => {
-                self.visit_fn(visit::FnKind::Method(ii.ident, sig, Some(&ii.vis), body),
-                              &sig.decl,
-                              ii.span,
-                              ii.id,
-                              ii.defaultness);
+                self.visit_fn(
+                    visit::FnKind::Method(ii.ident, sig, Some(&ii.vis), body),
+                    &sig.decl,
+                    ii.span,
+                    ii.id,
+                    ii.defaultness,
+                );
             }
             ast::ImplItemKind::Const(ref ty, ref expr) => {
-                let rewrite = rewrite_static("const",
-                                             &ii.vis,
-                                             ii.ident,
-                                             ty,
-                                             ast::Mutability::Immutable,
-                                             Some(expr),
-                                             self.block_indent,
-                                             ii.span,
-                                             &self.get_context());
+                let rewrite = rewrite_static(
+                    "const",
+                    &ii.vis,
+                    ii.ident,
+                    ty,
+                    ast::Mutability::Immutable,
+                    Some(expr),
+                    self.block_indent,
+                    ii.span,
+                    &self.get_context(),
+                );
                 self.push_rewrite(ii.span, rewrite);
             }
             ast::ImplItemKind::Type(ref ty) => {
-                let rewrite = rewrite_associated_impl_type(ii.ident,
-                                                           ii.defaultness,
-                                                           Some(ty),
-                                                           None,
-                                                           &self.get_context(),
-                                                           self.block_indent);
+                let rewrite = rewrite_associated_impl_type(
+                    ii.ident,
+                    ii.defaultness,
+                    Some(ty),
+                    None,
+                    &self.get_context(),
+                    self.block_indent,
+                );
                 self.push_rewrite(ii.span, rewrite);
             }
             ast::ImplItemKind::Macro(ref mac) => {
@@ -493,9 +535,10 @@ impl<'a> FmtVisitor<'a> {
     fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
         self.format_missing_with_indent(source!(self, span).lo);
         self.failed = match rewrite {
-            Some(ref s) if s.rewrite(&self.get_context(),
-                                     Shape::indented(self.block_indent, self.config))
-                               .is_none() => true,
+            Some(ref s) if s.rewrite(
+                &self.get_context(),
+                Shape::indented(self.block_indent, self.config),
+            ).is_none() => true,
             None => true,
             _ => self.failed,
         };
@@ -521,9 +564,11 @@ impl<'a> FmtVisitor<'a> {
         match self.codemap.span_to_snippet(span) {
             Ok(s) => s,
             Err(_) => {
-                println!("Couldn't make snippet for span {:?}->{:?}",
-                         self.codemap.lookup_char_pos(span.lo),
-                         self.codemap.lookup_char_pos(span.hi));
+                println!(
+                    "Couldn't make snippet for span {:?}->{:?}",
+                    self.codemap.lookup_char_pos(span.lo),
+                    self.codemap.lookup_char_pos(span.hi)
+                );
                 "".to_owned()
             }
         }
@@ -548,8 +593,10 @@ impl<'a> FmtVisitor<'a> {
         self.format_missing_with_indent(source!(self, first.span).lo);
 
         let rewrite = outers
-            .rewrite(&self.get_context(),
-                     Shape::indented(self.block_indent, self.config))
+            .rewrite(
+                &self.get_context(),
+                Shape::indented(self.block_indent, self.config),
+            )
             .unwrap();
         self.buffer.push_str(&rewrite);
         let last = outers.last().unwrap();
@@ -570,13 +617,13 @@ impl<'a> FmtVisitor<'a> {
                     .iter()
                     .take_while(|ppi| {
                         is_use_item(&***ppi) &&
-                        (!reorder_imports_in_group ||
-                         {
-                             let current = self.codemap.lookup_line_range(item_bound(&ppi));
-                             let in_same_group = current.lo < last.hi + 2;
-                             last = current;
-                             in_same_group
-                         })
+                            (!reorder_imports_in_group ||
+                                 {
+                                     let current = self.codemap.lookup_line_range(item_bound(&ppi));
+                                     let in_same_group = current.lo < last.hi + 2;
+                                     last = current;
+                                     in_same_group
+                                 })
                     })
                     .count();
                 let (use_items, rest) = items_left.split_at(use_item_length);
@@ -597,7 +644,7 @@ impl<'a> FmtVisitor<'a> {
         let local_file_name = self.codemap.span_to_filename(s);
         let inner_span = source!(self, m.inner);
         let is_internal = !(inner_span.lo.0 == 0 && inner_span.hi.0 == 0) &&
-                          local_file_name == self.codemap.span_to_filename(inner_span);
+            local_file_name == self.codemap.span_to_filename(inner_span);
 
         self.buffer.push_str(&*utils::format_visibility(vis));
         self.buffer.push_str("mod ");
@@ -658,66 +705,65 @@ impl Rewrite for ast::NestedMetaItem {
 impl Rewrite for ast::MetaItem {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         Some(match self.node {
-                 ast::MetaItemKind::Word => String::from(&*self.name.as_str()),
-                 ast::MetaItemKind::List(ref list) => {
-                     let name = self.name.as_str();
-                     // 3 = `#[` and `(`, 2 = `]` and `)`
-                     let item_shape = try_opt!(shape
-                                                   .shrink_left(name.len() + 3)
-                                                   .and_then(|s| s.sub_width(2)));
-                     let items = itemize_list(context.codemap,
-                                              list.iter(),
-                                              ")",
-                                              |nested_meta_item| nested_meta_item.span.lo,
-                                              |nested_meta_item| nested_meta_item.span.hi,
-                                              |nested_meta_item| {
-                                                  nested_meta_item.rewrite(context, item_shape)
-                                              },
-                                              self.span.lo,
-                                              self.span.hi);
-                     let item_vec = items.collect::<Vec<_>>();
-                     let fmt = ListFormatting {
-                         tactic: DefinitiveListTactic::Mixed,
-                         separator: ",",
-                         trailing_separator: SeparatorTactic::Never,
-                         shape: item_shape,
-                         ends_with_newline: false,
-                         config: context.config,
-                     };
-                     format!("{}({})", name, try_opt!(write_list(&item_vec, &fmt)))
-                 }
-                 ast::MetaItemKind::NameValue(ref literal) => {
-                     let name = self.name.as_str();
-                     let value = context.snippet(literal.span);
-                     if &*name == "doc" && value.starts_with("///") {
-                         let doc_shape = Shape {
-                             width: cmp::min(shape.width, context.config.comment_width())
-                                 .checked_sub(shape.indent.width())
-                                 .unwrap_or(0),
-                             ..shape
-                         };
-                         format!("{}",
-                                 try_opt!(rewrite_comment(&value,
-                                                          false,
-                                                          doc_shape,
-                                                          context.config)))
-                     } else {
-                         format!("{} = {}", name, value)
-                     }
-                 }
-             })
+            ast::MetaItemKind::Word => String::from(&*self.name.as_str()),
+            ast::MetaItemKind::List(ref list) => {
+                let name = self.name.as_str();
+                // 3 = `#[` and `(`, 2 = `]` and `)`
+                let item_shape = try_opt!(shape.shrink_left(name.len() + 3).and_then(
+                    |s| s.sub_width(2),
+                ));
+                let items = itemize_list(
+                    context.codemap,
+                    list.iter(),
+                    ")",
+                    |nested_meta_item| nested_meta_item.span.lo,
+                    |nested_meta_item| nested_meta_item.span.hi,
+                    |nested_meta_item| nested_meta_item.rewrite(context, item_shape),
+                    self.span.lo,
+                    self.span.hi,
+                );
+                let item_vec = items.collect::<Vec<_>>();
+                let fmt = ListFormatting {
+                    tactic: DefinitiveListTactic::Mixed,
+                    separator: ",",
+                    trailing_separator: SeparatorTactic::Never,
+                    shape: item_shape,
+                    ends_with_newline: false,
+                    config: context.config,
+                };
+                format!("{}({})", name, try_opt!(write_list(&item_vec, &fmt)))
+            }
+            ast::MetaItemKind::NameValue(ref literal) => {
+                let name = self.name.as_str();
+                let value = context.snippet(literal.span);
+                if &*name == "doc" && value.starts_with("///") {
+                    let doc_shape = Shape {
+                        width: cmp::min(shape.width, context.config.comment_width())
+                            .checked_sub(shape.indent.width())
+                            .unwrap_or(0),
+                        ..shape
+                    };
+                    format!(
+                        "{}",
+                        try_opt!(rewrite_comment(&value, false, doc_shape, context.config))
+                    )
+                } else {
+                    format!("{} = {}", name, value)
+                }
+            }
+        })
     }
 }
 
 impl Rewrite for ast::Attribute {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        try_opt!(self.meta())
-            .rewrite(context, shape)
-            .map(|rw| if rw.starts_with("///") {
-                     rw
-                 } else {
-                     format!("#[{}]", rw)
-                 })
+        try_opt!(self.meta()).rewrite(context, shape).map(|rw| {
+            if rw.starts_with("///") {
+                rw
+            } else {
+                format!("#[{}]", rw)
+            }
+        })
     }
 }
 
@@ -741,13 +787,15 @@ impl<'a> Rewrite for [ast::Attribute] {
                 let multi_line = a_str.starts_with("//") && comment.matches('\n').count() > 1;
                 let comment = comment.trim();
                 if !comment.is_empty() {
-                    let comment =
-                        try_opt!(rewrite_comment(comment,
-                                                 false,
-                                                 Shape::legacy(context.config.comment_width() -
-                                                               shape.indent.width(),
-                                                               shape.indent),
-                                                 context.config));
+                    let comment = try_opt!(rewrite_comment(
+                        comment,
+                        false,
+                        Shape::legacy(
+                            context.config.comment_width() - shape.indent.width(),
+                            shape.indent,
+                        ),
+                        context.config,
+                    ));
                     result.push_str(&indent);
                     result.push_str(&comment);
                     result.push('\n');

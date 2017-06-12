@@ -73,9 +73,10 @@ fn compare_path_list_items(a: &ast::PathListItem, b: &ast::PathListItem) -> Orde
     }
 }
 
-fn compare_path_list_item_lists(a_items: &Vec<ast::PathListItem>,
-                                b_items: &Vec<ast::PathListItem>)
-                                -> Ordering {
+fn compare_path_list_item_lists(
+    a_items: &Vec<ast::PathListItem>,
+    b_items: &Vec<ast::PathListItem>,
+) -> Ordering {
     let mut a = a_items.clone();
     let mut b = b_items.clone();
     a.sort_by(|a, b| compare_path_list_items(a, b));
@@ -123,19 +124,33 @@ fn compare_use_items(a: &ast::Item, b: &ast::Item) -> Option<Ordering> {
 // TODO (some day) remove unused imports, expand globs, compress many single
 // imports into a list import.
 
-fn rewrite_view_path_prefix(path: &ast::Path,
-                            context: &RewriteContext,
-                            shape: Shape)
-                            -> Option<String> {
+fn rewrite_view_path_prefix(
+    path: &ast::Path,
+    context: &RewriteContext,
+    shape: Shape,
+) -> Option<String> {
     let path_str = if path.segments.last().unwrap().identifier.to_string() == "self" &&
-                      path.segments.len() > 1 {
+        path.segments.len() > 1
+    {
         let path = &ast::Path {
             span: path.span.clone(),
             segments: path.segments[..path.segments.len() - 1].to_owned(),
         };
-        try_opt!(rewrite_path(context, PathContext::Import, None, path, shape))
+        try_opt!(rewrite_path(
+            context,
+            PathContext::Import,
+            None,
+            path,
+            shape,
+        ))
     } else {
-        try_opt!(rewrite_path(context, PathContext::Import, None, path, shape))
+        try_opt!(rewrite_path(
+            context,
+            PathContext::Import,
+            None,
+            path,
+            shape,
+        ))
     };
     Some(path_str)
 }
@@ -162,11 +177,13 @@ impl Rewrite for ast::ViewPath {
                 let prefix_shape = try_opt!(shape.sub_width(ident_str.len() + 4));
                 let path_str = try_opt!(rewrite_view_path_prefix(path, context, prefix_shape));
 
-                Some(if path.segments.last().unwrap().identifier == ident {
-                         path_str
-                     } else {
-                         format!("{} as {}", path_str, ident_str)
-                     })
+                Some(
+                    if path.segments.last().unwrap().identifier == ident {
+                        path_str
+                    } else {
+                        format!("{} as {}", path_str, ident_str)
+                    },
+                )
             }
         }
     }
@@ -179,13 +196,13 @@ impl<'a> FmtVisitor<'a> {
         let pos_before_first_use_item = use_items
             .first()
             .map(|p_i| {
-                     cmp::max(self.last_pos,
-                              p_i.attrs
-                                  .iter()
-                                  .map(|attr| attr.span.lo)
-                                  .min()
-                                  .unwrap_or(p_i.span.lo))
-                 })
+                cmp::max(
+                    self.last_pos,
+                    p_i.attrs.iter().map(|attr| attr.span.lo).min().unwrap_or(
+                        p_i.span.lo,
+                    ),
+                )
+            })
             .unwrap_or(self.last_pos);
         // Construct a list of pairs, each containing a `use` item and the start of span before
         // that `use` item.
@@ -193,10 +210,10 @@ impl<'a> FmtVisitor<'a> {
         let mut ordered_use_items = use_items
             .iter()
             .map(|p_i| {
-                     let new_item = (&*p_i, last_pos_of_prev_use_item);
-                     last_pos_of_prev_use_item = p_i.span.hi;
-                     new_item
-                 })
+                let new_item = (&*p_i, last_pos_of_prev_use_item);
+                last_pos_of_prev_use_item = p_i.span.hi;
+                new_item
+            })
             .collect::<Vec<_>>();
         let pos_after_last_use_item = last_pos_of_prev_use_item;
         // Order the imports by view-path & other import path properties
@@ -237,8 +254,10 @@ impl<'a> FmtVisitor<'a> {
         let mut offset = self.block_indent;
         offset.alignment += vis.len() + "use ".len();
         // 1 = ";"
-        match vp.rewrite(&self.get_context(),
-                         Shape::legacy(self.config.max_width() - offset.width() - 1, offset)) {
+        match vp.rewrite(
+            &self.get_context(),
+            Shape::legacy(self.config.max_width() - offset.width() - 1, offset),
+        ) {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
                 let prev_span = utils::mk_sp(self.last_pos, source!(self, span).lo);
@@ -295,14 +314,21 @@ fn append_alias(path_item_str: String, vpi: &ast::PathListItem) -> String {
 
 // Pretty prints a multi-item import.
 // Assumes that path_list.len() > 0.
-pub fn rewrite_use_list(shape: Shape,
-                        path: &ast::Path,
-                        path_list: &[ast::PathListItem],
-                        span: Span,
-                        context: &RewriteContext)
-                        -> Option<String> {
+pub fn rewrite_use_list(
+    shape: Shape,
+    path: &ast::Path,
+    path_list: &[ast::PathListItem],
+    span: Span,
+    context: &RewriteContext,
+) -> Option<String> {
     // Returns a different option to distinguish `::foo` and `foo`
-    let path_str = try_opt!(rewrite_path(context, PathContext::Import, None, path, shape));
+    let path_str = try_opt!(rewrite_path(
+        context,
+        PathContext::Import,
+        None,
+        path,
+        shape,
+    ));
 
     match path_list.len() {
         0 => unreachable!(),
@@ -321,14 +347,16 @@ pub fn rewrite_use_list(shape: Shape,
     let mut items = {
         // Dummy value, see explanation below.
         let mut items = vec![ListItem::from_str("")];
-        let iter = itemize_list(context.codemap,
-                                path_list.iter(),
-                                "}",
-                                |vpi| vpi.span.lo,
-                                |vpi| vpi.span.hi,
-                                rewrite_path_item,
-                                context.codemap.span_after(span, "{"),
-                                span.hi);
+        let iter = itemize_list(
+            context.codemap,
+            path_list.iter(),
+            "}",
+            |vpi| vpi.span.lo,
+            |vpi| vpi.span.hi,
+            rewrite_path_item,
+            context.codemap.span_after(span, "{"),
+            span.hi,
+        );
         items.extend(iter);
         items
     };
@@ -344,34 +372,40 @@ pub fn rewrite_use_list(shape: Shape,
     }
 
 
-    let tactic = definitive_tactic(&items[first_index..],
-                                   ::lists::ListTactic::Mixed,
-                                   remaining_width);
+    let tactic = definitive_tactic(
+        &items[first_index..],
+        ::lists::ListTactic::Mixed,
+        remaining_width,
+    );
 
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
         // Add one to the indent to account for "{"
-        shape: Shape::legacy(remaining_width,
-                             shape.indent + path_str.len() + colons_offset + 1),
+        shape: Shape::legacy(
+            remaining_width,
+            shape.indent + path_str.len() + colons_offset + 1,
+        ),
         ends_with_newline: false,
         config: context.config,
     };
     let list_str = try_opt!(write_list(&items[first_index..], &fmt));
 
-    Some(if path_str.is_empty() {
-             format!("{{{}}}", list_str)
-         } else {
-             format!("{}::{{{}}}", path_str, list_str)
-         })
+    Some(
+        if path_str.is_empty() {
+            format!("{{{}}}", list_str)
+        } else {
+            format!("{}::{{{}}}", path_str, list_str)
+        },
+    )
 }
 
 // Returns true when self item was found.
 fn move_self_to_front(items: &mut Vec<ListItem>) -> bool {
-    match items
-              .iter()
-              .position(|item| item.item.as_ref().map(|x| &x[..]) == Some("self")) {
+    match items.iter().position(|item| {
+        item.item.as_ref().map(|x| &x[..]) == Some("self")
+    }) {
         Some(pos) => {
             items[0] = items.remove(pos);
             true

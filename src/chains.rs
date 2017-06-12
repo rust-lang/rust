@@ -101,9 +101,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let trailing_try_num = subexpr_list
         .iter()
         .take_while(|e| match e.node {
-                        ast::ExprKind::Try(..) => true,
-                        _ => false,
-                    })
+            ast::ExprKind::Try(..) => true,
+            _ => false,
+        })
         .count();
 
     // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
@@ -128,7 +128,10 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         } else {
             chain_indent(context, shape.add_offset(parent_rewrite.len()))
         };
-        (nested_shape, context.config.chain_indent() == IndentStyle::Visual || is_small_parent)
+        (
+            nested_shape,
+            context.config.chain_indent() == IndentStyle::Visual || is_small_parent,
+        )
     } else if is_block_expr(context, &parent, &parent_rewrite) {
         match context.config.chain_indent() {
             // Try to put the first child on the same line with parent's last line
@@ -155,26 +158,33 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     } else {
         other_child_shape
     };
-    debug!("child_shapes {:?} {:?}",
-           first_child_shape,
-           other_child_shape);
+    debug!(
+        "child_shapes {:?} {:?}",
+        first_child_shape,
+        other_child_shape
+    );
 
-    let child_shape_iter =
-        Some(first_child_shape)
-            .into_iter()
-            .chain(::std::iter::repeat(other_child_shape).take(subexpr_list.len() - 1));
+    let child_shape_iter = Some(first_child_shape).into_iter().chain(
+        ::std::iter::repeat(
+            other_child_shape,
+        ).take(
+            subexpr_list.len() - 1,
+        ),
+    );
     let iter = subexpr_list.iter().rev().zip(child_shape_iter);
-    let mut rewrites = try_opt!(iter.map(|(e, shape)| {
-                                             rewrite_chain_subexpr(e, total_span, context, shape)
-                                         }).collect::<Option<Vec<_>>>());
+    let mut rewrites = try_opt!(
+        iter.map(|(e, shape)| {
+            rewrite_chain_subexpr(e, total_span, context, shape)
+        }).collect::<Option<Vec<_>>>()
+    );
 
     // Total of all items excluding the last.
     let last_non_try_index = rewrites.len() - (1 + trailing_try_num);
-    let almost_total = rewrites[..last_non_try_index]
-        .iter()
-        .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
+    let almost_total = rewrites[..last_non_try_index].iter().fold(0, |a, b| {
+        a + first_line_width(b)
+    }) + parent_rewrite.len();
     let one_line_len = rewrites.iter().fold(0, |a, r| a + first_line_width(r)) +
-                       parent_rewrite.len();
+        parent_rewrite.len();
 
     let one_line_budget = min(shape.width, context.config.chain_one_line_max());
     let veto_single_line = if one_line_len > one_line_budget {
@@ -206,12 +216,15 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         if fits_single_line {
             fits_single_line = match expr.node {
                 ref e @ ast::ExprKind::MethodCall(..) => {
-                    if rewrite_method_call_with_overflow(e,
-                                                         &mut last[0],
-                                                         almost_total,
-                                                         total_span,
-                                                         context,
-                                                         shape) {
+                    if rewrite_method_call_with_overflow(
+                        e,
+                        &mut last[0],
+                        almost_total,
+                        total_span,
+                        context,
+                        shape,
+                    )
+                    {
                         // If the first line of the last method does not fit into a single line
                         // after the others, allow new lines.
                         almost_total + first_line_width(&last[0]) < context.config.max_width()
@@ -233,13 +246,15 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
                 width: one_line_budget,
                 ..parent_shape
             };
-            fits_single_line = rewrite_last_child_with_overflow(context,
-                                                                &subexpr_list[trailing_try_num],
-                                                                overflow_shape,
-                                                                total_span,
-                                                                almost_total,
-                                                                one_line_budget,
-                                                                &mut last[0]);
+            fits_single_line = rewrite_last_child_with_overflow(
+                context,
+                &subexpr_list[trailing_try_num],
+                overflow_shape,
+                total_span,
+                almost_total,
+                one_line_budget,
+                &mut last[0],
+            );
         }
     }
 
@@ -254,68 +269,83 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         format!("\n{}", nested_shape.indent.to_string(context.config))
     };
 
-    let first_connector = choose_first_connector(context,
-                                                 &parent_rewrite,
-                                                 &rewrites[0],
-                                                 &connector,
-                                                 &subexpr_list,
-                                                 extend);
+    let first_connector = choose_first_connector(
+        context,
+        &parent_rewrite,
+        &rewrites[0],
+        &connector,
+        &subexpr_list,
+        extend,
+    );
 
     if is_small_parent && rewrites.len() > 1 {
-        let second_connector = choose_first_connector(context,
-                                                      &rewrites[0],
-                                                      &rewrites[1],
-                                                      &connector,
-                                                      &subexpr_list[0..subexpr_list.len() - 1],
-                                                      false);
-        wrap_str(format!("{}{}{}{}{}",
-                         parent_rewrite,
-                         first_connector,
-                         rewrites[0],
-                         second_connector,
-                         join_rewrites(&rewrites[1..],
-                                       &subexpr_list[0..subexpr_list.len() - 1],
-                                       &connector)),
-                 context.config.max_width(),
-                 shape)
+        let second_connector = choose_first_connector(
+            context,
+            &rewrites[0],
+            &rewrites[1],
+            &connector,
+            &subexpr_list[0..subexpr_list.len() - 1],
+            false,
+        );
+        wrap_str(
+            format!(
+                "{}{}{}{}{}",
+                parent_rewrite,
+                first_connector,
+                rewrites[0],
+                second_connector,
+                join_rewrites(
+                    &rewrites[1..],
+                    &subexpr_list[0..subexpr_list.len() - 1],
+                    &connector,
+                )
+            ),
+            context.config.max_width(),
+            shape,
+        )
     } else {
-        wrap_str(format!("{}{}{}",
-                         parent_rewrite,
-                         first_connector,
-                         join_rewrites(&rewrites, &subexpr_list, &connector)),
-                 context.config.max_width(),
-                 shape)
+        wrap_str(
+            format!(
+                "{}{}{}",
+                parent_rewrite,
+                first_connector,
+                join_rewrites(&rewrites, &subexpr_list, &connector)
+            ),
+            context.config.max_width(),
+            shape,
+        )
     }
 }
 
 fn is_extendable_parent(context: &RewriteContext, parent_str: &str) -> bool {
     context.config.chain_indent() == IndentStyle::Block &&
-    parent_str.lines().last().map_or(false, |s| {
-        s.trim()
-            .chars()
-            .all(|c| c == ')' || c == ']' || c == '}' || c == '?')
-    })
+        parent_str.lines().last().map_or(false, |s| {
+            s.trim().chars().all(|c| {
+                c == ')' || c == ']' || c == '}' || c == '?'
+            })
+        })
 }
 
 // True if the chain is only `?`s.
 fn chain_only_try(exprs: &[ast::Expr]) -> bool {
     exprs.iter().all(|e| if let ast::ExprKind::Try(_) = e.node {
-                         true
-                     } else {
-                         false
-                     })
+        true
+    } else {
+        false
+    })
 }
 
 // Try to rewrite and replace the last non-try child. Return `true` if
 // replacing succeeds.
-fn rewrite_last_child_with_overflow(context: &RewriteContext,
-                                    expr: &ast::Expr,
-                                    shape: Shape,
-                                    span: Span,
-                                    almost_total: usize,
-                                    one_line_budget: usize,
-                                    last_child: &mut String)
-                                    -> bool {
+fn rewrite_last_child_with_overflow(
+    context: &RewriteContext,
+    expr: &ast::Expr,
+    shape: Shape,
+    span: Span,
+    almost_total: usize,
+    one_line_budget: usize,
+    last_child: &mut String,
+) -> bool {
     if let Some(shape) = shape.shrink_left(almost_total) {
         if let Some(ref mut rw) = rewrite_chain_subexpr(expr, span, context, shape) {
             if almost_total + first_line_width(rw) <= one_line_budget {
@@ -327,15 +357,18 @@ fn rewrite_last_child_with_overflow(context: &RewriteContext,
     false
 }
 
-pub fn rewrite_try(expr: &ast::Expr,
-                   try_count: usize,
-                   context: &RewriteContext,
-                   shape: Shape)
-                   -> Option<String> {
+pub fn rewrite_try(
+    expr: &ast::Expr,
+    try_count: usize,
+    context: &RewriteContext,
+    shape: Shape,
+) -> Option<String> {
     let sub_expr = try_opt!(expr.rewrite(context, try_opt!(shape.sub_width(try_count))));
-    Some(format!("{}{}",
-                 sub_expr,
-                 iter::repeat("?").take(try_count).collect::<String>()))
+    Some(format!(
+        "{}{}",
+        sub_expr,
+        iter::repeat("?").take(try_count).collect::<String>()
+    ))
 }
 
 fn join_rewrites(rewrites: &[String], subexps: &[ast::Expr], connector: &str) -> String {
@@ -398,24 +431,27 @@ fn chain_indent(context: &RewriteContext, shape: Shape) -> Shape {
     }
 }
 
-fn rewrite_method_call_with_overflow(expr_kind: &ast::ExprKind,
-                                     last: &mut String,
-                                     almost_total: usize,
-                                     total_span: Span,
-                                     context: &RewriteContext,
-                                     shape: Shape)
-                                     -> bool {
+fn rewrite_method_call_with_overflow(
+    expr_kind: &ast::ExprKind,
+    last: &mut String,
+    almost_total: usize,
+    total_span: Span,
+    context: &RewriteContext,
+    shape: Shape,
+) -> bool {
     if let &ast::ExprKind::MethodCall(ref method_name, ref types, ref expressions) = expr_kind {
         let shape = match shape.shrink_left(almost_total) {
             Some(b) => b,
             None => return false,
         };
-        let mut last_rewrite = rewrite_method_call(method_name.node,
-                                                   types,
-                                                   expressions,
-                                                   total_span,
-                                                   context,
-                                                   shape);
+        let mut last_rewrite = rewrite_method_call(
+            method_name.node,
+            types,
+            expressions,
+            total_span,
+            context,
+            shape,
+        );
 
         if let Some(ref mut s) = last_rewrite {
             ::std::mem::swap(s, last);
@@ -457,11 +493,12 @@ fn convert_try(expr: &ast::Expr, context: &RewriteContext) -> ast::Expr {
 
 // Rewrite the last element in the chain `expr`. E.g., given `a.b.c` we rewrite
 // `.c`.
-fn rewrite_chain_subexpr(expr: &ast::Expr,
-                         span: Span,
-                         context: &RewriteContext,
-                         shape: Shape)
-                         -> Option<String> {
+fn rewrite_chain_subexpr(
+    expr: &ast::Expr,
+    span: Span,
+    context: &RewriteContext,
+    shape: Shape,
+) -> Option<String> {
     let rewrite_element = |expr_str: String| if expr_str.len() <= shape.width {
         Some(expr_str)
     } else {
@@ -500,20 +537,23 @@ fn is_try(expr: &ast::Expr) -> bool {
     }
 }
 
-fn choose_first_connector<'a>(context: &RewriteContext,
-                              parent_str: &str,
-                              first_child_str: &str,
-                              connector: &'a str,
-                              subexpr_list: &[ast::Expr],
-                              extend: bool)
-                              -> &'a str {
+fn choose_first_connector<'a>(
+    context: &RewriteContext,
+    parent_str: &str,
+    first_child_str: &str,
+    connector: &'a str,
+    subexpr_list: &[ast::Expr],
+    extend: bool,
+) -> &'a str {
     if subexpr_list.is_empty() {
         ""
     } else if extend || subexpr_list.last().map_or(false, is_try) ||
-              is_extendable_parent(context, parent_str) {
+               is_extendable_parent(context, parent_str)
+    {
         // 1 = ";", being conservative here.
         if last_line_width(parent_str) + first_line_width(first_child_str) + 1 <=
-           context.config.max_width() {
+            context.config.max_width()
+        {
             ""
         } else {
             connector
@@ -523,18 +563,18 @@ fn choose_first_connector<'a>(context: &RewriteContext,
     }
 }
 
-fn rewrite_method_call(method_name: ast::Ident,
-                       types: &[ptr::P<ast::Ty>],
-                       args: &[ptr::P<ast::Expr>],
-                       span: Span,
-                       context: &RewriteContext,
-                       shape: Shape)
-                       -> Option<String> {
+fn rewrite_method_call(
+    method_name: ast::Ident,
+    types: &[ptr::P<ast::Ty>],
+    args: &[ptr::P<ast::Expr>],
+    span: Span,
+    context: &RewriteContext,
+    shape: Shape,
+) -> Option<String> {
     let (lo, type_str) = if types.is_empty() {
         (args[0].span.hi, String::new())
     } else {
-        let type_list: Vec<_> =
-            try_opt!(types.iter().map(|ty| ty.rewrite(context, shape)).collect());
+        let type_list: Vec<_> = try_opt!(types.iter().map(|ty| ty.rewrite(context, shape)).collect());
 
         let type_str = if context.config.spaces_within_angle_brackets() && type_list.len() > 0 {
             format!("::< {} >", type_list.join(", "))

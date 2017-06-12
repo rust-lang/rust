@@ -86,7 +86,8 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
 }
 
 pub fn print_diff<F>(diff: Vec<Mismatch>, get_section_title: F)
-    where F: Fn(u32) -> String
+where
+    F: Fn(u32) -> String,
 {
     match term::stdout() {
         Some(ref t) if isatty() && t.supports_color() => {
@@ -115,10 +116,12 @@ pub fn print_diff<F>(diff: Vec<Mismatch>, get_section_title: F)
     }
 }
 
-fn print_diff_fancy<F>(diff: Vec<Mismatch>,
-                       get_section_title: F,
-                       mut t: Box<term::Terminal<Output = io::Stdout>>)
-    where F: Fn(u32) -> String
+fn print_diff_fancy<F>(
+    diff: Vec<Mismatch>,
+    get_section_title: F,
+    mut t: Box<term::Terminal<Output = io::Stdout>>,
+) where
+    F: Fn(u32) -> String,
 {
     for mismatch in diff {
         let title = get_section_title(mismatch.line_number);
@@ -145,7 +148,8 @@ fn print_diff_fancy<F>(diff: Vec<Mismatch>,
 }
 
 pub fn print_diff_basic<F>(diff: Vec<Mismatch>, get_section_title: F)
-    where F: Fn(u32) -> String
+where
+    F: Fn(u32) -> String,
 {
     for mismatch in diff {
         let title = get_section_title(mismatch.line_number);

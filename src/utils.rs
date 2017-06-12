@@ -44,9 +44,9 @@ pub fn format_visibility(vis: &Visibility) -> Cow<'static, str> {
             let Path { ref segments, .. } = **path;
             let mut segments_iter = segments.iter().map(|seg| seg.identifier.name.to_string());
             if path.is_global() {
-                segments_iter
-                    .next()
-                    .expect("Non-global path in pub(restricted)?");
+                segments_iter.next().expect(
+                    "Non-global path in pub(restricted)?",
+                );
             }
             let is_keyword = |s: &str| s == "self" || s == "super";
             let path = segments_iter.collect::<Vec<_>>().join("::");
@@ -128,9 +128,9 @@ fn is_skip_nested(meta_item: &NestedMetaItem) -> bool {
 
 #[inline]
 pub fn contains_skip(attrs: &[Attribute]) -> bool {
-    attrs
-        .iter()
-        .any(|a| a.meta().map_or(false, |a| is_skip(&a)))
+    attrs.iter().any(
+        |a| a.meta().map_or(false, |a| is_skip(&a)),
+    )
 }
 
 // Find the end of a TyParam
@@ -333,7 +333,8 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, shape: Shape) -> Option<S
                 // A special check for the last line, since the caller may
                 // place trailing characters on this line.
                 if snippet.lines().rev().next().unwrap().len() >
-                   shape.indent.width() + shape.width {
+                    shape.indent.width() + shape.width
+                {
                     return None;
                 }
             }
@@ -355,7 +356,8 @@ impl Rewrite for String {
 // whether the `guess' was too high (Ordering::Less), or too low.
 // This function is guaranteed to try to the hi value first.
 pub fn binary_search<C, T>(mut lo: usize, mut hi: usize, callback: C) -> Option<T>
-    where C: Fn(usize) -> Result<T, Ordering>
+where
+    C: Fn(usize) -> Result<T, Ordering>,
 {
     let mut middle = hi;
 

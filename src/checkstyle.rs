@@ -13,7 +13,8 @@ use config::WriteMode;
 
 
 pub fn output_header<T>(out: &mut T, mode: WriteMode) -> Result<(), io::Error>
-    where T: Write
+where
+    T: Write,
 {
     if mode == WriteMode::Checkstyle {
         let mut xml_heading = String::new();
@@ -26,7 +27,8 @@ pub fn output_header<T>(out: &mut T, mode: WriteMode) -> Result<(), io::Error>
 }
 
 pub fn output_footer<T>(out: &mut T, mode: WriteMode) -> Result<(), io::Error>
-    where T: Write
+where
+    T: Write,
 {
     if mode == WriteMode::Checkstyle {
         let mut xml_tail = String::new();
@@ -36,11 +38,13 @@ pub fn output_footer<T>(out: &mut T, mode: WriteMode) -> Result<(), io::Error>
     Ok(())
 }
 
-pub fn output_checkstyle_file<T>(mut writer: T,
-                                 filename: &str,
-                                 diff: Vec<Mismatch>)
-                                 -> Result<(), io::Error>
-    where T: Write
+pub fn output_checkstyle_file<T>(
+    mut writer: T,
+    filename: &str,
+    diff: Vec<Mismatch>,
+) -> Result<(), io::Error>
+where
+    T: Write,
 {
     write!(writer, "<file name=\"{}\">", filename)?;
     for mismatch in diff {
@@ -48,11 +52,13 @@ pub fn output_checkstyle_file<T>(mut writer: T,
             // Do nothing with `DiffLine::Context` and `DiffLine::Resulting`.
             if let DiffLine::Expected(ref str) = line {
                 let message = xml_escape_str(str);
-                write!(writer,
-                       "<error line=\"{}\" severity=\"warning\" message=\"Should be `{}`\" \
+                write!(
+                    writer,
+                    "<error line=\"{}\" severity=\"warning\" message=\"Should be `{}`\" \
                              />",
-                       mismatch.line_number,
-                       message)?;
+                    mismatch.line_number,
+                    message
+                )?;
             }
         }
     }

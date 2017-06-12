@@ -69,22 +69,27 @@ pub struct ListFormatting<'a> {
 }
 
 pub fn format_fn_args<I>(items: I, shape: Shape, config: &Config) -> Option<String>
-    where I: Iterator<Item = ListItem>
+where
+    I: Iterator<Item = ListItem>,
 {
-    list_helper(items,
-                shape,
-                config,
-                ListTactic::LimitedHorizontalVertical(config.fn_call_width()))
+    list_helper(
+        items,
+        shape,
+        config,
+        ListTactic::LimitedHorizontalVertical(config.fn_call_width()),
+    )
 }
 
 pub fn format_item_list<I>(items: I, shape: Shape, config: &Config) -> Option<String>
-    where I: Iterator<Item = ListItem>
+where
+    I: Iterator<Item = ListItem>,
 {
     list_helper(items, shape, config, ListTactic::HorizontalVertical)
 }
 
 pub fn list_helper<I>(items: I, shape: Shape, config: &Config, tactic: ListTactic) -> Option<String>
-    where I: Iterator<Item = ListItem>
+where
+    I: Iterator<Item = ListItem>,
 {
     let item_vec: Vec<_> = items.collect();
     let tactic = definitive_tactic(&item_vec, tactic, shape.width);
@@ -120,15 +125,16 @@ pub struct ListItem {
 impl ListItem {
     pub fn is_multiline(&self) -> bool {
         self.item.as_ref().map_or(false, |s| s.contains('\n')) || self.pre_comment.is_some() ||
-        self.post_comment
-            .as_ref()
-            .map_or(false, |s| s.contains('\n'))
+            self.post_comment.as_ref().map_or(
+                false,
+                |s| s.contains('\n'),
+            )
     }
 
     pub fn has_line_pre_comment(&self) -> bool {
-        self.pre_comment
-            .as_ref()
-            .map_or(false, |comment| comment.starts_with("//"))
+        self.pre_comment.as_ref().map_or(false, |comment| {
+            comment.starts_with("//")
+        })
     }
 
     pub fn from_str<S: Into<String>>(s: S) -> ListItem {
@@ -150,13 +156,13 @@ pub enum DefinitiveListTactic {
 }
 
 pub fn definitive_tactic<I, T>(items: I, tactic: ListTactic, width: usize) -> DefinitiveListTactic
-    where I: IntoIterator<Item = T> + Clone,
-          T: AsRef<ListItem>
+where
+    I: IntoIterator<Item = T> + Clone,
+    T: AsRef<ListItem>,
 {
-    let pre_line_comments = items
-        .clone()
-        .into_iter()
-        .any(|item| item.as_ref().has_line_pre_comment());
+    let pre_line_comments = items.clone().into_iter().any(|item| {
+        item.as_ref().has_line_pre_comment()
+    });
 
     let limit = match tactic {
         _ if pre_line_comments => return DefinitiveListTactic::Vertical,
@@ -173,7 +179,8 @@ pub fn definitive_tactic<I, T>(items: I, tactic: ListTactic, width: usize) -> De
     let real_total = total_width + total_sep_len;
 
     if real_total <= limit && !pre_line_comments &&
-       !items.into_iter().any(|item| item.as_ref().is_multiline()) {
+        !items.into_iter().any(|item| item.as_ref().is_multiline())
+    {
         DefinitiveListTactic::Horizontal
     } else {
         DefinitiveListTactic::Vertical
@@ -183,8 +190,9 @@ pub fn definitive_tactic<I, T>(items: I, tactic: ListTactic, width: usize) -> De
 // Format a list of commented items into a string.
 // TODO: add unit tests
 pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
-    where I: IntoIterator<Item = T>,
-          T: AsRef<ListItem>
+where
+    I: IntoIterator<Item = T>,
+    T: AsRef<ListItem>,
 {
     let tactic = formatting.tactic;
     let sep_len = formatting.separator.len();
@@ -250,8 +258,12 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
             // Block style in non-vertical mode.
             let block_mode = tactic != DefinitiveListTactic::Vertical;
             // Width restriction is only relevant in vertical mode.
-            let comment =
-                try_opt!(rewrite_comment(comment, block_mode, formatting.shape, formatting.config));
+            let comment = try_opt!(rewrite_comment(
+                comment,
+                block_mode,
+                formatting.shape,
+                formatting.config,
+            ));
             result.push_str(&comment);
 
             if tactic == DefinitiveListTactic::Vertical {
@@ -267,11 +279,12 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
         // Post-comments
         if tactic != DefinitiveListTactic::Vertical && item.post_comment.is_some() {
             let comment = item.post_comment.as_ref().unwrap();
-            let formatted_comment =
-                try_opt!(rewrite_comment(comment,
-                                         true,
-                                         Shape::legacy(formatting.shape.width, Indent::empty()),
-                                         formatting.config));
+            let formatted_comment = try_opt!(rewrite_comment(
+                comment,
+                true,
+                Shape::legacy(formatting.shape.width, Indent::empty()),
+                formatting.config,
+            ));
 
             result.push(' ');
             result.push_str(&formatted_comment);
@@ -295,13 +308,15 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
             debug!("Width = {}, offset = {:?}", width, offset);
             // Use block-style only for the last item or multiline comments.
             let block_style = !formatting.ends_with_newline && last ||
-                              comment.trim().contains('\n') ||
-                              comment.trim().len() > width;
+                comment.trim().contains('\n') ||
+                comment.trim().len() > width;
 
-            let formatted_comment = try_opt!(rewrite_comment(comment,
-                                                             block_style,
-                                                             Shape::legacy(width, offset),
-                                                             formatting.config));
+            let formatted_comment = try_opt!(rewrite_comment(
+                comment,
+                block_style,
+                Shape::legacy(width, offset),
+                formatting.config,
+            ));
 
             if !formatted_comment.starts_with('\n') {
                 result.push(' ');
@@ -318,7 +333,8 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
 }
 
 pub struct ListItems<'a, I, F1, F2, F3>
-    where I: Iterator
+where
+    I: Iterator,
 {
     codemap: &'a CodeMap,
     inner: Peekable<I>,
@@ -331,10 +347,11 @@ pub struct ListItems<'a, I, F1, F2, F3>
 }
 
 impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
-    where I: Iterator<Item = T>,
-          F1: Fn(&T) -> BytePos,
-          F2: Fn(&T) -> BytePos,
-          F3: Fn(&T) -> Option<String>
+where
+    I: Iterator<Item = T>,
+    F1: Fn(&T) -> BytePos,
+    F2: Fn(&T) -> BytePos,
+    F3: Fn(&T) -> Option<String>,
 {
     type Item = ListItem;
 
@@ -349,7 +366,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                 .unwrap();
             let trimmed_pre_snippet = pre_snippet.trim();
             let has_pre_comment = trimmed_pre_snippet.contains("//") ||
-                                  trimmed_pre_snippet.contains("/*");
+                trimmed_pre_snippet.contains("/*");
             let pre_comment = if has_pre_comment {
                 Some(trimmed_pre_snippet.to_owned())
             } else {
@@ -383,13 +400,17 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                         (Some(i), None) if i > separator_index => separator_index + 1,
                         // Block-style post-comment before the separator.
                         (Some(i), None) => {
-                            cmp::max(find_comment_end(&post_snippet[i..]).unwrap() + i,
-                                     separator_index + 1)
+                            cmp::max(
+                                find_comment_end(&post_snippet[i..]).unwrap() + i,
+                                separator_index + 1,
+                            )
                         }
                         // Block-style post-comment. Either before or after the separator.
                         (Some(i), Some(j)) if i < j => {
-                            cmp::max(find_comment_end(&post_snippet[i..]).unwrap() + i,
-                                     separator_index + 1)
+                            cmp::max(
+                                find_comment_end(&post_snippet[i..]).unwrap() + i,
+                                separator_index + 1,
+                            )
                         }
                         // Potential *single* line comment.
                         (_, Some(j)) if j > separator_index => j + 1,
@@ -397,9 +418,10 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                     }
                 }
                 None => {
-                    post_snippet
-                        .find_uncommented(self.terminator)
-                        .unwrap_or(post_snippet.len())
+                    post_snippet.find_uncommented(self.terminator).unwrap_or(
+                        post_snippet
+                            .len(),
+                    )
                 }
             };
 
@@ -412,9 +434,10 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                 let first_newline = test_snippet.find('\n').unwrap_or(test_snippet.len());
                 // From the end of the first line of comments.
                 let test_snippet = &test_snippet[first_newline..];
-                let first = test_snippet
-                    .find(|c: char| !c.is_whitespace())
-                    .unwrap_or(test_snippet.len());
+                let first = test_snippet.find(|c: char| !c.is_whitespace()).unwrap_or(
+                    test_snippet
+                        .len(),
+                );
                 // From the end of the first line of comments to the next non-whitespace char.
                 let test_snippet = &test_snippet[..first];
 
@@ -453,19 +476,21 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
 }
 
 // Creates an iterator over a list's items with associated comments.
-pub fn itemize_list<'a, T, I, F1, F2, F3>(codemap: &'a CodeMap,
-                                          inner: I,
-                                          terminator: &'a str,
-                                          get_lo: F1,
-                                          get_hi: F2,
-                                          get_item_string: F3,
-                                          prev_span_end: BytePos,
-                                          next_span_start: BytePos)
-                                          -> ListItems<'a, I, F1, F2, F3>
-    where I: Iterator<Item = T>,
-          F1: Fn(&T) -> BytePos,
-          F2: Fn(&T) -> BytePos,
-          F3: Fn(&T) -> Option<String>
+pub fn itemize_list<'a, T, I, F1, F2, F3>(
+    codemap: &'a CodeMap,
+    inner: I,
+    terminator: &'a str,
+    get_lo: F1,
+    get_hi: F2,
+    get_item_string: F3,
+    prev_span_end: BytePos,
+    next_span_start: BytePos,
+) -> ListItems<'a, I, F1, F2, F3>
+where
+    I: Iterator<Item = T>,
+    F1: Fn(&T) -> BytePos,
+    F2: Fn(&T) -> BytePos,
+    F3: Fn(&T) -> Option<String>,
 {
     ListItems {
         codemap: codemap,
@@ -479,9 +504,10 @@ pub fn itemize_list<'a, T, I, F1, F2, F3>(codemap: &'a CodeMap,
     }
 }
 
-fn needs_trailing_separator(separator_tactic: SeparatorTactic,
-                            list_tactic: DefinitiveListTactic)
-                            -> bool {
+fn needs_trailing_separator(
+    separator_tactic: SeparatorTactic,
+    list_tactic: DefinitiveListTactic,
+) -> bool {
     match separator_tactic {
         SeparatorTactic::Always => true,
         SeparatorTactic::Vertical => list_tactic == DefinitiveListTactic::Vertical,
@@ -491,8 +517,9 @@ fn needs_trailing_separator(separator_tactic: SeparatorTactic,
 
 /// Returns the count and total width of the list items.
 fn calculate_width<I, T>(items: I) -> (usize, usize)
-    where I: IntoIterator<Item = T>,
-          T: AsRef<ListItem>
+where
+    I: IntoIterator<Item = T>,
+    T: AsRef<ListItem>,
 {
     items
         .into_iter()
@@ -502,8 +529,8 @@ fn calculate_width<I, T>(items: I) -> (usize, usize)
 
 fn total_item_width(item: &ListItem) -> usize {
     comment_len(item.pre_comment.as_ref().map(|x| &(*x)[..])) +
-    comment_len(item.post_comment.as_ref().map(|x| &(*x)[..])) +
-    item.item.as_ref().map_or(0, |str| str.len())
+        comment_len(item.post_comment.as_ref().map(|x| &(*x)[..])) +
+        item.item.as_ref().map_or(0, |str| str.len())
 }
 
 fn comment_len(comment: Option<&str>) -> usize {
@@ -522,33 +549,36 @@ fn comment_len(comment: Option<&str>) -> usize {
 }
 
 // Compute horizontal and vertical shapes for a struct-lit-like thing.
-pub fn struct_lit_shape(shape: Shape,
-                        context: &RewriteContext,
-                        prefix_width: usize,
-                        suffix_width: usize)
-                        -> Option<(Option<Shape>, Shape)> {
-    let v_shape = match context.config.struct_lit_style() {
-        IndentStyle::Visual => {
-            try_opt!(try_opt!(shape.visual_indent(0).shrink_left(prefix_width))
+pub fn struct_lit_shape(
+    shape: Shape,
+    context: &RewriteContext,
+    prefix_width: usize,
+    suffix_width: usize,
+) -> Option<(Option<Shape>, Shape)> {
+    let v_shape =
+        match context.config.struct_lit_style() {
+            IndentStyle::Visual => {
+                try_opt!(try_opt!(shape.visual_indent(0).shrink_left(prefix_width))
                          .sub_width(suffix_width))
-        }
-        IndentStyle::Block => {
-            let shape = shape.block_indent(context.config.tab_spaces());
-            Shape {
-                width: try_opt!(context.config.max_width().checked_sub(shape.indent.width())),
-                ..shape
             }
-        }
-    };
+            IndentStyle::Block => {
+                let shape = shape.block_indent(context.config.tab_spaces());
+                Shape {
+                    width: try_opt!(context.config.max_width().checked_sub(shape.indent.width())),
+                    ..shape
+                }
+            }
+        };
     let h_shape = shape.sub_width(prefix_width + suffix_width);
     Some((h_shape, v_shape))
 }
 
 // Compute the tactic for the internals of a struct-lit-like thing.
-pub fn struct_lit_tactic(h_shape: Option<Shape>,
-                         context: &RewriteContext,
-                         items: &[ListItem])
-                         -> DefinitiveListTactic {
+pub fn struct_lit_tactic(
+    h_shape: Option<Shape>,
+    context: &RewriteContext,
+    items: &[ListItem],
+) -> DefinitiveListTactic {
     if let Some(h_shape) = h_shape {
         let mut prelim_tactic = match (context.config.struct_lit_style(), items.len()) {
             (IndentStyle::Visual, 1) => ListTactic::HorizontalVertical,
@@ -568,10 +598,11 @@ pub fn struct_lit_tactic(h_shape: Option<Shape>,
 
 // Given a tactic and possible shapes for horizontal and vertical layout,
 // come up with the actual shape to use.
-pub fn shape_for_tactic(tactic: DefinitiveListTactic,
-                        h_shape: Option<Shape>,
-                        v_shape: Shape)
-                        -> Shape {
+pub fn shape_for_tactic(
+    tactic: DefinitiveListTactic,
+    h_shape: Option<Shape>,
+    v_shape: Shape,
+) -> Shape {
     match tactic {
         DefinitiveListTactic::Horizontal => h_shape.unwrap(),
         _ => v_shape,
@@ -580,13 +611,14 @@ pub fn shape_for_tactic(tactic: DefinitiveListTactic,
 
 // Create a ListFormatting object for formatting the internals of a
 // struct-lit-like thing, that is a series of fields.
-pub fn struct_lit_formatting<'a>(shape: Shape,
-                                 tactic: DefinitiveListTactic,
-                                 context: &'a RewriteContext,
-                                 force_no_trailing_comma: bool)
-                                 -> ListFormatting<'a> {
+pub fn struct_lit_formatting<'a>(
+    shape: Shape,
+    tactic: DefinitiveListTactic,
+    context: &'a RewriteContext,
+    force_no_trailing_comma: bool,
+) -> ListFormatting<'a> {
     let ends_with_newline = context.config.struct_lit_style() != IndentStyle::Visual &&
-                            tactic == DefinitiveListTactic::Vertical;
+        tactic == DefinitiveListTactic::Vertical;
     ListFormatting {
         tactic: tactic,
         separator: ",",

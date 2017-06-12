@@ -189,8 +189,10 @@ impl Sub for Indent {
     type Output = Indent;
 
     fn sub(self, rhs: Indent) -> Indent {
-        Indent::new(self.block_indent - rhs.block_indent,
-                    self.alignment - rhs.alignment)
+        Indent::new(
+            self.block_indent - rhs.block_indent,
+            self.alignment - rhs.alignment,
+        )
     }
 }
 
@@ -315,17 +317,17 @@ impl Shape {
 
     pub fn sub_width(&self, width: usize) -> Option<Shape> {
         Some(Shape {
-                 width: try_opt!(self.width.checked_sub(width)),
-                 ..*self
-             })
+            width: try_opt!(self.width.checked_sub(width)),
+            ..*self
+        })
     }
 
     pub fn shrink_left(&self, width: usize) -> Option<Shape> {
         Some(Shape {
-                 width: try_opt!(self.width.checked_sub(width)),
-                 indent: self.indent + width,
-                 offset: self.offset + width,
-             })
+            width: try_opt!(self.width.checked_sub(width)),
+            indent: self.indent + width,
+            offset: self.offset + width,
+        })
     }
 
     pub fn offset_left(&self, width: usize) -> Option<Shape> {
@@ -350,10 +352,12 @@ impl fmt::Display for ErrorKind {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
             ErrorKind::LineOverflow(found, maximum) => {
-                write!(fmt,
-                       "line exceeded maximum length (maximum: {}, found: {})",
-                       maximum,
-                       found)
+                write!(
+                    fmt,
+                    "line exceeded maximum length (maximum: {}, found: {})",
+                    maximum,
+                    found
+                )
             }
             ErrorKind::TrailingWhitespace => write!(fmt, "left behind trailing whitespace"),
             ErrorKind::BadIssue(issue) => write!(fmt, "found {}", issue),
@@ -412,13 +416,15 @@ impl fmt::Display for FormatReport {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         for (file, errors) in &self.file_error_map {
             for error in errors {
-                write!(fmt,
-                       "{} {}:{}: {} {}\n",
-                       error.msg_prefix(),
-                       file,
-                       error.line,
-                       error.kind,
-                       error.msg_suffix())?;
+                write!(
+                    fmt,
+                    "{} {}:{}: {} {}\n",
+                    error.msg_prefix(),
+                    file,
+                    error.line,
+                    error.kind,
+                    error.msg_suffix()
+                )?;
             }
         }
         Ok(())
@@ -426,14 +432,16 @@ impl fmt::Display for FormatReport {
 }
 
 // Formatting which depends on the AST.
-fn format_ast<F>(krate: &ast::Crate,
-                 mut parse_session: &mut ParseSess,
-                 main_file: &Path,
-                 config: &Config,
-                 codemap: &Rc<CodeMap>,
-                 mut after_file: F)
-                 -> Result<(FileMap, bool), io::Error>
-    where F: FnMut(&str, &mut StringBuffer) -> Result<bool, io::Error>
+fn format_ast<F>(
+    krate: &ast::Crate,
+    mut parse_session: &mut ParseSess,
+    main_file: &Path,
+    config: &Config,
+    codemap: &Rc<CodeMap>,
+    mut after_file: F,
+) -> Result<(FileMap, bool), io::Error>
+where
+    F: FnMut(&str, &mut StringBuffer) -> Result<bool, io::Error>,
 {
     let mut result = FileMap::new();
     // diff mode: check if any files are differing
@@ -493,9 +501,9 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
             // Add warnings for bad todos/ fixmes
             if let Some(issue) = issue_seeker.inspect(c) {
                 errors.push(FormattingError {
-                                line: cur_line,
-                                kind: ErrorKind::BadIssue(issue),
-                            });
+                    line: cur_line,
+                    kind: ErrorKind::BadIssue(issue),
+                });
             }
         }
 
@@ -510,9 +518,9 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
                 // Check for any line width errors we couldn't correct.
                 if config.error_on_line_overflow() && line_len > config.max_width() {
                     errors.push(FormattingError {
-                                    line: cur_line,
-                                    kind: ErrorKind::LineOverflow(line_len, config.max_width()),
-                                });
+                        line: cur_line,
+                        kind: ErrorKind::LineOverflow(line_len, config.max_width()),
+                    });
                 }
             }
 
@@ -541,17 +549,18 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
 
     for &(l, _, _) in &trims {
         errors.push(FormattingError {
-                        line: l,
-                        kind: ErrorKind::TrailingWhitespace,
-                    });
+            line: l,
+            kind: ErrorKind::TrailingWhitespace,
+        });
     }
 
     report.file_error_map.insert(name.to_owned(), errors);
 }
 
-fn parse_input(input: Input,
-               parse_session: &ParseSess)
-               -> Result<ast::Crate, Option<DiagnosticBuilder>> {
+fn parse_input(
+    input: Input,
+    parse_session: &ParseSess,
+) -> Result<ast::Crate, Option<DiagnosticBuilder>> {
     let result = match input {
         Input::File(file) => {
             let mut parser = parse::new_parser_from_file(parse_session, &file);
@@ -579,10 +588,11 @@ fn parse_input(input: Input,
     }
 }
 
-pub fn format_input<T: Write>(input: Input,
-                              config: &Config,
-                              mut out: Option<&mut T>)
-                              -> Result<(Summary, FileMap, FormatReport), (io::Error, Summary)> {
+pub fn format_input<T: Write>(
+    input: Input,
+    config: &Config,
+    mut out: Option<&mut T>,
+) -> Result<(Summary, FileMap, FormatReport), (io::Error, Summary)> {
     let mut summary = Summary::new();
     if config.disable_all_formatting() {
         return Ok((summary, FileMap::new(), FormatReport::new()));
@@ -614,7 +624,10 @@ pub fn format_input<T: Write>(input: Input,
     }
 
     // Suppress error output after parsing.
-    let silent_emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), Some(codemap.clone())));
+    let silent_emitter = Box::new(EmitterWriter::new(
+        Box::new(Vec::new()),
+        Some(codemap.clone()),
+    ));
     parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
 
     let mut report = FormatReport::new();
