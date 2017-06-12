@@ -36,7 +36,7 @@ matrix:
     - env: IMAGE=dist-x86_64-linux DEPLOY=1 ALLOW_TRY=1
     - env: IMAGE=dist-x86_64-musl DEPLOY=1
     - env: IMAGE=dist-x86_64-netbsd DEPLOY=1
-    - env: IMAGE=emscripten
+    - env: IMAGE=asmjs
     - env: IMAGE=i686-gnu
     - env: IMAGE=i686-gnu-nopt
     - env: IMAGE=x86_64-gnu
