@@ -145,20 +145,12 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             self.fold_item_recur(i)
         };
 
-        i.and_then(|i| {
-            match i.inner {
-                // emptied modules have no need to exist
-                clean::ModuleItem(ref m)
-                    if m.items.is_empty() &&
-                       i.doc_value().is_none() => None,
-                _ => {
-                    if self.update_retained {
-                        self.retained.insert(i.def_id);
-                    }
-                    Some(i)
-                }
+        if let Some(ref i) = i {
+            if self.update_retained {
+                self.retained.insert(i.def_id);
             }
-        })
+        }
+        i
     }
 }
 
