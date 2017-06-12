@@ -1721,6 +1721,20 @@ fn rewrite_call_inner(context: &RewriteContext,
                                                    nested_shape,
                                                    one_line_width,
                                                    force_trailing_comma)
+        .or_else(|| if context.use_block_indent() {
+                     rewrite_call_args(context,
+                                       args,
+                                       args_span,
+                                       Shape::indented(shape
+                                                           .block()
+                                                           .indent
+                                                           .block_indent(context.config),
+                                                       context.config),
+                                       0,
+                                       force_trailing_comma)
+                 } else {
+                     None
+                 })
         .ok_or(Ordering::Less)?;
 
     if !context.use_block_indent() && need_block_indent(&list_str, nested_shape) && !extendable {
