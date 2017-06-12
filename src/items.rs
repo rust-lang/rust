@@ -1798,7 +1798,7 @@ fn rewrite_fn_base(context: &RewriteContext,
             indent
         } else {
             result.push(' ');
-            Indent::new(indent.width(), result.len())
+            Indent::new(indent.block_indent, last_line_width(&result))
         };
 
         if multi_line_ret_str || ret_should_indent {
