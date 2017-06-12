@@ -93,15 +93,6 @@ pub fn check(path: &path::Path, bad: &mut bool) {
     let unstable_book_lib_features_section_file_names =
         collect_unstable_book_lib_features_section_file_names(path);
 
-    // Check for unstable features that don't have Unstable Book sections
-    for feature_name in &unstable_lib_feature_names -
-                        &unstable_book_lib_features_section_file_names {
-        tidy_error!(bad,
-                    "Unstable library feature '{}' needs to have a section within the \
-                     'library features' section of The Unstable Book",
-                    feature_name);
-    }
-
     // Check for Unstable Book sections that don't have a corresponding unstable feature
     for feature_name in &unstable_book_lib_features_section_file_names -
                         &unstable_lib_feature_names {
@@ -117,14 +108,6 @@ pub fn check(path: &path::Path, bad: &mut bool) {
     let unstable_book_lang_features_section_file_names =
         collect_unstable_book_lang_features_section_file_names(path);
 
-    for feature_name in &unstable_lang_feature_names -
-                        &unstable_book_lang_features_section_file_names {
-        tidy_error!(bad,
-                    "Unstable language feature '{}' needs to have a section within the \
-                     'language features' section of The Unstable Book",
-                    feature_name);
-    }
-
     // Check for Unstable Book sections that don't have a corresponding unstable feature
     for feature_name in &unstable_book_lang_features_section_file_names -
                         &unstable_lang_feature_names {
@@ -133,4 +116,20 @@ pub fn check(path: &path::Path, bad: &mut bool) {
                      correspond to an unstable language feature",
                     feature_name)
     }
+
+    // List unstable features that don't have Unstable Book sections
+    // Remove the comment marker if you want the list printed
+    /*
+    println!("Lib features without unstable book sections:");
+    for feature_name in &unstable_lang_feature_names -
+                        &unstable_book_lang_features_section_file_names {
+        println!("    * {} {:?}", feature_name, lib_features[&feature_name].tracking_issue);
+    }
+
+    println!("Lang features without unstable book sections:");
+    for feature_name in &unstable_lib_feature_names-
+                        &unstable_book_lib_features_section_file_names {
+        println!("    * {} {:?}", feature_name, lang_features[&feature_name].tracking_issue);
+    }
+    // */
 }
