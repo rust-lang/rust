@@ -374,10 +374,15 @@ For custom settings, supply the [`Custom`](storage::Engine::Other) field.
 
 To link to associated items,
 i.e., the associated functions, types, and constants of a trait,
-it may be necessary to use fully-qualified paths,
+we propose to write the path to the trait,
+followed by two colons, followed by the associated item's name.
+It may be necessary to use fully-qualified paths
+(cf. [the reference's section on disambiguating function calls][ref-ufcs]),
 like `See the [<Foo as Bar>::bar()] method`.
 We have yet to analyze in which cases this is necessary,
-and this syntax is currently not described in [the reference's section on paths][ref-paths].
+and what syntax should be used.
+
+[ref-ufcs]: https://github.com/rust-lang-nursery/reference/blob/96e976d32a0a6927dd26c2ee805aaf44ef3bef2d/src/expressions.md#disambiguating-function-calls
 
 ## Linking to External Documentation
 
