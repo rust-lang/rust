@@ -129,6 +129,11 @@ fn check_fn_decl(cx: &LateContext, decl: &FnDecl) {
     }
 }
 
+/// Recursively check for `TypePass` lints in the given type. Stop at the first
+/// lint found.
+///
+/// The parameter `is_local` distinguishes the context of the type; types from
+/// local bindings should only be checked for the `BORROWED_BOX` lint.
 fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
     if in_macro(ast_ty.span) {
         return;
