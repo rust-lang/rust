@@ -2015,61 +2015,45 @@ mod tests {
 
     #[test]
     pub fn stress_test_serial_tests() {
-        use std::env;
-        use std::fs;
-        use std::time::{SystemTime, UNIX_EPOCH};
-        use std::panic::{AssertUnwindSafe, catch_unwind};
-        use std::path::PathBuf;
         use super::{TestEvent, TestResult, run_tests};
-
-        fn test_fn(path: PathBuf) {
-            use std::fs::File;
-            use std::io::Write;
-
-            {
-                let mut f = File::create(&path)
-                    .expect("create stress test file");
-                f.write_all(b"stress")
-                    .expect("write to stress test file");
-            }
-        }
+        use std::sync::{Arc, RwLock};
 
         let mut opts = TestOpts::new();
         opts.run_tests = true;
 
         let limit = 100;
 
-        let dir = env::temp_dir();
-        let path = dir.join(format!("rust-stress-test-file-{}", SystemTime::now().duration_since(UNIX_EPOCH).expect("time since Unix epoch").as_secs()));
+        let lock = Arc::new(RwLock::new(0));
 
         let tests = (0..limit)
-            .map(|n| TestDescAndFn {
-                desc: TestDesc {
-                    name: DynTestName(format!("stress_{:?}", n)),
-                    ignore: false,
-                    should_panic: ShouldPanic::No,
-                    serial: true,
-                },
-                testfn: DynTestFn(Box::new(|()| { test_fn(path.to_owned()) }))
+            .map(|n| {
+                let lock = lock.clone();
+
+                TestDescAndFn {
+                    desc: TestDesc {
+                        name: DynTestName(format!("stress_{:?}", n)),
+                        ignore: false,
+                        should_panic: ShouldPanic::No,
+                        serial: true,
+                    },
+                    testfn: DynTestFn(Box::new(move |()| {
+                        let mut c = lock.write().unwrap();
+                        *c += 1;
+                    }))
+                }
             })
             .collect::<Vec<_>>();
 
-        let result = catch_unwind(AssertUnwindSafe(|| {
-            run_tests(&opts, tests, |e| {
-                match e {
-                    TestEvent::TeFilteredOut(n) if n > 0 => panic!("filtered out"),
-                    TestEvent::TeTimeout(_) => panic!("timeout"),
-                    TestEvent::TeResult(_, ref result, _) if result != &TestResult::TrOk => panic!("result not okay"),
-                    _ => Ok(())
-                }
-            });
-        }));
+        run_tests(&opts, tests, |e| {
+            match e {
+                TestEvent::TeFilteredOut(n) if n > 0 => panic!("filtered out"),
+                TestEvent::TeTimeout(_) => panic!("timeout"),
+                TestEvent::TeResult(_, ref result, _) if result != &TestResult::TrOk => panic!("result not okay"),
+                _ => Ok(())
+            }
+        }).unwrap();
 
-        if path.exists() {
-            fs::remove_file(&path).expect("remove file");
-        }
-
-        result.unwrap()
+        assert_eq!(*(*lock).read().unwrap(), limit);
     }
 
     #[test]
