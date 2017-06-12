@@ -18,6 +18,6 @@ type A where T: Trait + Trait = u8; // OK
 type A where = u8; // OK
 type A where T: Trait + = u8; // OK
 type A where T, = u8;
-//~^ ERROR expected one of `!`, `(`, `+`, `::`, `:`, `<`, `==`, or `=`, found `,`
+//~^ ERROR expected one of `!`, `(`, `+`, `::`, `:`, `==`, or `=`, found `,`
 
 fn main() {}

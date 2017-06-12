@@ -2851,7 +2851,8 @@ impl<'a> Parser<'a> {
                                     _ => "a type".to_string(),
                                 };
                                 err.span_suggestion(suggestion_span,
-                                                    "if you want to compare the casted value then write",
+                                                    "if you want to compare the casted value \
+                                                     then write:",
                                                     suggestion);
                                 err.level = Level::Warning;
                                 err.set_message(&format!("`<` is interpreted as a start of generic \

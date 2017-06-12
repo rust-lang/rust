@@ -13,5 +13,5 @@
 
 fn main() {
     let x = || -> i32 22;
-    //~^ ERROR expected one of `!`, `(`, `::`, `<`, or `{`, found `22`
+    //~^ ERROR expected one of `!`, `(`, `::`, or `{`, found `22`
 }
