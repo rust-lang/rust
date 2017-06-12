@@ -14,6 +14,7 @@ fn main() {
     let fail1 = 0xabCD;
     let fail2 = 0xabCD_u32;
     let fail2 = 0xabCD_isize;
+    let fail_multi_zero = 000123usize;
 
     let ok6 = 1234_i32;
     let ok7 = 1234_f32;
