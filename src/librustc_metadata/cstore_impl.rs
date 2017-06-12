@@ -40,10 +40,17 @@ use rustc::hir::svh::Svh;
 use rustc::hir;
 
 macro_rules! provide {
-    (<$lt:tt> $tcx:ident, $def_id:ident, $cdata:ident $($name:ident => $compute:block)*) => {
+    (<$lt:tt> $tcx:ident, $def_id:ident, $cdata:ident, $cnum:ident,
+        ByDefId {
+            $($cdata_fn_name:ident => $cdata_fn_compute:block)*
+        }
+        ByCrateNum {
+            $($cnum_fn_name:ident => $cnum_fn_compute:block)*
+        }
+    )=> {
         pub fn provide<$lt>(providers: &mut Providers<$lt>) {
-            $(fn $name<'a, $lt:$lt>($tcx: TyCtxt<'a, $lt, $lt>, $def_id: DefId)
-                                    -> <ty::queries::$name<$lt> as
+            $(fn $cdata_fn_name<'a, $lt:$lt>($tcx: TyCtxt<'a, $lt, $lt>, $def_id: DefId)
+                                    -> <ty::queries::$cdata_fn_name<$lt> as
                                         DepTrackingMapConfig>::Value {
                 assert!(!$def_id.is_local());
 
@@ -55,82 +62,98 @@ macro_rules! provide {
                 let $cdata = $tcx.sess.cstore.crate_data_as_rc_any($def_id.krate);
                 let $cdata = $cdata.downcast_ref::<cstore::CrateMetadata>()
                     .expect("CrateStore crated ata is not a CrateMetadata");
-                $compute
+                $cdata_fn_compute
+            })*
+
+            $(fn $cnum_fn_name<'a, $lt:$lt>($tcx: TyCtxt<'a, $lt, $lt>, $cnum: CrateNum)
+                        -> <ty::queries::$cnum_fn_name<$lt> as
+                            DepTrackingMapConfig>::Value {
+                let $cdata = $tcx.sess.cstore.crate_data_as_rc_any($cnum);
+                let $cdata = $cdata.downcast_ref::<cstore::CrateMetadata>()
+                    .expect("CrateStore crated ata is not a CrateMetadata");
+                $cnum_fn_compute
             })*
 
             *providers = Providers {
-                $($name,)*
+                $($cdata_fn_name,)*
+                $($cnum_fn_name,)*
                 ..*providers
             };
         }
     }
 }
 
-provide! { <'tcx> tcx, def_id, cdata
-    type_of => { cdata.get_type(def_id.index, tcx) }
-    generics_of => { tcx.alloc_generics(cdata.get_generics(def_id.index)) }
-    predicates_of => { cdata.get_predicates(def_id.index, tcx) }
-    super_predicates_of => { cdata.get_super_predicates(def_id.index, tcx) }
-    trait_def => {
-        tcx.alloc_trait_def(cdata.get_trait_def(def_id.index))
-    }
-    adt_def => { cdata.get_adt_def(def_id.index, tcx) }
-    adt_destructor => {
-        let _ = cdata;
-        tcx.calculate_dtor(def_id, &mut |_,_| Ok(()))
-    }
-    variances_of => { Rc::new(cdata.get_item_variances(def_id.index)) }
-    associated_item_def_ids => {
-        let mut result = vec![];
-        cdata.each_child_of_item(def_id.index, |child| result.push(child.def.def_id()), tcx.sess);
-        Rc::new(result)
-    }
-    associated_item => { cdata.get_associated_item(def_id.index) }
-    impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
-    impl_polarity => { cdata.get_impl_polarity(def_id.index) }
-    coerce_unsized_info => {
-        cdata.get_coerce_unsized_info(def_id.index).unwrap_or_else(|| {
-            bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
-        })
-    }
-    optimized_mir => {
-        let mir = cdata.maybe_get_optimized_mir(tcx, def_id.index).unwrap_or_else(|| {
-            bug!("get_optimized_mir: missing MIR for `{:?}`", def_id)
-        });
+provide! { <'tcx> tcx, def_id, cdata, cnum,
+    ByDefId {
+        type_of => { cdata.get_type(def_id.index, tcx) }
+        generics_of => { tcx.alloc_generics(cdata.get_generics(def_id.index)) }
+        predicates_of => { cdata.get_predicates(def_id.index, tcx) }
+        super_predicates_of => { cdata.get_super_predicates(def_id.index, tcx) }
+        trait_def => {
+            tcx.alloc_trait_def(cdata.get_trait_def(def_id.index))
+        }
+        adt_def => { cdata.get_adt_def(def_id.index, tcx) }
+        adt_destructor => {
+            let _ = cdata;
+            tcx.calculate_dtor(def_id, &mut |_,_| Ok(()))
+        }
+        variances_of => { Rc::new(cdata.get_item_variances(def_id.index)) }
+        associated_item_def_ids => {
+            let mut result = vec![];
+            cdata.each_child_of_item(def_id.index,
+              |child| result.push(child.def.def_id()), tcx.sess);
+            Rc::new(result)
+        }
+        associated_item => { cdata.get_associated_item(def_id.index) }
+        impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
+        impl_polarity => { cdata.get_impl_polarity(def_id.index) }
+        coerce_unsized_info => {
+            cdata.get_coerce_unsized_info(def_id.index).unwrap_or_else(|| {
+                bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
+            })
+        }
+        optimized_mir => {
+            let mir = cdata.maybe_get_optimized_mir(tcx, def_id.index).unwrap_or_else(|| {
+                bug!("get_optimized_mir: missing MIR for `{:?}`", def_id)
+            });
 
-        let mir = tcx.alloc_mir(mir);
+            let mir = tcx.alloc_mir(mir);
 
-        mir
+            mir
+        }
+        mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
+        typeck_tables_of => { cdata.item_body_tables(def_id.index, tcx) }
+        closure_kind => { cdata.closure_kind(def_id.index) }
+        closure_type => { cdata.closure_ty(def_id.index, tcx) }
+        inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
+        is_const_fn => { cdata.is_const_fn(def_id.index) }
+        is_foreign_item => { cdata.is_foreign_item(def_id.index) }
+        is_default_impl => { cdata.is_default_impl(def_id.index) }
+        describe_def => { cdata.get_def(def_id.index) }
+        def_span => { cdata.get_span(def_id.index, &tcx.sess) }
+        stability => { cdata.get_stability(def_id.index) }
+        deprecation => { cdata.get_deprecation(def_id.index) }
+        item_attrs => { cdata.get_item_attrs(def_id.index, &tcx.dep_graph) }
+        // FIXME(#38501) We've skipped a `read` on the `HirBody` of
+        // a `fn` when encoding, so the dep-tracking wouldn't work.
+        // This is only used by rustdoc anyway, which shouldn't have
+        // incremental recompilation ever enabled.
+        fn_arg_names => { cdata.get_fn_arg_names(def_id.index) }
+        impl_parent => { cdata.get_parent_impl(def_id.index) }
+        trait_of_item => { cdata.get_trait_of_item(def_id.index) }
+        is_exported_symbol => {
+            let dep_node = cdata.metadata_dep_node(GlobalMetaDataKind::ExportedSymbols);
+            cdata.exported_symbols.get(&tcx.dep_graph, dep_node).contains(&def_id.index)
+        }
+        item_body_nested_bodies => { Rc::new(cdata.item_body_nested_bodies(def_id.index)) }
+        const_is_rvalue_promotable_to_static => {
+            cdata.const_is_rvalue_promotable_to_static(def_id.index)
+        }
+        is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     }
-    mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
-    typeck_tables_of => { cdata.item_body_tables(def_id.index, tcx) }
-    closure_kind => { cdata.closure_kind(def_id.index) }
-    closure_type => { cdata.closure_ty(def_id.index, tcx) }
-    inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
-    is_const_fn => { cdata.is_const_fn(def_id.index) }
-    is_foreign_item => { cdata.is_foreign_item(def_id.index) }
-    is_default_impl => { cdata.is_default_impl(def_id.index) }
-    describe_def => { cdata.get_def(def_id.index) }
-    def_span => { cdata.get_span(def_id.index, &tcx.sess) }
-    stability => { cdata.get_stability(def_id.index) }
-    deprecation => { cdata.get_deprecation(def_id.index) }
-    item_attrs => { cdata.get_item_attrs(def_id.index, &tcx.dep_graph) }
-    // FIXME(#38501) We've skipped a `read` on the `HirBody` of
-    // a `fn` when encoding, so the dep-tracking wouldn't work.
-    // This is only used by rustdoc anyway, which shouldn't have
-    // incremental recompilation ever enabled.
-    fn_arg_names => { cdata.get_fn_arg_names(def_id.index) }
-    impl_parent => { cdata.get_parent_impl(def_id.index) }
-    trait_of_item => { cdata.get_trait_of_item(def_id.index) }
-    is_exported_symbol => {
-        let dep_node = cdata.metadata_dep_node(GlobalMetaDataKind::ExportedSymbols);
-        cdata.exported_symbols.get(&tcx.dep_graph, dep_node).contains(&def_id.index)
+
+    ByCrateNum {
     }
-    item_body_nested_bodies => { Rc::new(cdata.item_body_nested_bodies(def_id.index)) }
-    const_is_rvalue_promotable_to_static => {
-        cdata.const_is_rvalue_promotable_to_static(def_id.index)
-    }
-    is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
