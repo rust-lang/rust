@@ -62,7 +62,6 @@ possible to compile libstd with full MIR:
 
 ```sh
 rustup component add rust-src
-chmod +x -R ~/.rustup/toolchains/*/lib/rustlib/src/rust/src/jemalloc/include/jemalloc/
 cargo install xargo
 cd xargo/
 RUSTFLAGS='-Zalways-encode-mir' xargo build
