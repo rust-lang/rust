@@ -3051,8 +3051,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if let Some((did, field_ty)) = private_candidate {
             let struct_path = self.tcx().item_path_str(did);
-            let msg = format!("field `{}` of struct `{}` is private", idx.node, struct_path);
-            self.tcx().sess.span_err(expr.span, &msg);
+            struct_span_err!(self.tcx().sess, expr.span, E0611,
+                             "field `{}` of tuple-struct `{}` is private",
+                             idx.node, struct_path);
             return field_ty;
         }
 

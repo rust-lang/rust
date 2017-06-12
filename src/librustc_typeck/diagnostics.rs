@@ -4152,6 +4152,62 @@ println!("x: {}, y: {}", variable.x, variable.y);
 For more information see The Rust Book: https://doc.rust-lang.org/book/
 "##,
 
+E0611: r##"
+Attempted to access a private field on a tuple-struct.
+
+Erroneous code example:
+
+```compile_fail,E0611
+mod some_module {
+    pub struct Foo(u32);
+
+    impl Foo {
+        pub fn new() -> Foo { Foo(0) }
+    }
+}
+
+let y = some_module::Foo::new();
+println!("{}", y.0); // error: field `0` of tuple-struct `some_module::Foo`
+                     //        is private
+```
+
+Since the field is private, you have two solutions:
+
+1) Make the field public:
+
+```
+mod some_module {
+    pub struct Foo(pub u32); // The field is now public.
+
+    impl Foo {
+        pub fn new() -> Foo { Foo(0) }
+    }
+}
+
+let y = some_module::Foo::new();
+println!("{}", y.0); // So we can access it directly.
+```
+
+2) Add a getter function to keep the field private but allow for accessing its
+value:
+
+```
+mod some_module {
+    pub struct Foo(u32);
+
+    impl Foo {
+        pub fn new() -> Foo { Foo(0) }
+
+        // We add the getter function.
+        pub fn get(&self) -> &u32 { self.0 }
+    }
+}
+
+let y = some_module::Foo::new();
+println!("{}", y.get()); // So we can get the value through the function.
+```
+"##,
+
 E0617: r##"
 Attempted to pass an invalid type of variable into a variadic function.
 
