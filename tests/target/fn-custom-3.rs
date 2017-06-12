@@ -16,7 +16,7 @@ fn foo(
 fn bar<
     'a: 'bbbbbbbbbbbbbbbbbbbbbbbbbbb,
     TTTTTTTTTTTTT,
-    UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW
+    UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW,
 >(
     a: Aaaaaaaaaaaaaaa,
 ) {
@@ -53,7 +53,7 @@ impl Foo {
     fn bar<
         'a: 'bbbbbbbbbbbbbbbbbbbbbbbbbbb,
         TTTTTTTTTTTTT,
-        UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW
+        UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW,
     >(
         a: Aaaaaaaaaaaaaaa,
     ) {
@@ -65,7 +65,7 @@ struct Foo<
     TTTTTTTTTTTTTTTTTTTTTTTTTTTT,
     UUUUUUUUUUUUUUUUUUUUUU,
     VVVVVVVVVVVVVVVVVVVVVVVVVVV,
-    WWWWWWWWWWWWWWWWWWWWWWWW
+    WWWWWWWWWWWWWWWWWWWWWWWW,
 > {
     foo: Foo,
 }
