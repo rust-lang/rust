@@ -14,7 +14,7 @@ use schema;
 
 use rustc::dep_graph::DepTrackingMapConfig;
 use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind,
-                            ExternCrate, NativeLibrary, MetadataLoader, LinkMeta,
+                            NativeLibrary, MetadataLoader, LinkMeta,
                             LinkagePreference, LoadedMacro, EncodedMetadata};
 use rustc::hir::def;
 use rustc::middle::lang_items;
@@ -156,6 +156,7 @@ provide! { <'tcx> tcx, def_id, cdata, cnum,
         dylib_dependency_formats => { Rc::new(cdata.get_dylib_dependency_formats(&tcx.dep_graph)) }
         is_allocator => { cdata.is_allocator(&tcx.dep_graph) }
         is_panic_runtime => { cdata.is_panic_runtime(&tcx.dep_graph) }
+        extern_crate => { Rc::new(cdata.extern_crate.get()) }
     }
 }
 
@@ -281,11 +282,6 @@ impl CrateStore for cstore::CStore {
     fn original_crate_name(&self, cnum: CrateNum) -> Symbol
     {
         self.get_crate_data(cnum).name()
-    }
-
-    fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate>
-    {
-        self.get_crate_data(cnum).extern_crate.get()
     }
 
     fn crate_hash(&self, cnum: CrateNum) -> Svh

@@ -13,7 +13,7 @@ use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use hir::def::Def;
 use hir;
 use middle::const_val;
-use middle::cstore::LinkagePreference;
+use middle::cstore::{ExternCrate, LinkagePreference};
 use middle::privacy::AccessLevels;
 use middle::region::RegionMaps;
 use mir;
@@ -501,6 +501,12 @@ impl<'tcx> QueryDescription for queries::is_panic_runtime<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::extern_crate<'tcx> {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
+        "getting crate's ExternCrateData".to_string()
+    }
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -963,6 +969,8 @@ define_maps! { <'tcx>
 
     [] is_allocator: MetaDataByCrateNum(CrateNum) -> bool,
     [] is_panic_runtime: MetaDataByCrateNum(CrateNum) -> bool,
+
+    [] extern_crate: MetaDataByCrateNum(CrateNum) -> Rc<Option<ExternCrate>>,
 }
 
 fn type_param_predicates((item_id, param_id): (DefId, DefId)) -> DepConstructor {

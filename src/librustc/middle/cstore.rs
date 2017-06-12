@@ -254,7 +254,6 @@ pub trait CrateStore {
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool;
     fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool;
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy;
-    fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate>;
     /// The name of the crate as it is referred to in source code of the current
     /// crate.
     fn crate_name(&self, cnum: CrateNum) -> Symbol;
@@ -374,7 +373,6 @@ impl CrateStore for DummyCrateStore {
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy {
         bug!("panic_strategy")
     }
-    fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate> { bug!("extern_crate") }
     fn crate_name(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }
     fn original_crate_name(&self, cnum: CrateNum) -> Symbol {
         bug!("original_crate_name")
