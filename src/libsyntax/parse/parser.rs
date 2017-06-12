@@ -42,7 +42,7 @@ use ast::RangeEnd;
 use {ast, attr};
 use codemap::{self, CodeMap, Spanned, respan};
 use syntax_pos::{self, Span, BytePos};
-use errors::{self, DiagnosticBuilder, Level};
+use errors::{self, DiagnosticBuilder};
 use parse::{self, classify, token};
 use parse::common::SeqSep;
 use parse::lexer::TokenAndSpan;
@@ -441,7 +441,14 @@ fn dummy_arg(span: Span) -> Arg {
     Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID }
 }
 
-type RewindPoint = (token::Token, Span, Option<Span>, Span, TokenCursor, Vec<TokenType>);
+struct RewindPoint {
+    token: token::Token,
+    span: Span,
+    meta_var_span: Option<Span>,
+    prev_span: Span,
+    token_cursor: TokenCursor,
+    expected_tokens: Vec<TokenType>,
+}
 
 impl<'a> Parser<'a> {
     pub fn new(sess: &'a ParseSess,
@@ -2835,11 +2842,13 @@ impl<'a> Parser<'a> {
                         // Rewind to before attempting to parse the type with generics, to get
                         // arround #22644.
                         let rp_err = self.get_rewind_point();
+                        let sp = rp_err.span.clone();
                         self.rewind(rp);
                         let lo = self.span;
                         let path = match self.parse_path_without_generics(PathStyle::Type) {
                             Ok(path) => {
                                 // Successfully parsed the type leaving a `<` yet to parse
+                                err.cancel();
                                 let codemap = self.sess.codemap();
                                 let suggestion_span = lhs_span.to(self.prev_span);
                                 let suggestion = match codemap.span_to_snippet(suggestion_span) {
@@ -2850,15 +2859,17 @@ impl<'a> Parser<'a> {
                                     Ok(lstring) => format!("`{}`", lstring),
                                     _ => "a type".to_string(),
                                 };
-                                err.span_suggestion(suggestion_span,
+                                let msg = format!("`<` is interpreted as a start of generic \
+                                                   arguments for {}, not a comparison",
+                                                  warn_message);
+                                let mut warn = self.sess.span_diagnostic.struct_span_warn(sp, &msg);
+                                warn.span_label(sp, "interpreted as generic argument");
+                                warn.span_label(self.span, "not interpreted as comparison");
+                                warn.span_suggestion(suggestion_span,
                                                     "if you want to compare the casted value \
                                                      then write:",
                                                     suggestion);
-                                err.level = Level::Warning;
-                                err.set_message(&format!("`<` is interpreted as a start of generic \
-                                                          arguments for {}, not a comparison",
-                                                          warn_message));
-                                err.emit();
+                                warn.emit();
                                 path
                             }
                             Err(mut path_err) => {
@@ -6255,23 +6266,22 @@ impl<'a> Parser<'a> {
     }
 
     fn get_rewind_point(&mut self) -> RewindPoint {
-        (
-            self.token.clone(),
-            self.span,
-            self.meta_var_span,
-            self.prev_span,
-            self.token_cursor.clone(),
-            self.expected_tokens.clone(),
-        )
+        RewindPoint {
+            token: self.token.clone(),
+            span: self.span,
+            meta_var_span: self.meta_var_span,
+            prev_span: self.prev_span,
+            token_cursor: self.token_cursor.clone(),
+            expected_tokens: self.expected_tokens.clone(),
+        }
     }
 
     fn rewind(&mut self, rp: RewindPoint) {
-        let (token, span, meta_var_span, prev_span, token_cursor, expected_tokens,) = rp;
-        self.token = token;
-        self.span = span;
-        self.meta_var_span = meta_var_span;
-        self.prev_span = prev_span;
-        self.token_cursor = token_cursor;
-        self.expected_tokens = expected_tokens;
+        self.token = rp.token;
+        self.span = rp.span;
+        self.meta_var_span = rp.meta_var_span;
+        self.prev_span = rp.prev_span;
+        self.token_cursor = rp.token_cursor;
+        self.expected_tokens = rp.expected_tokens;
     }
 }
