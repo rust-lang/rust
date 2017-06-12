@@ -62,7 +62,7 @@ fn c() {
         unsafe {
             match v {
                 Value { tag: Tag::I, u: U { i: 0 } } => true,
-                Value { tag: Tag::F, u: U { f } } if f == 0.0 => true,
+                Value { tag: Tag::F, u: U { f } } => f == 0.0,
                 _ => false,
             }
         }

@@ -1680,12 +1680,12 @@ pub fn eval_main<'a, 'tcx: 'a>(
             }
         }
         Err(e) => {
-            report(tcx, &ecx, e);
+            report(tcx, &ecx, &e);
         }
     }
 }
 
-fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
+fn report(tcx: TyCtxt, ecx: &EvalContext, e: &EvalError) {
     if let Some(frame) = ecx.stack().last() {
         let block = &frame.mir.basic_blocks()[frame.block];
         let span = if frame.stmt < block.statements.len() {
