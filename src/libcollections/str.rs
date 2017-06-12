@@ -1320,7 +1320,7 @@ impl str {
         core_str::StrExt::rsplitn(self, n, pat)
     }
 
-    /// An iterator over the matches of a pattern within the given string
+    /// An iterator over the disjoint matches of a pattern within the given string
     /// slice.
     ///
     /// The pattern can be a `&str`, [`char`], or a closure that
@@ -1359,7 +1359,7 @@ impl str {
         core_str::StrExt::matches(self, pat)
     }
 
-    /// An iterator over the matches of a pattern within this string slice,
+    /// An iterator over the disjoint matches of a pattern within this string slice,
     /// yielded in reverse order.
     ///
     /// The pattern can be a `&str`, [`char`], or a closure that determines if
