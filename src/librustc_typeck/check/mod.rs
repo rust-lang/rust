@@ -3053,26 +3053,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let struct_path = self.tcx().item_path_str(did);
             struct_span_err!(self.tcx().sess, expr.span, E0611,
                              "field `{}` of tuple-struct `{}` is private",
-                             idx.node, struct_path);
+                             idx.node, struct_path).emit();
             return field_ty;
         }
 
-        self.type_error_message(
-            expr.span,
-            |actual| {
-                if tuple_like {
-                    format!("attempted out-of-bounds tuple index `{}` on \
-                                    type `{}`",
-                                   idx.node,
-                                   actual)
-                } else {
-                    format!("attempted tuple index `{}` on type `{}`, but the \
-                                     type was not a tuple or tuple struct",
-                                    idx.node,
-                                    actual)
-                }
-            },
-            expr_t);
+        if tuple_like {
+            type_error_struct!(self.tcx().sess, expr.span, expr_t, E0612,
+                               "attempted out-of-bounds tuple index `{}` on type `{}`",
+                               idx.node, expr_t).emit();
+        } else {
+            type_error_struct!(self.tcx().sess, expr.span, expr_t, E0613,
+                               "attempted tuple index `{}` on type `{}`, but the type was not a \
+                                tuple or tuple struct",
+                               idx.node, expr_t).emit();
+        }
 
         self.tcx().types.err
     }
@@ -3173,10 +3167,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 field_type_hint = tcx.types.err;
                 if let Some(_) = variant.find_field_named(field.name.node) {
                     let mut err = struct_span_err!(self.tcx.sess,
-                                                field.name.span,
-                                                E0062,
-                                                "field `{}` specified more than once",
-                                                field.name.node);
+                                                   field.name.span,
+                                                   E0062,
+                                                   "field `{}` specified more than once",
+                                                   field.name.node);
 
                     err.span_label(field.name.span, "used more than once");
 

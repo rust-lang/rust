@@ -4208,6 +4208,40 @@ println!("{}", y.get()); // So we can get the value through the function.
 ```
 "##,
 
+E0612: r##"
+Attempted out-of-bounds tuple index.
+
+Erroneous code example:
+
+```compile_fail,E0612
+struct Foo(u32);
+
+let y = Foo(0);
+println!("{}", y.1); // error: attempted out-of-bounds tuple index `1`
+                     //        on type `Foo`
+```
+
+If a tuple/tuple-struct type has n fields, you can only try to access these n
+fields from 0 to (n - 1). So in this case, you can only index `0`. Example:
+
+```
+struct Foo(u32);
+
+let y = Foo(0);
+println!("{}", y.0); // ok!
+```
+"##,
+
+E0613: r##"
+Attempted tuple index on a type which isn't a tuple nor a tuple-struct.
+
+Erroneous code example:
+
+```compile_fail,E0613
+
+```
+"##,
+
 E0617: r##"
 Attempted to pass an invalid type of variable into a variadic function.
 

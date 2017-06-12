@@ -16,7 +16,7 @@ error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
 51 |     fake_field_stmt!();
    |     ------------------- in this macro invocation
 
-error: attempted tuple index `0` on type `{integer}`, but the type was not a tuple or tuple struct
+error[E0613]: attempted tuple index `0` on type `{integer}`, but the type was not a tuple or tuple struct
   --> $DIR/macro-backtrace-invalid-internals.rs:27:11
    |
 27 |           (1).0
@@ -43,7 +43,7 @@ error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
 55 |     let _ = fake_field_expr!();
    |             ------------------ in this macro invocation
 
-error: attempted tuple index `0` on type `{integer}`, but the type was not a tuple or tuple struct
+error[E0613]: attempted tuple index `0` on type `{integer}`, but the type was not a tuple or tuple struct
   --> $DIR/macro-backtrace-invalid-internals.rs:45:11
    |
 45 |           (1).0
