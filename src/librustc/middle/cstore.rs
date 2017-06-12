@@ -247,8 +247,6 @@ pub trait CrateStore {
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool;
 
     // crate metadata
-    fn dylib_dependency_formats(&self, cnum: CrateNum)
-                                    -> Vec<(CrateNum, LinkagePreference)>;
     fn dep_kind(&self, cnum: CrateNum) -> DepKind;
     fn export_macros(&self, cnum: CrateNum);
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>;
@@ -367,9 +365,6 @@ impl CrateStore for DummyCrateStore {
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool { false }
 
     // crate metadata
-    fn dylib_dependency_formats(&self, cnum: CrateNum)
-                                    -> Vec<(CrateNum, LinkagePreference)>
-        { bug!("dylib_dependency_formats") }
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>
         { bug!("lang_items") }
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>

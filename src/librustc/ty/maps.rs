@@ -13,6 +13,7 @@ use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use hir::def::Def;
 use hir;
 use middle::const_val;
+use middle::cstore::LinkagePreference;
 use middle::privacy::AccessLevels;
 use middle::region::RegionMaps;
 use mir;
@@ -482,6 +483,12 @@ impl<'tcx> QueryDescription for queries::is_const_fn<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::dylib_dependency_formats<'tcx> {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
+        "dylib dependency formats of crate".to_string()
+    }
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -938,6 +945,9 @@ define_maps! { <'tcx>
     [] needs_drop_raw: needs_drop_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] layout_raw: layout_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                                   -> Result<&'tcx Layout, LayoutError<'tcx>>,
+
+    [] dylib_dependency_formats: MetaDataByCrateNum(CrateNum)
+                                    -> Rc<Vec<(CrateNum, LinkagePreference)>>,
 }
 
 fn type_param_predicates((item_id, param_id): (DefId, DefId)) -> DepConstructor {

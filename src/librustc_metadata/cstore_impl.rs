@@ -153,6 +153,7 @@ provide! { <'tcx> tcx, def_id, cdata, cnum,
     }
 
     ByCrateNum {
+        dylib_dependency_formats => { Rc::new(cdata.get_dylib_dependency_formats(&tcx.dep_graph)) }
     }
 }
 
@@ -227,12 +228,6 @@ impl CrateStore for cstore::CStore {
             self.get_crate_data(def_id.krate)
                 .is_dllimport_foreign_item(def_id.index, &self.dep_graph)
         }
-    }
-
-    fn dylib_dependency_formats(&self, cnum: CrateNum)
-                                -> Vec<(CrateNum, LinkagePreference)>
-    {
-        self.get_crate_data(cnum).get_dylib_dependency_formats(&self.dep_graph)
     }
 
     fn dep_kind(&self, cnum: CrateNum) -> DepKind

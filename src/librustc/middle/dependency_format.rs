@@ -65,6 +65,7 @@ use hir::def_id::CrateNum;
 
 use session;
 use session::config;
+use ty::TyCtxt;
 use middle::cstore::DepKind;
 use middle::cstore::LinkagePreference::{self, RequireStatic, RequireDynamic};
 use util::nodemap::FxHashMap;
@@ -91,18 +92,22 @@ pub enum Linkage {
     Dynamic,
 }
 
-pub fn calculate(sess: &session::Session) {
+pub fn calculate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    let sess = &tcx.sess;
     let mut fmts = sess.dependency_formats.borrow_mut();
     for &ty in sess.crate_types.borrow().iter() {
-        let linkage = calculate_type(sess, ty);
+        let linkage = calculate_type(tcx, ty);
         verify_ok(sess, &linkage);
         fmts.insert(ty, linkage);
     }
     sess.abort_if_errors();
 }
 
-fn calculate_type(sess: &session::Session,
-                  ty: config::CrateType) -> DependencyList {
+fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            ty: config::CrateType) -> DependencyList {
+
+    let sess = &tcx.sess;
+
     if !sess.opts.output_types.should_trans() {
         return Vec::new();
     }
@@ -167,8 +172,8 @@ fn calculate_type(sess: &session::Session,
         if src.dylib.is_some() {
             info!("adding dylib: {}", name);
             add_library(sess, cnum, RequireDynamic, &mut formats);
-            let deps = sess.cstore.dylib_dependency_formats(cnum);
-            for &(depnum, style) in &deps {
+            let deps = tcx.dylib_dependency_formats(cnum);
+            for &(depnum, style) in deps.iter() {
                 info!("adding {:?}: {}", style,
                       sess.cstore.crate_name(depnum));
                 add_library(sess, depnum, style, &mut formats);

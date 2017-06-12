@@ -1049,7 +1049,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     time(time_passes,
          "resolving dependency formats",
-         || dependency_format::calculate(&tcx.sess));
+         || dependency_format::calculate(tcx));
 
     let translation =
         time(time_passes,
