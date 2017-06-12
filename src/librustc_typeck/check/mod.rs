@@ -3063,8 +3063,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                idx.node, expr_t).emit();
         } else {
             type_error_struct!(self.tcx().sess, expr.span, expr_t, E0613,
-                               "attempted tuple index `{}` on type `{}`, but the type was not a \
-                                tuple or tuple struct",
+                               "attempted to access tuple index `{}` on type `{}`, but the type \
+                                was not a tuple or tuple struct",
                                idx.node, expr_t).emit();
         }
 
