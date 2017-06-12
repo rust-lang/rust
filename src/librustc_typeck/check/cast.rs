@@ -120,10 +120,10 @@ fn make_invalid_casting_error<'a, 'gcx, 'tcx>(sess: &'a Session,
                                               cast_ty: Ty<'tcx>,
                                               fcx: &FnCtxt<'a, 'gcx, 'tcx>)
                                               -> DiagnosticBuilder<'a> {
-    struct_span_err!(sess, span, E0606,
-                     "casting `{}` as `{}` is invalid",
-                     fcx.ty_to_string(expr_ty),
-                     fcx.ty_to_string(cast_ty))
+    type_error_struct!(sess, span, expr_ty, E0606,
+                       "casting `{}` as `{}` is invalid",
+                       fcx.ty_to_string(expr_ty),
+                       fcx.ty_to_string(cast_ty))
 }
 
 impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
@@ -212,11 +212,11 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                     .emit();
             }
             CastError::CastToChar => {
-                struct_span_err!(fcx.tcx.sess, self.span, E0604,
+                type_error_struct!(fcx.tcx.sess, self.span, self.expr_ty, E0604,
                                  "only `u8` can be cast as `char`, not `{}`", self.expr_ty).emit();
             }
             CastError::NonScalar => {
-                struct_span_err!(fcx.tcx.sess, self.span, E0605,
+                type_error_struct!(fcx.tcx.sess, self.span, self.expr_ty, E0605,
                                  "non-primitive cast: `{}` as `{}`",
                                  self.expr_ty,
                                  fcx.ty_to_string(self.cast_ty))
@@ -225,7 +225,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                 .emit();
             }
             CastError::SizedUnsizedCast => {
-                struct_span_err!(fcx.tcx.sess, self.span, E0607,
+                type_error_struct!(fcx.tcx.sess, self.span, self.expr_ty, E0607,
                                  "cannot cast thin pointer `{}` to fat pointer `{}`",
                                  self.expr_ty,
                                  fcx.ty_to_string(self.cast_ty)).emit();
