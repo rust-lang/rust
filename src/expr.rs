@@ -1734,9 +1734,12 @@ fn rewrite_call_inner(context: &RewriteContext,
                                   force_trailing_comma);
     }
 
+    let args_shape = shape
+        .sub_width(last_line_width(&callee_str))
+        .ok_or(Ordering::Less)?;
     Ok(format!("{}{}",
                callee_str,
-               wrap_args_with_parens(context, &list_str, extendable, shape, nested_shape)))
+               wrap_args_with_parens(context, &list_str, extendable, args_shape, nested_shape)))
 }
 
 fn need_block_indent(s: &str, shape: Shape) -> bool {
@@ -1906,14 +1909,23 @@ fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_len: 
     }
 }
 
+fn paren_overhead(context: &RewriteContext) -> usize {
+    if context.config.spaces_within_parens() {
+        4
+    } else {
+        2
+    }
+}
+
 fn wrap_args_with_parens(context: &RewriteContext,
                          args_str: &str,
                          is_extendable: bool,
                          shape: Shape,
                          nested_shape: Shape)
                          -> String {
-    if !context.use_block_indent() || (context.inside_macro && !args_str.contains('\n')) ||
-       is_extendable {
+    if !context.use_block_indent() ||
+       (context.inside_macro && !args_str.contains('\n') &&
+        args_str.len() + paren_overhead(context) <= shape.width) || is_extendable {
         if context.config.spaces_within_parens() && args_str.len() > 0 {
             format!("( {} )", args_str)
         } else {
