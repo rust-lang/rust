@@ -944,7 +944,9 @@ impl<'tcx> TraitPredicate<'tcx> {
             self.input_types()
                 .flat_map(|t| t.walk())
                 .filter_map(|t| match t.sty {
-                    ty::TyAdt(adt_def, _) => Some(adt_def.did),
+                    ty::TyAdt(adt_def, ..) => Some(adt_def.did),
+                    ty::TyClosure(def_id, ..) => Some(def_id),
+                    ty::TyFnDef(def_id, ..) => Some(def_id),
                     _ => None
                 })
                 .next()
