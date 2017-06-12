@@ -492,7 +492,7 @@ pub fn run(mut krate: clean::Crate,
             }
         }
     }
-    try_err!(mkdir(&dst), &dst);
+    try_err!(fs::create_dir_all(&dst), &dst);
     krate = render_sources(&dst, &mut scx, krate)?;
     let cx = Context {
         current: Vec::new(),
@@ -658,7 +658,7 @@ fn write_shared(cx: &Context,
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
     // operation with respect to all other rustdocs running around.
-    try_err!(mkdir(&cx.dst), &cx.dst);
+    try_err!(fs::create_dir_all(&cx.dst), &cx.dst);
     let _lock = flock::Lock::panicking_new(&cx.dst.join(".lock"), true, true, true);
 
     // Add all the static files. These may already exist, but we just
@@ -808,10 +808,8 @@ fn write_shared(cx: &Context,
 fn render_sources(dst: &Path, scx: &mut SharedContext,
                   krate: clean::Crate) -> Result<clean::Crate, Error> {
     info!("emitting source files");
-    let dst = dst.join("src");
-    try_err!(mkdir(&dst), &dst);
-    let dst = dst.join(&krate.name);
-    try_err!(mkdir(&dst), &dst);
+    let dst = dst.join("src").join(&krate.name);
+    try_err!(fs::create_dir_all(&dst), &dst);
     let mut folder = SourceCollector {
         dst: dst,
         scx: scx,
@@ -823,19 +821,6 @@ fn render_sources(dst: &Path, scx: &mut SharedContext,
 /// catch any errors.
 fn write(dst: PathBuf, contents: &[u8]) -> Result<(), Error> {
     Ok(try_err!(try_err!(File::create(&dst), &dst).write_all(contents), &dst))
-}
-
-/// Makes a directory on the filesystem, failing the thread if an error occurs
-/// and skipping if the directory already exists.
-///
-/// Note that this also handles races as rustdoc is likely to be run
-/// concurrently against another invocation.
-fn mkdir(path: &Path) -> io::Result<()> {
-    match fs::create_dir(path) {
-        Ok(()) => Ok(()),
-        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => Ok(()),
-        Err(e) => Err(e)
-    }
 }
 
 /// Takes a path to a source file and cleans the path to it. This canonicalizes
@@ -951,7 +936,7 @@ impl<'a> SourceCollector<'a> {
         let mut href = String::new();
         clean_srcpath(&self.scx.src_root, &p, false, |component| {
             cur.push(component);
-            mkdir(&cur).unwrap();
+            fs::create_dir_all(&cur).unwrap();
             root_path.push_str("../");
             href.push_str(component);
             href.push('/');
