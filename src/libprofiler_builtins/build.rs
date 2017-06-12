@@ -39,6 +39,9 @@ fn main() {
         // Don't pull in extra libraries on MSVC
         cfg.flag("/Zl");
         profile_sources.push("WindowsMMap.c");
+        cfg.define("strdup", Some("_strdup"));
+        cfg.define("open", Some("_open"));
+        cfg.define("fdopen", Some("_fdopen"));
     } else {
         // Turn off various features of gcc and such, mostly copying
         // compiler-rt's build system already
