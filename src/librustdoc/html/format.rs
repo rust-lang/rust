@@ -459,22 +459,10 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
 /// rendering function with the necessary arguments for linking to a local path.
 fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                  print_all: bool, use_absolute: bool) -> fmt::Result {
-    let empty = clean::PathSegment {
-                    name: String::new(),
-                    params: clean::PathParameters::Parenthesized {
-                        inputs: Vec::new(),
-                        output: None,
-                    }
-                };
-    let last = path.segments.last()
-                            .unwrap_or(&empty);
-    let rel_root = if path.segments.is_empty() {
-        None
-    } else {
-        match &*path.segments[0].name {
-            "self" => Some("./".to_string()),
-            _ => None,
-        }
+    let last = path.segments.last().unwrap();
+    let rel_root = match &*path.segments[0].name {
+        "self" => Some("./".to_string()),
+        _ => None,
     };
 
     if print_all {
@@ -508,7 +496,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                 Some((_, _, fqp)) => {
                     format!("{}::{}",
                             fqp[..fqp.len() - 1].join("::"),
-                            HRef::new(did, fqp.last().unwrap_or(&String::new())))
+                            HRef::new(did, fqp.last().unwrap()))
                 }
                 None => format!("{}", HRef::new(did, &last.name)),
             }
@@ -740,10 +728,8 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
         }
         clean::QPath { ref name, ref self_type, ref trait_ } => {
             let should_show_cast = match *trait_ {
-                box clean::ResolvedPath { .. } => {
-                    let path = clean::Path::singleton(name.clone());
-                    !path.segments.is_empty() && &format!("{:#}", trait_) != "()" &&
-                    &format!("{:#}", self_type) != "Self"
+                box clean::ResolvedPath { ref path, .. } => {
+                    !path.segments.is_empty() && !self_type.is_self_type()
                 }
                 _ => true,
             };
@@ -772,8 +758,18 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
                 //        everything comes in as a fully resolved QPath (hard to
                 //        look at).
                 box clean::ResolvedPath { did, ref typarams, .. } => {
-                    let path = clean::Path::singleton(name.clone());
-                    resolved_path(f, did, &path, true, use_absolute)?;
+                    match href(did) {
+                        Some((ref url, _, ref path)) if !f.alternate() => {
+                            write!(f,
+                                   "<a class=\"type\" href=\"{url}#{shortty}.{name}\" \
+                                   title=\"type {path}::{name}\">{name}</a>",
+                                   url = url,
+                                   shortty = ItemType::AssociatedType,
+                                   name = name,
+                                   path = path.join("::"))?;
+                        }
+                        _ => write!(f, "{}", name)?,
+                    }
 
                     // FIXME: `typarams` are not rendered, and this seems bad?
                     drop(typarams);
