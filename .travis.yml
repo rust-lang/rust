@@ -7,7 +7,6 @@ before_script:
 - rustup target add i686-pc-windows-gnu
 - rustup target add i686-pc-windows-msvc
 - rustup component add rust-src
-- chmod +x -R ~/.rustup/toolchains/*/lib/rustlib/src/rust/src/jemalloc/include/jemalloc/
 - cargo install xargo
 - export RUST_SYSROOT=$HOME/rust
 script:
