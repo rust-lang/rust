@@ -18,6 +18,16 @@ struct Test3<'a> {
     foo: &'a Box<bool>
 }
 
+trait Test4 {
+    fn test4(a: &Box<bool>);
+}
+
+impl<'a> Test4 for Test3<'a> {
+    fn test4(a: &Box<bool>) {
+        unimplemented!();
+    }
+}
+
 fn main(){
     test1(&mut Box::new(false));
     test2();
