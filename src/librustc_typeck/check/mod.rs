@@ -3217,15 +3217,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         .join(", ");
 
             struct_span_err!(tcx.sess, span, E0063,
-                        "missing field{} {}{} in initializer of `{}`",
-                        if remaining_fields.len() == 1 {""} else {"s"},
-                        remaining_fields_names,
-                        truncated_fields_error,
-                        adt_ty)
-                        .span_label(span, format!("missing {}{}",
-                            remaining_fields_names,
-                            truncated_fields_error))
-                        .emit();
+                             "missing field{} {}{} in initializer of `{}`",
+                             if remaining_fields.len() == 1 { "" } else { "s" },
+                             remaining_fields_names,
+                             truncated_fields_error,
+                             adt_ty)
+                            .span_label(span, format!("missing {}{}",
+                                        remaining_fields_names,
+                                        truncated_fields_error))
+                            .emit();
         }
     }
 
@@ -3458,10 +3458,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             oprnd_t = self.make_overloaded_lvalue_return_type(method).ty;
                             self.write_method_call(expr.id, method);
                         } else {
-                            self.type_error_message(expr.span, |actual| {
-                                format!("type `{}` cannot be \
-                                        dereferenced", actual)
-                            }, oprnd_t);
+                            type_error_struct!(tcx.sess, expr.span, oprnd_t, E0614,
+                                               "type `{}` cannot be dereferenced",
+                                               oprnd_t).emit();
                             oprnd_t = tcx.types.err;
                         }
                     }
