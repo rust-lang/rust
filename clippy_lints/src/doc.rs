@@ -200,7 +200,7 @@ fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(String, Span)]
         type Item = (bool, char);
 
         fn next(&mut self) -> Option<(bool, char)> {
-            while self.line < self.docs.len() {
+            if self.line < self.docs.len() {
                 if self.reset {
                     self.line += 1;
                     self.reset = false;
@@ -215,18 +215,18 @@ fn check_doc(cx: &EarlyContext, valid_idents: &[String], docs: &[(String, Span)]
                     self.pos += c.len_utf8();
                     let new_line = self.new_line;
                     self.new_line = c == '\n' || (self.new_line && c.is_whitespace());
-                    return Some((new_line, c));
+                    Some((new_line, c))
                 } else if self.line == self.docs.len() - 1 {
-                    return None;
+                    None
                 } else {
                     self.new_line = true;
                     self.reset = true;
                     self.pos += 1;
-                    return Some((true, '\n'));
+                    Some((true, '\n'))
                 }
+            } else {
+                None
             }
-
-            None
         }
     }
 

@@ -53,6 +53,28 @@ error: for loop over `v.iter().next().ok_or("x not found")`, which is a `Result`
    = note: `-D for-loop-over-result` implied by `-D warnings`
    = help: consider replacing `for x in v.iter().next().ok_or("x not found")` with `if let Ok(x) = v.iter().next().ok_or("x not found")`
 
+error: this loop never actually loops
+  --> for_loop.rs:52:5
+   |
+52 | /     while let Some(x) = option {
+53 | |         println!("{}", x);
+54 | |         break;
+55 | |     }
+   | |_____^
+   |
+   = note: `-D never-loop` implied by `-D warnings`
+
+error: this loop never actually loops
+  --> for_loop.rs:58:5
+   |
+58 | /     while let Ok(x) = result {
+59 | |         println!("{}", x);
+60 | |         break;
+61 | |     }
+   | |_____^
+   |
+   = note: `-D never-loop` implied by `-D warnings`
+
 error: the loop variable `i` is only used to index `vec`.
   --> for_loop.rs:84:5
    |

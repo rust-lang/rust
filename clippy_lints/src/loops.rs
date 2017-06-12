@@ -286,15 +286,13 @@ declare_lint! {
     "looping on a map using `iter` when `keys` or `values` would do"
 }
 
-/// **What it does:** Checks for loops that contain an unconditional `break`
-/// or `return`.
+/// **What it does:** Checks for loops that will always `break`, `return` or
+/// `continue` an outer loop.
 ///
 /// **Why is this bad?** This loop never loops, all it does is obfuscating the
 /// code.
 ///
-/// **Known problems:** Ignores `continue` statements in the loop that create
-/// nontrivial control flow. Therefore set to `Allow` by default.
-/// See https://github.com/Manishearth/rust-clippy/issues/1586
+/// **Known problems:** None
 ///
 /// **Example:**
 /// ```rust
@@ -302,8 +300,8 @@ declare_lint! {
 /// ```
 declare_lint! {
     pub NEVER_LOOP,
-    Allow,
-    "any loop with an unconditional `break` or `return` statement"
+    Warn,
+    "any loop that will always `break` or `return`"
 }
 
 #[derive(Copy, Clone)]
@@ -333,6 +331,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if let Some((pat, arg, body)) = higher::for_loop(expr) {
             check_for_loop(cx, pat, arg, body, expr);
         }
+
+        // check for never_loop
+        match expr.node {
+            ExprWhile(_, ref block, _) |
+            ExprLoop(ref block, _, _) => {
+                if never_loop(block, &expr.id) {
+                    span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops");
+                }
+            },
+            _ => (),
+        }
+
         // check for `loop { if let {} else break }` that could be `while let`
         // (also matches an explicit "match" instead of "if let")
         // (even if the "match" or "if let" is used for declaration)
@@ -344,9 +354,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                           expr.span,
                           "empty `loop {}` detected. You may want to either use `panic!()` or add \
                            `std::thread::sleep(..);` to the loop body.");
-            }
-            if never_loop_block(block) {
-                span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops");
             }
 
             // extract the expression from the first statement (if any) in a block
@@ -425,47 +432,103 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn never_loop_block(block: &Block) -> bool {
-    block.stmts.iter().any(never_loop_stmt) || block.expr.as_ref().map_or(false, |e| never_loop_expr(e))
+fn never_loop(block: &Block, id: &NodeId) -> bool {
+    !contains_continue_block(block, id) && loop_exit_block(block)
 }
 
-fn never_loop_stmt(stmt: &Stmt) -> bool {
+fn contains_continue_block(block: &Block, dest: &NodeId) -> bool {
+    block.stmts.iter().any(|e| contains_continue_stmt(e, dest))
+        || block.expr.as_ref().map_or(false, |e| contains_continue_expr(e, dest))
+}
+
+fn contains_continue_stmt(stmt: &Stmt, dest: &NodeId) -> bool {
     match stmt.node {
         StmtSemi(ref e, _) |
-        StmtExpr(ref e, _) => never_loop_expr(e),
-        StmtDecl(ref d, _) => never_loop_decl(d),
+        StmtExpr(ref e, _) => contains_continue_expr(e, dest),
+        StmtDecl(ref d, _) => contains_continue_decl(d, dest),
     }
 }
 
-fn never_loop_decl(decl: &Decl) -> bool {
-    if let DeclLocal(ref local) = decl.node {
-        local.init.as_ref().map_or(false, |e| never_loop_expr(e))
-    } else {
-        false
+fn contains_continue_decl(decl: &Decl, dest: &NodeId) -> bool {
+    match decl.node {
+        DeclLocal(ref local) => local.init.as_ref().map_or(false, |e| contains_continue_expr(e, dest)),
+        _ => false
     }
 }
 
-fn never_loop_expr(expr: &Expr) -> bool {
+fn contains_continue_expr(expr: &Expr, dest: &NodeId) -> bool {
     match expr.node {
-        ExprBreak(..) | ExprRet(..) => true,
         ExprBox(ref e) |
         ExprUnary(_, ref e) |
-        ExprBinary(_, ref e, _) | // because short-circuiting
         ExprCast(ref e, _) |
         ExprType(ref e, _) |
         ExprField(ref e, _) |
         ExprTupField(ref e, _) |
-        ExprRepeat(ref e, _) |
-        ExprAddrOf(_, ref e) => never_loop_expr(e),
+        ExprAddrOf(_, ref e) |
+        ExprRepeat(ref e, _) => contains_continue_expr(e, dest),
+        ExprArray(ref es) |
+        ExprMethodCall(_, _, ref es) |
+        ExprTup(ref es) => es.iter().any(|e| contains_continue_expr(e, dest)),
+        ExprCall(ref e, ref es) => contains_continue_expr(e, dest) || es.iter().any(|e| contains_continue_expr(e, dest)),
+        ExprBinary(_, ref e1, ref e2) |
         ExprAssign(ref e1, ref e2) |
         ExprAssignOp(_, ref e1, ref e2) |
-        ExprIndex(ref e1, ref e2) => never_loop_expr(e1) || never_loop_expr(e2),
+        ExprIndex(ref e1, ref e2) => [e1, e2].iter().any(|e| contains_continue_expr(e, dest)),
+        ExprIf(ref e, ref e2, ref e3) => [e, e2].iter().chain(e3.as_ref().iter()).any(|e| contains_continue_expr(e, dest)),
+        ExprWhile(ref e, ref b, _) => contains_continue_expr(e, dest) || contains_continue_block(b, dest),
+        ExprMatch(ref e, ref arms, _) => contains_continue_expr(e, dest) || arms.iter().any(|a| contains_continue_expr(&a.body, dest)),
+        ExprBlock(ref block) => contains_continue_block(block, dest),
+        ExprStruct(_, _, ref base) => base.as_ref().map_or(false, |e| contains_continue_expr(e, dest)),
+        ExprAgain(d) => d.target_id.opt_id().map_or(false, |id| id == *dest),
+        _ => false,
+    }
+}
+
+fn loop_exit_block(block: &Block) -> bool {
+    block.stmts.iter().any(|e| loop_exit_stmt(e))
+        || block.expr.as_ref().map_or(false, |e| loop_exit_expr(e))
+}
+
+fn loop_exit_stmt(stmt: &Stmt) -> bool {
+    match stmt.node {
+        StmtSemi(ref e, _) |
+        StmtExpr(ref e, _) => loop_exit_expr(e),
+        StmtDecl(ref d, _) => loop_exit_decl(d),
+    }
+}
+
+fn loop_exit_decl(decl: &Decl) -> bool {
+    match decl.node {
+        DeclLocal(ref local) => local.init.as_ref().map_or(false, |e| loop_exit_expr(e)),
+        _ => false
+    }
+}
+
+fn loop_exit_expr(expr: &Expr) -> bool {
+    match expr.node {
+        ExprBox(ref e) |
+        ExprUnary(_, ref e) |
+        ExprCast(ref e, _) |
+        ExprType(ref e, _) |
+        ExprField(ref e, _) |
+        ExprTupField(ref e, _) |
+        ExprAddrOf(_, ref e) |
+        ExprRepeat(ref e, _) => loop_exit_expr(e),
         ExprArray(ref es) |
-        ExprTup(ref es) |
-        ExprMethodCall(_, _, ref es) => es.iter().any(|e| never_loop_expr(e)),
-        ExprCall(ref e, ref es) => never_loop_expr(e) || es.iter().any(|e| never_loop_expr(e)),
-        ExprBlock(ref block) => never_loop_block(block),
-        ExprStruct(_, _, ref base) => base.as_ref().map_or(false, |e| never_loop_expr(e)),
+        ExprMethodCall(_, _, ref es) |
+        ExprTup(ref es) => es.iter().any(|e| loop_exit_expr(e)),
+        ExprCall(ref e, ref es) => loop_exit_expr(e) || es.iter().any(|e| loop_exit_expr(e)),
+        ExprBinary(_, ref e1, ref e2) |
+        ExprAssign(ref e1, ref e2) |
+        ExprAssignOp(_, ref e1, ref e2) |
+        ExprIndex(ref e1, ref e2) => [e1, e2].iter().any(|e| loop_exit_expr(e)),
+        ExprIf(ref e, ref e2, ref e3) => loop_exit_expr(e) || e3.as_ref().map_or(false, |e| loop_exit_expr(e)) && loop_exit_expr(e2),
+        ExprWhile(ref e, ref b, _) => loop_exit_expr(e) || loop_exit_block(b),
+        ExprMatch(ref e, ref arms, _) => loop_exit_expr(e) || arms.iter().all(|a| loop_exit_expr(&a.body)),
+        ExprBlock(ref b) => loop_exit_block(b),
+        ExprBreak(_, _) |
+        ExprAgain(_) |
+        ExprRet(_) => true,
         _ => false,
     }
 }
