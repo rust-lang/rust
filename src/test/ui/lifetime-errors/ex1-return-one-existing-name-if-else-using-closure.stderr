@@ -1,0 +1,29 @@
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+  --> $DIR/ex1-return-one-existing-name-if-else-using-closure.rs:19:5
+   |
+19 |     invoke(&x, |a, b| if a > b { a } else { b });
+   |     ^^^^^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 19:16...
+  --> $DIR/ex1-return-one-existing-name-if-else-using-closure.rs:19:16
+   |
+19 |     invoke(&x, |a, b| if a > b { a } else { b });
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/ex1-return-one-existing-name-if-else-using-closure.rs:19:45
+   |
+19 |     invoke(&x, |a, b| if a > b { a } else { b });
+   |                                             ^
+note: but, the lifetime must be valid for the call at 19:5...
+  --> $DIR/ex1-return-one-existing-name-if-else-using-closure.rs:19:5
+   |
+19 |     invoke(&x, |a, b| if a > b { a } else { b });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...so that argument is valid for the call
+  --> $DIR/ex1-return-one-existing-name-if-else-using-closure.rs:19:12
+   |
+19 |     invoke(&x, |a, b| if a > b { a } else { b });
+   |            ^^
+
+error: aborting due to previous error(s)
+

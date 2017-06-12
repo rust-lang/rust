@@ -67,14 +67,17 @@ use hir::def_id::DefId;
 use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
 use ty::{self, TyCtxt, TypeFoldable};
-use ty::{Region, Issue32330};
+use ty::{Region, Issue32330 };
 use ty::error::TypeError;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
 use errors::{DiagnosticBuilder, DiagnosticStyledString};
-
 mod note;
+
 mod need_type_info;
+mod named_anon_conflict;
+mod util;
+
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(self,
@@ -255,34 +258,42 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    pub fn report_region_errors(&self,
-                                errors: &Vec<RegionResolutionError<'tcx>>) {
+
+    pub fn report_region_errors(&self, errors: &Vec<RegionResolutionError<'tcx>>) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
         // try to pre-process the errors, which will group some of them
         // together into a `ProcessedErrors` group:
         let errors = self.process_errors(errors);
 
-        debug!("report_region_errors: {} errors after preprocessing", errors.len());
+        debug!("report_region_errors: {} errors after preprocessing",
+               errors.len());
 
         for error in errors {
+
             debug!("report_region_errors: error = {:?}", error);
-            match error.clone() {
-                ConcreteFailure(origin, sub, sup) => {
-                    self.report_concrete_failure(origin, sub, sup).emit();
-                }
+        // If ConcreteFailure does not have an anonymous region
+            if !self.report_named_anon_conflict(&error){
 
-                GenericBoundFailure(kind, param_ty, sub) => {
-                    self.report_generic_bound_failure(kind, param_ty, sub);
-                }
+               match error.clone() {
 
-                SubSupConflict(var_origin,
+                  ConcreteFailure(origin, sub, sup) => {
+
+                      self.report_concrete_failure(origin, sub, sup).emit();
+                  }
+
+                  GenericBoundFailure(kind, param_ty, sub) => {
+                      self.report_generic_bound_failure(kind, param_ty, sub);
+                  }
+
+                  SubSupConflict(var_origin,
                                sub_origin, sub_r,
                                sup_origin, sup_r) => {
-                    self.report_sub_sup_conflict(var_origin,
+                      self.report_sub_sup_conflict(var_origin,
                                                  sub_origin, sub_r,
                                                  sup_origin, sup_r);
-                }
+                  }
+               }
             }
         }
     }

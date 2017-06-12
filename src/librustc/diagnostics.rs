@@ -1946,6 +1946,31 @@ Maybe you just misspelled the lint name or the lint doesn't exist anymore.
 Either way, try to update/remove it in order to fix the error.
 "##,
 
+E0611: r##"
+Lifetime parameter is missing in one of the function argument. Erroneous
+code example:
+
+```compile_fail,E0611
+fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 { // explicit lifetime required
+                                             // in the type of `y`
+    if x > y { x } else { y }
+}
+
+fn main () { }
+```
+
+Please add the missing lifetime parameter to remove this error. Example:
+
+```
+fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
+    if x > y { x } else { y }
+}
+
+fn main() {
+}
+```
+"##,
+
 }
 
 
