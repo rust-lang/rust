@@ -415,30 +415,31 @@ impl CodeMap {
                       local_end.fm.start_pos)
             }));
         } else {
-            match local_begin.fm.src {
-                Some(ref src) => {
-                    let start_index = local_begin.pos.to_usize();
-                    let end_index = local_end.pos.to_usize();
-                    let source_len = (local_begin.fm.end_pos -
-                                      local_begin.fm.start_pos).to_usize();
+            self.ensure_filemap_source_present(local_begin.fm.clone());
 
-                    if start_index > end_index || end_index > source_len {
-                        return Err(SpanSnippetError::MalformedForCodemap(
-                            MalformedCodemapPositions {
-                                name: local_begin.fm.name.clone(),
-                                source_len: source_len,
-                                begin_pos: local_begin.pos,
-                                end_pos: local_end.pos,
-                            }));
-                    }
+            let start_index = local_begin.pos.to_usize();
+            let end_index = local_end.pos.to_usize();
+            let source_len = (local_begin.fm.end_pos -
+                              local_begin.fm.start_pos).to_usize();
 
-                    return Ok((&src[start_index..end_index]).to_string())
-                }
-                None => {
-                    return Err(SpanSnippetError::SourceNotAvailable {
-                        filename: local_begin.fm.name.clone()
-                    });
-                }
+            if start_index > end_index || end_index > source_len {
+                return Err(SpanSnippetError::MalformedForCodemap(
+                    MalformedCodemapPositions {
+                        name: local_begin.fm.name.clone(),
+                        source_len: source_len,
+                        begin_pos: local_begin.pos,
+                        end_pos: local_end.pos,
+                    }));
+            }
+
+            if let Some(ref src) = local_begin.fm.src {
+                return Ok((&src[start_index..end_index]).to_string());
+            } else if let Some(src) = local_begin.fm.external_src.borrow().get_source() {
+                return Ok((&src[start_index..end_index]).to_string());
+            } else {
+                return Err(SpanSnippetError::SourceNotAvailable {
+                    filename: local_begin.fm.name.clone()
+                });
             }
         }
     }
