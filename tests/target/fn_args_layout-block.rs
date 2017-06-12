@@ -54,8 +54,9 @@ fn bar(
     d: Dddddddddddddddd,
     e: Eeeeeeeeeeeeeee,
 ) -> String
-    where X: Fooooo,
-          Y: Baaar
+where
+    X: Fooooo,
+    Y: Baaar,
 {
     bar();
 }
@@ -65,22 +66,27 @@ fn foo() -> T {
 }
 
 fn foo() -> T
-    where X: Foooo,
-          Y: Baaar
+where
+    X: Foooo,
+    Y: Baaar,
 {
     foo();
 }
 
-fn foo() where X: Foooo {}
-
 fn foo()
-    where X: Foooo,
-          Y: Baaar
+where
+    X: Foooo,
 {
 }
 
-fn foo
-    ()
+fn foo()
+where
+    X: Foooo,
+    Y: Baaar,
+{
+}
+
+fn foo()
     -> (Loooooooooooooooooooooong, Reeeeeeeeeeeeeeeeeeeeeeeeturn, iiiiiiiiis, Looooooooooooooooong)
 {
     foo();
@@ -90,8 +96,7 @@ fn foo<g: G>() {
     foo();
 }
 
-fn foo<L: Loooooooooooooooooooooong, G: Geeeeeeeeeeeneric, I: iiiiiiiiis, L: Looooooooooooooooong>
-    () {
+fn foo<L: Loooooooooooooooooooooong, G: Geeeeeeeeeeeneric, I: iiiiiiiiis, L: Looooooooooooooooong>() {
     foo();
 }
 

@@ -15,7 +15,7 @@ fn lorem<
     amet: Amet,
     adipiscing: Adipiscing,
     consectetur: Consectetur,
-    elit: Elit)
-    -> T {
+    elit: Elit,
+) -> T {
     // body
 }

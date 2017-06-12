@@ -19,15 +19,15 @@ fn main() {
     // Test case where first chain element isn't a path, but is shorter than
     // the size of a tab.
     x().y(|| match cond() {
-              true => (),
-              false => (),
-          });
+        true => (),
+        false => (),
+    });
 
     loong_func().quux(move || if true {
-                          1
-                      } else {
-                          2
-                      });
+        1
+    } else {
+        2
+    });
 
     some_fuuuuuuuuunction().method_call_a(aaaaa, bbbbb, |c| {
         let x = c;
@@ -53,9 +53,9 @@ fn main() {
 
     aaaaaaaaaaaaaaaa
         .map(|x| {
-                 x += 1;
-                 x
-             })
+            x += 1;
+            x
+        })
         .filter(some_mod::some_filter)
 }
 
@@ -81,10 +81,12 @@ fn floaters() {
         match x {
             PushParam => {
                 // params are 1-indexed
-                stack.push(mparams[match cur.to_digit(10) {
-                                       Some(d) => d as usize - 1,
-                                       None => return Err("bad param number".to_owned()),
-                                   }].clone());
+                stack.push(
+                    mparams[match cur.to_digit(10) {
+                                Some(d) => d as usize - 1,
+                                None => return Err("bad param number".to_owned()),
+                            }].clone(),
+                );
             }
         }
     }
@@ -98,25 +100,25 @@ fn floaters() {
 
     Foo { x: val }
         .baz(|| {
-                 force();
-                 multiline();
-             })
+            force();
+            multiline();
+        })
         .quux();
 
     Foo {
         y: i_am_multi_line,
         z: ok,
     }.baz(|| {
-              force();
-              multiline();
-          })
+        force();
+        multiline();
+    })
         .quux();
 
     a +
-    match x {
-        true => "yay!",
-        false => "boo!",
-    }.bar()
+        match x {
+            true => "yay!",
+            false => "boo!",
+        }.bar()
 }
 
 fn is_replaced_content() -> bool {
@@ -163,7 +165,7 @@ fn issue_1004() {
     }?;
 
     ty::tls::with(|tcx| {
-                      let tap = ty::Binder(TraitAndProjections(principal, projections));
-                      in_binder(f, tcx, &ty::Binder(""), Some(tap))
-                  })?;
+        let tap = ty::Binder(TraitAndProjections(principal, projections));
+        in_binder(f, tcx, &ty::Binder(""), Some(tap))
+    })?;
 }

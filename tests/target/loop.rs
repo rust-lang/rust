@@ -13,7 +13,8 @@ fn main() {
     }
 
     'a: while loooooooooooooooooooooooooooooooooong_variable_name + another_value >
-              some_other_value {}
+        some_other_value
+    {}
 
     while aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa > bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb {
     }
@@ -22,7 +23,8 @@ fn main() {
     }
 
     'b: for xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx in
-        some_iter(arg1, arg2) {
+        some_iter(arg1, arg2)
+    {
         // do smth
     }
 

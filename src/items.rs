@@ -1990,13 +1990,11 @@ fn rewrite_fn_base(
             });
             let snippet = snippet.trim();
             if !snippet.is_empty() {
-                result.push(
-                    if original_starts_with_newline {
-                        '\n'
-                    } else {
-                        ' '
-                    },
-                );
+                result.push(if original_starts_with_newline {
+                    '\n'
+                } else {
+                    ' '
+                });
                 result.push_str(snippet);
                 if original_ends_with_newline {
                     force_new_line_for_brace = true;

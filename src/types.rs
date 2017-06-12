@@ -348,13 +348,11 @@ where
         String::new()
     };
 
-    Some(
-        if context.config.spaces_within_parens() {
-            format!("( {} ){}{}", list_str, infix, output)
-        } else {
-            format!("({}){}{}", list_str, infix, output)
-        },
-    )
+    Some(if context.config.spaces_within_parens() {
+        format!("( {} ){}{}", list_str, infix, output)
+    } else {
+        format!("({}){}{}", list_str, infix, output)
+    })
 }
 
 fn type_bound_colon(context: &RewriteContext) -> &'static str {
@@ -588,13 +586,13 @@ impl Rewrite for ast::PolyTraitRef {
                 ),
             ));
 
-            Some(
-                if context.config.spaces_within_angle_brackets() && lifetime_str.len() > 0 {
-                    format!("for< {} > {}", lifetime_str, path_str)
-                } else {
-                    format!("for<{}> {}", lifetime_str, path_str)
-                },
-            )
+            Some(if context.config.spaces_within_angle_brackets() &&
+                lifetime_str.len() > 0
+            {
+                format!("for< {} > {}", lifetime_str, path_str)
+            } else {
+                format!("for<{}> {}", lifetime_str, path_str)
+            })
         } else {
             self.trait_ref.rewrite(context, shape)
         }

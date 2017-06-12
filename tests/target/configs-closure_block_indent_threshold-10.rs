@@ -3,10 +3,10 @@
 
 fn main() {
     lorem_ipsum(|| {
-                    println!("lorem");
-                    println!("ipsum");
-                    println!("dolor");
-                    println!("sit");
-                    println!("amet");
-                });
+        println!("lorem");
+        println!("ipsum");
+        println!("dolor");
+        println!("sit");
+        println!("amet");
+    });
 }

@@ -31,18 +31,21 @@ mod other;
 fn foo(a: isize, b: u32 /* blah blah */, c: f64) {}
 
 fn foo() -> Box<Write + 'static>
-    where 'a: 'b,
-          for<'a> D<'b>: 'a
+where
+    'a: 'b,
+    for<'a> D<'b>: 'a,
 {
     hello!()
 }
 
-fn baz<'a: 'b, // comment on 'a
-       T: SomsssssssssssssssssssssssssssssssssssssssssssssssssssssseType /* comment on T */>
-    (a: A,
-     b: B, // comment on b
-     c: C)
-     -> Bob {
+fn baz<
+    'a: 'b, // comment on 'a
+    T: SomsssssssssssssssssssssssssssssssssssssssssssssssssssssseType /* comment on T */
+>(
+    a: A,
+    b: B, // comment on b
+    c: C,
+) -> Bob {
     #[attr1]
     extern crate foo;
     #[attr2]
@@ -65,10 +68,11 @@ fn qux(a: dadsfa,   // Comment 1
 
 /// Blah blah blah.
 impl Bar {
-    fn foo(&mut self,
-           a: sdfsdfcccccccccccccccccccccccccccccccccccccccccccccccccc, // comment on a
-           b: sdfasdfsdfasfs /* closing comment */)
-           -> isize {
+    fn foo(
+        &mut self,
+        a: sdfsdfcccccccccccccccccccccccccccccccccccccccccccccccccc, // comment on a
+        b: sdfasdfsdfasfs, // closing comment
+    ) -> isize {
     }
 
     /// Blah blah blah.
@@ -112,7 +116,8 @@ struct Bar;
 
 // With a where clause and generics.
 pub struct Foo<'a, Y: Baz>
-    where X: Whatever
+where
+    X: Whatever,
 {
     f: SomeType, // Comment beside a field
 }
@@ -129,11 +134,15 @@ fn main() {
         hello();
     }
 
-    let rc = Cell::new(42usize,
-                       42usize,
-                       Cell::new(42usize,
-                                 remaining_widthremaining_widthremaining_widthremaining_width),
-                       42usize);
+    let rc = Cell::new(
+        42usize,
+        42usize,
+        Cell::new(
+            42usize,
+            remaining_widthremaining_widthremaining_widthremaining_width,
+        ),
+        42usize,
+    );
     let rc = RefCell::new(42usize, remaining_width, remaining_width); // a comment
     let x = "Hello!!!!!!!!! abcd  abcd abcd abcd abcd abcd\n abcd abcd abcd abcd abcd abcd abcd \
              abcd abcd abcd  abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd \
@@ -152,13 +161,14 @@ fn deconstruct()
 {
 }
 
-fn deconstruct(foo: Bar)
-               -> (SocketAddr,
-                   Method,
-                   Headers,
-                   RequestUri,
-                   HttpVersion,
-                   AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA) {
+fn deconstruct(
+    foo: Bar,
+) -> (SocketAddr,
+                                    Method,
+                                    Headers,
+                                    RequestUri,
+                                    HttpVersion,
+                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA) {
 }
 
 #[rustfmt_skip]

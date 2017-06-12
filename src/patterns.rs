@@ -336,23 +336,19 @@ fn rewrite_tuple_pat(
 
     match path_str {
         Some(path_str) => {
-            Some(
-                if context.config.spaces_within_parens() {
-                    format!("{}( {} )", path_str, list)
-                } else {
-                    format!("{}({})", path_str, list)
-                },
-            )
+            Some(if context.config.spaces_within_parens() {
+                format!("{}( {} )", path_str, list)
+            } else {
+                format!("{}({})", path_str, list)
+            })
         }
         None => {
             let comma = if add_comma { "," } else { "" };
-            Some(
-                if context.config.spaces_within_parens() {
-                    format!("( {}{} )", list, comma)
-                } else {
-                    format!("({}{})", list, comma)
-                },
-            )
+            Some(if context.config.spaces_within_parens() {
+                format!("( {}{} )", list, comma)
+            } else {
+                format!("({}{})", list, comma)
+            })
         }
     }
 }

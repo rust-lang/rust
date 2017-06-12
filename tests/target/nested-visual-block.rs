@@ -20,15 +20,18 @@ fn main() {
         |item| {
             match *item {
                 StructLitField::Regular(ref field) => {
-                    rewrite_field(inner_context,
-                                  &field,
-                                  &Constraints::new(v_budget.checked_sub(1).unwrap_or(0), indent))
+                    rewrite_field(
+                        inner_context,
+                        &field,
+                        &Constraints::new(v_budget.checked_sub(1).unwrap_or(0), indent),
+                    )
                 }
                 StructLitField::Base(ref expr) => {
                     // 2 = ..
-                    expr.rewrite(inner_context,
-                                 &Constraints::new(try_opt!(v_budget.checked_sub(2)), indent + 2))
-                        .map(|s| format!("..{}", s))
+                    expr.rewrite(
+                        inner_context,
+                        &Constraints::new(try_opt!(v_budget.checked_sub(2)), indent + 2),
+                    ).map(|s| format!("..{}", s))
                 }
             }
         },
@@ -45,16 +48,14 @@ fn main() {
     });
 
     // #1581
-    bootstrap
-        .checks
-        .register("PERSISTED_LOCATIONS", move || if locations2
-               .0
-               .inner_mut
-               .lock()
-               .poisoned {
-            Check::new(State::Error,
-                       "Persisted location storage is poisoned due to a write failure")
+    bootstrap.checks.register("PERSISTED_LOCATIONS", move || {
+        if locations2.0.inner_mut.lock().poisoned {
+            Check::new(
+                State::Error,
+                "Persisted location storage is poisoned due to a write failure",
+            )
         } else {
             Check::new(State::Healthy, "Persisted location storage is healthy")
-        });
+        }
+    });
 }

@@ -22,7 +22,8 @@ fn main() {
 	let str = "AAAAAAAAAAAAAAaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaAa";
 
 	if let (some_very_large,
-	        tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3 {}
+	     tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3
+	{}
 
 	if cond() {
 		something();
@@ -30,7 +31,7 @@ fn main() {
 		something_else();
 	} else {
 		aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-		aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+			aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 	}
 
 	unsafe /* very looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong
@@ -47,21 +48,24 @@ fn main() {
 		.go_to_next_line_with_tab()
 		.go_to_next_line_with_tab();
 
-	let z = [xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
-	         yyyyyyyyyyyyyyyyyyyyyyyyyyy,
-	         zzzzzzzzzzzzzzzzzz,
-	         q];
+	let z = [
+		xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+		yyyyyyyyyyyyyyyyyyyyyyyyyyy,
+		zzzzzzzzzzzzzzzzzz,
+		q,
+	];
 
 	fn generic<T>(arg: T) -> &SomeType
-		where T: Fn(// First arg
-		            A,
-		            // Second argument
-		            B,
-		            C,
-		            D,
-		            // pre comment
-		            E /* last comment */)
-		            -> &SomeType
+	where
+		T: Fn(// First arg
+		      A,
+		      // Second argument
+		      B,
+		      C,
+		      D,
+		      // pre comment
+		      E /* last comment */)
+		      -> &SomeType,
 	{
 		arg(a, b, c, d, e)
 	}

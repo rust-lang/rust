@@ -5,7 +5,7 @@ fn lorem(
     ipsum: Ipsum,
     dolor: Dolor,
     sit: Sit,
-    amet: Amet)
-    -> DolorSitAmetConsecteturAdipiscingElitLoremIpsumDolorSitAmetConsecteturAdipiscingElit {
+    amet: Amet,
+) -> DolorSitAmetConsecteturAdipiscingElitLoremIpsumDolorSitAmetConsecteturAdipiscingElit {
     // body
 }

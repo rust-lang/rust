@@ -37,9 +37,10 @@ fn foo() {
         Patternnnnnnnnnnnnnnnnnnnnnnnnn if loooooooooooooooooooooooooooooooooooooooooong_guard => {}
 
         _ => {}
-        ast::PathParameters::AngleBracketedParameters(ref data) if data.lifetimes.len() > 0 ||
-                                                                   data.types.len() > 0 ||
-                                                                   data.bindings.len() > 0 => {}
+        ast::PathParameters::AngleBracketedParameters(ref data) if data.lifetimes.len() >
+                                                                       0 ||
+                                                                       data.types.len() > 0 ||
+                                                                       data.bindings.len() > 0 => {}
     }
 
     let whatever = match something {
@@ -66,15 +67,31 @@ fn main() {
 // Test that one-line bodies align.
 fn main() {
     match r {
-        Variableeeeeeeeeeeeeeeeee => {
-            ("variable", vec!["id", "name", "qualname", "value", "type", "scopeid"], true, true)
-        }
-        Enummmmmmmmmmmmmmmmmmmmm => {
-            ("enum", vec!["id", "qualname", "scopeid", "value"], true, true)
-        }
-        Variantttttttttttttttttttttttt => {
-            ("variant", vec!["id", "name", "qualname", "type", "value", "scopeid"], true, true)
-        }
+        Variableeeeeeeeeeeeeeeeee => (
+            "variable",
+            vec!["id", "name", "qualname", "value", "type", "scopeid"],
+            true,
+            true,
+        ),
+        Enummmmmmmmmmmmmmmmmmmmm => (
+            "enum",
+            vec!["id", "qualname", "scopeid", "value"],
+            true,
+            true,
+        ),
+        Variantttttttttttttttttttttttt => (
+            "variant",
+            vec![
+                "id",
+                "name",
+                "qualname",
+                "type",
+                "value",
+                "scopeid",
+            ],
+            true,
+            true,
+        ),
     };
 
     match x {
@@ -209,10 +226,12 @@ fn issue355() {
         xc => vec![1, 2], // comment
         yc => vec![3; 4], // comment
         yd => {
-            looooooooooooooooooooooooooooooooooooooooooooooooooooooooong_func(aaaaaaaaaa,
-                                                                              bbbbbbbbbb,
-                                                                              cccccccccc,
-                                                                              dddddddddd)
+            looooooooooooooooooooooooooooooooooooooooooooooooooooooooong_func(
+                aaaaaaaaaa,
+                bbbbbbbbbb,
+                cccccccccc,
+                dddddddddd,
+            )
         }
     }
 }
@@ -276,14 +295,12 @@ fn issue494() {
             hir::StmtExpr(ref expr, id) |
             hir::StmtSemi(ref expr, id) => {
                 result.push(StmtRef::Mirror(Box::new(Stmt {
-                                                         span: stmt.span,
-                                                         kind: StmtKind::Expr {
-                                                             scope: cx.tcx
-                                                                 .region_maps
-                                                                 .node_extent(id),
-                                                             expr: expr.to_ref(),
-                                                         },
-                                                     })))
+                    span: stmt.span,
+                    kind: StmtKind::Expr {
+                        scope: cx.tcx.region_maps.node_extent(id),
+                        expr: expr.to_ref(),
+                    },
+                })))
             }
         }
     }
@@ -300,10 +317,10 @@ fn issue386() {
 fn guards() {
     match foo {
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa if foooooooooooooo &&
-                                                                      barrrrrrrrrrrr => {}
+                                                                          barrrrrrrrrrrr => {}
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa if foooooooooooooo &&
-                                                                      barrrrrrrrrrrr => {}
+                                                                          barrrrrrrrrrrr => {}
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
             if fooooooooooooooooooooo &&
                (bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb || cccccccccccccccccccccccccccccccccccccccc) => {
@@ -313,48 +330,48 @@ fn guards() {
 
 fn issue1371() {
     Some(match type_ {
-             sfEvtClosed => Closed,
-             sfEvtResized => {
-                 let e = unsafe { *event.size.as_ref() };
+        sfEvtClosed => Closed,
+        sfEvtResized => {
+            let e = unsafe { *event.size.as_ref() };
 
-                 Resized {
-                     width: e.width,
-                     height: e.height,
-                 }
-             }
-             sfEvtLostFocus => LostFocus,
-             sfEvtGainedFocus => GainedFocus,
-             sfEvtTextEntered => {
-                 TextEntered {
-                     unicode: unsafe {
-                         ::std::char::from_u32((*event.text.as_ref()).unicode)
-                             .expect("Invalid unicode encountered on TextEntered event")
-                     },
-                 }
-             }
-             sfEvtKeyPressed => {
-                 let e = unsafe { event.key.as_ref() };
+            Resized {
+                width: e.width,
+                height: e.height,
+            }
+        }
+        sfEvtLostFocus => LostFocus,
+        sfEvtGainedFocus => GainedFocus,
+        sfEvtTextEntered => {
+            TextEntered {
+                unicode: unsafe {
+                    ::std::char::from_u32((*event.text.as_ref()).unicode)
+                        .expect("Invalid unicode encountered on TextEntered event")
+                },
+            }
+        }
+        sfEvtKeyPressed => {
+            let e = unsafe { event.key.as_ref() };
 
-                 KeyPressed {
-                     code: unsafe { ::std::mem::transmute(e.code) },
-                     alt: e.alt.to_bool(),
-                     ctrl: e.control.to_bool(),
-                     shift: e.shift.to_bool(),
-                     system: e.system.to_bool(),
-                 }
-             }
-             sfEvtKeyReleased => {
-                 let e = unsafe { event.key.as_ref() };
+            KeyPressed {
+                code: unsafe { ::std::mem::transmute(e.code) },
+                alt: e.alt.to_bool(),
+                ctrl: e.control.to_bool(),
+                shift: e.shift.to_bool(),
+                system: e.system.to_bool(),
+            }
+        }
+        sfEvtKeyReleased => {
+            let e = unsafe { event.key.as_ref() };
 
-                 KeyReleased {
-                     code: unsafe { ::std::mem::transmute(e.code) },
-                     alt: e.alt.to_bool(),
-                     ctrl: e.control.to_bool(),
-                     shift: e.shift.to_bool(),
-                     system: e.system.to_bool(),
-                 }
-             }
-         })
+            KeyReleased {
+                code: unsafe { ::std::mem::transmute(e.code) },
+                alt: e.alt.to_bool(),
+                ctrl: e.control.to_bool(),
+                shift: e.shift.to_bool(),
+                system: e.system.to_bool(),
+            }
+        }
+    })
 }
 
 fn issue1395() {
@@ -362,31 +379,31 @@ fn issue1395() {
     let foo = Some(true);
     let mut x = false;
     bar.and_then(|_| match foo {
-                     None => None,
-                     Some(b) => {
-                         x = true;
-                         Some(b)
-                     }
-                 });
+        None => None,
+        Some(b) => {
+            x = true;
+            Some(b)
+        }
+    });
 }
 
 fn issue1456() {
     Ok(Recording {
-           artists: match reader
-                     .evaluate(".//mb:recording/mb:artist-credit/mb:name-credit")? {
-               Nodeset(nodeset) => {
-                   let res: Result<Vec<ArtistRef>, ReadError> = nodeset
-                       .iter()
-                       .map(|node| {
-                                XPathNodeReader::new(node, &context)
-                                    .and_then(|r| ArtistRef::from_xml(&r))
-                            })
-                       .collect();
-                   res?
-               }
-               _ => Vec::new(),
-           },
-       })
+        artists: match reader.evaluate(
+            ".//mb:recording/mb:artist-credit/mb:name-credit",
+        )? {
+            Nodeset(nodeset) => {
+                let res: Result<Vec<ArtistRef>, ReadError> = nodeset
+                    .iter()
+                    .map(|node| {
+                        XPathNodeReader::new(node, &context).and_then(|r| ArtistRef::from_xml(&r))
+                    })
+                    .collect();
+                res?
+            }
+            _ => Vec::new(),
+        },
+    })
 }
 
 fn issue1460() {
@@ -399,9 +416,13 @@ fn issue1460() {
 }
 
 fn issue525() {
-    foobar(f, "{}", match *self {
-        TaskState::Started => "started",
-        TaskState::Success => "success",
-        TaskState::Failed => "failed",
-    });
+    foobar(
+        f,
+        "{}",
+        match *self {
+            TaskState::Started => "started",
+            TaskState::Success => "success",
+            TaskState::Failed => "failed",
+        },
+    );
 }

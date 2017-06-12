@@ -11,7 +11,8 @@ pub enum Test {
 }
 
 pub enum Foo<'a, Y: Baz>
-    where X: Whatever
+where
+    X: Whatever,
 {
     A,
 }
@@ -29,8 +30,10 @@ enum Bar {
 }
 
 enum LongVariants {
-    First(LOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONG, // comment
-          VARIANT),
+    First(
+        LOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONG, // comment
+        VARIANT
+    ),
     // This is the second variant
     Second,
 }
@@ -47,9 +50,11 @@ enum StructLikeVariants {
 }
 
 enum X {
-    CreateWebGLPaintTask(Size2D<i32>,
-                         GLContextAttributes,
-                         IpcSender<Result<(IpcSender<CanvasMsg>, usize), String>>), /* This is a post comment */
+    CreateWebGLPaintTask(
+        Size2D<i32>,
+        GLContextAttributes,
+        IpcSender<Result<(IpcSender<CanvasMsg>, usize), String>>
+    ), // This is a post comment
 }
 
 pub enum EnumWithAttributes {
@@ -79,7 +84,8 @@ pub enum SingleStruct {
 }
 
 pub enum GenericEnum<I, T>
-    where I: Iterator<Item = T>
+where
+    I: Iterator<Item = T>,
 {
     // Pre Comment
     Left { list: I, root: T }, // Post-comment
@@ -98,7 +104,7 @@ enum TestFormatFails {
 fn nested_enum_test() {
     if true {
         enum TestEnum {
-            One(usize,
+            One(
                 usize,
                 usize,
                 usize,
@@ -113,8 +119,10 @@ fn nested_enum_test() {
                 usize,
                 usize,
                 usize,
-                usize), /* AAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAAAAA
-                         * AAAAAAAAAAAAAAAAAAAAAA */
+                usize,
+                usize
+            ), /* AAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAAAAA
+                * AAAAAAAAAAAAAAAAAAAAAA */
             Two, /* AAAAAAAAAAAAAAAAAA  AAAAAAAAAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                   * AAAAAAAAAAAAAAAAAA */
         }
@@ -142,9 +150,11 @@ pub enum Bencoding<'i> {
 
 // #1261
 pub enum CoreResourceMsg {
-    SetCookieForUrl(ServoUrl,
-                    #[serde(deserialize_with = "::hyper_serde::deserialize",
-                            serialize_with = "::hyper_serde::serialize")]
-                    Cookie,
-                    CookieSource),
+    SetCookieForUrl(
+        ServoUrl,
+        #[serde(deserialize_with = "::hyper_serde::deserialize",
+                serialize_with = "::hyper_serde::serialize")]
+        Cookie,
+        CookieSource
+    ),
 }

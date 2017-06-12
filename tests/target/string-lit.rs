@@ -26,7 +26,9 @@ formatting"#;
     filename.replace(" ", "\\");
 
     let xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx =
-        funktion("yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy");
+        funktion(
+            "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+        );
 
     let unicode = "a̐éö̲\r\n";
     let unicode2 = "Löwe 老虎 Léopard";
@@ -42,8 +44,10 @@ fn issue682() {
 }
 
 fn issue716() {
-    println!("forall x. mult(e(), x) = x /\\
-              forall x. mult(x, x) = e()");
+    println!(
+        "forall x. mult(e(), x) = x /\\
+              forall x. mult(x, x) = e()"
+    );
 }
 
 fn issue_1282() {

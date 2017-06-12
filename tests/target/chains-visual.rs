@@ -17,15 +17,15 @@ fn main() {
     // Test case where first chain element isn't a path, but is shorter than
     // the size of a tab.
     x().y(|| match cond() {
-              true => (),
-              false => (),
-          });
+        true => (),
+        false => (),
+    });
 
     loong_func().quux(move || if true {
-                          1
-                      } else {
-                          2
-                      });
+        1
+    } else {
+        2
+    });
 
     some_fuuuuuuuuunction().method_call_a(aaaaa, bbbbb, |c| {
         let x = c;
@@ -47,14 +47,15 @@ fn main() {
     });
 
     let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum =
-        xxxxxxx.map(|x| x + 5)
-               .map(|x| x / 2)
-               .fold(0, |acc, x| acc + x);
+        xxxxxxx.map(|x| x + 5).map(|x| x / 2).fold(
+            0,
+            |acc, x| acc + x,
+        );
 
     aaaaaaaaaaaaaaaa.map(|x| {
-                             x += 1;
-                             x
-                         })
+        x += 1;
+        x
+    })
                     .filter(some_mod::some_filter)
 }
 
@@ -82,11 +83,13 @@ fn floaters() {
         match x {
             PushParam => {
                 // params are 1-indexed
-                stack.push(mparams[match cur.to_digit(10) {
-                                       Some(d) => d as usize - 1,
-                                       None => return Err("bad param number".to_owned()),
-                                   }]
-                           .clone());
+                stack.push(
+                    mparams[match cur.to_digit(10) {
+                                Some(d) => d as usize - 1,
+                                None => return Err("bad param number".to_owned()),
+                            }]
+                    .clone(),
+                );
             }
         }
     }
@@ -101,9 +104,9 @@ fn floaters() {
 
     Foo { x: val }
         .baz(|| {
-                 force();
-                 multiline();
-             })
+            force();
+            multiline();
+        })
         .quux();
 
     Foo {
@@ -111,17 +114,17 @@ fn floaters() {
         z: ok,
     }
     .baz(|| {
-             force();
-             multiline();
-         })
+        force();
+        multiline();
+    })
     .quux();
 
     a +
-    match x {
-        true => "yay!",
-        false => "boo!",
-    }
-    .bar()
+        match x {
+            true => "yay!",
+            false => "boo!",
+        }
+        .bar()
 }
 
 fn is_replaced_content() -> bool {
@@ -163,8 +166,10 @@ fn issue1434() {
     for _ in 0..100 {
         let prototype_id = PrototypeIdData::from_reader::<_, B>(&mut self.file_cursor)
             .chain_err(|| {
-                           format!("could not read prototype ID at offset {:#010x}",
-                                   current_offset)
-                       })?;
+                format!(
+                    "could not read prototype ID at offset {:#010x}",
+                    current_offset
+                )
+            })?;
     }
 }

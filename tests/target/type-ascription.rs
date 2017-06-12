@@ -1,12 +1,12 @@
 fn main() {
     let xxxxxxxxxxx = yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy:
-                      SomeTrait<AA, BB, CC>;
+        SomeTrait<AA, BB, CC>;
 
     let xxxxxxxxxxxxxxx = yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy:
-                          AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;
 
     let z = funk(yyyyyyyyyyyyyyy, zzzzzzzzzzzzzzzz, wwwwww):
-            AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;
 
     x: u32 - 1u32 / 10f32: u32
 }

@@ -17,21 +17,25 @@ mod M {
     struct D {}
 
     enum A<T>
-        where T: Copy
+    where
+        T: Copy,
     {
         A,
     }
 
     struct B<T>
-        where T: Copy
+    where
+        T: Copy,
     {
         b: i32,
     }
 
     // For empty enums and structs, the brace remains on the same line.
     enum C<T>
-        where T: Copy {}
+    where
+        T: Copy, {}
 
     struct D<T>
-        where T: Copy {}
+    where
+        T: Copy, {}
 }

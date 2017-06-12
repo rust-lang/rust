@@ -84,9 +84,9 @@ fn assert_output(source: &str, expected_filename: &str) {
 
     let mut expected_file = fs::File::open(&expected_filename).expect("Couldn't open target");
     let mut expected_text = String::new();
-    expected_file
-        .read_to_string(&mut expected_text)
-        .expect("Failed reading target");
+    expected_file.read_to_string(&mut expected_text).expect(
+        "Failed reading target",
+    );
 
     let compare = make_diff(&expected_text, &output, DIFF_CONTEXT_SIZE);
     if compare.len() > 0 {
@@ -136,9 +136,11 @@ fn self_tests() {
         warnings += format_report.warning_count();
     }
 
-    assert!(warnings == 0,
-            "Rustfmt's code generated {} warnings",
-            warnings);
+    assert!(
+        warnings == 0,
+        "Rustfmt's code generated {} warnings",
+        warnings
+    );
 }
 
 #[test]
@@ -170,7 +172,8 @@ fn format_lines_errors_are_reported() {
 // For each file, run rustfmt and collect the output.
 // Returns the number of files checked and the number of failures.
 fn check_files<I>(files: I) -> (Vec<FormatReport>, u32, u32)
-    where I: Iterator<Item = String>
+where
+    I: Iterator<Item = String>,
 {
     let mut count = 0;
     let mut fails = 0;
@@ -217,10 +220,12 @@ fn read_config(filename: &str) -> Config {
     let mut config = if !sig_comments.is_empty() {
         get_config(sig_comments.get("config").map(|x| &(*x)[..]))
     } else {
-        get_config(Path::new(filename)
-                       .with_extension("toml")
-                       .file_name()
-                       .and_then(std::ffi::OsStr::to_str))
+        get_config(
+            Path::new(filename)
+                .with_extension("toml")
+                .file_name()
+                .and_then(std::ffi::OsStr::to_str),
+        )
     };
 
     for (key, val) in &sig_comments {
@@ -280,9 +285,9 @@ fn get_config(config_file: Option<&str>) -> Config {
 
     let mut def_config_file = fs::File::open(config_file_name).expect("Couldn't open config");
     let mut def_config = String::new();
-    def_config_file
-        .read_to_string(&mut def_config)
-        .expect("Couldn't read config");
+    def_config_file.read_to_string(&mut def_config).expect(
+        "Couldn't read config",
+    );
 
     Config::from_toml(&def_config).expect("Invalid toml")
 }
@@ -305,16 +310,18 @@ fn read_significant_comments(file_name: &str) -> HashMap<String, String> {
         .take_while(|line| line_regex.is_match(&line))
         .filter_map(|line| {
             regex.captures_iter(&line).next().map(|capture| {
-                (capture
-                     .get(1)
-                     .expect("Couldn't unwrap capture")
-                     .as_str()
-                     .to_owned(),
-                 capture
-                     .get(2)
-                     .expect("Couldn't unwrap capture")
-                     .as_str()
-                     .to_owned())
+                (
+                    capture
+                        .get(1)
+                        .expect("Couldn't unwrap capture")
+                        .as_str()
+                        .to_owned(),
+                    capture
+                        .get(2)
+                        .expect("Couldn't unwrap capture")
+                        .as_str()
+                        .to_owned(),
+                )
             })
         })
         .collect()
@@ -322,9 +329,10 @@ fn read_significant_comments(file_name: &str) -> HashMap<String, String> {
 
 // Compare output to input.
 // TODO: needs a better name, more explanation.
-fn handle_result(result: HashMap<String, String>,
-                 target: Option<&str>)
-                 -> Result<(), HashMap<String, Vec<Mismatch>>> {
+fn handle_result(
+    result: HashMap<String, String>,
+    target: Option<&str>,
+) -> Result<(), HashMap<String, Vec<Mismatch>>> {
     let mut failures = HashMap::new();
 
     for (file_name, fmt_text) in result {
@@ -339,8 +347,10 @@ fn handle_result(result: HashMap<String, String>,
 
         if fmt_text != text {
             let diff = make_diff(&text, &fmt_text, DIFF_CONTEXT_SIZE);
-            assert!(!diff.is_empty(),
-                    "Empty diff? Maybe due to a missing a newline at the end of a file?");
+            assert!(
+                !diff.is_empty(),
+                "Empty diff? Maybe due to a missing a newline at the end of a file?"
+            );
             failures.insert(file_name, diff);
         }
     }
@@ -374,15 +384,21 @@ fn get_target(file_name: &str, target: Option<&str>) -> String {
 #[test]
 fn rustfmt_diff_make_diff_tests() {
     let diff = make_diff("a\nb\nc\nd", "a\ne\nc\nd", 3);
-    assert_eq!(diff,
-               vec![Mismatch {
-                        line_number: 1,
-                        lines: vec![DiffLine::Context("a".into()),
-                                    DiffLine::Resulting("b".into()),
-                                    DiffLine::Expected("e".into()),
-                                    DiffLine::Context("c".into()),
-                                    DiffLine::Context("d".into())],
-                    }]);
+    assert_eq!(
+        diff,
+        vec![
+            Mismatch {
+                line_number: 1,
+                lines: vec![
+                    DiffLine::Context("a".into()),
+                    DiffLine::Resulting("b".into()),
+                    DiffLine::Expected("e".into()),
+                    DiffLine::Context("c".into()),
+                    DiffLine::Context("d".into()),
+                ],
+            },
+        ]
+    );
 }
 
 #[test]

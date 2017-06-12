@@ -2,11 +2,13 @@
 // Array width
 
 fn main() {
-    let lorem = vec!["ipsum",
-                     "dolor",
-                     "sit",
-                     "amet",
-                     "consectetur",
-                     "adipiscing",
-                     "elit"];
+    let lorem = vec![
+        "ipsum",
+        "dolor",
+        "sit",
+        "amet",
+        "consectetur",
+        "adipiscing",
+        "elit",
+    ];
 }

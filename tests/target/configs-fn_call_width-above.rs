@@ -2,12 +2,14 @@
 // Function call width
 
 fn main() {
-    lorem("lorem",
-          "ipsum",
-          "dolor",
-          "sit",
-          "amet",
-          "consectetur",
-          "adipiscing",
-          "elit");
+    lorem(
+        "lorem",
+        "ipsum",
+        "dolor",
+        "sit",
+        "amet",
+        "consectetur",
+        "adipiscing",
+        "elit",
+    );
 }

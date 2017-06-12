@@ -24,14 +24,18 @@ fn bar<
 }
 
 fn baz()
-    where X: TTTTTTTT
+where
+    X: TTTTTTTT,
 {
     baz();
 }
 
 fn qux()
-    where X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT, X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT,
-          X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT, X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT
+where
+    X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT,
+    X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT,
+    X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT,
+    X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT,
 {
     baz();
 }
@@ -59,7 +63,8 @@ impl Foo {
     }
 
     fn baz()
-        where X: TTTTTTTT
+    where
+        X: TTTTTTTT,
     {
         baz();
     }

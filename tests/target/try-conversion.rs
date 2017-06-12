@@ -18,9 +18,10 @@ fn test() {
 }
 
 fn issue1291() {
-    fs::create_dir_all(&gitfiledir)
-        .chain_err(|| {
-                       format!("failed to create the {} submodule directory for the workarea",
-                               name)
-                   })?;
+    fs::create_dir_all(&gitfiledir).chain_err(|| {
+        format!(
+            "failed to create the {} submodule directory for the workarea",
+            name
+        )
+    })?;
 }

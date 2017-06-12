@@ -14,7 +14,8 @@ fn empty() {}
 fn foo_return() -> String { "yay" }
 
 fn foo_where() -> T
-    where T: Sync
+where
+    T: Sync,
 {
     let x = 2;
 }
@@ -62,4 +63,8 @@ trait CoolerTypes {
     fn dummy(&self) {}
 }
 
-fn Foo<T>() where T: Bar {}
+fn Foo<T>()
+where
+    T: Bar,
+{
+}

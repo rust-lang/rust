@@ -7,23 +7,21 @@ fn foo() -> bool {
     let referenced = &5;
 
     let very_long_variable_name = (a + first + simple + test);
-    let very_long_variable_name = (a + first + simple + test + AAAAAAAAAAAAA +
-                                   BBBBBBBBBBBBBBBBB + b + c);
+    let very_long_variable_name =
+        (a + first + simple + test + AAAAAAAAAAAAA + BBBBBBBBBBBBBBBBB + b + c);
 
     let is_internalxxxx = self.codemap.span_to_filename(s) ==
-                          self.codemap.span_to_filename(m.inner);
+        self.codemap.span_to_filename(m.inner);
 
     let some_val = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa * bbbb /
-                   (bbbbbb - function_call(x, *very_long_pointer, y)) + 1000;
+        (bbbbbb - function_call(x, *very_long_pointer, y)) + 1000;
 
-    some_ridiculously_loooooooooooooooooooooong_function(10000 * 30000000000 +
-                                                         40000 / 1002200000000 -
-                                                         50000 * sqrt(-1),
-                                                         trivial_value);
-    (((((((((aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-             a +
-             aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-             aaaaa)))))))));
+    some_ridiculously_loooooooooooooooooooooong_function(
+        10000 * 30000000000 + 40000 / 1002200000000 - 50000 * sqrt(-1),
+        trivial_value,
+    );
+    (((((((((aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa + a +
+             aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa + aaaaa)))))))))   ;
 
     {
         for _ in 0..10 {}
@@ -49,18 +47,22 @@ fn foo() -> bool {
     }
 
     if let Some(x) = (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-                      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa) {}
+                       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
+    {}
 
     if let (some_very_large,
-            tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3 {
+         tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3
+    {
     }
 
     if let (some_very_large,
-            tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) =
-        1111 + 2222 {}
+         tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) =
+        1111 + 2222
+    {}
 
     if let (some_very_large,
-            tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3 {}
+         tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3
+    {}
 
     let test = if true { 5 } else { 3 };
 
@@ -71,13 +73,13 @@ fn foo() -> bool {
     } else {
         // Check subformatting
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     }
 }
 
 fn bar() {
     let range = (111111111 + 333333333333333333 + 1111 + 400000000000000000)..
-                (2222 + 2333333333333333);
+        (2222 + 2333333333333333);
 
     let another_range = 5..some_func(a, b /* comment */);
 
@@ -85,10 +87,12 @@ fn bar() {
         call_forever();
     }
 
-    syntactically_correct(loop {
-                              sup('?');
-                          },
-                          if cond { 0 } else { 1 });
+    syntactically_correct(
+        loop {
+            sup('?');
+        },
+        if cond { 0 } else { 1 },
+    );
 
     let third = ..10;
     let infi_range = ..;
@@ -102,8 +106,10 @@ fn bar() {
         }
     }
 
-    let x = (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa && aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
-             a);
+    let x = (
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa && aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+        a,
+    );
 }
 
 fn baz() {
@@ -144,8 +150,8 @@ fn qux() {
 
 fn issue227() {
     {
-        let handler = box DocumentProgressHandler::new(addr,
-                                                       DocumentProgressTask::DOMContentLoaded);
+        let handler =
+            box DocumentProgressHandler::new(addr, DocumentProgressTask::DOMContentLoaded);
     }
 }
 
@@ -158,59 +164,104 @@ fn issue184(source: &str) {
 }
 
 fn arrays() {
-    let x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 7, 8, 9, 0, 1, 2, 3,
-             4, 5, 6, 7, 8, 9, 0];
+    let x = [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        0,
+        7,
+        8,
+        9,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        0,
+    ];
 
-    let y = [// comment
-             1,
-             2, // post comment
-             3];
+    let y = [
+        // comment
+        1,
+        2, // post comment
+        3,
+    ];
 
-    let xy = [strukt {
-                  test123: value_one_two_three_four,
-                  turbo: coolio(),
-              },
-              // comment
-              1];
+    let xy = [
+        strukt {
+            test123: value_one_two_three_four,
+            turbo: coolio(),
+        },
+        // comment
+        1,
+    ];
 
-    let a = WeightedChoice::new(&mut [Weighted {
-                                          weightweight: x,
-                                          item: 0,
-                                      },
-                                      Weighted {
-                                          weightweight: 1,
-                                          item: 1,
-                                      },
-                                      Weighted {
-                                          weightweight: x,
-                                          item: 2,
-                                      },
-                                      Weighted {
-                                          weightweight: 1,
-                                          item: 3,
-                                      }]);
+    let a = WeightedChoice::new(
+        &mut [
+            Weighted {
+                weightweight: x,
+                item: 0,
+            },
+            Weighted {
+                weightweight: 1,
+                item: 1,
+            },
+            Weighted {
+                weightweight: x,
+                item: 2,
+            },
+            Weighted {
+                weightweight: 1,
+                item: 3,
+            },
+        ],
+    );
 
-    let z = [xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
-             yyyyyyyyyyyyyyyyyyyyyyyyyyy,
-             zzzzzzzzzzzzzzzzzz,
-             q];
+    let z = [
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+        yyyyyyyyyyyyyyyyyyyyyyyyyyy,
+        zzzzzzzzzzzzzzzzzz,
+        q,
+    ];
 
     [1 + 3, 4, 5, 6, 7, 7, fncall::<Vec<_>>(3 - 1)]
 }
 
 fn returns() {
     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa &&
-    return;
+        return;
 
     return aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-           aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
 }
 
 fn addrof() {
     &mut (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-          bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
+              bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
     &(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-      bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
+          bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
 }
 
 fn casts() {
@@ -220,7 +271,7 @@ fn casts() {
 
     let some_trait_xxx = xxxxxxxxxxx + xxxxxxxxxxxxx as SomeTraitXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX;
     let slightly_longer_trait = yyyyyyyyy +
-                                yyyyyyyyyyy as SomeTraitYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY;
+        yyyyyyyyyyy as SomeTraitYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY;
 }
 
 fn indices() {
@@ -232,9 +283,9 @@ fn indices() {
 
 fn repeats() {
     let x = [aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb + cccccccccccccccc;
-             x + y + z];
+        x + y + z];
     let y = [aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb + cccccccccccccccc;
-             xxxxx + yyyyy + zzzzz];
+        xxxxx + yyyyy + zzzzz];
 }
 
 fn blocks() {
@@ -257,7 +308,7 @@ fn issue767() {
 fn ranges() {
     let x = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
     let y = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...
-            bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
+        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
     let z = ...x;
 
     a...b
@@ -279,10 +330,12 @@ fn complex_if_else() {
     } else if xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx + xxxxxxxx {
         yo();
     } else if let Some(x) =
-        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx {
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    {
         ha();
     } else if xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx +
-              xxxxxxxxx {
+               xxxxxxxxx
+    {
         yo();
     }
 }
@@ -290,10 +343,12 @@ fn complex_if_else() {
 fn issue1106() {
     {
         if let hir::ItemEnum(ref enum_def, ref generics) =
-            self.ast_map.expect_item(enum_node_id).node {}
+            self.ast_map.expect_item(enum_node_id).node
+        {}
     }
 
-    for entry in WalkDir::new(path)
-            .into_iter()
-            .filter_entry(|entry| exclusions.filter_entry(entry)) {}
+    for entry in WalkDir::new(path).into_iter().filter_entry(|entry| {
+        exclusions.filter_entry(entry)
+    })
+    {}
 }

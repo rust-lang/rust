@@ -2,10 +2,11 @@
 // formatted correctly.
 
 impl Foo {
-    fn some_input(&mut self,
-                  input: Input,
-                  input_path: Option<PathBuf>)
-                  -> (Input, Option<PathBuf>) {
+    fn some_input(
+        &mut self,
+        input: Input,
+        input_path: Option<PathBuf>,
+    ) -> (Input, Option<PathBuf>) {
     }
 
     fn some_inpu(&mut self, input: Input, input_path: Option<PathBuf>) -> (Input, Option<PathBuf>) {

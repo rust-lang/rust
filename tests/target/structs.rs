@@ -59,14 +59,17 @@ struct Qux<'a,
     pub W,
 );
 
-struct Tuple(// Comment 1
-             AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
-             // Comment 2
-             BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB);
+struct Tuple(
+    // Comment 1
+    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
+    // Comment 2
+    BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+);
 
 // With a where clause and generics.
 pub struct Foo<'a, Y: Baz>
-    where X: Whatever
+where
+    X: Whatever,
 {
     f: SomeType, // Comment beside a field
 }
@@ -145,38 +148,52 @@ struct Deep {
 
 struct Foo<T>(T);
 struct Foo<T>(T)
-    where T: Copy,
-          T: Eq;
-struct Foo<T>(TTTTTTTTTTTTTTTTT,
-              UUUUUUUUUUUUUUUUUUUUUUUU,
-              TTTTTTTTTTTTTTTTTTT,
-              UUUUUUUUUUUUUUUUUUU);
-struct Foo<T>(TTTTTTTTTTTTTTTTTT, UUUUUUUUUUUUUUUUUUUUUUUU, TTTTTTTTTTTTTTTTTTT) where T: PartialEq;
+where
+    T: Copy,
+    T: Eq;
+struct Foo<T>(
+    TTTTTTTTTTTTTTTTT,
+    UUUUUUUUUUUUUUUUUUUUUUUU,
+    TTTTTTTTTTTTTTTTTTT,
+    UUUUUUUUUUUUUUUUUUU
+);
+struct Foo<T>(TTTTTTTTTTTTTTTTTT, UUUUUUUUUUUUUUUUUUUUUUUU, TTTTTTTTTTTTTTTTTTT)
+where
+    T: PartialEq;
 struct Foo<T>(TTTTTTTTTTTTTTTTT, UUUUUUUUUUUUUUUUUUUUUUUU, TTTTTTTTTTTTTTTTTTTTT)
-    where T: PartialEq;
-struct Foo<T>(TTTTTTTTTTTTTTTTT,
-              UUUUUUUUUUUUUUUUUUUUUUUU,
-              TTTTTTTTTTTTTTTTTTT,
-              UUUUUUUUUUUUUUUUUUU)
-    where T: PartialEq;
-struct Foo<T>(TTTTTTTTTTTTTTTTT, // Foo
-              UUUUUUUUUUUUUUUUUUUUUUUU, // Bar
-              // Baz
-              TTTTTTTTTTTTTTTTTTT,
-              // Qux (FIXME #572 - doc comment)
-              UUUUUUUUUUUUUUUUUUU);
+where
+    T: PartialEq;
+struct Foo<T>(
+    TTTTTTTTTTTTTTTTT,
+    UUUUUUUUUUUUUUUUUUUUUUUU,
+    TTTTTTTTTTTTTTTTTTT,
+    UUUUUUUUUUUUUUUUUUU
+)
+where
+    T: PartialEq;
+struct Foo<T>(
+    TTTTTTTTTTTTTTTTT, // Foo
+    UUUUUUUUUUUUUUUUUUUUUUUU, // Bar
+    // Baz
+    TTTTTTTTTTTTTTTTTTT,
+    // Qux (FIXME #572 - doc comment)
+    UUUUUUUUUUUUUUUUUUU
+);
 
 mod m {
     struct X<T>
-        where T: Sized
+    where
+        T: Sized,
     {
         a: T,
     }
 }
 
-struct Foo<T>(TTTTTTTTTTTTTTTTTTT,
-              /// Qux
-              UUUUUUUUUUUUUUUUUUU);
+struct Foo<T>(
+    TTTTTTTTTTTTTTTTTTT,
+    /// Qux
+    UUUUUUUUUUUUUUUUUUU
+);
 
 struct Issue677 {
     pub ptr: *const libc::c_void,

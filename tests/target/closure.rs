@@ -4,13 +4,17 @@
 fn main() {
     let square = (|i: i32| i * i);
 
-    let commented =
-        |// first
-         a, // argument
-         // second
-         b: WithType, // argument
-         // ignored
-         _| (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
+    let commented = |// first
+                     a, // argument
+                     // second
+                     b: WithType, // argument
+                     // ignored
+                     _| {
+        (
+            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+            bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,
+        )
+    };
 
     let block_body = move |xxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
                            ref yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy| {
@@ -91,9 +95,9 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         match (&left.node, &right.node) {
             (&ExprBinary(l_op, ref ll, ref lr), &ExprBinary(r_op, ref rl, ref rr)) => {
                 l_op.node == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr) ||
-                swap_binop(l_op.node, ll, lr).map_or(false, |(l_op, ll, lr)| {
-                    l_op == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
-                })
+                    swap_binop(l_op.node, ll, lr).map_or(false, |(l_op, ll, lr)| {
+                        l_op == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
+                    })
             }
         }
     }
@@ -101,10 +105,10 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
 
 fn foo() {
     lifetimes_iter___map(|lasdfasfd| {
-                             let hi = if l.bounds.is_empty() {
-                                 l.lifetime.span.hi
-                             };
-                         });
+        let hi = if l.bounds.is_empty() {
+            l.lifetime.span.hi
+        };
+    });
 }
 
 fn issue1405() {
@@ -124,17 +128,18 @@ fn issue470() {
     {
         {
             {
-                let explicit_arg_decls = explicit_arguments
-                    .into_iter()
-                    .enumerate()
-                    .map(|(index, (ty, pattern))| {
-                             let lvalue = Lvalue::Arg(index as u32);
-                             block = this.pattern(block,
-                                                  argument_extent,
-                                                  hair::PatternRef::Hair(pattern),
-                                                  &lvalue);
-                             ArgDecl { ty: ty }
-                         });
+                let explicit_arg_decls = explicit_arguments.into_iter().enumerate().map(|(index,
+                  (ty,
+                   pattern))| {
+                    let lvalue = Lvalue::Arg(index as u32);
+                    block = this.pattern(
+                        block,
+                        argument_extent,
+                        hair::PatternRef::Hair(pattern),
+                        &lvalue,
+                    );
+                    ArgDecl { ty: ty }
+                });
             }
         }
     }
@@ -144,19 +149,17 @@ fn issue470() {
 impl Foo {
     pub fn bar(&self) {
         Some(SomeType {
-                 push_closure_out_to_100_chars: iter(otherwise_it_works_ok
-                                                         .into_iter()
-                                                         .map(|f| Ok(f))),
-             })
+            push_closure_out_to_100_chars: iter(otherwise_it_works_ok.into_iter().map(|f| Ok(f))),
+        })
     }
 }
 
 fn issue1329() {
     aaaaaaaaaaaaaaaa
         .map(|x| {
-                 x += 1;
-                 x
-             })
+            x += 1;
+            x
+        })
         .filter
 }
 

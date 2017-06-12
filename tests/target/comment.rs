@@ -37,9 +37,11 @@ fn test() {
 
     // #1388
     const EXCEPTION_PATHS: &'static [&'static str] =
-        &[// std crates
-          "src/libstd/sys/", // Platform-specific code for std lives here.
-          "src/bootstrap"];
+        &[
+            // std crates
+            "src/libstd/sys/", // Platform-specific code for std lives here.
+            "src/bootstrap",
+        ];
 }
 
 /// test123
@@ -47,10 +49,10 @@ fn doc_comment() {}
 
 fn chains() {
     foo.bar(|| {
-                let x = 10;
-                // comment
-                x
-            })
+        let x = 10;
+        // comment
+        x
+    })
 }
 
 fn issue_1086() {

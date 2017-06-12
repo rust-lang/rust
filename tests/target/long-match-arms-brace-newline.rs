@@ -6,8 +6,8 @@ fn main() {
     match x
     {
         aaaaaaaa::Bbbbb::Ccccccccccccc(_, Some(ref x)) if x ==
-                                                          "aaaaaaaaaaa \
-                                                           aaaaaaa aaaaaa" =>
+                                                              "aaaaaaaaaaa \
+                                                               aaaaaaa aaaaaa" =>
         {
             Ok(())
         }

@@ -22,7 +22,8 @@ pub impl Foo for Bar {
 }
 
 pub unsafe impl<'a, 'b, X, Y: Foo<Bar>> !Foo<'a, X> for Bar<'b, Y>
-    where X: Foo<'a, Z>
+where
+    X: Foo<'a, Z>,
 {
     fn foo() {
         "hi"
@@ -30,7 +31,8 @@ pub unsafe impl<'a, 'b, X, Y: Foo<Bar>> !Foo<'a, X> for Bar<'b, Y>
 }
 
 impl<'a, 'b, X, Y: Foo<Bar>> Foo<'a, X> for Bar<'b, Y>
-    where X: Fooooooooooooooooooooooooooooo<'a, Z>
+where
+    X: Fooooooooooooooooooooooooooooo<'a, Z>,
 {
     fn foo() {
         "hi"
@@ -38,17 +40,23 @@ impl<'a, 'b, X, Y: Foo<Bar>> Foo<'a, X> for Bar<'b, Y>
 }
 
 impl<'a, 'b, X, Y: Foo<Bar>> Foo<'a, X> for Bar<'b, Y>
-    where X: Foooooooooooooooooooooooooooo<'a, Z>
+where
+    X: Foooooooooooooooooooooooooooo<'a, Z>,
 {
     fn foo() {
         "hi"
     }
 }
-
-impl<T> Foo for Bar<T> where T: Baz {}
 
 impl<T> Foo for Bar<T>
-    where T: Baz
+where
+    T: Baz,
+{
+}
+
+impl<T> Foo for Bar<T>
+where
+    T: Baz,
 {
     // Comment
 }
@@ -101,7 +109,8 @@ impl Y5000 {
 }
 
 pub impl<T> Foo for Bar<T>
-    where T: Foo
+where
+    T: Foo,
 {
     fn foo() {
         "hi"
@@ -109,21 +118,27 @@ pub impl<T> Foo for Bar<T>
 }
 
 pub impl<T, Z> Foo for Bar<T, Z>
-    where T: Foo,
-          Z: Baz
+where
+    T: Foo,
+    Z: Baz,
 {
 }
 
 mod m {
     impl<T> PartialEq for S<T>
-        where T: PartialEq
+    where
+        T: PartialEq,
     {
         fn eq(&self, other: &Self) {
             true
         }
     }
 
-    impl<T> PartialEq for S<T> where T: PartialEq {}
+    impl<T> PartialEq for S<T>
+    where
+        T: PartialEq,
+    {
+    }
 }
 
 impl<BorrowType, K, V, NodeType, HandleType>
@@ -136,10 +151,11 @@ impl<BorrowType, K, V, NodeType, HandleType> PartialEq
 
 mod x {
     impl<A, B, C, D> Foo
-        where A: 'static,
-              B: 'static,
-              C: 'static,
-              D: 'static
+    where
+        A: 'static,
+        B: 'static,
+        C: 'static,
+        D: 'static,
     {
     }
 }
