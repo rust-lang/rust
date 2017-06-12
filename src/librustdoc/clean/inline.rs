@@ -77,10 +77,10 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name)
             ret.extend(build_impls(cx, did));
             clean::EnumItem(build_enum(cx, did))
         }
-        // Assume that the enum type is reexported next to the variant, and
-        // variants don't show up in documentation specially.
-        // Similarly, consider that struct type is reexported next to its constructor.
-        Def::Variant(..) |
+        // Never inline enum variants but leave them shown as reexports.
+        Def::Variant(..) => return None,
+        // Assume that enum variants and struct types are reexported next to
+        // their constructors.
         Def::VariantCtor(..) |
         Def::StructCtor(..) => return Some(Vec::new()),
         Def::Mod(did) => {
