@@ -61,8 +61,8 @@ use core::hash;
 use core::iter::{FromIterator, FusedIterator};
 use core::ops::{self, Add, AddAssign, Index, IndexMut};
 use core::ptr;
-use core::str as core_str;
 use core::str::pattern::Pattern;
+use std_unicode::lossy;
 use std_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 
 use borrow::{Cow, ToOwned};
@@ -533,111 +533,34 @@ impl String {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> Cow<'a, str> {
-        let mut i;
-        match str::from_utf8(v) {
-            Ok(s) => return Cow::Borrowed(s),
-            Err(e) => i = e.valid_up_to(),
+        let mut iter = lossy::Utf8Lossy::from_bytes(v).chunks();
+
+        let (first_valid, first_broken) = if let Some(chunk) = iter.next() {
+            let lossy::Utf8LossyChunk { valid, broken } = chunk;
+            if valid.len() == v.len() {
+                debug_assert!(broken.is_empty());
+                return Cow::Borrowed(valid);
+            }
+            (valid, broken)
+        } else {
+            return Cow::Borrowed("");
+        };
+
+        const REPLACEMENT: &'static str = "\u{FFFD}";
+
+        let mut res = String::with_capacity(v.len());
+        res.push_str(first_valid);
+        if !first_broken.is_empty() {
+            res.push_str(REPLACEMENT);
         }
 
-        const TAG_CONT_U8: u8 = 128;
-        const REPLACEMENT: &'static [u8] = b"\xEF\xBF\xBD"; // U+FFFD in UTF-8
-        let total = v.len();
-        fn unsafe_get(xs: &[u8], i: usize) -> u8 {
-            unsafe { *xs.get_unchecked(i) }
-        }
-        fn safe_get(xs: &[u8], i: usize, total: usize) -> u8 {
-            if i >= total { 0 } else { unsafe_get(xs, i) }
-        }
-
-        let mut res = String::with_capacity(total);
-
-        if i > 0 {
-            unsafe { res.as_mut_vec().extend_from_slice(&v[..i]) };
-        }
-
-        // subseqidx is the index of the first byte of the subsequence we're
-        // looking at.  It's used to copy a bunch of contiguous good codepoints
-        // at once instead of copying them one by one.
-        let mut subseqidx = i;
-
-        while i < total {
-            let i_ = i;
-            let byte = unsafe_get(v, i);
-            i += 1;
-
-            macro_rules! error { () => ({
-                unsafe {
-                    if subseqidx != i_ {
-                        res.as_mut_vec().extend_from_slice(&v[subseqidx..i_]);
-                    }
-                    subseqidx = i;
-                    res.as_mut_vec().extend_from_slice(REPLACEMENT);
-                }
-            })}
-
-            if byte < 128 {
-                // subseqidx handles this
-            } else {
-                let w = core_str::utf8_char_width(byte);
-
-                match w {
-                    2 => {
-                        if safe_get(v, i, total) & 192 != TAG_CONT_U8 {
-                            error!();
-                            continue;
-                        }
-                        i += 1;
-                    }
-                    3 => {
-                        match (byte, safe_get(v, i, total)) {
-                            (0xE0, 0xA0...0xBF) => (),
-                            (0xE1...0xEC, 0x80...0xBF) => (),
-                            (0xED, 0x80...0x9F) => (),
-                            (0xEE...0xEF, 0x80...0xBF) => (),
-                            _ => {
-                                error!();
-                                continue;
-                            }
-                        }
-                        i += 1;
-                        if safe_get(v, i, total) & 192 != TAG_CONT_U8 {
-                            error!();
-                            continue;
-                        }
-                        i += 1;
-                    }
-                    4 => {
-                        match (byte, safe_get(v, i, total)) {
-                            (0xF0, 0x90...0xBF) => (),
-                            (0xF1...0xF3, 0x80...0xBF) => (),
-                            (0xF4, 0x80...0x8F) => (),
-                            _ => {
-                                error!();
-                                continue;
-                            }
-                        }
-                        i += 1;
-                        if safe_get(v, i, total) & 192 != TAG_CONT_U8 {
-                            error!();
-                            continue;
-                        }
-                        i += 1;
-                        if safe_get(v, i, total) & 192 != TAG_CONT_U8 {
-                            error!();
-                            continue;
-                        }
-                        i += 1;
-                    }
-                    _ => {
-                        error!();
-                        continue;
-                    }
-                }
+        for lossy::Utf8LossyChunk { valid, broken } in iter {
+            res.push_str(valid);
+            if !broken.is_empty() {
+                res.push_str(REPLACEMENT);
             }
         }
-        if subseqidx < total {
-            unsafe { res.as_mut_vec().extend_from_slice(&v[subseqidx..total]) };
-        }
+
         Cow::Owned(res)
     }
 
