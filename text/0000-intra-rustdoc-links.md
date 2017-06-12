@@ -57,7 +57,7 @@ we propose extending Rustdoc
 to be able to generate relative links that work in all contexts.
 
 
-# Detailed design
+# Detailed Design
 [design]: #detailed-design
 
 [Markdown][md]/[CommonMark] allow writing links in several forms
@@ -93,7 +93,7 @@ to allow easy linking to obvious targets.
 
 [ref-paths]: https://github.com/rust-lang-nursery/reference/blob/2d23ea601f017c106a2303094ee1c57ba856d246/src/paths.md
 
-## Additions to the documentation syntax
+## Additions To The Documentation Syntax
 
 Rust paths as URLs in inline and reference links:
 
@@ -154,7 +154,7 @@ even with the suffixes described [below][path-ambiguities].
 
 [link destinations]: http://spec.commonmark.org/0.27/#link-destination
 
-## How links will be rendered
+## How Links Will Be Rendered
 
 The following:
 
@@ -193,13 +193,13 @@ to avoid confusion, the RFC does not propose adding any support for autolinks.
 
 This means that this **will not** render a valid link:
 
-```
+```markdown
 Does not work: <bars::Bar> :(
 ```
 
 We suggest to use [Implied Shortcut Reference Links][isrl] instead:
 
-```
+```markdown
 Does work: [`bars::Bar`] :)
 ```
 
@@ -209,7 +209,7 @@ which will be rendered as
 Does work: <a href="../bars/struct.Bar.html"><code>bars::Bar</code></a> :)
 ```
 
-## Resolving paths
+## Resolving Paths
 
 The Rust paths used in links are resolved
 relative to the item in whose documentation they appear.
@@ -234,7 +234,7 @@ mod amet {
 }
 ```
 
-## Path ambiguities
+## Path Ambiguities
 [path-ambiguities]: #path-ambiguities
 
 Rust has three different namespaces that items can be in,
@@ -279,7 +279,7 @@ Ideally, Rustdoc would be able to recognize Rust path syntax,
 and if the path cannot be resolved,
 print a warning (or an error).
 
-## Complex example
+## Complex Example
 [complex-example]: #complex-example
 
 (Excerpt from Diesel's [`expression`][diesel-expression] module.)
@@ -345,7 +345,7 @@ Please note:
 # Possible Extensions
 [possible-extensions]: #possible-extensions
 
-## Linking to fields and variants
+## Linking to Fields
 
 To link to the fields of a `struct`
 we propose to write the path to the struct,
@@ -356,6 +356,8 @@ For example:
 ```markdown
 This is stored in the [`size`](storage::Filesystem.size) field.
 ```
+
+## Linking to Enum Variants
 
 To link to the variants of an `enum`,
 we propose to write the path to the enum,
@@ -368,7 +370,7 @@ For example:
 For custom settings, supply the [`Custom`](storage::Engine::Other) field.
 ```
 
-## Linking to associated items
+## Linking to associated Items
 
 To link to associated items,
 i.e., the associated functions, types, and constants of a trait,
@@ -377,7 +379,7 @@ like `See the [<Foo as Bar>::bar()] method`.
 We have yet to analyze in which cases this is necessary,
 and this syntax is currently not described in [the reference's section on paths][ref-paths].
 
-## Linking to external documentation
+## Linking to External Documentation
 
 Currently, Rustdoc is able to link to external crates,
 and renders documentation for all dependencies by default.
@@ -416,7 +418,7 @@ for all crates that are from the crates.io repository
 
 [docs.rs]: https://docs.rs/
 
-### Known issues
+### Known Issues
 
 Automatically linking to external docs has the following known tradeoffs:
 
@@ -453,7 +455,7 @@ Automatically linking to external docs has the following known tradeoffs:
   [here](https://github.com/rust-lang/rfcs/pull/1946#issuecomment-284718018).
 
 
-# Unresolved questions
+# Unresolved Questions
 [unresolved]: #unresolved-questions
 
 - Is it possible for Rustdoc to resolve paths?
