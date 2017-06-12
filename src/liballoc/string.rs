@@ -2008,7 +2008,7 @@ impl From<Box<str>> for String {
     }
 }
 
-#[stable(feature = "box_from_str", since = "1.18.0")]
+#[stable(feature = "box_from_str", since = "1.20.0")]
 impl From<String> for Box<str> {
     fn from(s: String) -> Box<str> {
         s.into_boxed_str()

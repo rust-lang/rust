@@ -585,7 +585,7 @@ impl From<Box<CStr>> for CString {
     }
 }
 
-#[stable(feature = "box_from_c_string", since = "1.18.0")]
+#[stable(feature = "box_from_c_string", since = "1.20.0")]
 impl From<CString> for Box<CStr> {
     #[inline]
     fn from(s: CString) -> Box<CStr> {

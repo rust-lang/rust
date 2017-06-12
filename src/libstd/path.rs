@@ -1348,7 +1348,7 @@ impl From<Box<Path>> for PathBuf {
     }
 }
 
-#[stable(feature = "box_from_path_buf", since = "1.18.0")]
+#[stable(feature = "box_from_path_buf", since = "1.20.0")]
 impl From<PathBuf> for Box<Path> {
     fn from(p: PathBuf) -> Box<Path> {
         p.into_boxed_path()
