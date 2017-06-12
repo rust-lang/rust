@@ -4307,6 +4307,38 @@ let x = &y;
 ```
 "##,
 
+E0615: r##"
+Attempted to access a method like a field.
+
+Erroneous code example:
+
+```compile_fail,E0615
+struct Foo {
+    x: u32,
+}
+
+impl Foo {
+    fn method(&self) {}
+}
+
+let f = Foo { x: 0 };
+f.method; // error: attempted to take value of method `method` on type `Foo`
+```
+
+If you want to use a method, add `()` after it:
+
+```ignore
+f.method();
+```
+
+However, if you wanted to access a field of a struct check that the field name
+is spelled correctly. Example:
+
+```ignore
+println!("{}", f.x);
+```
+"##,
+
 E0617: r##"
 Attempted to pass an invalid type of variable into a variadic function.
 
