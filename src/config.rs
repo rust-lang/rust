@@ -498,7 +498,7 @@ create_config! {
     newline_style: NewlineStyle, NewlineStyle::Unix, "Unix or Windows line endings";
     fn_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for functions";
     item_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for structs and enums";
-    control_style: Style, Style::Legacy, "Indent style for control flow statements";
+    control_style: Style, Style::Rfc, "Indent style for control flow statements";
     control_brace_style: ControlBraceStyle, ControlBraceStyle::AlwaysSameLine,
         "Brace style for control flow constructs";
     impl_empty_single_line: bool, true, "Put empty-body implementations on a single line";
@@ -508,16 +508,16 @@ create_config! {
     fn_single_line: bool, false, "Put single-expression functions on a single line";
     fn_return_indent: ReturnIndent, ReturnIndent::WithArgs,
         "Location of return type in function declaration";
-    fn_args_paren_newline: bool, true, "If function argument parenthesis goes on a newline";
+    fn_args_paren_newline: bool, false, "If function argument parenthesis goes on a newline";
     fn_args_density: Density, Density::Tall, "Argument density in functions";
-    fn_args_layout: IndentStyle, IndentStyle::Visual,
+    fn_args_layout: IndentStyle, IndentStyle::Block,
         "Layout of function arguments and tuple structs";
-    array_layout: IndentStyle, IndentStyle::Visual, "Indent on arrays";
+    array_layout: IndentStyle, IndentStyle::Block, "Indent on arrays";
     array_width: usize, 60,
         "Maximum width of an array literal before falling back to vertical formatting";
     type_punctuation_density: TypeDensity, TypeDensity::Wide,
         "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";
-    where_style: Style, Style::Legacy, "Overall strategy for where clauses";
+    where_style: Style, Style::Rfc, "Overall strategy for where clauses";
     // TODO:
     // 1. Should we at least try to put the where clause on the same line as the rest of the
     // function decl?
@@ -526,11 +526,11 @@ create_config! {
     where_layout: ListTactic, ListTactic::Vertical, "Element layout inside a where clause";
     where_pred_indent: IndentStyle, IndentStyle::Visual,
         "Indentation style of a where predicate";
-    generics_indent: IndentStyle, IndentStyle::Visual, "Indentation of generics";
+    generics_indent: IndentStyle, IndentStyle::Block, "Indentation of generics";
     struct_lit_style: IndentStyle, IndentStyle::Block, "Style of struct definition";
     struct_lit_multiline_style: MultilineStyle, MultilineStyle::PreferSingle,
         "Multiline style on literal structs";
-    fn_call_style: IndentStyle, IndentStyle::Visual, "Indentation for function calls, etc.";
+    fn_call_style: IndentStyle, IndentStyle::Block, "Indentation for function calls, etc.";
     report_todo: ReportTactic, ReportTactic::Never,
         "Report all, none or unnumbered occurrences of TODO in source file comments";
     report_fixme: ReportTactic, ReportTactic::Never,
@@ -580,7 +580,7 @@ create_config! {
         "What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff, Coverage";
     condense_wildcard_suffixes: bool, false, "Replace strings of _ wildcards by a single .. in \
                                               tuple patterns";
-    combine_control_expr: bool, false, "Combine control expressions with funciton calls."
+    combine_control_expr: bool, true, "Combine control expressions with funciton calls."
 }
 
 #[cfg(test)]

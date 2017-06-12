@@ -1,0 +1,8 @@
+fn_args_layout = "Visual"
+array_layout = "Visual"
+control_style = "Legacy"
+where_style = "Legacy"
+generics_indent = "Visual"
+fn_call_style = "Visual"
+combine_control_expr = false
+fn_args_paren_newline = true
