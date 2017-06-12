@@ -261,16 +261,35 @@ Our proposal is this:
 - Links to types are written as described earlier,
   with no pre- or suffix,
   e.g., `Look at the [FOO] trait`.
+  For consistency,
+  it is also possible to prefix the type with the concrete item type:
+  - Links to `struct`s can be prefixed with `struct `,
+    e.g., `See [struct Foo]`.
+  - Links to `enum`s can be prefixed with `enum `,
+    e.g., `See [enum foo]`.
+  - Links to type aliases can be prefixed with `type `,
+    e.g., `See [type foo]`.
+  - Links to modules can be prefixed with `mod `,
+    e.g., `See [mod foo]`.
 - In links to macros,
   the link label must end with a `!`,
   e.g., `Look at the [FOO!] macro`.
-- For values, we differentiate three cases:
+- For links to values, we differentiate three cases:
   - Links to functions are written with a `()` suffix,
-    e.g., `Also see the [FOO()] function`.
+    e.g., `Also see the [foo()] function`.
   - Links to constants are prefixed with `const `,
     e.g., `As defined in [const FOO].`
   - Links to statics are prefixed with `static `,
     e.g., `See [static FOO]`.
+
+It should be noted that in the RFC discussion it was determined
+that exact knowledge of the item type
+should not be necessary; only knowing the namespace should suffice.
+Thus, we do not require the tool resolving the links
+to reject links with the wrong prefix that is in the same namespace.
+E.g., given an `struct Foo`, it may be possible to link to it using `[enum Foo]`,
+or, given a `mod bar`, it may be possible to link to that using `[struct bar]`.
+
 
 ## Errors
 [errors]: #errors
