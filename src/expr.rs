@@ -1321,20 +1321,13 @@ impl Rewrite for ast::Arm {
             ref body,
         } = self;
 
-        // FIXME this is all a bit grotty, would be nice to abstract out the
-        // treatment of attributes.
         let attr_str = if !attrs.is_empty() {
-            // We only use this visitor for the attributes, should we use it for
-            // more?
-            let mut attr_visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
-            attr_visitor.block_indent = shape.indent.block_only();
-            attr_visitor.last_pos = attrs[0].span.lo;
-            if attr_visitor.visit_attrs(attrs) {
-                // Attributes included a skip instruction.
+            if contains_skip(attrs) {
                 return None;
             }
-            attr_visitor.format_missing(pats[0].span.lo);
-            attr_visitor.buffer.to_string()
+            format!("{}\n{}",
+                    try_opt!(attrs.rewrite(context, shape)),
+                    shape.indent.to_string(context.config))
         } else {
             String::new()
         };
