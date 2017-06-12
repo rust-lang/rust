@@ -1495,28 +1495,22 @@ fn rewrite_guard(context: &RewriteContext,
     if let Some(ref guard) = *guard {
         // First try to fit the guard string on the same line as the pattern.
         // 4 = ` if `, 5 = ` => {`
-        let overhead = pattern_width + 4 + 5;
-        if overhead < shape.width {
-            let cond_shape = shape
-                .shrink_left(pattern_width + 4)
-                .unwrap()
-                .sub_width(5)
-                .unwrap();
-            let cond_str = guard.rewrite(context, cond_shape);
-            if let Some(cond_str) = cond_str {
+        if let Some(cond_shape) = shape
+               .shrink_left(pattern_width + 4)
+               .and_then(|s| s.sub_width(5)) {
+            if let Some(cond_str) = guard
+                   .rewrite(context, cond_shape)
+                   .and_then(|s| s.rewrite(context, cond_shape)) {
                 return Some(format!(" if {}", cond_str));
             }
         }
 
         // Not enough space to put the guard after the pattern, try a newline.
-        let overhead = shape.indent.block_indent(context.config).width() + 4 + 5;
-        if overhead < shape.width {
-            let cond_str = guard.rewrite(context,
-                                         Shape::legacy(shape.width - overhead,
-                                                       // 3 == `if `
-                                                       shape.indent.block_indent(context.config) +
-                                                       3));
-            if let Some(cond_str) = cond_str {
+        // 3 == `if `
+        if let Some(cond_shape) = Shape::indented(shape.indent.block_indent(context.config) + 3,
+                                                  context.config)
+               .sub_width(3) {
+            if let Some(cond_str) = guard.rewrite(context, cond_shape) {
                 return Some(format!("\n{}if {}",
                                     shape
                                         .indent
