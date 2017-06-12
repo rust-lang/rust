@@ -24,7 +24,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Status {
     Stable,
     Removed,
@@ -42,12 +42,15 @@ impl fmt::Display for Status {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Feature {
     pub level: Status,
     pub since: String,
     pub has_gate_test: bool,
+    pub tracking_issue: Option<u32>,
 }
+
+pub type Features = HashMap<String, Feature>;
 
 pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
     let mut features = collect_lang_features(path);
@@ -168,8 +171,7 @@ fn find_attr_val<'a>(line: &'a str, attr: &str) -> Option<&'a str> {
         .map(|(i, j)| &line[i..j])
 }
 
-fn test_filen_gate(filen_underscore: &str,
-                   features: &mut HashMap<String, Feature>) -> bool {
+fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
     if filen_underscore.starts_with("feature_gate") {
         for (n, f) in features.iter_mut() {
             if filen_underscore == format!("feature_gate_{}", n) {
@@ -181,7 +183,7 @@ fn test_filen_gate(filen_underscore: &str,
     return false;
 }
 
-pub fn collect_lang_features(base_src_path: &Path) -> HashMap<String, Feature> {
+pub fn collect_lang_features(base_src_path: &Path) -> Features {
     let mut contents = String::new();
     let path = base_src_path.join("libsyntax/feature_gate.rs");
     t!(t!(File::open(path)).read_to_string(&mut contents));
@@ -197,11 +199,19 @@ pub fn collect_lang_features(base_src_path: &Path) -> HashMap<String, Feature> {
             };
             let name = parts.next().unwrap().trim();
             let since = parts.next().unwrap().trim().trim_matches('"');
+            let issue_str = parts.next().unwrap().trim();
+            let tracking_issue = if issue_str.starts_with("None") {
+                None
+            } else {
+                let s = issue_str.split("(").nth(1).unwrap().split(")").nth(0).unwrap();
+                Some(s.parse().unwrap())
+            };
             Some((name.to_owned(),
                 Feature {
-                    level: level,
+                    level,
                     since: since.to_owned(),
                     has_gate_test: false,
+                    tracking_issue,
                 }))
         })
         .collect()
@@ -209,8 +219,8 @@ pub fn collect_lang_features(base_src_path: &Path) -> HashMap<String, Feature> {
 
 pub fn collect_lib_features(base_src_path: &Path,
                             bad: &mut bool,
-                            features: &HashMap<String, Feature>) -> HashMap<String, Feature> {
-    let mut lib_features = HashMap::<String, Feature>::new();
+                            features: &Features) -> Features {
+    let mut lib_features = Features::new();
     let mut contents = String::new();
     super::walk(base_src_path,
                 &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
@@ -224,10 +234,32 @@ pub fn collect_lib_features(base_src_path: &Path,
         contents.truncate(0);
         t!(t!(File::open(&file), &file).read_to_string(&mut contents));
 
+        let mut becoming_feature: Option<(String, Feature)> = None;
         for (i, line) in contents.lines().enumerate() {
             let mut err = |msg: &str| {
                 tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
+            if let Some((ref name, ref mut f)) = becoming_feature {
+                if f.tracking_issue.is_none() {
+                    f.tracking_issue = find_attr_val(line, "issue")
+                    .map(|s| s.parse().unwrap());
+                }
+                if line.ends_with("]") {
+                    lib_features.insert(name.to_owned(), f.clone());
+                } else if !line.ends_with(",") && !line.ends_with("\\") {
+                    // We need to bail here because we might have missed the
+                    // end of a stability attribute above because the "]"
+                    // might not have been at the end of the line.
+                    // We could then get into the very unfortunate situation that
+                    // we continue parsing the file assuming the current stability
+                    // attribute has not ended, and ignoring possible feature
+                    // attributes in the process.
+                    err("malformed stability attribute");
+                } else {
+                    continue;
+                }
+            }
+            becoming_feature = None;
             let level = if line.contains("[unstable(") {
                 Status::Unstable
             } else if line.contains("[stable(") {
@@ -250,6 +282,7 @@ pub fn collect_lib_features(base_src_path: &Path,
                 }
                 None => "None",
             };
+            let tracking_issue = find_attr_val(line, "issue").map(|s| s.parse().unwrap());
 
             if features.contains_key(feature_name) {
                 err("duplicating a lang feature");
@@ -263,12 +296,17 @@ pub fn collect_lib_features(base_src_path: &Path,
                 }
                 continue;
             }
-            lib_features.insert(feature_name.to_owned(),
-                                Feature {
-                                    level: level,
-                                    since: since.to_owned(),
-                                    has_gate_test: false,
-                                });
+            let feature = Feature {
+                level,
+                since: since.to_owned(),
+                has_gate_test: false,
+                tracking_issue,
+            };
+            if line.contains("]") {
+                lib_features.insert(feature_name.to_owned(), feature);
+            } else {
+                becoming_feature = Some((feature_name.to_owned(), feature));
+            }
         }
     });
     lib_features
