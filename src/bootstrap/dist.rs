@@ -570,6 +570,7 @@ pub fn rust_src(build: &Build) {
         "src/libgetopts",
         "src/compiler-rt",
         "src/jemalloc",
+        "src/libprofiler_builtins",
     ];
     let std_src_dirs_exclude = [
         "src/compiler-rt/test",
