@@ -8,7 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn _test(ref _p: str) {}
-//~^ ERROR the trait bound `str: std::marker::Sized` is not satisfied [E0277]
+use std::ops::Deref;
+
+pub trait Foo {
+    fn baz(_: Self::Target) where Self: Deref {}
+    //~^ ERROR `<Self as std::ops::Deref>::Target: std::marker::Sized` is not satisfied
+}
+
+pub fn f(_: ToString) {}
+//~^ ERROR the trait bound `std::string::ToString + 'static: std::marker::Sized` is not satisfied
 
 fn main() { }

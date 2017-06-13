@@ -994,6 +994,15 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     for (arg_ty, arg) in fn_sig.inputs().iter().zip(&body.arguments) {
         // Check the pattern.
         fcx.check_pat_arg(&arg.pat, arg_ty, true);
+
+        // Check that argument is Sized.
+        // The check for a non-trivial pattern is a hack to avoid duplicate warnings
+        // for simple cases like `fn foo(x: Trait)`,
+        // where we would error once on the parameter as a whole, and once on the binding `x`.
+        if arg.pat.simple_name().is_none() {
+            fcx.require_type_is_sized(arg_ty, decl.output.span(), traits::MiscObligation);
+        }
+
         fcx.write_ty(arg.id, arg_ty);
     }
 
