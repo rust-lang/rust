@@ -1141,33 +1141,33 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
         pending -= 1;
     }
 
-                             for test in serial {
-                                 callback(TeWait(test.desc.clone(), test.testfn.padding()))?;
-                                 let timeout = Instant::now() + Duration::from_secs(TEST_WARN_TIMEOUT_S);
-                                 running_tests.insert(test.desc.clone(), timeout);
-                                 run_test(opts, !opts.run_tests, test, tx.clone());
+    for test in serial {
+        callback(TeWait(test.desc.clone(), test.testfn.padding()))?;
+        let timeout = Instant::now() + Duration::from_secs(TEST_WARN_TIMEOUT_S);
+        running_tests.insert(test.desc.clone(), timeout);
+        run_test(opts, !opts.run_tests, test, tx.clone());
 
-                                 let mut res;
-                                 loop {
-                                     if let Some(timeout) = calc_timeout(&running_tests) {
-                                         res = rx.recv_timeout(timeout);
-                                         for test in get_timed_out_tests(&mut running_tests) {
-                                             callback(TeTimeout(test))?;
-                                         }
-                                         if res != Err(RecvTimeoutError::Timeout) {
-                                             break;
-                                         }
-                                     } else {
-                                         res = rx.recv().map_err(|_| RecvTimeoutError::Disconnected);
-                                         break;
-                                     }
-                                 }
+        let mut res;
+        loop {
+            if let Some(timeout) = calc_timeout(&running_tests) {
+                res = rx.recv_timeout(timeout);
+                for test in get_timed_out_tests(&mut running_tests) {
+                    callback(TeTimeout(test))?;
+                }
+                if res != Err(RecvTimeoutError::Timeout) {
+                    break;
+                }
+            } else {
+                res = rx.recv().map_err(|_| RecvTimeoutError::Disconnected);
+                break;
+            }
+        }
 
-                                 let (desc, result, stdout) = res.unwrap();
-                                 running_tests.remove(&desc);
+        let (desc, result, stdout) = res.unwrap();
+        running_tests.remove(&desc);
 
-                                 callback(TeResult(desc, result, stdout))?;
-                             }
+        callback(TeResult(desc, result, stdout))?;
+    }
 
     if opts.bench_benchmarks {
         // All benchmarks run at the end, in serial.
@@ -2049,7 +2049,8 @@ mod tests {
             match e {
                 TestEvent::TeFilteredOut(n) if n > 0 => panic!("filtered out"),
                 TestEvent::TeTimeout(_) => panic!("timeout"),
-                TestEvent::TeResult(_, ref result, _) if result != &TestResult::TrOk => panic!("result not okay"),
+                TestEvent::TeResult(_, ref result, _) if result != &TestResult::TrOk =>
+                    panic!("result not okay"),
                 _ => Ok(())
             }
         }).unwrap();
@@ -2100,7 +2101,8 @@ mod tests {
             match e {
                 TestEvent::TeFilteredOut(n) if n > 0 => panic!("filtered out"),
                 TestEvent::TeTimeout(_) => panic!("timeout"),
-                TestEvent::TeResult(_, ref result, _) if result != &TestResult::TrOk => panic!("result not okay"),
+                TestEvent::TeResult(_, ref result, _) if result != &TestResult::TrOk =>
+                    panic!("result not okay"),
                 _ => Ok(())
             }
         }).unwrap();
