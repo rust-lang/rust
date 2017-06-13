@@ -16,6 +16,7 @@
             issue = "27700")]
 
 use core::cmp;
+use core::fmt;
 use core::mem;
 use core::usize;
 use core::ptr::{self, Unique};
@@ -335,6 +336,19 @@ impl AllocErr {
     pub fn is_request_unsupported(&self) -> bool {
         if let AllocErr::Unsupported { .. } = *self { true } else { false }
     }
+    pub fn description(&self) -> &str {
+        match *self {
+            AllocErr::Exhausted { .. } => "allocator memory exhausted",
+            AllocErr::Unsupported { .. } => "unsupported allocator request",
+        }
+    }
+}
+
+// (we need this for downstream impl of trait Error)
+impl fmt::Display for AllocErr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.description())
+    }
 }
 
 /// The `CannotReallocInPlace` error is used when `grow_in_place` or
@@ -343,6 +357,20 @@ impl AllocErr {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct CannotReallocInPlace;
 
+impl CannotReallocInPlace {
+    pub fn description(&self) -> &str {
+        "cannot reallocate allocator's memory in place"
+    }
+}
+
+// (we need this for downstream impl of trait Error)
+impl fmt::Display for CannotReallocInPlace {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.description())
+    }
+}
+
+/// An implementation of `Allocator` can allocate, reallocate, and
 /// An implementation of `Alloc` can allocate, reallocate, and
 /// deallocate arbitrary blocks of data described via `Layout`.
 ///
