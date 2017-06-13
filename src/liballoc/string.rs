@@ -56,6 +56,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use core::convert::TryFrom;
 use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
@@ -1366,6 +1367,25 @@ impl String {
             string: self_ptr,
             replace_with: replace_with
         }
+    }
+
+    /// Parses this string into another type.
+    ///
+    /// This is very similar to [`str::parse`], but this method works directly on
+    /// `String` instead.
+    ///
+    /// # Errors
+    ///
+    /// Will return [`Error`] if it's not possible to parse this string into the
+    /// desired type.
+    ///
+    /// [`str::parse`]: ../../std/primitive.str.html#method.parse
+    /// [`Err`]: ../../core/convert/trait.TryFrom.html#associatedtype.Error
+    /// ```
+    #[inline]
+    #[unstable(feature = "parse_into", issue = "0")]
+    pub fn parse_into<F: TryFrom<String>>(self) -> Result<F, F::Error> {
+        TryFrom::try_from(self)
     }
 
     /// Converts this `String` into a `Box<str>`.

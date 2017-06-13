@@ -121,6 +121,7 @@
 #![feature(str_internals)]
 #![feature(str_mut_extras)]
 #![feature(trusted_len)]
+#![feature(try_from)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
