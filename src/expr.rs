@@ -1321,20 +1321,13 @@ impl Rewrite for ast::Arm {
             ref body,
         } = self;
 
-        // FIXME this is all a bit grotty, would be nice to abstract out the
-        // treatment of attributes.
         let attr_str = if !attrs.is_empty() {
-            // We only use this visitor for the attributes, should we use it for
-            // more?
-            let mut attr_visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
-            attr_visitor.block_indent = shape.indent.block_only();
-            attr_visitor.last_pos = attrs[0].span.lo;
-            if attr_visitor.visit_attrs(attrs) {
-                // Attributes included a skip instruction.
+            if contains_skip(attrs) {
                 return None;
             }
-            attr_visitor.format_missing(pats[0].span.lo);
-            attr_visitor.buffer.to_string()
+            format!("{}\n{}",
+                    try_opt!(attrs.rewrite(context, shape)),
+                    shape.indent.to_string(context.config))
         } else {
             String::new()
         };
@@ -1502,28 +1495,22 @@ fn rewrite_guard(context: &RewriteContext,
     if let Some(ref guard) = *guard {
         // First try to fit the guard string on the same line as the pattern.
         // 4 = ` if `, 5 = ` => {`
-        let overhead = pattern_width + 4 + 5;
-        if overhead < shape.width {
-            let cond_shape = shape
-                .shrink_left(pattern_width + 4)
-                .unwrap()
-                .sub_width(5)
-                .unwrap();
-            let cond_str = guard.rewrite(context, cond_shape);
-            if let Some(cond_str) = cond_str {
+        if let Some(cond_shape) = shape
+               .shrink_left(pattern_width + 4)
+               .and_then(|s| s.sub_width(5)) {
+            if let Some(cond_str) = guard
+                   .rewrite(context, cond_shape)
+                   .and_then(|s| s.rewrite(context, cond_shape)) {
                 return Some(format!(" if {}", cond_str));
             }
         }
 
         // Not enough space to put the guard after the pattern, try a newline.
-        let overhead = shape.indent.block_indent(context.config).width() + 4 + 5;
-        if overhead < shape.width {
-            let cond_str = guard.rewrite(context,
-                                         Shape::legacy(shape.width - overhead,
-                                                       // 3 == `if `
-                                                       shape.indent.block_indent(context.config) +
-                                                       3));
-            if let Some(cond_str) = cond_str {
+        // 3 == `if `
+        if let Some(cond_shape) = Shape::indented(shape.indent.block_indent(context.config) + 3,
+                                                  context.config)
+               .sub_width(3) {
+            if let Some(cond_str) = guard.rewrite(context, cond_shape) {
                 return Some(format!("\n{}if {}",
                                     shape
                                         .indent
@@ -1721,6 +1708,20 @@ fn rewrite_call_inner(context: &RewriteContext,
                                                    nested_shape,
                                                    one_line_width,
                                                    force_trailing_comma)
+        .or_else(|| if context.use_block_indent() {
+                     rewrite_call_args(context,
+                                       args,
+                                       args_span,
+                                       Shape::indented(shape
+                                                           .block()
+                                                           .indent
+                                                           .block_indent(context.config),
+                                                       context.config),
+                                       0,
+                                       force_trailing_comma)
+                 } else {
+                     None
+                 })
         .ok_or(Ordering::Less)?;
 
     if !context.use_block_indent() && need_block_indent(&list_str, nested_shape) && !extendable {
@@ -1734,9 +1735,12 @@ fn rewrite_call_inner(context: &RewriteContext,
                                   force_trailing_comma);
     }
 
+    let args_shape = shape
+        .sub_width(last_line_width(&callee_str))
+        .ok_or(Ordering::Less)?;
     Ok(format!("{}{}",
                callee_str,
-               wrap_args_with_parens(context, &list_str, extendable, shape, nested_shape)))
+               wrap_args_with_parens(context, &list_str, extendable, args_shape, nested_shape)))
 }
 
 fn need_block_indent(s: &str, shape: Shape) -> bool {
@@ -1906,14 +1910,23 @@ fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_len: 
     }
 }
 
+fn paren_overhead(context: &RewriteContext) -> usize {
+    if context.config.spaces_within_parens() {
+        4
+    } else {
+        2
+    }
+}
+
 fn wrap_args_with_parens(context: &RewriteContext,
                          args_str: &str,
                          is_extendable: bool,
                          shape: Shape,
                          nested_shape: Shape)
                          -> String {
-    if !context.use_block_indent() || (context.inside_macro && !args_str.contains('\n')) ||
-       is_extendable {
+    if !context.use_block_indent() ||
+       (context.inside_macro && !args_str.contains('\n') &&
+        args_str.len() + paren_overhead(context) <= shape.width) || is_extendable {
         if context.config.spaces_within_parens() && args_str.len() > 0 {
             format!("( {} )", args_str)
         } else {
@@ -2063,11 +2076,11 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     // FIXME if context.config.struct_lit_style() == Visual, but we run out
     // of space, we should fall back to BlockIndent.
 }
+
 pub fn struct_lit_field_separator(config: &Config) -> &str {
     colon_spaces(config.space_before_struct_lit_field_colon(),
                  config.space_after_struct_lit_field_colon())
 }
-
 
 fn rewrite_field(context: &RewriteContext, field: &ast::Field, shape: Shape) -> Option<String> {
     let name = &field.ident.node.to_string();

@@ -20,3 +20,7 @@ extern "C" {
                        second_parameter: SecondParameterType,
                        ...);
 }
+
+// #1652
+fn deconstruct(foo: Bar) -> (SocketAddr, Header, Method, RequestUri, HttpVersion, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA) {
+}

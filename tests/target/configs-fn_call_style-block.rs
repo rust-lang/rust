@@ -145,3 +145,10 @@ fn issue1581() {
         }
     });
 }
+
+fn issue1651() {
+    {
+        let type_list: Vec<_> =
+            try_opt!(types.iter().map(|ty| ty.rewrite(context, shape)).collect());
+    }
+}
