@@ -1,7 +1,7 @@
 - Feature Name: pattern-binding-modes
 - Start Date: 2016-08-12
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/2005
+- Rust Issue: https://github.com/rust-lang/rust/issues/42640
 
 # Summary
 [summary]: #summary
