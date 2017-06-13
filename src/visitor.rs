@@ -82,14 +82,25 @@ impl<'a> FmtVisitor<'a> {
             ast::StmtKind::Item(ref item) => {
                 self.visit_item(item);
             }
-            ast::StmtKind::Local(..) |
-            ast::StmtKind::Expr(..) |
-            ast::StmtKind::Semi(..) => {
+            ast::StmtKind::Local(..) => {
                 let rewrite = stmt.rewrite(
                     &self.get_context(),
                     Shape::indented(self.block_indent, self.config),
                 );
                 self.push_rewrite(stmt.span, rewrite);
+            }
+            ast::StmtKind::Expr(ref expr) |
+            ast::StmtKind::Semi(ref expr) => {
+                let rewrite = stmt.rewrite(
+                    &self.get_context(),
+                    Shape::indented(self.block_indent, self.config),
+                );
+                let span = if expr.attrs.is_empty() {
+                    stmt.span
+                } else {
+                    mk_sp(expr.attrs[0].span.lo, stmt.span.hi)
+                };
+                self.push_rewrite(span, rewrite)
             }
             ast::StmtKind::Mac(ref mac) => {
                 let (ref mac, _macro_style, _) = **mac;
