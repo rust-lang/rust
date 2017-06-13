@@ -11,7 +11,12 @@ fn main() {
     }
 }
 
-fn f<S, T>(x: T, y: S) -> T
+fn f<
+    S, T,
+>(
+    x: T,
+    y: S,
+) -> T
 where
     T: P,
     S: Q,
@@ -31,8 +36,9 @@ where
     }
 }
 
-struct Pair<S, T>
-where
+struct Pair<
+    S, T,
+> where
     T: P,
     S: P + Q,
 {
@@ -40,36 +46,56 @@ where
     b: S,
 }
 
-struct TupPair<S, T>(S, T)
+struct TupPair<
+    S, T,
+>(S, T)
 where
     T: P,
     S: P + Q;
 
-enum E<S, T>
-where
+enum E<
+    S, T,
+> where
     S: P,
     T: P,
 {
     A { a: T, },
 }
 
-type Double<T> where
+type Double<
+    T,
+> where
     T: P,
-    T: Q = Pair<T, T>;
+    T: Q = Pair<
+    T, T,
+>;
 
 extern "C" {
-    fn f<S, T>(x: T, y: S) -> T
+    fn f<
+        S, T,
+    >(
+        x: T,
+        y: S,
+    ) -> T
     where
         T: P,
         S: Q;
 }
 
-trait Q<S, T>
-where
+trait Q<
+    S, T,
+> where
     T: P,
     S: R,
 {
-    fn f<U, V>(self, x: T, y: S, z: U) -> Self
+    fn f<
+        U, V,
+    >(
+        self,
+        x: T,
+        y: S,
+        z: U,
+    ) -> Self
     where
         U: P,
         V: P;

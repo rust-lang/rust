@@ -281,7 +281,9 @@ fn format_expr(
             Some(format!(
                 "{}{}",
                 "do catch ",
-                try_opt!(block.rewrite(&context, Shape::legacy(budget, shape.indent)))
+                try_opt!(
+                    block.rewrite(&context, Shape::legacy(budget, shape.indent))
+                )
             ))
         }
     };
@@ -1428,9 +1430,11 @@ impl Rewrite for ast::Arm {
             if contains_skip(attrs) {
                 return None;
             }
-            format!("{}\n{}",
-                    try_opt!(attrs.rewrite(context, shape)),
-                    shape.indent.to_string(context.config))
+            format!(
+                "{}\n{}",
+                try_opt!(attrs.rewrite(context, shape)),
+                shape.indent.to_string(context.config)
+            )
         } else {
             String::new()
         };
@@ -1515,11 +1519,11 @@ impl Rewrite for ast::Arm {
             };
 
             match rewrite {
-                Some(ref body_str) if (!body_str.contains('\n') &&
-                                           body_str.len() <= arm_shape.width) ||
-                                          !context.config.wrap_match_arms() ||
-                                          (extend && first_line_width(body_str) <= arm_shape.width) ||
-                                          is_block => {
+                Some(ref body_str)
+                    if (!body_str.contains('\n') && body_str.len() <= arm_shape.width) ||
+                           !context.config.wrap_match_arms() ||
+                           (extend && first_line_width(body_str) <= arm_shape.width) ||
+                           is_block => {
                     let block_sep = match context.config.control_brace_style() {
                         ControlBraceStyle::AlwaysNextLine if is_block => alt_block_sep.as_str(),
                         _ => " ",
@@ -1610,28 +1614,33 @@ fn rewrite_guard(
     if let Some(ref guard) = *guard {
         // First try to fit the guard string on the same line as the pattern.
         // 4 = ` if `, 5 = ` => {`
-        if let Some(cond_shape) = shape
-               .shrink_left(pattern_width + 4)
-               .and_then(|s| s.sub_width(5)) {
-            if let Some(cond_str) = guard
-                   .rewrite(context, cond_shape)
-                   .and_then(|s| s.rewrite(context, cond_shape)) {
+        if let Some(cond_shape) = shape.shrink_left(pattern_width + 4).and_then(
+            |s| s.sub_width(5),
+        )
+        {
+            if let Some(cond_str) = guard.rewrite(context, cond_shape).and_then(|s| {
+                s.rewrite(context, cond_shape)
+            })
+            {
                 return Some(format!(" if {}", cond_str));
             }
         }
 
         // Not enough space to put the guard after the pattern, try a newline.
         // 3 == `if `
-        if let Some(cond_shape) = Shape::indented(shape.indent.block_indent(context.config) + 3,
-                                                  context.config)
-               .sub_width(3) {
+        if let Some(cond_shape) = Shape::indented(
+            shape.indent.block_indent(context.config) + 3,
+            context.config,
+        ).sub_width(3)
+        {
             if let Some(cond_str) = guard.rewrite(context, cond_shape) {
-                return Some(format!("\n{}if {}",
-                                    shape
-                                        .indent
-                                        .block_indent(context.config)
-                                        .to_string(context.config),
-                                    cond_str));
+                return Some(format!(
+                    "\n{}if {}",
+                    shape.indent.block_indent(context.config).to_string(
+                        context.config,
+                    ),
+                    cond_str
+                ));
             }
         }
 
@@ -1826,26 +1835,28 @@ fn rewrite_call_inner(
     let span_lo = context.codemap.span_after(span, "(");
     let args_span = mk_sp(span_lo, span.hi);
 
-    let (extendable, list_str) = rewrite_call_args(context,
-                                                   args,
-                                                   args_span,
-                                                   nested_shape,
-                                                   one_line_width,
-                                                   force_trailing_comma)
-        .or_else(|| if context.use_block_indent() {
-                     rewrite_call_args(context,
-                                       args,
-                                       args_span,
-                                       Shape::indented(shape
-                                                           .block()
-                                                           .indent
-                                                           .block_indent(context.config),
-                                                       context.config),
-                                       0,
-                                       force_trailing_comma)
-                 } else {
-                     None
-                 })
+    let (extendable, list_str) = rewrite_call_args(
+        context,
+        args,
+        args_span,
+        nested_shape,
+        one_line_width,
+        force_trailing_comma,
+    ).or_else(|| if context.use_block_indent() {
+        rewrite_call_args(
+            context,
+            args,
+            args_span,
+            Shape::indented(
+                shape.block().indent.block_indent(context.config),
+                context.config,
+            ),
+            0,
+            force_trailing_comma,
+        )
+    } else {
+        None
+    })
         .ok_or(Ordering::Less)?;
 
     if !context.use_block_indent() && need_block_indent(&list_str, nested_shape) && !extendable {
@@ -1861,12 +1872,20 @@ fn rewrite_call_inner(
         );
     }
 
-    let args_shape = shape
-        .sub_width(last_line_width(&callee_str))
-        .ok_or(Ordering::Less)?;
-    Ok(format!("{}{}",
-               callee_str,
-               wrap_args_with_parens(context, &list_str, extendable, args_shape, nested_shape)))
+    let args_shape = shape.sub_width(last_line_width(&callee_str)).ok_or(
+        Ordering::Less,
+    )?;
+    Ok(format!(
+        "{}{}",
+        callee_str,
+        wrap_args_with_parens(
+            context,
+            &list_str,
+            extendable,
+            args_shape,
+            nested_shape,
+        )
+    ))
 }
 
 fn need_block_indent(s: &str, shape: Shape) -> bool {
@@ -2056,15 +2075,17 @@ fn paren_overhead(context: &RewriteContext) -> usize {
     }
 }
 
-fn wrap_args_with_parens(context: &RewriteContext,
-                         args_str: &str,
-                         is_extendable: bool,
-                         shape: Shape,
-                         nested_shape: Shape)
-                         -> String {
+fn wrap_args_with_parens(
+    context: &RewriteContext,
+    args_str: &str,
+    is_extendable: bool,
+    shape: Shape,
+    nested_shape: Shape,
+) -> String {
     if !context.use_block_indent() ||
-       (context.inside_macro && !args_str.contains('\n') &&
-        args_str.len() + paren_overhead(context) <= shape.width) || is_extendable {
+        (context.inside_macro && !args_str.contains('\n') &&
+             args_str.len() + paren_overhead(context) <= shape.width) || is_extendable
+    {
         if context.config.spaces_within_parens() && args_str.len() > 0 {
             format!("( {} )", args_str)
         } else {
@@ -2166,10 +2187,9 @@ fn rewrite_struct_lit<'a>(
         return Some(format!("{} {{}}", path_str));
     }
 
-    let field_iter = fields
-        .into_iter()
-        .map(StructLitField::Regular)
-        .chain(base.into_iter().map(StructLitField::Base));
+    let field_iter = fields.into_iter().map(StructLitField::Regular).chain(
+        base.into_iter().map(StructLitField::Base),
+    );
 
     // Foo { a: Foo } - indent is +3, width is -5.
     let (h_shape, v_shape) = try_opt!(struct_lit_shape(shape, context, path_str.len() + 3, 2));

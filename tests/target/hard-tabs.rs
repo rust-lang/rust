@@ -58,14 +58,14 @@ fn main() {
 	fn generic<T>(arg: T) -> &SomeType
 	where
 		T: Fn(// First arg
-		      A,
-		      // Second argument
-		      B,
-		      C,
-		      D,
-		      // pre comment
-		      E /* last comment */)
-		      -> &SomeType,
+		   A,
+		   // Second argument
+		   B,
+		   C,
+		   D,
+		   // pre comment
+		   E /* last comment */)
+		   -> &SomeType,
 	{
 		arg(a, b, c, d, e)
 	}

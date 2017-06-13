@@ -555,20 +555,20 @@ pub fn struct_lit_shape(
     prefix_width: usize,
     suffix_width: usize,
 ) -> Option<(Option<Shape>, Shape)> {
-    let v_shape =
-        match context.config.struct_lit_style() {
-            IndentStyle::Visual => {
-                try_opt!(try_opt!(shape.visual_indent(0).shrink_left(prefix_width))
-                         .sub_width(suffix_width))
+    let v_shape = match context.config.struct_lit_style() {
+        IndentStyle::Visual => {
+            try_opt!(
+                try_opt!(shape.visual_indent(0).shrink_left(prefix_width)).sub_width(suffix_width)
+            )
+        }
+        IndentStyle::Block => {
+            let shape = shape.block_indent(context.config.tab_spaces());
+            Shape {
+                width: try_opt!(context.config.max_width().checked_sub(shape.indent.width())),
+                ..shape
             }
-            IndentStyle::Block => {
-                let shape = shape.block_indent(context.config.tab_spaces());
-                Shape {
-                    width: try_opt!(context.config.max_width().checked_sub(shape.indent.width())),
-                    ..shape
-                }
-            }
-        };
+        }
+    };
     let h_shape = shape.sub_width(prefix_width + suffix_width);
     Some((h_shape, v_shape))
 }

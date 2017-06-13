@@ -9,7 +9,8 @@ fn lorem<
     Adipiscing: Eq = usize,
     Consectetur: Eq = usize,
     Elit: Eq = usize,
->(ipsum: Ipsum,
+>(
+    ipsum: Ipsum,
     dolor: Dolor,
     sit: Sit,
     amet: Amet,

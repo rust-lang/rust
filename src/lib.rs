@@ -468,8 +468,10 @@ where
         }
         // Reset the error count.
         if parse_session.span_diagnostic.has_errors() {
-            let silent_emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()),
-                                                             Some(codemap.clone())));
+            let silent_emitter = Box::new(EmitterWriter::new(
+                Box::new(Vec::new()),
+                Some(codemap.clone()),
+            ));
             parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
         }
     }

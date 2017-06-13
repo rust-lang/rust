@@ -81,7 +81,8 @@ impl Rewrite for Pat {
                 rewrite_path(context, PathContext::Expr, q_self.as_ref(), path, shape)
             }
             PatKind::TupleStruct(ref path, ref pat_vec, dotdot_pos) => {
-                let path_str = try_opt!(rewrite_path(context, PathContext::Expr, None, path, shape));
+                let path_str =
+                    try_opt!(rewrite_path(context, PathContext::Expr, None, path, shape));
                 rewrite_tuple_pat(
                     pat_vec,
                     dotdot_pos,

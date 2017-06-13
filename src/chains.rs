@@ -574,7 +574,8 @@ fn rewrite_method_call(
     let (lo, type_str) = if types.is_empty() {
         (args[0].span.hi, String::new())
     } else {
-        let type_list: Vec<_> = try_opt!(types.iter().map(|ty| ty.rewrite(context, shape)).collect());
+        let type_list: Vec<_> =
+            try_opt!(types.iter().map(|ty| ty.rewrite(context, shape)).collect());
 
         let type_str = if context.config.spaces_within_angle_brackets() && type_list.len() > 0 {
             format!("::< {} >", type_list.join(", "))

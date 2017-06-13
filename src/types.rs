@@ -226,18 +226,22 @@ fn rewrite_segment(
 
                 let generics_shape =
                     generics_shape_from_config(context.config, shape, separator.len());
-                let items = itemize_list(context.codemap,
-                                         param_list.into_iter(),
-                                         ">",
-                                         |param| param.get_span().lo,
-                                         |param| param.get_span().hi,
-                                         |seg| seg.rewrite(context, generics_shape),
-                                         list_lo,
-                                         span_hi);
-                let generics_str = try_opt!(format_generics_item_list(context,
-                                                                      items,
-                                                                      generics_shape,
-                                                                      generics_shape.width));
+                let items = itemize_list(
+                    context.codemap,
+                    param_list.into_iter(),
+                    ">",
+                    |param| param.get_span().lo,
+                    |param| param.get_span().hi,
+                    |seg| seg.rewrite(context, generics_shape),
+                    list_lo,
+                    span_hi,
+                );
+                let generics_str = try_opt!(format_generics_item_list(
+                    context,
+                    items,
+                    generics_shape,
+                    generics_shape.width,
+                ));
 
                 // Update position of last bracket.
                 *span_lo = next_span_lo;
@@ -307,9 +311,9 @@ where
         context.codemap,
         // FIXME Would be nice to avoid this allocation,
         // but I couldn't get the types to work out.
-        inputs
-            .map(|i| ArgumentKind::Regular(Box::new(i)))
-            .chain(variadic_arg),
+        inputs.map(|i| ArgumentKind::Regular(Box::new(i))).chain(
+            variadic_arg,
+        ),
         ")",
         |arg| match *arg {
             ArgumentKind::Regular(ref ty) => ty.span().lo,
@@ -387,11 +391,12 @@ impl Rewrite for ast::WherePredicate {
                     // 6 = "for<> ".len()
                     let used_width = lifetime_str.len() + type_str.len() + colon.len() + 6;
                     let ty_shape = try_opt!(shape.block_left(used_width));
-                    let bounds: Vec<_> =
-                        try_opt!(bounds
-                                     .iter()
-                                     .map(|ty_bound| ty_bound.rewrite(context, ty_shape))
-                                     .collect());
+                    let bounds: Vec<_> = try_opt!(
+                        bounds
+                            .iter()
+                            .map(|ty_bound| ty_bound.rewrite(context, ty_shape))
+                            .collect()
+                    );
                     let bounds_str = join_bounds(context, ty_shape, &bounds);
 
                     if context.config.spaces_within_angle_brackets() && lifetime_str.len() > 0 {
@@ -411,11 +416,12 @@ impl Rewrite for ast::WherePredicate {
                         Style::Legacy => try_opt!(shape.block_left(used_width)),
                         Style::Rfc => shape.block_indent(context.config.tab_spaces()),
                     };
-                    let bounds: Vec<_> =
-                        try_opt!(bounds
-                                     .iter()
-                                     .map(|ty_bound| ty_bound.rewrite(context, ty_shape))
-                                     .collect());
+                    let bounds: Vec<_> = try_opt!(
+                        bounds
+                            .iter()
+                            .map(|ty_bound| ty_bound.rewrite(context, ty_shape))
+                            .collect()
+                    );
                     let bounds_str = join_bounds(context, ty_shape, &bounds);
 
                     format!("{}{}{}", type_str, colon, bounds_str)
@@ -482,10 +488,12 @@ where
         );
         let colon = type_bound_colon(context);
         let overhead = last_line_width(&result) + colon.len();
-        let result = format!("{}{}{}",
-                             result,
-                             colon,
-                             join_bounds(context, try_opt!(shape.sub_width(overhead)), &appendix));
+        let result = format!(
+            "{}{}{}",
+            result,
+            colon,
+            join_bounds(context, try_opt!(shape.sub_width(overhead)), &appendix)
+        );
         wrap_str(result, context.config.max_width(), shape)
     }
 }
@@ -540,10 +548,12 @@ impl Rewrite for ast::TyParam {
         result.push_str(&self.ident.to_string());
         if !self.bounds.is_empty() {
             result.push_str(type_bound_colon(context));
-            let strs: Vec<_> = try_opt!(self.bounds
-                                            .iter()
-                                            .map(|ty_bound| ty_bound.rewrite(context, shape))
-                                            .collect());
+            let strs: Vec<_> = try_opt!(
+                self.bounds
+                    .iter()
+                    .map(|ty_bound| ty_bound.rewrite(context, shape))
+                    .collect()
+            );
             result.push_str(&join_bounds(context, shape, &strs));
         }
         if let Some(ref def) = self.default {

@@ -3,9 +3,11 @@
 type PrivateTest<'a, I> = (Box<Parser<Input = I, Output = char> + 'a>,
                            Box<Parser<Input = I, Output = char> + 'a>);
 
-pub type PublicTest<'a, I, O> = Result<Vec<MyLongType>,
-                                       Box<Parser<Input = I, Output = char> + 'a>,
-                                       Box<Parser<Input = I, Output = char> + 'a>>;
+pub type PublicTest<'a, I, O> = Result<
+    Vec<MyLongType>,
+    Box<Parser<Input = I, Output = char> + 'a>,
+    Box<Parser<Input = I, Output = char> + 'a>,
+>;
 
 pub type LongGenericListTest<
     'a,
@@ -17,7 +19,7 @@ pub type LongGenericListTest<
     LONGPARAMETERNAME,
     A,
     B,
-    C
+    C,
 > = Option<Vec<MyType>>;
 
 pub type Exactly100CharsTest<'a, 'b, 'c, 'd, LONGPARAMETERNAME, LONGPARAMETERNAME, A, B> = Vec<i32>;
@@ -37,13 +39,13 @@ pub type GenericsFitButNotEqualTest<
     LONGPARAMETERNAME,
     A1,
     B,
-    C
+    C,
 > = Vec<i32>;
 
 pub type CommentTest<
     // Lifetime
     'a, // Type
-    T
+    T,
 > = ();
 
 

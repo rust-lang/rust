@@ -8,8 +8,10 @@ fn simple(
     fn op(
         x: Typ,
         key: &[u8],
-        upd: Box<Fn(Option<&memcache::Item>)
-                    -> (memcache::Status, Result<memcache::Item, Option<String>>)>,
+        upd: Box<
+            Fn(Option<&memcache::Item>)
+               -> (memcache::Status, Result<memcache::Item, Option<String>>),
+        >,
     ) -> MapResult {
     }
 
@@ -33,14 +35,14 @@ fn weird_comment(
 fn generic<T>(arg: T) -> &SomeType
 where
     T: Fn(// First arg
-          A,
-          // Second argument
-          B,
-          C,
-          D,
-          // pre comment
-          E /* last comment */)
-          -> &SomeType,
+       A,
+       // Second argument
+       B,
+       C,
+       D,
+       // pre comment
+       E /* last comment */)
+       -> &SomeType,
 {
     arg(a, b, c, d, e)
 }

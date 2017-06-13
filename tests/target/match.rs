@@ -323,7 +323,8 @@ fn guards() {
                                                                           barrrrrrrrrrrr => {}
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
             if fooooooooooooooooooooo &&
-               (bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb || cccccccccccccccccccccccccccccccccccccccc) => {
+                   (bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb || cccccccccccccccccccccccccccccccccccccccc) => {
+            {}
         }
     }
 }
