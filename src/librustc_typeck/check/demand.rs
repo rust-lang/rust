@@ -26,13 +26,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Requires that the two types unify, and prints an error message if
     // they don't.
     pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
+        self.demand_suptype_diag(sp, expected, actual).map(|mut e| e.emit());
+    }
+
+    pub fn demand_suptype_diag(&self, sp: Span,
+                               expected: Ty<'tcx>,
+                               actual: Ty<'tcx>) -> Option<DiagnosticBuilder<'tcx>> {
         let cause = &self.misc(sp);
         match self.at(cause, self.param_env).sup(expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
+                None
             },
             Err(e) => {
-                self.report_mismatched_types(&cause, expected, actual, e).emit();
+                Some(self.report_mismatched_types(&cause, expected, actual, e))
             }
         }
     }

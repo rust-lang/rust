@@ -232,6 +232,9 @@ pub enum Expectation<'tcx> {
     /// We know nothing about what type this expression should have.
     NoExpectation,
 
+    /// This expression is an `if` condition, it must resolve to `bool`.
+    ExpectIfCondition,
+
     /// This expression should have the type given (or some subtype)
     ExpectHasType(Ty<'tcx>),
 
@@ -310,9 +313,8 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
     // no constraints yet present), just returns `None`.
     fn resolve(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Expectation<'tcx> {
         match self {
-            NoExpectation => {
-                NoExpectation
-            }
+            NoExpectation => NoExpectation,
+            ExpectIfCondition => ExpectIfCondition,
             ExpectCastableToType(t) => {
                 ExpectCastableToType(fcx.resolve_type_vars_if_possible(&t))
             }
@@ -328,6 +330,7 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
     fn to_option(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
             NoExpectation => None,
+            ExpectIfCondition => Some(fcx.tcx.types.bool),
             ExpectCastableToType(ty) |
             ExpectHasType(ty) |
             ExpectRvalueLikeUnsized(ty) => Some(ty),
@@ -341,6 +344,7 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
     fn only_has_type(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
             ExpectHasType(ty) => Some(ty),
+            ExpectIfCondition => Some(fcx.tcx.types.bool),
             _ => None
         }
     }
@@ -2646,7 +2650,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_expr_has_type(&self,
                                expr: &'gcx hir::Expr,
                                expected: Ty<'tcx>) -> Ty<'tcx> {
-        let mut ty = self.check_expr_with_hint(expr, expected);
+        self.check_expr_expect_type(expr, ExpectHasType(expected))
+    }
+
+    fn check_expr_expect_type(&self,
+                              expr: &'gcx hir::Expr,
+                              expected: Expectation<'tcx>) -> Ty<'tcx> {
+        let expected_ty = expected.to_option(&self).unwrap_or(self.tcx.types.bool);
+        let mut ty = self.check_expr_with_expectation(expr, expected);
 
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
@@ -2662,7 +2673,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty = adj_ty;
         }
 
-        self.demand_suptype(expr.span, expected, ty);
+        if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
+            // Add help to type error if this is an `if` condition with an assignment
+            match (expected, &expr.node) {
+                (ExpectIfCondition, &hir::ExprAssign(ref lhs, ref rhs)) => {
+                    let msg = "did you mean to compare equality?";
+                    if let (Ok(left), Ok(right)) = (
+                        self.tcx.sess.codemap().span_to_snippet(lhs.span),
+                        self.tcx.sess.codemap().span_to_snippet(rhs.span))
+                    {
+                        err.span_suggestion(expr.span, msg, format!("{} == {}", left, right));
+                    } else {
+                        err.help(msg);
+                    }
+                }
+                _ => (),
+            }
+            err.emit();
+        }
         ty
     }
 
@@ -2837,7 +2865,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        opt_else_expr: Option<&'gcx hir::Expr>,
                        sp: Span,
                        expected: Expectation<'tcx>) -> Ty<'tcx> {
-        let cond_ty = self.check_expr_has_type(cond_expr, self.tcx.types.bool);
+        let cond_ty = self.check_expr_expect_type(cond_expr, ExpectIfCondition);
         let cond_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);
 
@@ -3637,18 +3665,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::ExprAssign(ref lhs, ref rhs) => {
             let lhs_ty = self.check_expr_with_lvalue_pref(&lhs, PreferMutLvalue);
 
-            let tcx = self.tcx;
-            if !tcx.expr_is_lval(&lhs) {
-                struct_span_err!(
-                    tcx.sess, expr.span, E0070,
-                    "invalid left-hand side expression")
-                .span_label(
-                    expr.span,
-                    "left-hand of expression not valid")
-                .emit();
-            }
-
             let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty);
+
+            match expected {
+                ExpectIfCondition => (),
+                _ => {
+                    // Only check this if not in an `if` condition, as the
+                    // mistyped comparison help is more appropriate.
+                    if !self.tcx.expr_is_lval(&lhs) {
+                        struct_span_err!(
+                            self.tcx.sess, expr.span, E0070,
+                            "invalid left-hand side expression")
+                        .span_label(
+                            expr.span,
+                            "left-hand of expression not valid")
+                        .emit();
+                    }
+                }
+            }
 
             self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 
