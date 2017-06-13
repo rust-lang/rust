@@ -992,14 +992,6 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     // Add formal parameters.
     for (arg_ty, arg) in fn_sig.inputs().iter().zip(&body.arguments) {
-        // The type of the argument must be well-formed.
-        //
-        // NB -- this is now checked in wfcheck, but that
-        // currently only results in warnings, so we issue an
-        // old-style WF obligation here so that we still get the
-        // errors that we used to get.
-        fcx.register_old_wf_obligation(arg_ty, arg.pat.span, traits::MiscObligation);
-
         // Check the pattern.
         fcx.check_pat_arg(&arg.pat, arg_ty, true);
         fcx.write_ty(arg.id, arg_ty);
@@ -1979,17 +1971,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// Registers an obligation for checking later, during regionck, that the type `ty` must
     /// outlive the region `r`.
-    pub fn register_region_obligation(&self,
-                                      ty: Ty<'tcx>,
-                                      region: ty::Region<'tcx>,
-                                      cause: traits::ObligationCause<'tcx>)
-    {
-        let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
-        fulfillment_cx.register_region_obligation(ty, region, cause);
-    }
-
-    /// Registers an obligation for checking later, during regionck, that the type `ty` must
-    /// outlive the region `r`.
     pub fn register_wf_obligation(&self,
                                   ty: Ty<'tcx>,
                                   span: Span,
@@ -2000,21 +1981,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.register_predicate(traits::Obligation::new(cause,
                                                         self.param_env,
                                                         ty::Predicate::WellFormed(ty)));
-    }
-
-    pub fn register_old_wf_obligation(&self,
-                                      ty: Ty<'tcx>,
-                                      span: Span,
-                                      code: traits::ObligationCauseCode<'tcx>)
-    {
-        // Registers an "old-style" WF obligation that uses the
-        // implicator code.  This is basically a buggy version of
-        // `register_wf_obligation` that is being kept around
-        // temporarily just to help with phasing in the newer rules.
-        //
-        // FIXME(#27579) all uses of this should be migrated to register_wf_obligation eventually
-        let cause = traits::ObligationCause::new(span, self.body_id, code);
-        self.register_region_obligation(ty, self.tcx.types.re_empty, cause);
     }
 
     /// Registers obligations that all types appearing in `substs` are well-formed.
