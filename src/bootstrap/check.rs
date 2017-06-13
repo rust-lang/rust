@@ -563,7 +563,9 @@ fn find_tests(dir: &Path,
         let filename = e.file_name().into_string().unwrap();
         if (target.contains("windows") && filename.ends_with(".exe")) ||
            (!target.contains("windows") && !filename.contains(".")) ||
-           (target.contains("emscripten") && filename.ends_with(".js")) {
+           (target.contains("emscripten") &&
+            filename.ends_with(".js") &&
+            !filename.ends_with(".asm.js")) {
             dst.push(e.path());
         }
     }
