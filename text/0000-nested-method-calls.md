@@ -341,7 +341,7 @@ to cover at some point in works like this:
   as the `v[0].push_str(&format!("{}", v.len()));` example. In that
   case, a simple desugaring can be used to show why the compiler
   rejects this code -- in particular, a comparison with the errorneous
-  examples may be helpful. A keen observer may not the contrast with
+  examples may be helpful. A keen observer may note the contrast with
   `vec.push(vec.len())`, but such an observer can be referred to the
   reference. =)
 - One interesting point that came up in discussing this example is
