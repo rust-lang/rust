@@ -26,6 +26,7 @@
 #![feature(iter_rfind)]
 #![feature(libc)]
 #![feature(nonzero)]
+#![feature(num_cast)]
 #![feature(rand)]
 #![feature(raw)]
 #![feature(sip_hash_13)]
@@ -34,12 +35,12 @@
 #![feature(sort_internals)]
 #![feature(sort_unstable)]
 #![feature(specialization)]
-#![feature(step_by)]
 #![feature(step_trait)]
 #![feature(test)]
 #![feature(trusted_len)]
 #![feature(try_from)]
 #![feature(unicode)]
+#![feature(inclusive_range_syntax)]
 #![feature(unique)]
 
 extern crate core;

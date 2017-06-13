@@ -88,6 +88,10 @@ impl<T: fmt::UpperHex> fmt::UpperHex for Wrapping<T> {
 }
 
 mod wrapping;
+mod cast;
+
+#[unstable(feature = "num_cast", issue = "0")]
+pub use self::cast::*;
 
 // All these modules are technically private and only exposed for coretests:
 pub mod flt2dec;
@@ -125,6 +129,20 @@ macro_rules! int_impl {
         #[inline]
         pub const fn max_value() -> Self {
             !Self::min_value()
+        }
+
+        /// Attempt to cast the provided integral type into this type.
+        ///
+        /// # Errors
+        ///
+        /// This function will return an error if the provided integral type
+        /// cannot losslessly be represented as this type.
+        #[unstable(feature = "num_cast", issue = "0")]
+        #[inline]
+        pub fn cast<T>(t: T) -> Result<Self, CastError>
+            where Self: Cast<T>
+        {
+            Cast::cast(t)
         }
 
         /// Converts a string slice in a given base to an integer.
@@ -1289,6 +1307,20 @@ macro_rules! uint_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub const fn max_value() -> Self { !0 }
+
+        /// Attempt to cast the provided integral type into this type.
+        ///
+        /// # Errors
+        ///
+        /// This function will return an error if the provided integral type
+        /// cannot losslessly be represented as this type.
+        #[unstable(feature = "num_cast", issue = "0")]
+        #[inline]
+        pub fn cast<T>(t: T) -> Result<Self, CastError>
+            where Self: Cast<T>
+        {
+            Cast::cast(t)
+        }
 
         /// Converts a string slice in a given base to an integer.
         ///

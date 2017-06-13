@@ -321,6 +321,13 @@ impl Error for char::CharTryFromError {
     }
 }
 
+#[unstable(feature = "num_cast", issue = "0")]
+impl Error for num::CastError {
+    fn description(&self) -> &str {
+        "failed to losslessly cast integral types"
+    }
+}
+
 // copied from any.rs
 impl Error + 'static {
     /// Returns true if the boxed type is the same as `T`

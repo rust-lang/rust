@@ -21,16 +21,15 @@ use super::{FusedIterator, TrustedLen};
 #[unstable(feature = "step_trait",
            reason = "likely to be replaced by finer-grained traits",
            issue = "42168")]
-pub trait Step: PartialOrd + Sized {
+pub trait Step: PartialOrd + Sized + Clone {
     /// Steps `self` if possible.
-    fn step(&self, by: &Self) -> Option<Self>;
+    fn step(&self, by: usize) -> Option<Self>;
 
     /// Returns the number of steps between two step objects. The count is
     /// inclusive of `start` and exclusive of `end`.
     ///
-    /// Returns `None` if it is not possible to calculate `steps_between`
-    /// without overflow.
-    fn steps_between(start: &Self, end: &Self, by: &Self) -> Option<usize>;
+    /// Returns `None` if the resultant number of steps overflows usize.
+    fn steps_between(start: &Self, end: &Self, by: usize) -> Option<usize>;
 
     /// Same as `steps_between`, but with a `by` of 1
     fn steps_between_by_one(start: &Self, end: &Self) -> Option<usize>;
@@ -58,25 +57,25 @@ macro_rules! step_impl_unsigned {
                    issue = "42168")]
         impl Step for $t {
             #[inline]
-            fn step(&self, by: &$t) -> Option<$t> {
-                (*self).checked_add(*by)
+            fn step(&self, by: usize) -> Option<$t> {
+                // If casting usize to Self fails, this means overflow happened.
+                Self::cast(by).ok().and_then(|by| (*self).checked_add(by))
             }
+
             #[inline]
             #[allow(trivial_numeric_casts)]
-            fn steps_between(start: &$t, end: &$t, by: &$t) -> Option<usize> {
-                if *by == 0 { return None; }
-                if *start < *end {
-                    // Note: We assume $t <= usize here
-                    let diff = (*end - *start) as usize;
-                    let by = *by as usize;
-                    if diff % by > 0 {
-                        Some(diff / by + 1)
+            fn steps_between(start: &$t, end: &$t, by: usize) -> Option<usize> {
+                if by == 0 { return None; }
+                Self::cast(by).ok().and_then(|by| if *start < *end {
+                    let diff = *end - *start;
+                    usize::cast(if diff % by > 0 {
+                        diff / by + 1
                     } else {
-                        Some(diff / by)
-                    }
+                        diff / by
+                    }).ok()
                 } else {
                     Some(0)
-                }
+                })
             }
 
             #[inline]
@@ -106,48 +105,36 @@ macro_rules! step_impl_unsigned {
 
             #[inline]
             fn steps_between_by_one(start: &Self, end: &Self) -> Option<usize> {
-                Self::steps_between(start, end, &1)
+                Self::steps_between(start, end, 1)
             }
         }
     )*)
 }
 macro_rules! step_impl_signed {
-    ($($t:ty)*) => ($(
+    ($($t:ty: $s:ty,)*) => ($(
         #[unstable(feature = "step_trait",
                    reason = "likely to be replaced by finer-grained traits",
                    issue = "42168")]
         impl Step for $t {
             #[inline]
-            fn step(&self, by: &$t) -> Option<$t> {
-                (*self).checked_add(*by)
+            fn step(&self, by: usize) -> Option<$t> {
+                Self::cast(by).ok().and_then(|by| (*self).checked_add(by))
             }
+
             #[inline]
             #[allow(trivial_numeric_casts)]
-            fn steps_between(start: &$t, end: &$t, by: &$t) -> Option<usize> {
-                if *by == 0 { return None; }
-                let diff: usize;
-                let by_u: usize;
-                if *by > 0 {
-                    if *start >= *end {
-                        return Some(0);
-                    }
-                    // Note: We assume $t <= isize here
-                    // Use .wrapping_sub and cast to usize to compute the
-                    // difference that may not fit inside the range of isize.
-                    diff = (*end as isize).wrapping_sub(*start as isize) as usize;
-                    by_u = *by as usize;
+            fn steps_between(start: &$t, end: &$t, by: usize) -> Option<usize> {
+                if by == 0 { return None; }
+                <$s>::cast(by).ok().and_then(|by| if *start < *end {
+                    let diff = end.wrapping_sub(*start) as $s;
+                    usize::cast(if diff % by > 0 {
+                        diff / by + 1
+                    } else {
+                        diff / by
+                    }).ok()
                 } else {
-                    if *start <= *end {
-                        return Some(0);
-                    }
-                    diff = (*start as isize).wrapping_sub(*end as isize) as usize;
-                    by_u = (*by as isize).wrapping_mul(-1) as usize;
-                }
-                if diff % by_u > 0 {
-                    Some(diff / by_u + 1)
-                } else {
-                    Some(diff / by_u)
-                }
+                    Some(0)
+                })
             }
 
             #[inline]
@@ -177,285 +164,14 @@ macro_rules! step_impl_signed {
 
             #[inline]
             fn steps_between_by_one(start: &Self, end: &Self) -> Option<usize> {
-                Self::steps_between(start, end, &1)
+                Self::steps_between(start, end, 1)
             }
         }
     )*)
 }
 
-macro_rules! step_impl_no_between {
-    ($($t:ty)*) => ($(
-        #[unstable(feature = "step_trait",
-                   reason = "likely to be replaced by finer-grained traits",
-                   issue = "42168")]
-        impl Step for $t {
-            #[inline]
-            fn step(&self, by: &$t) -> Option<$t> {
-                (*self).checked_add(*by)
-            }
-            #[inline]
-            fn steps_between(_a: &$t, _b: &$t, _by: &$t) -> Option<usize> {
-                None
-            }
-
-            #[inline]
-            #[allow(unused_comparisons)]
-            fn is_negative(&self) -> bool {
-                *self < 0
-            }
-
-            #[inline]
-            fn replace_one(&mut self) -> Self {
-                mem::replace(self, 1)
-            }
-
-            #[inline]
-            fn replace_zero(&mut self) -> Self {
-                mem::replace(self, 0)
-            }
-
-            #[inline]
-            fn add_one(&self) -> Self {
-                Add::add(*self, 1)
-            }
-
-            #[inline]
-            fn sub_one(&self) -> Self {
-                Sub::sub(*self, 1)
-            }
-
-            #[inline]
-            fn steps_between_by_one(start: &Self, end: &Self) -> Option<usize> {
-                Self::steps_between(start, end, &1)
-            }
-        }
-    )*)
-}
-
-step_impl_unsigned!(usize u8 u16 u32);
-step_impl_signed!(isize i8 i16 i32);
-#[cfg(target_pointer_width = "64")]
-step_impl_unsigned!(u64);
-#[cfg(target_pointer_width = "64")]
-step_impl_signed!(i64);
-// If the target pointer width is not 64-bits, we
-// assume here that it is less than 64-bits.
-#[cfg(not(target_pointer_width = "64"))]
-step_impl_no_between!(u64 i64);
-step_impl_no_between!(u128 i128);
-
-/// An adapter for stepping range iterators by a custom amount.
-///
-/// The resulting iterator handles overflow by stopping. The `A`
-/// parameter is the type being iterated over, while `R` is the range
-/// type (usually one of `std::ops::{Range, RangeFrom, RangeInclusive}`.
-#[derive(Clone, Debug)]
-#[unstable(feature = "step_by", reason = "recent addition",
-           issue = "27741")]
-#[rustc_deprecated(since = "1.19.0",
-                   reason = "replaced by `iter::StepBy`")]
-#[allow(deprecated)]
-pub struct StepBy<A, R> {
-    step_by: A,
-    range: R,
-}
-
-impl<A: Step> ops::RangeFrom<A> {
-    /// Creates an iterator starting at the same point, but stepping by
-    /// the given amount at each iteration.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(step_by)]
-    /// fn main() {
-    ///     let result: Vec<_> = (0..).step_by(2).take(5).collect();
-    ///     assert_eq!(result, vec![0, 2, 4, 6, 8]);
-    /// }
-    /// ```
-    #[unstable(feature = "step_by", reason = "recent addition",
-               issue = "27741")]
-    #[rustc_deprecated(since = "1.19.0",
-                       reason = "replaced by `Iterator::step_by`")]
-    #[allow(deprecated)]
-    pub fn step_by(self, by: A) -> StepBy<A, Self> {
-        StepBy {
-            step_by: by,
-            range: self
-        }
-    }
-}
-
-impl<A: Step> ops::Range<A> {
-    /// Creates an iterator with the same range, but stepping by the
-    /// given amount at each iteration.
-    ///
-    /// The resulting iterator handles overflow by stopping.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(step_by)]
-    /// fn main() {
-    ///     let result: Vec<_> = (0..10).step_by(2).collect();
-    ///     assert_eq!(result, vec![0, 2, 4, 6, 8]);
-    /// }
-    /// ```
-    #[unstable(feature = "step_by", reason = "recent addition",
-               issue = "27741")]
-    #[rustc_deprecated(since = "1.19.0",
-                       reason = "replaced by `Iterator::step_by`")]
-    #[allow(deprecated)]
-    pub fn step_by(self, by: A) -> StepBy<A, Self> {
-        StepBy {
-            step_by: by,
-            range: self
-        }
-    }
-}
-
-impl<A: Step> ops::RangeInclusive<A> {
-    /// Creates an iterator with the same range, but stepping by the
-    /// given amount at each iteration.
-    ///
-    /// The resulting iterator handles overflow by stopping.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(step_by, inclusive_range_syntax)]
-    ///
-    /// let result: Vec<_> = (0...10).step_by(2).collect();
-    /// assert_eq!(result, vec![0, 2, 4, 6, 8, 10]);
-    /// ```
-    #[unstable(feature = "step_by", reason = "recent addition",
-               issue = "27741")]
-    #[rustc_deprecated(since = "1.19.0",
-                       reason = "replaced by `Iterator::step_by`")]
-    #[allow(deprecated)]
-    pub fn step_by(self, by: A) -> StepBy<A, Self> {
-        StepBy {
-            step_by: by,
-            range: self
-        }
-    }
-}
-
-#[unstable(feature = "step_by", reason = "recent addition",
-           issue = "27741")]
-#[allow(deprecated)]
-impl<A> Iterator for StepBy<A, ops::RangeFrom<A>> where
-    A: Clone,
-    for<'a> &'a A: Add<&'a A, Output = A>
-{
-    type Item = A;
-
-    #[inline]
-    fn next(&mut self) -> Option<A> {
-        let mut n = &self.range.start + &self.step_by;
-        mem::swap(&mut n, &mut self.range.start);
-        Some(n)
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (usize::MAX, None) // Too bad we can't specify an infinite lower bound
-    }
-}
-
-#[unstable(feature = "fused", issue = "35602")]
-#[allow(deprecated)]
-impl<A> FusedIterator for StepBy<A, ops::RangeFrom<A>>
-    where A: Clone, for<'a> &'a A: Add<&'a A, Output = A> {}
-
-#[unstable(feature = "step_by", reason = "recent addition",
-           issue = "27741")]
-#[allow(deprecated)]
-impl<A: Step + Clone> Iterator for StepBy<A, ops::Range<A>> {
-    type Item = A;
-
-    #[inline]
-    fn next(&mut self) -> Option<A> {
-        let rev = self.step_by.is_negative();
-        if (rev && self.range.start > self.range.end) ||
-           (!rev && self.range.start < self.range.end)
-        {
-            match self.range.start.step(&self.step_by) {
-                Some(mut n) => {
-                    mem::swap(&mut self.range.start, &mut n);
-                    Some(n)
-                },
-                None => {
-                    let mut n = self.range.end.clone();
-                    mem::swap(&mut self.range.start, &mut n);
-                    Some(n)
-                }
-            }
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match Step::steps_between(&self.range.start,
-                                  &self.range.end,
-                                  &self.step_by) {
-            Some(hint) => (hint, Some(hint)),
-            None       => (0, None)
-        }
-    }
-}
-
-#[unstable(feature = "fused", issue = "35602")]
-#[allow(deprecated)]
-impl<A: Step + Clone> FusedIterator for StepBy<A, ops::Range<A>> {}
-
-#[unstable(feature = "inclusive_range",
-           reason = "recently added, follows RFC",
-           issue = "28237")]
-#[allow(deprecated)]
-impl<A: Step + Clone> Iterator for StepBy<A, ops::RangeInclusive<A>> {
-    type Item = A;
-
-    #[inline]
-    fn next(&mut self) -> Option<A> {
-        let rev = self.step_by.is_negative();
-
-        if (rev && self.range.start >= self.range.end) ||
-           (!rev && self.range.start <= self.range.end)
-        {
-            match self.range.start.step(&self.step_by) {
-                Some(n) => {
-                    Some(mem::replace(&mut self.range.start, n))
-                },
-                None => {
-                    let last = self.range.start.replace_one();
-                    self.range.end.replace_zero();
-                    self.step_by.replace_one();
-                    Some(last)
-                },
-            }
-        }
-        else {
-            None
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match Step::steps_between(&self.range.start,
-                                  &self.range.end,
-                                  &self.step_by) {
-            Some(hint) => (hint.saturating_add(1), hint.checked_add(1)),
-            None       => (0, None)
-        }
-    }
-}
-
-#[unstable(feature = "fused", issue = "35602")]
-#[allow(deprecated)]
-impl<A: Step + Clone> FusedIterator for StepBy<A, ops::RangeInclusive<A>> {}
+step_impl_unsigned!(usize u8 u16 u32 u64 u128);
+step_impl_signed!(isize: usize, i8: u8, i16: u16, i32: u32, i64: u64, i128: u128,);
 
 macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
@@ -513,6 +229,52 @@ impl<A: Step> Iterator for ops::Range<A> where
             None => (0, None)
         }
     }
+
+    #[inline]
+    fn count(self) -> usize {
+        if let Some(x) = Step::steps_between_by_one(&self.start, &self.end) {
+            x
+        } else {
+            panic!("accumulator overflowed while counting the elements")
+        }
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        Step::step(&self.start, n).and_then(|next| if next < self.end {
+            self.start = next.add_one();
+            Some(next)
+        } else {
+            None
+        })
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        <Self as SpecLast>::last(self)
+    }
+}
+
+trait SpecLast {
+    type Item;
+    fn last(self) -> Option<Self::Item>;
+}
+
+impl<It> SpecLast for It
+where It: Iterator {
+    type Item = <Self as Iterator>::Item;
+    #[inline]
+    default fn last(self) -> Option<Self::Item> {
+        <Self as Iterator>::last(self)
+    }
+}
+
+impl<It> SpecLast for It
+where It: DoubleEndedIterator {
+    #[inline]
+    fn last(mut self) -> Option<Self::Item> {
+        <Self as DoubleEndedIterator>::next_back(&mut self)
+    }
 }
 
 // These macros generate `ExactSizeIterator` impls for various range types.
@@ -526,11 +288,11 @@ range_incl_exact_iter_impl!(u8 u16 i8 i16);
 //
 // They need to guarantee that .size_hint() is either exact, or that
 // the upper bound is None when it does not fit the type limits.
-range_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64);
-range_incl_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64);
+range_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64 i128 u128);
+range_incl_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64 i128 u128);
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step + Clone> DoubleEndedIterator for ops::Range<A> where
+impl<A: Step> DoubleEndedIterator for ops::Range<A> where
     for<'a> &'a A: Add<&'a A, Output = A>,
     for<'a> &'a A: Sub<&'a A, Output = A>
 {
@@ -565,6 +327,23 @@ impl<A: Step> Iterator for ops::RangeFrom<A> where
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (usize::MAX, None)
+    }
+
+    #[cold]
+    fn count(self) -> usize {
+        panic!("Iterator::count on a `x..` will overflow")
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        let next = Step::step(&self.start, n).unwrap();
+        self.start = next.add_one();
+        Some(next)
+    }
+
+    #[cold]
+    fn last(self) -> Option<Self::Item> {
+        panic!("Iterator::last on a `x..` will overflow")
     }
 }
 
@@ -605,6 +384,46 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> where
         match Step::steps_between_by_one(&self.start, &self.end) {
             Some(hint) => (hint.saturating_add(1), hint.checked_add(1)),
             None => (0, None),
+        }
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        if self.start > self.end {
+            0
+        } else {
+            if let Some(x) = Step::steps_between_by_one(&self.start, &self.end) {
+                x.add_one()
+            } else {
+                panic!("accumulator overflowed while counting the elements")
+            }
+        }
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        use cmp::Ordering::*;
+        Step::step(&self.start, n).and_then(|next| match next.partial_cmp(&self.end) {
+            Some(Less) => {
+                self.start = next.add_one();
+                Some(next)
+            },
+            Some(Equal) => {
+                // Avoid overflow in the case `self.end` is a `max_value()`
+                self.end.replace_zero();
+                self.start.replace_one();
+                Some(next)
+            },
+            _ => None
+        })
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        if self.start <= self.end {
+            Some(self.end)
+        } else {
+            None
         }
     }
 }
