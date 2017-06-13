@@ -526,6 +526,9 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefId,) {
 impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefId, DefId) {
     const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
 
+    // We actually would not need to specialize the implementation of this
+    // method but it's faster to combine the hashes than to instantiate a full
+    // hashing context and stable-hashing state.
     fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
         let (def_id_0, def_id_1) = *self;
 
@@ -548,6 +551,9 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefId, De
 impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefIdList,) {
     const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
 
+    // We actually would not need to specialize the implementation of this
+    // method but it's faster to combine the hashes than to instantiate a full
+    // hashing context and stable-hashing state.
     fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
         let mut fingerprint = Fingerprint::zero();
 
