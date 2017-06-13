@@ -25,7 +25,6 @@
 //! for all lint attributes.
 use self::TargetLint::*;
 
-use dep_graph::{DepNode, DepKind};
 use middle::privacy::AccessLevels;
 use traits::Reveal;
 use ty::{self, TyCtxt};
@@ -1341,8 +1340,6 @@ fn check_lint_name_cmdline(sess: &Session, lint_cx: &LintStore,
 ///
 /// Consumes the `lint_store` field of the `Session`.
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let _task = tcx.dep_graph.in_task(DepNode::new_no_params(DepKind::LateLintCheck));
-
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
     let krate = tcx.hir.krate();

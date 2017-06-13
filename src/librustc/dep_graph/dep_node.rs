@@ -315,15 +315,10 @@ define_dep_nodes!(
     Coherence,
     Resolve,
     CoherenceCheckTrait(DefId),
-    CoherenceCheckImpl(DefId),
-    CoherenceOverlapCheck(DefId),
-    CoherenceOverlapCheckSpecial(DefId),
-    Variance,
     PrivacyAccessLevels(CrateNum),
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
-    MirKrate,
     Mir(DefId),
     MirShim(DefIdList),
 
@@ -332,8 +327,6 @@ define_dep_nodes!(
     RvalueCheck(DefId),
     Reachability,
     MirKeys,
-    LateLintCheck,
-    TransCrateItem(DefId),
     TransWriteMetadata,
     CrateVariances,
 
@@ -355,7 +348,6 @@ define_dep_nodes!(
     InherentImpls(DefId),
     TypeckBodiesKrate,
     TypeckTables(DefId),
-    UsedTraitImports(DefId),
     ConstEval(DefId),
     SymbolName(DefId),
     SpecializationGraph(DefId),

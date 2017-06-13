@@ -57,8 +57,7 @@ impl<'q> Predecessors<'q> {
                 }
                 // if -Z query-dep-graph is passed, save more extended data
                 // to enable better unit testing
-                DepKind::TypeckTables |
-                DepKind::TransCrateItem => tcx.sess.opts.debugging_opts.query_dep_graph,
+                DepKind::TypeckTables => tcx.sess.opts.debugging_opts.query_dep_graph,
 
                 _ => false,
             }

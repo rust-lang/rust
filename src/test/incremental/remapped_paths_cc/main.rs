@@ -25,8 +25,6 @@
 
 extern crate extern_crate;
 
-#[rustc_clean(label="TransCrateItem", cfg="rpass2")]
-#[rustc_clean(label="TransCrateItem", cfg="rpass3")]
 fn main() {
     some_mod::some_fn();
 }
@@ -34,8 +32,6 @@ fn main() {
 mod some_mod {
     use extern_crate;
 
-    #[rustc_clean(label="TransCrateItem", cfg="rpass2")]
-    #[rustc_dirty(label="TransCrateItem", cfg="rpass3")]
     pub fn some_fn() {
         extern_crate::inline_fn();
     }
