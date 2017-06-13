@@ -39,6 +39,7 @@ matrix:
     - env: IMAGE=asmjs
     - env: IMAGE=i686-gnu
     - env: IMAGE=i686-gnu-nopt
+    - env: IMAGE=wasm32
     - env: IMAGE=x86_64-gnu
     - env: IMAGE=x86_64-gnu-full-bootstrap
     - env: IMAGE=x86_64-gnu-aux
