@@ -24,7 +24,7 @@ use lists::{itemize_list, format_fn_args};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, format_mutability, colon_spaces, wrap_str, mk_sp, last_line_width};
 use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple_type};
-use config::TypeDensity;
+use config::{Style, TypeDensity};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PathContext {
@@ -383,7 +383,10 @@ impl Rewrite for ast::WherePredicate {
                     }
                 } else {
                     let used_width = type_str.len() + colon.len();
-                    let ty_shape = try_opt!(shape.block_left(used_width));
+                    let ty_shape = match context.config.where_style() {
+                        Style::Legacy => try_opt!(shape.block_left(used_width)),
+                        Style::Rfc => shape.block_indent(context.config.tab_spaces()),
+                    };
                     let bounds: Vec<_> =
                         try_opt!(bounds
                                      .iter()

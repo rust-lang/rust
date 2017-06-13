@@ -42,3 +42,9 @@ struct Exactly100CharsToSemicolon<A, B, C, D, E>
 struct AlwaysOnNextLine<LongLongTypename, LongTypename, A, B, C, D, E, F> where A: LongTrait {
     x: i32
 }
+
+pub trait SomeTrait<T>
+    where
+    T: Something + Sync + Send + Display     + Debug     + Copy + Hash + Debug + Display + Write + Read + FromStr
+{
+}

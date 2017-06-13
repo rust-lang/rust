@@ -96,3 +96,20 @@ where
 {
     x: i32,
 }
+
+pub trait SomeTrait<T>
+where
+    T: Something
+        + Sync
+        + Send
+        + Display
+        + Debug
+        + Copy
+        + Hash
+        + Debug
+        + Display
+        + Write
+        + Read
+        + FromStr
+{
+}
