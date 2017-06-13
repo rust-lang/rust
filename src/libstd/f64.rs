@@ -1158,6 +1158,7 @@ mod tests {
         assert_eq!(Fp::Zero, neg_zero.classify());
     }
 
+    #[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
     #[test]
     fn test_one() {
         let one: f64 = 1.0f64;
@@ -1210,6 +1211,7 @@ mod tests {
         assert!((-109.2f64).is_finite());
     }
 
+    #[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
     #[test]
     fn test_is_normal() {
         let nan: f64 = NAN;
@@ -1227,6 +1229,7 @@ mod tests {
         assert!(!1e-308f64.is_normal());
     }
 
+    #[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
     #[test]
     fn test_classify() {
         let nan: f64 = NAN;

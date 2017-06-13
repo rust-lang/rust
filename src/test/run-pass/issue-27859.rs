@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32 issue 42629
+
 #[inline(never)]
 fn foo(a: f32, b: f32) -> f32 {
     a % b

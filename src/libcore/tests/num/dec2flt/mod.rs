@@ -33,6 +33,7 @@ macro_rules! test_literal {
     })
 }
 
+#[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
 #[test]
 fn ordinary() {
     test_literal!(1.0);
@@ -43,6 +44,7 @@ fn ordinary() {
     test_literal!(2.2250738585072014e-308);
 }
 
+#[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
 #[test]
 fn special_code_paths() {
     test_literal!(36893488147419103229.0); // 2^65 - 3, triggers half-to-even with even significand
