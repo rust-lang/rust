@@ -52,3 +52,19 @@ struct Foo {
     # [ derive ( Clone , PartialEq , Debug , Deserialize , Serialize ) ]
     foo: usize,
 }
+
+// #1668
+
+/// Default path (*nix)
+#[cfg(all(unix, not(target_os = "macos"), not(target_os = "ios"), not(target_os = "android")))]
+fn foo() {
+    #[cfg(target_os = "freertos")]
+    match port_id {
+        'a' | 'A' => GpioPort { port_address: GPIO_A },
+        'b' | 'B' => GpioPort { port_address: GPIO_B },
+        _ => panic!(),
+    }
+
+    #[cfg_attr(not(target_os = "freertos"), allow(unused_variables))]
+    let x = 3;
+}

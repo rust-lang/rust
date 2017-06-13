@@ -148,8 +148,12 @@ impl Indent {
     }
 
     pub fn block_unindent(mut self, config: &Config) -> Indent {
-        self.block_indent -= config.tab_spaces();
-        self
+        if self.block_indent < config.tab_spaces() {
+            Indent::new(self.block_indent, 0)
+        } else {
+            self.block_indent -= config.tab_spaces();
+            self
+        }
     }
 
     pub fn width(&self) -> usize {

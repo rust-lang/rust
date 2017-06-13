@@ -47,16 +47,45 @@ enum ExprType {
     SubExpression,
 }
 
+fn combine_attr_and_expr(
+    context: &RewriteContext,
+    shape: Shape,
+    attr_str: &str,
+    expr_str: &str,
+) -> String {
+    let separator = if attr_str.is_empty() {
+        String::new()
+    } else {
+        if expr_str.contains('\n') || attr_str.contains('\n') ||
+            attr_str.len() + expr_str.len() > shape.width
+        {
+            format!("\n{}", shape.indent.to_string(context.config))
+        } else {
+            String::from(" ")
+        }
+    };
+    format!("{}{}{}", attr_str, separator, expr_str)
+}
+
 fn format_expr(
     expr: &ast::Expr,
     expr_type: ExprType,
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
-    if contains_skip(&*expr.attrs) {
-        return Some(context.snippet(expr.span));
-    }
     let attr_rw = (&*expr.attrs).rewrite(context, shape);
+    if contains_skip(&*expr.attrs) {
+        if let Some(attr_str) = attr_rw {
+            return Some(combine_attr_and_expr(
+                context,
+                shape,
+                &attr_str,
+                &context.snippet(expr.span),
+            ));
+        } else {
+            return Some(context.snippet(expr.span));
+        }
+    }
     let expr_rw = match expr.node {
         ast::ExprKind::Array(ref expr_vec) => {
             rewrite_array(
@@ -289,9 +318,8 @@ fn format_expr(
     };
     match (attr_rw, expr_rw) {
         (Some(attr_str), Some(expr_str)) => {
-            let space = if attr_str.is_empty() { "" } else { " " };
             recover_comment_removed(
-                format!("{}{}{}", attr_str, space, expr_str),
+                combine_attr_and_expr(context, shape, &attr_str, &expr_str),
                 expr.span,
                 context,
                 shape,
