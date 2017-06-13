@@ -2170,11 +2170,13 @@ impl<'a> LoweringContext<'a> {
                 //     let result = match ::std::iter::IntoIterator::into_iter(<head>) {
                 //       mut iter => {
                 //         [opt_ident]: loop {
-                //           let <pat> = match ::std::iter::Iterator::next(&mut iter) {
-                //             ::std::option::Option::Some(val) => val,
+                //           let next;
+                //           match ::std::iter::Iterator::next(&mut iter) {
+                //             ::std::option::Option::Some(val) => next = val,
                 //             ::std::option::Option::None => break
                 //           };
-                //           SemiExpr(<body>);
+                //           let <pat> = next;
+                //           StmtExpr(<body>);
                 //         }
                 //       }
                 //     };
@@ -2186,13 +2188,18 @@ impl<'a> LoweringContext<'a> {
 
                 let iter = self.str_to_ident("iter");
 
-                // `::std::option::Option::Some(val) => val`
+                let next_ident = self.str_to_ident("next");
+                let next_pat = self.pat_ident(e.span, next_ident);
+                
+                // `::std::option::Option::Some(val) => next = val`
                 let pat_arm = {
                     let val_ident = self.str_to_ident("val");
                     let val_pat = self.pat_ident(e.span, val_ident);
                     let val_expr = P(self.expr_ident(e.span, val_ident, val_pat.id));
+                    let next_expr = P(self.expr_ident(e.span, next_ident, next_pat.id));
+                    let assign = P(self.expr(e.span, hir::ExprAssign(next_expr, val_expr), ThinVec::new()));
                     let some_pat = self.pat_some(e.span, val_pat);
-                    self.arm(hir_vec![some_pat], val_expr)
+                    self.arm(hir_vec![some_pat], assign)
                 };
 
                 // `::std::option::Option::None => break`
@@ -2222,10 +2229,20 @@ impl<'a> LoweringContext<'a> {
                                                hir::MatchSource::ForLoopDesugar),
                                 ThinVec::new()))
                 };
+                let match_stmt = respan(e.span, hir::StmtExpr(match_expr, self.next_id()));
 
+                let next_expr = P(self.expr_ident(e.span, next_ident, next_pat.id));
+                
+                // `let next`
+                let next_let = self.stmt_let_pat(e.span,
+                    None,
+                    next_pat,
+                    hir::LocalSource::ForLoopDesugar);
+
+                // `let <pat> = next`
                 let pat = self.lower_pat(pat);
                 let pat_let = self.stmt_let_pat(e.span,
-                    match_expr,
+                    Some(next_expr),
                     pat,
                     hir::LocalSource::ForLoopDesugar);
 
@@ -2234,7 +2251,7 @@ impl<'a> LoweringContext<'a> {
                 let body_expr = P(self.expr_block(body_block, ThinVec::new()));
                 let body_stmt = respan(e.span, hir::StmtExpr(body_expr, self.next_id()));
 
-                let loop_block = P(self.block_all(e.span, hir_vec![pat_let, body_stmt], None));
+                let loop_block = P(self.block_all(e.span, hir_vec![next_let, match_stmt, pat_let, body_stmt], None));
 
                 // `[opt_ident]: loop { ... }`
                 let loop_expr = hir::ExprLoop(loop_block, self.lower_opt_sp_ident(opt_ident),
@@ -2601,14 +2618,14 @@ impl<'a> LoweringContext<'a> {
 
     fn stmt_let_pat(&mut self,
                     sp: Span,
-                    ex: P<hir::Expr>,
+                    ex: Option<P<hir::Expr>>,
                     pat: P<hir::Pat>,
                     source: hir::LocalSource)
                     -> hir::Stmt {
         let local = P(hir::Local {
             pat: pat,
             ty: None,
-            init: Some(ex),
+            init: ex,
             id: self.next_id(),
             span: sp,
             attrs: ThinVec::new(),
@@ -2626,7 +2643,7 @@ impl<'a> LoweringContext<'a> {
             self.pat_ident(sp, ident)
         };
         let pat_id = pat.id;
-        (self.stmt_let_pat(sp, ex, pat, hir::LocalSource::Normal), pat_id)
+        (self.stmt_let_pat(sp, Some(ex), pat, hir::LocalSource::Normal), pat_id)
     }
 
     fn block_expr(&mut self, expr: P<hir::Expr>) -> hir::Block {
