@@ -117,8 +117,8 @@ macro_rules! assert_eq {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
                     panic!(r#"assertion failed: `(left == right)`
-left:  `{:?}`
-right: `{:?}`"#, left_val, right_val)
+  left: `{:?}`
+ right: `{:?}`"#, left_val, right_val)
                 }
             }
         }
@@ -128,8 +128,8 @@ right: `{:?}`"#, left_val, right_val)
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
                     panic!(r#"assertion failed: `(left == right)`
-left:  `{:?}`
-right: `{:?}`: {}"#, left_val, right_val,
+  left: `{:?}`
+ right: `{:?}`: {}"#, left_val, right_val,
                            format_args!($($arg)+))
                 }
             }
@@ -164,8 +164,9 @@ macro_rules! assert_ne {
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
-                    panic!("assertion failed: `(left != right)` \
-                           (left: `{:?}`, right: `{:?}`)", left_val, right_val)
+		    panic!(r#"assertion failed: `(left != right)`
+  left: `{:?}`
+ right: `{:?}`"#, left_val, right_val)
                 }
             }
         }
@@ -174,8 +175,9 @@ macro_rules! assert_ne {
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
-                    panic!("assertion failed: `(left != right)` \
-                           (left: `{:?}`, right: `{:?}`): {}", left_val, right_val,
+                                        panic!(r#"assertion failed: `(left != right)`
+  left: `{:?}`
+ right: `{:?}`: {}"#, left_val, right_val,
                            format_args!($($arg)+))
                 }
             }
