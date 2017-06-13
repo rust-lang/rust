@@ -22,8 +22,13 @@ pub fn test2(foo: Box<Fn(Vec<u32>)>) { // pass if #31 is fixed
     foo(vec![1, 2, 3])
 }
 
+pub fn test_local_not_linted() {
+    let _: Box<Vec<bool>>;
+}
+
 fn main(){
     test(Box::new(Vec::new()));
     test2(Box::new(|v| println!("{:?}", v)));
     test_macro();
+    test_local_not_linted();
 }

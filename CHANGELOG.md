@@ -364,6 +364,7 @@ All notable changes to this project will be documented in this file.
 [`block_in_if_condition_expr`]: https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_expr
 [`block_in_if_condition_stmt`]: https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_stmt
 [`bool_comparison`]: https://github.com/Manishearth/rust-clippy/wiki#bool_comparison
+[`borrowed_box`]: https://github.com/Manishearth/rust-clippy/wiki#borrowed_box
 [`box_vec`]: https://github.com/Manishearth/rust-clippy/wiki#box_vec
 [`boxed_local`]: https://github.com/Manishearth/rust-clippy/wiki#boxed_local
 [`builtin_type_shadow`]: https://github.com/Manishearth/rust-clippy/wiki#builtin_type_shadow
