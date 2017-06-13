@@ -3,7 +3,8 @@ use syntax::ast;
 use syntax::codemap::{Span, Spanned};
 use syntax::visit::FnKind;
 
-use utils::{span_note_and_lint, span_lint_and_then, snippet_opt, match_path_ast, in_external_macro};
+use utils::{span_note_and_lint, span_lint_and_then, snippet_opt, match_path_ast, in_macro,
+            in_external_macro};
 
 /// **What it does:** Checks for return statements at the end of a block.
 ///
@@ -89,7 +90,7 @@ impl ReturnPass {
     }
 
     fn emit_return_lint(&mut self, cx: &EarlyContext, ret_span: Span, inner_span: Span) {
-        if in_external_macro(cx, inner_span) {
+        if in_external_macro(cx, inner_span) || in_macro(inner_span) {
             return;
         }
         span_lint_and_then(cx,
