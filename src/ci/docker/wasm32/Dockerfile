@@ -20,7 +20,7 @@ RUN sh /scripts/dumb-init.sh
 # emscripten
 COPY scripts/emscripten.sh /scripts/
 RUN bash /scripts/emscripten.sh
-COPY wasm32/node /usr/local/bin/node
+COPY wasm32/node.sh /usr/local/bin/node
 
 # env
 ENV PATH=$PATH:/emsdk-portable
