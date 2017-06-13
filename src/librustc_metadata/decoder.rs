@@ -765,7 +765,7 @@ impl<'a, 'tcx> CrateMetadata {
         assert!(!self.is_proc_macro(id));
         let ast = self.entry(id).ast.unwrap();
         let def_id = self.local_def_id(id);
-        let body = ast.decode(self).body.decode(self);
+        let body = ast.decode((self, tcx)).body.decode((self, tcx));
         tcx.hir.intern_inlined_body(def_id, body)
     }
 
