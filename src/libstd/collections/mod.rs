@@ -420,15 +420,15 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::Bound;
+pub use alloc::Bound;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::{BinaryHeap, BTreeMap, BTreeSet};
+pub use alloc::{BinaryHeap, BTreeMap, BTreeSet};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::{LinkedList, VecDeque};
+pub use alloc::{LinkedList, VecDeque};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::{binary_heap, btree_map, btree_set};
+pub use alloc::{binary_heap, btree_map, btree_set};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::{linked_list, vec_deque};
+pub use alloc::{linked_list, vec_deque};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::hash_map::HashMap;
@@ -436,7 +436,7 @@ pub use self::hash_map::HashMap;
 pub use self::hash_set::HashSet;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::range;
+pub use alloc::range;
 
 mod hash;
 

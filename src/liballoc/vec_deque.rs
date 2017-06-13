@@ -29,7 +29,7 @@ use core::slice;
 use core::hash::{Hash, Hasher};
 use core::cmp;
 
-use alloc::raw_vec::RawVec;
+use raw_vec::RawVec;
 
 use super::range::RangeArgument;
 use Bound::{Excluded, Included, Unbounded};

@@ -15,10 +15,9 @@
 // - Multiple lifetime parameters
 // - Arenas
 
-#![feature(rustc_private, libc, collections)]
+#![feature(rustc_private, libc)]
 
 extern crate arena;
-extern crate collections;
 extern crate libc;
 
 use TypeStructure::{TypeInt, TypeFunction};

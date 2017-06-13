@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-#![feature(collections)]
-
 pub fn main() {
     let s = "\u{2603}";
     assert_eq!(s, "☃");

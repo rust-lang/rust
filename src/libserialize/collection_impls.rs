@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Implementations of serialization for structures found in libcollections
+//! Implementations of serialization for structures found in liballoc
 
 use std::hash::{Hash, BuildHasher};
 

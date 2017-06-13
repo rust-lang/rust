@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(collections, libc)]
+#![feature(alloc, libc)]
 
-extern crate collections;
-//~^ NOTE previous import of `collections` here
+extern crate alloc;
+//~^ NOTE previous import of `alloc` here
 
-extern crate libc as collections;
+extern crate libc as alloc;
 //~^ ERROR E0259
-//~| NOTE `collections` already imported
+//~| NOTE `alloc` already imported
 
 fn main() {}

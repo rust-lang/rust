@@ -13,10 +13,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(collections)]
-
-extern crate collections;
-
 use std::collections::HashMap;
 
 struct A(isize, isize);

@@ -1222,10 +1222,11 @@ mod tests {
     use std::sync::atomic;
     use std::sync::atomic::Ordering::{Acquire, SeqCst};
     use std::thread;
-    use std::vec::Vec;
-    use super::{Arc, Weak};
     use std::sync::Mutex;
     use std::convert::From;
+
+    use super::{Arc, Weak};
+    use vec::Vec;
 
     struct Canary(*mut atomic::AtomicUsize);
 

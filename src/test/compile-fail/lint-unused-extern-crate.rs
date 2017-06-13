@@ -13,13 +13,13 @@
 #![deny(unused_extern_crates)]
 #![allow(unused_variables)]
 #![allow(deprecated)]
+#![feature(alloc)]
 #![feature(libc)]
-#![feature(collections)]
 #![feature(rand)]
 
 extern crate libc; //~ ERROR: unused extern crate
 
-extern crate collections as collecs; // no error, it is used
+extern crate alloc as collecs; // no error, it is used
 
 extern crate rand; // no error, the use marks it as used
                    // even if imported objects aren't used

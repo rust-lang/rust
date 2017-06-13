@@ -28,14 +28,11 @@ Core encoding and decoding interfaces.
 #![deny(warnings)]
 
 #![feature(box_syntax)]
-#![feature(collections)]
 #![feature(core_intrinsics)]
 #![feature(i128_type)]
 #![feature(specialization)]
 #![cfg_attr(stage0, feature(staged_api))]
 #![cfg_attr(test, feature(test))]
-
-extern crate collections;
 
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable};
 

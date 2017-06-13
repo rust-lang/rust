@@ -66,10 +66,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use alloc::boxed::Box;
-use alloc::raw_vec::RawVec;
-use borrow::ToOwned;
-use borrow::Cow;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash};
@@ -84,6 +80,10 @@ use core::ptr;
 use core::ptr::Shared;
 use core::slice;
 
+use borrow::ToOwned;
+use borrow::Cow;
+use boxed::Box;
+use raw_vec::RawVec;
 use super::range::RangeArgument;
 use Bound::{Excluded, Included, Unbounded};
 

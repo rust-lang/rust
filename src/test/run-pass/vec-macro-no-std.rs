@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, start, libc, collections)]
+#![feature(lang_items, start, libc, alloc)]
 #![no_std]
 
 extern crate std as other;
@@ -16,9 +16,9 @@ extern crate std as other;
 extern crate libc;
 
 #[macro_use]
-extern crate collections;
+extern crate alloc;
 
-use collections::vec::Vec;
+use alloc::vec::Vec;
 
 // Issue #16806
 

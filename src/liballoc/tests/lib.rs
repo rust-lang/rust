@@ -10,11 +10,11 @@
 
 #![deny(warnings)]
 
+#![feature(alloc)]
 #![feature(attr_literals)]
 #![feature(box_syntax)]
 #![feature(inclusive_range_syntax)]
 #![feature(collection_placement)]
-#![feature(collections)]
 #![feature(const_fn)]
 #![feature(exact_size_is_empty)]
 #![feature(iterator_step_by)]
@@ -31,7 +31,7 @@
 #![feature(unicode)]
 #![feature(utf8_error_error_len)]
 
-extern crate collections;
+extern crate alloc;
 extern crate test;
 extern crate std_unicode;
 extern crate core;
