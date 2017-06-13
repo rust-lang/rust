@@ -2306,7 +2306,7 @@ fn rewrite_where_clause_rfc_style(context: &RewriteContext,
                              terminator,
                              |pred| span_for_where_pred(pred).lo,
                              |pred| span_for_where_pred(pred).hi,
-                             |pred| pred.rewrite(context, clause_shape),
+                             |pred| pred.rewrite(context, shape),
                              span_start,
                              span_end);
     let comma_tactic = if suppress_comma {
