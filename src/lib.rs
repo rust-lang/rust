@@ -460,8 +460,9 @@ fn format_ast<F>(krate: &ast::Crate,
         }
         // Reset the error count.
         if parse_session.span_diagnostic.has_errors() {
-            parse_session.span_diagnostic =
-                Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()));
+            let silent_emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()),
+                                                             Some(codemap.clone())));
+            parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
         }
     }
 
