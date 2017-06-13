@@ -10,17 +10,16 @@
 
 use std::io::Write;
 
-use rustc::hir::def_id::DefId;
 use rustc_serialize::json::as_json;
 
 use rls_data::{self, Id, Analysis, Import, ImportKind, Def, DefKind, Ref, RefKind, MacroRef,
-               Relation, RelationKind, Signature, SigElement, CratePreludeData};
+               Relation, RelationKind, CratePreludeData};
 use rls_span::{Column, Row};
 
-use external_data;
 use external_data::*;
-use data::{self, VariableKind};
+use data::VariableKind;
 use dump::Dump;
+use id_from_def_id;
 
 pub struct JsonDumper<O: DumpOutput> {
     result: Analysis,
@@ -121,7 +120,7 @@ impl<'b, O: DumpOutput + 'b> Dump for JsonDumper<O> {
             children: data.items.into_iter().map(|id| id_from_def_id(id)).collect(),
             decl_id: None,
             docs: data.docs,
-            sig: data.sig.map(|s| s.into()),
+            sig: data.sig,
             attributes: data.attributes.into_iter().map(|a| a.into()).collect(),
         };
         if def.span.file_name.to_str().unwrap() != def.value {
@@ -163,15 +162,6 @@ impl<'b, O: DumpOutput + 'b> Dump for JsonDumper<O> {
 // refs have decl information (e.g., a trait method where we know the required
 // method, but not the supplied method). In both cases, we are currently
 // ignoring it.
-
-// DefId::index is a newtype and so the JSON serialisation is ugly. Therefore
-// we use our own Id which is the same, but without the newtype.
-pub fn id_from_def_id(id: DefId) -> Id {
-    Id {
-        krate: id.krate.as_u32(),
-        index: id.index.as_u32(),
-    }
-}
 
 impl Into<Import> for ExternCrateData {
     fn into(self) -> Import {
@@ -220,7 +210,7 @@ impl Into<Def> for EnumData {
             children: self.variants.into_iter().map(|id| id_from_def_id(id)).collect(),
             decl_id: None,
             docs: self.docs,
-            sig: Some(self.sig.into()),
+            sig: self.sig,
             attributes: self.attributes,
         }
     }
@@ -239,7 +229,7 @@ impl Into<Def> for TupleVariantData {
             children: vec![],
             decl_id: None,
             docs: self.docs,
-            sig: Some(self.sig.into()),
+            sig: self.sig,
             attributes: self.attributes,
         }
     }
@@ -257,7 +247,7 @@ impl Into<Def> for StructVariantData {
             children: vec![],
             decl_id: None,
             docs: self.docs,
-            sig: Some(self.sig.into()),
+            sig: self.sig,
             attributes: self.attributes,
         }
     }
@@ -275,7 +265,7 @@ impl Into<Def> for StructData {
             children: self.fields.into_iter().map(|id| id_from_def_id(id)).collect(),
             decl_id: None,
             docs: self.docs,
-            sig: Some(self.sig.into()),
+            sig: self.sig,
             attributes: self.attributes,
         }
     }
@@ -293,7 +283,7 @@ impl Into<Def> for TraitData {
             children: self.items.into_iter().map(|id| id_from_def_id(id)).collect(),
             decl_id: None,
             docs: self.docs,
-            sig: Some(self.sig.into()),
+            sig: self.sig,
             attributes: self.attributes,
         }
     }
@@ -311,7 +301,7 @@ impl Into<Def> for FunctionData {
             children: vec![],
             decl_id: None,
             docs: self.docs,
-            sig: Some(self.sig.into()),
+            sig: self.sig,
             attributes: self.attributes,
         }
     }
@@ -329,7 +319,7 @@ impl Into<Def> for MethodData {
             children: vec![],
             decl_id: self.decl_id.map(|id| id_from_def_id(id)),
             docs: self.docs,
-            sig: Some(self.sig.into()),
+            sig: self.sig,
             attributes: self.attributes,
         }
     }
@@ -365,7 +355,7 @@ impl Into<Def> for TypeDefData {
             children: vec![],
             decl_id: None,
             docs: String::new(),
-            sig: self.sig.map(|s| s.into()),
+            sig: self.sig,
             attributes: self.attributes,
         }
     }
@@ -477,29 +467,6 @@ impl Into<Relation> for InheritanceData {
             kind: RelationKind::SuperTrait,
             from: id_from_def_id(self.base_id),
             to: id_from_def_id(self.deriv_id),
-        }
-    }
-}
-
-impl Into<Signature> for external_data::Signature {
-    fn into(self) -> Signature {
-        Signature {
-            span: self.span,
-            text: self.text,
-            ident_start: self.ident_start,
-            ident_end: self.ident_end,
-            defs: self.defs.into_iter().map(|s| s.into()).collect(),
-            refs: self.refs.into_iter().map(|s| s.into()).collect(),
-        }
-    }
-}
-
-impl Into<SigElement> for data::SigElement {
-    fn into(self) -> SigElement {
-        SigElement {
-            id: id_from_def_id(self.id),
-            start: self.start,
-            end: self.end,
         }
     }
 }

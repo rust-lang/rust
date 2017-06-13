@@ -48,12 +48,13 @@ use syntax::ptr::P;
 use syntax::codemap::Spanned;
 use syntax_pos::*;
 
-use super::{escape, generated_code, SaveContext, PathCollector, docs_for_attrs};
-use super::data::*;
-use super::dump::Dump;
-use super::external_data::{Lower, make_def_id};
-use super::span_utils::SpanUtils;
-use super::recorder;
+use {escape, generated_code, SaveContext, PathCollector, docs_for_attrs};
+use data::*;
+use dump::Dump;
+use external_data::{Lower, make_def_id};
+use recorder;
+use span_utils::SpanUtils;
+use sig;
 
 use rls_data::ExternalCrateData;
 
@@ -391,13 +392,13 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                       sig: &'l ast::MethodSig,
                       body: Option<&'l ast::Block>,
                       id: ast::NodeId,
-                      name: ast::Name,
+                      name: ast::Ident,
                       vis: Visibility,
                       attrs: &'l [Attribute],
                       span: Span) {
         debug!("process_method: {}:{}", id, name);
 
-        if let Some(method_data) = self.save_ctxt.get_method_data(id, name, span) {
+        if let Some(method_data) = self.save_ctxt.get_method_data(id, name.name, span) {
 
             let sig_str = ::make_signature(&sig.decl, &sig.generics);
             if body.is_some() {
@@ -423,7 +424,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             Some(id) => {
                                 for item in self.tcx.associated_items(id) {
                                     if item.kind == ty::AssociatedKind::Method {
-                                        if item.name == name {
+                                        if item.name == name.name {
                                             decl_id = Some(item.def_id);
                                             break;
                                         }
@@ -455,7 +456,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     parent: trait_id,
                     visibility: vis,
                     docs: docs_for_attrs(attrs),
-                    sig: method_data.sig,
+                    sig: sig::method_signature(id, name, sig, &self.save_ctxt),
                     attributes: attrs.to_vec(),
                 }.lower(self.tcx));
             }
@@ -580,13 +581,14 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                            name: ast::Name,
                            span: Span,
                            typ: &'l ast::Ty,
-                           expr: &'l ast::Expr,
+                           expr: Option<&'l ast::Expr>,
                            parent_id: DefId,
                            vis: Visibility,
                            attrs: &'l [Attribute]) {
         let qualname = format!("::{}", self.tcx.node_path_str(id));
 
         let sub_span = self.span.sub_span_after_keyword(span, keywords::Const);
+        let value = expr.map(|e| self.span.snippet(e.span)).unwrap_or(String::new());
 
         if !self.span.filter_generated(sub_span, span) {
             self.dumper.variable(VariableData {
@@ -595,20 +597,22 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 id: id,
                 name: name.to_string(),
                 qualname: qualname,
-                value: self.span.snippet(expr.span),
+                value: value,
                 type_value: ty_to_string(&typ),
                 scope: self.cur_scope,
                 parent: Some(parent_id),
                 visibility: vis,
                 docs: docs_for_attrs(attrs),
-                sig: None,
+                sig: sig::assoc_const_signature(id, name, typ, expr, &self.save_ctxt),
                 attributes: attrs.to_vec(),
             }.lower(self.tcx));
         }
 
         // walk type and init value
         self.visit_ty(typ);
-        self.visit_expr(expr);
+        if let Some(expr) = expr {
+            self.visit_expr(expr);
+        }
     }
 
     // FIXME tuple structs should generate tuple-specific data.
@@ -646,7 +650,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 fields: fields,
                 visibility: From::from(&item.vis),
                 docs: docs_for_attrs(&item.attrs),
-                sig: self.save_ctxt.sig_base(item),
+                sig: sig::item_signature(item, &self.save_ctxt),
                 attributes: item.attrs.clone(),
             }.lower(self.tcx));
         }
@@ -679,18 +683,6 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             qualname.push_str("::");
             qualname.push_str(&name);
 
-            let text = self.span.signature_string_for_span(variant.span);
-            let ident_start = text.find(&name).unwrap();
-            let ident_end = ident_start + name.len();
-            let sig = Signature {
-                span: variant.span,
-                text: text,
-                ident_start: ident_start,
-                ident_end: ident_end,
-                defs: vec![],
-                refs: vec![],
-            };
-
             match variant.node.data {
                 ast::VariantData::Struct(ref fields, _) => {
                     let sub_span = self.span.span_for_first_ident(variant.span);
@@ -712,7 +704,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             scope: enum_data.scope,
                             parent: Some(make_def_id(item.id, &self.tcx.hir)),
                             docs: docs_for_attrs(&variant.node.attrs),
-                            sig: sig,
+                            sig: sig::variant_signature(variant, &self.save_ctxt),
                             attributes: variant.node.attrs.clone(),
                         }.lower(self.tcx));
                     }
@@ -739,7 +731,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             scope: enum_data.scope,
                             parent: Some(make_def_id(item.id, &self.tcx.hir)),
                             docs: docs_for_attrs(&variant.node.attrs),
-                            sig: sig,
+                            sig: sig::variant_signature(variant, &self.save_ctxt),
                             attributes: variant.node.attrs.clone(),
                         }.lower(self.tcx));
                     }
@@ -811,7 +803,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 items: methods.iter().map(|i| i.id).collect(),
                 visibility: From::from(&item.vis),
                 docs: docs_for_attrs(&item.attrs),
-                sig: self.save_ctxt.sig_base(item),
+                sig: sig::item_signature(item, &self.save_ctxt),
                 attributes: item.attrs.clone(),
             }.lower(self.tcx));
         }
@@ -1133,12 +1125,12 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     fn process_trait_item(&mut self, trait_item: &'l ast::TraitItem, trait_id: DefId) {
         self.process_macro_use(trait_item.span, trait_item.id);
         match trait_item.node {
-            ast::TraitItemKind::Const(ref ty, Some(ref expr)) => {
+            ast::TraitItemKind::Const(ref ty, ref expr) => {
                 self.process_assoc_const(trait_item.id,
                                          trait_item.ident.name,
                                          trait_item.span,
                                          &ty,
-                                         &expr,
+                                         expr.as_ref().map(|e| &**e),
                                          trait_id,
                                          Visibility::Public,
                                          &trait_item.attrs);
@@ -1147,12 +1139,12 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 self.process_method(sig,
                                     body.as_ref().map(|x| &**x),
                                     trait_item.id,
-                                    trait_item.ident.name,
+                                    trait_item.ident,
                                     Visibility::Public,
                                     &trait_item.attrs,
                                     trait_item.span);
             }
-            ast::TraitItemKind::Type(ref _bounds, ref default_ty) => {
+            ast::TraitItemKind::Type(ref bounds, ref default_ty) => {
                 // FIXME do something with _bounds (for type refs)
                 let name = trait_item.ident.name.to_string();
                 let qualname = format!("::{}", self.tcx.node_path_str(trait_item.id));
@@ -1168,7 +1160,11 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         visibility: Visibility::Public,
                         parent: Some(trait_id),
                         docs: docs_for_attrs(&trait_item.attrs),
-                        sig: None,
+                        sig: sig::assoc_type_signature(trait_item.id,
+                                                       trait_item.ident,
+                                                       Some(bounds),
+                                                       default_ty.as_ref().map(|ty| &**ty),
+                                                       &self.save_ctxt),
                         attributes: trait_item.attrs.clone(),
                     }.lower(self.tcx));
                 }
@@ -1177,7 +1173,6 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     self.visit_ty(default_ty)
                 }
             }
-            ast::TraitItemKind::Const(ref ty, None) => self.visit_ty(ty),
             ast::TraitItemKind::Macro(_) => {}
         }
     }
@@ -1190,7 +1185,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                                          impl_item.ident.name,
                                          impl_item.span,
                                          &ty,
-                                         &expr,
+                                         Some(expr),
                                          impl_id,
                                          From::from(&impl_item.vis),
                                          &impl_item.attrs);
@@ -1199,12 +1194,17 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 self.process_method(sig,
                                     Some(body),
                                     impl_item.id,
-                                    impl_item.ident.name,
+                                    impl_item.ident,
                                     From::from(&impl_item.vis),
                                     &impl_item.attrs,
                                     impl_item.span);
             }
-            ast::ImplItemKind::Type(ref ty) => self.visit_ty(ty),
+            ast::ImplItemKind::Type(ref ty) => {
+                // FIXME uses of the assoc type should ideally point to this
+                // 'def' and the name here should be a ref to the def in the
+                // trait.
+                self.visit_ty(ty)
+            }
             ast::ImplItemKind::Macro(_) => {}
         }
     }
@@ -1369,7 +1369,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                         visibility: From::from(&item.vis),
                         parent: None,
                         docs: docs_for_attrs(&item.attrs),
-                        sig: Some(self.save_ctxt.sig_base(item)),
+                        sig: sig::item_signature(item, &self.save_ctxt),
                         attributes: item.attrs.clone(),
                     }.lower(self.tcx));
                 }

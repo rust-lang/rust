@@ -15,9 +15,9 @@ use rustc_serialize::json::as_json;
 use external_data::*;
 use data::{VariableKind, Visibility};
 use dump::Dump;
-use json_dumper::id_from_def_id;
+use id_from_def_id;
 
-use rls_data::{Analysis, Import, ImportKind, Def, DefKind, CratePreludeData};
+use rls_data::{Analysis, Import, ImportKind, Def, DefKind, CratePreludeData, Format};
 
 
 // A dumper to dump a restricted set of JSON information, designed for use with
@@ -33,7 +33,9 @@ pub struct JsonApiDumper<'b, W: Write + 'b> {
 
 impl<'b, W: Write> JsonApiDumper<'b, W> {
     pub fn new(writer: &'b mut W) -> JsonApiDumper<'b, W> {
-        JsonApiDumper { output: writer, result: Analysis::new() }
+        let mut result = Analysis::new();
+        result.kind = Format::JsonApi;
+        JsonApiDumper { output: writer, result }
     }
 }
 
@@ -133,7 +135,7 @@ impl Into<Option<Def>> for EnumData {
                 children: self.variants.into_iter().map(|id| id_from_def_id(id)).collect(),
                 decl_id: None,
                 docs: self.docs,
-                sig: Some(self.sig.into()),
+                sig: self.sig,
                 attributes: vec![],
             }),
             _ => None,
@@ -154,7 +156,7 @@ impl Into<Option<Def>> for TupleVariantData {
             children: vec![],
             decl_id: None,
             docs: self.docs,
-            sig: Some(self.sig.into()),
+            sig: self.sig,
             attributes: vec![],
         })
     }
@@ -172,7 +174,7 @@ impl Into<Option<Def>> for StructVariantData {
             children: vec![],
             decl_id: None,
             docs: self.docs,
-            sig: Some(self.sig.into()),
+            sig: self.sig,
             attributes: vec![],
         })
     }
@@ -191,7 +193,7 @@ impl Into<Option<Def>> for StructData {
             children: self.fields.into_iter().map(|id| id_from_def_id(id)).collect(),
             decl_id: None,
             docs: self.docs,
-            sig: Some(self.sig.into()),
+            sig: self.sig,
             attributes: vec![],
         }),
             _ => None,
@@ -212,7 +214,7 @@ impl Into<Option<Def>> for TraitData {
                 parent: None,
                 decl_id: None,
                 docs: self.docs,
-                sig: Some(self.sig.into()),
+                sig: self.sig,
                 attributes: vec![],
             }),
             _ => None,
@@ -233,7 +235,7 @@ impl Into<Option<Def>> for FunctionData {
                 parent: self.parent.map(|id| id_from_def_id(id)),
                 decl_id: None,
                 docs: self.docs,
-                sig: Some(self.sig.into()),
+                sig: self.sig,
                 attributes: vec![],
             }),
             _ => None,
@@ -254,7 +256,7 @@ impl Into<Option<Def>> for MethodData {
                 parent: self.parent.map(|id| id_from_def_id(id)),
                 decl_id: self.decl_id.map(|id| id_from_def_id(id)),
                 docs: self.docs,
-                sig: Some(self.sig.into()),
+                sig: self.sig,
                 attributes: vec![],
             }),
             _ => None,

@@ -16,9 +16,9 @@ use syntax::codemap::CodeMap;
 use syntax::print::pprust;
 use syntax_pos::Span;
 
-use data::{self, Visibility, SigElement};
+use data::{self, Visibility};
 
-use rls_data::{SpanData, CratePreludeData, Attribute};
+use rls_data::{SpanData, CratePreludeData, Attribute, Signature};
 use rls_span::{Column, Row};
 
 // FIXME: this should be pub(crate), but the current snapshot doesn't allow it yet
@@ -103,7 +103,7 @@ pub struct EnumData {
     pub variants: Vec<DefId>,
     pub visibility: Visibility,
     pub docs: String,
-    pub sig: Signature,
+    pub sig: Option<Signature>,
     pub attributes: Vec<Attribute>,
 }
 
@@ -121,7 +121,7 @@ impl Lower for data::EnumData {
             variants: self.variants.into_iter().map(|id| make_def_id(id, &tcx.hir)).collect(),
             visibility: self.visibility,
             docs: self.docs,
-            sig: self.sig.lower(tcx),
+            sig: self.sig,
             attributes: self.attributes.lower(tcx),
         }
     }
@@ -186,7 +186,7 @@ pub struct FunctionData {
     pub visibility: Visibility,
     pub parent: Option<DefId>,
     pub docs: String,
-    pub sig: Signature,
+    pub sig: Option<Signature>,
     pub attributes: Vec<Attribute>,
 }
 
@@ -205,7 +205,7 @@ impl Lower for data::FunctionData {
             visibility: self.visibility,
             parent: self.parent,
             docs: self.docs,
-            sig: self.sig.lower(tcx),
+            sig: self.sig,
             attributes: self.attributes.lower(tcx),
         }
     }
@@ -355,7 +355,7 @@ pub struct MethodData {
     pub visibility: Visibility,
     pub parent: Option<DefId>,
     pub docs: String,
-    pub sig: Signature,
+    pub sig: Option<Signature>,
     pub attributes: Vec<Attribute>,
 }
 
@@ -374,7 +374,7 @@ impl Lower for data::MethodData {
             visibility: self.visibility,
             parent: self.parent,
             docs: self.docs,
-            sig: self.sig.lower(tcx),
+            sig: self.sig,
             attributes: self.attributes.lower(tcx),
         }
     }
@@ -410,7 +410,7 @@ impl Lower for data::ModData {
             items: self.items.into_iter().map(|id| make_def_id(id, &tcx.hir)).collect(),
             visibility: self.visibility,
             docs: self.docs,
-            sig: self.sig.map(|s| s.lower(tcx)),
+            sig: self.sig,
             attributes: self.attributes.lower(tcx),
         }
     }
@@ -450,7 +450,7 @@ pub struct StructData {
     pub fields: Vec<DefId>,
     pub visibility: Visibility,
     pub docs: String,
-    pub sig: Signature,
+    pub sig: Option<Signature>,
     pub attributes: Vec<Attribute>,
 }
 
@@ -469,7 +469,7 @@ impl Lower for data::StructData {
             fields: self.fields.into_iter().map(|id| make_def_id(id, &tcx.hir)).collect(),
             visibility: self.visibility,
             docs: self.docs,
-            sig: self.sig.lower(tcx),
+            sig: self.sig,
             attributes: self.attributes.lower(tcx),
         }
     }
@@ -486,7 +486,7 @@ pub struct StructVariantData {
     pub scope: DefId,
     pub parent: Option<DefId>,
     pub docs: String,
-    pub sig: Signature,
+    pub sig: Option<Signature>,
     pub attributes: Vec<Attribute>,
 }
 
@@ -504,7 +504,7 @@ impl Lower for data::StructVariantData {
             scope: make_def_id(self.scope, &tcx.hir),
             parent: self.parent,
             docs: self.docs,
-            sig: self.sig.lower(tcx),
+            sig: self.sig,
             attributes: self.attributes.lower(tcx),
         }
     }
@@ -521,7 +521,7 @@ pub struct TraitData {
     pub items: Vec<DefId>,
     pub visibility: Visibility,
     pub docs: String,
-    pub sig: Signature,
+    pub sig: Option<Signature>,
     pub attributes: Vec<Attribute>,
 }
 
@@ -539,7 +539,7 @@ impl Lower for data::TraitData {
             items: self.items.into_iter().map(|id| make_def_id(id, &tcx.hir)).collect(),
             visibility: self.visibility,
             docs: self.docs,
-            sig: self.sig.lower(tcx),
+            sig: self.sig,
             attributes: self.attributes.lower(tcx),
         }
     }
@@ -556,7 +556,7 @@ pub struct TupleVariantData {
     pub scope: DefId,
     pub parent: Option<DefId>,
     pub docs: String,
-    pub sig: Signature,
+    pub sig: Option<Signature>,
     pub attributes: Vec<Attribute>,
 }
 
@@ -574,7 +574,7 @@ impl Lower for data::TupleVariantData {
             scope: make_def_id(self.scope, &tcx.hir),
             parent: self.parent,
             docs: self.docs,
-            sig: self.sig.lower(tcx),
+            sig: self.sig,
             attributes: self.attributes.lower(tcx),
         }
     }
@@ -608,7 +608,7 @@ impl Lower for data::TypeDefData {
             visibility: self.visibility,
             parent: self.parent,
             docs: self.docs,
-            sig: self.sig.map(|s| s.lower(tcx)),
+            sig: self.sig,
             attributes: self.attributes.lower(tcx),
         }
     }
@@ -718,7 +718,7 @@ impl Lower for data::VariableData {
             parent: self.parent,
             visibility: self.visibility,
             docs: self.docs,
-            sig: self.sig.map(|s| s.lower(tcx)),
+            sig: self.sig,
             attributes: self.attributes.lower(tcx),
         }
     }
@@ -743,33 +743,6 @@ impl Lower for data::VariableRefData {
             span: span_from_span(self.span, tcx.sess.codemap()),
             scope: make_def_id(self.scope, &tcx.hir),
             ref_id: self.ref_id,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Signature {
-    pub span: SpanData,
-    pub text: String,
-    // These identify the main identifier for the defintion as byte offsets into
-    // `text`. E.g., of `foo` in `pub fn foo(...)`
-    pub ident_start: usize,
-    pub ident_end: usize,
-    pub defs: Vec<SigElement>,
-    pub refs: Vec<SigElement>,
-}
-
-impl Lower for data::Signature {
-    type Target = Signature;
-
-    fn lower(self, tcx: TyCtxt) -> Signature {
-        Signature {
-            span: span_from_span(self.span, tcx.sess.codemap()),
-            text: self.text,
-            ident_start: self.ident_start,
-            ident_end: self.ident_end,
-            defs: self.defs,
-            refs: self.refs,
         }
     }
 }
