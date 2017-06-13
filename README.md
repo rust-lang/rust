@@ -6,14 +6,10 @@ If you'd like to help out (and you should, it's a fun project!), see
 [Contributing.md](Contributing.md).
 
 We are changing the default style used by rustfmt. There is an ongoing [RFC process](https://github.com/rust-lang-nursery/fmt-rfcs).
-The last version using the old style was 0.8.5. From 0.9 onwards, the RFC style
+The last version using the old style was 0.8.6. From 0.9 onwards, the RFC style
 is the default. If you want the old style back, you can use [legacy-rustfmt.toml](legacy-rustfmt.toml)
 as your rustfmt.toml.
 
-If you want latest and greatest, you should use the [libsyntax](https://github.com/rust-lang-nursery/rustfmt/tree/libsyntax)
-branch. It supports some newer Rust syntax which is missing from master and
-fixes some bugs. However, it links against libsyntax from the Rust compiler, so
-you must be using a nightly version of Rust to use it.
 
 ## Quick start
 
