@@ -246,14 +246,8 @@ borrowck (which is coming soon). The basic structure of the existing
 borrow checker, transposed onto MIR, is as follows:
 
 - Every borrow in MIR always has the same form:
-  - `x = &'r lv` or `x = &'r mut lv`, where:
-    - `x` is either a temporary or name of a local variable introduced by `let`
-       - MIR construction always introduces a temporary for borrow
-         expressions, except in the case of an initializer, like `let
-         x = &mut ...`. In that case, the variable `x` is directly
-         assigned, because it cannot have any previous value that
-         needs to be dropped.
-    - `lv` is a MIR lvalue (path naming a memory location)
+  - `lv1 = &'r lv2` or `lv1 = &'r mut lv2`, where:
+    - `lv1` and `lv2` are MIR lvalues (path naming a memory location)
     - `'r` is the duration of the borrow
 - Let each borrow be named by its position `P`, which has the form
   `BB/n`, where `BB` is the basic block containing the borrow
@@ -632,17 +626,17 @@ every little part (and also for the lifetime of a borrow):
  
  ```rust
 'call: {
-  let v: &'call mut Vec<usize>;
+  let v: &'invoke mut Vec<usize>;
   let l: usize;
   'eval_args: {
-    'eval_v: { v = &'invoke mut vec; }
-    'eval_l: { l = vec.len(); }
+    'eval_v: { v = &'eval_l vec; }
+    'eval_l: { l = Vec::len(v); }
   }
   'invoke: { Vec::push(v, l); }
 }
 ```
 
-Here you can see that the borrow `v = &'call mut vec` is borrowing `vec`
+Here you can see that the borrow `v = &'invoke mut vec` is borrowing `vec`
 for a lifetime (`'invoke`) that has not yet started -- but which will start
 in the future. This is basically saying, "make a reference that we will give
 to this function, but we won't use in the meantime".
@@ -675,12 +669,11 @@ In the internals thread, arielb1 had [an interesting proposal][ref2]
 that they called "two-phase lifetimes". The goal was precisely to take
 the "two-phase" concept but incorporate it into lifetime inference,
 rather than handling it in borrow checking as I present here. The idea
-was to define a type `RefMut<'r, 'w, T>`[^phi] which stands in for a
-kind of "richer" `&mut` type.[^unify] In particular, it has two
-lifetimes:
-
-[^phi]: arielb1 called it `Ref2Φ<'immut, 'mutbl, T>`, but I'm going to take the liberty of renaming it.
-[^unify]: arielb1 also proposed to unify `&T` into this type, but that introduces complications because `&T` are `Copy` but `&mut` are not, so i'm leaving that out too.
+was to define a type `RefMut<'r, 'w, T>` (original `Ref2Φ<'immut,
+'mutbl, T>`) which stands in for a kind of "richer" `&mut` type
+(originally, `&T` was unified as well, but that introduces
+complications because `&T` types are `Copy`, so I'm leaving that
+out). In particular, `RefMut` has two lifetimes, not just one:
 
 - `'r` is the "read" lifetime. It includes every point where the reference
    may later be used.
@@ -822,3 +815,4 @@ this RFC.
 [unresolved]: #unresolved-questions
 
 None as yet..
+R
