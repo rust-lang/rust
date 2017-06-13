@@ -1684,7 +1684,7 @@ fn rewrite_explicit_self(
                 Some(ref l) => {
                     let lifetime_str = try_opt!(l.rewrite(
                         context,
-                        Shape::legacy(usize::max_value(), Indent::empty()),
+                        Shape::legacy(context.config.max_width(), Indent::empty()),
                     ));
                     Some(format!("&{} {}self", lifetime_str, mut_str))
                 }
@@ -1697,7 +1697,7 @@ fn rewrite_explicit_self(
             let mutability = explicit_self_mutability(&args[0]);
             let type_str = try_opt!(ty.rewrite(
                 context,
-                Shape::legacy(usize::max_value(), Indent::empty()),
+                Shape::legacy(context.config.max_width(), Indent::empty()),
             ));
 
             Some(format!(
