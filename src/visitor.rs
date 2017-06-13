@@ -713,6 +713,12 @@ impl Rewrite for ast::NestedMetaItem {
     }
 }
 
+fn count_missing_closing_parens(s: &str) -> u32 {
+    let op_parens = s.chars().filter(|c| *c == '(').count();
+    let cl_parens = s.chars().filter(|c| *c == ')').count();
+    op_parens.checked_sub(cl_parens).unwrap_or(0) as u32
+}
+
 impl Rewrite for ast::MetaItem {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         Some(match self.node {
@@ -723,15 +729,21 @@ impl Rewrite for ast::MetaItem {
                 let item_shape = try_opt!(shape.shrink_left(name.len() + 3).and_then(
                     |s| s.sub_width(2),
                 ));
+                let hi = self.span.hi +
+                    BytePos(count_missing_closing_parens(&context.snippet(self.span)));
                 let items = itemize_list(
                     context.codemap,
                     list.iter(),
                     ")",
                     |nested_meta_item| nested_meta_item.span.lo,
-                    |nested_meta_item| nested_meta_item.span.hi,
+                    // FIXME: Span from MetaItem is missing closing parens.
+                    |nested_meta_item| {
+                        let snippet = context.snippet(nested_meta_item.span);
+                        nested_meta_item.span.hi + BytePos(count_missing_closing_parens(&snippet))
+                    },
                     |nested_meta_item| nested_meta_item.rewrite(context, item_shape),
                     self.span.lo,
-                    self.span.hi,
+                    hi,
                 );
                 let item_vec = items.collect::<Vec<_>>();
                 let fmt = ListFormatting {
