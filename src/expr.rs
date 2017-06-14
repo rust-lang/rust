@@ -729,9 +729,10 @@ fn and_one_line(x: Option<String>) -> Option<String> {
 
 fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String> {
     debug!("nop_block_collapse {:?} {}", block_str, budget);
-    block_str.map(|block_str| if block_str.starts_with('{') &&
-        budget >= 2 &&
-        (block_str[1..].find(|c: char| !c.is_whitespace()).unwrap() == block_str.len() - 2)
+    block_str.map(|block_str| if block_str.starts_with('{') && budget >= 2 &&
+        (block_str[1..]
+             .find(|c: char| !c.is_whitespace())
+             .unwrap() == block_str.len() - 2)
     {
         "{}".to_owned()
     } else {
@@ -1509,9 +1510,9 @@ impl Rewrite for ast::Arm {
         let pats_str = format!("{}{}", pats_str, guard_str);
 
         let (mut extend, body) = match body.node {
-            ast::ExprKind::Block(ref block) if !is_unsafe_block(block) &&
-                                                   is_simple_block(block, context.codemap) &&
-                                                   context.config.wrap_match_arms() => {
+            ast::ExprKind::Block(ref block)
+                if !is_unsafe_block(block) && is_simple_block(block, context.codemap) &&
+                       context.config.wrap_match_arms() => {
                 if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
                     (false, &**expr)
                 } else {
@@ -2539,21 +2540,10 @@ pub fn rewrite_assign_rhs<S: Into<String>>(
 
             // FIXME: DRY!
             match (rhs, new_rhs) {
-                (Some(ref orig_rhs), Some(ref replacement_rhs)) if count_line_breaks(
-                    orig_rhs,
-                ) >
-                                                                       count_line_breaks(
-                    replacement_rhs,
-                ) + 1 ||
-                                                                       (orig_rhs
-                                                                            .rewrite(context, shape)
-                                                                            .is_none() &&
-                                                                            replacement_rhs
-                                                                                .rewrite(
-                    context,
-                    new_shape,
-                )
-                                                                                .is_some()) => {
+                (Some(ref orig_rhs), Some(ref replacement_rhs))
+                    if count_line_breaks(orig_rhs) > count_line_breaks(replacement_rhs) + 1 ||
+                           (orig_rhs.rewrite(context, shape).is_none() &&
+                                replacement_rhs.rewrite(context, new_shape).is_some()) => {
                     result.push_str(&format!("\n{}", new_shape.indent.to_string(context.config)));
                     result.push_str(replacement_rhs);
                 }

@@ -96,7 +96,12 @@ fn foo<g: G>() {
     foo();
 }
 
-fn foo<L: Loooooooooooooooooooooong, G: Geeeeeeeeeeeneric, I: iiiiiiiiis, L: Looooooooooooooooong>() {
+fn foo<
+    L: Loooooooooooooooooooooong,
+    G: Geeeeeeeeeeeneric,
+    I: iiiiiiiiis,
+    L: Looooooooooooooooong,
+>() {
     foo();
 }
 

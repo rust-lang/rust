@@ -685,12 +685,12 @@ fn format_impl_ref_and_type(
     offset: Indent,
 ) -> Option<String> {
     if let ast::ItemKind::Impl(unsafety,
-                            polarity,
-                            _,
-                            ref generics,
-                            ref trait_ref,
-                            ref self_ty,
-                            _) = item.node
+                               polarity,
+                               _,
+                               ref generics,
+                               ref trait_ref,
+                               ref self_ty,
+                               _) = item.node
     {
         let mut result = String::new();
 
@@ -942,8 +942,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let has_body = !trait_items.is_empty();
 
         let where_density = if (context.config.where_density() == Density::Compressed &&
-                                 (!result.contains('\n') ||
-                                      context.config.fn_args_layout() == IndentStyle::Block)) ||
+                                    (!result.contains('\n') ||
+                                         context.config.fn_args_layout() == IndentStyle::Block)) ||
             (context.config.fn_args_layout() == IndentStyle::Block && result.is_empty()) ||
             (context.config.where_density() == Density::CompressedIfEmpty && !has_body &&
                  !result.contains('\n'))
@@ -1468,9 +1468,9 @@ impl Rewrite for ast::StructField {
             Some(ref ty) if ty.contains('\n') => {
                 let new_ty = rewrite_type_in_next_line();
                 match new_ty {
-                    Some(ref new_ty) if !new_ty.contains('\n') &&
-                                            new_ty.len() + type_offset.width() <=
-                                                context.config.max_width() => {
+                    Some(ref new_ty)
+                        if !new_ty.contains('\n') &&
+                               new_ty.len() + type_offset.width() <= context.config.max_width() => {
                         Some(format!(
                             "{}\n{}{}",
                             result,
@@ -2688,7 +2688,8 @@ fn format_generics(
         let same_line_brace = force_same_line_brace ||
             (generics.where_clause.predicates.is_empty() && trimmed_last_line_width(&result) == 1);
         if !same_line_brace &&
-            (brace_style == BraceStyle::SameLineWhere || brace_style == BraceStyle::AlwaysNextLine)
+            (brace_style == BraceStyle::SameLineWhere ||
+                brace_style == BraceStyle::AlwaysNextLine)
         {
             result.push('\n');
             result.push_str(&offset.block_only().to_string(context.config));

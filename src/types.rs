@@ -206,9 +206,9 @@ fn rewrite_segment(
 
     let params = if let Some(ref params) = segment.parameters {
         match **params {
-            ast::PathParameters::AngleBracketed(ref data) if !data.lifetimes.is_empty() ||
-                                                                 !data.types.is_empty() ||
-                                                                 !data.bindings.is_empty() => {
+            ast::PathParameters::AngleBracketed(ref data)
+                if !data.lifetimes.is_empty() || !data.types.is_empty() ||
+                       !data.bindings.is_empty() => {
                 let param_list = data.lifetimes
                     .iter()
                     .map(SegmentParam::LifeTime)
