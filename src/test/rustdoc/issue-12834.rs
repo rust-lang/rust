@@ -15,7 +15,7 @@
 // @has issue_12834/fn.foo.html
 // @has - //pre 'a + b '
 
-/// ```text
+/// ```
 /// a + b ∈ Self ∀ a, b ∈ Self
 /// ```
 pub fn foo() {}
