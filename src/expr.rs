@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::cmp::{Ordering, min};
-use std::ops::Deref;
 use std::iter::ExactSizeIterator;
 use std::fmt::Write;
 
@@ -1833,14 +1832,17 @@ pub fn rewrite_call(
     rewrite_call_inner(context, &callee, args, span, shape, false).ok()
 }
 
-fn rewrite_call_inner(
+fn rewrite_call_inner<'a, T>(
     context: &RewriteContext,
     callee_str: &str,
-    args: &[ptr::P<ast::Expr>],
+    args: &[ptr::P<T>],
     span: Span,
     shape: Shape,
     force_trailing_comma: bool,
-) -> Result<String, Ordering> {
+) -> Result<String, Ordering>
+where
+    T: Rewrite + Spanned + ToExpr + 'a,
+{
     // 2 = `( `, 1 = `(`
     let paren_overhead = if context.config.spaces_within_parens() {
         2
@@ -1924,22 +1926,25 @@ fn need_block_indent(s: &str, shape: Shape) -> bool {
     })
 }
 
-fn rewrite_call_args(
+fn rewrite_call_args<'a, T>(
     context: &RewriteContext,
-    args: &[ptr::P<ast::Expr>],
+    args: &[ptr::P<T>],
     span: Span,
     shape: Shape,
     one_line_width: usize,
     force_trailing_comma: bool,
-) -> Option<(bool, String)> {
+) -> Option<(bool, String)>
+where
+    T: Rewrite + Spanned + ToExpr + 'a,
+{
     let mut item_context = context.clone();
     item_context.inside_macro = false;
     let items = itemize_list(
         context.codemap,
         args.iter(),
         ")",
-        |item| item.span.lo,
-        |item| item.span.hi,
+        |item| item.span().lo,
+        |item| item.span().hi,
         |item| item.rewrite(&item_context, shape),
         span.lo,
         span.hi,
@@ -1949,7 +1954,14 @@ fn rewrite_call_args(
     // Try letting the last argument overflow to the next line with block
     // indentation. If its first line fits on one line with the other arguments,
     // we format the function arguments horizontally.
-    let tactic = try_overflow_last_arg(&item_context, &mut item_vec, args, shape, one_line_width);
+    let args = args.iter().filter_map(|e| e.to_expr()).collect::<Vec<_>>();
+    let tactic = try_overflow_last_arg(
+        &item_context,
+        &mut item_vec,
+        &args[..],
+        shape,
+        one_line_width,
+    );
 
     let fmt = ListFormatting {
         tactic: tactic,
@@ -1974,7 +1986,7 @@ fn rewrite_call_args(
 fn try_overflow_last_arg(
     context: &RewriteContext,
     item_vec: &mut Vec<ListItem>,
-    args: &[ptr::P<ast::Expr>],
+    args: &[&ast::Expr],
     shape: Shape,
     one_line_width: usize,
 ) -> DefinitiveListTactic {
@@ -1991,7 +2003,7 @@ fn try_overflow_last_arg(
         last_arg_shape(&context, &item_vec, shape).map_or((None, None), |arg_shape| {
             rewrite_last_arg_with_overflow(
                 &context,
-                &args[args.len() - 1],
+                args[args.len() - 1],
                 &mut item_vec[args.len() - 1],
                 arg_shape,
             )
@@ -2040,7 +2052,7 @@ fn last_arg_shape(context: &RewriteContext, items: &Vec<ListItem>, shape: Shape)
 
 fn rewrite_last_arg_with_overflow(
     context: &RewriteContext,
-    last_arg: &ptr::P<ast::Expr>,
+    last_arg: &ast::Expr,
     last_item: &mut ListItem,
     shape: Shape,
 ) -> (Option<String>, Option<String>) {
@@ -2056,7 +2068,7 @@ fn rewrite_last_arg_with_overflow(
     }
 }
 
-fn can_be_overflowed(context: &RewriteContext, args: &[ptr::P<ast::Expr>]) -> bool {
+fn can_be_overflowed(context: &RewriteContext, args: &[&ast::Expr]) -> bool {
     args.last().map_or(false, |x| {
         can_be_overflowed_expr(context, &x, args.len())
     })
@@ -2344,19 +2356,18 @@ fn shape_from_fn_call_style(
     }
 }
 
-pub fn rewrite_tuple_type<'a, I>(
+fn rewrite_tuple_in_visual_indent_style<'a, T>(
     context: &RewriteContext,
-    mut items: I,
+    items: &[ptr::P<T>],
     span: Span,
     shape: Shape,
 ) -> Option<String>
 where
-    I: ExactSizeIterator,
-    <I as Iterator>::Item: Deref,
-    <I::Item as Deref>::Target: Rewrite + Spanned + 'a,
+    T: Rewrite + Spanned + ToExpr + 'a,
 {
+    let mut items = items.iter();
     // In case of length 1, need a trailing comma
-    debug!("rewrite_tuple_type {:?}", shape);
+    debug!("rewrite_tuple_in_visual_indent_style {:?}", shape);
     if items.len() == 1 {
         // 3 = "(" + ",)"
         let nested_shape = try_opt!(shape.sub_width(3)).visual_indent(1);
@@ -2392,28 +2403,29 @@ where
     }
 }
 
-pub fn rewrite_tuple(
+pub fn rewrite_tuple<'a, T>(
     context: &RewriteContext,
-    items: &[ptr::P<ast::Expr>],
+    items: &[ptr::P<T>],
     span: Span,
     shape: Shape,
-) -> Option<String> {
+) -> Option<String>
+where
+    T: Rewrite + Spanned + ToExpr + 'a,
+{
     debug!("rewrite_tuple {:?}", shape);
-    // Use old `rewrite_tuple`
-    if context.config.fn_call_style() == IndentStyle::Visual {
-        return rewrite_tuple_type(context, items.iter().map(|x| &**x), span, shape);
+    if context.use_block_indent() {
+        // We use the same rule as funcation call for rewriting tuple.
+        rewrite_call_inner(
+            context,
+            &String::new(),
+            items,
+            span,
+            shape,
+            items.len() == 1,
+        ).ok()
+    } else {
+        rewrite_tuple_in_visual_indent_style(context, items, span, shape)
     }
-
-    // We use the same rule as funcation call for rewriting tuple.
-    // 1 = ","
-    rewrite_call_inner(
-        context,
-        &String::new(),
-        items,
-        span,
-        shape,
-        items.len() == 1,
-    ).ok()
 }
 
 pub fn rewrite_unary_prefix<R: Rewrite>(
@@ -2573,4 +2585,20 @@ fn rewrite_expr_addrof(
         ast::Mutability::Mutable => "&mut ",
     };
     rewrite_unary_prefix(context, operator_str, expr, shape)
+}
+
+pub trait ToExpr {
+    fn to_expr(&self) -> Option<&ast::Expr>;
+}
+
+impl ToExpr for ast::Expr {
+    fn to_expr(&self) -> Option<&ast::Expr> {
+        Some(self)
+    }
+}
+
+impl ToExpr for ast::Ty {
+    fn to_expr(&self) -> Option<&ast::Expr> {
+        None
+    }
 }

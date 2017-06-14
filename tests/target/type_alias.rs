@@ -1,7 +1,9 @@
 // rustfmt-normalize_comments: true
 
-type PrivateTest<'a, I> = (Box<Parser<Input = I, Output = char> + 'a>,
-                           Box<Parser<Input = I, Output = char> + 'a>);
+type PrivateTest<'a, I> = (
+    Box<Parser<Input = I, Output = char> + 'a>,
+    Box<Parser<Input = I, Output = char> + 'a>,
+);
 
 pub type PublicTest<'a, I, O> = Result<
     Vec<MyLongType>,

@@ -87,7 +87,12 @@ where
 }
 
 fn foo()
-    -> (Loooooooooooooooooooooong, Reeeeeeeeeeeeeeeeeeeeeeeeturn, iiiiiiiiis, Looooooooooooooooong)
+    -> (
+    Loooooooooooooooooooooong,
+    Reeeeeeeeeeeeeeeeeeeeeeeeturn,
+    iiiiiiiiis,
+    Looooooooooooooooong,
+)
 {
     foo();
 }
@@ -127,10 +132,12 @@ fn foo<L: Loooooooooooooooooooong, G: Geeeeeeeeeeneric, I: iiiiiiiiis, L: Looooo
 }
 
 fn foo()
-    -> (Looooooooooooooooooooooooooong,
-        Reeeeeeeeeeeeeeeeeeeeeeeeeeeeeturn,
-        iiiiiiiiiiiiiis,
-        Loooooooooooooooooooooong)
+    -> (
+    Looooooooooooooooooooooooooong,
+    Reeeeeeeeeeeeeeeeeeeeeeeeeeeeeturn,
+    iiiiiiiiiiiiiis,
+    Loooooooooooooooooooooong,
+)
 {
     foo();
 }
