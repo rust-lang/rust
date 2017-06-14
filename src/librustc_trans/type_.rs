@@ -214,16 +214,6 @@ impl Type {
         ty!(llvm::LLVMVectorType(ty.to_ref(), len as c_uint))
     }
 
-    pub fn vec(ccx: &CrateContext, ty: &Type) -> Type {
-        Type::struct_(ccx,
-            &[Type::array(ty, 0), Type::isize(ccx)],
-        false)
-    }
-
-    pub fn opaque_vec(ccx: &CrateContext) -> Type {
-        Type::vec(ccx, &Type::i8(ccx))
-    }
-
     pub fn vtable_ptr(ccx: &CrateContext) -> Type {
         Type::func(&[Type::i8p(ccx)], &Type::void(ccx)).ptr_to().ptr_to()
     }
