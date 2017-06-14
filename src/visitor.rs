@@ -546,10 +546,11 @@ impl<'a> FmtVisitor<'a> {
     fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
         self.format_missing_with_indent(source!(self, span).lo);
         self.failed = match rewrite {
-            Some(ref s) if s.rewrite(
-                &self.get_context(),
-                Shape::indented(self.block_indent, self.config),
-            ).is_none() => true,
+            Some(ref s)
+                if s.rewrite(
+                    &self.get_context(),
+                    Shape::indented(self.block_indent, self.config),
+                ).is_none() => true,
             None => true,
             _ => self.failed,
         };

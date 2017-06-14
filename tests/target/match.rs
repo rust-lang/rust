@@ -37,10 +37,8 @@ fn foo() {
         Patternnnnnnnnnnnnnnnnnnnnnnnnn if loooooooooooooooooooooooooooooooooooooooooong_guard => {}
 
         _ => {}
-        ast::PathParameters::AngleBracketedParameters(ref data) if data.lifetimes.len() >
-                                                                       0 ||
-                                                                       data.types.len() > 0 ||
-                                                                       data.bindings.len() > 0 => {}
+        ast::PathParameters::AngleBracketedParameters(ref data)
+            if data.lifetimes.len() > 0 || data.types.len() > 0 || data.bindings.len() > 0 => {}
     }
 
     let whatever = match something {
@@ -316,16 +314,15 @@ fn issue386() {
 
 fn guards() {
     match foo {
-        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa if foooooooooooooo &&
-                                                                          barrrrrrrrrrrr => {}
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            if foooooooooooooo && barrrrrrrrrrrr => {}
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
-        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa if foooooooooooooo &&
-                                                                          barrrrrrrrrrrr => {}
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            if foooooooooooooo && barrrrrrrrrrrr => {}
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
             if fooooooooooooooooooooo &&
-                   (bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb || cccccccccccccccccccccccccccccccccccccccc) => {
-            {}
-        }
+                   (bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb ||
+                        cccccccccccccccccccccccccccccccccccccccc) => {}
     }
 }
 

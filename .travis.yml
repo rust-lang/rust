@@ -1,8 +1,8 @@
 sudo: false
 language: rust
 rust:
- - stable
- - beta
+# - stable
+# - beta
  - nightly
 os:
  - linux

@@ -7,8 +7,8 @@ fn foo() -> bool {
     let referenced = &5;
 
     let very_long_variable_name = (a + first + simple + test);
-    let very_long_variable_name =
-        (a + first + simple + test + AAAAAAAAAAAAA + BBBBBBBBBBBBBBBBB + b + c);
+    let very_long_variable_name = (a + first + simple + test + AAAAAAAAAAAAA +
+                                       BBBBBBBBBBBBBBBBB + b + c);
 
     let is_internalxxxx = self.codemap.span_to_filename(s) ==
         self.codemap.span_to_filename(m.inner);
@@ -20,8 +20,10 @@ fn foo() -> bool {
         10000 * 30000000000 + 40000 / 1002200000000 - 50000 * sqrt(-1),
         trivial_value,
     );
-    (((((((((aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa + a +
-             aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa + aaaaa)))))))))   ;
+    (((((((((aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
+                 a +
+                 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
+                 aaaaa)))))))));
 
     {
         for _ in 0..10 {}
@@ -47,21 +49,21 @@ fn foo() -> bool {
     }
 
     if let Some(x) = (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-                       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
+                          aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
     {}
 
     if let (some_very_large,
-         tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3
+            tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3
     {
     }
 
     if let (some_very_large,
-         tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) =
+            tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) =
         1111 + 2222
     {}
 
     if let (some_very_large,
-         tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3
+            tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3
     {}
 
     let test = if true { 5 } else { 3 };
