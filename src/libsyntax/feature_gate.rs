@@ -312,9 +312,6 @@ declare_features! (
     // Declarative macros 2.0 (`macro`).
     (active, decl_macro, "1.17.0", Some(39412)),
 
-    // Allows attributes on struct literal fields.
-    (active, struct_field_attributes, "1.16.0", Some(38814)),
-
     // Allows #[link(kind="static-nobundle"...]
     (active, static_nobundle, "1.16.0", Some(37403)),
 
@@ -430,6 +427,8 @@ declare_features! (
     (accepted, relaxed_adts, "1.19.0", Some(35626)),
     // Coerces non capturing closures to function pointers
     (accepted, closure_to_fn_coercion, "1.19.0", Some(39817)),
+    // Allows attributes on struct literal fields.
+    (accepted, struct_field_attributes, "1.20.0", Some(38814)),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
