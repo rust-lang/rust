@@ -27,39 +27,21 @@
 //! created.  See `./README.md` for details.
 
 use std::cell::RefCell;
-use std::env;
 
 use super::DepNode;
 use super::thread::DepMessage;
-use super::debug::EdgeFilter;
 
 pub struct ShadowGraph {
     // if you push None onto the stack, that corresponds to an Ignore
     stack: RefCell<Vec<Option<DepNode>>>,
-    forbidden_edge: Option<EdgeFilter>,
 }
 
 const ENABLED: bool = cfg!(debug_assertions);
 
 impl ShadowGraph {
     pub fn new() -> Self {
-        let forbidden_edge = if !ENABLED {
-            None
-        } else {
-            match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
-                Ok(s) => {
-                    match EdgeFilter::new(&s) {
-                        Ok(f) => Some(f),
-                        Err(err) => bug!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
-                    }
-                }
-                Err(_) => None,
-            }
-        };
-
         ShadowGraph {
             stack: RefCell::new(vec![]),
-            forbidden_edge: forbidden_edge,
         }
     }
 
@@ -86,7 +68,6 @@ impl ShadowGraph {
                 // anyway). What would be bad is WRITING to that
                 // state.
                 DepMessage::Read(_) => { }
-                DepMessage::Write(ref n) => self.check_edge(top(&stack), Some(Some(n))),
                 DepMessage::PushTask(ref n) => stack.push(Some(n.clone())),
                 DepMessage::PushIgnore => stack.push(None),
                 DepMessage::PopTask(ref n) => {
@@ -111,41 +92,4 @@ impl ShadowGraph {
             }
         }
     }
-
-    fn check_edge(&self,
-                  source: Option<Option<&DepNode>>,
-                  target: Option<Option<&DepNode>>) {
-        assert!(ENABLED);
-        match (source, target) {
-            // cannot happen, one side is always Some(Some(_))
-            (None, None) => unreachable!(),
-
-            // nothing on top of the stack
-            (None, Some(n)) | (Some(n), None) => bug!("write of {:?} but no current task", n),
-
-            // this corresponds to an Ignore being top of the stack
-            (Some(None), _) | (_, Some(None)) => (),
-
-            // a task is on top of the stack
-            (Some(Some(source)), Some(Some(target))) => {
-                if let Some(ref forbidden_edge) = self.forbidden_edge {
-                    if forbidden_edge.test(source, target) {
-                        bug!("forbidden edge {:?} -> {:?} created", source, target)
-                    }
-                }
-            }
-        }
-    }
-}
-
-// Do a little juggling: we get back a reference to an option at the
-// top of the stack, convert it to an optional reference.
-fn top<'s>(stack: &'s Vec<Option<DepNode>>) -> Option<Option<&'s DepNode>> {
-    stack.last()
-        .map(|n: &'s Option<DepNode>| -> Option<&'s DepNode> {
-            // (*)
-            // (*) type annotation just there to clarify what would
-            // otherwise be some *really* obscure code
-            n.as_ref()
-        })
 }

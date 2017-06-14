@@ -30,7 +30,6 @@ use super::shadow::ShadowGraph;
 #[derive(Debug)]
 pub enum DepMessage {
     Read(DepNode),
-    Write(DepNode),
     PushTask(DepNode),
     PopTask(DepNode),
     PushIgnore,
@@ -162,7 +161,6 @@ pub fn main(swap_in: Receiver<Vec<DepMessage>>,
         for msg in messages.drain(..) {
             match msg {
                 DepMessage::Read(node) => edges.read(node),
-                DepMessage::Write(node) => edges.write(node),
                 DepMessage::PushTask(node) => edges.push_task(node),
                 DepMessage::PopTask(node) => edges.pop_task(node),
                 DepMessage::PushIgnore => edges.push_ignore(),
