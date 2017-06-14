@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate rustfmt;
+extern crate rustfmt_nightly as rustfmt;
 extern crate diff;
 extern crate regex;
 extern crate term;
