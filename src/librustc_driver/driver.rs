@@ -862,33 +862,53 @@ mod trace {
         pub traces:   Vec<Rec>,
     }
 
-    pub fn css_class_of_query_msg(qmsg:&trace::Query) -> String {
-        let debugstr = format!("{:?}", qmsg);
-        let cons : Vec<&str> = debugstr.trim().split("(").collect();
+    pub fn cons_of_query_msg(q:&trace::Query) -> String {
+        let s = format!("{:?}", q.msg);
+        let cons: Vec<&str> = s.split(|d| d == '(' || d == '{').collect();
         assert!(cons.len() > 0 && cons[0] != "");
         cons[0].to_string()
     }
-
-    pub fn css_class_of_effect(eff:&Effect) -> String {
+    
+    // First return value is text; second return value is a CSS class
+    pub fn html_of_effect(eff:&Effect) -> (String, String) {        
         match *eff {
             Effect::QueryBegin(ref qmsg, ref cc) => {
-                format!("{} {}", 
-                        css_class_of_query_msg(qmsg),
+                let cons = cons_of_query_msg(qmsg);
+                (cons.clone(),
+                format!("{} {}",
+                        cons,
                         match *cc {
                             CacheCase::Hit => "hit",
                             CacheCase::Miss => "miss",
-                        })
+                        }))
             }
         }
     }
 
-    pub fn write_traces(file:&mut File, traces:&Vec<Rec>) {
+    fn write_traces_rec(file:&mut File, traces:&Vec<Rec>, depth:usize) {
         for t in traces {
-            write!(file, "<div class=\"{}\">", css_class_of_effect(&t.effect)).unwrap();
-            write_traces(file, &t.extent);
-            write!(file, "</div>").unwrap();
+            let (eff_text, eff_css_classes) = html_of_effect(&t.effect);
+            write!(file, "<div class=\"depth-{} extent-{}{} {}\">\n",
+                   depth, 
+                   t.extent.len(),
+                   if t.extent.len() > 5 { 
+                       // query symbol_name     has extent 5, and is very common
+                       // query def_symbol_name has extent 6, and is somewhat common
+                       " extent-big"
+                   } else { "" },
+                   eff_css_classes,
+            ).unwrap();
+            write!(file, "{}\n", eff_text).unwrap();
+            write_traces_rec(file, &t.extent, depth + 1);
+            write!(file, "</div>\n").unwrap();
         }
     }
+
+    pub fn write_traces(html_file:&mut File, _counts_file:&mut File, traces:&Vec<Rec>) {
+        // XXX/TODO: Populate counts_file with counts for each constructor (a histogram of constructor occurrences)
+        write_traces_rec(html_file, traces, 0)
+    }
+
 }
 
 
@@ -901,17 +921,34 @@ pub fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
     let mut frame    : StackFrame = StackFrame{ parse_st:ParseState::NoQuery, traces:vec![] };
     let mut stack    : Vec<StackFrame> = vec![];
     loop {
-        let msg = r.recv().unwrap();
-        println!("profile_queries_thread: {:?}", msg);
+        let msg = r.recv();
+        if let Err(_recv_err) = msg {
+            // TODO: Perhaps do something smarter than simply quitting?
+            break 
+        };
+        let msg = msg.unwrap();
+        debug!("profile_queries_thread: {:?}", msg);
+        
         // Meta-level versus _actual_ queries messages
         match msg {
             ProfileQueriesMsg::Halt => return,
             ProfileQueriesMsg::Dump(path) => {
                 assert!(stack.len() == 0);
                 assert!(frame.parse_st == trace::ParseState::NoQuery);
-                let html_path = format!("{}.html", path);
-                let mut file = File::create(&html_path).unwrap();
-                trace::write_traces(&mut file, &frame.traces);
+                { // write HTML file
+                    let html_path = format!("{}.html", path);
+                    let mut html_file = File::create(&html_path).unwrap();
+                    
+                    let counts_path = format!("{}.counts.txt", path);
+                    let mut counts_file = File::create(&counts_path).unwrap();
+
+                    write!(html_file, "<html>\n").unwrap();
+                    write!(html_file, "<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n</head>", 
+                           "dep-graph.css").unwrap();
+                    write!(html_file, "<body>\n").unwrap();
+                    trace::write_traces(&mut html_file, &mut counts_file, &frame.traces);
+                    write!(html_file, "</body>\n</html>\n").unwrap();
+                }
                 continue
             }
             // Actual query message:
