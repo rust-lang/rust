@@ -832,8 +832,9 @@ mod trace {
     use super::*;
     use syntax_pos::Span;
     use self::ty::maps::QueryMsg;
+    use std::fs::File;
     
-    #[derive(Debug,Clone)]
+    #[derive(Debug,Clone,Eq,PartialEq)]
     pub struct Query {
         pub span: Span,
         pub msg: QueryMsg,        
@@ -850,7 +851,7 @@ mod trace {
         pub extent: Box<Vec<Rec>>
     }
     /// State for parsing recursive trace structure
-    #[derive(Clone)]
+    #[derive(Clone,Eq,PartialEq)]
     pub enum ParseState {
         NoQuery,
         HaveQuery(Query),
@@ -860,10 +861,40 @@ mod trace {
         pub parse_st: ParseState,
         pub traces:   Vec<Rec>,
     }
-}    
+
+    pub fn css_class_of_query_msg(qmsg:&trace::Query) -> String {
+        let debugstr = format!("{:?}", qmsg);
+        let cons : Vec<&str> = debugstr.trim().split("(").collect();
+        assert!(cons.len() > 0 && cons[0] != "");
+        cons[0].to_string()
+    }
+
+    pub fn css_class_of_effect(eff:&Effect) -> String {
+        match *eff {
+            Effect::QueryBegin(ref qmsg, ref cc) => {
+                format!("{} {}", 
+                        css_class_of_query_msg(qmsg),
+                        match *cc {
+                            CacheCase::Hit => "hit",
+                            CacheCase::Miss => "miss",
+                        })
+            }
+        }
+    }
+
+    pub fn write_traces(file:&mut File, traces:&Vec<Rec>) {
+        for t in traces {
+            write!(file, "<div class=\"{}\">", css_class_of_effect(&t.effect)).unwrap();
+            write_traces(file, &t.extent);
+            write!(file, "</div>").unwrap();
+        }
+    }
+}
+
 
 pub fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
     use self::trace::*;
+    use std::fs::File;
     //use std::sync::mpsc::*; // for Receiver
 
     let mut queries  : Vec<ProfileQueriesMsg> = vec![];
@@ -875,7 +906,11 @@ pub fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
         match msg {
             ProfileQueriesMsg::Halt => return,
             ProfileQueriesMsg::Dump(path) => {
-                panic!("XXX:TODO: Dump: {:?}", path)
+                assert!(stack.len() == 0);
+                assert!(frame.parse_st == trace::ParseState::NoQuery);
+                let html_path = format!("{}.html", path);
+                let mut file = File::create(&html_path).unwrap();
+                trace::write_traces(&mut file, &frame.traces);
             }
             // Actual query message:
             msg => {

@@ -63,6 +63,13 @@ use syntax_pos::Span;
 pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();
 
+    if tcx.sess.profile_queries() {
+        tcx.profile_queries_sender.borrow().as_ref().unwrap()
+            .send(
+                ProfileQueriesMsg::Dump("dep-graph")
+            ).unwrap()
+    }
+
     if tcx.sess.opts.debugging_opts.dump_dep_graph {
         dump_graph(tcx);
     }
